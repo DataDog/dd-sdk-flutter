@@ -1,0 +1,37 @@
+PODS:
+  - datadog_sdk (0.0.1):
+    - DatadogSDKBridge (= 0.5.1)
+    - Flutter
+  - DatadogSDK (1.8.0):
+    - Kronos (~> 4.2)
+  - DatadogSDKBridge (0.5.1):
+    - DatadogSDK (~> 1.8.0)
+  - Flutter (1.0.0)
+  - Kronos (4.2.1)
+
+DEPENDENCIES:
+  - datadog_sdk (from `.symlinks/plugins/datadog_sdk/ios`)
+  - Flutter (from `Flutter`)
+
+SPEC REPOS:
+  trunk:
+    - DatadogSDK
+    - DatadogSDKBridge
+    - Kronos
+
+EXTERNAL SOURCES:
+  datadog_sdk:
+    :path: ".symlinks/plugins/datadog_sdk/ios"
+  Flutter:
+    :path: Flutter
+
+SPEC CHECKSUMS:
+  datadog_sdk: edae2c161516be8234884c455ea43208c1d30a44
+  DatadogSDK: 70bd7f07d902c0e5835bba87ff0cfcf642cc5a91
+  DatadogSDKBridge: 61a59e46c3f00ba496be658c09c9f72ebbf9b3ea
+  Flutter: 50d75fe2f02b26cc09d224853bb45737f8b3214a
+  Kronos: 0ca73a1c00dc9a49a0bab4a6ed42f282562a7058
+
+PODFILE CHECKSUM: 7368163408c647b7eb699d0d788ba6718e18fb8d
+
+COCOAPODS: 1.11.2
