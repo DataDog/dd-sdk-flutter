@@ -1,20 +1,26 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
+import 'package:flutter/services.dart';
 
 import 'logging_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final ddConfig = await rootBundle.loadStructuredData<Map<String, dynamic>>(
+      'config/ddconfig.json', (value) => Future.value(jsonDecode(value)));
+
   final configuration = DdSdkConfiguration(
-    clientToken: "",
-    env: "",
-    applicationId: "",
+    clientToken: ddConfig['client_token'],
+    env: ddConfig['env'],
+    applicationId: ddConfig['applicationId'],
     trackingConsent: 'granted',
   );
-  final ddsdk = DatadogSdk(configuration);
-  ddsdk.initialize();
+  final ddsdk = DatadogSdk();
+  ddsdk.initialize(configuration);
 
   runApp(const MyApp());
 }

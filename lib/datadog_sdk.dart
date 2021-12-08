@@ -1,4 +1,6 @@
-import 'package:datadog_sdk/datadog_sdk_platform_interface.dart';
+import './datadog_sdk_platform_interface.dart';
+
+import './version.dart' show ddSdkVersion;
 
 class DdSdkConfiguration {
   final String clientToken;
@@ -8,17 +10,17 @@ class DdSdkConfiguration {
   final double sampleRate;
   final String? site;
   final String? trackingConsent;
-  final Map<String, dynamic> additionalConfig;
+  final Map<String, dynamic> additionalConfig = {};
 
-  DdSdkConfiguration(
-      {required this.clientToken,
-      required this.env,
-      this.applicationId,
-      this.nativeCrashReportEnabled = false,
-      this.sampleRate = 100.0,
-      this.site,
-      this.trackingConsent,
-      this.additionalConfig = const {}});
+  DdSdkConfiguration({
+    required this.clientToken,
+    required this.env,
+    this.applicationId,
+    this.nativeCrashReportEnabled = false,
+    this.sampleRate = 100.0,
+    this.site,
+    this.trackingConsent,
+  });
 
   Map<String, dynamic> encode() {
     return {
@@ -29,9 +31,17 @@ class DdSdkConfiguration {
       'sampleRate': sampleRate,
       'site': site,
       'trackingConsent': trackingConsent,
-      'additionaliConfig': additionalConfig
+      'additionalConfig': additionalConfig
     };
   }
+}
+
+class _DatadogConfigKey {
+  static const source = '_dd.source';
+  static const version = '_dd.sdk_version';
+  static const serviceName = '_dd.service_name';
+  static const verbosity = '_dd.sdk_verbosity';
+  static const nativeViewTracking = '_dd.native_view_tracking';
 }
 
 class DatadogSdk {
@@ -48,6 +58,9 @@ class DatadogSdk {
   DatadogSdk._();
 
   Future<void> initialize(DdSdkConfiguration configuration) {
+    configuration.additionalConfig[_DatadogConfigKey.source] = 'flutter';
+    configuration.additionalConfig[_DatadogConfigKey.version] = ddSdkVersion;
+
     return _platform.initialize(configuration);
   }
 

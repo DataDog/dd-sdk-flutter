@@ -47,11 +47,33 @@ class DatadogSdkPlugin: FlutterPlugin, MethodCallHandler {
           ?.let { decodeDdSdkConfiguration(it) }
         DdBridge.getDdSdk(binding.applicationContext).initialize(configuration!!)
       }
-    }
-    if (call.method == "getPlatformVersion") {
-      result.success("Android ${android.os.Build.VERSION.RELEASE}")
-    } else {
-      result.notImplemented()
+      "DdLogs.debug" -> {
+        val message = call.argument<String>("message")!!
+        val context = call.argument<HashMap<String, Any?>>("context")!!
+
+        DdBridge.getDdLogs(binding.applicationContext).debug(message, context)
+      }
+      "DdLogs.info" -> {
+        val message = call.argument<String>("message")!!
+        val context = call.argument<HashMap<String, Any?>>("context")!!
+
+        DdBridge.getDdLogs(binding.applicationContext).info(message, context)
+      }
+      "DdLogs.warn" -> {
+        val message = call.argument<String>("message")!!
+        val context = call.argument<HashMap<String, Any?>>("context")!!
+
+        DdBridge.getDdLogs(binding.applicationContext).warn(message, context)
+      }
+      "DdLogs.error" -> {
+        val message = call.argument<String>("message")!!
+        val context = call.argument<HashMap<String, Any?>>("context")!!
+
+        DdBridge.getDdLogs(binding.applicationContext).error(message, context)
+      }
+      else -> {
+        result.notImplemented()
+      }
     }
   }
 

@@ -1,6 +1,6 @@
 name: datadog_sdk
 description: A new flutter plugin project.
-version: 0.0.1
+version: 1.0.0-dev.1
 homepage:
 
 environment:
