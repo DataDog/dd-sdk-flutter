@@ -37,9 +37,45 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         )
         Bridge.getDdSdk().initialize(configuration: configuration)
         result(nil)
+    case "DdLogs.debug":
+        let arguments = call.arguments as! [String:Any];
+
+        let message = arguments["message"] as! NSString
+        let context = arguments["context"] as! NSDictionary
+
+        Bridge.getDdLogs().debug(message: message, context: context)
+        result(nil)
+
+    case "DdLogs.info":
+        let arguments = call.arguments as! [String:Any];
+
+        let message = arguments["message"] as! NSString
+        let context = arguments["context"] as! NSDictionary
+
+        Bridge.getDdLogs().debug(message: message, context: context)
+        result(nil)
+
+    case "DdLogs.warn":
+        let arguments = call.arguments as! [String:Any];
+
+        let message = arguments["message"] as! NSString
+        let context = arguments["context"] as! NSDictionary
+
+        Bridge.getDdLogs().debug(message: message, context: context)
+        result(nil)
+
+    case "DdLogs.error":
+        let arguments = call.arguments as! [String:Any];
+
+        let message = arguments["message"] as! NSString
+        let context = arguments["context"] as! NSDictionary
+
+        Bridge.getDdLogs().debug(message: message, context: context)
+        result(nil)
         
     default:
         result(FlutterMethodNotImplemented)
     }    
   }
 }
+

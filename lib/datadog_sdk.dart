@@ -1,4 +1,3 @@
-
 import 'package:datadog_sdk/datadog_sdk_platform_interface.dart';
 
 class DdSdkConfiguration {
@@ -10,17 +9,16 @@ class DdSdkConfiguration {
   final String? site;
   final String? trackingConsent;
   final Map<String, dynamic> additionalConfig;
-  
-  DdSdkConfiguration({
-    required this.clientToken,
-    required this.env,
-    this.applicationId,
-    this.nativeCrashReportEnabled = false,
-    this.sampleRate = 100.0,
-    this.site,
-    this.trackingConsent,
-    this.additionalConfig = const {}
-  });
+
+  DdSdkConfiguration(
+      {required this.clientToken,
+      required this.env,
+      this.applicationId,
+      this.nativeCrashReportEnabled = false,
+      this.sampleRate = 100.0,
+      this.site,
+      this.trackingConsent,
+      this.additionalConfig = const {}});
 
   Map<String, dynamic> encode() {
     return {
@@ -34,18 +32,24 @@ class DdSdkConfiguration {
       'additionaliConfig': additionalConfig
     };
   }
-} 
+}
 
 class DatadogSdk {
-  final DdSdkConfiguration configuration;
-
   static DatadogSdkPlatform get _platform {
     return DatadogSdkPlatform.instance;
   }
 
-  DatadogSdk(this.configuration);
+  static DatadogSdk? _singleton;
+  factory DatadogSdk() {
+    _singleton ??= DatadogSdk._();
+    return _singleton!;
+  }
 
-  Future<void> initialize() {
+  DatadogSdk._();
+
+  Future<void> initialize(DdSdkConfiguration configuration) {
     return _platform.initialize(configuration);
   }
+
+  DdLogs get ddLogs => _platform.ddLogs;
 }

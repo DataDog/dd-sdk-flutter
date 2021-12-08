@@ -11,17 +11,21 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
 
   static DatadogSdkPlatform _instance = DatadogSdkMethodChannel();
 
-  /// The default instance of [{{pluginDartClass}}Platform] to use.
-  ///
-  /// Defaults to [MethodChannel{{pluginDartClass}}].
   static DatadogSdkPlatform get instance => _instance;
 
-  /// Platform-specific plugins should set this with their own platform-specific
-  /// class that extends [{{pluginDartClass}}Platform] when they register themselves.
   static set instance(DatadogSdkPlatform instance) {
     PlatformInterface.verifyToken(instance, _token);
     _instance = instance;
   }
 
   Future<void> initialize(DdSdkConfiguration configuration);
+
+  DdLogs get ddLogs;
+}
+
+abstract class DdLogs {
+  Future<void> debug(String message, [Map<String, Object?> context = const {}]);
+  Future<void> info(String message, [Map<String, Object?> context = const {}]);
+  Future<void> warn(String message, [Map<String, Object?> context = const {}]);
+  Future<void> error(String message, [Map<String, Object?> context = const {}]);
 }
