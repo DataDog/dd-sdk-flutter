@@ -1,4 +1,4 @@
-package com.example.datadog_sdk_example
+package com.datadoghq.example.flutter
 
 import io.flutter.embedding.android.FlutterActivity
 

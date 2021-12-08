@@ -1,4 +1,4 @@
-package com.example.datadog_sdk
+package com.datadoghq.flutter_sdk
 
 import androidx.annotation.NonNull
 import com.datadog.android.bridge.DdBridge
