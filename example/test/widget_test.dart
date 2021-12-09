@@ -7,4 +7,21 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:datadog_sdk_example/main.dart';
 
-void main() {}
+void main() {
+  testWidgets('Verify Platform version', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const MyApp());
+
+    var listView = find.byType(ListView);
+    var tile = find.descendant(of: listView, matching: find.byType(ListTile));
+
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+    expect(
+      find.byWidgetPredicate(
+        (Widget widget) => widget is Text && widget.data!.startsWith('Single'),
+      ),
+      findsOneWidget,
+    );
+  });
+}
