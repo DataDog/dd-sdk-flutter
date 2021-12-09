@@ -1,4 +1,6 @@
-
+// Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2019-2020 Datadog, Inc.
 import 'package:datadog_sdk/datadog_sdk_platform_interface.dart';
 
 class DdSdkConfiguration {
@@ -10,7 +12,7 @@ class DdSdkConfiguration {
   final String? site;
   final String? trackingConsent;
   final Map<String, dynamic> additionalConfig;
-  
+
   DdSdkConfiguration({
     required this.clientToken,
     required this.env,
@@ -19,7 +21,7 @@ class DdSdkConfiguration {
     this.sampleRate = 100.0,
     this.site,
     this.trackingConsent,
-    this.additionalConfig = const {}
+    this.additionalConfig = const {},
   });
 
   Map<String, dynamic> encode() {
@@ -34,7 +36,7 @@ class DdSdkConfiguration {
       'additionaliConfig': additionalConfig
     };
   }
-} 
+}
 
 class DatadogSdk {
   final DdSdkConfiguration configuration;
