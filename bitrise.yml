@@ -1,0 +1,47 @@
+format_version: '8'
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+project_type: flutter
+
+trigger_map:
+- push_branch: "*"
+  workflow: primary
+- pull_request_source_branch: "*"
+  workflow: primary
+
+workflows:
+  _dependencies:
+    steps:
+    - flutter-installer@0.11.5: {}
+
+  primary:
+    before_run:
+    - _dependencies
+
+    steps:
+    - script:
+        title: Pub get in example
+        inputs:
+        - content: |-
+            #!/user/bin/env bash
+            set -e
+            flutter pub get
+        - working_dir: "$BITRISE_SOURCE_DIR/example"
+
+    - flutter-analyze@0.3.1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR"
+    - flutter-test@1.0.1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR"
+    
+    - flutter-analyze@0.3.1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/example"
+    - flutter-test@1.0.1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/example"
+    - flutter-build@0.14.0:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/example"
+        - platform: both
+    

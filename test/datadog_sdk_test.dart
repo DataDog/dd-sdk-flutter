@@ -2,14 +2,43 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2020 Datadog, Inc.
 
-import 'package:flutter/services.dart';
+import 'package:datadog_sdk/datadog_sdk_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:datadog_sdk/datadog_sdk.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+
+class MockDatadogSdkPlatform
+    with MockPlatformInterfaceMixin
+    implements DatadogSdkPlatform {
+  DdSdkConfiguration? configuration;
+
+  @override
+  DdLogs get ddLogs => throw UnimplementedError();
+
+  @override
+  Future<void> initialize(DdSdkConfiguration configuration) {
+    this.configuration = configuration;
+    return Future.value();
+  }
+}
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  late DatadogSdk datadogSdk;
+  late MockDatadogSdkPlatform fakePlatform;
 
-  setUp(() {});
+  setUp(() {
+    fakePlatform = MockDatadogSdkPlatform();
+    DatadogSdkPlatform.instance = fakePlatform;
+    datadogSdk = DatadogSdk();
+  });
 
-  tearDown(() {});
+  test('initialize passes configuration to platform', () async {
+    final configuration = DdSdkConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      applicationId: 'applicationId',
+    );
+    await datadogSdk.initialize(configuration);
+    expect(configuration, fakePlatform.configuration);
+  });
 }
