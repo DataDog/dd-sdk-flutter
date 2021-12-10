@@ -7,11 +7,14 @@ PODS:
   - DatadogSDKBridge (0.5.1):
     - DatadogSDK (~> 1.8.0)
   - Flutter (1.0.0)
+  - integration_test (0.0.1):
+    - Flutter
   - Kronos (4.2.1)
 
 DEPENDENCIES:
   - datadog_sdk (from `.symlinks/plugins/datadog_sdk/ios`)
   - Flutter (from `Flutter`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
 
 SPEC REPOS:
   trunk:
@@ -24,12 +27,15 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/datadog_sdk/ios"
   Flutter:
     :path: Flutter
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
 
 SPEC CHECKSUMS:
   datadog_sdk: edae2c161516be8234884c455ea43208c1d30a44
   DatadogSDK: 70bd7f07d902c0e5835bba87ff0cfcf642cc5a91
   DatadogSDKBridge: 61a59e46c3f00ba496be658c09c9f72ebbf9b3ea
   Flutter: 50d75fe2f02b26cc09d224853bb45737f8b3214a
+  integration_test: 7db6d89f336f671dcbc7563ee27a5b08f6f8aee1
   Kronos: 0ca73a1c00dc9a49a0bab4a6ed42f282562a7058
 
 PODFILE CHECKSUM: 7368163408c647b7eb699d0d788ba6718e18fb8d
