@@ -1,25 +1,24 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2020 Datadog, Inc.
-import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'logging_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final ddConfig = await rootBundle.loadStructuredData<Map<String, dynamic>>(
-      'config/ddconfig.json', (value) => Future.value(jsonDecode(value)));
+  await dotenv.load(mergeWith: Platform.environment);
 
   final configuration = DdSdkConfiguration(
-    clientToken: ddConfig['client_token'],
-    env: ddConfig['env'],
-    applicationId: ddConfig['applicationId'],
+    clientToken: dotenv.env['DD_CLIENT_TOKEN'] ?? '',
+    env: dotenv.env['DD_ENV'] ?? '',
+    applicationId: dotenv.env['DD_APPLICATION_ID'] ?? '',
     trackingConsent: 'granted',
   );
   final ddsdk = DatadogSdk();
