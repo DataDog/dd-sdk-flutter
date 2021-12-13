@@ -1,3 +1,4 @@
+---
 format_version: '8'
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 project_type: flutter
@@ -9,14 +10,7 @@ trigger_map:
   workflow: primary
 
 workflows:
-  _dependencies:
-    steps:
-    - flutter-installer@0.11.5: {}
-
   primary:
-    before_run:
-    - _dependencies
-
     steps:
     - script:
         title: Pub get in example
@@ -44,4 +38,3 @@ workflows:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/example"
         - platform: both
-    
