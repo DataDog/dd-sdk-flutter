@@ -8,6 +8,10 @@ package com.datadoghq.flutter_sdk
 import androidx.annotation.NonNull
 import com.datadog.android.bridge.DdBridge
 import com.datadog.android.bridge.DdSdkConfiguration
+import com.datadog.android.Datadog;
+import com.datadog.android.core.configuration.Configuration
+import com.datadog.android.core.configuration.Credentials
+import com.datadog.android.privacy.TrackingConsent
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -36,7 +40,7 @@ class DatadogSdkPlugin: FlutterPlugin, MethodCallHandler {
   /// This local reference serves to register the plugin with the Flutter Engine and unregister it
   /// when the Flutter Engine is detached from the Activity
   private lateinit var channel : MethodChannel
-  private lateinit var binding: FlutterPlugin.FlutterPluginBinding;
+  private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter")
@@ -48,9 +52,12 @@ class DatadogSdkPlugin: FlutterPlugin, MethodCallHandler {
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
     when (call.method) {
       "DdSdk.initialize" -> {
-        val configuration = call.argument<HashMap<String, Any?>>("configuration")
-          ?.let { decodeDdSdkConfiguration(it) }
-        DdBridge.getDdSdk(binding.applicationContext).initialize(configuration!!)
+        val configArg = call.argument<HashMap<String, Any?>>("configuration")
+        if (configArg != null) {
+          val configuration = configArg?.let { decodeDdSdkConfiguration(it) }
+          val customEndpoint = configArg["customEndpoint"] as String?
+          initialize(configuration!!, customEndpoint)
+        }
       }
       "DdLogs.debug" -> {
         val message = call.argument<String>("message")!!
@@ -84,5 +91,40 @@ class DatadogSdkPlugin: FlutterPlugin, MethodCallHandler {
 
   override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
     channel.setMethodCallHandler(null)
+  }
+
+  private fun initialize(configuration: DdSdkConfiguration, customEndpoint: String?) {
+    val serviceName = configuration.additionalConfig?.get("_dd.service_name") as? String
+    val credentials = Credentials(
+      clientToken = configuration.clientToken,
+      envName = configuration.env,
+      rumApplicationId = configuration.applicationId,
+      variant = "",
+      serviceName = serviceName
+    )
+
+    val configBuilder = Configuration.Builder(
+      logsEnabled = true,
+      tracesEnabled = true,
+      crashReportsEnabled = configuration.nativeCrashReportEnabled ?: false,
+      rumEnabled = true
+    )
+      .setAdditionalConfiguration(
+        configuration.additionalConfig
+          ?.filterValues { it != null }
+          ?.mapValues { it.value!! } ?: emptyMap()
+      )
+    if (configuration.sampleRate != null) {
+      configBuilder.sampleRumSessions(configuration.sampleRate!!.toFloat())
+    }
+    if (customEndpoint != null) {
+      configBuilder.useCustomLogsEndpoint(customEndpoint)
+      configBuilder.useCustomTracesEndpoint(customEndpoint)
+      configBuilder.useCustomRumEndpoint(customEndpoint)
+    }
+
+    val config = configBuilder.build();
+
+    Datadog.initialize(binding.applicationContext, credentials, config, TrackingConsent.GRANTED)
   }
 }
