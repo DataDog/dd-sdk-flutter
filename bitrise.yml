@@ -3,12 +3,6 @@ format_version: '8'
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 project_type: flutter
 
-trigger_map:
-- push_branch: "*"
-  workflow: primary
-- pull_request_source_branch: "*"
-  workflow: primary
-
 workflows:
   primary:
     steps:
@@ -28,9 +22,6 @@ workflows:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR"
     
-    - flutter-analyze@0.3.1:
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/example"
     - flutter-test@1.0.1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/example"
@@ -38,3 +29,4 @@ workflows:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/example"
         - platform: both
+    - deploy-to-bitrise-io: {}
