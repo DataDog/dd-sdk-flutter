@@ -10,7 +10,7 @@ workflows:
         title: Pub get in example
         inputs:
         - content: |-
-            #!/user/bin/env bash
+            #!/usr/bin/env bash
             set -e
             flutter pub get
         - working_dir: "$BITRISE_SOURCE_DIR/example"
@@ -18,6 +18,16 @@ workflows:
     - flutter-analyze@0.3.1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR"
+
+    - script:
+        title: Android lint and static analysis
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            ./gradlew ktlintCheck detekt
+        - working_dir: "$BITRISE_SOURCE_DIR/example/android"
+    
     - flutter-test@1.0.1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR"

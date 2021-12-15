@@ -31,8 +31,10 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
     case "DdSdk.initialize":
-        guard let arguments = call.arguments as? [String:Any] else {
-          result(FlutterError(code: "DatadogSDK:InvalidOperation", message: "No arguments in call to DdSdk.initialize.", details: nil))
+        guard let arguments = call.arguments as? [String: Any] else {
+          result(FlutterError(code: "DatadogSDK:InvalidOperation",
+                              message: "No arguments in call to DdSdk.initialize.",
+                              details: nil))
           return
         }
 
@@ -42,7 +44,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         Bridge.getDdSdk().initialize(configuration: configuration)
         result(nil)
     case "DdLogs.debug":
-        let arguments = call.arguments as! [String:Any];
+        let arguments = call.arguments as! [String: Any]
 
         let message = arguments["message"] as! NSString
         let context = arguments["context"] as! NSDictionary
@@ -51,7 +53,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         result(nil)
 
     case "DdLogs.info":
-        let arguments = call.arguments as! [String:Any];
+        let arguments = call.arguments as! [String: Any]
 
         let message = arguments["message"] as! NSString
         let context = arguments["context"] as! NSDictionary
@@ -60,7 +62,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         result(nil)
 
     case "DdLogs.warn":
-        let arguments = call.arguments as! [String:Any];
+        let arguments = call.arguments as! [String: Any]
 
         let message = arguments["message"] as! NSString
         let context = arguments["context"] as! NSDictionary
@@ -69,17 +71,16 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         result(nil)
 
     case "DdLogs.error":
-        let arguments = call.arguments as! [String:Any];
+        let arguments = call.arguments as! [String: Any]
 
         let message = arguments["message"] as! NSString
         let context = arguments["context"] as! NSDictionary
 
         Bridge.getDdLogs().debug(message: message, context: context)
         result(nil)
-        
+
     default:
         result(FlutterMethodNotImplemented)
-    }    
+    }
   }
 }
-

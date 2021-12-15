@@ -1,0 +1,10 @@
+disabled_rules:
+  - force_cast # used too often in deserializing
+
+included:
+  - ios
+  - example/ios
+
+excluded:
+  - example/ios/Pods
+  - example/ios/Flutter
