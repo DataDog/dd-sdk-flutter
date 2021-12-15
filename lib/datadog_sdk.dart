@@ -9,15 +9,15 @@ import './datadog_sdk_platform_interface.dart';
 import './version.dart' show ddSdkVersion;
 
 class DdSdkConfiguration {
-  final String clientToken;
-  final String env;
-  final String? applicationId;
-  final bool nativeCrashReportEnabled;
-  final double sampleRate;
-  final String? site;
-  final String? trackingConsent;
+  String clientToken;
+  String env;
+  String? applicationId;
+  bool nativeCrashReportEnabled;
+  double sampleRate;
+  String? site;
+  String? trackingConsent;
   String? customEndpoint;
-  final Map<String, dynamic> additionalConfig = {};
+  Map<String, dynamic> additionalConfig = {};
 
   DdSdkConfiguration({
     required this.clientToken,

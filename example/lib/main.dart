@@ -11,8 +11,14 @@ import 'example_app.dart';
 
 class TestingConfiguration {
   String? customEndpoint;
+  String? clientToken;
+  String? applicationId;
 
-  TestingConfiguration({this.customEndpoint});
+  TestingConfiguration({
+    this.customEndpoint,
+    this.clientToken,
+    this.applicationId,
+  });
 }
 
 TestingConfiguration? testingConfiguration;
@@ -23,9 +29,9 @@ void main() async {
   await dotenv.load(mergeWith: Platform.environment);
 
   final configuration = DdSdkConfiguration(
-    clientToken: dotenv.env['DD_CLIENT_TOKEN'] ?? '',
-    env: dotenv.env['DD_ENV'] ?? '',
-    applicationId: dotenv.env['DD_APPLICATION_ID'] ?? '',
+    clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
+    env: dotenv.get('DD_ENV', fallback: ''),
+    applicationId: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
     trackingConsent: 'granted',
   );
 
@@ -33,6 +39,12 @@ void main() async {
     // TODO: batch size and upload frequency
     if (testingConfiguration!.customEndpoint != null) {
       configuration.customEndpoint = testingConfiguration!.customEndpoint;
+      if (testingConfiguration!.clientToken != null) {
+        configuration.clientToken = testingConfiguration!.clientToken!;
+      }
+      if (testingConfiguration!.applicationId != null) {
+        configuration.applicationId = testingConfiguration!.applicationId;
+      }
     }
   }
 

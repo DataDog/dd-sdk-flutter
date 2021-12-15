@@ -41,17 +41,18 @@ class RequestLog {
 }
 
 class MockHttpServer {
+  static const int bindingPort = 2228;
+
   late HttpServer server;
 
   final List<RequestLog> _recordedRequests = [];
+  String get endpoint => 'http://localhost:$bindingPort';
 
   MockHttpServer();
 
   Future<void> start() async {
-    server = await HttpServer.bind(InternetAddress.anyIPv4, 2221);
+    server = await HttpServer.bind(InternetAddress.anyIPv4, bindingPort);
     unawaited(server.forEach((HttpRequest request) async {
-      print(request.toString());
-
       try {
         final parsed = await RequestLog.fromRequest(request);
         _recordedRequests.add(parsed);

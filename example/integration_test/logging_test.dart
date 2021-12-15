@@ -1,40 +1,34 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'package:datadog_sdk_example/main.dart' as app;
-
-import 'tools/log_keys.dart';
+import 'common.dart';
 import 'tools/mock_http_sever.dart';
+
+class LogKeys {
+  static const date = 'date';
+  static const status = 'status';
+
+  static const message = 'message';
+  static const serviceName = 'service';
+  static const tags = 'ddtags';
+
+  static const applicationVersion = 'version';
+
+  static const loggerName = 'logger.name';
+  static const loggerVersion = 'logger.version';
+  static const threadName = 'logger.thread_name';
+}
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  late MockHttpServer mockHttpServer;
 
-  setUpAll(() async {
-    mockHttpServer = MockHttpServer();
-    await mockHttpServer.start();
-  });
-
-  Future<void> openTestScenariosPane(WidgetTester tester) async {
-    app.testingConfiguration =
-        app.TestingConfiguration(customEndpoint: 'http://localhost:2221');
-    mockHttpServer.startNewSession();
-
-    app.main();
-    await tester.pumpAndSettle();
-
-    var integrationItem = find.byWidgetPredicate(
-        (widget) => widget is Text && widget.data!.startsWith('Integration'));
-    await tester.tap(integrationItem);
-    await tester.pumpAndSettle();
-  }
-
-  testWidgets('test logging scenario 1', (WidgetTester tester) async {
+  testWidgets('test logging scenario', (WidgetTester tester) async {
     await openTestScenariosPane(tester);
 
     var logScenario = find.byWidgetPredicate(
@@ -46,7 +40,7 @@ void main() {
 
     var logs = <Map<String, Object?>>[];
 
-    await mockHttpServer.pullRecordedRequests(
+    await mockHttpServer!.pullRecordedRequests(
       const Duration(seconds: 30),
       (requests) {
         requests
@@ -70,5 +64,12 @@ void main() {
 
     expect(logs[3][LogKeys.status], 'error');
     expect(logs[3][LogKeys.message], 'error message');
+
+    for (final log in logs) {
+      expect(log[LogKeys.serviceName], 'com.datadoghq.example.flutter');
+      if (Platform.isIOS) {
+        expect(log[LogKeys.threadName], 'main');
+      }
+    }
   });
 }

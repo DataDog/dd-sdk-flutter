@@ -24,7 +24,7 @@ class _LoggingScenarioState extends State<LoggingScenario> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Looging Scenario'),
+        title: const Text('Logging Scenario'),
       ),
       body: Container(),
     );
