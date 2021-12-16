@@ -67,8 +67,8 @@ class DatadogSdk {
   DatadogSdk._();
 
   Future<void> initialize(DdSdkConfiguration configuration) {
-    //configuration.additionalConfig[_DatadogConfigKey.source] = 'flutter';
-    //configuration.additionalConfig[_DatadogConfigKey.version] = ddSdkVersion;
+    configuration.additionalConfig[_DatadogConfigKey.source] = 'flutter';
+    configuration.additionalConfig[_DatadogConfigKey.version] = ddSdkVersion;
 
     return _platform.initialize(configuration);
   }

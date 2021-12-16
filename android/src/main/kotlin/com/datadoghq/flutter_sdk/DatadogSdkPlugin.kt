@@ -19,7 +19,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 
-fun decodeDdSdkConfiguration(encoded: HashMap<String, Any?>): DdSdkConfiguration {
+fun decodeDdSdkConfiguration(encoded: Map<String, Any?>): DdSdkConfiguration {
   @Suppress("UNCHECKED_CAST")
   return DdSdkConfiguration(
     clientToken = encoded["clientToken"] as String,
@@ -52,34 +52,34 @@ class DatadogSdkPlugin: FlutterPlugin, MethodCallHandler {
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
     when (call.method) {
       "DdSdk.initialize" -> {
-        val configArg = call.argument<HashMap<String, Any?>>("configuration")
+        val configArg = call.argument<Map<String, Any?>>("configuration")
         if (configArg != null) {
-          val configuration = configArg?.let { decodeDdSdkConfiguration(it) }
+          val configuration = decodeDdSdkConfiguration(configArg)
           val customEndpoint = configArg["customEndpoint"] as String?
-          initialize(configuration!!, customEndpoint)
+          initialize(configuration, customEndpoint)
         }
       }
       "DdLogs.debug" -> {
         val message = call.argument<String>("message")!!
-        val context = call.argument<HashMap<String, Any?>>("context")!!
+        val context = call.argument<Map<String, Any?>>("context")!!
 
         DdBridge.getDdLogs(binding.applicationContext).debug(message, context)
       }
       "DdLogs.info" -> {
         val message = call.argument<String>("message")!!
-        val context = call.argument<HashMap<String, Any?>>("context")!!
+        val context = call.argument<Map<String, Any?>>("context")!!
 
         DdBridge.getDdLogs(binding.applicationContext).info(message, context)
       }
       "DdLogs.warn" -> {
         val message = call.argument<String>("message")!!
-        val context = call.argument<HashMap<String, Any?>>("context")!!
+        val context = call.argument<Map<String, Any?>>("context")!!
 
         DdBridge.getDdLogs(binding.applicationContext).warn(message, context)
       }
       "DdLogs.error" -> {
         val message = call.argument<String>("message")!!
-        val context = call.argument<HashMap<String, Any?>>("context")!!
+        val context = call.argument<Map<String, Any?>>("context")!!
 
         DdBridge.getDdLogs(binding.applicationContext).error(message, context)
       }

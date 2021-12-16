@@ -8,7 +8,7 @@ import Datadog
 import DatadogSDKBridge
 
 extension DdSdkConfiguration {
-  static func deccode(value: [String: Any?]) -> DdSdkConfiguration {
+  static func decode(value: [String: Any?]) -> DdSdkConfiguration {
     return DdSdkConfiguration(
       clientToken: value["clientToken"] as! NSString,
       env: value["env"] as! NSString,
@@ -38,7 +38,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
       }
 
       let configArg = arguments["configuration"] as! [String: Any?]
-      let bridgeConfiguration = DdSdkConfiguration.deccode(value: configArg)
+      let bridgeConfiguration = DdSdkConfiguration.decode(value: configArg)
       let configurationBuilder = buildConfiguration(configuration: bridgeConfiguration)
 
       if let customEndpointArg = configArg["customEndpoint"] as? String {
