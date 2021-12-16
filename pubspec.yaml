@@ -24,7 +24,7 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.datadoghq.fluttersdk
+        package: com.datadoghq.flutter
         pluginClass: DatadogSdkPlugin
       ios:
         pluginClass: DatadogSdkPlugin
