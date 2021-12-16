@@ -7,13 +7,16 @@ workflows:
   primary:
     steps:
     - script:
-        title: Pub get in example
+        title: Pub get in example and integration tests
         inputs:
         - content: |-
             #!/usr/bin/env bash
             set -e
+            cd $BITRISE_SOURCE_DIR/example
             flutter pub get
-        - working_dir: "$BITRISE_SOURCE_DIR/example"
+            cd $BITRISE_SOURCE_DIR/integration_test_app
+            flutter pub get
+        - working_dir: "$BITRISE_SOURCE_DIR"
 
     - flutter-analyze@0.3.1:
         inputs:
@@ -50,7 +53,7 @@ workflows:
     - wait-for-android-emulator@1: {}
     - flutter-test@1:
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/example"
+        - project_location: "$BITRISE_SOURCE_DIR/integration_test_app"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
     - deploy-to-bitrise-io: {}
@@ -66,7 +69,7 @@ workflows:
             flutter emulators --launch apple_ios_simulator
     - flutter-test@1:
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/example"
+        - project_location: "$BITRISE_SOURCE_DIR/integration_test_app"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
     - deploy-to-bitrise-io: {}

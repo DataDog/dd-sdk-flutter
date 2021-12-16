@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'integration_scenarios/integration_scenarios_screen.dart';
 import 'logging_screen.dart';
 
 typedef SimpleWidgetConstructor = Widget Function();
@@ -22,8 +21,6 @@ class ExampleApp extends StatefulWidget {
 class _ExampleAppState extends State<ExampleApp> {
   final items = <NavItem>[
     NavItem(label: 'Logging', navItem: LoggingScreen.new),
-    NavItem(
-        label: 'Integration Scenarios', navItem: IntegrationScenariosScreen.new)
   ];
 
   @override

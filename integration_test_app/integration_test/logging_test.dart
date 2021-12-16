@@ -3,7 +3,6 @@
 // Copyright 2019-2021 Datadog, Inc.
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -28,14 +27,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('test logging scenario', (WidgetTester tester) async {
-    await openTestScenariosPane(tester);
-
-    var logScenario = find.byWidgetPredicate(
-      (Widget widget) =>
-          widget is Text && widget.data!.startsWith('Logging Scenario'),
-    );
-    await tester.tap(logScenario);
-    await tester.pumpAndSettle();
+    await openTestScenario(tester, 'Logging Scenario');
 
     var logs = <Map<String, Object?>>[];
 
@@ -65,7 +57,9 @@ void main() {
     expect(logs[3][LogKeys.message], 'error message');
 
     for (final log in logs) {
-      expect(log[LogKeys.serviceName], 'com.datadoghq.example.flutter');
+      expect(log[LogKeys.serviceName],
+          equalsIgnoringCase('com.datadoghq.flutter.integrationtestapp'));
+
       if (Platform.isIOS) {
         expect(log[LogKeys.threadName], 'main');
       }
