@@ -1,19 +1,23 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2020 Datadog, Inc.
+// ignore_for_file: unused_element, unused_field
+
 import './datadog_sdk_platform_interface.dart';
 
+// ignore: unused_import
 import './version.dart' show ddSdkVersion;
 
 class DdSdkConfiguration {
-  final String clientToken;
-  final String env;
-  final String? applicationId;
-  final bool nativeCrashReportEnabled;
-  final double sampleRate;
-  final String? site;
-  final String? trackingConsent;
-  final Map<String, dynamic> additionalConfig = {};
+  String clientToken;
+  String env;
+  String? applicationId;
+  bool nativeCrashReportEnabled;
+  double sampleRate;
+  String? site;
+  String? trackingConsent;
+  String? customEndpoint;
+  Map<String, dynamic> additionalConfig = {};
 
   DdSdkConfiguration({
     required this.clientToken,
@@ -22,6 +26,7 @@ class DdSdkConfiguration {
     this.nativeCrashReportEnabled = false,
     this.sampleRate = 100.0,
     this.site,
+    this.customEndpoint,
     this.trackingConsent,
   });
 
@@ -34,6 +39,7 @@ class DdSdkConfiguration {
       'sampleRate': sampleRate,
       'site': site,
       'trackingConsent': trackingConsent,
+      'customEndpoint': customEndpoint,
       'additionalConfig': additionalConfig
     };
   }

@@ -41,3 +41,33 @@ workflows:
         - project_location: "$BITRISE_SOURCE_DIR/example"
         - platform: both
     - deploy-to-bitrise-io: {}
+
+  integration_android:
+    steps:
+    - avd-manager@1:
+        inputs:
+        - api_level: '30'
+    - wait-for-android-emulator@1: {}
+    - flutter-test@1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/example"
+        - tests_path_pattern: "integration_test"
+        - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+    - deploy-to-bitrise-io: {}
+  
+  integration_ios:
+    steps:
+    - script:
+        title: Launch iOS Simulator
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            flutter emulators --launch apple_ios_simulator
+    - flutter-test@1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/example"
+        - tests_path_pattern: "integration_test"
+        - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+    - deploy-to-bitrise-io: {}
+
