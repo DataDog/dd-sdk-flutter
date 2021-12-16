@@ -35,19 +35,19 @@ class _LoggingScreenState extends State<LoggingScreen> {
     for (var i = 0; i < count; ++i) {
       switch (_selectedLevel) {
         case LogLevel.debug:
-          ddSdk.ddLogs.debug(message);
+          ddSdk.ddLogs?.debug(message);
           break;
         case LogLevel.info:
-          ddSdk.ddLogs.info(message);
+          ddSdk.ddLogs?.info(message);
           break;
         case LogLevel.notice:
-          ddSdk.ddLogs.info(message);
+          ddSdk.ddLogs?.info(message);
           break;
         case LogLevel.warn:
-          ddSdk.ddLogs.warn(message);
+          ddSdk.ddLogs?.warn(message);
           break;
         case LogLevel.error:
-          ddSdk.ddLogs.error(message);
+          ddSdk.ddLogs?.error(message);
           break;
       }
     }

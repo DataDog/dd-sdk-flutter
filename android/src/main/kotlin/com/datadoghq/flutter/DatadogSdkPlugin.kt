@@ -7,7 +7,6 @@ package com.datadoghq.flutter
 
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
-import com.datadog.android.bridge.DdBridge
 import com.datadog.android.bridge.DdSdkConfiguration
 import com.datadog.android.core.configuration.Configuration
 import com.datadog.android.core.configuration.Credentials
@@ -32,18 +31,15 @@ fun decodeDdSdkConfiguration(encoded: Map<String, Any?>): DdSdkConfiguration {
     )
 }
 
-object LogParameterNames {
-    const val LOG_MESSAGE = "message"
-    const val LOG_CONTEXT = "context"
-}
-
 class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
-    // / The MethodChannel that will the communication between Flutter and native Android
-    // /
-    // / This local reference serves to register the plugin with the Flutter Engine and unregister it
-    // / when the Flutter Engine is detached from the Activity
+    // The MethodChannel that will the communication between Flutter and native Android
+    //
+    // This local reference serves to register the plugin with the Flutter Engine and unregister it
+    // when the Flutter Engine is detached from the Activity
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
+
+    private var logs: DatadogLogs? = null
 
     override fun onAttachedToEngine(
         @NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
@@ -52,41 +48,21 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         channel.setMethodCallHandler(this)
 
         binding = flutterPluginBinding
+
+        logs = DatadogLogs()
+        logs?.onAttachedToEngine(flutterPluginBinding)
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
         when (call.method) {
-            "DdSdk.initialize" -> {
+            "initialize" -> {
                 val configArg = call.argument<Map<String, Any?>>("configuration")
                 if (configArg != null) {
                     val configuration = decodeDdSdkConfiguration(configArg)
                     val customEndpoint = configArg["customEndpoint"] as String?
                     initialize(configuration, customEndpoint)
                 }
-            }
-            "DdLogs.debug" -> {
-                val message = call.argument<String>(LogParameterNames.LOG_MESSAGE)!!
-                val context = call.argument<Map<String, Any?>>(LogParameterNames.LOG_CONTEXT)!!
-
-                DdBridge.getDdLogs(binding.applicationContext).debug(message, context)
-            }
-            "DdLogs.info" -> {
-                val message = call.argument<String>(LogParameterNames.LOG_MESSAGE)!!
-                val context = call.argument<Map<String, Any?>>(LogParameterNames.LOG_CONTEXT)!!
-
-                DdBridge.getDdLogs(binding.applicationContext).info(message, context)
-            }
-            "DdLogs.warn" -> {
-                val message = call.argument<String>(LogParameterNames.LOG_MESSAGE)!!
-                val context = call.argument<Map<String, Any?>>(LogParameterNames.LOG_CONTEXT)!!
-
-                DdBridge.getDdLogs(binding.applicationContext).warn(message, context)
-            }
-            "DdLogs.error" -> {
-                val message = call.argument<String>(LogParameterNames.LOG_MESSAGE)!!
-                val context = call.argument<Map<String, Any?>>(LogParameterNames.LOG_CONTEXT)!!
-
-                DdBridge.getDdLogs(binding.applicationContext).error(message, context)
+                result.success(null)
             }
             else -> {
                 result.notImplemented()
@@ -96,6 +72,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
+
+        logs?.onDetachedFromEngine(binding)
+        logs = null
     }
 
     private fun initialize(configuration: DdSdkConfiguration, customEndpoint: String?) {

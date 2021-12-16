@@ -27,11 +27,13 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     let channel = FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: registrar.messenger())
     let instance = SwiftDatadogSdkPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
+
+    SwiftDatadogLogs.register(with: registrar)
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
-    case "DdSdk.initialize":
+    case "initialize":
       guard let arguments = call.arguments as? [String: Any] else {
         result(FlutterError(code: "DatadogSDK:InvalidOperation",
                             message: "No arguments in call to DdSdk.initialize.",
@@ -60,42 +62,6 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                          configuration: configurationBuilder.build())
 
       Global.rum = RUMMonitor.initialize()
-
-      result(nil)
-    case "DdLogs.debug":
-      let arguments = call.arguments as! [String: Any]
-
-      let message = arguments["message"] as! NSString
-      let context = arguments["context"] as! NSDictionary
-
-      Bridge.getDdLogs().debug(message: message, context: context)
-      result(nil)
-
-    case "DdLogs.info":
-      let arguments = call.arguments as! [String: Any]
-
-      let message = arguments["message"] as! NSString
-      let context = arguments["context"] as! NSDictionary
-
-      Bridge.getDdLogs().info(message: message, context: context)
-      result(nil)
-
-    case "DdLogs.warn":
-      let arguments = call.arguments as! [String: Any]
-
-      let message = arguments["message"] as! NSString
-      let context = arguments["context"] as! NSDictionary
-
-      Bridge.getDdLogs().warn(message: message, context: context)
-      result(nil)
-
-    case "DdLogs.error":
-      let arguments = call.arguments as! [String: Any]
-
-      let message = arguments["message"] as! NSString
-      let context = arguments["context"] as! NSDictionary
-
-      Bridge.getDdLogs().error(message: message, context: context)
       result(nil)
 
     default:

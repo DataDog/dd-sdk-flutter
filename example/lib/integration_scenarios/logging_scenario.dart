@@ -14,10 +14,12 @@ class _LoggingScenarioState extends State<LoggingScenario> {
     super.initState();
 
     var logger = DatadogSdk().ddLogs;
-    logger.debug('debug message', {'attribute': 'value'});
-    logger.info('info message', {'attribute': 'value'});
-    logger.warn('warn message', {'attribute': 'value'});
-    logger.error('error message', {'attribute': 'value'});
+    if (logger != null) {
+      logger.debug('debug message', {'attribute': 'value'});
+      logger.info('info message', {'attribute': 'value'});
+      logger.warn('warn message', {'attribute': 'value'});
+      logger.error('error message', {'attribute': 'value'});
+    }
   }
 
   @override

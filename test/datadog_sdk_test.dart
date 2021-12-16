@@ -13,9 +13,6 @@ class MockDatadogSdkPlatform
   DdSdkConfiguration? configuration;
 
   @override
-  DdLogs get ddLogs => throw UnimplementedError();
-
-  @override
   Future<void> initialize(DdSdkConfiguration configuration) {
     this.configuration = configuration;
     return Future.value();
