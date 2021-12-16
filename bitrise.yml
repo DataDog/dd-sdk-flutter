@@ -18,6 +18,17 @@ workflows:
     - flutter-analyze@0.3.1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR"
+
+    - script:
+        title: Android lint and static analysis
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            gradle wrapper
+            ./gradlew ktlintCheck detekt
+        - working_dir: "$BITRISE_SOURCE_DIR/example/android"
+    
     - flutter-test@1.0.1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR"

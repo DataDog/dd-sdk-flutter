@@ -1,4 +1,4 @@
-group 'com.datadoghq.flutter_sdk'
+group 'com.datadoghq.flutter'
 version '1.0-SNAPSHOT'
 
 buildscript {

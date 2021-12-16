@@ -1,0 +1,7 @@
+apply plugin: 'io.gitlab.arturbosch.detekt'
+detekt {
+  config = files("${project.rootDir}/detekt.yml")
+  reports {
+    xml.enabled = true
+  }
+}
