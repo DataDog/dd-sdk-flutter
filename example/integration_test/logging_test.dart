@@ -8,7 +8,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'common.dart';
-import 'tools/mock_http_sever.dart';
 
 class LogKeys {
   static const date = 'date';
@@ -40,7 +39,7 @@ void main() {
 
     var logs = <Map<String, Object?>>[];
 
-    await mockHttpServer!.pullRecordedRequests(
+    await mockHttpServer!.pollRequests(
       const Duration(seconds: 30),
       (requests) {
         requests

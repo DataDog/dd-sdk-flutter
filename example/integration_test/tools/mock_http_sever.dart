@@ -8,7 +8,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-typedef RequestMatcher = bool Function(List<RequestLog> requests);
+typedef RequestHandler = bool Function(List<RequestLog> requests);
 
 class RequestLog {
   final String requestedUrl;
@@ -70,12 +70,15 @@ class MockHttpServer {
     _recordedRequests.clear();
   }
 
-  Future<bool> pullRecordedRequests(
-      Duration timeout, RequestMatcher matcher) async {
+  /// Poll for all requests sent to this server for the current session (started
+  /// with [startNewSession]). Requests are sent to [handler] until the
+  /// [timeout] has expired, or until [handler] returns true, signaling it is
+  /// done processing the requests.
+  Future<void> pollRequests(Duration timeout, RequestHandler handler) async {
     DateTime timeoutTime = DateTime.now().add(timeout);
     int lastProcessedReqest = 0;
 
-    var conditionsMet = false;
+    var stopPolling = false;
     do {
       var newRequests = <RequestLog>[];
       for (var i = lastProcessedReqest; i < _recordedRequests.length; ++i) {
@@ -83,13 +86,11 @@ class MockHttpServer {
         newRequests.add(request);
       }
       lastProcessedReqest = _recordedRequests.length;
-      conditionsMet = matcher(newRequests);
+      stopPolling = handler(newRequests);
 
-      if (!conditionsMet) {
+      if (!stopPolling) {
         await Future.delayed(const Duration(milliseconds: 200));
       }
-    } while (!conditionsMet && timeoutTime.isAfter(DateTime.now()));
-
-    return conditionsMet;
+    } while (!stopPolling && timeoutTime.isAfter(DateTime.now()));
   }
 }
