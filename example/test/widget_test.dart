@@ -2,18 +2,18 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2020 Datadog, Inc.
 
+import 'package:datadog_sdk_example/example_app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:datadog_sdk_example/main.dart';
-
 void main() {
-  testWidgets('Verify Platform version', (WidgetTester tester) async {
+  testWidgets('verify logging nav item goes to logging example',
+      (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const ExampleApp());
 
     var listView = find.byType(ListView);
-    var tile = find.descendant(of: listView, matching: find.byType(ListTile));
+    var tile = find.descendant(of: listView, matching: find.text('Logging'));
 
     await tester.tap(tile);
     await tester.pumpAndSettle();

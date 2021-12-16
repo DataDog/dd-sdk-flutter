@@ -42,11 +42,13 @@ android {
 
     defaultConfig {
         minSdkVersion 16
+        multiDexEnabled true
     }
 }
 
 dependencies {
-    implementation "com.datadoghq:dd-bridge-android:0.5.0"
+    implementation "com.datadoghq:dd-bridge-android:0.5.2"
+    implementation "com.datadoghq:dd-sdk-android:1.11.0"
     
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 }
