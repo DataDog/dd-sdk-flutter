@@ -31,7 +31,7 @@ void main() async {
   final configuration = DdSdkConfiguration(
     clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
     env: dotenv.get('DD_ENV', fallback: ''),
-    applicationId: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
+    applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
     trackingConsent: 'granted',
   );
 
@@ -49,7 +49,7 @@ void main() async {
   }
 
   final ddsdk = DatadogSdk();
-  ddsdk.initialize(configuration);
+  await ddsdk.initialize(configuration);
 
   runApp(const ExampleApp());
 }

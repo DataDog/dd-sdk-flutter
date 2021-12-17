@@ -22,13 +22,4 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
   }
 
   Future<void> initialize(DdSdkConfiguration configuration);
-
-  DdLogs get ddLogs;
-}
-
-abstract class DdLogs {
-  Future<void> debug(String message, [Map<String, Object?> context = const {}]);
-  Future<void> info(String message, [Map<String, Object?> context = const {}]);
-  Future<void> warn(String message, [Map<String, Object?> context = const {}]);
-  Future<void> error(String message, [Map<String, Object?> context = const {}]);
 }

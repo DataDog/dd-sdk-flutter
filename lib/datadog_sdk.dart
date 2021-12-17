@@ -3,10 +3,9 @@
 // Copyright 2019-2020 Datadog, Inc.
 // ignore_for_file: unused_element, unused_field
 
-import './datadog_sdk_platform_interface.dart';
-
-// ignore: unused_import
-import './version.dart' show ddSdkVersion;
+import 'datadog_sdk_platform_interface.dart';
+import 'logs/ddlogs.dart';
+import 'version.dart' show ddSdkVersion;
 
 class DdSdkConfiguration {
   String clientToken;
@@ -66,12 +65,15 @@ class DatadogSdk {
 
   DatadogSdk._();
 
-  Future<void> initialize(DdSdkConfiguration configuration) {
+  DdLogs? _ddLogs;
+  DdLogs? get ddLogs => _ddLogs;
+
+  Future<void> initialize(DdSdkConfiguration configuration) async {
     configuration.additionalConfig[_DatadogConfigKey.source] = 'flutter';
     configuration.additionalConfig[_DatadogConfigKey.version] = ddSdkVersion;
 
-    return _platform.initialize(configuration);
-  }
+    await _platform.initialize(configuration);
 
-  DdLogs get ddLogs => _platform.ddLogs;
+    _ddLogs = DdLogs();
+  }
 }

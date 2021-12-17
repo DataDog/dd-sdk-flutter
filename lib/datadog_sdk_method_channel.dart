@@ -14,42 +14,7 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 
   @override
   Future<void> initialize(DdSdkConfiguration configuration) async {
-    await methodChannel.invokeMethod(
-        'DdSdk.initialize', {'configuration': configuration.encode()});
-  }
-
-  @override
-  DdLogs get ddLogs => DdLogsMethodChannel(methodChannel);
-}
-
-class DdLogsMethodChannel extends DdLogs {
-  final MethodChannel methodChannel;
-
-  DdLogsMethodChannel(this.methodChannel);
-
-  @override
-  Future<void> debug(String message,
-      [Map<String, Object?> context = const {}]) {
-    return methodChannel
-        .invokeMethod('DdLogs.debug', {'message': message, 'context': context});
-  }
-
-  @override
-  Future<void> info(String message, [Map<String, Object?> context = const {}]) {
-    return methodChannel
-        .invokeMethod('DdLogs.info', {'message': message, 'context': context});
-  }
-
-  @override
-  Future<void> warn(String message, [Map<String, Object?> context = const {}]) {
-    return methodChannel
-        .invokeMethod('DdLogs.warn', {'message': message, 'context': context});
-  }
-
-  @override
-  Future<void> error(String message,
-      [Map<String, Object?> context = const {}]) {
-    return methodChannel
-        .invokeMethod('DdLogs.error', {'message': message, 'context': context});
+    await methodChannel
+        .invokeMethod('initialize', {'configuration': configuration.encode()});
   }
 }

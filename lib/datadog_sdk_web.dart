@@ -13,39 +13,10 @@ import 'datadog_sdk_platform_interface.dart';
 class DatadogSdkWeb extends DatadogSdkPlatform {
   static void registerWith(Registrar registrar) {
     DatadogSdkPlatform.instance = DatadogSdkWeb();
+
+    // TODO: Replace platforms across all plugins
   }
 
   @override
   Future<void> initialize(DdSdkConfiguration configuration) async {}
-
-  @override
-  DdLogs get ddLogs => DdLogsWeb();
-}
-
-class DdLogsWeb extends DdLogs {
-  @override
-  Future<void> debug(String message,
-      [Map<String, Object?> context = const {}]) {
-    // TODO: implement debug
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> error(String message,
-      [Map<String, Object?> context = const {}]) {
-    // TODO: implement error
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> info(String message, [Map<String, Object?> context = const {}]) {
-    // TODO: implement info
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> warn(String message, [Map<String, Object?> context = const {}]) {
-    // TODO: implement warn
-    throw UnimplementedError();
-  }
 }
