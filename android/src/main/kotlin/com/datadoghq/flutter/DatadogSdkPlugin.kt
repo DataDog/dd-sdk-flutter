@@ -50,7 +50,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         binding = flutterPluginBinding
 
         logs = DatadogLogs()
-        logs?.onAttachedToEngine(flutterPluginBinding)
+        logs?.setup(flutterPluginBinding)
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
@@ -73,7 +73,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
 
-        logs?.onDetachedFromEngine(binding)
+        logs?.teardown(binding)
         logs = null
     }
 

@@ -10,16 +10,16 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-object LogParameterNames {
-    const val LOG_MESSAGE = "message"
-    const val LOG_CONTEXT = "context"
-}
+class DatadogLogs : MethodChannel.MethodCallHandler {
+    companion object LogParameterNames {
+        const val LOG_MESSAGE = "message"
+        const val LOG_CONTEXT = "context"
+    }
 
-class DatadogLogs : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 
-    override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+    fun setup(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter.logs")
         channel.setMethodCallHandler(this)
 
@@ -62,7 +62,7 @@ class DatadogLogs : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
     }
 
-    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+    fun teardown(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
     }
 }
