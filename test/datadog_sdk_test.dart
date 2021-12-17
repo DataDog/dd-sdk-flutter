@@ -34,6 +34,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       applicationId: 'applicationId',
+      trackingConsent: TrackingConsent.pending,
     );
     await datadogSdk.initialize(configuration);
     expect(configuration, fakePlatform.configuration);

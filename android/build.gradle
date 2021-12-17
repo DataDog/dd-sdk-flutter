@@ -51,4 +51,7 @@ dependencies {
     implementation "com.datadoghq:dd-sdk-android:1.11.0"
     
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'com.willowtreeapps.assertk:assertk-jvm:0.25'
 }
