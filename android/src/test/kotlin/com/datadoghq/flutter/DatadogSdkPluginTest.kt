@@ -8,7 +8,7 @@ import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.privacy.TrackingConsent
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class DatadogSdkPluginTest {
 

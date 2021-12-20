@@ -52,6 +52,14 @@ dependencies {
     
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 
-    testImplementation 'junit:junit:4.12'
+    testImplementation(platform("org.junit:junit-bom:5.8.2"))
+    testImplementation "org.junit.jupiter:junit-jupiter"
     testImplementation 'com.willowtreeapps.assertk:assertk-jvm:0.25'
+}
+
+tasks.withType(Test) {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }

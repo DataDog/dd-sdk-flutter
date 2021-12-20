@@ -74,7 +74,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     }
 }
 
-fun buildSdkConfiguration(encoded: Map<String, Any?>): Configuration {
+internal fun buildSdkConfiguration(encoded: Map<String, Any?>): Configuration {
     @Suppress("UNCHECKED_CAST")
     val additionalConfig = encoded["additionalConfig"] as Map<String, Any?>?
     val configBuilder = Configuration.Builder(
@@ -112,7 +112,7 @@ fun buildSdkConfiguration(encoded: Map<String, Any?>): Configuration {
     return configBuilder.build()
 }
 
-fun buildCredentials(encoded: Map<String, Any?>): Credentials {
+internal fun buildCredentials(encoded: Map<String, Any?>): Credentials {
     @Suppress("UNCHECKED_CAST")
     val additionalConfig = encoded["additionalConfig"] as Map<String, Any?>?
     val serviceName = additionalConfig?.get("_dd.service_name") as? String
@@ -126,7 +126,7 @@ fun buildCredentials(encoded: Map<String, Any?>): Credentials {
     )
 }
 
-fun parseBatchSize(batchSize: String): BatchSize {
+internal fun parseBatchSize(batchSize: String): BatchSize {
     return when (batchSize) {
         "BatchSize.small" -> BatchSize.SMALL
         "BatchSize.medium" -> BatchSize.MEDIUM
@@ -135,7 +135,7 @@ fun parseBatchSize(batchSize: String): BatchSize {
     }
 }
 
-fun parseUploadFrequency(uploadFrequency: String): UploadFrequency {
+internal fun parseUploadFrequency(uploadFrequency: String): UploadFrequency {
     return when (uploadFrequency) {
         "UploadFrequency.frequent" -> UploadFrequency.FREQUENT
         "UploadFrequency.average" -> UploadFrequency.AVERAGE
@@ -144,7 +144,7 @@ fun parseUploadFrequency(uploadFrequency: String): UploadFrequency {
     }
 }
 
-fun parseTrackingConsent(trackingConsent: String): TrackingConsent {
+internal fun parseTrackingConsent(trackingConsent: String): TrackingConsent {
     return when (trackingConsent) {
         "TrackingConsent.granted" -> TrackingConsent.GRANTED
         "TrackingConsent.notGranted" -> TrackingConsent.NOT_GRANTED
@@ -153,11 +153,11 @@ fun parseTrackingConsent(trackingConsent: String): TrackingConsent {
     }
 }
 
-fun parseSite(site: String): DatadogSite {
+internal fun parseSite(site: String): DatadogSite {
     return when (site) {
         "DatadogSite.us1" -> DatadogSite.US1
-        "DatadogSite.us3" -> DatadogSite.US1
-        "DatadogSite.us5" -> DatadogSite.US1
+        "DatadogSite.us3" -> DatadogSite.US3
+        "DatadogSite.us5" -> DatadogSite.US5
         "DatadogSite.eu1" -> DatadogSite.EU1
         "DatadogSite.us1Fed" -> DatadogSite.US1_FED
         else -> DatadogSite.US1
