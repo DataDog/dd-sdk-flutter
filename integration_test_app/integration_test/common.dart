@@ -5,13 +5,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:datadog_sdk_example/main.dart' as app;
+import 'package:datadog_integration_test_app/main.dart' as app;
 
 import 'tools/mock_http_sever.dart';
 
 MockHttpServer? mockHttpServer;
 
-Future<void> openTestScenariosPane(WidgetTester tester) async {
+Future<void> openTestScenario(WidgetTester tester, String scenarioName) async {
   if (mockHttpServer == null) {
     mockHttpServer = MockHttpServer();
     mockHttpServer!.start();
@@ -36,7 +36,7 @@ Future<void> openTestScenariosPane(WidgetTester tester) async {
   await tester.pumpAndSettle();
 
   var integrationItem = find.byWidgetPredicate((widget) =>
-      widget is Text && (widget.data?.startsWith('Integration') ?? false));
+      widget is Text && (widget.data?.startsWith(scenarioName) ?? false));
   await tester.tap(integrationItem);
   await tester.pumpAndSettle();
 }

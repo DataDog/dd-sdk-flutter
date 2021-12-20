@@ -9,20 +9,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'example_app.dart';
 
-class TestingConfiguration {
-  String? customEndpoint;
-  String? clientToken;
-  String? applicationId;
-
-  TestingConfiguration({
-    this.customEndpoint,
-    this.clientToken,
-    this.applicationId,
-  });
-}
-
-TestingConfiguration? testingConfiguration;
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -34,19 +20,6 @@ void main() async {
     applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
     trackingConsent: 'granted',
   );
-
-  if (testingConfiguration != null) {
-    // TODO: batch size and upload frequency
-    if (testingConfiguration!.customEndpoint != null) {
-      configuration.customEndpoint = testingConfiguration!.customEndpoint;
-      if (testingConfiguration!.clientToken != null) {
-        configuration.clientToken = testingConfiguration!.clientToken!;
-      }
-      if (testingConfiguration!.applicationId != null) {
-        configuration.applicationId = testingConfiguration!.applicationId;
-      }
-    }
-  }
 
   final ddsdk = DatadogSdk();
   await ddsdk.initialize(configuration);
