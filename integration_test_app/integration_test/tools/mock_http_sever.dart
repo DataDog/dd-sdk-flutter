@@ -86,7 +86,10 @@ class MockHttpServer {
         newRequests.add(request);
       }
       lastProcessedReqest = _recordedRequests.length;
-      stopPolling = handler(newRequests);
+
+      if (newRequests.isNotEmpty) {
+        stopPolling = handler(newRequests);
+      }
 
       if (!stopPolling) {
         await Future.delayed(const Duration(milliseconds: 200));

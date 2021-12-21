@@ -7,26 +7,35 @@ import 'datadog_sdk_platform_interface.dart';
 import 'logs/ddlogs.dart';
 import 'version.dart' show ddSdkVersion;
 
+enum BatchSize { small, medium, large }
+enum UploadFrequency { frequent, average, rare }
+enum TrackingConsent { granted, notGranted, pending }
+enum DatadogSite { us1, us3, us5, eu1, us1Fed }
+
 class DdSdkConfiguration {
   String clientToken;
   String env;
   String? applicationId;
   bool nativeCrashReportEnabled;
   double sampleRate;
-  String? site;
-  String? trackingConsent;
+  DatadogSite? site;
+  TrackingConsent trackingConsent;
+  BatchSize? batchSize;
+  UploadFrequency? uploadFrequency;
   String? customEndpoint;
-  Map<String, dynamic> additionalConfig = {};
+  final Map<String, dynamic> additionalConfig = {};
 
   DdSdkConfiguration({
     required this.clientToken,
     required this.env,
+    required this.trackingConsent,
     this.applicationId,
     this.nativeCrashReportEnabled = false,
     this.sampleRate = 100.0,
     this.site,
+    this.uploadFrequency,
+    this.batchSize,
     this.customEndpoint,
-    this.trackingConsent,
   });
 
   Map<String, dynamic> encode() {
@@ -36,8 +45,10 @@ class DdSdkConfiguration {
       'applicationId': applicationId,
       'nativeCrashReportEnabled': nativeCrashReportEnabled,
       'sampleRate': sampleRate,
-      'site': site,
-      'trackingConsent': trackingConsent,
+      'site': site?.toString(),
+      'batchSize': batchSize?.toString(),
+      'uploadFrequency': uploadFrequency?.toString(),
+      'trackingConsent': trackingConsent.toString(),
       'customEndpoint': customEndpoint,
       'additionalConfig': additionalConfig
     };

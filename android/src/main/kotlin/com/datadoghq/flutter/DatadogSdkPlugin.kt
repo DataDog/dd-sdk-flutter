@@ -7,29 +7,17 @@ package com.datadoghq.flutter
 
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
-import com.datadog.android.bridge.DdSdkConfiguration
+import com.datadog.android.DatadogSite
+import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Configuration
 import com.datadog.android.core.configuration.Credentials
+import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.privacy.TrackingConsent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-
-fun decodeDdSdkConfiguration(encoded: Map<String, Any?>): DdSdkConfiguration {
-    @Suppress("UNCHECKED_CAST")
-    return DdSdkConfiguration(
-        clientToken = encoded["clientToken"] as String,
-        env = encoded["env"] as String,
-        applicationId = encoded["applicationId"] as String?,
-        nativeCrashReportEnabled = encoded["nativeCrashReportEnabled"] as Boolean,
-        sampleRate = encoded["sampleRate"] as Double?,
-        site = encoded["site"] as String?,
-        trackingConsent = encoded["trackingConsent"] as String?,
-        additionalConfig = encoded["additionalConfig"] as Map<String, Any?>?
-    )
-}
 
 class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     // The MethodChannel that will the communication between Flutter and native Android
@@ -58,9 +46,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             "initialize" -> {
                 val configArg = call.argument<Map<String, Any?>>("configuration")
                 if (configArg != null) {
-                    val configuration = decodeDdSdkConfiguration(configArg)
-                    val customEndpoint = configArg["customEndpoint"] as String?
-                    initialize(configuration, customEndpoint)
+                    initialize(configArg)
                 }
                 result.success(null)
             }
@@ -77,38 +63,103 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         logs = null
     }
 
-    private fun initialize(configuration: DdSdkConfiguration, customEndpoint: String?) {
-        val serviceName = configuration.additionalConfig?.get("_dd.service_name") as? String
-        val credentials = Credentials(
-            clientToken = configuration.clientToken,
-            envName = configuration.env,
-            rumApplicationId = configuration.applicationId,
-            variant = "",
-            serviceName = serviceName
+    private fun initialize(encodedConfiguration: Map<String, Any?>) {
+        val credentials = buildCredentials(encodedConfiguration)
+        val configuration = buildSdkConfiguration(encodedConfiguration)
+        val trackingConsent = parseTrackingConsent(
+            encodedConfiguration["trackingConsent"] as String
         )
 
-        val configBuilder = Configuration.Builder(
-            logsEnabled = true,
-            tracesEnabled = true,
-            crashReportsEnabled = configuration.nativeCrashReportEnabled ?: false,
-            rumEnabled = true
+        Datadog.initialize(binding.applicationContext, credentials, configuration, trackingConsent)
+    }
+}
+
+internal fun buildSdkConfiguration(encoded: Map<String, Any?>): Configuration {
+    @Suppress("UNCHECKED_CAST")
+    val additionalConfig = encoded["additionalConfig"] as Map<String, Any?>?
+    val configBuilder = Configuration.Builder(
+        logsEnabled = true,
+        tracesEnabled = true,
+        crashReportsEnabled = false,
+        rumEnabled = true
+    )
+        .setAdditionalConfiguration(
+            additionalConfig
+                ?.filterValues { it != null }
+                ?.mapValues { it.value!! } ?: emptyMap()
         )
-            .setAdditionalConfiguration(
-                configuration.additionalConfig
-                    ?.filterValues { it != null }
-                    ?.mapValues { it.value!! } ?: emptyMap()
-            )
-        if (configuration.sampleRate != null) {
-            configBuilder.sampleRumSessions(configuration.sampleRate!!.toFloat())
-        }
-        if (customEndpoint != null) {
-            configBuilder.useCustomLogsEndpoint(customEndpoint)
-            configBuilder.useCustomTracesEndpoint(customEndpoint)
-            configBuilder.useCustomRumEndpoint(customEndpoint)
-        }
 
-        val config = configBuilder.build()
+    encoded["site"]?.let {
+        configBuilder.useSite(parseSite(it as String))
+    }
+    encoded["batchSize"]?.let {
+        configBuilder.setBatchSize(parseBatchSize(it as String))
+    }
+    encoded["uploadFrequency"]?.let {
+        configBuilder.setUploadFrequency(parseUploadFrequency(it as String))
+    }
+    encoded["sampleRate"]?.let {
+        configBuilder.sampleRumSessions((it as Double).toFloat())
+    }
 
-        Datadog.initialize(binding.applicationContext, credentials, config, TrackingConsent.GRANTED)
+    encoded["customEndpoint"]?.let {
+        val customEndpoint = it as String
+        configBuilder.useCustomLogsEndpoint(customEndpoint)
+        configBuilder.useCustomTracesEndpoint(customEndpoint)
+        configBuilder.useCustomRumEndpoint(customEndpoint)
+    }
+
+    return configBuilder.build()
+}
+
+internal fun buildCredentials(encoded: Map<String, Any?>): Credentials {
+    @Suppress("UNCHECKED_CAST")
+    val additionalConfig = encoded["additionalConfig"] as Map<String, Any?>?
+    val serviceName = additionalConfig?.get("_dd.service_name") as? String
+
+    return Credentials(
+        clientToken = encoded["clientToken"] as String,
+        envName = encoded["env"] as String,
+        rumApplicationId = encoded["applicationId"] as String?,
+        variant = Credentials.NO_VARIANT,
+        serviceName = serviceName
+    )
+}
+
+internal fun parseBatchSize(batchSize: String): BatchSize {
+    return when (batchSize) {
+        "BatchSize.small" -> BatchSize.SMALL
+        "BatchSize.medium" -> BatchSize.MEDIUM
+        "BatchSize.large" -> BatchSize.LARGE
+        else -> BatchSize.MEDIUM
+    }
+}
+
+internal fun parseUploadFrequency(uploadFrequency: String): UploadFrequency {
+    return when (uploadFrequency) {
+        "UploadFrequency.frequent" -> UploadFrequency.FREQUENT
+        "UploadFrequency.average" -> UploadFrequency.AVERAGE
+        "UploadFrequency.rare" -> UploadFrequency.RARE
+        else -> UploadFrequency.AVERAGE
+    }
+}
+
+internal fun parseTrackingConsent(trackingConsent: String): TrackingConsent {
+    return when (trackingConsent) {
+        "TrackingConsent.granted" -> TrackingConsent.GRANTED
+        "TrackingConsent.notGranted" -> TrackingConsent.NOT_GRANTED
+        "TrackingConsent.pending" -> TrackingConsent.PENDING
+        else -> TrackingConsent.PENDING
+    }
+}
+
+internal fun parseSite(site: String): DatadogSite {
+    return when (site) {
+        "DatadogSite.us1" -> DatadogSite.US1
+        "DatadogSite.us3" -> DatadogSite.US3
+        "DatadogSite.us5" -> DatadogSite.US5
+        "DatadogSite.eu1" -> DatadogSite.EU1
+        "DatadogSite.us1Fed" -> DatadogSite.US1_FED
+        else -> DatadogSite.US1
     }
 }

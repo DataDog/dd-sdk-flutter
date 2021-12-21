@@ -51,4 +51,15 @@ dependencies {
     implementation "com.datadoghq:dd-sdk-android:1.11.0"
     
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+
+    testImplementation(platform("org.junit:junit-bom:5.8.2"))
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation 'com.willowtreeapps.assertk:assertk-jvm:0.25'
+}
+
+tasks.withType(Test) {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
 }

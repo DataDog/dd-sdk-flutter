@@ -18,7 +18,7 @@ void main() async {
     clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
     env: dotenv.get('DD_ENV', fallback: ''),
     applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
-    trackingConsent: 'granted',
+    trackingConsent: TrackingConsent.granted,
   );
 
   final ddsdk = DatadogSdk();
