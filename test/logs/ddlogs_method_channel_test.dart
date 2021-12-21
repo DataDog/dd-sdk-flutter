@@ -67,4 +67,79 @@ void main() {
       })
     ]);
   });
+
+  test('addAttribute passed to method channel', () async {
+    await ddLogsPlatform.addAttribute('my_key', 'my_value');
+
+    expect(log, <Matcher>[
+      isMethodCall('addAttribute',
+          arguments: {'key': 'my_key', 'value': 'my_value'})
+    ]);
+  });
+
+  test('addAttributes passes complicated values to method channel', () async {
+    await ddLogsPlatform.addAttribute('my_attribute', true);
+    await ddLogsPlatform.addAttribute('my_attribute', {
+      'int_value': 256,
+      'bool_value': false,
+      'double_value': 2.3,
+      'string_value': 'test_value'
+    });
+
+    expect(log, <Matcher>[
+      isMethodCall('addAttribute',
+          arguments: {'key': 'my_attribute', 'value': true}),
+      isMethodCall('addAttribute', arguments: {
+        'key': 'my_attribute',
+        'value': {
+          'int_value': 256,
+          'bool_value': false,
+          'double_value': 2.3,
+          'string_value': 'test_value',
+        },
+      })
+    ]);
+  });
+
+  test('removeAttribute passes to method channel', () async {
+    await ddLogsPlatform.removeAttribute('my_attribute');
+
+    expect(log, <Matcher>[
+      isMethodCall('removeAttribute', arguments: {
+        'key': 'my_attribute',
+      })
+    ]);
+  });
+
+  test('addTag passes tag to method channel', () async {
+    await ddLogsPlatform.addTag('my_tag');
+
+    expect(log, <Matcher>[
+      isMethodCall('addTag', arguments: {'tag': 'my_tag', 'value': null})
+    ]);
+  });
+
+  test('addTag passes tag and value to method channel', () async {
+    await ddLogsPlatform.addTag('my_tag', 'tag_value');
+
+    expect(log, <Matcher>[
+      isMethodCall('addTag', arguments: {'tag': 'my_tag', 'value': 'tag_value'})
+    ]);
+  });
+
+  test('removeTag passes tag to method channel', () async {
+    await ddLogsPlatform.removeTag('my_tag');
+
+    expect(log, <Matcher>[
+      isMethodCall('removeTag', arguments: {'tag': 'my_tag'}),
+    ]);
+  });
+
+  test('removeTagWithKey passed to method channel', () async {
+    await ddLogsPlatform.removeTagWithKey('my_tag');
+
+    expect(log, <Matcher>[
+      isMethodCall('removeTagWithKey', arguments: {'key': 'my_tag'})
+    ]);
+  });
 }

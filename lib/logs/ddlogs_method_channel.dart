@@ -37,4 +37,39 @@ class DdLogsMethodChannel extends DdLogsPlatform {
     return methodChannel
         .invokeMethod('error', {'message': message, 'context': context});
   }
+
+  @override
+  Future<void> addAttribute(String key, Object value) {
+    return methodChannel
+        .invokeMethod('addAttribute', {'key': key, 'value': value});
+  }
+
+  @override
+  Future<void> addTag(String tag, [String? value]) {
+    return methodChannel.invokeMethod('addTag', {
+      'tag': tag,
+      'value': value,
+    });
+  }
+
+  @override
+  Future<void> removeAttribute(String key) {
+    return methodChannel.invokeMethod('removeAttribute', {
+      'key': key,
+    });
+  }
+
+  @override
+  Future<void> removeTag(String tag) {
+    return methodChannel.invokeMethod('removeTag', {
+      'tag': tag,
+    });
+  }
+
+  @override
+  Future<void> removeTagWithKey(String key) {
+    return methodChannel.invokeMethod('removeTagWithKey', {
+      'key': key,
+    });
+  }
 }

@@ -29,7 +29,7 @@ class NavItem {
   NavItem({required this.label, required this.navItem});
 }
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(mergeWith: Platform.environment);
