@@ -1,3 +1,4 @@
+import 'package:datadog_sdk_example/tracing_screen.dart';
 import 'package:flutter/material.dart';
 
 import 'logging_screen.dart';
@@ -21,6 +22,7 @@ class ExampleApp extends StatefulWidget {
 class _ExampleAppState extends State<ExampleApp> {
   final items = <NavItem>[
     NavItem(label: 'Logging', navItem: LoggingScreen.new),
+    NavItem(label: 'Tracing', navItem: TracingScreen.new)
   ];
 
   @override

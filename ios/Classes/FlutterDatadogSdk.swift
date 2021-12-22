@@ -14,6 +14,7 @@ public class FlutterDatadogSdk: NSObject, FlutterPlugin {
     registrar.addMethodCallDelegate(instance, channel: channel)
 
     FlutterDatadogLogs.register(with: registrar)
+    FlutterDatadogTraces.register(with: registrar)
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -35,6 +36,10 @@ public class FlutterDatadogSdk: NSObject, FlutterPlugin {
                          configuration: configuration)
 
       Global.rum = RUMMonitor.initialize()
+      Global.sharedTracer = Tracer.initialize(configuration: Tracer.Configuration())
+
+      Datadog.verbosityLevel = .debug
+      
       result(nil)
 
     default:

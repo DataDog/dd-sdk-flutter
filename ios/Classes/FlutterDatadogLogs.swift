@@ -20,18 +20,11 @@ public class FlutterDatadogLogs: NSObject, FlutterPlugin {
     return builder.build()
   }()
 
-  public func initialize() {
-    let builder = Logger.builder
-      .sendNetworkInfo(true)
-      .printLogsToConsole(true)
-    self.logger = builder.build()
-  }
-
   // swiftlint:disable:next cyclomatic_complexity function_body_length
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let arguments = call.arguments as? [String: Any] else {
       result(FlutterError(code: "DatadogSDK:InvalidOperation",
-                          message: "No arguments in call to DdSdk.initialize.",
+                          message: "No arguments in call to \(call.method).",
                           details: nil))
       return
     }
