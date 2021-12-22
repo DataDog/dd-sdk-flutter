@@ -5,6 +5,12 @@ project_type: flutter
 
 workflows:
   primary:
+    before_run:
+    - _build
+    - integration_ios
+    - integration_android
+    
+  _build:
     steps:
     - script:
         title: Pub get in example and integration tests
@@ -67,6 +73,8 @@ workflows:
             #!/usr/bin/env bash
             set -e
             flutter emulators --launch apple_ios_simulator
+            # Sleep while the simulator warms a bit
+            sleep 5
     - flutter-test@1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/integration_test_app"
