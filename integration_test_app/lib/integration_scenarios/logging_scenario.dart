@@ -15,9 +15,22 @@ class _LoggingScenarioState extends State<LoggingScenario> {
 
     var logger = DatadogSdk().ddLogs;
     if (logger != null) {
-      logger.debug('debug message', {'attribute': 'value'});
-      logger.info('info message', {'attribute': 'value'});
-      logger.warn('warn message', {'attribute': 'value'});
+      logger.addTag('tag1', 'tag-value');
+      logger.addTag('my-tag');
+
+      logger.addAttribute('logger-attribute1', 'string value');
+      logger.addAttribute('logger-attribute2', 1000);
+
+      logger.debug('debug message', {'stringAttribute': 'string'});
+
+      logger.removeTag('my-tag');
+      logger.info('info message', {
+        'nestedAttribute': {'internal': 'test', 'isValid': true}
+      });
+      logger.warn('warn message', {'doubleAttribute': 10.34});
+
+      logger.removeAttribute('logger-attribute1');
+      logger.removeTagWithKey('tag1');
       logger.error('error message', {'attribute': 'value'});
     }
   }

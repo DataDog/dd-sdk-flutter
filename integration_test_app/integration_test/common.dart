@@ -32,7 +32,7 @@ Future<void> openTestScenario(WidgetTester tester, String scenarioName) async {
       applicationId: applicationId);
   mockHttpServer!.startNewSession();
 
-  app.main();
+  await app.main();
   await tester.pumpAndSettle();
 
   var integrationItem = find.byWidgetPredicate((widget) =>

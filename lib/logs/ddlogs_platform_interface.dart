@@ -24,4 +24,10 @@ abstract class DdLogsPlatform extends PlatformInterface {
   Future<void> info(String message, [Map<String, Object?> context = const {}]);
   Future<void> warn(String message, [Map<String, Object?> context = const {}]);
   Future<void> error(String message, [Map<String, Object?> context = const {}]);
+
+  Future<void> addAttribute(String key, Object value);
+  Future<void> removeAttribute(String key);
+  Future<void> addTag(String tag, [String? value]);
+  Future<void> removeTag(String tag);
+  Future<void> removeTagWithKey(String key);
 }

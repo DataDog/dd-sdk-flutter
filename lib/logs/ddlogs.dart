@@ -26,4 +26,24 @@ class DdLogs {
       [Map<String, Object?> context = const {}]) {
     return _platform.error(message, context);
   }
+
+  Future<void> addAttribute(String key, Object value) {
+    return _platform.addAttribute(key, value);
+  }
+
+  Future<void> removeAttribute(String key) {
+    return _platform.removeAttribute(key);
+  }
+
+  Future<void> addTag(String key, [String? value]) {
+    return _platform.addTag(key, value);
+  }
+
+  Future<void> removeTag(String tag) {
+    return _platform.removeTag(tag);
+  }
+
+  Future<void> removeTagWithKey(String key) {
+    return _platform.removeTagWithKey(key);
+  }
 }

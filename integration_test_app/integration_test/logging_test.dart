@@ -46,17 +46,36 @@ void main() {
 
     expect(logs[0][LogKeys.status], 'debug');
     expect(logs[0][LogKeys.message], 'debug message');
+    expect(logs[0][LogKeys.tags], contains('tag1:tag-value'));
+    expect(logs[0][LogKeys.tags], contains('my-tag'));
+    expect(logs[0]['stringAttribute'], 'string');
 
     expect(logs[1][LogKeys.status], 'info');
     expect(logs[1][LogKeys.message], 'info message');
+    expect(logs[1][LogKeys.tags], isNot(contains('my-tag')));
+    expect(logs[1][LogKeys.tags], contains('tag1:tag-value'));
+    expect(logs[1]['nestedAttribute'], containsPair('internal', 'test'));
+    expect(logs[1]['nestedAttribute'], containsPair('isValid', true));
 
     expect(logs[2][LogKeys.status], 'warn');
     expect(logs[2][LogKeys.message], 'warn message');
+    expect(logs[2][LogKeys.tags], isNot(contains('my-tag')));
+    expect(logs[2][LogKeys.tags], contains('tag1:tag-value'));
+    expect(logs[2]['doubleAttribute'], 10.34);
 
     expect(logs[3][LogKeys.status], 'error');
     expect(logs[3][LogKeys.message], 'error message');
+    expect(logs[3][LogKeys.tags], isNot(contains('my-tag')));
+    expect(logs[3][LogKeys.tags], isNot(contains('tag1:tag-value')));
+    expect(logs[3]['attribute'], 'value');
 
     for (final log in logs) {
+      if (log.containsKey('logger-attribute1')) {
+        expect(log['logger-attribute1'], 'string value');
+      }
+      // All logs should have logger-attribute2
+      expect(log['logger-attribute2'], 1000);
+
       expect(log[LogKeys.serviceName],
           equalsIgnoringCase('com.datadoghq.flutter.integrationtestapp'));
 
