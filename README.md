@@ -3,4 +3,4 @@
 
 # Contributing
 
-Check [CONTRIBUTING.md]
+Please read the [Contributing Guide](CONTRIBUTING.md)

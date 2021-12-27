@@ -5,6 +5,7 @@
 .pub/
 
 build/
-example/config/ddconfig.json
+*/.env
+
 .bitrise.secrets.yml
 *flutter_junit_test_results.xml

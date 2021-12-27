@@ -6,6 +6,7 @@ project_type: flutter
 workflows:
   primary:
     before_run:
+    - _setup
     - _build
     - integration_ios
     - integration_android
@@ -51,7 +52,19 @@ workflows:
         - platform: both
     - deploy-to-bitrise-io: {}
 
+  _setup:
+    steps:
+    - script:
+        title: Generate env files
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            ./generate_env.sh
+
   integration_android:
+    before_run:
+    - _setup
     steps:
     - avd-manager@1:
         inputs:
@@ -65,6 +78,8 @@ workflows:
     - deploy-to-bitrise-io: {}
   
   integration_ios:
+    before_run:
+    - _setup
     steps:
     - script:
         title: Launch iOS Simulator
