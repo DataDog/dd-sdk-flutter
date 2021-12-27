@@ -92,6 +92,42 @@ public class FlutterDatadogTraces: NSObject, FlutterPlugin {
       let spanHandle = storeSpan(span)
       result(spanHandle)
 
+    case "span.setActive":
+      if let calledSpan = calledSpan {
+        calledSpan.span.setActive()
+      }
+      result(nil)
+
+    case "span.setError":
+      if let calledSpan = calledSpan,
+         let kind = arguments["kind"] as? String,
+         let message = arguments["message"] as? String {
+        if let stackTrace = arguments["stackTrace"] as? String {
+          calledSpan.span.setError(kind: kind, message: message, stack: stackTrace)
+        } else {
+          calledSpan.span.setError(kind: kind, message: message)
+        }
+      }
+      result(nil)
+
+    case "span.setTag":
+      if let calledSpan = calledSpan,
+         let key = arguments["key"] as? String,
+         let value = arguments["value"] {
+        if let encoded = castAnyToEncodable(value) {
+          calledSpan.span.setTag(key: key, value: encoded)
+        }
+      }
+      result(nil)
+
+    case "span.setBaggageItem":
+      if let calledSpan = calledSpan,
+         let key = arguments["key"] as? String,
+         let value = arguments["value"] as? String {
+        calledSpan.span.setBaggageItem(key: key, value: value)
+      }
+      result(nil)
+
     case "span.finish":
       if let calledSpan = calledSpan {
         calledSpan.span.finish()

@@ -39,7 +39,7 @@ public class FlutterDatadogSdk: NSObject, FlutterPlugin {
       Global.sharedTracer = Tracer.initialize(configuration: Tracer.Configuration())
 
       Datadog.verbosityLevel = .debug
-      
+
       result(nil)
 
     default:

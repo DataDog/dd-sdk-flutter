@@ -19,6 +19,47 @@ internal func castFlutterAttributesToSwift(_ flutterAttributes: [String: Any?]) 
   return casted
 }
 
+// swiftlint:disable:next cyclomatic_complexity
+internal func castAnyToEncodable(_ flutterAny: Any) -> Encodable? {
+  switch flutterAny {
+  case let number as NSNumber:
+    if CFGetTypeID(number) == CFBooleanGetTypeID() {
+      return CFBooleanGetValue(number)
+    } else {
+      switch CFNumberGetType(number) {
+      case .charType:
+        return number.uint8Value
+      case .sInt8Type:
+        return number.int8Value
+      case .sInt16Type:
+        return number.int16Value
+      case .sInt32Type:
+        return number.int32Value
+      case .sInt64Type:
+        return number.int64Value
+      case .shortType:
+        return number.uint16Value
+      case .longType:
+        return number.uint32Value
+      case .longLongType:
+        return number.uint64Value
+      case .intType, .nsIntegerType, .cfIndexType:
+        return number.intValue
+      case .floatType, .float32Type:
+        return number.floatValue
+      case .doubleType, .float64Type, .cgFloatType:
+        return number.doubleValue
+      @unknown default:
+        return nil
+      }
+    }
+  case let string as String:
+    return string
+  default:
+    return DdFlutterEncodable(flutterAny)
+  }
+}
+
 // This is similar to AnyEncodable, but for simplicity, it only looks for types
 // that Flutter will send from MethodChannels
 internal class DdFlutterEncodable: Encodable {
@@ -43,7 +84,7 @@ internal class DdFlutterEncodable: Encodable {
     default:
       let context = EncodingError.Context(
         codingPath: container.codingPath,
-        debugDescription: "Value \(value) cannot be encoded - \(type(of: value)) is not supported by `AnyEncodable`."
+        debugDescription: "Value \(value) cannot be encoded - \(type(of: value)) is not supported by `DdFlutterEncodable`."
       )
       throw EncodingError.invalidValue(value, context)
     }

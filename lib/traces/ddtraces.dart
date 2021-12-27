@@ -4,6 +4,66 @@
 
 import 'ddtraces_platform_interface.dart';
 
+/// A collection of standard `Span` tag keys defined by Open Tracing.
+/// Use them as the `key` in [DdSpan.setTag]. Use the expected type for the `value`.
+///
+/// See more: [Span tags table](https://github.com/opentracing/specification/blob/master/semantic_conventions.md#span-tags-table)
+class OTTags {
+  /// Expected value: `String`.
+  static const component = 'component';
+
+  /// Expected value: `String`
+  static const dbInstance = 'db.instance';
+
+  /// Expected value: `String`
+  static const dbStatement = 'db.statement';
+
+  /// Expected value: `String`
+  static const dbType = 'db.type';
+
+  /// Expected value: `String`
+  static const dbUser = 'db.user';
+
+  /// Expected value: `Bool`
+  static const error = 'error';
+
+  /// Expected value: `String`
+  static const httpMethod = 'http.method';
+
+  /// Expected value: `Int`
+  static const httpStatusCode = 'http.status_code';
+
+  /// Expected value: `String`
+  static const httpUrl = 'http.url';
+
+  /// Expected value: `String`
+  static const messageBusDestination = 'message_bus.destination';
+
+  /// Expected value: `String`
+  static const peerAddress = 'peer.address';
+
+  /// Expected value: `String`
+  static const peerHostname = 'peer.hostname';
+
+  /// Expected value: `String`
+  static const peerIPv4 = 'peer.ipv4';
+
+  /// Expected value: `String`
+  static const peerIPv6 = 'peer.ipv6';
+
+  /// Expected value: `Int`
+  static const peerPort = 'peer.port';
+
+  /// Expected value: `String`
+  static const peerService = 'peer.service';
+
+  /// Expected value: `Int`
+  static const samplingPriority = 'sampling.priority';
+
+  /// Expected value: `String`
+  static const spanKind = 'span.kind';
+}
+
 class DdSpan {
   final DdTracesPlatform _platform;
 
@@ -30,7 +90,7 @@ class DdSpan {
 
   /// Set a tag with the given [key] to the given [value]. Although the type for
   /// [value] is dynamic, the object passed in must be one of the types
-  /// supported byt the [StandardMessageCodec]
+  /// supported by the [StandardMessageCodec]
   Future<void> setTag(String key, dynamic value) {
     if (_handle <= 0) {
       return Future.value();
