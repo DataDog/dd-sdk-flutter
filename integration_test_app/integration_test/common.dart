@@ -9,6 +9,18 @@ import 'package:datadog_integration_test_app/main.dart' as app;
 
 import 'tools/mock_http_sever.dart';
 
+class _IsDecimalVersionOfHex extends CustomMatcher {
+  _IsDecimalVersionOfHex(Object? valueOrMatcher)
+      : super("Decimal string who's hex representation is", 'hex string',
+            valueOrMatcher);
+
+  @override
+  Object? featureValueOf(dynamic actual) =>
+      int.parse(actual).toRadixString(16).toUpperCase();
+}
+
+Matcher isDecimalVersionOfHex(Object value) => _IsDecimalVersionOfHex(value);
+
 MockHttpServer? mockHttpServer;
 
 Future<void> openTestScenario(WidgetTester tester, String scenarioName) async {

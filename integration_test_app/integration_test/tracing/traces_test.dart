@@ -1,15 +1,16 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
-
 import 'dart:convert';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'common.dart';
-import 'tools/mock_http_sever.dart';
+import '../common.dart';
+import '../logging/log_decoder.dart';
+import '../tools/mock_http_sever.dart';
+import 'span_decoder.dart';
 
 void _assertCommonSpanMetadata(SpanDecoder span) {
   expect(span.type, 'custom');
@@ -20,40 +21,15 @@ void _assertCommonSpanMetadata(SpanDecoder span) {
   expect(span.appVersion, '1.0.0');
 }
 
-class SpanDecoder {
-  final Map<String, Object?> envelope;
-  final Map<String, Object?> span;
-
-  String get environment => envelope['env'] as String;
-
-  String get type => span['type'] as String;
-  String get name => span['name'] as String;
-  String get traceId => span['trace_id'] as String;
-  String get spanId => span['span_id'] as String;
-  String? get parentSpanId => span['parent_id'] as String?;
-  String get resource => span['resource'] as String;
-  int get isError => span['error'] as int;
-
-  // Meta properties
-  String get source => span['meta._dd.source'] as String;
-  String get tracerVersion => span['meta.tracer.version'] as String;
-  String get appVersion => span['meta.version'] as String;
-
-  // Metrics properties
-  int? get isRootSpan => span['metrics._top_level'] as int?;
-
-  SpanDecoder({required this.envelope, required this.span});
-}
-
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('test logging scenario', (WidgetTester tester) async {
+  testWidgets('test tracing scenario', (WidgetTester tester) async {
     await openTestScenario(tester, 'Traces Scenario');
 
     var requestsLog = <RequestLog>[];
     var spanLog = <SpanDecoder>[];
-    //var logs = <LogMatcher>[];
+    var logs = <LogDecoder>[];
 
     await mockHttpServer!.pollRequests(
       const Duration(seconds: 30),
@@ -69,7 +45,11 @@ void main() {
                 spanLog.add(SpanDecoder(envelope: envelope, span: span));
               }
             }
-          } else {}
+          } else if (envelope is List<dynamic>) {
+            for (var e in envelope) {
+              logs.add(LogDecoder(e as Map<String, dynamic>));
+            }
+          }
         });
 
         return spanLog.length >= 3;
@@ -114,5 +94,22 @@ void main() {
     expect(spanLog[0].isError, 0);
     expect(spanLog[1].isError, 1);
     expect(spanLog[2].isError, 0);
+
+    expect(logs.length, 2);
+    expect(logs[0].status, 'info');
+    expect(logs[0].message, 'download progress');
+    expect(logs[0].log['progress'], 0.99);
+    expect(
+        logs[0].log['dd.trace_id'], isDecimalVersionOfHex(spanLog[0].traceId));
+    expect(logs[0].log['dd.span_id'], isDecimalVersionOfHex(spanLog[0].spanId));
+
+    expect(logs[1].status, 'error');
+    expect(logs[1].message, contains('PlatformException'));
+    expect(logs[1].log['error.kind'], contains('PlatformException'));
+    expect(logs[1].log['error.message'], contains('PlatformException'));
+    // expect(logs[0].log['error.stack'], contains('_TracesScenarioState'));
+    expect(
+        logs[1].log['dd.trace_id'], isDecimalVersionOfHex(spanLog[1].traceId));
+    expect(logs[1].log['dd.span_id'], isDecimalVersionOfHex(spanLog[1].spanId));
   });
 }

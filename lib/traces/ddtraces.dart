@@ -64,6 +64,25 @@ class OTTags {
   static const spanKind = 'span.kind';
 }
 
+/// A collection of standard `Span` log fields defined by Open Tracing.
+/// Use them as the `key` for `fields` dictionary in [DdSpan.log]. Use the expected type for the value.
+///
+/// See more: [Log fields table](https://github.com/opentracing/specification/blob/master/semantic_conventions.md#log-fields-table)
+///
+class OTLogFields {
+  /// Expected value: `String`
+  static const errorKind = 'error.kind';
+
+  /// Expected value: `String`
+  static const event = 'event';
+
+  /// Expected value: `String`
+  static const message = 'message';
+
+  /// Expected value: `String`
+  static const stack = 'stack';
+}
+
 class DdSpan {
   final DdTracesPlatform _platform;
 
@@ -115,6 +134,14 @@ class DdSpan {
     }
 
     return _platform.spanSetError(this, kind, message, stackTrace?.toString());
+  }
+
+  Future<void> log(Map<String, Object?> fields) {
+    if (_handle <= 0) {
+      return Future.value();
+    }
+
+    return _platform.spanLog(this, fields);
   }
 
   Future<void> finish() async {

@@ -215,4 +215,20 @@ void main() {
           'stackTrace': null
         }));
   });
+
+  test('setErrorInfo on span calls to platform', () async {
+    final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
+
+    await span.log({
+      'message': 'my message',
+      'value': 0.24,
+    });
+
+    expect(
+        log[1],
+        isMethodCall('span.log', arguments: {
+          'spanHandle': span.handle,
+          'fields': {'message': 'my message', 'value': 0.24}
+        }));
+  });
 }

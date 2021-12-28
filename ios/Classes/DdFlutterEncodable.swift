@@ -7,12 +7,12 @@
 
 import Foundation
 
-internal func castFlutterAttributesToSwift(_ flutterAttributes: [String: Any?]) -> [String: DdFlutterEncodable] {
-  var casted: [String: DdFlutterEncodable] = [:]
+internal func castFlutterAttributesToSwift(_ flutterAttributes: [String: Any?]) -> [String: Encodable] {
+  var casted: [String: Encodable] = [:]
 
   flutterAttributes.forEach { key, value in
     if let value = value {
-      casted[key] = DdFlutterEncodable(value)
+      casted[key] = castAnyToEncodable(value)
     }
   }
 
@@ -20,7 +20,7 @@ internal func castFlutterAttributesToSwift(_ flutterAttributes: [String: Any?]) 
 }
 
 // swiftlint:disable:next cyclomatic_complexity
-internal func castAnyToEncodable(_ flutterAny: Any) -> Encodable? {
+internal func castAnyToEncodable(_ flutterAny: Any) -> Encodable {
   switch flutterAny {
   case let number as NSNumber:
     if CFGetTypeID(number) == CFBooleanGetTypeID() {
@@ -50,7 +50,7 @@ internal func castAnyToEncodable(_ flutterAny: Any) -> Encodable? {
       case .doubleType, .float64Type, .cgFloatType:
         return number.doubleValue
       @unknown default:
-        return nil
+        return DdFlutterEncodable(flutterAny)
       }
     }
   case let string as String:

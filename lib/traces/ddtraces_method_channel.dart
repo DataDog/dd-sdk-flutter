@@ -80,6 +80,14 @@ class DdTracesMethodChannel extends DdTracesPlatform {
   }
 
   @override
+  Future<void> spanLog(DdSpan span, Map<String, Object?> fields) {
+    return methodChannel.invokeMethod('span.log', {
+      'spanHandle': span.handle,
+      'fields': fields,
+    });
+  }
+
+  @override
   Future<void> spanFinish(DdSpan span) {
     return methodChannel
         .invokeMethod('span.finish', {'spanHandle': span.handle});

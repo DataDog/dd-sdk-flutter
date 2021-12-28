@@ -114,9 +114,8 @@ public class FlutterDatadogTraces: NSObject, FlutterPlugin {
       if let calledSpan = calledSpan,
          let key = arguments["key"] as? String,
          let value = arguments["value"] {
-        if let encoded = castAnyToEncodable(value) {
-          calledSpan.span.setTag(key: key, value: encoded)
-        }
+        let encoded = castAnyToEncodable(value)
+        calledSpan.span.setTag(key: key, value: encoded)
       }
       result(nil)
 
@@ -125,6 +124,13 @@ public class FlutterDatadogTraces: NSObject, FlutterPlugin {
          let key = arguments["key"] as? String,
          let value = arguments["value"] as? String {
         calledSpan.span.setBaggageItem(key: key, value: value)
+      }
+      result(nil)
+
+    case "span.log":
+      if let fields = arguments["fields"] as? [String: Any?] {
+        let encoded = castFlutterAttributesToSwift(fields)
+        calledSpan?.span.log(fields: encoded)
       }
       result(nil)
 

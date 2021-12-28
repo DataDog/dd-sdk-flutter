@@ -1,11 +1,10 @@
 import 'dart:io';
 
-import 'package:datadog_integration_test_app/integration_scenarios/integration_scenarios_screen.dart';
 import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'integration_scenarios/logging_scenario.dart';
+import 'integration_scenarios/integration_scenarios_screen.dart';
 
 typedef SimpleWidgetConstructor = Widget Function();
 

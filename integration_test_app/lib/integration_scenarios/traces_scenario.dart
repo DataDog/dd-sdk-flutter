@@ -41,7 +41,10 @@ class _TracesScenarioState extends State<TracesScenario> {
 
   Future<void> _simulateDataDownload() async {
     await Future.delayed(const Duration(milliseconds: 300));
-    // TODO: log function
+    dataDownloadingSpan?.log({
+      OTLogFields.message: 'download progress',
+      'progress': 0.99,
+    });
     dataDownloadingSpan?.finish();
 
     var traces = DatadogSdk().ddTraces;

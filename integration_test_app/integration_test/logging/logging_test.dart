@@ -21,7 +21,7 @@ void main() {
       const Duration(seconds: 30),
       (requests) {
         requests
-            .map((e) => (e.requestJson as List))
+            .map((e) => (e.jsonData as List))
             .expand((e) => e)
             .forEach((e) => logs.add(LogDecoder(e as Map<String, dynamic>)));
 
