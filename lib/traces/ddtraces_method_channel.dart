@@ -19,7 +19,7 @@ class DdTracesMethodChannel extends DdTracesPlatform {
     var result = await methodChannel.invokeMethod('startRootSpan', {
       'operationName': operationName,
       'tags': tags,
-      'startTime': _serializeDateTime(startTime)
+      'startTime': startTime?.millisecondsSinceEpoch
     });
     if (result is int) {
       return DdSpan(this, result);
@@ -35,17 +35,13 @@ class DdTracesMethodChannel extends DdTracesPlatform {
       'operationName': operationName,
       'parentSpan': parentSpan?.handle,
       'tags': tags,
-      'startTime': _serializeDateTime(startTime),
+      'startTime': startTime?.millisecondsSinceEpoch
     });
     if (result is int) {
       return DdSpan(this, result);
     }
     // TODO: Failed to create span
     return DdSpan(this, 0);
-  }
-
-  String? _serializeDateTime(DateTime? dateTime) {
-    return dateTime?.toUtc().toIso8601String();
   }
 
   // Span methods

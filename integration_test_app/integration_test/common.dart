@@ -11,12 +11,17 @@ import 'tools/mock_http_sever.dart';
 
 class _IsDecimalVersionOfHex extends CustomMatcher {
   _IsDecimalVersionOfHex(Object? valueOrMatcher)
-      : super("Decimal string who's hex representation is", 'hex string',
-            valueOrMatcher);
+      : super(
+          "Decimal string who's hex representation is",
+          'hex string',
+          valueOrMatcher is String
+              ? valueOrMatcher.toLowerCase()
+              : valueOrMatcher,
+        );
 
   @override
   Object? featureValueOf(dynamic actual) =>
-      int.parse(actual).toRadixString(16).toUpperCase();
+      int.parse(actual).toRadixString(16).toLowerCase();
 }
 
 Matcher isDecimalVersionOfHex(Object value) => _IsDecimalVersionOfHex(value);

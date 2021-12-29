@@ -11,9 +11,7 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-class DatadogLogs(
-    logger: Logger? = null
-) : MethodChannel.MethodCallHandler {
+internal class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     companion object LogParameterNames {
         const val LOG_MESSAGE = "message"
         const val LOG_CONTEXT = "context"
@@ -27,7 +25,7 @@ class DatadogLogs(
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 
     private val log: Logger by lazy {
-        logger ?: Logger.Builder()
+        Logger.Builder()
             .setDatadogLogsEnabled(true)
             .setLogcatLogsEnabled(true)
             .setLoggerName("DdLogs")
@@ -45,44 +43,44 @@ class DatadogLogs(
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "debug" -> {
-                val message = call.argument<String>(LogParameterNames.LOG_MESSAGE)!!
-                val context = call.argument<Map<String, Any?>>(LogParameterNames.LOG_CONTEXT)!!
+                val message = call.argument<String>(LOG_MESSAGE)!!
+                val context = call.argument<Map<String, Any?>>(LOG_CONTEXT)!!
 
                 log.d(message, attributes = context)
                 result.success(null)
             }
             "info" -> {
-                val message = call.argument<String>(LogParameterNames.LOG_MESSAGE)!!
-                val context = call.argument<Map<String, Any?>>(LogParameterNames.LOG_CONTEXT)!!
+                val message = call.argument<String>(LOG_MESSAGE)!!
+                val context = call.argument<Map<String, Any?>>(LOG_CONTEXT)!!
 
                 log.i(message, attributes = context)
                 result.success(null)
             }
             "warn" -> {
-                val message = call.argument<String>(LogParameterNames.LOG_MESSAGE)!!
-                val context = call.argument<Map<String, Any?>>(LogParameterNames.LOG_CONTEXT)!!
+                val message = call.argument<String>(LOG_MESSAGE)!!
+                val context = call.argument<Map<String, Any?>>(LOG_CONTEXT)!!
 
                 log.w(message, attributes = context)
                 result.success(null)
             }
             "error" -> {
-                val message = call.argument<String>(LogParameterNames.LOG_MESSAGE)!!
-                val context = call.argument<Map<String, Any?>>(LogParameterNames.LOG_CONTEXT)!!
+                val message = call.argument<String>(LOG_MESSAGE)!!
+                val context = call.argument<Map<String, Any?>>(LOG_CONTEXT)!!
 
                 log.e(message, attributes = context)
                 result.success(null)
             }
             "addAttribute" -> {
-                val key = call.argument<String>(LogParameterNames.LOG_KEY)
-                val value = call.argument<Any>(LogParameterNames.LOG_VALUE)
+                val key = call.argument<String>(LOG_KEY)
+                val value = call.argument<Any>(LOG_VALUE)
                 if (key != null && value != null) {
                     addAttributeInternal(key, value)
                 }
                 result.success(null)
             }
             "addTag" -> {
-                call.argument<String>(LogParameterNames.LOG_TAG)?.let {
-                    val value = call.argument<String>(LogParameterNames.LOG_VALUE)
+                call.argument<String>(LOG_TAG)?.let {
+                    val value = call.argument<String>(LOG_VALUE)
                     if (value != null) {
                         log.addTag(it, value)
                     } else {
@@ -92,13 +90,13 @@ class DatadogLogs(
                 result.success(null)
             }
             "removeAttribute" -> {
-                call.argument<String>(LogParameterNames.LOG_KEY)?.let {
+                call.argument<String>(LOG_KEY)?.let {
                     log.removeAttribute(it)
                 }
                 result.success(null)
             }
             "removeTag" -> {
-                call.argument<String>(LogParameterNames.LOG_TAG)?.let {
+                call.argument<String>(LOG_TAG)?.let {
                     log.removeTag(it)
                 }
                 result.success(null)

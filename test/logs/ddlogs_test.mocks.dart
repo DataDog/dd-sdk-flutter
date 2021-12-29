@@ -16,6 +16,7 @@ import 'ddlogs_test.dart' as _i2;
 // ignore_for_file: prefer_const_constructors
 // ignore_for_file: unnecessary_parenthesis
 // ignore_for_file: camel_case_types
+// ignore_for_file: unnecessary_overrides
 
 /// A class which mocks [MixedDdLogsPlatform].
 ///

@@ -95,7 +95,7 @@ void main() {
     ]);
   });
 
-  test('start span converts to iso date string', () async {
+  test('start span converts milliseconds since epoch', () async {
     var startTime = DateTime.now().toUtc();
     await ddTracesPlatform.startSpan('Operation', null, null, startTime);
 
@@ -104,7 +104,7 @@ void main() {
         'operationName': 'Operation',
         'parentSpan': null,
         'tags': null,
-        'startTime': startTime.toIso8601String(),
+        'startTime': startTime.millisecondsSinceEpoch,
       })
     ]);
   });
@@ -118,7 +118,7 @@ void main() {
         'operationName': 'Operation',
         'parentSpan': null,
         'tags': null,
-        'startTime': startTime.toUtc().toIso8601String(),
+        'startTime': startTime.toUtc().millisecondsSinceEpoch,
       })
     ]);
   });

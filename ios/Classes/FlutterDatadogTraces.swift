@@ -22,20 +22,6 @@ public class FlutterDatadogTraces: NSObject, FlutterPlugin {
 
   private var nextSpanId: Int64 = 1
   private var spanRegistry: [Int64: OTSpan] = [:]
-  private lazy var iso8601Formatter: DateFormatterType = {
-    if #available(iOS 11.2, *) {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions.insert(.withFractionalSeconds)
-        return formatter
-    } else {
-        let iso8601Formatter = DateFormatter()
-        iso8601Formatter.locale = Locale(identifier: "en_US_POSIX")
-        iso8601Formatter.timeZone = TimeZone(abbreviation: "UTC")! // swiftlint:disable:this force_unwrapping
-        iso8601Formatter.calendar = Calendar(identifier: .gregorian)
-        iso8601Formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" // ISO8601 format
-        return iso8601Formatter
-    }
-  }()
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let arguments = call.arguments as? [String: Any] else {
@@ -56,8 +42,10 @@ public class FlutterDatadogTraces: NSObject, FlutterPlugin {
         tags = castFlutterAttributesToSwift(flutterTags)
       }
 
-      let startTimeString = arguments["startTime"] as? String
-      let startTime = parseDateTime(startTimeString)
+      var startTime: Date?
+      if let startTimeMs = arguments["startTime"] as? NSNumber {
+        startTime = Date(timeIntervalSince1970: startTimeMs.doubleValue / 1_000)
+      }
 
       let span = Global.sharedTracer.startRootSpan(
         operationName: operationName,
@@ -75,8 +63,10 @@ public class FlutterDatadogTraces: NSObject, FlutterPlugin {
         tags = castFlutterAttributesToSwift(flutterTags)
       }
 
-      let startTimeString = arguments["startTime"] as? String
-      let startTime = parseDateTime(startTimeString)
+      var startTime: Date?
+      if let startTimeMs = arguments["startTime"] as? NSNumber {
+        startTime = Date(timeIntervalSince1970: startTimeMs.doubleValue / 1_000)
+      }
 
       var parentSpan: OTSpan?
       if let parentSpanId = (arguments["parentSpan"] as? NSNumber)?.int64Value {
@@ -154,14 +144,6 @@ public class FlutterDatadogTraces: NSObject, FlutterPlugin {
       }
     }
     return nil
-  }
-
-  private func parseDateTime(_ startTimeString: String?) -> Date? {
-    guard let startTimeString = startTimeString else {
-      return nil
-    }
-
-    return iso8601Formatter.date(from: startTimeString)
   }
 
   private func storeSpan(_ span: OTSpan) -> Int64 {

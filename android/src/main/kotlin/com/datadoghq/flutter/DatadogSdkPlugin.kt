@@ -27,7 +27,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 
-    private var logs: DatadogLogs? = null
+    private var logsPlugin: DatadogLogsPlugin? = null
+    private var tracesPlugin: DatadogTracesPlugin? = null
 
     override fun onAttachedToEngine(
         @NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
@@ -37,8 +38,11 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
         binding = flutterPluginBinding
 
-        logs = DatadogLogs()
-        logs?.setup(flutterPluginBinding)
+        logsPlugin = DatadogLogsPlugin()
+        logsPlugin?.setup(flutterPluginBinding)
+
+        tracesPlugin = DatadogTracesPlugin()
+        tracesPlugin?.setup(flutterPluginBinding)
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
@@ -59,8 +63,11 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
 
-        logs?.teardown(binding)
-        logs = null
+        logsPlugin?.teardown(binding)
+        logsPlugin = null
+
+        tracesPlugin?.teardown(binding)
+        tracesPlugin = null
     }
 
     private fun initialize(encodedConfiguration: Map<String, Any?>) {
