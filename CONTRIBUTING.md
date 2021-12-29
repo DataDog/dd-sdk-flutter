@@ -43,7 +43,7 @@ Before submitting a PR, you can run all of these steps, as well as all
 integration tests, by running the `./preflight.sh` script in the root ot the
 repo. Using this script requires you both
 [Swiftlint](https://github.com/realm/SwiftLint) and [Bitrise
-CLU](https://app.bitrise.io/cli) available on your path
+CLI](https://app.bitrise.io/cli) available on your path
 
 ## Tests
 
