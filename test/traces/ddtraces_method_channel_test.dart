@@ -38,6 +38,7 @@ void main() {
     await badSpan.setBaggageItem('Baggage Key', 'Baggage value');
     await badSpan.setError(Exception());
     await badSpan.setErrorInfo('Kind', 'Message', null);
+    await badSpan.finish();
 
     expect(log.length, 0);
   });

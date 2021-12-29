@@ -41,50 +41,55 @@ internal class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
         binding = flutterPluginBinding
     }
 
-    @Suppress("LongMethod", "ComplexMethod", "NestedBlockDepth")
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         with(call.method) {
             when {
-                equals("startRootSpan") -> {
-                    val operationName = call.argument<String>(PARAM_OPERATION_NAME)
-
-                    val spanBuilder = tracer.buildSpan(operationName)
-                        .ignoreActiveSpan()
-                    call.argument<Number>(PARAM_START_TIME)?.let {
-                        spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
-                    }
-
-                    val span = spanBuilder.start()
-
-                    call.argument<Map<String, Any?>>(PARAM_TAGS)?.let {
-                        span.setTags(it)
-                    }
-
-                    result.success(storeSpan(span))
-                }
-                equals("startSpan") -> {
-                    val operationName = call.argument<String>(PARAM_OPERATION_NAME)
-
-                    val spanBuilder = tracer.buildSpan(operationName)
-                    call.argument<Number>(PARAM_START_TIME)?.let {
-                        spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
-                    }
-                    call.argument<Number>(PARAM_PARENT_SPAN)?.let {
-                        spanRegistry[it.toLong()]?.let { span ->
-                            spanBuilder.asChildOf(span)
-                        }
-                    }
-
-                    val span = spanBuilder.start()
-                    call.argument<Map<String, Any?>>(PARAM_TAGS)?.let {
-                        span.setTags(it)
-                    }
-
-                    result.success(storeSpan(span))
-                }
                 startsWith("span.") -> onSpanMethodCall(call, result)
-                else -> result.notImplemented()
+                else -> onRootMethodCall(call, result)
             }
+        }
+    }
+
+    private fun onRootMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        when (call.method) {
+            "startRootSpan" -> {
+                val operationName = call.argument<String>(PARAM_OPERATION_NAME)
+
+                val spanBuilder = tracer.buildSpan(operationName)
+                    .ignoreActiveSpan()
+                call.argument<Number>(PARAM_START_TIME)?.let {
+                    spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
+                }
+
+                val span = spanBuilder.start()
+
+                call.argument<Map<String, Any?>>(PARAM_TAGS)?.let {
+                    span.setTags(it)
+                }
+
+                result.success(storeSpan(span))
+            }
+            "startSpan" -> {
+                val operationName = call.argument<String>(PARAM_OPERATION_NAME)
+
+                val spanBuilder = tracer.buildSpan(operationName)
+                call.argument<Number>(PARAM_START_TIME)?.let {
+                    spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
+                }
+                call.argument<Number>(PARAM_PARENT_SPAN)?.let {
+                    spanRegistry[it.toLong()]?.let { span ->
+                        spanBuilder.asChildOf(span)
+                    }
+                }
+
+                val span = spanBuilder.start()
+                call.argument<Map<String, Any?>>(PARAM_TAGS)?.let {
+                    span.setTags(it)
+                }
+
+                result.success(storeSpan(span))
+            }
+            else -> result.notImplemented()
         }
     }
 

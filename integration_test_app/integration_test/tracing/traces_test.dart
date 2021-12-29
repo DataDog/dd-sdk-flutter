@@ -18,7 +18,7 @@ void _assertCommonSpanMetadata(SpanDecoder span) {
   expect(span.type, 'custom');
   expect(span.environment, 'prod');
 
-  // RUMM- Android does not properly override 'source' on traces
+  // RUMM-1853 Android does not properly override 'source' on traces
   if (Platform.isIOS) {
     expect(span.source, 'flutter');
   }
@@ -124,14 +124,20 @@ void main() {
     expect(logs[1].status, Platform.isIOS ? 'error' : 'trace');
     expect(logs[1].message, contains('PlatformException'));
     if (Platform.isIOS) {
+      // iOS leave these on the log
       expect(logs[1].log['error.kind'], contains('PlatformException'));
       expect(logs[1].log['error.message'], contains('PlatformException'));
     } else if (Platform.isAndroid) {
-      // TODO: RUMM- Android doesn't use "error.kind" or "error.message" for errors
+      // Android error remaps "error.message" to message on the log...
       expect(logs[1].log['message'], contains('PlatformException'));
+      // ... and sets tags on the span
+      expect(
+          presentationSpan.getTag('error.type'), contains('PlatformException'));
+      expect(
+          presentationSpan.getTag('error.msg'), contains('PlatformException'));
     }
     // TODO: RUMM-1852 Better stack trace handling
-    // expect(logs[0].log['error.stack'], contains('_TracesScenarioState'));
+    // expect(logs[1].log['error.stack'], contains('_TracesScenarioState'));
     expect(logs[1].log['dd.trace_id'],
         isDecimalVersionOfHex(presentationSpan.traceId));
     expect(logs[1].log['dd.span_id'],

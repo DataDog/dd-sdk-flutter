@@ -128,7 +128,7 @@ internal class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
                 val jsonList = gson.toJsonTree(value).asJsonArray
                 log.addAttribute(key, jsonList)
             }
-            is HashMap<*, *> -> {
+            is Map<*, *> -> {
                 val jsonObject = gson.toJsonTree(value).asJsonObject
                 log.addAttribute(key, jsonObject)
             }
