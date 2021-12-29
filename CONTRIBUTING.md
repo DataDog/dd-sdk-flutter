@@ -39,6 +39,12 @@ Code style is enforced with the following libraries in the following languages:
   and [detekt](https://github.com/detekt/detekt) set up for static analysis and
   linting.
 
+Before submitting a PR, you can run all of these steps, as well as all
+integration tests, by running the `./preflight.sh` script in the root ot the
+repo. Using this script requires you both
+[Swiftlint](https://github.com/realm/SwiftLint) and [Bitrise
+CLU](https://app.bitrise.io/cli) available on your path
+
 ## Tests
 
 There are three types of tests in this repo
