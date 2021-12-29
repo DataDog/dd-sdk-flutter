@@ -7,14 +7,14 @@ import UIKit
 import Datadog
 import DatadogSDKBridge
 
-public class FlutterDatadogSdk: NSObject, FlutterPlugin {
+public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: registrar.messenger())
-    let instance = FlutterDatadogSdk()
+    let instance = SwiftDatadogSdkPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
 
-    FlutterDatadogLogs.register(with: registrar)
-    FlutterDatadogTraces.register(with: registrar)
+    DatadogLogsPlugin.register(with: registrar)
+    DatadogTracesPlugin.register(with: registrar)
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -28,7 +28,7 @@ public class FlutterDatadogSdk: NSObject, FlutterPlugin {
       }
 
       let configArg = arguments["configuration"] as! [String: Any?]
-      let configuration = FlutterDatadogSdk.buildConfiguration(from: configArg)
+      let configuration = SwiftDatadogSdkPlugin.buildConfiguration(from: configArg)
       let trackingConsent = TrackingConsent.parseFromFlutter(configArg["trackingConsent"] as! String)
 
       Datadog.initialize(appContext: Datadog.AppContext(),

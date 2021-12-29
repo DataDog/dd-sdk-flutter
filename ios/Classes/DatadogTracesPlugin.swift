@@ -13,16 +13,17 @@ internal protocol DateFormatterType {
 extension ISO8601DateFormatter: DateFormatterType {}
 extension DateFormatter: DateFormatterType {}
 
-public class FlutterDatadogTraces: NSObject, FlutterPlugin {
+public class DatadogTracesPlugin: NSObject, FlutterPlugin {
   public static func register(with register: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.traces", binaryMessenger: register.messenger())
-    let instance = FlutterDatadogTraces()
+    let instance = DatadogTracesPlugin()
     register.addMethodCallDelegate(instance, channel: channel)
   }
 
   private var nextSpanId: Int64 = 1
   private var spanRegistry: [Int64: OTSpan] = [:]
 
+  // swiftlint:disable:next cyclomatic_complexity function_body_length
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let arguments = call.arguments as? [String: Any] else {
       result(FlutterError(code: "DatadogSDK:InvalidOperation",

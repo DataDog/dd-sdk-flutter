@@ -6,10 +6,10 @@ import Foundation
 import Datadog
 import DatadogSDKBridge
 
-public class FlutterDatadogLogs: NSObject, FlutterPlugin {
+public class DatadogLogsPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.logs", binaryMessenger: registrar.messenger())
-    let instance = FlutterDatadogLogs()
+    let instance = DatadogLogsPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
 
