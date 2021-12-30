@@ -12,10 +12,17 @@ typedef RequestHandler = bool Function(List<RequestLog> requests);
 
 class RequestLog {
   final String requestedUrl;
+  final String requestMethod;
   final Map<String, List<String>> requestHeaders;
-  final Object? requestJson;
+  final String data;
+  Object? get jsonData => json.decode(data);
 
-  RequestLog._(this.requestedUrl, this.requestHeaders, this.requestJson);
+  RequestLog._({
+    required this.requestedUrl,
+    required this.requestMethod,
+    required this.requestHeaders,
+    required this.data,
+  });
 
   static Future<RequestLog> fromRequest(HttpRequest request) async {
     final url = request.requestedUri.path;
@@ -35,8 +42,12 @@ class RequestLog {
       decoded = await utf8.decodeStream(request);
     }
 
-    final decodedJson = json.decode(decoded);
-    return RequestLog._(url, headers, decodedJson);
+    return RequestLog._(
+      requestedUrl: url,
+      requestMethod: request.method,
+      requestHeaders: headers,
+      data: decoded,
+    );
   }
 }
 

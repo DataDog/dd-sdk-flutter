@@ -4,7 +4,7 @@ import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'integration_scenarios/logging_scenario.dart';
+import 'integration_scenarios/integration_scenarios_screen.dart';
 
 typedef SimpleWidgetConstructor = Widget Function();
 
@@ -67,53 +67,10 @@ class DatadogIntegrationTestApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const ScenarioPage(title: 'Datadog Integration Tests'),
-    );
-  }
-}
-
-class ScenarioPage extends StatefulWidget {
-  const ScenarioPage({Key? key, required this.title}) : super(key: key);
-
-  final String title;
-
-  @override
-  State<ScenarioPage> createState() => _ScenarioPageState();
-}
-
-class _ScenarioPageState extends State<ScenarioPage> {
-  final items = <NavItem>[
-    NavItem(label: 'Logging Scenario', navItem: LoggingScenario.new)
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: ListView.builder(
-        itemCount: items.length,
-        itemBuilder: (context, i) {
-          var item = items[i];
-          return ListTile(
-            title: Text(item.label),
-            trailing: const Icon(Icons.arrow_right_sharp),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => item.navItem(),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+        ),
+        home: const IntegrationScenariosScreen());
   }
 }

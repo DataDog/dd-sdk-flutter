@@ -11,6 +11,12 @@
             "type": "dart"
         },
         {
+            "name": "integration test app",
+            "cwd": "integration_test_app",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
             "name": "example (profile mode)",
             "cwd": "example",
             "request": "launch",

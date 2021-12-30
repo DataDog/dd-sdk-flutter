@@ -6,10 +6,10 @@ import Foundation
 import Datadog
 import DatadogSDKBridge
 
-public class SwiftDatadogLogs: NSObject, FlutterPlugin {
+public class DatadogLogsPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.logs", binaryMessenger: registrar.messenger())
-    let instance = SwiftDatadogLogs()
+    let instance = DatadogLogsPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
 
@@ -20,18 +20,11 @@ public class SwiftDatadogLogs: NSObject, FlutterPlugin {
     return builder.build()
   }()
 
-  public func initialize() {
-    let builder = Logger.builder
-      .sendNetworkInfo(true)
-      .printLogsToConsole(true)
-    self.logger = builder.build()
-  }
-
   // swiftlint:disable:next cyclomatic_complexity function_body_length
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let arguments = call.arguments as? [String: Any] else {
       result(FlutterError(code: "DatadogSDK:InvalidOperation",
-                          message: "No arguments in call to DdSdk.initialize.",
+                          message: "No arguments in call to \(call.method).",
                           details: nil))
       return
     }

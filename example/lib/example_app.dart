@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'tracing_screen.dart';
 import 'logging_screen.dart';
 
 typedef SimpleWidgetConstructor = Widget Function();
@@ -21,6 +22,7 @@ class ExampleApp extends StatefulWidget {
 class _ExampleAppState extends State<ExampleApp> {
   final items = <NavItem>[
     NavItem(label: 'Logging', navItem: LoggingScreen.new),
+    NavItem(label: 'Tracing', navItem: TracingScreen.new)
   ];
 
   @override

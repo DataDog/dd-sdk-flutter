@@ -5,12 +5,24 @@
 
 import 'datadog_sdk_platform_interface.dart';
 import 'logs/ddlogs.dart';
+import 'traces/ddtraces.dart';
 import 'version.dart' show ddSdkVersion;
 
 enum BatchSize { small, medium, large }
 enum UploadFrequency { frequent, average, rare }
 enum TrackingConsent { granted, notGranted, pending }
 enum DatadogSite { us1, us3, us5, eu1, us1Fed }
+
+/// Datadog - specific span `tags` to be used with [DdTraces.startSpan]
+/// and [DdSpan.setTag].
+class DdTags {
+  /// A Datadog-specific span tag, which sets the value appearing in the "RESOURCE" column
+  /// in traces explorer on [app.datadoghq.com](https://app.datadoghq.com/)
+  /// Can be used to customize the resource names grouped under the same operation name.
+  ///
+  /// Expects `String` value set for a tag.
+  static const resource = 'resource.name';
+}
 
 class DdSdkConfiguration {
   String clientToken;
@@ -79,6 +91,11 @@ class DatadogSdk {
   DdLogs? _ddLogs;
   DdLogs? get ddLogs => _ddLogs;
 
+  DdTraces? _ddTraces;
+  DdTraces? get ddTraces => _ddTraces;
+
+  String get version => ddSdkVersion;
+
   Future<void> initialize(DdSdkConfiguration configuration) async {
     configuration.additionalConfig[_DatadogConfigKey.source] = 'flutter';
     configuration.additionalConfig[_DatadogConfigKey.version] = ddSdkVersion;
@@ -86,5 +103,6 @@ class DatadogSdk {
     await _platform.initialize(configuration);
 
     _ddLogs = DdLogs();
+    _ddTraces = DdTraces();
   }
 }
