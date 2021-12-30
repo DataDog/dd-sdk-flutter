@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
+import '../tools/decoder_helpers.dart';
+
 class LogDecoder {
   final Map<String, Object?> log;
 
@@ -13,7 +15,7 @@ class LogDecoder {
   String get serviceName => log['service'] as String;
   String get tags => log['ddtags'] as String;
   String get applicationVersion => log['version'] as String;
-  String get loggerName => log['logger.name'] as String;
-  String get loggerVersion => log['logger.version'] as String;
-  String get threadName => log['logger.thread_name'] as String;
+  String get loggerName => getNestedProperty('logger.name', log);
+  String get loggerVersion => getNestedProperty('logger.version', log);
+  String get threadName => getNestedProperty('logger.thread_name', log);
 }

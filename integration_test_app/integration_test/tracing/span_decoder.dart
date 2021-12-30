@@ -4,7 +4,7 @@
 
 import 'dart:io';
 
-import 'package:collection/collection.dart';
+import '../tools/decoder_helpers.dart';
 
 class SpanDecoder {
   final Map<String, Object?> envelope;
@@ -21,13 +21,13 @@ class SpanDecoder {
   int get isError => span['error'] as int;
 
   // Meta properties
-  String get source => getNestedProperty('meta._dd.source');
-  String get tracerVersion => getNestedProperty('meta.tracer.version');
-  String get appVersion => getNestedProperty('meta.version');
-  String get metaClass => getNestedProperty('meta.class');
+  String get source => getNestedProperty('meta._dd.source', span);
+  String get tracerVersion => getNestedProperty('meta.tracer.version', span);
+  String get appVersion => getNestedProperty('meta.version', span);
+  String get metaClass => getNestedProperty('meta.class', span);
 
   // Metrics properties
-  int? get isRootSpan => getNestedProperty('metrics._top_level');
+  int? get isRootSpan => getNestedProperty('metrics._top_level', span);
 
   SpanDecoder({required this.envelope, required this.span});
 
@@ -36,21 +36,5 @@ class SpanDecoder {
       return span['meta.$key'] as T;
     }
     return (span['meta'] as Map<String, dynamic>)[key] as T;
-  }
-
-  T getNestedProperty<T>(String key) {
-    if (Platform.isIOS) {
-      return span[key] as T;
-    }
-
-    var lookupMap = span;
-    var parts = key.split('.');
-    parts.forEachIndexedWhile((index, element) {
-      lookupMap = lookupMap[element] as Map<String, dynamic>;
-      // Continue until we're the second to last index
-      return (index + 1) < (parts.length - 1);
-    });
-
-    return lookupMap[parts.last] as T;
   }
 }

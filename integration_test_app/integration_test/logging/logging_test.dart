@@ -1,8 +1,6 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -64,10 +62,7 @@ void main() {
 
       expect(log.serviceName,
           equalsIgnoringCase('com.datadoghq.flutter.integrationtestapp'));
-
-      if (Platform.isIOS) {
-        expect(log.threadName, 'main');
-      }
+      expect(log.threadName, 'main');
     }
   });
 }
