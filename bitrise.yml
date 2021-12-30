@@ -66,10 +66,26 @@ workflows:
     before_run:
     - _setup
     steps:
-    - avd-manager@1:
+    - script:
+        title: Boot android emulator
         inputs:
-        - api_level: '30'
-    - wait-for-android-emulator@1: {}
+        - content: |-
+            #!/usr/bin/env bash
+
+            # fail if any commands fails
+            set -e
+
+            # debug log
+            set -x
+
+            CMDLINE_TOOLS_HOME=$(find $ANDROID_HOME/cmdline-tools/* -maxdepth 1 -type d -print -quit)
+
+            $CMDLINE_TOOLS_HOME/bin/sdkmanager --update
+            $CMDLINE_TOOLS_HOME/bin/sdkmanager --install "emulator"
+            $CMDLINE_TOOLS_HOME/bin/sdkmanager --install "system-images;android-30;google_apis;x86"
+            echo "no" | $CMDLINE_TOOLS_HOME/bin/avdmanager --verbose create avd --force --name "emulator" --device "pixel" --package "system-images;android-30;google_apis;x86" --tag "google_apis" --abi "x86"
+            $ANDROID_HOME/emulator/emulator @emulator -no-boot-anim -no-window -netdelay none -camera-back none -camera-front none -no-snapshot -wipe-data -verbose -show-kernel -no-audio -gpu swiftshader_indirect -no-snapshot &> /tmp/log.txt & 
+            sleep 90
     - flutter-test@1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/integration_test_app"
