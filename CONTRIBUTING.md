@@ -10,7 +10,7 @@ For any urgent matters (such as outages) or issues concerning the Datadog
 service or UI, contact our support team via https://docs.datadoghq.com/help/ for
 direct, faster assistance.
 
-You may submit a bug report concerning the Datadog SDK for iOS by opening a
+You may submit a bug report concerning the Datadog SDK for Flutter by opening a
 GitHub Issue. Use appropriate template and provide all listed details to help us
 resolve the issue.
 
@@ -40,8 +40,8 @@ Code style is enforced with the following libraries in the following languages:
   linting.
 
 Before submitting a PR, you can run all of these steps, as well as all
-integration tests, by running the `./preflight.sh` script in the root ot the
-repo. Using this script requires you both
+integration tests, by running the `./preflight.sh` script in the root of the
+repo. Using this script requires you have both
 [Swiftlint](https://github.com/realm/SwiftLint) and [Bitrise
 CLI](https://app.bitrise.io/cli) available on your path
 
