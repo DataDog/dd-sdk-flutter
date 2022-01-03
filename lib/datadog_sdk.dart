@@ -3,8 +3,11 @@
 // Copyright 2019-2020 Datadog, Inc.
 // ignore_for_file: unused_element, unused_field
 
+import 'package:datadog_sdk/rum/ddrum.dart';
+
 import 'datadog_sdk_platform_interface.dart';
 import 'logs/ddlogs.dart';
+import 'rum/ddrum.dart';
 import 'traces/ddtraces.dart';
 import 'version.dart' show ddSdkVersion;
 
@@ -94,6 +97,9 @@ class DatadogSdk {
   DdTraces? _ddTraces;
   DdTraces? get ddTraces => _ddTraces;
 
+  DdRum? _ddRum;
+  DdRum? get ddRum => _ddRum;
+
   String get version => ddSdkVersion;
 
   Future<void> initialize(DdSdkConfiguration configuration) async {
@@ -104,5 +110,6 @@ class DatadogSdk {
 
     _ddLogs = DdLogs();
     _ddTraces = DdTraces();
+    _ddRum = DdRum();
   }
 }
