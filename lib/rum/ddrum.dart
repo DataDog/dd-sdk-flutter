@@ -15,8 +15,8 @@ class DdRum {
   /// who's values must be supported by [StandardMessageCodec]
   ///
   /// The [key] passed here must match the [key] passed to [stopView] later
-  Future<void> startView(String key, String? name,
-      [Map<String, dynamic> attributes = const {}]) {
+  Future<void> startView(String key,
+      [String? name, Map<String, dynamic> attributes = const {}]) {
     name ??= key;
     return _platform.startView(key, name, attributes);
   }

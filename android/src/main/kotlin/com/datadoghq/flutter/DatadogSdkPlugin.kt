@@ -5,6 +5,7 @@
  */
 package com.datadoghq.flutter
 
+import android.util.Log
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
@@ -13,11 +14,15 @@ import com.datadog.android.core.configuration.Configuration
 import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.privacy.TrackingConsent
+import com.datadog.android.rum.GlobalRum
+import com.datadog.android.rum.RumMonitor
+import com.datadog.android.tracing.AndroidTracer
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.opentracing.util.GlobalTracer
 
 class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     // The MethodChannel that will the communication between Flutter and native Android
@@ -29,6 +34,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
     private var logsPlugin: DatadogLogsPlugin? = null
     private var tracesPlugin: DatadogTracesPlugin? = null
+    private var rumPlugin: DatadogRumPlugin? = null
 
     override fun onAttachedToEngine(
         @NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
@@ -43,6 +49,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
         tracesPlugin = DatadogTracesPlugin()
         tracesPlugin?.setup(flutterPluginBinding)
+
+        rumPlugin = DatadogRumPlugin()
+        rumPlugin?.setup(flutterPluginBinding)
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
@@ -68,6 +77,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
         tracesPlugin?.teardown(binding)
         tracesPlugin = null
+
+        rumPlugin?.teardown(binding)
+        rumPlugin = null
     }
 
     private fun initialize(encodedConfiguration: Map<String, Any?>) {
@@ -78,6 +90,10 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         )
 
         Datadog.initialize(binding.applicationContext, credentials, configuration, trackingConsent)
+        Datadog.setVerbosity(Log.VERBOSE)
+
+        GlobalTracer.registerIfAbsent(AndroidTracer.Builder().build())
+        GlobalRum.registerIfAbsent(RumMonitor.Builder().build())
     }
 }
 

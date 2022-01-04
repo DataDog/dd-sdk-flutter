@@ -1,6 +1,6 @@
-import 'package:datadog_sdk_example/rum_screen.dart';
 import 'package:flutter/material.dart';
 
+import 'rum_screen.dart';
 import 'tracing_screen.dart';
 import 'logging_screen.dart';
 

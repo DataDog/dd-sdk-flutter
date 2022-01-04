@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'logging_scenario.dart';
+import 'rum_manual_instrumentation_scenario.dart';
 import 'traces_scenario.dart';
 
 class IntegrationScenariosScreen extends StatefulWidget {
@@ -25,6 +26,9 @@ class _IntegrationScenariosScreenState
   final items = <ScenarioItem>[
     ScenarioItem(label: 'Logging Scenario', navItem: LoggingScenario.new),
     ScenarioItem(label: 'Traces Scenario', navItem: TracesScenario.new),
+    ScenarioItem(
+        label: 'Manual RUM Scenario',
+        navItem: RumManualInstrumentationScenario.new),
   ];
 
   @override

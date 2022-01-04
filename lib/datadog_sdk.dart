@@ -3,8 +3,6 @@
 // Copyright 2019-2020 Datadog, Inc.
 // ignore_for_file: unused_element, unused_field
 
-import 'package:datadog_sdk/rum/ddrum.dart';
-
 import 'datadog_sdk_platform_interface.dart';
 import 'logs/ddlogs.dart';
 import 'rum/ddrum.dart';
