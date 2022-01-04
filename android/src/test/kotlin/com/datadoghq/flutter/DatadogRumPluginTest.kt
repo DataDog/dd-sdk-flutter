@@ -1,13 +1,17 @@
 package com.datadoghq.flutter
 
 import com.datadog.android.rum.RumMonitor
+import fr.xgouchet.elmyr.annotation.StringForgery
+import fr.xgouchet.elmyr.junit5.ForgeExtension
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 
+@ExtendWith(ForgeExtension::class)
 class DatadogRumPluginTest {
     private lateinit var plugin: DatadogRumPlugin
     private lateinit var mockRumMonitor: RumMonitor
@@ -19,14 +23,19 @@ class DatadogRumPluginTest {
     }
 
     @Test
-    fun `M call monitor startView W startView is called`() {
+    fun `M call monitor startView W startView is called`(
+        @StringForgery viewKey: String,
+        @StringForgery viewName: String,
+        @StringForgery viewAttribute: String,
+        @StringForgery attributeValue: String,
+    ) {
         // GIVEN
         val attributes = mapOf<String, Any?>(
-            "my_attribute" to "attribute_value"
+            viewAttribute to attributeValue
         )
         val call = MethodCall("startView", mapOf<String, Any?>(
-            "key" to "view_key",
-            "name" to "view_name",
+            "key" to viewKey,
+            "name" to viewName,
             "attributes" to attributes
         ))
         val mockResult = mock<MethodChannel.Result>()
@@ -35,18 +44,22 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify(mockRumMonitor).startView("view_key", "view_name", attributes)
+        verify(mockRumMonitor).startView(viewKey, viewName, attributes)
         verify(mockResult).success(null)
     }
 
     @Test
-    fun `M call monitor stopView W stopView is called`() {
+    fun `M call monitor stopView W stopView is called`(
+        @StringForgery viewKey: String,
+        @StringForgery viewAttribute: String,
+        @StringForgery attributeValue: String,
+    ) {
         // GIVEN
         val attributes = mapOf<String, Any?>(
-            "my_attribute" to "attribute_value"
+            viewAttribute to attributeValue
         )
         val call = MethodCall("stopView", mapOf<String, Any?>(
-            "key" to "view_key",
+            "key" to viewKey,
             "attributes" to attributes
         ))
         val mockResult = mock<MethodChannel.Result>()
@@ -55,15 +68,17 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify(mockRumMonitor).stopView("view_key", attributes)
+        verify(mockRumMonitor).stopView(viewKey, attributes)
         verify(mockResult).success(null)
     }
 
     @Test
-    fun `M call monitor addTiming W addTiming is called`() {
+    fun `M call monitor addTiming W addTiming is called`(
+        @StringForgery timingName: String,
+    ) {
         // GIVEN
         val call = MethodCall("addTiming", mapOf<String, Any?>(
-            "name" to "timing_name"
+            "name" to timingName
         ))
         val mockResult = mock<MethodChannel.Result>()
 
@@ -71,7 +86,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify(mockRumMonitor).addTiming("timing_name")
+        verify(mockRumMonitor).addTiming(timingName)
         verify(mockResult).success(null)
     }
 }
