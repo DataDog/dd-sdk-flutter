@@ -33,8 +33,8 @@ void main() {
     await tester.tap(nextButton);
     await tester.pumpAndSettle();
 
-    // wait for this fiew to throw an error
-    await Future.delayed(Duration(milliseconds: 100));
+    // wait for this view to throw an error
+    await Future.delayed(const Duration(milliseconds: 100));
     nextButton = find.widgetWithText(ElevatedButton, 'Next Screen');
     await tester.tap(nextButton);
     await tester.pumpAndSettle();

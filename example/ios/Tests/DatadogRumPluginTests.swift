@@ -8,47 +8,45 @@ import XCTest
 @testable import Datadog
 import datadog_sdk
 
+func ==(lhs: [AttributeKey: AttributeValue], rhs: [AttributeKey: AttributeValue]) -> Bool {
+  return NSDictionary(dictionary: lhs).isEqual(rhs)
+}
+
 class MockRUMMonitor: DDRUMMonitor {
-  enum MethodCallType {
-    case startView
-    case stopView
-    case addTiming
-  }
+  enum MethodCall: Equatable {
+    case startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue])
+    case stopView(key: String, attributes: [AttributeKey: AttributeValue])
+    case addTiming(name: String)
 
-  struct MethodCall {
-    let callType: MethodCallType
-    let arguments: [String: Any?]
-
-    init(callType: MethodCallType, arguments: [String: Any?]) {
-      self.callType = callType
-      self.arguments = arguments
+    static func == (lhs: MockRUMMonitor.MethodCall, rhs: MockRUMMonitor.MethodCall) -> Bool {
+      switch(lhs, rhs) {
+      case(.startView(let lhsKey, let lhsName, let lhsAttributes), .startView(let rhsKey, let rhsName, let rhsAttributes)):
+        return lhsKey == rhsKey
+          && lhsName == rhsName
+          && lhsAttributes == rhsAttributes
+      case(.stopView(let lhsKey, let lhsAttributes), .stopView(let rhsKey, let rhsAttributes)):
+        return lhsKey == rhsKey
+          && lhsAttributes == rhsAttributes
+      case(.addTiming(let lhsName), .addTiming(let rhsName)):
+        return lhsName == rhsName
+      default:
+        return false;
+      }
     }
   }
 
   var callLog: [MethodCall] = []
 
   override func startView(key: String, name: String? = nil, attributes: [AttributeKey: AttributeValue] = [:]) {
-    let call = MethodCall(callType: .startView, arguments: [
-      "key": key,
-      "name": name,
-      "attributes": attributes
-    ])
-    callLog.append(call)
+    callLog.append(.startView(key: key, name: name, attributes: attributes))
   }
 
   override func stopView(key: String, attributes: [AttributeKey: AttributeValue] = [:]) {
-    let call = MethodCall(callType: .stopView, arguments: [
-      "key": key,
-      "attributes": attributes
-    ])
-    callLog.append(call)
+    callLog.append(.stopView(key: key, attributes: attributes))
   }
 
   override func addTiming(name: String) {
-    let call = MethodCall(callType: .addTiming, arguments: [
-      "name": name
-    ])
-    callLog.append(call)
+    callLog.append(.addTiming(name: name))
   }
 }
 
@@ -72,11 +70,9 @@ class DatadogRumPluginTests: XCTestCase {
 
     XCTAssertEqual(mock.callLog.count, 1)
     if mock.callLog.count == 1 {
-      XCTAssertEqual(mock.callLog[0].callType, .startView)
-      XCTAssertEqual(mock.callLog[0].arguments["key"] as! String, "view_key")
-      XCTAssertEqual(mock.callLog[0].arguments["name"] as! String, "view_name")
-      let callAttributes = mock.callLog[0].arguments["attributes"] as! [AttributeKey: AttributeValue]
-      XCTAssertEqual(callAttributes["my_attribute"] as! String, "my_value")
+      XCTAssertEqual(mock.callLog[0], .startView(key: "view_key",
+                                                 name: "view_name",
+                                                 attributes: ["my_attribute": "my_value"]))
     }
 
     XCTAssertTrue(resultCalled)
@@ -101,10 +97,7 @@ class DatadogRumPluginTests: XCTestCase {
 
     XCTAssertEqual(mock.callLog.count, 1)
     if mock.callLog.count == 1 {
-      XCTAssertEqual(mock.callLog[0].callType, .stopView)
-      XCTAssertEqual(mock.callLog[0].arguments["key"] as! String, "view_key")
-      let callAttributes = mock.callLog[0].arguments["attributes"] as! [AttributeKey: AttributeValue]
-      XCTAssertEqual(callAttributes["my_attribute"] as! String, "my_value")
+      XCTAssertEqual(mock.callLog[0], .stopView(key: "view_key", attributes: ["my_attribute": "my_value"]))
     }
 
     XCTAssertTrue(resultCalled)
@@ -128,8 +121,7 @@ class DatadogRumPluginTests: XCTestCase {
 
     XCTAssertEqual(mock.callLog.count, 1)
     if mock.callLog.count == 1 {
-      XCTAssertEqual(mock.callLog[0].callType, .addTiming)
-      XCTAssertEqual(mock.callLog[0].arguments["name"] as! String, "timing name")
+      XCTAssertEqual(mock.callLog[0], .addTiming(name: "timing name"))
     }
 
     XCTAssertTrue(resultCalled)

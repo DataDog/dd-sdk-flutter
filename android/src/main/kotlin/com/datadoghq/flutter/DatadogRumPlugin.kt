@@ -30,7 +30,7 @@ class DatadogRumPlugin(
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        when(call.method) {
+        when (call.method) {
             "startView" -> {
                 val key = call.argument<String>(PARAM_KEY)
                 val name = call.argument<String>(PARAM_NAME)
@@ -53,7 +53,6 @@ class DatadogRumPlugin(
                     rum.addTiming(it)
                 }
                 result.success(null)
-
             }
             else -> {
                 result.notImplemented()

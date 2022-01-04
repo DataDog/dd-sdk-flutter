@@ -1,6 +1,5 @@
 package com.datadoghq.flutter
 
-import com.datadog.android.tracing.AndroidTracer
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
