@@ -1,12 +1,12 @@
 package com.datadoghq.flutter
 
+import com.datadog.android.tracing.AndroidTracer
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.opentracing.Span
 import io.opentracing.Tracer
 import io.opentracing.log.Fields
-import io.opentracing.util.GlobalTracer
 import java.util.concurrent.TimeUnit
 
 internal class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
@@ -31,7 +31,7 @@ internal class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
     private val spanRegistry = mutableMapOf<Long, Span>()
 
     private val tracer: Tracer by lazy {
-        GlobalTracer.get()
+        AndroidTracer.Builder().build()
     }
 
     fun setup(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {

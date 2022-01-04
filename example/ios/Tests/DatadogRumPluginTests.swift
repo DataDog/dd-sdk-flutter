@@ -30,7 +30,7 @@ class MockRUMMonitor: DDRUMMonitor {
       case(.addTiming(let lhsName), .addTiming(let rhsName)):
         return lhsName == rhsName
       default:
-        return false;
+        return false
       }
     }
   }

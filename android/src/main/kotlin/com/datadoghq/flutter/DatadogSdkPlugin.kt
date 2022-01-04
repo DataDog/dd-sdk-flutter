@@ -16,13 +16,11 @@ import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.privacy.TrackingConsent
 import com.datadog.android.rum.GlobalRum
 import com.datadog.android.rum.RumMonitor
-import com.datadog.android.tracing.AndroidTracer
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import io.opentracing.util.GlobalTracer
 
 class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     // The MethodChannel that will the communication between Flutter and native Android
@@ -92,7 +90,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         Datadog.initialize(binding.applicationContext, credentials, configuration, trackingConsent)
         Datadog.setVerbosity(Log.VERBOSE)
 
-        GlobalTracer.registerIfAbsent(AndroidTracer.Builder().build())
+        // GlobalTracer.registerIfAbsent(AndroidTracer.Builder().build())
         GlobalRum.registerIfAbsent(RumMonitor.Builder().build())
     }
 }
