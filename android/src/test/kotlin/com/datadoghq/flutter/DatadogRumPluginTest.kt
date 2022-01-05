@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
 
 @ExtendWith(ForgeExtension::class)
 class DatadogRumPluginTest {
@@ -23,6 +24,24 @@ class DatadogRumPluginTest {
     }
 
     @Test
+    fun `M call notImplemented W unknown method is called`(
+        @StringForgery methodName: String,
+        @StringForgery argName: String,
+        @StringForgery argValue: String
+    ) {
+        // GIVEN
+        val call = MethodCall(methodName, mapOf(argName to argValue))
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(call, mockResult)
+
+        // THEN
+        verifyNoInteractions(mockRumMonitor)
+        verify(mockResult).notImplemented()
+    }
+
+    @Test
     fun `M call monitor startView W startView is called`(
         @StringForgery viewKey: String,
         @StringForgery viewName: String,
@@ -33,7 +52,7 @@ class DatadogRumPluginTest {
         val attributes = mapOf<String, Any?>(
             viewAttribute to attributeValue
         )
-        val call = MethodCall("startView", mapOf<String, Any?>(
+        val call = MethodCall("startView", mapOf(
             "key" to viewKey,
             "name" to viewName,
             "attributes" to attributes
@@ -58,7 +77,7 @@ class DatadogRumPluginTest {
         val attributes = mapOf<String, Any?>(
             viewAttribute to attributeValue
         )
-        val call = MethodCall("stopView", mapOf<String, Any?>(
+        val call = MethodCall("stopView", mapOf(
             "key" to viewKey,
             "attributes" to attributes
         ))
@@ -77,7 +96,7 @@ class DatadogRumPluginTest {
         @StringForgery timingName: String,
     ) {
         // GIVEN
-        val call = MethodCall("addTiming", mapOf<String, Any?>(
+        val call = MethodCall("addTiming", mapOf(
             "name" to timingName
         ))
         val mockResult = mock<MethodChannel.Result>()

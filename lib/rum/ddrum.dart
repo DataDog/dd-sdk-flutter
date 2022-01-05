@@ -11,10 +11,10 @@ class DdRum {
 
   /// Notifies that the View identified by [key] starts being presented to the
   /// user. This view will show as [name] in the RUM explorer, and defaultes to
-  /// [key] if it is not provided. you can also attach custom [attributes],
-  /// who's values must be supported by [StandardMessageCodec]
+  /// [key] if it is not provided. You can also attach custom [attributes],
+  /// who's values must be supported by [StandardMessageCodec].
   ///
-  /// The [key] passed here must match the [key] passed to [stopView] later
+  /// The [key] passed here must match the [key] passed to [stopView] later.
   Future<void> startView(String key,
       [String? name, Map<String, dynamic> attributes = const {}]) {
     name ??= key;
@@ -23,9 +23,9 @@ class DdRum {
 
   /// Notifies that the View identified by [key] stops being presented to the
   /// user. You can also attach custom [attributes], who's values must be
-  /// supported by [StandardMessageCodec]
+  /// supported by [StandardMessageCodec].
   ///
-  /// The [key] passed here must match the [key] passed to [startView]
+  /// The [key] passed here must match the [key] passed to [startView].
   Future<void> stopView(String key,
       [Map<String, dynamic> attributes = const {}]) {
     return _platform.stopView(key, attributes);

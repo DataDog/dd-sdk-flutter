@@ -8,31 +8,11 @@ import XCTest
 @testable import Datadog
 import datadog_sdk
 
-func ==(lhs: [AttributeKey: AttributeValue], rhs: [AttributeKey: AttributeValue]) -> Bool {
-  return NSDictionary(dictionary: lhs).isEqual(rhs)
-}
-
 class MockRUMMonitor: DDRUMMonitor {
-  enum MethodCall: Equatable {
+  enum MethodCall: EquatableInTests {
     case startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue])
     case stopView(key: String, attributes: [AttributeKey: AttributeValue])
     case addTiming(name: String)
-
-    static func == (lhs: MockRUMMonitor.MethodCall, rhs: MockRUMMonitor.MethodCall) -> Bool {
-      switch(lhs, rhs) {
-      case(.startView(let lhsKey, let lhsName, let lhsAttributes), .startView(let rhsKey, let rhsName, let rhsAttributes)):
-        return lhsKey == rhsKey
-          && lhsName == rhsName
-          && lhsAttributes == rhsAttributes
-      case(.stopView(let lhsKey, let lhsAttributes), .stopView(let rhsKey, let rhsAttributes)):
-        return lhsKey == rhsKey
-          && lhsAttributes == rhsAttributes
-      case(.addTiming(let lhsName), .addTiming(let rhsName)):
-        return lhsName == rhsName
-      default:
-        return false
-      }
-    }
   }
 
   var callLog: [MethodCall] = []
@@ -104,7 +84,7 @@ class DatadogRumPluginTests: XCTestCase {
     XCTAssertNil(resultValue)
   }
 
-  func testAddTimeingCall_CallsRumMonitor() {
+  func testAddTimingCall_CallsRumMonitor() {
     let mock = MockRUMMonitor()
     let plugin = DatadogRumPlugin(rumInstance: mock)
 
