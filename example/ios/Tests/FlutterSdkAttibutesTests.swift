@@ -1,10 +1,8 @@
-//
-//  FlutterSdkAttibutesTests.swift
-//  flutter_sdk_tests
-//
-//  Created by Jeff Ward on 12/20/21.
-//
+// Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2019-2022 Datadog, Inc.
 
+import Foundation
 import XCTest
 import Datadog
 
@@ -21,10 +19,10 @@ class FlutterSdkAttributesTests: XCTestCase {
     ]
     let encoded = castFlutterAttributesToSwift(flutterTypes)
 
-    XCTAssertEqual(encoded["intValue"]?.value as? Int64, 8)
-    XCTAssertEqual(encoded["doubleValue"]?.value as? Double, 3.1415)
-    XCTAssertEqual(encoded["booleanValue"]?.value as? Bool, false)
-    XCTAssertEqual(encoded["stringValue"]?.value as? String, "String value")
+    XCTAssertEqual(encoded["intValue"] as? Int64, 8)
+    XCTAssertEqual(encoded["doubleValue"] as? Double, 3.1415)
+    XCTAssertEqual(encoded["booleanValue"] as? Bool, false)
+    XCTAssertEqual(encoded["stringValue"] as? String, "String value")
   }
 
   func testAttributes_NestedTypes_AreEncodedProperly() {
@@ -38,12 +36,12 @@ class FlutterSdkAttributesTests: XCTestCase {
     let encoded = castFlutterAttributesToSwift(flutterTypes)
 
     // One level deep, values aren't encoded
-    let array = encoded["arrayType"]?.value as? [Any]
+    let array = (encoded["arrayType"] as? DdFlutterEncodable)?.value as? [Any]
     XCTAssertNotNil(array)
     XCTAssertEqual(array?[0] as? String, "My String Value")
     XCTAssertEqual(array?[1] as? Int64, 32)
 
-    let object = encoded["objectType"]?.value as? [String: Any]
+    let object = (encoded["objectType"] as? DdFlutterEncodable)?.value as? [String: Any?]
     XCTAssertNotNil(object)
     XCTAssertEqual(object?["doubleValue"] as? Double, 3.1415)
     XCTAssertEqual(object?["booleanValue"] as? Bool, true)

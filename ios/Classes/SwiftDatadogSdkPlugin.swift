@@ -1,6 +1,6 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2019-2020 Datadog, Inc.
+// Copyright 2019-2022 Datadog, Inc.
 
 import Flutter
 import UIKit
@@ -15,6 +15,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
 
     DatadogLogsPlugin.register(with: registrar)
     DatadogTracesPlugin.register(with: registrar)
+    DatadogRumPlugin.register(with: registrar)
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {

@@ -5,6 +5,7 @@
 
 import 'datadog_sdk_platform_interface.dart';
 import 'logs/ddlogs.dart';
+import 'rum/ddrum.dart';
 import 'traces/ddtraces.dart';
 import 'version.dart' show ddSdkVersion;
 
@@ -94,6 +95,9 @@ class DatadogSdk {
   DdTraces? _ddTraces;
   DdTraces? get ddTraces => _ddTraces;
 
+  DdRum? _ddRum;
+  DdRum? get ddRum => _ddRum;
+
   String get version => ddSdkVersion;
 
   Future<void> initialize(DdSdkConfiguration configuration) async {
@@ -104,5 +108,6 @@ class DatadogSdk {
 
     _ddLogs = DdLogs();
     _ddTraces = DdTraces();
+    _ddRum = DdRum();
   }
 }
