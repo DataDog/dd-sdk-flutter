@@ -51,7 +51,7 @@ void main() {
             rumLog.add(RumEventDecoder(jsonValue));
           }
         });
-        return RumSessionDecoder.fromEvents(rumLog).visits.length == 2;
+        return RumSessionDecoder.fromEvents(rumLog).visits.length == 3;
       },
     );
 
@@ -62,6 +62,8 @@ void main() {
     expect(view1.name, 'RumManualInstrumentationScenario');
     expect(view1.path, 'RumManualInstrumentationScenario');
     expect(view1.viewEvents.last.view.actionCount, 1);
+    expect(view1.viewEvents.last.view.resourceCount, 1);
+    expect(view1.viewEvents.last.view.errorCount, 1);
     expect(view1.actionEvents[0].actionType, 'application_start');
 
     final contentReadyTiming =
@@ -74,12 +76,29 @@ void main() {
     expect(firstInteractionTiming, isNotNull);
     expect(firstInteractionTiming, greaterThanOrEqualTo(contentReadyTiming!));
     expect(firstInteractionTiming, lessThan(5000000000));
+
+    expect(view1.resourceEvents[0].url, 'https://fake_url/resource/1');
+    expect(view1.resourceEvents[0].statusCode, 200);
+    expect(view1.resourceEvents[0].resourceType, 'image');
+    expect(
+        view1.resourceEvents[0].duration, greaterThan(100000000 - 1)); // 0.1s
+    expect(
+        view1.resourceEvents[0].duration, lessThan(100000000000 * 30)); // 30s
+
+    expect(view1.errorEvents.length, 1);
+    expect(view1.errorEvents[0].resourceUrl, 'https://fake_url/resource/2');
+    expect(view1.errorEvents[0].message, 'Status code 400');
+    expect(view1.errorEvents[0].source, 'network');
     expect(view1, becameInactive);
 
     final view2 = session.visits[1];
     expect(view2.name, 'SecondManualRumView');
     expect(view2.path, 'RumManualInstrumentation2');
     expect(view2.viewEvents.last.view.actionCount, 0);
+    expect(view2.viewEvents.last.view.resourceCount, 0);
+    expect(view2.viewEvents.last.view.errorCount, 1);
+    expect(view2.errorEvents[0].message, 'Simulated view error');
+    expect(view2.errorEvents[0].source, 'source');
     expect(view2, becameInactive);
 
     final view3 = session.visits[2];

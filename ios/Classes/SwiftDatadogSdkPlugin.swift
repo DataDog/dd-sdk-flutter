@@ -5,7 +5,6 @@
 import Flutter
 import UIKit
 import Datadog
-import DatadogSDKBridge
 
 public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
