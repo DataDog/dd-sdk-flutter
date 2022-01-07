@@ -8,7 +8,7 @@ import 'package:meta/meta.dart';
 import 'ddrum.dart';
 import 'ddrum_platform_interface.dart';
 
-// TODO: RUMM-1849 Determine error loging approach for this file (search for RUMM-1849)
+// TODO: RUMM-1849 Determine error logging approach for this file (search for RUMM-1849)
 class DdRumMethodChannel extends DdRumPlatform {
   @visibleForTesting
   final MethodChannel methodChannel =
@@ -31,7 +31,7 @@ class DdRumMethodChannel extends DdRumPlatform {
         {'key': key, 'name': name, 'attributes': attributes},
       );
     } on ArgumentError {
-      // RUMM-1849 Determine error loging approach
+      // RUMM-1849 Determine error logging approach
     }
   }
 
@@ -43,7 +43,7 @@ class DdRumMethodChannel extends DdRumPlatform {
         {'key': key, 'attributes': attributes},
       );
     } on ArgumentError {
-      // RUMM-1849 Determine error loging approach
+      // RUMM-1849 Determine error logging approach
     }
   }
 
@@ -62,7 +62,7 @@ class DdRumMethodChannel extends DdRumPlatform {
         'attributes': attributes
       });
     } on ArgumentError {
-      // RUMM-1849 Determine error loging approach
+      // RUMM-1849 Determine error logging approach
     }
   }
 
@@ -79,7 +79,7 @@ class DdRumMethodChannel extends DdRumPlatform {
         'attributes': attributes
       });
     } on ArgumentError {
-      // RUMM-1849 Determine error loging approach
+      // RUMM-1849 Determine error logging approach
     }
   }
 
@@ -96,7 +96,7 @@ class DdRumMethodChannel extends DdRumPlatform {
       await methodChannel.invokeMethod('stopResourceLoadingWithError',
           {'key': key, 'message': message, 'attributes': attributes});
     } on ArgumentError {
-      // RUMM-1849 Determine error loging approach
+      // RUMM-1849 Determine error logging approach
     }
   }
 
@@ -118,7 +118,7 @@ class DdRumMethodChannel extends DdRumPlatform {
         'attributes': attributes
       });
     } on ArgumentError {
-      // RUMM-1849 Determine error loging approach
+      // RUMM-1849 Determine error logging approach
     }
   }
 
@@ -132,7 +132,7 @@ class DdRumMethodChannel extends DdRumPlatform {
         'attributes': attributes,
       });
     } on ArgumentError {
-      // RUMM-1849 Determine error loging approach
+      // RUMM-1849 Determine error logging approach
     }
   }
 }

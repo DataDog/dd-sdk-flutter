@@ -137,9 +137,9 @@ extension Waiter on WidgetTester {
     Duration timeout,
     bool Function(Element e) predicate,
   ) async {
-    var endtime = DateTime.now().add(timeout);
+    var endTime = DateTime.now().add(timeout);
     bool wasFound = false;
-    while (DateTime.now().isBefore(endtime) && !wasFound) {
+    while (DateTime.now().isBefore(endTime) && !wasFound) {
       final element = finder.evaluate().firstOrNull;
       if (element != null) {
         wasFound = predicate(element);

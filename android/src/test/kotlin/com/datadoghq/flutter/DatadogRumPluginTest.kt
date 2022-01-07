@@ -14,7 +14,12 @@ import io.flutter.plugin.common.MethodChannel
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.kotlin.*
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.isNull
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
 
 @ExtendWith(ForgeExtension::class)
 class DatadogRumPluginTest {
@@ -29,13 +34,13 @@ class DatadogRumPluginTest {
 
     @Test
     fun `M convert all http methods W parseRumHttpMethod`() {
-        var get = parseRumHttpMethod("RumHttpMethod.get")
-        var post = parseRumHttpMethod("RumHttpMethod.post")
-        var head = parseRumHttpMethod("RumHttpMethod.head")
-        var put = parseRumHttpMethod("RumHttpMethod.put")
-        var delete = parseRumHttpMethod("RumHttpMethod.delete")
-        var patch = parseRumHttpMethod("RumHttpMethod.patch")
-        var unknown = parseRumHttpMethod("unknown")
+        val get = parseRumHttpMethod("RumHttpMethod.get")
+        val post = parseRumHttpMethod("RumHttpMethod.post")
+        val head = parseRumHttpMethod("RumHttpMethod.head")
+        val put = parseRumHttpMethod("RumHttpMethod.put")
+        val delete = parseRumHttpMethod("RumHttpMethod.delete")
+        val patch = parseRumHttpMethod("RumHttpMethod.patch")
+        val unknown = parseRumHttpMethod("unknown")
 
         assertThat(get).isEqualTo("GET")
         assertThat(post).isEqualTo("POST")
@@ -48,18 +53,18 @@ class DatadogRumPluginTest {
 
     @Test
     fun `M convert all resource kinds W parseRumResourceKind`() {
-        var document = parseRumResourceKind("RumResourceType.document")
-        var image = parseRumResourceKind("RumResourceType.image")
-        var xhr = parseRumResourceKind("RumResourceType.xhr")
-        var beacon = parseRumResourceKind("RumResourceType.beacon")
-        var css = parseRumResourceKind("RumResourceType.css")
-        var fetch = parseRumResourceKind("RumResourceType.fetch")
-        var font = parseRumResourceKind("RumResourceType.font")
-        var js = parseRumResourceKind("RumResourceType.js")
-        var media = parseRumResourceKind("RumResourceType.media")
-        var other = parseRumResourceKind("RumResourceType.other")
-        var native = parseRumResourceKind("RumResourceType.native")
-        var unknown = parseRumResourceKind("uknowntype")
+        val document = parseRumResourceKind("RumResourceType.document")
+        val image = parseRumResourceKind("RumResourceType.image")
+        val xhr = parseRumResourceKind("RumResourceType.xhr")
+        val beacon = parseRumResourceKind("RumResourceType.beacon")
+        val css = parseRumResourceKind("RumResourceType.css")
+        val fetch = parseRumResourceKind("RumResourceType.fetch")
+        val font = parseRumResourceKind("RumResourceType.font")
+        val js = parseRumResourceKind("RumResourceType.js")
+        val media = parseRumResourceKind("RumResourceType.media")
+        val other = parseRumResourceKind("RumResourceType.other")
+        val native = parseRumResourceKind("RumResourceType.native")
+        val unknown = parseRumResourceKind("uknowntype")
 
         assertThat(document).isEqualTo(RumResourceKind.DOCUMENT)
         assertThat(image).isEqualTo(RumResourceKind.IMAGE)
@@ -77,12 +82,12 @@ class DatadogRumPluginTest {
 
     @Test
     fun `M convert all error sources W parseRumErrorSource`() {
-        var source = parseRumErrorSource("RumErrorSource.source")
-        var network = parseRumErrorSource("RumErrorSource.network")
-        var webview = parseRumErrorSource("RumErrorSource.webview")
-        var console = parseRumErrorSource("RumErrorSource.console")
-        var custom = parseRumErrorSource("RumErrorSource.custom")
-        var unknown = parseRumErrorSource("unknown")
+        val source = parseRumErrorSource("RumErrorSource.source")
+        val network = parseRumErrorSource("RumErrorSource.network")
+        val webview = parseRumErrorSource("RumErrorSource.webview")
+        val console = parseRumErrorSource("RumErrorSource.console")
+        val custom = parseRumErrorSource("RumErrorSource.custom")
+        val unknown = parseRumErrorSource("unknown")
 
         assertThat(source).isEqualTo(RumErrorSource.SOURCE)
         assertThat(network).isEqualTo(RumErrorSource.NETWORK)

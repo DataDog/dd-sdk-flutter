@@ -28,7 +28,7 @@ enum RumErrorSource {
   custom,
 }
 
-/// Descripbe the type of resource loaded
+/// Describe the type of resource loaded.
 enum RumResourceType {
   document,
   image,
@@ -49,7 +49,7 @@ class DdRum {
   }
 
   /// Notifies that the View identified by [key] starts being presented to the
-  /// user. This view will show as [name] in the RUM explorer, and defaultes to
+  /// user. This view will show as [name] in the RUM explorer, and defaults to
   /// [key] if it is not provided. You can also attach custom [attributes],
   /// who's values must be supported by [StandardMessageCodec].
   ///
@@ -89,7 +89,7 @@ class DdRum {
 
   /// Notifies that the a Resource identified by [key] started being loaded from
   /// given [url] using the specified [httpMethod]. The supplied custom
-  /// [attributes] will be atteched to this Resource.
+  /// [attributes] will be attached to this Resource.
   ///
   /// Note that [key] must be unique among all Resources being currently loaded,
   /// and should be sent to [stopResourceLoading] or
@@ -101,8 +101,8 @@ class DdRum {
     return _platform.startResourceLoading(key, httpMethod, url, attributes);
   }
 
-  /// Notifies that the Resource identified by [key] stoped being loaded
-  /// succesfully and supplies additional information about the Resoure loaded,
+  /// Notifies that the Resource identified by [key] stopped being loaded
+  /// successfully and supplies additional information about the Resource loaded,
   /// including its [kind], the [statusCode] of the response, the [size] of the
   /// Resource, and any other custom [attributes] to attach to the resource.
   Future<void> stopResourceLoading(
@@ -112,27 +112,27 @@ class DdRum {
         key, statusCode, kind, size, attributes);
   }
 
-  /// Notifies that the Resource identified by [key] stoped being loaded with an
+  /// Notifies that the Resource identified by [key] stopped being loaded with an
   /// Exception specified by [error]. You can optionally supply custom
-  /// [attributes] to attach to this Resource
+  /// [attributes] to attach to this Resource.
   Future<void> stopResourceLoadingWithError(String key, Exception error,
       [Map<String, dynamic> attributes = const {}]) {
     return _platform.stopResourceLoadingWithError(key, error, attributes);
   }
 
-  /// Notifies that the Resource identified by [key] stoped being loaded with
-  /// the supplied [message] You can optionally supply custom [attributes] to
-  /// attach to this Resource
+  /// Notifies that the Resource identified by [key] stopped being loaded with
+  /// the supplied [message]. You can optionally supply custom [attributes] to
+  /// attach to this Resource.
   Future<void> stopResourceLoadingWithErrorInfo(String key, String message,
       [Map<String, dynamic> attributes = const {}]) {
     return _platform.stopResourceLoadingWithErrorInfo(key, message, attributes);
   }
 
-  /// Register the occurence of a User Action.
+  /// Register the occurrence of a User Action.
   ///
   /// This is used to a track discrete User Actions (e.g. "tap") specified by
   /// [type]. The [name] and [attributes] supplied will be associated with this
-  /// user action
+  /// user action.
   Future<void> addUserAction(RumUserActionType type, String? name,
       [Map<String, dynamic> attributes = const {}]) {
     return _platform.addUserAction(type, name, attributes);

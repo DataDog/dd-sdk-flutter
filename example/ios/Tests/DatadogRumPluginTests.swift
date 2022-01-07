@@ -163,12 +163,9 @@ class DatadogRumPluginTests: XCTestCase {
       resultStatus = .called(value: result)
     }
 
-    XCTAssertEqual(mock.callLog.count, 1)
-    if mock.callLog.count == 1 {
-      XCTAssertEqual(mock.callLog[0], .startView(key: "view_key",
-                                                 name: "view_name",
-                                                 attributes: ["my_attribute": "my_value"]))
-    }
+    XCTAssertEqual(mock.callLog, [
+      .startView(key: "view_key", name: "view_name", attributes: ["my_attribute": "my_value"])
+    ])
     XCTAssertEqual(resultStatus, .called(value: nil))
   }
 
@@ -186,10 +183,7 @@ class DatadogRumPluginTests: XCTestCase {
       resultStatus = .called(value: result)
     }
 
-    XCTAssertEqual(mock.callLog.count, 1)
-    if mock.callLog.count == 1 {
-      XCTAssertEqual(mock.callLog[0], .stopView(key: "view_key", attributes: ["my_attribute": "my_value"]))
-    }
+    XCTAssertEqual(mock.callLog, [.stopView(key: "view_key", attributes: ["my_attribute": "my_value"])])
     XCTAssertEqual(resultStatus, .called(value: nil))
   }
 
@@ -206,10 +200,7 @@ class DatadogRumPluginTests: XCTestCase {
       resultStatus = .called(value: result)
     }
 
-    XCTAssertEqual(mock.callLog.count, 1)
-    if mock.callLog.count == 1 {
-      XCTAssertEqual(mock.callLog[0], .addTiming(name: "timing name"))
-    }
+    XCTAssertEqual(mock.callLog, [ .addTiming(name: "timing name") ])
     XCTAssertEqual(resultStatus, .called(value: nil))
   }
 
@@ -231,13 +222,12 @@ class DatadogRumPluginTests: XCTestCase {
       resultStatus = .called(value: result)
     }
 
-    XCTAssertEqual(mock.callLog.count, 1)
-    if mock.callLog.count == 1 {
-      XCTAssertEqual(mock.callLog[0], .startResourceLoading(key: "resource_key",
-                                                            httpMethod: .get,
-                                                            urlString: "https://fakeresource.com/url",
-                                                            attributes: ["attribute_key": "attribute_value"]))
-    }
+    XCTAssertEqual(mock.callLog, [
+      .startResourceLoading(key: "resource_key",
+                            httpMethod: .get,
+                            urlString: "https://fakeresource.com/url",
+                            attributes: ["attribute_key": "attribute_value"])
+    ])
     XCTAssertEqual(resultStatus, .called(value: nil))
   }
 

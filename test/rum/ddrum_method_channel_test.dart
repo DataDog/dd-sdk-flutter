@@ -153,12 +153,12 @@ void main() {
   });
 
   test('addErrorInfo calls to platform with info', () async {
-    await ddRumPlatform.addErrorInfo('Excpetion message', RumErrorSource.source,
+    await ddRumPlatform.addErrorInfo('Exception message', RumErrorSource.source,
         null, {'attribute_key': 'attribute_value'});
 
     expect(log, [
       isMethodCall('addError', arguments: {
-        'message': 'Excpetion message',
+        'message': 'Exception message',
         'source': 'RumErrorSource.source',
         'stackTrace': null,
         'attributes': {'attribute_key': 'attribute_value'}
