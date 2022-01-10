@@ -113,6 +113,7 @@ internal class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         }
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun teardown(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
     }

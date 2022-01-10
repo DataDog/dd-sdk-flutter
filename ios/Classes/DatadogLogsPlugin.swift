@@ -4,7 +4,6 @@
 
 import Foundation
 import Datadog
-import DatadogSDKBridge
 
 public class DatadogLogsPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {

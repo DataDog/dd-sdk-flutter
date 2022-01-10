@@ -24,20 +24,22 @@ class RumSessionDecoder {
     }
 
     for (var e in events.where((e) => e.eventType != 'view')) {
+      var visit = viewVisitsById[e.view.id];
+      if (visit == null) {
+        continue;
+      }
       switch (e.eventType) {
         case 'action':
-          var visit = viewVisitsById[e.view.id];
-          if (visit != null) {
-            final actionEvent = RumActionEventDecoder(e.rumEvent);
-            visit.actionEvents.add(actionEvent);
-          }
+          final actionEvent = RumActionEventDecoder(e.rumEvent);
+          visit.actionEvents.add(actionEvent);
           break;
         case 'resource':
-          var visit = viewVisitsById[e.view.id];
-          if (visit != null) {
-            final resourceEvent = RumResourceEventDecoder(e.rumEvent);
-            visit.resourceEvents.add(resourceEvent);
-          }
+          final resourceEvent = RumResourceEventDecoder(e.rumEvent);
+          visit.resourceEvents.add(resourceEvent);
+          break;
+        case 'error':
+          final errorEvent = RumErrorEventDecoder(e.rumEvent);
+          visit.errorEvents.add(errorEvent);
           break;
       }
     }
@@ -54,6 +56,7 @@ class RumViewVisit {
   final List<RumViewEventDecoder> viewEvents = [];
   final List<RumActionEventDecoder> actionEvents = [];
   final List<RumResourceEventDecoder> resourceEvents = [];
+  final List<RumErrorEventDecoder> errorEvents = [];
 
   RumViewVisit(this.id, this.name, this.path);
 }
@@ -80,6 +83,24 @@ class RumActionEventDecoder extends RumEventDecoder {
 
 class RumResourceEventDecoder extends RumEventDecoder {
   RumResourceEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+
+  String get url => rumEvent['resource']['url'];
+  int get statusCode => rumEvent['resource']['status_code'];
+  String get resourceType => rumEvent['resource']['type'];
+  int get duration => rumEvent['resource']['duration'];
+}
+
+class RumErrorEventDecoder extends RumEventDecoder {
+  RumErrorEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+
+  String get errorType => rumEvent['error']['type'];
+  String get message => rumEvent['error']['message'];
+  String get stack => rumEvent['error']['stack'];
+  String get source => rumEvent['error']['source'];
+
+  String? get resourceUrl => rumEvent['error']['resource']?['url'];
+  String? get resourceMethod => rumEvent['error']['resource']?['method'];
+  int? get resourceStatusCode => rumEvent['error']['resource']?['statusCode'];
 }
 
 class RumViewDecoder {

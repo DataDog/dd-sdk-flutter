@@ -4,6 +4,7 @@
 
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
+import 'ddrum.dart';
 import 'ddrum_method_channel.dart';
 
 abstract class DdRumPlatform extends PlatformInterface {
@@ -24,4 +25,21 @@ abstract class DdRumPlatform extends PlatformInterface {
       String key, String name, Map<String, dynamic> attributes);
   Future<void> stopView(String key, Map<String, dynamic> attributes);
   Future<void> addTiming(String name);
+
+  Future<void> startResourceLoading(String key, RumHttpMethod httpMethod,
+      String url, Map<String, dynamic> attributes);
+  Future<void> stopResourceLoading(String key, int? statusCode,
+      RumResourceType kind, int? size, Map<String, dynamic> attributes);
+  Future<void> stopResourceLoadingWithError(
+      String key, Exception error, Map<String, dynamic> attributes);
+  Future<void> stopResourceLoadingWithErrorInfo(
+      String key, String message, Map<String, dynamic> attributes);
+
+  Future<void> addError(
+      Exception error, RumErrorSource source, Map<String, dynamic> attributes);
+  Future<void> addErrorInfo(String message, RumErrorSource source,
+      StackTrace? stack, Map<String, dynamic> attributes);
+
+  Future<void> addUserAction(
+      RumUserActionType type, String? name, Map<String, dynamic> attributes);
 }
