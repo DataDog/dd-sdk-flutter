@@ -139,15 +139,18 @@ void main() {
   test('addError calls to platform with info', () async {
     final exception = TimeoutException(
         'Timeout retrieving resource', const Duration(seconds: 5));
-    await ddRumPlatform.addError(
-        exception, RumErrorSource.source, {'attribute_key': 'attribute_value'});
+    await ddRumPlatform.addError(exception, RumErrorSource.source, null,
+        {'attribute_key': 'attribute_value'});
 
     expect(log, [
       isMethodCall('addError', arguments: {
         'message': exception.toString(),
         'source': 'RumErrorSource.source',
         'stackTrace': null,
-        'attributes': {'attribute_key': 'attribute_value'}
+        'attributes': {
+          // '_dd.error.source_type': 'flutter'
+          'attribute_key': 'attribute_value'
+        }
       })
     ]);
   });
@@ -161,7 +164,10 @@ void main() {
         'message': 'Exception message',
         'source': 'RumErrorSource.source',
         'stackTrace': null,
-        'attributes': {'attribute_key': 'attribute_value'}
+        'attributes': {
+          // '_dd.error.source_type': 'flutter'
+          'attribute_key': 'attribute_value'
+        }
       })
     ]);
   });

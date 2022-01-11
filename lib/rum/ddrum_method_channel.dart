@@ -101,20 +101,21 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> addError(
-      Exception error, RumErrorSource source, Map<String, dynamic> attributes) {
-    return addErrorInfo(error.toString(), source, null, attributes);
+  Future<void> addError(Object error, RumErrorSource source,
+      StackTrace? stackTrace, Map<String, dynamic> attributes) {
+    return addErrorInfo(error.toString(), source, stackTrace, attributes);
   }
 
   @override
   Future<void> addErrorInfo(String message, RumErrorSource source,
-      StackTrace? stack, Map<String, dynamic> attributes) async {
+      StackTrace? stackTrace, Map<String, dynamic> attributes) async {
     try {
+      stackTrace ??= StackTrace.current;
+
       await methodChannel.invokeMethod('addError', {
         'message': message,
         'source': source.toString(),
-        // TODO: Determine stack trace format
-        'stackTrace': stack?.toString(),
+        'stackTrace': stackTrace.toString(),
         'attributes': attributes
       });
     } on ArgumentError {

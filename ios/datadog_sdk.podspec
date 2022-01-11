@@ -14,8 +14,10 @@ A new flutter plugin project.
   s.author           = { 'Your Company' => 'email@example.com' }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
+  s.static_framework = true
   s.dependency 'Flutter'
   s.dependency 'DatadogSDK', '1.8.0'
+  s.dependency 'DatadogSDKCrashReporting', '1.8.0'
   s.platform = :ios, '11.0'
 
   # Flutter.framework does not contain a i386 slice.

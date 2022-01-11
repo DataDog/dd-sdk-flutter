@@ -5,6 +5,7 @@
 import Flutter
 import UIKit
 import Datadog
+import DatadogCrashReporting
 
 public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
@@ -60,6 +61,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         environment: env
       )
         .set(rumSessionsSamplingRate: sampleRate)
+        .enableCrashReporting(using: DDCrashReportingPlugin())
     } else {
       ddConfigBuilder = Datadog.Configuration.builderUsing(
         clientToken: clientToken,

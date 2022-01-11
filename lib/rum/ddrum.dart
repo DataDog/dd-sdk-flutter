@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
+import 'package:flutter/material.dart';
+
 import 'ddrum_platform_interface.dart';
 
 /// HTTP method of the resource
@@ -43,6 +45,9 @@ enum RumResourceType {
   native
 }
 
+// ignore: unused_element
+const String _ddRumErrorTypeKey = '_dd.error.source_type';
+
 class DdRum {
   static DdRumPlatform get _platform {
     return DdRumPlatform.instance;
@@ -77,14 +82,33 @@ class DdRum {
     return _platform.addTiming(name);
   }
 
-  Future<void> addError(Exception error, RumErrorSource source,
-      [Map<String, dynamic> attributes = const {}]) {
-    return _platform.addError(error, source, attributes);
+  /// Notifies that the Exception or Error [error] occurred in currently
+  /// presented View, with an origin of [source]. You can optionally set
+  /// additional [attributes] for this error
+  Future<void> addError(Object error, RumErrorSource source,
+      {StackTrace? stackTrace, Map<String, dynamic> attributes = const {}}) {
+    // TODO: RUMM-1899 / RUMM-1900 - add flutter as an error source_type
+    //attributes[_ddRumErrorTypeKey] = 'flutter';
+    return _platform.addError(error, source, stackTrace, attributes);
   }
 
+  /// Notifies that an error occurred in currently presented View, with the
+  /// supplied [message] and with an origin of [source]. You can optionally
+  /// supply a [stackTrace] and send additional [attributes] for this error
   Future<void> addErrorInfo(String message, RumErrorSource source,
-      [StackTrace? stack, Map<String, dynamic> attributes = const {}]) {
-    return _platform.addErrorInfo(message, source, stack, attributes);
+      {StackTrace? stackTrace, Map<String, dynamic> attributes = const {}}) {
+    // TODO: RUMM-1899 / RUMM-1900 - add flutter as an error source_type
+    //attributes[_ddRumErrorTypeKey] = 'flutter';
+    return _platform.addErrorInfo(message, source, stackTrace, attributes);
+  }
+
+  Future<void> handleFlutterError(FlutterErrorDetails details) {
+    return addErrorInfo(
+      details.exceptionAsString(),
+      RumErrorSource.source,
+      stackTrace: details.stack,
+      attributes: {'flutter_error_reason': details.context?.toString()},
+    );
   }
 
   /// Notifies that the a Resource identified by [key] started being loaded from
