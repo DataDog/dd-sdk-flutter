@@ -142,34 +142,32 @@ void main() {
     await ddRumPlatform.addError(exception, RumErrorSource.source, null,
         {'attribute_key': 'attribute_value'});
 
-    expect(log, [
-      isMethodCall('addError', arguments: {
-        'message': exception.toString(),
-        'source': 'RumErrorSource.source',
-        'stackTrace': null,
-        'attributes': {
-          // '_dd.error.source_type': 'flutter'
-          'attribute_key': 'attribute_value'
-        }
-      })
-    ]);
+    expect(log.length, 1);
+    final call = log.first;
+    expect(call.method, 'addError');
+    expect(call.arguments['message'], exception.toString());
+    expect(call.arguments['source'], 'RumErrorSource.source');
+    expect(call.arguments['stackTrace'], isNotNull);
+    expect(call.arguments['attributes'], {
+      // '_dd.error.source_type': 'flutter'
+      'attribute_key': 'attribute_value'
+    });
   });
 
   test('addErrorInfo calls to platform with info', () async {
     await ddRumPlatform.addErrorInfo('Exception message', RumErrorSource.source,
         null, {'attribute_key': 'attribute_value'});
 
-    expect(log, [
-      isMethodCall('addError', arguments: {
-        'message': 'Exception message',
-        'source': 'RumErrorSource.source',
-        'stackTrace': null,
-        'attributes': {
-          // '_dd.error.source_type': 'flutter'
-          'attribute_key': 'attribute_value'
-        }
-      })
-    ]);
+    expect(log.length, 1);
+    final call = log.first;
+    expect(call.method, 'addError');
+    expect(call.arguments['message'], 'Exception message');
+    expect(call.arguments['source'], 'RumErrorSource.source');
+    expect(call.arguments['stackTrace'], isNotNull);
+    expect(call.arguments['attributes'], {
+      // '_dd.error.source_type': 'flutter'
+      'attribute_key': 'attribute_value'
+    });
   });
 
   test('addUserAction calls to platform', () async {
