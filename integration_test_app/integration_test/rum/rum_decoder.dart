@@ -68,6 +68,8 @@ class RumEventDecoder {
   String get eventType => rumEvent['type'] as String;
   int get date => rumEvent['date'] as int;
 
+  Map<String, dynamic> get context => rumEvent['context'];
+
   RumEventDecoder(this.rumEvent) : view = RumViewDecoder(rumEvent['view']);
 }
 
@@ -79,6 +81,8 @@ class RumActionEventDecoder extends RumEventDecoder {
   RumActionEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
 
   String get actionType => rumEvent['action']['type'];
+  String get actionName => rumEvent['action']['target']?['name'];
+  int get loadingTime => rumEvent['action']['loading_time'];
 }
 
 class RumResourceEventDecoder extends RumEventDecoder {

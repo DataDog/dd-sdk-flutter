@@ -25,6 +25,7 @@ class _RumManualInstrumentationScenarioState
     super.initState();
 
     DatadogSdk().ddRum?.startView(widget.runtimeType.toString());
+    DatadogSdk().ddRum?.addAttribute('onboarding_stage', 1);
 
     _fakeLoading();
   }
@@ -68,6 +69,7 @@ class _RumManualInstrumentationScenarioState
     final rum = DatadogSdk().ddRum;
 
     await rum?.addTiming('first-interaction');
+    await rum?.addUserAction(RumUserActionType.tap, 'Tapped Download');
 
     var simulatedResourceKey1 = '/resource/1';
     var simulatedResourceKey2 = '/resource/2';
@@ -88,7 +90,7 @@ class _RumManualInstrumentationScenarioState
     });
   }
 
-  void _onNextTapped() {
+  Future<void> _onNextTapped() async {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -107,6 +109,8 @@ class RumManualInstrumentation2 extends StatefulWidget {
 }
 
 class _RumManualInstrumentation2State extends State<RumManualInstrumentation2> {
+  bool _nextReady = false;
+
   @override
   void initState() {
     super.initState();
@@ -117,6 +121,8 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2> {
     DatadogSdk()
         .ddRum
         ?.addErrorInfo('Simulated view error', RumErrorSource.source);
+
+    _simulateScroll();
   }
 
   @override
@@ -134,14 +140,28 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2> {
       ),
       body: Center(
         child: ElevatedButton(
-          onPressed: _onNextTapped,
+          onPressed: _nextReady ? _onNextTapped : null,
           child: const Text('Next Screen'),
         ),
       ),
     );
   }
 
-  void _onNextTapped() {
+  Future<void> _simulateScroll() async {
+    await Future.delayed(const Duration(seconds: 1));
+    await DatadogSdk()
+        .ddRum
+        ?.startUserAction(RumUserActionType.scroll, 'User Scrolling');
+    await Future.delayed(const Duration(seconds: 2));
+    await DatadogSdk().ddRum?.stopUserAction(
+        RumUserActionType.scroll, 'User Scrolling', {'scroll_distance': 12.2});
+
+    setState(() {
+      _nextReady = true;
+    });
+  }
+
+  Future<void> _onNextTapped() async {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -164,6 +184,7 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3> {
   void initState() {
     super.initState();
 
+    DatadogSdk().ddRum?.removeAttribute('onboarding_stage');
     DatadogSdk().ddRum?.startView('screen3-widget', 'ThirdManualRumView');
     DatadogSdk().ddRum?.addTiming('content-ready');
   }

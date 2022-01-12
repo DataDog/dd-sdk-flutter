@@ -99,6 +99,45 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                      file: nil, line: nil)
       }
       result(nil)
+    case "addUserAction":
+      if let typeString = arguments["type"] as? String,
+         let name = arguments["name"] as? String,
+         let attributes = arguments["attributes"] as? [String: Any?] {
+        let type = RUMUserActionType.parseFromFlutter(typeString)
+        let encodedAttributes = castFlutterAttributesToSwift(attributes)
+        rum.addUserAction(type: type, name: name, attributes: encodedAttributes)
+      }
+      result(nil)
+    case "startUserAction":
+      if let typeString = arguments["type"] as? String,
+         let name = arguments["name"] as? String,
+         let attributes = arguments["attributes"] as? [String: Any?] {
+        let type = RUMUserActionType.parseFromFlutter(typeString)
+        let encodedAttributes = castFlutterAttributesToSwift(attributes)
+        rum.startUserAction(type: type, name: name, attributes: encodedAttributes)
+      }
+      result(nil)
+    case "stopUserAction":
+      if let typeString = arguments["type"] as? String,
+         let name = arguments["name"] as? String,
+         let attributes = arguments["attributes"] as? [String: Any?] {
+        let type = RUMUserActionType.parseFromFlutter(typeString)
+        let encodedAttributes = castFlutterAttributesToSwift(attributes)
+        rum.stopUserAction(type: type, name: name, attributes: encodedAttributes)
+      }
+      result(nil)
+    case "addAttribute":
+      if let key = arguments["key"] as? String,
+         let value = arguments["value"] {
+        let encodedValue = castAnyToEncodable(value)
+        rum.addAttribute(forKey: key, value: encodedValue)
+      }
+      result(nil)
+    case "removeAttribute":
+      if let key = arguments["key"] as? String {
+        rum.removeAttribute(forKey: key)
+      }
+      result(nil)
     default:
       result(FlutterMethodNotImplemented)
     }

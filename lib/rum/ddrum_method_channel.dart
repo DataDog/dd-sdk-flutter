@@ -136,4 +136,37 @@ class DdRumMethodChannel extends DdRumPlatform {
       // RUMM-1849 Determine error logging approach
     }
   }
+
+  @override
+  Future<void> startUserAction(RumUserActionType type, String name,
+      Map<String, dynamic> attributes) async {
+    try {
+      await methodChannel.invokeMethod('startUserAction',
+          {'type': type.toString(), 'name': name, 'attributes': attributes});
+    } on ArgumentError {
+      // RUMM-1849 Determine error logging approach
+    }
+  }
+
+  @override
+  Future<void> stopUserAction(RumUserActionType type, String name,
+      Map<String, dynamic> attributes) async {
+    try {
+      await methodChannel.invokeMethod('stopUserAction',
+          {'type': type.toString(), 'name': name, 'attributes': attributes});
+    } on ArgumentError {
+      // RUMM-1849 Determine error logging approach
+    }
+  }
+
+  @override
+  Future<void> addAttribute(String key, value) {
+    return methodChannel
+        .invokeMethod('addAttribute', {'key': key, 'value': value});
+  }
+
+  @override
+  Future<void> removeAttribute(String key) {
+    return methodChannel.invokeMethod('removeAttribute', {'key': key});
+  }
 }

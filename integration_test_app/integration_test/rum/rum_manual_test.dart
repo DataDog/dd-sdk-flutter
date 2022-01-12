@@ -3,6 +3,7 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -33,9 +34,13 @@ void main() {
     await tester.tap(nextButton);
     await tester.pumpAndSettle();
 
-    // wait for this view to throw an error
-    await Future.delayed(const Duration(milliseconds: 100));
+    // wait for this view to throw an error and scroll
     nextButton = find.widgetWithText(ElevatedButton, 'Next Screen');
+    await tester.waitFor(
+      nextButton,
+      const Duration(seconds: 5),
+      (e) => (e.widget as ElevatedButton).enabled,
+    );
     await tester.tap(nextButton);
     await tester.pumpAndSettle();
 
@@ -55,16 +60,23 @@ void main() {
       },
     );
 
+    const contextKey = 'onboarding_stage';
+    const expectedContextValue = 1;
+
     final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, 3);
 
     final view1 = session.visits[0];
     expect(view1.name, 'RumManualInstrumentationScenario');
     expect(view1.path, 'RumManualInstrumentationScenario');
-    expect(view1.viewEvents.last.view.actionCount, 1);
+    expect(view1.viewEvents.last.view.actionCount, 2);
     expect(view1.viewEvents.last.view.resourceCount, 1);
     expect(view1.viewEvents.last.view.errorCount, 1);
+    expect(view1.viewEvents.last.context[contextKey], expectedContextValue);
     expect(view1.actionEvents[0].actionType, 'application_start');
+    expect(view1.actionEvents[1].actionType, 'tap');
+    expect(view1.actionEvents[1].actionName, 'Tapped Download');
+    expect(view1.actionEvents[1].context[contextKey], expectedContextValue);
 
     final contentReadyTiming =
         view1.viewEvents.last.view.customTimings['content-ready'];
@@ -84,26 +96,41 @@ void main() {
         view1.resourceEvents[0].duration, greaterThan(100000000 - 1)); // 0.1s
     expect(
         view1.resourceEvents[0].duration, lessThan(100000000000 * 30)); // 30s
+    expect(view1.resourceEvents[0].context[contextKey], expectedContextValue);
 
     expect(view1.errorEvents.length, 1);
     expect(view1.errorEvents[0].resourceUrl, 'https://fake_url/resource/2');
     expect(view1.errorEvents[0].message, 'Status code 400');
     expect(view1.errorEvents[0].source, 'network');
+    expect(view1.errorEvents[0].context[contextKey], expectedContextValue);
     expect(view1, becameInactive);
 
     final view2 = session.visits[1];
+    // TODO: Start checking for user scroll when dd-sdk-android 1.12 comes out.
+    final checkUserScroll = !Platform.isAndroid;
+
     expect(view2.name, 'SecondManualRumView');
     expect(view2.path, 'RumManualInstrumentation2');
-    expect(view2.viewEvents.last.view.actionCount, 0);
+    expect(view2.viewEvents.last.view.actionCount, checkUserScroll ? 1 : 0);
     expect(view2.viewEvents.last.view.resourceCount, 0);
     expect(view2.viewEvents.last.view.errorCount, 1);
+    expect(view2.viewEvents.last.context[contextKey], expectedContextValue);
     expect(view2.errorEvents[0].message, 'Simulated view error');
     expect(view2.errorEvents[0].source, 'source');
+    expect(view2.errorEvents[0].context[contextKey], expectedContextValue);
+    if (checkUserScroll) {
+      expect(view2.actionEvents[0].actionType, 'scroll');
+      expect(view2.actionEvents[0].actionName, 'User Scrolling');
+      expect(view2.actionEvents[0].loadingTime, closeTo(2000000000, 50000000));
+      expect(view2.actionEvents[0].context[contextKey], expectedContextValue);
+    }
+
     expect(view2, becameInactive);
 
     final view3 = session.visits[2];
     expect(view3.name, 'ThirdManualRumView');
     expect(view3.path, 'screen3-widget');
+    expect(view3.viewEvents.last.context[contextKey], isNull);
     expect(view3.viewEvents.last.view.actionCount, 0);
     expect(view3.viewEvents.last.view.resourceCount, 0);
     expect(view3.viewEvents.last.view.errorCount, 0);
