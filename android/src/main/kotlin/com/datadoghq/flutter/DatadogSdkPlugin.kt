@@ -99,7 +99,7 @@ internal fun buildSdkConfiguration(encoded: Map<String, Any?>): Configuration {
     val configBuilder = Configuration.Builder(
         logsEnabled = true,
         tracesEnabled = true,
-        crashReportsEnabled = false,
+        crashReportsEnabled = true,
         rumEnabled = true
     )
         .setAdditionalConfiguration(

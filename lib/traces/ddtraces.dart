@@ -132,8 +132,9 @@ class DdSpan {
     if (_handle <= 0) {
       return Future.value();
     }
+    stackTrace ??= StackTrace.current;
 
-    return _platform.spanSetError(this, kind, message, stackTrace?.toString());
+    return _platform.spanSetError(this, kind, message, stackTrace.toString());
   }
 
   Future<void> log(Map<String, Object?> fields) {

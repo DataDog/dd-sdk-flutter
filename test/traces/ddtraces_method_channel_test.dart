@@ -207,14 +207,13 @@ void main() {
 
     await span.setErrorInfo('Generic Error', 'This was my fault', null);
 
-    expect(
-        log[1],
-        isMethodCall('span.setError', arguments: {
-          'spanHandle': span.handle,
-          'kind': 'Generic Error',
-          'message': 'This was my fault',
-          'stackTrace': null
-        }));
+    var spanCall = log[1];
+
+    expect(spanCall.method, 'span.setError');
+    expect(spanCall.arguments['spanHandle'], span.handle);
+    expect(spanCall.arguments['kind'], 'Generic Error');
+    expect(spanCall.arguments['message'], 'This was my fault');
+    expect(spanCall.arguments['stackTrace'], isNotNull);
   });
 
   test('setErrorInfo on span calls to platform', () async {

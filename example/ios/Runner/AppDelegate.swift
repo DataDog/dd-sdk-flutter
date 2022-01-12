@@ -12,6 +12,20 @@ import Flutter
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
+    let crashPluginRegistry = registrar(forPlugin: "ExampleCrashPlugin")!
+    registerCrashPlugin(with: crashPluginRegistry)
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
+
+    @objc func registerCrashPlugin(with registrar: FlutterPluginRegistrar) {
+      let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.example.crash",
+                                         binaryMessenger: registrar.messenger())
+      channel.setMethodCallHandler { _, result in
+        let crashValue: Int? = nil
+        _ = crashValue! + 5
+
+        result(nil)
+      }
+    }
 }

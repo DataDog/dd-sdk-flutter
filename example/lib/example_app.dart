@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'crash_reporting_screen.dart';
 import 'rum_screen.dart';
 import 'tracing_screen.dart';
 import 'logging_screen.dart';
@@ -24,7 +25,8 @@ class _ExampleAppState extends State<ExampleApp> {
   final items = <NavItem>[
     NavItem(label: 'Logging', navItem: LoggingScreen.new),
     NavItem(label: 'Tracing', navItem: TracingScreen.new),
-    NavItem(label: 'RUM', navItem: RumScreen.new)
+    NavItem(label: 'RUM', navItem: RumScreen.new),
+    NavItem(label: 'RUM Crash Reporting', navItem: CrashReportingScreen.new),
   ];
 
   @override

@@ -35,10 +35,10 @@ abstract class DdRumPlatform extends PlatformInterface {
   Future<void> stopResourceLoadingWithErrorInfo(
       String key, String message, Map<String, dynamic> attributes);
 
-  Future<void> addError(
-      Exception error, RumErrorSource source, Map<String, dynamic> attributes);
+  Future<void> addError(Object error, RumErrorSource source,
+      StackTrace? stackTrace, Map<String, dynamic> attributes);
   Future<void> addErrorInfo(String message, RumErrorSource source,
-      StackTrace? stack, Map<String, dynamic> attributes);
+      StackTrace? stackTrace, Map<String, dynamic> attributes);
 
   Future<void> addUserAction(
       RumUserActionType type, String? name, Map<String, dynamic> attributes);

@@ -19,9 +19,10 @@ void _assertCommonSpanMetadata(SpanDecoder span) {
   expect(span.environment, 'prod');
 
   // RUMM-1853 Android does not properly override 'source' on traces
-  if (Platform.isIOS) {
-    expect(span.source, 'flutter');
-  }
+  // Also RUM does not recognize flutter as a source yet. Re-enable when it's ready
+  // if (Platform.isIOS) {
+  //   expect(span.source, 'flutter');
+  // }
   expect(span.tracerVersion, DatadogSdk().version);
   expect(span.appVersion, '1.0.0');
 }
@@ -127,6 +128,7 @@ void main() {
       // iOS leave these on the log
       expect(logs[1].log['error.kind'], contains('PlatformException'));
       expect(logs[1].log['error.message'], contains('PlatformException'));
+      expect(logs[1].log['error.stack'], contains('_TracesScenarioState'));
     } else if (Platform.isAndroid) {
       // Android error remaps "error.message" to message on the log...
       expect(logs[1].log['message'], contains('PlatformException'));
@@ -135,9 +137,11 @@ void main() {
           presentationSpan.getTag('error.type'), contains('PlatformException'));
       expect(
           presentationSpan.getTag('error.msg'), contains('PlatformException'));
+      expect(presentationSpan.getTag('error.stack'),
+          contains('_TracesScenarioState'));
     }
-    // TODO: RUMM-1852 Better stack trace handling
-    // expect(logs[1].log['error.stack'], contains('_TracesScenarioState'));
+
+    // Note - this only works when --split-debug-info is not used
     expect(logs[1].log['dd.trace_id'],
         isDecimalVersionOfHex(presentationSpan.traceId));
     expect(logs[1].log['dd.span_id'],
