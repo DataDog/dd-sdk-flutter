@@ -27,7 +27,7 @@ class _RumManualInstrumentationScenarioState
     super.initState();
 
     _viewKey = widget.runtimeType.toString();
-    DatadogSdk.instance.ddRum?.addAttribute('onboarding_stage', 1);
+    DatadogSdk.instance.rum?.addAttribute('onboarding_stage', 1);
 
     _fakeLoading();
   }
@@ -48,22 +48,22 @@ class _RumManualInstrumentationScenarioState
 
   @override
   void didPop() {
-    DatadogSdk.instance.ddRum?.stopView(_viewKey);
+    DatadogSdk.instance.rum?.stopView(_viewKey);
   }
 
   @override
   void didPopNext() {
-    DatadogSdk.instance.ddRum?.startView(_viewKey);
+    DatadogSdk.instance.rum?.startView(_viewKey);
   }
 
   @override
   void didPush() {
-    DatadogSdk.instance.ddRum?.startView(_viewKey);
+    DatadogSdk.instance.rum?.startView(_viewKey);
   }
 
   @override
   void didPushNext() {
-    DatadogSdk.instance.ddRum?.stopView(_viewKey);
+    DatadogSdk.instance.rum?.stopView(_viewKey);
   }
 
   @override
@@ -91,11 +91,11 @@ class _RumManualInstrumentationScenarioState
 
   Future<void> _fakeLoading() async {
     await Future.delayed(const Duration(milliseconds: 50));
-    DatadogSdk.instance.ddRum?.addTiming('content-ready');
+    DatadogSdk.instance.rum?.addTiming('content-ready');
   }
 
   void _simulateResourceDownload() async {
-    final rum = DatadogSdk.instance.ddRum;
+    final rum = DatadogSdk.instance.rum;
 
     await rum?.addTiming('first-interaction');
     await rum?.addUserAction(RumUserActionType.tap, 'Tapped Download');
@@ -120,7 +120,7 @@ class _RumManualInstrumentationScenarioState
   }
 
   Future<void> _onNextTapped() async {
-    await DatadogSdk.instance.ddRum
+    await DatadogSdk.instance.rum
         ?.addUserAction(RumUserActionType.tap, 'Next Screen');
     Navigator.push(
       context,
@@ -167,22 +167,22 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
 
   @override
   void didPop() {
-    DatadogSdk.instance.ddRum?.stopView(_viewKey);
+    DatadogSdk.instance.rum?.stopView(_viewKey);
   }
 
   @override
   void didPopNext() {
-    DatadogSdk.instance.ddRum?.startView(_viewKey, _viewName);
+    DatadogSdk.instance.rum?.startView(_viewKey, _viewName);
   }
 
   @override
   void didPush() {
-    DatadogSdk.instance.ddRum?.startView(_viewKey, _viewName);
+    DatadogSdk.instance.rum?.startView(_viewKey, _viewName);
   }
 
   @override
   void didPushNext() {
-    DatadogSdk.instance.ddRum?.stopView(_viewKey);
+    DatadogSdk.instance.rum?.stopView(_viewKey);
   }
 
   @override
@@ -202,12 +202,12 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
 
   Future<void> _simulateActions() async {
     await Future.delayed(const Duration(seconds: 1));
-    await DatadogSdk.instance.ddRum
+    await DatadogSdk.instance.rum
         ?.addErrorInfo('Simulated view error', RumErrorSource.source);
-    await DatadogSdk.instance.ddRum
+    await DatadogSdk.instance.rum
         ?.startUserAction(RumUserActionType.scroll, 'User Scrolling');
     await Future.delayed(const Duration(seconds: 2));
-    await DatadogSdk.instance.ddRum?.stopUserAction(
+    await DatadogSdk.instance.rum?.stopUserAction(
         RumUserActionType.scroll, 'User Scrolling', {'scroll_distance': 12.2});
 
     setState(() {
@@ -216,7 +216,7 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
   }
 
   Future<void> _onNextTapped() async {
-    await DatadogSdk.instance.ddRum
+    await DatadogSdk.instance.rum
         ?.addUserAction(RumUserActionType.tap, 'Next Screen');
     Navigator.push(
       context,
@@ -261,23 +261,23 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
 
   @override
   void didPop() {
-    DatadogSdk.instance.ddRum?.stopView(_viewKey);
+    DatadogSdk.instance.rum?.stopView(_viewKey);
   }
 
   @override
   void didPopNext() {
-    DatadogSdk.instance.ddRum?.startView(_viewKey, _viewName);
+    DatadogSdk.instance.rum?.startView(_viewKey, _viewName);
   }
 
   @override
   void didPush() {
-    DatadogSdk.instance.ddRum?.removeAttribute('onboarding_stage');
-    DatadogSdk.instance.ddRum?.startView(_viewKey, _viewName);
+    DatadogSdk.instance.rum?.removeAttribute('onboarding_stage');
+    DatadogSdk.instance.rum?.startView(_viewKey, _viewName);
   }
 
   @override
   void didPushNext() {
-    DatadogSdk.instance.ddRum?.stopView(_viewKey);
+    DatadogSdk.instance.rum?.stopView(_viewKey);
   }
 
   @override
@@ -293,10 +293,10 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
   }
 
   void _simulateActions() async {
-    await DatadogSdk.instance.ddRum?.addTiming('content-ready');
+    await DatadogSdk.instance.rum?.addTiming('content-ready');
 
     // Stop the view to make sure it doesn't get held over to the next session.
     await Future.delayed(Duration(milliseconds: 500));
-    await DatadogSdk.instance.ddRum?.stopView(_viewKey);
+    await DatadogSdk.instance.rum?.stopView(_viewKey);
   }
 }

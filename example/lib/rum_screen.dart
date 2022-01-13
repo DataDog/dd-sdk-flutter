@@ -28,7 +28,7 @@ class _RumScreenState extends State<RumScreen> {
 
     var actualKey = viewKey.isEmpty ? 'FooRumScreen' : viewKey;
     var actualViewName = viewName.isEmpty ? null : viewName;
-    var rum = DatadogSdk.instance.ddRum;
+    var rum = DatadogSdk.instance.rum;
     if (rum != null) {
       await rum.startView(actualKey, actualViewName);
       await Future.delayed(const Duration(seconds: 2));

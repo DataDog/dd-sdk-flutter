@@ -89,14 +89,14 @@ class DatadogSdk {
 
   DatadogSdk._();
 
-  DdLogs? _ddLogs;
-  DdLogs? get ddLogs => _ddLogs;
+  DdLogs? _logs;
+  DdLogs? get logs => _logs;
 
-  DdTraces? _ddTraces;
-  DdTraces? get ddTraces => _ddTraces;
+  DdTraces? _traces;
+  DdTraces? get traces => _traces;
 
-  DdRum? _ddRum;
-  DdRum? get ddRum => _ddRum;
+  DdRum? _rum;
+  DdRum? get rum => _rum;
 
   String get version => ddSdkVersion;
 
@@ -106,8 +106,8 @@ class DatadogSdk {
 
     await _platform.initialize(configuration);
 
-    _ddLogs = DdLogs();
-    _ddTraces = DdTraces();
-    _ddRum = DdRum();
+    _logs = DdLogs();
+    _traces = DdTraces();
+    _rum = DdRum();
   }
 }

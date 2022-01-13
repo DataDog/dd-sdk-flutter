@@ -22,7 +22,7 @@ class _TracesScenarioState extends State<TracesScenario> {
   }
 
   Future<void> _simulateTraces() async {
-    var traces = DatadogSdk.instance.ddTraces;
+    var traces = DatadogSdk.instance.traces;
     if (traces != null) {
       viewLoadingSpan = await traces.startRootSpan('view loading');
       await viewLoadingSpan?.setActive();
@@ -47,7 +47,7 @@ class _TracesScenarioState extends State<TracesScenario> {
     });
     dataDownloadingSpan?.finish();
 
-    var traces = DatadogSdk.instance.ddTraces;
+    var traces = DatadogSdk.instance.traces;
     if (traces != null) {
       final dataPresentationSpan = await traces.startSpan('data presentation');
       await Future.delayed(const Duration(milliseconds: 60));
