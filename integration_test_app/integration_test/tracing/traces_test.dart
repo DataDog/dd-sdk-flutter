@@ -18,12 +18,12 @@ void _assertCommonSpanMetadata(SpanDecoder span) {
   expect(span.type, 'custom');
   expect(span.environment, 'prod');
 
-  // RUMM-1853 Android does not properly override 'source' on traces
+  // TODO: RUMM-1853 Android does not properly override 'source' on traces
   // Also RUM does not recognize flutter as a source yet. Re-enable when it's ready
   // if (Platform.isIOS) {
   //   expect(span.source, 'flutter');
   // }
-  expect(span.tracerVersion, DatadogSdk().version);
+  expect(span.tracerVersion, DatadogSdk.instance.version);
   expect(span.appVersion, '1.0.0');
 }
 

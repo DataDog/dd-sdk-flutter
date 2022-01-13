@@ -13,7 +13,7 @@ class _LoggingScenarioState extends State<LoggingScenario> {
   void initState() {
     super.initState();
 
-    var logger = DatadogSdk().ddLogs;
+    var logger = DatadogSdk.instance.ddLogs;
     if (logger != null) {
       logger.addTag('tag1', 'tag-value');
       logger.addTag('my-tag');

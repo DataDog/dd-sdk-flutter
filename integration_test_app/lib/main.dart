@@ -55,8 +55,7 @@ Future<void> main() async {
     }
   }
 
-  final ddsdk = DatadogSdk();
-  await ddsdk.initialize(configuration);
+  await DatadogSdk.instance.initialize(configuration);
 
   runApp(const DatadogIntegrationTestApp());
 }

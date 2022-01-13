@@ -82,7 +82,7 @@ class DatadogSdk {
   }
 
   static DatadogSdk? _singleton;
-  factory DatadogSdk() {
+  static DatadogSdk get instance {
     _singleton ??= DatadogSdk._();
     return _singleton!;
   }
