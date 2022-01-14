@@ -8,8 +8,8 @@ workflows:
     before_run:
     - _setup
     - _build
-    - integration_ios
     - integration_android
+    - integration_ios
     
   _build:
     steps:
@@ -61,15 +61,13 @@ workflows:
             #!/usr/bin/env bash
             set -e
             ./generate_env.sh
-
-  integration_android:
-    before_run:
-    - _setup
-    steps:
     - avd-manager@1:
         inputs:
         - api_level: '30'
     - wait-for-android-emulator@1: {}
+
+  integration_android:
+    steps:
     - flutter-test@1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/integration_test_app"
@@ -78,8 +76,6 @@ workflows:
     - deploy-to-bitrise-io: {}
   
   integration_ios:
-    before_run:
-    - _setup
     steps:
     - script:
         title: Launch iOS Simulator
