@@ -4,6 +4,8 @@
  * Copyright 2019-2022 Datadog, Inc.
  */
 
+// swiftlint:disable file_length
+
 import XCTest
 @testable import Datadog
 import datadog_sdk
@@ -12,6 +14,8 @@ enum ResultStatus: EquatableInTests {
   case notCalled
   case called(value: Any?)
 }
+
+// MARK: - MockRUMMonitor
 
 class MockRUMMonitor: DDRUMMonitor {
   enum MethodCall: EquatableInTests {
@@ -27,6 +31,12 @@ class MockRUMMonitor: DDRUMMonitor {
                                       attributes: [AttributeKey: AttributeValue])
     case addError(message: String, source: RUMErrorSource, stack: String?,
                   attributes: [AttributeKey: AttributeValue], file: StaticString?, line: UInt?)
+    case addUserAction(type: RUMUserActionType, name: String, attributes: [AttributeKey: AttributeValue])
+    case startUserAction(type: RUMUserActionType, name: String, attributes: [AttributeKey: AttributeValue])
+    case stopUserAction(type: RUMUserActionType, name: String?, attributes: [AttributeKey: AttributeValue])
+    case addAttribute(forKey: AttributeKey, value: AttributeValue)
+    case removeAttribute(forKey: AttributeKey)
+
   }
 
   var callLog: [MethodCall] = []
@@ -66,13 +76,40 @@ class MockRUMMonitor: DDRUMMonitor {
   }
 
   override func addError(message: String, source: RUMErrorSource = .custom, stack: String? = nil,
-                         attributes: [AttributeKey: AttributeValue] = [:], file: StaticString? = #file, line: UInt? = #line) {
+                         attributes: [AttributeKey: AttributeValue] = [:],
+                         file: StaticString? = #file, line: UInt? = #line) {
     callLog.append(
       .addError(message: message, source: source, stack: stack, attributes: attributes, file: file, line: line)
     )
   }
+
+  override func addAttribute(forKey key: AttributeKey, value: AttributeValue) {
+    callLog.append(.addAttribute(forKey: key, value: value))
+  }
+
+  override func removeAttribute(forKey key: AttributeKey) {
+    callLog.append(.removeAttribute(forKey: key))
+  }
+
+  override func addUserAction(type: RUMUserActionType, name: String,
+                              attributes: [AttributeKey: AttributeValue] = [:]) {
+   callLog.append(.addUserAction(type: type, name: name, attributes: attributes))
+  }
+
+  override func startUserAction(type: RUMUserActionType, name: String,
+                                attributes: [AttributeKey: AttributeValue] = [:]) {
+    callLog.append(.startUserAction(type: type, name: name, attributes: attributes))
+  }
+
+  override func stopUserAction(type: RUMUserActionType, name: String? = nil,
+                               attributes: [AttributeKey: AttributeValue] = [:]) {
+    callLog.append(.stopUserAction(type: type, name: name, attributes: attributes))
+  }
 }
 
+// MARK: - Tests
+
+// swiftlint:disable:next type_body_length
 class DatadogRumPluginTests: XCTestCase {
   func testAllRumResourceTypes_AreParsedCorrectly() {
     let document = RUMResourceType.parseFromFlutter("RumResourceType.document")
@@ -332,6 +369,120 @@ class DatadogRumPluginTests: XCTestCase {
     XCTAssertEqual(mock.callLog, [
       .addError(message: "Error message", source: RUMErrorSource.network, stack: nil,
                 attributes: ["attribute_key": "attribute_value"], file: nil, line: nil)
+    ])
+    XCTAssertEqual(resultStatus, .called(value: nil))
+  }
+
+  func testAddUserAction_CallsRumMonitor() {
+    let mock = MockRUMMonitor()
+    let plugin = DatadogRumPlugin(rumInstance: mock)
+
+    let call = FlutterMethodCall(methodName: "addUserAction", arguments: [
+      "type": "RumUserActionType.tap",
+      "name": "Action Name",
+      "attributes": [
+        "attribute_key": "attribute_value"
+      ]
+    ])
+
+    var resultStatus = ResultStatus.notCalled
+    plugin.handle(call) { result in
+      resultStatus = ResultStatus.called(value: result)
+    }
+
+    XCTAssertEqual(mock.callLog, [
+      .addUserAction(type: .tap, name: "Action Name", attributes: [
+        "attribute_key": "attribute_value"
+      ])
+    ])
+    XCTAssertEqual(resultStatus, .called(value: nil))
+  }
+
+  func testStartUserAction_CallsRumMonitor() {
+    let mock = MockRUMMonitor()
+    let plugin = DatadogRumPlugin(rumInstance: mock)
+
+    let call = FlutterMethodCall(methodName: "startUserAction", arguments: [
+      "type": "RumUserActionType.scroll",
+      "name": "Action Name",
+      "attributes": [
+        "attribute_key": "attribute_value"
+      ]
+    ])
+
+    var resultStatus = ResultStatus.notCalled
+    plugin.handle(call) { result in
+      resultStatus = ResultStatus.called(value: result)
+    }
+
+    XCTAssertEqual(mock.callLog, [
+      .startUserAction(type: .scroll, name: "Action Name", attributes: [
+        "attribute_key": "attribute_value"
+      ])
+    ])
+    XCTAssertEqual(resultStatus, .called(value: nil))
+  }
+
+  func testStopUserAction_CallsRumMonitor() {
+    let mock = MockRUMMonitor()
+    let plugin = DatadogRumPlugin(rumInstance: mock)
+
+    let call = FlutterMethodCall(methodName: "stopUserAction", arguments: [
+      "type": "RumUserActionType.swipe",
+      "name": "Action Name",
+      "attributes": [
+        "attribute_key": "attribute_value"
+      ]
+    ])
+
+    var resultStatus = ResultStatus.notCalled
+    plugin.handle(call) { result in
+      resultStatus = ResultStatus.called(value: result)
+    }
+
+    XCTAssertEqual(mock.callLog, [
+      .stopUserAction(type: .swipe, name: "Action Name", attributes: [
+        "attribute_key": "attribute_value"
+      ])
+    ])
+    XCTAssertEqual(resultStatus, .called(value: nil))
+  }
+
+  func testAddAttribute_CallsRumMonitor() {
+    let mock = MockRUMMonitor()
+    let plugin = DatadogRumPlugin(rumInstance: mock)
+
+    let call = FlutterMethodCall(methodName: "addAttribute", arguments: [
+      "key": "My key",
+      "value": "My value"
+    ])
+
+    var resultStatus = ResultStatus.notCalled
+    plugin.handle(call) { result in
+      resultStatus = ResultStatus.called(value: result)
+    }
+
+    XCTAssertEqual(mock.callLog, [
+      .addAttribute(forKey: "My key", value: "My value")
+    ])
+    XCTAssertEqual(resultStatus, .called(value: nil))
+  }
+
+  func testRemoveAttribute_CallsRumMonitor() {
+    let mock = MockRUMMonitor()
+    let plugin = DatadogRumPlugin(rumInstance: mock)
+
+    let call = FlutterMethodCall(methodName: "removeAttribute", arguments: [
+      "key": "remove_key"
+    ])
+
+    var resultStatus = ResultStatus.notCalled
+    plugin.handle(call) { result in
+      resultStatus = ResultStatus.called(value: result)
+    }
+
+    XCTAssertEqual(mock.callLog, [
+      .removeAttribute(forKey: "remove_key")
     ])
     XCTAssertEqual(resultStatus, .called(value: nil))
   }

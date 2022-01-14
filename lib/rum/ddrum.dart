@@ -157,8 +157,39 @@ class DdRum {
   /// This is used to a track discrete User Actions (e.g. "tap") specified by
   /// [type]. The [name] and [attributes] supplied will be associated with this
   /// user action.
-  Future<void> addUserAction(RumUserActionType type, String? name,
+  Future<void> addUserAction(RumUserActionType type, String name,
       [Map<String, dynamic> attributes = const {}]) {
     return _platform.addUserAction(type, name, attributes);
+  }
+
+  /// Notifies that a User Action of [type] has started, named [name]. This is
+  /// used to track long running user actions (e.g. "scroll"). Such an User
+  /// Action must be stopped with [stopUserAction], and will be stopped
+  /// automatically if it lasts for more than 10 seconds. You can optionally
+  /// provide custom [attributes].
+  Future<void> startUserAction(RumUserActionType type, String name,
+      [Map<String, dynamic> attributes = const {}]) {
+    return _platform.startUserAction(type, name, attributes);
+  }
+
+  /// Notifies that the User Action of [type], named [name] has stopped.
+  /// This is used to stop tracking long running user actions (e.g. "scroll"),
+  /// started with [startUserAction].
+  Future<void> stopUserAction(RumUserActionType type, String name,
+      [Map<String, dynamic> attributes = const {}]) {
+    return _platform.stopUserAction(type, name, attributes);
+  }
+
+  /// Adds a custom attribute with [key] and [value] to all future events sent
+  /// by the RUM monitor. Note that [value] must be supported by
+  /// [StandardMessageCodec].
+  Future<void> addAttribute(String key, dynamic value) {
+    return _platform.addAttribute(key, value);
+  }
+
+  /// Removes the custom attribute [key] from all future events sent by the RUM
+  /// monitor. Events created prior to this call will not lose this attribute.
+  Future<void> removeAttribute(String key) {
+    return _platform.removeAttribute(key);
   }
 }

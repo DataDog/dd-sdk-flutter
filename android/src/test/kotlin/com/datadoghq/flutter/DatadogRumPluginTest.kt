@@ -2,6 +2,7 @@ package com.datadoghq.flutter
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import com.datadog.android.rum.RumActionType
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumResourceKind
@@ -95,6 +96,21 @@ class DatadogRumPluginTest {
         assertThat(console).isEqualTo(RumErrorSource.CONSOLE)
         assertThat(custom).isEqualTo(RumErrorSource.SOURCE)
         assertThat(unknown).isEqualTo(RumErrorSource.SOURCE)
+    }
+
+    @Test
+    fun `M convert all action types W parseRumActionType`() {
+        val tap = parseRumActionType(("RumUserActionType.tap"))
+        val scroll = parseRumActionType("RumUserActionType.scroll")
+        val swipe = parseRumActionType("RumUserActionType.swipe")
+        val custom = parseRumActionType("RumUserActionType.custom")
+        val unknown = parseRumActionType("unknown")
+
+        assertThat(tap).isEqualTo(RumActionType.TAP)
+        assertThat(scroll).isEqualTo(RumActionType.SCROLL)
+        assertThat(swipe).isEqualTo(RumActionType.SWIPE)
+        assertThat(custom).isEqualTo(RumActionType.CUSTOM)
+        assertThat(unknown).isEqualTo(RumActionType.CUSTOM)
     }
 
     @Test
@@ -290,6 +306,84 @@ class DatadogRumPluginTest {
         // THEN
         verify(mockRumMonitor).addErrorWithStacktrace(message, RumErrorSource.NETWORK,
             stackTrace, mapOf(attributeKey to attributeValue))
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M call monitor addUserAction W addUserAction is called`(
+        @StringForgery name: String,
+        @StringForgery attributeKey: String,
+        @StringForgery attributeValue: String
+    ) {
+        // GIVEN
+        val call = MethodCall("addUserAction", mapOf(
+            "type" to "RumUserActionType.tap",
+            "name" to name,
+            "attributes" to mapOf(
+                attributeKey to attributeValue
+            )
+        ))
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(call, mockResult)
+
+        // THEN
+        verify(mockRumMonitor).addUserAction(RumActionType.TAP, name, mapOf(
+            attributeKey to attributeValue
+        ))
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M call monitor startUserAction W startUserAction is called`(
+        @StringForgery name: String,
+        @StringForgery attributeKey: String,
+        @StringForgery attributeValue: String
+    ) {
+        // GIVEN
+        val call = MethodCall("startUserAction", mapOf(
+            "type" to "RumUserActionType.scroll",
+            "name" to name,
+            "attributes" to mapOf(
+                attributeKey to attributeValue
+            )
+        ))
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(call, mockResult)
+
+        // THEN
+        verify(mockRumMonitor).startUserAction(RumActionType.SCROLL, name, mapOf(
+            attributeKey to attributeValue
+        ))
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M call monitor stopUserAction W stopUserAction is called`(
+        @StringForgery name: String,
+        @StringForgery attributeKey: String,
+        @StringForgery attributeValue: String
+    ) {
+        // GIVEN
+        val call = MethodCall("stopUserAction", mapOf(
+            "type" to "RumUserActionType.swipe",
+            "name" to name,
+            "attributes" to mapOf(
+                attributeKey to attributeValue
+            )
+        ))
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(call, mockResult)
+
+        // THEN
+        verify(mockRumMonitor).stopUserAction(RumActionType.SWIPE, name, mapOf(
+            attributeKey to attributeValue
+        ))
         verify(mockResult).success(null)
     }
 }

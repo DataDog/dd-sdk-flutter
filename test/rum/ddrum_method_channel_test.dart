@@ -184,4 +184,47 @@ void main() {
       })
     ]);
   });
+
+  test('startUserAction calls to platform', () async {
+    await ddRumPlatform.startUserAction(RumUserActionType.scroll,
+        'user_action_scroll', {'attribute_name': 'attribute_value'});
+
+    expect(log, [
+      isMethodCall('startUserAction', arguments: {
+        'type': 'RumUserActionType.scroll',
+        'name': 'user_action_scroll',
+        'attributes': {'attribute_name': 'attribute_value'}
+      })
+    ]);
+  });
+
+  test('stopUserAction calls to platform', () async {
+    await ddRumPlatform.stopUserAction(RumUserActionType.swipe,
+        'user_action_swipe', {'attribute_name': 'attribute_value'});
+
+    expect(log, [
+      isMethodCall('stopUserAction', arguments: {
+        'type': 'RumUserActionType.swipe',
+        'name': 'user_action_swipe',
+        'attributes': {'attribute_name': 'attribute_value'}
+      })
+    ]);
+  });
+
+  test('addAttribute calls to platform', () async {
+    await ddRumPlatform.addAttribute('attribute_key', 'my attribute value');
+
+    expect(log, [
+      isMethodCall('addAttribute',
+          arguments: {'key': 'attribute_key', 'value': 'my attribute value'})
+    ]);
+  });
+
+  test('removeAttribute calls to platform', () async {
+    await ddRumPlatform.removeAttribute('attribute_key');
+
+    expect(log, [
+      isMethodCall('removeAttribute', arguments: {'key': 'attribute_key'})
+    ]);
+  });
 }

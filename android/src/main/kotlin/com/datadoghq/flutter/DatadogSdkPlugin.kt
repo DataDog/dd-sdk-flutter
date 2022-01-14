@@ -5,6 +5,7 @@
  */
 package com.datadoghq.flutter
 
+import android.util.Log
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
@@ -87,6 +88,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         )
 
         Datadog.initialize(binding.applicationContext, credentials, configuration, trackingConsent)
+
+        Datadog.setVerbosity(Log.VERBOSE)
 
         // GlobalTracer.registerIfAbsent(AndroidTracer.Builder().build())
         GlobalRum.registerIfAbsent(RumMonitor.Builder().build())

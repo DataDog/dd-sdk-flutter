@@ -6,6 +6,8 @@ import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:datadog_sdk/rum/ddrum.dart';
 import 'package:flutter/material.dart';
 
+import '../main.dart';
+
 const fakeRootUrl = 'https://fake_url';
 
 class RumManualInstrumentationScenario extends StatefulWidget {
@@ -17,23 +19,51 @@ class RumManualInstrumentationScenario extends StatefulWidget {
 }
 
 class _RumManualInstrumentationScenarioState
-    extends State<RumManualInstrumentationScenario> {
+    extends State<RumManualInstrumentationScenario> implements RouteAware {
   bool _contentReady = false;
 
   @override
   void initState() {
     super.initState();
 
-    DatadogSdk().ddRum?.startView(widget.runtimeType.toString());
+    _viewKey = widget.runtimeType.toString();
+    DatadogSdk().ddRum?.addAttribute('onboarding_stage', 1);
 
     _fakeLoading();
   }
 
   @override
   void dispose() {
-    DatadogSdk().ddRum?.stopView(widget.runtimeType.toString());
-
+    routeObserver.unsubscribe(this);
     super.dispose();
+  }
+
+  late String _viewKey;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void didPop() {
+    DatadogSdk().ddRum?.stopView(_viewKey);
+  }
+
+  @override
+  void didPopNext() {
+    DatadogSdk().ddRum?.startView(_viewKey);
+  }
+
+  @override
+  void didPush() {
+    DatadogSdk().ddRum?.startView(_viewKey);
+  }
+
+  @override
+  void didPushNext() {
+    DatadogSdk().ddRum?.stopView(_viewKey);
   }
 
   @override
@@ -68,6 +98,7 @@ class _RumManualInstrumentationScenarioState
     final rum = DatadogSdk().ddRum;
 
     await rum?.addTiming('first-interaction');
+    await rum?.addUserAction(RumUserActionType.tap, 'Tapped Download');
 
     var simulatedResourceKey1 = '/resource/1';
     var simulatedResourceKey2 = '/resource/2';
@@ -88,7 +119,10 @@ class _RumManualInstrumentationScenarioState
     });
   }
 
-  void _onNextTapped() {
+  Future<void> _onNextTapped() async {
+    await DatadogSdk()
+        .ddRum
+        ?.addUserAction(RumUserActionType.tap, 'Next Screen');
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -106,24 +140,50 @@ class RumManualInstrumentation2 extends StatefulWidget {
       _RumManualInstrumentation2State();
 }
 
-class _RumManualInstrumentation2State extends State<RumManualInstrumentation2> {
+class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
+    implements RouteAware {
+  bool _nextReady = false;
+  late String _viewKey;
+  final _viewName = 'SecondManualRumView';
+
   @override
   void initState() {
     super.initState();
 
-    DatadogSdk()
-        .ddRum
-        ?.startView(widget.runtimeType.toString(), 'SecondManualRumView');
-    DatadogSdk()
-        .ddRum
-        ?.addErrorInfo('Simulated view error', RumErrorSource.source);
+    _viewKey = widget.runtimeType.toString();
+    _simulateActions();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
   }
 
   @override
   void dispose() {
-    DatadogSdk().ddRum?.stopView(widget.runtimeType.toString());
-
+    routeObserver.unsubscribe(this);
     super.dispose();
+  }
+
+  @override
+  void didPop() {
+    DatadogSdk().ddRum?.stopView(_viewKey);
+  }
+
+  @override
+  void didPopNext() {
+    DatadogSdk().ddRum?.startView(_viewKey, _viewName);
+  }
+
+  @override
+  void didPush() {
+    DatadogSdk().ddRum?.startView(_viewKey, _viewName);
+  }
+
+  @override
+  void didPushNext() {
+    DatadogSdk().ddRum?.stopView(_viewKey);
   }
 
   @override
@@ -134,14 +194,34 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2> {
       ),
       body: Center(
         child: ElevatedButton(
-          onPressed: _onNextTapped,
+          onPressed: _nextReady ? _onNextTapped : null,
           child: const Text('Next Screen'),
         ),
       ),
     );
   }
 
-  void _onNextTapped() {
+  Future<void> _simulateActions() async {
+    await Future.delayed(const Duration(seconds: 1));
+    await DatadogSdk()
+        .ddRum
+        ?.addErrorInfo('Simulated view error', RumErrorSource.source);
+    await DatadogSdk()
+        .ddRum
+        ?.startUserAction(RumUserActionType.scroll, 'User Scrolling');
+    await Future.delayed(const Duration(seconds: 2));
+    await DatadogSdk().ddRum?.stopUserAction(
+        RumUserActionType.scroll, 'User Scrolling', {'scroll_distance': 12.2});
+
+    setState(() {
+      _nextReady = true;
+    });
+  }
+
+  Future<void> _onNextTapped() async {
+    await DatadogSdk()
+        .ddRum
+        ?.addUserAction(RumUserActionType.tap, 'Next Screen');
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -159,20 +239,49 @@ class RumManualInstrumentation3 extends StatefulWidget {
       _RumManualInstrumentation3State();
 }
 
-class _RumManualInstrumentation3State extends State<RumManualInstrumentation3> {
+class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
+    implements RouteAware {
+  final String _viewKey = 'screen3-widget';
+  final String _viewName = 'ThirdManualRumView';
+
   @override
   void initState() {
     super.initState();
 
-    DatadogSdk().ddRum?.startView('screen3-widget', 'ThirdManualRumView');
-    DatadogSdk().ddRum?.addTiming('content-ready');
+    _simulateActions();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
   }
 
   @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     super.dispose();
+  }
 
-    DatadogSdk().ddRum?.stopView('screen3-widget');
+  @override
+  void didPop() {
+    DatadogSdk().ddRum?.stopView(_viewKey);
+  }
+
+  @override
+  void didPopNext() {
+    DatadogSdk().ddRum?.startView(_viewKey, _viewName);
+  }
+
+  @override
+  void didPush() {
+    DatadogSdk().ddRum?.removeAttribute('onboarding_stage');
+    DatadogSdk().ddRum?.startView(_viewKey, _viewName);
+  }
+
+  @override
+  void didPushNext() {
+    DatadogSdk().ddRum?.stopView(_viewKey);
   }
 
   @override
@@ -185,5 +294,13 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3> {
         child: Text('Everything is Awesome!'),
       ),
     );
+  }
+
+  void _simulateActions() async {
+    await DatadogSdk().ddRum?.addTiming('content-ready');
+
+    // Stop the view to make sure it doesn't get held over to the next session.
+    await Future.delayed(Duration(milliseconds: 500));
+    await DatadogSdk().ddRum?.stopView(_viewKey);
   }
 }

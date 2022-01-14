@@ -1,6 +1,7 @@
 package com.datadoghq.flutter
 
 import com.datadog.android.rum.GlobalRum
+import com.datadog.android.rum.RumActionType
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumResourceKind
@@ -13,6 +14,7 @@ class DatadogRumPlugin(
 ) : MethodChannel.MethodCallHandler {
     companion object RumParameterNames {
         const val PARAM_KEY = "key"
+        const val PARAM_VALUE = "value"
         const val PARAM_NAME = "name"
         const val PARAM_ATTRIBUTES = "attributes"
         const val PARAM_URL = "url"
@@ -23,6 +25,7 @@ class DatadogRumPlugin(
         const val PARAM_MESSAGE = "message"
         const val PARAM_SOURCE = "source"
         const val PARAM_STACK_TRACE = "stackTrace"
+        const val PARAM_TYPE = "type"
     }
 
     private lateinit var channel: MethodChannel
@@ -114,6 +117,50 @@ class DatadogRumPlugin(
                 }
                 result.success(null)
             }
+            "addUserAction" -> {
+                val typeString = call.argument<String>(PARAM_TYPE)
+                val name = call.argument<String>(PARAM_NAME)
+                val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+                if (typeString != null && name != null && attributes != null) {
+                    val actionType = parseRumActionType(typeString)
+                    rum.addUserAction(actionType, name, attributes)
+                }
+                result.success(null)
+            }
+            "startUserAction" -> {
+                val typeString = call.argument<String>(PARAM_TYPE)
+                val name = call.argument<String>(PARAM_NAME)
+                val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+                if (typeString != null && name != null && attributes != null) {
+                    val actionType = parseRumActionType(typeString)
+                    rum.startUserAction(actionType, name, attributes)
+                }
+                result.success(null)
+            }
+            "stopUserAction" -> {
+                val typeString = call.argument<String>(PARAM_TYPE)
+                val name = call.argument<String>(PARAM_NAME)
+                val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+                if (typeString != null && name != null && attributes != null) {
+                    val actionType = parseRumActionType(typeString)
+                    rum.stopUserAction(actionType, name, attributes)
+                }
+                result.success(null)
+            }
+            "addAttribute" -> {
+                val key = call.argument<String>(PARAM_KEY)
+                val value = call.argument<Any>(PARAM_VALUE)
+                if (key != null && value != null) {
+                    GlobalRum.addAttribute(key, value)
+                }
+                result.success(null)
+            }
+            "removeAttribute" -> {
+                val key = call.argument<String>(PARAM_KEY)?.let {
+                    GlobalRum.removeAttribute(it)
+                }
+                result.success(null)
+            }
             else -> {
                 result.notImplemented()
             }
@@ -162,5 +209,15 @@ fun parseRumErrorSource(value: String): RumErrorSource {
         "RumErrorSource.console" -> RumErrorSource.CONSOLE
         "RumErrorSource.custom" -> RumErrorSource.SOURCE
         else -> RumErrorSource.SOURCE
+    }
+}
+
+fun parseRumActionType(value: String): RumActionType {
+    return when (value) {
+        "RumUserActionType.tap" -> RumActionType.TAP
+        "RumUserActionType.scroll" -> RumActionType.SCROLL
+        "RumUserActionType.swipe" -> RumActionType.SWIPE
+        "RumUserActionType.custom" -> RumActionType.CUSTOM
+        else -> RumActionType.CUSTOM
     }
 }
