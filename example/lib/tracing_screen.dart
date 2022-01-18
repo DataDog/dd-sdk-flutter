@@ -142,7 +142,7 @@ class _TracingScreenState extends State<TracingScreen> {
     final operationName =
         _operationName.isEmpty ? 'single span' : _operationName;
 
-    final tracing = DatadogSdk().ddTraces;
+    final tracing = DatadogSdk.instance.ddTraces;
     if (tracing != null) {
       var span = await tracing.startSpan(operationName);
       if (_resourceName.isNotEmpty) {
@@ -165,7 +165,7 @@ class _TracingScreenState extends State<TracingScreen> {
     final operationName =
         _rootOperationName.isEmpty ? 'complex span' : _rootOperationName;
 
-    final tracing = DatadogSdk().ddTraces;
+    final tracing = DatadogSdk.instance.ddTraces;
     if (tracing != null) {
       final rootSpan = await tracing.startRootSpan(operationName);
       await Future.delayed(const Duration(milliseconds: 500));

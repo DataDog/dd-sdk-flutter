@@ -18,14 +18,13 @@ class _RumManualErrorReportingScenarioState
   void initState() {
     super.initState();
 
-    DatadogSdk()
-        .ddRum
+    DatadogSdk.instance.ddRum
         ?.startView('my-key', 'RumManualErrorReportingScenario')
         .then((_) => _addErrors());
   }
 
   Future<void> _addErrors() async {
-    final rum = DatadogSdk().ddRum;
+    final rum = DatadogSdk.instance.ddRum;
     if (rum != null) {
       await rum.addError(NullThrownError(), RumErrorSource.source);
       await rum.addErrorInfo('Rum error message', RumErrorSource.network);
@@ -36,8 +35,7 @@ class _RumManualErrorReportingScenarioState
     try {
       throw const OSError('This was an error!', 200);
     } catch (e, s) {
-      await DatadogSdk()
-          .ddRum
+      await DatadogSdk.instance.ddRum
           ?.addError(e, RumErrorSource.source, stackTrace: s);
     }
   }

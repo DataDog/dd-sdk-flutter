@@ -26,7 +26,7 @@ void main() {
   setUp(() {
     fakePlatform = MockDatadogSdkPlatform();
     DatadogSdkPlatform.instance = fakePlatform;
-    datadogSdk = DatadogSdk();
+    datadogSdk = DatadogSdk.instance;
   });
 
   test('initialize passes configuration to platform', () async {

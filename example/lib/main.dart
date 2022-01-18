@@ -23,7 +23,7 @@ void main() async {
       trackingConsent: TrackingConsent.granted,
     );
 
-    final ddsdk = DatadogSdk();
+    final ddsdk = DatadogSdk.instance;
     await ddsdk.initialize(configuration);
 
     FlutterError.onError = (FlutterErrorDetails details) {
@@ -33,8 +33,7 @@ void main() async {
 
     runApp(const ExampleApp());
   }, (e, s) {
-    DatadogSdk()
-        .ddRum
+    DatadogSdk.instance.ddRum
         ?.addErrorInfo(e.toString(), RumErrorSource.source, stackTrace: s);
   });
 }
