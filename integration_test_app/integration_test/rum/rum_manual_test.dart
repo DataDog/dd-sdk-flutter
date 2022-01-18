@@ -62,7 +62,7 @@ void main() {
 
     const contextKey = 'onboarding_stage';
     const expectedContextValue = 1;
-    // TODO: Start checking "side effectless" actions dd-sdk-android 1.12 comes out.
+    // TODO: Start checking "side effect-less" actions dd-sdk-android 1.12 comes out.
     final shouldCheckExtraActions = !Platform.isAndroid;
 
     final session = RumSessionDecoder.fromEvents(rumLog);

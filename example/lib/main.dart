@@ -28,12 +28,12 @@ void main() async {
 
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
-      ddsdk.ddRum?.handleFlutterError(details);
+      ddsdk.rum?.handleFlutterError(details);
     };
 
     runApp(const ExampleApp());
   }, (e, s) {
-    DatadogSdk.instance.ddRum
+    DatadogSdk.instance.rum
         ?.addErrorInfo(e.toString(), RumErrorSource.source, stackTrace: s);
   });
 }
