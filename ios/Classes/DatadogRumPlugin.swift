@@ -6,22 +6,26 @@ import Foundation
 import Datadog
 
 public class DatadogRumPlugin: NSObject, FlutterPlugin {
-  let rumInstance: DDRUMMonitor?
-
-  private lazy var rum: DDRUMMonitor = {
-    return rumInstance ?? Global.rum
-  }()
-
+  public static let instance =  DatadogRumPlugin()
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.rum", binaryMessenger: registrar.messenger())
-    let instance = DatadogRumPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
 
-  public init(rumInstance: DDRUMMonitor? = nil) {
-    self.rumInstance = rumInstance
+  private var rumInstance: DDRUMMonitor?
+  public var isInitialized: Bool { return rumInstance != nil }
 
+  private override init() {
     super.init()
+  }
+
+  func initialize(configuration: DatadogFlutterConfiguration.RumConfiguration) {
+    rumInstance = RUMMonitor.initialize()
+    Global.rum = rumInstance!
+  }
+
+  public func initialize(withRum rum: DDRUMMonitor) {
+    rumInstance = rum
   }
 
   // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -30,6 +34,12 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
       result(FlutterError(code: "DatadogSDK:InvalidOperation",
                           message: "No arguments in call to \(call.method).",
                           details: nil))
+      return
+    }
+    guard let rum = rumInstance else {
+      result(FlutterError(code: "DatadogSDK:InvalidOperation",
+                         message: "RUM has not been initialized when calling \(call.method).",
+                         details: nil))
       return
     }
 

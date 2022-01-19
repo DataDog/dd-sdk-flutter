@@ -72,7 +72,7 @@ class MockHttpServer {
       }
 
       request.response.write('Hello, world!');
-      request.response.close();
+      await request.response.close();
     }));
   }
 
@@ -87,16 +87,16 @@ class MockHttpServer {
   /// done processing the requests.
   Future<void> pollRequests(Duration timeout, RequestHandler handler) async {
     DateTime timeoutTime = DateTime.now().add(timeout);
-    int lastProcessedReqest = 0;
+    int lastProcessedRequest = 0;
 
     var stopPolling = false;
     do {
       var newRequests = <RequestLog>[];
-      for (var i = lastProcessedReqest; i < _recordedRequests.length; ++i) {
+      for (var i = lastProcessedRequest; i < _recordedRequests.length; ++i) {
         final request = _recordedRequests[i];
         newRequests.add(request);
       }
-      lastProcessedReqest = _recordedRequests.length;
+      lastProcessedRequest = _recordedRequests.length;
 
       if (newRequests.isNotEmpty) {
         stopPolling = handler(newRequests);

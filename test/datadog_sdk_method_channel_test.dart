@@ -35,52 +35,8 @@ void main() {
     await ddSdkPlatform.initialize(configuration);
 
     expect(log, <Matcher>[
-      isMethodCall('initialize', arguments: {
-        'configuration': <String, dynamic>{
-          'clientToken': 'fakeClientToken',
-          'env': 'environment',
-          'applicationId': null,
-          'nativeCrashReportEnabled': false,
-          'sampleRate': 100.0,
-          'site': null,
-          'batchSize': null,
-          'uploadFrequency': null,
-          'trackingConsent': 'TrackingConsent.granted',
-          'customEndpoint': null,
-          'additionalConfig': {},
-        }
-      })
-    ]);
-  });
-
-  test('initialize encoding serializes enums correctly', () async {
-    final configuration = DdSdkConfiguration(
-      clientToken: 'fakeClientToken',
-      env: 'environment',
-      trackingConsent: TrackingConsent.granted,
-    )
-      ..batchSize = BatchSize.small
-      ..uploadFrequency = UploadFrequency.frequent
-      ..site = DatadogSite.eu1;
-
-    await ddSdkPlatform.initialize(configuration);
-
-    expect(log, <Matcher>[
-      isMethodCall('initialize', arguments: {
-        'configuration': <String, dynamic>{
-          'clientToken': 'fakeClientToken',
-          'env': 'environment',
-          'applicationId': null,
-          'nativeCrashReportEnabled': false,
-          'sampleRate': 100.0,
-          'site': 'DatadogSite.eu1',
-          'batchSize': 'BatchSize.small',
-          'uploadFrequency': 'UploadFrequency.frequent',
-          'trackingConsent': 'TrackingConsent.granted',
-          'customEndpoint': null,
-          'additionalConfig': {},
-        }
-      })
+      isMethodCall('initialize',
+          arguments: {'configuration': configuration.encode()})
     ]);
   });
 }

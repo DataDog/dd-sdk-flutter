@@ -38,6 +38,10 @@ android {
         jvmTarget = '1.8'
     }
 
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
     }

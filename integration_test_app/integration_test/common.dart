@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -31,7 +33,7 @@ MockHttpServer? mockHttpServer;
 Future<void> openTestScenario(WidgetTester tester, String scenarioName) async {
   if (mockHttpServer == null) {
     mockHttpServer = MockHttpServer();
-    mockHttpServer!.start();
+    unawaited(mockHttpServer!.start());
   }
 
   // These need to be set as const in order to work, so we

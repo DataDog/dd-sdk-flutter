@@ -6,18 +6,27 @@ import Foundation
 import Datadog
 
 public class DatadogLogsPlugin: NSObject, FlutterPlugin {
+  public static let instance = DatadogLogsPlugin()
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.logs", binaryMessenger: registrar.messenger())
-    let instance = DatadogLogsPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
 
-  private lazy var logger: Logger = {
+  private var logger: Logger?
+  public var isInitialized: Bool { return logger != nil }
+
+  override private init() {
+    super.init()
+  }
+
+  func initialize(configuration: DatadogFlutterConfiguration.LoggingConfiguration) {
     let builder = Logger.builder
-      .sendNetworkInfo(true)
-      .printLogsToConsole(true)
-    return builder.build()
-  }()
+      .sendNetworkInfo(configuration.sendNetworkInfo)
+      .printLogsToConsole(configuration.printLogsToConsole)
+      .bundleWithRUM(configuration.bundleWithRum)
+      .bundleWithTrace(configuration.bundleWithTraces)
+    logger = builder.build()
+  }
 
   // swiftlint:disable:next cyclomatic_complexity function_body_length
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -25,6 +34,12 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
       result(FlutterError(code: "DatadogSDK:InvalidOperation",
                           message: "No arguments in call to \(call.method).",
                           details: nil))
+      return
+    }
+    guard let logger = logger else {
+      result(FlutterError(code: "DatadogSDK:InvalidOperation",
+                         message: "Logger has not been initialized when calling \(call.method).",
+                         details: nil))
       return
     }
 

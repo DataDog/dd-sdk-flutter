@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:datadog_sdk/traces/ddtraces.dart';
 import 'package:flutter/material.dart';
@@ -27,29 +29,31 @@ class _TracesScenarioState extends State<TracesScenario> {
       viewLoadingSpan = await traces.startRootSpan('view loading');
       await viewLoadingSpan?.setActive();
 
-      viewLoadingSpan?.setBaggageItem('class', runtimeType.toString());
+      await viewLoadingSpan?.setBaggageItem('class', runtimeType.toString());
 
       dataDownloadingSpan = await traces.startSpan('data downloading');
       await dataDownloadingSpan?.setTag('data.kind', 'image');
       await dataDownloadingSpan?.setTag(
           'data.url', 'https://example.com/image.png');
       await dataDownloadingSpan?.setTag(DdTags.resource, 'GET /image.png');
+      await dataDownloadingSpan?.setActive();
 
-      _simulateDataDownload();
+      unawaited(_simulateDataDownload());
     }
   }
 
   Future<void> _simulateDataDownload() async {
     await Future.delayed(const Duration(milliseconds: 300));
-    dataDownloadingSpan?.log({
+    await dataDownloadingSpan?.log({
       OTLogFields.message: 'download progress',
       'progress': 0.99,
     });
-    dataDownloadingSpan?.finish();
+    await dataDownloadingSpan?.finish();
 
     var traces = DatadogSdk.instance.traces;
     if (traces != null) {
       final dataPresentationSpan = await traces.startSpan('data presentation');
+      await dataPresentationSpan.setActive();
       await Future.delayed(const Duration(milliseconds: 60));
       await dataPresentationSpan.setTag(OTTags.error, true);
       await dataPresentationSpan.setError(PlatformException(

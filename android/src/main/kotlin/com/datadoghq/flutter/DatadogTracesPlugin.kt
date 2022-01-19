@@ -1,15 +1,28 @@
+/*
+ * Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+ * This product includes software developed at Datadog (https://www.datadoghq.com/).
+ * Copyright 2016-Present Datadog, Inc.
+ */
 package com.datadoghq.flutter
 
 import com.datadog.android.tracing.AndroidTracer
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.opentracing.Scope
 import io.opentracing.Span
 import io.opentracing.Tracer
 import io.opentracing.log.Fields
+import io.opentracing.util.GlobalTracer
 import java.util.concurrent.TimeUnit
 
-internal class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
+data class SpanInfo(
+    val handle: Long,
+    val span: Span,
+    var scope: Scope?
+)
+
+class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
     companion object TraceParameterNames {
         const val PARAM_SPAN_HANDLE = "spanHandle"
         const val PARAM_PARENT_SPAN = "parentSpan"
@@ -28,17 +41,23 @@ internal class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 
     private var nextSpanId: Long = 1
-    private val spanRegistry = mutableMapOf<Long, Span>()
+    private val spanRegistry = mutableMapOf<Long, SpanInfo>()
 
-    private val tracer: Tracer by lazy {
-        AndroidTracer.Builder().build()
-    }
+    private lateinit var tracer: Tracer
 
-    fun setup(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+    fun setup(
+        flutterPluginBinding: FlutterPlugin.FlutterPluginBinding,
+        configuration: DatadogFlutterConfiguration.TracingConfiguration
+    ) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter.traces")
         channel.setMethodCallHandler(this)
 
         binding = flutterPluginBinding
+
+        tracer = AndroidTracer.Builder()
+            .setBundleWithRumEnabled(configuration.bundleWithRum)
+            .build()
+        GlobalTracer.registerIfAbsent(tracer)
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -77,8 +96,8 @@ internal class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
                     spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
                 }
                 call.argument<Number>(PARAM_PARENT_SPAN)?.let {
-                    spanRegistry[it.toLong()]?.let { span ->
-                        spanBuilder.asChildOf(span)
+                    spanRegistry[it.toLong()]?.let { spanInfo ->
+                        spanBuilder.asChildOf(spanInfo.span)
                     }
                 }
 
@@ -95,15 +114,15 @@ internal class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
 
     @Suppress("LongMethod", "ComplexMethod")
     private fun onSpanMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        val callingSpan = findCallingSpan(call)
-        if (callingSpan == null) {
+        val callingSpanInfo = findCallingSpan(call)
+        if (callingSpanInfo == null) {
             result.success(null)
             return
         }
 
         when (call.method) {
             "span.setActive" -> {
-                tracer.activateSpan(callingSpan)
+                callingSpanInfo.scope = tracer.activateSpan(callingSpanInfo.span)
                 result.success(null)
             }
             "span.setError" -> {
@@ -120,17 +139,17 @@ internal class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
                         fields[Fields.STACK] = it
                     }
 
-                    callingSpan.log(fields)
+                    callingSpanInfo.span.log(fields)
                 }
                 result.success(null)
             }
             "span.setTag" -> {
                 call.argument<String>(PARAM_KEY)?.let { key ->
                     when (val value = call.argument<Any>(PARAM_VALUE)) {
-                        is Boolean -> callingSpan.setTag(key, value)
-                        is Number -> callingSpan.setTag(key, value)
-                        is String -> callingSpan.setTag(key, value)
-                        else -> callingSpan.setTag(key, value?.toString())
+                        is Boolean -> callingSpanInfo.span.setTag(key, value)
+                        is Number -> callingSpanInfo.span.setTag(key, value)
+                        is String -> callingSpanInfo.span.setTag(key, value)
+                        else -> callingSpanInfo.span.setTag(key, value?.toString())
                     }
                 }
                 result.success(null)
@@ -140,19 +159,20 @@ internal class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
                     call.argument<String>(PARAM_KEY),
                     call.argument<String>(PARAM_VALUE)
                 ) { (key, value) ->
-                    callingSpan.setBaggageItem(key, value)
+                    callingSpanInfo.span.setBaggageItem(key, value)
                 }
                 result.success(null)
             }
             "span.log" -> {
                 call.argument<Map<String, Any?>>(PARAM_FIELDS)?.let {
-                    callingSpan.log(it)
+                    callingSpanInfo.span.log(it)
                 }
                 result.success(null)
             }
             "span.finish" -> {
                 call.argument<Number>(PARAM_SPAN_HANDLE)?.let {
-                    callingSpan.finish()
+                    callingSpanInfo.span.finish()
+                    callingSpanInfo.scope?.close()
                     spanRegistry.remove(it.toLong())
                 }
                 result.success(null)
@@ -165,7 +185,7 @@ internal class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
         channel.setMethodCallHandler(null)
     }
 
-    private fun findCallingSpan(call: MethodCall): Span? {
+    private fun findCallingSpan(call: MethodCall): SpanInfo? {
         call.argument<Number>(PARAM_SPAN_HANDLE)?.let {
             return spanRegistry[it.toLong()]
         }
@@ -175,7 +195,7 @@ internal class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
     private fun storeSpan(span: Span): Long {
         val spanId = nextSpanId
         nextSpanId += 1
-        spanRegistry[spanId] = span
+        spanRegistry[spanId] = SpanInfo(spanId, span, null)
         return spanId
     }
 

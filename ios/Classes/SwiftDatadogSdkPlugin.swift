@@ -8,9 +8,22 @@ import Datadog
 import DatadogCrashReporting
 
 public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
+  let channel: FlutterMethodChannel
+
+  // NOTE: Although these are instances, they are still registered globally to
+  // a method channel. That might be something we want to change in the future
+  public private(set) var logs: DatadogLogsPlugin?
+  public private(set) var tracer: DatadogTracesPlugin?
+  public private(set) var rum: DatadogRumPlugin?
+
+  public init(channel: FlutterMethodChannel) {
+    self.channel = channel
+    super.init()
+  }
+
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: registrar.messenger())
-    let instance = SwiftDatadogSdkPlugin()
+    let instance = SwiftDatadogSdkPlugin(channel: channel)
     registrar.addMethodCallDelegate(instance, channel: channel)
 
     DatadogLogsPlugin.register(with: registrar)
@@ -29,17 +42,9 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
       }
 
       let configArg = arguments["configuration"] as! [String: Any?]
-      let configuration = SwiftDatadogSdkPlugin.buildConfiguration(from: configArg)
-      let trackingConsent = TrackingConsent.parseFromFlutter(configArg["trackingConsent"] as! String)
-
-      Datadog.initialize(appContext: Datadog.AppContext(),
-                         trackingConsent: trackingConsent,
-                         configuration: configuration)
-
-      Global.rum = RUMMonitor.initialize()
-      Global.sharedTracer = Tracer.initialize(configuration: Tracer.Configuration())
-
-      Datadog.verbosityLevel = .debug
+      if let config = DatadogFlutterConfiguration(fromEncoded: configArg) {
+        initialize(configuration: config)
+      }
 
       result(nil)
 
@@ -48,110 +53,81 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     }
   }
 
-  public static func buildConfiguration(from encodedConfig: [String: Any?]) -> Datadog.Configuration {
-    let clientToken = encodedConfig["clientToken"] as! String
-    let env = encodedConfig["env"] as! String
+  internal func initialize(configuration: DatadogFlutterConfiguration) {
+    let ddConfiguration = SwiftDatadogSdkPlugin.buildConfiguration(from: configuration)
 
+    Datadog.initialize(appContext: Datadog.AppContext(),
+                       trackingConsent: configuration.trackingConsent,
+                       configuration: ddConfiguration)
+
+    if let loggingConfiguration = configuration.loggingConfiguration {
+      logs = DatadogLogsPlugin.instance
+      logs?.initialize(configuration: loggingConfiguration)
+    }
+    if let tracingConfiguration = configuration.tracingConfiguration {
+      tracer = DatadogTracesPlugin.instance
+      tracer?.initialize(configuration: tracingConfiguration)
+    }
+    if let rumConfiguration = configuration.rumConfiguration {
+      rum = DatadogRumPlugin.instance
+      rum?.initialize(configuration: rumConfiguration)
+    }
+  }
+
+  internal static func buildConfiguration(from flutterConfig: DatadogFlutterConfiguration) -> Datadog.Configuration {
     let ddConfigBuilder: Datadog.Configuration.Builder
-    if let rumAppId = encodedConfig["applicationId"] as? String {
-      let sampleRate = (encodedConfig["sampleRate"] as? NSNumber)?.floatValue ?? 100.0
+    if let rumConfig = flutterConfig.rumConfiguration {
       ddConfigBuilder = Datadog.Configuration.builderUsing(
-        rumApplicationID: rumAppId,
-        clientToken: clientToken,
-        environment: env
+        rumApplicationID: rumConfig.applicationId,
+        clientToken: flutterConfig.clientToken,
+        environment: flutterConfig.env
       )
-        .set(rumSessionsSamplingRate: sampleRate)
-        .enableCrashReporting(using: DDCrashReportingPlugin())
+        .set(rumSessionsSamplingRate: rumConfig.sampleRate)
     } else {
       ddConfigBuilder = Datadog.Configuration.builderUsing(
-        clientToken: clientToken,
-        environment: env
+        clientToken: flutterConfig.clientToken,
+        environment: flutterConfig.env
       )
     }
 
-    if let site = encodedConfig["site"] as? String {
-      _ = ddConfigBuilder.set(endpoint: .parseFromFlutter(site))
-    }
-    if let batchSize = encodedConfig["batchSize"] as? String {
-      _ = ddConfigBuilder.set(batchSize: .parseFromFlutter(batchSize))
-    }
-    if let uploadFrequency = encodedConfig["uploadFrequency"] as? String {
-      _ = ddConfigBuilder.set(uploadFrequency: .parseFromFlutter(uploadFrequency))
-    }
-    if let customEndpoint = encodedConfig["customEndpoint"] as? String {
-      if let customEndpointUrl = URL(string: customEndpoint) {
-        _ = ddConfigBuilder
-          .set(customLogsEndpoint: customEndpointUrl)
-          .set(customTracesEndpoint: customEndpointUrl)
-          .set(customRUMEndpoint: customEndpointUrl)
-      }
+    if flutterConfig.nativeCrashReportingEnabled {
+      _ = ddConfigBuilder.enableCrashReporting(using: DDCrashReportingPlugin())
     }
 
-    if let additionalConfiguration = encodedConfig["additionalConfig"] as? [String: Any] {
-      _ = ddConfigBuilder.set(additionalConfiguration: additionalConfiguration)
-
-      if let enableViewTracking = additionalConfiguration["_dd.native_view_tracking"] as? Bool, enableViewTracking {
-        _ = ddConfigBuilder.trackUIKitRUMViews()
-      }
-
-      if let serviceName = additionalConfiguration["_dd.service_name"] as? String {
-        _ = ddConfigBuilder.set(serviceName: serviceName)
-      }
-
-      if let threshold = additionalConfiguration["_dd.long_task.threshold"] as? TimeInterval {
-        // `_dd.long_task.threshold` attribute is in milliseconds
-        _ = ddConfigBuilder.trackRUMLongTasks(threshold: threshold / 1_000)
-      }
+    if let site = flutterConfig.site {
+      _ = ddConfigBuilder.set(endpoint: site)
     }
+
+    if let batchSize = flutterConfig.batchSize {
+      _ = ddConfigBuilder.set(batchSize: batchSize)
+    }
+    if let uploadFrequency = flutterConfig.uploadFrequency {
+      _ = ddConfigBuilder.set(uploadFrequency: uploadFrequency)
+    }
+
+    if let customEndpoint = flutterConfig.customEndpoint,
+       let customEndpointUrl = URL(string: customEndpoint) {
+      _ = ddConfigBuilder
+        .set(customLogsEndpoint: customEndpointUrl)
+        .set(customTracesEndpoint: customEndpointUrl)
+        .set(customRUMEndpoint: customEndpointUrl)
+    }
+
+    if let enableViewTracking = flutterConfig.additionalConfig["_dd.native_view_tracking"] as? Bool,
+        enableViewTracking {
+      _ = ddConfigBuilder.trackUIKitRUMViews()
+    }
+
+    if let serviceName = flutterConfig.additionalConfig["_dd.service_name"] as? String {
+      _ = ddConfigBuilder.set(serviceName: serviceName)
+    }
+
+    if let threshold = flutterConfig.additionalConfig["_dd.long_task.threshold"] as? TimeInterval {
+      // `_dd.long_task.threshold` attribute is in milliseconds
+      _ = ddConfigBuilder.trackRUMLongTasks(threshold: threshold / 1_000)
+    }
+    _ = ddConfigBuilder.set(additionalConfiguration: flutterConfig.additionalConfig)
 
     return ddConfigBuilder.build()
-  }
-}
-
-// MARK: - Flutter enum parsing extensions
-
-public extension TrackingConsent {
-  static func parseFromFlutter(_ value: String) -> Self {
-    switch value {
-    case "TrackingConsent.granted": return .granted
-    case "TrackingConsent.notGranted": return .notGranted
-    case "TrackingConsent.pending": return .pending
-    default: return .pending
-    }
-  }
-}
-
-public extension Datadog.Configuration.BatchSize {
-  static func parseFromFlutter(_ value: String) -> Self {
-    switch value {
-    case "BatchSize.small": return .small
-    case "BatchSize.medium": return .medium
-    case "BatchSize.large": return .large
-    default: return .medium
-    }
-  }
-}
-
-public extension Datadog.Configuration.UploadFrequency {
-  static func parseFromFlutter(_ value: String) -> Self {
-    switch value {
-    case "UploadFrequency.frequent": return .frequent
-    case "UploadFrequency.average": return .average
-    case "UploadFrequency.rare": return .rare
-    default: return .average
-    }
-  }
-}
-
-public extension Datadog.Configuration.DatadogEndpoint {
-  static func parseFromFlutter(_ value: String) -> Self {
-    switch value {
-    case "DatadogSite.us1": return .us1
-    case "DatadogSite.us3": return .us3
-    case "DatadogSite.us5": return .us5
-    case "DatadogSite.eu1": return .eu1
-    case "DatadogSite.us1Fed": return .us1_fed
-    default: return .us1
-    }
   }
 }

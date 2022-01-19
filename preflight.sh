@@ -18,5 +18,6 @@ swiftlint --fix
 flutter analyze
 
 # Run iOS / Android integration tests
+bitrise run setup
 bitrise run integration_ios
 bitrise run integration_android

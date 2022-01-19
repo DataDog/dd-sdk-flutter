@@ -7,6 +7,8 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'datadog_sdk.dart';
 import 'datadog_sdk_method_channel.dart';
 
+typedef LogCallback = void Function(String line);
+
 abstract class DatadogSdkPlatform extends PlatformInterface {
   DatadogSdkPlatform() : super(token: _token);
 
@@ -21,5 +23,8 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<void> initialize(DdSdkConfiguration configuration);
+  Future<void> setSdkVerbosity(Verbosity verbosity);
+
+  Future<void> initialize(DdSdkConfiguration configuration,
+      {LogCallback? logCallback});
 }

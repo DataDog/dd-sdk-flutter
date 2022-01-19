@@ -11,7 +11,7 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-internal class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
+class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     companion object LogParameterNames {
         const val LOG_MESSAGE = "message"
         const val LOG_CONTEXT = "context"
@@ -24,19 +24,26 @@ internal class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 
-    private val log: Logger by lazy {
-        Logger.Builder()
-            .setDatadogLogsEnabled(true)
-            .setLogcatLogsEnabled(true)
-            .setLoggerName("DdLogs")
-            .build()
-    }
+    lateinit var log: Logger
+        private set
 
-    fun setup(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+    fun setup(
+        flutterPluginBinding: FlutterPlugin.FlutterPluginBinding,
+        configuration: DatadogFlutterConfiguration.LoggingConfiguration
+    ) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter.logs")
         channel.setMethodCallHandler(this)
 
         binding = flutterPluginBinding
+
+        log = Logger.Builder()
+            .setDatadogLogsEnabled(true)
+            .setLogcatLogsEnabled(configuration.printLogsToConsole)
+            .setNetworkInfoEnabled(configuration.sendNetworkInfo)
+            .setBundleWithTraceEnabled(configuration.bundleWithTraces)
+            .setBundleWithRumEnabled(configuration.bundleWithRum)
+            .setLoggerName("DdLogs")
+            .build()
     }
 
     @Suppress("LongMethod")

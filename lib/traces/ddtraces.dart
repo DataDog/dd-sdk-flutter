@@ -4,6 +4,17 @@
 
 import 'ddtraces_platform_interface.dart';
 
+/// Datadog - specific span `tags` to be used with [DdTraces.startSpan]
+/// and [DdSpan.setTag].
+class DdTags {
+  /// A Datadog-specific span tag, which sets the value appearing in the "RESOURCE" column
+  /// in traces explorer on [app.datadoghq.com](https://app.datadoghq.com/)
+  /// Can be used to customize the resource names grouped under the same operation name.
+  ///
+  /// Expects `String` value set for a tag.
+  static const resource = 'resource.name';
+}
+
 /// A collection of standard `Span` tag keys defined by Open Tracing.
 /// Use them as the `key` in [DdSpan.setTag]. Use the expected type for the `value`.
 ///

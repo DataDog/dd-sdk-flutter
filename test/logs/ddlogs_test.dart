@@ -27,25 +27,25 @@ void main() {
   });
 
   test('debug logs pass to platform', () async {
-    ddLogs.debug('debug message', {'attribute': 'value'});
+    await ddLogs.debug('debug message', {'attribute': 'value'});
 
     verify(fakePlatform.debug('debug message', {'attribute': 'value'}));
   });
 
   test('info logs pass to platform', () async {
-    ddLogs.info('info message', {'attribute': 'value'});
+    await ddLogs.info('info message', {'attribute': 'value'});
 
     verify(fakePlatform.info('info message', {'attribute': 'value'}));
   });
 
   test('warn logs pass to platform', () async {
-    ddLogs.warn('warn message', {'attribute': 'value'});
+    await ddLogs.warn('warn message', {'attribute': 'value'});
 
     verify(fakePlatform.warn('warn message', {'attribute': 'value'}));
   });
 
   test('error logs pass to platform', () async {
-    ddLogs.error('error message', {'attribute': 'value'});
+    await ddLogs.error('error message', {'attribute': 'value'});
 
     verify(fakePlatform.error('error message', {'attribute': 'value'}));
   });
