@@ -5,6 +5,7 @@
  */
 package com.datadoghq.flutter
 
+import android.util.Log
 import com.datadog.android.DatadogSite
 import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Configuration
@@ -173,5 +174,16 @@ internal fun parseSite(site: String): DatadogSite {
         "DatadogSite.eu1" -> DatadogSite.EU1
         "DatadogSite.us1Fed" -> DatadogSite.US1_FED
         else -> DatadogSite.US1
+    }
+}
+
+internal fun parseVerbosity(verbosity: String): Int {
+    return when (verbosity) {
+        "Verbosity.debug" -> Log.DEBUG
+        "Verbosity.info" -> Log.INFO
+        "Verbosity.warn" -> Log.WARN
+        "Verbosity.error" -> Log.ERROR
+        "Verbosity.none" -> Int.MAX_VALUE
+        else -> Int.MAX_VALUE
     }
 }

@@ -24,6 +24,11 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   }
 
   @override
+  Future<void> setTrackingConsent(TrackingConsent trackingConsent) {
+    return Future.value();
+  }
+
+  @override
   Future<void> initialize(DdSdkConfiguration configuration,
       {LogCallback? logCallback}) async {}
 }

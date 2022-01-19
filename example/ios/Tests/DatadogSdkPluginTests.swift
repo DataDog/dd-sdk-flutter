@@ -126,4 +126,52 @@ class FlutterSdkTests: XCTestCase {
     XCTAssertNotNil(plugin.logs)
     XCTAssertEqual(plugin.logs?.isInitialized, true)
   }
+
+  func testSetVerbosity_FromMethodChannel_SetsVerbosity() {
+    let flutterConfig = DatadogFlutterConfiguration(
+      clientToken: "fakeClientToken",
+      env: "prod",
+      trackingConsent: TrackingConsent.granted,
+      nativeCrashReportingEnabled: false
+    )
+
+    let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+    plugin.initialize(configuration: flutterConfig)
+    let methodCall = FlutterMethodCall(
+      methodName: "setSdkVerbosity", arguments: [
+        "value": "Verbosity.info"
+      ])
+
+    var callResult = ResultStatus.notCalled
+    plugin.handle(methodCall) { result in
+      callResult = ResultStatus.called(value: result)
+    }
+
+    XCTAssertEqual(Datadog.verbosityLevel, .info)
+    XCTAssertEqual(callResult, .called(value: nil))
+  }
+
+  func testSetTrackingConsent_FromMethodChannel_SetsTrackingConsent() {
+    let flutterConfig = DatadogFlutterConfiguration(
+      clientToken: "fakeClientToken",
+      env: "prod",
+      trackingConsent: TrackingConsent.granted,
+      nativeCrashReportingEnabled: false
+    )
+
+    let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+    plugin.initialize(configuration: flutterConfig)
+    let methodCall = FlutterMethodCall(
+      methodName: "setTrackingConsent", arguments: [
+        "value": "TrackingConsent.notGranted"
+      ])
+
+    var callResult = ResultStatus.notCalled
+    plugin.handle(methodCall) { result in
+      callResult = ResultStatus.called(value: result)
+    }
+
+    XCTAssertEqual(Datadog.instance?.consentProvider.currentValue, .notGranted)
+    XCTAssertEqual(callResult, .called(value: nil))
+  }
 }

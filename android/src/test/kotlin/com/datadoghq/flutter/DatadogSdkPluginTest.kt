@@ -10,6 +10,7 @@ import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.util.Log
 import assertk.assertThat
 import assertk.assertions.isFalse
 import assertk.assertions.isNotNull
@@ -209,6 +210,41 @@ class DatadogSdkPluginTest {
         // THEN
         assertThat(Datadog.isInitialized())
         assertThat(plugin.logsPlugin).isNotNull()
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M set sdk verbosity W called through MethodChannel`() {
+        // GIVEN
+        var methodCall = MethodCall(
+            "setSdkVerbosity",
+            mapOf( "value" to "Verbosity.info" )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        val setVerbosity: Int = Datadog.getFieldValue("libraryVerbosity")
+        assertThat(setVerbosity).equals(Log.INFO)
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M set tracking consent W called through MethodChannel`() {
+        // GIVEN
+        var methodCall = MethodCall(
+            "setTrackingConsent",
+            mapOf( "value" to "TrackingConsent.notGranted" )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        // TODO: Track that tracking consent was set properly?
         verify(mockResult).success(null)
     }
 }

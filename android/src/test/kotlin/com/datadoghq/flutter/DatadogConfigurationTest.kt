@@ -5,6 +5,7 @@
  */
 package com.datadoghq.flutter
 
+import android.util.Log
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
@@ -75,6 +76,24 @@ class DatadogConfigurationTest {
         assertThat(us5).isEqualTo(DatadogSite.US5)
         assertThat(eu1).isEqualTo(DatadogSite.EU1)
         assertThat(us1Fed).isEqualTo(DatadogSite.US1_FED)
+    }
+
+    @Test
+    fun `M parse all Verbosity W parseVerbosity`() {
+        // WHEN
+        val debug = parseVerbosity("Verbosity.debug")
+        val info = parseVerbosity("Verbosity.info")
+        val warn = parseVerbosity("Verbosity.warn")
+        val error = parseVerbosity("Verbosity.error")
+        val none = parseVerbosity("Verbosity.none")
+        val unknown = parseVerbosity("unknown")
+
+        assertThat(debug).isEqualTo(Log.DEBUG)
+        assertThat(info).isEqualTo(Log.INFO)
+        assertThat(warn).isEqualTo(Log.WARN)
+        assertThat(error).isEqualTo(Log.ERROR)
+        assertThat(none).isEqualTo(Int.MAX_VALUE)
+        assertThat(unknown).isEqualTo(Int.MAX_VALUE)
     }
 
     @Test

@@ -32,22 +32,32 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard let arguments = call.arguments as? [String: Any] else {
+      result(FlutterError(code: "DatadogSDK:InvalidOperation",
+                          message: "No arguments in call to \(call.method)",
+                          details: nil))
+      return
+    }
+
     switch call.method {
     case "initialize":
-      guard let arguments = call.arguments as? [String: Any] else {
-        result(FlutterError(code: "DatadogSDK:InvalidOperation",
-                            message: "No arguments in call to DdSdk.initialize.",
-                            details: nil))
-        return
-      }
-
       let configArg = arguments["configuration"] as! [String: Any?]
       if let config = DatadogFlutterConfiguration(fromEncoded: configArg) {
         initialize(configuration: config)
       }
-
       result(nil)
-
+    case "setSdkVerbosity":
+      if let verbosityString = arguments["value"] as? String {
+        let verbosity = LogLevel.parseFromFlutter(verbosityString)
+        Datadog.verbosityLevel = verbosity
+      }
+      result(nil)
+    case "setTrackingConsent":
+      if let trackingConsentString = arguments["value"] as? String {
+        let trackingConsent = TrackingConsent.parseFromFlutter(trackingConsentString)
+        Datadog.set(trackingConsent: trackingConsent)
+      }
+      result(nil)
     default:
       result(FlutterMethodNotImplemented)
     }

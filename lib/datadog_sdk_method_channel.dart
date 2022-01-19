@@ -19,6 +19,12 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   }
 
   @override
+  Future<void> setTrackingConsent(TrackingConsent trackingConsent) {
+    return methodChannel.invokeMethod(
+        'setTrackingConsent', {'value': trackingConsent.toString()});
+  }
+
+  @override
   Future<void> initialize(DdSdkConfiguration configuration,
       {LogCallback? logCallback}) async {
     if (logCallback != null) {

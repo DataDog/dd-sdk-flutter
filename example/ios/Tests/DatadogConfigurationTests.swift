@@ -53,6 +53,22 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(us1Fed, .us1_fed)
   }
 
+  func testAllVerbosityLevels_AreParsedCorrectly() {
+    let debug = LogLevel.parseFromFlutter("Verbosity.debug")
+    let info = LogLevel.parseFromFlutter("Verbosity.info")
+    let warn = LogLevel.parseFromFlutter("Verbosity.warn")
+    let error = LogLevel.parseFromFlutter("Verbosity.error")
+    let none = LogLevel.parseFromFlutter("Verbosity.none")
+    let unknown = LogLevel.parseFromFlutter("unknown")
+
+    XCTAssertEqual(debug, .debug)
+    XCTAssertEqual(info, .info)
+    XCTAssertEqual(warn, .warn)
+    XCTAssertEqual(error, .error)
+    XCTAssertNil(none)
+    XCTAssertNil(unknown)
+  }
+
   func testConfiguration_MissingValues_FailsInitialization() {
     let encoded: [String: Any?]  = [
       "env": "fakeEnvironment",
