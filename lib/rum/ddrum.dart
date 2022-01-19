@@ -4,6 +4,8 @@
 
 import 'package:flutter/material.dart';
 
+import '../internal_helpers.dart';
+import '../internal_logger.dart';
 import 'ddrum_platform_interface.dart';
 
 /// HTTP method of the resource
@@ -53,6 +55,10 @@ class DdRum {
     return DdRumPlatform.instance;
   }
 
+  final InternalLogger logger;
+
+  DdRum(this.logger);
+
   /// Notifies that the View identified by [key] starts being presented to the
   /// user. This view will show as [name] in the RUM explorer, and defaults to
   /// [key] if it is not provided. You can also attach custom [attributes],
@@ -62,7 +68,9 @@ class DdRum {
   Future<void> startView(String key,
       [String? name, Map<String, dynamic> attributes = const {}]) {
     name ??= key;
-    return _platform.startView(key, name, attributes);
+    return wrap('rum.startView', logger, () {
+      return _platform.startView(key, name!, attributes);
+    });
   }
 
   /// Notifies that the View identified by [key] stops being presented to the
@@ -72,14 +80,18 @@ class DdRum {
   /// The [key] passed here must match the [key] passed to [startView].
   Future<void> stopView(String key,
       [Map<String, dynamic> attributes = const {}]) {
-    return _platform.stopView(key, attributes);
+    return wrap('rum.stopView', logger, () {
+      return _platform.stopView(key, attributes);
+    });
   }
 
   /// Adds a specific timing named [name] in the currently presented View. The
   /// timing duration will be computed as the number of nanoseconds between the
   /// time the View was started and the time the timing was added.
   Future<void> addTiming(String name) {
-    return _platform.addTiming(name);
+    return wrap('rum.addTiming', logger, () {
+      return _platform.addTiming(name);
+    });
   }
 
   /// Notifies that the Exception or Error [error] occurred in currently
@@ -87,9 +99,11 @@ class DdRum {
   /// additional [attributes] for this error
   Future<void> addError(Object error, RumErrorSource source,
       {StackTrace? stackTrace, Map<String, dynamic> attributes = const {}}) {
-    // TODO: RUMM-1899 / RUMM-1900 - add flutter as an error source_type
-    //attributes[_ddRumErrorTypeKey] = 'flutter';
-    return _platform.addError(error, source, stackTrace, attributes);
+    return wrap('rum.addError', logger, () {
+      // TODO: RUMM-1899 / RUMM-1900 - add flutter as an error source_type
+      //attributes[_ddRumErrorTypeKey] = 'flutter';
+      return _platform.addError(error, source, stackTrace, attributes);
+    });
   }
 
   /// Notifies that an error occurred in currently presented View, with the
@@ -97,11 +111,22 @@ class DdRum {
   /// supply a [stackTrace] and send additional [attributes] for this error
   Future<void> addErrorInfo(String message, RumErrorSource source,
       {StackTrace? stackTrace, Map<String, dynamic> attributes = const {}}) {
-    // TODO: RUMM-1899 / RUMM-1900 - add flutter as an error source_type
-    //attributes[_ddRumErrorTypeKey] = 'flutter';
-    return _platform.addErrorInfo(message, source, stackTrace, attributes);
+    return wrap('rum.addErrorInfo', logger, () {
+      // TODO: RUMM-1899 / RUMM-1900 - add flutter as an error source_type
+      //attributes[_ddRumErrorTypeKey] = 'flutter';
+      return _platform.addErrorInfo(message, source, stackTrace, attributes);
+    });
   }
 
+  /// Send a Flutter error to RUM. This is used in conjunction with
+  /// FlutterError.onError by doing the following during initialization
+  ///
+  /// ```dart
+  /// FlutterError.onError = (FlutterErrorDetails details) {
+  ///    FlutterError.presentError(details);
+  ///    DatadogSdk.instance..rum?.handleFlutterError(details);
+  /// };
+  /// ```
   Future<void> handleFlutterError(FlutterErrorDetails details) {
     return addErrorInfo(
       details.exceptionAsString(),
@@ -122,7 +147,9 @@ class DdRum {
   Future<void> startResourceLoading(
       String key, RumHttpMethod httpMethod, String url,
       [Map<String, dynamic> attributes = const {}]) {
-    return _platform.startResourceLoading(key, httpMethod, url, attributes);
+    return wrap('rum.startResourceLoading', logger, () {
+      return _platform.startResourceLoading(key, httpMethod, url, attributes);
+    });
   }
 
   /// Notifies that the Resource identified by [key] stopped being loaded
@@ -132,8 +159,10 @@ class DdRum {
   Future<void> stopResourceLoading(
       String key, int? statusCode, RumResourceType kind,
       [int? size, Map<String, dynamic> attributes = const {}]) {
-    return _platform.stopResourceLoading(
-        key, statusCode, kind, size, attributes);
+    return wrap('rum.stopResourceLoading', logger, () {
+      return _platform.stopResourceLoading(
+          key, statusCode, kind, size, attributes);
+    });
   }
 
   /// Notifies that the Resource identified by [key] stopped being loaded with an
@@ -141,7 +170,9 @@ class DdRum {
   /// [attributes] to attach to this Resource.
   Future<void> stopResourceLoadingWithError(String key, Exception error,
       [Map<String, dynamic> attributes = const {}]) {
-    return _platform.stopResourceLoadingWithError(key, error, attributes);
+    return wrap('rum.stopResourceLoadingWithError', logger, () {
+      return _platform.stopResourceLoadingWithError(key, error, attributes);
+    });
   }
 
   /// Notifies that the Resource identified by [key] stopped being loaded with
@@ -149,7 +180,10 @@ class DdRum {
   /// attach to this Resource.
   Future<void> stopResourceLoadingWithErrorInfo(String key, String message,
       [Map<String, dynamic> attributes = const {}]) {
-    return _platform.stopResourceLoadingWithErrorInfo(key, message, attributes);
+    return wrap('rum.stopResourceLoadingWithErrorInfo', logger, () {
+      return _platform.stopResourceLoadingWithErrorInfo(
+          key, message, attributes);
+    });
   }
 
   /// Register the occurrence of a User Action.
@@ -159,7 +193,9 @@ class DdRum {
   /// user action.
   Future<void> addUserAction(RumUserActionType type, String name,
       [Map<String, dynamic> attributes = const {}]) {
-    return _platform.addUserAction(type, name, attributes);
+    return wrap('rum.addUserAction', logger, () {
+      return _platform.addUserAction(type, name, attributes);
+    });
   }
 
   /// Notifies that a User Action of [type] has started, named [name]. This is
@@ -169,7 +205,9 @@ class DdRum {
   /// provide custom [attributes].
   Future<void> startUserAction(RumUserActionType type, String name,
       [Map<String, dynamic> attributes = const {}]) {
-    return _platform.startUserAction(type, name, attributes);
+    return wrap('rum.startUserAction', logger, () {
+      return _platform.startUserAction(type, name, attributes);
+    });
   }
 
   /// Notifies that the User Action of [type], named [name] has stopped.
@@ -177,19 +215,25 @@ class DdRum {
   /// started with [startUserAction].
   Future<void> stopUserAction(RumUserActionType type, String name,
       [Map<String, dynamic> attributes = const {}]) {
-    return _platform.stopUserAction(type, name, attributes);
+    return wrap('rum.stopUserAction', logger, () {
+      return _platform.stopUserAction(type, name, attributes);
+    });
   }
 
   /// Adds a custom attribute with [key] and [value] to all future events sent
   /// by the RUM monitor. Note that [value] must be supported by
   /// [StandardMessageCodec].
   Future<void> addAttribute(String key, dynamic value) {
-    return _platform.addAttribute(key, value);
+    return wrap('rum.addAttributes', logger, () {
+      return _platform.addAttribute(key, value);
+    });
   }
 
   /// Removes the custom attribute [key] from all future events sent by the RUM
   /// monitor. Events created prior to this call will not lose this attribute.
   Future<void> removeAttribute(String key) {
-    return _platform.removeAttribute(key);
+    return wrap('rum.removeAttribute', logger, () {
+      return _platform.removeAttribute(key);
+    });
   }
 }

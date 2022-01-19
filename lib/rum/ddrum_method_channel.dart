@@ -8,7 +8,6 @@ import 'package:meta/meta.dart';
 import 'ddrum.dart';
 import 'ddrum_platform_interface.dart';
 
-// TODO: RUMM-1849 Determine error logging approach for this file (search for RUMM-1849)
 class DdRumMethodChannel extends DdRumPlatform {
   @visibleForTesting
   final MethodChannel methodChannel =
@@ -24,27 +23,19 @@ class DdRumMethodChannel extends DdRumPlatform {
 
   @override
   Future<void> startView(
-      String key, String name, Map<String, dynamic> attributes) async {
-    try {
-      await methodChannel.invokeMethod(
-        'startView',
-        {'key': key, 'name': name, 'attributes': attributes},
-      );
-    } on ArgumentError {
-      // RUMM-1849 Determine error logging approach
-    }
+      String key, String name, Map<String, dynamic> attributes) {
+    return methodChannel.invokeMethod(
+      'startView',
+      {'key': key, 'name': name, 'attributes': attributes},
+    );
   }
 
   @override
-  Future<void> stopView(String key, Map<String, dynamic> attributes) async {
-    try {
-      await methodChannel.invokeMethod(
-        'stopView',
-        {'key': key, 'attributes': attributes},
-      );
-    } on ArgumentError {
-      // RUMM-1849 Determine error logging approach
-    }
+  Future<void> stopView(String key, Map<String, dynamic> attributes) {
+    return methodChannel.invokeMethod(
+      'stopView',
+      {'key': key, 'attributes': attributes},
+    );
   }
 
   @override
@@ -53,34 +44,26 @@ class DdRumMethodChannel extends DdRumPlatform {
     RumHttpMethod httpMethod,
     String url, [
     Map<String, dynamic> attributes = const {},
-  ]) async {
-    try {
-      await methodChannel.invokeMethod('startResourceLoading', {
-        'key': key,
-        'httpMethod': httpMethod.toString(),
-        'url': url,
-        'attributes': attributes
-      });
-    } on ArgumentError {
-      // RUMM-1849 Determine error logging approach
-    }
+  ]) {
+    return methodChannel.invokeMethod('startResourceLoading', {
+      'key': key,
+      'httpMethod': httpMethod.toString(),
+      'url': url,
+      'attributes': attributes
+    });
   }
 
   @override
   Future<void> stopResourceLoading(
       String key, int? statusCode, RumResourceType kind,
-      [int? size, Map<String, dynamic>? attributes = const {}]) async {
-    try {
-      await methodChannel.invokeMethod('stopResourceLoading', {
-        'key': key,
-        'statusCode': statusCode,
-        'kind': kind.toString(),
-        'size': size,
-        'attributes': attributes
-      });
-    } on ArgumentError {
-      // RUMM-1849 Determine error logging approach
-    }
+      [int? size, Map<String, dynamic>? attributes = const {}]) {
+    return methodChannel.invokeMethod('stopResourceLoading', {
+      'key': key,
+      'statusCode': statusCode,
+      'kind': kind.toString(),
+      'size': size,
+      'attributes': attributes
+    });
   }
 
   @override
@@ -91,13 +74,9 @@ class DdRumMethodChannel extends DdRumPlatform {
 
   @override
   Future<void> stopResourceLoadingWithErrorInfo(String key, String message,
-      [Map<String, dynamic> attributes = const {}]) async {
-    try {
-      await methodChannel.invokeMethod('stopResourceLoadingWithError',
-          {'key': key, 'message': message, 'attributes': attributes});
-    } on ArgumentError {
-      // RUMM-1849 Determine error logging approach
-    }
+      [Map<String, dynamic> attributes = const {}]) {
+    return methodChannel.invokeMethod('stopResourceLoadingWithError',
+        {'key': key, 'message': message, 'attributes': attributes});
   }
 
   @override
@@ -108,55 +87,39 @@ class DdRumMethodChannel extends DdRumPlatform {
 
   @override
   Future<void> addErrorInfo(String message, RumErrorSource source,
-      StackTrace? stackTrace, Map<String, dynamic> attributes) async {
-    try {
-      stackTrace ??= StackTrace.current;
+      StackTrace? stackTrace, Map<String, dynamic> attributes) {
+    stackTrace ??= StackTrace.current;
 
-      await methodChannel.invokeMethod('addError', {
-        'message': message,
-        'source': source.toString(),
-        'stackTrace': stackTrace.toString(),
-        'attributes': attributes
-      });
-    } on ArgumentError {
-      // RUMM-1849 Determine error logging approach
-    }
+    return methodChannel.invokeMethod('addError', {
+      'message': message,
+      'source': source.toString(),
+      'stackTrace': stackTrace.toString(),
+      'attributes': attributes
+    });
   }
 
   @override
-  Future<void> addUserAction(RumUserActionType type, String? name,
-      Map<String, dynamic> attributes) async {
-    try {
-      await methodChannel.invokeMethod('addUserAction', {
-        'type': type.toString(),
-        'name': name,
-        'attributes': attributes,
-      });
-    } on ArgumentError {
-      // RUMM-1849 Determine error logging approach
-    }
+  Future<void> addUserAction(
+      RumUserActionType type, String? name, Map<String, dynamic> attributes) {
+    return methodChannel.invokeMethod('addUserAction', {
+      'type': type.toString(),
+      'name': name,
+      'attributes': attributes,
+    });
   }
 
   @override
-  Future<void> startUserAction(RumUserActionType type, String name,
-      Map<String, dynamic> attributes) async {
-    try {
-      await methodChannel.invokeMethod('startUserAction',
-          {'type': type.toString(), 'name': name, 'attributes': attributes});
-    } on ArgumentError {
-      // RUMM-1849 Determine error logging approach
-    }
+  Future<void> startUserAction(
+      RumUserActionType type, String name, Map<String, dynamic> attributes) {
+    return methodChannel.invokeMethod('startUserAction',
+        {'type': type.toString(), 'name': name, 'attributes': attributes});
   }
 
   @override
-  Future<void> stopUserAction(RumUserActionType type, String name,
-      Map<String, dynamic> attributes) async {
-    try {
-      await methodChannel.invokeMethod('stopUserAction',
-          {'type': type.toString(), 'name': name, 'attributes': attributes});
-    } on ArgumentError {
-      // RUMM-1849 Determine error logging approach
-    }
+  Future<void> stopUserAction(
+      RumUserActionType type, String name, Map<String, dynamic> attributes) {
+    return methodChannel.invokeMethod('stopUserAction',
+        {'type': type.toString(), 'name': name, 'attributes': attributes});
   }
 
   @override

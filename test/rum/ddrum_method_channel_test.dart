@@ -46,13 +46,6 @@ void main() {
     ]);
   });
 
-  test('startView with invalid attributes does not throw', () async {
-    final m = MockType(5);
-    await ddRumPlatform.startView('my key', 'my_name', {'badAttribute': m});
-
-    expect(log, isEmpty);
-  });
-
   test('stopView calls to platform', () async {
     await ddRumPlatform.stopView('my_key', {'stop_attribute': 'my_value'});
 
@@ -62,13 +55,6 @@ void main() {
         'attributes': {'stop_attribute': 'my_value'}
       })
     ]);
-  });
-
-  test('stopView with invalid attributes does not throw', () async {
-    final m = MockType(5);
-    await ddRumPlatform.stopView('my key', {'badAttribute': m});
-
-    expect(log, isEmpty);
   });
 
   test('addTiming calls to platform', () async {

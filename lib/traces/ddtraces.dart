@@ -4,6 +4,9 @@
 
 import 'ddtraces_platform_interface.dart';
 
+import '../internal_helpers.dart';
+import '../internal_logger.dart';
+
 /// Datadog - specific span `tags` to be used with [DdTraces.startSpan]
 /// and [DdSpan.setTag].
 class DdTags {
@@ -95,7 +98,11 @@ class OTLogFields {
 }
 
 class DdSpan {
+  static String closedSpanWarning(String method) =>
+      'Attempting to call $method on a closed span.';
+
   final DdTracesPlatform _platform;
+  InternalLogger? _logger;
 
   int _handle;
   int get handle => _handle;
@@ -104,6 +111,7 @@ class DdSpan {
 
   Future<void> setActive() {
     if (_handle <= 0) {
+      _logger?.warn(closedSpanWarning('setActivate'));
       return Future.value();
     }
 
@@ -112,6 +120,7 @@ class DdSpan {
 
   Future<void> setBaggageItem(String key, String value) {
     if (_handle <= 0) {
+      _logger?.warn(closedSpanWarning('setBaggageItem'));
       return Future.value();
     }
 
@@ -123,6 +132,7 @@ class DdSpan {
   /// supported by the [StandardMessageCodec]
   Future<void> setTag(String key, dynamic value) {
     if (_handle <= 0) {
+      _logger?.warn(closedSpanWarning('setTag'));
       return Future.value();
     }
 
@@ -131,6 +141,7 @@ class DdSpan {
 
   Future<void> setError(Exception error, [StackTrace? stackTrace]) {
     if (_handle <= 0) {
+      _logger?.warn(closedSpanWarning('setError'));
       return Future.value();
     }
 
@@ -141,6 +152,7 @@ class DdSpan {
   Future<void> setErrorInfo(
       String kind, String message, StackTrace? stackTrace) {
     if (_handle <= 0) {
+      _logger?.warn(closedSpanWarning('setErrorInfo'));
       return Future.value();
     }
     stackTrace ??= StackTrace.current;
@@ -150,6 +162,7 @@ class DdSpan {
 
   Future<void> log(Map<String, Object?> fields) {
     if (_handle <= 0) {
+      _logger?.warn(closedSpanWarning('log'));
       return Future.value();
     }
 
@@ -158,6 +171,7 @@ class DdSpan {
 
   Future<void> finish() async {
     if (_handle <= 0) {
+      _logger?.warn(closedSpanWarning('finish'));
       return Future.value();
     }
 
@@ -171,13 +185,46 @@ class DdTraces {
     return DdTracesPlatform.instance;
   }
 
+  final InternalLogger _logger;
+
+  DdTraces(this._logger);
+
   Future<DdSpan> startSpan(String operationName,
-      {DdSpan? parentSpan, Map<String, dynamic>? tags, DateTime? startTime}) {
-    return _platform.startSpan(operationName, parentSpan, tags, startTime);
+      {DdSpan? parentSpan,
+      Map<String, dynamic>? tags,
+      DateTime? startTime}) async {
+    final span = await wrap('traces.startSpan', _logger, () async {
+      var span =
+          await _platform.startSpan(operationName, parentSpan, tags, startTime);
+      if (span != null) {
+        span._logger = _logger;
+      } else {
+        _logger.error('Error creating span named $operationName');
+        // TELEMETRY: Report error creating span
+        // Don't set the logger on this span or it will spam being closed
+        span = DdSpan(_platform, 0);
+      }
+      return span;
+    });
+
+    return span ?? DdSpan(_platform, 0);
   }
 
   Future<DdSpan> startRootSpan(String operationName,
-      {Map<String, dynamic>? tags, DateTime? startTime}) {
-    return _platform.startRootSpan(operationName, tags, startTime);
+      {Map<String, dynamic>? tags, DateTime? startTime}) async {
+    final span = await wrap('traces.startRootSpan', _logger, () async {
+      var span = await _platform.startRootSpan(operationName, tags, startTime);
+      if (span != null) {
+        span._logger = _logger;
+      } else {
+        _logger.error('Error creating span named $operationName');
+        // TELEMETRY: Report error creating span
+        // Don't set the logger on this span or it will spam being closed
+        span = DdSpan(_platform, 0);
+      }
+      return span;
+    });
+
+    return span ?? DdSpan(_platform, 0);
   }
 }
