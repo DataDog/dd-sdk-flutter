@@ -52,6 +52,15 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         Datadog.verbosityLevel = verbosity
       }
       result(nil)
+    case "setUserInfo":
+      if let extraInfo = arguments["extraInfo"] as? [String: Any?] {
+        let id = arguments["id"] as? String
+        let name = arguments["name"] as? String
+        let email = arguments["email"] as? String
+        let encodedAttributes = castFlutterAttributesToSwift(extraInfo)
+        Datadog.setUserInfo(id: id, name: name, email: email, extraInfo: encodedAttributes)
+      }
+      result(nil)
     case "setTrackingConsent":
       if let trackingConsentString = arguments["value"] as? String {
         let trackingConsent = TrackingConsent.parseFromFlutter(trackingConsentString)

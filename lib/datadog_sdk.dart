@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'datadog_sdk_platform_interface.dart';
+import 'internal_helpers.dart';
 import 'internal_logger.dart';
 import 'logs/ddlogs.dart';
 import 'rum/ddrum.dart';
@@ -180,6 +181,17 @@ class DatadogSdk {
     if (configuration.rumConfiguration != null) {
       _rum = DdRum(logger);
     }
+  }
+
+  Future<void> setUserInfo({
+    String? id,
+    String? name,
+    String? email,
+    Map<String, dynamic> extraInfo = const {},
+  }) {
+    return wrap('setUserInfo', logger, () {
+      return _platform.setUserInfo(id, name, email, extraInfo);
+    });
   }
 
   void _platformLog(String log) {

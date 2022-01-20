@@ -247,4 +247,31 @@ class DatadogSdkPluginTest {
         // TODO: Track that tracking consent was set properly?
         verify(mockResult).success(null)
     }
+
+    @Test
+    fun `M set user info W called through MethodChannel`(
+        @StringForgery id: String,
+        @StringForgery name: String,
+        @StringForgery email: String
+    ) {
+        // GIVEN
+        var methodCall = MethodCall(
+            "setUserInfo",
+            mapOf(
+                "id" to id,
+                "name" to name,
+                "email" to email,
+                "extraInfo" to mapOf<String, Any?>()
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        // TODO: Check that user info was set properly?
+        verify(mockResult).success(null)
+
+    }
 }

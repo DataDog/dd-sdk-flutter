@@ -16,7 +16,6 @@ import 'ddlogs_test.dart' as _i2;
 // ignore_for_file: prefer_const_constructors
 // ignore_for_file: unnecessary_parenthesis
 // ignore_for_file: camel_case_types
-// ignore_for_file: unnecessary_overrides
 
 /// A class which mocks [MixedDdLogsPlatform].
 ///
@@ -64,13 +63,18 @@ class MockMixedDdLogsPlatform extends _i1.Mock
           returnValue: Future<void>.value(),
           returnValueForMissingStub: Future<void>.value()) as _i3.Future<void>);
   @override
-  _i3.Future<void> addTag(String? key, [String? value]) =>
-      (super.noSuchMethod(Invocation.method(#addTag, [key, value]),
+  _i3.Future<void> addTag(String? tag, [String? value]) =>
+      (super.noSuchMethod(Invocation.method(#addTag, [tag, value]),
           returnValue: Future<void>.value(),
           returnValueForMissingStub: Future<void>.value()) as _i3.Future<void>);
   @override
-  _i3.Future<void> removeTag(String? key) =>
-      (super.noSuchMethod(Invocation.method(#removeTag, [key]),
+  _i3.Future<void> removeTag(String? tag) =>
+      (super.noSuchMethod(Invocation.method(#removeTag, [tag]),
+          returnValue: Future<void>.value(),
+          returnValueForMissingStub: Future<void>.value()) as _i3.Future<void>);
+  @override
+  _i3.Future<void> removeTagWithKey(String? key) =>
+      (super.noSuchMethod(Invocation.method(#removeTagWithKey, [key]),
           returnValue: Future<void>.value(),
           returnValueForMissingStub: Future<void>.value()) as _i3.Future<void>);
 }

@@ -20,6 +20,7 @@ private func equals<T>(lhs: T, rhs: T) -> Bool {
     return equalsAny(lhs: lhs, rhs: rhs)
 }
 
+// swiftlint:disable:next cyclomatic_complexity
 private func equalsAny(lhs: Any, rhs: Any) -> Bool {
     let lhsMirror = Mirror(reflecting: lhs)
     let rhsMirror = Mirror(reflecting: rhs)
