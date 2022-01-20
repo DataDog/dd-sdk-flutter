@@ -59,7 +59,7 @@ data class DatadogFlutterConfiguration(
     ) {
         constructor(encoded: Map<String, Any?>) : this(
             (encoded["applicationId"] as? String) ?: "",
-            (encoded["bundleWithRum"] as? Number)?.toFloat() ?: 100.0f
+            (encoded["sampleRate"] as? Number)?.toFloat() ?: 100.0f
         )
     }
 
