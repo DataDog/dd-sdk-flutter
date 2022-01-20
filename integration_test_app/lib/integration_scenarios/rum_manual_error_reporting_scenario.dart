@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
-import 'package:datadog_sdk/rum/ddrum.dart';
 import 'package:flutter/material.dart';
 
 class RumManualErrorReportingScenario extends StatefulWidget {

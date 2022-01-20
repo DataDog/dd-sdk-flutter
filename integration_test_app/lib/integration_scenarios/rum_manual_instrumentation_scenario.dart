@@ -5,7 +5,6 @@
 import 'dart:async';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
-import 'package:datadog_sdk/rum/ddrum.dart';
 import 'package:flutter/material.dart';
 
 import '../main.dart';

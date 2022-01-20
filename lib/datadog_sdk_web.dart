@@ -7,8 +7,8 @@ import 'dart:html' as html show window;
 
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
-import 'datadog_sdk.dart';
-import 'datadog_sdk_platform_interface.dart';
+import 'src/datadog_configuration.dart';
+import 'src/datadog_sdk_platform_interface.dart';
 
 /// A web implementation of the DatadogSdk plugin.
 class DatadogSdkWeb extends DatadogSdkPlatform {

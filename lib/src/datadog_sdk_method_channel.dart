@@ -5,7 +5,7 @@
 import 'package:flutter/services.dart';
 import 'package:meta/meta.dart';
 
-import 'datadog_sdk.dart';
+import 'datadog_configuration.dart';
 import 'datadog_sdk_platform_interface.dart';
 
 class DatadogSdkMethodChannel extends DatadogSdkPlatform {

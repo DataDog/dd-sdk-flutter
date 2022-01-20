@@ -3,7 +3,6 @@
 // Copyright 2019-2021 Datadog, Inc.
 
 import 'package:datadog_sdk/datadog_sdk.dart';
-import 'package:datadog_sdk/traces/ddtraces.dart';
 import 'package:flutter/material.dart';
 
 class TracingScreen extends StatefulWidget {

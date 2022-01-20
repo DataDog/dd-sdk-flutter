@@ -4,7 +4,7 @@
 
 import 'package:flutter/foundation.dart';
 
-import 'datadog_sdk.dart';
+import 'datadog_configuration.dart';
 
 /// This class is used internally by the SDK to log issues to the client
 /// developers. Note that all logging from the Flutter portions of the SDK are
