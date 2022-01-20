@@ -1,3 +1,8 @@
+/*
+ * Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+ * This product includes software developed at Datadog (https://www.datadoghq.com/).
+ * Copyright 2016-Present Datadog, Inc.
+ */
 package com.datadoghq.flutter
 
 import com.datadog.android.rum.GlobalRum
@@ -31,15 +36,22 @@ class DatadogRumPlugin(
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 
-    private val rum: RumMonitor by lazy {
-        rumInstance ?: GlobalRum.get()
-    }
+    var rum: RumMonitor? = rumInstance
+        private set
 
-    fun setup(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+    fun setup(
+        flutterPluginBinding: FlutterPlugin.FlutterPluginBinding,
+        configuration: DatadogFlutterConfiguration.RumConfiguration
+    ) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter.rum")
         channel.setMethodCallHandler(this)
 
         binding = flutterPluginBinding
+
+        rum = RumMonitor.Builder()
+            .sampleRumSessions(configuration.sampleRate)
+            .build()
+        GlobalRum.registerIfAbsent(rum!!)
     }
 
     @Suppress("LongMethod")
@@ -50,7 +62,7 @@ class DatadogRumPlugin(
                 val name = call.argument<String>(PARAM_NAME)
                 val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
                 if (key != null && name != null && attributes != null) {
-                    rum.startView(key, name, attributes)
+                    rum?.startView(key, name, attributes)
                 }
                 result.success(null)
             }
@@ -58,13 +70,13 @@ class DatadogRumPlugin(
                 val key = call.argument<String>(PARAM_KEY)
                 val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
                 if (key != null && attributes != null) {
-                    rum.stopView(key, attributes)
+                    rum?.stopView(key, attributes)
                 }
                 result.success(null)
             }
             "addTiming" -> {
                 call.argument<String>(PARAM_NAME)?.let {
-                    rum.addTiming(it)
+                    rum?.addTiming(it)
                 }
                 result.success(null)
             }
@@ -77,7 +89,7 @@ class DatadogRumPlugin(
                 @Suppress("ComplexCondition")
                 if (key != null && url != null && method != null && attributes != null) {
                     val httpMethod = parseRumHttpMethod(method)
-                    rum.startResource(key, httpMethod, url, attributes)
+                    rum?.startResource(key, httpMethod, url, attributes)
                 }
                 result.success(null)
             }
@@ -89,7 +101,7 @@ class DatadogRumPlugin(
                 var size = call.argument<Number>(PARAM_SIZE)
                 if (key != null && kindString != null && attributes != null) {
                     val kind = parseRumResourceKind(kindString)
-                    rum.stopResource(key, statusCode?.toInt(), size?.toLong(), kind, attributes)
+                    rum?.stopResource(key, statusCode?.toInt(), size?.toLong(), kind, attributes)
                 }
                 result.success(null)
             }
@@ -99,7 +111,7 @@ class DatadogRumPlugin(
                 val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
                 if (key != null && message != null && attributes != null) {
                     val throwable = Throwable()
-                    rum.stopResourceWithError(
+                    rum?.stopResourceWithError(
                         key, null, message, RumErrorSource.NETWORK,
                         throwable, attributes
                     )
@@ -113,7 +125,7 @@ class DatadogRumPlugin(
                 var stackTrace = call.argument<String>(PARAM_STACK_TRACE)
                 if (message != null && sourceString != null && attributes != null) {
                     val source = parseRumErrorSource(sourceString)
-                    rum.addErrorWithStacktrace(message, source, stackTrace, attributes)
+                    rum?.addErrorWithStacktrace(message, source, stackTrace, attributes)
                 }
                 result.success(null)
             }
@@ -123,7 +135,7 @@ class DatadogRumPlugin(
                 val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
                 if (typeString != null && name != null && attributes != null) {
                     val actionType = parseRumActionType(typeString)
-                    rum.addUserAction(actionType, name, attributes)
+                    rum?.addUserAction(actionType, name, attributes)
                 }
                 result.success(null)
             }
@@ -133,7 +145,7 @@ class DatadogRumPlugin(
                 val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
                 if (typeString != null && name != null && attributes != null) {
                     val actionType = parseRumActionType(typeString)
-                    rum.startUserAction(actionType, name, attributes)
+                    rum?.startUserAction(actionType, name, attributes)
                 }
                 result.success(null)
             }
@@ -143,7 +155,7 @@ class DatadogRumPlugin(
                 val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
                 if (typeString != null && name != null && attributes != null) {
                     val actionType = parseRumActionType(typeString)
-                    rum.stopUserAction(actionType, name, attributes)
+                    rum?.stopUserAction(actionType, name, attributes)
                 }
                 result.success(null)
             }
@@ -156,7 +168,7 @@ class DatadogRumPlugin(
                 result.success(null)
             }
             "removeAttribute" -> {
-                val key = call.argument<String>(PARAM_KEY)?.let {
+                call.argument<String>(PARAM_KEY)?.let {
                     GlobalRum.removeAttribute(it)
                 }
                 result.success(null)

@@ -185,10 +185,16 @@ class DatadogRumPluginTests: XCTestCase {
     XCTAssertEqual(unknown, .custom)
   }
 
-  func testStartViewCall_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
+  var mock: MockRUMMonitor!
+  var plugin: DatadogRumPlugin!
 
+  override func setUp() {
+    mock = MockRUMMonitor()
+    plugin = DatadogRumPlugin.instance
+    plugin.initialize(withRum: mock)
+  }
+
+  func testStartViewCall_CallsRumMonitor() {
     let call = FlutterMethodCall(methodName: "startView", arguments: [
       "key": "view_key",
       "name": "view_name",
@@ -207,9 +213,6 @@ class DatadogRumPluginTests: XCTestCase {
   }
 
   func testStopViewCall_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
-
     let call = FlutterMethodCall(methodName: "stopView", arguments: [
       "key": "view_key",
       "attributes": ["my_attribute": "my_value"]
@@ -225,9 +228,6 @@ class DatadogRumPluginTests: XCTestCase {
   }
 
   func testAddTimingCall_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
-
     let call = FlutterMethodCall(methodName: "addTiming", arguments: [
       "name": "timing name"
     ])
@@ -242,9 +242,6 @@ class DatadogRumPluginTests: XCTestCase {
   }
 
   func testStartResourceLoading_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
-
     let call = FlutterMethodCall(methodName: "startResourceLoading", arguments: [
       "key": "resource_key",
       "httpMethod": "RumHttpMethod.get",
@@ -269,9 +266,6 @@ class DatadogRumPluginTests: XCTestCase {
   }
 
   func testStopResourceLoading_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
-
     let call = FlutterMethodCall(methodName: "stopResourceLoading", arguments: [
       "key": "resource_key",
       "statusCode": 200,
@@ -296,9 +290,6 @@ class DatadogRumPluginTests: XCTestCase {
   }
 
   func testStopResourceLoading_WithSize_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
-
     let call = FlutterMethodCall(methodName: "stopResourceLoading", arguments: [
       "key": "resource_key",
       "statusCode": 200,
@@ -324,9 +315,6 @@ class DatadogRumPluginTests: XCTestCase {
   }
 
   func testStopResourceLoadingWithError_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
-
     let call = FlutterMethodCall(methodName: "stopResourceLoadingWithError", arguments: [
       "key": "resource_key",
       "message": "error message",
@@ -349,9 +337,6 @@ class DatadogRumPluginTests: XCTestCase {
   }
 
   func testAddError_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
-
     let call = FlutterMethodCall(methodName: "addError", arguments: [
       "message": "Error message",
       "source": "RumErrorSource.network",
@@ -374,9 +359,6 @@ class DatadogRumPluginTests: XCTestCase {
   }
 
   func testAddUserAction_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
-
     let call = FlutterMethodCall(methodName: "addUserAction", arguments: [
       "type": "RumUserActionType.tap",
       "name": "Action Name",
@@ -399,9 +381,6 @@ class DatadogRumPluginTests: XCTestCase {
   }
 
   func testStartUserAction_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
-
     let call = FlutterMethodCall(methodName: "startUserAction", arguments: [
       "type": "RumUserActionType.scroll",
       "name": "Action Name",
@@ -424,9 +403,6 @@ class DatadogRumPluginTests: XCTestCase {
   }
 
   func testStopUserAction_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
-
     let call = FlutterMethodCall(methodName: "stopUserAction", arguments: [
       "type": "RumUserActionType.swipe",
       "name": "Action Name",
@@ -449,9 +425,6 @@ class DatadogRumPluginTests: XCTestCase {
   }
 
   func testAddAttribute_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
-
     let call = FlutterMethodCall(methodName: "addAttribute", arguments: [
       "key": "My key",
       "value": "My value"
@@ -469,9 +442,6 @@ class DatadogRumPluginTests: XCTestCase {
   }
 
   func testRemoveAttribute_CallsRumMonitor() {
-    let mock = MockRUMMonitor()
-    let plugin = DatadogRumPlugin(rumInstance: mock)
-
     let call = FlutterMethodCall(methodName: "removeAttribute", arguments: [
       "key": "remove_key"
     ])

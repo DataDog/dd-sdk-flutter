@@ -16,11 +16,23 @@ void main() async {
     WidgetsFlutterBinding.ensureInitialized();
     await dotenv.load(mergeWith: Platform.environment);
 
+    var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
+
     final configuration = DdSdkConfiguration(
       clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
       env: dotenv.get('DD_ENV', fallback: ''),
-      applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
       trackingConsent: TrackingConsent.granted,
+      nativeCrashReportEnabled: true,
+      loggingConfiguration: LoggingConfiguration(
+        sendNetworkInfo: true,
+        printLogsToConsole: true,
+      ),
+      tracingConfiguration: TracingConfiguration(
+        sendNetworkInfo: true,
+      ),
+      rumConfiguration: applicationId != null
+          ? RumConfiguration(applicationId: applicationId)
+          : null,
     );
 
     final ddsdk = DatadogSdk.instance;

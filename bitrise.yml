@@ -6,7 +6,7 @@ project_type: flutter
 workflows:
   primary:
     before_run:
-    - _setup
+    - setup
     - _build
     - integration_android
     - integration_ios
@@ -52,7 +52,7 @@ workflows:
         - platform: both
     - deploy-to-bitrise-io: {}
 
-  _setup:
+  setup:
     steps:
     - script:
         title: Generate env files

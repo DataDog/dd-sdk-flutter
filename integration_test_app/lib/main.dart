@@ -34,26 +34,41 @@ Future<void> main() async {
 
   await dotenv.load(mergeWith: Platform.environment);
 
-  final configuration = DdSdkConfiguration(
-    clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
-    env: dotenv.get('DD_ENV', fallback: ''),
-    applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
-    trackingConsent: TrackingConsent.granted,
-    uploadFrequency: UploadFrequency.frequent,
-    batchSize: BatchSize.small,
-  );
+  var clientToken = dotenv.get('DD_ENV', fallback: '');
+  var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
+  String? customEndpoint = dotenv.maybeGet('DD_CUSTOM_ENDPOINT');
 
   if (testingConfiguration != null) {
     if (testingConfiguration!.customEndpoint != null) {
-      configuration.customEndpoint = testingConfiguration!.customEndpoint;
+      customEndpoint = testingConfiguration!.customEndpoint;
       if (testingConfiguration!.clientToken != null) {
-        configuration.clientToken = testingConfiguration!.clientToken!;
+        clientToken = testingConfiguration!.clientToken!;
       }
       if (testingConfiguration!.applicationId != null) {
-        configuration.applicationId = testingConfiguration!.applicationId;
+        applicationId = testingConfiguration!.applicationId;
       }
     }
   }
+
+  final configuration = DdSdkConfiguration(
+    clientToken: clientToken,
+    env: dotenv.get('DD_ENV', fallback: ''),
+    trackingConsent: TrackingConsent.granted,
+    uploadFrequency: UploadFrequency.frequent,
+    batchSize: BatchSize.small,
+    nativeCrashReportEnabled: true,
+    customEndpoint: customEndpoint,
+    loggingConfiguration: LoggingConfiguration(
+      sendNetworkInfo: true,
+      printLogsToConsole: true,
+    ),
+    tracingConfiguration: TracingConfiguration(
+      sendNetworkInfo: true,
+    ),
+    rumConfiguration: applicationId != null
+        ? RumConfiguration(applicationId: applicationId)
+        : null,
+  );
 
   await DatadogSdk.instance.initialize(configuration);
 

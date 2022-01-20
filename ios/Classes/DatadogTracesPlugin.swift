@@ -14,14 +14,31 @@ extension ISO8601DateFormatter: DateFormatterType {}
 extension DateFormatter: DateFormatterType {}
 
 public class DatadogTracesPlugin: NSObject, FlutterPlugin {
+  public static let instance = DatadogTracesPlugin()
   public static func register(with register: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.traces", binaryMessenger: register.messenger())
-    let instance = DatadogTracesPlugin()
     register.addMethodCallDelegate(instance, channel: channel)
   }
 
   private var nextSpanId: Int64 = 1
   private var spanRegistry: [Int64: OTSpan] = [:]
+
+  public private(set) var tracer: OTTracer?
+  public var isInitialized: Bool { return tracer != nil }
+
+  private override init() {
+    super.init()
+  }
+
+  func initialize(configuration: DatadogFlutterConfiguration.TracingConfiguration) {
+    tracer = Tracer.initialize(configuration: Tracer.Configuration(
+      serviceName: nil,
+      sendNetworkInfo: configuration.sendNetworkInfo,
+      bundleWithRUM: configuration.bundleWithRum,
+      globalTags: nil
+    ))
+    Global.sharedTracer = tracer!
+  }
 
   // swiftlint:disable:next cyclomatic_complexity function_body_length
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -29,6 +46,12 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
       result(FlutterError(code: "DatadogSDK:InvalidOperation",
                           message: "No arguments in call to \(call.method).",
                           details: nil))
+      return
+    }
+    guard let tracer = tracer else {
+      result(FlutterError(code: "DatadogSDK:InvalidOperation",
+                         message: "Tracer has not been initialized when calling \(call.method).",
+                         details: nil))
       return
     }
 
@@ -48,7 +71,7 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
         startTime = Date(timeIntervalSince1970: startTimeMs.doubleValue / 1_000)
       }
 
-      let span = Global.sharedTracer.startRootSpan(
+      let span = tracer.startRootSpan(
         operationName: operationName,
         tags: tags,
         startTime: startTime)
@@ -74,7 +97,7 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
         parentSpan = spanRegistry[parentSpanId]
       }
 
-      let span = Global.sharedTracer.startSpan(
+      let span = tracer.startSpan(
         operationName: operationName,
         childOf: parentSpan?.context,
         tags: tags,

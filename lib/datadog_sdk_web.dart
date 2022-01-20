@@ -19,5 +19,11 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   }
 
   @override
-  Future<void> initialize(DdSdkConfiguration configuration) async {}
+  Future<void> setSdkVerbosity(Verbosity verbosity) {
+    return Future.value();
+  }
+
+  @override
+  Future<void> initialize(DdSdkConfiguration configuration,
+      {LogCallback? logCallback}) async {}
 }

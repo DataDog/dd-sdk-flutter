@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'dart:async';
+
 import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:datadog_sdk/rum/ddrum.dart';
 import 'package:flutter/material.dart';
@@ -91,7 +93,7 @@ class _RumManualInstrumentationScenarioState
 
   Future<void> _fakeLoading() async {
     await Future.delayed(const Duration(milliseconds: 50));
-    DatadogSdk.instance.rum?.addTiming('content-ready');
+    await DatadogSdk.instance.rum?.addTiming('content-ready');
   }
 
   void _simulateResourceDownload() async {
@@ -103,9 +105,9 @@ class _RumManualInstrumentationScenarioState
     var simulatedResourceKey1 = '/resource/1';
     var simulatedResourceKey2 = '/resource/2';
 
-    rum?.startResourceLoading(simulatedResourceKey1, RumHttpMethod.get,
+    await rum?.startResourceLoading(simulatedResourceKey1, RumHttpMethod.get,
         '$fakeRootUrl$simulatedResourceKey1');
-    rum?.startResourceLoading(simulatedResourceKey2, RumHttpMethod.get,
+    await rum?.startResourceLoading(simulatedResourceKey2, RumHttpMethod.get,
         '$fakeRootUrl$simulatedResourceKey2');
 
     await Future.delayed(const Duration(milliseconds: 100));
@@ -122,12 +124,12 @@ class _RumManualInstrumentationScenarioState
   Future<void> _onNextTapped() async {
     await DatadogSdk.instance.rum
         ?.addUserAction(RumUserActionType.tap, 'Next Screen');
-    Navigator.push(
+    unawaited(Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => const RumManualInstrumentation2(),
       ),
-    );
+    ));
   }
 }
 
@@ -218,12 +220,12 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
   Future<void> _onNextTapped() async {
     await DatadogSdk.instance.rum
         ?.addUserAction(RumUserActionType.tap, 'Next Screen');
-    Navigator.push(
+    unawaited(Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => const RumManualInstrumentation3(),
       ),
-    );
+    ));
   }
 }
 
@@ -296,7 +298,7 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
     await DatadogSdk.instance.rum?.addTiming('content-ready');
 
     // Stop the view to make sure it doesn't get held over to the next session.
-    await Future.delayed(Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 500));
     await DatadogSdk.instance.rum?.stopView(_viewKey);
   }
 }

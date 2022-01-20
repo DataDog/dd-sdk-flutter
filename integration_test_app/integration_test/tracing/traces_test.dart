@@ -58,7 +58,7 @@ void main() {
           }
         });
 
-        return spanLog.length >= 3;
+        return spanLog.length >= 3 && logs.length >= 2;
       },
     );
     expect(spanLog.length, greaterThanOrEqualTo(3));

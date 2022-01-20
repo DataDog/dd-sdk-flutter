@@ -13,7 +13,25 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   final methodChannel = const MethodChannel('datadog_sdk_flutter');
 
   @override
-  Future<void> initialize(DdSdkConfiguration configuration) async {
+  Future<void> setSdkVerbosity(Verbosity verbosity) {
+    return methodChannel
+        .invokeMethod('setSdkVerbosity', {'value': verbosity.toString()});
+  }
+
+  @override
+  Future<void> initialize(DdSdkConfiguration configuration,
+      {LogCallback? logCallback}) async {
+    if (logCallback != null) {
+      methodChannel.setMethodCallHandler((call) {
+        switch (call.method) {
+          case 'logCallback':
+            logCallback(call.arguments as String);
+            break;
+        }
+        return Future.value();
+      });
+    }
+
     await methodChannel
         .invokeMethod('initialize', {'configuration': configuration.encode()});
   }
