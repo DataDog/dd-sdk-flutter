@@ -193,7 +193,8 @@ class DatadogConfigurationTest {
                 "bundleWithRum" to false,
             ),
             "rumConfiguration" to mapOf(
-                "applicationId" to applicationId
+                "applicationId" to applicationId,
+                "sampleRate" to 35.0f
             ),
             "additionalConfig" to mapOf<String, Any?>()
         )
@@ -212,6 +213,7 @@ class DatadogConfigurationTest {
 
         assertThat(config.rumConfiguration).isNotNull()
         assertThat(config.rumConfiguration?.applicationId).isEqualTo(applicationId)
+        assertThat(config.rumConfiguration?.sampleRate).isEqualTo(35.0f)
     }
 
     @Test
