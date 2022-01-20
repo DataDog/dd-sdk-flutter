@@ -43,6 +43,20 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 }
                 result.success(null)
             }
+            "setSdkVerbosity" -> {
+                call.argument<String>("value")?.let {
+                    val verbosity = parseVerbosity(it)
+                    Datadog.setVerbosity(verbosity)
+                }
+                result.success(null)
+            }
+            "setTrackingConsent" -> {
+                call.argument<String>("value")?.let {
+                    val trackingConsent = parseTrackingConsent(it)
+                    Datadog.setTrackingConsent(trackingConsent)
+                }
+                result.success(null)
+            }
             else -> {
                 result.notImplemented()
             }

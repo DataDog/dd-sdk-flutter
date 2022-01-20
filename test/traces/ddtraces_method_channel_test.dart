@@ -48,7 +48,7 @@ void main() {
         'Root Operation', {'testTag': 'testValue'}, null);
 
     expect(span, isNotNull);
-    expect(span.handle, 1);
+    expect(span!.handle, 1);
     expect(log, <Matcher>[
       isMethodCall('startRootSpan', arguments: {
         'operationName': 'Root Operation',
@@ -63,7 +63,7 @@ void main() {
         'Operation', null, {'testTag': 'testValue'}, null);
 
     expect(span, isNotNull);
-    expect(span.handle, 8);
+    expect(span!.handle, 8);
     expect(log, <Matcher>[
       isMethodCall('startSpan', arguments: {
         'operationName': 'Operation',
@@ -126,7 +126,7 @@ void main() {
 
   test('finish span calls platform', () async {
     final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
-    var spanHandle = span.handle;
+    var spanHandle = span!.handle;
     await span.finish();
 
     expect(log[1],
@@ -135,14 +135,14 @@ void main() {
 
   test('finish span invalidates handle', () async {
     final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
-    await span.finish();
+    await span!.finish();
 
     expect(span.handle, lessThanOrEqualTo(0));
   });
 
   test('setTag on span calls to platform', () async {
     final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
-    await span.setTag('my tag', 'tag value');
+    await span!.setTag('my tag', 'tag value');
 
     expect(
         log[1],
@@ -155,7 +155,7 @@ void main() {
 
   test('setBaggageItem calls to platform', () async {
     final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
-    await span.setBaggageItem('my key', 'my value');
+    await span!.setBaggageItem('my key', 'my value');
 
     expect(
         log[1],
@@ -168,7 +168,7 @@ void main() {
 
   test('setTag calls to platform', () async {
     final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
-    await span.setTag('my key', 'my value');
+    await span!.setTag('my key', 'my value');
 
     expect(
         log[1],
@@ -189,7 +189,7 @@ void main() {
     } on Exception catch (e, s) {
       caughtException = e;
       caughtStackTrace = s;
-      await span.setError(e, s);
+      await span!.setError(e, s);
     }
 
     expect(
@@ -205,7 +205,7 @@ void main() {
   test('setErrorInfo on span calls to platform', () async {
     final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
 
-    await span.setErrorInfo('Generic Error', 'This was my fault', null);
+    await span!.setErrorInfo('Generic Error', 'This was my fault', null);
 
     var spanCall = log[1];
 
@@ -219,7 +219,7 @@ void main() {
   test('setErrorInfo on span calls to platform', () async {
     final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
 
-    await span.log({
+    await span!.log({
       'message': 'my message',
       'value': 0.24,
     });

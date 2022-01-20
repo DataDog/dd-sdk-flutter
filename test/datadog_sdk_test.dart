@@ -12,11 +12,18 @@ class MockDatadogSdkPlatform
     implements DatadogSdkPlatform {
   DdSdkConfiguration? configuration;
   Verbosity verbosity = Verbosity.none;
+  TrackingConsent trackingConsent = TrackingConsent.pending;
 
   @override
   Future<void> initialize(DdSdkConfiguration configuration,
       {LogCallback? logCallback}) {
     this.configuration = configuration;
+    return Future.value();
+  }
+
+  @override
+  Future<void> setTrackingConsent(TrackingConsent trackingConsent) {
+    this.trackingConsent = trackingConsent;
     return Future.value();
   }
 

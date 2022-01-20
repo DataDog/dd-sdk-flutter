@@ -8,9 +8,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'datadog_sdk_platform_interface.dart';
+import 'internal_logger.dart';
 import 'logs/ddlogs.dart';
 import 'rum/ddrum.dart';
 import 'traces/ddtraces.dart';
+
 import 'version.dart' show ddSdkVersion;
 
 enum BatchSize { small, medium, large }
@@ -156,10 +158,10 @@ class DatadogSdk {
 
   String get version => ddSdkVersion;
 
-  Verbosity _sdkVerbosity = Verbosity.none;
-  Verbosity get sdkVerbosity => _sdkVerbosity;
+  final InternalLogger logger = InternalLogger();
+  Verbosity get sdkVerbosity => logger.sdkVerbosity;
   set sdkVerbosity(Verbosity value) {
-    _sdkVerbosity = value;
+    logger.sdkVerbosity = value;
     unawaited(_platform.setSdkVerbosity(value));
   }
 
@@ -170,13 +172,13 @@ class DatadogSdk {
     await _platform.initialize(configuration, logCallback: _platformLog);
 
     if (configuration.loggingConfiguration != null) {
-      _logs = DdLogs();
+      _logs = DdLogs(logger);
     }
     if (configuration.tracingConfiguration != null) {
-      _traces = DdTraces();
+      _traces = DdTraces(logger);
     }
     if (configuration.rumConfiguration != null) {
-      _rum = DdRum();
+      _rum = DdRum(logger);
     }
   }
 

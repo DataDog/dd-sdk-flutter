@@ -25,6 +25,7 @@ void _assertCommonSpanMetadata(SpanDecoder span) {
   // }
   expect(span.tracerVersion, DatadogSdk.instance.version);
   expect(span.appVersion, '1.0.0');
+  expect(span.metaClass, '_TracesScenarioState');
 }
 
 void main() {
@@ -70,9 +71,6 @@ void main() {
 
     for (var span in spanLog) {
       _assertCommonSpanMetadata(span);
-
-      // Not sure if this property is sent with Android
-      expect(span.metaClass, '_TracesScenarioState');
     }
 
     final rootSpan = spanLog.firstWhereOrNull((s) => s.name == 'view loading');

@@ -263,3 +263,16 @@ public extension Datadog.Configuration.DatadogEndpoint {
     }
   }
 }
+
+public extension LogLevel {
+  static func parseFromFlutter(_ value: String) -> Self? {
+    switch value {
+    case "Verbosity.debug": return .debug
+    case "Verbosity.info": return .info
+    case "Verbosity.warn": return .warn
+    case "Verbosity.error": return .error
+    case "Verbosity.none": return nil
+    default: return nil
+    }
+  }
+}
