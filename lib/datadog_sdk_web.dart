@@ -29,6 +29,12 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   }
 
   @override
+  Future<void> setUserInfo(
+      String? id, String? name, String? email, Map<String, dynamic> extraInfo) {
+    return Future.value();
+  }
+
+  @override
   Future<void> initialize(DdSdkConfiguration configuration,
       {LogCallback? logCallback}) async {}
 }

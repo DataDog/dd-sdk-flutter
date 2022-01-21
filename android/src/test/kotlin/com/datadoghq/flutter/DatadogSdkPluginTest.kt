@@ -12,13 +12,18 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import assertk.assertThat
+import assertk.assertions.isEmpty
+import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import com.datadog.android.Datadog
+import com.datadog.android.core.model.UserInfo
 import com.datadog.android.privacy.TrackingConsent
 import com.datadog.android.rum.GlobalRum
+import fr.xgouchet.elmyr.Forge
+import fr.xgouchet.elmyr.annotation.Forgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -232,8 +237,18 @@ class DatadogSdkPluginTest {
     }
 
     @Test
-    fun `M set tracking consent W called through MethodChannel`() {
+    fun `M set tracking consent W called through MethodChannel`(
+        forge: Forge
+    ) {
         // GIVEN
+        val configuration = DatadogFlutterConfiguration(
+            clientToken = forge.aString(),
+            env = forge.anAlphabeticalString(),
+            nativeCrashReportEnabled = false,
+            trackingConsent = TrackingConsent.GRANTED
+        )
+        plugin.initialize(configuration)
+
         var methodCall = MethodCall(
             "setTrackingConsent",
             mapOf( "value" to "TrackingConsent.notGranted" )
@@ -244,7 +259,99 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        // TODO: Track that tracking consent was set properly?
+        var coreFeature = Class.forName("com.datadog.android.core.internal.CoreFeature")
+            .kotlin.objectInstance
+        var trackingConsent: TrackingConsent? = coreFeature
+            ?.getFieldValue<Any, Any>("trackingConsentProvider")
+            ?.getFieldValue("consent")
+        assertThat(trackingConsent).isEqualTo(TrackingConsent.NOT_GRANTED)
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M set user info W called through MethodChannel`(
+        @StringForgery id: String,
+        @StringForgery name: String,
+        @StringForgery email: String,
+        forge: Forge
+    ) {
+        // GIVEN
+        val configuration = DatadogFlutterConfiguration(
+            clientToken = forge.aString(),
+            env = forge.anAlphabeticalString(),
+            nativeCrashReportEnabled = false,
+            trackingConsent = TrackingConsent.GRANTED
+        )
+        plugin.initialize(configuration)
+
+        var methodCall = MethodCall(
+            "setUserInfo",
+            mapOf(
+                "id" to id,
+                "name" to name,
+                "email" to email,
+                "extraInfo" to mapOf<String, Any?>()
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        var coreFeature = Class.forName("com.datadog.android.core.internal.CoreFeature")
+            .kotlin.objectInstance
+        var userInfo: UserInfo? = coreFeature
+            ?.getFieldValue<Any, Any>("userInfoProvider")
+            ?.getFieldValue("internalUserInfo")
+        assertThat(userInfo?.id).isEqualTo(id)
+        assertThat(userInfo?.name).isEqualTo(name)
+        assertThat(userInfo?.email).isEqualTo(email)
+        assertThat(userInfo?.additionalProperties).isNotNull().isEmpty()
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M set user info W called through MethodChannel(null values, exhaustive attributes)`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val configuration = DatadogFlutterConfiguration(
+            clientToken = forge.aString(),
+            env = forge.anAlphabeticalString(),
+            nativeCrashReportEnabled = false,
+            trackingConsent = TrackingConsent.GRANTED
+        )
+        plugin.initialize(configuration)
+
+        val id = forge.aNullable { forge.aString() }
+        val name = forge.aNullable { forge.aString() }
+        val email = forge.aNullable { forge.aString() }
+        val extraInfo = forge.exhaustiveAttributes()
+        var methodCall = MethodCall(
+            "setUserInfo",
+            mapOf(
+                "id" to id,
+                "name" to name,
+                "email" to email,
+                "extraInfo" to extraInfo
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        var coreFeature = Class.forName("com.datadog.android.core.internal.CoreFeature")
+            .kotlin.objectInstance
+        var userInfo: UserInfo? = coreFeature
+            ?.getFieldValue<Any, Any>("userInfoProvider")
+            ?.getFieldValue("internalUserInfo")
+        assertThat(userInfo?.id).isEqualTo(id)
+        assertThat(userInfo?.name).isEqualTo(name)
+        assertThat(userInfo?.email).isEqualTo(email)
+        assertThat(userInfo?.additionalProperties).isEqualTo(extraInfo)
         verify(mockResult).success(null)
     }
 }

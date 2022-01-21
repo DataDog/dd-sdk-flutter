@@ -81,6 +81,7 @@ internal class DdFlutterEncodable: Encodable {
     default:
       let context = EncodingError.Context(
         codingPath: container.codingPath,
+        // swiftlint:disable:next line_length
         debugDescription: "Value \(value) cannot be encoded - \(type(of: value)) is not supported by `DdFlutterEncodable`."
       )
       throw EncodingError.invalidValue(value, context)

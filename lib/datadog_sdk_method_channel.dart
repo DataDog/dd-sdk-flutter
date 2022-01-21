@@ -25,6 +25,13 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   }
 
   @override
+  Future<void> setUserInfo(
+      String? id, String? name, String? email, Map<String, dynamic> extraInfo) {
+    return methodChannel.invokeMethod('setUserInfo',
+        {'id': id, 'name': name, 'email': email, 'extraInfo': extraInfo});
+  }
+
+  @override
   Future<void> initialize(DdSdkConfiguration configuration,
       {LogCallback? logCallback}) async {
     if (logCallback != null) {

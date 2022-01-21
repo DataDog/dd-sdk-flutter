@@ -6,8 +6,10 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import 'datadog_sdk_platform_interface.dart';
+import 'internal_helpers.dart';
 import 'internal_logger.dart';
 import 'logs/ddlogs.dart';
 import 'rum/ddrum.dart';
@@ -134,6 +136,8 @@ class _DatadogConfigKey {
   static const nativeViewTracking = '_dd.native_view_tracking';
 }
 
+typedef AppRunner = void Function();
+
 class DatadogSdk {
   static DatadogSdkPlatform get _platform {
     return DatadogSdkPlatform.instance;
@@ -165,6 +169,27 @@ class DatadogSdk {
     unawaited(_platform.setSdkVerbosity(value));
   }
 
+  static Future<void> runApp(
+      DdSdkConfiguration configuration, AppRunner appRunner) async {
+    return runZonedGuarded(() async {
+      WidgetsFlutterBinding.ensureInitialized();
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        DatadogSdk.instance.rum?.handleFlutterError(details);
+      };
+
+      await DatadogSdk.instance.initialize(configuration);
+
+      appRunner();
+    }, (e, s) {
+      DatadogSdk.instance.rum?.addErrorInfo(
+        e.toString(),
+        RumErrorSource.source,
+        stackTrace: s,
+      );
+    });
+  }
+
   Future<void> initialize(DdSdkConfiguration configuration) async {
     //configuration.additionalConfig[_DatadogConfigKey.source] = 'flutter';
     configuration.additionalConfig[_DatadogConfigKey.version] = ddSdkVersion;
@@ -180,6 +205,17 @@ class DatadogSdk {
     if (configuration.rumConfiguration != null) {
       _rum = DdRum(logger);
     }
+  }
+
+  Future<void> setUserInfo({
+    String? id,
+    String? name,
+    String? email,
+    Map<String, dynamic> extraInfo = const {},
+  }) {
+    return wrap('setUserInfo', logger, () {
+      return _platform.setUserInfo(id, name, email, extraInfo);
+    });
   }
 
   void _platformLog(String log) {

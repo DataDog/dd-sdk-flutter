@@ -57,6 +57,16 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 }
                 result.success(null)
             }
+            "setUserInfo" -> {
+                val id = call.argument<String>("id")
+                val name = call.argument<String>("name")
+                val email = call.argument<String>("email")
+                val extraInfo = call.argument<Map<String, Any?>>("extraInfo")
+                if (extraInfo != null) {
+                    Datadog.setUserInfo(id, name, email, extraInfo)
+                }
+                result.success(null)
+            }
             else -> {
                 result.notImplemented()
             }

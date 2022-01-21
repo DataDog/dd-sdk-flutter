@@ -5,42 +5,24 @@
 import 'package:datadog_sdk/datadog_sdk_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:datadog_sdk/datadog_sdk.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-class MockDatadogSdkPlatform
+import 'datadog_sdk_test.mocks.dart';
+
+abstract class MixedDatadogSdkPlatform
     with MockPlatformInterfaceMixin
-    implements DatadogSdkPlatform {
-  DdSdkConfiguration? configuration;
-  Verbosity verbosity = Verbosity.none;
-  TrackingConsent trackingConsent = TrackingConsent.pending;
+    implements DatadogSdkPlatform {}
 
-  @override
-  Future<void> initialize(DdSdkConfiguration configuration,
-      {LogCallback? logCallback}) {
-    this.configuration = configuration;
-    return Future.value();
-  }
-
-  @override
-  Future<void> setTrackingConsent(TrackingConsent trackingConsent) {
-    this.trackingConsent = trackingConsent;
-    return Future.value();
-  }
-
-  @override
-  Future<void> setSdkVerbosity(Verbosity verbosity) {
-    this.verbosity = verbosity;
-    return Future.value();
-  }
-}
-
+@GenerateMocks([MixedDatadogSdkPlatform])
 void main() {
   late DatadogSdk datadogSdk;
-  late MockDatadogSdkPlatform fakePlatform;
+  late MockMixedDatadogSdkPlatform mockPlatform;
 
   setUp(() {
-    fakePlatform = MockDatadogSdkPlatform();
-    DatadogSdkPlatform.instance = fakePlatform;
+    mockPlatform = MockMixedDatadogSdkPlatform();
+    DatadogSdkPlatform.instance = mockPlatform;
     datadogSdk = DatadogSdk.instance;
   });
 
@@ -51,7 +33,9 @@ void main() {
       trackingConsent: TrackingConsent.pending,
     );
     await datadogSdk.initialize(configuration);
-    expect(configuration, fakePlatform.configuration);
+
+    verify(mockPlatform.initialize(configuration,
+        logCallback: anyNamed('logCallback')));
   });
 
   test('encode base configuration', () {
@@ -110,5 +94,34 @@ void main() {
         configuration.tracingConfiguration?.encode());
     expect(
         encoded['rumConfiguration'], configuration.rumConfiguration?.encode());
+  });
+
+  test('set user info calls into platform', () {
+    datadogSdk.setUserInfo(
+        id: 'fake_id', name: 'fake_name', email: 'fake_email');
+
+    verify(mockPlatform.setUserInfo('fake_id', 'fake_name', 'fake_email', {}));
+  });
+
+  test('set user info calls into platform passing extraInfo', () {
+    datadogSdk.setUserInfo(
+      id: 'fake_id',
+      name: 'fake_name',
+      email: 'fake_email',
+      extraInfo: {'attribute': 32.0},
+    );
+
+    verify(mockPlatform.setUserInfo(
+      'fake_id',
+      'fake_name',
+      'fake_email',
+      {'attribute': 32.0},
+    ));
+  });
+
+  test('set user info calls into platform passing null values', () {
+    datadogSdk.setUserInfo(id: null, name: null, email: null);
+
+    verify(mockPlatform.setUserInfo(null, null, null, {}));
   });
 }

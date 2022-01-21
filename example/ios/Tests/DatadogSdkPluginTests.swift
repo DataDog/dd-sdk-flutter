@@ -6,6 +6,8 @@ import XCTest
 @testable import Datadog
 @testable import datadog_sdk
 
+extension UserInfo: EquatableInTests { }
+
 // Note: These tests are in the example app because Flutter does not provide a simple
 // way to to include tests in the Podspec.
 class FlutterSdkTests: XCTestCase {
@@ -172,6 +174,69 @@ class FlutterSdkTests: XCTestCase {
     }
 
     XCTAssertEqual(Datadog.instance?.consentProvider.currentValue, .notGranted)
+    XCTAssertEqual(callResult, .called(value: nil))
+  }
+
+  func testSetUserInfo_FromMethodChannel_SetsUserInfo() {
+    let flutterConfig = DatadogFlutterConfiguration(
+      clientToken: "fakeClientToken",
+      env: "prod",
+      trackingConsent: TrackingConsent.granted,
+      nativeCrashReportingEnabled: false
+    )
+
+    let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+    plugin.initialize(configuration: flutterConfig)
+    let methodCall = FlutterMethodCall(
+      methodName: "setUserInfo", arguments: [
+        "id": "fakeUserId",
+        "name": "fake user name",
+        "email": "fake email",
+        "extraInfo": [:]
+      ])
+
+    var callResult = ResultStatus.notCalled
+    plugin.handle(methodCall) { result in
+      callResult = ResultStatus.called(value: result)
+    }
+
+    let expectedUserInfo = UserInfo(id: "fakeUserId", name: "fake user name", email: "fake email", extraInfo: [:])
+    XCTAssertEqual(Datadog.instance?.userInfoProvider.value, expectedUserInfo)
+    XCTAssertEqual(callResult, .called(value: nil))
+  }
+
+  func testSetUserInfo_FromMethodChannelWithNils_SetsUserInfo() {
+    let flutterConfig = DatadogFlutterConfiguration(
+      clientToken: "fakeClientToken",
+      env: "prod",
+      trackingConsent: TrackingConsent.granted,
+      nativeCrashReportingEnabled: false
+    )
+
+    let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+    plugin.initialize(configuration: flutterConfig)
+    let methodCall = FlutterMethodCall(
+      methodName: "setUserInfo", arguments: [
+        "id": "fakeUserId",
+        "name": nil,
+        "email": nil,
+        "extraInfo": [
+          "attribute": NSNumber(23.3)
+        ]
+      ])
+
+    var callResult = ResultStatus.notCalled
+    plugin.handle(methodCall) { result in
+      callResult = ResultStatus.called(value: result)
+    }
+
+    let expectedUserInfo = UserInfo(id: "fakeUserId",
+                                    name: nil,
+                                    email: nil,
+                                    extraInfo: [
+                                      "attribute": 23.3
+                                    ])
+    XCTAssertEqual(Datadog.instance?.userInfoProvider.value, expectedUserInfo)
     XCTAssertEqual(callResult, .called(value: nil))
   }
 }
