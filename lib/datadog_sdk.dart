@@ -6,6 +6,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import 'datadog_sdk_platform_interface.dart';
 import 'internal_helpers.dart';
@@ -135,6 +136,8 @@ class _DatadogConfigKey {
   static const nativeViewTracking = '_dd.native_view_tracking';
 }
 
+typedef AppRunner = void Function();
+
 class DatadogSdk {
   static DatadogSdkPlatform get _platform {
     return DatadogSdkPlatform.instance;
@@ -164,6 +167,27 @@ class DatadogSdk {
   set sdkVerbosity(Verbosity value) {
     logger.sdkVerbosity = value;
     unawaited(_platform.setSdkVerbosity(value));
+  }
+
+  static Future<void> runApp(
+      DdSdkConfiguration configuration, AppRunner appRunner) async {
+    return runZonedGuarded(() async {
+      WidgetsFlutterBinding.ensureInitialized();
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        DatadogSdk.instance.rum?.handleFlutterError(details);
+      };
+
+      await DatadogSdk.instance.initialize(configuration);
+
+      appRunner();
+    }, (e, s) {
+      DatadogSdk.instance.rum?.addErrorInfo(
+        e.toString(),
+        RumErrorSource.source,
+        stackTrace: s,
+      );
+    });
   }
 
   Future<void> initialize(DdSdkConfiguration configuration) async {
