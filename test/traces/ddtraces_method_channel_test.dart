@@ -2,8 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
-import 'package:datadog_sdk/traces/ddtraces.dart';
-import 'package:datadog_sdk/traces/ddtraces_method_channel.dart';
+import 'package:datadog_sdk/src/traces/ddtraces.dart';
+import 'package:datadog_sdk/src/traces/ddtraces_method_channel.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 

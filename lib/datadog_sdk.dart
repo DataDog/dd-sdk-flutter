@@ -8,125 +8,20 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-import 'datadog_sdk_platform_interface.dart';
-import 'internal_helpers.dart';
-import 'internal_logger.dart';
-import 'logs/ddlogs.dart';
-import 'rum/ddrum.dart';
-import 'traces/ddtraces.dart';
+import 'src/datadog_configuration.dart';
+import 'src/datadog_sdk_platform_interface.dart';
+import 'src/internal_helpers.dart';
+import 'src/internal_logger.dart';
+import 'src/logs/ddlogs.dart';
+import 'src/rum/ddrum.dart';
+import 'src/traces/ddtraces.dart';
 
-import 'version.dart' show ddSdkVersion;
+import 'src/version.dart' show ddSdkVersion;
 
-enum BatchSize { small, medium, large }
-enum UploadFrequency { frequent, average, rare }
-enum TrackingConsent { granted, notGranted, pending }
-enum DatadogSite { us1, us3, us5, eu1, us1Fed }
-enum Verbosity { debug, info, warn, error, none }
-
-class LoggingConfiguration {
-  bool sendNetworkInfo;
-  bool printLogsToConsole;
-  bool bundleWithRum;
-  bool bundleWithTrace;
-
-  LoggingConfiguration({
-    this.sendNetworkInfo = false,
-    this.printLogsToConsole = false,
-    this.bundleWithRum = true,
-    this.bundleWithTrace = true,
-  });
-
-  Map<String, dynamic> encode() {
-    return {
-      'sendNetworkInfo': sendNetworkInfo,
-      'printLogsToConsole': printLogsToConsole,
-      'bundleWithRum': bundleWithRum,
-      'bundleWithTrace': bundleWithTrace,
-    };
-  }
-}
-
-class TracingConfiguration {
-  bool sendNetworkInfo;
-  bool bundleWithRum;
-
-  TracingConfiguration({
-    this.sendNetworkInfo = false,
-    this.bundleWithRum = true,
-  });
-
-  Map<String, dynamic> encode() {
-    return {
-      'sendNetworkInfo': sendNetworkInfo,
-      'bundleWithRum': bundleWithRum,
-    };
-  }
-}
-
-class RumConfiguration {
-  String applicationId;
-  double sampleRate;
-
-  RumConfiguration({
-    required this.applicationId,
-    this.sampleRate = 100.0,
-  });
-
-  Map<String, dynamic> encode() {
-    return {
-      'applicationId': applicationId,
-      'sampleRate': sampleRate,
-    };
-  }
-}
-
-class DdSdkConfiguration {
-  String clientToken;
-  String env;
-  bool nativeCrashReportEnabled;
-  DatadogSite? site;
-  TrackingConsent trackingConsent;
-  BatchSize? batchSize;
-  UploadFrequency? uploadFrequency;
-  String? customEndpoint;
-
-  LoggingConfiguration? loggingConfiguration;
-  TracingConfiguration? tracingConfiguration;
-  RumConfiguration? rumConfiguration;
-
-  final Map<String, dynamic> additionalConfig = {};
-
-  DdSdkConfiguration({
-    required this.clientToken,
-    required this.env,
-    required this.trackingConsent,
-    this.nativeCrashReportEnabled = false,
-    this.site,
-    this.uploadFrequency,
-    this.batchSize,
-    this.customEndpoint,
-    this.loggingConfiguration,
-    this.tracingConfiguration,
-    this.rumConfiguration,
-  });
-
-  Map<String, dynamic> encode() {
-    return {
-      'clientToken': clientToken,
-      'env': env,
-      'nativeCrashReportEnabled': nativeCrashReportEnabled,
-      'site': site?.toString(),
-      'batchSize': batchSize?.toString(),
-      'uploadFrequency': uploadFrequency?.toString(),
-      'trackingConsent': trackingConsent.toString(),
-      'customEndpoint': customEndpoint,
-      'loggingConfiguration': loggingConfiguration?.encode(),
-      'tracingConfiguration': tracingConfiguration?.encode(),
-      'rumConfiguration': rumConfiguration?.encode(),
-      'additionalConfig': additionalConfig
-    };
-  }
-}
+export 'src/datadog_configuration.dart';
+export 'src/rum/ddrum.dart'
+    show RumHttpMethod, RumUserActionType, RumErrorSource, RumResourceType;
+export 'src/traces/ddtraces.dart' show DdSpan, DdTags, OTTags, OTLogFields;
 
 class _DatadogConfigKey {
   static const source = '_dd.source';

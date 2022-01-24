@@ -2,7 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2020 Datadog, Inc.
 
-import 'package:datadog_sdk/logs/ddlogs_method_channel.dart';
+import 'package:datadog_sdk/src/logs/ddlogs_method_channel.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 

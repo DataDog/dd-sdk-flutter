@@ -4,7 +4,7 @@
 
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-import 'datadog_sdk.dart';
+import '../datadog_sdk.dart';
 import 'datadog_sdk_method_channel.dart';
 
 typedef LogCallback = void Function(String line);

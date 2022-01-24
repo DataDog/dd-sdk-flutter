@@ -3,9 +3,9 @@
 // Copyright 2019-2020 Datadog, Inc.
 
 import 'package:datadog_sdk/datadog_sdk.dart';
-import 'package:datadog_sdk/internal_logger.dart';
-import 'package:datadog_sdk/logs/ddlogs.dart';
-import 'package:datadog_sdk/logs/ddlogs_platform_interface.dart';
+import 'package:datadog_sdk/src/internal_logger.dart';
+import 'package:datadog_sdk/src/logs/ddlogs.dart';
+import 'package:datadog_sdk/src/logs/ddlogs_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';

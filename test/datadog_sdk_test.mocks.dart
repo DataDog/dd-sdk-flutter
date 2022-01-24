@@ -5,7 +5,7 @@
 import 'dart:async' as _i3;
 
 import 'package:datadog_sdk/datadog_sdk.dart' as _i4;
-import 'package:datadog_sdk/datadog_sdk_platform_interface.dart' as _i5;
+import 'package:datadog_sdk/src/datadog_sdk_platform_interface.dart' as _i5;
 import 'package:mockito/mockito.dart' as _i1;
 
 import 'datadog_sdk_test.dart' as _i2;
@@ -17,7 +17,6 @@ import 'datadog_sdk_test.dart' as _i2;
 // ignore_for_file: invalid_use_of_visible_for_testing_member
 // ignore_for_file: prefer_const_constructors
 // ignore_for_file: unnecessary_parenthesis
-// ignore_for_file: unnecessary_overrides
 // ignore_for_file: camel_case_types
 
 /// A class which mocks [MixedDatadogSdkPlatform].

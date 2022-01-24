@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:datadog_sdk/rum/ddrum.dart';
-import 'package:datadog_sdk/rum/ddrum_method_channel.dart';
+import 'package:datadog_sdk/src/rum/ddrum.dart';
+import 'package:datadog_sdk/src/rum/ddrum_method_channel.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
