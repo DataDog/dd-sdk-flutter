@@ -227,4 +227,13 @@ class DdTraces {
 
     return span ?? DdSpan(_platform, 0);
   }
+
+  Future<Map<String, String>> getTracePropagationHeaders(DdSpan span) async {
+    final headers =
+        await wrap('traces.getTracePropagationHeaders', _logger, () async {
+      return _platform.getTracePropagationHeaders(span);
+    });
+
+    return headers ?? {};
+  }
 }

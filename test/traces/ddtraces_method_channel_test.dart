@@ -22,6 +22,8 @@ void main() {
           return 1;
         case 'startSpan':
           return 8;
+        case 'getTracePropagationHeaders':
+          return {'header-1': 'value-1', 'header-2': 'value-2'};
       }
       return null;
     });
@@ -122,6 +124,18 @@ void main() {
         'startTime': startTime.toUtc().millisecondsSinceEpoch,
       })
     ]);
+  });
+
+  test('getTracePropagationHeaders calls platform', () async {
+    final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
+    final spanHandle = span!.handle;
+
+    final headers = await ddTracesPlatform.getTracePropagationHeaders(span);
+    expect(
+        log[1],
+        isMethodCall('getTracePropagationHeaders',
+            arguments: {'spanHandle': spanHandle}));
+    expect(headers, {'header-1': 'value-1', 'header-2': 'value-2'});
   });
 
   test('finish span calls platform', () async {

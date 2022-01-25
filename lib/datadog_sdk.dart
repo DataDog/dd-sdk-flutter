@@ -22,6 +22,8 @@ export 'src/datadog_configuration.dart';
 export 'src/rum/ddrum.dart'
     show RumHttpMethod, RumUserActionType, RumErrorSource, RumResourceType;
 export 'src/traces/ddtraces.dart' show DdSpan, DdTags, OTTags, OTLogFields;
+export 'src/rum/navigation_observer.dart'
+    show DatadogNavigationObserver, RumViewInfo;
 
 class _DatadogConfigKey {
   static const source = '_dd.source';
@@ -55,6 +57,23 @@ class DatadogSdk {
   DdRum? _rum;
   DdRum? get rum => _rum;
 
+  List<String> _firstPartyHosts = [];
+  RegExp? _firstPartyRegex;
+
+  /// A list of first party hosts for tracing. Note that this is an unmodifiable
+  /// list. If you need to add a host, call the setter for [firstPartyHosts]
+  List<String> get firstPartyHosts => List.unmodifiable(_firstPartyHosts);
+  set firstPartyHosts(List<String> value) {
+    _firstPartyHosts = value;
+    if (value.isNotEmpty) {
+      // pattern = "^(.*\\.)*tracedHost1$|tracedHost2$|...$"
+      var hosts = value.map((e) => RegExp.escape(e) + '\$').join('|');
+      _firstPartyRegex = RegExp('^(.*\\.)*$hosts');
+    } else {
+      _firstPartyRegex = null;
+    }
+  }
+
   String get version => ddSdkVersion;
 
   final InternalLogger logger = InternalLogger();
@@ -65,7 +84,7 @@ class DatadogSdk {
   }
 
   static Future<void> runApp(
-      DdSdkConfiguration configuration, AppRunner appRunner) async {
+      DdSdkConfiguration configuration, AppRunner runner) async {
     return runZonedGuarded(() async {
       WidgetsFlutterBinding.ensureInitialized();
       FlutterError.onError = (details) {
@@ -75,7 +94,7 @@ class DatadogSdk {
 
       await DatadogSdk.instance.initialize(configuration);
 
-      appRunner();
+      runner();
     }, (e, s) {
       DatadogSdk.instance.rum?.addErrorInfo(
         e.toString(),
@@ -88,6 +107,8 @@ class DatadogSdk {
   Future<void> initialize(DdSdkConfiguration configuration) async {
     //configuration.additionalConfig[_DatadogConfigKey.source] = 'flutter';
     configuration.additionalConfig[_DatadogConfigKey.version] = ddSdkVersion;
+
+    firstPartyHosts = configuration.firstPartyHosts;
 
     await _platform.initialize(configuration, logCallback: _platformLog);
 
@@ -111,6 +132,10 @@ class DatadogSdk {
     return wrap('setUserInfo', logger, () {
       return _platform.setUserInfo(id, name, email, extraInfo);
     });
+  }
+
+  bool isFirstPartyHost(Uri uri) {
+    return _firstPartyRegex?.hasMatch(uri.host) ?? false;
   }
 
   void _platformLog(String log) {

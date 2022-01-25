@@ -43,6 +43,28 @@ class DdTracesMethodChannel extends DdTracesPlatform {
     return null;
   }
 
+  @override
+  Future<Map<String, String>> getTracePropagationHeaders(DdSpan span) async {
+    var result = await methodChannel.invokeMethod(
+        'getTracePropagationHeaders', {'spanHandle': span.handle});
+    if (result is Map) {
+      var convertedResult = result.map((key, value) {
+        if (key is! String) {
+          throw UnsupportedError(
+              'Header key $key (type ${key.runtimeType}) is not a string.');
+        }
+        if (value is! String) {
+          throw UnsupportedError(
+              'Header value $value (type ${value.runtimeType}) is not a string.');
+        }
+        return MapEntry<String, String>(key, value);
+      });
+      return convertedResult;
+    }
+
+    return {};
+  }
+
   // Span methods
   @override
   Future<void> spanSetActive(DdSpan span) {
