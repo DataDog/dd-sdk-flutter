@@ -4,12 +4,15 @@
 // ignore_for_file: unused_element, unused_field
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'src/datadog_configuration.dart';
 import 'src/datadog_sdk_platform_interface.dart';
+import 'src/datadog_tracking_http_client.dart';
+import 'src/internal_attributes.dart';
 import 'src/internal_helpers.dart';
 import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
@@ -24,14 +27,6 @@ export 'src/rum/ddrum.dart'
 export 'src/traces/ddtraces.dart' show DdSpan, DdTags, OTTags, OTLogFields;
 export 'src/rum/navigation_observer.dart'
     show DatadogNavigationObserver, RumViewInfo;
-
-class _DatadogConfigKey {
-  static const source = '_dd.source';
-  static const version = '_dd.sdk_version';
-  static const serviceName = '_dd.service_name';
-  static const verbosity = '_dd.sdk_verbosity';
-  static const nativeViewTracking = '_dd.native_view_tracking';
-}
 
 typedef AppRunner = void Function();
 
@@ -94,6 +89,11 @@ class DatadogSdk {
 
       await DatadogSdk.instance.initialize(configuration);
 
+      if (configuration.trackHttpClient) {
+        HttpOverrides.global =
+            DatadogTrackingHttpOverrides(DatadogSdk.instance);
+      }
+
       runner();
     }, (e, s) {
       DatadogSdk.instance.rum?.addErrorInfo(
@@ -105,8 +105,8 @@ class DatadogSdk {
   }
 
   Future<void> initialize(DdSdkConfiguration configuration) async {
-    //configuration.additionalConfig[_DatadogConfigKey.source] = 'flutter';
-    configuration.additionalConfig[_DatadogConfigKey.version] = ddSdkVersion;
+    //configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
+    configuration.additionalConfig[DatadogConfigKey.version] = ddSdkVersion;
 
     firstPartyHosts = configuration.firstPartyHosts;
 

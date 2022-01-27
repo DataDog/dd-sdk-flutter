@@ -20,11 +20,9 @@ class DdTracesMethodChannel extends DdTracesPlatform {
       'operationName': operationName,
       'tags': tags,
       'startTime': startTime?.millisecondsSinceEpoch
-    });
-    if (result is int) {
-      return DdSpan(this, result);
-    }
-    return null;
+    }) as int;
+
+    return DdSpan(this, result);
   }
 
   @override
@@ -35,12 +33,9 @@ class DdTracesMethodChannel extends DdTracesPlatform {
       'parentSpan': parentSpan?.handle,
       'tags': tags,
       'startTime': startTime?.millisecondsSinceEpoch
-    });
-    if (result is int) {
-      return DdSpan(this, result);
-    }
+    }) as int;
 
-    return null;
+    return DdSpan(this, result);
   }
 
   @override

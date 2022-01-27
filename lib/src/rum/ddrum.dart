@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../internal_helpers.dart';
@@ -9,7 +11,13 @@ import '../internal_logger.dart';
 import 'ddrum_platform_interface.dart';
 
 /// HTTP method of the resource
-enum RumHttpMethod { post, get, head, put, delete, patch }
+enum RumHttpMethod { post, get, head, put, delete, patch, unknown }
+
+RumHttpMethod rumMethodFromMethodString(String value) {
+  var lowerValue = value.toLowerCase();
+  return RumHttpMethod.values
+      .firstWhere((e) => e.toString() == 'RumHttpMethod.$lowerValue');
+}
 
 /// Describes the type of a RUM Action.
 enum RumUserActionType { tap, scroll, swipe, custom }
@@ -47,8 +55,28 @@ enum RumResourceType {
   native
 }
 
-// ignore: unused_element
-const String _ddRumErrorTypeKey = '_dd.error.source_type';
+RumResourceType resourceTypeFromContentType(ContentType? type) {
+  if (type == null) {
+    return RumResourceType.native;
+  }
+
+  switch (type.primaryType) {
+    case 'image':
+      return RumResourceType.image;
+    case 'audio':
+    case 'video':
+      return RumResourceType.media;
+    case 'font':
+      return RumResourceType.font;
+  }
+  switch (type.subType) {
+    case 'javascript':
+      return RumResourceType.js;
+    case 'css':
+      return RumResourceType.css;
+  }
+  return RumResourceType.native;
+}
 
 class DdRum {
   static DdRumPlatform get _platform {

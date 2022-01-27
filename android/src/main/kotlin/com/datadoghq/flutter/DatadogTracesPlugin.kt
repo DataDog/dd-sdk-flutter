@@ -108,6 +108,19 @@ class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
 
                 result.success(storeSpan(span))
             }
+            "getTracePropagationHeaders" -> {
+                var headers = mapOf<String, String>()
+                findCallingSpan(call)?.let { spanInfo ->
+                    val context = spanInfo.span.context()
+                    headers = mapOf(
+                        "x-datadog-trace-id" to context.toTraceId().toString(),
+                        "x-datadog-parent-id" to context.toSpanId().toString(),
+                        "x-datadog-sampling-priority" to "1",
+                        "x-datadog-sampled" to "1",
+                    )
+                }
+                result.success(headers)
+            }
             else -> result.notImplemented()
         }
     }

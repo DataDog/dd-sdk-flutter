@@ -22,6 +22,8 @@
     "rewrap.wrappingColumn": 80,
     "cSpell.words": [
         "mocktail",
-        "Uncompress"
+        "rethrown",
+        "Uncompress",
+        "writeln"
     ]
 }

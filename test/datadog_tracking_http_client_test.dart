@@ -7,6 +7,7 @@ import 'dart:io';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:datadog_sdk/src/datadog_tracking_http_client.dart';
+import 'package:datadog_sdk/src/internal_attributes.dart';
 import 'package:datadog_sdk/src/rum/ddrum.dart';
 import 'package:datadog_sdk/src/traces/ddtraces.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -93,8 +94,17 @@ void main() {
     return completer;
   }
 
-  MockHttpClientResponse _setupMockClientResponse() {
+  MockHttpClientResponse _setupMockClientResponse(int statusCode,
+      {String mimeType = 'image/png', int size = 88888}) {
     final mockResponse = MockHttpClientResponse();
+    when(() => mockResponse.statusCode).thenReturn(statusCode);
+    when(() => mockResponse.reasonPhrase)
+        .thenReturn('The only winning move is not to play');
+    final mockHeaders = MockHttpHeaders();
+    when(() => mockResponse.headers).thenReturn(mockHeaders);
+    final contentType = ContentType.parse(mimeType);
+    when(() => mockHeaders.contentType).thenReturn(contentType);
+    when(() => mockResponse.contentLength).thenReturn(size);
 
     return mockResponse;
   }
@@ -145,40 +155,40 @@ void main() {
     });
   });
 
+  // Although mocked, these are the real headers we expect from tracing
+  const fakeTraceHeaders = {
+    'x-datadog-trace-id': 'fake-trace-id',
+    'x-datadog-parent-id': 'fake-span-id',
+    'x-datadog-sampling-priority': '1',
+    'x-datadog-sampled': '1',
+  };
+
+  MockDdSpan _enableTracing() {
+    final span = MockDdSpan();
+    when(() => mockTraces.startSpan(
+          any(),
+          parentSpan: any(named: 'parentSpan'),
+          tags: any(named: 'tags'),
+          startTime: any(named: 'startTime'),
+        )).thenAnswer((_) => Future.value(span));
+    when(() => mockTraces.getTracePropagationHeaders(any()))
+        .thenAnswer((_) => Future.value(fakeTraceHeaders));
+    when(() => mockDatadog.traces).thenReturn(mockTraces);
+    when(() => span.finish()).thenAnswer((_) => Future.value());
+    when(() => span.setTag(any(), any())).thenAnswer((_) => Future.value());
+    when(() => span.setErrorInfo(any(), any(), any()))
+        .thenAnswer((_) => Future.value());
+    when(() => mockDatadog.traces).thenReturn(mockTraces);
+
+    return span;
+  }
+
   group('when only tracing is enabled', () {
-    // Although mocked, these are the real headers we expect from tracing
-    const fakeTraceHeaders = {
-      'x-datadog-trace-id': 'mock-value',
-      'x-datadog-parent-id': 'mock-value',
-      'x-datadog-sampling-priority': '1',
-      'x-datadog-sampled': '1',
-    };
     setUp(() {
       when(() => mockDatadog.rum).thenReturn(null);
     });
 
-    MockDdSpan _enableTracing() {
-      final span = MockDdSpan();
-      when(() => mockTraces.startSpan(
-            any(),
-            parentSpan: any(named: 'parentSpan'),
-            tags: any(named: 'tags'),
-            startTime: any(named: 'startTime'),
-          )).thenAnswer((_) => Future.value(span));
-      when(() => mockTraces.getTracePropagationHeaders(any()))
-          .thenAnswer((_) => Future.value(fakeTraceHeaders));
-      when(() => mockDatadog.traces).thenReturn(mockTraces);
-      when(() => span.finish()).thenAnswer((_) => Future.value());
-
-      when(() => mockDatadog.traces).thenReturn(mockTraces);
-
-      return span;
-    }
-
     test('rum is not called', () async {
-      // No interactions for the whole test
-      verifyNoMoreInteractions(mockRum);
-
       final completer = _setupMockRequest();
       _enableTracing();
 
@@ -189,6 +199,7 @@ void main() {
 
       completer.complete(MockHttpClientResponse());
       var _ = await request.done;
+      verifyZeroInteractions(mockRum);
     });
 
     test('open starts trace and calls through for first party url', () async {
@@ -201,17 +212,19 @@ void main() {
       var request = await client.openUrl('get', url);
 
       verify(() => mockClient.openUrl('get', url));
-      verify(() => mockTraces.startSpan('flutter.http_client',
-          tags: {'http.method': 'get', 'http.url': url.toString()}));
-      final mockHeaders = request.headers;
+      verify(() => mockTraces.startSpan('flutter.http_client', tags: {
+            'http.method': 'GET',
+            'http.url': url.toString(),
+          }));
+      final requestHeaders = request.headers;
       for (var header in fakeTraceHeaders.entries) {
-        verify(() => mockHeaders.add(header.key, header.value));
+        verify(() => requestHeaders.add(header.key, header.value));
       }
 
       // Finish not called until response is closed
       verifyNever(() => mockSpan.finish());
 
-      final mockResponse = _setupMockClientResponse();
+      final mockResponse = _setupMockClientResponse(200);
       completer.complete(mockResponse);
       var response = await request.done;
 
@@ -219,6 +232,7 @@ void main() {
       verifyNever(() => mockSpan.finish());
       response.listen((event) {});
       await mockResponse.streamController.close();
+      verify(() => mockSpan.setTag(OTTags.httpStatusCode, 200));
       verify(() => mockSpan.finish());
     });
 
@@ -230,20 +244,10 @@ void main() {
 
       var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
+      final mockResponse = _setupMockClientResponse(200);
 
-      verify(() => mockClient.openUrl('get', url));
-      verify(() => mockTraces.startSpan('flutter.http_client',
-          tags: {'http.method': 'get', 'http.url': url.toString()}));
-      final mockHeaders = request.headers;
-      for (var header in fakeTraceHeaders.entries) {
-        verify(() => mockHeaders.add(header.key, header.value));
-      }
-
-      final mockResponse = _setupMockClientResponse();
       completer.complete(mockResponse);
       var response = await request.done;
-
-      // Still not done...
       List<int>? data;
       response.listen((event) {
         data = event;
@@ -265,29 +269,163 @@ void main() {
       var request = await client.openUrl('get', url);
 
       verify(() => mockClient.openUrl('get', url));
+
+      completer.complete(MockHttpClientResponse());
+      var _ = await request.done;
+
       verifyNever(() => mockTraces.startSpan(
             any(),
             parentSpan: any(named: 'parentSpan'),
             tags: any(named: 'tags'),
             startTime: any(named: 'startTime'),
           ));
+    });
 
-      completer.complete(MockHttpClientResponse());
-      var _ = await request.done;
+    test('error opening passes sets trace errors', () async {
+      final completer = _setupMockRequest();
+      var mockSpan = _enableTracing();
+
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+
+      var error = Error();
+      Object? caughtError;
+      completer.completeError(error);
+      try {
+        await request.done;
+      } catch (e) {
+        caughtError = e;
+      }
+
+      expect(caughtError, error, reason: 'Error should be rethrown');
+      verify(() => mockSpan.setErrorInfo(
+          error.runtimeType.toString(), error.toString(), any()));
+    });
+
+    test('error status codes set errors on trace', () async {
+      final completer = _setupMockRequest();
+      var mockSpan = _enableTracing();
+
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+
+      var mockResponse = _setupMockClientResponse(403);
+      completer.complete(mockResponse);
+      var response = await request.done;
+
+      // Listen / close the response
+      response.listen((event) {});
+      await mockResponse.streamController.close();
+
+      expect(response.statusCode, 403);
+      verify(() => mockSpan.setTag(OTTags.httpStatusCode, 403));
+      verify(() => mockSpan.setErrorInfo(
+          'HttpStatusCode', '403 - ${response.reasonPhrase}', any()));
+    });
+
+    test('status code 404 sets resource tag to 404', () async {
+      final completer = _setupMockRequest();
+      var mockSpan = _enableTracing();
+
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+
+      var mockResponse = _setupMockClientResponse(404);
+      completer.complete(mockResponse);
+      var response = await request.done;
+
+      // Listen / close the response
+      response.listen((event) {});
+      await mockResponse.streamController.close();
+
+      verify(() => mockSpan.setTag(DdTags.resource, '404'));
+    });
+
+    test('error in stream sets errors on trace', () async {
+      final completer = _setupMockRequest();
+      var mockSpan = _enableTracing();
+
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+
+      var mockResponse = _setupMockClientResponse(200);
+      completer.complete(mockResponse);
+      var response = await request.done;
+
+      // Listen / close the response
+      var error = Error();
+      Object? caughtError;
+      response.listen((event) {}, onError: (e) {
+        caughtError = e;
+      });
+      mockResponse.streamController.addError(error);
+      await mockResponse.streamController.close();
+
+      expect(caughtError, error);
+      verify(() => mockSpan.setTag(OTTags.httpStatusCode, 200));
+      verify(() => mockSpan.setErrorInfo(
+          error.runtimeType.toString(), error.toString(), any()));
     });
   });
 
+  void _enableRum() {
+    when(() => mockDatadog.traces).thenReturn(null);
+    when(() => mockDatadog.rum).thenReturn(mockRum);
+    when(() => mockRum.startResourceLoading(any(), any(), any(), any()))
+        .thenAnswer((_) => Future.value());
+    when(() => mockRum.stopResourceLoading(any(), any(), any(), any(), any()))
+        .thenAnswer((_) => Future.value());
+    when(() => mockRum.stopResourceLoadingWithErrorInfo(any(), any(), any()))
+        .thenAnswer((_) => Future.value());
+  }
+
   group('when only rum is enabled', () {
     setUp(() {
-      when(() => mockDatadog.traces).thenReturn(null);
-      when(() => mockDatadog.rum).thenReturn(mockRum);
-      when(() => mockRum.startResourceLoading(any(), any(), any()))
-          .thenAnswer((_) => Future.value());
-      when(() => mockRum.stopResourceLoading(any(), any(), any()))
-          .thenAnswer((_) => Future.value());
+      _enableRum();
     });
 
     test('calls start resource and stop resource and calls through', () async {
+      final completer = _setupMockRequest();
+
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+      var requestHeaders = request.headers;
+      verify(() => requestHeaders.add('x-datadog-origin', 'rum'));
+
+      verify(() => mockClient.openUrl('get', url));
+      var capturedKey = verify(
+        () => mockRum.startResourceLoading(
+            captureAny(), RumHttpMethod.get, url.toString()),
+      ).captured[0] as String;
+
+      verifyNever(() => mockRum.stopResourceLoading(any(), any(), any()));
+
+      final mockResponse = _setupMockClientResponse(200);
+      completer.complete(mockResponse);
+      var response = await request.done;
+
+      var gotData = false;
+      response.listen((event) {
+        gotData = true;
+      });
+      mockResponse.streamController.sink.add([12]);
+      await mockResponse.streamController.close();
+      expect(gotData, isTrue);
+      verify(() => mockRum.stopResourceLoading(
+          capturedKey, 200, RumResourceType.image, 88888));
+    });
+
+    test('calls stop resource with status code', () async {
       final completer = _setupMockRequest();
 
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
@@ -303,20 +441,183 @@ void main() {
 
       verifyNever(() => mockRum.stopResourceLoading(any(), any(), any()));
 
-      final mockResponse = _setupMockClientResponse();
-      when(() => mockResponse.statusCode).thenReturn(200);
+      final mockResponse = _setupMockClientResponse(403);
+      completer.complete(mockResponse);
+      var response = await request.done;
+      response.listen((event) {});
+      await mockResponse.streamController.close();
+
+      verify(() => mockRum.stopResourceLoading(
+          capturedKey, 403, RumResourceType.image, 88888));
+    });
+
+    test('sets resource type from headers', () async {
+      final completer = _setupMockRequest();
+
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+
+      verify(() => mockClient.openUrl('get', url));
+      var capturedKey = verify(
+        () => mockRum.startResourceLoading(
+            captureAny(), RumHttpMethod.get, url.toString()),
+      ).captured[0] as String;
+
+      final mockResponse = _setupMockClientResponse(200, mimeType: 'video/mp4');
       completer.complete(mockResponse);
       var response = await request.done;
 
-      var gotData = false;
-      response.listen((event) {
-        gotData = true;
-      });
-      mockResponse.streamController.sink.add([12]);
+      response.listen((event) {});
       await mockResponse.streamController.close();
-      expect(gotData, isTrue);
-      verify(() =>
-          mockRum.stopResourceLoading(capturedKey, 200, RumResourceType.image));
+
+      verify(() => mockRum.stopResourceLoading(
+          capturedKey, 200, RumResourceType.media, 88888));
+    });
+
+    test('calls stop resource with error connection error', () async {
+      final completer = _setupMockRequest();
+
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+      var capturedKey = verify(
+        () => mockRum.startResourceLoading(
+            captureAny(), RumHttpMethod.get, url.toString()),
+      ).captured[0] as String;
+
+      var error = Error();
+      Object? caughtError;
+      completer.completeError(error);
+      try {
+        await request.done;
+      } catch (e) {
+        caughtError = e;
+      }
+
+      expect(caughtError, error);
+      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+            capturedKey,
+            error.toString(),
+          ));
+    });
+
+    test('calls stop resource with error for response error', () async {
+      final completer = _setupMockRequest();
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+      var capturedKey = verify(
+        () => mockRum.startResourceLoading(
+            captureAny(), RumHttpMethod.get, url.toString()),
+      ).captured[0] as String;
+
+      var mockResponse = _setupMockClientResponse(200);
+
+      completer.complete(mockResponse);
+      var response = await request.done;
+
+      // Listen / close the response
+      var error = Error();
+      Object? caughtError;
+      response.listen((event) {}, onError: (e) {
+        caughtError = e;
+      });
+      mockResponse.streamController.addError(error);
+      await mockResponse.streamController.close();
+
+      expect(caughtError, error);
+      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+            capturedKey,
+            error.toString(),
+          ));
+    });
+  });
+
+  group('when rum and tracing are enabled', () {
+    setUp(() {
+      _enableRum();
+      _enableTracing();
+    });
+
+    test('start and stop resource loading set tracing attributes', () async {
+      final completer = _setupMockRequest();
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+      var capturedStartArgs = verify(
+        () => mockRum.startResourceLoading(
+          captureAny(),
+          RumHttpMethod.get,
+          url.toString(),
+          captureAny(),
+        ),
+      ).captured;
+      var capturedKey = capturedStartArgs[0] as String;
+      var capturedStartAttributes =
+          capturedStartArgs[1] as Map<String, dynamic>;
+
+      var mockResponse = _setupMockClientResponse(200, size: 12345);
+
+      completer.complete(mockResponse);
+      var response = await request.done;
+      response.listen((event) {});
+      await mockResponse.streamController.close();
+
+      verify(() => mockRum.stopResourceLoading(
+          capturedKey, 200, RumResourceType.image, 12345));
+
+      expect(capturedStartAttributes[DatadogPlatformAttributeKey.traceID],
+          'fake-trace-id');
+      expect(capturedStartAttributes[DatadogPlatformAttributeKey.spanID],
+          'fake-span-id');
+    });
+
+    test('does not start perform operations on spans', () async {
+      _enableRum();
+      var span = _enableTracing();
+      final completer = _setupMockRequest();
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+      var mockResponse = _setupMockClientResponse(200);
+
+      completer.complete(mockResponse);
+      var response = await request.done;
+      response.listen((event) {});
+      await mockResponse.streamController.close();
+      // Drain any awaiting futures.
+      await Future.microtask(() {});
+      verifyZeroInteractions(span);
+    });
+
+    test('sets trace headers for first party urls', () async {
+      _setupMockRequest();
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+      final requestHeaders = request.headers;
+      for (var header in fakeTraceHeaders.entries) {
+        verify(() => requestHeaders.add(header.key, header.value));
+      }
+    });
+
+    test('does not set trace headers for third party urls', () async {
+      _setupMockRequest();
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://non_first_party/path');
+      var request = await client.openUrl('get', url);
+      final requestHeaders = request.headers;
+      for (var header in fakeTraceHeaders.entries) {
+        verifyNever(() => requestHeaders.add(header.key, header.value));
+      }
     });
   });
 }

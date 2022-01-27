@@ -128,13 +128,12 @@ void main() {
 
   test('getTracePropagationHeaders calls platform', () async {
     final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
-    final spanHandle = span!.handle;
-
-    final headers = await ddTracesPlatform.getTracePropagationHeaders(span);
+    final headers = await ddTracesPlatform.getTracePropagationHeaders(span!);
     expect(
         log[1],
-        isMethodCall('getTracePropagationHeaders',
-            arguments: {'spanHandle': spanHandle}));
+        isMethodCall('getTracePropagationHeaders', arguments: {
+          'spanHandle': span.handle,
+        }));
     expect(headers, {'header-1': 'value-1', 'header-2': 'value-2'});
   });
 
