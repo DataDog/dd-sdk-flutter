@@ -9,6 +9,7 @@ import 'package:datadog_integration_test_app/auto_integration_scenarios/main.dar
 import 'package:datadog_integration_test_app/auto_integration_scenarios/scenario_config.dart';
 import 'package:datadog_integration_test_app/helpers.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
 
 import '../common.dart';
 import '../tools/mock_http_sever.dart';
@@ -27,6 +28,8 @@ Future<void> performRumUserFlow(WidgetTester tester) async {
 }
 
 void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
   // This second test boots a different integration test app
   // (lib/auto_integration_scenario/main.dart) directly to the auto-instrumented
   // scenario with instrumentation enabled, then checks that we got the expected
@@ -111,15 +114,16 @@ void main() {
     }
 
     var getEvent = view2.resourceEvents[0];
-    // iOS test says we shouldn't send these?
-    // var getTraceId =
-    //     testRequests[0].requestHeaders['x-datadog-trace-id']?.first;
-    // var getSpanId =
-    //     testRequests[0].requestHeaders['x-datadog-parent-id']?.first;
+    var getTraceId =
+        testRequests[0].requestHeaders['x-datadog-trace-id']?.first;
+    var getSpanId =
+        testRequests[0].requestHeaders['x-datadog-parent-id']?.first;
     expect(getEvent.url, scenarioConfig.firstPartyGetUrl);
     expect(getEvent.statusCode, 200);
     expect(getEvent.method, 'GET');
     expect(getEvent.duration, greaterThan(0));
+    expect(getEvent.dd.traceId, getTraceId!);
+    expect(getEvent.dd.spanId, getSpanId!);
 
     var postTraceId =
         testRequests[1].requestHeaders['x-datadog-trace-id']?.first;

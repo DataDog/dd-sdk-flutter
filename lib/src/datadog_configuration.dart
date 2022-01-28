@@ -104,11 +104,13 @@ class DdSdkConfiguration {
   /// * if `firstPartyHosts` is `["example.com"]`:
   ///     - 1st-party URL examples: https://example.com/,
   ///       https://api.example.com/v2/users
-  ///     - 3rd-party URL examples: https://foo.com/
+  ///     - 3rd-party URL examples: https://foo.com/, https://example.net
   /// * if `firstPartyHosts` is `["api.example.com"]`:
   ///     - 1st-party URL examples: https://api.example.com/,
-  ///       https://api.example.com/v2/users
-  ///     - 3rd-party URL examples: https://example.com/, https://foo.com/
+  ///       https://api.example.com/v2/users,
+  ///       https://beta.api.example.com/v2/users
+  ///     - 3rd-party URL examples: https://example.com/, https://foo.com/,
+  ///       https://api.example.net/v3/users
   ///
   List<String> firstPartyHosts = [];
 

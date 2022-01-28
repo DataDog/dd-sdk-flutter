@@ -12,7 +12,7 @@ import '../tools/mock_http_sever.dart';
 import 'rum_auto_instrumentation_test.dart';
 import 'rum_decoder.dart';
 
-void main(List<String> args) {
+void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   // This first test boots the normal integration test app and opens the auto
