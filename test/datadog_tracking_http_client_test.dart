@@ -538,9 +538,10 @@ void main() {
   });
 
   group('when rum and tracing are enabled', () {
+    late DdSpan span;
     setUp(() {
       _enableRum();
-      _enableTracing();
+      span = _enableTracing();
     });
 
     test('start and stop resource loading set tracing attributes', () async {
@@ -578,8 +579,6 @@ void main() {
     });
 
     test('does not start perform operations on spans', () async {
-      _enableRum();
-      var span = _enableTracing();
       final completer = _setupMockRequest();
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
@@ -618,6 +617,22 @@ void main() {
       for (var header in fakeTraceHeaders.entries) {
         verifyNever(() => requestHeaders.add(header.key, header.value));
       }
+    });
+
+    test('error on openUrl stops resource with error', () async {
+      const error = SocketException('Mock socket exception');
+      when(() => mockClient.openUrl(any(), any())).thenThrow(error);
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+
+      await expectLater(() async => await client.openUrl('get', url),
+          throwsA(predicate((e) => e == error)));
+      var capturedKey = verify(() => mockRum.startResourceLoading(
+              captureAny(), RumHttpMethod.get, url.toString(), any()))
+          .captured[0] as String;
+      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+          capturedKey, error.toString()));
     });
   });
 }

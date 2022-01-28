@@ -63,14 +63,14 @@ class DatadogTrackingHttpClient implements HttpClient {
   }
 
   Future<HttpClientRequest> _openUrl(String method, Uri url) async {
-    var request = await innerClient.openUrl(method, url);
-    try {
-      final tracer = datadogSdk.traces;
-      final rum = datadogSdk.rum;
-      String? rumKey;
-      DdSpan? tracingSpan;
-      String? traceId, spanId;
+    final tracer = datadogSdk.traces;
+    final rum = datadogSdk.rum;
+    String? rumKey;
+    DdSpan? tracingSpan;
+    String? traceId, spanId;
+    Map<String, String>? spanHeaders;
 
+    try {
       bool isFirstParty = datadogSdk.isFirstPartyHost(url);
       if (tracer != null) {
         if (isFirstParty) {
@@ -79,27 +79,21 @@ class DatadogTrackingHttpClient implements HttpClient {
             'http.url': url.toString(),
           });
 
-          var headers = await tracer.getTracePropagationHeaders(tracingSpan);
+          spanHeaders = await tracer.getTracePropagationHeaders(tracingSpan);
           // extract trace / span from the headers in case we need them for RUM
-          traceId = headers[DatadogTracingHeaders.traceId];
-          spanId = headers[DatadogTracingHeaders.parentId];
-          for (var header in headers.entries) {
-            request.headers.add(header.key, header.value);
-          }
+          traceId = spanHeaders[DatadogTracingHeaders.traceId];
+          spanId = spanHeaders[DatadogTracingHeaders.parentId];
         }
       }
 
       if (rum != null) {
         final attributes = <String, dynamic>{};
-        if (isFirstParty) {
-          request.headers.add('x-datadog-origin', 'rum');
-          if (tracingSpan != null) {
-            attributes[DatadogPlatformAttributeKey.traceID] = traceId;
-            attributes[DatadogPlatformAttributeKey.spanID] = spanId;
+        if (tracingSpan != null) {
+          attributes[DatadogPlatformAttributeKey.traceID] = traceId;
+          attributes[DatadogPlatformAttributeKey.spanID] = spanId;
 
-            // Discard the tracing span, we don't need it if RUM is tracking the resource
-            tracingSpan = null;
-          }
+          // Discard the tracing span, we don't need it if RUM is tracking the resource
+          tracingSpan = null;
         }
 
         rumKey = uuid.v1();
@@ -107,15 +101,33 @@ class DatadogTrackingHttpClient implements HttpClient {
         await rum.startResourceLoading(
             rumKey, rumHttpMethod, url.toString(), attributes);
       }
+    } catch (e) {
+      // TELEMETRY: There was an issue tracking this request
+    }
 
-      // Wrap to return a tracking response
-      if (rumKey != null || tracingSpan != null) {
-        request = _DatadogTrackingHttpRequest(
-            datadogSdk, request, tracingSpan, rumKey);
+    HttpClientRequest request;
+    try {
+      request = await innerClient.openUrl(method, url);
+      request.headers.add('x-datadog-origin', 'rum');
+      if (spanHeaders != null) {
+        for (var header in spanHeaders.entries) {
+          request.headers.add(header.key, header.value);
+        }
       }
     } catch (e) {
-      // TELEMETRY: Any errors attempting to modify this request shouldn't muck with the
-      // request itself. Report any exceptions back to Datadog
+      if (rumKey != null) {
+        try {
+          await rum?.stopResourceLoadingWithErrorInfo(rumKey, e.toString());
+        } catch (innerE) {
+          // TELEMETRY: Something went wrong trying to make this call
+        }
+      }
+      rethrow;
+    }
+
+    if (rumKey != null || tracingSpan != null) {
+      request =
+          _DatadogTrackingHttpRequest(datadogSdk, request, tracingSpan, rumKey);
     }
 
     return request;

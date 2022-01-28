@@ -39,16 +39,15 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
   DatadogNavigationObserver(
       {this.viewInfoExtractor = defaultViewInfoExtractor});
 
-  Future<void> _sendScreenView(Route? route, Route? previousRoute) async {
-    final previousRouteInfo =
-        previousRoute != null ? viewInfoExtractor(previousRoute) : null;
-    final currentRouteInfo = route != null ? viewInfoExtractor(route) : null;
+  Future<void> _sendScreenView(Route? newRoute, Route? oldRoute) async {
+    final oldRouteInfo = oldRoute != null ? viewInfoExtractor(oldRoute) : null;
+    final newRouteInfo = newRoute != null ? viewInfoExtractor(newRoute) : null;
 
-    if (previousRouteInfo != null) {
-      await DatadogSdk.instance.rum?.stopView(previousRouteInfo.name);
+    if (oldRouteInfo != null) {
+      await DatadogSdk.instance.rum?.stopView(oldRouteInfo.name);
     }
-    if (currentRouteInfo != null) {
-      await DatadogSdk.instance.rum?.startView(currentRouteInfo.name);
+    if (newRouteInfo != null) {
+      await DatadogSdk.instance.rum?.startView(newRouteInfo.name);
     }
   }
 
@@ -66,7 +65,8 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
 
   @override
   void didPop(Route route, Route? previousRoute) {
-    _sendScreenView(route, previousRoute);
+    // On pop, the "previous" route is now the new roue.
+    _sendScreenView(previousRoute, route);
     super.didPop(route, previousRoute);
   }
 }

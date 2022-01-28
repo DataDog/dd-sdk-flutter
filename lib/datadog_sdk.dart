@@ -18,15 +18,14 @@ import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
 import 'src/rum/ddrum.dart';
 import 'src/traces/ddtraces.dart';
-
 import 'src/version.dart' show ddSdkVersion;
 
 export 'src/datadog_configuration.dart';
 export 'src/rum/ddrum.dart'
     show RumHttpMethod, RumUserActionType, RumErrorSource, RumResourceType;
-export 'src/traces/ddtraces.dart' show DdSpan, DdTags, OTTags, OTLogFields;
 export 'src/rum/navigation_observer.dart'
     show DatadogNavigationObserver, RumViewInfo;
+export 'src/traces/ddtraces.dart' show DdSpan, DdTags, OTTags, OTLogFields;
 
 typedef AppRunner = void Function();
 
@@ -82,9 +81,11 @@ class DatadogSdk {
       DdSdkConfiguration configuration, AppRunner runner) async {
     return runZonedGuarded(() async {
       WidgetsFlutterBinding.ensureInitialized();
+      final originalOnError = FlutterError.onError;
       FlutterError.onError = (details) {
         FlutterError.presentError(details);
         DatadogSdk.instance.rum?.handleFlutterError(details);
+        originalOnError?.call(details);
       };
 
       await DatadogSdk.instance.initialize(configuration);
