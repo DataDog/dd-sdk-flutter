@@ -77,7 +77,9 @@ class DatadogAutoIntegrationTestApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      navigatorObservers: [DatadogNavigationObserver()],
+      navigatorObservers: [
+        DatadogNavigationObserver(datadogSdk: DatadogSdk.instance)
+      ],
       home: const RumAutoInstrumentationScenario(),
     );
   }
