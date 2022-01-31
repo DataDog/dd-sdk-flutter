@@ -79,12 +79,12 @@ class DdSdkConfiguration {
   ///
   /// If set, the SDK will override [HttpClient] creation (via [HttpOverrides])
   /// to provide its own implementation. For more information, check the
-  /// documentation on  [DatadogTrackingHttpClient]
+  /// documentation on [DatadogTrackingHttpClient]
   ///
   /// If the RUM feature is enabled, the SDK will send RUM Resources for all
   /// intercepted requests.
   ///
-  /// If Tracing feature is enabled, the SDK will send tracing Span for each
+  /// If the Tracing feature is enabled, the SDK will send tracing Span for each
   /// 1st-party request. It will also add extra HTTP headers to further
   /// propagate the trace - it means that if your backend is instrumented with
   /// Datadog agent you will see the full trace (e.g.: client → server →
