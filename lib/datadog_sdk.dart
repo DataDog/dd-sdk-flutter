@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:meta/meta.dart';
 
 import 'src/datadog_configuration.dart';
 import 'src/datadog_sdk_platform_interface.dart';
@@ -33,6 +34,12 @@ export 'src/traces/ddtraces.dart' show DdSpan, DdTags, OTTags, OTLogFields;
 
 typedef AppRunner = void Function();
 
+/// A singleton for the Datadog SDK.
+///
+/// Once initialized, individual features can be access through the [logs],
+/// [traces], and [rum] member variables. If a feature is disabled (either
+/// because they were not configured or the SDK has not been initialized) the
+/// member variables will default to `null`
 class DatadogSdk {
   static DatadogSdkPlatform get _platform {
     return DatadogSdkPlatform.instance;
@@ -72,15 +79,26 @@ class DatadogSdk {
     }
   }
 
+  /// The version of this SDK.
   String get version => ddSdkVersion;
 
+  /// Logger used internally by Datadog to report errors.
+  @internal
   final InternalLogger logger = InternalLogger();
+
+  /// Set the verbosity of the Datadog SDK. Set to [Verbosity.info] by
+  /// default. All internal logging is enabled only when [kDebugMode] is
+  /// set.
   Verbosity get sdkVerbosity => logger.sdkVerbosity;
   set sdkVerbosity(Verbosity value) {
     logger.sdkVerbosity = value;
     unawaited(_platform.setSdkVerbosity(value));
   }
 
+  /// A helper function that will initialize Datadog, setup error reporting, and
+  /// automatic HttpClient tracing.
+  ///
+  /// See also, [DdRum.handleFlutterError], [DatadogTrackingHttpClient]
   static Future<void> runApp(
       DdSdkConfiguration configuration, AppRunner runner) async {
     return runZonedGuarded(() async {
@@ -94,11 +112,6 @@ class DatadogSdk {
 
       await DatadogSdk.instance.initialize(configuration);
 
-      if (configuration.trackHttpClient) {
-        HttpOverrides.global =
-            DatadogTrackingHttpOverrides(DatadogSdk.instance);
-      }
-
       runner();
     }, (e, s) {
       DatadogSdk.instance.rum?.addErrorInfo(
@@ -109,6 +122,7 @@ class DatadogSdk {
     });
   }
 
+  /// Initialize the DatadogSdk with the provided [configuration].
   Future<void> initialize(DdSdkConfiguration configuration) async {
     //configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
     configuration.additionalConfig[DatadogConfigKey.version] = ddSdkVersion;
@@ -116,6 +130,10 @@ class DatadogSdk {
     firstPartyHosts = configuration.firstPartyHosts;
 
     await _platform.initialize(configuration, logCallback: _platformLog);
+
+    if (configuration.trackHttpClient) {
+      HttpOverrides.global = DatadogTrackingHttpOverrides(DatadogSdk.instance);
+    }
 
     if (configuration.loggingConfiguration != null) {
       _logs = DdLogs(logger);
@@ -128,6 +146,8 @@ class DatadogSdk {
     }
   }
 
+  /// Sets current user information. User information will be added traces and
+  /// RUM events automatically.
   Future<void> setUserInfo({
     String? id,
     String? name,
@@ -139,6 +159,8 @@ class DatadogSdk {
     });
   }
 
+  /// Determine if the provided URI is a first party host as determined by the
+  /// value of [firstPartyHosts].
   bool isFirstPartyHost(Uri uri) {
     return _firstPartyRegex?.hasMatch(uri.host) ?? false;
   }
