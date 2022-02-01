@@ -14,13 +14,14 @@ dependencies:
     sdk: flutter
   plugin_platform_interface: ^2.0.2
   meta: ^1.7.0
-
+  uuid: ^3.0.5
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^1.0.0
   build_runner: ^2.1.7
-  mockito: ^5.0.0
+  mocktail: ^0.2.0
 
 flutter:
   plugin:

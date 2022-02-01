@@ -61,16 +61,28 @@ class RumViewVisit {
   RumViewVisit(this.id, this.name, this.path);
 }
 
+class Dd {
+  final Map<String, dynamic> rawData;
+
+  Dd(this.rawData);
+
+  String? get traceId => rawData['trace_id'];
+  String? get spanId => rawData['span_id'];
+}
+
 class RumEventDecoder {
   final Map<String, dynamic> rumEvent;
   final RumViewDecoder view;
+  final Dd dd;
 
   String get eventType => rumEvent['type'] as String;
   int get date => rumEvent['date'] as int;
 
   Map<String, dynamic> get context => rumEvent['context'];
 
-  RumEventDecoder(this.rumEvent) : view = RumViewDecoder(rumEvent['view']);
+  RumEventDecoder(this.rumEvent)
+      : view = RumViewDecoder(rumEvent['view']),
+        dd = Dd(rumEvent['_dd']);
 }
 
 class RumViewEventDecoder extends RumEventDecoder {
@@ -89,9 +101,10 @@ class RumResourceEventDecoder extends RumEventDecoder {
   RumResourceEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
 
   String get url => rumEvent['resource']['url'];
-  int get statusCode => rumEvent['resource']['status_code'];
-  String get resourceType => rumEvent['resource']['type'];
-  int get duration => rumEvent['resource']['duration'];
+  int? get statusCode => rumEvent['resource']['status_code'];
+  String? get resourceType => rumEvent['resource']['type'];
+  int? get duration => rumEvent['resource']['duration'];
+  String? get method => rumEvent['resource']['method'];
 }
 
 class RumErrorEventDecoder extends RumEventDecoder {

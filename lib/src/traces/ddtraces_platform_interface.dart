@@ -25,6 +25,7 @@ abstract class DdTracesPlatform extends PlatformInterface {
       Map<String, dynamic>? tags, DateTime? startTime);
   Future<DdSpan?> startRootSpan(
       String operationName, Map<String, dynamic>? tags, DateTime? startTime);
+  Future<Map<String, String>> getTracePropagationHeaders(DdSpan span);
 
   // Span methods
   Future<void> spanSetActive(DdSpan span);

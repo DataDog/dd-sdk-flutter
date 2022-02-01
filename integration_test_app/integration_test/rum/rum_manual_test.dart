@@ -5,7 +5,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -166,23 +165,3 @@ class _BecameInactiveMatcher extends Matcher {
 }
 
 const becameInactive = _BecameInactiveMatcher();
-
-extension Waiter on WidgetTester {
-  Future<bool> waitFor(
-    Finder finder,
-    Duration timeout,
-    bool Function(Element e) predicate,
-  ) async {
-    var endTime = DateTime.now().add(timeout);
-    bool wasFound = false;
-    while (DateTime.now().isBefore(endTime) && !wasFound) {
-      final element = finder.evaluate().firstOrNull;
-      if (element != null) {
-        wasFound = predicate(element);
-      }
-      await pumpAndSettle();
-    }
-
-    return wasFound;
-  }
-}

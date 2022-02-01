@@ -106,6 +106,17 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
       let spanHandle = storeSpan(span)
       result(spanHandle)
 
+    case "getTracePropagationHeaders":
+      var headers: [String: String] = [:]
+
+      if let calledSpan = calledSpan {
+
+        let writer = HTTPHeadersWriter()
+        tracer.inject(spanContext: calledSpan.span.context, writer: writer)
+        headers = writer.tracePropagationHTTPHeaders
+      }
+      result(headers)
+
     case "span.setActive":
       if let calledSpan = calledSpan {
         calledSpan.span.setActive()

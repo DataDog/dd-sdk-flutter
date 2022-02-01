@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "example",
             "cwd": "example",
@@ -13,6 +14,13 @@
         {
             "name": "integration test app",
             "cwd": "integration_test_app",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "auto instrumented app",
+            "cwd": "integration_test_app",
+            "program": "lib/auto_integration_scenarios/main.dart",
             "request": "launch",
             "type": "dart"
         },

@@ -20,11 +20,9 @@ class DdTracesMethodChannel extends DdTracesPlatform {
       'operationName': operationName,
       'tags': tags,
       'startTime': startTime?.millisecondsSinceEpoch
-    });
-    if (result is int) {
-      return DdSpan(this, result);
-    }
-    return null;
+    }) as int;
+
+    return DdSpan(this, result);
   }
 
   @override
@@ -35,12 +33,31 @@ class DdTracesMethodChannel extends DdTracesPlatform {
       'parentSpan': parentSpan?.handle,
       'tags': tags,
       'startTime': startTime?.millisecondsSinceEpoch
-    });
-    if (result is int) {
-      return DdSpan(this, result);
+    }) as int;
+
+    return DdSpan(this, result);
+  }
+
+  @override
+  Future<Map<String, String>> getTracePropagationHeaders(DdSpan span) async {
+    var result = await methodChannel.invokeMethod(
+        'getTracePropagationHeaders', {'spanHandle': span.handle});
+    if (result is Map) {
+      var convertedResult = result.map((key, value) {
+        if (key is! String) {
+          throw UnsupportedError(
+              'Header key $key (type ${key.runtimeType}) is not a string.');
+        }
+        if (value is! String) {
+          throw UnsupportedError(
+              'Header value $value (type ${value.runtimeType}) is not a string.');
+        }
+        return MapEntry<String, String>(key, value);
+      });
+      return convertedResult;
     }
 
-    return null;
+    return {};
   }
 
   // Span methods

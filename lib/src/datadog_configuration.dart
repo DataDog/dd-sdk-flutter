@@ -75,6 +75,45 @@ class DdSdkConfiguration {
   UploadFrequency? uploadFrequency;
   String? customEndpoint;
 
+  /// Configures network requests monitoring for Tracing and RUM features.
+  ///
+  /// If set, the SDK will override [HttpClient] creation (via [HttpOverrides])
+  /// to provide its own implementation. For more information, check the
+  /// documentation on  [DatadogTrackingHttpClient]
+  ///
+  /// If the RUM feature is enabled, the SDK will send RUM Resources for all
+  /// intercepted requests.
+  ///
+  /// If Tracing feature is enabled, the SDK will send tracing Span for each
+  /// 1st-party request. It will also add extra HTTP headers to further
+  /// propagate the trace - it means that if your backend is instrumented with
+  /// Datadog agent you will see the full trace (e.g.: client → server →
+  /// database) in your dashboard, thanks to Datadog Distributed Tracing.
+  ///
+  /// If both RUM and Tracing features are enabled, the SDK will be sending RUM
+  /// Resources for 1st- and 3rd-party requests and tracing Spans for
+  /// 1st-parties.
+  ///
+  /// See also [firstPartyHosts]
+  bool trackHttpClient;
+
+  /// A list of first party hosts, used in conjunction with [trackHttpClient]
+  ///
+  /// Each request will be classified as 1st- or 3rd-party based on the host
+  /// comparison, i.e.:
+  /// * if `firstPartyHosts` is `["example.com"]`:
+  ///     - 1st-party URL examples: https://example.com/,
+  ///       https://api.example.com/v2/users
+  ///     - 3rd-party URL examples: https://foo.com/, https://example.net
+  /// * if `firstPartyHosts` is `["api.example.com"]`:
+  ///     - 1st-party URL examples: https://api.example.com/,
+  ///       https://api.example.com/v2/users,
+  ///       https://beta.api.example.com/v2/users
+  ///     - 3rd-party URL examples: https://example.com/, https://foo.com/,
+  ///       https://api.example.net/v3/users
+  ///
+  List<String> firstPartyHosts = [];
+
   LoggingConfiguration? loggingConfiguration;
   TracingConfiguration? tracingConfiguration;
   RumConfiguration? rumConfiguration;
@@ -90,6 +129,8 @@ class DdSdkConfiguration {
     this.uploadFrequency,
     this.batchSize,
     this.customEndpoint,
+    this.trackHttpClient = false,
+    this.firstPartyHosts = const [],
     this.loggingConfiguration,
     this.tracingConfiguration,
     this.rumConfiguration,

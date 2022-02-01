@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../auto_integration_scenarios/rum_auto_instrumentation_scenario.dart';
 import 'logging_scenario.dart';
 import 'rum_manual_error_reporting_scenario.dart';
 import 'rum_manual_instrumentation_scenario.dart';
@@ -32,7 +33,10 @@ class _IntegrationScenariosScreenState
         navItem: RumManualInstrumentationScenario.new),
     ScenarioItem(
         label: 'RUM Error Reporting Scenario',
-        navItem: RumManualErrorReportingScenario.new)
+        navItem: RumManualErrorReportingScenario.new),
+    ScenarioItem(
+        label: 'Auto RUM Scenario',
+        navItem: RumAutoInstrumentationScenario.new),
   ];
 
   @override
