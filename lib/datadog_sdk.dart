@@ -24,7 +24,11 @@ export 'src/datadog_configuration.dart';
 export 'src/rum/ddrum.dart'
     show RumHttpMethod, RumUserActionType, RumErrorSource, RumResourceType;
 export 'src/rum/navigation_observer.dart'
-    show DatadogNavigationObserver, RumViewInfo;
+    show
+        DatadogNavigationObserver,
+        DatadogNavigationObserverProvider,
+        RumViewInfo,
+        DatadogRouteAwareMixin;
 export 'src/traces/ddtraces.dart' show DdSpan, DdTags, OTTags, OTLogFields;
 
 typedef AppRunner = void Function();

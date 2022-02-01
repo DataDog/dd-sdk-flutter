@@ -4,7 +4,6 @@
 
 import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:datadog_sdk/src/rum/ddrum.dart';
-import 'package:datadog_sdk/src/rum/navigation_observer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -74,10 +73,6 @@ void main() {
 
   testWidgets('popping unnamed route restarts root view ',
       (WidgetTester tester) async {
-    void _onPopPressed(BuildContext context) {
-      Navigator.of(context).pop();
-    }
-
     await _buildAndNavigateTo(
         tester: tester, builder: (context) => const SimplePopPage());
     final popButton = find.text('Pop');
@@ -321,7 +316,21 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
-  // TODO: Do not call start/stopView when routes are already named.
+  testWidgets('mixin on named route does not send extra events',
+      (WidgetTester tester) async {
+    await _buildAndNavigateTo(
+      tester: tester,
+      routeName: 'second_route',
+      builder: (_) => const MixedDestination(),
+    );
+
+    verifyInOrder([
+      () => mockRum.startView('/'),
+      () => mockRum.stopView('/'),
+      () => mockRum.startView('second_route')
+    ]);
+    verifyNoMoreInteractions(mockRum);
+  });
 }
 
 //////

@@ -25,6 +25,10 @@ Future<void> performRumUserFlow(WidgetTester tester) async {
 
   var readyText = find.text('All Done');
   await tester.waitFor(readyText, const Duration(seconds: 100), (e) => true);
+
+  var nextButton = find.text('Next Page');
+  await tester.tap(nextButton);
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -64,9 +68,9 @@ void main() {
 
     await performRumUserFlow(tester);
 
-    var requestLog = <RequestLog>[];
-    var rumLog = <RumEventDecoder>[];
-    var testRequests = <RequestLog>[];
+    final requestLog = <RequestLog>[];
+    final rumLog = <RumEventDecoder>[];
+    final testRequests = <RequestLog>[];
     await mockHttpServer!.pollRequests(
       const Duration(seconds: 30),
       (requests) {
@@ -83,14 +87,16 @@ void main() {
             });
           }
         }
-        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 2;
+        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
       },
     );
 
     final session = RumSessionDecoder.fromEvents(rumLog);
-    expect(session.visits.length, 2);
+    expect(session.visits.length, 3);
 
-    var view1 = session.visits[0];
+    final view1 = session.visits[0];
+    expect(view1.name, '/');
+    expect(view1.path, '/');
     expect(view1.viewEvents.last.view.resourceCount, 2);
     expect(view1.resourceEvents[0].url, 'https://placekitten.com/300/300');
     // placekitten.com doesn't set contentType headers properly, so don't test it
@@ -101,7 +107,9 @@ void main() {
       expect(view1.resourceEvents[1].resourceType, 'image');
     }
 
-    var view2 = session.visits[1];
+    final view2 = session.visits[1];
+    expect(view2.name, 'rum_second_screen');
+    expect(view2.path, 'rum_second_screen');
     expect(view2.viewEvents.last.view.resourceCount, 4);
     expect(view2.viewEvents.last.view.errorCount, 1);
 
@@ -113,10 +121,10 @@ void main() {
       expect(testRequest.requestHeaders['x-datadog-origin']?.first, 'rum');
     }
 
-    var getEvent = view2.resourceEvents[0];
-    var getTraceId =
+    final getEvent = view2.resourceEvents[0];
+    final getTraceId =
         testRequests[0].requestHeaders['x-datadog-trace-id']?.first;
-    var getSpanId =
+    final getSpanId =
         testRequests[0].requestHeaders['x-datadog-parent-id']?.first;
     expect(getEvent.url, scenarioConfig.firstPartyGetUrl);
     expect(getEvent.statusCode, 200);
@@ -125,11 +133,11 @@ void main() {
     expect(getEvent.dd.traceId, getTraceId!);
     expect(getEvent.dd.spanId, getSpanId!);
 
-    var postTraceId =
+    final postTraceId =
         testRequests[1].requestHeaders['x-datadog-trace-id']?.first;
-    var postSpanId =
+    final postSpanId =
         testRequests[1].requestHeaders['x-datadog-parent-id']?.first;
-    var postEvent = view2.resourceEvents[1];
+    final postEvent = view2.resourceEvents[1];
     expect(postEvent.url, scenarioConfig.firstPartyPostUrl);
     expect(postEvent.statusCode, 200);
     expect(postEvent.method, 'POST');
@@ -137,7 +145,7 @@ void main() {
     expect(postEvent.dd.traceId, postTraceId!);
     expect(postEvent.dd.spanId, postSpanId!);
 
-    // Third part requests
+    // Third party requests
     expect(view2.errorEvents[0].resourceUrl, scenarioConfig.firstPartyBadUrl);
     expect(view2.errorEvents[0].resourceMethod, 'GET');
 
@@ -152,5 +160,10 @@ void main() {
     expect(view2.resourceEvents[3].duration, greaterThan(0));
     expect(view2.resourceEvents[3].dd.traceId, isNull);
     expect(view2.resourceEvents[3].dd.spanId, isNull);
+
+    // Check last view name
+    final view3 = session.visits[2];
+    expect(view3.name, 'RumAutoInstrumentationThirdScreen');
+    expect(view3.path, 'RumAutoInstrumentationThirdScreen');
   });
 }

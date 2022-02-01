@@ -43,7 +43,7 @@ RumViewInfo? defaultViewInfoExtractor(Route route) {
 /// automatically start and stop RUM views on widgets that use the mixin.
 ///
 /// If you want more control over the names and attributes that are sent to RUM,
-/// you can supply a function, [ViewInfoExtractor], to [viewInfoExtractor]. This
+/// you can supply a [ViewInfoExtractor] function to [viewInfoExtractor]. This
 /// function is called with the current Route, and can be used to supply a
 /// different name, path, or extra attributes to any route.
 class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
@@ -124,7 +124,7 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
   /// [RumViewInfo] class. By default, it returns the name of the parent Widget
   /// as the name of the view.
   RumViewInfo get rumViewInfo {
-    return RumViewInfo(name: widget.toString());
+    return RumViewInfo(name: (T).toString());
   }
 
   @override
@@ -132,9 +132,21 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
     super.didChangeDependencies();
 
     _routeObserver = DatadogNavigationObserverProvider.of(context)?.navObserver;
-    final route = ModalRoute.of(context);
-    if (route != null) {
-      _routeObserver?.subscribe(this, route);
+    if (_routeObserver != null) {
+      final route = ModalRoute.of(context);
+      if (route != null) {
+        if (route.settings.name == null) {
+          _routeObserver?.subscribe(this, route);
+        } else {
+          DatadogSdk.instance.logger.info(
+              '$DatadogRouteAwareMixin for ${rumViewInfo.name} (on widget $T) '
+              'will be ignored because it is part of a named route ${route.settings.name}');
+        }
+      }
+    } else {
+      DatadogSdk.instance.logger.warn(
+          'Invalid use of $DatadogRouteAwareMixin without a $DatadogNavigationObserverProvider. '
+          'Make sure to add the provider at the root of your widget tree (above your MaterialApp)');
     }
   }
 
@@ -184,10 +196,12 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
   }
 }
 
-/// This can be used to provide the DatadogNavigationObserver to other classes that need it, specifically,
-/// if you want to use the [DatadogRouteAwareMixin], you must use this provider.
+/// Provides the DatadogNavigationObserver to other classes that need it.
+/// Specifically, if you want to use the [DatadogRouteAwareMixin], you must use
+/// this provider.
 ///
-/// The provider should be placed above your MaterialApp or application route.
+/// The provider should be placed in the widget tree above your MaterialApp or
+/// application router.
 /// ```
 /// void main() {
 ///   // Other setup code
