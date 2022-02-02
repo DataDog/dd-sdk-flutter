@@ -38,7 +38,7 @@ RumViewInfo? defaultViewInfoExtractor(Route route) {
 /// [Navigator.pushNamed], or supplying route names through [RouteSettings] when
 /// using [Navigator.push].
 ///
-/// Alternately, the DatadogNavigationObserver can also be used in conjunction
+/// Alternately, the [DatadogNavigationObserver] can also be used in conjunction
 /// with [DatadogNavigationObserverProvider] and [DatadogRouteAwareMixin] to
 /// automatically start and stop RUM views on widgets that use the mixin.
 ///
@@ -196,7 +196,7 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
   }
 }
 
-/// Provides the DatadogNavigationObserver to other classes that need it.
+/// Provides the [DatadogNavigationObserver] to other classes that need it.
 /// Specifically, if you want to use the [DatadogRouteAwareMixin], you must use
 /// this provider.
 ///
