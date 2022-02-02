@@ -10,6 +10,8 @@ workflows:
     - _build
     - integration_android
     - integration_ios
+    after_run:
+    - _deploy
     
   _build:
     steps:
@@ -50,6 +52,9 @@ workflows:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/example"
         - platform: both
+  
+  _deploy:
+    steps:
     - deploy-to-bitrise-io: {}
 
   setup:
@@ -73,7 +78,6 @@ workflows:
         - project_location: "$BITRISE_SOURCE_DIR/integration_test_app"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
-    - deploy-to-bitrise-io: {}
   
   integration_ios:
     steps:
@@ -91,5 +95,3 @@ workflows:
         - project_location: "$BITRISE_SOURCE_DIR/integration_test_app"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
-    - deploy-to-bitrise-io: {}
-

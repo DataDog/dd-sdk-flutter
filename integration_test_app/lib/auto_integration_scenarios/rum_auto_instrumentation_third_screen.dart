@@ -16,6 +16,13 @@ class _RumAutoInstrumentationThirdScreenState
     extends State<RumAutoInstrumentationThirdScreen>
     with RouteAware, DatadogRouteAwareMixin {
   @override
+  void didPush() {
+    super.didPush();
+
+    DatadogSdk.instance.rum?.addTiming('content-ready');
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(

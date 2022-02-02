@@ -114,6 +114,11 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
 /// the name of the route. You can override this by overriding the [rumViewInfo]
 /// getter, as well as supply additional properties about the view.
 ///
+/// [DatadogNavigationObserver] uses the [didChangeDependencies] lifecycle
+/// method to start the RUM view. For this reason, you should avoid calling RUM
+/// methods during [initState], and override [didPush] from [RouteAware] to do
+/// any initial setup instead.
+///
 /// Note: this should not be used with named routes. By design, the Mixin checks
 /// if a name was already assigned to its route and will not send any tracking
 /// events in that case

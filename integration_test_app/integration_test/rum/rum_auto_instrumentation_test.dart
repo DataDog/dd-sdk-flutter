@@ -72,7 +72,7 @@ void main() {
     final rumLog = <RumEventDecoder>[];
     final testRequests = <RequestLog>[];
     await mockHttpServer!.pollRequests(
-      const Duration(seconds: 30),
+      const Duration(seconds: 50),
       (requests) {
         requestLog.addAll(requests);
         for (var request in requests) {
