@@ -33,21 +33,38 @@ RumViewInfo? defaultViewInfoExtractor(Route route) {
   return null;
 }
 
+/// This class can be added to a MaterialApp to automatically start and stop RUM
+/// views, provided you are using named routes with methods like
+/// [Navigator.pushNamed], or supplying route names through [RouteSettings] when
+/// using [Navigator.push].
+///
+/// Alternately, the [DatadogNavigationObserver] can also be used in conjunction
+/// with [DatadogNavigationObserverProvider] and [DatadogRouteAwareMixin] to
+/// automatically start and stop RUM views on widgets that use the mixin.
+///
+/// If you want more control over the names and attributes that are sent to RUM,
+/// you can supply a [ViewInfoExtractor] function to [viewInfoExtractor]. This
+/// function is called with the current Route, and can be used to supply a
+/// different name, path, or extra attributes to any route.
 class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
   final ViewInfoExtractor viewInfoExtractor;
+  final DatadogSdk datadogSdk;
 
-  DatadogNavigationObserver(
-      {this.viewInfoExtractor = defaultViewInfoExtractor});
+  DatadogNavigationObserver({
+    required this.datadogSdk,
+    this.viewInfoExtractor = defaultViewInfoExtractor,
+  });
 
   Future<void> _sendScreenView(Route? newRoute, Route? oldRoute) async {
     final oldRouteInfo = oldRoute != null ? viewInfoExtractor(oldRoute) : null;
     final newRouteInfo = newRoute != null ? viewInfoExtractor(newRoute) : null;
 
     if (oldRouteInfo != null) {
-      await DatadogSdk.instance.rum?.stopView(oldRouteInfo.name);
+      await datadogSdk.rum?.stopView(oldRouteInfo.name);
     }
     if (newRouteInfo != null) {
-      await DatadogSdk.instance.rum?.startView(newRouteInfo.name);
+      await datadogSdk.rum
+          ?.startView(newRouteInfo.name, null, newRouteInfo.attributes);
     }
   }
 
@@ -65,8 +82,163 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
 
   @override
   void didPop(Route route, Route? previousRoute) {
+    super.didPop(route, previousRoute);
+
     // On pop, the "previous" route is now the new roue.
     _sendScreenView(previousRoute, route);
-    super.didPop(route, previousRoute);
+  }
+}
+
+/// The DatadogRouteAwareMixin can be used to supply names and additional
+/// attributes to RUM views as an alternative to supplying a [ViewInfoExtractor]
+/// to [DatadogNavigationObserver], supplying a name when creating the route, or
+/// using named routes.
+///
+/// Usage:
+///
+/// ```
+/// class ViewWidget extends StatefulWidget {
+///   const ViewWidget({Key? key}) : super(key: key);
+///
+///   @override
+///   _ViewWidgetState createState() => _ViewWidgetState();
+/// }
+///
+/// class _ViewWidgetState extends State<ViewWidget>
+///     with RouteAware, DatadogRouteAwareMixin {
+///   // ...
+/// }
+/// ```
+///
+/// By default, DatadogRouteAwareMixin will use the name of its parent Widget as
+/// the name of the route. You can override this by overriding the [rumViewInfo]
+/// getter, as well as supply additional properties about the view.
+///
+/// [DatadogNavigationObserver] uses the [didChangeDependencies] lifecycle
+/// method to start the RUM view. For this reason, you should avoid calling RUM
+/// methods during [initState], and override [didPush] from [RouteAware] to do
+/// any initial setup instead.
+///
+/// Note: this should not be used with named routes. By design, the Mixin checks
+/// if a name was already assigned to its route and will not send any tracking
+/// events in that case
+mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
+  DatadogNavigationObserver? _routeObserver;
+
+  /// Override this method to supply extra view info for this view through the
+  /// [RumViewInfo] class. By default, it returns the name of the parent Widget
+  /// as the name of the view.
+  RumViewInfo get rumViewInfo {
+    return RumViewInfo(name: (T).toString());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    _routeObserver = DatadogNavigationObserverProvider.of(context)?.navObserver;
+    if (_routeObserver != null) {
+      final route = ModalRoute.of(context);
+      if (route != null) {
+        if (route.settings.name == null) {
+          _routeObserver?.subscribe(this, route);
+        } else {
+          DatadogSdk.instance.logger.info(
+              '$DatadogRouteAwareMixin for ${rumViewInfo.name} (on widget $T) '
+              'will be ignored because it is part of a named route ${route.settings.name}');
+        }
+      }
+    } else {
+      DatadogSdk.instance.logger.warn(
+          'Invalid use of $DatadogRouteAwareMixin without a $DatadogNavigationObserverProvider. '
+          'Make sure to add the provider at the root of your widget tree (above your MaterialApp)');
+    }
+  }
+
+  @override
+  void dispose() {
+    _routeObserver?.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPush() {
+    _startView();
+    super.didPush();
+  }
+
+  @override
+  void didPop() {
+    super.didPop();
+    _stopView();
+  }
+
+  @override
+  void didPushNext() {
+    super.didPushNext();
+    _stopView();
+  }
+
+  @override
+  void didPopNext() {
+    _startView();
+    super.didPopNext();
+  }
+
+  void _startView() {
+    if (_routeObserver != null) {
+      final info = rumViewInfo;
+      _routeObserver?.datadogSdk.rum
+          ?.startView(info.name, null, info.attributes);
+    }
+  }
+
+  void _stopView() {
+    if (_routeObserver != null) {
+      final info = rumViewInfo;
+      _routeObserver?.datadogSdk.rum?.stopView(info.name);
+    }
+  }
+}
+
+/// Provides the [DatadogNavigationObserver] to other classes that need it.
+/// Specifically, if you want to use the [DatadogRouteAwareMixin], you must use
+/// this provider.
+///
+/// The provider should be placed in the widget tree above your MaterialApp or
+/// application router.
+/// ```
+/// void main() {
+///   // Other setup code
+///   final observer = DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
+///   runApp(DatadogRouteAwareMixin(
+///     navObserver: observer,
+///     child: MaterialApp(
+///       navigatorObservers: [observer],
+///       // other initialization
+///     ),
+///   );
+/// }
+/// ```
+///
+/// See also [DatadogRouteAwareMixin]
+class DatadogNavigationObserverProvider extends InheritedWidget {
+  final DatadogNavigationObserver navObserver;
+
+  const DatadogNavigationObserverProvider({
+    Key? key,
+    required this.navObserver,
+    required Widget child,
+  }) : super(key: key, child: child);
+
+  @override
+  bool updateShouldNotify(
+          covariant DatadogNavigationObserverProvider oldWidget) =>
+      navObserver != oldWidget.navObserver;
+
+  static DatadogNavigationObserverProvider? of(BuildContext context) {
+    final result = context.dependOnInheritedWidgetOfExactType<
+        DatadogNavigationObserverProvider>();
+    return result;
   }
 }

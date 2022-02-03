@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'rum_auto_instrumentation_third_screen.dart';
 import 'scenario_config.dart';
 
 class RumAutoInstrumentationSecondScreen extends StatefulWidget {
@@ -84,8 +85,23 @@ class _RumAutoInstrumentationSecondScreenState
   }
 
   Widget _buildLoaded() {
-    return const Center(
-      child: Text('All Done'),
+    return Center(
+      child: Column(
+        children: [
+          const Text('All Done'),
+          ElevatedButton(
+            onPressed: _onNext,
+            child: const Text('Next Page'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _onNext() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+          builder: (_) => const RumAutoInstrumentationThirdScreen()),
     );
   }
 }

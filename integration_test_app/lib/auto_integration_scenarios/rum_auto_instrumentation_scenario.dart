@@ -34,7 +34,7 @@ class _RumAutoInstrumentationScenarioState
           context,
           MaterialPageRoute(
             settings: const RouteSettings(
-              name: 'RumAutoInstrumentationSecondScreen',
+              name: 'rum_second_screen',
             ),
             builder: (_) {
               return const RumAutoInstrumentationSecondScreen();
