@@ -3,7 +3,6 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -61,8 +60,6 @@ void main() {
 
     const contextKey = 'onboarding_stage';
     const expectedContextValue = 1;
-    // TODO: Start checking "side effect-less" actions dd-sdk-android 1.12 comes out.
-    final shouldCheckExtraActions = !Platform.isAndroid;
 
     final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, 3);
@@ -70,8 +67,7 @@ void main() {
     final view1 = session.visits[0];
     expect(view1.name, 'RumManualInstrumentationScenario');
     expect(view1.path, 'RumManualInstrumentationScenario');
-    expect(view1.viewEvents.last.view.actionCount,
-        shouldCheckExtraActions ? 3 : 2);
+    expect(view1.viewEvents.last.view.actionCount, 3);
     expect(view1.viewEvents.last.view.resourceCount, 1);
     expect(view1.viewEvents.last.view.errorCount, 1);
     expect(view1.viewEvents.last.context[contextKey], expectedContextValue);
@@ -79,11 +75,9 @@ void main() {
     expect(view1.actionEvents[1].actionType, 'tap');
     expect(view1.actionEvents[1].actionName, 'Tapped Download');
     expect(view1.actionEvents[1].context[contextKey], expectedContextValue);
-    if (shouldCheckExtraActions) {
-      expect(view1.actionEvents[2].actionType, 'tap');
-      expect(view1.actionEvents[2].actionName, 'Next Screen');
-      expect(view1.actionEvents[2].context[contextKey], expectedContextValue);
-    }
+    expect(view1.actionEvents[2].actionType, 'tap');
+    expect(view1.actionEvents[2].actionName, 'Next Screen');
+    expect(view1.actionEvents[2].context[contextKey], expectedContextValue);
 
     final contentReadyTiming =
         view1.viewEvents.last.view.customTimings['content-ready'];
@@ -91,10 +85,10 @@ void main() {
         view1.viewEvents.last.view.customTimings['first-interaction'];
     expect(contentReadyTiming, isNotNull);
     expect(contentReadyTiming, greaterThanOrEqualTo(50000));
-    expect(contentReadyTiming, lessThan(1000000000));
+    expect(contentReadyTiming, lessThan(2000000000));
     expect(firstInteractionTiming, isNotNull);
     expect(firstInteractionTiming, greaterThanOrEqualTo(contentReadyTiming!));
-    expect(firstInteractionTiming, lessThan(5000000000));
+    expect(firstInteractionTiming, lessThan(8000000000));
 
     expect(view1.resourceEvents[0].url, 'https://fake_url/resource/1');
     expect(view1.resourceEvents[0].statusCode, 200);
@@ -116,22 +110,19 @@ void main() {
 
     expect(view2.name, 'SecondManualRumView');
     expect(view2.path, 'RumManualInstrumentation2');
-    expect(view2.viewEvents.last.view.actionCount,
-        shouldCheckExtraActions ? 2 : 0);
+    expect(view2.viewEvents.last.view.actionCount, 2);
     expect(view2.viewEvents.last.view.resourceCount, 0);
     expect(view2.viewEvents.last.view.errorCount, 1);
     expect(view2.viewEvents.last.context[contextKey], expectedContextValue);
     expect(view2.errorEvents[0].message, 'Simulated view error');
     expect(view2.errorEvents[0].source, 'source');
     expect(view2.errorEvents[0].context[contextKey], expectedContextValue);
-    if (shouldCheckExtraActions) {
-      expect(view2.actionEvents[0].actionType, 'scroll');
-      expect(view2.actionEvents[0].actionName, 'User Scrolling');
-      expect(view2.actionEvents[0].loadingTime, closeTo(2000000000, 50000000));
-      expect(view2.actionEvents[0].context[contextKey], expectedContextValue);
-      expect(view2.actionEvents[1].actionName, 'Next Screen');
-      expect(view2.actionEvents[1].context[contextKey], expectedContextValue);
-    }
+    expect(view2.actionEvents[0].actionType, 'scroll');
+    expect(view2.actionEvents[0].actionName, 'User Scrolling');
+    expect(view2.actionEvents[0].loadingTime, closeTo(2000000000, 50000000));
+    expect(view2.actionEvents[0].context[contextKey], expectedContextValue);
+    expect(view2.actionEvents[1].actionName, 'Next Screen');
+    expect(view2.actionEvents[1].context[contextKey], expectedContextValue);
 
     expect(view2, becameInactive);
 

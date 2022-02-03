@@ -40,6 +40,14 @@ void main() {
       },
     );
 
+    if (rumLog.isNotEmpty) {
+      // ignore: avoid_print
+      print('Got a RUM log!? (actually ${rumLog.length})');
+      for (var log in rumLog) {
+        // ignore: avoid_print
+        print('Log: { event: ${log.eventType}, view: ${log.view.name}');
+      }
+    }
     expect(rumLog.isEmpty, isTrue);
   });
 }
