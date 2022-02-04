@@ -26,7 +26,7 @@ void main() {
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
     await mockHttpServer!.pollRequests(
-      const Duration(seconds: 10),
+      const Duration(seconds: 30),
       (requests) {
         requestLog.addAll(requests);
         requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
@@ -35,12 +35,14 @@ void main() {
             rumLog.add(RumEventDecoder(jsonValue));
           }
         });
-        // stop immediately if we found any RUM logs
-        return rumLog.isNotEmpty;
+        return false;
       },
     );
+    // Decode this session. This removes events that came from
+    // the ApplicationLaunchView (which can happen if the emulator is running slow)
+    var session = RumSessionDecoder.fromEvents(rumLog);
 
-    if (rumLog.isNotEmpty) {
+    if (session.visits.isNotEmpty) {
       // ignore: avoid_print
       print('Got a RUM log!? (actually ${rumLog.length})');
       for (var log in rumLog) {
@@ -48,6 +50,6 @@ void main() {
         print('Log: { event: ${log.eventType}, view: ${log.view.name}');
       }
     }
-    expect(rumLog.isEmpty, isTrue);
+    expect(session.visits.isEmpty, isTrue);
   });
 }
