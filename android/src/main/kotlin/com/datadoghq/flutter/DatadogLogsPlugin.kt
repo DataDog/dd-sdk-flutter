@@ -6,10 +6,11 @@
 package com.datadoghq.flutter
 
 import com.datadog.android.log.Logger
-import com.google.gson.Gson
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import org.json.JSONArray
+import org.json.JSONObject
 
 class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     companion object LogParameterNames {
@@ -20,7 +21,6 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         const val LOG_VALUE = "value"
     }
 
-    private val gson: Gson = Gson()
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 
@@ -133,11 +133,11 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
             is String -> log.addAttribute(key, value)
             is Double -> log.addAttribute(key, value)
             is List<*> -> {
-                val jsonList = gson.toJsonTree(value).asJsonArray
+                val jsonList = JSONArray(value)
                 log.addAttribute(key, jsonList)
             }
             is Map<*, *> -> {
-                val jsonObject = gson.toJsonTree(value).asJsonObject
+                val jsonObject = JSONObject(value)
                 log.addAttribute(key, jsonObject)
             }
         }
