@@ -84,14 +84,14 @@ class DatadogSdk {
 
   /// Logger used internally by Datadog to report errors.
   @internal
-  final InternalLogger logger = InternalLogger();
+  final InternalLogger internalLogger = InternalLogger();
 
   /// Set the verbosity of the Datadog SDK. Set to [Verbosity.info] by
   /// default. All internal logging is enabled only when [kDebugMode] is
   /// set.
-  Verbosity get sdkVerbosity => logger.sdkVerbosity;
+  Verbosity get sdkVerbosity => internalLogger.sdkVerbosity;
   set sdkVerbosity(Verbosity value) {
-    logger.sdkVerbosity = value;
+    internalLogger.sdkVerbosity = value;
     unawaited(_platform.setSdkVerbosity(value));
   }
 
@@ -136,13 +136,13 @@ class DatadogSdk {
     }
 
     if (configuration.loggingConfiguration != null) {
-      _logs = DdLogs(logger);
+      _logs = DdLogs(internalLogger);
     }
     if (configuration.tracingConfiguration != null) {
-      _traces = DdTraces(logger);
+      _traces = DdTraces(internalLogger);
     }
     if (configuration.rumConfiguration != null) {
-      _rum = DdRum(logger);
+      _rum = DdRum(internalLogger);
     }
   }
 
@@ -154,7 +154,7 @@ class DatadogSdk {
     String? email,
     Map<String, dynamic> extraInfo = const {},
   }) {
-    return wrap('setUserInfo', logger, () {
+    return wrap('setUserInfo', internalLogger, () {
       return _platform.setUserInfo(id, name, email, extraInfo);
     });
   }
