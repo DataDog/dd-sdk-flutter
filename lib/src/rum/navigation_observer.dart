@@ -162,24 +162,28 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
   }
 
   @override
+  @mustCallSuper
   void didPush() {
     _startView();
     super.didPush();
   }
 
   @override
+  @mustCallSuper
   void didPop() {
     super.didPop();
     _stopView();
   }
 
   @override
+  @mustCallSuper
   void didPushNext() {
     super.didPushNext();
     _stopView();
   }
 
   @override
+  @mustCallSuper
   void didPopNext() {
     _startView();
     super.didPopNext();
