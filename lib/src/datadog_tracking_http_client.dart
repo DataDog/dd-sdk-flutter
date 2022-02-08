@@ -127,7 +127,7 @@ class DatadogTrackingHttpClient implements HttpClient {
       }
     } catch (e) {
       // TELEMETRY: There was an issue tracking this request
-      datadogSdk.logger.error(
+      datadogSdk.internalLogger.error(
           '$DatadogTrackingHttpClient encountered an error while attempting '
           ' to track an _openUrl call: $e');
     }
@@ -147,7 +147,7 @@ class DatadogTrackingHttpClient implements HttpClient {
           await rum?.stopResourceLoadingWithErrorInfo(rumKey, e.toString());
         } catch (innerE) {
           // TELEMETRY: Something went wrong trying to make this call
-          datadogSdk.logger.error(
+          datadogSdk.internalLogger.error(
               '$DatadogTrackingHttpClient encountered an error while attempting '
               ' to track an _openUrl error: $e');
         }
@@ -460,7 +460,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
       await tracingContext?.setErrorInfo(
           error.runtimeType.toString(), error.toString(), stackTrace);
     } catch (e) {
-      datadogSdk.logger.error(
+      datadogSdk.internalLogger.error(
           '$DatadogTrackingHttpClient encountered an error while attempting '
           ' to report a resource error: $e');
       // TELEMETRY:
@@ -498,7 +498,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
         await span.finish();
       }
     } catch (e) {
-      datadogSdk.logger.error(
+      datadogSdk.internalLogger.error(
           '$DatadogTrackingHttpClient encountered an error while attempting '
           ' to finish a resource: $e');
       // TELEMETRY:

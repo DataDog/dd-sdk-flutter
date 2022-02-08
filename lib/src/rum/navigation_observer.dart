@@ -143,13 +143,13 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
         if (route.settings.name == null) {
           _routeObserver?.subscribe(this, route);
         } else {
-          DatadogSdk.instance.logger.info(
+          DatadogSdk.instance.internalLogger.info(
               '$DatadogRouteAwareMixin for ${rumViewInfo.name} (on widget $T) '
               'will be ignored because it is part of a named route ${route.settings.name}');
         }
       }
     } else {
-      DatadogSdk.instance.logger.warn(
+      DatadogSdk.instance.internalLogger.warn(
           'Invalid use of $DatadogRouteAwareMixin without a $DatadogNavigationObserverProvider. '
           'Make sure to add the provider at the root of your widget tree (above your MaterialApp)');
     }
