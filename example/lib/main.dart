@@ -35,7 +35,9 @@ void main() async {
     );
 
     final ddsdk = DatadogSdk.instance;
-    await ddsdk.initialize(configuration);
+    ddsdk.sdkVerbosity = Verbosity.verbose;
+
+    DatadogSdk.instance.initialize(configuration);
 
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
@@ -46,5 +48,6 @@ void main() async {
   }, (e, s) {
     DatadogSdk.instance.rum
         ?.addErrorInfo(e.toString(), RumErrorSource.source, stackTrace: s);
+    throw e;
   });
 }

@@ -54,6 +54,7 @@ class DatadogConfigurationTests: XCTestCase {
   }
 
   func testAllVerbosityLevels_AreParsedCorrectly() {
+    let verbose = LogLevel.parseFromFlutter("Verbosity.verbose")
     let debug = LogLevel.parseFromFlutter("Verbosity.debug")
     let info = LogLevel.parseFromFlutter("Verbosity.info")
     let warn = LogLevel.parseFromFlutter("Verbosity.warn")
@@ -61,6 +62,8 @@ class DatadogConfigurationTests: XCTestCase {
     let none = LogLevel.parseFromFlutter("Verbosity.none")
     let unknown = LogLevel.parseFromFlutter("unknown")
 
+    // iOS doesn't have .verbose so use .debug
+    XCTAssertEqual(verbose, .debug)
     XCTAssertEqual(debug, .debug)
     XCTAssertEqual(info, .info)
     XCTAssertEqual(warn, .warn)

@@ -54,6 +54,7 @@ android {
 
 dependencies {
     implementation "com.datadoghq:dd-sdk-android:1.12.0-alpha2"
+    implementation 'com.datadoghq:dd-sdk-android-ndk:1.12.0-alpha2'
     
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 

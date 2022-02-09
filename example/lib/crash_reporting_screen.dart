@@ -2,19 +2,116 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+final DynamicLibrary ffiLibrary = Platform.isAndroid
+    ? DynamicLibrary.open('libffi_crash_test.so')
+    : DynamicLibrary.process();
+
+// ignore: non_constant_identifier_names
+final void Function(int attribute) ffi_crash_test = ffiLibrary
+    .lookup<NativeFunction<Void Function(Int32)>>('ffi_crash_test')
+    .asFunction();
+
+typedef NativeFfiCallback = Int32 Function(Int32);
+
+final int Function(
+        int attribute, Pointer<NativeFunction<NativeFfiCallback>> callback)
+    // ignore: non_constant_identifier_names
+    ffi_callback_test = ffiLibrary
+        .lookup<
+                NativeFunction<
+                    Int32 Function(
+                        Int32, Pointer<NativeFunction<NativeFfiCallback>>)>>(
+            'ffi_callback_test')
+        .asFunction();
+
+typedef CrashPluginCallback = void Function(String callbackValue);
+
 /// Helper class to crash in native code
 class NativeCrashPlugin {
   final _methodChannel =
       const MethodChannel('datadog_sdk_flutter.example.crash');
 
+  int nextCallbackId = 0;
+  final Map<int, CrashPluginCallback> _callbacks = {};
+
+  NativeCrashPlugin() {
+    _methodChannel.setMethodCallHandler(_methodCallHandler);
+  }
+
   Future<void> crashNative() {
-    return _methodChannel.invokeListMethod('crashNative');
+    return _methodChannel.invokeMethod('crashNative');
+  }
+
+  Future<void> throwException() {
+    return _methodChannel.invokeMethod('throwException');
+  }
+
+  Future<void> performCallback(CrashPluginCallback callback) {
+    var callbackID = nextCallbackId;
+    _callbacks[callbackID] = callback;
+    nextCallbackId += 1;
+
+    return _methodChannel.invokeMethod(
+      'performCallback',
+      {
+        'callbackId': callbackID,
+      },
+    );
+  }
+
+  void crashNativeFfi(int value) {
+    ffi_crash_test(value);
+  }
+
+  int ffiCallbackTest(
+      int value, Pointer<NativeFunction<NativeFfiCallback>> callback) {
+    return ffi_callback_test(value, callback);
+  }
+
+  Future<void> _methodCallHandler(MethodCall call) async {
+    final args = call.arguments as Map;
+    if (call.method == 'nativeCallback') {
+      final callbackId = args['callbackId'] as int;
+      final callbackValue = args['callbackValue'] as String;
+      final callback = _callbacks[callbackId];
+      callback?.call(callbackValue);
+      _callbacks.remove(callbackId);
+    }
+  }
+}
+
+enum CrashType {
+  flutterException,
+  methodChannelCrash,
+  methodChannelException,
+  methodChannelCallbackException,
+  ffiCrash,
+  ffiCallbackException,
+}
+
+extension CrashTypeDescription on CrashType {
+  String get description {
+    switch (this) {
+      case CrashType.flutterException:
+        return 'Flutter Exception';
+      case CrashType.methodChannelCrash:
+        return 'Method Channel Crash';
+      case CrashType.methodChannelException:
+        return 'Method Channel Exception / NSError';
+      case CrashType.methodChannelCallbackException:
+        return 'Method Channel Callback Exception';
+      case CrashType.ffiCrash:
+        return 'FFI Crash';
+      case CrashType.ffiCallbackException:
+        return 'FFI Callback Exception';
+    }
   }
 }
 
@@ -26,6 +123,7 @@ class CrashReportingScreen extends StatefulWidget {
 }
 
 class _CrashReportingScreenState extends State<CrashReportingScreen> {
+  final nativeCrashPlugin = NativeCrashPlugin();
   var _viewName = '';
 
   @override
@@ -48,62 +146,87 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
                     border: OutlineInputBorder(), labelText: 'RUM view name'),
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            Wrap(
               children: [
-                ElevatedButton(
-                  onPressed: () => _crashAfterRumSession(false),
-                  child: const Text('Crash in Flutter'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _crashAfterRumSession(true),
-                  child: const Text('Crash in Native Code'),
-                ),
+                for (final t in CrashType.values)
+                  Container(
+                    padding: const EdgeInsets.only(left: 5),
+                    child: ElevatedButton(
+                      onPressed: () => _crashAfterRumSession(t),
+                      child: Text(t.description),
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
             Text('Crash before starting RUM Session',
                 style: theme.textTheme.headline6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            Wrap(
               children: [
-                ElevatedButton(
-                  onPressed: () => _crashBeforeRumSession(false),
-                  child: const Text('Crash in Flutter'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _crashBeforeRumSession(true),
-                  child: const Text('Crash in Native Code'),
-                ),
+                for (final t in CrashType.values)
+                  Container(
+                    padding: const EdgeInsets.only(left: 5),
+                    child: ElevatedButton(
+                      onPressed: () => _crashBeforeRumSession(t),
+                      child: Text(t.description),
+                    ),
+                  ),
               ],
-            ),
-            const SizedBox(height: 200),
-            const Text(
-                'This text is here to cause an overflow error when the keyboard is displayed'),
+            )
           ],
         ),
       ),
     );
   }
 
-  Future<void> _crashAfterRumSession(bool native) async {
-    await DatadogSdk.instance.rum?.startView(_viewName, _viewName);
+  Future<void> _crashAfterRumSession(CrashType crashType) async {
+    final viewName = _viewName.isEmpty ? 'Rum Crash View' : _viewName;
+    await DatadogSdk.instance.rum?.startView(viewName, viewName);
     await Future.delayed(const Duration(milliseconds: 100));
 
-    if (native) {
-      await NativeCrashPlugin().crashNative();
-    } else {
-      throw const OSError('This was unsupported');
-    }
+    _crash(crashType);
   }
 
-  Future<void> _crashBeforeRumSession(bool native) async {
+  Future<void> _crashBeforeRumSession(CrashType crashType) async {
     await Future.delayed(const Duration(milliseconds: 100));
 
-    if (native) {
-      await NativeCrashPlugin().crashNative();
-    } else {
-      throw const OSError('This was unsupported');
+    // ignore: avoid_print
+    _crash(crashType).onError((error, stackTrace) => print(error));
+  }
+
+  static int nativeCallback(int value) {
+    throw Exception(('FFI Callback Exception with value $value'));
+  }
+
+  Future<void> _crash(CrashType crashType) async {
+    switch (crashType) {
+      case CrashType.flutterException:
+        throw Exception("This wasn't supposed to happen!");
+      case CrashType.methodChannelCrash:
+        await nativeCrashPlugin.crashNative();
+        break;
+      case CrashType.methodChannelException:
+        await nativeCrashPlugin.throwException();
+        break;
+      case CrashType.methodChannelCallbackException:
+        await nativeCrashPlugin.performCallback((callbackValue) {
+          throw Exception(
+              'Method Channel Callback Exception - with value $callbackValue');
+        });
+        break;
+      case CrashType.ffiCrash:
+        nativeCrashPlugin.crashNativeFfi(23);
+        break;
+      case CrashType.ffiCallbackException:
+        var value = nativeCrashPlugin.ffiCallbackTest(
+            32, Pointer.fromFunction(nativeCallback, 8));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Native callback threw, returned default value of $value'),
+          ),
+        );
+        break;
     }
   }
 }

@@ -191,6 +191,8 @@ void main() {
       } else if (name != null) {
         return RumViewInfo(name: name);
       }
+
+      return null;
     }
 
     var observer = DatadogNavigationObserver(
