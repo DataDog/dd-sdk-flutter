@@ -81,6 +81,7 @@ class DatadogConfigurationTest {
     @Test
     fun `M parse all Verbosity W parseVerbosity`() {
         // WHEN
+        val verbose = parseVerbosity("Verbosity.verbose")
         val debug = parseVerbosity("Verbosity.debug")
         val info = parseVerbosity("Verbosity.info")
         val warn = parseVerbosity("Verbosity.warn")
@@ -88,6 +89,7 @@ class DatadogConfigurationTest {
         val none = parseVerbosity("Verbosity.none")
         val unknown = parseVerbosity("unknown")
 
+        assertThat(verbose).isEqualTo(Log.VERBOSE)
         assertThat(debug).isEqualTo(Log.DEBUG)
         assertThat(info).isEqualTo(Log.INFO)
         assertThat(warn).isEqualTo(Log.WARN)

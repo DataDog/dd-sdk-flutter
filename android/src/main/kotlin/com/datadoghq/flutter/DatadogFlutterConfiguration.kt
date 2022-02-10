@@ -11,6 +11,8 @@ import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Configuration
 import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
+import com.datadog.android.ndk.NdkCrashReportsPlugin
+import com.datadog.android.plugin.Feature
 import com.datadog.android.privacy.TrackingConsent
 
 // Duplicated strings in this file do not mean they are being used in the same context
@@ -123,6 +125,10 @@ data class DatadogFlutterConfiguration(
                     ?.filterValues { it != null }
                     ?.mapValues { it.value!! } ?: emptyMap()
             )
+        if (nativeCrashReportEnabled) {
+            configBuilder.addPlugin(NdkCrashReportsPlugin(), Feature.CRASH)
+        }
+
         site?.let { configBuilder.useSite(it) }
         batchSize?.let { configBuilder.setBatchSize(it) }
         uploadFrequency?.let { configBuilder.setUploadFrequency(it) }
@@ -179,6 +185,7 @@ internal fun parseSite(site: String): DatadogSite {
 
 internal fun parseVerbosity(verbosity: String): Int {
     return when (verbosity) {
+        "Verbosity.verbose" -> Log.VERBOSE
         "Verbosity.debug" -> Log.DEBUG
         "Verbosity.info" -> Log.INFO
         "Verbosity.warn" -> Log.WARN

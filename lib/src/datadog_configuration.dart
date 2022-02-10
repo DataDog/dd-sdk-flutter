@@ -73,7 +73,7 @@ enum DatadogSite {
   us1Fed
 }
 
-enum Verbosity { debug, info, warn, error, none }
+enum Verbosity { verbose, debug, info, warn, error, none }
 
 /// Configuration options for the Datadog Logging feature.
 class LoggingConfiguration {

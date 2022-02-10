@@ -9,3 +9,10 @@ localPropertiesFile.withReader("UTF-8") { reader -> properties.load(reader) }
 def flutterSdkPath = properties.getProperty("flutter.sdk")
 assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
 apply from: "$flutterSdkPath/packages/flutter_tools/gradle/app_plugin_loader.gradle"
+
+//includeBuild('../../../dd-sdk-android') {
+//    dependencySubstitution {
+//        substitute module('com.datadoghq:dd-sdk-android') using project(':dd-sdk-android')
+//        substitute module('com.datadoghq:dd-sdk-android-ndk') using project(':dd-sdk-android-ndk')
+//    }
+//}

@@ -14,6 +14,7 @@
 		4959779C279209C90022AFE6 /* DatadogConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4959779B279209C90022AFE6 /* DatadogConfigurationTests.swift */; };
 		4962A36F276D322E00507AFD /* DatadogSdkPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4962A36E276D322E00507AFD /* DatadogSdkPluginTests.swift */; };
 		4962A3AD277109C400507AFD /* FlutterSdkAttibutesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4962A3AC277109C400507AFD /* FlutterSdkAttibutesTests.swift */; };
+		496AAFBA27B4496400236887 /* ffi_crash_test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 496AAFB927B4496400236887 /* ffi_crash_test.cpp */; };
 		49D7C98927834F7600A03589 /* DatadogRumPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49D7C98827834F7600A03589 /* DatadogRumPluginTests.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
@@ -54,6 +55,7 @@
 		4962A36C276D322E00507AFD /* flutter_sdk_tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = flutter_sdk_tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4962A36E276D322E00507AFD /* DatadogSdkPluginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatadogSdkPluginTests.swift; sourceTree = "<group>"; };
 		4962A3AC277109C400507AFD /* FlutterSdkAttibutesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlutterSdkAttibutesTests.swift; sourceTree = "<group>"; };
+		496AAFB927B4496400236887 /* ffi_crash_test.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ffi_crash_test.cpp; path = ../../cpp/ffi_crash_test.cpp; sourceTree = "<group>"; };
 		49D7C98827834F7600A03589 /* DatadogRumPluginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatadogRumPluginTests.swift; sourceTree = "<group>"; };
 		4B3455B21F76D2056794CEF9 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		5CB69C94E4F5075A1B956D69 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
@@ -172,6 +174,7 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				496AAFB927B4496400236887 /* ffi_crash_test.cpp */,
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
@@ -418,6 +421,7 @@
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+				496AAFBA27B4496400236887 /* ffi_crash_test.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -521,6 +525,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.datadoghq.example.flutter;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				STRIP_STYLE = "non-global";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DD_SDK_COMPILED_FOR_TESTING;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -771,6 +776,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.datadoghq.example.flutter;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				STRIP_STYLE = "non-global";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DD_SDK_COMPILED_FOR_TESTING;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -799,6 +805,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.datadoghq.example.flutter;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = AdHocFlutter;
+				STRIP_STYLE = "non-global";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DD_SDK_COMPILED_FOR_TESTING;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
