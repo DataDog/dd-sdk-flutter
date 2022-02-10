@@ -4,8 +4,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'log_decoder.dart';
 import '../common.dart';
+import 'log_decoder.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +19,15 @@ void main() {
       const Duration(seconds: 30),
       (requests) {
         requests
-            .map((e) => (e.jsonData as List))
+            .map((e) {
+              try {
+                return e.jsonData as List;
+              } on FormatException {
+                // Do nothing, this is likely a leaky RUM event
+              }
+              return null;
+            })
+            .whereType<List>()
             .expand((e) => e)
             .forEach((e) => logs.add(LogDecoder(e as Map<String, dynamic>)));
 
