@@ -120,6 +120,7 @@ class RumErrorEventDecoder extends RumEventDecoder {
   String get message => rumEvent['error']['message'];
   String get stack => rumEvent['error']['stack'];
   String get source => rumEvent['error']['source'];
+  String get sourceType => rumEvent['error']['source_type'];
 
   String? get resourceUrl => rumEvent['error']['resource']?['url'];
   String? get resourceMethod => rumEvent['error']['resource']?['method'];

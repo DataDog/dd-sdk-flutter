@@ -32,7 +32,8 @@ void main() {
             rumLog.add(RumEventDecoder(jsonValue));
           }
         });
-        return RumSessionDecoder.fromEvents(rumLog).visits.length == 1;
+        var visits = RumSessionDecoder.fromEvents(rumLog).visits;
+        return visits.length == 1 && visits[0].errorEvents.length == 3;
       },
     );
 
@@ -46,6 +47,7 @@ void main() {
     var exceptionError = view.errorEvents[0];
     expect(exceptionError.message, NullThrownError().toString());
     expect(exceptionError.source, 'source');
+    expect(exceptionError.sourceType, 'flutter');
 
     var manualError = view.errorEvents[1];
     expect(manualError.message, 'Rum error message');
