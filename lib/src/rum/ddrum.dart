@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../internal_attributes.dart';
 import '../internal_helpers.dart';
 import '../internal_logger.dart';
 import 'ddrum_platform_interface.dart';
@@ -128,9 +129,10 @@ class DdRum {
   Future<void> addError(Object error, RumErrorSource source,
       {StackTrace? stackTrace, Map<String, dynamic> attributes = const {}}) {
     return wrap('rum.addError', logger, () {
-      // TODO: RUMM-1899 / RUMM-1900 - add flutter as an error source_type
-      //attributes[_ddRumErrorTypeKey] = 'flutter';
-      return _platform.addError(error, source, stackTrace, attributes);
+      return _platform.addError(error, source, stackTrace, {
+        DatadogPlatformAttributeKey.errorSourceType: 'flutter',
+        ...attributes
+      });
     });
   }
 
@@ -140,9 +142,10 @@ class DdRum {
   Future<void> addErrorInfo(String message, RumErrorSource source,
       {StackTrace? stackTrace, Map<String, dynamic> attributes = const {}}) {
     return wrap('rum.addErrorInfo', logger, () {
-      // TODO: RUMM-1899 / RUMM-1900 - add flutter as an error source_type
-      //attributes[_ddRumErrorTypeKey] = 'flutter';
-      return _platform.addErrorInfo(message, source, stackTrace, attributes);
+      return _platform.addErrorInfo(message, source, stackTrace, {
+        DatadogPlatformAttributeKey.errorSourceType: 'flutter',
+        ...attributes
+      });
     });
   }
 

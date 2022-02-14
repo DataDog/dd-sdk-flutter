@@ -124,7 +124,7 @@ class DatadogSdk {
 
   /// Initialize the DatadogSdk with the provided [configuration].
   Future<void> initialize(DdSdkConfiguration configuration) async {
-    //configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
+    configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
     configuration.additionalConfig[DatadogConfigKey.version] = ddSdkVersion;
 
     firstPartyHosts = configuration.firstPartyHosts;
