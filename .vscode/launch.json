@@ -30,6 +30,16 @@
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"
+        },
+        {
+            "name": "e2e generator",
+            "cwd": "${workspaceFolder}/tools/e2e_generator",
+            "request": "launch",
+            "type": "dart",
+            "program": "bin/e2e_generator.dart",
+            "args": [
+                "../../e2e_test_app/test"
+            ]
         }
     ]
 }
