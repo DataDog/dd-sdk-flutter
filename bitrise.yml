@@ -7,13 +7,26 @@ workflows:
   primary:
     before_run:
     - setup
-    - _build
+    - build
+    - unit_test_ios
+    - unit_test_android
     - integration_android
     - integration_ios
     after_run:
     - _deploy
     
-  _build:
+  _prepare_gradle_wrapper:
+    steps:
+    - script:
+        title: Get gradle wrapper
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            gradle wrapper
+        - working_dir: "$BITRISE_SOURCE_DIR/example/android"
+
+  build:
     steps:
     - script:
         title: Pub get in example and integration tests
@@ -70,6 +83,23 @@ workflows:
         inputs:
         - api_level: '30'
     - wait-for-android-emulator@1: {}
+
+  unit_test_ios:
+    steps:
+    - xcode-test@4.0.2:
+        inputs:
+        - project_path: "$BITRISE_SOURCE_DIR/example/ios/Runner.xcworkspace"
+        - scheme: Runner
+        - destination: platform=iOS Simulator,name=iPhone 13,OS=latest
+
+  unit_test_android:
+    before_run:
+    - _prepare_gradle_wrapper
+    steps:
+    - android-unit-test@1.0.5:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/example/android"
+        - module: datadog_sdk
 
   integration_android:
     steps:
