@@ -95,7 +95,17 @@ class DatadogSdk {
     unawaited(_platform.setSdkVerbosity(value));
   }
 
-  /// A helper function that will initialize Datadog, setup error reporting, and
+  /// This function is not part of the public interface for Datadog, and may not
+  /// be available in all targets. Used for integration and E2E testing purposes only.
+  @visibleForTesting
+  Future<void> flushAndDeinitialize() async {
+    await _platform.flushAndDeinitialize();
+    _logs = null;
+    _traces = null;
+    _rum = null;
+  }
+
+  /// A helper function that will initialize Datadog setup error reporting, and
   /// automatic HttpClient tracing.
   ///
   /// See also, [DdRum.handleFlutterError], [DatadogTrackingHttpClient]

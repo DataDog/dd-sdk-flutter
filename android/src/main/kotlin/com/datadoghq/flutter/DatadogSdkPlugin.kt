@@ -5,17 +5,31 @@
  */
 package com.datadoghq.flutter
 
+import android.os.Looper
+import android.os.Handler
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
+import com.datadog.android.rum.GlobalRum
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.opentracing.util.GlobalTracer
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.SynchronousQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+
 
 class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
+
+    // Only used to shutdown Datadog in debug builds
+    private val executor: ExecutorService = ThreadPoolExecutor(0, 1, 30L,
+        TimeUnit.SECONDS, SynchronousQueue<Runnable>())
 
     var logsPlugin: DatadogLogsPlugin? = null
         private set
@@ -67,6 +81,13 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 }
                 result.success(null)
             }
+            "flushAndDeinitialize" -> {
+                if(BuildConfig.DEBUG) {
+                    invokePrivateShutdown(result)
+                } else {
+                    result.notImplemented()
+                }
+            }
             else -> {
                 result.notImplemented()
             }
@@ -95,6 +116,39 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         if (config.rumConfiguration != null) {
             rumPlugin = DatadogRumPlugin()
             rumPlugin?.setup(binding, config.rumConfiguration!!)
+        }
+    }
+
+    fun simpleInvokeOn(methodName: String, target: Any) {
+        val klass = target.javaClass
+        val method = klass.declaredMethods.firstOrNull {
+            it.name == methodName
+        }
+        method?.let {
+            it.isAccessible = true
+            it.invoke(target)
+        }
+    }
+
+    fun invokePrivateShutdown(result: Result) {
+        executor.execute {
+            simpleInvokeOn("flushAndShutdownExecutors", Datadog)
+            simpleInvokeOn("stop", Datadog)
+
+            //GlobalTracer::class.java.setStaticValue("isRegistered", false)
+            //val isRumRegistered: AtomicBoolean = GlobalRum::class.java.getStaticValue("isRegistered")
+            //isRumRegistered.set(false)
+
+            logsPlugin?.teardown(binding)
+            logsPlugin = null
+
+            tracesPlugin?.teardown(binding)
+            tracesPlugin = null
+
+            rumPlugin?.teardown(binding)
+            rumPlugin = null
+
+            result.success(null)
         }
     }
 

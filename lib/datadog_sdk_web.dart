@@ -37,4 +37,7 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   @override
   Future<void> initialize(DdSdkConfiguration configuration,
       {LogCallback? logCallback}) async {}
+
+  @override
+  Future<void> flushAndDeinitialize() async {}
 }

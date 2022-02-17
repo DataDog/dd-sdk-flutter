@@ -14,7 +14,7 @@ Future<void> main() async {
 
   await dotenv.load(mergeWith: Platform.environment);
 
-  var clientToken = dotenv.get('DD_ENV', fallback: '');
+  var clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
   String? customEndpoint = dotenv.maybeGet('DD_CUSTOM_ENDPOINT');
 

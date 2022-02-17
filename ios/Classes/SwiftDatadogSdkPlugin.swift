@@ -67,6 +67,14 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         Datadog.set(trackingConsent: trackingConsent)
       }
       result(nil)
+#if DD_SDK_COMPILED_FOR_TESTING
+    case "flushAndDeinitialize":
+      Datadog.flushAndDeinitialize()
+      logs = nil;
+      tracer = nil;
+      rum = nil;
+      result(nil)
+#endif
     default:
       result(FlutterMethodNotImplemented)
     }
