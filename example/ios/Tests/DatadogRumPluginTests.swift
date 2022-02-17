@@ -27,9 +27,11 @@ class MockRUMMonitor: DDRUMMonitor {
                               attributes: [AttributeKey: AttributeValue])
     case stopResourceLoading(key: String, statusCode: Int?, kind: RUMResourceType, size: Int64?,
                              attributes: [AttributeKey: AttributeValue])
-    case stopResourceLoadingWithError(key: String, errorMessage: String, response: URLResponse?,
+    case stopResourceLoadingWithError(key: String, error: Error, response: URLResponse?,
                                       attributes: [AttributeKey: AttributeValue])
-    case addError(message: String, source: RUMErrorSource, stack: String?,
+    case stopResourceLoadingWithErrorMessage(key: String, errorMessage: String, type: String?, response: URLResponse?,
+                                      attributes: [AttributeKey: AttributeValue])
+    case addError(message: String, type: String?, source: RUMErrorSource, stack: String?,
                   attributes: [AttributeKey: AttributeValue], file: StaticString?, line: UInt?)
     case addUserAction(type: RUMUserActionType, name: String, attributes: [AttributeKey: AttributeValue])
     case startUserAction(type: RUMUserActionType, name: String, attributes: [AttributeKey: AttributeValue])
@@ -67,19 +69,33 @@ class MockRUMMonitor: DDRUMMonitor {
     )
   }
 
-  override func stopResourceLoadingWithError(resourceKey: String, errorMessage: String, response: URLResponse? = nil,
+  override public func stopResourceLoadingWithError(
+      resourceKey: String,
+      error: Error,
+      response: URLResponse? = nil,
+      attributes: [AttributeKey: AttributeValue] = [:]
+  ) {
+    callLog.append(.stopResourceLoadingWithError(key: resourceKey, error: error,
+                                                 response: response, attributes: attributes))
+  }
+
+  override func stopResourceLoadingWithError(resourceKey: String,
+                                             errorMessage: String,
+                                             type: String? = nil,
+                                             response: URLResponse? = nil,
                                              attributes: [AttributeKey: AttributeValue] = [:]) {
     callLog.append(
-      .stopResourceLoadingWithError(key: resourceKey, errorMessage: errorMessage, response: response,
+      .stopResourceLoadingWithErrorMessage(key: resourceKey, errorMessage: errorMessage, type: type, response: response,
                                     attributes: attributes)
     )
   }
 
-  override func addError(message: String, source: RUMErrorSource = .custom, stack: String? = nil,
+  override func addError(message: String, type: String? = nil, source: RUMErrorSource = .custom, stack: String? = nil,
                          attributes: [AttributeKey: AttributeValue] = [:],
                          file: StaticString? = #file, line: UInt? = #line) {
     callLog.append(
-      .addError(message: message, source: source, stack: stack, attributes: attributes, file: file, line: line)
+      .addError(message: message, type: type, source: source, stack: stack,
+                attributes: attributes, file: file, line: line)
     )
   }
 
@@ -329,7 +345,11 @@ class DatadogRumPluginTests: XCTestCase {
     }
 
     XCTAssertEqual(mock.callLog, [
-      .stopResourceLoadingWithError(key: "resource_key", errorMessage: "error message", response: nil, attributes: [
+      .stopResourceLoadingWithErrorMessage(key: "resource_key",
+                                           errorMessage: "error message",
+                                           type: nil,
+                                           response: nil,
+                                           attributes: [
         "attribute_key": "attribute_value"
       ])
     ])
@@ -352,7 +372,7 @@ class DatadogRumPluginTests: XCTestCase {
     }
 
     XCTAssertEqual(mock.callLog, [
-      .addError(message: "Error message", source: RUMErrorSource.network, stack: nil,
+      .addError(message: "Error message", type: nil, source: RUMErrorSource.network, stack: nil,
                 attributes: ["attribute_key": "attribute_value"], file: nil, line: nil)
     ])
     XCTAssertEqual(resultStatus, .called(value: nil))
