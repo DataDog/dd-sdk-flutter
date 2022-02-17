@@ -38,7 +38,7 @@ Future<List<MonitorConfiguration>> _processDartFiles(
       if (result is ResolvedUnitResult && result.exists) {
         final visitor = E2ECommentExtractorVisitor(result, issueReporter);
 
-        logger.fine("Processing ${result.uri}");
+        logger.fine('Processing ${result.uri}');
 
         visitor.visitCompilationUnit(result.unit);
 
