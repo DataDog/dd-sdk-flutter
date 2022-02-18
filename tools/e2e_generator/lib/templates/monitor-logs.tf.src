@@ -1,0 +1,30 @@
+resource "datadog_monitor" ${{monitor_id}} {
+  name               = ${{monitor_name}}
+  type               = "log alert"
+  tags               = ["service:com.datadog.flutter.nightly", "env:instrumentation", "team:rumm", "source:flutter", "feature:${{feature:-logs}}", "monitor:behavior"]
+  message            = <<EOT
+@jeff.ward@datadoghq.com
+@xavier.gouchet@datadoghq.com
+
+## E2E test context:
+```
+## MONITOR_CONTEXT ##
+```
+EOT
+  escalation_message = <<EOT
+<nil>
+EOT
+
+  query             = ${{monitor_query}}
+  notify_no_data    = ${{notify_no_data:-true}}
+  no_data_timeframe = 1440
+  renotify_interval = 0
+  notify_audit      = false
+  timeout_h         = 0
+  include_tags      = true
+  new_host_delay    = 300
+  monitor_thresholds {
+    critical = ${{monitor_threshold:-1.0}}
+  }
+
+}

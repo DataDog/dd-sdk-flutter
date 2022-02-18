@@ -38,6 +38,8 @@ workflows:
             flutter pub get
             cd $BITRISE_SOURCE_DIR/integration_test_app
             flutter pub get
+            cd $BITRISE_SOURCE_DIR/tools/e2e_generator
+            pub get
         - working_dir: "$BITRISE_SOURCE_DIR"
 
     - flutter-analyze@0.3.1:
