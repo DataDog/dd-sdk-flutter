@@ -9,9 +9,11 @@ import 'package:test/test.dart';
 void main() {
   final mockCodeReference =
       CodeReference('fakeFile', 223, 'fake test description');
+  final issueReporter = IssueReporter();
 
-  void nullIssueReporter(
-      IssueSeverity severity, CodeReference codeReference, String message) {}
+  setUp(() {
+    issueReporter.clear();
+  });
 
   test('Monitor parses correctly', () {
     final testComment = r'''/// ```logs
@@ -20,7 +22,7 @@ void main() {
 ''';
 
     final configList = MonitorConfiguration.fromComment(
-        testComment, mockCodeReference, nullIssueReporter);
+        testComment, mockCodeReference, issueReporter);
 
     expect(configList, isNotNull);
     expect(configList.length, 1);
@@ -42,7 +44,7 @@ void main() {
 ''';
 
     final configList = MonitorConfiguration.fromComment(
-        testComment, mockCodeReference, nullIssueReporter);
+        testComment, mockCodeReference, issueReporter);
     expect(configList, isNotNull);
     expect(configList.length, 1);
 
@@ -70,7 +72,7 @@ void main() {
 ''';
 
     final configList = MonitorConfiguration.fromComment(
-        testComment, mockCodeReference, nullIssueReporter);
+        testComment, mockCodeReference, issueReporter);
     expect(configList, isNotNull);
     expect(configList.length, 2);
 
@@ -101,7 +103,7 @@ void main() {
 ''';
 
     final configList = MonitorConfiguration.fromComment(
-        testComment, mockCodeReference, nullIssueReporter);
+        testComment, mockCodeReference, issueReporter);
     expect(configList, isNotNull);
     expect(configList.length, 2);
 
@@ -120,6 +122,22 @@ void main() {
     expect(config2.variables[1].value, 'bar4');
   });
 
+  test('Parsing monitors with variant indicators', () {
+    final testComment = r'''/// ```logs(ios, android)
+/// $foo = bar1
+/// $var2 = bar2
+/// ```
+''';
+
+    final configList = MonitorConfiguration.fromComment(
+        testComment, mockCodeReference, issueReporter);
+    expect(configList, isNotNull);
+    expect(configList.length, 1);
+
+    var config = configList[0];
+    expect(config.variants, ['ios', 'android']);
+  });
+
   test('Parser ignores comments between monitors', () {
     final testComment = r'''/// Testing comment number 1
 /// ```logs
@@ -134,7 +152,7 @@ void main() {
 ''';
 
     final configList = MonitorConfiguration.fromComment(
-        testComment, mockCodeReference, nullIssueReporter);
+        testComment, mockCodeReference, issueReporter);
     expect(configList, isNotNull);
     expect(configList.length, 2);
 
@@ -166,7 +184,7 @@ void main() {
 /// ```
 ''';
     final configList = MonitorConfiguration.fromComment(
-        testComment, mockCodeReference, nullIssueReporter);
+        testComment, mockCodeReference, issueReporter);
     expect(configList, isNotNull);
     expect(configList.length, 1);
 
@@ -185,22 +203,13 @@ void main() {
 /// $var = bar2
 /// ```
 ''';
-    IssueSeverity? reportedIssueSeverity;
-    CodeReference? reportedCodeReference;
-    String? reportedMessage;
-    void issueReporter(
-        IssueSeverity severity, CodeReference reference, String message) {
-      reportedIssueSeverity = severity;
-      reportedCodeReference = reference;
-      reportedMessage = message;
-    }
-
     MonitorConfiguration.fromComment(
         testComment, mockCodeReference, issueReporter);
 
-    expect(reportedIssueSeverity, IssueSeverity.warning);
-    expect(reportedCodeReference, mockCodeReference);
-    expect(reportedMessage, isNotNull);
+    expect(issueReporter.issues.length, 1);
+    expect(issueReporter.issues[0].severity, IssueSeverity.warning);
+    expect(issueReporter.issues[0].codeReference, mockCodeReference);
+    expect(issueReporter.issues[0].message, isNotNull);
   });
 
   test('Missing monitor type emits error', () {
@@ -211,24 +220,16 @@ void main() {
 /// ```
 ''';
 
-    final reportedSeverities = <IssueSeverity>[];
-    final reportedRefs = <CodeReference>[];
-    void issueReporter(
-        IssueSeverity severity, CodeReference reference, String message) {
-      reportedSeverities.add(severity);
-      reportedRefs.add(reference);
-    }
-
     var config = MonitorConfiguration.fromComment(
         testComment, mockCodeReference, issueReporter);
 
-    expect(reportedSeverities.length, 2);
-    expect(reportedSeverities[0], IssueSeverity.error);
-    expect(reportedRefs[0], mockCodeReference);
+    expect(issueReporter.issues.length, 2);
+    expect(issueReporter.issues[0].severity, IssueSeverity.error);
+    expect(issueReporter.issues[0].codeReference, mockCodeReference);
 
     // Reports once for the start, once for the bottom.
-    expect(reportedSeverities[1], IssueSeverity.error);
-    expect(reportedRefs[1], mockCodeReference);
+    expect(issueReporter.issues[1].severity, IssueSeverity.error);
+    expect(issueReporter.issues[1].codeReference, mockCodeReference);
 
     expect(config.isEmpty, isTrue);
   });
@@ -239,40 +240,24 @@ void main() {
 /// ```
 ''';
 
-    final reportedSeverities = <IssueSeverity>[];
-    final reportedRefs = <CodeReference>[];
-    void issueReporter(
-        IssueSeverity severity, CodeReference reference, String message) {
-      reportedSeverities.add(severity);
-      reportedRefs.add(reference);
-    }
-
     MonitorConfiguration.fromComment(
         testComment, mockCodeReference, issueReporter);
 
-    expect(reportedSeverities.length, 1);
-    expect(reportedSeverities[0], IssueSeverity.error);
-    expect(reportedRefs[0], mockCodeReference);
+    expect(issueReporter.issues.length, 1);
+    expect(issueReporter.issues[0].severity, IssueSeverity.error);
+    expect(issueReporter.issues[0].codeReference, mockCodeReference);
   });
 
   test('Missing monitor end emits error', () {
     final testComment = r'''/// ```apm
 /// $foo = bar1''';
 
-    final reportedSeverities = <IssueSeverity>[];
-    final reportedRefs = <CodeReference>[];
-    void issueReporter(
-        IssueSeverity severity, CodeReference reference, String message) {
-      reportedSeverities.add(severity);
-      reportedRefs.add(reference);
-    }
-
     MonitorConfiguration.fromComment(
         testComment, mockCodeReference, issueReporter);
 
-    expect(reportedSeverities.length, 1);
-    expect(reportedSeverities[0], IssueSeverity.error);
-    expect(reportedRefs[0], mockCodeReference);
+    expect(issueReporter.issues.length, 1);
+    expect(issueReporter.issues[0].severity, IssueSeverity.error);
+    expect(issueReporter.issues[0].codeReference, mockCodeReference);
   });
 
   test('Parsing ignores blank lines and other whitespace in definition', () {
@@ -282,18 +267,10 @@ void main() {
 ///   $baz =  bar2  
 /// ```''';
 
-    final reportedSeverities = <IssueSeverity>[];
-    final reportedRefs = <CodeReference>[];
-    void issueReporter(
-        IssueSeverity severity, CodeReference reference, String message) {
-      reportedSeverities.add(severity);
-      reportedRefs.add(reference);
-    }
-
     var config = MonitorConfiguration.fromComment(
         testComment, mockCodeReference, issueReporter);
 
-    expect(reportedSeverities.length, 0);
+    expect(issueReporter.issues.length, 0);
 
     expect(config.length, 1);
     expect(config[0].variables.length, 2);
@@ -302,5 +279,74 @@ void main() {
 
     expect(config[0].variables[1].name, 'baz');
     expect(config[0].variables[1].value, 'bar2');
+  });
+
+  test('Parsing group contains all monitors', () {
+    final testComment = r'''/// ```logs
+/// $foo = bar1
+/// $var = bar2
+/// ```
+/// ```apm
+/// $baz = bar3
+/// $lul = bar4
+/// ```
+''';
+
+    final group =
+        MonitorGroup.fromComment(testComment, mockCodeReference, issueReporter);
+
+    expect(group.monitors.length, 2);
+
+    var config1 = group.monitors[0];
+    expect(config1.type, MonitorType.logs);
+    expect(config1.variables[0].name, 'foo');
+    expect(config1.variables[0].value, 'bar1');
+    expect(config1.variables[1].name, 'var');
+    expect(config1.variables[1].value, 'bar2');
+
+    var config2 = group.monitors[1];
+    expect(config2.type, MonitorType.apm);
+    expect(config2.variables[0].name, 'baz');
+    expect(config2.variables[0].value, 'bar3');
+    expect(config2.variables[1].name, 'lul');
+    expect(config2.variables[1].value, 'bar4');
+  });
+
+  test('Parsing group with global pull out global variables', () {
+    final testComment = r'''/// ```global
+/// $global1 = global value
+/// $global2 = other global value
+/// ```
+/// ```logs
+/// $log1 = ${{global1}}
+/// ```
+/// ```apm
+/// $baz = bar3
+/// $lul = bar4
+/// ```
+''';
+
+    final group =
+        MonitorGroup.fromComment(testComment, mockCodeReference, issueReporter);
+
+    expect(group.monitors.length, 2);
+
+    expect(group.variables.length, 2);
+    expect(group.variables[0].name, 'global1');
+    expect(group.variables[0].value, 'global value');
+    expect(group.variables[1].name, 'global2');
+    expect(group.variables[1].value, 'other global value');
+
+    var config1 = group.monitors[0];
+    expect(config1.type, MonitorType.logs);
+    expect(config1.variables[0].name, 'log1');
+    expect(config1.variables[0].value, '\${{global1}}');
+
+    var config2 = group.monitors[1];
+    expect(config2.type, MonitorType.apm);
+    expect(config2.variables[0].name, 'baz');
+    expect(config2.variables[0].value, 'bar3');
+    expect(config2.variables[1].name, 'lul');
+    expect(config2.variables[1].value, 'bar4');
   });
 }

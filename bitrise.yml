@@ -14,6 +14,12 @@ workflows:
     - integration_ios
     after_run:
     - _deploy
+  
+  nightly:
+    before_run:
+    - setup
+    - nightly_ios
+    - nightly_android
     
   _prepare_gradle_wrapper:
     steps:
@@ -25,6 +31,18 @@ workflows:
             set -e
             gradle wrapper
         - working_dir: "$BITRISE_SOURCE_DIR/example/android"
+  
+  _launch_ios_siumlator:
+    steps:
+    - script:
+        title: Launch iOS Simulator
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            flutter emulators --launch apple_ios_simulator
+            # Sleep while the simulator warms a bit
+            sleep 5
 
   build:
     steps:
@@ -112,18 +130,30 @@ workflows:
         - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
   
   integration_ios:
+    before_run:
+    - _launch_ios_siumlator
     steps:
-    - script:
-        title: Launch iOS Simulator
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            set -e
-            flutter emulators --launch apple_ios_simulator
-            # Sleep while the simulator warms a bit
-            sleep 5
     - flutter-test@1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/integration_test_app"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+
+  nightly_ios:
+    before_run:
+    - _launch_ios_siumlator
+    steps:
+      - flutter-test@1:
+          inputs:
+          - project_location: "$BITRISE_SOURCE_DIR/e2e_test_app"
+          - tests_path_pattern: "integration_test"
+          - additional_params: "-d iPhone"
+
+  nightly_android:
+    steps:
+    - flutter-test@1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/e2e_test_app"
+        - tests_path_pattern: "integration_test"
+        - additional_params: "-d emulator"
+    

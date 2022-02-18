@@ -70,9 +70,9 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
 #if DD_SDK_COMPILED_FOR_TESTING
     case "flushAndDeinitialize":
       Datadog.flushAndDeinitialize()
-      logs = nil;
-      tracer = nil;
-      rum = nil;
+      logs = nil
+      tracer = nil
+      rum = nil
       result(nil)
 #endif
     default:

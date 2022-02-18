@@ -15,7 +15,7 @@ import 'package:e2e_generator/terraform_renderer.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
-Future<List<MonitorConfiguration>> _processDartFiles(
+Future<List<MonitorGroup>> _processDartFiles(
     String inputPath, IssueReporter issueReporter, Logger logger) async {
   logger.info('Processing files in $inputPath');
 
@@ -27,11 +27,11 @@ Future<List<MonitorConfiguration>> _processDartFiles(
   final context = builder.createContext(
       contextRoot: locator.locateRoots(includedPaths: [inputPath]).first);
 
-  final monitors = <MonitorConfiguration>[];
+  final groups = <MonitorGroup>[];
 
   var inputDir = Directory(inputPath);
   for (var filePath in inputDir.listSync(recursive: true)) {
-    if (filePath.path.endsWith('.dart')) {
+    if (filePath.path.endsWith('_test.dart')) {
       final result =
           await context.currentSession.getResolvedUnit(filePath.absolute.path);
 
@@ -42,17 +42,17 @@ Future<List<MonitorConfiguration>> _processDartFiles(
 
         visitor.visitCompilationUnit(result.unit);
 
-        var newMonitors = visitor.monitors;
-        for (final monitor in newMonitors) {
+        var newGroups = visitor.groups;
+        for (final group in newGroups) {
           logger.fine(
-              'Found test: ${monitor.codeReference.testDescription} in file ${monitor.codeReference.filePath}:${monitor.codeReference.lineNo}');
+              'Found test: ${group.codeReference.testDescription} in file ${group.codeReference.filePath}:${group.codeReference.lineNo}');
         }
-        monitors.addAll(newMonitors);
+        groups.addAll(newGroups);
       }
     }
   }
 
-  return monitors;
+  return groups;
 }
 
 void main(List<String> args) async {
@@ -81,19 +81,14 @@ void main(List<String> args) async {
   final outputPath = argResults['out'];
 
   final logger = Logger('E2E Generator');
+  final issueReporter = IssueReporter();
 
-  final issues = <Issue>[];
-  void issueReporter(
-      IssueSeverity severity, CodeReference reference, String message) {
-    issues.add(Issue(severity, reference, message));
-  }
-
-  var monitors = await _processDartFiles(inputPath, issueReporter, logger);
-  if (_printErrors(issues)) {
+  var groups = await _processDartFiles(inputPath, issueReporter, logger);
+  if (_printErrors(issueReporter)) {
     print('\nExiting because of errors...');
     return;
   }
-  issues.clear();
+  issueReporter.clear();
 
   logger.info('Generating terraform file...');
   var tfGenerator = await TerraformRenderer.fromTemplatePath('lib/templates');
@@ -102,8 +97,9 @@ void main(List<String> args) async {
         'Failed to load terraform templates (is your current working directory wrong?)');
     return;
   }
-  var terraformOutput = tfGenerator.render(outputPath, monitors, issueReporter);
-  if (_printErrors(issues)) {
+
+  var terraformOutput = tfGenerator.render(outputPath, groups, issueReporter);
+  if (_printErrors(issueReporter)) {
     print('\nExiting because of errors...');
   }
 
@@ -111,8 +107,9 @@ void main(List<String> args) async {
   await File(outputPath).writeAsString(terraformOutput);
 }
 
-bool _printErrors(List<Issue> issues) {
+bool _printErrors(IssueReporter reporter) {
   bool shouldExit = false;
+  final issues = reporter.issues;
   if (issues.isNotEmpty) {
     print('Parsing completed with issues:');
     for (var issue in issues) {

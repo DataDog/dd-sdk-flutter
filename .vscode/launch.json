@@ -38,7 +38,7 @@
             "type": "dart",
             "program": "bin/e2e_generator.dart",
             "args": [
-                "../../e2e_test_app/test"
+                "../../e2e_test_app/integration_test"
             ]
         }
     ]

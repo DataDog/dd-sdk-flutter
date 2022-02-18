@@ -6,14 +6,20 @@ import 'package:collection/collection.dart';
 
 import 'issue_reporter.dart';
 
-enum MonitorType { logs, apm, rum }
+enum MonitorType { logs, apm, rum, global }
 
 class CodeReference {
   final String filePath;
   final int lineNo;
   final String testDescription;
+  final String code;
 
-  CodeReference(this.filePath, this.lineNo, this.testDescription);
+  CodeReference(
+    this.filePath,
+    this.lineNo,
+    this.testDescription, [
+    this.code = 'unknown',
+  ]);
 }
 
 class MonitorVariable {
@@ -36,7 +42,7 @@ class MonitorVariable {
       final value = match.first.group(2)!;
       result = MonitorVariable(name: name, value: value);
     } else {
-      issueReporter(IssueSeverity.error, codeReference,
+      issueReporter.report(IssueSeverity.error,
           'Invalid variable definition - variables must be of the form "\$name = value".');
     }
 
@@ -44,13 +50,51 @@ class MonitorVariable {
   }
 }
 
+class MonitorGroup {
+  final List<MonitorVariable> variables;
+  final List<MonitorConfiguration> monitors;
+  final CodeReference codeReference;
+
+  MonitorGroup({
+    required this.variables,
+    required this.monitors,
+    required this.codeReference,
+  });
+
+  static MonitorGroup fromComment(String comment, CodeReference codeReference,
+      IssueReporter issueReporter) {
+    var monitors =
+        MonitorConfiguration.fromComment(comment, codeReference, issueReporter);
+
+    var groupVariables = <MonitorVariable>[];
+    final globalMonitors =
+        monitors.where((e) => e.type == MonitorType.global).toList();
+    if (globalMonitors.isNotEmpty) {
+      if (globalMonitors.length > 1) {
+        issueReporter.report(IssueSeverity.error,
+            'More than one global monitor definition. This is not supported');
+      }
+      monitors.removeWhere((e) => e.type == MonitorType.global);
+      groupVariables = globalMonitors.first.variables;
+    }
+
+    return MonitorGroup(
+      variables: groupVariables,
+      monitors: monitors,
+      codeReference: codeReference,
+    );
+  }
+}
+
 class MonitorConfiguration {
   final MonitorType type;
   final List<MonitorVariable> variables;
+  final List<String> variants;
   final CodeReference codeReference;
 
   MonitorConfiguration({
     required this.type,
+    required this.variants,
     required this.variables,
     required this.codeReference,
   });
@@ -60,7 +104,10 @@ class MonitorConfiguration {
     CodeReference codeReference,
     IssueReporter issueReporter,
   ) {
-    final monitorRegionStartRegex = RegExp(r'^\/\/\/\s+```([a-zA-Z0-9]+)\s*$');
+    issueReporter.pushReference(codeReference);
+
+    final monitorRegionStartRegex = RegExp(
+        r'^\/\/\/\s+```([a-zA-Z0-9]+)(\((?<variants>(?:[a-zA-Z0-9_]+\s*(?:,\s)?)+)\))?\s*$');
     final monitorRegionEndRegex = RegExp(r'^\/\/\/[\s ]+```$');
 
     final monitors = <MonitorConfiguration>[];
@@ -69,6 +116,7 @@ class MonitorConfiguration {
     var inMonitor = false;
     var ignoringMonitorBlock = false;
     MonitorType? monitorType;
+    List<String> monitorVariants = [];
 
     final lines = comment.split('\n');
     for (var line in lines) {
@@ -80,9 +128,13 @@ class MonitorConfiguration {
 
         if (monitorType != null) {
           inMonitor = true;
+          final variants = match.first.namedGroup('variants');
+          if (variants != null) {
+            monitorVariants = variants.split(',').map((e) => e.trim()).toList();
+          }
         } else {
           ignoringMonitorBlock = true;
-          issueReporter(IssueSeverity.warning, codeReference,
+          issueReporter.report(IssueSeverity.warning,
               'Invalid monitor type $typeString, ignoring monitor block');
         }
       } else if (monitorRegionEndRegex.allMatches(line).isNotEmpty) {
@@ -91,14 +143,16 @@ class MonitorConfiguration {
           final monitor = MonitorConfiguration(
             type: monitorType!,
             variables: regionVariables,
+            variants: monitorVariants,
             codeReference: codeReference,
           );
           regionVariables = [];
+          monitorVariants = [];
           monitors.add(monitor);
         } else if (ignoringMonitorBlock) {
           ignoringMonitorBlock = false;
         } else {
-          issueReporter(IssueSeverity.error, codeReference,
+          issueReporter.report(IssueSeverity.error,
               'Monitor end without any monitor start (did you forget a monitor type?)');
         }
       } else if (inMonitor && line != '///') {
@@ -111,9 +165,11 @@ class MonitorConfiguration {
     }
 
     if (inMonitor && !ignoringMonitorBlock) {
-      issueReporter(IssueSeverity.error, codeReference,
-          'Missing monitor block close (```).');
+      issueReporter.report(
+          IssueSeverity.error, 'Missing monitor block close (```).');
     }
+
+    issueReporter.popReference();
 
     return monitors;
   }
