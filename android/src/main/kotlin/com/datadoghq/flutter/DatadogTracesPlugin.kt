@@ -6,6 +6,7 @@
 package com.datadoghq.flutter
 
 import com.datadog.android.tracing.AndroidTracer
+import com.datadog.opentracing.DDTracer
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -27,6 +28,7 @@ class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
         const val PARAM_SPAN_HANDLE = "spanHandle"
         const val PARAM_PARENT_SPAN = "parentSpan"
         const val PARAM_OPERATION_NAME = "operationName"
+        const val PARAM_RESOURCE_NAME = "resourceName"
         const val PARAM_START_TIME = "startTime"
         const val PARAM_TAGS = "tags"
         const val PARAM_MESSAGE = "message"
@@ -76,6 +78,10 @@ class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
 
                 val spanBuilder = tracer.buildSpan(operationName)
                     .ignoreActiveSpan()
+                call.argument<String>(PARAM_RESOURCE_NAME)?.let {
+                    val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
+                    ddBuilder.withResourceName(it)
+                }
                 call.argument<Number>(PARAM_START_TIME)?.let {
                     spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
                 }
@@ -92,6 +98,10 @@ class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
                 val operationName = call.argument<String>(PARAM_OPERATION_NAME)
 
                 val spanBuilder = tracer.buildSpan(operationName)
+                call.argument<String>(PARAM_RESOURCE_NAME)?.let {
+                    val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
+                    ddBuilder.withResourceName(it)
+                }
                 call.argument<Number>(PARAM_START_TIME)?.let {
                     spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
                 }

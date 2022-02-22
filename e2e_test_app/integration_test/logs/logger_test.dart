@@ -47,13 +47,13 @@ void main() {
   /// ```
   ///
   /// - performance monitor:
-  /// ```apm
-  /// $monitor_id = ${{monitor_prefix}}_performance
+  /// ```apm(ios, android) IGNORE
+  /// $monitor_id = ${{monitor_prefix}}_performance_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} Performance - ${{test_description}}: has a high average execution time"
-  /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,resource_name:\\\"${{test_description}}\\\",service:${{service}}} > 0.024"
+  /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},@resource_name:flutter_log_debug_logs,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - debug logs', (WidgetTester tester) async {
-    await measure(tester.testDescription, () async {
+    await measure('flutter_log_debug_logs', () async {
       await datadog.logs?.debug('fake message', {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem
@@ -73,14 +73,14 @@ void main() {
   /// ```
   ///
   /// - performance monitor:
-  /// ```apm
+  /// ```apm(ios, android) IGNORE
   /// $feature = logs
-  /// $monitor_id = ${{monitor_prefix}}_performance
+  /// $monitor_id = ${{monitor_prefix}}_performance_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} Performance - ${{test_description}}: has a high average execution time"
-  /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,resource_name:\\\"${{test_description}}\\\",service:${{test_description}}} > 0.024"
+  /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},@resource_name:flutter_log_info_logs,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - info logs', (WidgetTester tester) async {
-    await measure(tester.testDescription, () async {
+    await measure('flutter_log_info_logs', () async {
       await datadog.logs?.info('fake info message', {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem,

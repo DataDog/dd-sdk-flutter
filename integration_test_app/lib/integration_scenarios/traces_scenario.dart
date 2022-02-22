@@ -30,11 +30,11 @@ class _TracesScenarioState extends State<TracesScenario> {
 
       await viewLoadingSpan?.setBaggageItem('class', runtimeType.toString());
 
-      dataDownloadingSpan = await traces.startSpan('data downloading');
+      dataDownloadingSpan = await traces.startSpan('data downloading',
+          resourceName: 'GET /image.png');
       await dataDownloadingSpan?.setTag('data.kind', 'image');
       await dataDownloadingSpan?.setTag(
           'data.url', 'https://example.com/image.png');
-      await dataDownloadingSpan?.setTag(DdTags.resource, 'GET /image.png');
       await dataDownloadingSpan?.setActive();
 
       unawaited(_simulateDataDownload());

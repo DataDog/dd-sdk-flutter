@@ -14,10 +14,11 @@ class DdTracesMethodChannel extends DdTracesPlatform {
       const MethodChannel('datadog_sdk_flutter.traces');
 
   @override
-  Future<DdSpan?> startRootSpan(String operationName,
+  Future<DdSpan?> startRootSpan(String operationName, String? resourceName,
       Map<String, dynamic>? tags, DateTime? startTime) async {
     var result = await methodChannel.invokeMethod('startRootSpan', {
       'operationName': operationName,
+      'resourceName': resourceName,
       'tags': tags,
       'startTime': startTime?.millisecondsSinceEpoch
     }) as int;
@@ -26,11 +27,16 @@ class DdTracesMethodChannel extends DdTracesPlatform {
   }
 
   @override
-  Future<DdSpan?> startSpan(String operationName, DdSpan? parentSpan,
-      Map<String, dynamic>? tags, DateTime? startTime) async {
+  Future<DdSpan?> startSpan(
+      String operationName,
+      DdSpan? parentSpan,
+      String? resourceName,
+      Map<String, dynamic>? tags,
+      DateTime? startTime) async {
     var result = await methodChannel.invokeMethod('startSpan', {
       'operationName': operationName,
       'parentSpan': parentSpan?.handle,
+      'resourceName': resourceName,
       'tags': tags,
       'startTime': startTime?.millisecondsSinceEpoch
     }) as int;

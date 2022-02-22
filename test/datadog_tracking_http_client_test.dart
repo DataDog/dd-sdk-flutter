@@ -327,26 +327,6 @@ void main() {
           'HttpStatusCode', '403 - ${response.reasonPhrase}', any()));
     });
 
-    test('status code 404 sets resource tag to 404', () async {
-      final completer = _setupMockRequest();
-      var mockSpan = _enableTracing();
-
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
-
-      var url = Uri.parse('https://test_url/path');
-      var request = await client.openUrl('get', url);
-
-      var mockResponse = _setupMockClientResponse(404);
-      completer.complete(mockResponse);
-      var response = await request.done;
-
-      // Listen / close the response
-      response.listen((event) {});
-      await mockResponse.streamController.close();
-
-      verify(() => mockSpan.setTag(DdTags.resource, '404'));
-    });
-
     test('error in stream sets errors on trace', () async {
       final completer = _setupMockRequest();
       var mockSpan = _enableTracing();

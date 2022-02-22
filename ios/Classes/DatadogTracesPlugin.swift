@@ -75,6 +75,9 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
         operationName: operationName,
         tags: tags,
         startTime: startTime)
+      if let resourceName = arguments["resourceName"] as? String {
+        span.setTag(key: DDTags.resource, value: resourceName)
+      }
 
       let spanHandle = storeSpan(span)
       result(spanHandle)
@@ -102,6 +105,9 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
         childOf: parentSpan?.context,
         tags: tags,
         startTime: startTime)
+      if let resourceName = arguments["resourceName"] as? String {
+        span.setTag(key: DDTags.resource, value: resourceName)
+      }
 
       let spanHandle = storeSpan(span)
       result(spanHandle)

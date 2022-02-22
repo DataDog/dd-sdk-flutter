@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'dart:io';
+
 import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:datadog_sdk/src/internal_attributes.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -36,7 +38,9 @@ Future<void> measure(String resourceName, AsyncVoidCallback callback) async {
   // TODO: Find a way to do more accurate measurement instead of relying on Spans to do the measure
   var span =
       await DatadogSdk.instance.traces?.startRootSpan('perf_measure', tags: {
-    DdTags.resource: resourceName,
+    // TODO - Android doesn't put the resource tag onto the span
+    'resource_name': resourceName,
+    'operating_system': Platform.operatingSystem
   });
   await callback();
   await span?.finish();

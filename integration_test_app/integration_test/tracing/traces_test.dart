@@ -93,12 +93,7 @@ void main() {
     expect(downloadingSpan.getTag<String>('data.kind'), 'image');
     expect(downloadingSpan.getTag<String>('data.url'),
         'https://example.com/image.png');
-    // TODO: Android may not recognize 'resource.name' as a tag to set on the root object
-    if (Platform.isIOS) {
-      expect(downloadingSpan.resource, 'GET /image.png');
-    } else if (Platform.isAndroid) {
-      expect(downloadingSpan.getTag<String>('resource.name'), 'GET /image.png');
-    }
+    expect(downloadingSpan.resource, 'GET /image.png');
 
     expect(presentationSpan.resource, presentationSpan.name);
     expect(rootSpan.resource, rootSpan.name);

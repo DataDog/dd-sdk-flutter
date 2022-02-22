@@ -489,9 +489,6 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
       if (span != null) {
         await span.setTag(OTTags.httpStatusCode, statusCode);
         if (statusCode >= 400 && statusCode < 500) {
-          if (statusCode == 404) {
-            await span.setTag(DdTags.resource, '404');
-          }
           await span.setErrorInfo('HttpStatusCode',
               '$statusCode - ${innerResponse.reasonPhrase}', null);
         }

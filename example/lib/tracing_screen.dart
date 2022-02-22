@@ -144,10 +144,10 @@ class _TracingScreenState extends State<TracingScreen> {
 
     final tracing = DatadogSdk.instance.traces;
     if (tracing != null) {
-      var span = await tracing.startSpan(operationName);
-      if (_resourceName.isNotEmpty) {
-        await span.setTag(DdTags.resource, _resourceName);
-      }
+      var span = await tracing.startSpan(
+        operationName,
+        resourceName: _resourceName.isNotEmpty ? _resourceName : null,
+      );
       await Future.delayed(const Duration(seconds: 1));
       await span.finish();
     }

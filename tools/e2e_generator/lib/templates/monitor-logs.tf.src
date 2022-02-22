@@ -22,7 +22,6 @@ EOT
   notify_audit      = false
   timeout_h         = 0
   include_tags      = true
-  new_host_delay    = 300
   monitor_thresholds {
     critical = ${{monitor_threshold:-1.0}}
   }

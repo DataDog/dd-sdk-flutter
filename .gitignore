@@ -13,3 +13,5 @@ android/ndk_crash_reports/network_information
 **/.cxx/
 tools/e2e_generator/main.tf
 tools/e2e_generator/secrets.tf
+.terraform*
+tools/e2e_generator/terraform.tfstate

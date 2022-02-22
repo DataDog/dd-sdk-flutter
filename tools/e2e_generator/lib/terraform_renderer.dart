@@ -98,6 +98,8 @@ class MonitorTemplate {
     List<MonitorVariable> globalVars,
     IssueReporter issueReporter,
   ) {
+    if (configuration.shouldIgnore) return '';
+
     issueReporter.pushReference(configuration.codeReference);
 
     if (configuration.variants.isEmpty) {

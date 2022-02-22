@@ -29,6 +29,7 @@ void main() {
 
     var config = configList[0];
     expect(config.type, MonitorType.logs);
+    expect(config.shouldIgnore, false);
     expect(config.variables.length, 1);
     expect(config.variables[0].name, 'foo');
     expect(config.variables[0].value, 'bar1');
@@ -135,7 +136,40 @@ void main() {
     expect(configList.length, 1);
 
     var config = configList[0];
+    expect(config.shouldIgnore, false);
     expect(config.variants, ['ios', 'android']);
+  });
+
+  test('Monitors with IGNORE set should ignore', () {
+    final testComment = r'''/// ```logs IGNORE
+/// $foo = bar1
+/// $var2 = bar2
+/// ```
+''';
+
+    final configList = MonitorConfiguration.fromComment(
+        testComment, mockCodeReference, issueReporter);
+    expect(configList, isNotNull);
+    expect(configList.length, 1);
+
+    var config = configList[0];
+    expect(config.shouldIgnore, true);
+  });
+
+  test('Monitors with variants and IGNORE set should ignore', () {
+    final testComment = r'''/// ```logs(ios, android) IGNORE
+/// $foo = bar1
+/// $var2 = bar2
+/// ```
+''';
+
+    final configList = MonitorConfiguration.fromComment(
+        testComment, mockCodeReference, issueReporter);
+    expect(configList, isNotNull);
+    expect(configList.length, 1);
+
+    var config = configList[0];
+    expect(config.shouldIgnore, true);
   });
 
   test('Parser ignores comments between monitors', () {
