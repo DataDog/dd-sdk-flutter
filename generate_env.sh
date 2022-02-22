@@ -16,11 +16,13 @@ DD_ENV=prod
 END
 
 
-if [[ -v DD_E2E_CLIENT_TOKEN ]]; then
+if [[ ! -z ${DD_E2E_CLIENT_TOKEN+x} ]]; then
     tee ./e2e_test_app/.env > /dev/null << END
 DD_CLIENT_TOKEN=$DD_E2E_CLIENT_TOKEN
 DD_APPLICATION_ID=$DD_E2E_APPLICATION_ID
 DD_E2E_IS_ON_CI=${IS_ON_CI:-false}
 END
 
+else
+    echo "Not generating E2E .env file because DD_E2E_CLIENT_TOKEN is $DD_E2E_CLIENT_TOKEN"
 fi
