@@ -9,9 +9,11 @@ import 'package:test/test.dart';
 
 void main() {
   final mockCodeReference = CodeReference('fake_path', 133, 'Test Description');
+  final issueReporter = IssueReporter();
 
-  void nullIssueReporter(
-      IssueSeverity severity, CodeReference codeReference, String message) {}
+  setUp(() {
+    issueReporter.clear();
+  });
 
   test('rendering variable with no default', () {
     final template =
@@ -22,10 +24,11 @@ void main() {
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
       variables: [variable],
+      variants: [],
       codeReference: mockCodeReference,
     );
 
-    final result = template.render(configuration, nullIssueReporter);
+    final result = template.render(configuration, [], issueReporter);
 
     expect(result, 'argument = fake value # comment\n');
   });
@@ -37,10 +40,11 @@ void main() {
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
       variables: [],
+      variants: [],
       codeReference: mockCodeReference,
     );
 
-    final result = template.render(configuration, nullIssueReporter);
+    final result = template.render(configuration, [], issueReporter);
 
     expect(result, 'argument = default value # comment\n');
   });
@@ -54,10 +58,11 @@ void main() {
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
       variables: [variable],
+      variants: [],
       codeReference: mockCodeReference,
     );
 
-    final result = template.render(configuration, nullIssueReporter);
+    final result = template.render(configuration, [], issueReporter);
 
     expect(result, 'argument = provided user value # comment\n');
   });
@@ -75,6 +80,7 @@ void main() {
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
       variables: [var1, var2],
+      variants: [],
       codeReference: mockCodeReference,
     );
 
@@ -84,7 +90,36 @@ void main() {
 }
 ''';
 
-    final result = template.render(configuration, nullIssueReporter);
+    final result = template.render(configuration, [], issueReporter);
+    expect(result, expectedResult);
+  });
+
+  test('rendering template with variants renders multiple templates', () {
+    final template =
+        MonitorTemplate(r'''resource "datadog_monitor" ${{monitor_id}} {
+  argument1 = ${{argument1_value}} # comment
+}''');
+
+    final var1 = MonitorVariable(
+        name: 'monitor_id', value: 'user monitor id \${{variant}}');
+    final var2 = MonitorVariable(
+        name: 'argument1_value', value: 'my argument \${{variant}}');
+    final configuration = MonitorConfiguration(
+      type: MonitorType.logs,
+      variables: [var1, var2],
+      variants: ['ios', 'web'],
+      codeReference: mockCodeReference,
+    );
+
+    final expectedResult = r'''resource "datadog_monitor" user monitor id ios {
+  argument1 = my argument ios # comment
+}
+
+resource "datadog_monitor" user monitor id web {
+  argument1 = my argument web # comment
+}''';
+
+    final result = template.render(configuration, [], issueReporter).trim();
     expect(result, expectedResult);
   });
 
@@ -95,18 +130,34 @@ void main() {
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
       variables: [],
+      variants: [],
       codeReference: mockCodeReference,
     );
 
-    var issues = <Issue>[];
-    void reporter(IssueSeverity severity, CodeReference ref, String message) {
-      issues.add(Issue(severity, ref, message));
-    }
+    template.render(configuration, [], issueReporter);
 
-    template.render(configuration, reporter);
+    expect(issueReporter.issues.length, 1);
+    expect(issueReporter.issues[0].severity, IssueSeverity.error);
+  });
 
-    expect(issues.length, 1);
-    expect(issues[0].severity, IssueSeverity.error);
+  test('rendering variable with variant with no variants reports error', () {
+    final template =
+        MonitorTemplate('argument = \${{argument_value}} # comment');
+
+    final configuration = MonitorConfiguration(
+      type: MonitorType.logs,
+      variables: [
+        MonitorVariable(
+            name: 'argument_value', value: 'test value with \${{variant}}')
+      ],
+      variants: [],
+      codeReference: mockCodeReference,
+    );
+
+    template.render(configuration, [], issueReporter);
+
+    expect(issueReporter.issues.length, 1);
+    expect(issueReporter.issues[0].severity, IssueSeverity.error);
   });
 
   test('extra variable with no substitution reports warning', () {
@@ -120,17 +171,80 @@ void main() {
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
       variables: [var1, var2],
+      variants: [],
       codeReference: mockCodeReference,
     );
 
-    var issues = <Issue>[];
-    void reporter(IssueSeverity severity, CodeReference ref, String message) {
-      issues.add(Issue(severity, ref, message));
-    }
+    template.render(configuration, [], issueReporter);
 
-    template.render(configuration, reporter);
+    expect(issueReporter.issues.length, 1);
+    expect(issueReporter.issues[0].severity, IssueSeverity.warning);
+  });
 
-    expect(issues.length, 1);
-    expect(issues[0].severity, IssueSeverity.warning);
+  test('render expands global variables in monitor variables', () {
+    final template =
+        MonitorTemplate(r'''resource "datadog_monitor" ${{monitor_id}} {
+  argument1 = ${{argument1_value}} # comment
+}''');
+
+    final var1 =
+        MonitorVariable(name: 'monitor_id', value: 'test_\${{global1}}');
+    final var2 = MonitorVariable(
+        name: 'argument1_value', value: '\${{global1}}, \${{global2}}');
+    final configuration = MonitorConfiguration(
+      type: MonitorType.logs,
+      variables: [var1, var2],
+      variants: [],
+      codeReference: mockCodeReference,
+    );
+
+    final globalVariables = [
+      MonitorVariable(name: 'global1', value: 'global_value_1'),
+      MonitorVariable(name: 'global2', value: 'second global value'),
+    ];
+
+    final expectedResult = r'''resource "datadog_monitor" test_global_value_1 {
+  argument1 = global_value_1, second global value # comment
+}''';
+
+    final result =
+        template.render(configuration, globalVariables, issueReporter).trim();
+    expect(result, expectedResult);
+  });
+
+  test('render replaces code anchor with code', () {
+    final template =
+        MonitorTemplate(r'''resource "datadog_monitor" ${{monitor_id}} {
+  argument1 = ${{argument1_value}} # comment
+
+  ## MONITOR_CODE ##
+}''');
+
+    final var1 =
+        MonitorVariable(name: 'monitor_id', value: 'test_\${{global1}}');
+    final var2 = MonitorVariable(
+        name: 'argument1_value', value: '\${{global1}}, \${{global2}}');
+    final configuration = MonitorConfiguration(
+      type: MonitorType.logs,
+      variables: [var1, var2],
+      variants: [],
+      codeReference: CodeReference(
+          'fake_path', 123, 'test_description', 'Code for the code god.'),
+    );
+
+    final globalVariables = [
+      MonitorVariable(name: 'global1', value: 'global_value_1'),
+      MonitorVariable(name: 'global2', value: 'second global value'),
+    ];
+
+    final expectedResult = r'''resource "datadog_monitor" test_global_value_1 {
+  argument1 = global_value_1, second global value # comment
+
+  Code for the code god.
+}''';
+
+    final result =
+        template.render(configuration, globalVariables, issueReporter).trim();
+    expect(result, expectedResult);
   });
 }

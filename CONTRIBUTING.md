@@ -23,7 +23,7 @@ passes without issues.
 You will also need to generate `.env` files for the various apps in order to use
 them with Datadog. Running `./generate_env.sh` will create `example/.env` and
 `integration_test_app/.env`, both of which should be modified with your Client
-Id and Application Id from the Datadog RUM setup
+Id and Application Id from the Datadog RUM setup.
 
 ## Code Style
 

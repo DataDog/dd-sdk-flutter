@@ -11,3 +11,5 @@ build/
 *flutter_junit_test_results.xml
 android/ndk_crash_reports/network_information
 **/.cxx/
+tools/e2e_generator/main.tf
+tools/e2e_generator/secrets.tf

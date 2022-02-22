@@ -48,4 +48,9 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
     await methodChannel
         .invokeMethod('initialize', {'configuration': configuration.encode()});
   }
+
+  @override
+  Future<void> flushAndDeinitialize() {
+    return methodChannel.invokeMethod('flushAndDeinitialize', {});
+  }
 }

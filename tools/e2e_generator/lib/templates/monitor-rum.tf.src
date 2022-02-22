@@ -8,7 +8,7 @@ resource "datadog_monitor" ${{monitor_id}} {
 
 ## E2E test context:
 ```
-## MONITOR_CONTEXT ##
+## MONITOR_CODE ##
 ```
 EOT
   escalation_message = <<EOT

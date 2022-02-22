@@ -30,4 +30,5 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
 
   Future<void> initialize(DdSdkConfiguration configuration,
       {LogCallback? logCallback});
+  Future<void> flushAndDeinitialize();
 }
