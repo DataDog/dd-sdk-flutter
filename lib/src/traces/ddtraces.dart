@@ -192,7 +192,6 @@ class DdTraces {
         span._logger = _logger;
       } else {
         _logger.error('Error creating span named $operationName');
-        // TELEMETRY: Report error creating span
         // Don't set the logger on this span or it will spam being closed
         span = DdSpan(_platform, 0);
       }
@@ -215,7 +214,6 @@ class DdTraces {
         span._logger = _logger;
       } else {
         _logger.error('Error creating span named $operationName');
-        // TELEMETRY: Report error creating span
         // Don't set the logger on this span or it will spam being closed
         span = DdSpan(_platform, 0);
       }

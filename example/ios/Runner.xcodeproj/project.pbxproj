@@ -10,7 +10,8 @@
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		375D169686D645387712ABB6 /* Pods_flutter_sdk_tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 76ACCD6E8BF0C32DB48FCF5E /* Pods_flutter_sdk_tests.framework */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
-		495118EF27C596AB00F206FE /* DatadogLogsPluginTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495118EE27C596AB00F206FE /* DatadogLogsPluginTest.swift */; };
+		495118EF27C596AB00F206FE /* DatadogLogsPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495118EE27C596AB00F206FE /* DatadogLogsPluginTests.swift */; };
+		495118F127C6B2B800F206FE /* DatadogTracesPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495118F027C6B2B800F206FE /* DatadogTracesPluginTests.swift */; };
 		4956E9572785DA5500E0E3B3 /* EquatableInTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4956E9562785DA5500E0E3B3 /* EquatableInTests.swift */; };
 		4959779C279209C90022AFE6 /* DatadogConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4959779B279209C90022AFE6 /* DatadogConfigurationTests.swift */; };
 		4962A36F276D322E00507AFD /* DatadogSdkPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4962A36E276D322E00507AFD /* DatadogSdkPluginTests.swift */; };
@@ -51,7 +52,8 @@
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
-		495118EE27C596AB00F206FE /* DatadogLogsPluginTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatadogLogsPluginTest.swift; sourceTree = "<group>"; };
+		495118EE27C596AB00F206FE /* DatadogLogsPluginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatadogLogsPluginTests.swift; sourceTree = "<group>"; };
+		495118F027C6B2B800F206FE /* DatadogTracesPluginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatadogTracesPluginTests.swift; sourceTree = "<group>"; };
 		4956E9562785DA5500E0E3B3 /* EquatableInTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquatableInTests.swift; sourceTree = "<group>"; };
 		4959779B279209C90022AFE6 /* DatadogConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatadogConfigurationTests.swift; sourceTree = "<group>"; };
 		4962A36C276D322E00507AFD /* flutter_sdk_tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = flutter_sdk_tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -124,7 +126,8 @@
 				4962A3AC277109C400507AFD /* FlutterSdkAttibutesTests.swift */,
 				49D7C98827834F7600A03589 /* DatadogRumPluginTests.swift */,
 				4959779B279209C90022AFE6 /* DatadogConfigurationTests.swift */,
-				495118EE27C596AB00F206FE /* DatadogLogsPluginTest.swift */,
+				495118EE27C596AB00F206FE /* DatadogLogsPluginTests.swift */,
+				495118F027C6B2B800F206FE /* DatadogTracesPluginTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -412,9 +415,10 @@
 			files = (
 				4962A36F276D322E00507AFD /* DatadogSdkPluginTests.swift in Sources */,
 				4962A3AD277109C400507AFD /* FlutterSdkAttibutesTests.swift in Sources */,
+				495118F127C6B2B800F206FE /* DatadogTracesPluginTests.swift in Sources */,
 				4959779C279209C90022AFE6 /* DatadogConfigurationTests.swift in Sources */,
 				49D7C98927834F7600A03589 /* DatadogRumPluginTests.swift in Sources */,
-				495118EF27C596AB00F206FE /* DatadogLogsPluginTest.swift in Sources */,
+				495118EF27C596AB00F206FE /* DatadogLogsPluginTests.swift in Sources */,
 				4956E9572785DA5500E0E3B3 /* EquatableInTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

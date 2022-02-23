@@ -12,11 +12,15 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
 
-  internal var logger: Logger?
+  private var logger: Logger?
   public var isInitialized: Bool { return logger != nil }
 
   override private init() {
     super.init()
+  }
+
+  func initialize(withLogger logger: Logger) {
+    self.logger = logger
   }
 
   func initialize(configuration: DatadogFlutterConfiguration.LoggingConfiguration) {

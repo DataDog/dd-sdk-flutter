@@ -15,6 +15,7 @@ import io.opentracing.Span
 import io.opentracing.Tracer
 import io.opentracing.log.Fields
 import io.opentracing.util.GlobalTracer
+import java.lang.ClassCastException
 import java.util.concurrent.TimeUnit
 
 data class SpanInfo(
@@ -23,7 +24,9 @@ data class SpanInfo(
     var scope: Scope?
 )
 
-class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
+class DatadogTracesPlugin(
+    tracerInstance: Tracer? = null
+) : MethodChannel.MethodCallHandler {
     companion object TraceParameterNames {
         const val PARAM_SPAN_HANDLE = "spanHandle"
         const val PARAM_PARENT_SPAN = "parentSpan"
@@ -47,6 +50,12 @@ class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
 
     private lateinit var tracer: Tracer
 
+    init {
+        if (tracerInstance != null) {
+            tracer = tracerInstance
+        }
+    }
+
     fun setup(
         flutterPluginBinding: FlutterPlugin.FlutterPluginBinding,
         configuration: DatadogFlutterConfiguration.TracingConfiguration
@@ -63,60 +72,83 @@ class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        with(call.method) {
-            when {
-                startsWith("span.") -> onSpanMethodCall(call, result)
-                else -> onRootMethodCall(call, result)
+        try {
+            with(call.method) {
+                when {
+                    startsWith("span.") -> onSpanMethodCall(call, result)
+                    else -> onRootMethodCall(call, result)
+                }
             }
+        } catch (e: ClassCastException) {
+            result.error(
+                DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(),
+                mapOf(
+                    "methodName" to call.method
+                )
+            )
         }
     }
 
+    @Suppress("LongMethod", "NestedBlockDepth")
     private fun onRootMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "startRootSpan" -> {
                 val operationName = call.argument<String>(PARAM_OPERATION_NAME)
+                if (operationName != null) {
+                    val spanBuilder = tracer.buildSpan(operationName)
+                        .ignoreActiveSpan()
+					call.argument<String>(PARAM_RESOURCE_NAME)?.let {
+                  	  val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
+                    	ddBuilder.withResourceName(it)
+	                }
+                    call.argument<Number>(PARAM_START_TIME)?.let {
+                        spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
+                    }
 
-                val spanBuilder = tracer.buildSpan(operationName)
-                    .ignoreActiveSpan()
-                call.argument<String>(PARAM_RESOURCE_NAME)?.let {
-                    val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
-                    ddBuilder.withResourceName(it)
+                    val span = spanBuilder.start()
+
+                    call.argument<Map<String, Any?>>(PARAM_TAGS)?.let {
+                        span.setTags(it)
+                    }
+
+                    result.success(storeSpan(span))
+                } else {
+                    result.error(
+                        DatadogSdkPlugin.CONTRACT_VIOLATION,
+                        "Missing required parameter in call to startRootSpan",
+                        null
+                    )
                 }
-                call.argument<Number>(PARAM_START_TIME)?.let {
-                    spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
-                }
-
-                val span = spanBuilder.start()
-
-                call.argument<Map<String, Any?>>(PARAM_TAGS)?.let {
-                    span.setTags(it)
-                }
-
-                result.success(storeSpan(span))
             }
             "startSpan" -> {
                 val operationName = call.argument<String>(PARAM_OPERATION_NAME)
-
-                val spanBuilder = tracer.buildSpan(operationName)
-                call.argument<String>(PARAM_RESOURCE_NAME)?.let {
-                    val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
-                    ddBuilder.withResourceName(it)
-                }
-                call.argument<Number>(PARAM_START_TIME)?.let {
-                    spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
-                }
-                call.argument<Number>(PARAM_PARENT_SPAN)?.let {
-                    spanRegistry[it.toLong()]?.let { spanInfo ->
-                        spanBuilder.asChildOf(spanInfo.span)
+                if (operationName != null) {
+                    val spanBuilder = tracer.buildSpan(operationName)
+					call.argument<String>(PARAM_RESOURCE_NAME)?.let {
+                  	  val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
+                    	ddBuilder.withResourceName(it)
+	                }
+                    call.argument<Number>(PARAM_START_TIME)?.let {
+                        spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
                     }
-                }
+                    call.argument<Number>(PARAM_PARENT_SPAN)?.let {
+                        spanRegistry[it.toLong()]?.let { spanInfo ->
+                            spanBuilder.asChildOf(spanInfo.span)
+                        }
+                    }
 
-                val span = spanBuilder.start()
-                call.argument<Map<String, Any?>>(PARAM_TAGS)?.let {
-                    span.setTags(it)
+                    val span = spanBuilder.start()
+                    call.argument<Map<String, Any?>>(PARAM_TAGS)?.let {
+                        span.setTags(it)
+                    }
+                    result.success(storeSpan(span))
+                } else {
+                    result.error(
+                        DatadogSdkPlugin.CONTRACT_VIOLATION,
+                        "Missing required parameter in call to startRootSpan",
+                        null
+                    )
                 }
-
-                result.success(storeSpan(span))
             }
             "getTracePropagationHeaders" -> {
                 var headers = mapOf<String, String>()
@@ -149,10 +181,9 @@ class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
                 result.success(null)
             }
             "span.setError" -> {
-                ifLet(
-                    call.argument<String>(PARAM_KIND),
-                    call.argument<String>(PARAM_MESSAGE)
-                ) { (kind, message) ->
+                val kind = call.argument<String>(PARAM_KIND)
+                val message = call.argument<String>(PARAM_MESSAGE)
+                if (kind != null && message != null) {
                     val fields = mutableMapOf<String, Any>(
                         Fields.EVENT to "error",
                         Fields.ERROR_KIND to kind,
@@ -163,34 +194,59 @@ class DatadogTracesPlugin : MethodChannel.MethodCallHandler {
                     }
 
                     callingSpanInfo.span.log(fields)
+                    result.success(null)
+                } else {
+                    result.error(
+                        DatadogSdkPlugin.CONTRACT_VIOLATION,
+                        "Missing required parameter in call to span.setError",
+                        null
+                    )
                 }
-                result.success(null)
             }
             "span.setTag" -> {
-                call.argument<String>(PARAM_KEY)?.let { key ->
+                val key = call.argument<String>(PARAM_KEY)
+                if (key != null) {
                     when (val value = call.argument<Any>(PARAM_VALUE)) {
                         is Boolean -> callingSpanInfo.span.setTag(key, value)
                         is Number -> callingSpanInfo.span.setTag(key, value)
                         is String -> callingSpanInfo.span.setTag(key, value)
                         else -> callingSpanInfo.span.setTag(key, value?.toString())
                     }
+                    result.success(null)
+                } else {
+                    result.error(
+                        DatadogSdkPlugin.CONTRACT_VIOLATION,
+                        "Missing required parameter in call to span.setTag",
+                        null
+                    )
                 }
-                result.success(null)
             }
             "span.setBaggageItem" -> {
-                ifLet(
-                    call.argument<String>(PARAM_KEY),
-                    call.argument<String>(PARAM_VALUE)
-                ) { (key, value) ->
+                val key = call.argument<String>(PARAM_KEY)
+                val value = call.argument<String>(PARAM_VALUE)
+                if (key != null && value != null) {
                     callingSpanInfo.span.setBaggageItem(key, value)
+                    result.success(null)
+                } else {
+                    result.error(
+                        DatadogSdkPlugin.CONTRACT_VIOLATION,
+                        "Missing required parameter in call to span.setBaggageItem",
+                        null
+                    )
                 }
-                result.success(null)
             }
             "span.log" -> {
-                call.argument<Map<String, Any?>>(PARAM_FIELDS)?.let {
-                    callingSpanInfo.span.log(it)
+                val fields = call.argument<Map<String, Any?>>(PARAM_FIELDS)
+                if (fields != null) {
+                    callingSpanInfo.span.log(fields)
+                    result.success(null)
+                } else {
+                    result.error(
+                        DatadogSdkPlugin.CONTRACT_VIOLATION,
+                        "Missing required parameter in call to span.log",
+                        null
+                    )
                 }
-                result.success(null)
             }
             "span.finish" -> {
                 call.argument<Number>(PARAM_SPAN_HANDLE)?.let {

@@ -17,12 +17,12 @@ class MockLogger: Logger {
   }
 }
 
-class DatadogLogsPlugihnTests: XCTestCase {
+class DatadogLogsPluginTests: XCTestCase {
   var plugin: DatadogLogsPlugin!
 
   override func setUp() {
     plugin = DatadogLogsPlugin.instance
-    plugin.logger = MockLogger()
+    plugin.initialize(withLogger: MockLogger())
   }
 
   func testLogCalls_WithMissingParameter_FailsWithContractViolation() {
