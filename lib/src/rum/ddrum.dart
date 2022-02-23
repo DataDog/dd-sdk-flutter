@@ -6,8 +6,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../internal_attributes.dart';
-import '../internal_helpers.dart';
+import '../attributes.dart';
+import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddrum_platform_interface.dart';
 

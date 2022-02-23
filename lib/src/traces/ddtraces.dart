@@ -2,9 +2,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
-import '../internal_helpers.dart';
+import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddtraces_platform_interface.dart';
+
 
 /// A collection of standard `Span` tag keys defined by Open Tracing.
 /// Use them as the `key` in [DdSpan.setTag]. Use the expected type for the `value`.

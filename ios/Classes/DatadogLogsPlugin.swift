@@ -12,7 +12,7 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
 
-  private var logger: Logger?
+  internal var logger: Logger?
   public var isInitialized: Bool { return logger != nil }
 
   override private init() {
@@ -31,13 +31,13 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
   // swiftlint:disable:next cyclomatic_complexity function_body_length
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let arguments = call.arguments as? [String: Any] else {
-      result(FlutterError(code: "DatadogSDK:InvalidOperation",
+      result(FlutterError(code: DdFlutterErrorCodes.invalidOperation,
                           message: "No arguments in call to \(call.method).",
                           details: nil))
       return
     }
     guard let logger = logger else {
-      result(FlutterError(code: "DatadogSDK:InvalidOperation",
+      result(FlutterError(code: DdFlutterErrorCodes.invalidOperation,
                          message: "Logger has not been initialized when calling \(call.method).",
                          details: nil))
       return
@@ -53,39 +53,63 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
     case "debug":
       if let message = message {
         logger.debug(message, error: nil, attributes: attributes)
+        result(nil)
+      } else {
+        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
+                            message: "Missing message parameter",
+                            details: nil))
       }
-      result(nil)
 
     case "info":
       if let message = message {
         logger.info(message, error: nil, attributes: attributes)
+        result(nil)
+      } else {
+        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
+                            message: "Missing message parameter",
+                            details: nil))
       }
-      result(nil)
 
     case "warn":
       if let message = message {
         logger.warn(message, error: nil, attributes: attributes)
+        result(nil)
+      } else {
+        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
+                            message: "Missing message parameter",
+                            details: nil))
       }
-      result(nil)
 
     case "error":
       if let message = message {
         logger.error(message, error: nil, attributes: attributes)
+        result(nil)
+      } else {
+        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
+                           message: "Missing message parameter",
+                           details: nil))
       }
-      result(nil)
 
     case "addAttribute":
       if let key = arguments["key"] as? String,
          let value = arguments["value"] {
         logger.addAttribute(forKey: key, value: DdFlutterEncodable(value))
+        result(nil)
+      } else {
+        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
+                            message: "Missing or bad parameter in addAttribute",
+                            details: nil))
       }
-      result(nil)
 
     case "removeAttribute":
       if let key = arguments["key"] as? String {
         logger.removeAttribute(forKey: key)
+        result(nil)
+      } else {
+        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
+                            message: "Missing or bad parameter in removeAttribute",
+                            details: nil))
       }
-      result(nil)
 
     case "addTag":
       if let tag = arguments["tag"] as? String {
@@ -94,20 +118,32 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         } else {
           logger.add(tag: tag)
         }
+        result(nil)
+      } else {
+        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
+                            message: "Missing or bad parameter in addTag",
+                            details: nil))
       }
-      result(nil)
 
     case "removeTag":
       if let tag = arguments["tag"] as? String {
         logger.remove(tag: tag)
+        result(nil)
+      } else {
+        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
+                            message: "Missing or bad parameter in removeTag",
+                            details: nil))
       }
-      result(nil)
 
     case "removeTagWithKey":
       if let key = arguments["key"] as? String {
         logger.removeTag(withKey: key)
+        result(nil)
+      } else {
+        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
+                            message: "Missing or bad parameter in removeTagWithKey",
+                            details: nil))
       }
-      result(nil)
 
     default:
       result(FlutterMethodNotImplemented)
