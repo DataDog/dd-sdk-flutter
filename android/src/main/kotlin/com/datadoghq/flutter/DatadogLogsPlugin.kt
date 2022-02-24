@@ -14,9 +14,7 @@ import java.lang.NullPointerException
 import org.json.JSONArray
 import org.json.JSONObject
 
-class DatadogLogsPlugin(
-    logInstance: Logger? = null
-) : MethodChannel.MethodCallHandler {
+class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     companion object LogParameterNames {
         const val LOG_MESSAGE = "message"
         const val LOG_CONTEXT = "context"
@@ -30,12 +28,6 @@ class DatadogLogsPlugin(
 
     lateinit var log: Logger
         private set
-
-    init {
-        if (logInstance != null) {
-            log = logInstance
-        }
-    }
 
     fun setup(
         flutterPluginBinding: FlutterPlugin.FlutterPluginBinding,
@@ -54,6 +46,10 @@ class DatadogLogsPlugin(
             .setBundleWithRumEnabled(configuration.bundleWithRum)
             .setLoggerName("DdLogs")
             .build()
+    }
+
+    internal fun setupForTests() {
+        log = Logger.Builder().build()
     }
 
     @Suppress("LongMethod", "ComplexMethod", "NestedBlockDepth")
@@ -87,11 +83,7 @@ class DatadogLogsPlugin(
                         addAttributeInternal(key, value)
                         result.success(null)
                     } else {
-                        result.error(
-                            DatadogSdkPlugin.CONTRACT_VIOLATION,
-                            "Null parameter in addAttribute",
-                            null
-                        )
+                        result.missingParameter(call.method)
                     }
                 }
                 "addTag" -> {
@@ -105,11 +97,7 @@ class DatadogLogsPlugin(
                         }
                         result.success(null)
                     } else {
-                        result.error(
-                            DatadogSdkPlugin.CONTRACT_VIOLATION,
-                            "Null parameter in addTag",
-                            null
-                        )
+                        result.missingParameter(call.method)
                     }
                 }
                 "removeAttribute" -> {
@@ -118,11 +106,7 @@ class DatadogLogsPlugin(
                         log.removeAttribute(key)
                         result.success(null)
                     } else {
-                        result.error(
-                            DatadogSdkPlugin.CONTRACT_VIOLATION,
-                            "Null parameter in remoteAttribute",
-                            null
-                        )
+                        result.missingParameter(call.method)
                     }
                 }
                 "removeTag" -> {
@@ -131,11 +115,7 @@ class DatadogLogsPlugin(
                         log.removeTag(tag)
                         result.success(null)
                     } else {
-                        result.error(
-                            DatadogSdkPlugin.CONTRACT_VIOLATION,
-                            "Null parameter in removeTag",
-                            null
-                        )
+                        result.missingParameter(call.method)
                     }
                 }
                 "removeTagWithKey" -> {
@@ -144,11 +124,7 @@ class DatadogLogsPlugin(
                         log.removeTagsWithKey(key)
                         result.success(null)
                     } else {
-                        result.error(
-                            DatadogSdkPlugin.CONTRACT_VIOLATION,
-                            "Null parameter in removeTagWithKey",
-                            null
-                        )
+                        result.missingParameter(call.method)
                     }
                 }
                 else -> {
@@ -184,9 +160,9 @@ class DatadogLogsPlugin(
 
             result.success(null)
         } catch (e: ClassCastException) {
-            result.error(DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(), null)
+            result.error(DatadogSdkPlugin.CONTRACT_VIOLATION, e.stackTraceToString(), null)
         } catch (e: NullPointerException) {
-            result.error(DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(), null)
+            result.error(DatadogSdkPlugin.CONTRACT_VIOLATION, e.stackTraceToString(), null)
         }
     }
 

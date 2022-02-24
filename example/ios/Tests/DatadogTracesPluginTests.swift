@@ -17,51 +17,33 @@ class DatadogTracesPluginTests: XCTestCase {
     plugin.initialize(withTracer: DDNoopTracer())
   }
 
-  func testTracesStartRootSpan_WithMissingParameter_FailsWithContractViolation() {
-    let tags: [String: Any] = [:]
-    let call = FlutterMethodCall(methodName: "startRootSpan", arguments: [
-      "tags": tags
+  let contracts = [
+    Contract(methodName: "startRootSpan", requiredParameters: [
+      "operationName": .string
+    ]),
+    Contract(methodName: "startSpan", requiredParameters: [
+      "operationName": .string
     ])
+  ]
 
-    var resultStatus = ResultStatus.notCalled
-    plugin.handle(call) { result in
-      resultStatus = .called(value: result)
-    }
-
-    switch resultStatus {
-    case .called(let value):
-      let error = value as? FlutterError
-      XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
-      XCTAssertNotNil(error?.message)
-
-    case .notCalled:
-      XCTFail("result was not called")
-    }
+  func testTracesPlugin_ContractViolationsThrowErrors() {
+    testContracts(contracts: contracts, plugin: plugin)
   }
 
-  func testTracesStartSpan_WithMissingParameter_FailsWithContractViolation() {
-    let tags: [String: Any] = [:]
-    let call = FlutterMethodCall(methodName: "startSpan", arguments: [
-      "tags": tags
+  let spanContracts = [
+    Contract(methodName: "span.setError", requiredParameters: [
+      "kind": .string, "message": .string
+    ]),
+    Contract(methodName: "span.setTag", requiredParameters: [
+      "key": .string, "value": .string
+    ]),
+    Contract(methodName: "span.setBaggageItem", requiredParameters: [
+      "key": .string, "value": .string
+    ]),
+    Contract(methodName: "span.log", requiredParameters: [
+      "fields": .map
     ])
-
-    var resultStatus = ResultStatus.notCalled
-    plugin.handle(call) { result in
-      resultStatus = .called(value: result)
-    }
-
-    switch resultStatus {
-    case .called(let value):
-      let error = value as? FlutterError
-      XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
-      XCTAssertNotNil(error?.message)
-
-    case .notCalled:
-      XCTFail("result was not called")
-    }
-  }
+  ]
 
   func createSpan(operationName: String) -> Int64 {
     var result: Int64!
@@ -73,6 +55,13 @@ class DatadogTracesPluginTests: XCTestCase {
     }
 
     return result
+  }
+
+  func testSpan_ContractViolationsThrowErrors() {
+    let spanHandle = createSpan(operationName: "testSpanOperation")
+    testContracts(contracts: spanContracts, plugin: plugin, additionalArguments: [
+      "spanHandle": spanHandle
+    ])
   }
 
   func testSpanSetError_WithMissingParameter_FailsWithCOntractViolation() {
@@ -91,7 +80,7 @@ class DatadogTracesPluginTests: XCTestCase {
     case .called(let value):
       let error = value as? FlutterError
       XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
+      XCTAssertEqual(error?.code, FlutterError.DdErrorCodes.contractViolation)
       XCTAssertNotNil(error?.message)
 
     case .notCalled:
@@ -115,7 +104,7 @@ class DatadogTracesPluginTests: XCTestCase {
     case .called(let value):
       let error = value as? FlutterError
       XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
+      XCTAssertEqual(error?.code, FlutterError.DdErrorCodes.contractViolation)
       XCTAssertNotNil(error?.message)
 
     case .notCalled:
@@ -139,7 +128,7 @@ class DatadogTracesPluginTests: XCTestCase {
     case .called(let value):
       let error = value as? FlutterError
       XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
+      XCTAssertEqual(error?.code, FlutterError.DdErrorCodes.contractViolation)
       XCTAssertNotNil(error?.message)
 
     case .notCalled:
@@ -162,7 +151,7 @@ class DatadogTracesPluginTests: XCTestCase {
     case .called(let value):
       let error = value as? FlutterError
       XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
+      XCTAssertEqual(error?.code, FlutterError.DdErrorCodes.contractViolation)
       XCTAssertNotNil(error?.message)
 
     case .notCalled:

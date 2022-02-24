@@ -7,11 +7,6 @@ import UIKit
 import Datadog
 import DatadogCrashReporting
 
-public enum DdFlutterErrorCodes {
-  static let contractViolation = "DatadogSdk:ContractViolation"
-  static let invalidOperation = "DatadogSdk:InvalidOperation"
-}
-
 public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
   let channel: FlutterMethodChannel
 
@@ -39,9 +34,9 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
   // swiftlint:disable:next cyclomatic_complexity
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let arguments = call.arguments as? [String: Any] else {
-      result(FlutterError(code: DdFlutterErrorCodes.invalidOperation,
-                          message: "No arguments in call to \(call.method)",
-                          details: nil))
+      result(
+        FlutterError.invalidOperation(message: "No arguments in call to \(call.method)")
+      )
       return
     }
 

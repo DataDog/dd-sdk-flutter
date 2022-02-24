@@ -25,29 +25,38 @@ class DatadogLogsPluginTests: XCTestCase {
     plugin.initialize(withLogger: MockLogger())
   }
 
+  let contracts = [
+    Contract(methodName: "debug", requiredParameters: [
+      "message": .string
+    ]),
+    Contract(methodName: "info", requiredParameters: [
+      "message": .string
+    ]),
+    Contract(methodName: "warn", requiredParameters: [
+      "message": .string
+    ]),
+    Contract(methodName: "error", requiredParameters: [
+      "message": .string
+    ]),
+    Contract(methodName: "addAttribute", requiredParameters: [
+      "key": .string, "value": .map
+    ]),
+    Contract(methodName: "addTag", requiredParameters: [
+      "tag": .string
+    ]),
+    Contract(methodName: "removeAttribute", requiredParameters: [
+      "key": .string
+    ]),
+    Contract(methodName: "removeTag", requiredParameters: [
+      "tag": .string
+    ]),
+    Contract(methodName: "removeTagWithKey", requiredParameters: [
+      "key": .string
+    ])
+  ]
+
   func testLogCalls_WithMissingParameter_FailsWithContractViolation() {
-    let logMethods = ["debug", "info", "warn", "error"]
-
-    for method in logMethods {
-      let call = FlutterMethodCall(methodName: method, arguments: [:])
-
-      var resultStatus = ResultStatus.notCalled
-
-      plugin.handle(call) { result in
-        resultStatus = .called(value: result)
-      }
-
-      switch resultStatus {
-      case .called(let value):
-        let error = value as? FlutterError
-        XCTAssertNotNil(error)
-        XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
-        XCTAssertNotNil(error?.message)
-
-      case .notCalled:
-        XCTFail("result was not called")
-      }
-    }
+    testContracts(contracts: contracts, plugin: plugin)
   }
 
   func testLogCalls_WithBadParameter_FailsWithContractViolation() {
@@ -68,56 +77,12 @@ class DatadogLogsPluginTests: XCTestCase {
       case .called(let value):
         let error = value as? FlutterError
         XCTAssertNotNil(error)
-        XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
+        XCTAssertEqual(error?.code, FlutterError.DdErrorCodes.contractViolation)
         XCTAssertNotNil(error?.message)
 
       case .notCalled:
         XCTFail("result was not called")
       }
-    }
-  }
-
-  func testLogAddAttribute_WithMissingKey_FailsWithContractViolation() {
-    let call = FlutterMethodCall(methodName: "addAttribute", arguments: [
-      "key": "fake key"
-    ])
-
-    var resultStatus = ResultStatus.notCalled
-    plugin.handle(call) { result in
-      resultStatus = .called(value: result)
-    }
-
-    switch resultStatus {
-    case .called(let value):
-      let error = value as? FlutterError
-      XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
-      XCTAssertNotNil(error?.message)
-
-    case .notCalled:
-      XCTFail("result was not called")
-    }
-  }
-
-  func testLogAddAttribute_WithMissingValue_FailsWithContractViolation() {
-    let call = FlutterMethodCall(methodName: "addAttribute", arguments: [
-      "key": "fake key"
-    ])
-
-    var resultStatus = ResultStatus.notCalled
-    plugin.handle(call) { result in
-      resultStatus = .called(value: result)
-    }
-
-    switch resultStatus {
-    case .called(let value):
-      let error = value as? FlutterError
-      XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
-      XCTAssertNotNil(error?.message)
-
-    case .notCalled:
-      XCTFail("result was not called")
     }
   }
 
@@ -135,27 +100,7 @@ class DatadogLogsPluginTests: XCTestCase {
     case .called(let value):
       let error = value as? FlutterError
       XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
-      XCTAssertNotNil(error?.message)
-
-    case .notCalled:
-      XCTFail("result was not called")
-    }
-  }
-
-  func testLogRemoveAttribute_WithMissingKey_FailsWithContractViolation() {
-    let call = FlutterMethodCall(methodName: "removeAttribute", arguments: [:])
-
-    var resultStatus = ResultStatus.notCalled
-    plugin.handle(call) { result in
-      resultStatus = .called(value: result)
-    }
-
-    switch resultStatus {
-    case .called(let value):
-      let error = value as? FlutterError
-      XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
+      XCTAssertEqual(error?.code, FlutterError.DdErrorCodes.contractViolation)
       XCTAssertNotNil(error?.message)
 
     case .notCalled:
@@ -177,27 +122,7 @@ class DatadogLogsPluginTests: XCTestCase {
     case .called(let value):
       let error = value as? FlutterError
       XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
-      XCTAssertNotNil(error?.message)
-
-    case .notCalled:
-      XCTFail("result was not called")
-    }
-  }
-
-  func testLogAddTag_WithMissingKey_FailsWithContractViolation() {
-    let call = FlutterMethodCall(methodName: "addTag", arguments: [:])
-
-    var resultStatus = ResultStatus.notCalled
-    plugin.handle(call) { result in
-      resultStatus = .called(value: result)
-    }
-
-    switch resultStatus {
-    case .called(let value):
-      let error = value as? FlutterError
-      XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
+      XCTAssertEqual(error?.code, FlutterError.DdErrorCodes.contractViolation)
       XCTAssertNotNil(error?.message)
 
     case .notCalled:
@@ -219,27 +144,7 @@ class DatadogLogsPluginTests: XCTestCase {
     case .called(let value):
       let error = value as? FlutterError
       XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
-      XCTAssertNotNil(error?.message)
-
-    case .notCalled:
-      XCTFail("result was not called")
-    }
-  }
-
-  func testLogRemoveTag_WithMissingTag_FailsWithContractViolation() {
-    let call = FlutterMethodCall(methodName: "removeTag", arguments: [:])
-
-    var resultStatus = ResultStatus.notCalled
-    plugin.handle(call) { result in
-      resultStatus = .called(value: result)
-    }
-
-    switch resultStatus {
-    case .called(let value):
-      let error = value as? FlutterError
-      XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
+      XCTAssertEqual(error?.code, FlutterError.DdErrorCodes.contractViolation)
       XCTAssertNotNil(error?.message)
 
     case .notCalled:
@@ -261,27 +166,7 @@ class DatadogLogsPluginTests: XCTestCase {
     case .called(let value):
       let error = value as? FlutterError
       XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
-      XCTAssertNotNil(error?.message)
-
-    case .notCalled:
-      XCTFail("result was not called")
-    }
-  }
-
-  func testLogRemoveTagWithKey_WithMissingKey_FailsWithContractViolation() {
-    let call = FlutterMethodCall(methodName: "removeTagWithKey", arguments: [:])
-
-    var resultStatus = ResultStatus.notCalled
-    plugin.handle(call) { result in
-      resultStatus = .called(value: result)
-    }
-
-    switch resultStatus {
-    case .called(let value):
-      let error = value as? FlutterError
-      XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
+      XCTAssertEqual(error?.code, FlutterError.DdErrorCodes.contractViolation)
       XCTAssertNotNil(error?.message)
 
     case .notCalled:
@@ -303,7 +188,7 @@ class DatadogLogsPluginTests: XCTestCase {
     case .called(let value):
       let error = value as? FlutterError
       XCTAssertNotNil(error)
-      XCTAssertEqual(error?.code, DdFlutterErrorCodes.contractViolation)
+      XCTAssertEqual(error?.code, FlutterError.DdErrorCodes.contractViolation)
       XCTAssertNotNil(error?.message)
 
     case .notCalled:

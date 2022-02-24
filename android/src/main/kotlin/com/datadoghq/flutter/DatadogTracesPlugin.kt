@@ -97,10 +97,10 @@ class DatadogTracesPlugin(
                 if (operationName != null) {
                     val spanBuilder = tracer.buildSpan(operationName)
                         .ignoreActiveSpan()
-					call.argument<String>(PARAM_RESOURCE_NAME)?.let {
-                  	  val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
-                    	ddBuilder.withResourceName(it)
-	                }
+                    call.argument<String>(PARAM_RESOURCE_NAME)?.let {
+                        val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
+                        ddBuilder.withResourceName(it)
+                    }
                     call.argument<Number>(PARAM_START_TIME)?.let {
                         spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
                     }
@@ -113,21 +113,17 @@ class DatadogTracesPlugin(
 
                     result.success(storeSpan(span))
                 } else {
-                    result.error(
-                        DatadogSdkPlugin.CONTRACT_VIOLATION,
-                        "Missing required parameter in call to startRootSpan",
-                        null
-                    )
+                    result.missingParameter(call.method)
                 }
             }
             "startSpan" -> {
                 val operationName = call.argument<String>(PARAM_OPERATION_NAME)
                 if (operationName != null) {
                     val spanBuilder = tracer.buildSpan(operationName)
-					call.argument<String>(PARAM_RESOURCE_NAME)?.let {
-                  	  val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
-                    	ddBuilder.withResourceName(it)
-	                }
+                    call.argument<String>(PARAM_RESOURCE_NAME)?.let {
+                        val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
+                        ddBuilder.withResourceName(it)
+                    }
                     call.argument<Number>(PARAM_START_TIME)?.let {
                         spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
                     }
@@ -143,11 +139,7 @@ class DatadogTracesPlugin(
                     }
                     result.success(storeSpan(span))
                 } else {
-                    result.error(
-                        DatadogSdkPlugin.CONTRACT_VIOLATION,
-                        "Missing required parameter in call to startRootSpan",
-                        null
-                    )
+                    result.missingParameter(call.method)
                 }
             }
             "getTracePropagationHeaders" -> {
@@ -196,29 +188,22 @@ class DatadogTracesPlugin(
                     callingSpanInfo.span.log(fields)
                     result.success(null)
                 } else {
-                    result.error(
-                        DatadogSdkPlugin.CONTRACT_VIOLATION,
-                        "Missing required parameter in call to span.setError",
-                        null
-                    )
+                    result.missingParameter(call.method)
                 }
             }
             "span.setTag" -> {
                 val key = call.argument<String>(PARAM_KEY)
-                if (key != null) {
+                val value = call.argument<Any>(PARAM_VALUE)
+                if (key != null && value != null) {
                     when (val value = call.argument<Any>(PARAM_VALUE)) {
                         is Boolean -> callingSpanInfo.span.setTag(key, value)
                         is Number -> callingSpanInfo.span.setTag(key, value)
                         is String -> callingSpanInfo.span.setTag(key, value)
-                        else -> callingSpanInfo.span.setTag(key, value?.toString())
+                        else -> callingSpanInfo.span.setTag(key, value.toString())
                     }
                     result.success(null)
                 } else {
-                    result.error(
-                        DatadogSdkPlugin.CONTRACT_VIOLATION,
-                        "Missing required parameter in call to span.setTag",
-                        null
-                    )
+                    result.missingParameter(call.method)
                 }
             }
             "span.setBaggageItem" -> {
@@ -228,11 +213,7 @@ class DatadogTracesPlugin(
                     callingSpanInfo.span.setBaggageItem(key, value)
                     result.success(null)
                 } else {
-                    result.error(
-                        DatadogSdkPlugin.CONTRACT_VIOLATION,
-                        "Missing required parameter in call to span.setBaggageItem",
-                        null
-                    )
+                    result.missingParameter(call.method)
                 }
             }
             "span.log" -> {
@@ -241,11 +222,7 @@ class DatadogTracesPlugin(
                     callingSpanInfo.span.log(fields)
                     result.success(null)
                 } else {
-                    result.error(
-                        DatadogSdkPlugin.CONTRACT_VIOLATION,
-                        "Missing required parameter in call to span.log",
-                        null
-                    )
+                    result.missingParameter(call.method)
                 }
             }
             "span.finish" -> {

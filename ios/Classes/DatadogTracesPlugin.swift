@@ -46,15 +46,15 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let arguments = call.arguments as? [String: Any] else {
-      result(FlutterError(code: DdFlutterErrorCodes.invalidOperation,
-                          message: "No arguments in call to \(call.method).",
-                          details: nil))
+      result(
+        FlutterError.invalidOperation(message: "No arguments in call to \(call.method).")
+      )
       return
     }
     guard let tracer = tracer else {
-      result(FlutterError(code: DdFlutterErrorCodes.invalidOperation,
-                          message: "Tracer has not been initialized when calling \(call.method).",
-                          details: nil))
+      result(
+        FlutterError.invalidOperation(message: "Tracer has not been initialized when calling \(call.method).")
+      )
       return
     }
 
@@ -91,9 +91,9 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
     }
 
     guard let operationName = arguments["operationName"] as? String else {
-      result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                          message: "Missing required parameter on call to startRootSpan",
-                          details: nil))
+      result(
+        FlutterError.missingParameter(methodName: isRootSpan ? "startRootSpan" : "startSpan")
+      )
       return
     }
 
@@ -127,7 +127,6 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
       span.setTag(key: DDTags.resource, value: resourceName)
     }
 
-
     let spanHandle = storeSpan(span)
     result(spanHandle)
   }
@@ -154,9 +153,9 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
         }
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                            message: "Missing parameter when calling span.setError",
-                            details: nil))
+        result(
+          FlutterError.missingParameter(methodName: method)
+        )
       }
 
     case "span.setTag":
@@ -166,9 +165,9 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
         calledSpan.span.setTag(key: key, value: encoded)
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                            message: "Missing parameter when calling span.setTag",
-                            details: nil))
+        result(
+          FlutterError.missingParameter(methodName: method)
+        )
       }
 
     case "span.setBaggageItem":
@@ -177,9 +176,9 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
         calledSpan.span.setBaggageItem(key: key, value: value)
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                            message: "Missing parameter when calling span.setBaggageItem",
-                            details: nil))
+        result(
+          FlutterError.missingParameter(methodName: method)
+        )
       }
 
     case "span.log":
@@ -188,9 +187,9 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
         calledSpan.span.log(fields: encoded)
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                            message: "Missing parameter when calling span.log",
-                            details: nil))
+        result(
+          FlutterError.missingParameter(methodName: method)
+        )
       }
 
     case "span.finish":

@@ -6,7 +6,6 @@ import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddtraces_platform_interface.dart';
 
-
 /// A collection of standard `Span` tag keys defined by Open Tracing.
 /// Use them as the `key` in [DdSpan.setTag]. Use the expected type for the `value`.
 ///
@@ -117,9 +116,9 @@ class DdSpan {
   }
 
   /// Set a tag with the given [key] to the given [value]. Although the type for
-  /// [value] is dynamic, the object passed in must be one of the types
+  /// [value] is [Object], the object passed in must be one of the types
   /// supported by the [StandardMessageCodec]
-  Future<void> setTag(String key, dynamic value) {
+  Future<void> setTag(String key, Object value) {
     if (_handle <= 0) {
       _logger?.warn(closedSpanWarning('setTag'));
       return Future.value();

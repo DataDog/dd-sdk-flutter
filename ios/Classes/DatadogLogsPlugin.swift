@@ -35,15 +35,15 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
   // swiftlint:disable:next cyclomatic_complexity function_body_length
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let arguments = call.arguments as? [String: Any] else {
-      result(FlutterError(code: DdFlutterErrorCodes.invalidOperation,
-                          message: "No arguments in call to \(call.method).",
-                          details: nil))
+      result(
+        FlutterError.invalidOperation(message: "No arguments in call to \(call.method).")
+      )
       return
     }
     guard let logger = logger else {
-      result(FlutterError(code: DdFlutterErrorCodes.invalidOperation,
-                         message: "Logger has not been initialized when calling \(call.method).",
-                         details: nil))
+      result(
+        FlutterError.invalidOperation(message: "Logger has not been initialized when calling \(call.method).")
+      )
       return
     }
 
@@ -59,9 +59,9 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         logger.debug(message, error: nil, attributes: attributes)
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                            message: "Missing message parameter",
-                            details: nil))
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
 
     case "info":
@@ -69,9 +69,9 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         logger.info(message, error: nil, attributes: attributes)
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                            message: "Missing message parameter",
-                            details: nil))
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
 
     case "warn":
@@ -79,9 +79,9 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         logger.warn(message, error: nil, attributes: attributes)
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                            message: "Missing message parameter",
-                            details: nil))
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
 
     case "error":
@@ -89,9 +89,9 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         logger.error(message, error: nil, attributes: attributes)
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                           message: "Missing message parameter",
-                           details: nil))
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
 
     case "addAttribute":
@@ -100,9 +100,9 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         logger.addAttribute(forKey: key, value: DdFlutterEncodable(value))
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                            message: "Missing or bad parameter in addAttribute",
-                            details: nil))
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
 
     case "removeAttribute":
@@ -110,9 +110,9 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         logger.removeAttribute(forKey: key)
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                            message: "Missing or bad parameter in removeAttribute",
-                            details: nil))
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
 
     case "addTag":
@@ -124,9 +124,9 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         }
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                            message: "Missing or bad parameter in addTag",
-                            details: nil))
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
 
     case "removeTag":
@@ -134,9 +134,9 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         logger.remove(tag: tag)
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                            message: "Missing or bad parameter in removeTag",
-                            details: nil))
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
 
     case "removeTagWithKey":
@@ -144,9 +144,9 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         logger.removeTag(withKey: key)
         result(nil)
       } else {
-        result(FlutterError(code: DdFlutterErrorCodes.contractViolation,
-                            message: "Missing or bad parameter in removeTagWithKey",
-                            details: nil))
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
 
     default:

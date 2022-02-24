@@ -19,33 +19,17 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
+import kotlin.reflect.typeOf
 
 @ExtendWith(ForgeExtension::class)
+@OptIn(kotlin.ExperimentalStdlibApi::class)
 class DatadogLogsPluginTest {
     private lateinit var plugin: DatadogLogsPlugin
 
     @BeforeEach
     fun beforeEach() {
         plugin = DatadogLogsPlugin()
-    }
-
-    @Test
-    fun `M report a contract violation W onMethodCall(log) is missing parameters`(
-        forge: Forge,
-        @StringForgery message: String
-    ) {
-        // GIVEN
-        val method = forge.anElementFrom( listOf("debug", "info", "warn", "error") )
-        val call = MethodCall(method, mapOf(
-            "message" to message
-        ))
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        // THEN
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
+        plugin.setupForTests()
     }
 
     @Test
@@ -68,85 +52,40 @@ class DatadogLogsPluginTest {
         verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
     }
 
+    private val contracts = listOf(
+        Contract("debug", mapOf(
+            "message" to typeOf<String>(), "context" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("info", mapOf(
+            "message" to typeOf<String>(), "context" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("warn", mapOf(
+            "message" to typeOf<String>(), "context" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("error", mapOf(
+            "message" to typeOf<String>(), "context" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("addAttribute", mapOf(
+            "key" to typeOf<String>(), "value" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("addTag", mapOf(
+            "tag" to typeOf<String>()
+        )),
+        Contract("removeAttribute", mapOf(
+            "key" to typeOf<String>()
+        )),
+        Contract("removeTag", mapOf(
+            "tag" to typeOf<String>()
+        )),
+        Contract("removeTagWithKey", mapOf(
+            "key" to typeOf<String>()
+        )),
+    )
+
     @Test
-    fun `M report a contract violation W addAttribute is missing parameters`(
-        @StringForgery key: String
+    fun `M report contract violation W missing parameters in contract`(
+        forge: Forge
     ) {
-        // GIVEN
-        val call = MethodCall("addAttribute", mapOf(
-            "key" to key
-        ))
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
-    }
-
-    @Test
-    fun `M report a contract violation W addAttribute is wrong type`(
-        @IntForgery key: Int,
-        @StringForgery value: String
-    ) {
-        // GIVEN
-        val call = MethodCall("addAttribute", mapOf(
-            "key" to key,
-            "value" to value
-        ))
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
-    }
-
-    @Test
-    fun `M report a contract violation W addTag is missing parameters`() {
-        // GIVEN
-        val call = MethodCall("addTag", mapOf<String, Any>())
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
-    }
-
-    @Test
-    fun `M report a contract violation W removeAttribute is missing parameters`() {
-        // GIVEN
-        val call = MethodCall("removeAttribute", mapOf<String, Any>())
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
-    }
-
-    @Test
-    fun `M report a contract violation W removeTag is missing parameters`() {
-        // GIVEN
-        val call = MethodCall("removeTag", mapOf<String, Any>())
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
-    }
-
-    @Test
-    fun `M report a contract violation W removeTagWithKey is missing parameters`() {
-        // GIVEN
-        val call = MethodCall("removeTag", mapOf<String, Any>())
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
+        testContracts(contracts, forge, plugin)
     }
 }

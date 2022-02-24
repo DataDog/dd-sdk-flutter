@@ -5,6 +5,7 @@
  */
 package com.datadoghq.flutter
 
+import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.IntForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
@@ -24,10 +25,12 @@ import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
+import kotlin.reflect.typeOf
 
 @Extensions(
     ExtendWith(ForgeExtension::class),
     ExtendWith(MockitoExtension::class))
+@OptIn(kotlin.ExperimentalStdlibApi::class)
 class DatadogTracesPluginTest {
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private lateinit var mockTracer: Tracer
@@ -38,17 +41,20 @@ class DatadogTracesPluginTest {
         plugin = DatadogTracesPlugin(mockTracer)
     }
 
+    private val contracts = listOf(
+        Contract("startRootSpan", mapOf(
+            "operationName" to typeOf<String>()
+        )),
+        Contract("startSpan", mapOf(
+            "operationName" to typeOf<String>()
+        )),
+    )
+
     @Test
-    fun `M report a contract violation W startRootSpan is missing parameters`() {
-        // GIVEN
-        val call = MethodCall("startRootSpan", mapOf<String, Any>())
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        // THEN
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
+    fun `M report contract violation W missing parameters in contract`(
+        forge: Forge
+    ) {
+        testContracts(contracts, forge, plugin)
     }
 
     @Test
@@ -88,19 +94,6 @@ class DatadogTracesPluginTest {
     }
 
     @Test
-    fun `M report a contract violation W startSpan is missing parameters`() {
-        // GIVEN
-        val call = MethodCall("startSpan", mapOf<String, Any>())
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        // THEN
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
-    }
-
-    @Test
     fun `M report a contract violation W startSpan has bad operation name`(
         @IntForgery operationName: Int
     ) {
@@ -129,83 +122,29 @@ class DatadogTracesPluginTest {
         return captor.firstValue
     }
 
-    @Test
-    fun `M report a contract violation W span setError has missing kind`(
-        @StringForgery operationName: String,
-        @StringForgery message: String
-    ) {
-        // GIVEN
-        val spanId = createSpan(operationName)
-        val call = MethodCall("span.setError", mapOf<String, Any>(
-            "spanHandle" to spanId,
-            "message" to message
+    private val spanContracts = listOf(
+        Contract("span.setError", mapOf(
+            "kind" to typeOf<String>(), "message" to typeOf<String>()
+        )),
+        Contract("span.setTag", mapOf(
+            "key" to typeOf<String>(), "value" to typeOf<String>()
+        )),
+        Contract("span.setBaggageItem", mapOf(
+            "key" to typeOf<String>(), "value" to typeOf<String>()
+        )),
+        Contract("span.log", mapOf(
+            "fields" to typeOf<Map<String, Any?>>()
         ))
-
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        // THEN
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
-    }
+    )
 
     @Test
-    fun `M report a contract violation W span setTag has missing key`(
-        @StringForgery operationName: String
+    fun `M report a contract violation W missing parameters in span contract`(
+        forge: Forge,
+        @StringForgery operationName: String,
     ) {
-        // GIVEN
         val spanId = createSpan(operationName)
-        val call = MethodCall("span.setTag", mapOf<String, Any>(
+        testContracts(spanContracts, forge, plugin, mapOf(
             "spanHandle" to spanId
         ))
-
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        // THEN
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
-    }
-
-    @Test
-    fun `M report a contract violation W span setBaggageItem has missing key`(
-        @StringForgery operationName: String,
-        @StringForgery value: String
-    ) {
-        // GIVEN
-        val spanId = createSpan(operationName)
-        val call = MethodCall("span.setBaggageItem", mapOf<String, Any>(
-            "spanHandle" to spanId,
-            "value" to value
-        ))
-
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        // THEN
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
-    }
-
-    @Test
-    fun `M report a contract violation W span log has missing fields`(
-        @StringForgery operationName: String,
-    ) {
-        // GIVEN
-        val spanId = createSpan(operationName)
-        val call = MethodCall("span.log", mapOf<String, Any>(
-            "spanHandle" to spanId
-        ))
-
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(call, mockResult)
-
-        // THEN
-        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
     }
 }
