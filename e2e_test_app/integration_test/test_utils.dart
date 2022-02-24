@@ -3,6 +3,7 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import 'dart:io';
+import 'dart:math';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -35,12 +36,31 @@ Future<void> initializeDatadog() async {
 
 Future<void> measure(String resourceName, AsyncVoidCallback callback) async {
   // TODO: Find a way to do more accurate measurement instead of relying on Spans to do the measure
-  var span =
-      await DatadogSdk.instance.traces?.startRootSpan('perf_measure', tags: {
-    // TODO - Android doesn't put the resource tag onto the span
-    'resource_name': resourceName,
-    'operating_system': Platform.operatingSystem
-  });
+  var span = await DatadogSdk.instance.traces?.startRootSpan(
+    'perf_measure',
+    resourceName: resourceName,
+    tags: {'operating_system': Platform.operatingSystem},
+  );
   await callback();
   await span?.finish();
+}
+
+final _random = Random();
+const _alphas = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const _numerics = '0123456789';
+const _alphaNumerics = _alphas + _numerics;
+
+String randomString({int length = 10}) {
+  final result = String.fromCharCodes(Iterable.generate(
+    length,
+    (_) => _alphaNumerics.codeUnitAt(_random.nextInt(_alphaNumerics.length)),
+  ));
+
+  return result;
+}
+
+extension RandomExtension<T> on List<T> {
+  T randomElement() {
+    return this[_random.nextInt(length)];
+  }
 }
