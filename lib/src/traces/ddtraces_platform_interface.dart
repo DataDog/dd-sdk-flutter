@@ -22,9 +22,9 @@ abstract class DdTracesPlatform extends PlatformInterface {
   }
 
   Future<DdSpan?> startSpan(String operationName, DdSpan? parentSpan,
+      String? resourceName, Map<String, dynamic>? tags, DateTime? startTime);
+  Future<DdSpan?> startRootSpan(String operationName, String? resourceName,
       Map<String, dynamic>? tags, DateTime? startTime);
-  Future<DdSpan?> startRootSpan(
-      String operationName, Map<String, dynamic>? tags, DateTime? startTime);
   Future<Map<String, String>> getTracePropagationHeaders(DdSpan span);
 
   // Span methods

@@ -78,11 +78,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 result.success(null)
             }
             "flushAndDeinitialize" -> {
-                if (BuildConfig.DEBUG) {
-                    invokePrivateShutdown(result)
-                } else {
-                    result.notImplemented()
-                }
+                invokePrivateShutdown(result)
             }
             else -> {
                 result.notImplemented()

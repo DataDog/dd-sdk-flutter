@@ -23,7 +23,6 @@ EOT
   timeout_h           = 0
   include_tags        = true
   require_full_window = false
-  new_host_delay      = 300
   monitor_thresholds {
     critical = ${{monitor_threshold:-0.024}}
   }

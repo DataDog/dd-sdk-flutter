@@ -30,7 +30,7 @@ export 'src/rum/navigation_observer.dart'
         DatadogNavigationObserverProvider,
         RumViewInfo,
         DatadogRouteAwareMixin;
-export 'src/traces/ddtraces.dart' show DdSpan, DdTags, OTTags, OTLogFields;
+export 'src/traces/ddtraces.dart' show DdSpan, OTTags, OTLogFields;
 
 typedef AppRunner = void Function();
 

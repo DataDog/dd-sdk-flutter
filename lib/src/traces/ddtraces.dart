@@ -2,21 +2,9 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
-import 'ddtraces_platform_interface.dart';
-
 import '../internal_helpers.dart';
 import '../internal_logger.dart';
-
-/// Datadog - specific span `tags` to be used with [DdTraces.startSpan]
-/// and [DdSpan.setTag].
-class DdTags {
-  /// A Datadog-specific span tag, which sets the value appearing in the "RESOURCE" column
-  /// in traces explorer on [app.datadoghq.com](https://app.datadoghq.com/)
-  /// Can be used to customize the resource names grouped under the same operation name.
-  ///
-  /// Expects `String` value set for a tag.
-  static const resource = 'resource.name';
-}
+import 'ddtraces_platform_interface.dart';
 
 /// A collection of standard `Span` tag keys defined by Open Tracing.
 /// Use them as the `key` in [DdSpan.setTag]. Use the expected type for the `value`.
@@ -189,13 +177,16 @@ class DdTraces {
 
   DdTraces(this._logger);
 
-  Future<DdSpan> startSpan(String operationName,
-      {DdSpan? parentSpan,
-      Map<String, dynamic>? tags,
-      DateTime? startTime}) async {
+  Future<DdSpan> startSpan(
+    String operationName, {
+    DdSpan? parentSpan,
+    String? resourceName,
+    Map<String, dynamic>? tags,
+    DateTime? startTime,
+  }) async {
     final span = await wrap('traces.startSpan', _logger, () async {
-      var span =
-          await _platform.startSpan(operationName, parentSpan, tags, startTime);
+      var span = await _platform.startSpan(
+          operationName, parentSpan, resourceName, tags, startTime);
       if (span != null) {
         span._logger = _logger;
       } else {
@@ -210,10 +201,15 @@ class DdTraces {
     return span ?? DdSpan(_platform, 0);
   }
 
-  Future<DdSpan> startRootSpan(String operationName,
-      {Map<String, dynamic>? tags, DateTime? startTime}) async {
+  Future<DdSpan> startRootSpan(
+    String operationName, {
+    String? resourceName,
+    Map<String, dynamic>? tags,
+    DateTime? startTime,
+  }) async {
     final span = await wrap('traces.startRootSpan', _logger, () async {
-      var span = await _platform.startRootSpan(operationName, tags, startTime);
+      var span = await _platform.startRootSpan(
+          operationName, resourceName, tags, startTime);
       if (span != null) {
         span._logger = _logger;
       } else {

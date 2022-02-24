@@ -88,12 +88,14 @@ class MonitorGroup {
 
 class MonitorConfiguration {
   final MonitorType type;
+  final bool shouldIgnore;
   final List<MonitorVariable> variables;
   final List<String> variants;
   final CodeReference codeReference;
 
   MonitorConfiguration({
     required this.type,
+    required this.shouldIgnore,
     required this.variants,
     required this.variables,
     required this.codeReference,
@@ -107,14 +109,15 @@ class MonitorConfiguration {
     issueReporter.pushReference(codeReference);
 
     final monitorRegionStartRegex = RegExp(
-        r'^\/\/\/\s+```([a-zA-Z0-9]+)(\((?<variants>(?:[a-zA-Z0-9_]+\s*(?:,\s)?)+)\))?\s*$');
+        r'^\/\/\/\s+```([a-zA-Z0-9]+)(\((?<variants>(?:[a-zA-Z0-9_]+\s*(?:,\s)?)+)\))?\s*(?<ignore>IGNORE)?$');
     final monitorRegionEndRegex = RegExp(r'^\/\/\/[\s ]+```$');
 
     final monitors = <MonitorConfiguration>[];
     var regionVariables = <MonitorVariable>[];
 
     var inMonitor = false;
-    var ignoringMonitorBlock = false;
+    var userIgnoreMonitorBlock = false;
+    var ignoringBadMonitorBlock = false;
     MonitorType? monitorType;
     List<String> monitorVariants = [];
 
@@ -132,8 +135,13 @@ class MonitorConfiguration {
           if (variants != null) {
             monitorVariants = variants.split(',').map((e) => e.trim()).toList();
           }
+
+          final ignore = match.first.namedGroup('ignore');
+          if (ignore != null) {
+            userIgnoreMonitorBlock = true;
+          }
         } else {
-          ignoringMonitorBlock = true;
+          ignoringBadMonitorBlock = true;
           issueReporter.report(IssueSeverity.warning,
               'Invalid monitor type $typeString, ignoring monitor block');
         }
@@ -142,15 +150,17 @@ class MonitorConfiguration {
           inMonitor = false;
           final monitor = MonitorConfiguration(
             type: monitorType!,
+            shouldIgnore: userIgnoreMonitorBlock,
             variables: regionVariables,
             variants: monitorVariants,
             codeReference: codeReference,
           );
+          userIgnoreMonitorBlock = false;
           regionVariables = [];
           monitorVariants = [];
           monitors.add(monitor);
-        } else if (ignoringMonitorBlock) {
-          ignoringMonitorBlock = false;
+        } else if (ignoringBadMonitorBlock) {
+          ignoringBadMonitorBlock = false;
         } else {
           issueReporter.report(IssueSeverity.error,
               'Monitor end without any monitor start (did you forget a monitor type?)');
@@ -164,7 +174,7 @@ class MonitorConfiguration {
       }
     }
 
-    if (inMonitor && !ignoringMonitorBlock) {
+    if (inMonitor && !ignoringBadMonitorBlock) {
       issueReporter.report(
           IssueSeverity.error, 'Missing monitor block close (```).');
     }

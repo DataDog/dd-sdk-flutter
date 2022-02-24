@@ -23,6 +23,7 @@ void main() {
         MonitorVariable(name: 'argument_value', value: 'fake value');
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
+      shouldIgnore: false,
       variables: [variable],
       variants: [],
       codeReference: mockCodeReference,
@@ -39,6 +40,7 @@ void main() {
 
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
+      shouldIgnore: false,
       variables: [],
       variants: [],
       codeReference: mockCodeReference,
@@ -57,6 +59,7 @@ void main() {
         MonitorVariable(name: 'argument_value', value: 'provided user value');
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
+      shouldIgnore: false,
       variables: [variable],
       variants: [],
       codeReference: mockCodeReference,
@@ -79,6 +82,7 @@ void main() {
         MonitorVariable(name: 'argument1_value', value: 'my argument variable');
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
+      shouldIgnore: false,
       variables: [var1, var2],
       variants: [],
       codeReference: mockCodeReference,
@@ -106,6 +110,7 @@ void main() {
         name: 'argument1_value', value: 'my argument \${{variant}}');
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
+      shouldIgnore: false,
       variables: [var1, var2],
       variants: ['ios', 'web'],
       codeReference: mockCodeReference,
@@ -129,6 +134,7 @@ resource "datadog_monitor" user monitor id web {
 
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
+      shouldIgnore: false,
       variables: [],
       variants: [],
       codeReference: mockCodeReference,
@@ -146,6 +152,7 @@ resource "datadog_monitor" user monitor id web {
 
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
+      shouldIgnore: false,
       variables: [
         MonitorVariable(
             name: 'argument_value', value: 'test value with \${{variant}}')
@@ -170,6 +177,7 @@ resource "datadog_monitor" user monitor id web {
         name: 'argument2_value', value: 'extra argument variable');
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
+      shouldIgnore: false,
       variables: [var1, var2],
       variants: [],
       codeReference: mockCodeReference,
@@ -193,6 +201,7 @@ resource "datadog_monitor" user monitor id web {
         name: 'argument1_value', value: '\${{global1}}, \${{global2}}');
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
+      shouldIgnore: false,
       variables: [var1, var2],
       variants: [],
       codeReference: mockCodeReference,
@@ -226,6 +235,7 @@ resource "datadog_monitor" user monitor id web {
         name: 'argument1_value', value: '\${{global1}}, \${{global2}}');
     final configuration = MonitorConfiguration(
       type: MonitorType.logs,
+      shouldIgnore: false,
       variables: [var1, var2],
       variants: [],
       codeReference: CodeReference(
@@ -242,6 +252,35 @@ resource "datadog_monitor" user monitor id web {
 
   Code for the code god.
 }''';
+
+    final result =
+        template.render(configuration, globalVariables, issueReporter).trim();
+    expect(result, expectedResult);
+  });
+
+  test('render ignores when MonitorConfiguration.shouldIgnore = true', () {
+    final template =
+        MonitorTemplate(r'''resource "datadog_monitor" ${{monitor_id}} {
+  argument1 = ${{argument1_value}} # comment
+}''');
+
+    final var1 =
+        MonitorVariable(name: 'monitor_id', value: 'test_\${{global1}}');
+    final var2 = MonitorVariable(
+        name: 'argument1_value', value: '\${{global1}}, \${{global2}}');
+    final configuration = MonitorConfiguration(
+        type: MonitorType.logs,
+        shouldIgnore: true,
+        variables: [var1, var2],
+        variants: [],
+        codeReference: mockCodeReference);
+
+    final globalVariables = [
+      MonitorVariable(name: 'global1', value: 'global_value_1'),
+      MonitorVariable(name: 'global2', value: 'second global value'),
+    ];
+
+    final expectedResult = '';
 
     final result =
         template.render(configuration, globalVariables, issueReporter).trim();

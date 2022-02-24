@@ -47,13 +47,14 @@ void main() {
 
   test('start root span calls to platform', () async {
     var span = await ddTracesPlatform.startRootSpan(
-        'Root Operation', {'testTag': 'testValue'}, null);
+        'Root Operation', null, {'testTag': 'testValue'}, null);
 
     expect(span, isNotNull);
     expect(span!.handle, 1);
     expect(log, <Matcher>[
       isMethodCall('startRootSpan', arguments: {
         'operationName': 'Root Operation',
+        'resourceName': null,
         'tags': {'testTag': 'testValue'},
         'startTime': null
       })
@@ -62,7 +63,7 @@ void main() {
 
   test('start span calls to platform', () async {
     var span = await ddTracesPlatform.startSpan(
-        'Operation', null, {'testTag': 'testValue'}, null);
+        'Operation', null, null, {'testTag': 'testValue'}, null);
 
     expect(span, isNotNull);
     expect(span!.handle, 8);
@@ -70,6 +71,7 @@ void main() {
       isMethodCall('startSpan', arguments: {
         'operationName': 'Operation',
         'parentSpan': null,
+        'resourceName': null,
         'tags': {'testTag': 'testValue'},
         'startTime': null
       })
@@ -78,19 +80,21 @@ void main() {
 
   test('start span passes parent handle', () async {
     var rootSpan = await ddTracesPlatform.startRootSpan(
-        'Root operation', {'tag': 'value'}, null);
+        'Root operation', null, {'tag': 'value'}, null);
     var childSpan = await ddTracesPlatform.startSpan(
-        'Child operation', rootSpan, null, null);
+        'Child operation', rootSpan, null, null, null);
 
     expect(childSpan, isNotNull);
     expect(log, <Matcher>[
       isMethodCall('startRootSpan', arguments: {
         'operationName': 'Root operation',
+        'resourceName': null,
         'tags': {'tag': 'value'},
         'startTime': null,
       }),
       isMethodCall('startSpan', arguments: {
         'operationName': 'Child operation',
+        'resourceName': null,
         'parentSpan': 1,
         'tags': null,
         'startTime': null,
@@ -100,12 +104,13 @@ void main() {
 
   test('start span converts milliseconds since epoch', () async {
     var startTime = DateTime.now().toUtc();
-    await ddTracesPlatform.startSpan('Operation', null, null, startTime);
+    await ddTracesPlatform.startSpan('Operation', null, null, null, startTime);
 
     expect(log, [
       isMethodCall('startSpan', arguments: {
         'operationName': 'Operation',
         'parentSpan': null,
+        'resourceName': null,
         'tags': null,
         'startTime': startTime.millisecondsSinceEpoch,
       })
@@ -114,12 +119,29 @@ void main() {
 
   test('start span converts to utc date string', () async {
     var startTime = DateTime.now();
-    await ddTracesPlatform.startSpan('Operation', null, null, startTime);
+    await ddTracesPlatform.startSpan('Operation', null, null, null, startTime);
 
     expect(log, [
       isMethodCall('startSpan', arguments: {
         'operationName': 'Operation',
         'parentSpan': null,
+        'resourceName': null,
+        'tags': null,
+        'startTime': startTime.toUtc().millisecondsSinceEpoch,
+      })
+    ]);
+  });
+
+  test('start span passes resource name', () async {
+    var startTime = DateTime.now();
+    await ddTracesPlatform.startSpan(
+        'Operation', null, 'mock resource name', null, startTime);
+
+    expect(log, [
+      isMethodCall('startSpan', arguments: {
+        'operationName': 'Operation',
+        'parentSpan': null,
+        'resourceName': 'mock resource name',
         'tags': null,
         'startTime': startTime.toUtc().millisecondsSinceEpoch,
       })
@@ -127,7 +149,8 @@ void main() {
   });
 
   test('getTracePropagationHeaders calls platform', () async {
-    final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
+    final span =
+        await ddTracesPlatform.startRootSpan('Operation', null, null, null);
     final headers = await ddTracesPlatform.getTracePropagationHeaders(span!);
     expect(
         log[1],
@@ -138,7 +161,8 @@ void main() {
   });
 
   test('finish span calls platform', () async {
-    final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
+    final span =
+        await ddTracesPlatform.startRootSpan('Operation', null, null, null);
     var spanHandle = span!.handle;
     await span.finish();
 
@@ -147,14 +171,16 @@ void main() {
   });
 
   test('finish span invalidates handle', () async {
-    final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
+    final span =
+        await ddTracesPlatform.startRootSpan('Operation', null, null, null);
     await span!.finish();
 
     expect(span.handle, lessThanOrEqualTo(0));
   });
 
   test('setTag on span calls to platform', () async {
-    final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
+    final span =
+        await ddTracesPlatform.startRootSpan('Operation', null, null, null);
     await span!.setTag('my tag', 'tag value');
 
     expect(
@@ -167,7 +193,8 @@ void main() {
   });
 
   test('setBaggageItem calls to platform', () async {
-    final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
+    final span =
+        await ddTracesPlatform.startRootSpan('Operation', null, null, null);
     await span!.setBaggageItem('my key', 'my value');
 
     expect(
@@ -180,7 +207,8 @@ void main() {
   });
 
   test('setTag calls to platform', () async {
-    final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
+    final span =
+        await ddTracesPlatform.startRootSpan('Operation', null, null, null);
     await span!.setTag('my key', 'my value');
 
     expect(
@@ -193,7 +221,8 @@ void main() {
   });
 
   test('setError on span calls to platform', () async {
-    final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
+    final span =
+        await ddTracesPlatform.startRootSpan('Operation', null, null, null);
     StackTrace? caughtStackTrace;
     Exception? caughtException;
 
@@ -216,7 +245,8 @@ void main() {
   });
 
   test('setErrorInfo on span calls to platform', () async {
-    final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
+    final span =
+        await ddTracesPlatform.startRootSpan('Operation', null, null, null);
 
     await span!.setErrorInfo('Generic Error', 'This was my fault', null);
 
@@ -230,7 +260,8 @@ void main() {
   });
 
   test('setErrorInfo on span calls to platform', () async {
-    final span = await ddTracesPlatform.startRootSpan('Operation', null, null);
+    final span =
+        await ddTracesPlatform.startRootSpan('Operation', null, null, null);
 
     await span!.log({
       'message': 'my message',
