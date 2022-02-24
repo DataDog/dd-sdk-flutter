@@ -7,15 +7,18 @@ package com.datadoghq.flutter
 
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
+import com.datadog.android.rum.GlobalRum
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.opentracing.util.GlobalTracer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     companion object ErrorCodes {
@@ -131,9 +134,14 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             simpleInvokeOn("flushAndShutdownExecutors", Datadog)
             simpleInvokeOn("stop", Datadog)
 
-            // GlobalTracer::class.java.setStaticValue("isRegistered", false)
-            // val isRumRegistered: AtomicBoolean = GlobalRum::class.java.getStaticValue("isRegistered")
-            // isRumRegistered.set(false)
+            val trackerRegisteredField = GlobalTracer::class.java.getDeclaredField("isRegistered")
+            trackerRegisteredField.isAccessible = true
+            trackerRegisteredField.set(null, false)
+
+            val rumRegisteredField = GlobalRum::class.java.getDeclaredField("isRegistered")
+            rumRegisteredField.isAccessible = true
+            val isRegistered: AtomicBoolean = rumRegisteredField.get(null) as AtomicBoolean
+            isRegistered.set(false)
 
             logsPlugin?.teardown(binding)
             logsPlugin = null

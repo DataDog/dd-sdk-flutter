@@ -18,7 +18,7 @@ Future<void> initializeDatadog() async {
   var applicationId = dotenv.get('DD_APPLICATION_ID');
   var clientToken = dotenv.get('DD_CLIENT_TOKEN');
   var env = dotenv.get('DD_E2E_IS_ON_CI').toLowerCase() == 'true'
-      ? 'integration'
+      ? 'instrumentation'
       : 'debug';
 
   final configuration = DdSdkConfiguration(

@@ -27,16 +27,13 @@ void main() {
 
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  setUpAll(() async {
+  setUp(() async {
     // TODO: Delete all SDK data
     await initializeDatadog();
-  });
-
-  setUp(() async {
     app.main();
   });
 
-  tearDownAll(() async {
+  tearDown(() async {
     await DatadogSdk.instance.flushAndDeinitialize();
   });
 
