@@ -5,7 +5,6 @@
 import 'dart:io';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
-import 'package:datadog_sdk/src/internal_attributes.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 typedef AsyncVoidCallback = Future<void> Function();

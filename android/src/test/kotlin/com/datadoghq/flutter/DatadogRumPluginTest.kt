@@ -11,6 +11,7 @@ import com.datadog.android.rum.RumActionType
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumResourceKind
+import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.IntForgery
 import fr.xgouchet.elmyr.annotation.LongForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
@@ -21,13 +22,20 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.description
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
+import java.lang.reflect.Type
+import kotlin.reflect.KClass
+import kotlin.reflect.KType
+import kotlin.reflect.typeOf
 
 @ExtendWith(ForgeExtension::class)
+@OptIn(kotlin.ExperimentalStdlibApi::class)
 class DatadogRumPluginTest {
     private lateinit var plugin: DatadogRumPlugin
     private lateinit var mockRumMonitor: RumMonitor
@@ -160,6 +168,26 @@ class DatadogRumPluginTest {
         // THEN
         verify(mockRumMonitor).startView(viewKey, viewName, attributes)
         verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M report contract violation W bad parameter`(
+        @StringForgery key: String,
+        @IntForgery name: Int
+    ) {
+        // GIVEN
+        val call = MethodCall("startView", mapOf(
+            "key" to key,
+            "name" to name,
+            "attributes" to mapOf<String, Any?>()
+        ))
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(call, mockResult)
+
+        // THEN
+        verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
     }
 
     @Test
@@ -390,5 +418,57 @@ class DatadogRumPluginTest {
             attributeKey to attributeValue
         ))
         verify(mockResult).success(null)
+    }
+
+    val contracts = listOf(
+        Contract("startView", mapOf(
+            "key" to typeOf<String>(), "name" to typeOf<String>(), "attributes" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("stopView", mapOf(
+            "key" to typeOf<String>(), "attributes" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("addTiming", mapOf(
+            "name" to typeOf<String>(),
+        )),
+        Contract("startResourceLoading", mapOf(
+            "key" to typeOf<String>(), "url" to typeOf<String>(), "httpMethod" to typeOf<String>(),
+            "attributes" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("stopResourceLoading", mapOf(
+            "key" to typeOf<String>(), "kind" to typeOf<String>(),
+            "attributes" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("stopResourceLoadingWithError", mapOf(
+            "key" to typeOf<String>(), "message" to typeOf<String>(), "attributes" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("addError", mapOf(
+            "message" to typeOf<String>(), "source" to typeOf<String>(),
+            "attributes" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("addUserAction", mapOf(
+            "type" to typeOf<String>(), "name" to typeOf<String>(),
+            "attributes" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("startUserAction", mapOf(
+            "type" to typeOf<String>(), "name" to typeOf<String>(),
+            "attributes" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("stopUserAction", mapOf(
+            "type" to typeOf<String>(), "name" to typeOf<String>(),
+            "attributes" to typeOf<Map<String, Any?>>()
+        )),
+        Contract("addAttribute", mapOf(
+            "key" to typeOf<String>(), "value" to typeOf<String>()
+        )),
+        Contract("removeAttribute", mapOf(
+            "key" to typeOf<String>()
+        ))
+    )
+
+    @Test
+    fun `M report contract violation W missing parameters in contract`(
+        forge: Forge
+    ) {
+        testContracts(contracts, forge, plugin)
     }
 }

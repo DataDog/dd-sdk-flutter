@@ -19,6 +19,10 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
     super.init()
   }
 
+  func initialize(withLogger logger: Logger) {
+    self.logger = logger
+  }
+
   func initialize(configuration: DatadogFlutterConfiguration.LoggingConfiguration) {
     let builder = Logger.builder
       .sendNetworkInfo(configuration.sendNetworkInfo)
@@ -31,15 +35,15 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
   // swiftlint:disable:next cyclomatic_complexity function_body_length
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let arguments = call.arguments as? [String: Any] else {
-      result(FlutterError(code: "DatadogSDK:InvalidOperation",
-                          message: "No arguments in call to \(call.method).",
-                          details: nil))
+      result(
+        FlutterError.invalidOperation(message: "No arguments in call to \(call.method).")
+      )
       return
     }
     guard let logger = logger else {
-      result(FlutterError(code: "DatadogSDK:InvalidOperation",
-                         message: "Logger has not been initialized when calling \(call.method).",
-                         details: nil))
+      result(
+        FlutterError.invalidOperation(message: "Logger has not been initialized when calling \(call.method).")
+      )
       return
     }
 
@@ -53,39 +57,63 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
     case "debug":
       if let message = message {
         logger.debug(message, error: nil, attributes: attributes)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
 
     case "info":
       if let message = message {
         logger.info(message, error: nil, attributes: attributes)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
 
     case "warn":
       if let message = message {
         logger.warn(message, error: nil, attributes: attributes)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
 
     case "error":
       if let message = message {
         logger.error(message, error: nil, attributes: attributes)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
 
     case "addAttribute":
       if let key = arguments["key"] as? String,
          let value = arguments["value"] {
         logger.addAttribute(forKey: key, value: DdFlutterEncodable(value))
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
 
     case "removeAttribute":
       if let key = arguments["key"] as? String {
         logger.removeAttribute(forKey: key)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
 
     case "addTag":
       if let tag = arguments["tag"] as? String {
@@ -94,20 +122,32 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         } else {
           logger.add(tag: tag)
         }
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
 
     case "removeTag":
       if let tag = arguments["tag"] as? String {
         logger.remove(tag: tag)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
 
     case "removeTagWithKey":
       if let key = arguments["key"] as? String {
         logger.removeTag(withKey: key)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
 
     default:
       result(FlutterMethodNotImplemented)

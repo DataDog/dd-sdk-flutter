@@ -2,7 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
-import '../internal_helpers.dart';
+import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddtraces_platform_interface.dart';
 
@@ -116,9 +116,9 @@ class DdSpan {
   }
 
   /// Set a tag with the given [key] to the given [value]. Although the type for
-  /// [value] is dynamic, the object passed in must be one of the types
+  /// [value] is [Object], the object passed in must be one of the types
   /// supported by the [StandardMessageCodec]
-  Future<void> setTag(String key, dynamic value) {
+  Future<void> setTag(String key, Object value) {
     if (_handle <= 0) {
       _logger?.warn(closedSpanWarning('setTag'));
       return Future.value();
@@ -191,7 +191,6 @@ class DdTraces {
         span._logger = _logger;
       } else {
         _logger.error('Error creating span named $operationName');
-        // TELEMETRY: Report error creating span
         // Don't set the logger on this span or it will spam being closed
         span = DdSpan(_platform, 0);
       }
@@ -214,7 +213,6 @@ class DdTraces {
         span._logger = _logger;
       } else {
         _logger.error('Error creating span named $operationName');
-        // TELEMETRY: Report error creating span
         // Don't set the logger on this span or it will spam being closed
         span = DdSpan(_platform, 0);
       }

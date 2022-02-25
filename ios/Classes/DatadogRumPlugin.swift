@@ -5,6 +5,25 @@
 import Foundation
 import Datadog
 
+extension FlutterError {
+  public enum DdErrorCodes {
+    static let contractViolation = "DatadogSdk:ContractViolation"
+    static let invalidOperation = "DatadogSdk:InvalidOperation"
+  }
+
+  static func missingParameter(methodName: String) -> FlutterError {
+    return FlutterError(code: DdErrorCodes.contractViolation,
+                        message: "Missing parameter in call to \(methodName)",
+                        details: nil)
+  }
+
+  static func invalidOperation(message: String) -> FlutterError {
+    return FlutterError(code: DdErrorCodes.invalidOperation,
+                        message: message,
+                        details: nil)
+  }
+}
+
 public class DatadogRumPlugin: NSObject, FlutterPlugin {
   public static let instance =  DatadogRumPlugin()
   public static func register(with registrar: FlutterPluginRegistrar) {
@@ -31,15 +50,15 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
   // swiftlint:disable:next cyclomatic_complexity function_body_length
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let arguments = call.arguments as? [String: Any] else {
-      result(FlutterError(code: "DatadogSDK:InvalidOperation",
-                          message: "No arguments in call to \(call.method).",
-                          details: nil))
+      result(
+        FlutterError.invalidOperation(message: "No arguments in call to \(call.method).")
+      )
       return
     }
     guard let rum = rumInstance else {
-      result(FlutterError(code: "DatadogSDK:InvalidOperation",
-                         message: "RUM has not been initialized when calling \(call.method).",
-                         details: nil))
+      result(
+        FlutterError.invalidOperation(message: "RUM has not been initialized when calling \(call.method).")
+      )
       return
     }
 
@@ -50,20 +69,33 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
          let attributes = arguments["attributes"] as? [String: Any?] {
         let encodedAttributes = castFlutterAttributesToSwift(attributes)
         rum.startView(key: key, name: name, attributes: encodedAttributes)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
+
     case "stopView":
       if let key = arguments["key"] as? String,
          let attributes = arguments["attributes"] as? [String: Any?] {
         let encodedAttributes = castFlutterAttributesToSwift(attributes)
         rum.stopView(key: key, attributes: encodedAttributes)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
     case "addTiming":
       if let name = arguments["name"] as? String {
         rum.addTiming(name: name)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
     case "startResourceLoading":
       if let key = arguments["key"] as? String,
          let methodString = arguments["httpMethod"] as? String,
@@ -72,8 +104,12 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         let encodedAttributes = castFlutterAttributesToSwift(attributes)
         let method = RUMMethod.parseFromFlutter(methodString)
         rum.startResourceLoading(resourceKey: key, httpMethod: method, urlString: url, attributes: encodedAttributes)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
     case "stopResourceLoading":
       if let key = arguments["key"] as? String,
          let kindString = arguments["kind"] as? String,
@@ -86,8 +122,13 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         rum.stopResourceLoading(resourceKey: key, statusCode: statusCode?.intValue,
                                 kind: kind, size: size?.int64Value, attributes: encodedAttributes)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
+
     case "stopResourceLoadingWithError":
       if let key = arguments["key"] as? String,
          let message = arguments["message"] as? String,
@@ -95,8 +136,12 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         let encodedAttributes = castFlutterAttributesToSwift(attributes)
         rum.stopResourceLoadingWithError(resourceKey: key, errorMessage: message, response: nil,
                                          attributes: encodedAttributes)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
     case "addError":
       if let message = arguments["message"] as? String,
          let sourceString = arguments["source"] as? String,
@@ -107,8 +152,12 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         rum.addError(message: message, source: source, stack: stackTrace, attributes: encodedAttributes,
                      file: nil, line: nil)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
     case "addUserAction":
       if let typeString = arguments["type"] as? String,
          let name = arguments["name"] as? String,
@@ -116,8 +165,12 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         let type = RUMUserActionType.parseFromFlutter(typeString)
         let encodedAttributes = castFlutterAttributesToSwift(attributes)
         rum.addUserAction(type: type, name: name, attributes: encodedAttributes)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
     case "startUserAction":
       if let typeString = arguments["type"] as? String,
          let name = arguments["name"] as? String,
@@ -125,8 +178,12 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         let type = RUMUserActionType.parseFromFlutter(typeString)
         let encodedAttributes = castFlutterAttributesToSwift(attributes)
         rum.startUserAction(type: type, name: name, attributes: encodedAttributes)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
     case "stopUserAction":
       if let typeString = arguments["type"] as? String,
          let name = arguments["name"] as? String,
@@ -134,20 +191,32 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         let type = RUMUserActionType.parseFromFlutter(typeString)
         let encodedAttributes = castFlutterAttributesToSwift(attributes)
         rum.stopUserAction(type: type, name: name, attributes: encodedAttributes)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
     case "addAttribute":
       if let key = arguments["key"] as? String,
          let value = arguments["value"] {
         let encodedValue = castAnyToEncodable(value)
         rum.addAttribute(forKey: key, value: encodedValue)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
     case "removeAttribute":
       if let key = arguments["key"] as? String {
         rum.removeAttribute(forKey: key)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: call.method)
+        )
       }
-      result(nil)
     default:
       result(FlutterMethodNotImplemented)
     }

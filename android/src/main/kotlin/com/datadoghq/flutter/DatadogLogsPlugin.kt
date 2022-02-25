@@ -9,6 +9,8 @@ import com.datadog.android.log.Logger
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.lang.ClassCastException
+import java.lang.NullPointerException
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -46,83 +48,122 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
             .build()
     }
 
-    @Suppress("LongMethod")
+    internal fun setupForTests() {
+        log = Logger.Builder().build()
+    }
+
+    @Suppress("LongMethod", "ComplexMethod", "NestedBlockDepth")
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        when (call.method) {
-            "debug" -> {
-                val message = call.argument<String>(LOG_MESSAGE)!!
-                val context = call.argument<Map<String, Any?>>(LOG_CONTEXT)!!
-
-                log.d(message, attributes = context)
-                result.success(null)
-            }
-            "info" -> {
-                val message = call.argument<String>(LOG_MESSAGE)!!
-                val context = call.argument<Map<String, Any?>>(LOG_CONTEXT)!!
-
-                log.i(message, attributes = context)
-                result.success(null)
-            }
-            "warn" -> {
-                val message = call.argument<String>(LOG_MESSAGE)!!
-                val context = call.argument<Map<String, Any?>>(LOG_CONTEXT)!!
-
-                log.w(message, attributes = context)
-                result.success(null)
-            }
-            "error" -> {
-                val message = call.argument<String>(LOG_MESSAGE)!!
-                val context = call.argument<Map<String, Any?>>(LOG_CONTEXT)!!
-
-                log.e(message, attributes = context)
-                result.success(null)
-            }
-            "addAttribute" -> {
-                val key = call.argument<String>(LOG_KEY)
-                val value = call.argument<Any>(LOG_VALUE)
-                if (key != null && value != null) {
-                    addAttributeInternal(key, value)
-                }
-                result.success(null)
-            }
-            "addTag" -> {
-                call.argument<String>(LOG_TAG)?.let {
-                    val value = call.argument<String>(LOG_VALUE)
-                    if (value != null) {
-                        log.addTag(it, value)
-                    } else {
-                        log.addTag(it)
+        try {
+            when (call.method) {
+                "debug" -> {
+                    internalLog(call, result) { message, context ->
+                        log.d(message, attributes = context)
                     }
                 }
-                result.success(null)
-            }
-            "removeAttribute" -> {
-                call.argument<String>(LOG_KEY)?.let {
-                    log.removeAttribute(it)
+                "info" -> {
+                    internalLog(call, result) { message, context ->
+                        log.i(message, attributes = context)
+                    }
                 }
-                result.success(null)
-            }
-            "removeTag" -> {
-                call.argument<String>(LOG_TAG)?.let {
-                    log.removeTag(it)
+                "warn" -> {
+                    internalLog(call, result) { message, context ->
+                        log.w(message, attributes = context)
+                    }
                 }
-                result.success(null)
-            }
-            "removeTagWithKey" -> {
-                call.argument<String>(LOG_KEY)?.let {
-                    log.removeTagsWithKey(it)
+                "error" -> {
+                    internalLog(call, result) { message, context ->
+                        log.e(message, attributes = context)
+                    }
                 }
-                result.success(null)
+                "addAttribute" -> {
+                    val key = call.argument<String>(LOG_KEY)
+                    val value = call.argument<Any>(LOG_VALUE)
+                    if (key != null && value != null) {
+                        addAttributeInternal(key, value)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
+                }
+                "addTag" -> {
+                    val tag = call.argument<String>(LOG_TAG)
+                    if (tag != null) {
+                        val value = call.argument<String>(LOG_VALUE)
+                        if (value != null) {
+                            log.addTag(tag, value)
+                        } else {
+                            log.addTag(tag)
+                        }
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
+                }
+                "removeAttribute" -> {
+                    val key = call.argument<String>(LOG_KEY)
+                    if (key != null) {
+                        log.removeAttribute(key)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
+                }
+                "removeTag" -> {
+                    val tag = call.argument<String>(LOG_TAG)
+                    if (tag != null) {
+                        log.removeTag(tag)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
+                }
+                "removeTagWithKey" -> {
+                    val key = call.argument<String>(LOG_KEY)
+                    if (key != null) {
+                        log.removeTagsWithKey(key)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
+                }
+                else -> {
+                    result.notImplemented()
+                }
             }
-            else -> {
-                result.notImplemented()
-            }
+        } catch (e: ClassCastException) {
+            result.error(
+                DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(),
+                mapOf(
+                    "methodName" to call.method
+                )
+            )
         }
     }
 
     @Suppress("UNUSED_PARAMETER")
     fun teardown(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private fun internalLog(
+        call: MethodCall,
+        result: MethodChannel.Result,
+        logFunction: (message: String, attributes: Map<String, Any?>) -> Unit
+    ) {
+        try {
+            val message = call.argument<String>(LOG_MESSAGE)!!
+            val context = call.argument<Map<String, Any?>>(LOG_CONTEXT)!!
+
+            logFunction(message, context)
+
+            result.success(null)
+        } catch (e: ClassCastException) {
+            result.error(DatadogSdkPlugin.CONTRACT_VIOLATION, e.stackTraceToString(), null)
+        } catch (e: NullPointerException) {
+            result.error(DatadogSdkPlugin.CONTRACT_VIOLATION, e.stackTraceToString(), null)
+        }
     }
 
     private fun addAttributeInternal(key: String, value: Any) {

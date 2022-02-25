@@ -15,114 +15,6 @@ enum ResultStatus: EquatableInTests {
   case called(value: Any?)
 }
 
-// MARK: - MockRUMMonitor
-
-class MockRUMMonitor: DDRUMMonitor {
-  enum MethodCall: EquatableInTests {
-    case startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue])
-    case stopView(key: String, attributes: [AttributeKey: AttributeValue])
-    case addTiming(name: String)
-
-    case startResourceLoading(key: String, httpMethod: RUMMethod, urlString: String,
-                              attributes: [AttributeKey: AttributeValue])
-    case stopResourceLoading(key: String, statusCode: Int?, kind: RUMResourceType, size: Int64?,
-                             attributes: [AttributeKey: AttributeValue])
-    case stopResourceLoadingWithError(key: String, error: Error, response: URLResponse?,
-                                      attributes: [AttributeKey: AttributeValue])
-    case stopResourceLoadingWithErrorMessage(key: String, errorMessage: String, type: String?, response: URLResponse?,
-                                      attributes: [AttributeKey: AttributeValue])
-    case addError(message: String, type: String?, source: RUMErrorSource, stack: String?,
-                  attributes: [AttributeKey: AttributeValue], file: StaticString?, line: UInt?)
-    case addUserAction(type: RUMUserActionType, name: String, attributes: [AttributeKey: AttributeValue])
-    case startUserAction(type: RUMUserActionType, name: String, attributes: [AttributeKey: AttributeValue])
-    case stopUserAction(type: RUMUserActionType, name: String?, attributes: [AttributeKey: AttributeValue])
-    case addAttribute(forKey: AttributeKey, value: AttributeValue)
-    case removeAttribute(forKey: AttributeKey)
-
-  }
-
-  var callLog: [MethodCall] = []
-
-  override func startView(key: String, name: String? = nil, attributes: [AttributeKey: AttributeValue] = [:]) {
-    callLog.append(.startView(key: key, name: name, attributes: attributes))
-  }
-
-  override func stopView(key: String, attributes: [AttributeKey: AttributeValue] = [:]) {
-    callLog.append(.stopView(key: key, attributes: attributes))
-  }
-
-  override func addTiming(name: String) {
-    callLog.append(.addTiming(name: name))
-  }
-
-  override func startResourceLoading(resourceKey: String, httpMethod: RUMMethod,
-                                     urlString: String, attributes: [AttributeKey: AttributeValue] = [:]) {
-    callLog.append(
-      .startResourceLoading(key: resourceKey, httpMethod: httpMethod, urlString: urlString, attributes: attributes)
-    )
-  }
-
-  override func stopResourceLoading(resourceKey: String, statusCode: Int?, kind: RUMResourceType,
-                                    size: Int64? = nil, attributes: [AttributeKey: AttributeValue] = [:]) {
-    callLog.append(
-      .stopResourceLoading(key: resourceKey, statusCode: statusCode, kind: kind, size: size, attributes: attributes)
-    )
-  }
-
-  override public func stopResourceLoadingWithError(
-      resourceKey: String,
-      error: Error,
-      response: URLResponse? = nil,
-      attributes: [AttributeKey: AttributeValue] = [:]
-  ) {
-    callLog.append(.stopResourceLoadingWithError(key: resourceKey, error: error,
-                                                 response: response, attributes: attributes))
-  }
-
-  override func stopResourceLoadingWithError(resourceKey: String,
-                                             errorMessage: String,
-                                             type: String? = nil,
-                                             response: URLResponse? = nil,
-                                             attributes: [AttributeKey: AttributeValue] = [:]) {
-    callLog.append(
-      .stopResourceLoadingWithErrorMessage(key: resourceKey, errorMessage: errorMessage, type: type, response: response,
-                                    attributes: attributes)
-    )
-  }
-
-  override func addError(message: String, type: String? = nil, source: RUMErrorSource = .custom, stack: String? = nil,
-                         attributes: [AttributeKey: AttributeValue] = [:],
-                         file: StaticString? = #file, line: UInt? = #line) {
-    callLog.append(
-      .addError(message: message, type: type, source: source, stack: stack,
-                attributes: attributes, file: file, line: line)
-    )
-  }
-
-  override func addAttribute(forKey key: AttributeKey, value: AttributeValue) {
-    callLog.append(.addAttribute(forKey: key, value: value))
-  }
-
-  override func removeAttribute(forKey key: AttributeKey) {
-    callLog.append(.removeAttribute(forKey: key))
-  }
-
-  override func addUserAction(type: RUMUserActionType, name: String,
-                              attributes: [AttributeKey: AttributeValue] = [:]) {
-   callLog.append(.addUserAction(type: type, name: name, attributes: attributes))
-  }
-
-  override func startUserAction(type: RUMUserActionType, name: String,
-                                attributes: [AttributeKey: AttributeValue] = [:]) {
-    callLog.append(.startUserAction(type: type, name: name, attributes: attributes))
-  }
-
-  override func stopUserAction(type: RUMUserActionType, name: String? = nil,
-                               attributes: [AttributeKey: AttributeValue] = [:]) {
-    callLog.append(.stopUserAction(type: type, name: name, attributes: attributes))
-  }
-}
-
 // MARK: - Tests
 
 // swiftlint:disable:next type_body_length
@@ -208,6 +100,49 @@ class DatadogRumPluginTests: XCTestCase {
     mock = MockRUMMonitor()
     plugin = DatadogRumPlugin.instance
     plugin.initialize(withRum: mock)
+  }
+
+  let contracts = [
+    Contract(methodName: "startView", requiredParameters: [
+      "key": .string, "name": .string, "attributes": .map
+    ]),
+    Contract(methodName: "stopView", requiredParameters: [
+      "key": .string, "attributes": .map
+    ]),
+    Contract(methodName: "addTiming", requiredParameters: [
+      "name": .string
+    ]),
+    Contract(methodName: "startResourceLoading", requiredParameters: [
+      "key": .string, "url": .string, "httpMethod": .string, "attributes": .map
+    ]),
+    Contract(methodName: "stopResourceLoading", requiredParameters: [
+      "key": .string, "kind": .string, "attributes": .map
+    ]),
+    Contract(methodName: "stopResourceLoadingWithError", requiredParameters: [
+      "key": .string, "message": .string, "attributes": .map
+    ]),
+    Contract(methodName: "addError", requiredParameters: [
+      "message": .string, "source": .string, "attributes": .map
+    ]),
+    Contract(methodName: "addUserAction", requiredParameters: [
+      "type": .string, "name": .string, "attributes": .map
+    ]),
+    Contract(methodName: "startUserAction", requiredParameters: [
+      "type": .string, "name": .string, "attributes": .map
+    ]),
+    Contract(methodName: "stopUserAction", requiredParameters: [
+      "type": .string, "name": .string, "attributes": .map
+    ]),
+    Contract(methodName: "addAttribute", requiredParameters: [
+      "key": .string, "value": .string
+    ]),
+    Contract(methodName: "removeAttribute", requiredParameters: [
+      "key": .string
+    ])
+  ]
+
+  func testRumPlugin_ContractViolationsThrowErrors() {
+    testContracts(contracts: contracts, plugin: plugin)
   }
 
   func testStartViewCall_CallsRumMonitor() {
@@ -475,5 +410,113 @@ class DatadogRumPluginTests: XCTestCase {
       .removeAttribute(forKey: "remove_key")
     ])
     XCTAssertEqual(resultStatus, .called(value: nil))
+  }
+}
+
+// MARK: - MockRUMMonitor
+
+class MockRUMMonitor: DDRUMMonitor {
+  enum MethodCall: EquatableInTests {
+    case startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue])
+    case stopView(key: String, attributes: [AttributeKey: AttributeValue])
+    case addTiming(name: String)
+
+    case startResourceLoading(key: String, httpMethod: RUMMethod, urlString: String,
+                              attributes: [AttributeKey: AttributeValue])
+    case stopResourceLoading(key: String, statusCode: Int?, kind: RUMResourceType, size: Int64?,
+                             attributes: [AttributeKey: AttributeValue])
+    case stopResourceLoadingWithError(key: String, error: Error, response: URLResponse?,
+                                      attributes: [AttributeKey: AttributeValue])
+    case stopResourceLoadingWithErrorMessage(key: String, errorMessage: String, type: String?, response: URLResponse?,
+                                      attributes: [AttributeKey: AttributeValue])
+    case addError(message: String, type: String?, source: RUMErrorSource, stack: String?,
+                  attributes: [AttributeKey: AttributeValue], file: StaticString?, line: UInt?)
+    case addUserAction(type: RUMUserActionType, name: String, attributes: [AttributeKey: AttributeValue])
+    case startUserAction(type: RUMUserActionType, name: String, attributes: [AttributeKey: AttributeValue])
+    case stopUserAction(type: RUMUserActionType, name: String?, attributes: [AttributeKey: AttributeValue])
+    case addAttribute(forKey: AttributeKey, value: AttributeValue)
+    case removeAttribute(forKey: AttributeKey)
+
+  }
+
+  var callLog: [MethodCall] = []
+
+  override func startView(key: String, name: String? = nil, attributes: [AttributeKey: AttributeValue] = [:]) {
+    callLog.append(.startView(key: key, name: name, attributes: attributes))
+  }
+
+  override func stopView(key: String, attributes: [AttributeKey: AttributeValue] = [:]) {
+    callLog.append(.stopView(key: key, attributes: attributes))
+  }
+
+  override func addTiming(name: String) {
+    callLog.append(.addTiming(name: name))
+  }
+
+  override func startResourceLoading(resourceKey: String, httpMethod: RUMMethod,
+                                     urlString: String, attributes: [AttributeKey: AttributeValue] = [:]) {
+    callLog.append(
+      .startResourceLoading(key: resourceKey, httpMethod: httpMethod, urlString: urlString, attributes: attributes)
+    )
+  }
+
+  override func stopResourceLoading(resourceKey: String, statusCode: Int?, kind: RUMResourceType,
+                                    size: Int64? = nil, attributes: [AttributeKey: AttributeValue] = [:]) {
+    callLog.append(
+      .stopResourceLoading(key: resourceKey, statusCode: statusCode, kind: kind, size: size, attributes: attributes)
+    )
+  }
+
+  override public func stopResourceLoadingWithError(
+      resourceKey: String,
+      error: Error,
+      response: URLResponse? = nil,
+      attributes: [AttributeKey: AttributeValue] = [:]
+  ) {
+    callLog.append(.stopResourceLoadingWithError(key: resourceKey, error: error,
+                                                 response: response, attributes: attributes))
+  }
+
+  override func stopResourceLoadingWithError(resourceKey: String,
+                                             errorMessage: String,
+                                             type: String? = nil,
+                                             response: URLResponse? = nil,
+                                             attributes: [AttributeKey: AttributeValue] = [:]) {
+    callLog.append(
+      .stopResourceLoadingWithErrorMessage(key: resourceKey, errorMessage: errorMessage, type: type, response: response,
+                                    attributes: attributes)
+    )
+  }
+
+  override func addError(message: String, type: String? = nil, source: RUMErrorSource = .custom, stack: String? = nil,
+                         attributes: [AttributeKey: AttributeValue] = [:],
+                         file: StaticString? = #file, line: UInt? = #line) {
+    callLog.append(
+      .addError(message: message, type: type, source: source, stack: stack,
+                attributes: attributes, file: file, line: line)
+    )
+  }
+
+  override func addAttribute(forKey key: AttributeKey, value: AttributeValue) {
+    callLog.append(.addAttribute(forKey: key, value: value))
+  }
+
+  override func removeAttribute(forKey key: AttributeKey) {
+    callLog.append(.removeAttribute(forKey: key))
+  }
+
+  override func addUserAction(type: RUMUserActionType, name: String,
+                              attributes: [AttributeKey: AttributeValue] = [:]) {
+   callLog.append(.addUserAction(type: type, name: name, attributes: attributes))
+  }
+
+  override func startUserAction(type: RUMUserActionType, name: String,
+                                attributes: [AttributeKey: AttributeValue] = [:]) {
+    callLog.append(.startUserAction(type: type, name: name, attributes: attributes))
+  }
+
+  override func stopUserAction(type: RUMUserActionType, name: String? = nil,
+                               attributes: [AttributeKey: AttributeValue] = [:]) {
+    callLog.append(.stopUserAction(type: type, name: name, attributes: attributes))
   }
 }

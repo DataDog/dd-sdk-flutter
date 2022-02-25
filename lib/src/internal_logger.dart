@@ -14,8 +14,8 @@ class InternalLogger {
   Verbosity sdkVerbosity = Verbosity.info;
 
   static const _emojiMap = {
-    Verbosity.debug: '🪳',
-    Verbosity.info: '🗒',
+    Verbosity.debug: '🐞',
+    Verbosity.info: 'ℹ️',
     Verbosity.warn: '⚠️',
     Verbosity.error: '💥'
   };
@@ -33,6 +33,14 @@ class InternalLogger {
       // ignore: avoid_print
       print('$prefixString $message');
     }
+  }
+
+  /// Send a log to the Datadog org, not to the customer's org. This feature is
+  /// used mostly to track potential issues in the Datadog SDK. It is opt-in,
+  /// and requires specific configuration to be enabled. It is never enabled by
+  /// default.
+  void sendToDatadog(String message) {
+    // TODO: Internal telemetry
   }
 
   // Standard error strings

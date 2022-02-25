@@ -10,17 +10,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 
+import 'src/attributes.dart';
 import 'src/datadog_configuration.dart';
 import 'src/datadog_sdk_platform_interface.dart';
 import 'src/datadog_tracking_http_client.dart';
-import 'src/internal_attributes.dart';
-import 'src/internal_helpers.dart';
+import 'src/helpers.dart';
 import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
 import 'src/rum/ddrum.dart';
 import 'src/traces/ddtraces.dart';
 import 'src/version.dart' show ddSdkVersion;
 
+export 'src/attributes.dart' show DatadogConfigKey;
 export 'src/datadog_configuration.dart';
 export 'src/rum/ddrum.dart'
     show RumHttpMethod, RumUserActionType, RumErrorSource, RumResourceType;

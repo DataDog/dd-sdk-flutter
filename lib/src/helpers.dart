@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'package:flutter/services.dart';
+
 import 'internal_logger.dart';
 
 typedef WrappedCall<T> = Future<T?> Function();
@@ -13,9 +15,12 @@ Future<T?> wrap<T>(
     return await call();
   } on ArgumentError catch (e) {
     logger.warn(InternalLogger.argumentWarning(methodName, e));
-  } catch (e) {
-    // TELEMETRY: Report this back to Datadog
-    logger.error(e.toString());
+  } on PlatformException catch (e) {
+    logger.error('Datadog experienced a PlatformException - ${e.message}');
+    logger.error(
+        'This may be a bug in the Datadog SDK. Please report it to Datadog.');
+    logger
+        .sendToDatadog('Platform exception caught by wrap(): ${e.toString()}');
   }
   return null;
 }

@@ -31,6 +31,14 @@ void main() {
   setUp(() {
     logger = TestLogger();
     mockPlatform = MockDdLogsPlatform();
+    when(() => mockPlatform.debug(any(), any()))
+        .thenAnswer((invocation) => Future.value());
+    when(() => mockPlatform.info(any(), any()))
+        .thenAnswer((invocation) => Future.value());
+    when(() => mockPlatform.warn(any(), any()))
+        .thenAnswer((invocation) => Future.value());
+    when(() => mockPlatform.error(any(), any()))
+        .thenAnswer((invocation) => Future.value());
     DdLogsPlatform.instance = mockPlatform;
     ddLogs = DdLogs(logger);
   });

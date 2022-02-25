@@ -30,6 +30,10 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
     super.init()
   }
 
+  func initialize(withTracer tracer: OTTracer) {
+    self.tracer = tracer
+  }
+
   func initialize(configuration: DatadogFlutterConfiguration.TracingConfiguration) {
     tracer = Tracer.initialize(configuration: Tracer.Configuration(
       serviceName: nil,
@@ -40,136 +44,157 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
     Global.sharedTracer = tracer!
   }
 
-  // swiftlint:disable:next cyclomatic_complexity function_body_length
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let arguments = call.arguments as? [String: Any] else {
-      result(FlutterError(code: "DatadogSDK:InvalidOperation",
-                          message: "No arguments in call to \(call.method).",
-                          details: nil))
+      result(
+        FlutterError.invalidOperation(message: "No arguments in call to \(call.method).")
+      )
       return
     }
     guard let tracer = tracer else {
-      result(FlutterError(code: "DatadogSDK:InvalidOperation",
-                         message: "Tracer has not been initialized when calling \(call.method).",
-                         details: nil))
+      result(
+        FlutterError.invalidOperation(message: "Tracer has not been initialized when calling \(call.method).")
+      )
       return
     }
 
-    let calledSpan = findCallingSpan(arguments)
+    if call.method.starts(with: "span.") {
+      callSpanMethod(method: call.method, arguments: arguments, result: result)
+      return
+    }
 
     switch call.method {
     case "startRootSpan":
-      let operationName = arguments["operationName"] as! String
-
-      var tags: [String: Encodable]?
-      if let flutterTags = arguments["tags"] as? [String: Any] {
-        tags = castFlutterAttributesToSwift(flutterTags)
-      }
-
-      var startTime: Date?
-      if let startTimeMs = arguments["startTime"] as? NSNumber {
-        startTime = Date(timeIntervalSince1970: startTimeMs.doubleValue / 1_000)
-      }
-
-      let span = tracer.startRootSpan(
-        operationName: operationName,
-        tags: tags,
-        startTime: startTime)
-      if let resourceName = arguments["resourceName"] as? String {
-        span.setTag(key: DDTags.resource, value: resourceName)
-      }
-
-      let spanHandle = storeSpan(span)
-      result(spanHandle)
+      createSpan(arguments: arguments, isRootSpan: true, result: result)
 
     case "startSpan":
-      let operationName = arguments["operationName"] as! String
-
-      var tags: [String: Encodable]?
-      if let flutterTags = arguments["tags"] as? [String: Any] {
-        tags = castFlutterAttributesToSwift(flutterTags)
-      }
-
-      var startTime: Date?
-      if let startTimeMs = arguments["startTime"] as? NSNumber {
-        startTime = Date(timeIntervalSince1970: startTimeMs.doubleValue / 1_000)
-      }
-
-      var parentSpan: OTSpan?
-      if let parentSpanId = (arguments["parentSpan"] as? NSNumber)?.int64Value {
-        parentSpan = spanRegistry[parentSpanId]
-      }
-
-      let span = tracer.startSpan(
-        operationName: operationName,
-        childOf: parentSpan?.context,
-        tags: tags,
-        startTime: startTime)
-      if let resourceName = arguments["resourceName"] as? String {
-        span.setTag(key: DDTags.resource, value: resourceName)
-      }
-
-      let spanHandle = storeSpan(span)
-      result(spanHandle)
+      createSpan(arguments: arguments, isRootSpan: false, result: result)
 
     case "getTracePropagationHeaders":
       var headers: [String: String] = [:]
 
-      if let calledSpan = calledSpan {
-
+      if let calledSpan = findCallingSpan(arguments) {
         let writer = HTTPHeadersWriter()
         tracer.inject(spanContext: calledSpan.span.context, writer: writer)
         headers = writer.tracePropagationHTTPHeaders
       }
       result(headers)
 
+    default:
+      result(FlutterMethodNotImplemented)
+    }
+  }
+
+  private func createSpan(arguments: [String: Any], isRootSpan: Bool, result: @escaping FlutterResult) {
+    guard let tracer = tracer else {
+      return
+    }
+
+    guard let operationName = arguments["operationName"] as? String else {
+      result(
+        FlutterError.missingParameter(methodName: isRootSpan ? "startRootSpan" : "startSpan")
+      )
+      return
+    }
+
+    var tags: [String: Encodable]?
+    if let flutterTags = arguments["tags"] as? [String: Any] {
+      tags = castFlutterAttributesToSwift(flutterTags)
+    }
+
+    var startTime: Date?
+    if let startTimeMs = arguments["startTime"] as? NSNumber {
+      startTime = Date(timeIntervalSince1970: startTimeMs.doubleValue / 1_000)
+    }
+
+    var parentSpan: OTSpan?
+    if let parentSpanId = (arguments["parentSpan"] as? NSNumber)?.int64Value {
+      parentSpan = spanRegistry[parentSpanId]
+    }
+
+    let span = isRootSpan
+      ? tracer.startRootSpan(
+          operationName: operationName,
+          tags: tags,
+          startTime: startTime)
+      : tracer.startSpan(
+          operationName: operationName,
+          childOf: parentSpan?.context,
+          tags: tags,
+          startTime: startTime)
+
+	if let resourceName = arguments["resourceName"] as? String {
+      span.setTag(key: DDTags.resource, value: resourceName)
+    }
+
+    let spanHandle = storeSpan(span)
+    result(spanHandle)
+  }
+
+  // swiftlint:disable:next cyclomatic_complexity function_body_length
+  private func callSpanMethod(method: String, arguments: [String: Any], result: @escaping FlutterResult) {
+    guard let calledSpan = findCallingSpan(arguments) else {
+      result(nil)
+      return
+    }
+
+    switch method {
     case "span.setActive":
-      if let calledSpan = calledSpan {
-        calledSpan.span.setActive()
-      }
+      calledSpan.span.setActive()
       result(nil)
 
     case "span.setError":
-      if let calledSpan = calledSpan,
-         let kind = arguments["kind"] as? String,
+      if let kind = arguments["kind"] as? String,
          let message = arguments["message"] as? String {
         if let stackTrace = arguments["stackTrace"] as? String {
           calledSpan.span.setError(kind: kind, message: message, stack: stackTrace)
         } else {
           calledSpan.span.setError(kind: kind, message: message)
         }
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: method)
+        )
       }
-      result(nil)
 
     case "span.setTag":
-      if let calledSpan = calledSpan,
-         let key = arguments["key"] as? String,
+      if let key = arguments["key"] as? String,
          let value = arguments["value"] {
         let encoded = castAnyToEncodable(value)
         calledSpan.span.setTag(key: key, value: encoded)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: method)
+        )
       }
-      result(nil)
 
     case "span.setBaggageItem":
-      if let calledSpan = calledSpan,
-         let key = arguments["key"] as? String,
+      if let key = arguments["key"] as? String,
          let value = arguments["value"] as? String {
         calledSpan.span.setBaggageItem(key: key, value: value)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: method)
+        )
       }
-      result(nil)
 
     case "span.log":
       if let fields = arguments["fields"] as? [String: Any?] {
         let encoded = castFlutterAttributesToSwift(fields)
-        calledSpan?.span.log(fields: encoded)
+        calledSpan.span.log(fields: encoded)
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: method)
+        )
       }
-      result(nil)
 
     case "span.finish":
-      if let calledSpan = calledSpan {
-        calledSpan.span.finish()
-        spanRegistry[calledSpan.handle] = nil
-      }
+      calledSpan.span.finish()
+      spanRegistry[calledSpan.handle] = nil
       result(nil)
 
     default:

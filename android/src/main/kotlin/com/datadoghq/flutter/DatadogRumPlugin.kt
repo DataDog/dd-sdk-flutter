@@ -13,6 +13,7 @@ import com.datadog.android.rum.RumResourceKind
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.lang.ClassCastException
 
 class DatadogRumPlugin(
     rumInstance: RumMonitor? = null
@@ -54,128 +55,169 @@ class DatadogRumPlugin(
         GlobalRum.registerIfAbsent(rum!!)
     }
 
-    @Suppress("LongMethod")
+    @Suppress("LongMethod", "ComplexMethod")
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        when (call.method) {
-            "startView" -> {
-                val key = call.argument<String>(PARAM_KEY)
-                val name = call.argument<String>(PARAM_NAME)
-                val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                if (key != null && name != null && attributes != null) {
-                    rum?.startView(key, name, attributes)
+        try {
+            when (call.method) {
+                "startView" -> {
+                    val key = call.argument<String>(PARAM_KEY)
+                    val name = call.argument<String>(PARAM_NAME)
+                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+                    if (key != null && name != null && attributes != null) {
+                        rum?.startView(key, name, attributes)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
                 }
-                result.success(null)
-            }
-            "stopView" -> {
-                val key = call.argument<String>(PARAM_KEY)
-                val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                if (key != null && attributes != null) {
-                    rum?.stopView(key, attributes)
+                "stopView" -> {
+                    val key = call.argument<String>(PARAM_KEY)
+                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+                    if (key != null && attributes != null) {
+                        rum?.stopView(key, attributes)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
                 }
-                result.success(null)
-            }
-            "addTiming" -> {
-                call.argument<String>(PARAM_NAME)?.let {
-                    rum?.addTiming(it)
+                "addTiming" -> {
+                    val name = call.argument<String>(PARAM_NAME)
+                    if (name != null) {
+                        rum?.addTiming(name)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
                 }
-                result.success(null)
-            }
-            "startResourceLoading" -> {
-                val key = call.argument<String>(PARAM_KEY)
-                val url = call.argument<String>(PARAM_URL)
-                val method = call.argument<String>(PARAM_HTTP_METHOD)
-                val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+                "startResourceLoading" -> {
+                    val key = call.argument<String>(PARAM_KEY)
+                    val url = call.argument<String>(PARAM_URL)
+                    val method = call.argument<String>(PARAM_HTTP_METHOD)
+                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
 
-                @Suppress("ComplexCondition")
-                if (key != null && url != null && method != null && attributes != null) {
-                    val httpMethod = parseRumHttpMethod(method)
-                    rum?.startResource(key, httpMethod, url, attributes)
+                    @Suppress("ComplexCondition")
+                    if (key != null && url != null && method != null && attributes != null) {
+                        val httpMethod = parseRumHttpMethod(method)
+                        rum?.startResource(key, httpMethod, url, attributes)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
                 }
-                result.success(null)
-            }
-            "stopResourceLoading" -> {
-                val key = call.argument<String>(PARAM_KEY)
-                val kindString = call.argument<String>(PARAM_KIND)
-                val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                var statusCode = call.argument<Number>(PARAM_STATUS_CODE)
-                var size = call.argument<Number>(PARAM_SIZE)
-                if (key != null && kindString != null && attributes != null) {
-                    val kind = parseRumResourceKind(kindString)
-                    rum?.stopResource(key, statusCode?.toInt(), size?.toLong(), kind, attributes)
+                "stopResourceLoading" -> {
+                    val key = call.argument<String>(PARAM_KEY)
+                    val kindString = call.argument<String>(PARAM_KIND)
+                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+                    var statusCode = call.argument<Number>(PARAM_STATUS_CODE)
+                    var size = call.argument<Number>(PARAM_SIZE)
+                    if (key != null && kindString != null && attributes != null) {
+                        val kind = parseRumResourceKind(kindString)
+                        rum?.stopResource(
+                            key,
+                            statusCode?.toInt(),
+                            size?.toLong(),
+                            kind,
+                            attributes
+                        )
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
                 }
-                result.success(null)
-            }
-            "stopResourceLoadingWithError" -> {
-                val key = call.argument<String>(PARAM_KEY)
-                val message = call.argument<String>(PARAM_MESSAGE)
-                val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                if (key != null && message != null && attributes != null) {
-                    val throwable = Throwable()
-                    rum?.stopResourceWithError(
-                        key, null, message, RumErrorSource.NETWORK,
-                        throwable, attributes
-                    )
+                "stopResourceLoadingWithError" -> {
+                    val key = call.argument<String>(PARAM_KEY)
+                    val message = call.argument<String>(PARAM_MESSAGE)
+                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+                    if (key != null && message != null && attributes != null) {
+                        val throwable = Throwable()
+                        rum?.stopResourceWithError(
+                            key, null, message, RumErrorSource.NETWORK,
+                            throwable, attributes
+                        )
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
                 }
-                result.success(null)
-            }
-            "addError" -> {
-                val message = call.argument<String>(PARAM_MESSAGE)
-                val sourceString = call.argument<String>(PARAM_SOURCE)
-                val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                var stackTrace = call.argument<String>(PARAM_STACK_TRACE)
-                if (message != null && sourceString != null && attributes != null) {
-                    val source = parseRumErrorSource(sourceString)
-                    rum?.addErrorWithStacktrace(message, source, stackTrace, attributes)
+                "addError" -> {
+                    val message = call.argument<String>(PARAM_MESSAGE)
+                    val sourceString = call.argument<String>(PARAM_SOURCE)
+                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+                    var stackTrace = call.argument<String>(PARAM_STACK_TRACE)
+                    if (message != null && sourceString != null && attributes != null) {
+                        val source = parseRumErrorSource(sourceString)
+                        rum?.addErrorWithStacktrace(message, source, stackTrace, attributes)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
                 }
-                result.success(null)
-            }
-            "addUserAction" -> {
-                val typeString = call.argument<String>(PARAM_TYPE)
-                val name = call.argument<String>(PARAM_NAME)
-                val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                if (typeString != null && name != null && attributes != null) {
-                    val actionType = parseRumActionType(typeString)
-                    rum?.addUserAction(actionType, name, attributes)
+                "addUserAction" -> {
+                    val typeString = call.argument<String>(PARAM_TYPE)
+                    val name = call.argument<String>(PARAM_NAME)
+                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+                    if (typeString != null && name != null && attributes != null) {
+                        val actionType = parseRumActionType(typeString)
+                        rum?.addUserAction(actionType, name, attributes)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
                 }
-                result.success(null)
-            }
-            "startUserAction" -> {
-                val typeString = call.argument<String>(PARAM_TYPE)
-                val name = call.argument<String>(PARAM_NAME)
-                val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                if (typeString != null && name != null && attributes != null) {
-                    val actionType = parseRumActionType(typeString)
-                    rum?.startUserAction(actionType, name, attributes)
+                "startUserAction" -> {
+                    val typeString = call.argument<String>(PARAM_TYPE)
+                    val name = call.argument<String>(PARAM_NAME)
+                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+                    if (typeString != null && name != null && attributes != null) {
+                        val actionType = parseRumActionType(typeString)
+                        rum?.startUserAction(actionType, name, attributes)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
                 }
-                result.success(null)
-            }
-            "stopUserAction" -> {
-                val typeString = call.argument<String>(PARAM_TYPE)
-                val name = call.argument<String>(PARAM_NAME)
-                val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                if (typeString != null && name != null && attributes != null) {
-                    val actionType = parseRumActionType(typeString)
-                    rum?.stopUserAction(actionType, name, attributes)
+                "stopUserAction" -> {
+                    val typeString = call.argument<String>(PARAM_TYPE)
+                    val name = call.argument<String>(PARAM_NAME)
+                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+                    if (typeString != null && name != null && attributes != null) {
+                        val actionType = parseRumActionType(typeString)
+                        rum?.stopUserAction(actionType, name, attributes)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
                 }
-                result.success(null)
-            }
-            "addAttribute" -> {
-                val key = call.argument<String>(PARAM_KEY)
-                val value = call.argument<Any>(PARAM_VALUE)
-                if (key != null && value != null) {
-                    GlobalRum.addAttribute(key, value)
+                "addAttribute" -> {
+                    val key = call.argument<String>(PARAM_KEY)
+                    val value = call.argument<Any>(PARAM_VALUE)
+                    if (key != null && value != null) {
+                        GlobalRum.addAttribute(key, value)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
                 }
-                result.success(null)
-            }
-            "removeAttribute" -> {
-                call.argument<String>(PARAM_KEY)?.let {
-                    GlobalRum.removeAttribute(it)
+                "removeAttribute" -> {
+                    val key = call.argument<String>(PARAM_KEY)
+                    if (key != null) {
+                        GlobalRum.removeAttribute(key)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
                 }
-                result.success(null)
+                else -> {
+                    result.notImplemented()
+                }
             }
-            else -> {
-                result.notImplemented()
-            }
+        } catch (e: ClassCastException) {
+            result.error(
+                DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(),
+                mapOf(
+                    "methodName" to call.method
+                )
+            )
         }
     }
 

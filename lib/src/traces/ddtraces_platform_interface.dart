@@ -30,7 +30,7 @@ abstract class DdTracesPlatform extends PlatformInterface {
   // Span methods
   Future<void> spanSetActive(DdSpan span);
   Future<void> spanSetBaggageItem(DdSpan span, String key, String value);
-  Future<void> spanSetTag(DdSpan span, String key, dynamic value);
+  Future<void> spanSetTag(DdSpan span, String key, Object value);
   Future<void> spanSetError(
       DdSpan span, String kind, String message, String? stack);
   Future<void> spanLog(DdSpan span, Map<String, Object?> fields);

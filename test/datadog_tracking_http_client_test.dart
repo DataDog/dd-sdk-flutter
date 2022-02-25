@@ -6,8 +6,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
+import 'package:datadog_sdk/src/attributes.dart';
 import 'package:datadog_sdk/src/datadog_tracking_http_client.dart';
-import 'package:datadog_sdk/src/internal_attributes.dart';
 import 'package:datadog_sdk/src/rum/ddrum.dart';
 import 'package:datadog_sdk/src/traces/ddtraces.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -18,6 +18,10 @@ import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
 class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
+    companion object ErrorCodes {
+        const val CONTRACT_VIOLATION = "DatadogSdk:ContractViolation"
+    }
+
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 

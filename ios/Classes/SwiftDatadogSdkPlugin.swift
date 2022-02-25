@@ -31,11 +31,12 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     DatadogRumPlugin.register(with: registrar)
   }
 
+  // swiftlint:disable:next cyclomatic_complexity
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard let arguments = call.arguments as? [String: Any] else {
-      result(FlutterError(code: "DatadogSDK:InvalidOperation",
-                          message: "No arguments in call to \(call.method)",
-                          details: nil))
+      result(
+        FlutterError.invalidOperation(message: "No arguments in call to \(call.method)")
+      )
       return
     }
 

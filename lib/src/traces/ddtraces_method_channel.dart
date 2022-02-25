@@ -81,7 +81,7 @@ class DdTracesMethodChannel extends DdTracesPlatform {
   }
 
   @override
-  Future<void> spanSetTag(DdSpan span, String key, dynamic value) {
+  Future<void> spanSetTag(DdSpan span, String key, Object value) {
     return methodChannel.invokeMethod(
         'span.setTag', {'spanHandle': span.handle, 'key': key, 'value': value});
   }
