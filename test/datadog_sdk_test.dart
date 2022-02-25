@@ -20,6 +20,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(FakeDdSdkConfiguration());
+    registerFallbackValue(TrackingConsent.granted);
   });
 
   setUp(() {
@@ -28,6 +29,8 @@ void main() {
             logCallback: any(named: 'logCallback')))
         .thenAnswer((_) => Future.value());
     when(() => mockPlatform.setUserInfo(any(), any(), any(), any()))
+        .thenAnswer((_) => Future.value());
+    when(() => mockPlatform.setTrackingConsent(any()))
         .thenAnswer((_) => Future.value());
     DatadogSdkPlatform.instance = mockPlatform;
     datadogSdk = DatadogSdk.instance;

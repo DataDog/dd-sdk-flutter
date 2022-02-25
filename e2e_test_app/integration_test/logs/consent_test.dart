@@ -39,7 +39,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is below expected value"
   /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
-  testWidgets('logger consent - granted', (WidgetTester tester) async {
+  testWidgets('logger consent - granted', (tester) async {
     await initializeDatadog();
 
     await sendRandomLog(tester);
@@ -54,8 +54,10 @@ void main() {
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
   /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_threshold = 0.0
+  /// $notify_no_data = false
   /// ```
-  testWidgets('logger consent - not granted', (WidgetTester tester) async {
+  testWidgets('logger consent - not granted', (tester) async {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.notGranted,
     );
@@ -72,8 +74,10 @@ void main() {
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
   /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_threshold = 0.0
+  /// $notify_no_data = false
   /// ```
-  testWidgets('logger consent - pending', (WidgetTester tester) async {
+  testWidgets('logger consent - pending', (tester) async {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.pending,
     );
@@ -90,9 +94,10 @@ void main() {
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
   /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_threshold = 0.0
+  /// $notify_no_data = false
   /// ```
-  testWidgets('logger consent - granted to not granted',
-      (WidgetTester tester) async {
+  testWidgets('logger consent - granted to not granted', (tester) async {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.granted,
     );
@@ -112,9 +117,10 @@ void main() {
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
   /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_threshold = 0.0
+  /// $notify_no_data = false
   /// ```
-  testWidgets('logger consent - granted to pending',
-      (WidgetTester tester) async {
+  testWidgets('logger consent - granted to pending', (tester) async {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.granted,
     );
@@ -135,8 +141,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is below expected value"
   /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
-  testWidgets('logger consent - not granted to granted',
-      (WidgetTester tester) async {
+  testWidgets('logger consent - not granted to granted', (tester) async {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.notGranted,
     );
@@ -156,9 +161,10 @@ void main() {
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
   /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_threshold = 0.0
+  /// $notify_no_data = false
   /// ```
-  testWidgets('logger consent - not granted to pending',
-      (WidgetTester tester) async {
+  testWidgets('logger consent - not granted to pending', (tester) async {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.notGranted,
     );
@@ -179,8 +185,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is below expected value"
   /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
-  testWidgets('logger consent - pending to granted',
-      (WidgetTester tester) async {
+  testWidgets('logger consent - pending to granted', (tester) async {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.pending,
     );
@@ -200,9 +205,10 @@ void main() {
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
   /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_threshold = 0.0
+  /// $notify_no_data = false
   /// ```
-  testWidgets('logger consent - pending to not granted',
-      (WidgetTester tester) async {
+  testWidgets('logger consent - pending to not granted', (tester) async {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.pending,
     );

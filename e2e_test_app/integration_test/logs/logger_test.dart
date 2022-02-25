@@ -57,7 +57,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} Performance - ${{test_description}}: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_debug_logs,service:${{service}}} > 0.024"
   /// ```
-  testWidgets('logger - debug logs', (WidgetTester tester) async {
+  testWidgets('logger - debug logs', (tester) async {
     await measure('flutter_log_debug_logs', () async {
       await datadog.logs?.debug('fake message', {
         'test_method_name': tester.testDescription,
@@ -84,7 +84,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} Performance - ${{test_description}}: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_info_logs,service:${{service}}} > 0.024"
   /// ```
-  testWidgets('logger - info logs', (WidgetTester tester) async {
+  testWidgets('logger - info logs', (tester) async {
     await measure('flutter_log_info_logs', () async {
       await datadog.logs?.info('fake info message', {
         'test_method_name': tester.testDescription,
@@ -111,7 +111,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} Performance - ${{test_description}}: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_warn_logs,service:${{service}}} > 0.024"
   /// ```
-  testWidgets('logger - warn logs', (WidgetTester tester) async {
+  testWidgets('logger - warn logs', (tester) async {
     await measure('flutter_log_warn_logs', () async {
       await datadog.logs?.warn('fake warn message', {
         'test_method_name': tester.testDescription,
@@ -138,7 +138,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} Performance - ${{test_description}}: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_error_logs,service:${{service}}} > 0.024"
   /// ```
-  testWidgets('logger - error logs', (WidgetTester tester) async {
+  testWidgets('logger - error logs', (tester) async {
     await measure('flutter_log_error_logs', () async {
       await datadog.logs?.error('fake error message', {
         'test_method_name': tester.testDescription,
@@ -165,7 +165,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} Performance - ${{test_description}}: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_add_string_attribute,service:${{service}}} > 0.024"
   /// ```
-  testWidgets('logger - add string attribute', (WidgetTester tester) async {
+  testWidgets('logger - add string attribute', (tester) async {
     final attributeValue = 'customAttribute' + randomString();
     await measure('flutter_log_add_string_attribute', () async {
       await datadog.logs
@@ -194,7 +194,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} Performance - ${{test_description}}: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_add_int_attribute,service:${{service}}} > 0.024"
   /// ```
-  testWidgets('logger - add int attribute', (WidgetTester tester) async {
+  testWidgets('logger - add int attribute', (tester) async {
     final attributeValue = random.nextInt(10000) + 11;
     await measure('flutter_log_add_int_attribute', () async {
       await datadog.logs?.addAttribute(specialIntAttributeKey, attributeValue);
@@ -222,7 +222,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} Performance - ${{test_description}}: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_add_double_attribute,service:${{service}}} > 0.024"
   /// ```
-  testWidgets('logger - add double attribute', (WidgetTester tester) async {
+  testWidgets('logger - add double attribute', (tester) async {
     final attributeValue = random.nextDouble() * double.maxFinite;
     await measure('flutter_log_add_double_attribute', () async {
       await datadog.logs
@@ -251,7 +251,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} Performance - ${{test_description}}: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_add_bool_attribute,service:${{service}}} > 0.024"
   /// ```
-  testWidgets('logger - add bool attribute', (WidgetTester tester) async {
+  testWidgets('logger - add bool attribute', (tester) async {
     final attributeValue = random.nextInt(100) < 50 ? true : false;
     await measure('flutter_log_add_bool_attribute', () async {
       await datadog.logs?.addAttribute(specialBoolAttributeKey, attributeValue);
@@ -279,7 +279,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} Performance - ${{test_description}}: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_add_tag_value,service:${{service}}} > 0.024"
   /// ```
-  testWidgets('logger - add tag value', (WidgetTester tester) async {
+  testWidgets('logger - add tag value', (tester) async {
     final tagValue = 'customTag' + randomString();
     await measure('flutter_log_add_tag_value', () async {
       await datadog.logs?.addTag(specialTagKey, tagValue);
@@ -307,7 +307,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} Performance - ${{test_description}}: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_add_tag,service:${{service}}} > 0.024"
   /// ```
-  testWidgets('logger - add tag', (WidgetTester tester) async {
+  testWidgets('logger - add tag', (tester) async {
     await measure('flutter_log_add_tag', () async {
       await datadog.logs?.addTag(specialTagKey);
     });
