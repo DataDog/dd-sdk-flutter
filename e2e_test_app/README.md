@@ -10,8 +10,15 @@ exhibiting poor performance.
 Each test has associated monitors that are defined by the comments above the
 test. These are parsed by the `e2e_generator` in the tools directory
 
-# Note
-Because Flutter integration tests do not reboot the app in between tests in the
-same file, each file starts initializing by initializing the Datadog SDK, then
-each test runs "main" for the main application, which purposefully does not
-initialize the Datadog SDK.
+# Driver
+
+Launching these tests on simulators is done with the standard `flutter test`
+command. In the future we would like to run these on device, if possible, in
+order to get more accurate performance metrics.
+
+To run on a device, you need to use the `/test_driver/integration_test.dart`
+file using the command:
+
+```bash
+flutter drive --profile --no-dds --driver=test_driver/integration_test.dart --target=integration_test
+```
