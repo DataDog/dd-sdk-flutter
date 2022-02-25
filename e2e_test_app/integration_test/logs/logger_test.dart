@@ -147,22 +147,6 @@ void main() {
     });
   });
 
-  Future<void> sendRandomLog(WidgetTester tester) async {
-    var methods = [
-      datadog.logs?.debug,
-      datadog.logs?.info,
-      datadog.logs?.warn,
-      datadog.logs?.error,
-    ];
-
-    var method = methods.randomElement();
-
-    await method!(randomString(), {
-      'test_method_name': tester.testDescription,
-      'operating_system': Platform.operatingSystem,
-    });
-  }
-
   /// ```global
   /// $monitor_prefix = ${{feature}}_add_string_attribute
   /// ```

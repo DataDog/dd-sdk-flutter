@@ -2,8 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2020 Datadog, Inc.
 
-import 'package:datadog_sdk/src/datadog_sdk_platform_interface.dart';
 import 'package:datadog_sdk/datadog_sdk.dart';
+import 'package:datadog_sdk/src/datadog_sdk_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -204,5 +204,11 @@ void main() {
     datadogSdk.setUserInfo(id: null, name: null, email: null);
 
     verify(() => mockPlatform.setUserInfo(null, null, null, {}));
+  });
+
+  test('set tracking consent calls into platform', () {
+    datadogSdk.setTrackingConsent(TrackingConsent.notGranted);
+
+    verify(() => mockPlatform.setTrackingConsent(TrackingConsent.notGranted));
   });
 }

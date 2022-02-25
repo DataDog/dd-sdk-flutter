@@ -7,10 +7,12 @@ import 'dart:math';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 typedef AsyncVoidCallback = Future<void> Function();
+typedef DatadogConfigCallback = void Function(DdSdkConfiguration config);
 
-Future<void> initializeDatadog() async {
+Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
   await dotenv.load();
 
   DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
@@ -31,11 +33,15 @@ Future<void> initializeDatadog() async {
     ..additionalConfig[DatadogConfigKey.serviceName] =
         'com.datadog.flutter.nightly';
 
+  if (configCallback != null) {
+    configCallback(configuration);
+  }
+
   await DatadogSdk.instance.initialize(configuration);
 }
 
 Future<void> measure(String resourceName, AsyncVoidCallback callback) async {
-  // TODO: Find a way to do more accurate measurement instead of relying on Spans to do the measure
+  // TODO: Have spans record time from Dart instead of waiting for the PlatformChannel.
   var span = await DatadogSdk.instance.traces?.startRootSpan(
     'perf_measure',
     resourceName: resourceName,
@@ -63,4 +69,20 @@ extension RandomExtension<T> on List<T> {
   T randomElement() {
     return this[_random.nextInt(length)];
   }
+}
+
+Future<void> sendRandomLog(WidgetTester tester) async {
+  var methods = [
+    DatadogSdk.instance.logs?.debug,
+    DatadogSdk.instance.logs?.info,
+    DatadogSdk.instance.logs?.warn,
+    DatadogSdk.instance.logs?.error,
+  ];
+
+  var method = methods.randomElement();
+
+  await method!(randomString(), {
+    'test_method_name': tester.testDescription,
+    'operating_system': Platform.operatingSystem,
+  });
 }

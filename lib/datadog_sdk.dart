@@ -170,6 +170,12 @@ class DatadogSdk {
     });
   }
 
+  Future<void> setTrackingConsent(TrackingConsent trackingConsent) {
+    return wrap('setTrackingConsent', internalLogger, () {
+      return _platform.setTrackingConsent(trackingConsent);
+    });
+  }
+
   /// Determine if the provided URI is a first party host as determined by the
   /// value of [firstPartyHosts].
   bool isFirstPartyHost(Uri uri) {
