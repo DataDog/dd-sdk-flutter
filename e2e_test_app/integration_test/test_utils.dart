@@ -71,6 +71,13 @@ extension RandomExtension<T> on List<T> {
   }
 }
 
+Map<String, Object> logAttributes(WidgetTester tester) {
+  return {
+    'test_method_name': tester.testDescription,
+    'operating_system': Platform.operatingSystem,
+  };
+}
+
 Future<void> sendRandomLog(WidgetTester tester) async {
   var methods = [
     DatadogSdk.instance.logs?.debug,
@@ -81,8 +88,8 @@ Future<void> sendRandomLog(WidgetTester tester) async {
 
   var method = methods.randomElement();
 
-  await method!(randomString(), {
-    'test_method_name': tester.testDescription,
-    'operating_system': Platform.operatingSystem,
-  });
+  await method!(
+    randomString(),
+    logAttributes(tester),
+  );
 }

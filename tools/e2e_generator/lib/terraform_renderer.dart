@@ -135,8 +135,13 @@ class MonitorTemplate {
       var renderedLine = _replaceVariables(
           line, variables, renderedUserVariables, issueReporter);
 
-      renderedLine = renderedLine.replaceAll(
-          '## MONITOR_CODE ##', configuration.codeReference.code);
+      // May need to do more sanitizing than just escaping $ but
+      // for now that appears to be it.
+      var sanitizedCode =
+          configuration.codeReference.code.replaceAll('\${', '\$\${');
+
+      renderedLine =
+          renderedLine.replaceAll('## MONITOR_CODE ##', sanitizedCode);
 
       renderedLines.writeln(renderedLine);
     });
