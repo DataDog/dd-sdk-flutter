@@ -3,13 +3,16 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import 'dart:io';
+import 'dart:math';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 typedef AsyncVoidCallback = Future<void> Function();
+typedef DatadogConfigCallback = void Function(DdSdkConfiguration config);
 
-Future<void> initializeDatadog() async {
+Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
   await dotenv.load();
 
   DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
@@ -17,7 +20,7 @@ Future<void> initializeDatadog() async {
   var applicationId = dotenv.get('DD_APPLICATION_ID');
   var clientToken = dotenv.get('DD_CLIENT_TOKEN');
   var env = dotenv.get('DD_E2E_IS_ON_CI').toLowerCase() == 'true'
-      ? 'integration'
+      ? 'instrumentation'
       : 'debug';
 
   final configuration = DdSdkConfiguration(
@@ -30,17 +33,56 @@ Future<void> initializeDatadog() async {
     ..additionalConfig[DatadogConfigKey.serviceName] =
         'com.datadog.flutter.nightly';
 
+  if (configCallback != null) {
+    configCallback(configuration);
+  }
+
   await DatadogSdk.instance.initialize(configuration);
 }
 
 Future<void> measure(String resourceName, AsyncVoidCallback callback) async {
-  // TODO: Find a way to do more accurate measurement instead of relying on Spans to do the measure
-  var span =
-      await DatadogSdk.instance.traces?.startRootSpan('perf_measure', tags: {
-    // TODO - Android doesn't put the resource tag onto the span
-    'resource_name': resourceName,
-    'operating_system': Platform.operatingSystem
-  });
+  // TODO: Have spans record time from Dart instead of waiting for the PlatformChannel.
+  var span = await DatadogSdk.instance.traces?.startRootSpan(
+    'perf_measure',
+    resourceName: resourceName,
+    tags: {'operating_system': Platform.operatingSystem},
+  );
   await callback();
   await span?.finish();
+}
+
+final _random = Random();
+const _alphas = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const _numerics = '0123456789';
+const _alphaNumerics = _alphas + _numerics;
+
+String randomString({int length = 10}) {
+  final result = String.fromCharCodes(Iterable.generate(
+    length,
+    (_) => _alphaNumerics.codeUnitAt(_random.nextInt(_alphaNumerics.length)),
+  ));
+
+  return result;
+}
+
+extension RandomExtension<T> on List<T> {
+  T randomElement() {
+    return this[_random.nextInt(length)];
+  }
+}
+
+Future<void> sendRandomLog(WidgetTester tester) async {
+  var methods = [
+    DatadogSdk.instance.logs?.debug,
+    DatadogSdk.instance.logs?.info,
+    DatadogSdk.instance.logs?.warn,
+    DatadogSdk.instance.logs?.error,
+  ];
+
+  var method = methods.randomElement();
+
+  await method!(randomString(), {
+    'test_method_name': tester.testDescription,
+    'operating_system': Platform.operatingSystem,
+  });
 }
