@@ -10,9 +10,9 @@ For any urgent matters (such as outages) or issues concerning the Datadog
 service or UI, contact our support team via https://docs.datadoghq.com/help/ for
 direct, faster assistance.
 
-You may submit a bug report concerning the Datadog SDK for Flutter by opening a
-GitHub Issue. Use appropriate template and provide all listed details to help us
-resolve the issue.
+You may submit a bug report concerning the Datadog Plugin for Flutter by opening
+a GitHub Issue. Use appropriate template and provide all listed details to help
+us resolve the issue.
 
 ## Getting started?
 
@@ -59,8 +59,5 @@ There are three types of tests in this repo
   Datadog, measuring that we send the correct number of events and monitor the
   performance of the SDK.
 
-### Building mocks
-
-We utilize flutter's Mockito package to generate mocks in some circumstances. To
-regenerate mocks, simply run `flutter pub run build_runner build`
-
+Any new PR must at least include unit tests, and hopefully include changes to
+(or new tests) in the corresponding integration tests.
