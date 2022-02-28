@@ -3,7 +3,6 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import 'dart:io';
-import 'dart:math';
 
 import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:e2e_test_app/main.dart' as app;
@@ -19,8 +18,6 @@ import '../test_utils.dart';
 /// ```
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-
-  final random = Random();
 
   final datadog = DatadogSdk.instance;
 
@@ -48,8 +45,8 @@ void main() {
           'com.datadog.flutter.nightly.custom',
     );
 
-    final span = await datadog.traces!
-        .startSpan('traces_${Platform.operatingSystem}_set_service_name');
+    final span =
+        await startSpan('traces_${Platform.operatingSystem}_set_service_name');
     await span.finish();
   });
 
@@ -72,8 +69,7 @@ void main() {
     final viewKey = randomString();
 
     await datadog.rum?.startView(viewKey);
-    final span = await datadog.traces!
-        .startSpan('traces_config_bundle_with_rum_enabled');
+    final span = await startSpan('traces_config_bundle_with_rum_enabled');
     await span.finish();
 
     await datadog.rum?.stopView(viewKey);
@@ -98,8 +94,7 @@ void main() {
     final viewKey = randomString();
 
     await datadog.rum?.startView(viewKey);
-    final span = await datadog.traces!
-        .startSpan('traces_config_bundle_with_rum_disabled');
+    final span = await startSpan('traces_config_bundle_with_rum_disabled');
     await span.finish();
 
     await datadog.rum?.stopView(viewKey);
@@ -117,13 +112,15 @@ void main() {
   /// $monitor_threshold = 1
   /// ```
   testWidgets('traces config - set_user_info', (tester) async {
+    await initializeDatadog();
+
     await datadog.setUserInfo(
       id: 'some-id-${randomString()}',
       name: 'some-name-${randomString()}',
       email: 'some-email@${randomString()}.com',
       extraInfo: {'level1': randomString(), 'another.level2': randomString()},
     );
-    final span = await datadog.traces!.startSpan('traces_config_set_user_info');
+    final span = await startSpan('traces_config_set_user_info');
     await span.finish();
   });
 }

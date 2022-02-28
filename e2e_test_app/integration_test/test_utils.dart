@@ -93,3 +93,9 @@ Future<void> sendRandomLog(WidgetTester tester) async {
     logAttributes(tester),
   );
 }
+
+Future<DdSpan> startSpan(String operationName) {
+  return DatadogSdk.instance.traces!.startSpan(operationName, tags: {
+    'operating_system': Platform.operatingSystem,
+  });
+}

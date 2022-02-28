@@ -53,11 +53,13 @@ void main() {
   testWidgets('traces - span set tag boolean', (tester) async {
     final attributeValue = random.nextInt(100) < 50 ? true : false;
 
-    final span = await datadog.traces!.startSpan('trace_span_set_tag_boolean');
+    final span = await startSpan('trace_span_set_tag_boolean');
 
     await measure('traces_span_set_tag_boolean', () async {
       await span.setTag('test_special_tag', attributeValue);
     });
+
+    await span.finish();
   });
 
   /// ```global
@@ -82,7 +84,7 @@ void main() {
   testWidgets('traces - span set tag number', (tester) async {
     final attributeValue = random.nextInt(9) + 1;
 
-    final span = await datadog.traces!.startSpan('trace_span_set_tag_number');
+    final span = await startSpan('trace_span_set_tag_number');
 
     await measure('traces_span_set_tag_number', () async {
       await span.setTag('test_special_tag', attributeValue);
@@ -112,7 +114,7 @@ void main() {
   testWidgets('traces - span set tag string', (tester) async {
     final attributeValue = 'customTag' + randomString();
 
-    final span = await datadog.traces!.startSpan('trace_span_set_tag_string');
+    final span = await startSpan('trace_span_set_tag_string');
 
     await measure('traces_span_set_tag_string', () async {
       await span.setTag('test_special_tag', attributeValue);
@@ -142,7 +144,7 @@ void main() {
   testWidgets('traces - span set baggage item', (tester) async {
     final attributeValue = 'customBaggage' + randomString();
 
-    final span = await datadog.traces!.startSpan('trace_span_set_baggage_item');
+    final span = await startSpan('trace_span_set_baggage_item');
 
     await measure('traces_span_set_baggage_item', () async {
       await span.setBaggageItem('test_special_tag', attributeValue);
@@ -161,24 +163,14 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}}: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,resource_name:traces_span_set_active,service:com.datadog.flutter.nightly,@operating_system:${{variant}}} > 0.024"
   /// ```
-  ///
-  /// ```apm(ios, android) IGNORE
-  /// $monitor_id = ${{monitor_prefix}}_finish_${{variant}}
-  /// $monitor_name = "${{monitor_name_prefix}}: has a high average execution time"
-  /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,resource_name:traces_span_finish,service:com.datadog.flutter.nightly,@operating_system:${{variant}}} > 0.024"
-  /// ```
   testWidgets('traces - span performance', (tester) async {
-    final attributeValue = 'customBaggage' + randomString();
-
-    final span = await datadog.traces!.startSpan('trace_span_set_baggage_item');
+    final span = await startSpan(randomString());
 
     await measure('traces_span_set_active', () async {
       await span.setActive();
     });
 
-    await measure('traces_span_finish', () async {
-      await span.finish();
-    });
+    await span.finish();
   });
 
   /// ```global
@@ -198,8 +190,7 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,resource_name:traces_span_log,service:com.datadog.flutter.nightly,@operating_system:${{variant}}} > 0.024"
   /// ```
   testWidgets('traces - span log', (tester) async {
-    final span =
-        await datadog.traces!.startSpan('trace_span_log_measured_span');
+    final span = await startSpan('trace_span_log_measured_span');
     await span.setActive();
 
     final fields = logAttributes(tester);
