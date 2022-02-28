@@ -18,14 +18,14 @@ import '../test_utils.dart';
 /// $monitor_name_prefix = [RUM] [Flutter (${{variant:-global}})] Nightly
 /// ```
 void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
   const specialStringAttributeKey = 'test_special_string_attribute';
   const specialIntAttributeKey = 'test_special_int_attribute';
   const specialBoolAttributeKey = 'test_special_bool_attribute';
   const specialDoubleAttributeKey = 'test_special_double_attribute';
   const specialTagKey = 'test_special_tag';
   final random = Random();
-
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() async {
     // TODO: Delete all SDK data
