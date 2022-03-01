@@ -17,8 +17,7 @@ import '../test_utils.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() async {
-    // TODO: Delete all SDK data
+  setUp(() {
     app.main();
   });
 
