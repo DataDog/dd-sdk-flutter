@@ -10,6 +10,12 @@ def flutterSdkPath = properties.getProperty("flutter.sdk")
 assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
 apply from: "$flutterSdkPath/packages/flutter_tools/gradle/app_plugin_loader.gradle"
 
+/*
+ * Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+ * This product includes software developed at Datadog (https://www.datadoghq.com/).
+ * Copyright 2016-Present Datadog, Inc.
+ */
+
 //includeBuild('../../../dd-sdk-android') {
 //    dependencySubstitution {
 //        substitute module('com.datadoghq:dd-sdk-android') using project(':dd-sdk-android')
