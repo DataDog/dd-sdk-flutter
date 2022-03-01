@@ -37,7 +37,7 @@ void main() {
   /// ```logs(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is below expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   testWidgets('logger consent - granted', (tester) async {
     await initializeDatadog();
@@ -53,7 +53,7 @@ void main() {
   /// ```logs(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
   /// $monitor_threshold = 0.0
   /// $notify_no_data = false
   /// ```
@@ -73,7 +73,7 @@ void main() {
   /// ```logs(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
   /// $monitor_threshold = 0.0
   /// $notify_no_data = false
   /// ```
@@ -93,7 +93,7 @@ void main() {
   /// ```logs(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
   /// $monitor_threshold = 0.0
   /// $notify_no_data = false
   /// ```
@@ -116,7 +116,7 @@ void main() {
   /// ```logs(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
   /// $monitor_threshold = 0.0
   /// $notify_no_data = false
   /// ```
@@ -139,7 +139,7 @@ void main() {
   /// ```logs(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is below expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\"  @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   testWidgets('logger consent - not granted to granted', (tester) async {
     await initializeDatadog(
@@ -160,7 +160,7 @@ void main() {
   /// ```logs(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
   /// $monitor_threshold = 0.0
   /// $notify_no_data = false
   /// ```
@@ -183,7 +183,7 @@ void main() {
   /// ```logs(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is below expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   testWidgets('logger consent - pending to granted', (tester) async {
     await initializeDatadog(
@@ -204,7 +204,7 @@ void main() {
   /// ```logs(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" status:debug @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
   /// $monitor_threshold = 0.0
   /// $notify_no_data = false
   /// ```
