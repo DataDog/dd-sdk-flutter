@@ -258,6 +258,43 @@ resource "datadog_monitor" user monitor id web {
     expect(result, expectedResult);
   });
 
+  test('render escapes code replacement in code anchor', () {
+    final template =
+        MonitorTemplate(r'''resource "datadog_monitor" ${{monitor_id}} {
+  argument1 = ${{argument1_value}} # comment
+
+  ## MONITOR_CODE ##
+}''');
+
+    final var1 =
+        MonitorVariable(name: 'monitor_id', value: 'test_\${{global1}}');
+    final var2 = MonitorVariable(
+        name: 'argument1_value', value: '\${{global1}}, \${{global2}}');
+    final configuration = MonitorConfiguration(
+      type: MonitorType.logs,
+      shouldIgnore: false,
+      variables: [var1, var2],
+      variants: [],
+      codeReference: CodeReference('fake_path', 123, 'test_description',
+          'Code for the \${variable} code god.'),
+    );
+
+    final globalVariables = [
+      MonitorVariable(name: 'global1', value: 'global_value_1'),
+      MonitorVariable(name: 'global2', value: 'second global value'),
+    ];
+
+    final expectedResult = r'''resource "datadog_monitor" test_global_value_1 {
+  argument1 = global_value_1, second global value # comment
+
+  Code for the $${variable} code god.
+}''';
+
+    final result =
+        template.render(configuration, globalVariables, issueReporter).trim();
+    expect(result, expectedResult);
+  });
+
   test('render ignores when MonitorConfiguration.shouldIgnore = true', () {
     final template =
         MonitorTemplate(r'''resource "datadog_monitor" ${{monitor_id}} {
