@@ -71,7 +71,7 @@ extension RandomExtension<T> on List<T> {
   }
 }
 
-Map<String, Object> logAttributes(WidgetTester tester) {
+Map<String, Object> e2eAttributes(WidgetTester tester) {
   return {
     'test_method_name': tester.testDescription,
     'operating_system': Platform.operatingSystem,
@@ -90,7 +90,7 @@ Future<void> sendRandomLog(WidgetTester tester) async {
 
   await method!(
     randomString(),
-    logAttributes(tester),
+    e2eAttributes(tester),
   );
 }
 

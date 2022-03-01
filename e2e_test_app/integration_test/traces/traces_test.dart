@@ -193,7 +193,7 @@ void main() {
     final span = await startSpan('trace_span_log_measured_span');
     await span.setActive();
 
-    final fields = logAttributes(tester);
+    final fields = e2eAttributes(tester);
     fields['test_special_string_attribute'] =
         'customAttribute' + randomString();
 
