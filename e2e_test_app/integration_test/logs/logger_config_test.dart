@@ -36,18 +36,22 @@ void main() {
   testWidgets('logger config - set service name', (tester) async {
     await initializeDatadog(
       (config) => config.additionalConfig[DatadogConfigKey.serviceName] =
-          'com.datadog.flutter.night.custom',
+          'com.datadog.flutter.nightly.custom',
     );
 
     await sendRandomLog(tester);
   });
 
   // - data monitor:
-  /// ```logs(ios, android)
-  /// $monitor_id = ${{feature}}_send_network_info_enabled_${{variant}}
-  /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is below expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}} @network.client.reachability:*\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
+  /// ```logs
+  /// $monitor_id = ${{feature}}_send_network_info_enabled_ios
+  /// $monitor_name = "[RUM] [Flutter (ios})] Nightly - ${{test_description}}: number of logs is below expected value"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:ios @network.client.reachability:*\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
+  /// ```logs
+  /// $monitor_id = ${{feature}}_send_network_info_enabled_android
+  /// $monitor_name = "[RUM] [Flutter (android})] Nightly - ${{test_description}}: number of logs is below expected value"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:android @network.client.connectivity:*\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   testWidgets('logger config - send network info enabled', (tester) async {
     await initializeDatadog(
       (config) => config.loggingConfiguration!.sendNetworkInfo = true,

@@ -180,7 +180,7 @@ void main() {
   /// ```logs(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of hits is below expected value"
-  /// $monitor_query = "logs(\"service:com.datadog.ios.nightly @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}} @test_special_string_attribute:customAttribute*\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "logs(\"service:com.datadog.flutter.nightly @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}} @test_special_string_attribute:customAttribute*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitor:
