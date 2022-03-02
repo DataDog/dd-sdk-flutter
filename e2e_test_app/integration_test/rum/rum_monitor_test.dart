@@ -51,15 +51,15 @@ void main() {
   /// ```
   testWidgets('rum - start view', (tester) async {
     final viewKey = randomString();
-    await measure('flutter_rum_start_view', () async {
-      await datadog.rum!.startView(
+    await measure('flutter_rum_start_view', () {
+      datadog.rum!.startView(
         viewKey,
         randomString(),
         e2eAttributes(tester),
       );
     });
 
-    await datadog.rum!.stopView(viewKey);
+    datadog.rum!.stopView(viewKey);
   });
 
   /// ```global
@@ -83,18 +83,18 @@ void main() {
   testWidgets('rum - add timing', (tester) async {
     final viewKey = randomString();
     final delay = random.nextInt(500) + 200;
-    await datadog.rum!.startView(
+    datadog.rum!.startView(
       viewKey,
       randomString(),
       e2eAttributes(tester),
     );
 
     await Future.delayed(Duration(seconds: delay));
-    await measure('flutter_rum_add_timing', () async {
-      await datadog.rum!.addTiming('time_event');
+    await measure('flutter_rum_add_timing', () {
+      datadog.rum!.addTiming('time_event');
     });
 
-    await datadog.rum!.stopView(viewKey);
+    datadog.rum!.stopView(viewKey);
   });
 
   /// ```global
@@ -117,16 +117,16 @@ void main() {
   testWidgets('rum - add attribute for view', (tester) async {
     final viewKey = randomString();
 
-    await measure('flutter_rum_add_attribute', () async {
-      await datadog.rum!.addAttribute('custom_attribute', randomString());
+    await measure('flutter_rum_add_attribute', () {
+      datadog.rum!.addAttribute('custom_attribute', randomString());
     });
 
-    await datadog.rum!.startView(
+    datadog.rum!.startView(
       viewKey,
       randomString(),
       e2eAttributes(tester),
     );
-    await datadog.rum!.stopView(viewKey);
+    datadog.rum!.stopView(viewKey);
   });
 
   /// ```global
@@ -150,18 +150,18 @@ void main() {
   testWidgets('rum - add attribute for view', (tester) async {
     final viewKey = randomString();
 
-    await datadog.rum!.addAttribute('custom_attribute', randomString());
+    datadog.rum!.addAttribute('custom_attribute', randomString());
 
-    await measure('flutter_rum_remove_attribute', () async {
-      await datadog.rum!.removeAttribute('custom_attribute');
+    await measure('flutter_rum_remove_attribute', () {
+      datadog.rum!.removeAttribute('custom_attribute');
     });
 
-    await datadog.rum!.startView(
+    datadog.rum!.startView(
       viewKey,
       randomString(),
       e2eAttributes(tester),
     );
-    await datadog.rum!.stopView(viewKey);
+    datadog.rum!.stopView(viewKey);
   });
 
   /// ```global
@@ -183,17 +183,17 @@ void main() {
   /// ```
   testWidgets('rum - simple action', (tester) async {
     final viewKey = randomString();
-    await datadog.rum!.startView(
+    datadog.rum!.startView(
       viewKey,
       randomString(),
       e2eAttributes(tester),
     );
 
-    await measure('flutter_rum_simple_action', () async {
-      await datadog.rum!.addUserAction(RumUserActionType.tap, randomString());
+    await measure('flutter_rum_simple_action', () {
+      datadog.rum!.addUserAction(RumUserActionType.tap, randomString());
     });
 
-    await datadog.rum!.stopView(viewKey);
+    datadog.rum!.stopView(viewKey);
   });
 
   /// ```global
@@ -209,37 +209,37 @@ void main() {
   ///
   /// - performance monitors:
   /// ```apm(ios, android) IGNORE
-  /// $monitor_id = ${{monitor_prefix}}_performance_${{variant}}
+  /// $monitor_id = ${{monitor_prefix}}_start_performance_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} Performance: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_start_user_action,service:${{service}}} > 0.024"
   /// ```
   /// ```apm(ios, android) IGNORE
-  /// $monitor_id = ${{monitor_prefix}}_performance_${{variant}}
+  /// $monitor_id = ${{monitor_prefix}}_stop_performance_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} Performance: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_stop_user_action,service:${{service}}} > 0.024"
   /// ```
   testWidgets('rum - long action', (tester) async {
     final viewKey = randomString();
-    await datadog.rum!.startView(
+    datadog.rum!.startView(
       viewKey,
       randomString(),
       e2eAttributes(tester),
     );
 
     final actionName = randomString();
-    await measure('flutter_start_user_action', () async {
-      await datadog.rum!.startUserAction(
+    await measure('flutter_start_user_action', () {
+      datadog.rum!.startUserAction(
         RumUserActionType.scroll,
         actionName,
         e2eAttributes(tester),
       );
     });
 
-    await measure('flutter_stop_user_action', () async {
-      await datadog.rum!.stopUserAction(RumUserActionType.scroll, actionName);
+    await measure('flutter_stop_user_action', () {
+      datadog.rum!.stopUserAction(RumUserActionType.scroll, actionName);
     });
 
-    await datadog.rum!.stopView(viewKey);
+    datadog.rum!.stopView(viewKey);
   });
 
   /// ```global
@@ -255,26 +255,26 @@ void main() {
   ///
   /// - performance monitors:
   /// ```apm(ios, android) IGNORE
-  /// $monitor_id = ${{monitor_prefix}}_performance_${{variant}}
+  /// $monitor_id = ${{monitor_prefix}}_start_performance_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} Performance: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_start_resource,service:${{service}}} > 0.024"
   /// ```
   /// ```apm(ios, android) IGNORE
-  /// $monitor_id = ${{monitor_prefix}}_performance_${{variant}}
+  /// $monitor_id = ${{monitor_prefix}}_stop_performance_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} Performance: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_stop_resource,service:${{service}}} > 0.024"
   /// ```
   testWidgets('rum - resource loading', (tester) async {
     final viewKey = randomString();
-    await datadog.rum!.startView(
+    datadog.rum!.startView(
       viewKey,
       randomString(),
       e2eAttributes(tester),
     );
 
     final resourceKey = randomString();
-    await measure('flutter_start_resource', () async {
-      await datadog.rum!.startResourceLoading(
+    await measure('flutter_start_resource', () {
+      datadog.rum!.startResourceLoading(
         resourceKey,
         RumHttpMethod.get,
         randomString(),
@@ -282,12 +282,12 @@ void main() {
       );
     });
 
-    await measure('flutter_stop_resource', () async {
-      await datadog.rum!.stopResourceLoading(
+    await measure('flutter_stop_resource', () {
+      datadog.rum!.stopResourceLoading(
           resourceKey, 200, RumResourceType.values.randomElement());
     });
 
-    await datadog.rum!.stopView(viewKey);
+    datadog.rum!.stopView(viewKey);
   });
 
   /// ```global
@@ -309,26 +309,26 @@ void main() {
   /// ```
   testWidgets('rum - resource loading with error', (tester) async {
     final viewKey = randomString();
-    await datadog.rum!.startView(
+    datadog.rum!.startView(
       viewKey,
       randomString(),
       e2eAttributes(tester),
     );
 
     final resourceKey = randomString();
-    await datadog.rum!.startResourceLoading(
+    datadog.rum!.startResourceLoading(
       resourceKey,
       RumHttpMethod.get,
       randomString(),
       e2eAttributes(tester),
     );
 
-    await measure('flutter_stop_resource_with_error', () async {
-      await datadog.rum!.stopResourceLoadingWithErrorInfo(
+    await measure('flutter_stop_resource_with_error', () {
+      datadog.rum!.stopResourceLoadingWithErrorInfo(
           resourceKey, randomString(), e2eAttributes(tester));
     });
 
-    await datadog.rum!.stopView(viewKey);
+    datadog.rum!.stopView(viewKey);
   });
 
   /// ```global
@@ -350,18 +350,18 @@ void main() {
   /// ```
   testWidgets('rum - add error', (tester) async {
     final viewKey = randomString();
-    await datadog.rum!.startView(
+    datadog.rum!.startView(
       viewKey,
       randomString(),
       e2eAttributes(tester),
     );
 
-    await measure('flutter_add_error', () async {
-      await datadog.rum!
+    await measure('flutter_add_error', () {
+      datadog.rum!
           .addErrorInfo(randomString(), RumErrorSource.values.randomElement());
     });
 
-    await datadog.rum!.stopView(viewKey);
+    datadog.rum!.stopView(viewKey);
   });
 
   /// ```global
@@ -383,19 +383,19 @@ void main() {
   /// ```
   testWidgets('rum - add error with stacktrace', (tester) async {
     final viewKey = randomString();
-    await datadog.rum!.startView(
+    datadog.rum!.startView(
       viewKey,
       randomString(),
       e2eAttributes(tester),
     );
 
     final stackTrace = StackTrace.current;
-    await measure('flutter_add_error_with_stacktrace', () async {
-      await datadog.rum!.addErrorInfo(
+    await measure('flutter_add_error_with_stacktrace', () {
+      datadog.rum!.addErrorInfo(
           randomString(), RumErrorSource.values.randomElement(),
           stackTrace: stackTrace);
     });
 
-    await datadog.rum!.stopView(viewKey);
+    datadog.rum!.stopView(viewKey);
   });
 }

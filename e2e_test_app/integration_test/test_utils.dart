@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
@@ -9,7 +10,7 @@ import 'package:datadog_sdk/datadog_sdk.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-typedef AsyncVoidCallback = Future<void> Function();
+typedef AsyncVoidCallback = FutureOr<void> Function();
 typedef DatadogConfigCallback = void Function(DdSdkConfiguration config);
 
 Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
@@ -78,7 +79,7 @@ Map<String, Object> e2eAttributes(WidgetTester tester) {
   };
 }
 
-Future<void> sendRandomLog(WidgetTester tester) async {
+void sendRandomLog(WidgetTester tester) {
   var methods = [
     DatadogSdk.instance.logs?.debug,
     DatadogSdk.instance.logs?.info,
@@ -88,7 +89,7 @@ Future<void> sendRandomLog(WidgetTester tester) async {
 
   var method = methods.randomElement();
 
-  await method!(
+  method!(
     randomString(),
     e2eAttributes(tester),
   );

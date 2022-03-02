@@ -14,61 +14,57 @@ class DdLogs {
     return DdLogsPlatform.instance;
   }
 
-  Future<void> debug(String message,
-      [Map<String, Object?> context = const {}]) async {
-    return wrap('logs.debug', _logger, () async {
-      await _platform.debug(message, context);
+  void debug(String message, [Map<String, Object?> context = const {}]) {
+    wrap('logs.debug', _logger, () {
+      return _platform.debug(message, context);
     });
   }
 
-  Future<void> info(String message,
-      [Map<String, Object?> context = const {}]) async {
-    return wrap('logs.info', _logger, () async {
-      await _platform.info(message, context);
+  void info(String message, [Map<String, Object?> context = const {}]) {
+    wrap('logs.info', _logger, () {
+      return _platform.info(message, context);
     });
   }
 
-  Future<void> warn(String message,
-      [Map<String, Object?> context = const {}]) async {
-    return wrap('logs.warn', _logger, () async {
-      await _platform.warn(message, context);
+  void warn(String message, [Map<String, Object?> context = const {}]) {
+    wrap('logs.warn', _logger, () {
+      return _platform.warn(message, context);
     });
   }
 
-  Future<void> error(String message,
-      [Map<String, Object?> context = const {}]) async {
-    return wrap('logs.error', _logger, () async {
-      await _platform.error(message, context);
+  void error(String message, [Map<String, Object?> context = const {}]) {
+    wrap('logs.error', _logger, () {
+      return _platform.error(message, context);
     });
   }
 
-  Future<void> addAttribute(String key, Object value) async {
-    return wrap('logs.addAttribute', _logger, () async {
-      await _platform.addAttribute(key, value);
+  void addAttribute(String key, Object value) {
+    wrap('logs.addAttribute', _logger, () {
+      return _platform.addAttribute(key, value);
     });
   }
 
-  Future<void> removeAttribute(String key) async {
-    return wrap('logs.removeAttribute', _logger, () async {
-      await _platform.removeAttribute(key);
+  void removeAttribute(String key) {
+    wrap('logs.removeAttribute', _logger, () {
+      return _platform.removeAttribute(key);
     });
   }
 
-  Future<void> addTag(String key, [String? value]) async {
-    return wrap('logs.addTag', _logger, () async {
-      await _platform.addTag(key, value);
+  void addTag(String key, [String? value]) {
+    wrap('logs.addTag', _logger, () {
+      return _platform.addTag(key, value);
     });
   }
 
-  Future<void> removeTag(String tag) async {
-    return wrap('logs.removeTag', _logger, () async {
-      await _platform.removeTag(tag);
+  void removeTag(String tag) {
+    wrap('logs.removeTag', _logger, () {
+      return _platform.removeTag(tag);
     });
   }
 
-  Future<void> removeTagWithKey(String key) async {
-    return wrap('logs.removeTagWithKey', _logger, () async {
-      await _platform.removeTagWithKey(key);
+  void removeTagWithKey(String key) {
+    wrap('logs.removeTagWithKey', _logger, () {
+      return _platform.removeTagWithKey(key);
     });
   }
 }

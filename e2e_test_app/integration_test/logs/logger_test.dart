@@ -58,8 +58,8 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_debug_logs,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - debug logs', (tester) async {
-    await measure('flutter_log_debug_logs', () async {
-      await datadog.logs?.debug('fake message', {
+    await measure('flutter_log_debug_logs', () {
+      datadog.logs?.debug('fake message', {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem
       });
@@ -86,7 +86,7 @@ void main() {
   /// ```
   testWidgets('logger - info logs', (tester) async {
     await measure('flutter_log_info_logs', () async {
-      await datadog.logs?.info('fake info message', {
+      datadog.logs?.info('fake info message', {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem,
       });
@@ -113,7 +113,7 @@ void main() {
   /// ```
   testWidgets('logger - warn logs', (tester) async {
     await measure('flutter_log_warn_logs', () async {
-      await datadog.logs?.warn('fake warn message', {
+      datadog.logs?.warn('fake warn message', {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem,
       });
@@ -140,7 +140,7 @@ void main() {
   /// ```
   testWidgets('logger - error logs', (tester) async {
     await measure('flutter_log_error_logs', () async {
-      await datadog.logs?.error('fake error message', {
+      datadog.logs?.error('fake error message', {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem,
       });
@@ -168,12 +168,11 @@ void main() {
   testWidgets('logger - add string attribute', (tester) async {
     final attributeValue = 'customAttribute' + randomString();
     await measure('flutter_log_add_string_attribute', () async {
-      await datadog.logs
-          ?.addAttribute(specialStringAttributeKey, attributeValue);
+      datadog.logs?.addAttribute(specialStringAttributeKey, attributeValue);
     });
 
-    await sendRandomLog(tester);
-    await datadog.logs?.removeAttribute(specialStringAttributeKey);
+    sendRandomLog(tester);
+    datadog.logs?.removeAttribute(specialStringAttributeKey);
   });
 
   /// ```global
@@ -197,11 +196,11 @@ void main() {
   testWidgets('logger - add int attribute', (tester) async {
     final attributeValue = random.nextInt(10000) + 11;
     await measure('flutter_log_add_int_attribute', () async {
-      await datadog.logs?.addAttribute(specialIntAttributeKey, attributeValue);
+      datadog.logs?.addAttribute(specialIntAttributeKey, attributeValue);
     });
 
-    await sendRandomLog(tester);
-    await datadog.logs?.removeAttribute(specialIntAttributeKey);
+    sendRandomLog(tester);
+    datadog.logs?.removeAttribute(specialIntAttributeKey);
   });
 
   /// ```global
@@ -225,12 +224,11 @@ void main() {
   testWidgets('logger - add double attribute', (tester) async {
     final attributeValue = random.nextDouble() * double.maxFinite;
     await measure('flutter_log_add_double_attribute', () async {
-      await datadog.logs
-          ?.addAttribute(specialDoubleAttributeKey, attributeValue);
+      datadog.logs?.addAttribute(specialDoubleAttributeKey, attributeValue);
     });
 
-    await sendRandomLog(tester);
-    await datadog.logs?.removeAttribute(specialDoubleAttributeKey);
+    sendRandomLog(tester);
+    datadog.logs?.removeAttribute(specialDoubleAttributeKey);
   });
 
   /// ```global
@@ -254,11 +252,11 @@ void main() {
   testWidgets('logger - add bool attribute', (tester) async {
     final attributeValue = random.nextInt(100) < 50 ? true : false;
     await measure('flutter_log_add_bool_attribute', () async {
-      await datadog.logs?.addAttribute(specialBoolAttributeKey, attributeValue);
+      datadog.logs?.addAttribute(specialBoolAttributeKey, attributeValue);
     });
 
-    await sendRandomLog(tester);
-    await datadog.logs?.removeAttribute(specialBoolAttributeKey);
+    sendRandomLog(tester);
+    datadog.logs?.removeAttribute(specialBoolAttributeKey);
   });
 
   /// ```global
@@ -282,11 +280,11 @@ void main() {
   testWidgets('logger - add tag value', (tester) async {
     final tagValue = 'customTag' + randomString();
     await measure('flutter_log_add_tag_value', () async {
-      await datadog.logs?.addTag(specialTagKey, tagValue);
+      datadog.logs?.addTag(specialTagKey, tagValue);
     });
 
-    await sendRandomLog(tester);
-    await datadog.logs?.removeTagWithKey(specialTagKey);
+    sendRandomLog(tester);
+    datadog.logs?.removeTagWithKey(specialTagKey);
   });
 
   /// ```global
@@ -309,10 +307,10 @@ void main() {
   /// ```
   testWidgets('logger - add tag', (tester) async {
     await measure('flutter_log_add_tag', () async {
-      await datadog.logs?.addTag(specialTagKey);
+      datadog.logs?.addTag(specialTagKey);
     });
 
-    await sendRandomLog(tester);
-    await datadog.logs?.removeTag(specialTagKey);
+    sendRandomLog(tester);
+    datadog.logs?.removeTag(specialTagKey);
   });
 }

@@ -159,7 +159,7 @@ class DatadogSdk {
 
   /// Sets current user information. User information will be added traces and
   /// RUM events automatically.
-  Future<void> setUserInfo({
+  void setUserInfo({
     String? id,
     String? name,
     String? email,
@@ -170,8 +170,8 @@ class DatadogSdk {
     });
   }
 
-  Future<void> setTrackingConsent(TrackingConsent trackingConsent) {
-    return wrap('setTrackingConsent', internalLogger, () {
+  void setTrackingConsent(TrackingConsent trackingConsent) {
+    wrap('setTrackingConsent', internalLogger, () {
       return _platform.setTrackingConsent(trackingConsent);
     });
   }

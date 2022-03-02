@@ -32,34 +32,34 @@ void main() {
     final viewName = randomString();
 
     final rumEvents = [
-      () async {
-        await datadog.rum!.startView(viewKey, viewName, e2eAttributes(tester));
-        await datadog.rum!.stopView(viewKey);
+      () {
+        datadog.rum!.startView(viewKey, viewName, e2eAttributes(tester));
+        datadog.rum!.stopView(viewKey);
       },
-      () async {
+      () {
         final resourceKey = randomString();
-        await datadog.rum!.startView(viewKey, viewName, e2eAttributes(tester));
-        await datadog.rum!.startResourceLoading(
+        datadog.rum!.startView(viewKey, viewName, e2eAttributes(tester));
+        datadog.rum!.startResourceLoading(
             resourceKey, RumHttpMethod.get, randomString());
-        await datadog.rum!.stopResourceLoading(
+        datadog.rum!.stopResourceLoading(
             resourceKey, 200, RumResourceType.values.randomElement());
-        await datadog.rum!.stopView(viewKey);
+        datadog.rum!.stopView(viewKey);
       },
-      () async {
-        await datadog.rum!.startView(viewKey, viewName, e2eAttributes(tester));
-        await datadog.rum!.addErrorInfo(randomString(), RumErrorSource.custom);
-        await datadog.rum!.stopView(viewKey);
+      () {
+        datadog.rum!.startView(viewKey, viewName, e2eAttributes(tester));
+        datadog.rum!.addErrorInfo(randomString(), RumErrorSource.custom);
+        datadog.rum!.stopView(viewKey);
       },
-      () async {
+      () {
         final actionName = randomString();
-        await datadog.rum!.startView(viewKey, viewName, e2eAttributes(tester));
-        await datadog.rum!.addUserAction(RumUserActionType.custom, actionName);
-        await datadog.rum!.stopView(viewKey);
+        datadog.rum!.startView(viewKey, viewName, e2eAttributes(tester));
+        datadog.rum!.addUserAction(RumUserActionType.custom, actionName);
+        datadog.rum!.stopView(viewKey);
       }
     ];
 
     final event = rumEvents.randomElement();
-    await event();
+    event();
   }
 
   /// - data monitor:
@@ -118,6 +118,6 @@ void main() {
 
     await sendRandomRumEvent(tester);
 
-    await datadog.setTrackingConsent(TrackingConsent.granted);
+    datadog.setTrackingConsent(TrackingConsent.granted);
   });
 }
