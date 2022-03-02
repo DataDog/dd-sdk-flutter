@@ -269,7 +269,7 @@ void main() {
   /// ```logs(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is below expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}} tags:test_special_tag:customTag*\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}} test_special_tag:customTag*\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitor:

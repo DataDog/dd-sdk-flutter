@@ -19,7 +19,7 @@ void main() {
 
   final datadog = DatadogSdk.instance;
 
-  setUp(() async {
+  setUp(() {
     app.main();
   });
 
@@ -52,6 +52,7 @@ void main() {
   /// $monitor_id = ${{feature}}_send_network_info_enabled_android
   /// $monitor_name = "[RUM] [Flutter (android})] Nightly - ${{test_description}}: number of logs is below expected value"
   /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:android @network.client.connectivity:*\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
+  /// ```
   testWidgets('logger config - send network info enabled', (tester) async {
     await initializeDatadog(
       (config) => config.loggingConfiguration!.sendNetworkInfo = true,
