@@ -76,11 +76,17 @@ void main() {
         spanLog.firstWhereOrNull((s) => s.name == 'data presentation');
     expect(rootSpan, isNotNull);
     expect(downloadingSpan, isNotNull);
+    // Duration should be between 300-500ms (closer to 300ms)
+    expect(downloadingSpan!.duration, greaterThan(300 * 1000 * 1000));
+    expect(downloadingSpan.duration, lessThan(500 * 1000 * 1000));
     expect(presentationSpan, isNotNull);
+    // Duration should be between 60-100ms (closer to 60ms)
+    expect(presentationSpan!.duration, greaterThan(60 * 1000 * 1000));
+    expect(presentationSpan.duration, lessThan(100 * 1000 * 1000));
 
     var traceId = rootSpan!.traceId;
-    expect(traceId, downloadingSpan!.traceId);
-    expect(traceId, presentationSpan!.traceId);
+    expect(traceId, downloadingSpan.traceId);
+    expect(traceId, presentationSpan.traceId);
 
     var rootSpanId = rootSpan.spanId;
     expect(rootSpanId, downloadingSpan.parentSpanId);

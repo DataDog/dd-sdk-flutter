@@ -22,6 +22,7 @@ import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.description
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
@@ -43,10 +44,12 @@ class DatadogTracesPluginTest {
 
     private val contracts = listOf(
         Contract("startRootSpan", mapOf(
-            "operationName" to typeOf<String>()
+            "operationName" to typeOf<String>(),
+            "startTime" to typeOf<Long>()
         )),
         Contract("startSpan", mapOf(
-            "operationName" to typeOf<String>()
+            "operationName" to typeOf<String>(),
+            "startTime" to typeOf<Long>()
         )),
     )
 
@@ -110,9 +113,11 @@ class DatadogTracesPluginTest {
         verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
     }
 
-    private fun createSpan(operationName: String): Long {
+    private fun createSpan(forge: Forge, operationName: String): Long {
+        val time = forge.aLong()
         val call = MethodCall("startRootSpan", mapOf<String, Any>(
-            "operationName" to operationName
+            "operationName" to operationName,
+            "startTime" to time
         ))
         val mockResult = mock<MethodChannel.Result>()
         val captor = argumentCaptor<Long>()
@@ -142,9 +147,29 @@ class DatadogTracesPluginTest {
         forge: Forge,
         @StringForgery operationName: String,
     ) {
-        val spanId = createSpan(operationName)
+        val spanId = createSpan(forge, operationName)
         testContracts(spanContracts, forge, plugin, mapOf(
             "spanHandle" to spanId
         ))
+    }
+
+    @Test
+    fun `M report a contract violation W missing time in span finish`(
+        forge: Forge,
+        @StringForgery operationName: String,
+    ) {
+        val spanId = createSpan(forge, operationName)
+        val call = MethodCall("span.finish", mapOf<String, Any>(
+            "spanHandle" to spanId
+        ))
+        val mockResult = mock<MethodChannel.Result>()
+        val captor = argumentCaptor<Long>()
+        plugin.onMethodCall(call, mockResult)
+
+        verify(
+            mockResult,
+            description("span.finish did not throw a contract violation when missing finishTime")
+        ).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
+
     }
 }

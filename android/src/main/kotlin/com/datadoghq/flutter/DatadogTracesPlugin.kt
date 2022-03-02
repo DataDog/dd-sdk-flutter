@@ -33,6 +33,7 @@ class DatadogTracesPlugin(
         const val PARAM_OPERATION_NAME = "operationName"
         const val PARAM_RESOURCE_NAME = "resourceName"
         const val PARAM_START_TIME = "startTime"
+        const val PARAM_FINISH_TIME = "finishTime"
         const val PARAM_TAGS = "tags"
         const val PARAM_MESSAGE = "message"
         const val PARAM_KEY = "key"
@@ -94,16 +95,15 @@ class DatadogTracesPlugin(
         when (call.method) {
             "startRootSpan" -> {
                 val operationName = call.argument<String>(PARAM_OPERATION_NAME)
-                if (operationName != null) {
+                val startTime = call.argument<Number>(PARAM_START_TIME)
+                if (operationName != null && startTime != null) {
                     val spanBuilder = tracer.buildSpan(operationName)
                         .ignoreActiveSpan()
                     call.argument<String>(PARAM_RESOURCE_NAME)?.let {
                         val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
                         ddBuilder.withResourceName(it)
                     }
-                    call.argument<Number>(PARAM_START_TIME)?.let {
-                        spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
-                    }
+                    spanBuilder.withStartTimestamp(startTime.toLong())
 
                     val span = spanBuilder.start()
 
@@ -118,20 +118,19 @@ class DatadogTracesPlugin(
             }
             "startSpan" -> {
                 val operationName = call.argument<String>(PARAM_OPERATION_NAME)
-                if (operationName != null) {
+                val startTime = call.argument<Number>(PARAM_START_TIME)
+                if (operationName != null && startTime != null) {
                     val spanBuilder = tracer.buildSpan(operationName)
                     call.argument<String>(PARAM_RESOURCE_NAME)?.let {
                         val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
                         ddBuilder.withResourceName(it)
-                    }
-                    call.argument<Number>(PARAM_START_TIME)?.let {
-                        spanBuilder.withStartTimestamp(TimeUnit.MILLISECONDS.toMicros(it.toLong()))
                     }
                     call.argument<Number>(PARAM_PARENT_SPAN)?.let {
                         spanRegistry[it.toLong()]?.let { spanInfo ->
                             spanBuilder.asChildOf(spanInfo.span)
                         }
                     }
+                    spanBuilder.withStartTimestamp(startTime.toLong())
 
                     val span = spanBuilder.start()
                     call.argument<Map<String, Any?>>(PARAM_TAGS)?.let {
@@ -226,12 +225,16 @@ class DatadogTracesPlugin(
                 }
             }
             "span.finish" -> {
-                call.argument<Number>(PARAM_SPAN_HANDLE)?.let {
-                    callingSpanInfo.span.finish()
+                val finishTime = call.argument<Number>(PARAM_FINISH_TIME)
+                if (finishTime != null) {
+                    val handle = callingSpanInfo.handle
+                    callingSpanInfo.span.finish(finishTime.toLong())
                     callingSpanInfo.scope?.close()
-                    spanRegistry.remove(it.toLong())
+                    spanRegistry.remove(handle)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
                 }
-                result.success(null)
             }
         }
     }

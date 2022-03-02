@@ -42,7 +42,6 @@ Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
 }
 
 Future<void> measure(String resourceName, AsyncVoidCallback callback) async {
-  // TODO: Have spans record time from Dart instead of waiting for the PlatformChannel.
   var span = await DatadogSdk.instance.traces?.startRootSpan(
     'perf_measure',
     resourceName: resourceName,

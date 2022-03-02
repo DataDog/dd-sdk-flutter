@@ -90,7 +90,8 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
       return
     }
 
-    guard let operationName = arguments["operationName"] as? String else {
+    guard let operationName = arguments["operationName"] as? String,
+          let startTime = arguments["startTime"] as? NSNumber else {
       result(
         FlutterError.missingParameter(methodName: isRootSpan ? "startRootSpan" : "startSpan")
       )
@@ -102,10 +103,8 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
       tags = castFlutterAttributesToSwift(flutterTags)
     }
 
-    var startTime: Date?
-    if let startTimeMs = arguments["startTime"] as? NSNumber {
-      startTime = Date(timeIntervalSince1970: startTimeMs.doubleValue / 1_000)
-    }
+    // Flutter sends microseconds, which is the lowest resolution we can get
+    let startDate: Date = Date(timeIntervalSince1970: startTime.doubleValue / 1_000_000)
 
     var parentSpan: OTSpan?
     if let parentSpanId = (arguments["parentSpan"] as? NSNumber)?.int64Value {
@@ -116,12 +115,12 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
       ? tracer.startRootSpan(
           operationName: operationName,
           tags: tags,
-          startTime: startTime)
+          startTime: startDate)
       : tracer.startSpan(
           operationName: operationName,
           childOf: parentSpan?.context,
           tags: tags,
-          startTime: startTime)
+          startTime: startDate)
 
 	if let resourceName = arguments["resourceName"] as? String {
       span.setTag(key: DDTags.resource, value: resourceName)
@@ -193,9 +192,17 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
       }
 
     case "span.finish":
-      calledSpan.span.finish()
-      spanRegistry[calledSpan.handle] = nil
-      result(nil)
+      if let finishTime = arguments["finishTime"] as? NSNumber {
+        // Flutter sends microseconds
+        let finishDate = Date(timeIntervalSince1970: finishTime.doubleValue / 1_000_000)
+        calledSpan.span.finish(at: finishDate)
+        spanRegistry[calledSpan.handle] = nil
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: method)
+        )
+      }
 
     default:
       result(FlutterMethodNotImplemented)

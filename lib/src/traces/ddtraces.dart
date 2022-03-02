@@ -6,6 +6,9 @@ import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddtraces_platform_interface.dart';
 
+typedef TimeProvider = DateTime Function();
+DateTime systemTimeProvider() => DateTime.now();
+
 /// A collection of standard `Span` tag keys defined by Open Tracing.
 /// Use them as the `key` in [DdSpan.setTag]. Use the expected type for the `value`.
 ///
@@ -90,12 +93,13 @@ class DdSpan {
       'Attempting to call $method on a closed span.';
 
   final DdTracesPlatform _platform;
+  final TimeProvider _timeProvider;
   InternalLogger? _logger;
 
   int _handle;
   int get handle => _handle;
 
-  DdSpan(this._platform, this._handle);
+  DdSpan(this._platform, this._timeProvider, this._handle);
 
   Future<void> setActive() {
     if (_handle <= 0) {
@@ -157,13 +161,14 @@ class DdSpan {
     return _platform.spanLog(this, fields);
   }
 
-  Future<void> finish() async {
+  Future<void> finish([DateTime? finishTime]) async {
     if (_handle <= 0) {
       _logger?.warn(closedSpanWarning('finish'));
       return Future.value();
     }
 
-    await _platform.spanFinish(this);
+    final resolvedTime = finishTime ?? _timeProvider();
+    await _platform.spanFinish(this, resolvedTime);
     _handle = -1;
   }
 }
@@ -173,9 +178,10 @@ class DdTraces {
     return DdTracesPlatform.instance;
   }
 
+  final TimeProvider timeProvider;
   final InternalLogger _logger;
 
-  DdTraces(this._logger);
+  DdTraces(this._logger, {this.timeProvider = systemTimeProvider});
 
   Future<DdSpan> startSpan(
     String operationName, {
@@ -185,19 +191,21 @@ class DdTraces {
     DateTime? startTime,
   }) async {
     final span = await wrapAsync('traces.startSpan', _logger, () async {
-      var span = await _platform.startSpan(
-          operationName, parentSpan, resourceName, tags, startTime);
+      final resolvedTime = startTime ?? timeProvider();
+
+      var span = await _platform.startSpan(timeProvider, operationName,
+          parentSpan, resourceName, tags, resolvedTime);
       if (span != null) {
         span._logger = _logger;
       } else {
         _logger.error('Error creating span named $operationName');
         // Don't set the logger on this span or it will spam being closed
-        span = DdSpan(_platform, 0);
+        span = DdSpan(_platform, timeProvider, 0);
       }
       return span;
     });
 
-    return span ?? DdSpan(_platform, 0);
+    return span ?? DdSpan(_platform, timeProvider, 0);
   }
 
   Future<DdSpan> startRootSpan(
@@ -207,19 +215,21 @@ class DdTraces {
     DateTime? startTime,
   }) async {
     final span = await wrapAsync('traces.startRootSpan', _logger, () async {
+      final resolvedTime = startTime ?? timeProvider();
+
       var span = await _platform.startRootSpan(
-          operationName, resourceName, tags, startTime);
+          timeProvider, operationName, resourceName, tags, resolvedTime);
       if (span != null) {
         span._logger = _logger;
       } else {
         _logger.error('Error creating span named $operationName');
         // Don't set the logger on this span or it will spam being closed
-        span = DdSpan(_platform, 0);
+        span = DdSpan(_platform, timeProvider, 0);
       }
       return span;
     });
 
-    return span ?? DdSpan(_platform, 0);
+    return span ?? DdSpan(_platform, timeProvider, 0);
   }
 
   Future<Map<String, String>> getTracePropagationHeaders(DdSpan span) async {

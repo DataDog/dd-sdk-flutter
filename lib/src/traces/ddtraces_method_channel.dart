@@ -14,34 +14,41 @@ class DdTracesMethodChannel extends DdTracesPlatform {
       const MethodChannel('datadog_sdk_flutter.traces');
 
   @override
-  Future<DdSpan?> startRootSpan(String operationName, String? resourceName,
-      Map<String, dynamic>? tags, DateTime? startTime) async {
+  Future<DdSpan?> startRootSpan(
+    TimeProvider timeProvider,
+    String operationName,
+    String? resourceName,
+    Map<String, dynamic>? tags,
+    DateTime startTime,
+  ) async {
     var result = await methodChannel.invokeMethod('startRootSpan', {
       'operationName': operationName,
       'resourceName': resourceName,
       'tags': tags,
-      'startTime': startTime?.millisecondsSinceEpoch
+      'startTime': startTime.microsecondsSinceEpoch
     }) as int;
 
-    return DdSpan(this, result);
+    return DdSpan(this, timeProvider, result);
   }
 
   @override
   Future<DdSpan?> startSpan(
-      String operationName,
-      DdSpan? parentSpan,
-      String? resourceName,
-      Map<String, dynamic>? tags,
-      DateTime? startTime) async {
+    TimeProvider timeProvider,
+    String operationName,
+    DdSpan? parentSpan,
+    String? resourceName,
+    Map<String, dynamic>? tags,
+    DateTime startTime,
+  ) async {
     var result = await methodChannel.invokeMethod('startSpan', {
       'operationName': operationName,
       'parentSpan': parentSpan?.handle,
       'resourceName': resourceName,
       'tags': tags,
-      'startTime': startTime?.millisecondsSinceEpoch
+      'startTime': startTime.microsecondsSinceEpoch
     }) as int;
 
-    return DdSpan(this, result);
+    return DdSpan(this, timeProvider, result);
   }
 
   @override
@@ -106,8 +113,10 @@ class DdTracesMethodChannel extends DdTracesPlatform {
   }
 
   @override
-  Future<void> spanFinish(DdSpan span) {
-    return methodChannel
-        .invokeMethod('span.finish', {'spanHandle': span.handle});
+  Future<void> spanFinish(DdSpan span, DateTime finishTime) {
+    return methodChannel.invokeMethod('span.finish', {
+      'spanHandle': span.handle,
+      'finishTime': finishTime.microsecondsSinceEpoch
+    });
   }
 }

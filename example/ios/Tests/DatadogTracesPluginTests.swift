@@ -19,10 +19,12 @@ class DatadogTracesPluginTests: XCTestCase {
 
   let contracts = [
     Contract(methodName: "startRootSpan", requiredParameters: [
-      "operationName": .string
+      "operationName": .string,
+      "startTime": .int64
     ]),
     Contract(methodName: "startSpan", requiredParameters: [
-      "operationName": .string
+      "operationName": .string,
+      "startTime": .int64
     ])
   ]
 
@@ -42,13 +44,15 @@ class DatadogTracesPluginTests: XCTestCase {
     ]),
     Contract(methodName: "span.log", requiredParameters: [
       "fields": .map
-    ])
+    ]),
   ]
 
   func createSpan(operationName: String) -> Int64 {
     var result: Int64!
+    let startTime = Date.now.timeIntervalSince1970 * 1_000_000
     let call = FlutterMethodCall(methodName: "startRootSpan", arguments: [
-      "operationName": operationName
+      "operationName": operationName,
+      "startTime": startTime
     ])
     plugin.handle(call) { spanHandle in
       result = (spanHandle as! Int64)
@@ -64,7 +68,7 @@ class DatadogTracesPluginTests: XCTestCase {
     ])
   }
 
-  func testSpanSetError_WithMissingParameter_FailsWithCOntractViolation() {
+  func testSpanSetError_WithMissingParameter_FailsWithContractViolation() {
     let spanHandle = createSpan(operationName: "spanSetErrorOperation")
     let call = FlutterMethodCall(methodName: "span.setError", arguments: [
       "spanHandle": spanHandle,
@@ -88,7 +92,7 @@ class DatadogTracesPluginTests: XCTestCase {
     }
   }
 
-  func testSpanSetTag_WithMissingParameter_FailsWithCOntractViolation() {
+  func testSpanSetTag_WithMissingParameter_FailsWithContractViolation() {
     let spanHandle = createSpan(operationName: "spanSetTagOperation")
     let call = FlutterMethodCall(methodName: "span.setTag", arguments: [
       "spanHandle": spanHandle,
@@ -112,7 +116,7 @@ class DatadogTracesPluginTests: XCTestCase {
     }
   }
 
-  func testSpanSetBaggageItem_WithMissingParameter_FailsWithCOntractViolation() {
+  func testSpanSetBaggageItem_WithMissingParameter_FailsWithContractViolation() {
     let spanHandle = createSpan(operationName: "spanSetBaggageItemOperation")
     let call = FlutterMethodCall(methodName: "span.setBaggageItem", arguments: [
       "spanHandle": spanHandle,
@@ -136,9 +140,34 @@ class DatadogTracesPluginTests: XCTestCase {
     }
   }
 
-  func testSpanLog_WithMissingParameter_FailsWithCOntractViolation() {
+  func testSpanLog_WithMissingParameter_FailsWithContractViolation() {
     let spanHandle = createSpan(operationName: "spanLogOperation")
     let call = FlutterMethodCall(methodName: "span.log", arguments: [
+      "spanHandle": spanHandle
+    ])
+
+    var resultStatus = ResultStatus.notCalled
+    plugin.handle(call) { result in
+      resultStatus = .called(value: result)
+    }
+
+    switch resultStatus {
+    case .called(let value):
+      let error = value as? FlutterError
+      XCTAssertNotNil(error)
+      XCTAssertEqual(error?.code, FlutterError.DdErrorCodes.contractViolation)
+      XCTAssertNotNil(error?.message)
+
+    case .notCalled:
+      XCTFail("result was not called")
+    }
+  }
+
+  func testSpanFinish_WithMissingParameters_FailsWithContractViolation() {
+    // Can't test this with previous contract testing because finishing the span removes it
+    // from the handle map, which the valid call does.
+    let spanHandle = createSpan(operationName: "spanFinishOperation")
+    let call = FlutterMethodCall(methodName: "span.finish", arguments: [
       "spanHandle": spanHandle
     ])
 
