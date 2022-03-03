@@ -1,0 +1,11 @@
+<component name="CopyrightManager">
+  <settings default="Datadog">
+    <module2copyright>
+      <element module="All" copyright="Datadog" />
+    </module2copyright>
+    <LanguageOptions name="Dart">
+      <option name="fileTypeOverride" value="3" />
+      <option name="block" value="false" />
+    </LanguageOptions>
+  </settings>
+</component>
