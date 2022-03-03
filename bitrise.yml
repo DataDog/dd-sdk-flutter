@@ -30,9 +30,9 @@ workflows:
             #!/usr/bin/env bash
             set -e
             gradle wrapper
-        - working_dir: "$BITRISE_SOURCE_DIR/example/android"
+        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/android"
   
-  _launch_ios_siumlator:
+  _launch_ios_simulator:
     steps:
     - script:
         title: Launch iOS Simulator
@@ -52,11 +52,11 @@ workflows:
         - content: |-
             #!/usr/bin/env bash
             set -e
-            cd $BITRISE_SOURCE_DIR/example
+            cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example
             flutter pub get
-            cd $BITRISE_SOURCE_DIR/integration_test_app
+            cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app
             flutter pub get
-            cd $BITRISE_SOURCE_DIR/e2e_test_app
+            cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/e2e_test_app
             flutter pub get
             cd $BITRISE_SOURCE_DIR/tools/e2e_generator
             pub get
@@ -74,7 +74,7 @@ workflows:
             set -e
             gradle wrapper
             ./gradlew ktlintCheck detekt
-        - working_dir: "$BITRISE_SOURCE_DIR/example/android"
+        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/android"
     
     - flutter-test@1.0.1:
         inputs:
@@ -82,10 +82,10 @@ workflows:
     
     - flutter-test@1.0.1:
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/example"
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example"
     - flutter-build@0.14.0:
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/example"
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example"
         - platform: both
   
   _deploy:
@@ -110,7 +110,7 @@ workflows:
     steps:
     - xcode-test@4.0.2:
         inputs:
-        - project_path: "$BITRISE_SOURCE_DIR/example/ios/Runner.xcworkspace"
+        - project_path: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/ios/Runner.xcworkspace"
         - scheme: Runner
         - destination: platform=iOS Simulator,name=iPhone 13,OS=latest
 
@@ -120,34 +120,34 @@ workflows:
     steps:
     - android-unit-test@1.0.5:
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/example/android"
-        - module: datadog_sdk
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/android"
+        - module: datadog_flutter_plugin
 
   integration_android:
     steps:
     - flutter-test@1:
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/integration_test_app"
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
   
   integration_ios:
     before_run:
-    - _launch_ios_siumlator
+    - _launch_ios_simulator
     steps:
     - flutter-test@1:
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/integration_test_app"
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
 
   nightly_ios:
     before_run:
-    - _launch_ios_siumlator
+    - _launch_ios_simulator
     steps:
       - flutter-test@1:
           inputs:
-          - project_location: "$BITRISE_SOURCE_DIR/e2e_test_app"
+          - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/e2e_test_app"
           - tests_path_pattern: "integration_test"
           - additional_params: "-d iPhone"
 
@@ -155,7 +155,7 @@ workflows:
     steps:
     - flutter-test@1:
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/e2e_test_app"
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/e2e_test_app"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d emulator"
     
