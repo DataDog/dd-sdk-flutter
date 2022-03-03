@@ -53,13 +53,13 @@ void main() {
   testWidgets('traces - span set tag boolean', (tester) async {
     final attributeValue = random.nextInt(100) < 50 ? true : false;
 
-    final span = await startSpan('trace_span_set_tag_boolean');
+    final span = startSpan('trace_span_set_tag_boolean');
 
-    await measure('traces_span_set_tag_boolean', () async {
-      await span.setTag('test_special_tag', attributeValue);
+    await measure('traces_span_set_tag_boolean', () {
+      span.setTag('test_special_tag', attributeValue);
     });
 
-    await span.finish();
+    span.finish();
   });
 
   /// ```global
@@ -84,13 +84,13 @@ void main() {
   testWidgets('traces - span set tag number', (tester) async {
     final attributeValue = random.nextInt(9) + 1;
 
-    final span = await startSpan('trace_span_set_tag_number');
+    final span = startSpan('trace_span_set_tag_number');
 
-    await measure('traces_span_set_tag_number', () async {
-      await span.setTag('test_special_tag', attributeValue);
+    await measure('traces_span_set_tag_number', () {
+      span.setTag('test_special_tag', attributeValue);
     });
 
-    await span.finish();
+    span.finish();
   });
 
   /// ```global
@@ -114,13 +114,13 @@ void main() {
   testWidgets('traces - span set tag string', (tester) async {
     final attributeValue = 'customTag' + randomString();
 
-    final span = await startSpan('trace_span_set_tag_string');
+    final span = startSpan('trace_span_set_tag_string');
 
-    await measure('traces_span_set_tag_string', () async {
-      await span.setTag('test_special_tag', attributeValue);
+    await measure('traces_span_set_tag_string', () {
+      span.setTag('test_special_tag', attributeValue);
     });
 
-    await span.finish();
+    span.finish();
   });
 
   /// ```global
@@ -144,13 +144,13 @@ void main() {
   testWidgets('traces - span set baggage item', (tester) async {
     final attributeValue = 'customBaggage' + randomString();
 
-    final span = await startSpan('trace_span_set_baggage_item');
+    final span = startSpan('trace_span_set_baggage_item');
 
-    await measure('traces_span_set_baggage_item', () async {
-      await span.setBaggageItem('test_special_tag', attributeValue);
+    await measure('traces_span_set_baggage_item', () {
+      span.setBaggageItem('test_special_tag', attributeValue);
     });
 
-    await span.finish();
+    span.finish();
   });
 
   /// ```global
@@ -164,13 +164,13 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,resource_name:traces_span_set_active,service:com.datadog.flutter.nightly,@operating_system:${{variant}}} > 0.024"
   /// ```
   testWidgets('traces - span performance', (tester) async {
-    final span = await startSpan(randomString());
+    final span = startSpan(randomString());
 
-    await measure('traces_span_set_active', () async {
-      await span.setActive();
+    await measure('traces_span_set_active', () {
+      span.setActive();
     });
 
-    await span.finish();
+    span.finish();
   });
 
   /// ```global
@@ -190,17 +190,17 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,resource_name:traces_span_log,service:com.datadog.flutter.nightly,@operating_system:${{variant}}} > 0.024"
   /// ```
   testWidgets('traces - span log', (tester) async {
-    final span = await startSpan('trace_span_log_measured_span');
-    await span.setActive();
+    final span = startSpan('trace_span_log_measured_span');
+    span.setActive();
 
     final fields = e2eAttributes(tester);
     fields['test_special_string_attribute'] =
         'customAttribute' + randomString();
 
-    await measure('traces_span_log', () async {
-      await span.log(fields);
+    await measure('traces_span_log', () {
+      span.log(fields);
     });
 
-    await span.finish();
+    span.finish();
   });
 }

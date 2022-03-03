@@ -42,13 +42,13 @@ Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
 }
 
 Future<void> measure(String resourceName, AsyncVoidCallback callback) async {
-  var span = await DatadogSdk.instance.traces?.startRootSpan(
+  var span = DatadogSdk.instance.traces?.startRootSpan(
     'perf_measure',
     resourceName: resourceName,
     tags: {'operating_system': Platform.operatingSystem},
   );
   await callback();
-  await span?.finish();
+  span?.finish();
 }
 
 final _random = Random();
@@ -94,7 +94,7 @@ void sendRandomLog(WidgetTester tester) {
   );
 }
 
-Future<DdSpan> startSpan(String operationName) {
+DdSpan startSpan(String operationName) {
   return DatadogSdk.instance.traces!.startSpan(operationName, tags: {
     'operating_system': Platform.operatingSystem,
   });

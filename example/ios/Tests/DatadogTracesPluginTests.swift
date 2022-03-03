@@ -11,18 +11,22 @@ import XCTest
 class DatadogTracesPluginTests: XCTestCase {
 
   var plugin: DatadogTracesPlugin!
+  var nextSpanId: Int64 = 1
 
   override func setUp() {
+    nextSpanId += 1
     plugin = DatadogTracesPlugin.instance
     plugin.initialize(withTracer: DDNoopTracer())
   }
 
   let contracts = [
     Contract(methodName: "startRootSpan", requiredParameters: [
+      "spanHandle": .int64,
       "operationName": .string,
       "startTime": .int64
     ]),
     Contract(methodName: "startSpan", requiredParameters: [
+      "spanHandle": .int64,
       "operationName": .string,
       "startTime": .int64
     ])
@@ -44,21 +48,24 @@ class DatadogTracesPluginTests: XCTestCase {
     ]),
     Contract(methodName: "span.log", requiredParameters: [
       "fields": .map
-    ]),
+    ])
   ]
 
   func createSpan(operationName: String) -> Int64 {
-    var result: Int64!
+    let spanId = nextSpanId
+    nextSpanId += 1
+
     let startTime = Date.now.timeIntervalSince1970 * 1_000_000
     let call = FlutterMethodCall(methodName: "startRootSpan", arguments: [
+      "spanHandle": spanId,
       "operationName": operationName,
       "startTime": startTime
     ])
-    plugin.handle(call) { spanHandle in
-      result = (spanHandle as! Int64)
+    plugin.handle(call) { _ in
+
     }
 
-    return result
+    return spanId
   }
 
   func testSpan_ContractViolationsThrowErrors() {

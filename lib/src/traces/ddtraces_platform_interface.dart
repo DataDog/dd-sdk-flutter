@@ -21,14 +21,14 @@ abstract class DdTracesPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<DdSpan?> startSpan(
-      TimeProvider timeProvider,
+  Future<bool> startSpan(
+      int spanHandle,
       String operationName,
       DdSpan? parentSpan,
       String? resourceName,
       Map<String, dynamic>? tags,
       DateTime startTime);
-  Future<DdSpan?> startRootSpan(TimeProvider timeProvider, String operationName,
+  Future<bool> startRootSpan(int spanHandle, String operationName,
       String? resourceName, Map<String, dynamic>? tags, DateTime startTime);
   Future<Map<String, String>> getTracePropagationHeaders(DdSpan span);
 
@@ -39,5 +39,5 @@ abstract class DdTracesPlatform extends PlatformInterface {
   Future<void> spanSetError(
       DdSpan span, String kind, String message, String? stack);
   Future<void> spanLog(DdSpan span, Map<String, Object?> fields);
-  Future<void> spanFinish(DdSpan span, DateTime finishTime);
+  Future<void> spanFinish(int spanHandle, DateTime finishTime);
 }

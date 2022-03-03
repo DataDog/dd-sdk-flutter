@@ -14,41 +14,43 @@ class DdTracesMethodChannel extends DdTracesPlatform {
       const MethodChannel('datadog_sdk_flutter.traces');
 
   @override
-  Future<DdSpan?> startRootSpan(
-    TimeProvider timeProvider,
+  Future<bool> startRootSpan(
+    int spanHandle,
     String operationName,
     String? resourceName,
     Map<String, dynamic>? tags,
     DateTime startTime,
   ) async {
-    var result = await methodChannel.invokeMethod('startRootSpan', {
+    var result = await methodChannel.invokeMethod<bool>('startRootSpan', {
+      'spanHandle': spanHandle,
       'operationName': operationName,
       'resourceName': resourceName,
       'tags': tags,
       'startTime': startTime.microsecondsSinceEpoch
-    }) as int;
+    });
 
-    return DdSpan(this, timeProvider, result);
+    return result ?? false;
   }
 
   @override
-  Future<DdSpan?> startSpan(
-    TimeProvider timeProvider,
+  Future<bool> startSpan(
+    int spanHandle,
     String operationName,
     DdSpan? parentSpan,
     String? resourceName,
     Map<String, dynamic>? tags,
     DateTime startTime,
   ) async {
-    var result = await methodChannel.invokeMethod('startSpan', {
+    var result = await methodChannel.invokeMethod<bool>('startSpan', {
+      'spanHandle': spanHandle,
       'operationName': operationName,
       'parentSpan': parentSpan?.handle,
       'resourceName': resourceName,
       'tags': tags,
       'startTime': startTime.microsecondsSinceEpoch
-    }) as int;
+    });
 
-    return DdSpan(this, timeProvider, result);
+    return result ?? false;
   }
 
   @override
@@ -113,9 +115,9 @@ class DdTracesMethodChannel extends DdTracesPlatform {
   }
 
   @override
-  Future<void> spanFinish(DdSpan span, DateTime finishTime) {
+  Future<void> spanFinish(int spanHandle, DateTime finishTime) {
     return methodChannel.invokeMethod('span.finish', {
-      'spanHandle': span.handle,
+      'spanHandle': spanHandle,
       'finishTime': finishTime.microsecondsSinceEpoch
     });
   }

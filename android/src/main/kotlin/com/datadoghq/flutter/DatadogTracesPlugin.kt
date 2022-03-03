@@ -16,7 +16,6 @@ import io.opentracing.Tracer
 import io.opentracing.log.Fields
 import io.opentracing.util.GlobalTracer
 import java.lang.ClassCastException
-import java.util.concurrent.TimeUnit
 
 data class SpanInfo(
     val handle: Long,
@@ -46,7 +45,6 @@ class DatadogTracesPlugin(
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 
-    private var nextSpanId: Long = 1
     private val spanRegistry = mutableMapOf<Long, SpanInfo>()
 
     private lateinit var tracer: Tracer
@@ -94,9 +92,17 @@ class DatadogTracesPlugin(
     private fun onRootMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "startRootSpan" -> {
+                val spanHandle = call.argument<Number>(PARAM_SPAN_HANDLE)
                 val operationName = call.argument<String>(PARAM_OPERATION_NAME)
                 val startTime = call.argument<Number>(PARAM_START_TIME)
-                if (operationName != null && startTime != null) {
+                if (spanHandle != null && operationName != null && startTime != null) {
+                    val spanId = spanHandle.toLong()
+                    if (haveExistingSpan(spanId)) {
+                        // TODO: Return a more descriptive error?
+                        result.success(false)
+                        return
+                    }
+
                     val spanBuilder = tracer.buildSpan(operationName)
                         .ignoreActiveSpan()
                     call.argument<String>(PARAM_RESOURCE_NAME)?.let {
@@ -111,15 +117,24 @@ class DatadogTracesPlugin(
                         span.setTags(it)
                     }
 
-                    result.success(storeSpan(span))
+                    storeSpan(spanId, span)
+                    result.success(true)
                 } else {
                     result.missingParameter(call.method)
                 }
             }
             "startSpan" -> {
+                val spanHandle = call.argument<Number>(PARAM_SPAN_HANDLE)
                 val operationName = call.argument<String>(PARAM_OPERATION_NAME)
                 val startTime = call.argument<Number>(PARAM_START_TIME)
-                if (operationName != null && startTime != null) {
+                if (spanHandle != null && operationName != null && startTime != null) {
+                    val spanId = spanHandle.toLong()
+                    if (haveExistingSpan(spanId)) {
+                        // TODO: Return a more descriptive error?
+                        result.success(false)
+                        return
+                    }
+
                     val spanBuilder = tracer.buildSpan(operationName)
                     call.argument<String>(PARAM_RESOURCE_NAME)?.let {
                         val ddBuilder = spanBuilder as DDTracer.DDSpanBuilder
@@ -136,7 +151,8 @@ class DatadogTracesPlugin(
                     call.argument<Map<String, Any?>>(PARAM_TAGS)?.let {
                         span.setTags(it)
                     }
-                    result.success(storeSpan(span))
+                    storeSpan(spanId, span)
+                    result.success(true)
                 } else {
                     result.missingParameter(call.method)
                 }
@@ -251,11 +267,16 @@ class DatadogTracesPlugin(
         return null
     }
 
-    private fun storeSpan(span: Span): Long {
-        val spanId = nextSpanId
-        nextSpanId += 1
+    private fun haveExistingSpan(spanHandle: Long): Boolean {
+        return spanRegistry[spanHandle] != null
+    }
+
+    private fun storeSpan(spanId: Long, span: Span) {
+        if (haveExistingSpan(spanId)) {
+            // TODO: TELEMETRY - we really shouldn't have gotten to this point with an exising span
+            return
+        }
         spanRegistry[spanId] = SpanInfo(spanId, span, null)
-        return spanId
     }
 
     private fun Span.setTags(tags: Map<String, Any?>) {

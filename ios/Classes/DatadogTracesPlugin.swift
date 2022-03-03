@@ -20,7 +20,6 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
     register.addMethodCallDelegate(instance, channel: channel)
   }
 
-  private var nextSpanId: Int64 = 1
   private var spanRegistry: [Int64: OTSpan] = [:]
 
   public private(set) var tracer: OTTracer?
@@ -90,11 +89,17 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
       return
     }
 
-    guard let operationName = arguments["operationName"] as? String,
+    guard let spanHandle = arguments["spanHandle"] as? NSNumber,
+          let operationName = arguments["operationName"] as? String,
           let startTime = arguments["startTime"] as? NSNumber else {
       result(
         FlutterError.missingParameter(methodName: isRootSpan ? "startRootSpan" : "startSpan")
       )
+      return
+    }
+
+    if hasExistingSpan(spanHandle: spanHandle.int64Value) {
+      result(false)
       return
     }
 
@@ -122,12 +127,15 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
           tags: tags,
           startTime: startDate)
 
-	if let resourceName = arguments["resourceName"] as? String {
+    if let resourceName = arguments["resourceName"] as? String {
       span.setTag(key: DDTags.resource, value: resourceName)
     }
 
-    let spanHandle = storeSpan(span)
-    result(spanHandle)
+    result(storeSpan(spanHandle.int64Value, span))
+  }
+
+  private func hasExistingSpan(spanHandle: Int64) -> Bool {
+    return spanRegistry[spanHandle] != nil
   }
 
   // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -219,10 +227,12 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
     return nil
   }
 
-  private func storeSpan(_ span: OTSpan) -> Int64 {
-    let spanId = nextSpanId
-    nextSpanId += 1
-    spanRegistry[spanId] = span
-    return spanId
+  private func storeSpan(_ spanHandle: Int64, _ span: OTSpan) -> Bool {
+    if hasExistingSpan(spanHandle: spanHandle) {
+      // TODO: TELEMETRY - We should not have gotten this far with a spanId that already exists
+      return false
+    }
+    spanRegistry[spanHandle] = span
+    return true
   }
 }
