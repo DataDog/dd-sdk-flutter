@@ -41,7 +41,7 @@ void main() {
   testWidgets('logger consent - granted', (tester) async {
     await initializeDatadog();
 
-    await sendRandomLog(tester);
+    sendRandomLog(tester);
   });
 
   /// ```global
@@ -61,7 +61,7 @@ void main() {
       (config) => config.trackingConsent = TrackingConsent.notGranted,
     );
 
-    await sendRandomLog(tester);
+    sendRandomLog(tester);
   });
 
   /// ```global
@@ -81,7 +81,7 @@ void main() {
       (config) => config.trackingConsent = TrackingConsent.pending,
     );
 
-    await sendRandomLog(tester);
+    sendRandomLog(tester);
   });
 
   /// ```global
@@ -100,11 +100,11 @@ void main() {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.granted,
     );
-    await measure('flutter_log_consent_set_tracking_consent', () async {
-      await datadog.setTrackingConsent(TrackingConsent.notGranted);
+    await measure('flutter_log_consent_set_tracking_consent', () {
+      datadog.setTrackingConsent(TrackingConsent.notGranted);
     });
 
-    await sendRandomLog(tester);
+    sendRandomLog(tester);
   });
 
   /// ```global
@@ -123,11 +123,11 @@ void main() {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.granted,
     );
-    await measure('flutter_log_consent_set_tracking_consent', () async {
-      await datadog.setTrackingConsent(TrackingConsent.pending);
+    await measure('flutter_log_consent_set_tracking_consent', () {
+      datadog.setTrackingConsent(TrackingConsent.pending);
     });
 
-    await sendRandomLog(tester);
+    sendRandomLog(tester);
   });
 
   /// ```global
@@ -144,11 +144,11 @@ void main() {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.notGranted,
     );
-    await measure('flutter_log_consent_set_tracking_consent', () async {
-      await datadog.setTrackingConsent(TrackingConsent.granted);
+    await measure('flutter_log_consent_set_tracking_consent', () {
+      datadog.setTrackingConsent(TrackingConsent.granted);
     });
 
-    await sendRandomLog(tester);
+    sendRandomLog(tester);
   });
 
   /// ```global
@@ -167,11 +167,11 @@ void main() {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.notGranted,
     );
-    await measure('flutter_log_consent_set_tracking_consent', () async {
-      await datadog.setTrackingConsent(TrackingConsent.pending);
+    await measure('flutter_log_consent_set_tracking_consent', () {
+      datadog.setTrackingConsent(TrackingConsent.pending);
     });
 
-    await sendRandomLog(tester);
+    sendRandomLog(tester);
   });
 
   /// ```global
@@ -188,11 +188,11 @@ void main() {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.pending,
     );
-    await measure('flutter_log_consent_set_tracking_consent', () async {
-      await datadog.setTrackingConsent(TrackingConsent.granted);
+    await measure('flutter_log_consent_set_tracking_consent', () {
+      datadog.setTrackingConsent(TrackingConsent.granted);
     });
 
-    await sendRandomLog(tester);
+    sendRandomLog(tester);
   });
 
   /// ```global
@@ -211,10 +211,10 @@ void main() {
     await initializeDatadog(
       (config) => config.trackingConsent = TrackingConsent.pending,
     );
-    await measure('flutter_log_consent_set_tracking_consent', () async {
-      await datadog.setTrackingConsent(TrackingConsent.notGranted);
+    await measure('flutter_log_consent_set_tracking_consent', () {
+      datadog.setTrackingConsent(TrackingConsent.notGranted);
     });
 
-    await sendRandomLog(tester);
+    sendRandomLog(tester);
   });
 }

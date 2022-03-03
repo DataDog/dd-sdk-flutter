@@ -181,7 +181,7 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
 
   Future<void> _crashAfterRumSession(CrashType crashType) async {
     final viewName = _viewName.isEmpty ? 'Rum Crash View' : _viewName;
-    await DatadogSdk.instance.rum?.startView(viewName, viewName);
+    DatadogSdk.instance.rum?.startView(viewName, viewName);
     await Future.delayed(const Duration(milliseconds: 100));
 
     _crash(crashType);

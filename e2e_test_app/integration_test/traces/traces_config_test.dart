@@ -68,11 +68,11 @@ void main() {
 
     final viewKey = randomString();
 
-    await datadog.rum?.startView(viewKey);
+    datadog.rum?.startView(viewKey);
     final span = await startSpan('traces_config_bundle_with_rum_enabled');
     await span.finish();
 
-    await datadog.rum?.stopView(viewKey);
+    datadog.rum?.stopView(viewKey);
   });
 
   /// ```global
@@ -93,11 +93,11 @@ void main() {
 
     final viewKey = randomString();
 
-    await datadog.rum?.startView(viewKey);
+    datadog.rum?.startView(viewKey);
     final span = await startSpan('traces_config_bundle_with_rum_disabled');
     await span.finish();
 
-    await datadog.rum?.stopView(viewKey);
+    datadog.rum?.stopView(viewKey);
   });
 
   /// ```global
@@ -114,7 +114,7 @@ void main() {
   testWidgets('traces config - set_user_info', (tester) async {
     await initializeDatadog();
 
-    await datadog.setUserInfo(
+    datadog.setUserInfo(
       id: 'some-id-${randomString()}',
       name: 'some-name-${randomString()}',
       email: 'some-email@${randomString()}.com',

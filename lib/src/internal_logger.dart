@@ -28,7 +28,7 @@ class InternalLogger {
   void log(Verbosity verbosity, String message) {
     if (kDebugMode && verbosity.index >= sdkVerbosity.index) {
       final prefixString = useEmoji
-          ? '[Datadog 🐶${_emojiMap[verbosity]}]'
+          ? '[Datadog 🐶${_emojiMap[verbosity]} ]'
           : '[Datadog - ${verbosity.name}]';
       // ignore: avoid_print
       print('$prefixString $message');

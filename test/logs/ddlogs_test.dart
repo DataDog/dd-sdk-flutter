@@ -44,25 +44,25 @@ void main() {
   });
 
   test('debug logs pass to platform', () async {
-    await ddLogs.debug('debug message', {'attribute': 'value'});
+    ddLogs.debug('debug message', {'attribute': 'value'});
 
     verify(() => mockPlatform.debug('debug message', {'attribute': 'value'}));
   });
 
   test('info logs pass to platform', () async {
-    await ddLogs.info('info message', {'attribute': 'value'});
+    ddLogs.info('info message', {'attribute': 'value'});
 
     verify(() => mockPlatform.info('info message', {'attribute': 'value'}));
   });
 
   test('warn logs pass to platform', () async {
-    await ddLogs.warn('warn message', {'attribute': 'value'});
+    ddLogs.warn('warn message', {'attribute': 'value'});
 
     verify(() => mockPlatform.warn('warn message', {'attribute': 'value'}));
   });
 
   test('error logs pass to platform', () async {
-    await ddLogs.error('error message', {'attribute': 'value'});
+    ddLogs.error('error message', {'attribute': 'value'});
 
     verify(() => mockPlatform.error('error message', {'attribute': 'value'}));
   });
@@ -70,7 +70,7 @@ void main() {
   test('addAttribute argumentError sent to logger', () async {
     when(() => mockPlatform.addAttribute(any(), any()))
         .thenThrow(ArgumentError());
-    await ddLogs.addAttribute('My key', 'Any Value');
+    ddLogs.addAttribute('My key', 'Any Value');
 
     assert(logger.logs.isNotEmpty);
   });

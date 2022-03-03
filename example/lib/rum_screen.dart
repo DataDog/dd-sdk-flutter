@@ -30,9 +30,9 @@ class _RumScreenState extends State<RumScreen> {
     var actualViewName = viewName.isEmpty ? null : viewName;
     var rum = DatadogSdk.instance.rum;
     if (rum != null) {
-      await rum.startView(actualKey, actualViewName);
+      rum.startView(actualKey, actualViewName);
       await Future.delayed(const Duration(seconds: 2));
-      await rum.stopView(actualKey);
+      rum.stopView(actualKey);
     }
 
     setState(() {

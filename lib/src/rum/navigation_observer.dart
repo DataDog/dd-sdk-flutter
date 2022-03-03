@@ -55,15 +55,15 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
     this.viewInfoExtractor = defaultViewInfoExtractor,
   });
 
-  Future<void> _sendScreenView(Route? newRoute, Route? oldRoute) async {
+  void _sendScreenView(Route? newRoute, Route? oldRoute) {
     final oldRouteInfo = oldRoute != null ? viewInfoExtractor(oldRoute) : null;
     final newRouteInfo = newRoute != null ? viewInfoExtractor(newRoute) : null;
 
     if (oldRouteInfo != null) {
-      await datadogSdk.rum?.stopView(oldRouteInfo.name);
+      datadogSdk.rum?.stopView(oldRouteInfo.name);
     }
     if (newRouteInfo != null) {
-      await datadogSdk.rum
+      datadogSdk.rum
           ?.startView(newRouteInfo.name, null, newRouteInfo.attributes);
     }
   }

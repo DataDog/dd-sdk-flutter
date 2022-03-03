@@ -39,7 +39,7 @@ void main() {
           'com.datadog.flutter.nightly.custom',
     );
 
-    await sendRandomLog(tester);
+    sendRandomLog(tester);
   });
 
   // - data monitor:
@@ -58,7 +58,7 @@ void main() {
       (config) => config.loggingConfiguration!.sendNetworkInfo = true,
     );
 
-    await sendRandomLog(tester);
+    sendRandomLog(tester);
   });
 
   // - data monitor:
@@ -74,7 +74,7 @@ void main() {
       (config) => config.loggingConfiguration!.sendNetworkInfo = false,
     );
 
-    await sendRandomLog(tester);
+    sendRandomLog(tester);
   });
 
   // - data monitor:
@@ -89,9 +89,9 @@ void main() {
     );
 
     final viewKey = randomString();
-    await datadog.rum?.startView(viewKey);
-    await sendRandomLog(tester);
-    await datadog.rum?.stopView(viewKey);
+    datadog.rum?.startView(viewKey);
+    sendRandomLog(tester);
+    datadog.rum?.stopView(viewKey);
   });
 
   // - data monitor:
@@ -108,8 +108,8 @@ void main() {
     );
 
     final viewKey = randomString();
-    await datadog.rum?.startView(viewKey);
-    await sendRandomLog(tester);
-    await datadog.rum?.stopView(viewKey);
+    datadog.rum?.startView(viewKey);
+    sendRandomLog(tester);
+    datadog.rum?.stopView(viewKey);
   });
 }

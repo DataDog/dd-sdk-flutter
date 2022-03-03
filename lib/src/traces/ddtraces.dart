@@ -184,7 +184,7 @@ class DdTraces {
     Map<String, dynamic>? tags,
     DateTime? startTime,
   }) async {
-    final span = await wrap('traces.startSpan', _logger, () async {
+    final span = await wrapAsync('traces.startSpan', _logger, () async {
       var span = await _platform.startSpan(
           operationName, parentSpan, resourceName, tags, startTime);
       if (span != null) {
@@ -206,7 +206,7 @@ class DdTraces {
     Map<String, dynamic>? tags,
     DateTime? startTime,
   }) async {
-    final span = await wrap('traces.startRootSpan', _logger, () async {
+    final span = await wrapAsync('traces.startRootSpan', _logger, () async {
       var span = await _platform.startRootSpan(
           operationName, resourceName, tags, startTime);
       if (span != null) {
@@ -224,7 +224,7 @@ class DdTraces {
 
   Future<Map<String, String>> getTracePropagationHeaders(DdSpan span) async {
     final headers =
-        await wrap('traces.getTracePropagationHeaders', _logger, () async {
+        await wrapAsync('traces.getTracePropagationHeaders', _logger, () {
       return _platform.getTracePropagationHeaders(span);
     });
 
