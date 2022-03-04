@@ -64,7 +64,7 @@ workflows:
 
     - flutter-analyze@0.3.1:
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR"
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/"
 
     - script:
         title: Android lint and static analysis
@@ -78,7 +78,7 @@ workflows:
     
     - flutter-test@1.0.1:
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR"
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin"
     
     - flutter-test@1.0.1:
         inputs:
