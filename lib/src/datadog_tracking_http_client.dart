@@ -98,7 +98,7 @@ class DatadogTrackingHttpClient implements HttpClient {
       bool isFirstParty = datadogSdk.isFirstPartyHost(url);
       if (tracer != null) {
         if (isFirstParty) {
-          tracingSpan = await tracer.startSpan('flutter.http_client', tags: {
+          tracingSpan = tracer.startSpan('flutter.http_client', tags: {
             'http.method': method.toUpperCase(),
             'http.url': url.toString(),
           });
@@ -298,8 +298,8 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
     return innerFuture.then((value) {
       return _DatadogTrackingHttpResponse(
           datadogSdk, value, tracingContext, rumKey);
-    }, onError: (e, st) async {
-      await _onStreamError(e, st);
+    }, onError: (e, st) {
+      _onStreamError(e, st);
       throw e;
     });
   }
@@ -310,17 +310,17 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
       return _DatadogTrackingHttpResponse(
           datadogSdk, value, tracingContext, rumKey);
     }, onError: (e, st) async {
-      await _onStreamError(e, st);
+      _onStreamError(e, st);
       throw e;
     });
   }
 
-  Future<void> _onStreamError(Object e, StackTrace? st) async {
+  void _onStreamError(Object e, StackTrace? st) {
     try {
       if (rumKey != null) {
         datadogSdk.rum?.stopResourceLoadingWithErrorInfo(rumKey!, e.toString());
       }
-      await tracingContext?.setErrorInfo(
+      tracingContext?.setErrorInfo(
         e.runtimeType.toString(),
         e.toString(),
         st,
@@ -452,10 +452,10 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
 
   // Set an error if one occurs during the stream. Note that only the last
   // error will be sent.
-  Future<void> _onError(Object error, StackTrace? stackTrace) async {
+  void _onError(Object error, StackTrace? stackTrace) {
     lastError = error;
     try {
-      await tracingContext?.setErrorInfo(
+      tracingContext?.setErrorInfo(
           error.runtimeType.toString(), error.toString(), stackTrace);
     } catch (e) {
       datadogSdk.internalLogger.sendToDatadog(
@@ -464,7 +464,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
     }
   }
 
-  Future<void> _onFinish(Object? error, StackTrace? stackTrace) async {
+  void _onFinish(Object? error, StackTrace? stackTrace) {
     try {
       final statusCode = innerResponse.statusCode;
 
@@ -484,12 +484,12 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
 
       final span = tracingContext;
       if (span != null) {
-        await span.setTag(OTTags.httpStatusCode, statusCode);
+        span.setTag(OTTags.httpStatusCode, statusCode);
         if (statusCode >= 400 && statusCode < 500) {
-          await span.setErrorInfo('HttpStatusCode',
+          span.setErrorInfo('HttpStatusCode',
               '$statusCode - ${innerResponse.reasonPhrase}', null);
         }
-        await span.finish();
+        span.finish();
       }
     } catch (e) {
       datadogSdk.internalLogger.sendToDatadog(

@@ -16,6 +16,7 @@ class SpanDecoder {
   String get name => span['name'] as String;
   String get traceId => span['trace_id'] as String;
   String get spanId => span['span_id'] as String;
+  int get duration => (span['duration'] as num).toInt();
   String? get parentSpanId => span['parent_id'] as String?;
   String get resource => span['resource'] as String;
   int get isError => span['error'] as int;

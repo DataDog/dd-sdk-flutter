@@ -7,6 +7,7 @@ package com.datadoghq.flutter
 
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.IntForgery
+import fr.xgouchet.elmyr.annotation.LongForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import io.flutter.plugin.common.MethodCall
@@ -22,6 +23,7 @@ import org.mockito.Mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.description
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
@@ -43,10 +45,14 @@ class DatadogTracesPluginTest {
 
     private val contracts = listOf(
         Contract("startRootSpan", mapOf(
-            "operationName" to typeOf<String>()
+            "spanHandle" to typeOf<Long>(),
+            "operationName" to typeOf<String>(),
+            "startTime" to typeOf<Long>()
         )),
         Contract("startSpan", mapOf(
-            "operationName" to typeOf<String>()
+            "spanHandle" to typeOf<Long>(),
+            "operationName" to typeOf<String>(),
+            "startTime" to typeOf<Long>()
         )),
     )
 
@@ -59,11 +65,15 @@ class DatadogTracesPluginTest {
 
     @Test
     fun `M report a contract violation W startRootSpan has bad operation name`(
+        @LongForgery spanId: Long,
+        @LongForgery startTime: Long,
         @IntForgery operationName: Int
     ) {
         // GIVEN
         val call = MethodCall("startRootSpan", mapOf<String, Any>(
-            "operationName" to operationName
+            "spanHandle" to spanId,
+            "operationName" to operationName,
+            "startTime" to startTime
         ))
         val mockResult = mock<MethodChannel.Result>()
 
@@ -76,11 +86,13 @@ class DatadogTracesPluginTest {
 
     @Test
     fun `M report a contract violation W startRootSpan has bad start time`(
+        @LongForgery spanId: Long,
         @StringForgery operationName: String,
         @StringForgery startTime: String
     ) {
         // GIVEN
         val call = MethodCall("startRootSpan", mapOf<String, Any>(
+            "spanHandle" to spanId,
             "operationName" to operationName,
             "startTime" to startTime
         ))
@@ -95,11 +107,15 @@ class DatadogTracesPluginTest {
 
     @Test
     fun `M report a contract violation W startSpan has bad operation name`(
+        @LongForgery spanId: Long,
+        @LongForgery startTime: Long,
         @IntForgery operationName: Int
     ) {
         // GIVEN
         val call = MethodCall("startSpan", mapOf<String, Any>(
-            "operationName" to operationName
+            "spanHandle" to spanId,
+            "operationName" to operationName,
+            "startTime" to startTime
         ))
         val mockResult = mock<MethodChannel.Result>()
 
@@ -110,16 +126,20 @@ class DatadogTracesPluginTest {
         verify(mockResult).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
     }
 
-    private fun createSpan(operationName: String): Long {
+    private fun createSpan(forge: Forge, operationName: String): Long {
+        val spanId = forge.aLong()
+        val time = forge.aLong()
         val call = MethodCall("startRootSpan", mapOf<String, Any>(
-            "operationName" to operationName
+            "spanHandle" to spanId,
+            "operationName" to operationName,
+            "startTime" to time
         ))
         val mockResult = mock<MethodChannel.Result>()
         val captor = argumentCaptor<Long>()
         plugin.onMethodCall(call, mockResult)
 
         verify(mockResult).success(captor.capture())
-        return captor.firstValue
+        return spanId
     }
 
     private val spanContracts = listOf(
@@ -142,9 +162,29 @@ class DatadogTracesPluginTest {
         forge: Forge,
         @StringForgery operationName: String,
     ) {
-        val spanId = createSpan(operationName)
+        val spanId = createSpan(forge, operationName)
         testContracts(spanContracts, forge, plugin, mapOf(
             "spanHandle" to spanId
         ))
+    }
+
+    @Test
+    fun `M report a contract violation W missing time in span finish`(
+        forge: Forge,
+        @StringForgery operationName: String,
+    ) {
+        val spanId = createSpan(forge, operationName)
+        val call = MethodCall("span.finish", mapOf<String, Any>(
+            "spanHandle" to spanId
+        ))
+        val mockResult = mock<MethodChannel.Result>()
+        val captor = argumentCaptor<Long>()
+        plugin.onMethodCall(call, mockResult)
+
+        verify(
+            mockResult,
+            description("span.finish did not throw a contract violation when missing finishTime")
+        ).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
+
     }
 }

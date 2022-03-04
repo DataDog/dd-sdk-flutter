@@ -6,6 +6,9 @@ import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddtraces_platform_interface.dart';
 
+typedef TimeProvider = DateTime Function();
+DateTime systemTimeProvider() => DateTime.now();
+
 /// A collection of standard `Span` tag keys defined by Open Tracing.
 /// Use them as the `key` in [DdSpan.setTag]. Use the expected type for the `value`.
 ///
@@ -90,81 +93,99 @@ class DdSpan {
       'Attempting to call $method on a closed span.';
 
   final DdTracesPlatform _platform;
+  final TimeProvider _timeProvider;
   InternalLogger? _logger;
 
   int _handle;
   int get handle => _handle;
 
-  DdSpan(this._platform, this._handle);
+  DdSpan(this._platform, this._timeProvider, this._handle, [this._logger]);
 
-  Future<void> setActive() {
-    if (_handle <= 0) {
+  void setActive() {
+    if (_handle <= 0 || _logger == null) {
       _logger?.warn(closedSpanWarning('setActivate'));
-      return Future.value();
+      return;
     }
 
-    return _platform.spanSetActive(this);
+    wrap('span.setActive', _logger!, () {
+      return _platform.spanSetActive(this);
+    });
   }
 
-  Future<void> setBaggageItem(String key, String value) {
-    if (_handle <= 0) {
+  void setBaggageItem(String key, String value) {
+    if (_handle <= 0 || _logger == null) {
       _logger?.warn(closedSpanWarning('setBaggageItem'));
-      return Future.value();
+      return;
     }
 
-    return _platform.spanSetBaggageItem(this, key, value);
+    wrap('span.setBaggageItem', _logger!, () {
+      return _platform.spanSetBaggageItem(this, key, value);
+    });
   }
 
   /// Set a tag with the given [key] to the given [value]. Although the type for
   /// [value] is [Object], the object passed in must be one of the types
   /// supported by the [StandardMessageCodec]
-  Future<void> setTag(String key, Object value) {
-    if (_handle <= 0) {
+  void setTag(String key, Object value) {
+    if (_handle <= 0 || _logger == null) {
       _logger?.warn(closedSpanWarning('setTag'));
-      return Future.value();
+      return;
     }
 
-    return _platform.spanSetTag(this, key, value);
+    wrap('span.setTag', _logger!, () {
+      return _platform.spanSetTag(this, key, value);
+    });
   }
 
-  Future<void> setError(Exception error, [StackTrace? stackTrace]) {
-    if (_handle <= 0) {
+  void setError(Exception error, [StackTrace? stackTrace]) {
+    if (_handle <= 0 || _logger == null) {
       _logger?.warn(closedSpanWarning('setError'));
-      return Future.value();
+      return;
     }
 
-    return setErrorInfo(
-        error.runtimeType.toString(), error.toString(), stackTrace);
+    wrap('span.setError', _logger!, () {
+      return setErrorInfo(
+          error.runtimeType.toString(), error.toString(), stackTrace);
+    });
   }
 
-  Future<void> setErrorInfo(
-      String kind, String message, StackTrace? stackTrace) {
-    if (_handle <= 0) {
+  void setErrorInfo(String kind, String message, StackTrace? stackTrace) {
+    if (_handle <= 0 || _logger == null) {
       _logger?.warn(closedSpanWarning('setErrorInfo'));
-      return Future.value();
+      return;
     }
     stackTrace ??= StackTrace.current;
 
-    return _platform.spanSetError(this, kind, message, stackTrace.toString());
+    wrap('span.setErrorInfo', _logger!, () {
+      return _platform.spanSetError(this, kind, message, stackTrace.toString());
+    });
   }
 
-  Future<void> log(Map<String, Object?> fields) {
-    if (_handle <= 0) {
+  void log(Map<String, Object?> fields) {
+    if (_handle <= 0 || _logger == null) {
       _logger?.warn(closedSpanWarning('log'));
-      return Future.value();
+      return;
     }
 
-    return _platform.spanLog(this, fields);
+    wrap('span.log', _logger!, () {
+      return _platform.spanLog(this, fields);
+    });
   }
 
-  Future<void> finish() async {
-    if (_handle <= 0) {
+  void finish([DateTime? finishTime]) {
+    if (_handle <= 0 || _logger == null) {
       _logger?.warn(closedSpanWarning('finish'));
-      return Future.value();
+      return;
     }
 
-    await _platform.spanFinish(this);
+    // Immediately invalidate the handle to prevent extra calls
+    final currentHandle = _handle;
     _handle = -1;
+
+    wrap('span.finish', _logger!, () async {
+      final resolvedTime = finishTime ?? _timeProvider();
+      await _platform.spanFinish(currentHandle, resolvedTime);
+    });
   }
 }
 
@@ -173,53 +194,67 @@ class DdTraces {
     return DdTracesPlatform.instance;
   }
 
+  final TimeProvider timeProvider;
   final InternalLogger _logger;
+  var _nextSpanHandle = 1;
 
-  DdTraces(this._logger);
+  DdTraces(this._logger, {this.timeProvider = systemTimeProvider});
 
-  Future<DdSpan> startSpan(
+  DdSpan startSpan(
     String operationName, {
     DdSpan? parentSpan,
     String? resourceName,
     Map<String, dynamic>? tags,
     DateTime? startTime,
-  }) async {
-    final span = await wrapAsync('traces.startSpan', _logger, () async {
-      var span = await _platform.startSpan(
-          operationName, parentSpan, resourceName, tags, startTime);
-      if (span != null) {
-        span._logger = _logger;
-      } else {
-        _logger.error('Error creating span named $operationName');
-        // Don't set the logger on this span or it will spam being closed
-        span = DdSpan(_platform, 0);
+  }) {
+    final spanHandle = _nextSpanHandle++;
+    final span = DdSpan(_platform, timeProvider, spanHandle);
+    span._logger = _logger;
+    final resolvedTime = startTime ?? timeProvider();
+
+    wrapAsync('traces.startSpan', _logger, () {
+      return _platform.startSpan(spanHandle, operationName, parentSpan,
+          resourceName, tags, resolvedTime);
+    }).then((success) {
+      success ??= false;
+      if (!success) {
+        _logger.error(
+            'Error creating span named $operationName - this span will be force closed');
+        // Clear the logger on this span or it will spam being closed
+        span._handle = 0;
+        span._logger = null;
       }
-      return span;
     });
 
-    return span ?? DdSpan(_platform, 0);
+    return span;
   }
 
-  Future<DdSpan> startRootSpan(
+  DdSpan startRootSpan(
     String operationName, {
     String? resourceName,
     Map<String, dynamic>? tags,
     DateTime? startTime,
-  }) async {
-    final span = await wrapAsync('traces.startRootSpan', _logger, () async {
-      var span = await _platform.startRootSpan(
-          operationName, resourceName, tags, startTime);
-      if (span != null) {
-        span._logger = _logger;
-      } else {
-        _logger.error('Error creating span named $operationName');
-        // Don't set the logger on this span or it will spam being closed
-        span = DdSpan(_platform, 0);
+  }) {
+    final spanHandle = _nextSpanHandle++;
+    final span = DdSpan(_platform, timeProvider, spanHandle);
+    span._logger = _logger;
+    final resolvedTime = startTime ?? timeProvider();
+
+    wrapAsync('traces.startSpan', _logger, () {
+      return _platform.startRootSpan(
+          spanHandle, operationName, resourceName, tags, resolvedTime);
+    }).then((success) {
+      success ??= false;
+      if (!success) {
+        _logger.error(
+            'Error creating span named $operationName - this span will be force closed');
+        // Clear the logger on this span or it will spam being closed
+        span._handle = 0;
+        span._logger = null;
       }
-      return span;
     });
 
-    return span ?? DdSpan(_platform, 0);
+    return span;
   }
 
   Future<Map<String, String>> getTracePropagationHeaders(DdSpan span) async {

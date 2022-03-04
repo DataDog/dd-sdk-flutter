@@ -14,34 +14,43 @@ class DdTracesMethodChannel extends DdTracesPlatform {
       const MethodChannel('datadog_sdk_flutter.traces');
 
   @override
-  Future<DdSpan?> startRootSpan(String operationName, String? resourceName,
-      Map<String, dynamic>? tags, DateTime? startTime) async {
-    var result = await methodChannel.invokeMethod('startRootSpan', {
+  Future<bool> startRootSpan(
+    int spanHandle,
+    String operationName,
+    String? resourceName,
+    Map<String, dynamic>? tags,
+    DateTime startTime,
+  ) async {
+    var result = await methodChannel.invokeMethod<bool>('startRootSpan', {
+      'spanHandle': spanHandle,
       'operationName': operationName,
       'resourceName': resourceName,
       'tags': tags,
-      'startTime': startTime?.millisecondsSinceEpoch
-    }) as int;
+      'startTime': startTime.microsecondsSinceEpoch
+    });
 
-    return DdSpan(this, result);
+    return result ?? false;
   }
 
   @override
-  Future<DdSpan?> startSpan(
-      String operationName,
-      DdSpan? parentSpan,
-      String? resourceName,
-      Map<String, dynamic>? tags,
-      DateTime? startTime) async {
-    var result = await methodChannel.invokeMethod('startSpan', {
+  Future<bool> startSpan(
+    int spanHandle,
+    String operationName,
+    DdSpan? parentSpan,
+    String? resourceName,
+    Map<String, dynamic>? tags,
+    DateTime startTime,
+  ) async {
+    var result = await methodChannel.invokeMethod<bool>('startSpan', {
+      'spanHandle': spanHandle,
       'operationName': operationName,
       'parentSpan': parentSpan?.handle,
       'resourceName': resourceName,
       'tags': tags,
-      'startTime': startTime?.millisecondsSinceEpoch
-    }) as int;
+      'startTime': startTime.microsecondsSinceEpoch
+    });
 
-    return DdSpan(this, result);
+    return result ?? false;
   }
 
   @override
@@ -106,8 +115,10 @@ class DdTracesMethodChannel extends DdTracesPlatform {
   }
 
   @override
-  Future<void> spanFinish(DdSpan span) {
-    return methodChannel
-        .invokeMethod('span.finish', {'spanHandle': span.handle});
+  Future<void> spanFinish(int spanHandle, DateTime finishTime) {
+    return methodChannel.invokeMethod('span.finish', {
+      'spanHandle': spanHandle,
+      'finishTime': finishTime.microsecondsSinceEpoch
+    });
   }
 }

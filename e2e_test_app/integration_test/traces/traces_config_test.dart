@@ -46,8 +46,8 @@ void main() {
     );
 
     final span =
-        await startSpan('traces_${Platform.operatingSystem}_set_service_name');
-    await span.finish();
+        startSpan('traces_${Platform.operatingSystem}_set_service_name');
+    span.finish();
   });
 
   /// ```global
@@ -69,8 +69,8 @@ void main() {
     final viewKey = randomString();
 
     datadog.rum?.startView(viewKey);
-    final span = await startSpan('traces_config_bundle_with_rum_enabled');
-    await span.finish();
+    final span = startSpan('traces_config_bundle_with_rum_enabled');
+    span.finish();
 
     datadog.rum?.stopView(viewKey);
   });
@@ -94,8 +94,8 @@ void main() {
     final viewKey = randomString();
 
     datadog.rum?.startView(viewKey);
-    final span = await startSpan('traces_config_bundle_with_rum_disabled');
-    await span.finish();
+    final span = startSpan('traces_config_bundle_with_rum_disabled');
+    span.finish();
 
     datadog.rum?.stopView(viewKey);
   });
@@ -120,7 +120,7 @@ void main() {
       email: 'some-email@${randomString()}.com',
       extraInfo: {'level1': randomString(), 'another.level2': randomString()},
     );
-    final span = await startSpan('traces_config_set_user_info');
-    await span.finish();
+    final span = startSpan('traces_config_set_user_info');
+    span.finish();
   });
 }

@@ -144,12 +144,12 @@ class _TracingScreenState extends State<TracingScreen> {
 
     final tracing = DatadogSdk.instance.traces;
     if (tracing != null) {
-      var span = await tracing.startSpan(
+      var span = tracing.startSpan(
         operationName,
         resourceName: _resourceName.isNotEmpty ? _resourceName : null,
       );
       await Future.delayed(const Duration(seconds: 1));
-      await span.finish();
+      span.finish();
     }
 
     setState(() {
@@ -167,19 +167,19 @@ class _TracingScreenState extends State<TracingScreen> {
 
     final tracing = DatadogSdk.instance.traces;
     if (tracing != null) {
-      final rootSpan = await tracing.startRootSpan(operationName);
+      final rootSpan = tracing.startRootSpan(operationName);
       await Future.delayed(const Duration(milliseconds: 500));
 
       final child1 =
-          await tracing.startSpan('child operation 1', parentSpan: rootSpan);
+          tracing.startSpan('child operation 1', parentSpan: rootSpan);
       await Future.delayed(const Duration(milliseconds: 100));
       child1.finish();
 
       final child2 =
-          await tracing.startSpan('child operation 2', parentSpan: rootSpan);
+          tracing.startSpan('child operation 2', parentSpan: rootSpan);
       await Future.delayed(const Duration(milliseconds: 500));
       final grandchild =
-          await tracing.startSpan('grandchild operation', parentSpan: child2);
+          tracing.startSpan('grandchild operation', parentSpan: child2);
       await Future.delayed(const Duration(seconds: 1));
       grandchild.finish();
       child2.finish();

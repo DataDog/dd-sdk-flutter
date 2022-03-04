@@ -26,20 +26,19 @@ class _TracesScenarioState extends State<TracesScenario> {
     _simulateTraces();
   }
 
-  Future<void> _simulateTraces() async {
+  void _simulateTraces() {
     var traces = DatadogSdk.instance.traces;
     if (traces != null) {
-      viewLoadingSpan = await traces.startRootSpan('view loading');
-      await viewLoadingSpan?.setActive();
+      viewLoadingSpan = traces.startRootSpan('view loading');
+      viewLoadingSpan?.setActive();
 
-      await viewLoadingSpan?.setBaggageItem('class', runtimeType.toString());
+      viewLoadingSpan?.setBaggageItem('class', runtimeType.toString());
 
-      dataDownloadingSpan = await traces.startSpan('data downloading',
-          resourceName: 'GET /image.png');
-      await dataDownloadingSpan?.setTag('data.kind', 'image');
-      await dataDownloadingSpan?.setTag(
-          'data.url', 'https://example.com/image.png');
-      await dataDownloadingSpan?.setActive();
+      dataDownloadingSpan =
+          traces.startSpan('data downloading', resourceName: 'GET /image.png');
+      dataDownloadingSpan?.setTag('data.kind', 'image');
+      dataDownloadingSpan?.setTag('data.url', 'https://example.com/image.png');
+      dataDownloadingSpan?.setActive();
 
       unawaited(_simulateDataDownload());
     }
@@ -47,24 +46,24 @@ class _TracesScenarioState extends State<TracesScenario> {
 
   Future<void> _simulateDataDownload() async {
     await Future.delayed(const Duration(milliseconds: 300));
-    await dataDownloadingSpan?.log({
+    dataDownloadingSpan?.log({
       OTLogFields.message: 'download progress',
       'progress': 0.99,
     });
-    await dataDownloadingSpan?.finish();
+    dataDownloadingSpan?.finish();
 
     var traces = DatadogSdk.instance.traces;
     if (traces != null) {
-      final dataPresentationSpan = await traces.startSpan('data presentation');
-      await dataPresentationSpan.setActive();
+      final dataPresentationSpan = traces.startSpan('data presentation');
+      dataPresentationSpan.setActive();
       await Future.delayed(const Duration(milliseconds: 60));
-      await dataPresentationSpan.setTag(OTTags.error, true);
-      await dataPresentationSpan.setError(PlatformException(
+      dataPresentationSpan.setTag(OTTags.error, true);
+      dataPresentationSpan.setError(PlatformException(
           code: 'DatadogSdkPlugin', message: 'Failed for reasons.'));
-      await dataPresentationSpan.finish();
+      dataPresentationSpan.finish();
     }
 
-    await viewLoadingSpan?.finish();
+    viewLoadingSpan?.finish();
   }
 
   @override

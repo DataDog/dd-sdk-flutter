@@ -20,7 +20,6 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
     register.addMethodCallDelegate(instance, channel: channel)
   }
 
-  private var nextSpanId: Int64 = 1
   private var spanRegistry: [Int64: OTSpan] = [:]
 
   public private(set) var tracer: OTTracer?
@@ -90,10 +89,17 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
       return
     }
 
-    guard let operationName = arguments["operationName"] as? String else {
+    guard let spanHandle = arguments["spanHandle"] as? NSNumber,
+          let operationName = arguments["operationName"] as? String,
+          let startTime = arguments["startTime"] as? NSNumber else {
       result(
         FlutterError.missingParameter(methodName: isRootSpan ? "startRootSpan" : "startSpan")
       )
+      return
+    }
+
+    if hasExistingSpan(spanHandle: spanHandle.int64Value) {
+      result(false)
       return
     }
 
@@ -102,10 +108,8 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
       tags = castFlutterAttributesToSwift(flutterTags)
     }
 
-    var startTime: Date?
-    if let startTimeMs = arguments["startTime"] as? NSNumber {
-      startTime = Date(timeIntervalSince1970: startTimeMs.doubleValue / 1_000)
-    }
+    // Flutter sends microseconds, which is the lowest resolution we can get
+    let startDate: Date = Date(timeIntervalSince1970: startTime.doubleValue / 1_000_000)
 
     var parentSpan: OTSpan?
     if let parentSpanId = (arguments["parentSpan"] as? NSNumber)?.int64Value {
@@ -116,19 +120,22 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
       ? tracer.startRootSpan(
           operationName: operationName,
           tags: tags,
-          startTime: startTime)
+          startTime: startDate)
       : tracer.startSpan(
           operationName: operationName,
           childOf: parentSpan?.context,
           tags: tags,
-          startTime: startTime)
+          startTime: startDate)
 
-	if let resourceName = arguments["resourceName"] as? String {
+    if let resourceName = arguments["resourceName"] as? String {
       span.setTag(key: DDTags.resource, value: resourceName)
     }
 
-    let spanHandle = storeSpan(span)
-    result(spanHandle)
+    result(storeSpan(spanHandle.int64Value, span))
+  }
+
+  private func hasExistingSpan(spanHandle: Int64) -> Bool {
+    return spanRegistry[spanHandle] != nil
   }
 
   // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -193,9 +200,17 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
       }
 
     case "span.finish":
-      calledSpan.span.finish()
-      spanRegistry[calledSpan.handle] = nil
-      result(nil)
+      if let finishTime = arguments["finishTime"] as? NSNumber {
+        // Flutter sends microseconds
+        let finishDate = Date(timeIntervalSince1970: finishTime.doubleValue / 1_000_000)
+        calledSpan.span.finish(at: finishDate)
+        spanRegistry[calledSpan.handle] = nil
+        result(nil)
+      } else {
+        result(
+          FlutterError.missingParameter(methodName: method)
+        )
+      }
 
     default:
       result(FlutterMethodNotImplemented)
@@ -212,10 +227,12 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
     return nil
   }
 
-  private func storeSpan(_ span: OTSpan) -> Int64 {
-    let spanId = nextSpanId
-    nextSpanId += 1
-    spanRegistry[spanId] = span
-    return spanId
+  private func storeSpan(_ spanHandle: Int64, _ span: OTSpan) -> Bool {
+    if hasExistingSpan(spanHandle: spanHandle) {
+      // TODO: TELEMETRY - We should not have gotten this far with a spanId that already exists
+      return false
+    }
+    spanRegistry[spanHandle] = span
+    return true
   }
 }

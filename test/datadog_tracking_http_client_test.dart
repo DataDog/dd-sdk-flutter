@@ -170,7 +170,7 @@ void main() {
           parentSpan: any(named: 'parentSpan'),
           tags: any(named: 'tags'),
           startTime: any(named: 'startTime'),
-        )).thenAnswer((_) => Future.value(span));
+        )).thenAnswer((_) => span);
     when(() => mockTraces.getTracePropagationHeaders(any()))
         .thenAnswer((_) => Future.value(fakeTraceHeaders));
     when(() => mockDatadog.traces).thenReturn(mockTraces);
