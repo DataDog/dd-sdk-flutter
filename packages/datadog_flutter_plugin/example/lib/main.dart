@@ -3,7 +3,6 @@
 // Copyright 2016-Present Datadog, Inc.
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +13,7 @@ import 'example_app.dart';
 void main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
-    await dotenv.load(mergeWith: Platform.environment);
+    await dotenv.load();
 
     var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
 

@@ -15,6 +15,7 @@ dependencies:
 
   cupertino_icons: ^1.0.2
   flutter_dotenv: ^5.0.2
+  fluro: ^2.0.3
 
 dev_dependencies:
   flutter_test:
