@@ -7,26 +7,26 @@
 
         {
             "name": "example",
-            "cwd": "example",
+            "cwd": "packages/datadog_flutter_plugin/example",
             "request": "launch",
             "type": "dart"
         },
         {
             "name": "integration test app",
-            "cwd": "integration_test_app",
+            "cwd": "packages/datadog_flutter_plugin/integration_test_app",
             "request": "launch",
             "type": "dart"
         },
         {
             "name": "auto instrumented app",
             "cwd": "integration_test_app",
-            "program": "lib/auto_integration_scenarios/main.dart",
+            "program": "packages/datadog_flutter_plugin/lib/auto_integration_scenarios/main.dart",
             "request": "launch",
             "type": "dart"
         },
         {
             "name": "example (profile mode)",
-            "cwd": "example",
+            "cwd": "packages/datadog_flutter_plugin/example",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"

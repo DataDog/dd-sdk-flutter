@@ -5,7 +5,7 @@
 .pub/
 
 build/
-*/.env
+**/.env
 
 .bitrise.secrets.yml
 *flutter_junit_test_results.xml

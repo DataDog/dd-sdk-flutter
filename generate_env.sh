@@ -7,6 +7,7 @@
 
 set echo off
 
+pushd packages/datadog_flutter_plugin
 tee ./example/.env > /dev/null << END
 # Edit this file with your Datadog client token, environment and application id
 DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN
@@ -32,3 +33,4 @@ END
 else
     echo "Not generating E2E .env file because DD_E2E_CLIENT_TOKEN is $DD_E2E_CLIENT_TOKEN"
 fi
+popd

@@ -1,0 +1,34 @@
+name: datadog_integration_test_app
+description: App to do integration testing for the Datadog Flutter SDK
+publish_to: 'none'
+version: 1.0.0
+
+environment:
+  sdk: ">=2.15.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.2
+  flutter_dotenv: ^5.0.2
+  transparent_image: ^2.0.0
+  http: ^0.13.4
+
+  datadog_flutter_plugin:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  collection: ^1.15.0
+
+  flutter_lints: ^1.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env

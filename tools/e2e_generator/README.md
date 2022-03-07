@@ -39,5 +39,5 @@ There are several predefined variables as well
 To regenerate the Terraform files, run the following command from this directory
 
 ```bash
-dart ./bin/e2e_generator ../../e2e_test_app/test
+dart ./bin/e2e_generator ../../packages/datadog_flutter_plugin/e2e_test_app/test
 ```

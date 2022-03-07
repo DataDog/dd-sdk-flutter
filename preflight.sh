@@ -12,13 +12,15 @@
 set -e
 
 # Fix Android linter issues
-pushd example/android
+pushd packages/datadog_flutter_plugin/example/android
 ./gradlew ktlintFormat
 ./gradlew detekt
 popd
 
 # Fix iOS linter issues
+pushd packages/datadog_flutter_plugin
 swiftlint --fix
+popd
 
 # Run flutter analyze
 flutter analyze
