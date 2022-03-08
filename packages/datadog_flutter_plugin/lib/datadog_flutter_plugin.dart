@@ -136,6 +136,9 @@ class DatadogSdk {
   Future<void> initialize(DdSdkConfiguration configuration) async {
     configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
     configuration.additionalConfig[DatadogConfigKey.version] = ddSdkVersion;
+    // Mobile SDKs expect this in the additional config so that's where it's going
+    configuration.additionalConfig[DatadogConfigKey.serviceName] =
+        configuration.serviceName;
 
     firstPartyHosts = configuration.firstPartyHosts;
 

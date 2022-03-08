@@ -10,8 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import '../common.dart';
-import '../logging/log_decoder.dart';
-import '../tools/mock_http_sever.dart';
+import '../log_decoder.dart';
+import '../tools/request_log.dart';
 import 'span_decoder.dart';
 
 void _assertCommonSpanMetadata(SpanDecoder span) {
@@ -28,13 +28,13 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('test tracing scenario', (WidgetTester tester) async {
-    await openTestScenario(tester, 'Traces Scenario');
+    var recordedSession = await openTestScenario(tester, 'Traces Scenario');
 
     var requestsLog = <RequestLog>[];
     var spanLog = <SpanDecoder>[];
     var logs = <LogDecoder>[];
 
-    await mockHttpServer!.pollRequests(
+    await recordedSession.pollSessionRequests(
       const Duration(seconds: 30),
       (requests) {
         requestsLog.addAll(requests);

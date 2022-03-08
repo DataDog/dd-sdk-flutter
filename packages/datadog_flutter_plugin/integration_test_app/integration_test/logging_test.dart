@@ -1,21 +1,24 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import '../common.dart';
+import 'common.dart';
 import 'log_decoder.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('test logging scenario', (WidgetTester tester) async {
-    await openTestScenario(tester, 'Logging Scenario');
+    var recordedSession = await openTestScenario(tester, 'Logging Scenario');
 
     var logs = <LogDecoder>[];
 
-    await mockHttpServer!.pollRequests(
+    await recordedSession.pollSessionRequests(
       const Duration(seconds: 30),
       (requests) {
         requests
@@ -23,9 +26,10 @@ void main() {
               try {
                 return e.jsonData as List;
               } on FormatException {
-                // Do nothing, this is likely a leaky RUM event
+                // Web sends as newline separated
+                return e.data.split('\n').map((e) => json.decode(e)).toList();
               }
-              return null;
+              // return null;
             })
             .whereType<List>()
             .expand((e) => e)
@@ -38,27 +42,36 @@ void main() {
 
     expect(logs[0].status, 'debug');
     expect(logs[0].message, 'debug message');
-    expect(logs[0].tags, contains('tag1:tag-value'));
-    expect(logs[0].tags, contains('my-tag'));
+    // JS SDK doesn't support tags
+    if (!kIsWeb) {
+      expect(logs[0].tags, contains('tag1:tag-value'));
+      expect(logs[0].tags, contains('my-tag'));
+    }
     expect(logs[0].log['stringAttribute'], 'string');
 
     expect(logs[1].status, 'info');
     expect(logs[1].message, 'info message');
-    expect(logs[1].tags, isNot(contains('my-tag')));
-    expect(logs[1].tags, contains('tag1:tag-value'));
+    if (!kIsWeb) {
+      expect(logs[1].tags, isNot(contains('my-tag')));
+      expect(logs[1].tags, contains('tag1:tag-value'));
+    }
     expect(logs[1].log['nestedAttribute'], containsPair('internal', 'test'));
     expect(logs[1].log['nestedAttribute'], containsPair('isValid', true));
 
     expect(logs[2].status, 'warn');
     expect(logs[2].message, 'warn message');
-    expect(logs[2].tags, isNot(contains('my-tag')));
-    expect(logs[2].tags, contains('tag1:tag-value'));
+    if (!kIsWeb) {
+      expect(logs[2].tags, isNot(contains('my-tag')));
+      expect(logs[2].tags, contains('tag1:tag-value'));
+    }
     expect(logs[2].log['doubleAttribute'], 10.34);
 
     expect(logs[3].status, 'error');
     expect(logs[3].message, 'error message');
-    expect(logs[3].tags, isNot(contains('my-tag')));
-    expect(logs[3].tags, isNot(contains('tag1:tag-value')));
+    if (!kIsWeb) {
+      expect(logs[3].tags, isNot(contains('my-tag')));
+      expect(logs[3].tags, isNot(contains('tag1:tag-value')));
+    }
     expect(logs[3].log['attribute'], 'value');
 
     for (final log in logs) {
@@ -70,7 +83,9 @@ void main() {
 
       expect(log.serviceName,
           equalsIgnoringCase('com.datadoghq.flutter.integrationtestapp'));
-      expect(log.threadName, 'main');
+      if (!kIsWeb) {
+        expect(log.threadName, 'main');
+      }
     }
   });
 }

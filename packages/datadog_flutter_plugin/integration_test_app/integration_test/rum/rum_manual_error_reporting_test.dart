@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import '../common.dart';
-import '../tools/mock_http_sever.dart';
+import '../tools/request_log.dart';
 import 'rum_decoder.dart';
 
 void main() {
@@ -17,7 +17,8 @@ void main() {
 
   testWidgets('test rum manual error reporting scenario',
       (WidgetTester tester) async {
-    await openTestScenario(tester, 'RUM Error Reporting Scenario');
+    var recordedSession =
+        await openTestScenario(tester, 'RUM Error Reporting Scenario');
 
     var throwButton =
         find.widgetWithText(ElevatedButton, 'Throw / Catch Exception');
@@ -26,7 +27,7 @@ void main() {
 
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
-    await mockHttpServer!.pollRequests(
+    await recordedSession.pollSessionRequests(
       const Duration(seconds: 30),
       (requests) {
         requestLog.addAll(requests);

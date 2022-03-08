@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:collection/src/iterable_extensions.dart';
 import 'package:datadog_integration_test_app/helpers.dart';
 import 'package:datadog_integration_test_app/main.dart' as app;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -29,18 +30,25 @@ class _IsDecimalVersionOfHex extends CustomMatcher {
 
 Matcher isDecimalVersionOfHex(Object value) => _IsDecimalVersionOfHex(value);
 
-MockHttpServer? mockHttpServer;
+RecordingHttpServer? _mockHttpServer;
 
-void startMockServer() {
-  if (mockHttpServer == null) {
-    mockHttpServer = MockHttpServer();
-    unawaited(mockHttpServer!.start());
+RecordingServerClient startMockServer() {
+  if (kIsWeb) {
+    return RemoteRecordingServerClient(RecordingHttpServer.endpoint);
+  } else {
+    if (_mockHttpServer == null) {
+      _mockHttpServer = RecordingHttpServer();
+      unawaited(_mockHttpServer!.start());
+    }
+    _mockHttpServer!.startNewSession();
+
+    return LocalRecordingServerClient(_mockHttpServer!);
   }
-  mockHttpServer!.startNewSession();
 }
 
-Future<void> openTestScenario(WidgetTester tester, String scenarioName) async {
-  startMockServer();
+Future<RecordingServerClient> openTestScenario(
+    WidgetTester tester, String scenarioName) async {
+  var client = startMockServer();
 
   // These need to be set as const in order to work, so we
   // can't refactor this out to a function.
@@ -52,7 +60,7 @@ Future<void> openTestScenario(WidgetTester tester, String scenarioName) async {
       : null;
 
   app.testingConfiguration = TestingConfiguration(
-      customEndpoint: mockHttpServer!.endpoint,
+      customEndpoint: RecordingHttpServer.endpoint,
       clientToken: clientToken,
       applicationId: applicationId);
 
@@ -63,6 +71,8 @@ Future<void> openTestScenario(WidgetTester tester, String scenarioName) async {
       widget is Text && (widget.data?.startsWith(scenarioName) ?? false));
   await tester.tap(integrationItem);
   await tester.pumpAndSettle();
+
+  return client;
 }
 
 extension Waiter on WidgetTester {

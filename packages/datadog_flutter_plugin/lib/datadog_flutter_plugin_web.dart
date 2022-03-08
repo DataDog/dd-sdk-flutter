@@ -10,34 +10,34 @@ import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 import 'src/datadog_configuration.dart';
 import 'src/datadog_sdk_platform_interface.dart';
+import 'src/logs/ddlogs_platform_interface.dart';
+import 'src/logs/ddlogs_web.dart';
 
 /// A web implementation of the DatadogSdk plugin.
 class DatadogSdkWeb extends DatadogSdkPlatform {
   static void registerWith(Registrar registrar) {
     DatadogSdkPlatform.instance = DatadogSdkWeb();
 
-    // TODO: Replace platforms across all plugins
+    DdLogsPlatform.instance = DdLogsWeb();
   }
 
   @override
-  Future<void> setSdkVerbosity(Verbosity verbosity) {
-    return Future.value();
-  }
+  Future<void> setSdkVerbosity(Verbosity verbosity) async {}
 
   @override
-  Future<void> setTrackingConsent(TrackingConsent trackingConsent) {
-    return Future.value();
-  }
+  Future<void> setTrackingConsent(TrackingConsent trackingConsent) async {}
 
   @override
-  Future<void> setUserInfo(
-      String? id, String? name, String? email, Map<String, dynamic> extraInfo) {
-    return Future.value();
-  }
+  Future<void> setUserInfo(String? id, String? name, String? email,
+      Map<String, dynamic> extraInfo) async {}
 
   @override
   Future<void> initialize(DdSdkConfiguration configuration,
-      {LogCallback? logCallback}) async {}
+      {LogCallback? logCallback}) async {
+    if (configuration.loggingConfiguration != null) {
+      DdLogsWeb.initLogs(configuration);
+    }
+  }
 
   @override
   Future<void> flushAndDeinitialize() async {}

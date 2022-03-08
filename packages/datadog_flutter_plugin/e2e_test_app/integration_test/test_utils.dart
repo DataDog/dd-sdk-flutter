@@ -31,8 +31,7 @@ Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
     ..loggingConfiguration = LoggingConfiguration()
     ..tracingConfiguration = TracingConfiguration()
     ..rumConfiguration = RumConfiguration(applicationId: applicationId)
-    ..additionalConfig[DatadogConfigKey.serviceName] =
-        'com.datadog.flutter.nightly';
+    ..serviceName = 'com.datadog.flutter.nightly';
 
   if (configCallback != null) {
     configCallback(configuration);

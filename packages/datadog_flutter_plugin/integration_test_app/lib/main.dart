@@ -2,8 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
-import 'dart:io';
-
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -16,7 +14,7 @@ TestingConfiguration? testingConfiguration;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(mergeWith: Platform.environment);
+  await dotenv.load();
 
   var clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
@@ -37,6 +35,7 @@ Future<void> main() async {
   final configuration = DdSdkConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
+    serviceName: 'com.datadoghq.flutter.integrationtestapp',
     trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,

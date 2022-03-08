@@ -13,6 +13,7 @@ import 'package:integration_test/integration_test.dart';
 
 import '../common.dart';
 import '../tools/mock_http_sever.dart';
+import '../tools/request_log.dart';
 import 'rum_decoder.dart';
 
 Future<void> performRumUserFlow(WidgetTester tester) async {
@@ -39,7 +40,7 @@ void main() {
   // scenario with instrumentation enabled, then checks that we got the expected
   // calls.
   testWidgets('test auto instrumentation', (WidgetTester tester) async {
-    startMockServer();
+    var serverRecorder = startMockServer();
 
     const clientToken = bool.hasEnvironment('DD_CLIENT_TOKEN')
         ? String.fromEnvironment('DD_CLIENT_TOKEN')
@@ -49,9 +50,9 @@ void main() {
         : null;
 
     final scenarioConfig = RumAutoInstrumentationScenarioConfig(
-      firstPartyHosts: ['localhost:${MockHttpServer.bindingPort}'],
-      firstPartyGetUrl: '${mockHttpServer!.endpoint}/integration_get',
-      firstPartyPostUrl: '${mockHttpServer!.endpoint}/integration_post',
+      firstPartyHosts: ['localhost:${RecordingHttpServer.bindingPort}'],
+      firstPartyGetUrl: '${RecordingHttpServer.endpoint}/integration_get',
+      firstPartyPostUrl: '${RecordingHttpServer.endpoint}/integration_post',
       firstPartyBadUrl: 'https://foo.bar',
       thirdPartyGetUrl: 'https://httpbingo.org/get',
       thirdPartyPostUrl: 'https://httpbingo.org/post',
@@ -59,7 +60,7 @@ void main() {
     RumAutoInstrumentationScenarioConfig.instance = scenarioConfig;
 
     auto_app.testingConfiguration = TestingConfiguration(
-        customEndpoint: mockHttpServer!.endpoint,
+        customEndpoint: RecordingHttpServer.endpoint,
         clientToken: clientToken,
         applicationId: applicationId,
         firstPartyHosts: ['localhost']);
@@ -71,7 +72,7 @@ void main() {
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
     final testRequests = <RequestLog>[];
-    await mockHttpServer!.pollRequests(
+    await serverRecorder.pollSessionRequests(
       const Duration(seconds: 50),
       (requests) {
         requestLog.addAll(requests);

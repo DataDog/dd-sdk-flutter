@@ -195,6 +195,9 @@ class DdSdkConfiguration {
   /// The [DatadogSite] to send information to.
   DatadogSite? site;
 
+  /// The service name for this application
+  String? serviceName;
+
   /// The initial [TrackingConsent] for this user.
   TrackingConsent trackingConsent;
 
@@ -269,6 +272,7 @@ class DdSdkConfiguration {
     required this.trackingConsent,
     this.nativeCrashReportEnabled = false,
     this.site,
+    this.serviceName,
     this.uploadFrequency,
     this.batchSize,
     this.customEndpoint,

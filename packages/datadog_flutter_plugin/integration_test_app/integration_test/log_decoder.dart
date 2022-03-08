@@ -2,7 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
-import '../tools/decoder_helpers.dart';
+import 'tools/decoder_helpers.dart';
 
 class LogDecoder {
   final Map<String, Object?> log;

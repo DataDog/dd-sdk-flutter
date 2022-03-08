@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import '../common.dart';
-import '../tools/mock_http_sever.dart';
+import '../tools/request_log.dart';
 import 'rum_auto_instrumentation_test.dart';
 import 'rum_decoder.dart';
 
@@ -20,12 +20,12 @@ void main() {
   // is instrumented, we expect nothing to be sent back to Datadog
   testWidgets('test auto instrumentation with no results',
       (WidgetTester tester) async {
-    await openTestScenario(tester, 'Auto RUM Scenario');
+    var recordedSession = await openTestScenario(tester, 'Auto RUM Scenario');
 
     await performRumUserFlow(tester);
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
-    await mockHttpServer!.pollRequests(
+    await recordedSession.pollSessionRequests(
       const Duration(seconds: 30),
       (requests) {
         requestLog.addAll(requests);

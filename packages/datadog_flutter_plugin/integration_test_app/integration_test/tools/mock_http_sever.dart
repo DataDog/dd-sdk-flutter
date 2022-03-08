@@ -8,103 +8,160 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
+import 'package:http/http.dart' as http;
+
+import 'request_log.dart';
+
 typedef RequestHandler = bool Function(List<RequestLog> requests);
 
-class RequestLog {
-  final String requestedUrl;
-  final String requestMethod;
-  final Map<String, List<String>> requestHeaders;
-  final String data;
-  Object? get jsonData => json.decode(data);
-
-  RequestLog._({
-    required this.requestedUrl,
-    required this.requestMethod,
-    required this.requestHeaders,
-    required this.data,
-  });
-
-  static Future<RequestLog> fromRequest(HttpRequest request) async {
-    final url = request.requestedUri.path;
-    final headers = <String, List<String>>{};
-    request.headers.forEach((name, values) {
-      headers[name] = values;
-    });
-
-    var decoded = '';
-    var contentEncoding = headers['content-encoding'];
-    var isZipped = contentEncoding != null &&
-        (contentEncoding.contains('deflate') ||
-            contentEncoding.contains('gzip'));
-    if (isZipped) {
-      decoded = await utf8.fuse(gzip).decoder.bind(request).single;
-    } else {
-      decoded = await utf8.decodeStream(request);
-    }
-
-    return RequestLog._(
-      requestedUrl: url,
-      requestMethod: request.method,
-      requestHeaders: headers,
-      data: decoded,
-    );
-  }
-}
-
-class MockHttpServer {
+class RecordingHttpServer {
   static const int bindingPort = 2228;
 
+  static String get endpoint => 'http://localhost:$bindingPort';
+
   late HttpServer server;
-
   final List<RequestLog> _recordedRequests = [];
-  String get endpoint => 'http://localhost:$bindingPort';
+  List<RequestLog> get recordedRequests =>
+      UnmodifiableListView(_recordedRequests);
 
-  MockHttpServer();
+  RecordingHttpServer();
+
+  void startNewSession() {
+    _recordedRequests.clear();
+  }
 
   Future<void> start() async {
     server = await HttpServer.bind(InternetAddress.anyIPv4, bindingPort);
     unawaited(server.forEach((HttpRequest request) async {
-      try {
-        final parsed = await RequestLog.fromRequest(request);
-        _recordedRequests.add(parsed);
-      } catch (e) {
-        print('Failed parsing request');
+      // print('Request for ${request.uri}');
+      request.response.headers
+        ..add(HttpHeaders.accessControlAllowOriginHeader, '*')
+        ..add(HttpHeaders.accessControlAllowHeadersHeader, '*')
+        ..add(HttpHeaders.accessControlAllowMethodsHeader, 'GET, POST');
+      if (request.requestedUri.path.endsWith('session')) {
+        return _respondToSessionRequest(request);
+      } else {
+        return _logRequest(request);
       }
-
-      request.response.write('Hello, world!');
-      await request.response.close();
     }));
+    print('Server started, listening on port $bindingPort');
   }
 
-  void startNewSession() {
-    // For now, just clear
-    _recordedRequests.clear();
+  Future<dynamic> _logRequest(HttpRequest request) async {
+    try {
+      final parsed = await RequestLog.fromRequest(request);
+      print('parsed request is ${parsed.data}');
+      _recordedRequests.add(parsed);
+    } catch (e) {
+      print('Failed parsing request');
+    }
+
+    request.response.write('Hello, world!');
+    return request.response.close();
   }
+
+  Future<void> _respondToSessionRequest(HttpRequest request) {
+    switch (request.method.toLowerCase()) {
+      case 'post':
+        startNewSession();
+        break;
+      case 'get':
+        var jsonRequests = recordedRequests.map((e) => e.toJson()).toList();
+        var responseString = json.encode(jsonRequests);
+        request.response.write(responseString);
+        break;
+      default:
+        request.response.write('Unknown method on /session: ${request.method}');
+        break;
+    }
+    return request.response.close();
+  }
+}
+
+abstract class RecordingServerClient {
+  Future<void> startNewSession();
+  Future<List<RequestLog>> fetchRequests();
 
   /// Poll for all requests sent to this server for the current session (started
   /// with [startNewSession]). Requests are sent to [handler] until the
   /// [timeout] has expired, or until [handler] returns true, signaling it is
   /// done processing the requests.
-  Future<void> pollRequests(Duration timeout, RequestHandler handler) async {
+  Future<void> pollSessionRequests(
+      Duration timeout, RequestHandler handler) async {
     DateTime timeoutTime = DateTime.now().add(timeout);
     int lastProcessedRequest = 0;
 
     var stopPolling = false;
     do {
       var newRequests = <RequestLog>[];
-      for (var i = lastProcessedRequest; i < _recordedRequests.length; ++i) {
-        final request = _recordedRequests[i];
+      var recordedRequests = await fetchRequests();
+      for (var i = lastProcessedRequest; i < recordedRequests.length; ++i) {
+        final request = recordedRequests[i];
         newRequests.add(request);
       }
-      lastProcessedRequest = _recordedRequests.length;
+      lastProcessedRequest = recordedRequests.length;
 
       if (newRequests.isNotEmpty) {
         stopPolling = handler(newRequests);
       }
 
       if (!stopPolling) {
-        await Future.delayed(const Duration(milliseconds: 200));
+        await Future.delayed(const Duration(milliseconds: 1000));
       }
     } while (!stopPolling && timeoutTime.isAfter(DateTime.now()));
+  }
+}
+
+class LocalRecordingServerClient extends RecordingServerClient {
+  final RecordingHttpServer _server;
+
+  LocalRecordingServerClient(this._server);
+
+  @override
+  Future<List<RequestLog>> fetchRequests() async {
+    return _server.recordedRequests;
+  }
+
+  @override
+  Future<void> startNewSession() async {
+    // For now, just clear
+    _server.startNewSession();
+  }
+}
+
+class RemoteRecordingServerClient extends RecordingServerClient {
+  final String endpoint;
+
+  RemoteRecordingServerClient(this.endpoint);
+
+  @override
+  Future<List<RequestLog>> fetchRequests() async {
+    try {
+      var session = await http.get(Uri.parse('$endpoint/session'), headers: {
+        HttpHeaders.accessControlAllowOriginHeader: '*',
+        HttpHeaders.contentTypeHeader: 'application/json',
+        HttpHeaders.acceptHeader: 'application/json',
+      });
+      var sessionBody = json.decode(session.body) as List;
+      var requests = <RequestLog>[];
+      for (var requestJson in sessionBody) {
+        requests.add(RequestLog.fromJson(requestJson));
+      }
+
+      return requests;
+    } catch (e) {
+      // TODO : Figure out how to connect to the driver first?
+      //print('FAIL :( ${e.toString()}');
+    }
+    return [];
+  }
+
+  @override
+  Future<void> startNewSession() async {
+    var response = await http.post(Uri.parse('$endpoint/session'));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Failed to start a new test session');
+    }
   }
 }
