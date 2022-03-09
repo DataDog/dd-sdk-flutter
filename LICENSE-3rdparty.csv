@@ -4,7 +4,7 @@ import,dd-sdk-ios,Apache-2.0,Copyright 2019 Datadog
 import,flutter,BSD 3-Clause,Copyright 2014 The Flutter Authors
 import,flutter_web_plugins,BSD 3-Clause,Copyright 2014 The Flutter Authors
 import,plugin_platform_interface,BSD 3-Clause,Copyright 2013 The Flutter Authors
-import,meta,BSD 3-Clause,Copyright 2016, the Dart project authors
+import,meta,BSD 3-Clause,"Copyright 2016, the Dart project authors"
 import,uuid,MIT,Copyright 2021 Yulian Kuncheff
 test,flutter_test,BSD 3-Clause,Copyright 2014 The Flutter Authors
 test,flutter_lints,BSD 3-Clause,Copyright 2013 The Flutter Authors
