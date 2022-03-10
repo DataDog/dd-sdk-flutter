@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="dd_logo.png" width="150" style="background-color: #632CA6; padding: 40px">
+    <img src="dd_logo.png" width="200">
 </p>
 
 # DataDog Flutter Plugin Packages
