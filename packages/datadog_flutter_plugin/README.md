@@ -124,7 +124,7 @@ Flutter) and must target iOS version >= 11.0.
 ### Android
 
 On Android, your `minSdkVersion` must be >= 19, and if you are using Kotlin it
-should be version >= 1.5.3.1
+should be version >= 1.5.31
 
 # Contributing
 
