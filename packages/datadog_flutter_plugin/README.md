@@ -1,5 +1,5 @@
 <p align="center">
-	<img src="dd_logo.png" width="200">
+  <img src="dd_logo.png" width="200">
 </p>
 
 # Datadog Flutter Plugin
@@ -29,18 +29,18 @@ feature, it will be disabled.
 // Determine the user's consent to be tracked
 final trackingConsent = ...
 final configuration = DdSdkConfiguration(
-	clientToken: '<CLIENT_TOKEN>',
-	env: '<ENV_NAME>',
-	trackingConsent: trackingConsent,
-	nativeCrashReportEnabled: true,
-	loggingConfiguration: LoggingConfiguration(
+  clientToken: '<CLIENT_TOKEN>',
+  env: '<ENV_NAME>',
+  trackingConsent: trackingConsent,
+  nativeCrashReportEnabled: true,
+  loggingConfiguration: LoggingConfiguration(
     sendNetworkInfo: true,
     printLogsToConsole: true,
-	),
-	tracingConfiguration: TracingConfiguration(
-	  sendNetworkInfo: true,
-	),
-	rumConfiguration: RumConfiguration(
+  ),
+  tracingConfiguration: TracingConfiguration(
+    sendNetworkInfo: true,
+  ),
+  rumConfiguration: RumConfiguration(
     applicationId: '<RUM_APPLICATION_ID',
   )
 );
