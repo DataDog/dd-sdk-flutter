@@ -3,9 +3,12 @@
 // Copyright 2019-2021 Datadog, Inc.
 
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
+import '../../datadog_flutter_plugin.dart';
 import '../attributes.dart';
 import '../helpers.dart';
 import '../internal_logger.dart';
@@ -79,14 +82,93 @@ RumResourceType resourceTypeFromContentType(ContentType? type) {
   return RumResourceType.native;
 }
 
+class _TimingSpan {
+  int sampleCount = 0;
+  int min = 10000000000000000;
+  int max = 0;
+  int mean = 0;
+
+  void addSample(int sampleMicroseconds) {
+    if (sampleMicroseconds < min) min = sampleMicroseconds;
+    if (sampleMicroseconds > max) max = sampleMicroseconds;
+
+    mean = (sampleMicroseconds + (sampleCount * mean)) ~/ (sampleCount + 1);
+    sampleCount + 1;
+  }
+
+  void reset() {
+    sampleCount = 0;
+    min = 10000000000000000;
+    max = 0;
+    mean = 0;
+  }
+
+  @override
+  String toString() {
+    const double microToMs = 1 / (1 * 1000);
+    String toMsString(int microseconds) {
+      return (microseconds * microToMs).toStringAsFixed(3) + 'ms';
+    }
+
+    return 'min: ${toMsString(min)}, max: ${toMsString(max)}, mean: ${toMsString(mean)}';
+  }
+}
+
+class _ViewTimingInfo {
+  final buildTiming = _TimingSpan();
+  final rasterTiming = _TimingSpan();
+
+  void reset() {
+    buildTiming.reset();
+    rasterTiming.reset();
+  }
+
+  @override
+  String toString() {
+    return '  Build: ($buildTiming)\n  Raster: ($rasterTiming)\n';
+  }
+}
+
 class DdRum {
   static DdRumPlatform get _platform {
     return DdRumPlatform.instance;
   }
 
+  final RumConfiguration config;
   final InternalLogger logger;
 
-  DdRum(this.logger);
+  String? _currentRumView;
+  // If we are in transition, this is the frame at which we transitioned,
+  // and therefore we should consider all frame reports previous to this
+  // as part of the previous view.
+  int? _transitionFrameNumber;
+  final _currentViewTiming = _ViewTimingInfo();
+
+  DdRum(
+    this.config,
+    this.logger,
+  ) {
+    if (config.trackFrameTiming) {
+      SchedulerBinding.instance?.addTimingsCallback(_reportTimings);
+    }
+  }
+
+  void _reportTimings(List<FrameTiming> timings) {
+    if (timings.isEmpty) return; // Nothing to do
+
+    for (final timing in timings) {
+      _currentViewTiming.buildTiming
+          .addSample(timing.buildDuration.inMicroseconds);
+      _currentViewTiming.rasterTiming
+          .addSample(timing.rasterDuration.inMicroseconds);
+      if (_transitionFrameNumber != null &&
+          timing.frameNumber >= _transitionFrameNumber!) {
+        print('Finished timing for view:\n$_currentViewTiming');
+        _transitionFrameNumber = null;
+        _currentViewTiming.reset();
+      }
+    }
+  }
 
   /// Notifies that the View identified by [key] starts being presented to the
   /// user. This view will show as [name] in the RUM explorer, and defaults to
@@ -98,6 +180,9 @@ class DdRum {
       [String? name, Map<String, dynamic> attributes = const {}]) {
     name ??= key;
     wrap('rum.startView', logger, () {
+      _transitionFrameNumber =
+          PlatformDispatcher.instance.frameData.frameNumber;
+      _currentRumView = key;
       return _platform.startView(key, name!, attributes);
     });
   }
@@ -109,6 +194,9 @@ class DdRum {
   /// The [key] passed here must match the [key] passed to [startView].
   void stopView(String key, [Map<String, dynamic> attributes = const {}]) {
     wrap('rum.stopView', logger, () {
+      if (_currentRumView == key) {
+        _currentRumView = null;
+      }
       return _platform.stopView(key, attributes);
     });
   }

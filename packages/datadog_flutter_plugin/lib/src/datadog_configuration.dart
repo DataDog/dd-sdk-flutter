@@ -167,9 +167,17 @@ class RumConfiguration {
   /// Defaults to `100.0`.
   double sampleRate;
 
+  /// Track frame timing with [FrameTiming] and report timing back to RUM.
+  /// Tracking frame timing has a Flutter reported impact on CPU usage of 0.01%
+  /// measured on an iPhone 6s (see [SchedulerBinding.addTimingsCallback])
+  ///
+  /// Defaults to true
+  bool trackFrameTiming;
+
   RumConfiguration({
     required this.applicationId,
     this.sampleRate = 100.0,
+    this.trackFrameTiming = true,
   });
 
   Map<String, dynamic> encode() {

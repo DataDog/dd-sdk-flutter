@@ -152,7 +152,7 @@ class DatadogSdk {
       _traces = DdTraces(internalLogger);
     }
     if (configuration.rumConfiguration != null) {
-      _rum = DdRum(internalLogger);
+      _rum = DdRum(configuration.rumConfiguration!, internalLogger);
     }
   }
 
