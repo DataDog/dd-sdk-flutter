@@ -18,7 +18,7 @@ import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
 import 'src/rum/ddrum.dart';
 import 'src/traces/ddtraces.dart';
-import 'src/version.dart' show ddSdkVersion;
+import 'src/version.dart' show ddPackageVersion;
 
 export 'src/attributes.dart' show DatadogConfigKey;
 export 'src/datadog_configuration.dart';
@@ -80,7 +80,7 @@ class DatadogSdk {
   }
 
   /// The version of this SDK.
-  String get version => ddSdkVersion;
+  String get version => ddPackageVersion;
 
   /// Logger used internally by Datadog to report errors.
   @internal
@@ -135,7 +135,7 @@ class DatadogSdk {
   /// Initialize the DatadogSdk with the provided [configuration].
   Future<void> initialize(DdSdkConfiguration configuration) async {
     configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
-    configuration.additionalConfig[DatadogConfigKey.version] = ddSdkVersion;
+    configuration.additionalConfig[DatadogConfigKey.version] = version;
 
     firstPartyHosts = configuration.firstPartyHosts;
 
