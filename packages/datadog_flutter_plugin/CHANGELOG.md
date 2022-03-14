@@ -1,6 +1,6 @@
 # Changelog
 
-# Unreleased
+## Unreleased
 
 * Support for Logging, Tracing (including Datadog Distributed Tracing) and RUM
   * iOS Support with Datadog SDK for iOS 1.9.0
