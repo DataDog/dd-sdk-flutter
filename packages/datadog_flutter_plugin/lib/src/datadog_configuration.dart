@@ -46,7 +46,7 @@ enum TrackingConsent {
   /// All Logging, RUM and Tracing events will be persisted in an intermediate
   /// location and will be pending there until [TrackingConsent.granted] or
   /// [TrackingConsent.notGranted] consent value is set. Based on the next
-  /// consent value, intermediate data will be send to Datadog or deleted.
+  /// consent value, intermediate data will be sent to Datadog or deleted.
   pending
 }
 
