@@ -40,7 +40,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitor:
@@ -70,7 +70,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: custom timing value is high than expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @operating_system:${{variant}}\").rollup(\"avg\", \"@view.custom_timings.time_event\").last(\"1d\") > 700000000"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.operating_system:${{variant}}\").rollup(\"avg\", \"@view.custom_timings.time_event\").last(\"1d\") > 700000000"
   /// $monitor_threshold = 700000000
   /// ```
   ///
@@ -172,7 +172,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:action @operating_system:${{variant}}\").rollup(\"count\").by(\"@type\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:action @context.operating_system:${{variant}}\").rollup(\"count\").by(\"@type\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitor:
@@ -204,7 +204,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:action @operating_system:${{variant}}\").rollup(\"count\").by(\"@type\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:action @context.operating_system:${{variant}}\").rollup(\"count\").by(\"@type\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitors:
@@ -250,7 +250,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:resource @operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:resource @context.operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitors:
@@ -298,7 +298,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:error @operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:error @context.operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitors:
@@ -339,7 +339,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:error @operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:error @context.operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitors:
@@ -372,7 +372,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:error @operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:error @context.operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitors:

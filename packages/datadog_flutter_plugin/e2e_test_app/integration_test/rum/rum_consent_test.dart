@@ -67,7 +67,7 @@ void main() {
   /// $monitor_prefix = ${{feature}}_granted
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   testWidgets('rum consent - granted', (tester) async {
     await initializeDatadog();
@@ -80,7 +80,7 @@ void main() {
   /// $monitor_prefix = ${{feature}}_not_granted
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of views is above expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
   /// $monitor_threshold = 0.0
   /// ```
   testWidgets('rum consent - not granted', (tester) async {
@@ -95,7 +95,7 @@ void main() {
   /// $monitor_prefix = ${{feature}}_pending
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of views is above expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
   /// $monitor_threshold = 0.0
   /// ```
   testWidgets('rum consent - pending', (tester) async {
@@ -110,7 +110,7 @@ void main() {
   /// $monitor_prefix = ${{feature}}_pending_to_granted
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   testWidgets('rum consent - pending to granted', (tester) async {
     await initializeDatadog(
