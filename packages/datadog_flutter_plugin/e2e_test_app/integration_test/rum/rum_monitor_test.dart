@@ -82,14 +82,14 @@ void main() {
   /// ```
   testWidgets('rum - add timing', (tester) async {
     final viewKey = randomString();
-    final delay = random.nextInt(500) + 200;
+    final delay = random.nextInt(500) + 150;
     datadog.rum!.startView(
       viewKey,
       randomString(),
       e2eAttributes(tester),
     );
 
-    await Future.delayed(Duration(seconds: delay));
+    await Future.delayed(Duration(milliseconds: delay));
     await measure('flutter_rum_add_timing', () {
       datadog.rum!.addTiming('time_event');
     });
@@ -357,8 +357,11 @@ void main() {
     );
 
     await measure('flutter_add_error', () {
-      datadog.rum!
-          .addErrorInfo(randomString(), RumErrorSource.values.randomElement());
+      datadog.rum!.addErrorInfo(
+        randomString(),
+        RumErrorSource.values.randomElement(),
+        attributes: e2eAttributes(tester),
+      );
     });
 
     datadog.rum!.stopView(viewKey);
@@ -392,8 +395,11 @@ void main() {
     final stackTrace = StackTrace.current;
     await measure('flutter_add_error_with_stacktrace', () {
       datadog.rum!.addErrorInfo(
-          randomString(), RumErrorSource.values.randomElement(),
-          stackTrace: stackTrace);
+        randomString(),
+        RumErrorSource.values.randomElement(),
+        attributes: e2eAttributes(tester),
+        stackTrace: stackTrace,
+      );
     });
 
     datadog.rum!.stopView(viewKey);
