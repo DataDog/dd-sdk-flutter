@@ -82,14 +82,14 @@ void main() {
   /// ```
   testWidgets('rum - add timing', (tester) async {
     final viewKey = randomString();
-    final delay = random.nextInt(500) + 200;
+    final delay = random.nextInt(500) + 150;
     datadog.rum!.startView(
       viewKey,
       randomString(),
       e2eAttributes(tester),
     );
 
-    await Future.delayed(Duration(seconds: delay));
+    await Future.delayed(Duration(milliseconds: delay));
     await measure('flutter_rum_add_timing', () {
       datadog.rum!.addTiming('time_event');
     });
