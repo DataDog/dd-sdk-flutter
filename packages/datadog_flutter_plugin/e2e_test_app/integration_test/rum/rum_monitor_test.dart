@@ -357,8 +357,11 @@ void main() {
     );
 
     await measure('flutter_add_error', () {
-      datadog.rum!
-          .addErrorInfo(randomString(), RumErrorSource.values.randomElement());
+      datadog.rum!.addErrorInfo(
+        randomString(),
+        RumErrorSource.values.randomElement(),
+        attributes: e2eAttributes(tester),
+      );
     });
 
     datadog.rum!.stopView(viewKey);
@@ -392,8 +395,11 @@ void main() {
     final stackTrace = StackTrace.current;
     await measure('flutter_add_error_with_stacktrace', () {
       datadog.rum!.addErrorInfo(
-          randomString(), RumErrorSource.values.randomElement(),
-          stackTrace: stackTrace);
+        randomString(),
+        RumErrorSource.values.randomElement(),
+        attributes: e2eAttributes(tester),
+        stackTrace: stackTrace,
+      );
     });
 
     datadog.rum!.stopView(viewKey);
