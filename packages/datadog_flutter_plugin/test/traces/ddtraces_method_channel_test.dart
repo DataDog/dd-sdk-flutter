@@ -257,7 +257,7 @@ void main() {
     expect(spanCall.arguments['spanHandle'], span.handle);
     expect(spanCall.arguments['kind'], 'Generic Error');
     expect(spanCall.arguments['message'], 'This was my fault');
-    expect(spanCall.arguments['stackTrace'], isNotNull);
+    expect(spanCall.arguments['stackTrace'], isNull);
   });
 
   test('setErrorInfo on span calls to platform', () async {

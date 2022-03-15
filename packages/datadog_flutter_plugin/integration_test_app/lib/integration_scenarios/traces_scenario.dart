@@ -58,8 +58,14 @@ class _TracesScenarioState extends State<TracesScenario> {
       dataPresentationSpan.setActive();
       await Future.delayed(const Duration(milliseconds: 60));
       dataPresentationSpan.setTag(OTTags.error, true);
-      dataPresentationSpan.setError(PlatformException(
-          code: 'DatadogSdkPlugin', message: 'Failed for reasons.'));
+      final stackTrace = StackTrace.current;
+      dataPresentationSpan.setError(
+        PlatformException(
+          code: 'DatadogSdkPlugin',
+          message: 'Failed for reasons.',
+        ),
+        stackTrace,
+      );
       dataPresentationSpan.finish();
     }
 

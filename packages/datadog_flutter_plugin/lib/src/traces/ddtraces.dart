@@ -149,15 +149,15 @@ class DdSpan {
     });
   }
 
-  void setErrorInfo(String kind, String message, StackTrace? stackTrace) {
+  void setErrorInfo(String kind, String message, [StackTrace? stackTrace]) {
     if (_handle <= 0 || _logger == null) {
       _logger?.warn(closedSpanWarning('setErrorInfo'));
       return;
     }
-    stackTrace ??= StackTrace.current;
 
     wrap('span.setErrorInfo', _logger!, () {
-      return _platform.spanSetError(this, kind, message, stackTrace.toString());
+      return _platform.spanSetError(
+          this, kind, message, stackTrace?.toString());
     });
   }
 
