@@ -88,12 +88,10 @@ class DdRumMethodChannel extends DdRumPlatform {
   @override
   Future<void> addErrorInfo(String message, RumErrorSource source,
       StackTrace? stackTrace, Map<String, dynamic> attributes) {
-    stackTrace ??= StackTrace.current;
-
     return methodChannel.invokeMethod('addError', {
       'message': message,
       'source': source.toString(),
-      'stackTrace': stackTrace.toString(),
+      'stackTrace': stackTrace?.toString(),
       'attributes': attributes
     });
   }
