@@ -46,7 +46,7 @@ void main(List<String> arguments) async {
 Future<bool> _performGitHubRelease(
     GitDir gitDir, ReleaseInfo releaseInfo) async {
   const githubOrganization = 'DataDog';
-  const repoName = 'dd-flutter-sdk';
+  const repoName = 'dd-sdk-flutter';
 
   final tag = '${releaseInfo.package}/v${releaseInfo.version}';
   Logger.root.fine('Creating tag $tag');
@@ -77,7 +77,7 @@ Future<bool> _validateBranchState(GitDir gitDir) async {
     return false;
   }
 
-  // Only allow release from develop or a release/* branch
+  // Only allow deploy from main or a release/* branch
   final currentBranch = await gitDir.currentBranch();
   if (!(currentBranch.branchName == 'main' ||
       currentBranch.branchName.startsWith('release'))) {
