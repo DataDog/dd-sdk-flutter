@@ -14,15 +14,28 @@ class ReleaseInfo {
   final String commitSha;
   final String package;
   final String version;
+  final String changeLog;
 
-  ReleaseInfo(this.commitSha, this.package, this.version);
+  ReleaseInfo(
+    this.commitSha,
+    this.package,
+    this.version,
+    this.changeLog,
+  );
 }
 
 void main(List<String> arguments) async {
-  Logger.root.level = Level.INFO;
+  Logger.root.level = Level.FINEST;
   Logger.root.onRecord.listen((event) {
     print(event.message);
   });
+
+  if (arguments.isEmpty) {
+    Logger.root.shout('❌ Package name to deploy is required.');
+    exit(1);
+  }
+
+  var packageName = arguments.first;
 
   final gitDir = await getGitDir();
   if (gitDir == null) {
@@ -32,7 +45,7 @@ void main(List<String> arguments) async {
 
   if (!(await _validateBranchState(gitDir))) exit(1);
 
-  final releaseInfo = await _getReleaseInfo(gitDir);
+  final releaseInfo = await _getReleaseInfo(gitDir, packageName);
   if (releaseInfo == null) {
     Logger.root.shout('💥 Could not determine information about this release.');
     exit(1);
@@ -49,18 +62,20 @@ Future<bool> _performGitHubRelease(
   const repoName = 'dd-sdk-flutter';
 
   final tag = '${releaseInfo.package}/v${releaseInfo.version}';
-  Logger.root.fine('Creating tag $tag');
+  Logger.root.fine('ℹ️ Creating tag $tag');
   await gitDir.runCommand(
       ['tag', '-a', tag, '-m', '🏷 Tag created by deploy.dart for $tag']);
-  Logger.root.fine('Pushing to origin');
-  await gitDir.runCommand(['push']);
+  Logger.root.fine('ℹ️ Pushing to origin');
+  await gitDir.runCommand(['push', 'origin', tag]);
 
   var github = GitHub(auth: findAuthenticationFromEnvironment());
 
+  Logger.root.fine('ℹ️ Creating github release for $tag');
   var createRelease = CreateRelease.from(
     tagName: tag,
     name: '${releaseInfo.package} ${releaseInfo.version}',
     targetCommitish: releaseInfo.commitSha,
+    body: releaseInfo.changeLog,
     isDraft: true,
     isPrerelease: releaseInfo.version.contains('-'),
   );
@@ -89,22 +104,11 @@ Future<bool> _validateBranchState(GitDir gitDir) async {
   return true;
 }
 
-Future<ReleaseInfo?> _getReleaseInfo(GitDir gitDir) async {
+Future<ReleaseInfo?> _getReleaseInfo(GitDir gitDir, String packageName) async {
   final currentBranch = await gitDir.currentBranch();
   final currentCommit = await gitDir.commitFromRevision(currentBranch.sha);
 
-  final releaseCommitRegex = RegExp(
-      r'🚀 Prepping for release of (?<package>[a-z0-9_]+) (?<version>(.*))$');
   final pubspecVersionRegex = RegExp(r'^version\: (?<version>.*)');
-
-  final match = releaseCommitRegex.firstMatch(currentCommit.message);
-  if (match == null) {
-    Logger.root.shout('❌ Current commit is not a prep for release.');
-    return null;
-  }
-
-  final packageName = match.namedGroup('package');
-  final packageVersion = match.namedGroup('version');
 
   // Validate against the pubspec
   var pubspecFile = File('${gitDir.path}/packages/$packageName/pubspec.yaml');
@@ -125,11 +129,40 @@ Future<ReleaseInfo?> _getReleaseInfo(GitDir gitDir) async {
     }
   });
 
-  if (pubspecVersion != packageVersion) {
-    Logger.root.shout(
-        'Version in pubspec does not match commit message! ($pubspecVersion vs. $packageVersion)');
+  if (pubspecVersion == null) {
+    Logger.root.shout('Version in pubspec is missing!');
     return null;
   }
 
-  return ReleaseInfo(currentBranch.sha, packageName!, packageVersion!);
+  var changelogFile = File('${gitDir.path}/packages/$packageName/CHANGELOG.md');
+  if (!changelogFile.existsSync()) {
+    Logger.root.shout('❌ Could not find CHANGELOG.md for `$packageName`.');
+    return null;
+  }
+
+  final changeLog = StringBuffer();
+  bool foundVersion = false;
+  await changelogFile
+      .openRead()
+      .transform(utf8.decoder)
+      .transform(LineSplitter())
+      .forEach((line) {
+    if (foundVersion) {
+      if (line.startsWith('##')) {
+        // Reached the end of the version
+        foundVersion = false;
+      } else if (line.trim().isNotEmpty) {
+        changeLog.writeln(line);
+      }
+    } else if (line == '## $pubspecVersion') {
+      foundVersion = true;
+    }
+  });
+
+  return ReleaseInfo(
+    currentBranch.sha,
+    packageName,
+    pubspecVersion!,
+    changeLog.toString(),
+  );
 }
