@@ -3,11 +3,11 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'package:args/args.dart';
-import 'package:git/git.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 import 'package:releaser/command.dart';
 import 'package:releaser/git_actions.dart';
+import 'package:releaser/helpers.dart';
 import 'package:releaser/release_validator.dart';
 import 'package:releaser/version_updater.dart';
 
@@ -126,18 +126,4 @@ Future<CommandArguments?> _validateArguments(ArgResults argResults) async {
 void _printUsage(ArgParser argParser) {
   print('\nUsage: releaser.dart [package] [options]');
   print('\n${argParser.usage}');
-}
-
-Future<GitDir?> getGitDir() async {
-  final currentPath = path.current;
-
-  if (!await GitDir.isGitDir(currentPath)) {
-    Logger.root.shout('❌ Current directory is not a git directory.');
-    return null;
-  }
-
-  return await GitDir.fromExisting(
-    path.current,
-    allowSubdirectory: true,
-  );
 }
