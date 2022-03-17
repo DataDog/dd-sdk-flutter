@@ -110,6 +110,20 @@ from `initState` to `didPush`. Refer to the documentation on those classes for
 more details
 
 
+## Data Storage
+
+### Android
+
+Before data is uploaded to Datadog, it is stored in cleartext in your application's cache directory.
+This cache folder is protected by [Android's Application Sandbox][1], meaning that on most devices
+this data can't be read by other applications. However, if the mobile device is rooted, or someone
+tampers with the linux kernel, the stored data might become readable.
+
+### iOS
+
+Before data is uploaded to Datadog, it is stored in cleartext in the cache directory (`Library/Caches`)
+of your [application sandbox][2], which can't be read by any other app installed on the device.
+
 ## Platform Support and Notes
 
 | Android | iOS |  Web | MacOS | Linux | Windows |
@@ -135,3 +149,6 @@ guide](../../CONTRIBUTING.md) in the root repository.
 # License
 
 [Apache License, v2.0](LICENSE)
+
+[1]: https://source.android.com/security/app-sandbox
+[2]: https://support.apple.com/guide/security/security-of-runtime-process-sec15bfe098e/web
