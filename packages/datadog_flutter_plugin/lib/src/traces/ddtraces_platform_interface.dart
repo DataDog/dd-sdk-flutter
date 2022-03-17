@@ -40,4 +40,5 @@ abstract class DdTracesPlatform extends PlatformInterface {
       DdSpan span, String kind, String message, String? stack);
   Future<void> spanLog(DdSpan span, Map<String, Object?> fields);
   Future<void> spanFinish(int spanHandle, DateTime finishTime);
+  Future<void> spanCancel(int spanHandle);
 }

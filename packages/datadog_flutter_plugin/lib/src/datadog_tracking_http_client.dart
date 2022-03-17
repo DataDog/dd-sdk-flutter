@@ -117,6 +117,7 @@ class DatadogTrackingHttpClient implements HttpClient {
           attributes[DatadogPlatformAttributeKey.spanID] = spanId;
 
           // Discard the tracing span, we don't need it if RUM is tracking the resource
+          tracingSpan.cancel();
           tracingSpan = null;
         }
 

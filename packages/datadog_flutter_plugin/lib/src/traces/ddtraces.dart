@@ -187,6 +187,22 @@ class DdSpan {
       await _platform.spanFinish(currentHandle, resolvedTime);
     });
   }
+
+  /// Cancel a span without sending it to Datadog. This will also release any
+  /// native resources associated with the span.
+  void cancel() {
+    if (_handle <= 0 || _logger == null) {
+      _logger?.warn(closedSpanWarning('cancel'));
+      return;
+    }
+
+    final currentHandle = _handle;
+    _handle = -1;
+
+    wrap('span.cancel', _logger!, () async {
+      await _platform.spanCancel(currentHandle);
+    });
+  }
 }
 
 class DdTraces {

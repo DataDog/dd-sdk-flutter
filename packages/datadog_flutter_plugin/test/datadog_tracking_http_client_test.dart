@@ -572,7 +572,9 @@ void main() {
       await mockResponse.streamController.close();
       // Drain any awaiting futures.
       await Future.microtask(() {});
-      verifyZeroInteractions(span);
+
+      verify(() => span.cancel());
+      verifyNoMoreInteractions(span);
     });
 
     test('sets trace headers for first party urls', () async {

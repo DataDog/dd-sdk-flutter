@@ -185,6 +185,5 @@ class DatadogTracesPluginTest {
             mockResult,
             description("span.finish did not throw a contract violation when missing finishTime")
         ).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
-
     }
 }

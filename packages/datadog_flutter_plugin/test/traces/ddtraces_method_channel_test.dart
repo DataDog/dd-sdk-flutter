@@ -44,6 +44,7 @@ void main() {
     badSpan.setError(Exception());
     badSpan.setErrorInfo('Kind', 'Message', null);
     badSpan.finish();
+    badSpan.cancel();
 
     expect(log.length, 0);
   });
@@ -274,5 +275,16 @@ void main() {
         'fields': {'message': 'my message', 'value': 0.24}
       }),
     );
+  });
+
+  test('spanCancel calls platform', () async {
+    final span = DdSpan(ddTracesPlatform, systemTimeProvider, 12, ddLogger);
+    await ddTracesPlatform.spanCancel(span.handle);
+
+    expect(log, [
+      isMethodCall('span.cancel', arguments: {
+        'spanHandle': span.handle,
+      })
+    ]);
   });
 }
