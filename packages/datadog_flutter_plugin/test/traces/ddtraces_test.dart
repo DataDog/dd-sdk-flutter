@@ -29,6 +29,8 @@ void main() {
         .thenAnswer((invocation) => Future.value(true));
     when(() => mockPlatform.spanSetError(any(), any(), any(), any()))
         .thenAnswer((invocation) => Future.value());
+    when(() => mockPlatform.spanCancel(any()))
+        .thenAnswer((invocation) => Future.value());
   });
 
   test('setError passes null stack trace by default', () async {
@@ -75,5 +77,15 @@ void main() {
 
     verify(() => mockPlatform.spanSetError(
         span, 'kind', 'my message', any<String>(that: isNotNull)));
+  });
+
+  test('cancel calls through to platform', () async {
+    final traces = DdTraces(InternalLogger());
+
+    final span = traces.startSpan('span operation');
+    final spanHandle = span.handle;
+    span.cancel();
+
+    verify(() => mockPlatform.spanCancel(spanHandle));
   });
 }

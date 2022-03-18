@@ -252,6 +252,10 @@ class DatadogTracesPlugin(
                     result.missingParameter(call.method)
                 }
             }
+            "span.cancel" -> {
+                spanRegistry.remove(callingSpanInfo.handle)
+                result.success(null)
+            }
         }
     }
 

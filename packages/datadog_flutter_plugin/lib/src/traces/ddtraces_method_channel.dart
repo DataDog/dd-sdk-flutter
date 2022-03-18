@@ -121,4 +121,11 @@ class DdTracesMethodChannel extends DdTracesPlatform {
       'finishTime': finishTime.microsecondsSinceEpoch
     });
   }
+
+  @override
+  Future<void> spanCancel(int spanHandle) {
+    return methodChannel.invokeMethod('span.cancel', {
+      'spanHandle': spanHandle,
+    });
+  }
 }
