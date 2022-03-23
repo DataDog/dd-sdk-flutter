@@ -12,9 +12,9 @@
 
 [//]: # (SDK Table)
 
-iOS SDK | Android SDK | Browser SDK 
-:-----: | :---------: | :---------: 
-1.9.0 | 1.12.0-alpha2 | ❌
+| iOS SDK | Android SDK | Browser SDK |
+| :-----: | :---------: | :---------: |
+| 1.9.0 | 1.12.0-alpha2 | ❌ |
 
 [//]: # (End SDK Table)
 
