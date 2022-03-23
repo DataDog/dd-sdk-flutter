@@ -51,7 +51,7 @@ void main(List<String> arguments) async {
   final existingDependencies = await _getExistingDependencies();
 
   final dependencies = Map<String, Dependency?>.from(existingDependencies);
-  int newDepencencyCount = 0;
+  int newDependencyCount = 0;
   for (final dartDependency in dartDependencies.entries) {
     if (!existingDependencies.containsKey(dartDependency.key)) {
       dependencies[dartDependency.key] = dartDependency.value;
