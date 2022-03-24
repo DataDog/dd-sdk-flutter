@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     companion object ErrorCodes {
         const val CONTRACT_VIOLATION = "DatadogSdk:ContractViolation"
+        const val INVALID_OPERATION = "DatadogSdk:InvalidOperation"
     }
 
     private lateinit var channel: MethodChannel
@@ -102,10 +103,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             config.trackingConsent
         )
 
-        if (config.loggingConfiguration != null) {
-            logsPlugin = DatadogLogsPlugin()
-            logsPlugin?.setup(binding, config.loggingConfiguration!!)
-        }
+        // Always setup logging as a user can create a log after initialization
+        logsPlugin = DatadogLogsPlugin()
+        logsPlugin?.setup(binding)
 
         if (config.tracingConfiguration != null) {
             tracesPlugin = DatadogTracesPlugin()

@@ -37,26 +37,6 @@ class FlutterSdkTests: XCTestCase {
     XCTAssertNil(plugin.rum)
   }
 
-  func testInitialization_LoggingConfiguration_InitializesLogger() {
-    let flutterConfig = DatadogFlutterConfiguration(
-      clientToken: "fakeClientToken",
-      env: "prod",
-      trackingConsent: TrackingConsent.granted,
-      nativeCrashReportingEnabled: true,
-      loggingConfiguration: DatadogFlutterConfiguration.LoggingConfiguration(
-        sendNetworkInfo: true,
-        printLogsToConsole: true,
-        bundleWithRum: true,
-        bundleWithTraces: false
-      )
-    )
-
-    let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-    plugin.initialize(configuration: flutterConfig)
-
-    XCTAssertNotNil(plugin.logs)
-  }
-
   func testInitialization_TracingConfiguration_InitializesTracing() {
     let flutterConfig = DatadogFlutterConfiguration(
       clientToken: "fakeClientToken",
@@ -108,13 +88,7 @@ class FlutterSdkTests: XCTestCase {
           "clientToken": "fakeClientToken",
           "env": "prod",
           "trackingConsent": "TrackingConsent.granted",
-          "nativeCrashReportEnabled": false,
-          "loggingConfiguration": [
-            "sendNetworkInfo": true,
-            "printLogsToConsole": true,
-            "bundleWithRum": true,
-            "bundleWithTraces": false
-          ]
+          "nativeCrashReportEnabled": false
         ]
       ]
     )
@@ -124,9 +98,6 @@ class FlutterSdkTests: XCTestCase {
 
     XCTAssertNotNil(Global.rum as? DDNoopRUMMonitor)
     XCTAssertNotNil(Global.sharedTracer as? DDNoopTracer)
-
-    XCTAssertNotNil(plugin.logs)
-    XCTAssertEqual(plugin.logs?.isInitialized, true)
   }
 
   func testSetVerbosity_FromMethodChannel_SetsVerbosity() {

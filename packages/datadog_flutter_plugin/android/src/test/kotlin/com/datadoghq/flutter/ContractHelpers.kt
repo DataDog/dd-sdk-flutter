@@ -25,6 +25,7 @@ sealed class ContractParameter {
     class Value(val value: Any): ContractParameter()
 }
 
+@Suppress("NestedBlockDepth")
 data class Contract(
     val methodName: String,
     val requiredParameters: Map<String, ContractParameter>

@@ -37,6 +37,12 @@ class _LoggingScenarioState extends State<LoggingScenario> {
       logger.removeTagWithKey('tag1');
       logger.error('error message', {'attribute': 'value'});
     }
+
+    final config = LoggingConfiguration(loggerName: 'second_logger');
+    final secondLogger = DatadogSdk.instance.createLogger(config);
+
+    secondLogger.addAttribute('second-logger-attribute', 'second-value');
+    secondLogger.info('message on second logger');
   }
 
   @override

@@ -4,6 +4,7 @@
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/src/datadog_sdk_platform_interface.dart';
+import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -12,15 +13,21 @@ class MockDatadogSdkPlatform extends Mock
     with MockPlatformInterfaceMixin
     implements DatadogSdkPlatform {}
 
+class MockDdLogsPlatform extends Mock
+    with MockPlatformInterfaceMixin
+    implements DdLogsPlatform {}
+
 class FakeDdSdkConfiguration extends Fake implements DdSdkConfiguration {}
 
 void main() {
   late DatadogSdk datadogSdk;
   late MockDatadogSdkPlatform mockPlatform;
+  late MockDdLogsPlatform mockLogsPlatform;
 
   setUpAll(() {
     registerFallbackValue(FakeDdSdkConfiguration());
     registerFallbackValue(TrackingConsent.granted);
+    registerFallbackValue(LoggingConfiguration());
   });
 
   setUp(() {
@@ -34,6 +41,9 @@ void main() {
         .thenAnswer((_) => Future.value());
     DatadogSdkPlatform.instance = mockPlatform;
     datadogSdk = DatadogSdk.instance;
+
+    mockLogsPlatform = MockDdLogsPlatform();
+    DdLogsPlatform.instance = mockLogsPlatform;
   });
 
   test('initialize passes configuration to platform', () async {
@@ -64,7 +74,6 @@ void main() {
       'customEndpoint': null,
       'batchSize': null,
       'uploadFrequency': null,
-      'loggingConfiguration': null,
       'tracingConfiguration': null,
       'rumConfiguration': null,
       'additionalConfig': {},
@@ -98,12 +107,32 @@ void main() {
     );
 
     final encoded = configuration.encode();
-    expect(encoded['loggingConfiguration'],
-        configuration.loggingConfiguration?.encode());
+    // Logging configuration is purposefully not encoded
+    expect(encoded['loggingConfiguration'], isNull);
     expect(encoded['tracingConfiguration'],
         configuration.tracingConfiguration?.encode());
     expect(
         encoded['rumConfiguration'], configuration.rumConfiguration?.encode());
+  });
+
+  test('initialize with logging configuration creates logger', () async {
+    when(() => mockLogsPlatform.createLogger(any(), any()))
+        .thenAnswer((_) => Future.value());
+
+    final loggingConfiguration = LoggingConfiguration();
+    final configuration = DdSdkConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      trackingConsent: TrackingConsent.pending,
+      loggingConfiguration: loggingConfiguration,
+    );
+    await datadogSdk.initialize(configuration);
+
+    final logger = datadogSdk.logs;
+
+    expect(logger, isNotNull);
+    verify(() => mockLogsPlatform.createLogger(
+        logger!.loggerHandle, loggingConfiguration));
   });
 
   test('first party hosts get set to sdk', () async {
@@ -213,5 +242,16 @@ void main() {
     datadogSdk.setTrackingConsent(TrackingConsent.notGranted);
 
     verify(() => mockPlatform.setTrackingConsent(TrackingConsent.notGranted));
+  });
+
+  test('createLogger calls into logs platform', () {
+    when(() => mockLogsPlatform.createLogger(any(), any()))
+        .thenAnswer((_) => Future.value());
+    final config = LoggingConfiguration(loggerName: 'test_logger');
+
+    final logger = datadogSdk.createLogger(config);
+
+    expect(logger, isNotNull);
+    verify(() => mockLogsPlatform.createLogger(logger.loggerHandle, config));
   });
 }

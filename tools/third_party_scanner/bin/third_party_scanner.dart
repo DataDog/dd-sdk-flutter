@@ -55,7 +55,7 @@ void main(List<String> arguments) async {
   for (final dartDependency in dartDependencies.entries) {
     if (!existingDependencies.containsKey(dartDependency.key)) {
       dependencies[dartDependency.key] = dartDependency.value;
-      newDepencencyCount++;
+      newDependencyCount++;
     }
   }
 
@@ -69,7 +69,7 @@ void main(List<String> arguments) async {
     sink.writeln(dependency.toString());
   }
   sink.close();
-  print('✅ All Done! Wrote $newDepencencyCount new dependencies!');
+  print('✅ All Done! Wrote $newDependencyCount new dependencies!');
 }
 
 Future<Map<String, Dependency?>> _getExistingDependencies() async {

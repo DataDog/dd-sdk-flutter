@@ -93,7 +93,6 @@ class DatadogSdkPluginTest {
 
         // THEN
         assertThat(Datadog.isInitialized()).isTrue()
-        assertThat(plugin.logsPlugin).isNull()
         assertThat(plugin.tracesPlugin).isNull()
         assertThat(plugin.rumPlugin).isNull()
 
@@ -101,33 +100,6 @@ class DatadogSdkPluginTest {
         // that they're registered properly.
         //assertThat(GlobalRum.isRegistered()).isFalse()
         //assertThat(GlobalTracer.isRegistered()).isFalse()
-    }
-
-    @Test
-    fun `M initialize logger W DatadogFlutterConfiguation { loggingConfiguration }`(
-        @StringForgery clientToken: String,
-        @StringForgery environment: String
-    ) {
-        // GIVEN
-        val configuration = DatadogFlutterConfiguration(
-            clientToken = clientToken,
-            env = environment,
-            nativeCrashReportEnabled = false,
-            trackingConsent = TrackingConsent.GRANTED,
-            loggingConfiguration = DatadogFlutterConfiguration.LoggingConfiguration(
-                sendNetworkInfo = true,
-                printLogsToConsole = true,
-                bundleWithRum = false,
-                bundleWithTraces = false
-            )
-        )
-
-        // WHEN
-        plugin.initialize(configuration)
-
-        // THEN
-        assertThat(plugin.logsPlugin).isNotNull()
-        assertThat(plugin.logsPlugin?.log).isNotNull()
     }
 
     @Test
@@ -197,13 +169,7 @@ class DatadogSdkPluginTest {
                     "clientToken" to clientToken,
                     "env" to environment,
                     "trackingConsent" to "TrackingConsent.granted",
-                    "nativeCrashReportEnabled" to true,
-                    "loggingConfiguration" to mapOf(
-                        "sendNetworkInfo" to true,
-                        "printLogsToConsole" to true,
-                        "bundleWithRum" to true,
-                        "bundleWithTraces" to true,
-                    )
+                    "nativeCrashReportEnabled" to true
                 )
             )
         )
