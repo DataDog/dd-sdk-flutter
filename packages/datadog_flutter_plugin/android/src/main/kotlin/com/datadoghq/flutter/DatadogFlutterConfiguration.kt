@@ -5,6 +5,7 @@
  */
 package com.datadoghq.flutter
 
+import android.content.Context
 import android.util.Log
 import com.datadog.android.DatadogSite
 import com.datadog.android.core.configuration.BatchSize
@@ -14,6 +15,7 @@ import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.ndk.NdkCrashReportsPlugin
 import com.datadog.android.plugin.Feature
 import com.datadog.android.privacy.TrackingConsent
+import com.datadog.android.rum.tracking.ViewTrackingStrategy
 
 // Duplicated strings in this file do not mean they are being used in the same context
 @Suppress("StringLiteralDuplication")
@@ -134,6 +136,7 @@ data class DatadogFlutterConfiguration(
         uploadFrequency?.let { configBuilder.setUploadFrequency(it) }
         rumConfiguration?.let {
             configBuilder.sampleRumSessions(it.sampleRate)
+            configBuilder.useViewTrackingStrategy(NoOpViewTrackingStrategy)
         }
         customEndpoint?.let {
             configBuilder.useCustomLogsEndpoint(it)
@@ -142,6 +145,16 @@ data class DatadogFlutterConfiguration(
         }
 
         return configBuilder.build()
+    }
+}
+
+object NoOpViewTrackingStrategy : ViewTrackingStrategy {
+    override fun register(context: Context) {
+        // Nop
+    }
+
+    override fun unregister(context: Context?) {
+        // Nop
     }
 }
 
