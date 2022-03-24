@@ -13,9 +13,21 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import kotlin.reflect.KType
 
+enum class SupportedContractType {
+    STRING,
+    MAP,
+    INT,
+    LONG
+}
+
+sealed class ContractParameter {
+    class Type(val type: SupportedContractType): ContractParameter()
+    class Value(val value: Any): ContractParameter()
+}
+
 data class Contract(
     val methodName: String,
-    val requiredParameters: Map<String, KType>
+    val requiredParameters: Map<String, ContractParameter>
 ) {
     fun createContractArguments(forge: Forge,
                                 missingParam: String? = null,
@@ -23,20 +35,9 @@ data class Contract(
         var arguments = mutableMapOf<String, Any?>()
         for(param in requiredParameters) {
             if(param.key != missingParam) {
-                val value = when (param.value.classifier) {
-                    String::class -> {
-                        forge.anExtendedAsciiString()
-                    }
-                    Map::class -> {
-                        forge.exhaustiveAttributes()
-                    }
-                    Int::class -> {
-                        forge.anInt()
-                    }
-                    Long::class -> {
-                        forge.aLong()
-                    }
-                    else -> throw UnsupportedOperationException("Unknown type in contract: ${param.value.toString()}")
+                val value = when (val contractParameter = param.value) {
+                    is ContractParameter.Value -> contractParameter.value
+                    is ContractParameter.Type -> forgeValue(forge, contractParameter.type)
                 }
 
                 arguments.put(param.key, value)
@@ -49,6 +50,15 @@ data class Contract(
         }
 
         return arguments
+    }
+
+    private fun forgeValue(forge: Forge, type: SupportedContractType): Any {
+        return when(type) {
+            SupportedContractType.STRING -> forge.anExtendedAsciiString()
+            SupportedContractType.MAP -> forge.exhaustiveAttributes()
+            SupportedContractType.INT -> forge.anInt()
+            SupportedContractType.LONG -> forge.aLong()
+        }
     }
 }
 
