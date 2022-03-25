@@ -24,6 +24,7 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
 
   func createLogger(loggerHandle: String, configuration: DatadogLoggingConfiguration) {
     let builder = Logger.builder
+      .sendLogsToDatadog(configuration.sendLogsToDatadog)
       .sendNetworkInfo(configuration.sendNetworkInfo)
       .printLogsToConsole(configuration.printLogsToConsole)
       .bundleWithRUM(configuration.bundleWithRum)

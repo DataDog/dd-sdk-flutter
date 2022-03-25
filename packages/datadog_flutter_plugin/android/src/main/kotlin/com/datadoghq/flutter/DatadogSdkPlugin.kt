@@ -104,17 +104,16 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         )
 
         // Always setup logging as a user can create a log after initialization
-        logsPlugin = DatadogLogsPlugin()
-        logsPlugin?.setup(binding)
+        logsPlugin = DatadogLogsPlugin().apply { setup(binding) }
 
         if (config.tracingConfiguration != null) {
-            tracesPlugin = DatadogTracesPlugin()
-            tracesPlugin?.setup(binding, config.tracingConfiguration!!)
+            tracesPlugin = DatadogTracesPlugin().apply {
+                setup(binding, config.tracingConfiguration!!)
+            }
         }
 
         if (config.rumConfiguration != null) {
-            rumPlugin = DatadogRumPlugin()
-            rumPlugin?.setup(binding, config.rumConfiguration!!)
+            rumPlugin = DatadogRumPlugin().apply { setup(binding, config.rumConfiguration!!) }
         }
     }
 

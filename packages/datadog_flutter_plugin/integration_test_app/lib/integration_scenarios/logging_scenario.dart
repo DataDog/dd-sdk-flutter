@@ -17,6 +17,13 @@ class _LoggingScenarioState extends State<LoggingScenario> {
   void initState() {
     super.initState();
 
+    // Create a logger that will not send to Datadog
+    var silentLogger = DatadogSdk.instance.createLogger(LoggingConfiguration(
+      sendLogsToDatadog: false,
+      loggerName: 'silent_logger',
+    ));
+    silentLogger.info('Interesting logging information');
+
     var logger = DatadogSdk.instance.logs;
     if (logger != null) {
       logger.addTag('tag1', 'tag-value');

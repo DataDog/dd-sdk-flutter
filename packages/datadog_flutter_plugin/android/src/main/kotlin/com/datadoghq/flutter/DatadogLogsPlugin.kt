@@ -159,7 +159,7 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
 
     private fun createLogger(loggerHandle: String, configuration: LoggingConfiguration) {
         val logBuilder = Logger.Builder()
-            .setDatadogLogsEnabled(true)
+            .setDatadogLogsEnabled(configuration.sendLogsToDatadog)
             .setLogcatLogsEnabled(configuration.printLogsToConsole)
             .setNetworkInfoEnabled(configuration.sendNetworkInfo)
             .setBundleWithTraceEnabled(configuration.bundleWithTraces)
