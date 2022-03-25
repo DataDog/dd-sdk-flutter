@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="dd_logo.png" width="200">
+    <img src="https://imgix.datadoghq.com/img/about/presskit/logo-v/dd_vertical_white.png" width="200">
 </p>
 
 # Datadog Flutter Plugin
