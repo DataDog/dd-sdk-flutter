@@ -19,6 +19,11 @@ final projectList = [
   '$root/tools/releaser',
   '$root/tools/third_party_scanner',
 ];
+// Packages that are safe to ignore and not write to the 3rd party csv
+// Usually, only packages that are contained within this repo
+final ignorePackages = [
+  "datadog_flutter_plugin",
+];
 
 enum DependencyType { import, test, build, unknown }
 
@@ -46,14 +51,15 @@ class Dependency {
   }
 }
 
-void main(List<String> arguments) async {
+Future<int> main(List<String> arguments) async {
   final dartDependencies = await _getDartDependencies();
   final existingDependencies = await _getExistingDependencies();
 
   final dependencies = Map<String, Dependency?>.from(existingDependencies);
   int newDependencyCount = 0;
   for (final dartDependency in dartDependencies.entries) {
-    if (!existingDependencies.containsKey(dartDependency.key)) {
+    if (!ignorePackages.contains(dartDependency.key) &&
+        !existingDependencies.containsKey(dartDependency.key)) {
       dependencies[dartDependency.key] = dartDependency.value;
       newDependencyCount++;
     }
@@ -70,6 +76,8 @@ void main(List<String> arguments) async {
   }
   sink.close();
   print('✅ All Done! Wrote $newDependencyCount new dependencies!');
+
+  return newDependencyCount;
 }
 
 Future<Map<String, Dependency?>> _getExistingDependencies() async {
