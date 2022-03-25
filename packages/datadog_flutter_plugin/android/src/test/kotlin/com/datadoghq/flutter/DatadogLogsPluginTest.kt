@@ -54,31 +54,36 @@ class DatadogLogsPluginTest {
 
     private val contracts = listOf(
         Contract("debug", mapOf(
-            "message" to typeOf<String>(), "context" to typeOf<Map<String, Any?>>()
+            "message" to ContractParameter.Type(SupportedContractType.STRING),
+            "context" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("info", mapOf(
-            "message" to typeOf<String>(), "context" to typeOf<Map<String, Any?>>()
+            "message" to ContractParameter.Type(SupportedContractType.STRING),
+            "context" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("warn", mapOf(
-            "message" to typeOf<String>(), "context" to typeOf<Map<String, Any?>>()
+            "message" to ContractParameter.Type(SupportedContractType.STRING),
+            "context" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("error", mapOf(
-            "message" to typeOf<String>(), "context" to typeOf<Map<String, Any?>>()
+            "message" to ContractParameter.Type(SupportedContractType.STRING),
+            "context" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("addAttribute", mapOf(
-            "key" to typeOf<String>(), "value" to typeOf<Map<String, Any?>>()
+            "key" to ContractParameter.Type(SupportedContractType.STRING),
+            "value" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("addTag", mapOf(
-            "tag" to typeOf<String>()
+            "tag" to ContractParameter.Type(SupportedContractType.STRING)
         )),
         Contract("removeAttribute", mapOf(
-            "key" to typeOf<String>()
+            "key" to ContractParameter.Type(SupportedContractType.STRING)
         )),
         Contract("removeTag", mapOf(
-            "tag" to typeOf<String>()
+            "tag" to ContractParameter.Type(SupportedContractType.STRING)
         )),
         Contract("removeTagWithKey", mapOf(
-            "key" to typeOf<String>()
+            "key" to ContractParameter.Type(SupportedContractType.STRING)
         )),
     )
 

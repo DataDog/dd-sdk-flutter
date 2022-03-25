@@ -422,46 +422,59 @@ class DatadogRumPluginTest {
 
     val contracts = listOf(
         Contract("startView", mapOf(
-            "key" to typeOf<String>(), "name" to typeOf<String>(), "attributes" to typeOf<Map<String, Any?>>()
+            "key" to ContractParameter.Type(SupportedContractType.STRING),
+            "name" to ContractParameter.Type(SupportedContractType.STRING),
+            "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("stopView", mapOf(
-            "key" to typeOf<String>(), "attributes" to typeOf<Map<String, Any?>>()
+            "key" to ContractParameter.Type(SupportedContractType.STRING),
+            "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("addTiming", mapOf(
-            "name" to typeOf<String>(),
+            "name" to ContractParameter.Type(SupportedContractType.STRING),
         )),
         Contract("startResourceLoading", mapOf(
-            "key" to typeOf<String>(), "url" to typeOf<String>(), "httpMethod" to typeOf<String>(),
-            "attributes" to typeOf<Map<String, Any?>>()
+            "key" to ContractParameter.Type(SupportedContractType.STRING),
+            "url" to ContractParameter.Type(SupportedContractType.STRING),
+            "httpMethod" to ContractParameter.Type(SupportedContractType.STRING),
+            "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("stopResourceLoading", mapOf(
-            "key" to typeOf<String>(), "kind" to typeOf<String>(),
-            "attributes" to typeOf<Map<String, Any?>>()
+            "key" to ContractParameter.Type(SupportedContractType.STRING),
+            "kind" to ContractParameter.Type(SupportedContractType.STRING),
+            "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("stopResourceLoadingWithError", mapOf(
-            "key" to typeOf<String>(), "message" to typeOf<String>(), "attributes" to typeOf<Map<String, Any?>>()
+            "key" to ContractParameter.Type(SupportedContractType.STRING),
+            "message" to ContractParameter.Type(SupportedContractType.STRING),
+            "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("addError", mapOf(
-            "message" to typeOf<String>(), "source" to typeOf<String>(),
-            "attributes" to typeOf<Map<String, Any?>>()
+            "message" to ContractParameter.Type(SupportedContractType.STRING),
+            "source" to ContractParameter.Type(SupportedContractType.STRING),
+            "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("addUserAction", mapOf(
-            "type" to typeOf<String>(), "name" to typeOf<String>(),
-            "attributes" to typeOf<Map<String, Any?>>()
+            "type" to ContractParameter.Type(SupportedContractType.STRING),
+            "name" to ContractParameter.Type(SupportedContractType.STRING),
+            "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("startUserAction", mapOf(
-            "type" to typeOf<String>(), "name" to typeOf<String>(),
-            "attributes" to typeOf<Map<String, Any?>>()
+            "type" to ContractParameter.Type(SupportedContractType.STRING),
+            "name" to ContractParameter.Type(SupportedContractType.STRING),
+            "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("stopUserAction", mapOf(
-            "type" to typeOf<String>(), "name" to typeOf<String>(),
-            "attributes" to typeOf<Map<String, Any?>>()
+            "type" to ContractParameter.Type(SupportedContractType.STRING),
+            "name" to ContractParameter.Type(SupportedContractType.STRING),
+            "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("addAttribute", mapOf(
-            "key" to typeOf<String>(), "value" to typeOf<String>()
+            "key" to ContractParameter.Type(SupportedContractType.STRING),
+            "value" to ContractParameter.Type(SupportedContractType.STRING),
         )),
         Contract("removeAttribute", mapOf(
-            "key" to typeOf<String>()
+            "key" to ContractParameter.Type(SupportedContractType.STRING)
         ))
     )
 
