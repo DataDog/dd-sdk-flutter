@@ -8,8 +8,10 @@ package com.datadoghq.flutter
 import android.util.Log
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
+import assertk.assertions.isTrue
 import com.datadog.android.DatadogSite
 import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Credentials
@@ -113,7 +115,6 @@ class DatadogConfigurationTest {
             "uploadFrequency" to null,
             "trackingConsent" to "TrackingConsent.granted",
             "customEndpoint" to null,
-            "loggingConfiguration" to null,
             "tracingConfiguration" to null,
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>()
@@ -127,7 +128,6 @@ class DatadogConfigurationTest {
         assertThat(config.env).isEqualTo(environment)
         assertThat(config.trackingConsent).isEqualTo(TrackingConsent.GRANTED)
 
-        assertThat(config.loggingConfiguration).isNull()
         assertThat(config.tracingConfiguration).isNull()
         assertThat(config.rumConfiguration).isNull()
     }
@@ -149,7 +149,6 @@ class DatadogConfigurationTest {
             "uploadFrequency" to "UploadFrequency.frequent",
             "trackingConsent" to "TrackingConsent.granted",
             "customEndpoint" to "customEndpoint",
-            "loggingConfiguration" to null,
             "tracingConfiguration" to null,
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>(
@@ -171,7 +170,7 @@ class DatadogConfigurationTest {
     }
 
     @Test
-    fun `M decode nestedConfiguration W fromEncoded {loggingConfiguration, tracingConfiguration, rumConfiguration}`(
+    fun `M decode nestedConfiguration W fromEncoded {tracingConfiguration, rumConfiguration}`(
         @StringForgery clientToken: String,
         @StringForgery environment: String,
         @StringForgery applicationId: String
@@ -186,10 +185,6 @@ class DatadogConfigurationTest {
             "uploadFrequency" to null,
             "trackingConsent" to "TrackingConsent.pending",
             "customEndpoint" to null,
-            "loggingConfiguration" to mapOf(
-                "sendNetworkInfo" to true,
-                "printLogsToConsole" to true
-            ),
             "tracingConfiguration" to mapOf(
                 "sendNetworkInfo" to true,
                 "bundleWithRum" to false,
@@ -205,10 +200,6 @@ class DatadogConfigurationTest {
         val config = DatadogFlutterConfiguration(encoded)
 
         // THEN
-        assertThat(config.loggingConfiguration).isNotNull()
-        assertThat(config.loggingConfiguration?.sendNetworkInfo).isEqualTo(true)
-        assertThat(config.loggingConfiguration?.printLogsToConsole).isEqualTo(true)
-
         assertThat(config.tracingConfiguration).isNotNull()
         assertThat(config.tracingConfiguration?.sendNetworkInfo).isEqualTo(true)
         assertThat(config.tracingConfiguration?.bundleWithRum).isEqualTo(false)
@@ -216,6 +207,30 @@ class DatadogConfigurationTest {
         assertThat(config.rumConfiguration).isNotNull()
         assertThat(config.rumConfiguration?.applicationId).isEqualTo(applicationId)
         assertThat(config.rumConfiguration?.sampleRate).isEqualTo(35.0f)
+    }
+
+    @Test
+    fun `M decode LoggingConfiguration W LoggingConfiguration fromEncoded`() {
+        // GIVEN
+        val encoded = mapOf(
+            "sendNetworkInfo" to true,
+            "printLogsToConsole" to true,
+            "sendLogsToDatadog" to false,
+            "bundleWithRum" to true,
+            "bundleWithTraces" to true,
+            "loggerName" to "my_logger"
+        )
+
+        // WHEN
+        val config = LoggingConfiguration(encoded)
+
+        // THEN
+        assertThat(config.sendNetworkInfo).isTrue()
+        assertThat(config.printLogsToConsole).isTrue()
+        assertThat(config.sendLogsToDatadog).isFalse()
+        assertThat(config.bundleWithRum).isTrue()
+        assertThat(config.bundleWithTraces).isTrue()
+        assertThat(config.loggerName).isEqualTo("my_logger")
     }
 
     @Test

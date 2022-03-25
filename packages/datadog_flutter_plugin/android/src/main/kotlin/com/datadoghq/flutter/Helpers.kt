@@ -9,3 +9,11 @@ fun MethodChannel.Result.missingParameter(methodName: String, details: Object? =
         details
     )
 }
+
+fun MethodChannel.Result.invalidOperation(message: String, details: Object? = null) {
+    this.error(
+        DatadogSdkPlugin.INVALID_OPERATION,
+        message,
+        details
+    )
+}

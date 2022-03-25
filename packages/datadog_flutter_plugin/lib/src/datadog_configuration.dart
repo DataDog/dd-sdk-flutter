@@ -89,6 +89,11 @@ class LoggingConfiguration {
   /// Defaults to `false`.
   bool printLogsToConsole;
 
+  // Enables or disables sending logs to Datadog.
+  ///
+  /// Defaults to `true`.
+  bool sendLogsToDatadog;
+
   /// Enables the logs integration with RUM.
   ///
   /// If enabled, all the logs will be enriched with the current RUM View
@@ -106,19 +111,29 @@ class LoggingConfiguration {
   /// Default to `true`.
   bool bundleWithTrace;
 
+  /// Sets the name of the logger.
+  ///
+  /// This name will be set as the `logger.name` attribute attached to all logs
+  /// sent to Datadog from this logger.
+  String? loggerName;
+
   LoggingConfiguration({
     this.sendNetworkInfo = false,
     this.printLogsToConsole = false,
+    this.sendLogsToDatadog = true,
     this.bundleWithRum = true,
     this.bundleWithTrace = true,
+    this.loggerName,
   });
 
   Map<String, dynamic> encode() {
     return {
       'sendNetworkInfo': sendNetworkInfo,
       'printLogsToConsole': printLogsToConsole,
+      'sendLogsToDatadog': sendLogsToDatadog,
       'bundleWithRum': bundleWithRum,
       'bundleWithTrace': bundleWithTrace,
+      'loggerName': loggerName,
     };
   }
 }
@@ -289,7 +304,6 @@ class DdSdkConfiguration {
       'uploadFrequency': uploadFrequency?.toString(),
       'trackingConsent': trackingConsent.toString(),
       'customEndpoint': customEndpoint,
-      'loggingConfiguration': loggingConfiguration?.encode(),
       'tracingConfiguration': tracingConfiguration?.encode(),
       'rumConfiguration': rumConfiguration?.encode(),
       'additionalConfig': additionalConfig

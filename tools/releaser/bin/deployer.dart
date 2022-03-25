@@ -106,7 +106,7 @@ Future<bool> _validateBranchState(GitDir gitDir) async {
 
 Future<ReleaseInfo?> _getReleaseInfo(GitDir gitDir, String packageName) async {
   final currentBranch = await gitDir.currentBranch();
-  final currentCommit = await gitDir.commitFromRevision(currentBranch.sha);
+  await gitDir.commitFromRevision(currentBranch.sha);
 
   final pubspecVersionRegex = RegExp(r'^version\: (?<version>.*)');
 

@@ -31,13 +31,13 @@ void main() {
   setUp(() {
     logger = TestLogger();
     mockPlatform = MockDdLogsPlatform();
-    when(() => mockPlatform.debug(any(), any()))
+    when(() => mockPlatform.debug(any(), any(), any()))
         .thenAnswer((invocation) => Future.value());
-    when(() => mockPlatform.info(any(), any()))
+    when(() => mockPlatform.info(any(), any(), any()))
         .thenAnswer((invocation) => Future.value());
-    when(() => mockPlatform.warn(any(), any()))
+    when(() => mockPlatform.warn(any(), any(), any()))
         .thenAnswer((invocation) => Future.value());
-    when(() => mockPlatform.error(any(), any()))
+    when(() => mockPlatform.error(any(), any(), any()))
         .thenAnswer((invocation) => Future.value());
     DdLogsPlatform.instance = mockPlatform;
     ddLogs = DdLogs(logger);
@@ -46,29 +46,33 @@ void main() {
   test('debug logs pass to platform', () async {
     ddLogs.debug('debug message', {'attribute': 'value'});
 
-    verify(() => mockPlatform.debug('debug message', {'attribute': 'value'}));
+    verify(() => mockPlatform
+        .debug(ddLogs.loggerHandle, 'debug message', {'attribute': 'value'}));
   });
 
   test('info logs pass to platform', () async {
     ddLogs.info('info message', {'attribute': 'value'});
 
-    verify(() => mockPlatform.info('info message', {'attribute': 'value'}));
+    verify(() => mockPlatform
+        .info(ddLogs.loggerHandle, 'info message', {'attribute': 'value'}));
   });
 
   test('warn logs pass to platform', () async {
     ddLogs.warn('warn message', {'attribute': 'value'});
 
-    verify(() => mockPlatform.warn('warn message', {'attribute': 'value'}));
+    verify(() => mockPlatform
+        .warn(ddLogs.loggerHandle, 'warn message', {'attribute': 'value'}));
   });
 
   test('error logs pass to platform', () async {
     ddLogs.error('error message', {'attribute': 'value'});
 
-    verify(() => mockPlatform.error('error message', {'attribute': 'value'}));
+    verify(() => mockPlatform
+        .error(ddLogs.loggerHandle, 'error message', {'attribute': 'value'}));
   });
 
   test('addAttribute argumentError sent to logger', () async {
-    when(() => mockPlatform.addAttribute(any(), any()))
+    when(() => mockPlatform.addAttribute(any(), any(), any()))
         .thenThrow(ArgumentError());
     ddLogs.addAttribute('My key', 'Any Value');
 

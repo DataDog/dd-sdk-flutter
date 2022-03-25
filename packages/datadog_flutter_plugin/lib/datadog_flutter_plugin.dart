@@ -16,6 +16,7 @@ import 'src/datadog_tracking_http_client.dart';
 import 'src/helpers.dart';
 import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
+import 'src/logs/ddlogs_platform_interface.dart';
 import 'src/rum/ddrum.dart';
 import 'src/traces/ddtraces.dart';
 import 'src/version.dart' show ddPackageVersion;
@@ -146,7 +147,7 @@ class DatadogSdk {
     }
 
     if (configuration.loggingConfiguration != null) {
-      _logs = DdLogs(internalLogger);
+      _logs = createLogger(configuration.loggingConfiguration!);
     }
     if (configuration.tracingConfiguration != null) {
       _traces = DdTraces(internalLogger);
@@ -154,6 +155,18 @@ class DatadogSdk {
     if (configuration.rumConfiguration != null) {
       _rum = DdRum(internalLogger);
     }
+  }
+
+  /// Create a new logger.
+  ///
+  /// This can be used in addition to or instead of the default logger at [logs]
+  DdLogs createLogger(LoggingConfiguration configuration) {
+    final logger = DdLogs(internalLogger);
+    wrap('createLogger', internalLogger, () {
+      return DdLogsPlatform.instance
+          .createLogger(logger.loggerHandle, configuration);
+    });
+    return logger;
   }
 
   /// Sets current user information. User information will be added traces and
@@ -164,7 +177,7 @@ class DatadogSdk {
     String? email,
     Map<String, dynamic> extraInfo = const {},
   }) {
-    return wrap('setUserInfo', internalLogger, () {
+    wrap('setUserInfo', internalLogger, () {
       return _platform.setUserInfo(id, name, email, extraInfo);
     });
   }
