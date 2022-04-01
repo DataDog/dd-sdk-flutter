@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="dd_logo.png" width="200">
+  {{< img src="dd-logo.png" alt="Datadog logo" style="width:100%;">}}
 </p>
 
 ## Overview
