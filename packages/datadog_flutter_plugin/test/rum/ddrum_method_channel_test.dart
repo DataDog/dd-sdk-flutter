@@ -108,19 +108,24 @@ void main() {
       isMethodCall('stopResourceLoadingWithError', arguments: {
         'key': 'resource_key',
         'message': exception.toString(),
+        'type': exception.runtimeType.toString(),
         'attributes': {'attribute_key': 'attribute_value'}
       })
     ]);
   });
 
   test('stopResourceLoadingWithErrorInfo calls to platform', () async {
-    await ddRumPlatform.stopResourceLoadingWithErrorInfo('resource_key',
-        'Exception message', {'attribute_key': 'attribute_value'});
+    await ddRumPlatform.stopResourceLoadingWithErrorInfo(
+        'resource_key',
+        'Exception message',
+        'Exception type',
+        {'attribute_key': 'attribute_value'});
 
     expect(log, [
       isMethodCall('stopResourceLoadingWithError', arguments: {
         'key': 'resource_key',
         'message': 'Exception message',
+        'type': 'Exception type',
         'attributes': {'attribute_key': 'attribute_value'}
       })
     ]);

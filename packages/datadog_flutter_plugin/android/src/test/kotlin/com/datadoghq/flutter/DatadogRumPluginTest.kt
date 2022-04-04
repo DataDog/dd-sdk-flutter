@@ -293,6 +293,7 @@ class DatadogRumPluginTest {
     fun `M call monitor stopResourceWithError W stopResourceLoadingWithError is called`(
         @StringForgery resourceKey: String,
         @StringForgery message: String,
+        @StringForgery errorType: String,
         @StringForgery attributeKey: String,
         @StringForgery attributeValue: String
     ) {
@@ -300,6 +301,7 @@ class DatadogRumPluginTest {
         val call = MethodCall("stopResourceLoadingWithError", mapOf(
             "key" to resourceKey,
             "message" to message,
+            "type" to errorType,
             "attributes" to mapOf(
                 attributeKey to attributeValue
             )
@@ -311,7 +313,8 @@ class DatadogRumPluginTest {
 
         // THEN
         verify(mockRumMonitor).stopResourceWithError(eq(resourceKey), isNull(), eq(message),
-            eq(RumErrorSource.NETWORK), any(), eq(mapOf(attributeKey to attributeValue)))
+            eq(RumErrorSource.NETWORK), eq(""), eq(errorType),
+            eq(mapOf(attributeKey to attributeValue)))
         verify(mockResult).success(null)
     }
 
@@ -447,6 +450,7 @@ class DatadogRumPluginTest {
         Contract("stopResourceLoadingWithError", mapOf(
             "key" to ContractParameter.Type(SupportedContractType.STRING),
             "message" to ContractParameter.Type(SupportedContractType.STRING),
+            "type" to ContractParameter.Type(SupportedContractType.STRING),
             "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("addError", mapOf(

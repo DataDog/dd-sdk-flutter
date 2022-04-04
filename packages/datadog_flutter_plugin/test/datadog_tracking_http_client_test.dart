@@ -479,9 +479,7 @@ void main() {
 
       expect(caughtError, error);
       verify(() => mockRum.stopResourceLoadingWithErrorInfo(
-            capturedKey,
-            error.toString(),
-          ));
+          capturedKey, error.toString(), error.runtimeType.toString()));
     });
 
     test('calls stop resource with error for response error', () async {
@@ -513,6 +511,7 @@ void main() {
       verify(() => mockRum.stopResourceLoadingWithErrorInfo(
             capturedKey,
             error.toString(),
+            error.runtimeType.toString(),
           ));
     });
   });
@@ -614,7 +613,10 @@ void main() {
               captureAny(), RumHttpMethod.get, url.toString(), any()))
           .captured[0] as String;
       verify(() => mockRum.stopResourceLoadingWithErrorInfo(
-          capturedKey, error.toString()));
+            capturedKey,
+            error.toString(),
+            error.runtimeType.toString(),
+          ));
     });
   });
 }
