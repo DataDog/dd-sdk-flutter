@@ -1,12 +1,12 @@
-<p align="center">
-  <img src="dd_logo.png" width="200">
-</p>
+## Overview
 
-# Datadog Flutter Plugin
+Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real-time performance and user journeys of your Flutter application’s individual users.
 
-> A Flutter plugin for interacting with Datadog
+## Platform Support
 
-> ⚠️ This plugin is still in Alpha / Developer Preview. 
+| Android | iOS |  Web | MacOS | Linux | Windows |
+| :-----: | :-: | :---: | :-: | :---: | :----: |
+|   ✅    | ✅  |  🚧   | ❌  |  ❌   |   ❌   |
 
 ## Current Datadog SDK Versions
 
@@ -18,22 +18,32 @@ iOS SDK | Android SDK | Browser SDK
 
 [//]: # (End SDK Table)
 
-## Getting Started
 
-### Get your Client Token and Application Id
+### iOS
 
-For Logs and Tracing, you will need a Datadog [client
-token](https://docs.datadoghq.com/account_management/api-app-keys/#client-tokens).
-If you are also using RUM, you will need an Application Id as well, which you
-can get by creating a [RUM
-application](https://docs.datadoghq.com/real_user_monitoring/#getting-started)
-under.
+Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutter) and target iOS version >= 11.0.
+
+### Android
+
+On Android, your `minSdkVersion` must be >= 19, and if you are using Kotlin, it should be version >= 1.5.31.
+
+## Setup
+
+You need a Datadog client token for Logs and Tracing. If you are using RUM, you need an application ID.
+
+### Specify application details in the UI
+
+1. Navigate to [**UX Monitoring** > **RUM Applications** > **New Application**][1].
+2. Select `flutter` as the application type and enter an application name to generate a unique Datadog application ID and client token.
+3. Click **+ Create New RUM Application**.
+
+To ensure the safety of your data, you must use a client token. If you used only [Datadog API keys][2] to configure the `@datadog/mobile-react-native` library, they would be exposed client-side in the React Native application's code. 
+
+For more information about setting up a client token, see the [Client Token documentation][3].
 
 ### Configure Datadog
 
-First create a configuration object. Each Datadog feature (Logging, Tracing, and
-RUM) is configured separately. If you do not pass a configuration for a given
-feature, it will be disabled.
+Create a configuration object for each Datadog feature (such as Logging, Tracing, and RUM) with the following snippet. By not passing a configuration for a given feature, it is disabled.
 
 ```dart
 // Determine the user's consent to be tracked
@@ -56,50 +66,45 @@ final configuration = DdSdkConfiguration(
 );
 ```
 
-### Initialize Datadog
+### Initialize the library
 
-You can initialize Datadog in one of two ways in your `main.dart`.
+You can initialize Datadog using one of two methods in the `main.dart` file.
 
-The simplest way to initialize Datadog is to use `DatadogSdk.runApp`. This will
-set up automatic error reporting and resource tracing.
+1. Use `DatadogSdk.runApp`, which automatically sets up error reporting and resource tracing. This is the simplest way to initialize Datadog.
 
-```dart
-await DatadogSdk.runApp(configuration, () async {
-  runApp(const MyApp());
-})
-```
+   ```dart
+   await DatadogSdk.runApp(configuration, () async {
+     runApp(const MyApp());
+   })
+   ```
 
-Alternatively, you can setup these up on your own. Note that `DatadogSdk.runApp`
-calls `WidgetsFlutterBinding.ensureInitialized`. If you are not using
-`DatadogSdk.runApp` you will need to call this method prior to calling
-`DatadogSdk.instance.initialize`
+2. Alternatively, you can manually set up error tracking and resource tracking. Because `DatadogSdk.runApp` calls `WidgetsFlutterBinding.ensureInitialized`, if you are not using `DatadogSdk.runApp`, you need to call this method prior to calling `DatadogSdk.instance.initialize`.
 
-```dart
-runZonedGuarded(() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  final originalOnError = FlutterError.onError;
-  FlutterError.onError = (details) {
-    FlutterError.presentError(details);
-    DatadogSdk.instance.rum?.handleFlutterError(details);
-    originalOnError?.call(details);
-  };
+   ```dart
+   runZonedGuarded(() async {
+     WidgetsFlutterBinding.ensureInitialized();
+     final originalOnError = FlutterError.onError;
+     FlutterError.onError = (details) {
+       FlutterError.presentError(details);
+       DatadogSdk.instance.rum?.handleFlutterError(details);
+       originalOnError?.call(details);
+     };
 
-  await DatadogSdk.instance.initialize(configuration);
+     await DatadogSdk.instance.initialize(configuration);
 
-  runApp(const MyApp());
-}, (e, s) {
-  DatadogSdk.instance.rum?.addErrorInfo(
-    e.toString(),
-    RumErrorSource.source,
-    stackTrace: s,
-  );
-});
-```
+     runApp(const MyApp());
+   }, (e, s) {
+     DatadogSdk.instance.rum?.addErrorInfo(
+       e.toString(),
+       RumErrorSource.source,
+       stackTrace: s,
+     );
+   });
+   ```
 
-### Tracking RUM Views
+### Track RUM views
 
-The Datadog Flutter Plugin can automatically track named routes using the
-`DatadogNavigationObserver` on your MaterialApp.
+The Datadog Flutter Plugin can automatically track named routes using the `DatadogNavigationObserver` on your MaterialApp.
 
 ```dart
 MaterialApp(
@@ -110,38 +115,26 @@ MaterialApp(
 );
 ```
 
-Note, this will only work if you are using **named routes** or supply a name to
-`settings` parameter of your `PageRoute`.
+This only works if you are using named routes or if you have supplied a name to the `settings` parameter of your `PageRoute`.
 
-Alternately, you can use the `DatadogRouteAwareMixin` in conjunction with the
-`DatadogNavigationObserverProvider` to start and stop you RUM views
-automatically. Note that `DatadogRouteAwareMixin` recommends you move any logic
-from `initState` to `didPush`. Refer to the documentation on those classes for
-more details
+Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction with the `DatadogNavigationObserverProvider` property to start and stop you RUM views automatically. With `DatadogRouteAwareMixin`, move any logic from `initState` to `didPush`. 
 
+## Contributing
 
-## Platform Support and Notes
+Pull requests are welcome. First, open an issue to discuss what you would like to change. 
 
-| Android | iOS |  Web | MacOS | Linux | Windows |
-| :-----: | :-: | :---: | :-: | :---: | :----: |
-|   ✅    | ✅  |  🚧   | ❌  |  ❌   |   ❌   |
+For more information, read the [Contributing guidelines][4].
 
-### iOS
+## License
 
-Your iOS Podfile must have `use_frameworks!` (this is true by default in
-Flutter) and must target iOS version >= 11.0.
+For more information, see [Apache License, v2.0][5].
 
-### Android
+## Further Reading
 
-On Android, your `minSdkVersion` must be >= 19, and if you are using Kotlin it
-should be version >= 1.5.31
+{{< partial name="whats-next/whats-next.html" >}}
 
-# Contributing
-
-Pull requests are welcome. First, open an issue to discuss what you would like
-to change. For more information, read the [Contributing
-guide](../../CONTRIBUTING.md) in the root repository.
-
-# License
-
-[Apache License, v2.0](LICENSE)
+[1]: https://app.datadoghq.com/rum/application/create
+[2]: https://docs.datadoghq.com/account_management/api-app-keys/#api-keys
+[3]: https://docs.datadoghq.com/account_management/api-app-keys/#client-tokens
+[4]: https://github.com/DataDog/dd-sdk-flutter/blob/main/CONTRIBUTING.md
+[5]: https://github.com/DataDog/dd-sdk-flutter/blob/main/LICENSE
