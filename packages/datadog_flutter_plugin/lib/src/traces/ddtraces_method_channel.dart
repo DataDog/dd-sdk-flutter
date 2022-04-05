@@ -2,8 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:meta/meta.dart';
 
 import 'ddtraces.dart';
 import 'ddtraces_platform_interface.dart';
@@ -119,6 +119,13 @@ class DdTracesMethodChannel extends DdTracesPlatform {
     return methodChannel.invokeMethod('span.finish', {
       'spanHandle': spanHandle,
       'finishTime': finishTime.microsecondsSinceEpoch
+    });
+  }
+
+  @override
+  Future<void> spanCancel(int spanHandle) {
+    return methodChannel.invokeMethod('span.cancel', {
+      'spanHandle': spanHandle,
     });
   }
 }

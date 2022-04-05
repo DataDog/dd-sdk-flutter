@@ -108,7 +108,6 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.nativeCrashReportingEnabled, false)
     XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
 
-    XCTAssertNil(config.loggingConfiguration)
     XCTAssertNil(config.tracingConfiguration)
     XCTAssertNil(config.rumConfiguration)
   }
@@ -138,12 +137,6 @@ class DatadogConfigurationTests: XCTestCase {
     ]
 
     let config = DatadogFlutterConfiguration(fromEncoded: encoded)!
-
-    XCTAssertNotNil(config.loggingConfiguration)
-    XCTAssertEqual(config.loggingConfiguration?.sendNetworkInfo, true)
-    XCTAssertEqual(config.loggingConfiguration?.printLogsToConsole, true)
-    XCTAssertEqual(config.loggingConfiguration?.bundleWithRum, true)
-    XCTAssertEqual(config.loggingConfiguration?.bundleWithTraces, true)
 
     XCTAssertNotNil(config.tracingConfiguration)
     XCTAssertEqual(config.tracingConfiguration?.sendNetworkInfo, true)

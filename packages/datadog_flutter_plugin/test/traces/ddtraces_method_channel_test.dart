@@ -44,6 +44,7 @@ void main() {
     badSpan.setError(Exception());
     badSpan.setErrorInfo('Kind', 'Message', null);
     badSpan.finish();
+    badSpan.cancel();
 
     expect(log.length, 0);
   });
@@ -257,7 +258,7 @@ void main() {
     expect(spanCall.arguments['spanHandle'], span.handle);
     expect(spanCall.arguments['kind'], 'Generic Error');
     expect(spanCall.arguments['message'], 'This was my fault');
-    expect(spanCall.arguments['stackTrace'], isNotNull);
+    expect(spanCall.arguments['stackTrace'], isNull);
   });
 
   test('setErrorInfo on span calls to platform', () async {
@@ -274,5 +275,16 @@ void main() {
         'fields': {'message': 'my message', 'value': 0.24}
       }),
     );
+  });
+
+  test('spanCancel calls platform', () async {
+    final span = DdSpan(ddTracesPlatform, systemTimeProvider, 12, ddLogger);
+    await ddTracesPlatform.spanCancel(span.handle);
+
+    expect(log, [
+      isMethodCall('span.cancel', arguments: {
+        'spanHandle': span.handle,
+      })
+    ]);
   });
 }

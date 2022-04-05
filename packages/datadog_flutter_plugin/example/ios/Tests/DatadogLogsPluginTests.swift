@@ -22,38 +22,87 @@ class DatadogLogsPluginTests: XCTestCase {
 
   override func setUp() {
     plugin = DatadogLogsPlugin.instance
-    plugin.initialize(withLogger: MockLogger())
+    // "fake string" is the string that the contract tests will send
+    plugin.addLogger(logger: MockLogger(), withHandle: "fake string")
   }
 
   let contracts = [
     Contract(methodName: "debug", requiredParameters: [
+      "loggerHandle": .string,
       "message": .string
     ]),
     Contract(methodName: "info", requiredParameters: [
+      "loggerHandle": .string,
       "message": .string
     ]),
     Contract(methodName: "warn", requiredParameters: [
+      "loggerHandle": .string,
       "message": .string
     ]),
     Contract(methodName: "error", requiredParameters: [
+      "loggerHandle": .string,
       "message": .string
     ]),
     Contract(methodName: "addAttribute", requiredParameters: [
+      "loggerHandle": .string,
       "key": .string, "value": .map
     ]),
     Contract(methodName: "addTag", requiredParameters: [
+      "loggerHandle": .string,
       "tag": .string
     ]),
     Contract(methodName: "removeAttribute", requiredParameters: [
+      "loggerHandle": .string,
       "key": .string
     ]),
     Contract(methodName: "removeTag", requiredParameters: [
+      "loggerHandle": .string,
       "tag": .string
     ]),
     Contract(methodName: "removeTagWithKey", requiredParameters: [
+      "loggerHandle": .string,
       "key": .string
     ])
   ]
+
+  func defaultConfigArgs() -> [String: Any] {
+    return [
+      "sendNetworkInfo": true,
+      "printLogsToConsole": true,
+      "sendLogsToDatadog": false,
+      "bundleWithRum": true,
+      "bundleWithTraces": true,
+      "loggerName": "my_logger"
+    ]
+  }
+
+  func testLoggingConfiguration_DecodesCorrectly() {
+    let loggingConfig = DatadogLoggingConfiguration.init(fromEncoded: defaultConfigArgs())
+    XCTAssertNotNil(loggingConfig)
+    XCTAssertTrue(loggingConfig!.sendNetworkInfo)
+    XCTAssertTrue(loggingConfig!.printLogsToConsole)
+    XCTAssertFalse(loggingConfig!.sendLogsToDatadog)
+    XCTAssertTrue(loggingConfig!.bundleWithRum)
+    XCTAssertTrue(loggingConfig!.bundleWithTraces)
+    XCTAssertEqual(loggingConfig!.loggerName, "my_logger")
+  }
+
+  func testLogs_CreateLogger_CreatesLoggerWithHandle() {
+    let call = FlutterMethodCall(methodName: "createLogger", arguments: [
+      "loggerHandle": "fake-uuid",
+      "configuration": defaultConfigArgs()
+    ])
+
+    var resultStatus = ResultStatus.notCalled
+    plugin.handle(call) { result in
+      resultStatus = .called(value: result)
+    }
+
+    XCTAssertEqual(resultStatus, .called(value: nil))
+
+    let log = plugin.logger(withHandle: "fake-uuid")
+    XCTAssertNotNil(log)
+  }
 
   func testLogCalls_WithMissingParameter_FailsWithContractViolation() {
     testContracts(contracts: contracts, plugin: plugin)

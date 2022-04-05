@@ -4,6 +4,7 @@
 
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
+import '../../datadog_flutter_plugin.dart';
 import 'ddlogs_method_channel.dart';
 
 abstract class DdLogsPlatform extends PlatformInterface {
@@ -20,14 +21,20 @@ abstract class DdLogsPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<void> debug(String message, [Map<String, Object?> context = const {}]);
-  Future<void> info(String message, [Map<String, Object?> context = const {}]);
-  Future<void> warn(String message, [Map<String, Object?> context = const {}]);
-  Future<void> error(String message, [Map<String, Object?> context = const {}]);
+  Future<void> createLogger(String loggerHandle, LoggingConfiguration config);
 
-  Future<void> addAttribute(String key, Object value);
-  Future<void> removeAttribute(String key);
-  Future<void> addTag(String tag, [String? value]);
-  Future<void> removeTag(String tag);
-  Future<void> removeTagWithKey(String key);
+  Future<void> debug(String loggerHandle, String message,
+      [Map<String, Object?> context = const {}]);
+  Future<void> info(String loggerHandle, String message,
+      [Map<String, Object?> context = const {}]);
+  Future<void> warn(String loggerHandle, String message,
+      [Map<String, Object?> context = const {}]);
+  Future<void> error(String loggerHandle, String message,
+      [Map<String, Object?> context = const {}]);
+
+  Future<void> addAttribute(String loggerHandle, String key, Object value);
+  Future<void> removeAttribute(String loggerHandle, String key);
+  Future<void> addTag(String loggerHandle, String tag, [String? value]);
+  Future<void> removeTag(String loggerHandle, String tag);
+  Future<void> removeTagWithKey(String loggerHandle, String key);
 }

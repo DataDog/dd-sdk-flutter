@@ -5,6 +5,9 @@
  */
 package com.datadoghq.flutter
 
+import assertk.assertThat
+import assertk.assertions.isNotNull
+import com.datadog.android.log.Logger
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
@@ -29,7 +32,8 @@ class DatadogLogsPluginTest {
     @BeforeEach
     fun beforeEach() {
         plugin = DatadogLogsPlugin()
-        plugin.setupForTests()
+
+        plugin.addLogger("mock-logger", Logger.Builder().build())
     }
 
     @Test
@@ -54,31 +58,45 @@ class DatadogLogsPluginTest {
 
     private val contracts = listOf(
         Contract("debug", mapOf(
-            "message" to typeOf<String>(), "context" to typeOf<Map<String, Any?>>()
+            "loggerHandle" to ContractParameter.Value("mock-logger"),
+            "message" to ContractParameter.Type(SupportedContractType.STRING),
+            "context" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("info", mapOf(
-            "message" to typeOf<String>(), "context" to typeOf<Map<String, Any?>>()
+            "loggerHandle" to ContractParameter.Value("mock-logger"),
+            "message" to ContractParameter.Type(SupportedContractType.STRING),
+            "context" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("warn", mapOf(
-            "message" to typeOf<String>(), "context" to typeOf<Map<String, Any?>>()
+            "loggerHandle" to ContractParameter.Value("mock-logger"),
+            "message" to ContractParameter.Type(SupportedContractType.STRING),
+            "context" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("error", mapOf(
-            "message" to typeOf<String>(), "context" to typeOf<Map<String, Any?>>()
+            "loggerHandle" to ContractParameter.Value("mock-logger"),
+            "message" to ContractParameter.Type(SupportedContractType.STRING),
+            "context" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("addAttribute", mapOf(
-            "key" to typeOf<String>(), "value" to typeOf<Map<String, Any?>>()
+            "loggerHandle" to ContractParameter.Value("mock-logger"),
+            "key" to ContractParameter.Type(SupportedContractType.STRING),
+            "value" to ContractParameter.Type(SupportedContractType.MAP),
         )),
         Contract("addTag", mapOf(
-            "tag" to typeOf<String>()
+            "loggerHandle" to ContractParameter.Value("mock-logger"),
+            "tag" to ContractParameter.Type(SupportedContractType.STRING)
         )),
         Contract("removeAttribute", mapOf(
-            "key" to typeOf<String>()
+            "loggerHandle" to ContractParameter.Value("mock-logger"),
+            "key" to ContractParameter.Type(SupportedContractType.STRING)
         )),
         Contract("removeTag", mapOf(
-            "tag" to typeOf<String>()
+            "loggerHandle" to ContractParameter.Value("mock-logger"),
+            "tag" to ContractParameter.Type(SupportedContractType.STRING)
         )),
         Contract("removeTagWithKey", mapOf(
-            "key" to typeOf<String>()
+            "loggerHandle" to ContractParameter.Value("mock-logger"),
+            "key" to ContractParameter.Type(SupportedContractType.STRING)
         )),
     )
 
@@ -87,5 +105,37 @@ class DatadogLogsPluginTest {
         forge: Forge
     ) {
         testContracts(contracts, forge, plugin)
+    }
+
+    fun defaultLoggingConfig(): Map<String, Any?> {
+        return mapOf(
+            "sendNetworkInfo" to true,
+            "printLogsToConsole" to true,
+            "sendLogsToDatadog" to true,
+            "bundleWithRum" to true,
+            "bundleWithTraces" to true,
+            "loggerName" to "my_logger"
+        )
+    }
+
+    @Test
+    fun `M create logger W createLogger`(
+        @StringForgery loggerHandle: String
+    ) {
+        // GIVEN
+        val call = MethodCall("createLogger", mapOf(
+            "loggerHandle" to loggerHandle,
+            "configuration" to defaultLoggingConfig()
+        ))
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(call, mockResult)
+
+        // THEN
+        verify(mockResult).success(null)
+
+        val logger = plugin.getLogger(loggerHandle)
+        assertThat(logger).isNotNull()
     }
 }

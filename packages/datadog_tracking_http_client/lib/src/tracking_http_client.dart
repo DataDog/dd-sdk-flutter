@@ -6,11 +6,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:uuid/uuid.dart';
 
-import '../datadog_flutter_plugin.dart';
-import 'attributes.dart';
-import 'rum/ddrum.dart';
+import 'tracing_headers.dart';
 
 /// Overrides to supply the [DatadogTrackingHttpClient] instead of the default
 /// HttpClient
@@ -117,6 +116,7 @@ class DatadogTrackingHttpClient implements HttpClient {
           attributes[DatadogPlatformAttributeKey.spanID] = spanId;
 
           // Discard the tracing span, we don't need it if RUM is tracking the resource
+          tracingSpan.cancel();
           tracingSpan = null;
         }
 
@@ -143,7 +143,8 @@ class DatadogTrackingHttpClient implements HttpClient {
     } catch (e) {
       if (rumKey != null) {
         try {
-          rum?.stopResourceLoadingWithErrorInfo(rumKey, e.toString());
+          rum?.stopResourceLoadingWithErrorInfo(
+              rumKey, e.toString(), e.runtimeType.toString());
         } catch (innerE) {
           datadogSdk.internalLogger.sendToDatadog(
               '$DatadogTrackingHttpClient encountered an error while attempting '
@@ -318,7 +319,8 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
   void _onStreamError(Object e, StackTrace? st) {
     try {
       if (rumKey != null) {
-        datadogSdk.rum?.stopResourceLoadingWithErrorInfo(rumKey!, e.toString());
+        datadogSdk.rum?.stopResourceLoadingWithErrorInfo(
+            rumKey!, e.toString(), e.runtimeType.toString());
       }
       tracingContext?.setErrorInfo(
         e.runtimeType.toString(),
@@ -470,8 +472,8 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
 
       if (rumKey != null) {
         if (lastError != null) {
-          datadogSdk.rum
-              ?.stopResourceLoadingWithErrorInfo(rumKey!, lastError.toString());
+          datadogSdk.rum?.stopResourceLoadingWithErrorInfo(
+              rumKey!, lastError.toString(), lastError.runtimeType.toString());
         } else {
           var resourceType = resourceTypeFromContentType(headers.contentType);
           var size = innerResponse.contentLength > 0

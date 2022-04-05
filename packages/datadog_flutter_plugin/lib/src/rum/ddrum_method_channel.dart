@@ -2,8 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:meta/meta.dart';
 
 import 'ddrum.dart';
 import 'ddrum_platform_interface.dart';
@@ -69,14 +69,23 @@ class DdRumMethodChannel extends DdRumPlatform {
   @override
   Future<void> stopResourceLoadingWithError(String key, Exception error,
       [Map<String, dynamic> attributes = const {}]) {
-    return stopResourceLoadingWithErrorInfo(key, error.toString(), attributes);
+    return stopResourceLoadingWithErrorInfo(
+        key, error.toString(), error.runtimeType.toString(), attributes);
   }
 
   @override
-  Future<void> stopResourceLoadingWithErrorInfo(String key, String message,
-      [Map<String, dynamic> attributes = const {}]) {
-    return methodChannel.invokeMethod('stopResourceLoadingWithError',
-        {'key': key, 'message': message, 'attributes': attributes});
+  Future<void> stopResourceLoadingWithErrorInfo(
+    String key,
+    String message,
+    String type, [
+    Map<String, dynamic> attributes = const {},
+  ]) {
+    return methodChannel.invokeMethod('stopResourceLoadingWithError', {
+      'key': key,
+      'message': message,
+      'type': type,
+      'attributes': attributes,
+    });
   }
 
   @override
@@ -88,12 +97,10 @@ class DdRumMethodChannel extends DdRumPlatform {
   @override
   Future<void> addErrorInfo(String message, RumErrorSource source,
       StackTrace? stackTrace, Map<String, dynamic> attributes) {
-    stackTrace ??= StackTrace.current;
-
     return methodChannel.invokeMethod('addError', {
       'message': message,
       'source': source.toString(),
-      'stackTrace': stackTrace.toString(),
+      'stackTrace': stackTrace?.toString(),
       'attributes': attributes
     });
   }

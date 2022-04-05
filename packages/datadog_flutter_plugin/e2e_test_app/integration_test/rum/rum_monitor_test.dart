@@ -40,7 +40,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitor:
@@ -70,7 +70,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: custom timing value is high than expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @operating_system:${{variant}}\").rollup(\"avg\", \"@view.custom_timings.time_event\").last(\"1d\") > 700000000"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.operating_system:${{variant}}\").rollup(\"avg\", \"@view.custom_timings.time_event\").last(\"1d\") > 700000000"
   /// $monitor_threshold = 700000000
   /// ```
   ///
@@ -82,14 +82,14 @@ void main() {
   /// ```
   testWidgets('rum - add timing', (tester) async {
     final viewKey = randomString();
-    final delay = random.nextInt(500) + 200;
+    final delay = random.nextInt(500) + 150;
     datadog.rum!.startView(
       viewKey,
       randomString(),
       e2eAttributes(tester),
     );
 
-    await Future.delayed(Duration(seconds: delay));
+    await Future.delayed(Duration(milliseconds: delay));
     await measure('flutter_rum_add_timing', () {
       datadog.rum!.addTiming('time_event');
     });
@@ -172,7 +172,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:action @operating_system:${{variant}}\").rollup(\"count\").by(\"@type\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:action @context.operating_system:${{variant}}\").rollup(\"count\").by(\"@type\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitor:
@@ -204,7 +204,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:action @operating_system:${{variant}}\").rollup(\"count\").by(\"@type\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:action @context.operating_system:${{variant}}\").rollup(\"count\").by(\"@type\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitors:
@@ -250,7 +250,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:resource @operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:resource @context.operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitors:
@@ -298,7 +298,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:error @operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:error @context.operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitors:
@@ -325,7 +325,7 @@ void main() {
 
     await measure('flutter_stop_resource_with_error', () {
       datadog.rum!.stopResourceLoadingWithErrorInfo(
-          resourceKey, randomString(), e2eAttributes(tester));
+          resourceKey, randomString(), randomString(), e2eAttributes(tester));
     });
 
     datadog.rum!.stopView(viewKey);
@@ -339,7 +339,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:error @operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:error @context.operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitors:
@@ -357,8 +357,11 @@ void main() {
     );
 
     await measure('flutter_add_error', () {
-      datadog.rum!
-          .addErrorInfo(randomString(), RumErrorSource.values.randomElement());
+      datadog.rum!.addErrorInfo(
+        randomString(),
+        RumErrorSource.values.randomElement(),
+        attributes: e2eAttributes(tester),
+      );
     });
 
     datadog.rum!.stopView(viewKey);
@@ -372,7 +375,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:error @operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:error @context.operating_system:${{variant}}\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitors:
@@ -392,8 +395,11 @@ void main() {
     final stackTrace = StackTrace.current;
     await measure('flutter_add_error_with_stacktrace', () {
       datadog.rum!.addErrorInfo(
-          randomString(), RumErrorSource.values.randomElement(),
-          stackTrace: stackTrace);
+        randomString(),
+        RumErrorSource.values.randomElement(),
+        attributes: e2eAttributes(tester),
+        stackTrace: stackTrace,
+      );
     });
 
     datadog.rum!.stopView(viewKey);

@@ -12,24 +12,32 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
 
-  private var logger: Logger?
-  public var isInitialized: Bool { return logger != nil }
+  private var loggerRegistry: [String: Logger] = [:]
 
   override private init() {
     super.init()
   }
 
-  func initialize(withLogger logger: Logger) {
-    self.logger = logger
+  func addLogger(logger: Logger, withHandle handle: String) {
+    loggerRegistry[handle] = logger
   }
 
-  func initialize(configuration: DatadogFlutterConfiguration.LoggingConfiguration) {
+  func createLogger(loggerHandle: String, configuration: DatadogLoggingConfiguration) {
     let builder = Logger.builder
+      .sendLogsToDatadog(configuration.sendLogsToDatadog)
       .sendNetworkInfo(configuration.sendNetworkInfo)
       .printLogsToConsole(configuration.printLogsToConsole)
       .bundleWithRUM(configuration.bundleWithRum)
       .bundleWithTrace(configuration.bundleWithTraces)
-    logger = builder.build()
+    if let loggerName = configuration.loggerName {
+      _ = builder.set(loggerName: loggerName)
+    }
+    let logger = builder.build()
+    loggerRegistry[loggerHandle] = logger
+  }
+
+  internal func logger(withHandle handle: String) -> Logger? {
+    return loggerRegistry[handle]
   }
 
   // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -40,9 +48,31 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
       )
       return
     }
-    guard let logger = logger else {
+
+    guard let loggerHandle = arguments["loggerHandle"] as? String else {
       result(
-        FlutterError.invalidOperation(message: "Logger has not been initialized when calling \(call.method).")
+        FlutterError.missingParameter(methodName: call.method)
+      )
+      return
+    }
+
+    // Before other functions, see if we want to create a logger. All other functions
+    // require a logger already exist.
+    if call.method == "createLogger" {
+      guard let encodedConfiguration = arguments["configuration"] as? [String: Any?],
+            let configuration = DatadogLoggingConfiguration.init(fromEncoded: encodedConfiguration) else {
+        result(FlutterError.invalidOperation(message: "Bad logging configuration sent to createLogger"))
+        return
+      }
+      createLogger(loggerHandle: loggerHandle, configuration: configuration)
+      result(nil)
+      return
+    }
+
+    guard let logger = loggerRegistry[loggerHandle] else {
+      result(
+        FlutterError.invalidOperation(
+          message: "No logger available with handle \(loggerHandle) in call to \(call.method).")
       )
       return
     }

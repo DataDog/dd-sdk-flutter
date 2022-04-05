@@ -82,7 +82,7 @@ void main() {
   /// ```apm(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of hits is above expected value"
-  /// $monitor_query = "sum(last_1d):avg:flutter_${{variant}}_traces_bundle_with_rum_enabled.hits_with_proper_payload{*}.as_count() > 0"
+  /// $monitor_query = "sum(last_1d):avg:flutter_${{variant}}_traces_bundle_with_rum_disabled.hits_with_proper_payload{*}.as_count() > 0"
   /// $monitor_threshold = 0
   /// ```
   testWidgets('traces config - bundle with rum disabled', (tester) async {

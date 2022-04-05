@@ -55,7 +55,7 @@ class DatadogRumPlugin(
         GlobalRum.registerIfAbsent(rum!!)
     }
 
-    @Suppress("LongMethod", "ComplexMethod")
+    @Suppress("LongMethod", "ComplexMethod", "ComplexCondition")
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         try {
             when (call.method) {
@@ -127,12 +127,12 @@ class DatadogRumPlugin(
                 "stopResourceLoadingWithError" -> {
                     val key = call.argument<String>(PARAM_KEY)
                     val message = call.argument<String>(PARAM_MESSAGE)
+                    val errorType = call.argument<String>(PARAM_TYPE)
                     val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                    if (key != null && message != null && attributes != null) {
-                        val throwable = Throwable()
+                    if (key != null && message != null && errorType != null && attributes != null) {
                         rum?.stopResourceWithError(
                             key, null, message, RumErrorSource.NETWORK,
-                            throwable, attributes
+                            "", errorType, attributes
                         )
                         result.success(null)
                     } else {

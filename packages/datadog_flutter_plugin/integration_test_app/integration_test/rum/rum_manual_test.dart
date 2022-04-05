@@ -103,6 +103,7 @@ void main() {
     expect(view1.errorEvents.length, 1);
     expect(view1.errorEvents[0].resourceUrl, 'https://fake_url/resource/2');
     expect(view1.errorEvents[0].message, 'Status code 400');
+    expect(view1.errorEvents[0].errorType, 'ErrorLoading');
     expect(view1.errorEvents[0].source, 'network');
     expect(view1.errorEvents[0].context[contextKey], expectedContextValue);
     expect(view1, becameInactive);
@@ -125,7 +126,6 @@ void main() {
     // TODO: Figure out why occasionally these have really high values
     // expect(view1.actionEvents[0].loadingTime,
     //     lessThan(3 * 1000 * 1000 * 1000)); // 3s
-    //     14,836,966,000
     expect(view2.actionEvents[0].context[contextKey], expectedContextValue);
     expect(view2.actionEvents[1].actionName, 'Next Screen');
     expect(view2.actionEvents[1].context[contextKey], expectedContextValue);

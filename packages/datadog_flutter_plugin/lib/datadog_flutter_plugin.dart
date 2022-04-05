@@ -3,7 +3,6 @@
 // Copyright 2016-Present Datadog, Inc.
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -11,19 +10,27 @@ import 'package:meta/meta.dart';
 
 import 'src/attributes.dart';
 import 'src/datadog_configuration.dart';
+import 'src/datadog_plugin.dart';
 import 'src/datadog_sdk_platform_interface.dart';
-import 'src/datadog_tracking_http_client.dart';
 import 'src/helpers.dart';
 import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
+import 'src/logs/ddlogs_platform_interface.dart';
 import 'src/rum/ddrum.dart';
 import 'src/traces/ddtraces.dart';
-import 'src/version.dart' show ddSdkVersion;
+import 'src/version.dart' show ddPackageVersion;
 
 export 'src/attributes.dart' show DatadogConfigKey;
 export 'src/datadog_configuration.dart';
+export 'src/datadog_plugin.dart';
 export 'src/rum/ddrum.dart'
-    show RumHttpMethod, RumUserActionType, RumErrorSource, RumResourceType;
+    show
+        RumHttpMethod,
+        RumUserActionType,
+        RumErrorSource,
+        RumResourceType,
+        rumMethodFromMethodString,
+        resourceTypeFromContentType;
 export 'src/rum/navigation_observer.dart'
     show
         DatadogNavigationObserver,
@@ -65,6 +72,8 @@ class DatadogSdk {
   List<String> _firstPartyHosts = [];
   RegExp? _firstPartyRegex;
 
+  final Map<Type, DatadogPlugin> _plugins = {};
+
   /// A list of first party hosts for tracing. Note that this is an unmodifiable
   /// list. If you need to add a host, call the setter for [firstPartyHosts]
   List<String> get firstPartyHosts => List.unmodifiable(_firstPartyHosts);
@@ -80,7 +89,7 @@ class DatadogSdk {
   }
 
   /// The version of this SDK.
-  String get version => ddSdkVersion;
+  String get version => ddPackageVersion;
 
   /// Logger used internally by Datadog to report errors.
   @internal
@@ -94,6 +103,10 @@ class DatadogSdk {
     internalLogger.sdkVerbosity = value;
     unawaited(_platform.setSdkVerbosity(value));
   }
+
+  /// Get an instance of a DatadogPlugin that was registered with
+  /// [DdSdkConfiguration.addPlugin]
+  T? getPlugin<T>() => _plugins[T.runtimeType] as T?;
 
   /// This function is not part of the public interface for Datadog, and may not
   /// be available in all targets. Used for integration and E2E testing purposes only.
@@ -135,21 +148,14 @@ class DatadogSdk {
   /// Initialize the DatadogSdk with the provided [configuration].
   Future<void> initialize(DdSdkConfiguration configuration) async {
     configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
-    configuration.additionalConfig[DatadogConfigKey.version] = ddSdkVersion;
-    // Mobile SDKs expect this in the additional config so that's where it's going
-    configuration.additionalConfig[DatadogConfigKey.serviceName] =
-        configuration.serviceName;
+    configuration.additionalConfig[DatadogConfigKey.version] = version;
 
     firstPartyHosts = configuration.firstPartyHosts;
 
     await _platform.initialize(configuration, logCallback: _platformLog);
 
-    if (configuration.trackHttpClient) {
-      HttpOverrides.global = DatadogTrackingHttpOverrides(DatadogSdk.instance);
-    }
-
     if (configuration.loggingConfiguration != null) {
-      _logs = DdLogs(internalLogger);
+      _logs = createLogger(configuration.loggingConfiguration!);
     }
     if (configuration.tracingConfiguration != null) {
       _traces = DdTraces(internalLogger);
@@ -157,6 +163,29 @@ class DatadogSdk {
     if (configuration.rumConfiguration != null) {
       _rum = DdRum(internalLogger);
     }
+
+    for (final pluginConfig in configuration.additionalPlugins) {
+      var plugin = pluginConfig.create(this);
+      if (_plugins.containsKey(plugin.runtimeType)) {
+        internalLogger.error(
+            'Attempting to setup two plugins of the same type: ${plugin.runtimeType}. The second plugin will be ignored.');
+      } else {
+        plugin.initialize();
+        _plugins[plugin.runtimeType] = plugin;
+      }
+    }
+  }
+
+  /// Create a new logger.
+  ///
+  /// This can be used in addition to or instead of the default logger at [logs]
+  DdLogs createLogger(LoggingConfiguration configuration) {
+    final logger = DdLogs(internalLogger);
+    wrap('createLogger', internalLogger, () {
+      return DdLogsPlatform.instance
+          .createLogger(logger.loggerHandle, configuration);
+    });
+    return logger;
   }
 
   /// Sets current user information. User information will be added traces and
@@ -167,7 +196,7 @@ class DatadogSdk {
     String? email,
     Map<String, dynamic> extraInfo = const {},
   }) {
-    return wrap('setUserInfo', internalLogger, () {
+    wrap('setUserInfo', internalLogger, () {
       return _platform.setUserInfo(id, name, email, extraInfo);
     });
   }

@@ -149,15 +149,15 @@ class DdSpan {
     });
   }
 
-  void setErrorInfo(String kind, String message, StackTrace? stackTrace) {
+  void setErrorInfo(String kind, String message, [StackTrace? stackTrace]) {
     if (_handle <= 0 || _logger == null) {
       _logger?.warn(closedSpanWarning('setErrorInfo'));
       return;
     }
-    stackTrace ??= StackTrace.current;
 
     wrap('span.setErrorInfo', _logger!, () {
-      return _platform.spanSetError(this, kind, message, stackTrace.toString());
+      return _platform.spanSetError(
+          this, kind, message, stackTrace?.toString());
     });
   }
 
@@ -185,6 +185,22 @@ class DdSpan {
     wrap('span.finish', _logger!, () async {
       final resolvedTime = finishTime ?? _timeProvider();
       await _platform.spanFinish(currentHandle, resolvedTime);
+    });
+  }
+
+  /// Cancel a span without sending it to Datadog. This will also release any
+  /// native resources associated with the span.
+  void cancel() {
+    if (_handle <= 0 || _logger == null) {
+      _logger?.warn(closedSpanWarning('cancel'));
+      return;
+    }
+
+    final currentHandle = _handle;
+    _handle = -1;
+
+    wrap('span.cancel', _logger!, () async {
+      await _platform.spanCancel(currentHandle);
     });
   }
 }

@@ -17,6 +17,13 @@ class _LoggingScenarioState extends State<LoggingScenario> {
   void initState() {
     super.initState();
 
+    // Create a logger that will not send to Datadog
+    var silentLogger = DatadogSdk.instance.createLogger(LoggingConfiguration(
+      sendLogsToDatadog: false,
+      loggerName: 'silent_logger',
+    ));
+    silentLogger.info('Interesting logging information');
+
     var logger = DatadogSdk.instance.logs;
     if (logger != null) {
       logger.addTag('tag1', 'tag-value');
@@ -37,6 +44,12 @@ class _LoggingScenarioState extends State<LoggingScenario> {
       logger.removeTagWithKey('tag1');
       logger.error('error message', {'attribute': 'value'});
     }
+
+    final config = LoggingConfiguration(loggerName: 'second_logger');
+    final secondLogger = DatadogSdk.instance.createLogger(config);
+
+    secondLogger.addAttribute('second-logger-attribute', 'second-value');
+    secondLogger.info('message on second logger');
   }
 
   @override

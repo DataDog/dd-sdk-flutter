@@ -112,7 +112,7 @@ class _RumManualInstrumentationScenarioState
     await Future.delayed(const Duration(milliseconds: 100));
     rum?.stopResourceLoading(simulatedResourceKey1, 200, RumResourceType.image);
     rum?.stopResourceLoadingWithErrorInfo(
-        simulatedResourceKey2, 'Status code 400');
+        simulatedResourceKey2, 'Status code 400', 'ErrorLoading');
 
     setState(() {
       _contentReady = true;
