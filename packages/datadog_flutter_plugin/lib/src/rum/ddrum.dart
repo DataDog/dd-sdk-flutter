@@ -206,11 +206,11 @@ class DdRum {
   /// Notifies that the Resource identified by [key] stopped being loaded with
   /// the supplied [message]. You can optionally supply custom [attributes] to
   /// attach to this Resource.
-  void stopResourceLoadingWithErrorInfo(String key, String message,
+  void stopResourceLoadingWithErrorInfo(String key, String message, String type,
       [Map<String, dynamic> attributes = const {}]) {
     wrap('rum.stopResourceLoadingWithErrorInfo', logger, () {
       return _platform.stopResourceLoadingWithErrorInfo(
-          key, message, attributes);
+          key, message, type, attributes);
     });
   }
 

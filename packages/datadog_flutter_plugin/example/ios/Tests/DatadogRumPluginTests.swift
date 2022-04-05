@@ -119,7 +119,7 @@ class DatadogRumPluginTests: XCTestCase {
       "key": .string, "kind": .string, "attributes": .map
     ]),
     Contract(methodName: "stopResourceLoadingWithError", requiredParameters: [
-      "key": .string, "message": .string, "attributes": .map
+      "key": .string, "message": .string, "type": .string, "attributes": .map
     ]),
     Contract(methodName: "addError", requiredParameters: [
       "message": .string, "source": .string, "attributes": .map
@@ -269,6 +269,7 @@ class DatadogRumPluginTests: XCTestCase {
     let call = FlutterMethodCall(methodName: "stopResourceLoadingWithError", arguments: [
       "key": "resource_key",
       "message": "error message",
+      "type": "error kind",
       "attributes": [
         "attribute_key": "attribute_value"
       ]
@@ -282,7 +283,7 @@ class DatadogRumPluginTests: XCTestCase {
     XCTAssertEqual(mock.callLog, [
       .stopResourceLoadingWithErrorMessage(key: "resource_key",
                                            errorMessage: "error message",
-                                           type: nil,
+                                           type: "error kind",
                                            response: nil,
                                            attributes: [
         "attribute_key": "attribute_value"

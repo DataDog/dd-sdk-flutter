@@ -144,7 +144,8 @@ class DatadogTrackingHttpClient implements HttpClient {
     } catch (e) {
       if (rumKey != null) {
         try {
-          rum?.stopResourceLoadingWithErrorInfo(rumKey, e.toString());
+          rum?.stopResourceLoadingWithErrorInfo(
+              rumKey, e.toString(), e.runtimeType.toString());
         } catch (innerE) {
           datadogSdk.internalLogger.sendToDatadog(
               '$DatadogTrackingHttpClient encountered an error while attempting '
@@ -319,7 +320,8 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
   void _onStreamError(Object e, StackTrace? st) {
     try {
       if (rumKey != null) {
-        datadogSdk.rum?.stopResourceLoadingWithErrorInfo(rumKey!, e.toString());
+        datadogSdk.rum?.stopResourceLoadingWithErrorInfo(
+            rumKey!, e.toString(), e.runtimeType.toString());
       }
       tracingContext?.setErrorInfo(
         e.runtimeType.toString(),
@@ -471,8 +473,8 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
 
       if (rumKey != null) {
         if (lastError != null) {
-          datadogSdk.rum
-              ?.stopResourceLoadingWithErrorInfo(rumKey!, lastError.toString());
+          datadogSdk.rum?.stopResourceLoadingWithErrorInfo(
+              rumKey!, lastError.toString(), lastError.runtimeType.toString());
         } else {
           var resourceType = resourceTypeFromContentType(headers.contentType);
           var size = innerResponse.contentLength > 0
