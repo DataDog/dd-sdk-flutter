@@ -7,9 +7,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import '../common.dart';
-import '../tools/decoder_helpers.dart';
+import 'common.dart';
 import 'log_decoder.dart';
+import 'tools/decoder_helpers.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -48,7 +48,7 @@ void main() {
       expect(logs[0].tags, contains('tag1:tag-value'));
       expect(logs[0].tags, contains('my-tag'));
     }
-	expect(logs[0].log['logger-attribute1'], 'string value');
+    expect(logs[0].log['logger-attribute1'], 'string value');
     expect(logs[0].log['logger-attribute2'], 1000);
     expect(logs[0].log['stringAttribute'], 'string');
 
@@ -58,7 +58,7 @@ void main() {
       expect(logs[1].tags, isNot(contains('my-tag')));
       expect(logs[1].tags, contains('tag1:tag-value'));
     }
-	expect(logs[0].log['logger-attribute1'], 'string value');
+    expect(logs[0].log['logger-attribute1'], 'string value');
     expect(logs[0].log['logger-attribute2'], 1000);
     expect(logs[1].log['nestedAttribute'], containsPair('internal', 'test'));
     expect(logs[1].log['nestedAttribute'], containsPair('isValid', true));
@@ -69,7 +69,7 @@ void main() {
       expect(logs[2].tags, isNot(contains('my-tag')));
       expect(logs[2].tags, contains('tag1:tag-value'));
     }
-	expect(logs[0].log['logger-attribute1'], 'string value');
+    expect(logs[0].log['logger-attribute1'], 'string value');
     expect(logs[0].log['logger-attribute2'], 1000);
     expect(logs[2].log['doubleAttribute'], 10.34);
 
@@ -79,7 +79,7 @@ void main() {
       expect(logs[3].tags, isNot(contains('my-tag')));
       expect(logs[3].tags, isNot(contains('tag1:tag-value')));
     }
-	expect(logs[0].log['logger-attribute1'], 'string value');
+    expect(logs[0].log['logger-attribute1'], 'string value');
     expect(logs[0].log['logger-attribute2'], 1000);
     expect(logs[3].log['attribute'], 'value');
 

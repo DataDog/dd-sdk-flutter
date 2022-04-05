@@ -11,68 +11,92 @@ import '../web_helpers.dart';
 import 'ddlogs_platform_interface.dart';
 
 class DdLogsWeb extends DdLogsPlatform {
+  final Map<String, Logger> _activeLoggers = {};
+
   static void initLogs(DdSdkConfiguration configuration) {
     String? version = configuration.additionalConfig[DatadogConfigKey.version];
-
-    // TODO different site endpoints
-    String site = 'datadoghq.com';
 
     init(_InternalOptions(
       clientToken: configuration.clientToken,
       env: configuration.env,
-      site: site,
+      site: siteStringForSite(configuration.site),
       proxyUrl: configuration.customEndpoint,
       service: configuration.serviceName,
       version: version,
     ));
+  }
 
-    if (configuration.loggingConfiguration!.printLogsToConsole) {
-      logger.setHandler(['http', 'console']);
+  @override
+  Future<void> createLogger(
+      String loggerHandle, LoggingConfiguration config) async {
+    var loggerHandlers = [
+      if (config.sendLogsToDatadog) 'http',
+      if (config.printLogsToConsole) 'console'
+    ];
+    var logger = _createLogger(
+      config.loggerName ?? 'default',
+      _JsLoggerConfiguration(),
+    );
+    if (logger != null) {
+      if (loggerHandlers.isNotEmpty) {
+        logger.setHandler(loggerHandlers);
+      } else {
+        logger.setHandler(['silent']);
+      }
+
+      _activeLoggers[loggerHandle] = logger;
     }
   }
 
   @override
-  Future<void> addAttribute(String key, Object value) async {
-    logger.addContext(key, valueToJs(value, 'value'));
+  Future<void> addAttribute(
+      String loggerHandle, String key, Object value) async {
+    final logger = _activeLoggers[loggerHandle];
+    logger?.addContext(key, valueToJs(value, 'value'));
   }
 
   @override
-  Future<void> addTag(String tag, [String? value]) async {}
+  Future<void> addTag(String loggerHandle, String tag, [String? value]) async {}
 
   @override
-  Future<void> debug(String message,
+  Future<void> debug(String loggerHandle, String message,
       [Map<String, Object?> context = const {}]) async {
-    logger.debug(message, valueToJs(context, 'context'));
+    final logger = _activeLoggers[loggerHandle];
+    logger?.debug(message, valueToJs(context, 'context'));
   }
 
   @override
-  Future<void> error(String message,
+  Future<void> error(String loggerHandle, String message,
       [Map<String, Object?> context = const {}]) async {
-    logger.error(message, valueToJs(context, 'context'));
+    final logger = _activeLoggers[loggerHandle];
+    logger?.error(message, valueToJs(context, 'context'));
   }
 
   @override
-  Future<void> info(String message,
+  Future<void> info(String loggerHandle, String message,
       [Map<String, Object?> context = const {}]) async {
-    logger.info(message, valueToJs(context, 'context'));
+    final logger = _activeLoggers[loggerHandle];
+    logger?.info(message, valueToJs(context, 'context'));
   }
 
   @override
-  Future<void> removeAttribute(String key) async {
-    logger.removeContext(key);
-  }
-
-  @override
-  Future<void> removeTag(String tag) async {}
-
-  @override
-  Future<void> removeTagWithKey(String key) async {}
-
-  @override
-  Future<void> warn(String message,
+  Future<void> warn(String loggerHandle, String message,
       [Map<String, Object?> context = const {}]) async {
-    logger.warn(message, valueToJs(context, 'context'));
+    final logger = _activeLoggers[loggerHandle];
+    logger?.warn(message, valueToJs(context, 'context'));
   }
+
+  @override
+  Future<void> removeAttribute(String loggerHandle, String key) async {
+    final logger = _activeLoggers[loggerHandle];
+    logger?.removeContext(key);
+  }
+
+  @override
+  Future<void> removeTag(String loggerHandle, String tag) async {}
+
+  @override
+  Future<void> removeTagWithKey(String loggerHandle, String key) async {}
 }
 
 @JS()
@@ -95,6 +119,20 @@ class _InternalOptions {
   });
 }
 
+@JS()
+@anonymous
+class _JsLoggerConfiguration {
+  external String? get level;
+  external String? get handler;
+  external dynamic get context;
+
+  external factory _JsLoggerConfiguration({
+    String? level,
+    String? handler,
+    dynamic context,
+  });
+}
+
 @JS('Logger')
 class Logger {
   external void debug(String message, dynamic messageContext);
@@ -108,8 +146,12 @@ class Logger {
   external void setHandler(List<String> handler);
 }
 
-@JS('logger')
-external Logger logger;
-
 @JS()
 external void init(_InternalOptions options);
+
+@JS()
+external Logger? getLogger(String name);
+
+@JS('createLogger')
+external Logger? _createLogger(
+    String name, _JsLoggerConfiguration? configuration);
