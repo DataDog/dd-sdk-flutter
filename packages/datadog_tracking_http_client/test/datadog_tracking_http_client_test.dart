@@ -6,10 +6,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_flutter_plugin/src/attributes.dart';
-import 'package:datadog_flutter_plugin/src/datadog_tracking_http_client.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum.dart';
 import 'package:datadog_flutter_plugin/src/traces/ddtraces.dart';
+import 'package:datadog_tracking_http_client/src/tracing_headers.dart';
+import 'package:datadog_tracking_http_client/src/tracking_http_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 

@@ -17,6 +17,8 @@ dependencies:
 
   datadog_flutter_plugin:
     path: ../
+  datadog_tracking_http_client:
+    path: ../../datadog_tracking_http_client
 
 dev_dependencies:
   flutter_test:

@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import '../datadog_flutter_plugin.dart';
+
 /// Defines the Datadog SDK policy when batching data together before uploading
 /// it to Datadog servers. Smaller batches mean smaller but more network
 /// requests, whereas larger batches mean fewer but larger network requests.
@@ -224,28 +226,6 @@ class DdSdkConfiguration {
   /// Set a custom endpoint to send information to.
   String? customEndpoint;
 
-  /// Configures network requests monitoring for Tracing and RUM features.
-  ///
-  /// If set, the SDK will override [HttpClient] creation (via [HttpOverrides])
-  /// to provide its own implementation. For more information, check the
-  /// documentation on [DatadogTrackingHttpClient]
-  ///
-  /// If the RUM feature is enabled, the SDK will send RUM Resources for all
-  /// intercepted requests.
-  ///
-  /// If the Tracing feature is enabled, the SDK will send tracing Span for each
-  /// 1st-party request. It will also add extra HTTP headers to further
-  /// propagate the trace - it means that if your backend is instrumented with
-  /// Datadog agent you will see the full trace (e.g.: client → server →
-  /// database) in your dashboard, thanks to Datadog Distributed Tracing.
-  ///
-  /// If both RUM and Tracing features are enabled, the SDK will be sending RUM
-  /// Resources for 1st- and 3rd-party requests and tracing Spans for
-  /// 1st-parties.
-  ///
-  /// See also [firstPartyHosts]
-  bool trackHttpClient;
-
   /// A list of first party hosts, used in conjunction with [trackHttpClient]
   ///
   /// Each request will be classified as 1st- or 3rd-party based on the host
@@ -278,6 +258,10 @@ class DdSdkConfiguration {
   /// Any additional configuration to be passed to the native SDKs
   final Map<String, dynamic> additionalConfig = {};
 
+  /// Configurations for additional plugins that will be created after Datadog
+  /// is initialized.
+  final List<DatadogPluginConfiguration> additionalPlugins = [];
+
   DdSdkConfiguration({
     required this.clientToken,
     required this.env,
@@ -287,12 +271,14 @@ class DdSdkConfiguration {
     this.uploadFrequency,
     this.batchSize,
     this.customEndpoint,
-    this.trackHttpClient = false,
     this.firstPartyHosts = const [],
     this.loggingConfiguration,
     this.tracingConfiguration,
     this.rumConfiguration,
   });
+
+  void addPlugin(DatadogPluginConfiguration pluginConfiguration) =>
+      additionalPlugins.add(pluginConfiguration);
 
   Map<String, dynamic> encode() {
     return {
