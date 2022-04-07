@@ -9,6 +9,8 @@
   `LoggingConfiguration.loggerName`
 * Add support for configuring whether loggers send data to Datadog:
   `LoggingConfiguration.sendLogsToDatadog`
+* 💥 Breaking! - Removed `DdSdkConfiguration.trackHttpClient`. This has been
+  replaced with a standalone `datadog_tracking_http_client` package.
 
 ## 1.0.0-alpha.1
 

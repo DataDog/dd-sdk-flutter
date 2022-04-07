@@ -6,11 +6,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:uuid/uuid.dart';
 
-import '../datadog_flutter_plugin.dart';
-import 'attributes.dart';
-import 'rum/ddrum.dart';
+import 'tracing_headers.dart';
 
 /// Overrides to supply the [DatadogTrackingHttpClient] instead of the default
 /// HttpClient

@@ -5,6 +5,7 @@
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -51,7 +52,6 @@ Future<void> main() async {
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,
-    trackHttpClient: true,
     firstPartyHosts: firstPartyHosts,
     customEndpoint: customEndpoint,
     loggingConfiguration: LoggingConfiguration(
@@ -64,7 +64,7 @@ Future<void> main() async {
     rumConfiguration: applicationId != null
         ? RumConfiguration(applicationId: applicationId)
         : null,
-  );
+  )..enableHttpTracking();
 
   await DatadogSdk.runApp(configuration, () async {
     runApp(const DatadogAutoIntegrationTestApp());

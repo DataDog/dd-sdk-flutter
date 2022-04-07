@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-import '../datadog_tracking_http_client_test.dart';
+class FakeDdSpan extends Fake implements DdSpan {}
 
 class MockTracesPlatform extends Mock
     with MockPlatformInterfaceMixin
