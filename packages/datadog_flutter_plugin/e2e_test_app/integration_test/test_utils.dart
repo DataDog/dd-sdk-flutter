@@ -27,6 +27,7 @@ Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
   final configuration = DdSdkConfiguration(
       clientToken: clientToken,
       env: env,
+      site: DatadogSite.us1,
       trackingConsent: TrackingConsent.granted)
     ..loggingConfiguration = LoggingConfiguration()
     ..tracingConfiguration = TracingConfiguration()

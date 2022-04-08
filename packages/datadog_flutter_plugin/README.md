@@ -51,6 +51,7 @@ final trackingConsent = ...
 final configuration = DdSdkConfiguration(
   clientToken: '<CLIENT_TOKEN>',
   env: '<ENV_NAME>',
+  site: DatadogSite.us1,
   trackingConsent: trackingConsent,
   nativeCrashReportEnabled: true,
   loggingConfiguration: LoggingConfiguration(
