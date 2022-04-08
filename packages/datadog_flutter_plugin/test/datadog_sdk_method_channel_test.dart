@@ -32,6 +32,7 @@ void main() {
       clientToken: 'fakeClientToken',
       env: 'environment',
       trackingConsent: TrackingConsent.granted,
+      site: DatadogSite.us1,
     );
     await ddSdkPlatform.initialize(configuration);
 

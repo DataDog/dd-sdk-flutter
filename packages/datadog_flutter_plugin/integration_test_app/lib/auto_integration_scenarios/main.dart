@@ -48,6 +48,7 @@ Future<void> main() async {
   final configuration = DdSdkConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
+    site: DatadogSite.us1,
     trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,

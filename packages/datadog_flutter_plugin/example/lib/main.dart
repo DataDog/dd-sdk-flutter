@@ -21,6 +21,7 @@ void main() async {
     final configuration = DdSdkConfiguration(
       clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
       env: dotenv.get('DD_ENV', fallback: ''),
+      site: DatadogSite.us1,
       trackingConsent: TrackingConsent.granted,
       nativeCrashReportEnabled: true,
       loggingConfiguration: LoggingConfiguration(

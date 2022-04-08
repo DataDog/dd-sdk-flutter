@@ -11,6 +11,8 @@
   `LoggingConfiguration.sendLogsToDatadog`
 * 💥 Breaking! - Removed `DdSdkConfiguration.trackHttpClient`. This has been
   replaced with a standalone `datadog_tracking_http_client` package.
+* 💥 Breaking! - `DdSdkConfiguration.site` is now a required parameter and no
+  longer defaults to `DatadogSite.us1`
 
 ## 1.0.0-alpha.1
 

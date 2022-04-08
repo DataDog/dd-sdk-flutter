@@ -50,6 +50,7 @@ void main() {
     final configuration = DdSdkConfiguration(
       clientToken: 'clientToken',
       env: 'env',
+      site: DatadogSite.us1,
       trackingConsent: TrackingConsent.pending,
     );
     await datadogSdk.initialize(configuration);
@@ -62,13 +63,14 @@ void main() {
     final configuration = DdSdkConfiguration(
       clientToken: 'fake-client-token',
       env: 'prod',
+      site: DatadogSite.us1,
       trackingConsent: TrackingConsent.pending,
     );
     final encoded = configuration.encode();
     expect(encoded, {
       'clientToken': 'fake-client-token',
       'env': 'prod',
-      'site': null,
+      'site': 'DatadogSite.us1',
       'nativeCrashReportEnabled': false,
       'trackingConsent': 'TrackingConsent.pending',
       'customEndpoint': null,
@@ -84,6 +86,7 @@ void main() {
     final configuration = DdSdkConfiguration(
       clientToken: 'fakeClientToken',
       env: 'environment',
+      site: DatadogSite.us1,
       trackingConsent: TrackingConsent.granted,
     )
       ..batchSize = BatchSize.small
@@ -100,6 +103,7 @@ void main() {
     final configuration = DdSdkConfiguration(
       clientToken: 'fakeClientToken',
       env: 'fake-env',
+      site: DatadogSite.us1,
       trackingConsent: TrackingConsent.notGranted,
       loggingConfiguration: LoggingConfiguration(),
       tracingConfiguration: TracingConfiguration(),
@@ -123,6 +127,7 @@ void main() {
     final configuration = DdSdkConfiguration(
       clientToken: 'clientToken',
       env: 'env',
+      site: DatadogSite.us1,
       trackingConsent: TrackingConsent.pending,
       loggingConfiguration: loggingConfiguration,
     );
@@ -141,6 +146,7 @@ void main() {
     final configuration = DdSdkConfiguration(
       clientToken: 'clientToken',
       env: 'env',
+      site: DatadogSite.us1,
       trackingConsent: TrackingConsent.pending,
       firstPartyHosts: firstPartyHosts,
     );
@@ -153,6 +159,7 @@ void main() {
     final configuration = DdSdkConfiguration(
       clientToken: 'clientToken',
       env: 'env',
+      site: DatadogSite.us1,
       trackingConsent: TrackingConsent.pending,
     );
     await datadogSdk.initialize(configuration);
@@ -167,6 +174,7 @@ void main() {
     final configuration = DdSdkConfiguration(
       clientToken: 'clientToken',
       env: 'env',
+      site: DatadogSite.us1,
       trackingConsent: TrackingConsent.pending,
       firstPartyHosts: firstPartyHosts,
     );
@@ -183,6 +191,7 @@ void main() {
     final configuration = DdSdkConfiguration(
       clientToken: 'clientToken',
       env: 'env',
+      site: DatadogSite.us1,
       trackingConsent: TrackingConsent.pending,
       firstPartyHosts: firstPartyHosts,
     );
@@ -199,6 +208,7 @@ void main() {
     final configuration = DdSdkConfiguration(
       clientToken: 'clientToken',
       env: 'env',
+      site: DatadogSite.us1,
       trackingConsent: TrackingConsent.pending,
       firstPartyHosts: firstPartyHosts,
     );
