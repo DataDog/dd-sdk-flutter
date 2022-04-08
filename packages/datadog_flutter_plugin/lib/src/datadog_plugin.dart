@@ -12,9 +12,9 @@ abstract class DatadogPluginConfiguration {
 
 abstract class DatadogPlugin {
   @protected
-  final DatadogSdk _instance;
+  final DatadogSdk instance;
 
-  DatadogPlugin(this._instance);
+  DatadogPlugin(this.instance);
 
   void initialize();
 }

@@ -120,6 +120,18 @@ This only works if you are using named routes or if you have supplied a name to 
 
 Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction with the `DatadogNavigationObserverProvider` property to start and stop you RUM views automatically. With `DatadogRouteAwareMixin`, move any logic from `initState` to `didPush`. 
 
+### Automatic Resource Tracking
+
+You can enable automatic tracking of resources and http calls from your RUM views using the [datadog_tracking_http_client](https://pub.dev/datadog_tracking_http_client) package. Just add the package to your `pubspec.yaml`, and add the following to your initialization:
+
+```dart
+final configuration = DdSdkConfiguration(
+  // configuration
+)..enableHttpTracking()
+```
+
+If you want to enable Datadog distributed tracing, you must also set the `DdSdkConfiguration.firstPartyHosts` configuration option.
+
 ## Data Storage
 
 ### Android
