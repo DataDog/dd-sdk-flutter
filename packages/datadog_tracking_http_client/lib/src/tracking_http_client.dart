@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+// ignore_for_file: invalid_use_of_internal_member
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
