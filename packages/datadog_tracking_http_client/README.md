@@ -12,7 +12,7 @@ To utilize this plugin, simply enable it during configuration of your SDK:
 ```dart
 import 'package:datadog_tracking_http_client/datadog_tracing_http_client.dart'
 
-final DdSdkConfiguration(
+final configuration = DdSdkConfiguration(
   // configuration
 )..enableHttpTracking()
 ```
