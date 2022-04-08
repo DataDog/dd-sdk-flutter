@@ -20,6 +20,6 @@ class _DdHttpTrackingPlugin extends DatadogPlugin {
 
   @override
   void initialize() {
-    HttpOverrides.global = DatadogTrackingHttpOverrides(DatadogSdk.instance);
+    HttpOverrides.global = DatadogTrackingHttpOverrides(instance);
   }
 }
