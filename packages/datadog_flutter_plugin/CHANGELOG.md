@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.0-alpha.2
+
 * Cancel spans on DatadogTrackingHttpClient when RUM is enabled (prevent spans
   from leaking native resources)
 * Remove native view tracking (Activities and Fragments) from Android by default
