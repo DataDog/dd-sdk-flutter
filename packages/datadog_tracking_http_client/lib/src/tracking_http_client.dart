@@ -147,6 +147,16 @@ class DatadogTrackingHttpClient implements HttpClient {
   }
 
   @override
+  set connectionFactory(
+          Future<ConnectionTask<Socket>> Function(
+                  Uri url, String? proxyHost, int? proxyPort)?
+              f) =>
+      innerClient.connectionFactory = f;
+
+  @override
+  set keyLog(Function(String line)? callback) => innerClient.keyLog = callback;
+
+  @override
   bool get autoUncompress => innerClient.autoUncompress;
   @override
   set autoUncompress(bool value) => innerClient.autoUncompress = value;
