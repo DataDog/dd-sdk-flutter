@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="dd_logo.png" width="200">
+    <img src="https://imgix.datadoghq.com/img/about/presskit/logo-v/dd_vertical_white.png" width="200">
 </p>
 
 # DataDog Flutter Plugin Packages
@@ -12,6 +12,7 @@ This is the monorepo for Datadog Flutter packages. To get started, check the
 | Package | Pub | Repo |
 | :-----: | :-: | :--: |
 | datadog_flutter_plugin | [![Pub](https://img.shields.io/pub/v/datadog_flutter_plugin.svg)](https://pub.dev/packages/datadog_flutter_plugin) | [packages/datadog_flutter_plugin](packages/datadog_flutter_plugin/) | 
+| datadog_tracking_http_client | [![Pub](https://img.shields.io/pub/v/datadog_tracking_http_client.svg)](https://pub.dev/packages/datadog_tracking_http_client) | [packages/datadog_tracking_http_client](packages/datadog_tracking_http_client/) | 
 
 # Contributing
 

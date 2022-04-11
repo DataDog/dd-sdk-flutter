@@ -26,119 +26,150 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 
-    lateinit var log: Logger
-        private set
+    private val loggerRegistry: MutableMap<String, Logger> = mutableMapOf()
 
     fun setup(
         flutterPluginBinding: FlutterPlugin.FlutterPluginBinding,
-        configuration: DatadogFlutterConfiguration.LoggingConfiguration
     ) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter.logs")
         channel.setMethodCallHandler(this)
 
         binding = flutterPluginBinding
+    }
 
-        log = Logger.Builder()
-            .setDatadogLogsEnabled(true)
+    internal fun addLogger(loggerHandle: String, logger: Logger) {
+        loggerRegistry[loggerHandle] = logger
+    }
+
+    fun getLogger(loggerHandle: String): Logger? {
+        return loggerRegistry[loggerHandle]
+    }
+
+    override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        val loggerHandle = call.argument<String>("loggerHandle")
+        if (loggerHandle == null) {
+            result.missingParameter(call.method)
+            return
+        }
+
+        if (call.method == "createLogger") {
+            val encodedConfig = call.argument<Map<String, Any?>>("configuration")
+            if (encodedConfig != null) {
+                createLogger(loggerHandle, LoggingConfiguration(encodedConfig))
+                result.success(null)
+            } else {
+                result.invalidOperation("Bad logging configuration creating a logger")
+            }
+            return
+        }
+
+        getLogger(loggerHandle)?.let { logger ->
+            try {
+                callLoggingMethod(logger, call, result)
+            } catch (e: ClassCastException) {
+                result.error(
+                    DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(),
+                    mapOf(
+                        "methodName" to call.method
+                    )
+                )
+            }
+        }
+    }
+
+    @Suppress("LongMethod", "ComplexMethod", "NestedBlockDepth")
+    private fun callLoggingMethod(logger: Logger, call: MethodCall, result: MethodChannel.Result) {
+        when (call.method) {
+            "debug" -> {
+                internalLog(call, result) { message, context ->
+                    logger.d(message, attributes = context)
+                }
+            }
+            "info" -> {
+                internalLog(call, result) { message, context ->
+                    logger.i(message, attributes = context)
+                }
+            }
+            "warn" -> {
+                internalLog(call, result) { message, context ->
+                    logger.w(message, attributes = context)
+                }
+            }
+            "error" -> {
+                internalLog(call, result) { message, context ->
+                    logger.e(message, attributes = context)
+                }
+            }
+            "addAttribute" -> {
+                val key = call.argument<String>(LOG_KEY)
+                val value = call.argument<Any>(LOG_VALUE)
+                if (key != null && value != null) {
+                    addAttributeInternal(logger, key, value)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
+                }
+            }
+            "addTag" -> {
+                val tag = call.argument<String>(LOG_TAG)
+                if (tag != null) {
+                    val value = call.argument<String>(LOG_VALUE)
+                    if (value != null) {
+                        logger.addTag(tag, value)
+                    } else {
+                        logger.addTag(tag)
+                    }
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
+                }
+            }
+            "removeAttribute" -> {
+                val key = call.argument<String>(LOG_KEY)
+                if (key != null) {
+                    logger.removeAttribute(key)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
+                }
+            }
+            "removeTag" -> {
+                val tag = call.argument<String>(LOG_TAG)
+                if (tag != null) {
+                    logger.removeTag(tag)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
+                }
+            }
+            "removeTagWithKey" -> {
+                val key = call.argument<String>(LOG_KEY)
+                if (key != null) {
+                    logger.removeTagsWithKey(key)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
+                }
+            }
+            else -> {
+                result.notImplemented()
+            }
+        }
+    }
+
+    private fun createLogger(loggerHandle: String, configuration: LoggingConfiguration) {
+        val logBuilder = Logger.Builder()
+            .setDatadogLogsEnabled(configuration.sendLogsToDatadog)
             .setLogcatLogsEnabled(configuration.printLogsToConsole)
             .setNetworkInfoEnabled(configuration.sendNetworkInfo)
             .setBundleWithTraceEnabled(configuration.bundleWithTraces)
             .setBundleWithRumEnabled(configuration.bundleWithRum)
-            .setLoggerName("DdLogs")
-            .build()
-    }
 
-    internal fun setupForTests() {
-        log = Logger.Builder().build()
-    }
-
-    @Suppress("LongMethod", "ComplexMethod", "NestedBlockDepth")
-    override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        try {
-            when (call.method) {
-                "debug" -> {
-                    internalLog(call, result) { message, context ->
-                        log.d(message, attributes = context)
-                    }
-                }
-                "info" -> {
-                    internalLog(call, result) { message, context ->
-                        log.i(message, attributes = context)
-                    }
-                }
-                "warn" -> {
-                    internalLog(call, result) { message, context ->
-                        log.w(message, attributes = context)
-                    }
-                }
-                "error" -> {
-                    internalLog(call, result) { message, context ->
-                        log.e(message, attributes = context)
-                    }
-                }
-                "addAttribute" -> {
-                    val key = call.argument<String>(LOG_KEY)
-                    val value = call.argument<Any>(LOG_VALUE)
-                    if (key != null && value != null) {
-                        addAttributeInternal(key, value)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "addTag" -> {
-                    val tag = call.argument<String>(LOG_TAG)
-                    if (tag != null) {
-                        val value = call.argument<String>(LOG_VALUE)
-                        if (value != null) {
-                            log.addTag(tag, value)
-                        } else {
-                            log.addTag(tag)
-                        }
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "removeAttribute" -> {
-                    val key = call.argument<String>(LOG_KEY)
-                    if (key != null) {
-                        log.removeAttribute(key)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "removeTag" -> {
-                    val tag = call.argument<String>(LOG_TAG)
-                    if (tag != null) {
-                        log.removeTag(tag)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "removeTagWithKey" -> {
-                    val key = call.argument<String>(LOG_KEY)
-                    if (key != null) {
-                        log.removeTagsWithKey(key)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                else -> {
-                    result.notImplemented()
-                }
-            }
-        } catch (e: ClassCastException) {
-            result.error(
-                DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(),
-                mapOf(
-                    "methodName" to call.method
-                )
-            )
+        configuration.loggerName?.let {
+            logBuilder.setLoggerName(it)
         }
+        val logger = logBuilder.build()
+        loggerRegistry[loggerHandle] = logger
     }
 
     @Suppress("UNUSED_PARAMETER")
@@ -166,20 +197,20 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         }
     }
 
-    private fun addAttributeInternal(key: String, value: Any) {
+    private fun addAttributeInternal(logger: Logger, key: String, value: Any) {
         when (value) {
-            is Boolean -> log.addAttribute(key, value)
-            is Int -> log.addAttribute(key, value)
-            is Long -> log.addAttribute(key, value)
-            is String -> log.addAttribute(key, value)
-            is Double -> log.addAttribute(key, value)
+            is Boolean -> logger.addAttribute(key, value)
+            is Int -> logger.addAttribute(key, value)
+            is Long -> logger.addAttribute(key, value)
+            is String -> logger.addAttribute(key, value)
+            is Double -> logger.addAttribute(key, value)
             is List<*> -> {
                 val jsonList = JSONArray(value)
-                log.addAttribute(key, jsonList)
+                logger.addAttribute(key, jsonList)
             }
             is Map<*, *> -> {
                 val jsonObject = JSONObject(value)
-                log.addAttribute(key, jsonObject)
+                logger.addAttribute(key, jsonObject)
             }
         }
     }

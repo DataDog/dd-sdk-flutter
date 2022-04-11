@@ -7,6 +7,7 @@ workflows:
   primary:
     before_run:
     - setup
+    - check_dependencies
     - build
     - unit_test_ios
     - unit_test_android
@@ -44,24 +45,32 @@ workflows:
             # Sleep while the simulator warms a bit
             sleep 5
 
+  _pub_get:
+    steps:
+      - script:
+          title: Run pub get in all projects
+          inputs:
+          - content: |-
+              #!/usr/bin/env bash
+              set -e
+              cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin
+              flutter pub get
+              cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example
+              flutter pub get
+              cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app
+              flutter pub get
+              cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/e2e_test_app
+              flutter pub get
+              cd $BITRISE_SOURCE_DIR/tools/e2e_generator
+              dart pub get
+              cd $BITRISE_SOURCE_DIR/tools/releaser
+              dart pub get
+              cd $BITRISE_SOURCE_DIR/tools/third_party_scanner
+              dart pub get
+          - working_dir: "$BITRISE_SOURCE_DIR"
+
   build:
     steps:
-    - script:
-        title: Pub get in example and integration tests
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            set -e
-            cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example
-            flutter pub get
-            cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app
-            flutter pub get
-            cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/e2e_test_app
-            flutter pub get
-            cd $BITRISE_SOURCE_DIR/tools/e2e_generator
-            pub get
-        - working_dir: "$BITRISE_SOURCE_DIR"
-
     - flutter-analyze@0.3.1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/"
@@ -93,6 +102,8 @@ workflows:
     - deploy-to-bitrise-io: {}
 
   setup:
+    before_run:
+    - _pub_get
     steps:
     - script:
         title: Generate env files
@@ -159,3 +170,13 @@ workflows:
         - tests_path_pattern: "integration_test"
         - additional_params: "-d emulator"
     
+  check_dependencies:
+    steps:
+    - script:
+        title: Check dependencies
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            dart ./bin/third_party_scanner.dart
+        - working_dir: "$BITRISE_SOURCE_DIR/tools/third_party_scanner"

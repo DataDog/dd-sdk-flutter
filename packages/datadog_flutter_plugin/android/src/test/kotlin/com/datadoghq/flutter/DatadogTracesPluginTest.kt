@@ -45,14 +45,14 @@ class DatadogTracesPluginTest {
 
     private val contracts = listOf(
         Contract("startRootSpan", mapOf(
-            "spanHandle" to typeOf<Long>(),
-            "operationName" to typeOf<String>(),
-            "startTime" to typeOf<Long>()
+            "spanHandle" to ContractParameter.Type(SupportedContractType.LONG),
+            "operationName" to ContractParameter.Type(SupportedContractType.STRING),
+            "startTime" to ContractParameter.Type(SupportedContractType.LONG),
         )),
         Contract("startSpan", mapOf(
-            "spanHandle" to typeOf<Long>(),
-            "operationName" to typeOf<String>(),
-            "startTime" to typeOf<Long>()
+            "spanHandle" to ContractParameter.Type(SupportedContractType.LONG),
+            "operationName" to ContractParameter.Type(SupportedContractType.STRING),
+            "startTime" to ContractParameter.Type(SupportedContractType.LONG),
         )),
     )
 
@@ -144,16 +144,19 @@ class DatadogTracesPluginTest {
 
     private val spanContracts = listOf(
         Contract("span.setError", mapOf(
-            "kind" to typeOf<String>(), "message" to typeOf<String>()
+            "kind" to ContractParameter.Type(SupportedContractType.STRING),
+            "message" to ContractParameter.Type(SupportedContractType.STRING),
         )),
         Contract("span.setTag", mapOf(
-            "key" to typeOf<String>(), "value" to typeOf<String>()
+            "key" to ContractParameter.Type(SupportedContractType.STRING),
+            "value" to ContractParameter.Type(SupportedContractType.STRING),
         )),
         Contract("span.setBaggageItem", mapOf(
-            "key" to typeOf<String>(), "value" to typeOf<String>()
+            "key" to ContractParameter.Type(SupportedContractType.STRING),
+            "value" to ContractParameter.Type(SupportedContractType.STRING),
         )),
         Contract("span.log", mapOf(
-            "fields" to typeOf<Map<String, Any?>>()
+            "fields" to ContractParameter.Type(SupportedContractType.MAP),
         ))
     )
 
@@ -185,6 +188,5 @@ class DatadogTracesPluginTest {
             mockResult,
             description("span.finish did not throw a contract violation when missing finishTime")
         ).error(eq(DatadogSdkPlugin.CONTRACT_VIOLATION), any(), anyOrNull())
-
     }
 }

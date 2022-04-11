@@ -86,6 +86,7 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
 
   private func createSpan(arguments: [String: Any], isRootSpan: Bool, result: @escaping FlutterResult) {
     guard let tracer = tracer else {
+      result(FlutterError.invalidOperation(message: "Datadog tracer is not initialized"))
       return
     }
 
@@ -211,6 +212,10 @@ public class DatadogTracesPlugin: NSObject, FlutterPlugin {
           FlutterError.missingParameter(methodName: method)
         )
       }
+
+    case "span.cancel":
+      spanRegistry[calledSpan.handle] = nil
+      result(nil)
 
     default:
       result(FlutterMethodNotImplemented)

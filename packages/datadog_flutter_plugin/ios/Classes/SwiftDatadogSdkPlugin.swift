@@ -88,10 +88,6 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                        trackingConsent: configuration.trackingConsent,
                        configuration: ddConfiguration)
 
-    if let loggingConfiguration = configuration.loggingConfiguration {
-      logs = DatadogLogsPlugin.instance
-      logs?.initialize(configuration: loggingConfiguration)
-    }
     if let tracingConfiguration = configuration.tracingConfiguration {
       tracer = DatadogTracesPlugin.instance
       tracer?.initialize(configuration: tracingConfiguration)

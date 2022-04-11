@@ -12,9 +12,9 @@ Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real
 
 [//]: # (SDK Table)
 
-iOS SDK | Android SDK | Browser SDK 
-:-----: | :---------: | :---------: 
-1.9.0 | 1.12.0-alpha2 | ❌
+| iOS SDK | Android SDK | Browser SDK |
+| :-----: | :---------: | :---------: |
+| 1.9.0 | 1.12.0-alpha2 | ❌ |
 
 [//]: # (End SDK Table)
 
@@ -51,6 +51,7 @@ final trackingConsent = ...
 final configuration = DdSdkConfiguration(
   clientToken: '<CLIENT_TOKEN>',
   env: '<ENV_NAME>',
+  site: DatadogSite.us1,
   trackingConsent: trackingConsent,
   nativeCrashReportEnabled: true,
   loggingConfiguration: LoggingConfiguration(
@@ -118,6 +119,32 @@ MaterialApp(
 This only works if you are using named routes or if you have supplied a name to the `settings` parameter of your `PageRoute`.
 
 Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction with the `DatadogNavigationObserverProvider` property to start and stop you RUM views automatically. With `DatadogRouteAwareMixin`, move any logic from `initState` to `didPush`. 
+
+### Automatic Resource Tracking
+
+You can enable automatic tracking of resources and http calls from your RUM views using the [datadog_tracking_http_client](https://pub.dev/datadog_tracking_http_client) package. Just add the package to your `pubspec.yaml`, and add the following to your initialization:
+
+```dart
+final configuration = DdSdkConfiguration(
+  // configuration
+)..enableHttpTracking()
+```
+
+If you want to enable Datadog distributed tracing, you must also set the `DdSdkConfiguration.firstPartyHosts` configuration option.
+
+## Data Storage
+
+### Android
+
+Before data is uploaded to Datadog, it is stored in cleartext in your application's cache directory.
+This cache folder is protected by [Android's Application Sandbox][1], meaning that on most devices
+this data can't be read by other applications. However, if the mobile device is rooted, or someone
+tampers with the linux kernel, the stored data might become readable.
+
+### iOS
+
+Before data is uploaded to Datadog, it is stored in cleartext in the cache directory (`Library/Caches`)
+of your [application sandbox][2], which can't be read by any other app installed on the device.
 
 ## Contributing
 

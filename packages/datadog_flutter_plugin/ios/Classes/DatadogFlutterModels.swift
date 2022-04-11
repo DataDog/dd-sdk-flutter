@@ -6,33 +6,41 @@ import Foundation
 import Datadog
 import DatadogCrashReporting
 
-class DatadogFlutterConfiguration {
-  class LoggingConfiguration {
-    let sendNetworkInfo: Bool
-    let printLogsToConsole: Bool
-    let bundleWithRum: Bool
-    let bundleWithTraces: Bool
+class DatadogLoggingConfiguration {
+  let sendNetworkInfo: Bool
+  let printLogsToConsole: Bool
+  let sendLogsToDatadog: Bool
+  let bundleWithRum: Bool
+  let bundleWithTraces: Bool
+  let loggerName: String?
 
-    init(
-      sendNetworkInfo: Bool = false,
-      printLogsToConsole: Bool = false,
-      bundleWithRum: Bool = true,
-      bundleWithTraces: Bool = true
-    ) {
-      self.sendNetworkInfo = sendNetworkInfo
-      self.printLogsToConsole = printLogsToConsole
-      self.bundleWithRum = bundleWithRum
-      self.bundleWithTraces = bundleWithTraces
-    }
-
-    init?(fromEncoded encoded: [String: Any?]) {
-      sendNetworkInfo = (encoded["sendNetworkInfo"] as? NSNumber)?.boolValue ?? false
-      printLogsToConsole = (encoded["printLogsToConsole"] as? NSNumber)?.boolValue ?? false
-      bundleWithRum = (encoded["bundleWithRum"] as? NSNumber)?.boolValue ?? true
-      bundleWithTraces = (encoded["bundleWithTraces"] as? NSNumber)?.boolValue ?? true
-    }
+  init(
+    sendNetworkInfo: Bool = false,
+    printLogsToConsole: Bool = false,
+    sendLogsToDatadog: Bool = true,
+    bundleWithRum: Bool = true,
+    bundleWithTraces: Bool = true,
+    loggerName: String? = nil
+  ) {
+    self.sendNetworkInfo = sendNetworkInfo
+    self.printLogsToConsole = printLogsToConsole
+    self.sendLogsToDatadog = sendLogsToDatadog
+    self.bundleWithRum = bundleWithRum
+    self.bundleWithTraces = bundleWithTraces
+    self.loggerName = loggerName
   }
 
+  init?(fromEncoded encoded: [String: Any?]) {
+    sendNetworkInfo = (encoded["sendNetworkInfo"] as? NSNumber)?.boolValue ?? false
+    printLogsToConsole = (encoded["printLogsToConsole"] as? NSNumber)?.boolValue ?? false
+    sendLogsToDatadog = (encoded["sendLogsToDatadog"] as? NSNumber)?.boolValue ?? true
+    bundleWithRum = (encoded["bundleWithRum"] as? NSNumber)?.boolValue ?? true
+    bundleWithTraces = (encoded["bundleWithTraces"] as? NSNumber)?.boolValue ?? true
+    loggerName = encoded["loggerName"] as? String
+  }
+}
+
+class DatadogFlutterConfiguration {
   class TracingConfiguration {
     let sendNetworkInfo: Bool
     let bundleWithRum: Bool
@@ -79,7 +87,6 @@ class DatadogFlutterConfiguration {
   let customEndpoint: String?
   let additionalConfig: [String: Any]
 
-  let loggingConfiguration: LoggingConfiguration?
   let tracingConfiguration: TracingConfiguration?
   let rumConfiguration: RumConfiguration?
 
@@ -93,7 +100,6 @@ class DatadogFlutterConfiguration {
     uploadFrequency: Datadog.Configuration.UploadFrequency? = nil,
     customEndpoint: String? = nil,
     additionalConfig: [String: Any] = [:],
-    loggingConfiguration: LoggingConfiguration? = nil,
     tracingConfiguration: TracingConfiguration? = nil,
     rumConfiguration: RumConfiguration? = nil
   ) {
@@ -106,7 +112,6 @@ class DatadogFlutterConfiguration {
     self.uploadFrequency = uploadFrequency
     self.customEndpoint = customEndpoint
     self.additionalConfig = additionalConfig
-    self.loggingConfiguration = loggingConfiguration
     self.tracingConfiguration = tracingConfiguration
     self.rumConfiguration = rumConfiguration
   }
@@ -134,9 +139,6 @@ class DatadogFlutterConfiguration {
     customEndpoint = encoded["customEndpoint"] as? String
     additionalConfig = encoded["additionalConfig"] as? [String: Any] ?? [:]
 
-    loggingConfiguration = convertOptional(encoded["loggingConfiguration"]) {
-      .init(fromEncoded: $0)
-    }
     tracingConfiguration = convertOptional(encoded["tracingConfiguration"]) {
       .init(fromEncoded: $0)
     }

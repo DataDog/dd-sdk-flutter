@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-import '../datadog_tracking_http_client_test.dart';
+class FakeDdSpan extends Fake implements DdSpan {}
 
 class MockTracesPlatform extends Mock
     with MockPlatformInterfaceMixin
@@ -28,6 +28,8 @@ void main() {
     when(() => mockPlatform.startSpan(any(), any(), any(), any(), any(), any()))
         .thenAnswer((invocation) => Future.value(true));
     when(() => mockPlatform.spanSetError(any(), any(), any(), any()))
+        .thenAnswer((invocation) => Future.value());
+    when(() => mockPlatform.spanCancel(any()))
         .thenAnswer((invocation) => Future.value());
   });
 
@@ -75,5 +77,15 @@ void main() {
 
     verify(() => mockPlatform.spanSetError(
         span, 'kind', 'my message', any<String>(that: isNotNull)));
+  });
+
+  test('cancel calls through to platform', () async {
+    final traces = DdTraces(InternalLogger());
+
+    final span = traces.startSpan('span operation');
+    final spanHandle = span.handle;
+    span.cancel();
+
+    verify(() => mockPlatform.spanCancel(spanHandle));
   });
 }

@@ -69,14 +69,23 @@ class DdRumMethodChannel extends DdRumPlatform {
   @override
   Future<void> stopResourceLoadingWithError(String key, Exception error,
       [Map<String, dynamic> attributes = const {}]) {
-    return stopResourceLoadingWithErrorInfo(key, error.toString(), attributes);
+    return stopResourceLoadingWithErrorInfo(
+        key, error.toString(), error.runtimeType.toString(), attributes);
   }
 
   @override
-  Future<void> stopResourceLoadingWithErrorInfo(String key, String message,
-      [Map<String, dynamic> attributes = const {}]) {
-    return methodChannel.invokeMethod('stopResourceLoadingWithError',
-        {'key': key, 'message': message, 'attributes': attributes});
+  Future<void> stopResourceLoadingWithErrorInfo(
+    String key,
+    String message,
+    String type, [
+    Map<String, dynamic> attributes = const {},
+  ]) {
+    return methodChannel.invokeMethod('stopResourceLoadingWithError', {
+      'key': key,
+      'message': message,
+      'type': type,
+      'attributes': attributes,
+    });
   }
 
   @override

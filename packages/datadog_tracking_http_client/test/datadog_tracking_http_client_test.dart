@@ -6,10 +6,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_flutter_plugin/src/attributes.dart';
-import 'package:datadog_flutter_plugin/src/datadog_tracking_http_client.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum.dart';
 import 'package:datadog_flutter_plugin/src/traces/ddtraces.dart';
+import 'package:datadog_tracking_http_client/src/tracing_headers.dart';
+import 'package:datadog_tracking_http_client/src/tracking_http_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -479,9 +479,7 @@ void main() {
 
       expect(caughtError, error);
       verify(() => mockRum.stopResourceLoadingWithErrorInfo(
-            capturedKey,
-            error.toString(),
-          ));
+          capturedKey, error.toString(), error.runtimeType.toString()));
     });
 
     test('calls stop resource with error for response error', () async {
@@ -513,6 +511,7 @@ void main() {
       verify(() => mockRum.stopResourceLoadingWithErrorInfo(
             capturedKey,
             error.toString(),
+            error.runtimeType.toString(),
           ));
     });
   });
@@ -572,7 +571,9 @@ void main() {
       await mockResponse.streamController.close();
       // Drain any awaiting futures.
       await Future.microtask(() {});
-      verifyZeroInteractions(span);
+
+      verify(() => span.cancel());
+      verifyNoMoreInteractions(span);
     });
 
     test('sets trace headers for first party urls', () async {
@@ -612,7 +613,10 @@ void main() {
               captureAny(), RumHttpMethod.get, url.toString(), any()))
           .captured[0] as String;
       verify(() => mockRum.stopResourceLoadingWithErrorInfo(
-          capturedKey, error.toString()));
+            capturedKey,
+            error.toString(),
+            error.runtimeType.toString(),
+          ));
     });
   });
 }

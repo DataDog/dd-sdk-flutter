@@ -30,13 +30,13 @@ Still TODO:
 After the PR to `main` is merged, the CI (or a person?) should run:
 
 ```bash
-dart ./bin/deployer.dart
+dart ./bin/deployer.dart datadog_flutter_plugin
 ```
 
 which perform the following tasks:
 
-* Checks the commit message for the package name and version that was just
-  deployed, and compares that to the pubspec.yaml to make sure they match.
+* Checks that you are on `main` or a `release` branch, that your working tree is
+  clean and up to date with the origin
 * Tags main with the package / version number and pushes the changes
 * Creates a github release for that tag / version number (marked as a
   pre-release as needed)

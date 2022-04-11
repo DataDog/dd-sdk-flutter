@@ -5,6 +5,7 @@
  */
 package com.datadoghq.flutter
 
+import android.content.Context
 import android.util.Log
 import com.datadog.android.DatadogSite
 import com.datadog.android.core.configuration.BatchSize
@@ -14,6 +15,25 @@ import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.ndk.NdkCrashReportsPlugin
 import com.datadog.android.plugin.Feature
 import com.datadog.android.privacy.TrackingConsent
+import com.datadog.android.rum.tracking.ViewTrackingStrategy
+
+data class LoggingConfiguration(
+    var sendNetworkInfo: Boolean,
+    var printLogsToConsole: Boolean,
+    var sendLogsToDatadog: Boolean,
+    var bundleWithRum: Boolean,
+    var bundleWithTraces: Boolean,
+    var loggerName: String?
+) {
+    constructor(encoded: Map<String, Any?>) : this(
+        (encoded["sendNetworkInfo"] as? Boolean) ?: false,
+        (encoded["printLogsToConsole"] as? Boolean) ?: false,
+        (encoded["sendLogsToDatadog"] as? Boolean) ?: true,
+        (encoded["bundleWithRum"] as? Boolean) ?: true,
+        (encoded["bundleWithTraces"] as? Boolean) ?: true,
+        (encoded["loggerName"] as? String)
+    )
+}
 
 // Duplicated strings in this file do not mean they are being used in the same context
 @Suppress("StringLiteralDuplication")
@@ -28,24 +48,9 @@ data class DatadogFlutterConfiguration(
     var customEndpoint: String? = null,
     var additionalConfig: Map<String, Any?> = mapOf(),
 
-    var loggingConfiguration: LoggingConfiguration? = null,
     var tracingConfiguration: TracingConfiguration? = null,
     var rumConfiguration: RumConfiguration? = null
 ) {
-    data class LoggingConfiguration(
-        var sendNetworkInfo: Boolean,
-        var printLogsToConsole: Boolean,
-        var bundleWithRum: Boolean,
-        var bundleWithTraces: Boolean
-    ) {
-        constructor(encoded: Map<String, Any?>) : this(
-            (encoded["sendNetworkInfo"] as? Boolean) ?: false,
-            (encoded["printLogsToConsole"] as? Boolean) ?: false,
-            (encoded["bundleWithRum"] as? Boolean) ?: true,
-            (encoded["bundleWithTraces"] as? Boolean) ?: true
-        )
-    }
-
     data class TracingConfiguration(
         var sendNetworkInfo: Boolean,
         var bundleWithRum: Boolean,
@@ -88,10 +93,7 @@ data class DatadogFlutterConfiguration(
 
         @Suppress("UNCHECKED_CAST")
         additionalConfig = (encoded["additionalConfig"] as? Map<String, Any?>) ?: mapOf()
-        @Suppress("UNCHECKED_CAST")
-        (encoded["loggingConfiguration"] as? Map<String, Any?>)?.let {
-            loggingConfiguration = LoggingConfiguration(it)
-        }
+
         @Suppress("UNCHECKED_CAST")
         (encoded["tracingConfiguration"] as? Map<String, Any?>)?.let {
             tracingConfiguration = TracingConfiguration(it)
@@ -115,7 +117,8 @@ data class DatadogFlutterConfiguration(
 
     fun toSdkConfiguration(): Configuration {
         val configBuilder = Configuration.Builder(
-            logsEnabled = loggingConfiguration != null,
+            // Always enable logging as users can create logs post initialization
+            logsEnabled = true,
             tracesEnabled = tracingConfiguration != null,
             crashReportsEnabled = nativeCrashReportEnabled,
             rumEnabled = rumConfiguration != null
@@ -134,6 +137,7 @@ data class DatadogFlutterConfiguration(
         uploadFrequency?.let { configBuilder.setUploadFrequency(it) }
         rumConfiguration?.let {
             configBuilder.sampleRumSessions(it.sampleRate)
+            configBuilder.useViewTrackingStrategy(NoOpViewTrackingStrategy)
         }
         customEndpoint?.let {
             configBuilder.useCustomLogsEndpoint(it)
@@ -142,6 +146,16 @@ data class DatadogFlutterConfiguration(
         }
 
         return configBuilder.build()
+    }
+}
+
+object NoOpViewTrackingStrategy : ViewTrackingStrategy {
+    override fun register(context: Context) {
+        // Nop
+    }
+
+    override fun unregister(context: Context?) {
+        // Nop
     }
 }
 

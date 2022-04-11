@@ -8,3 +8,21 @@ import,meta,BSD 3-Clause,"Copyright 2016, the Dart project authors"
 import,uuid,MIT,Copyright 2021 Yulian Kuncheff
 test,flutter_test,BSD 3-Clause,Copyright 2014 The Flutter Authors
 test,flutter_lints,BSD 3-Clause,Copyright 2013 The Flutter Authors
+test,mocktail,MIT,Copyright 2020 Felix Angelov
+import,cupertino_icons,MIT,Copyright 2013 The Flutter Authors
+test,flutter_dotenv,MIT,"Copyright 2015 mockturtl, Copyright 2016 James Collins"
+test,integration_test,BSD-3-Clause,Copyright 2014 The Flutter Authors
+import,collection,BSD-3-Clause,"Copyright (c) 2013, the Dart project authors"
+test,http,BSD-3-Clause,"Copyright (c) 2013, the Dart project authors"
+test,transparent_image,MIT,Copyright 2018 Brian Egan
+build,analyzer,BSD-3-Clause,"Copyright (c) 2013, the Dart project authors"
+build,args,BSD-3-Clause,"Copyright (c) 2013, the Dart project authors"
+build,dart_style,BSD-3-Clause,"Copyright (c) 2014, the Dart project authors"
+build,lints,BSD-3-Clause,"Copyright (c) 2021, the Dart project authors"
+build,logging,BSD-3-Clause,"Copyright (c) 2012, the Dart project authors"
+build,path,BSD-3-Clause,"Copyright (c) 2012, the Dart project authors"
+test,test,BSD-3-Clause,"Copyright (c) 2013, the Dart project authors"
+build,git,BSD-2-Clause,Copyright 2015 Kevin Moore
+build,github,MIT,Copyright 2015 Kenneth Endfinger
+build,version,BSD-3-Clause,"Copyright (c) 2021, Matthew Barbour"
+build,pana,BSD-3-Clause,"Copyright (c) 2017, the Dart project authors"

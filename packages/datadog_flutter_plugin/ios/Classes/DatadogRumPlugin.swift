@@ -132,9 +132,10 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
     case "stopResourceLoadingWithError":
       if let key = arguments["key"] as? String,
          let message = arguments["message"] as? String,
+         let errorType = arguments["type"] as? String,
          let attributes = arguments["attributes"] as? [String: Any?] {
         let encodedAttributes = castFlutterAttributesToSwift(attributes)
-        rum.stopResourceLoadingWithError(resourceKey: key, errorMessage: message, response: nil,
+        rum.stopResourceLoadingWithError(resourceKey: key, errorMessage: message, type: errorType, response: nil,
                                          attributes: encodedAttributes)
         result(nil)
       } else {

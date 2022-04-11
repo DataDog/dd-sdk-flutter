@@ -325,7 +325,7 @@ void main() {
 
     await measure('flutter_stop_resource_with_error', () {
       datadog.rum!.stopResourceLoadingWithErrorInfo(
-          resourceKey, randomString(), e2eAttributes(tester));
+          resourceKey, randomString(), randomString(), e2eAttributes(tester));
     });
 
     datadog.rum!.stopView(viewKey);
