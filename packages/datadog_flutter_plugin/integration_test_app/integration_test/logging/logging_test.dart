@@ -1,11 +1,11 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import '../common.dart';
-import '../tools/decoder_helpers.dart';
 import 'log_decoder.dart';
 
 void main() {

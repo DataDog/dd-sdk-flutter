@@ -1,0 +1,19 @@
+name: datadog_common_test
+description: Common helpers for testing Datadog libraries. Not meant to be a published package.
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ">=2.16.1 <3.0.0"
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^1.0.0
+
+flutter:
