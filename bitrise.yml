@@ -92,6 +92,12 @@ workflows:
     - flutter-test@1.0.1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example"
+
+    - flutter-test@1.0.1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client"
+    
+
     - flutter-build@0.14.0:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example"
@@ -141,6 +147,11 @@ workflows:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+    - flutter-test@1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
+        - tests_path_pattern: "integration_test"
+        - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
   
   integration_ios:
     before_run:
@@ -149,6 +160,11 @@ workflows:
     - flutter-test@1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
+        - tests_path_pattern: "integration_test"
+        - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+    - flutter-test@1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
 

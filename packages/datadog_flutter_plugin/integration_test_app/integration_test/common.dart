@@ -5,12 +5,10 @@
 import 'dart:async';
 
 import 'package:collection/src/iterable_extensions.dart';
-import 'package:datadog_integration_test_app/helpers.dart';
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_integration_test_app/main.dart' as app;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'tools/mock_http_sever.dart';
 
 class _IsDecimalVersionOfHex extends CustomMatcher {
   _IsDecimalVersionOfHex(Object? valueOrMatcher)

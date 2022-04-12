@@ -14,19 +14,19 @@ dependencies:
   flutter_dotenv: ^5.0.2
   transparent_image: ^2.0.0
   http: ^0.13.4
-
+  
   datadog_flutter_plugin:
     path: ../
-  datadog_tracking_http_client:
-    path: ../../datadog_tracking_http_client
-
+  datadog_common_test:
+    path: ../../datadog_common_test
+    
 dev_dependencies:
   flutter_test:
     sdk: flutter
   integration_test:
     sdk: flutter
   collection: ^1.15.0
-
+  
   flutter_lints: ^1.0.0
 
 flutter:

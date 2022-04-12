@@ -4,11 +4,11 @@
 
 import 'dart:io';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'helpers.dart';
 import 'integration_scenarios/integration_scenarios_screen.dart';
 
 TestingConfiguration? testingConfiguration;
