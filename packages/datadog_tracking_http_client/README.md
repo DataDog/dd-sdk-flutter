@@ -1,13 +1,13 @@
 
-# Datadog Tacking Http Client Plugin
+# Datadog Tracking HTTP Client Plugin
 
-> A plugin for use with the DatadogSdk, used to track performance of http calls and enable Datadog Distributed Tracing.
+> A plugin for use with the DatadogSdk, used to track performance of HTTP calls and enable Datadog Distributed Tracing.
 
 > ⚠️ This plugin is still in Alpha / Developer Preview. 
 
 ## Getting started
 
-To utilize this plugin, simply enable it during configuration of your SDK:
+To utilize this plugin, enable it during configuration of your SDK:
 
 ```dart
 import 'package:datadog_tracking_http_client/datadog_tracing_http_client.dart'

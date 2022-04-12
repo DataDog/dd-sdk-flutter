@@ -35,7 +35,7 @@ dart ./bin/deployer.dart datadog_flutter_plugin
 
 which perform the following tasks:
 
-* Checks that you are on `main` or a `release` branch, that your working tree is
+* Checks that you are on `main` or a `release` branch and that your working tree is
   clean and up to date with the origin
 * Tags main with the package / version number and pushes the changes
 * Creates a github release for that tag / version number (marked as a
