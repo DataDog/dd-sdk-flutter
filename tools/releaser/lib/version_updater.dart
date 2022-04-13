@@ -20,10 +20,8 @@ class UpdateVersionsCommand extends Command {
       return false;
     }
 
-    if (!await _updateVersionDartFile(
-        args.packageRoot, args.version, logger, args.dryRun)) {
-      return false;
-    }
+    await _updateVersionDartFile(
+        args.packageRoot, args.version, logger, args.dryRun);
 
     if (!await _updateChangelog(
         args.packageRoot, args.version, logger, args.dryRun)) {
@@ -84,6 +82,7 @@ class UpdateVersionsCommand extends Command {
     final versionFile = File(path.join(packageRoot, 'lib/src/version.dart'));
     if (!versionFile.existsSync()) {
       logger.shout('⁉️ Could not find version.dart at ${versionFile.path}');
+      logger.shout('This is ignored as it is expected for non-core packages.');
       return false;
     }
 

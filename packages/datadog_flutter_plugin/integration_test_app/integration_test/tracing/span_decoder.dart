@@ -4,7 +4,7 @@
 
 import 'dart:io';
 
-import '../tools/decoder_helpers.dart';
+import 'package:datadog_common_test/datadog_common_test.dart';
 
 class SpanDecoder {
   final Map<String, Object?> envelope;
