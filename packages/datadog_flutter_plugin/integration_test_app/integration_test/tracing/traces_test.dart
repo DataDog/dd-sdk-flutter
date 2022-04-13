@@ -5,13 +5,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import '../common.dart';
 import '../logging/log_decoder.dart';
-import '../tools/mock_http_sever.dart';
 import 'span_decoder.dart';
 
 void _assertCommonSpanMetadata(SpanDecoder span) {
