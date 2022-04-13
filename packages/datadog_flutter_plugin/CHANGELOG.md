@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* Update iOS SDK to 1.10
+  * For a full list of changes see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#1100--04-12-2022)
+
 ## 1.0.0-alpha.2
 
 * Cancel spans on DatadogTrackingHttpClient when RUM is enabled (prevent spans
