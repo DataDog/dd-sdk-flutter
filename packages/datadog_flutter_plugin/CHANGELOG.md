@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* Send `firstPartyHosts` to NativeSDKs during initialization. Make
+  `firstPartyHosts` property on read only `DatadogSdk` read only. 
+
 ## 1.0.0-alpha.2
 
 * Cancel spans on DatadogTrackingHttpClient when RUM is enabled (prevent spans

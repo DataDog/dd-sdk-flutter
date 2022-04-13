@@ -84,6 +84,7 @@ class DatadogFlutterConfiguration {
   let site: Datadog.Configuration.DatadogEndpoint?
   let batchSize: Datadog.Configuration.BatchSize?
   let uploadFrequency: Datadog.Configuration.UploadFrequency?
+  let firstPartyHosts: [String]
   let customEndpoint: String?
   let additionalConfig: [String: Any]
 
@@ -98,6 +99,7 @@ class DatadogFlutterConfiguration {
     site: Datadog.Configuration.DatadogEndpoint? = nil,
     batchSize: Datadog.Configuration.BatchSize? = nil,
     uploadFrequency: Datadog.Configuration.UploadFrequency? = nil,
+    firstPartyHosts: [String] = [],
     customEndpoint: String? = nil,
     additionalConfig: [String: Any] = [:],
     tracingConfiguration: TracingConfiguration? = nil,
@@ -110,6 +112,7 @@ class DatadogFlutterConfiguration {
     self.site = site
     self.batchSize = batchSize
     self.uploadFrequency = uploadFrequency
+    self.firstPartyHosts = firstPartyHosts
     self.customEndpoint = customEndpoint
     self.additionalConfig = additionalConfig
     self.tracingConfiguration = tracingConfiguration
@@ -137,6 +140,7 @@ class DatadogFlutterConfiguration {
       .parseFromFlutter($0)
     })
     customEndpoint = encoded["customEndpoint"] as? String
+    firstPartyHosts = encoded["firstPartyHosts"] as? [String] ?? []
     additionalConfig = encoded["additionalConfig"] as? [String: Any] ?? [:]
 
     tracingConfiguration = convertOptional(encoded["tracingConfiguration"]) {

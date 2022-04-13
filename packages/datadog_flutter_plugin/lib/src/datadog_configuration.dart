@@ -290,6 +290,7 @@ class DdSdkConfiguration {
       'batchSize': batchSize?.toString(),
       'uploadFrequency': uploadFrequency?.toString(),
       'trackingConsent': trackingConsent.toString(),
+      'firstPartyHosts': firstPartyHosts,
       'customEndpoint': customEndpoint,
       'tracingConfiguration': tracingConfiguration?.encode(),
       'rumConfiguration': rumConfiguration?.encode(),
