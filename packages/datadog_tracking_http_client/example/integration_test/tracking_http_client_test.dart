@@ -19,7 +19,7 @@ Future<void> performRumUserFlow(WidgetTester tester) async {
   await tester.tap(topItem);
   await tester.pumpAndSettle();
 
-  var readyText = find.text('All Done');
+  //var readyText = find.text('All Done');
   //await tester.waitFor(readyText, const Duration(seconds: 100), (e) => true);
 
   var nextButton = find.text('Next Page');

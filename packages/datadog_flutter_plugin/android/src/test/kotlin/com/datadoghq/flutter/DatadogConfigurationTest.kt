@@ -115,6 +115,7 @@ class DatadogConfigurationTest {
             "uploadFrequency" to null,
             "trackingConsent" to "TrackingConsent.granted",
             "customEndpoint" to null,
+            "firstPartyHosts" to listOf<String>(),
             "tracingConfiguration" to null,
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>()
@@ -137,7 +138,8 @@ class DatadogConfigurationTest {
         @StringForgery clientToken: String,
         @StringForgery environment: String,
         @StringForgery additionalKey: String,
-        @StringForgery additionalValue: String
+        @StringForgery additionalValue: String,
+        @StringForgery firstPartyHost: String,
     ) {
         // GIVEN
         val encoded = mapOf<String, Any?>(
@@ -149,6 +151,7 @@ class DatadogConfigurationTest {
             "uploadFrequency" to "UploadFrequency.frequent",
             "trackingConsent" to "TrackingConsent.granted",
             "customEndpoint" to "customEndpoint",
+            "firstPartyHosts" to listOf(firstPartyHost),
             "tracingConfiguration" to null,
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>(
@@ -167,13 +170,15 @@ class DatadogConfigurationTest {
         assertThat(config.additionalConfig).isEqualTo(mapOf(
             additionalKey to additionalValue
         ))
+        assertThat(config.firstPartyHosts).isEqualTo(listOf(firstPartyHost))
     }
 
     @Test
     fun `M decode nestedConfiguration W fromEncoded {tracingConfiguration, rumConfiguration}`(
         @StringForgery clientToken: String,
         @StringForgery environment: String,
-        @StringForgery applicationId: String
+        @StringForgery applicationId: String,
+        @StringForgery firstPartyHost: String
     ) {
         // GIVEN
         val encoded = mapOf(
@@ -185,6 +190,7 @@ class DatadogConfigurationTest {
             "uploadFrequency" to null,
             "trackingConsent" to "TrackingConsent.pending",
             "customEndpoint" to null,
+            "firstPartyHosts" to listOf<String>(),
             "tracingConfiguration" to mapOf(
                 "sendNetworkInfo" to true,
                 "bundleWithRum" to false,
