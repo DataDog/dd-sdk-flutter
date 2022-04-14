@@ -4,6 +4,8 @@
 
 * Update iOS SDK to 1.10
   * For a full list of changes see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#1100--04-12-2022)
+* Send `firstPartyHosts` to Native SDKs during initialization. Make
+  `firstPartyHosts` property on read only `DatadogSdk` read only. 
 
 ## 1.0.0-alpha.2
 
