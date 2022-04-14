@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-* Send `firstPartyHosts` to NativeSDKs during initialization. Make
+* Send `firstPartyHosts` to Native SDKs during initialization. Make
   `firstPartyHosts` property on read only `DatadogSdk` read only. 
 
 ## 1.0.0-alpha.2
