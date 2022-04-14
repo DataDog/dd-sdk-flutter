@@ -1,7 +1,7 @@
 
 # Datadog Tracking HTTP Client Plugin
 
-> A plugin for use with the DatadogSdk, used to track performance of HTTP calls and enable Datadog Distributed Tracing.
+> A plugin for use with the Datadog SDK, used to track performance of HTTP calls and enable Datadog Distributed Tracing.
 
 > ⚠️ This plugin is still in Alpha / Developer Preview. 
 
