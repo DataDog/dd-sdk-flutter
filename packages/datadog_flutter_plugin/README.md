@@ -122,7 +122,7 @@ Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction wi
 
 ### Automatic Resource Tracking
 
-You can enable automatic tracking of resources and HTTP calls from your RUM views using the [datadog_tracking_http_client](https://pub.dev/datadog_tracking_http_client) package. Add the package to your `pubspec.yaml`, and add the following to your initialization:
+You can enable automatic tracking of resources and HTTP calls from your RUM views using the [datadog_tracking_http_client](https://pub.dev/packages/datadog_tracking_http_client) package. Add the package to your `pubspec.yaml`, and add the following to your initialization:
 
 ```dart
 final configuration = DdSdkConfiguration(
