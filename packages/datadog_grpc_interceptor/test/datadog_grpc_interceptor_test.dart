@@ -60,17 +60,21 @@ void main() {
 
     final _ = await stub.sayHello(HelloRequest(name: 'test'));
 
-    final attributes = verify(() => mockRum.startResourceLoading(
-        any(),
+    final captures = verify(() => mockRum.startResourceLoading(
+        captureAny(),
         RumHttpMethod.get,
         '/helloworld.Greeter/SayHello',
-        captureAny())).captured[0];
+        captureAny())).captured;
+    final key = captures[0];
+    final attributes = captures[1];
     // TODO: Double check taht this is a proper value for the grpc.method
     expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
     expect(attributes['_dd.trace_id'], isNotNull);
     expect(BigInt.tryParse(attributes['_dd.trace_id'] as String), isNotNull);
     expect(attributes['_dd.span_id'], isNotNull);
     expect(BigInt.tryParse(attributes['_dd.span_id'] as String), isNotNull);
+
+    verify(() => mockRum.stopResourceLoading(key, 200, RumResourceType.native));
   });
 
   test('Interceptor passes on proper headers', () async {
