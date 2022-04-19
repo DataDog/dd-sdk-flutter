@@ -117,7 +117,7 @@ workflows:
   setup:
     before_run:
     - _pub_get
-    steps:    
+    steps:
     - script:
         title: Generate env files
         inputs:
