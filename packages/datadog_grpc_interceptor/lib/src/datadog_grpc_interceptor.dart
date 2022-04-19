@@ -41,8 +41,12 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
   @override
   ResponseFuture<R> interceptUnary<Q, R>(ClientMethod<Q, R> method, Q request,
       CallOptions options, ClientUnaryInvoker<Q, R> invoker) {
-    var traceId = generateTraceId();
-    var parentId = generateTraceId();
+    String? traceId;
+    String? parentId;
+    if (_datadog.traces != null) {
+      traceId = generateTraceId();
+      parentId = generateTraceId();
+    }
 
     final rumKey = uuid.v1();
     _datadog.rum?.startResourceLoading(
@@ -51,18 +55,22 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
       method.path,
       {
         "grpc.method": method.path,
-        DatadogPlatformAttributeKey.traceID: traceId,
-        DatadogPlatformAttributeKey.spanID: parentId
+        if (_datadog.traces != null) ...{
+          DatadogPlatformAttributeKey.traceID: traceId,
+          DatadogPlatformAttributeKey.spanID: parentId
+        }
       },
     );
 
-    options = options.mergedWith(CallOptions(metadata: {
-      DatadogTracingHeaders.traceId: traceId,
-      DatadogTracingHeaders.parentId: parentId,
-      DatadogTracingHeaders.origin: 'rum',
-      DatadogTracingHeaders.sampled: '1',
-      DatadogTracingHeaders.samplingPriority: '1'
-    }));
+    if (_datadog.traces != null) {
+      options = options.mergedWith(CallOptions(metadata: {
+        DatadogTracingHeaders.origin: 'rum',
+        DatadogTracingHeaders.samplingPriority: '1',
+        DatadogTracingHeaders.traceId: traceId!,
+        DatadogTracingHeaders.parentId: parentId!,
+      }));
+    }
+
     final future = invoker(method, request, options);
     future.then((v) {
       _datadog.rum?.stopResourceLoading(rumKey, 200, RumResourceType.native);
