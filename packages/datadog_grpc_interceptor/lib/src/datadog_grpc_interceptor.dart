@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:io';
+
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_grpc_interceptor/src/tracing_util.dart';
 import 'package:grpc/grpc.dart';
@@ -31,19 +33,36 @@ class DatadogPlatformAttributeKey {
 /// A client GrpcInterceptor which enables automatic resource tracking and
 /// distributed tracing
 ///
-/// Note: only support Unary interception, not streaming interception
+/// Note: This only supports intercepting unary calls. It does not intercepting
+/// streaming calls.
 class DatadogGrpcInterceptor extends ClientInterceptor {
   final Uuid uuid = const Uuid();
   final DatadogSdk _datadog;
+  final ClientChannel _channel;
 
-  DatadogGrpcInterceptor(this._datadog);
+  DatadogGrpcInterceptor(
+    this._datadog,
+    this._channel,
+  );
 
   @override
   ResponseFuture<R> interceptUnary<Q, R>(ClientMethod<Q, R> method, Q request,
       CallOptions options, ClientUnaryInvoker<Q, R> invoker) {
+    final host = _channel.host;
+    final path = method.path;
+    final String fullPath;
+    if (host is InternetAddress) {
+      fullPath = '${host.host}:${_channel.port}$path';
+    } else {
+      fullPath = '$host:${_channel.port}$path';
+    }
+
+    bool shouldAppendTraces = _datadog.traces != null &&
+        _datadog.isFirstPartyHost(Uri.parse(fullPath));
+
     String? traceId;
     String? parentId;
-    if (_datadog.traces != null) {
+    if (shouldAppendTraces) {
       traceId = generateTraceId();
       parentId = generateTraceId();
     }
@@ -52,17 +71,17 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
     _datadog.rum?.startResourceLoading(
       rumKey,
       RumHttpMethod.get,
-      method.path,
+      fullPath,
       {
         "grpc.method": method.path,
-        if (_datadog.traces != null) ...{
+        if (shouldAppendTraces) ...{
           DatadogPlatformAttributeKey.traceID: traceId,
           DatadogPlatformAttributeKey.spanID: parentId
         }
       },
     );
 
-    if (_datadog.traces != null) {
+    if (shouldAppendTraces) {
       options = options.mergedWith(CallOptions(metadata: {
         DatadogTracingHeaders.origin: 'rum',
         DatadogTracingHeaders.samplingPriority: '1',
