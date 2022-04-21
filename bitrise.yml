@@ -71,7 +71,7 @@ workflows:
                   echo "pub get in $d"
                   flutter pub get
 
-                  subapps=( "example", "integration_test_app", "e2e_test_app" )
+                  subapps=( "integration_test_app" "e2e_test_app" )
                   for subapp in "${subapps[@]}"; do
                       if [ -d "$subapp" ];  then
                           pushd "$subapp"
