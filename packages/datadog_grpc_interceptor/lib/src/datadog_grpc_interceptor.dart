@@ -13,7 +13,6 @@ class DatadogTracingHeaders {
   static const traceId = 'x-datadog-trace-id';
   static const parentId = 'x-datadog-parent-id';
 
-  static const sampled = 'x-datadog-sampled';
   static const samplingPriority = 'x-datadog-sampling-priority';
   static const origin = 'x-datadog-origin';
 }
