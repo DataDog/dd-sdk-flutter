@@ -16,6 +16,7 @@ final projectList = [
   '$root/packages/datadog_flutter_plugin/example',
   '$root/packages/datadog_flutter_plugin/e2e_test_app',
   '$root/packages/datadog_flutter_plugin/integration_test_app',
+  '$root/packages/datadog_grpc_interceptor',
   '$root/packages/datadog_tracking_http_client',
   '$root/tools/e2e_generator',
   '$root/tools/releaser',

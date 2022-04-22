@@ -27,3 +27,4 @@ build,github,MIT,Copyright 2015 Kenneth Endfinger
 build,version,BSD-3-Clause,"Copyright (c) 2021, Matthew Barbour"
 build,pana,BSD-3-Clause,"Copyright (c) 2017, the Dart project authors"
 test,datadog_common_test,Apache-2.0,Copyright 2022 Datadog
+import,grpc,Apache-2.0,"Copyright (c) 2018, the gRPC project authors"

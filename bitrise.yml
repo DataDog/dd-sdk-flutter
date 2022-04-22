@@ -124,6 +124,10 @@ workflows:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client"
     
+    - flutter-test@1.0.1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor"
+    
 
     - flutter-build@0.14.0:
         inputs:
