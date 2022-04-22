@@ -11,10 +11,12 @@ import 'package:pana/src/license.dart';
 // From the root of this project
 final root = '../..';
 final projectList = [
+  '$root/packages/datadog_common_test',
   '$root/packages/datadog_flutter_plugin',
   '$root/packages/datadog_flutter_plugin/example',
   '$root/packages/datadog_flutter_plugin/e2e_test_app',
   '$root/packages/datadog_flutter_plugin/integration_test_app',
+  '$root/packages/datadog_tracking_http_client',
   '$root/tools/e2e_generator',
   '$root/tools/releaser',
   '$root/tools/third_party_scanner',
