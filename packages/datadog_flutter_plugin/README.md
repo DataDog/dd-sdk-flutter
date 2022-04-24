@@ -1,23 +1,12 @@
+<div class="alert alert-info"><p>Flutter monitoring is in beta</p>
+</div>
+
+
 ## Overview
 
 Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real-time performance and user journeys of your Flutter application’s individual users.
 
-## Platform Support
-
-| Android | iOS |  Web | MacOS | Linux | Windows |
-| :-----: | :-: | :---: | :-: | :---: | :----: |
-|   ✅    | ✅  |  🚧   | ❌  |  ❌   |   ❌   |
-
-## Current Datadog SDK Versions
-
-[//]: # (SDK Table)
-
-| iOS SDK | Android SDK | Browser SDK |
-| :-----: | :---------: | :---------: |
-| 1.10.0 | 1.12.0-alpha2 | ❌ |
-
-[//]: # (End SDK Table)
-
+RUM supports monitoring for Flutter Android and iOS mobile applications.
 
 ### iOS
 
@@ -29,19 +18,17 @@ On Android, your `minSdkVersion` must be >= 19, and if you are using Kotlin, it 
 
 ## Setup
 
-You need a Datadog client token for Logs and Tracing. If you are using RUM, you need an application ID.
-
 ### Specify application details in the UI
 
-1. Navigate to [**UX Monitoring** > **RUM Applications** > **New Application**][1].
-2. Select `flutter` as the application type and enter an application name to generate a unique Datadog application ID and client token.
-3. Click **+ Create New RUM Application**.
+1. In the [Datadog app][1], navigate to **UX Monitoring** > **RUM Applications** > **New Application**.
+2. Choose `Flutter` as the application type.
+3. Provide an application name to generate a unique Datadog application ID and client token.
 
-To ensure the safety of your data, you must use a client token. If you used only [Datadog API keys][2] to configure the `@datadog/mobile-react-native` library, they would be exposed client-side in the React Native application's code. 
+{{< img src="real_user_monitoring/flutter/image_flutter.png" alt="Create a RUM application in Datadog workflow" style="width:90%;">}}
 
-For more information about setting up a client token, see the [Client Token documentation][3].
+To ensure the safety of your data, you must use a client token. For more information about setting up a client token, see the [Client Token documentation][4].
 
-### Configure Datadog
+### Create configuration object
 
 Create a configuration object for each Datadog feature (such as Logging, Tracing, and RUM) with the following snippet. By not passing a configuration for a given feature, it is disabled.
 
@@ -62,16 +49,16 @@ final configuration = DdSdkConfiguration(
     sendNetworkInfo: true,
   ),
   rumConfiguration: RumConfiguration(
-    applicationId: '<RUM_APPLICATION_ID',
+    applicationId: '<RUM_APPLICATION_ID>',
   )
 );
 ```
 
 ### Initialize the library
 
-You can initialize Datadog using one of two methods in the `main.dart` file.
+You can initialize RUM using one of two methods in the `main.dart` file.
 
-1. Use `DatadogSdk.runApp`, which automatically sets up error reporting and resource tracing. This is the simplest way to initialize Datadog.
+1. Use `DatadogSdk.runApp`, which automatically sets up error reporting and resource tracing. 
 
    ```dart
    await DatadogSdk.runApp(configuration, () async {
@@ -116,9 +103,9 @@ MaterialApp(
 );
 ```
 
-This only works if you are using named routes or if you have supplied a name to the `settings` parameter of your `PageRoute`.
+This works if you are using named routes or if you have supplied a name to the `settings` parameter of your `PageRoute`.
 
-Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction with the `DatadogNavigationObserverProvider` property to start and stop you RUM views automatically. With `DatadogRouteAwareMixin`, move any logic from `initState` to `didPush`. 
+Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction with the `DatadogNavigationObserverProvider` property to start and stop your RUM views automatically. With `DatadogRouteAwareMixin`, move any logic from `initState` to `didPush`. 
 
 ### Automatic Resource Tracking
 
