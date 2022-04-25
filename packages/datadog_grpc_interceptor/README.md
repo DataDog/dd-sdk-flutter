@@ -1,7 +1,7 @@
 
 # Datadog gRPC Interceptor / Plugin
 
-> A plugin for use with the 1DatadogSdk1, used to track performance of gRPC and enable Datadog Distributed Tracing.
+> A plugin for use with the `DatadogSdk`, used to track performance of gRPC and enable Datadog Distributed Tracing.
 
 > ⚠️ This plugin is still in Alpha / Developer Preview. 
 
