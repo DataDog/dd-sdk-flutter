@@ -5,7 +5,7 @@
 * Update iOS SDK to 1.11
   * Stop reporting pre-warmed application launch time.
   * Reduce the number of intermediate view events sent in RUM payloads.
-  * For a full list of changes see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#1110-beta1--04-26-2022)
+  * For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#1110-beta1--04-26-2022).
 * Send `firstPartyHosts` to Native SDKs during initialization. Make
   `firstPartyHosts` property on read only `DatadogSdk` read only. 
 
