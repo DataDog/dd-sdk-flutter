@@ -1,0 +1,19 @@
+name: datadog_capture_poc
+description: A widget for capturing Flutter trees
+version: 1.0.0-alpha.1
+homepage:
+
+environment:
+  sdk: ">=2.16.2 <3.0.0"
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^1.0.0
+
+flutter:

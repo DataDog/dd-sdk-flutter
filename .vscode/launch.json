@@ -4,7 +4,12 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
+        {
+            "name": "capture_poc",
+            "cwd": "packages/datadog_capture_poc/example",
+            "request": "launch",
+            "type": "dart"
+        },
         {
             "name": "example",
             "cwd": "packages/datadog_flutter_plugin/example",
