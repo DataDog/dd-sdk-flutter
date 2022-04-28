@@ -110,7 +110,6 @@ void main() async {
     for (var testRequest in testRequests) {
       expect(testRequest.requestHeaders['x-datadog-sampling-priority']?.first,
           '1');
-      expect(testRequest.requestHeaders['x-datadog-sampled']?.first, '1');
       expect(testRequest.requestHeaders['x-datadog-origin']?.first, 'rum');
     }
 

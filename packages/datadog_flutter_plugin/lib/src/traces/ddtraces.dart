@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
+import 'dart:math';
+
 import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddtraces_platform_interface.dart';
@@ -281,4 +283,16 @@ class DdTraces {
 
     return headers ?? {};
   }
+}
+
+final _traceRandom = Random();
+
+String generateTraceId() {
+  final highBits = _traceRandom.nextInt(1 << 32);
+  final lowBits = BigInt.from(_traceRandom.nextInt(1 << 32));
+
+  var traceId = BigInt.from(highBits) << 32;
+  traceId += lowBits;
+
+  return traceId.toString();
 }
