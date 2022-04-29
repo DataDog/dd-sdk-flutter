@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+// ignore_for_file: deprecated_member_use_from_same_package
+
 import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:datadog_flutter_plugin/src/traces/ddtraces.dart';
 import 'package:datadog_flutter_plugin/src/traces/ddtraces_platform_interface.dart';

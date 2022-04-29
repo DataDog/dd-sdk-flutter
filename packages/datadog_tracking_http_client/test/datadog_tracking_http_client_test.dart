@@ -101,7 +101,6 @@ void main() {
 
   group('when rum is disabled', () {
     setUp(() {
-      when(() => mockDatadog.traces).thenReturn(null);
       when(() => mockDatadog.rum).thenReturn(null);
     });
 
@@ -163,7 +162,6 @@ void main() {
   }
 
   void _enableRum() {
-    when(() => mockDatadog.traces).thenReturn(null);
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.startResourceLoading(any(), any(), any(), any()))
         .thenAnswer((_) => Future.value());
