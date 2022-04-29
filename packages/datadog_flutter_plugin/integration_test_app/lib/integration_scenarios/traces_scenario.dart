@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';

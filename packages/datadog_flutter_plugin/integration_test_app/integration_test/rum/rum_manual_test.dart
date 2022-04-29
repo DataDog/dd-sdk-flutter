@@ -4,13 +4,12 @@
 
 import 'dart:convert';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import '../common.dart';
-import '../tools/request_log.dart';
-import 'rum_decoder.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

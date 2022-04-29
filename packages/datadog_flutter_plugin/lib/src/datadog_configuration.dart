@@ -209,8 +209,9 @@ class DdSdkConfiguration {
   /// Whether or not to enable native crash reporting.
   bool nativeCrashReportEnabled;
 
-  /// The [DatadogSite] to send information to.
-  DatadogSite? site;
+  /// The [DatadogSite] to send information to. This site must match the site
+  /// used to generate your client token.
+  DatadogSite site;
 
   /// The service name for this application
   String? serviceName;
@@ -269,8 +270,8 @@ class DdSdkConfiguration {
     required this.clientToken,
     required this.env,
     required this.trackingConsent,
+    required this.site,
     this.nativeCrashReportEnabled = false,
-    this.site,
     this.serviceName,
     this.uploadFrequency,
     this.batchSize,
@@ -289,10 +290,11 @@ class DdSdkConfiguration {
       'clientToken': clientToken,
       'env': env,
       'nativeCrashReportEnabled': nativeCrashReportEnabled,
-      'site': site?.toString(),
+      'site': site.toString(),
       'batchSize': batchSize?.toString(),
       'uploadFrequency': uploadFrequency?.toString(),
       'trackingConsent': trackingConsent.toString(),
+      'firstPartyHosts': firstPartyHosts,
       'customEndpoint': customEndpoint,
       'tracingConfiguration': tracingConfiguration?.encode(),
       'rumConfiguration': rumConfiguration?.encode(),

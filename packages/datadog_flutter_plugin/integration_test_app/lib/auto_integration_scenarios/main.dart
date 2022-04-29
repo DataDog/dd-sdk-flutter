@@ -4,12 +4,11 @@
 
 import 'dart:io';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import '../helpers.dart';
 import 'rum_auto_instrumentation_scenario.dart';
 import 'scenario_config.dart';
 
@@ -48,6 +47,7 @@ Future<void> main() async {
   final configuration = DdSdkConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
+    site: DatadogSite.us1,
     trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
@@ -64,7 +64,7 @@ Future<void> main() async {
     rumConfiguration: applicationId != null
         ? RumConfiguration(applicationId: applicationId)
         : null,
-  )..enableHttpTracking();
+  );
 
   await DatadogSdk.runApp(configuration, () async {
     runApp(const DatadogAutoIntegrationTestApp());

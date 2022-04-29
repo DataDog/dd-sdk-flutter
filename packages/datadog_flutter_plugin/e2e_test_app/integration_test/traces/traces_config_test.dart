@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+@Skip('Tracing is being deprecated, and is broken in Flutter 2.13')
+
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
@@ -33,7 +35,7 @@ void main() {
   /// $monitor_prefix = ${{feature}}_set_service_name
   /// ```
   ///
-  /// ```apm(ios, android)
+  /// ```apm(ios, android) IGNORE
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of hits is below expected value"
   /// $monitor_query = "sum(last_1d):avg:flutter_${{variant}}_traces_set_service_name.hits{service:com.datadog.flutter.nightly.custom,env:instrumentation}.as_count() < 1"
@@ -54,7 +56,7 @@ void main() {
   /// ```
   ///
   /// - data monitor: (it uses `flutter_${{variant}}_traces_bundle_with_rum_enabled` metric defined in "APM > Generate Metrics > Custom Span Metrics")
-  /// ```apm(ios, android)
+  /// ```apm(ios, android) IGNORE
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of hits is below expected value"
   /// $monitor_query = "sum(last_1d):avg:flutter_${{variant}}_traces_bundle_with_rum_enabled.hits_with_proper_payload{*}.as_count() < 1"
@@ -79,7 +81,7 @@ void main() {
   /// ```
   ///
   /// - data monitor: (it uses `flutter_${{variant}}_traces_bundle_with_rum_disabled` metric defined in "APM > Generate Metrics > Custom Span Metrics")
-  /// ```apm(ios, android)
+  /// ```apm(ios, android) IGNORE
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of hits is above expected value"
   /// $monitor_query = "sum(last_1d):avg:flutter_${{variant}}_traces_bundle_with_rum_disabled.hits_with_proper_payload{*}.as_count() > 0"
@@ -104,7 +106,7 @@ void main() {
   /// ```
   ///
   /// - data monitor: (it uses `flutter_${{variant}}_traces_set_user_info` metric defined in "APM > Generate Metrics > Custom Span Metrics")
-  /// ```apm(ios, android)
+  /// ```apm(ios, android) IGNORE
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of hits is below expected value"
   /// $monitor_query = "sum(last_1d):avg:flutter_${{variant}}_traces_set_user_info.hits_with_proper_payload{*}.as_count() < 1"

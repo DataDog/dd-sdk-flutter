@@ -46,6 +46,7 @@ data class DatadogFlutterConfiguration(
     var batchSize: BatchSize? = null,
     var uploadFrequency: UploadFrequency? = null,
     var customEndpoint: String? = null,
+    var firstPartyHosts: List<String> = listOf(),
     var additionalConfig: Map<String, Any?> = mapOf(),
 
     var tracingConfiguration: TracingConfiguration? = null,
@@ -90,6 +91,9 @@ data class DatadogFlutterConfiguration(
             uploadFrequency = parseUploadFrequency(it)
         }
         customEndpoint = encoded["customEndpoint"] as? String
+        (encoded["firstPartyHosts"] as? List<String>)?.let {
+            firstPartyHosts = it
+        }
 
         @Suppress("UNCHECKED_CAST")
         additionalConfig = (encoded["additionalConfig"] as? Map<String, Any?>) ?: mapOf()
@@ -144,6 +148,7 @@ data class DatadogFlutterConfiguration(
             configBuilder.useCustomTracesEndpoint(it)
             configBuilder.useCustomRumEndpoint(it)
         }
+        configBuilder.setFirstPartyHosts(firstPartyHosts)
 
         return configBuilder.build()
     }

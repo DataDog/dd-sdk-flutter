@@ -2,14 +2,15 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+// ignore_for_file: invalid_use_of_internal_member
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:uuid/uuid.dart';
-
-import 'tracing_headers.dart';
 
 /// Overrides to supply the [DatadogTrackingHttpClient] instead of the default
 /// HttpClient
@@ -86,38 +87,22 @@ class DatadogTrackingHttpClient implements HttpClient {
   }
 
   Future<HttpClientRequest> _openUrl(String method, Uri url) async {
-    final tracer = datadogSdk.traces;
     final rum = datadogSdk.rum;
     String? rumKey;
-    DdSpan? tracingSpan;
     String? traceId, spanId;
-    Map<String, String>? spanHeaders;
 
     try {
       bool isFirstParty = datadogSdk.isFirstPartyHost(url);
-      if (tracer != null) {
-        if (isFirstParty) {
-          tracingSpan = tracer.startSpan('flutter.http_client', tags: {
-            'http.method': method.toUpperCase(),
-            'http.url': url.toString(),
-          });
-
-          spanHeaders = await tracer.getTracePropagationHeaders(tracingSpan);
-          // extract trace / span from the headers in case we need them for RUM
-          traceId = spanHeaders[DatadogTracingHeaders.traceId];
-          spanId = spanHeaders[DatadogTracingHeaders.parentId];
-        }
+      if (isFirstParty) {
+        traceId = generateTraceId();
+        spanId = generateTraceId();
       }
 
       if (rum != null) {
         final attributes = <String, dynamic>{};
-        if (tracingSpan != null) {
-          attributes[DatadogPlatformAttributeKey.traceID] = traceId;
-          attributes[DatadogPlatformAttributeKey.spanID] = spanId;
-
-          // Discard the tracing span, we don't need it if RUM is tracking the resource
-          tracingSpan.cancel();
-          tracingSpan = null;
+        if (traceId != null) {
+          attributes[DatadogRumPlatformAttributeKey.traceID] = traceId;
+          attributes[DatadogRumPlatformAttributeKey.spanID] = spanId;
         }
 
         rumKey = uuid.v1();
@@ -134,11 +119,11 @@ class DatadogTrackingHttpClient implements HttpClient {
     HttpClientRequest request;
     try {
       request = await innerClient.openUrl(method, url);
-      request.headers.add('x-datadog-origin', 'rum');
-      if (spanHeaders != null) {
-        for (var header in spanHeaders.entries) {
-          request.headers.add(header.key, header.value);
-        }
+      request.headers.add(DatadogTracingHeaders.origin, 'rum');
+      if (traceId != null) {
+        request.headers.add(DatadogTracingHeaders.traceId, traceId);
+        request.headers.add(DatadogTracingHeaders.parentId, spanId!);
+        request.headers.add(DatadogTracingHeaders.samplingPriority, '1');
       }
     } catch (e) {
       if (rumKey != null) {
@@ -154,9 +139,8 @@ class DatadogTrackingHttpClient implements HttpClient {
       rethrow;
     }
 
-    if (rumKey != null || tracingSpan != null) {
-      request =
-          _DatadogTrackingHttpRequest(datadogSdk, request, tracingSpan, rumKey);
+    if (rumKey != null) {
+      request = _DatadogTrackingHttpRequest(datadogSdk, request, rumKey);
     }
 
     return request;
@@ -283,13 +267,11 @@ class DatadogTrackingHttpClient implements HttpClient {
 class _DatadogTrackingHttpRequest implements HttpClientRequest {
   final DatadogSdk datadogSdk;
   final HttpClientRequest innerContext;
-  final DdSpan? tracingContext;
   final String? rumKey;
 
   _DatadogTrackingHttpRequest(
     this.datadogSdk,
     this.innerContext,
-    this.tracingContext,
     this.rumKey,
   );
 
@@ -297,8 +279,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
   Future<HttpClientResponse> get done {
     final innerFuture = innerContext.done;
     return innerFuture.then((value) {
-      return _DatadogTrackingHttpResponse(
-          datadogSdk, value, tracingContext, rumKey);
+      return _DatadogTrackingHttpResponse(datadogSdk, value, rumKey);
     }, onError: (e, st) {
       _onStreamError(e, st);
       throw e;
@@ -308,8 +289,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
   @override
   Future<HttpClientResponse> close() {
     return innerContext.close().then((value) {
-      return _DatadogTrackingHttpResponse(
-          datadogSdk, value, tracingContext, rumKey);
+      return _DatadogTrackingHttpResponse(datadogSdk, value, rumKey);
     }, onError: (e, st) async {
       _onStreamError(e, st);
       throw e;
@@ -322,11 +302,6 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
         datadogSdk.rum?.stopResourceLoadingWithErrorInfo(
             rumKey!, e.toString(), e.runtimeType.toString());
       }
-      tracingContext?.setErrorInfo(
-        e.runtimeType.toString(),
-        e.toString(),
-        st,
-      );
     } catch (e) {
       datadogSdk.internalLogger.sendToDatadog(
           '$DatadogTrackingHttpClient encountered an error attempting to report a stream error; $e');
@@ -414,14 +389,12 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
     implements HttpClientResponse {
   final DatadogSdk datadogSdk;
   final HttpClientResponse innerResponse;
-  final DdSpan? tracingContext;
   final String? rumKey;
   Object? lastError;
 
   _DatadogTrackingHttpResponse(
     this.datadogSdk,
     this.innerResponse,
-    this.tracingContext,
     this.rumKey,
   );
 
@@ -456,14 +429,6 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
   // error will be sent.
   void _onError(Object error, StackTrace? stackTrace) {
     lastError = error;
-    try {
-      tracingContext?.setErrorInfo(
-          error.runtimeType.toString(), error.toString(), stackTrace);
-    } catch (e) {
-      datadogSdk.internalLogger.sendToDatadog(
-          '$DatadogTrackingHttpClient encountered an error while attempting '
-          ' to report a resource error: $e');
-    }
   }
 
   void _onFinish(Object? error, StackTrace? stackTrace) {
@@ -482,16 +447,6 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
           datadogSdk.rum
               ?.stopResourceLoading(rumKey!, statusCode, resourceType, size);
         }
-      }
-
-      final span = tracingContext;
-      if (span != null) {
-        span.setTag(OTTags.httpStatusCode, statusCode);
-        if (statusCode >= 400 && statusCode < 500) {
-          span.setErrorInfo('HttpStatusCode',
-              '$statusCode - ${innerResponse.reasonPhrase}', null);
-        }
-        span.finish();
       }
     } catch (e) {
       datadogSdk.internalLogger.sendToDatadog(

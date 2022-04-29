@@ -2,11 +2,11 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'helpers.dart';
 import 'integration_scenarios/integration_scenarios_screen.dart';
 
 TestingConfiguration? testingConfiguration;
@@ -36,6 +36,7 @@ Future<void> main() async {
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
     serviceName: 'com.datadoghq.flutter.integrationtestapp',
+    site: DatadogSite.us1,
     trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,

@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'crash_reporting_screen.dart';
 import 'logging_screen.dart';
 import 'rum_screen.dart';
-import 'tracing_screen.dart';
 
 class NavItem {
   final String label;
@@ -29,7 +28,6 @@ class _ExampleAppState extends State<ExampleApp> {
 
   final items = <NavItem>[
     NavItem(label: 'Logging', route: '/logging'),
-    NavItem(label: 'Tracing', route: '/tracing'),
     NavItem(label: 'RUM', route: '/rum'),
     NavItem(label: 'RUM Crash Reporting', route: '/rum_crash'),
   ];
@@ -40,8 +38,6 @@ class _ExampleAppState extends State<ExampleApp> {
 
     router.define('/logging',
         handler: Handler(handlerFunc: (_, __) => const LoggingScreen()));
-    router.define('/tracing',
-        handler: Handler(handlerFunc: (_, __) => const TracingScreen()));
     router.define('/rum',
         handler: Handler(handlerFunc: (_, __) => const RumScreen()));
     router.define('/rum_crash',

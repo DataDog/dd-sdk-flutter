@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
