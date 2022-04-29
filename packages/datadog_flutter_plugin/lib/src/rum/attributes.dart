@@ -5,9 +5,12 @@
 class DatadogTracingHeaders {
   static const traceId = 'x-datadog-trace-id';
   static const parentId = 'x-datadog-parent-id';
+
+  static const samplingPriority = 'x-datadog-sampling-priority';
+  static const origin = 'x-datadog-origin';
 }
 
-class DatadogPlatformAttributeKey {
+class DatadogRumPlatformAttributeKey {
   /// Trace ID. Used in RUM resources created by automatic resource tracking.
   /// Expects `String` value.
   static const traceID = '_dd.trace_id';

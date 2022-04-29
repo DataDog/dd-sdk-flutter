@@ -100,7 +100,6 @@ void main() {
         RumHttpMethod.get,
         'localhost:$port/helloworld.Greeter/SayHello',
         captureAny())).captured;
-    final key = captures[0];
     final attributes = captures[1];
     expect(attributes['_dd.trace_id'], isNull);
     expect(attributes['_dd.span_id'], isNull);
@@ -126,7 +125,6 @@ void main() {
         RumHttpMethod.get,
         'localhost:$port/helloworld.Greeter/SayHello',
         captureAny())).captured;
-    final key = captures[0];
     final attributes = captures[1];
     expect(attributes['_dd.trace_id'], isNotNull);
     expect(BigInt.tryParse(attributes['_dd.trace_id'] as String), isNotNull);
@@ -226,7 +224,6 @@ void main() {
         RumHttpMethod.get,
         'localhost:$port/helloworld.Greeter/SayHello',
         captureAny())).captured;
-    final key = captures[0];
     final attributes = captures[1];
     expect(attributes['_dd.trace_id'], isNull);
     expect(attributes['_dd.span_id'], isNull);
