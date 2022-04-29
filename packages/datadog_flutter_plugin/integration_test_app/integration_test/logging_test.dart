@@ -3,14 +3,12 @@
 // Copyright 2019-2021 Datadog, Inc.
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'common.dart';
-import 'log_decoder.dart';
-import 'tools/decoder_helpers.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +33,8 @@ void main() {
             })
             .whereType<List>()
             .expand((e) => e)
+            // Ignore RUM sessions
+            .where((e) => !(e as Map<String, dynamic>).containsKey('session'))
             .forEach((e) => logs.add(LogDecoder(e as Map<String, dynamic>)));
 
         return logs.length >= 5;

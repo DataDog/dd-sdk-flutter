@@ -4,9 +4,8 @@
 
 import 'dart:async';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:integration_test/integration_test_driver.dart';
-
-import '../integration_test/tools/mock_http_sever.dart';
 
 Future<void> main() async {
   final server = RecordingHttpServer();

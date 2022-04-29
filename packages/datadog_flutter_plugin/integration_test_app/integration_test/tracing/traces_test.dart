@@ -13,7 +13,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import '../common.dart';
-import '../logging/log_decoder.dart';
 import 'span_decoder.dart';
 
 void _assertCommonSpanMetadata(SpanDecoder span) {

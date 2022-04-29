@@ -13,8 +13,6 @@ dependencies:
   cupertino_icons: ^1.0.2
   flutter_dotenv: ^5.0.2
   transparent_image: ^2.0.0
-  http: ^0.13.4
-  json_annotation: ^4.4.0
 
   datadog_flutter_plugin:
     path: ../
@@ -28,7 +26,6 @@ dev_dependencies:
     sdk: flutter
   collection: ^1.15.0
   flutter_lints: ^1.0.0
-  json_serializable: ^6.1.0
 
 flutter:
   uses-material-design: true
