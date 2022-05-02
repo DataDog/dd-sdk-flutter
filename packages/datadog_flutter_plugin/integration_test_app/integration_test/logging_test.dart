@@ -12,6 +12,7 @@ import 'common.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  kManualIsWeb = kIsWeb;
 
   testWidgets('test logging scenario', (WidgetTester tester) async {
     var recordedSession = await openTestScenario(tester, 'Logging Scenario');

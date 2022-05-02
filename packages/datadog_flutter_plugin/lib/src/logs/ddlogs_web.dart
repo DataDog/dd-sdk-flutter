@@ -18,7 +18,7 @@ class DdLogsWeb extends DdLogsPlatform {
   static void initLogs(DdSdkConfiguration configuration) {
     String? version = configuration.additionalConfig[DatadogConfigKey.version];
 
-    init(_InternalOptions(
+    init(_LogInitOptions(
       clientToken: configuration.clientToken,
       env: configuration.env,
       site: siteStringForSite(configuration.site),
@@ -103,7 +103,7 @@ class DdLogsWeb extends DdLogsPlatform {
 
 @JS()
 @anonymous
-class _InternalOptions {
+class _LogInitOptions {
   external String get clientToken;
   external String get site;
   external String get env;
@@ -111,7 +111,7 @@ class _InternalOptions {
   external String? get service;
   external String? get version;
 
-  external factory _InternalOptions({
+  external factory _LogInitOptions({
     String clientToken,
     String site,
     String env,
@@ -149,7 +149,7 @@ class Logger {
 }
 
 @JS()
-external void init(_InternalOptions options);
+external void init(_LogInitOptions options);
 
 @JS()
 external Logger? getLogger(String name);

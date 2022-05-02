@@ -5,10 +5,14 @@
 import 'dart:io';
 
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart';
+
+// Because Flutter Web Driver has trouble importing package:flutter/foundation
+// from a dependent package, we set this with the value of `kIsWeb` at start-up
+// in all tests
+bool kManualIsWeb = false;
 
 T getNestedProperty<T>(String key, Map<String, dynamic> from) {
-  if (kIsWeb || Platform.isAndroid) {
+  if (kManualIsWeb || Platform.isAndroid) {
     var lookupMap = from;
     var parts = key.split('.');
     parts.forEachIndexedWhile((index, element) {
