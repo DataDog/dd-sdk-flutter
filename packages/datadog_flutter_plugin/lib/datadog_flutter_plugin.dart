@@ -44,8 +44,8 @@ typedef AppRunner = void Function();
 
 /// A singleton for the Datadog SDK.
 ///
-/// Once initialized, individual features can be access through the [logs],
-/// [traces], and [rum] member variables. If a feature is disabled (either
+/// Once initialized, individual features can be access through the [logs]
+/// and [rum] member variables. If a feature is disabled (either
 /// because they were not configured or the SDK has not been initialized) the
 /// member variables will default to `null`
 class DatadogSdk {
@@ -64,7 +64,9 @@ class DatadogSdk {
   DdLogs? _logs;
   DdLogs? get logs => _logs;
 
+  // ignore: deprecated_member_use_from_same_package
   DdTraces? _traces;
+  @Deprecated('Tracing is deprecated and will be removed before 1.0')
   DdTraces? get traces => _traces;
 
   DdRum? _rum;
@@ -158,6 +160,7 @@ class DatadogSdk {
       _logs = createLogger(configuration.loggingConfiguration!);
     }
     if (configuration.tracingConfiguration != null) {
+      // ignore: deprecated_member_use_from_same_package
       _traces = DdTraces(internalLogger);
     }
     if (configuration.rumConfiguration != null) {

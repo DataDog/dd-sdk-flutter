@@ -207,6 +207,7 @@ class DdSpan {
   }
 }
 
+@Deprecated('Tracing is deprecated and will be removed before 1.0')
 class DdTraces {
   static DdTracesPlatform get _platform {
     return DdTracesPlatform.instance;
