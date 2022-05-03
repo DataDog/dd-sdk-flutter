@@ -94,6 +94,7 @@ class DatadogConfigurationTests: XCTestCase {
       "uploadFrequency": nil,
       "trackingConsent": "TrackingConsent.pending",
       "customEndpoint": nil,
+      "firstPartyHosts": [],
       "loggingConfiguration": nil,
       "tracingConfiguration": nil,
       "rumConfiguration": nil,
@@ -106,6 +107,36 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.clientToken, "fakeClientToken")
     XCTAssertEqual(config.env, "fakeEnvironment")
     XCTAssertEqual(config.nativeCrashReportingEnabled, false)
+    XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
+
+    XCTAssertNil(config.tracingConfiguration)
+    XCTAssertNil(config.rumConfiguration)
+  }
+
+  func testConfiguration_Values_AreDecoded() {
+    let encoded: [String: Any?]  = [
+      "clientToken": "fakeClientToken",
+      "env": "fakeEnvironment",
+      "nativeCrashReportEnabled": NSNumber(false),
+      "site": "DatadogSite.eu1",
+      "batchSize": "BatchSize.small",
+      "uploadFrequency": "UploadFrequency.frequent",
+      "trackingConsent": "TrackingConsent.pending",
+      "customEndpoint": nil,
+      "firstPartyHosts": [ "first_party.com" ],
+      "loggingConfiguration": nil,
+      "tracingConfiguration": nil,
+      "rumConfiguration": nil,
+      "additionalConfig": [:]
+    ]
+
+    let config = DatadogFlutterConfiguration(fromEncoded: encoded)!
+
+    XCTAssertNotNil(config)
+    XCTAssertEqual(config.site, .eu1)
+    XCTAssertEqual(config.batchSize, .small)
+    XCTAssertEqual(config.uploadFrequency, .frequent)
+    XCTAssertEqual(config.firstPartyHosts, ["first_party.com"])
     XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
 
     XCTAssertNil(config.tracingConfiguration)

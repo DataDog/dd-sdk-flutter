@@ -42,14 +42,19 @@ Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
   await DatadogSdk.instance.initialize(configuration);
 }
 
-Future<void> measure(String resourceName, AsyncVoidCallback callback) async {
-  var span = DatadogSdk.instance.traces?.startRootSpan(
-    'perf_measure',
-    resourceName: resourceName,
-    tags: {'operating_system': Platform.operatingSystem},
-  );
+Future<void> measure(String resourceName, AsyncVoidCallback callback,
+    [double targetSeconds = 0.02]) async {
+  var stopwatch = Stopwatch();
+  stopwatch.start();
   await callback();
-  span?.finish();
+  stopwatch.stop();
+  // ignore: unused_local_variable
+  final elapsedSeconds = stopwatch.elapsedMicroseconds / 1000000.0;
+  // TODO: Determine best way to monitor this moving forward
+  if (elapsedSeconds > targetSeconds) {
+    DatadogSdk.instance.logs?.error(
+        'PERF ERROR: `$resourceName` took ${elapsedSeconds.toStringAsFixed(3)} (targeting ${targetSeconds.toStringAsFixed(3)})');
+  }
 }
 
 final _random = Random();
@@ -96,6 +101,8 @@ void sendRandomLog(WidgetTester tester) {
 }
 
 DdSpan startSpan(String operationName) {
+  // Not used in any currently running tests, ignoring deprecated use for now.
+  // ignore: deprecated_member_use
   return DatadogSdk.instance.traces!.startSpan(operationName, tags: {
     'operating_system': Platform.operatingSystem,
   });

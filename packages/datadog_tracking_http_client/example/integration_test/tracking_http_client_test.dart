@@ -19,7 +19,7 @@ Future<void> performRumUserFlow(WidgetTester tester) async {
   await tester.tap(topItem);
   await tester.pumpAndSettle();
 
-  var readyText = find.text('All Done');
+  //var readyText = find.text('All Done');
   //await tester.waitFor(readyText, const Duration(seconds: 100), (e) => true);
 
   var nextButton = find.text('Next Page');
@@ -110,7 +110,6 @@ void main() async {
     for (var testRequest in testRequests) {
       expect(testRequest.requestHeaders['x-datadog-sampling-priority']?.first,
           '1');
-      expect(testRequest.requestHeaders['x-datadog-sampled']?.first, '1');
       expect(testRequest.requestHeaders['x-datadog-origin']?.first, 'rum');
     }
 

@@ -1,12 +1,12 @@
 name: datadog_tracking_http_client
 description: A wrapping implementation of HttpClient for tracking resources with Datadog
-version: 1.0.0-alpha.1
+version: 1.0.1-alpha.1
 repository: https://github.com/DataDog/dd-sdk-flutter
 homepage: https://datadoghq.com
 
 
 environment:
-  sdk: ">=2.16.1 <2.17.0"
+  sdk: ">=2.17.0-0 <3.0.0"
   flutter: ">=1.17.0"
 
 dependencies:
@@ -23,3 +23,7 @@ dev_dependencies:
 
 flutter:
 
+# TODO: For development of alpha.2. Remove once dd_flutter_plugin is alpha.3 
+dependency_overrides:
+  datadog_flutter_plugin:
+    path: ../datadog_flutter_plugin

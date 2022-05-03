@@ -76,6 +76,7 @@ void main() {
       'customEndpoint': null,
       'batchSize': null,
       'uploadFrequency': null,
+      'firstPartyHosts': [],
       'tracingConfiguration': null,
       'rumConfiguration': null,
       'additionalConfig': {},
@@ -153,6 +154,21 @@ void main() {
     await datadogSdk.initialize(configuration);
 
     expect(datadogSdk.firstPartyHosts, firstPartyHosts);
+  });
+
+  test('first party hosts are encoded', () async {
+    var firstPartyHosts = ['example.com', 'datadoghq.com'];
+
+    final configuration = DdSdkConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.pending,
+      firstPartyHosts: firstPartyHosts,
+    );
+
+    final encoded = configuration.encode();
+    expect(encoded['firstPartyHosts'], firstPartyHosts);
   });
 
   test('isFirstPartyHost with no hosts returns false', () async {

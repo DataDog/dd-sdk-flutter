@@ -6,7 +6,6 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 
 import 'src/tracking_http_client_plugin.dart';
 
-export 'src/tracing_headers.dart';
 export 'src/tracking_http_client.dart';
 
 extension TrackingExtension on DdSdkConfiguration {
