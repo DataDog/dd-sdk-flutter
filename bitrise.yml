@@ -19,6 +19,7 @@ workflows:
   
   nightly:
     before_run:
+    - _flutter_install
     - setup
     - nightly_ios
     - nightly_android
