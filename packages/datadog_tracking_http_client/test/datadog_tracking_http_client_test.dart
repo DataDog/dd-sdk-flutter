@@ -151,14 +151,14 @@ void main() {
             .captured[0];
     var traceInt = BigInt.tryParse(traceValue);
     expect(traceInt, isNotNull);
-    expect(traceInt?.bitLength, lessThanOrEqualTo(64));
+    expect(traceInt?.bitLength, lessThanOrEqualTo(63));
 
     var spanValue =
         verify(() => headers.add('x-datadog-parent-id', captureAny()))
             .captured[0] as String;
     var spanInt = BigInt.tryParse(spanValue);
     expect(spanInt, isNotNull);
-    expect(spanInt?.bitLength, lessThanOrEqualTo(64));
+    expect(spanInt?.bitLength, lessThanOrEqualTo(63));
   }
 
   void _enableRum() {
@@ -350,12 +350,12 @@ void main() {
       var traceInt = BigInt.parse(
           capturedStartAttributes[DatadogRumPlatformAttributeKey.traceID]);
       expect(traceInt, isNotNull);
-      expect(traceInt.bitLength, lessThanOrEqualTo(64));
+      expect(traceInt.bitLength, lessThanOrEqualTo(63));
 
       var spanInt = BigInt.parse(
           capturedStartAttributes[DatadogRumPlatformAttributeKey.spanID]);
       expect(spanInt, isNotNull);
-      expect(spanInt.bitLength, lessThanOrEqualTo(64));
+      expect(spanInt.bitLength, lessThanOrEqualTo(63));
     });
 
     test('sets trace headers for first party urls', () async {
