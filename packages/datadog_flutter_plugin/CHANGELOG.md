@@ -10,6 +10,8 @@
   * For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#1110-beta1--04-26-2022).
 * Send `firstPartyHosts` to Native SDKs during initialization. Make
   `firstPartyHosts` property on read only `DatadogSdk` read only. 
+* 💥 Breaking! - Deprecated non-RUM resource tracing.
+* Properly report `source` as Flutter on iOS.
 
 ## 1.0.0-alpha.2
 
