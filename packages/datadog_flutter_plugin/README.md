@@ -27,6 +27,10 @@ Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutte
 
 On Android, your `minSdkVersion` must be >= 19, and if you are using Kotlin, it should be version >= 1.5.31.
 
+### Web
+
+On Web, 
+
 ## Setup
 
 You need a Datadog client token for Logs and Tracing. If you are using RUM, you need an application ID.

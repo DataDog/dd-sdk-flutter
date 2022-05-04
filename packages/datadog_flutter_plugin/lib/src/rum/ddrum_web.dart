@@ -59,7 +59,9 @@ class DdRumWeb extends DdRumPlatform {
 
   @override
   Future<void> addUserAction(RumUserActionType type, String name,
-      Map<String, dynamic> attributes) async {}
+      Map<String, dynamic> attributes) async {
+    _jsAddAction(name, attributesToJs(attributes, 'attributes'));
+  }
 
   @override
   Future<void> removeAttribute(String key) async {
@@ -69,11 +71,15 @@ class DdRumWeb extends DdRumPlatform {
 
   @override
   Future<void> startResourceLoading(String key, RumHttpMethod httpMethod,
-      String url, Map<String, dynamic> attributes) async {}
+      String url, Map<String, dynamic> attributes) async {
+    // NOOP
+  }
 
   @override
   Future<void> startUserAction(RumUserActionType type, String name,
-      Map<String, dynamic> attributes) async {}
+      Map<String, dynamic> attributes) async {
+    // NOOP
+  }
 
   @override
   Future<void> startView(
@@ -83,19 +89,27 @@ class DdRumWeb extends DdRumPlatform {
 
   @override
   Future<void> stopResourceLoading(String key, int? statusCode,
-      RumResourceType kind, int? size, Map<String, dynamic> attributes) async {}
+      RumResourceType kind, int? size, Map<String, dynamic> attributes) async {
+    // NOOP
+  }
 
   @override
   Future<void> stopResourceLoadingWithError(
-      String key, Exception error, Map<String, dynamic> attributes) async {}
+      String key, Exception error, Map<String, dynamic> attributes) async {
+    // NOOP
+  }
 
   @override
   Future<void> stopResourceLoadingWithErrorInfo(String key, String message,
-      String type, Map<String, dynamic> attributes) async {}
+      String type, Map<String, dynamic> attributes) async {
+    // NOOP
+  }
 
   @override
   Future<void> stopUserAction(RumUserActionType type, String name,
-      Map<String, dynamic> attributes) async {}
+      Map<String, dynamic> attributes) async {
+    // NOOP
+  }
 
   @override
   Future<void> stopView(String key, Map<String, dynamic> attributes) async {
@@ -153,3 +167,6 @@ external void _jsAddTiming(String name);
 
 @JS('addError')
 external void _jsAddError(dynamic error, dynamic context);
+
+@JS('addAction')
+external void _jsAddAction(String action, dynamic context);

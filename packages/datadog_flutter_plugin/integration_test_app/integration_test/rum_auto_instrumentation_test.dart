@@ -36,7 +36,7 @@ void main() {
   // scenario with instrumentation enabled, then checks that we got the expected
   // calls.
   testWidgets('test auto instrumentation', (WidgetTester tester) async {
-    var serverRecorder = startMockServer();
+    var serverRecorder = await startMockServer();
 
     const clientToken = bool.hasEnvironment('DD_CLIENT_TOKEN')
         ? String.fromEnvironment('DD_CLIENT_TOKEN')
@@ -46,7 +46,7 @@ void main() {
         : null;
 
     auto_app.testingConfiguration = TestingConfiguration(
-        customEndpoint: RecordingHttpServer.endpoint,
+        customEndpoint: serverRecorder.sessionEndpoint,
         clientToken: clientToken,
         applicationId: applicationId,
         firstPartyHosts: ['localhost']);

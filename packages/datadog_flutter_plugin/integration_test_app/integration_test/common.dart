@@ -30,23 +30,27 @@ Matcher isDecimalVersionOfHex(Object value) => _IsDecimalVersionOfHex(value);
 
 RecordingHttpServer? _mockHttpServer;
 
-RecordingServerClient startMockServer() {
+Future<RecordingServerClient> startMockServer() async {
   if (kIsWeb) {
-    return RemoteRecordingServerClient(RecordingHttpServer.endpoint);
+    final client = RemoteRecordingServerClient();
+    await client.startNewSession();
+    return client;
   } else {
     if (_mockHttpServer == null) {
       _mockHttpServer = RecordingHttpServer();
       unawaited(_mockHttpServer!.start());
     }
-    _mockHttpServer!.startNewSession();
 
-    return LocalRecordingServerClient(_mockHttpServer!);
+    final client = LocalRecordingServerClient(_mockHttpServer!);
+    await client.startNewSession();
+
+    return client;
   }
 }
 
 Future<RecordingServerClient> openTestScenario(
     WidgetTester tester, String scenarioName) async {
-  var client = startMockServer();
+  var client = await startMockServer();
 
   // These need to be set as const in order to work, so we
   // can't refactor this out to a function.
@@ -58,7 +62,7 @@ Future<RecordingServerClient> openTestScenario(
       : null;
 
   app.testingConfiguration = TestingConfiguration(
-      customEndpoint: RecordingHttpServer.endpoint,
+      customEndpoint: client.sessionEndpoint,
       clientToken: clientToken,
       applicationId: applicationId);
 

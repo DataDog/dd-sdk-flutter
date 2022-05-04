@@ -12,6 +12,8 @@ import 'src/datadog_configuration.dart';
 import 'src/datadog_sdk_platform_interface.dart';
 import 'src/logs/ddlogs_platform_interface.dart';
 import 'src/logs/ddlogs_web.dart';
+import 'src/rum/ddrum_platform_interface.dart';
+import 'src/rum/ddrum_web.dart';
 
 /// A web implementation of the DatadogSdk plugin.
 class DatadogSdkWeb extends DatadogSdkPlatform {
@@ -19,6 +21,7 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
     DatadogSdkPlatform.instance = DatadogSdkWeb();
 
     DdLogsPlatform.instance = DdLogsWeb();
+    DdRumPlatform.instance = DdRumWeb();
   }
 
   @override
@@ -36,6 +39,10 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
       {LogCallback? logCallback}) async {
     if (configuration.loggingConfiguration != null) {
       DdLogsWeb.initLogs(configuration);
+    }
+    if (configuration.rumConfiguration != null) {
+      final rumWeb = DdRumPlatform.instance as DdRumWeb;
+      rumWeb.initRum(configuration);
     }
   }
 

@@ -271,8 +271,8 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
 
   @override
   void didPush() {
-    DatadogSdk.instance.rum?.removeAttribute('onboarding_stage');
     DatadogSdk.instance.rum?.startView(_viewKey, _viewName);
+    DatadogSdk.instance.rum?.removeAttribute('onboarding_stage');
   }
 
   @override

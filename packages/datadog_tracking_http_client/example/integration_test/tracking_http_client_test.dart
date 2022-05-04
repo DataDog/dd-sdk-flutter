@@ -47,9 +47,9 @@ void main() async {
         : null;
 
     final scenarioConfig = RumAutoInstrumentationScenarioConfig(
-      firstPartyHosts: ['localhost:${RecordingHttpServer.bindingPort}'],
-      firstPartyGetUrl: '${RecordingHttpServer.endpoint}/integration_get',
-      firstPartyPostUrl: '${RecordingHttpServer.endpoint}/integration_post',
+      firstPartyHosts: [(sessionRecorder.sessionEndpoint)],
+      firstPartyGetUrl: '${sessionRecorder.sessionEndpoint}/integration_get',
+      firstPartyPostUrl: '${sessionRecorder.sessionEndpoint}/integration_post',
       firstPartyBadUrl: 'https://foo.bar',
       thirdPartyGetUrl: 'https://httpbingo.org/get',
       thirdPartyPostUrl: 'https://httpbingo.org/post',
@@ -57,7 +57,7 @@ void main() async {
     RumAutoInstrumentationScenarioConfig.instance = scenarioConfig;
 
     app.testingConfiguration = TestingConfiguration(
-        customEndpoint: RecordingHttpServer.endpoint,
+        customEndpoint: sessionRecorder.sessionEndpoint,
         clientToken: clientToken,
         applicationId: applicationId,
         firstPartyHosts: ['localhost']);
