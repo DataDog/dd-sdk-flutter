@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.0-beta.1
+
 * Update iOS SDK to 1.11
   * Stop reporting pre-warmed application launch time.
   * Reduce the number of intermediate view events sent in RUM payloads.
