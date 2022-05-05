@@ -5,7 +5,6 @@
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_grpc_interceptor/src/tracing_util.dart';
 import 'package:grpc/grpc.dart';
 import 'package:uuid/uuid.dart';
 
