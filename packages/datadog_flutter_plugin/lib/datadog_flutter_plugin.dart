@@ -37,14 +37,15 @@ export 'src/rum/navigation_observer.dart'
         DatadogNavigationObserverProvider,
         RumViewInfo,
         DatadogRouteAwareMixin;
-export 'src/traces/ddtraces.dart' show DdSpan, OTTags, OTLogFields;
+export 'src/traces/ddtraces.dart'
+    show DdSpan, OTTags, OTLogFields, generateTraceId;
 
 typedef AppRunner = void Function();
 
 /// A singleton for the Datadog SDK.
 ///
-/// Once initialized, individual features can be access through the [logs],
-/// [traces], and [rum] member variables. If a feature is disabled (either
+/// Once initialized, individual features can be access through the [logs]
+/// and [rum] member variables. If a feature is disabled (either
 /// because they were not configured or the SDK has not been initialized) the
 /// member variables will default to `null`
 class DatadogSdk {
@@ -63,7 +64,9 @@ class DatadogSdk {
   DdLogs? _logs;
   DdLogs? get logs => _logs;
 
+  // ignore: deprecated_member_use_from_same_package
   DdTraces? _traces;
+  @Deprecated('Tracing is deprecated and will be removed before 1.0')
   DdTraces? get traces => _traces;
 
   DdRum? _rum;
@@ -74,10 +77,9 @@ class DatadogSdk {
 
   final Map<Type, DatadogPlugin> _plugins = {};
 
-  /// A list of first party hosts for tracing. Note that this is an unmodifiable
-  /// list. If you need to add a host, call the setter for [firstPartyHosts]
+  /// An unmodifiable list of first party hosts for tracing.
   List<String> get firstPartyHosts => List.unmodifiable(_firstPartyHosts);
-  set firstPartyHosts(List<String> value) {
+  void _setFirstPartyHosts(List<String> value) {
     _firstPartyHosts = value;
     if (value.isNotEmpty) {
       // pattern = "^(.*\\.)*tracedHost1$|tracedHost2$|...$"
@@ -150,7 +152,7 @@ class DatadogSdk {
     configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
     configuration.additionalConfig[DatadogConfigKey.version] = version;
 
-    firstPartyHosts = configuration.firstPartyHosts;
+    _setFirstPartyHosts(configuration.firstPartyHosts);
 
     await _platform.initialize(configuration, logCallback: _platformLog);
 
@@ -158,6 +160,7 @@ class DatadogSdk {
       _logs = createLogger(configuration.loggingConfiguration!);
     }
     if (configuration.tracingConfiguration != null) {
+      // ignore: deprecated_member_use_from_same_package
       _traces = DdTraces(internalLogger);
     }
     if (configuration.rumConfiguration != null) {

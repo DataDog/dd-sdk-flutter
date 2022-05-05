@@ -23,6 +23,10 @@ void main() {
     await tester.tap(throwButton);
     await tester.pumpAndSettle();
 
+    var stopButton = find.widgetWithText(ElevatedButton, 'Stop View');
+    await tester.tap(stopButton);
+    await tester.pumpAndSettle();
+
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
     await mockHttpServer!.pollRequests(
@@ -36,7 +40,8 @@ void main() {
           }
         });
         var visits = RumSessionDecoder.fromEvents(rumLog).visits;
-        return visits.length == 1 && visits[0].errorEvents.length == 3;
+        return visits.length == 1 &&
+            visits[0].viewEvents.last.view.errorCount == 3;
       },
     );
 

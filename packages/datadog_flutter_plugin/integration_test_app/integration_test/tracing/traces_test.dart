@@ -1,6 +1,8 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
+@Skip('Tracing is being deprecated, and is broken in Flutter 2.13')
+
 import 'dart:convert';
 import 'dart:io';
 

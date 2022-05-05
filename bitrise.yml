@@ -6,6 +6,7 @@ project_type: flutter
 workflows:
   primary:
     before_run:
+    - _flutter_install
     - setup
     - check_dependencies
     - build
@@ -18,9 +19,16 @@ workflows:
   
   nightly:
     before_run:
+    - _flutter_install
     - setup
     - nightly_ios
     - nightly_android
+
+  _flutter_install:
+    steps:
+    - flutter-installer@0:
+        inputs:
+        - version: stable
     
   _prepare_gradle_wrapper:
     steps:
@@ -53,20 +61,40 @@ workflows:
           - content: |-
               #!/usr/bin/env bash
               set -e
-              cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin
-              flutter pub get
-              cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example
-              flutter pub get
-              cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app
-              flutter pub get
-              cd $BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/e2e_test_app
-              flutter pub get
-              cd $BITRISE_SOURCE_DIR/tools/e2e_generator
-              dart pub get
-              cd $BITRISE_SOURCE_DIR/tools/releaser
-              dart pub get
-              cd $BITRISE_SOURCE_DIR/tools/third_party_scanner
-              dart pub get
+
+              for d in packages/*/ ; do
+                  pushd "$d"
+                  if [ ! -f "pubspec.yaml" ]; then
+                      echo "Skipping $d because it is missing pubspec.yaml"
+                      popd
+                      continue
+                  fi
+                  echo "pub get in $d"
+                  flutter pub get
+
+                  subapps=( "integration_test_app" "e2e_test_app" )
+                  for subapp in "${subapps[@]}"; do
+                      if [ -d "$subapp" ];  then
+                          pushd "$subapp"
+                          echo "pub get in $d/$subapp"
+                          flutter pub get
+                          popd
+                      fi
+                  done
+                  popd
+              done
+
+              for d in tools/*/ ; do
+                  pushd "$d"
+                  if [ ! -f "pubspec.yaml" ]; then
+                      echo "Skipping $d because it is missing pubspec.yaml"
+                      popd
+                      continue
+                  fi
+                  echo "pub get in $d"
+                  dart pub get
+                  popd
+              done
           - working_dir: "$BITRISE_SOURCE_DIR"
 
   build:
@@ -96,6 +124,10 @@ workflows:
     - flutter-test@1.0.1:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client"
+    
+    - flutter-test@1.0.1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor"
     
 
     - flutter-build@0.14.0:

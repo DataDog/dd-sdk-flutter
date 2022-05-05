@@ -17,12 +17,14 @@ class RumManualErrorReportingScenario extends StatefulWidget {
 
 class _RumManualErrorReportingScenarioState
     extends State<RumManualErrorReportingScenario> {
+  final viewKey = 'my-key';
+
   @override
   void initState() {
     super.initState();
 
     DatadogSdk.instance.rum
-        ?.startView('my-key', 'RumManualErrorReportingScenario');
+        ?.startView(viewKey, 'RumManualErrorReportingScenario');
     _addErrors();
   }
 
@@ -34,13 +36,18 @@ class _RumManualErrorReportingScenarioState
     }
   }
 
-  Future<void> _throwAndCatchError() async {
+  void _throwAndCatchError() {
     try {
       throw const OSError('This was an error!', 200);
     } catch (e, s) {
       DatadogSdk.instance.rum
           ?.addError(e, RumErrorSource.source, stackTrace: s);
     }
+  }
+
+  void _stopView() {
+    // Manually stop the view to send all error events
+    DatadogSdk.instance.rum?.stopView(viewKey);
   }
 
   @override
@@ -55,6 +62,10 @@ class _RumManualErrorReportingScenarioState
             onPressed: _throwAndCatchError,
             child: const Text('Throw / Catch Exception'),
           ),
+          ElevatedButton(
+            onPressed: _stopView,
+            child: const Text('Stop View'),
+          )
         ],
       ),
     );

@@ -129,6 +129,10 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
       _ = ddConfigBuilder.set(uploadFrequency: uploadFrequency)
     }
 
+    if !flutterConfig.firstPartyHosts.isEmpty {
+      _ = ddConfigBuilder.trackURLSession(firstPartyHosts: Set(flutterConfig.firstPartyHosts))
+    }
+
     if let customEndpoint = flutterConfig.customEndpoint,
        let customEndpointUrl = URL(string: customEndpoint) {
       _ = ddConfigBuilder
