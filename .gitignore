@@ -17,3 +17,4 @@ tools/e2e_generator/secrets.tf
 tools/e2e_generator/terraform.tfstate
 *.backup
 **/.flutter-plugins*
+packages/datadog_tracking_http_client/example/ios/Podfile.lock

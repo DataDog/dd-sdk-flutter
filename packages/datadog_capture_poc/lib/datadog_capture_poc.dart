@@ -2,54 +2,145 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
+
+import 'package:collection/collection.dart';
+import 'package:datadog_capture_poc/src/capture_uploader.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/widgets.dart';
+
+import 'src/models/wireframe_payload.dart';
+
+final _buttonTypes = [
+  FlatButton,
+  RaisedButton,
+  ElevatedButton,
+  TextButton,
+  MaterialButton,
+];
 
 class DatadogCaptureManager {
-  Map<Key, _DatadogCapturingRenderObject> renderObjects = {};
+  final CaptureUploader _uploader;
+
+  //Map<Key, _DatadogCapturingRenderObject> renderObjects = {};
   Map<Key, Element> elements = {};
 
+  DatadogCaptureManager(String serverUri)
+      : _uploader = CaptureUploader(serverUri);
+
   void performCapture() {
-    for (final item in renderObjects.values) {
-      print(item.capture());
-    }
+    // for (final item in renderObjects.values) {
+    //   item.capture();
+    // }
 
     for (final item in elements.values) {
-      _captureElement(item);
+      final payload = _captureElement(item);
+
+      if (payload != null) {
+        var wireframes = _flattenWireframe(payload);
+        // for now, filter uknown views
+        wireframes =
+            wireframes.where((e) => e.kind != WireframeKind.unknown).toList();
+        unawaited(_uploader.uploadWireframes(wireframes));
+      }
     }
   }
 
-  void _captureElement(Element e) {
-    final buffer = StringBuffer('[\n');
+  List<Wireframe> _flattenWireframe(Wireframe wireframe) {
+    List<Wireframe> flattened = [];
+
+    void traverse(Wireframe start, bool Function(Wireframe) visitor) {
+      final shouldSkipChildren = visitor(start);
+      if (shouldSkipChildren) return;
+
+      for (final child in start.wireframeChildren) {
+        traverse(child, visitor);
+      }
+    }
+
+    traverse(wireframe, (child) {
+      flattened.add(child);
+      return false;
+    });
+
+    return flattened;
+  }
+
+  Wireframe? _captureElement(Element e) {
     Stopwatch stopwatch = Stopwatch();
     stopwatch.start();
-    void visitor(Element child, int depth) {
-      child.visitChildElements((nextChild) {
-        buffer.write(' ' * depth);
-        String paintBounds = '';
-        final ro = nextChild.renderObject;
-        if (ro != null) {
-          final mat = ro.getTransformTo(e.renderObject);
-          final size = ro.paintBounds;
-          paintBounds = '(${MatrixUtils.transformRect(mat, size)})';
+
+    void visitor(Element element, Wireframe elementWireframe, int depth) {
+      element.visitChildElements((child) {
+        final ro = child.renderObject;
+        if (ro == null) return;
+
+        final mat = ro.getTransformTo(e.renderObject);
+        final size = ro.paintBounds;
+        final paintBounds = MatrixUtils.transformRect(mat, size);
+
+        WireframeKind kind = WireframeKind.unknown;
+        WireframeTextOptions? textOptions;
+        WireframeImageOptions? imageOptions;
+
+        final widget = child.widget;
+        if (widget is Text) {
+          kind = WireframeKind.label;
+          final style = widget.style;
+          textOptions = WireframeTextOptions(
+            text: widget.data,
+            fontFamilyName: style?.fontFamily,
+            fontSize: style?.fontSize,
+            textColor: style?.color?.toHexString(),
+          );
+        } else if (_buttonTypes
+                .firstWhereOrNull((type) => type == widget.runtimeType) !=
+            null) {
+          kind = WireframeKind.button;
         }
-        buffer.write('${child.toStringShort()}$paintBounds,\n');
-        visitor(nextChild, depth + 1);
-        print(buffer.toString());
-        buffer.clear();
+
+        final childWireframe = Wireframe(
+          x: paintBounds.left,
+          y: paintBounds.top,
+          w: paintBounds.width,
+          h: paintBounds.height,
+          kind: kind,
+          textOptions: textOptions,
+          imageOptions: imageOptions,
+        );
+        visitor(child, childWireframe, depth + 1);
+
+        elementWireframe.wireframeChildren.add(childWireframe);
       });
     }
 
+    Wireframe? wireframe;
     e.visitChildElements((child) {
-      visitor(child, 1);
+      final ro = child.renderObject;
+      if (ro == null) return;
+
+      final mat = ro.getTransformTo(e.renderObject);
+      final size = ro.paintBounds;
+      final paintBounds = MatrixUtils.transformRect(mat, size);
+      final localWireframe = Wireframe(
+        x: paintBounds.left,
+        y: paintBounds.top,
+        w: paintBounds.width,
+        h: paintBounds.height,
+        kind: WireframeKind.utility,
+      );
+      visitor(child, localWireframe, 1);
+      wireframe = localWireframe;
     });
 
     stopwatch.stop();
     print("Capture completed in ${stopwatch.elapsed.toString()}");
+
+    return wireframe;
   }
 }
 
-class DatadogCapturingWidget extends StatelessWidget {
+class DatadogCapturingWidget extends StatefulWidget {
   final Widget child;
   final DatadogCaptureManager manager;
 
@@ -58,7 +149,7 @@ class DatadogCapturingWidget extends StatelessWidget {
       : super(key: key);
 
   @override
-  StatelessElement createElement() {
+  StatefulElement createElement() {
     final e = super.createElement();
     if (key != null) {
       manager.elements[key!] = e;
@@ -67,8 +158,19 @@ class DatadogCapturingWidget extends StatelessWidget {
   }
 
   @override
+  State<DatadogCapturingWidget> createState() => _DatadogCapturingWidgetState();
+}
+
+class _DatadogCapturingWidgetState extends State<DatadogCapturingWidget> {
+  @override
+  void dispose() {
+    widget.manager.elements.remove(widget.key);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return child;
+    return widget.child;
   }
 }
 
@@ -124,5 +226,15 @@ class _DatadogCapturingRenderObject extends RenderProxyBox {
     buffer.writeln(']');
 
     return buffer.toString();
+  }
+}
+
+extension Hex on Color {
+  String toHexString() {
+    final sb = StringBuffer('#');
+    for (final component in [red, green, blue, alpha]) {
+      sb.write(component.toRadixString(16).padLeft(2, '0'));
+    }
+    return sb.toString();
   }
 }

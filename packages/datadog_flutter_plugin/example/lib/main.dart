@@ -12,11 +12,12 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'example_app.dart';
 
 void main() async {
+  await dotenv.load(mergeWith: Platform.environment);
+
+  var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
+
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
-    await dotenv.load(mergeWith: Platform.environment);
-
-    var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
 
     final configuration = DdSdkConfiguration(
       clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
@@ -37,7 +38,8 @@ void main() async {
     );
 
     final ddsdk = DatadogSdk.instance;
-    ddsdk.sdkVerbosity = Verbosity.verbose;
+
+    DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
 
     DatadogSdk.instance.initialize(configuration);
 
@@ -51,5 +53,27 @@ void main() async {
     DatadogSdk.instance.rum
         ?.addErrorInfo(e.toString(), RumErrorSource.source, stackTrace: s);
     throw e;
+  });
+
+  final configuration = DdSdkConfiguration(
+    clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
+    env: dotenv.get('DD_ENV', fallback: ''),
+    site: DatadogSite.us1,
+    trackingConsent: TrackingConsent.granted,
+    nativeCrashReportEnabled: true,
+    loggingConfiguration: LoggingConfiguration(
+      sendNetworkInfo: true,
+      printLogsToConsole: true,
+    ),
+    tracingConfiguration: TracingConfiguration(
+      sendNetworkInfo: true,
+    ),
+    rumConfiguration: applicationId != null
+        ? RumConfiguration(applicationId: applicationId)
+        : null,
+  );
+
+  DatadogSdk.runApp(configuration, () {
+    runApp(const ExampleApp());
   });
 }

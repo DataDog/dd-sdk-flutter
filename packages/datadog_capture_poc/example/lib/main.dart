@@ -31,7 +31,8 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   Key captureKey = GlobalKey();
-  final DatadogCaptureManager _captureManager = DatadogCaptureManager();
+  final DatadogCaptureManager _captureManager =
+      DatadogCaptureManager('http://localhost:9000');
   int _counter = 0;
 
   void _incrementCounter() {

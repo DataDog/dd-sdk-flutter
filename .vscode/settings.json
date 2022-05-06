@@ -25,6 +25,7 @@
         "Pubspec",
         "rethrown",
         "Uncompress",
+        "wireframe",
         "writeln"
     ]
 }
