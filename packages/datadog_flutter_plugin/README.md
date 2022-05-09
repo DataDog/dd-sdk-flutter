@@ -127,10 +127,11 @@ You can enable automatic tracking of resources and HTTP calls from your RUM view
 ```dart
 final configuration = DdSdkConfiguration(
   // configuration
+  firstPartyHosts: ['example.com'],
 )..enableHttpTracking()
 ```
 
-If you want to enable Datadog distributed tracing, you must also set the `DdSdkConfiguration.firstPartyHosts` configuration option.
+In order to enable Datadog Distributed Tracing, the `DdSdkConfiguration.firstPartyHosts` property in your configuration object must be set to a domain that supports distributed tracing.
 
 ## Data Storage
 
