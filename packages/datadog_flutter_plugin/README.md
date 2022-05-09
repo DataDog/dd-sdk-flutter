@@ -8,6 +8,16 @@ Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real
 
 RUM supports monitoring for Flutter Android and iOS mobile applications.
 
+## Current Datadog SDK Versions
+
+[//]: # (SDK Table)
+
+| iOS SDK | Android SDK | Browser SDK |
+| :-----: | :---------: | :---------: |
+| 1.11.0-beta2 | 1.12.0-alpha2 | ❌ |
+
+[//]: # (End SDK Table)
+
 ### iOS
 
 Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutter) and target iOS version >= 11.0.
