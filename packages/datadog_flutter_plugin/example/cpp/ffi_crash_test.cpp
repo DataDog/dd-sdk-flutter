@@ -4,8 +4,12 @@
 
 #include <stdint.h>
 
-void internal_function(int32_t attribute, int32_t* assignee) {
+void secondary_function(int32_t attribute, int32_t* assignee) {
     *assignee = attribute;
+}
+
+void internal_function(int32_t attribute, int32_t* assignee) {
+    secondary_function(attribute, assignee);
 }
 
 extern "C" __attribute__((visibility("default"))) __attribute__((used))

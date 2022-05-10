@@ -34,7 +34,7 @@ class MainActivity : FlutterActivity() {
             "crashNative" -> {
                 Handler(Looper.getMainLooper()).postDelayed({
                     @Suppress("TooGenericExceptionThrown")
-                    throw RuntimeException("Test crash")
+                    throw RuntimeException("Secondary Crash Test")
                 }, 100)
             }
             "throwException" -> {

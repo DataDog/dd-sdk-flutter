@@ -67,6 +67,7 @@ Map<String, dynamic> _$WireframeToJson(Wireframe instance) => <String, dynamic>{
     };
 
 const _$WireframeKindEnumMap = {
+  WireframeKind.window: 'window',
   WireframeKind.label: 'label',
   WireframeKind.textField: 'textfield',
   WireframeKind.image: 'image',

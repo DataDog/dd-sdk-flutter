@@ -55,8 +55,17 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              const FlutterLogo(
-                size: 100,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const FlutterLogo(
+                    size: 100,
+                  ),
+                  SizedBox.square(
+                    dimension: 100,
+                    child: Image.asset('assets/dd_icon_rgb.png'),
+                  ),
+                ],
               ),
               const Text(
                 'You have pushed the button this many times:',

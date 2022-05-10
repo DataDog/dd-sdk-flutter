@@ -2,11 +2,14 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:ui' as ui show Image;
+
 import 'package:json_annotation/json_annotation.dart';
 
 part 'wireframe_payload.g.dart';
 
 enum WireframeKind {
+  window,
   label,
   @JsonValue('textfield')
   textField,
@@ -49,6 +52,16 @@ class WireframeImageOptions {
   Map<String, dynamic> toJson() => _$WireframeImageOptionsToJson(this);
 }
 
+class WireframeImageCapture {
+  final String id;
+  final ui.Image capture;
+
+  WireframeImageCapture({
+    required this.id,
+    required this.capture,
+  });
+}
+
 @JsonSerializable()
 class Wireframe {
   final num x;
@@ -63,6 +76,9 @@ class Wireframe {
   @JsonKey(ignore: true)
   List<Wireframe> wireframeChildren = [];
 
+  @JsonKey(ignore: true)
+  WireframeImageCapture? imageCapture;
+
   Wireframe({
     required this.x,
     required this.y,
@@ -72,6 +88,7 @@ class Wireframe {
     this.backgroundColor,
     this.textOptions,
     this.imageOptions,
+    this.imageCapture,
   });
 
   factory Wireframe.fromJson(Map<String, dynamic> json) =>

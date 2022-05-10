@@ -201,7 +201,7 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
   Future<void> _crash(CrashType crashType) async {
     switch (crashType) {
       case CrashType.flutterException:
-        throw Exception("This wasn't supposed to happen!");
+        throw Exception('Testing crashes in flutter!');
       case CrashType.methodChannelCrash:
         await nativeCrashPlugin.crashNative();
         break;

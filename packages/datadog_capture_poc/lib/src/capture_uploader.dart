@@ -5,6 +5,7 @@
 // ignore_for_file: avoid_print
 
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
@@ -22,6 +23,21 @@ class CaptureUploader {
       : wireframeEndpoint = Uri.parse('$serverUrl/mixed/post-wireframe'),
         imagesEndpoint = Uri.parse('$serverUrl/mixed/post-image'),
         session = uuid.v4();
+
+  Future<void> uploadImages(List<Wireframe> wireframes) async {
+    final images = wireframes.where((e) => e.imageCapture != null).map((e) {
+      return e.imageCapture!;
+    });
+    for (final image in images) {
+      final uri = imagesEndpoint.replace(queryParameters: {
+        'session-id': session,
+        'image-tag': image.id,
+      });
+      var imageData =
+          await image.capture.toByteData(format: ImageByteFormat.png);
+      http.post(uri, body: imageData!.buffer.asInt8List());
+    }
+  }
 
   Future<void> uploadWireframes(List<Wireframe> wireframes) async {
     final uri = wireframeEndpoint.replace(

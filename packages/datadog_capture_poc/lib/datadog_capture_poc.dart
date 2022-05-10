@@ -25,10 +25,12 @@ class DatadogCaptureManager {
   //Map<Key, _DatadogCapturingRenderObject> renderObjects = {};
   Map<Key, Element> elements = {};
 
+  Map<Element, String> capturedImages = <Element, String>{};
+
   DatadogCaptureManager(String serverUri)
       : _uploader = CaptureUploader(serverUri);
 
-  void performCapture() {
+  Future<void> performCapture() async {
     // for (final item in renderObjects.values) {
     //   item.capture();
     // }
@@ -38,9 +40,11 @@ class DatadogCaptureManager {
 
       if (payload != null) {
         var wireframes = _flattenWireframe(payload);
-        // for now, filter uknown views
+
         wireframes =
-            wireframes.where((e) => e.kind != WireframeKind.unknown).toList();
+            wireframes.where((e) => e.kind != WireframeKind.utility).toList();
+
+        await _uploader.uploadImages(wireframes);
         unawaited(_uploader.uploadWireframes(wireframes));
       }
     }
@@ -79,20 +83,45 @@ class DatadogCaptureManager {
         final size = ro.paintBounds;
         final paintBounds = MatrixUtils.transformRect(mat, size);
 
-        WireframeKind kind = WireframeKind.unknown;
+        WireframeKind kind = WireframeKind.utility;
         WireframeTextOptions? textOptions;
+        WireframeImageCapture? imageCapture;
         WireframeImageOptions? imageOptions;
+        Color? backgroundColor;
 
         final widget = child.widget;
-        if (widget is Text) {
-          kind = WireframeKind.label;
-          final style = widget.style;
-          textOptions = WireframeTextOptions(
-            text: widget.data,
-            fontFamilyName: style?.fontFamily,
-            fontSize: style?.fontSize,
-            textColor: style?.color?.toHexString(),
-          );
+        if (widget is RichText) {
+          final textSpan = widget.text;
+          // TODO: Support other inline spans / child spans
+          if (textSpan is TextSpan) {
+            kind = WireframeKind.label;
+            final style = textSpan.style;
+            textOptions = WireframeTextOptions(
+              text: textSpan.text,
+              fontFamilyName: style?.fontFamily,
+              fontSize: style?.fontSize,
+              textColor: style?.color?.toHexString(),
+            );
+          }
+        } else if (widget is Material) {
+          kind = WireframeKind.unknown;
+          backgroundColor = widget.color;
+        } else if (widget is RawImage && widget.image != null) {
+          kind = WireframeKind.image;
+          if (!capturedImages.containsKey(child)) {
+            imageCapture = WireframeImageCapture(
+              id: uuid.v1(),
+              capture: widget.image!,
+            );
+            capturedImages[child] = imageCapture.id;
+            imageOptions = WireframeImageOptions(
+              imageName: imageCapture.id,
+            );
+          } else {
+            imageOptions = WireframeImageOptions(
+              imageName: capturedImages[child],
+            );
+          }
         } else if (_buttonTypes
                 .firstWhereOrNull((type) => type == widget.runtimeType) !=
             null) {
@@ -105,8 +134,10 @@ class DatadogCaptureManager {
           w: paintBounds.width,
           h: paintBounds.height,
           kind: kind,
+          backgroundColor: backgroundColor?.toHexString(),
           textOptions: textOptions,
           imageOptions: imageOptions,
+          imageCapture: imageCapture,
         );
         visitor(child, childWireframe, depth + 1);
 
@@ -115,22 +146,26 @@ class DatadogCaptureManager {
     }
 
     Wireframe? wireframe;
+    final ro = e.renderObject;
+    if (ro == null) return null;
+
+    // The first captured element is 'unknown' for now to fill the area
+    final mat = ro.getTransformTo(e.renderObject);
+    final size = ro.paintBounds;
+    final paintBounds = MatrixUtils.transformRect(mat, size);
+    wireframe = Wireframe(
+      x: paintBounds.left,
+      y: paintBounds.top,
+      w: paintBounds.width,
+      h: paintBounds.height,
+      kind: WireframeKind.unknown,
+      backgroundColor: '#ffffffff',
+    );
     e.visitChildElements((child) {
       final ro = child.renderObject;
       if (ro == null) return;
 
-      final mat = ro.getTransformTo(e.renderObject);
-      final size = ro.paintBounds;
-      final paintBounds = MatrixUtils.transformRect(mat, size);
-      final localWireframe = Wireframe(
-        x: paintBounds.left,
-        y: paintBounds.top,
-        w: paintBounds.width,
-        h: paintBounds.height,
-        kind: WireframeKind.utility,
-      );
-      visitor(child, localWireframe, 1);
-      wireframe = localWireframe;
+      visitor(child, wireframe!, 1);
     });
 
     stopwatch.stop();
