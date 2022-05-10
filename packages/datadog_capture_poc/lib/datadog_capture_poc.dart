@@ -3,6 +3,7 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'dart:async';
+import 'dart:ui' as ui show Image;
 
 import 'package:collection/collection.dart';
 import 'package:datadog_capture_poc/src/capture_uploader.dart';
@@ -36,7 +37,26 @@ class DatadogCaptureManager {
     // }
 
     for (final item in elements.values) {
-      final payload = _captureElement(item);
+      final stopwatch = Stopwatch();
+      stopwatch.start();
+      var widget = item.widget;
+      ui.Image? uiImageCapture;
+      if (widget is DatadogCapturingWidget) {
+        var captureState =
+            (item as StatefulElement).state as _DatadogCapturingWidgetState;
+        var renderObject = captureState.repaintKey.currentContext
+            ?.findRenderObject() as RenderRepaintBoundary?;
+        if (renderObject != null) {
+          while (renderObject.debugNeedsPaint) {
+            await Future.delayed(const Duration(milliseconds: 10));
+          }
+          uiImageCapture = await renderObject.toImage();
+        }
+      }
+      stopwatch.stop();
+      print('Screen Capture Took: ${stopwatch.elapsed}');
+
+      final payload = _captureElement(item, uiImageCapture);
 
       if (payload != null) {
         var wireframes = _flattenWireframe(payload);
@@ -70,7 +90,7 @@ class DatadogCaptureManager {
     return flattened;
   }
 
-  Wireframe? _captureElement(Element e) {
+  Wireframe? _captureElement(Element e, ui.Image? fullCapture) {
     Stopwatch stopwatch = Stopwatch();
     stopwatch.start();
 
@@ -110,7 +130,7 @@ class DatadogCaptureManager {
           kind = WireframeKind.image;
           if (!capturedImages.containsKey(child)) {
             imageCapture = WireframeImageCapture(
-              id: uuid.v1(),
+              id: uuid.v4(),
               capture: widget.image!,
             );
             capturedImages[child] = imageCapture.id;
@@ -126,6 +146,16 @@ class DatadogCaptureManager {
                 .firstWhereOrNull((type) => type == widget.runtimeType) !=
             null) {
           kind = WireframeKind.button;
+        } else if (widget is FlutterLogo && fullCapture != null) {
+          kind = WireframeKind.image;
+          imageCapture = WireframeImageCapture(
+            id: uuid.v4(),
+            capture: fullCapture,
+            cropRect: true,
+          );
+          imageOptions = WireframeImageOptions(
+            imageName: imageCapture.id,
+          );
         }
 
         final childWireframe = Wireframe(
@@ -197,6 +227,8 @@ class DatadogCapturingWidget extends StatefulWidget {
 }
 
 class _DatadogCapturingWidgetState extends State<DatadogCapturingWidget> {
+  final repaintKey = GlobalKey();
+
   @override
   void dispose() {
     widget.manager.elements.remove(widget.key);
@@ -205,7 +237,10 @@ class _DatadogCapturingWidgetState extends State<DatadogCapturingWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return widget.child;
+    return RepaintBoundary(
+      key: repaintKey,
+      child: widget.child,
+    );
   }
 }
 

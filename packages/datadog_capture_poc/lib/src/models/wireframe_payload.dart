@@ -55,10 +55,12 @@ class WireframeImageOptions {
 class WireframeImageCapture {
   final String id;
   final ui.Image capture;
+  final bool cropRect;
 
   WireframeImageCapture({
     required this.id,
     required this.capture,
+    this.cropRect = false,
   });
 }
 

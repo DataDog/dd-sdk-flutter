@@ -51,10 +51,13 @@ class _MyHomePageState extends State<MyHomePage> {
         appBar: AppBar(
           title: Text(widget.title),
         ),
-        body: Center(
+        body: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
+              const SizedBox(
+                height: 200,
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -74,6 +77,18 @@ class _MyHomePageState extends State<MyHomePage> {
                 '$_counter',
                 style: Theme.of(context).textTheme.headline4,
               ),
+              const SizedBox(
+                height: 200,
+              ),
+              const Text("More text down here"),
+              const SizedBox(
+                height: 200,
+              ),
+              const Text("Even More text down here"),
+              const Center(
+                child: FlutterLogo(size: 150),
+              ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
