@@ -14,7 +14,7 @@ Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 1.11.0-beta1 | 1.12.0-alpha2 | ❌ |
+| 1.11.0-beta2 | 1.12.0-alpha2 | ❌ |
 
 [//]: # (End SDK Table)
 
@@ -126,7 +126,7 @@ Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction wi
 
 ### Automatic Resource Tracking
 
-You can enable automatic tracking of resources and http calls from your RUM views using the [datadog_tracking_http_client](https://pub.dev/datadog_tracking_http_client) package. Just add the package to your `pubspec.yaml`, and add the following to your initialization:
+You can enable automatic tracking of resources and HTTP calls from your RUM views using the [Datadog Tracking HTTP Client][7] package. Add the package to your `pubspec.yaml`, and add the following to your initialization:
 
 ```dart
 final configuration = DdSdkConfiguration(
@@ -141,9 +141,9 @@ If you want to enable Datadog distributed tracing, you must also set the `DdSdkC
 ### Android
 
 Before data is uploaded to Datadog, it is stored in cleartext in your application's cache directory.
-This cache folder is protected by [Android's Application Sandbox][1], meaning that on most devices
+This cache folder is protected by [Android's Application Sandbox][6], meaning that on most devices,
 this data can't be read by other applications. However, if the mobile device is rooted, or someone
-tampers with the linux kernel, the stored data might become readable.
+tampers with the Linux kernel, the stored data might become readable.
 
 ### iOS
 
@@ -169,3 +169,5 @@ For more information, see [Apache License, v2.0][5].
 [3]: https://docs.datadoghq.com/account_management/api-app-keys/#client-tokens
 [4]: https://github.com/DataDog/dd-sdk-flutter/blob/main/CONTRIBUTING.md
 [5]: https://github.com/DataDog/dd-sdk-flutter/blob/main/LICENSE
+[6]: https://source.android.com/security/app-sandbox
+[7]: https://pub.dev/packages/datadog_tracking_http_client

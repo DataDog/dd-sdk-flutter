@@ -36,7 +36,8 @@ export 'src/rum/navigation_observer.dart'
         DatadogNavigationObserver,
         DatadogNavigationObserverProvider,
         RumViewInfo,
-        DatadogRouteAwareMixin;
+        DatadogRouteAwareMixin,
+        ViewInfoExtractor;
 export 'src/traces/ddtraces.dart'
     show DdSpan, OTTags, OTLogFields, generateTraceId;
 

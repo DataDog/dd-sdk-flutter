@@ -6,20 +6,31 @@ import 'package:flutter/material.dart';
 
 import '../../datadog_flutter_plugin.dart';
 
+/// Information about a View that will be passed to [DdRum.startView]
 class RumViewInfo {
+  /// The name of the view
   final String name;
+
+  /// A path to the view
   final String? path;
-  final String? service;
+
+  /// Any attributes to be associated with this view
   final Map<String, dynamic> attributes;
 
   RumViewInfo({
     required this.name,
     this.path,
-    this.service,
     this.attributes = const {},
   });
 }
 
+/// A function that can be used to supply custom information to
+/// [DdRum.startView].
+///
+/// Returning `null` from this function will prevent the call
+/// to [DdRum.startView].
+///
+/// See [DatadogNavigationObserver.viewInfoExtractor].
 typedef ViewInfoExtractor = RumViewInfo? Function(Route route);
 
 RumViewInfo? defaultViewInfoExtractor(Route route) {
