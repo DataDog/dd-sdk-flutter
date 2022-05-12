@@ -28,7 +28,7 @@ workflows:
     steps:
     - flutter-installer@0:
         inputs:
-        - version: stable
+        - version: 2.10.5
     
   _prepare_gradle_wrapper:
     steps:
