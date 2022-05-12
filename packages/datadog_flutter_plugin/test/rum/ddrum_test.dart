@@ -41,16 +41,16 @@ void main() {
   test('Session sampling rate is clamped to 0..100', () {
     final lowConfiguration = RumConfiguration(
       applicationId: 'applicationId',
-      sampleRate: -12.3,
+      sessionSamplingRate: -12.3,
     );
 
     final highConfiguration = RumConfiguration(
       applicationId: 'applicationId',
-      sampleRate: 137.2,
+      sessionSamplingRate: 137.2,
     );
 
-    expect(lowConfiguration.sessionSampleRate, equals(0.0));
-    expect(highConfiguration.sessionSampleRate, equals(100.0));
+    expect(lowConfiguration.sessionSamplingRate, equals(0.0));
+    expect(highConfiguration.sessionSamplingRate, equals(100.0));
   });
 
   test('Tracing sampling rate is clamped to 0..100', () {

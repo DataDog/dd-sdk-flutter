@@ -179,10 +179,10 @@ class RumConfiguration {
 
   /// Sets the sampling rate for RUM Sessions.
   ///
-  /// This property is deprecated in favor of [sessionSampleRate]
-  @Deprecated('Use sessionSampleRate instead')
-  double get sampleRate => sessionSampleRate;
-  set sampleRate(double value) => sessionSampleRate = value;
+  /// This property is deprecated in favor of [sessionSamplingRate]
+  @Deprecated('Use sessionSamplingRate instead')
+  double get sampleRate => sessionSamplingRate;
+  set sampleRate(double value) => sessionSamplingRate = value;
 
   /// Sets the sampling rate for RUM Sessions.
   ///
@@ -191,7 +191,7 @@ class RumConfiguration {
   /// sent
   ///
   /// Defaults to `100.0`.
-  double sessionSampleRate;
+  double sessionSamplingRate;
 
   /// Sets the sampling rate for tracing
   ///
@@ -204,15 +204,15 @@ class RumConfiguration {
 
   RumConfiguration({
     required this.applicationId,
-    double sampleRate = 100.0,
+    double sessionSamplingRate = 100.0,
     double tracingSamplingRate = 100.0,
-  })  : sessionSampleRate = max(0, min(sampleRate, 100)),
+  })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100));
 
   Map<String, dynamic> encode() {
     return {
       'applicationId': applicationId,
-      'sampleRate': sessionSampleRate,
+      'sampleRate': sessionSamplingRate,
     };
   }
 }
