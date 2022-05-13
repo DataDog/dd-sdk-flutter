@@ -23,6 +23,8 @@ String get _endpoint => 'http://localhost:$_bindingPort';
 class RecordingHttpServer {
   late HttpServer server;
   final Map<String, List<RequestLog>> _recordedRequests = {};
+  // Used for debugging sessions
+  bool serializeSessions = false;
 
   RecordingHttpServer();
 
@@ -54,6 +56,11 @@ class RecordingHttpServer {
         throw Exception('Trying to add logs to a dead session: $session');
       }
       _recordedRequests[session]!.add(parsed);
+      if (serializeSessions) {
+        final sessionFile = File('$session.session');
+        await sessionFile.writeAsString(parsed.data,
+            mode: FileMode.append, flush: true);
+      }
     } catch (e) {
       print('Failed parsing request: $e');
     }

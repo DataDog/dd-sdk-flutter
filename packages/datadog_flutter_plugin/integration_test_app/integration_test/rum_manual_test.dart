@@ -54,7 +54,8 @@ void main() {
             rumLog.add(RumEventDecoder(jsonValue));
           }
         });
-        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 5;
+        return RumSessionDecoder.fromEvents(rumLog).visits.length >=
+            (kIsWeb ? 3 : 4);
       },
     );
 
@@ -78,7 +79,7 @@ void main() {
       expect(view1.viewEvents.last.view.resourceCount, 1);
       expect(view1.viewEvents.last.view.errorCount, 1);
     }
-    expect(view1.viewEvents.last.context[contextKey], expectedContextValue);
+    expect(view1.viewEvents.last.context![contextKey], expectedContextValue);
     const baseAction = kIsWeb ? 0 : 1;
     if (!kIsWeb) {
       // No application start event on web.
@@ -87,12 +88,12 @@ void main() {
     expect(view1.actionEvents[baseAction + 0].actionType,
         kIsWeb ? 'custom' : 'tap');
     expect(view1.actionEvents[baseAction + 0].actionName, 'Tapped Download');
-    expect(view1.actionEvents[baseAction + 0].context[contextKey],
+    expect(view1.actionEvents[baseAction + 0].context![contextKey],
         expectedContextValue);
     expect(view1.actionEvents[baseAction + 1].actionType,
         kIsWeb ? 'custom' : 'tap');
     expect(view1.actionEvents[baseAction + 1].actionName, 'Next Screen');
-    expect(view1.actionEvents[baseAction + 1].context[contextKey],
+    expect(view1.actionEvents[baseAction + 1].context![contextKey],
         expectedContextValue);
 
     final contentReadyTiming =
@@ -118,14 +119,15 @@ void main() {
       // TODO: Figure out why occasionally these have really high values
       // expect(view1.resourceEvents[0].duration,
       //     lessThan(10 * 1000 * 1000 * 1000)); // 10s
-      expect(view1.resourceEvents[0].context[contextKey], expectedContextValue);
+      expect(
+          view1.resourceEvents[0].context![contextKey], expectedContextValue);
 
       expect(view1.errorEvents.length, 1);
       expect(view1.errorEvents[0].resourceUrl, 'https://fake_url/resource/2');
       expect(view1.errorEvents[0].message, 'Status code 400');
       expect(view1.errorEvents[0].errorType, 'ErrorLoading');
       expect(view1.errorEvents[0].source, 'network');
-      expect(view1.errorEvents[0].context[contextKey], expectedContextValue);
+      expect(view1.errorEvents[0].context![contextKey], expectedContextValue);
     }
     expect(view1, becameInactive);
 
@@ -144,29 +146,32 @@ void main() {
       // Web can download extra resources
       expect(view2.viewEvents.last.view.resourceCount, 0);
     }
-    expect(view2.viewEvents.last.context[contextKey], expectedContextValue);
-    expect(view2.errorEvents[0].message, 'Simulated view error');
-    expect(view2.errorEvents[0].source, 'source');
-    expect(view2.errorEvents[0].context[contextKey], expectedContextValue);
+    expect(view2.viewEvents.last.context![contextKey], expectedContextValue);
+    const errorMessage =
+        kIsWeb ? 'Provided "Simulated view error"' : 'Simulated view error';
+    expect(view2.errorEvents[0].message, errorMessage);
+    expect(view2.errorEvents[0].source, kIsWeb ? 'custom' : 'source');
+    expect(view2.errorEvents[0].context![contextKey], expectedContextValue);
+    expect(view2.errorEvents[0].context!['custom_attribute'], 'my_attribute');
 
     // Web doesn't support start/stopUserAction
     RumActionEventDecoder tapAction;
-    if (kIsWeb) {
-      expect(view2.actionEvents[0].actionType, kIsWeb ? 'custom' : 'scroll');
+    if (!kIsWeb) {
+      expect(view2.actionEvents[0].actionType, 'scroll');
       expect(view2.actionEvents[0].actionName, 'User Scrolling');
       expect(view2.actionEvents[0].loadingTime,
           greaterThan(1800 * 1000 * 1000)); // 1.8s
       // TODO: Figure out why occasionally these have really high values
       // expect(view1.actionEvents[0].loadingTime,
       //     lessThan(3 * 1000 * 1000 * 1000)); // 3s
-      expect(view2.actionEvents[0].context[contextKey], expectedContextValue);
+      expect(view2.actionEvents[0].context![contextKey], expectedContextValue);
       tapAction = view2.actionEvents[1];
     } else {
       tapAction = view2.actionEvents[0];
     }
 
     expect(tapAction.actionName, 'Next Screen');
-    expect(tapAction.context[contextKey], expectedContextValue);
+    expect(tapAction.context![contextKey], expectedContextValue);
 
     expect(view2, becameInactive);
 
@@ -178,7 +183,7 @@ void main() {
     } else {
       expect(view3.path, 'screen3-widget');
     }
-    expect(view3.viewEvents.last.context[contextKey], isNull);
+    expect(view3.viewEvents.last.context?[contextKey], isNull);
     expect(view3.viewEvents.last.view.actionCount, 0);
     expect(view3.viewEvents.last.view.errorCount, 0);
   });
