@@ -199,13 +199,13 @@ class RumConfiguration {
   /// `0.0` means no resources will include APM tracing, `100.0` resource will
   /// include APM tracing
   ///
-  /// Defaults to `100.0`.
+  /// Defaults to `20.0`.
   double tracingSamplingRate;
 
   RumConfiguration({
     required this.applicationId,
     double sessionSamplingRate = 100.0,
-    double tracingSamplingRate = 100.0,
+    double tracingSamplingRate = 20.0,
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100));
 

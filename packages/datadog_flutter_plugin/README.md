@@ -62,7 +62,7 @@ final configuration = DdSdkConfiguration(
     sendNetworkInfo: true,
   ),
   rumConfiguration: RumConfiguration(
-    applicationId: '<RUM_APPLICATION_ID',
+    applicationId: '<RUM_APPLICATION_ID>',
   )
 );
 ```
@@ -111,7 +111,7 @@ The Datadog Flutter Plugin can automatically track named routes using the `Datad
 MaterialApp(
   home: HomeScreen(),
   navigatorObservers: [
-    DatadogNavigationObserver(),
+    DatadogNavigationObserver(DatadogSdk.instance),
   ],
 );
 ```
@@ -130,7 +130,7 @@ final configuration = DdSdkConfiguration(
 )..enableHttpTracking()
 ```
 
-If you want to enable Datadog distributed tracing, you must also set the `DdSdkConfiguration.firstPartyHosts` configuration option.
+If you want to enable Datadog distributed tracing, you must also set the `DdSdkConfiguration.firstPartyHosts` configuration option. You can also modify the sampling rate for Datadog distributed tracing by setting the `tracingSamplingRate` on your `RumConfiguration`.
 
 ## Data Storage
 
