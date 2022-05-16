@@ -18,8 +18,6 @@ def export_env(key: str, value: str, dry_run: bool):
         print(f'[DRY-RUN] calling: `envman add --key {key} --value "{value}"`')
 
 
-# Copied from `tools/nightly-unit-tests/src/utils.py`
-# TODO: RUMM-1860 Share this code between both tools
 def shell_output(command: str):
     """
     Runs shell command and returns its output.
