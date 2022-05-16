@@ -21,7 +21,7 @@ workflows:
     - run_conditioned_workflows
     - _deploy_artifacts
 
-  push_to_develop_or_master:
+  push_to_develop_or_main:
     envs:
       - FLUTTER_VERSION: stable
       - DD_RUN_UNIT_TESTS: '1'

@@ -25,8 +25,6 @@ class TriggerENVs:
     """
     DD_RUN_UNIT_TESTS: str
     DD_RUN_INTEGRATION_TESTS: str
-    DD_RUN_SMOKE_TESTS: str
-    DD_RUN_TOOLS_TESTS: str
 
 
 @dataclass
@@ -36,8 +34,6 @@ class BuildENVs:
     """
     DD_OVERRIDE_RUN_UNIT_TESTS: Optional[str]
     DD_OVERRIDE_RUN_INTEGRATION_TESTS: Optional[str]
-    DD_OVERRIDE_RUN_SMOKE_TESTS: Optional[str]
-    DD_OVERRIDE_RUN_TOOLS_TESTS: Optional[str]
 
 
 @dataclass
@@ -86,15 +82,11 @@ def get_ci_context() -> CIContext:
     trigger_env = TriggerENVs(
         DD_RUN_UNIT_TESTS=os.environ.get('DD_RUN_UNIT_TESTS') or "0",
         DD_RUN_INTEGRATION_TESTS=os.environ.get('DD_RUN_INTEGRATION_TESTS') or "0",
-        DD_RUN_SMOKE_TESTS=os.environ.get('DD_RUN_SMOKE_TESTS') or "0",
-        DD_RUN_TOOLS_TESTS=os.environ.get('DD_RUN_TOOLS_TESTS') or "0"
     )
 
     build_env = BuildENVs(
         DD_OVERRIDE_RUN_UNIT_TESTS=os.environ.get('DD_OVERRIDE_RUN_UNIT_TESTS'),
         DD_OVERRIDE_RUN_INTEGRATION_TESTS=os.environ.get('DD_OVERRIDE_RUN_INTEGRATION_TESTS'),
-        DD_OVERRIDE_RUN_SMOKE_TESTS=os.environ.get('DD_OVERRIDE_RUN_SMOKE_TESTS'),
-        DD_OVERRIDE_RUN_TOOLS_TESTS=os.environ.get('DD_OVERRIDE_RUN_TOOLS_TESTS')
     )
 
     if pull_request_id := os.environ.get('BITRISE_PULL_REQUEST'):
