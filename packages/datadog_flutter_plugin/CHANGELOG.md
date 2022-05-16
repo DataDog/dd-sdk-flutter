@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Add support for setting a tracing sample rate for RUM.
+
 ## 1.0.0-beta.1
 
 * Update iOS SDK to 1.11

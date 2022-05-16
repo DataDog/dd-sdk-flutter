@@ -45,8 +45,10 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
       });
     }
 
-    await methodChannel
-        .invokeMethod('initialize', {'configuration': configuration.encode()});
+    await methodChannel.invokeMethod('initialize', {
+      'configuration': configuration.encode(),
+      'setLogCallback': logCallback != null,
+    });
   }
 
   @override

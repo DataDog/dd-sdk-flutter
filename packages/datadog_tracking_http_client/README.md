@@ -3,8 +3,6 @@
 
 > A plugin for use with the Datadog SDK, used to track performance of HTTP calls and enable Datadog Distributed Tracing.
 
-> ⚠️ This plugin is still in Alpha / Developer Preview. 
-
 ## Getting started
 
 To utilize this plugin, enable it during configuration of your SDK:
