@@ -37,8 +37,27 @@ void main() {
     await ddSdkPlatform.initialize(configuration);
 
     expect(log, [
-      isMethodCall('initialize',
-          arguments: {'configuration': configuration.encode()})
+      isMethodCall('initialize', arguments: {
+        'configuration': configuration.encode(),
+        'setLogCallback': false,
+      })
+    ]);
+  });
+
+  test('initialize add setLogCallback when provided', () async {
+    final configuration = DdSdkConfiguration(
+      clientToken: 'fakeClientToken',
+      env: 'environment',
+      trackingConsent: TrackingConsent.granted,
+      site: DatadogSite.us1,
+    );
+    await ddSdkPlatform.initialize(configuration, logCallback: (_) {});
+
+    expect(log, [
+      isMethodCall('initialize', arguments: {
+        'configuration': configuration.encode(),
+        'setLogCallback': true,
+      })
     ]);
   });
 
