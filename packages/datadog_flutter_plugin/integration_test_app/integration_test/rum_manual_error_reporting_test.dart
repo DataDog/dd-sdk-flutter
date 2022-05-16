@@ -5,6 +5,7 @@
 import 'dart:convert';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -37,7 +38,10 @@ void main() {
         requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
           var jsonValue = json.decode(e);
           if (jsonValue is Map<String, dynamic>) {
-            rumLog.add(RumEventDecoder(jsonValue));
+            final rumEvent = RumEventDecoder.fromJson(jsonValue);
+            if (rumEvent != null) {
+              rumLog.add(rumEvent);
+            }
           }
         });
         var visits = RumSessionDecoder.fromEvents(rumLog).visits;
@@ -54,17 +58,21 @@ void main() {
     expect(view.errorEvents.length, 3);
 
     var exceptionError = view.errorEvents[0];
-    expect(exceptionError.message, NullThrownError().toString());
-    expect(exceptionError.source, 'source');
-    expect(exceptionError.sourceType, 'flutter');
+    expect(exceptionError.message, contains(NullThrownError().toString()));
+    expect(exceptionError.source, kIsWeb ? 'custom' : 'source');
+    if (!kIsWeb) {
+      expect(exceptionError.sourceType, 'flutter');
+    }
 
     var manualError = view.errorEvents[1];
-    expect(manualError.message, 'Rum error message');
-    expect(manualError.source, 'network');
+    expect(manualError.message, contains('Rum error message'));
+    expect(manualError.source, kIsWeb ? 'custom' : 'network');
 
     var thrownError = view.errorEvents[2];
     expect(thrownError.message, contains('This was an error!'));
-    expect(thrownError.source, 'source');
-    expect(thrownError.stack, isNotNull);
+    expect(thrownError.source, kIsWeb ? 'custom' : 'source');
+    if (!kIsWeb) {
+      expect(thrownError.stack, isNotNull);
+    }
   });
 }

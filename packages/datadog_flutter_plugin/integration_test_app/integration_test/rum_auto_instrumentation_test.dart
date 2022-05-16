@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_integration_test_app/auto_integration_scenarios/main.dart'
     as auto_app;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -83,15 +84,24 @@ void main() {
 
     final view1 = session.visits[0];
     expect(view1.name, '/');
-    expect(view1.path, '/');
+    // Path is the actual browser path in web
+    if (!kIsWeb) {
+      expect(view1.path, '/');
+    }
 
     final view2 = session.visits[1];
     expect(view2.name, 'rum_second_screen');
-    expect(view2.path, 'rum_second_screen');
+    // Path is the actual browser path in web
+    if (!kIsWeb) {
+      expect(view2.path, 'rum_second_screen');
+    }
 
     // Check last view name
     final view3 = session.visits[2];
     expect(view3.name, 'RumAutoInstrumentationThirdScreen');
-    expect(view3.path, 'RumAutoInstrumentationThirdScreen');
+    // Path is the actual browser path in web
+    if (!kIsWeb) {
+      expect(view3.path, 'RumAutoInstrumentationThirdScreen');
+    }
   });
 }

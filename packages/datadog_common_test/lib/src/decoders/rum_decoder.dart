@@ -100,6 +100,16 @@ class RumEventDecoder {
   RumEventDecoder(this.rumEvent)
       : view = RumViewDecoder(rumEvent['view']),
         dd = Dd(rumEvent['_dd']);
+
+  static RumEventDecoder? fromJson(Map<String, dynamic> eventData) {
+    if (eventData['view'] != null &&
+        eventData['type'] != null &&
+        eventData['_dd'] != null) {
+      return RumEventDecoder(eventData);
+    }
+
+    return null;
+  }
 }
 
 class RumViewEventDecoder extends RumEventDecoder {

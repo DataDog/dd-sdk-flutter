@@ -43,7 +43,7 @@ class DdRumWeb extends DdRumPlatform {
   @override
   Future<void> addError(Object error, RumErrorSource source,
       StackTrace? stackTrace, Map<String, dynamic> attributes) async {
-    _jsAddError(error, attributesToJs(attributes, 'attributes'));
+    _jsAddError(error.toString(), attributesToJs(attributes, 'attributes'));
   }
 
   @override

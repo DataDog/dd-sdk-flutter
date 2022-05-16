@@ -31,7 +31,10 @@ void main() {
         requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
           var jsonValue = json.decode(e);
           if (jsonValue is Map<String, dynamic>) {
-            rumLog.add(RumEventDecoder(jsonValue));
+            final rumEvent = RumEventDecoder.fromJson(jsonValue);
+            if (rumEvent != null) {
+              rumLog.add(rumEvent);
+            }
           }
         });
         return false;

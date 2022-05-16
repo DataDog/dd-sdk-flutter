@@ -56,7 +56,6 @@ class _RumScreenState extends State<RumScreen> {
 
   _stopView() {
     var actualKey = viewKey.isEmpty ? 'FooRumScreen' : viewKey;
-    var actualViewName = viewName.isEmpty ? null : viewName;
     var rum = DatadogSdk.instance.rum;
     if (rum != null) {
       rum.stopView(actualKey);
