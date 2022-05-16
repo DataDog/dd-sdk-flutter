@@ -55,8 +55,10 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
       fullPath = '$host:${_channel.port}$path';
     }
 
-    bool shouldAppendTraces = _datadog.traces != null &&
-        _datadog.isFirstPartyHost(Uri.parse(fullPath));
+    bool shouldSample = _datadog.rum?.shouldSampleTrace() ?? false;
+    bool isFirstPartyHost = _datadog.isFirstPartyHost(Uri.parse(fullPath));
+    bool shouldAppendTraces =
+        shouldSample && _datadog.traces != null && isFirstPartyHost;
 
     String? traceId;
     String? parentId;
@@ -85,6 +87,10 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
         DatadogTracingHeaders.samplingPriority: '1',
         DatadogTracingHeaders.traceId: traceId!,
         DatadogTracingHeaders.parentId: parentId!,
+      }));
+    } else if (isFirstPartyHost) {
+      options = options.mergedWith(CallOptions(metadata: {
+        DatadogTracingHeaders.samplingPriority: '0',
       }));
     }
 

@@ -59,7 +59,10 @@ Future<void> main() async {
       sendNetworkInfo: true,
     ),
     rumConfiguration: applicationId != null
-        ? RumConfiguration(applicationId: applicationId)
+        ? RumConfiguration(
+            applicationId: applicationId,
+            tracingSamplingRate: 100,
+          )
         : null,
   )..enableHttpTracking();
 

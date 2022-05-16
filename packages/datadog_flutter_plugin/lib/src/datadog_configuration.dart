@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'dart:math';
+
 import '../datadog_flutter_plugin.dart';
 
 /// Defines the Datadog SDK policy when batching data together before uploading
@@ -177,22 +179,40 @@ class RumConfiguration {
 
   /// Sets the sampling rate for RUM Sessions.
   ///
+  /// This property is deprecated in favor of [sessionSamplingRate]
+  @Deprecated('Use sessionSamplingRate instead')
+  double get sampleRate => sessionSamplingRate;
+  set sampleRate(double value) => sessionSamplingRate = value;
+
+  /// Sets the sampling rate for RUM Sessions.
+  ///
   /// The sampling rate must be a value between `0.0` and `100.0`. A value of
   /// `0.0` means no RUM events will be sent, `100.0` means all sessions will be
-  /// kept
+  /// sent
   ///
   /// Defaults to `100.0`.
-  double sampleRate;
+  double sessionSamplingRate;
+
+  /// Sets the sampling rate for tracing
+  ///
+  /// The sampling rate must be a value between `0.0` and `100.0`. A value of
+  /// `0.0` means no resources will include APM tracing, `100.0` resource will
+  /// include APM tracing
+  ///
+  /// Defaults to `20.0`.
+  double tracingSamplingRate;
 
   RumConfiguration({
     required this.applicationId,
-    this.sampleRate = 100.0,
-  });
+    double sessionSamplingRate = 100.0,
+    double tracingSamplingRate = 20.0,
+  })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
+        tracingSamplingRate = max(0, min(tracingSamplingRate, 100));
 
   Map<String, dynamic> encode() {
     return {
       'applicationId': applicationId,
-      'sampleRate': sampleRate,
+      'sampleRate': sessionSamplingRate,
     };
   }
 }
