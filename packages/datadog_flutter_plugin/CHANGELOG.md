@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Add support for setting a tracing sample rate for RUM.
+* Expose `DdLogs` through the main package import. Added documentation to DdLogs.
 
 ## 1.0.0-beta.1
 

@@ -23,8 +23,10 @@ import 'src/version.dart' show ddPackageVersion;
 export 'src/attributes.dart' show DatadogConfigKey;
 export 'src/datadog_configuration.dart';
 export 'src/datadog_plugin.dart';
+export 'src/logs/ddlogs.dart';
 export 'src/rum/ddrum.dart'
     show
+        DdRum,
         RumHttpMethod,
         RumUserActionType,
         RumErrorSource,
