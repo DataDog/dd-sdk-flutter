@@ -29,7 +29,16 @@ On Android, your `minSdkVersion` must be >= 19, and if you are using Kotlin, it 
 
 ### Web
 
-On Web, 
+`⚠️ Datadog support for Flutter Web is still in early development`
+
+On Web, add the following to your `index.html` under your `head` tag:
+
+```html
+<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-logs-v4.js"></script>
+<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-rum-slim-v4.js"></script>
+```
+
+This loads the CDN delivered Datadog Logging and RUM Browser SDKs. Note that the synchronous CDN delivered version of the Browser SDK is the only version currently supported by the Flutter plugin.
 
 ## Setup
 

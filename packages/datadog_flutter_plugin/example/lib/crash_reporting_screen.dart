@@ -3,6 +3,7 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -194,13 +195,15 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
         nativeCrashPlugin.crashNativeFfi(23);
         break;
       case CrashType.ffiCallbackException:
-        var value = nativeCrashPlugin.ffiCallbackTest(32, nativeCallback);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Native callback threw, returned default value of $value'),
-          ),
-        );
+        if (!kIsWeb) {
+          var value = nativeCrashPlugin.ffiCallbackTest(32, nativeCallback);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Native callback threw, returned default value of $value'),
+            ),
+          );
+        }
         break;
     }
   }

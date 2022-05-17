@@ -77,6 +77,10 @@ workflows:
             set -e
             ./generate_env.sh
 
+            pushd packages/datadog_common_test
+            flutter pub run build_runner build
+            popd          
+
   run_conditioned_workflows:
     steps:
     - script:

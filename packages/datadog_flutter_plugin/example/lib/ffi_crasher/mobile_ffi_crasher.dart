@@ -8,6 +8,15 @@ import 'dart:io';
 import 'ffi_crasher.dart';
 
 class MobileFfiCrasher implements FfiCrasher {
+  // This is used to hold the last callback requested so that we can get around
+  // the need for Pointer.fromFunction needing an explicitly static function to
+  // work.  This would break in real code and is not recommended.
+  static NativeCallback? lastCallback;
+
+  static int _staticCallback(int value) {
+    return lastCallback?.call(value) ?? 0;
+  }
+
   @override
   void crash(int value) {
     ffi_crash_test(value);
@@ -15,7 +24,9 @@ class MobileFfiCrasher implements FfiCrasher {
 
   @override
   int crashCallback(int attribute, NativeCallback callback) {
-    return ffi_callback_test(attribute, Pointer.fromFunction(callback, 8));
+    lastCallback = callback;
+    return ffi_callback_test(
+        attribute, Pointer.fromFunction(_staticCallback, 8));
   }
 }
 
@@ -33,14 +44,14 @@ final void Function(int attribute) ffi_crash_test = ffiLibrary
     .asFunction();
 
 typedef NativeFfiCallback = Int32 Function(Int32);
+typedef FfiCallbackFunction = int Function(
+    int attribute, Pointer<NativeFunction<NativeFfiCallback>> callback);
 
-final int Function(
-        int attribute, Pointer<NativeFunction<NativeFfiCallback>> callback)
-    // ignore: non_constant_identifier_names
-    ffi_callback_test = ffiLibrary
-        .lookup<
-                NativeFunction<
-                    Int32 Function(
-                        Int32, Pointer<NativeFunction<NativeFfiCallback>>)>>(
-            'ffi_callback_test')
-        .asFunction();
+// ignore: non_constant_identifier_names
+final FfiCallbackFunction ffi_callback_test = ffiLibrary
+    .lookup<
+            NativeFunction<
+                Int32 Function(
+                    Int32, Pointer<NativeFunction<NativeFfiCallback>>)>>(
+        'ffi_callback_test')
+    .asFunction();
