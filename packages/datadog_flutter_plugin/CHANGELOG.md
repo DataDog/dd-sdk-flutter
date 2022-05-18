@@ -5,6 +5,7 @@
 * Update iOS SDK to 1.11-rc2
   * Allow manually tracked resources in RUM Sessions to detect first party hosts.
   * Better error message when encountering an invalid token (Fixes #117)
+* Added `datadogReportingThreshold` to `LoggingConfiguration` to support only sending logs above a certain threshold to Datadog.
 * Add support for setting a tracing sample rate for RUM.
 * Expose `DdLogs` through the main package import. Added documentation to DdLogs.
 
