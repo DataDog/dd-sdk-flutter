@@ -27,12 +27,12 @@ Future<void> main() async {
   if (testingConfiguration != null) {
     if (testingConfiguration!.customEndpoint != null) {
       customEndpoint = testingConfiguration!.customEndpoint;
-      if (testingConfiguration!.clientToken != null) {
-        clientToken = testingConfiguration!.clientToken!;
-      }
-      if (testingConfiguration!.applicationId != null) {
-        applicationId = testingConfiguration!.applicationId;
-      }
+    }
+    if (testingConfiguration!.clientToken != null) {
+      clientToken = testingConfiguration!.clientToken!;
+    }
+    if (testingConfiguration!.applicationId != null) {
+      applicationId = testingConfiguration!.applicationId;
     }
   }
 
@@ -67,7 +67,6 @@ Future<void> main() async {
   )..enableHttpTracking();
 
   await DatadogSdk.runApp(configuration, () async {
-    DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
     runApp(const DatadogAutoIntegrationTestApp());
   });
 }

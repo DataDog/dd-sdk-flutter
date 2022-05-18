@@ -39,6 +39,8 @@ void main() async {
   // scenario with instrumentation enabled, then checks that we got the expected
   // calls.
   testWidgets('test auto instrumentation', (WidgetTester tester) async {
+    await sessionRecorder.startNewSession();
+
     const clientToken = bool.hasEnvironment('DD_CLIENT_TOKEN')
         ? String.fromEnvironment('DD_CLIENT_TOKEN')
         : null;
