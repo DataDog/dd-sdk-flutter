@@ -38,7 +38,7 @@ On Web, add the following to your `index.html` under your `head` tag:
 <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-rum-slim-v4.js"></script>
 ```
 
-This loads the CDN delivered Datadog Logging and RUM Browser SDKs. Note that the synchronous CDN delivered version of the Browser SDK is the only version currently supported by the Flutter plugin.
+This loads the CDN-delivered Datadog Logging and RUM Browser SDKs. Note that the synchronous CDN-delivered version of the Browser SDK is the only version supported by the Flutter plugin.
 
 ## Setup
 
