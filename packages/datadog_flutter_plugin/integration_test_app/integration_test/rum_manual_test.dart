@@ -66,7 +66,7 @@ void main() {
     const expectedContextValue = 1;
 
     final session = RumSessionDecoder.fromEvents(rumLog);
-    expect(session.visits.length, kIsWeb ? 3 : 4);
+    expect(session.visits.length, kIsWeb ? 4 : 3);
 
     final view1 = session.visits[0];
     expect(view1.name, 'RumManualInstrumentationScenario');

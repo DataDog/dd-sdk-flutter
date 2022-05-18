@@ -247,13 +247,6 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
   final String _viewName = 'ThirdManualRumView';
 
   @override
-  void initState() {
-    super.initState();
-
-    _simulateActions();
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     routeObserver.subscribe(this, ModalRoute.of(context)!);
@@ -279,6 +272,8 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
   void didPush() {
     DatadogSdk.instance.rum?.removeAttribute('onboarding_stage');
     DatadogSdk.instance.rum?.startView(_viewKey, _viewName);
+
+    _simulateActions();
   }
 
   @override
@@ -304,10 +299,10 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
     // Stop the view to make sure it doesn't get held over to the next session.
     await Future.delayed(const Duration(milliseconds: 500));
     if (kIsWeb) {
-      DatadogSdk.instance.rum?.stopView(_viewKey);
-    } else {
       // Since web doesn't have a 'stopView' method, send a new view instead
       DatadogSdk.instance.rum?.startView('blankView');
+    } else {
+      DatadogSdk.instance.rum?.stopView(_viewKey);
     }
   }
 }
