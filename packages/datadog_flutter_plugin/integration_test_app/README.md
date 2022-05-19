@@ -14,7 +14,7 @@ The above example will run all integration tests on a device matching the name "
 
 ## Running Web Tests
 
-Running tests for Flutter web requires a few extra steps, partially outlined in the official [Flutter documentation]([kManualIsWeb](https://docs.flutter.dev/cookbook/testing/integration/introduction#5b-web)).
+Running tests for Flutter web requires a few extra steps, partially outlined in the official [Flutter documentation](https://docs.flutter.dev/cookbook/testing/integration/introduction#5b-web).
 However, instead of downloading a version of chromedriver, one is provided in the repository in `tools`.
 
 First, run `chromedriver` on the proper port:

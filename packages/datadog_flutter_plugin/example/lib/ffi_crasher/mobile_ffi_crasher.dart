@@ -10,7 +10,7 @@ import 'ffi_crasher.dart';
 class MobileFfiCrasher implements FfiCrasher {
   // This is used to hold the last callback requested so that we can get around
   // the need for Pointer.fromFunction needing an explicitly static function to
-  // work.  This would break in real code and is not recommended.
+  // work. This would break in real code and is not recommended.
   static NativeCallback? lastCallback;
 
   static int _staticCallback(int value) {
