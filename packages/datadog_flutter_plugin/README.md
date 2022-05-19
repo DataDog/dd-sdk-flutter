@@ -103,6 +103,31 @@ You can initialize Datadog using one of two methods in the `main.dart` file.
    });
    ```
 
+### Send Logs
+
+After initializing Datadog with a `LoggingConfiguration`, you can use the default instance of `logs` to send logs to Datadog.
+
+```dart
+DatadogSdk.instance.logs?.debug("A debug message.");
+DatadogSdk.instance.logs?.info("Some relevant information?");
+DatadogSdk.instance.logs?.warn("An important warning…");
+DatadogSdk.instance.logs?.error("An error was met!");
+```
+
+You can also create additional loggers with the `createLogger` method:
+
+```dart
+final myLogger = DatadogSdk.instance.createLogger(
+  LoggingConfiguration({
+    loggerName: 'Additional logger'
+  })
+);
+
+myLogger.info('Info from my additional logger.');
+```
+
+Tags and attributes set on loggers are local to each logger.
+
 ### Track RUM views
 
 The Datadog Flutter Plugin can automatically track named routes using the `DatadogNavigationObserver` on your MaterialApp.
