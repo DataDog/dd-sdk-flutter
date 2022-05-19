@@ -5,6 +5,9 @@
 library datadog_common_test;
 
 export 'src/decoder_helpers.dart';
+export 'src/decoders/log_decoder.dart';
 export 'src/decoders/rum_decoder.dart';
+export 'src/decoders/span_decoder.dart';
 export 'src/mock_http_sever.dart';
+export 'src/request_log.dart';
 export 'src/testing_configuration.dart';

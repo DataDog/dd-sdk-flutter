@@ -9,8 +9,19 @@ class RumSessionDecoder {
 
   static RumSessionDecoder fromEvents(List<RumEventDecoder> events,
       {bool shouldDiscardApplicationLaunch = true}) {
-    events.sort((firstEvent, secondEvent) =>
-        firstEvent.date.compareTo(secondEvent.date));
+    events.sort((firstEvent, secondEvent) {
+      var comp = firstEvent.date.compareTo(secondEvent.date);
+      // In the BrowserSDK, view events always have their date set to the start of the view
+      // Sort based off time spent
+      if (comp == 0 &&
+          firstEvent.eventType == 'view' &&
+          secondEvent.eventType == 'view') {
+        final firstView = RumViewEventDecoder(firstEvent.rumEvent);
+        final secondView = RumViewEventDecoder(secondEvent.rumEvent);
+        return firstView.timeSpent.compareTo(secondView.timeSpent);
+      }
+      return comp;
+    });
 
     final viewVisitsById = <String, RumViewVisit>{};
     for (var e in events.where((e) => e.eventType == 'view')) {
@@ -84,14 +95,26 @@ class RumEventDecoder {
   String get eventType => rumEvent['type'] as String;
   int get date => rumEvent['date'] as int;
 
-  Map<String, dynamic> get context => rumEvent['context'];
+  Map<String, dynamic>? get context => rumEvent['context'];
 
   RumEventDecoder(this.rumEvent)
       : view = RumViewDecoder(rumEvent['view']),
         dd = Dd(rumEvent['_dd']);
+
+  static RumEventDecoder? fromJson(Map<String, dynamic> eventData) {
+    if (eventData['view'] != null &&
+        eventData['type'] != null &&
+        eventData['_dd'] != null) {
+      return RumEventDecoder(eventData);
+    }
+
+    return null;
+  }
 }
 
 class RumViewEventDecoder extends RumEventDecoder {
+  int get timeSpent => rumEvent['view']['time_spent'] as int;
+
   RumViewEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
 }
 

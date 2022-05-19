@@ -5,6 +5,7 @@
 import 'dart:async';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../main.dart';
@@ -202,8 +203,13 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
 
   Future<void> _simulateActions() async {
     await Future.delayed(const Duration(seconds: 1));
-    DatadogSdk.instance.rum
-        ?.addErrorInfo('Simulated view error', RumErrorSource.source);
+    DatadogSdk.instance.rum?.addErrorInfo(
+      'Simulated view error',
+      RumErrorSource.source,
+      attributes: {
+        'custom_attribute': 'my_attribute',
+      },
+    );
     DatadogSdk.instance.rum
         ?.startUserAction(RumUserActionType.scroll, 'User Scrolling');
     await Future.delayed(const Duration(seconds: 2));
@@ -241,13 +247,6 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
   final String _viewName = 'ThirdManualRumView';
 
   @override
-  void initState() {
-    super.initState();
-
-    _simulateActions();
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     routeObserver.subscribe(this, ModalRoute.of(context)!);
@@ -273,6 +272,8 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
   void didPush() {
     DatadogSdk.instance.rum?.removeAttribute('onboarding_stage');
     DatadogSdk.instance.rum?.startView(_viewKey, _viewName);
+
+    _simulateActions();
   }
 
   @override
@@ -297,6 +298,11 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
 
     // Stop the view to make sure it doesn't get held over to the next session.
     await Future.delayed(const Duration(milliseconds: 500));
-    DatadogSdk.instance.rum?.stopView(_viewKey);
+    if (kIsWeb) {
+      // Since web doesn't have a 'stopView' method, send a new view instead
+      DatadogSdk.instance.rum?.startView('blankView');
+    } else {
+      DatadogSdk.instance.rum?.stopView(_viewKey);
+    }
   }
 }

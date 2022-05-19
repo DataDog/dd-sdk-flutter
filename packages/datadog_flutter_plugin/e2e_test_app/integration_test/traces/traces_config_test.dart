@@ -43,8 +43,7 @@ void main() {
   /// ```
   testWidgets('traces config - set service name', (tester) async {
     await initializeDatadog(
-      (config) => config.additionalConfig[DatadogConfigKey.serviceName] =
-          'com.datadog.flutter.nightly.custom',
+      (config) => config.serviceName = 'com.datadog.flutter.nightly.custom',
     );
 
     final span =

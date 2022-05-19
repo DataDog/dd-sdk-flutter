@@ -77,6 +77,10 @@ workflows:
             set -e
             ./generate_env.sh
 
+            pushd packages/datadog_common_test
+            flutter pub run build_runner build
+            popd          
+
   run_conditioned_workflows:
     steps:
     - script:
@@ -279,6 +283,34 @@ workflows:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+
+  integration_web:
+    steps:
+    - script:
+        title: Run pub get in all projects
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+
+            ./tools/chromedriver --port=4444 &
+
+            pushd "packages/datadog_flutter_plugin/integration_test_app"
+            testfiles=( 
+              "integration_test/logging_test.dart"
+              "integration_test/rum_manual_test.dart"
+              "integration_test/rum_manual_error_reporting_test.dart"
+              "integration_test/rum_no_auto_instrumentation_test.dart"
+              "integration_test/rum_auto_instrumentation_test.dart"
+            )
+
+            for test in "${testfiles[@]}" ; do
+              echo 'Testing $test'
+              flutter drive --driver=test_driver/integration_test.dart --target=$test -d "Chrome"
+            done
+
+            popd
+        - working_dir: "$BITRISE_SOURCE_DIR"
 
   nightly_ios:
     before_run:

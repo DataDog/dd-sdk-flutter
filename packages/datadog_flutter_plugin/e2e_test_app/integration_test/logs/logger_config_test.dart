@@ -35,8 +35,7 @@ void main() {
   /// ```
   testWidgets('logger config - set service name', (tester) async {
     await initializeDatadog(
-      (config) => config.additionalConfig[DatadogConfigKey.serviceName] =
-          'com.datadog.flutter.nightly.custom',
+      (config) => config.serviceName = 'com.datadog.flutter.nightly.custom',
     );
 
     sendRandomLog(tester);

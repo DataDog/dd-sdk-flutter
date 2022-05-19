@@ -233,6 +233,9 @@ class DdSdkConfiguration {
   /// used to generate your client token.
   DatadogSite site;
 
+  /// The service name for this application
+  String? serviceName;
+
   /// The initial [TrackingConsent] for this user.
   TrackingConsent trackingConsent;
 
@@ -289,6 +292,7 @@ class DdSdkConfiguration {
     required this.trackingConsent,
     required this.site,
     this.nativeCrashReportEnabled = false,
+    this.serviceName,
     this.uploadFrequency,
     this.batchSize,
     this.customEndpoint,

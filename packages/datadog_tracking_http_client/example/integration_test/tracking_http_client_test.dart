@@ -30,14 +30,17 @@ Future<void> performRumUserFlow(WidgetTester tester) async {
 void main() async {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  final mockHttpServer = MockHttpServer();
+  final mockHttpServer = RecordingHttpServer();
   unawaited(mockHttpServer.start());
+  final sessionRecorder = LocalRecordingServerClient(mockHttpServer);
 
   // This second test boots a different integration test app
   // (lib/auto_integration_scenario/main.dart) directly to the auto-instrumented
   // scenario with instrumentation enabled, then checks that we got the expected
   // calls.
   testWidgets('test auto instrumentation', (WidgetTester tester) async {
+    await sessionRecorder.startNewSession();
+
     const clientToken = bool.hasEnvironment('DD_CLIENT_TOKEN')
         ? String.fromEnvironment('DD_CLIENT_TOKEN')
         : null;
@@ -46,9 +49,9 @@ void main() async {
         : null;
 
     final scenarioConfig = RumAutoInstrumentationScenarioConfig(
-      firstPartyHosts: ['localhost:${MockHttpServer.bindingPort}'],
-      firstPartyGetUrl: '${mockHttpServer.endpoint}/integration_get',
-      firstPartyPostUrl: '${mockHttpServer.endpoint}/integration_post',
+      firstPartyHosts: [(sessionRecorder.sessionEndpoint)],
+      firstPartyGetUrl: '${sessionRecorder.sessionEndpoint}/integration_get',
+      firstPartyPostUrl: '${sessionRecorder.sessionEndpoint}/integration_post',
       firstPartyBadUrl: 'https://foo.bar',
       thirdPartyGetUrl: 'https://httpbingo.org/get',
       thirdPartyPostUrl: 'https://httpbingo.org/post',
@@ -56,7 +59,7 @@ void main() async {
     RumAutoInstrumentationScenarioConfig.instance = scenarioConfig;
 
     app.testingConfiguration = TestingConfiguration(
-        customEndpoint: mockHttpServer.endpoint,
+        customEndpoint: sessionRecorder.sessionEndpoint,
         clientToken: clientToken,
         applicationId: applicationId,
         firstPartyHosts: ['localhost']);
@@ -68,7 +71,7 @@ void main() async {
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
     final testRequests = <RequestLog>[];
-    await mockHttpServer.pollRequests(
+    await sessionRecorder.pollSessionRequests(
       const Duration(seconds: 50),
       (requests) {
         requestLog.addAll(requests);
