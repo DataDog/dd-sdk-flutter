@@ -38,6 +38,7 @@ export 'src/rum/navigation_observer.dart'
         RumViewInfo,
         DatadogRouteAwareMixin,
         ViewInfoExtractor;
+export 'src/rum/rum_gesture_detector.dart';
 export 'src/traces/ddtraces.dart'
     show DdSpan, OTTags, OTLogFields, generateTraceId;
 
