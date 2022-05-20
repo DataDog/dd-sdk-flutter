@@ -2,12 +2,15 @@
 
 ## Unreleased
 
+* Update iOS SDK to 1.11-rc2
+  * Allow manually tracked resources in RUM Sessions to detect first party hosts.
+  * Better error message when encountering an invalid token (Fixes #117)
 * Add support for setting a tracing sample rate for RUM.
 * Expose `DdLogs` through the main package import. Added documentation to DdLogs.
 
 ## 1.0.0-beta.1
 
-* Update iOS SDK to 1.11
+* Update iOS SDK to 1.11-beta2
   * Stop reporting pre-warmed application launch time.
   * Reduce the number of intermediate view events sent in RUM payloads.
   * For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#1110-beta1--04-26-2022).
