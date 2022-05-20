@@ -98,61 +98,64 @@ class _RumScreenState extends State<RumScreen> {
     bool canStartView = !performingOperation && !inView;
     bool canStopView = !performingOperation && inView;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('RUM'),
-      ),
-      body: SingleChildScrollView(
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'View Info',
-                style: theme.textTheme.headline5,
-              ),
-              _defaultTextField(
-                label: 'Key',
-                enabled: canStartView,
-                onChanged: (value) => viewKey = value,
-              ),
-              _defaultTextField(
-                label: 'Name',
-                enabled: canStartView,
-                onChanged: (value) => viewName = value,
-              ),
-              Row(
-                children: [
-                  ElevatedButton(
-                    onPressed: canStartView ? _sendViewEvent : null,
-                    child: const Text('Send View Event'),
-                  ),
-                  const SizedBox(width: 6),
-                  ElevatedButton(
-                    onPressed: canStartView ? _startView : null,
-                    child: const Text('Start View'),
-                  ),
-                  const SizedBox(width: 6),
-                  ElevatedButton(
-                    onPressed: canStopView ? _stopView : null,
-                    child: const Text('Stop View'),
-                  ),
-                ],
-              ),
-              _viewEventField(
-                label: 'Action',
-                enabled: !performingOperation,
-                onChanged: (value) => actionName = value,
-                onSend: _sendAction,
-              ),
-              _viewEventField(
-                label: 'Resource',
-                enabled: !performingOperation,
-                onChanged: (value) => resourceName = value,
-                onSend: _sendResource,
-              )
-            ],
+    return RumGestureDetector(
+      rum: DatadogSdk.instance.rum,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('RUM'),
+        ),
+        body: SingleChildScrollView(
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'View Info',
+                  style: theme.textTheme.headline5,
+                ),
+                _defaultTextField(
+                  label: 'Key',
+                  enabled: canStartView,
+                  onChanged: (value) => viewKey = value,
+                ),
+                _defaultTextField(
+                  label: 'Name',
+                  enabled: canStartView,
+                  onChanged: (value) => viewName = value,
+                ),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: canStartView ? _sendViewEvent : null,
+                      child: const Text('Send View Event'),
+                    ),
+                    const SizedBox(width: 6),
+                    ElevatedButton(
+                      onPressed: canStartView ? _startView : null,
+                      child: const Text('Start View'),
+                    ),
+                    const SizedBox(width: 6),
+                    ElevatedButton(
+                      onPressed: canStopView ? _stopView : null,
+                      child: const Text('Stop View'),
+                    ),
+                  ],
+                ),
+                _viewEventField(
+                  label: 'Action',
+                  enabled: !performingOperation,
+                  onChanged: (value) => actionName = value,
+                  onSend: _sendAction,
+                ),
+                _viewEventField(
+                  label: 'Resource',
+                  enabled: !performingOperation,
+                  onChanged: (value) => resourceName = value,
+                  onSend: _sendResource,
+                )
+              ],
+            ),
           ),
         ),
       ),
