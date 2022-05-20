@@ -3,7 +3,6 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_flutter_plugin/src/rum/ddrum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -410,7 +409,7 @@ class MixedDestination extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _MixedDestinationState createState() => _MixedDestinationState();
+  State<MixedDestination> createState() => _MixedDestinationState();
 }
 
 class _MixedDestinationState extends State<MixedDestination>
@@ -426,7 +425,7 @@ class _MixedDestinationState extends State<MixedDestination>
       child: Column(
         children: [
           if (widget.nextPageBuilder != null)
-            ElevatedButton(child: const Text('Push'), onPressed: _onPush),
+            ElevatedButton(onPressed: _onPush, child: const Text('Push')),
           ElevatedButton(
             child: const Text('Pop'),
             onPressed: () {

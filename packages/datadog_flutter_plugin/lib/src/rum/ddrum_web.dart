@@ -1,7 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
-// ignore_for_file: unused_element
+// ignore_for_file: unused_element, library_private_types_in_public_api
 
 @JS('DD_RUM')
 library ddrum_flutter_web;
@@ -25,7 +25,7 @@ class DdRumWeb extends DdRumPlatform {
       applicationId: rumConfiguration.applicationId,
       clientToken: configuration.clientToken,
       site: siteStringForSite(configuration.site),
-      sampleRate: rumConfiguration.sampleRate,
+      sampleRate: rumConfiguration.sessionSamplingRate,
       service: configuration.serviceName,
       env: configuration.env,
       proxyUrl: configuration.customEndpoint,

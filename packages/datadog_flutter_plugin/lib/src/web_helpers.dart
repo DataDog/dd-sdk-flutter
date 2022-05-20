@@ -2,7 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-import 'package:collection/collection.dart';
 import 'package:js/js_util.dart' as jsutil;
 
 import '../datadog_flutter_plugin.dart';
@@ -43,8 +42,10 @@ dynamic valueToJs(Object? value, String parameterName) {
   }
 
   if (value is List) {
-    final jsList =
-        value.mapIndexed((e, i) => valueToJs(e, '$parameterName[i]')).toList();
+    final jsList = [];
+    for (int i = 0; i < value.length; ++i) {
+      jsList.add(valueToJs(value[i], '$parameterName[$i]'));
+    }
     return jsList;
   }
 

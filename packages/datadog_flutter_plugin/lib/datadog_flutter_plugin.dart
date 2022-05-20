@@ -86,7 +86,7 @@ class DatadogSdk {
     _firstPartyHosts = value;
     if (value.isNotEmpty) {
       // pattern = "^(.*\\.)*tracedHost1$|tracedHost2$|...$"
-      var hosts = value.map((e) => RegExp.escape(e) + '\$').join('|');
+      var hosts = value.map((e) => '${RegExp.escape(e)}\$').join('|');
       _firstPartyRegex = RegExp('^(.*\\.)*$hosts');
     } else {
       _firstPartyRegex = null;

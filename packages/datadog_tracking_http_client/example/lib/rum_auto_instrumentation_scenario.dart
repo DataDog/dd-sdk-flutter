@@ -15,7 +15,7 @@ class RumAutoInstrumentationScenario extends StatefulWidget {
   const RumAutoInstrumentationScenario({Key? key}) : super(key: key);
 
   @override
-  _RumAutoInstrumentationScenarioState createState() =>
+  State<RumAutoInstrumentationScenario> createState() =>
       _RumAutoInstrumentationScenarioState();
 }
 

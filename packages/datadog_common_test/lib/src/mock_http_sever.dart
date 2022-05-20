@@ -102,11 +102,7 @@ class RecordingHttpServer {
 }
 
 abstract class RecordingServerClient {
-  var _currentSession = '';
-  String get currentSession => _currentSession;
-  set currentSession(String value) {
-    _currentSession = value;
-  }
+  var currentSession = '';
 
   String get sessionEndpoint => '$_endpoint/$currentSession/';
 
