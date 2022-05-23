@@ -153,6 +153,18 @@ class _RumScreenState extends State<RumScreen> {
                   enabled: !performingOperation,
                   onChanged: (value) => resourceName = value,
                   onSend: _sendResource,
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {},
+                      icon: const Icon(Icons.plumbing),
+                    ),
+                    IconButton(
+                      onPressed: () {},
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
                 )
               ],
             ),
