@@ -2,8 +2,9 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_flutter_plugin/src/rum/ddrum.dart';
 import 'package:datadog_flutter_plugin/src/traces/ddtraces.dart';
 import 'package:datadog_grpc_interceptor/datadog_grpc_interceptor.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,7 +72,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     final captures = verify(() => mockRum.startResourceLoading(
         captureAny(),
@@ -95,7 +96,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     final captures = verify(() => mockRum.startResourceLoading(
         captureAny(),
@@ -117,7 +118,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     final captures = verify(() => mockRum.startResourceLoading(
         captureAny(),
@@ -143,7 +144,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     final captures = verify(() => mockRum.startResourceLoading(
         captureAny(),
@@ -165,7 +166,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     expect(loggingService.calls.length, 1);
     final call = loggingService.calls[0];
@@ -188,7 +189,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     expect(loggingService.calls.length, 1);
     final call = loggingService.calls[0];
@@ -209,7 +210,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     expect(loggingService.calls.length, 1);
     final call = loggingService.calls[0];
@@ -228,7 +229,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     expect(loggingService.calls.length, 1);
     final call = loggingService.calls[0];
@@ -249,7 +250,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     final captures = verify(() => mockRum.startResourceLoading(
         captureAny(),

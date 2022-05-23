@@ -9,7 +9,7 @@ class RumScreen extends StatefulWidget {
   const RumScreen({Key? key}) : super(key: key);
 
   @override
-  _RumScreenState createState() => _RumScreenState();
+  State<RumScreen> createState() => _RumScreenState();
 }
 
 class _RumScreenState extends State<RumScreen> {

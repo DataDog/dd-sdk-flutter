@@ -6,7 +6,6 @@ import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/src/internal_logger.dart';
-import 'package:datadog_flutter_plugin/src/rum/ddrum.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

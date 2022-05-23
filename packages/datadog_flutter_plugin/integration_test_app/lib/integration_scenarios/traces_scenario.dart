@@ -14,7 +14,7 @@ class TracesScenario extends StatefulWidget {
   const TracesScenario({Key? key}) : super(key: key);
 
   @override
-  _TracesScenarioState createState() => _TracesScenarioState();
+  State<TracesScenario> createState() => _TracesScenarioState();
 }
 
 class _TracesScenarioState extends State<TracesScenario> {

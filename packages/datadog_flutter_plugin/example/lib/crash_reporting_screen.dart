@@ -96,7 +96,7 @@ class CrashReportingScreen extends StatefulWidget {
   const CrashReportingScreen({Key? key}) : super(key: key);
 
   @override
-  _CrashReportingScreenState createState() => _CrashReportingScreenState();
+  State<CrashReportingScreen> createState() => _CrashReportingScreenState();
 }
 
 class _CrashReportingScreenState extends State<CrashReportingScreen> {

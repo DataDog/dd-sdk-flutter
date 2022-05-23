@@ -16,7 +16,7 @@ class RumManualInstrumentationScenario extends StatefulWidget {
   const RumManualInstrumentationScenario({Key? key}) : super(key: key);
 
   @override
-  _RumManualInstrumentationScenarioState createState() =>
+  State<RumManualInstrumentationScenario> createState() =>
       _RumManualInstrumentationScenarioState();
 }
 
@@ -136,7 +136,7 @@ class RumManualInstrumentation2 extends StatefulWidget {
   const RumManualInstrumentation2({Key? key}) : super(key: key);
 
   @override
-  _RumManualInstrumentation2State createState() =>
+  State<RumManualInstrumentation2> createState() =>
       _RumManualInstrumentation2State();
 }
 
@@ -237,7 +237,7 @@ class RumManualInstrumentation3 extends StatefulWidget {
   const RumManualInstrumentation3({Key? key}) : super(key: key);
 
   @override
-  _RumManualInstrumentation3State createState() =>
+  State<RumManualInstrumentation3> createState() =>
       _RumManualInstrumentation3State();
 }
 

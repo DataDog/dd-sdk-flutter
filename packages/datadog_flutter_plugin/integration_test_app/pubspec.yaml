@@ -18,6 +18,7 @@ dependencies:
     path: ../
   datadog_common_test:
     path: ../../datadog_common_test
+  http: ^0.13.4
     
 dev_dependencies:
   flutter_test:
@@ -25,7 +26,7 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   collection: ^1.15.0
-  flutter_lints: ^1.0.0
+  flutter_lints: ^2.0.1
 
 flutter:
   uses-material-design: true
