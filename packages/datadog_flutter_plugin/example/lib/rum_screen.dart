@@ -22,9 +22,6 @@ class _RumScreenState extends State<RumScreen> {
   var resourceName = '';
   var errorMessage = '';
 
-  ElementDetectionMethod elementDetectionMethod =
-      ElementDetectionMethod.elementTree;
-
   Future<void> _sendViewEvent() async {
     setState(() {
       performingOperation = true;
@@ -103,7 +100,6 @@ class _RumScreenState extends State<RumScreen> {
 
     return RumGestureDetector(
       rum: DatadogSdk.instance.rum,
-      elementDetectionMethod: elementDetectionMethod,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('RUM'),
@@ -161,34 +157,6 @@ class _RumScreenState extends State<RumScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Gesture Detection Method',
-                      style: theme.textTheme.headline5,
-                    ),
-                    Row(children: [
-                      Radio<ElementDetectionMethod>(
-                        value: ElementDetectionMethod.elementTree,
-                        groupValue: elementDetectionMethod,
-                        onChanged: (ElementDetectionMethod? method) {
-                          setState(() {
-                            elementDetectionMethod =
-                                method ?? ElementDetectionMethod.elementTree;
-                          });
-                        },
-                      ),
-                      const Text('Elements'),
-                      Radio<ElementDetectionMethod>(
-                        value: ElementDetectionMethod.semanticTree,
-                        groupValue: elementDetectionMethod,
-                        onChanged: (ElementDetectionMethod? method) {
-                          setState(() {
-                            elementDetectionMethod =
-                                method ?? ElementDetectionMethod.elementTree;
-                          });
-                        },
-                      ),
-                      const Text('Semantics'),
-                    ]),
                     Text(
                       'Test Buttons',
                       style: theme.textTheme.headline5,

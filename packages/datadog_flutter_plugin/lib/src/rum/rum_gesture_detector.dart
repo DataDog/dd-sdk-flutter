@@ -9,15 +9,6 @@ import 'package:meta/meta.dart';
 
 import '../../datadog_flutter_plugin.dart';
 
-/// Experimental - will likely be removed in the final release of the gesture
-/// detector Determines which version of the element detector to use - walking
-/// the Semantic tree or walking the Element tree. This is so we can measure the
-/// performance impact of each.
-enum ElementDetectionMethod {
-  elementTree,
-  semanticTree,
-}
-
 // The distance a 'pointer' can move and still be considered a tap.
 const _tapSlop = 20;
 const _tapSlopSquared = _tapSlop * _tapSlop;
@@ -36,13 +27,11 @@ class RumGestureDetector extends StatefulWidget {
 
   final DdRum? rum;
   final Widget child;
-  final ElementDetectionMethod elementDetectionMethod;
 
   const RumGestureDetector({
     Key? key,
     required this.rum,
     required this.child,
-    this.elementDetectionMethod = ElementDetectionMethod.elementTree,
   }) : super(key: key);
 
   @override
@@ -66,14 +55,6 @@ class _RumGestureDetectorState extends State<RumGestureDetector> {
   Offset? _lastPointerDownLocation;
 
   @override
-  void initState() {
-    super.initState();
-    if (widget.elementDetectionMethod == ElementDetectionMethod.semanticTree) {
-      _createSemanticsClient();
-    }
-  }
-
-  @override
   void didUpdateWidget(covariant RumGestureDetector oldWidget) {
     super.didUpdateWidget(oldWidget);
     var element = RumGestureDetector.elementMap[oldWidget];
@@ -83,31 +64,12 @@ class _RumGestureDetectorState extends State<RumGestureDetector> {
     } else {
       // Telemetry -- this shouldn't happen
     }
-
-    if (widget.elementDetectionMethod != ElementDetectionMethod.semanticTree) {
-      // Remove semantic client so the app stops updating it
-      _disposeSemanticClient();
-    } else if (_semanticsHandle == null) {
-      _createSemanticsClient();
-    }
   }
 
   @override
   void dispose() {
-    _disposeSemanticClient();
     RumGestureDetector.elementMap.remove(widget);
     super.dispose();
-  }
-
-  void _disposeSemanticClient() {
-    _semanticsHandle?.dispose();
-    _semanticsHandle = null;
-    _pipelineOwner = null;
-  }
-
-  void _createSemanticsClient() {
-    _pipelineOwner = WidgetsBinding.instance.pipelineOwner;
-    _semanticsHandle = _pipelineOwner!.ensureSemantics();
   }
 
   @override
@@ -142,37 +104,11 @@ class _RumGestureDetectorState extends State<RumGestureDetector> {
   void _onPerformActionAt(Offset position, RumUserActionType action) {
     String? elementDescription;
 
-    switch (widget.elementDetectionMethod) {
-      case ElementDetectionMethod.elementTree:
-        final span = DatadogSdk.instance.traces
-            ?.startSpan('GestureRecognizer: ElementTree');
-        span?.setActive();
-        var detectingElement = _getDetectingElementAtPosition(position);
-        if (detectingElement != null) {
-          elementDescription = _findElementInnerText(detectingElement.element);
-          elementDescription =
-              '${detectingElement.description}($elementDescription)';
-        }
-        span?.finish();
-        break;
-      case ElementDetectionMethod.semanticTree:
-        final rootSemantics = _pipelineOwner?.semanticsOwner?.rootSemanticsNode;
-        if (rootSemantics != null) {
-          final span = DatadogSdk.instance.traces
-              ?.startSpan('GestureRecognizer: SemanticTree');
-          span?.setActive();
-          position = position * WidgetsBinding.instance.window.devicePixelRatio;
-
-          final data = _getSemanticsDataAtPosition(rootSemantics, position);
-          if (data != null) {
-            elementDescription =
-                data.label.isNotEmpty ? data.label : '(unknown)';
-          }
-          span?.finish();
-        } else {
-          // TELEMETRY - Report missing root semantics
-        }
-        break;
+    var detectingElement = _getDetectingElementAtPosition(position);
+    if (detectingElement != null) {
+      elementDescription = _findElementInnerText(detectingElement.element);
+      elementDescription =
+          '${detectingElement.description}($elementDescription)';
     }
 
     if (elementDescription != null) {
@@ -246,36 +182,5 @@ class _RumGestureDetectorState extends State<RumGestureDetector> {
     }
 
     return null;
-  }
-
-  SemanticsData? _getSemanticsDataAtPosition(
-      SemanticsNode node, Offset position) {
-    if (node.transform != null) {
-      final Matrix4 inverse = Matrix4.identity();
-      if (inverse.copyInverse(node.transform!) == 0.0) {
-        return null;
-      }
-      position = MatrixUtils.transformPoint(inverse, position);
-    }
-    if (!node.rect.contains(position)) {
-      return null;
-    }
-
-    final data = node.getSemanticsData();
-    if ((data.actions & SemanticsAction.tap.index) > 0) {
-      return data;
-    }
-
-    SemanticsData? result;
-    node.visitChildren((SemanticsNode child) {
-      final SemanticsData? currentData =
-          _getSemanticsDataAtPosition(child, position);
-      if (currentData != null) {
-        result = currentData;
-        return false;
-      }
-      return true;
-    });
-    return result;
   }
 }
