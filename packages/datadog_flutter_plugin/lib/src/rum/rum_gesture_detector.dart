@@ -7,7 +7,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:meta/meta.dart';
 
-import 'ddrum.dart';
+import '../../datadog_flutter_plugin.dart';
+
+/// Experimental - will likely be removed in the final release of the gesture
+/// detector Determines which version of the element detector to use - walking
+/// the Semantic tree or walking the Element tree. This is so we can measure the
+/// performance impact of each.
+enum ElementDetectionMethod {
+  elementTree,
+  semanticTree,
+}
+
+// The distance a 'pointer' can move and still be considered a tap.
+const _tapSlop = 20;
+const _tapSlopSquared = _tapSlop * _tapSlop;
+
+@immutable
+class _CandidateElementDescription {
+  final Element element;
+  final String description;
+
+  const _CandidateElementDescription(this.element, this.description);
+}
 
 class RumGestureDetector extends StatefulWidget {
   @internal
@@ -15,9 +36,14 @@ class RumGestureDetector extends StatefulWidget {
 
   final DdRum? rum;
   final Widget child;
+  final ElementDetectionMethod elementDetectionMethod;
 
-  const RumGestureDetector({Key? key, required this.rum, required this.child})
-      : super(key: key);
+  const RumGestureDetector({
+    Key? key,
+    required this.rum,
+    required this.child,
+    this.elementDetectionMethod = ElementDetectionMethod.elementTree,
+  }) : super(key: key);
 
   @override
   StatefulElement createElement() {
@@ -32,12 +58,19 @@ class RumGestureDetector extends StatefulWidget {
 
 class _RumGestureDetectorState extends State<RumGestureDetector> {
   final _listenerKey = GlobalKey();
-  //late PipelineOwner _pipelineOwner;
+
+  PipelineOwner? _pipelineOwner;
+  SemanticsHandle? _semanticsHandle;
+
+  int? _lastPointerId;
+  Offset? _lastPointerDownLocation;
 
   @override
   void initState() {
     super.initState();
-    //_pipelineOwner = WidgetsBinding.instance.pipelineOwner;
+    if (widget.elementDetectionMethod == ElementDetectionMethod.semanticTree) {
+      _createSemanticsClient();
+    }
   }
 
   @override
@@ -50,12 +83,31 @@ class _RumGestureDetectorState extends State<RumGestureDetector> {
     } else {
       // Telemetry -- this shouldn't happen
     }
+
+    if (widget.elementDetectionMethod != ElementDetectionMethod.semanticTree) {
+      // Remove semantic client so the app stops updating it
+      _disposeSemanticClient();
+    } else if (_semanticsHandle == null) {
+      _createSemanticsClient();
+    }
   }
 
   @override
   void dispose() {
-    super.dispose();
+    _disposeSemanticClient();
     RumGestureDetector.elementMap.remove(widget);
+    super.dispose();
+  }
+
+  void _disposeSemanticClient() {
+    _semanticsHandle?.dispose();
+    _semanticsHandle = null;
+    _pipelineOwner = null;
+  }
+
+  void _createSemanticsClient() {
+    _pipelineOwner = WidgetsBinding.instance.pipelineOwner;
+    _semanticsHandle = _pipelineOwner!.ensureSemantics();
   }
 
   @override
@@ -64,55 +116,77 @@ class _RumGestureDetectorState extends State<RumGestureDetector> {
       key: _listenerKey,
       behavior: HitTestBehavior.translucent,
       onPointerDown: _onPointerDown,
+      onPointerUp: _onPointerUp,
       child: widget.child,
     );
   }
 
   void _onPointerDown(PointerDownEvent event) {
-    var detectingElement = _getDetectingElementAtPosition(event.localPosition);
-    if (detectingElement != null) {
-      final description = _findElementDescription(detectingElement);
-
-      print('Tapped "$description"');
-    }
-
-    // var rootSemantics = _pipelineOwner.semanticsOwner?.rootSemanticsNode;
-    // if (rootSemantics != null) {
-    //   final position =
-    //       event.localPosition * WidgetsBinding.instance.window.devicePixelRatio;
-
-    //   var data = _getSemanticsDataAtPosition(rootSemantics, position);
-    //   print(data?.label);
-    // }
-
-    // RenderBox? box =
-    //     _listenerKey.currentContext?.findRenderObject() as RenderBox?;
-
-    // if (box != null) {
-    //   var result = BoxHitTestResult();
-
-    //   box.hitTest(result, position: event.localPosition);
-
-    //   for (final hitTestEntry in result.path) {
-    //     final target = hitTestEntry.target;
-    //     if (target is RenderSemanticsAnnotations) {
-    //       if (target.button ?? false) {
-    //         print('Found a button: $target - ${target.attributedLabel}');
-    //       }
-    //     }
-    //   }
-
-    //   //widget.rum?.addUserAction(RumUserActionType.tap, 'test');
-    // }
+    _lastPointerId = event.pointer;
+    _lastPointerDownLocation = event.localPosition;
   }
 
-  String _findElementDescription(Element element) {
-    var elementDescription = '(unknown)';
+  void _onPointerUp(PointerUpEvent event) {
+    if (_lastPointerDownLocation != null && event.pointer == _lastPointerId) {
+      final distanceOffset = Offset(
+          _lastPointerDownLocation!.dx - event.localPosition.dx,
+          _lastPointerDownLocation!.dy - event.localPosition.dy);
+
+      final distanceSquared = distanceOffset.distanceSquared;
+      if (distanceSquared < _tapSlopSquared) {
+        _onPerformActionAt(event.localPosition, RumUserActionType.tap);
+      }
+    }
+  }
+
+  void _onPerformActionAt(Offset position, RumUserActionType action) {
+    String? elementDescription;
+
+    switch (widget.elementDetectionMethod) {
+      case ElementDetectionMethod.elementTree:
+        final span = DatadogSdk.instance.traces
+            ?.startSpan('GestureRecognizer: ElementTree');
+        span?.setActive();
+        var detectingElement = _getDetectingElementAtPosition(position);
+        if (detectingElement != null) {
+          elementDescription = _findElementInnerText(detectingElement.element);
+          elementDescription =
+              '${detectingElement.description}($elementDescription)';
+        }
+        span?.finish();
+        break;
+      case ElementDetectionMethod.semanticTree:
+        final rootSemantics = _pipelineOwner?.semanticsOwner?.rootSemanticsNode;
+        if (rootSemantics != null) {
+          final span = DatadogSdk.instance.traces
+              ?.startSpan('GestureRecognizer: SemanticTree');
+          span?.setActive();
+          position = position * WidgetsBinding.instance.window.devicePixelRatio;
+
+          final data = _getSemanticsDataAtPosition(rootSemantics, position);
+          if (data != null) {
+            elementDescription =
+                data.label.isNotEmpty ? data.label : '(unknown)';
+          }
+          span?.finish();
+        } else {
+          // TELEMETRY - Report missing root semantics
+        }
+        break;
+    }
+
+    if (elementDescription != null) {
+      widget.rum?.addUserAction(RumUserActionType.tap, elementDescription);
+    }
+  }
+
+  String _findElementInnerText(Element element) {
+    var elementDescription = 'unknown';
 
     void visitor(Element element) {
       var widget = element.widget;
       if (widget is Text) {
-        elementDescription = widget.data ?? '(unknown)';
+        elementDescription = widget.data ?? 'unknown';
       } else if (widget is Icon) {
         elementDescription = widget.semanticLabel ?? widget.icon.toString();
       } else {
@@ -125,11 +199,12 @@ class _RumGestureDetectorState extends State<RumGestureDetector> {
     return elementDescription;
   }
 
-  Element? _getDetectingElementAtPosition(Offset position) {
+  _CandidateElementDescription? _getDetectingElementAtPosition(
+      Offset position) {
     var rootElement = RumGestureDetector.elementMap[widget];
     if (rootElement == null) return null;
 
-    Element? candidateElement;
+    _CandidateElementDescription? candidateElement;
 
     void elementVisitor(Element element) {
       final ro = element.renderObject;
@@ -140,8 +215,10 @@ class _RumGestureDetectorState extends State<RumGestureDetector> {
 
       if (paintBounds.contains(position)) {
         final widget = element.widget;
-        if (_widgetIsEnabledButtonType(widget)) {
-          candidateElement = element;
+        final widgetDescription = _widgetIsEnabledButtonType(widget);
+        if (widgetDescription != null) {
+          candidateElement =
+              _CandidateElementDescription(element, widgetDescription);
         } else {
           element.visitChildElements(elementVisitor);
         }
@@ -153,20 +230,22 @@ class _RumGestureDetectorState extends State<RumGestureDetector> {
     return candidateElement;
   }
 
-  bool _widgetIsEnabledButtonType(Widget widget) {
+  String? _widgetIsEnabledButtonType(Widget widget) {
     if (widget is ButtonStyleButton) {
-      return widget.enabled;
+      return widget.enabled ? 'Button' : null;
     } else if (widget is MaterialButton) {
-      return widget.enabled;
+      return widget.enabled ? 'Button' : null;
     } else if (widget is CupertinoButton) {
-      return widget.enabled;
+      return widget.enabled ? 'Button' : null;
     } else if (widget is InkWell) {
-      return widget.onTap != null;
+      return widget.onTap != null ? 'InkWell' : null;
     } else if (widget is IconButton) {
-      return widget.onPressed != null;
+      return widget.onPressed != null ? 'IconButton' : null;
+    } else if (widget is GestureDetector) {
+      return widget.onTap != null ? 'GestureDetector' : null;
     }
 
-    return false;
+    return null;
   }
 
   SemanticsData? _getSemanticsDataAtPosition(
