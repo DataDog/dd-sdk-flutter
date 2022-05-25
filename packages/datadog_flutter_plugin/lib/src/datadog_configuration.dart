@@ -93,10 +93,19 @@ class LoggingConfiguration {
   /// Defaults to `false`.
   bool printLogsToConsole;
 
-  // Enables or disables sending logs to Datadog.
+  /// Enables or disables sending logs to Datadog.
   ///
   /// Defaults to `true`.
   bool sendLogsToDatadog;
+
+  /// Sets the level of logs that get sent to Datadog
+  ///
+  /// Logs below the configured threshold are not sent to Datadog, while
+  /// logs at this threshold and above are, so long as [sendLogsToDatadog]
+  /// is also set.
+  ///
+  /// Defaults to [Verbosity.verbose]
+  Verbosity datadogReportingThreshold;
 
   /// Enables the logs integration with RUM.
   ///
@@ -125,6 +134,7 @@ class LoggingConfiguration {
     this.sendNetworkInfo = false,
     this.printLogsToConsole = false,
     this.sendLogsToDatadog = true,
+    this.datadogReportingThreshold = Verbosity.verbose,
     this.bundleWithRum = true,
     this.bundleWithTrace = true,
     this.loggerName,

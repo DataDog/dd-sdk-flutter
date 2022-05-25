@@ -3,6 +3,7 @@
 // Copyright 2019-2021 Datadog, Inc.
 import 'package:uuid/uuid.dart';
 
+import '../../datadog_flutter_plugin.dart';
 import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddlogs_platform_interface.dart';
@@ -19,9 +20,12 @@ const _uuid = Uuid();
 /// their own settings.
 class DdLogs {
   final InternalLogger _internalLogger;
+  final Verbosity _reportingThreshold;
+
   final String loggerHandle;
 
-  DdLogs(this._internalLogger) : loggerHandle = _uuid.v4();
+  DdLogs(this._internalLogger, this._reportingThreshold)
+      : loggerHandle = _uuid.v4();
 
   static DdLogsPlatform get _platform {
     return DdLogsPlatform.instance;
@@ -33,9 +37,11 @@ class DdLogs {
   /// [context] parameter. Values passed into [context] must be supported by
   /// [StandardMessageCodec].
   void debug(String message, [Map<String, Object?> context = const {}]) {
-    wrap('logs.debug', _internalLogger, () {
-      return _platform.debug(loggerHandle, message, context);
-    });
+    if (_reportingThreshold.index <= Verbosity.debug.index) {
+      wrap('logs.debug', _internalLogger, () {
+        return _platform.debug(loggerHandle, message, context);
+      });
+    }
   }
 
   /// Sends an `info` log message.
@@ -44,9 +50,11 @@ class DdLogs {
   /// [context] parameter. Values passed into [context] must be supported by
   /// [StandardMessageCodec].
   void info(String message, [Map<String, Object?> context = const {}]) {
-    wrap('logs.info', _internalLogger, () {
-      return _platform.info(loggerHandle, message, context);
-    });
+    if (_reportingThreshold.index <= Verbosity.info.index) {
+      wrap('logs.info', _internalLogger, () {
+        return _platform.info(loggerHandle, message, context);
+      });
+    }
   }
 
   /// Sends a `warn` log message.
@@ -55,9 +63,11 @@ class DdLogs {
   /// [context] parameter. Values passed into [context] must be supported by
   /// [StandardMessageCodec].
   void warn(String message, [Map<String, Object?> context = const {}]) {
-    wrap('logs.warn', _internalLogger, () {
-      return _platform.warn(loggerHandle, message, context);
-    });
+    if (_reportingThreshold.index <= Verbosity.warn.index) {
+      wrap('logs.warn', _internalLogger, () {
+        return _platform.warn(loggerHandle, message, context);
+      });
+    }
   }
 
   /// Sends an `error` log message.
@@ -66,9 +76,11 @@ class DdLogs {
   /// [context] parameter. Values passed into [context] must be supported by
   /// [StandardMessageCodec].
   void error(String message, [Map<String, Object?> context = const {}]) {
-    wrap('logs.error', _internalLogger, () {
-      return _platform.error(loggerHandle, message, context);
-    });
+    if (_reportingThreshold.index <= Verbosity.error.index) {
+      wrap('logs.error', _internalLogger, () {
+        return _platform.error(loggerHandle, message, context);
+      });
+    }
   }
 
   /// Add a custom attribute to all future logs sent by this logger.
