@@ -4,6 +4,7 @@
 
 library datadog_common_test;
 
+export 'src/data_helpers.dart';
 export 'src/decoder_helpers.dart';
 export 'src/decoders/log_decoder.dart';
 export 'src/decoders/rum_decoder.dart';
