@@ -98,7 +98,7 @@ class _RumScreenState extends State<RumScreen> {
     bool canStartView = !performingOperation && !inView;
     bool canStopView = !performingOperation && inView;
 
-    return RumGestureDetector(
+    return RumUserActionDetector(
       rum: DatadogSdk.instance.rum,
       child: Scaffold(
         appBar: AppBar(
