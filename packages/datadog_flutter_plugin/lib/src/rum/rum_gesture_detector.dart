@@ -8,7 +8,8 @@ import 'package:meta/meta.dart';
 
 import '../../datadog_flutter_plugin.dart';
 
-// The distance a 'pointer' can move and still be considered a tap.
+// The distance a 'pointer' can move and still be considered a tap, in logical
+// pixels.
 const _tapSlop = 20;
 const _tapSlopSquared = _tapSlop * _tapSlop;
 
@@ -25,10 +26,10 @@ class _ElementDescription {
 
 /// Detect simple user actions and send them to RUM.
 ///
-/// This wrapper widget automatically detects simple user actions (taps and
-/// swipes) that occur in its tree and sends them to RUM. It detects
-/// interactions with several common Flutter widgets, including
-/// [ElevatedButton], [TextButton], [InkWell], and [GestureDetector].
+/// This wrapper widget automatically detects tap user actions that occur in its
+/// tree and sends them to RUM. It detects interactions with several common
+/// Flutter widgets, including [ElevatedButton], [TextButton], [InkWell], and
+/// [GestureDetector].
 ///
 /// For most Button types, the detector will look for a [Text] widget child,
 /// which it will use for the description of the action. In other cases, it will
@@ -123,8 +124,7 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     final elementDescription = _getDetectingElementAtPosition(position);
 
     if (elementDescription != null) {
-      widget.rum?.addUserAction(
-          RumUserActionType.tap, elementDescription.elementDescription);
+      widget.rum?.addUserAction(action, elementDescription.elementDescription);
     }
   }
 
