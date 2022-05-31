@@ -1,12 +1,12 @@
+<div class="alert alert-info"><p>Flutter monitoring is in beta.</p>
+</div>
+
+
 ## Overview
 
 Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real-time performance and user journeys of your Flutter application’s individual users.
 
-## Platform Support
-
-| Android | iOS |  Web | MacOS | Linux | Windows |
-| :-----: | :-: | :---: | :-: | :---: | :----: |
-|   ✅    | ✅  |  🚧   | ❌  |  ❌   |   ❌   |
+RUM supports monitoring for mobile Flutter Android and iOS applications.
 
 ## Current Datadog SDK Versions
 
@@ -17,7 +17,6 @@ Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real
 | 1.11.0-rc1 | 1.12.0-alpha2 | v4.11.2 |
 
 [//]: # (End SDK Table)
-
 
 ### iOS
 
@@ -42,19 +41,17 @@ This loads the CDN-delivered Datadog Logging and RUM Browser SDKs. Note that the
 
 ## Setup
 
-You need a Datadog client token for Logs and Tracing. If you are using RUM, you need an application ID.
-
 ### Specify application details in the UI
 
-1. Navigate to [**UX Monitoring** > **RUM Applications** > **New Application**][1].
-2. Select `flutter` as the application type and enter an application name to generate a unique Datadog application ID and client token.
-3. Click **+ Create New RUM Application**.
+1. In the [Datadog app][1], navigate to **UX Monitoring** > **RUM Applications** > **New Application**.
+2. Choose `Flutter` as the application type.
+3. Provide an application name to generate a unique Datadog application ID and client token.
 
-To ensure the safety of your data, you must use a client token. If you used only [Datadog API keys][2] to configure the `@datadog/mobile-react-native` library, they would be exposed client-side in the React Native application's code. 
+{{< img src="real_user_monitoring/flutter/image_flutter.png" alt="Create a RUM application in Datadog workflow" style="width:90%;">}}
 
-For more information about setting up a client token, see the [Client Token documentation][3].
+To ensure the safety of your data, you must use a client token. For more information about setting up a client token, see the [Client Token documentation][4].
 
-### Configure Datadog
+### Create configuration object
 
 Create a configuration object for each Datadog feature (such as Logging, Tracing, and RUM) with the following snippet. By not passing a configuration for a given feature, it is disabled.
 
@@ -82,9 +79,9 @@ final configuration = DdSdkConfiguration(
 
 ### Initialize the library
 
-You can initialize Datadog using one of two methods in the `main.dart` file.
+You can initialize RUM using one of two methods in the `main.dart` file.
 
-1. Use `DatadogSdk.runApp`, which automatically sets up error reporting and resource tracing. This is the simplest way to initialize Datadog.
+1. Use `DatadogSdk.runApp`, which automatically sets up error reporting and resource tracing. 
 
    ```dart
    await DatadogSdk.runApp(configuration, () async {
@@ -154,9 +151,9 @@ MaterialApp(
 );
 ```
 
-This only works if you are using named routes or if you have supplied a name to the `settings` parameter of your `PageRoute`.
+This works if you are using named routes or if you have supplied a name to the `settings` parameter of your `PageRoute`.
 
-Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction with the `DatadogNavigationObserverProvider` property to start and stop you RUM views automatically. With `DatadogRouteAwareMixin`, move any logic from `initState` to `didPush`. 
+Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction with the `DatadogNavigationObserverProvider` property to start and stop your RUM views automatically. With `DatadogRouteAwareMixin`, move any logic from `initState` to `didPush`. 
 
 ### Automatic Resource Tracking
 
@@ -165,10 +162,11 @@ You can enable automatic tracking of resources and HTTP calls from your RUM view
 ```dart
 final configuration = DdSdkConfiguration(
   // configuration
+  firstPartyHosts: ['example.com'],
 )..enableHttpTracking()
 ```
 
-If you want to enable Datadog distributed tracing, you must also set the `DdSdkConfiguration.firstPartyHosts` configuration option. You can also modify the sampling rate for Datadog distributed tracing by setting the `tracingSamplingRate` on your `RumConfiguration`.
+In order to enable Datadog Distributed Tracing, the `DdSdkConfiguration.firstPartyHosts` property in your configutation object must be set to a domain that supports distributed tracing. You can also modify the sampling rate for Datadog distributed tracing by setting the `tracingSamplingRate` on your `RumConfiguration`.
 
 ## Data Storage
 
