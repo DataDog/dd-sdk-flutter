@@ -14,7 +14,7 @@ Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 1.11.0-rc1 | 1.12.0-alpha2 | ❌ |
+| 1.11.0-rc1 | 1.12.0-alpha2 | v4.11.2 |
 
 [//]: # (End SDK Table)
 

@@ -2,12 +2,15 @@
 
 ## Unreleased
 
-* Update iOS SDK to 1.11-rc2
+* Update iOS SDK to 1.11-rc1
   * Allow manually tracked resources in RUM Sessions to detect first party hosts.
   * Better error message when encountering an invalid token (Fixes #117)
+  * Fix RUM events to support configured `source` property.
+  * For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#1110-rc1--18-05-2022).
 * Added `datadogReportingThreshold` to `LoggingConfiguration` to support only sending logs above a certain threshold to Datadog.
 * Add support for setting a tracing sample rate for RUM.
 * Expose `DdLogs` through the main package import. Added documentation to DdLogs.
+* Added initial Flutter Web features and tests. Note: Flutter Web is not ready for production use.
 
 ## 1.0.0-beta.1
 
