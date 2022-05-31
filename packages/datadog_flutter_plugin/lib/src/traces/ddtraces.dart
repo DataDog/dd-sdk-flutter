@@ -4,11 +4,15 @@
 
 import 'dart:math';
 
+import 'package:meta/meta.dart';
+
 import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddtraces_platform_interface.dart';
 
 typedef TimeProvider = DateTime Function();
+
+@visibleForTesting
 DateTime systemTimeProvider() => DateTime.now();
 
 /// A collection of standard `Span` tag keys defined by Open Tracing.

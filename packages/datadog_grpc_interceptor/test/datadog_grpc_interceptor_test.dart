@@ -5,7 +5,6 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_flutter_plugin/src/traces/ddtraces.dart';
 import 'package:datadog_grpc_interceptor/datadog_grpc_interceptor.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
@@ -81,7 +80,7 @@ void main() {
         captureAny())).captured;
     final key = captures[0];
     final attributes = captures[1];
-    // TODO: Double check that this is a proper value for the grpc.method
+
     expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
     verify(() => mockRum.stopResourceLoading(key, 200, RumResourceType.native));

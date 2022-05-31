@@ -16,33 +16,15 @@ import 'src/helpers.dart';
 import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
 import 'src/logs/ddlogs_platform_interface.dart';
-import 'src/rum/ddrum.dart';
+import 'src/rum/rum.dart';
 import 'src/traces/ddtraces.dart';
 import 'src/version.dart' show ddPackageVersion;
 
-export 'src/attributes.dart' show DatadogConfigKey;
 export 'src/datadog_configuration.dart';
 export 'src/datadog_plugin.dart';
 export 'src/logs/ddlogs.dart';
-export 'src/rum/ddrum.dart'
-    show
-        DdRum,
-        RumHttpMethod,
-        RumUserActionType,
-        RumErrorSource,
-        RumResourceType,
-        rumMethodFromMethodString,
-        resourceTypeFromContentType;
-export 'src/rum/navigation_observer.dart'
-    show
-        DatadogNavigationObserver,
-        DatadogNavigationObserverProvider,
-        RumViewInfo,
-        DatadogRouteAwareMixin,
-        ViewInfoExtractor;
-export 'src/rum/rum_gesture_detector.dart';
-export 'src/traces/ddtraces.dart'
-    show DdSpan, OTTags, OTLogFields, generateTraceId;
+export 'src/rum/rum.dart';
+export 'src/traces/ddtraces.dart';
 
 typedef AppRunner = void Function();
 
