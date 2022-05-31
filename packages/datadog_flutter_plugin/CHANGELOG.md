@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.0-beta.2
 
 * Update iOS SDK to 1.11-rc1
   * Allow manually tracked resources in RUM Sessions to detect first party hosts.
