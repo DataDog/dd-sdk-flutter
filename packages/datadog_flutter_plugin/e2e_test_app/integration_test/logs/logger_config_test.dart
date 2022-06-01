@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:e2e_test_app/main.dart' as app;
 import 'package:flutter_test/flutter_test.dart';
@@ -35,8 +36,7 @@ void main() {
   /// ```
   testWidgets('logger config - set service name', (tester) async {
     await initializeDatadog(
-      (config) => config.additionalConfig[DatadogConfigKey.serviceName] =
-          'com.datadog.flutter.nightly.custom',
+      (config) => config.serviceName = 'com.datadog.flutter.nightly.custom',
     );
 
     sendRandomLog(tester);

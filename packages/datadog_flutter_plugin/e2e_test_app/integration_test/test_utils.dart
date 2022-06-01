@@ -4,8 +4,8 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,8 +32,7 @@ Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
     ..loggingConfiguration = LoggingConfiguration()
     ..tracingConfiguration = TracingConfiguration()
     ..rumConfiguration = RumConfiguration(applicationId: applicationId)
-    ..additionalConfig[DatadogConfigKey.serviceName] =
-        'com.datadog.flutter.nightly';
+    ..serviceName = 'com.datadog.flutter.nightly';
 
   if (configCallback != null) {
     configCallback(configuration);
@@ -54,26 +53,6 @@ Future<void> measure(String resourceName, AsyncVoidCallback callback,
   if (elapsedSeconds > targetSeconds) {
     DatadogSdk.instance.logs?.error(
         'PERF ERROR: `$resourceName` took ${elapsedSeconds.toStringAsFixed(3)} (targeting ${targetSeconds.toStringAsFixed(3)})');
-  }
-}
-
-final _random = Random();
-const _alphas = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const _numerics = '0123456789';
-const _alphaNumerics = _alphas + _numerics;
-
-String randomString({int length = 10}) {
-  final result = String.fromCharCodes(Iterable.generate(
-    length,
-    (_) => _alphaNumerics.codeUnitAt(_random.nextInt(_alphaNumerics.length)),
-  ));
-
-  return result;
-}
-
-extension RandomExtension<T> on List<T> {
-  T randomElement() {
-    return this[_random.nextInt(length)];
   }
 }
 

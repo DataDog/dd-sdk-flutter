@@ -14,7 +14,7 @@ class IntegrationScenariosScreen extends StatefulWidget {
   const IntegrationScenariosScreen({Key? key}) : super(key: key);
 
   @override
-  _IntegrationScenariosScreenState createState() =>
+  State<IntegrationScenariosScreen> createState() =>
       _IntegrationScenariosScreenState();
 }
 

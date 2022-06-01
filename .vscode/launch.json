@@ -4,7 +4,6 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
             "name": "example",
             "cwd": "packages/datadog_flutter_plugin/example",
@@ -16,6 +15,12 @@
             "cwd": "packages/datadog_flutter_plugin/integration_test_app",
             "request": "launch",
             "type": "dart"
+        },
+        {
+            "name": "tracking http client example",
+            "type": "dart",
+            "cwd": "packages/datadog_tracking_http_client/example",
+            "request": "launch"
         },
         {
             "name": "auto instrumented app",

@@ -11,7 +11,7 @@ class RumManualErrorReportingScenario extends StatefulWidget {
   const RumManualErrorReportingScenario({Key? key}) : super(key: key);
 
   @override
-  _RumManualErrorReportingScenarioState createState() =>
+  State<RumManualErrorReportingScenario> createState() =>
       _RumManualErrorReportingScenarioState();
 }
 

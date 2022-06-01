@@ -12,7 +12,7 @@ class RumAutoInstrumentationSecondScreen extends StatefulWidget {
   const RumAutoInstrumentationSecondScreen({Key? key}) : super(key: key);
 
   @override
-  _RumAutoInstrumentationSecondScreenState createState() =>
+  State<RumAutoInstrumentationSecondScreen> createState() =>
       _RumAutoInstrumentationSecondScreenState();
 }
 

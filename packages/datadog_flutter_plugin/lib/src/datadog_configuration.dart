@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'dart:math';
+
 import '../datadog_flutter_plugin.dart';
 
 /// Defines the Datadog SDK policy when batching data together before uploading
@@ -91,10 +93,19 @@ class LoggingConfiguration {
   /// Defaults to `false`.
   bool printLogsToConsole;
 
-  // Enables or disables sending logs to Datadog.
+  /// Enables or disables sending logs to Datadog.
   ///
   /// Defaults to `true`.
   bool sendLogsToDatadog;
+
+  /// Sets the level of logs that get sent to Datadog
+  ///
+  /// Logs below the configured threshold are not sent to Datadog, while
+  /// logs at this threshold and above are, so long as [sendLogsToDatadog]
+  /// is also set.
+  ///
+  /// Defaults to [Verbosity.verbose]
+  Verbosity datadogReportingThreshold;
 
   /// Enables the logs integration with RUM.
   ///
@@ -123,6 +134,7 @@ class LoggingConfiguration {
     this.sendNetworkInfo = false,
     this.printLogsToConsole = false,
     this.sendLogsToDatadog = true,
+    this.datadogReportingThreshold = Verbosity.verbose,
     this.bundleWithRum = true,
     this.bundleWithTrace = true,
     this.loggerName,
@@ -177,22 +189,40 @@ class RumConfiguration {
 
   /// Sets the sampling rate for RUM Sessions.
   ///
+  /// This property is deprecated in favor of [sessionSamplingRate]
+  @Deprecated('Use sessionSamplingRate instead')
+  double get sampleRate => sessionSamplingRate;
+  set sampleRate(double value) => sessionSamplingRate = value;
+
+  /// Sets the sampling rate for RUM Sessions.
+  ///
   /// The sampling rate must be a value between `0.0` and `100.0`. A value of
   /// `0.0` means no RUM events will be sent, `100.0` means all sessions will be
-  /// kept
+  /// sent
   ///
   /// Defaults to `100.0`.
-  double sampleRate;
+  double sessionSamplingRate;
+
+  /// Sets the sampling rate for tracing
+  ///
+  /// The sampling rate must be a value between `0.0` and `100.0`. A value of
+  /// `0.0` means no resources will include APM tracing, `100.0` resource will
+  /// include APM tracing
+  ///
+  /// Defaults to `20.0`.
+  double tracingSamplingRate;
 
   RumConfiguration({
     required this.applicationId,
-    this.sampleRate = 100.0,
-  });
+    double sessionSamplingRate = 100.0,
+    double tracingSamplingRate = 20.0,
+  })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
+        tracingSamplingRate = max(0, min(tracingSamplingRate, 100));
 
   Map<String, dynamic> encode() {
     return {
       'applicationId': applicationId,
-      'sampleRate': sampleRate,
+      'sampleRate': sessionSamplingRate,
     };
   }
 }
@@ -212,6 +242,9 @@ class DdSdkConfiguration {
   /// The [DatadogSite] to send information to. This site must match the site
   /// used to generate your client token.
   DatadogSite site;
+
+  /// The service name for this application
+  String? serviceName;
 
   /// The initial [TrackingConsent] for this user.
   TrackingConsent trackingConsent;
@@ -269,6 +302,7 @@ class DdSdkConfiguration {
     required this.trackingConsent,
     required this.site,
     this.nativeCrashReportEnabled = false,
+    this.serviceName,
     this.uploadFrequency,
     this.batchSize,
     this.customEndpoint,

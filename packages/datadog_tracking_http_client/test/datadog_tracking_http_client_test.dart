@@ -7,7 +7,6 @@ import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
-import 'package:datadog_flutter_plugin/src/rum/ddrum.dart';
 import 'package:datadog_tracking_http_client/src/tracking_http_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -65,6 +64,7 @@ void main() {
     when(() => mockDatadog.isFirstPartyHost(
         any(that: HasHost(equals('non_first_party'))))).thenReturn(false);
     mockRum = MockDdRum();
+    when(() => mockRum.shouldSampleTrace()).thenReturn(true);
 
     mockClient = MockHttpClient();
     when(() => mockClient.autoUncompress).thenReturn(true);
@@ -138,7 +138,7 @@ void main() {
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
       var url = Uri.parse('https://test_url/path');
-      var _ = await client.openUrl('get', url);
+      await client.openUrl('get', url);
 
       verify(() => mockClient.openUrl('get', url));
     });
@@ -358,6 +358,43 @@ void main() {
       expect(spanInt.bitLength, lessThanOrEqualTo(63));
     });
 
+    test(
+        'start and stop resource loading do not set tracing attributes if shouldSample returns false',
+        () async {
+      final completer = _setupMockRequest();
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+      var capturedStartArgs = verify(
+        () => mockRum.startResourceLoading(
+          captureAny(),
+          RumHttpMethod.get,
+          url.toString(),
+          captureAny(),
+        ),
+      ).captured;
+      var capturedKey = capturedStartArgs[0] as String;
+      var capturedStartAttributes =
+          capturedStartArgs[1] as Map<String, dynamic>;
+
+      var mockResponse = _setupMockClientResponse(200, size: 12345);
+
+      completer.complete(mockResponse);
+      var response = await request.done;
+      response.listen((event) {});
+      await mockResponse.streamController.close();
+
+      verify(() => mockRum.stopResourceLoading(
+          capturedKey, 200, RumResourceType.image, 12345));
+
+      expect(capturedStartAttributes[DatadogRumPlatformAttributeKey.traceID],
+          isNull);
+      expect(capturedStartAttributes[DatadogRumPlatformAttributeKey.spanID],
+          isNull);
+    });
+
     test('sets trace headers for first party urls', () async {
       _setupMockRequest();
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
@@ -403,6 +440,21 @@ void main() {
             error.toString(),
             error.runtimeType.toString(),
           ));
+    });
+
+    test('does not set trace headers when should sample returns false',
+        () async {
+      when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+      _setupMockRequest();
+      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+
+      var url = Uri.parse('https://test_url/path');
+      var request = await client.openUrl('get', url);
+      final requestHeaders = request.headers;
+
+      verifyNever(() => requestHeaders.add('x-datadog-trace-id', any()));
+      verifyNever(() => requestHeaders.add('x-datadog-parent-id', any()));
+      verify(() => requestHeaders.add('x-datadog-sampling-priority', '0'));
     });
   });
 }

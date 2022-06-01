@@ -22,10 +22,5 @@ pushd packages/datadog_flutter_plugin
 swiftlint --fix
 popd
 
-# Run flutter analyze
-flutter analyze
-
 # Run iOS / Android integration tests
-bitrise run setup
-bitrise run integration_ios
-bitrise run integration_android
+bitrise run push_to_develop_or_master

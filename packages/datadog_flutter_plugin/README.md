@@ -14,7 +14,7 @@ RUM supports monitoring for mobile Flutter Android and iOS applications.
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 1.11.0-beta2 | 1.12.0-alpha2 | ❌ |
+| 1.11.0-rc1 | 1.12.0-alpha2 | v4.11.2 |
 
 [//]: # (End SDK Table)
 
@@ -25,6 +25,19 @@ Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutte
 ### Android
 
 On Android, your `minSdkVersion` must be >= 19, and if you are using Kotlin, it should be version >= 1.5.31.
+
+### Web
+
+`⚠️ Datadog support for Flutter Web is still in early development`
+
+On Web, add the following to your `index.html` under your `head` tag:
+
+```html
+<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-logs-v4.js"></script>
+<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-rum-slim-v4.js"></script>
+```
+
+This loads the CDN-delivered Datadog Logging and RUM Browser SDKs. Note that the synchronous CDN-delivered version of the Browser SDK is the only version supported by the Flutter plugin.
 
 ## Setup
 
@@ -100,6 +113,31 @@ You can initialize RUM using one of two methods in the `main.dart` file.
    });
    ```
 
+### Send Logs
+
+After initializing Datadog with a `LoggingConfiguration`, you can use the default instance of `logs` to send logs to Datadog.
+
+```dart
+DatadogSdk.instance.logs?.debug("A debug message.");
+DatadogSdk.instance.logs?.info("Some relevant information?");
+DatadogSdk.instance.logs?.warn("An important warning…");
+DatadogSdk.instance.logs?.error("An error was met!");
+```
+
+You can also create additional loggers with the `createLogger` method:
+
+```dart
+final myLogger = DatadogSdk.instance.createLogger(
+  LoggingConfiguration({
+    loggerName: 'Additional logger'
+  })
+);
+
+myLogger.info('Info from my additional logger.');
+```
+
+Tags and attributes set on loggers are local to each logger.
+
 ### Track RUM views
 
 The Datadog Flutter Plugin can automatically track named routes using the `DatadogNavigationObserver` on your MaterialApp.
@@ -108,7 +146,7 @@ The Datadog Flutter Plugin can automatically track named routes using the `Datad
 MaterialApp(
   home: HomeScreen(),
   navigatorObservers: [
-    DatadogNavigationObserver(),
+    DatadogNavigationObserver(DatadogSdk.instance),
   ],
 );
 ```
@@ -128,7 +166,7 @@ final configuration = DdSdkConfiguration(
 )..enableHttpTracking()
 ```
 
-In order to enable Datadog Distributed Tracing, the `DdSdkConfiguration.firstPartyHosts` property in your configuration object must be set to a domain that supports distributed tracing.
+In order to enable Datadog Distributed Tracing, the `DdSdkConfiguration.firstPartyHosts` property in your configutation object must be set to a domain that supports distributed tracing. You can also modify the sampling rate for Datadog distributed tracing by setting the `tracingSamplingRate` on your `RumConfiguration`.
 
 ## Data Storage
 

@@ -6,6 +6,7 @@
 
 import 'dart:io';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:e2e_test_app/main.dart' as app;
 import 'package:flutter_test/flutter_test.dart';
@@ -43,8 +44,7 @@ void main() {
   /// ```
   testWidgets('traces config - set service name', (tester) async {
     await initializeDatadog(
-      (config) => config.additionalConfig[DatadogConfigKey.serviceName] =
-          'com.datadog.flutter.nightly.custom',
+      (config) => config.serviceName = 'com.datadog.flutter.nightly.custom',
     );
 
     final span =

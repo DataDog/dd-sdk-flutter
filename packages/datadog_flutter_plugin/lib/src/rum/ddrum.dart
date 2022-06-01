@@ -3,9 +3,11 @@
 // Copyright 2019-2021 Datadog, Inc.
 
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../datadog_flutter_plugin.dart';
 import '../attributes.dart';
 import '../helpers.dart';
 import '../internal_logger.dart';
@@ -84,9 +86,12 @@ class DdRum {
     return DdRumPlatform.instance;
   }
 
+  final sampleRandom = Random();
+
+  final RumConfiguration configuration;
   final InternalLogger logger;
 
-  DdRum(this.logger);
+  DdRum(this.configuration, this.logger);
 
   /// Notifies that the View identified by [key] starts being presented to the
   /// user. This view will show as [name] in the RUM explorer, and defaults to
@@ -263,5 +268,15 @@ class DdRum {
     wrap('rum.removeAttribute', logger, () {
       return _platform.removeAttribute(key);
     });
+  }
+
+  /// Uses the configured [RumConfiguration.tracingSamplingRate] to determine if
+  /// a sample should be traced.
+  ///
+  /// This is used by Datadog tracing plugins like `datadog_tracing_http_client`
+  /// to add the proper headers to network requests.
+  bool shouldSampleTrace() {
+    return (sampleRandom.nextDouble() * 100) <
+        configuration.tracingSamplingRate;
   }
 }

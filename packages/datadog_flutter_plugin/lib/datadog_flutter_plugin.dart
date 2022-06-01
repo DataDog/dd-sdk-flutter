@@ -23,8 +23,10 @@ import 'src/version.dart' show ddPackageVersion;
 export 'src/attributes.dart' show DatadogConfigKey;
 export 'src/datadog_configuration.dart';
 export 'src/datadog_plugin.dart';
+export 'src/logs/ddlogs.dart';
 export 'src/rum/ddrum.dart'
     show
+        DdRum,
         RumHttpMethod,
         RumUserActionType,
         RumErrorSource,
@@ -36,7 +38,9 @@ export 'src/rum/navigation_observer.dart'
         DatadogNavigationObserver,
         DatadogNavigationObserverProvider,
         RumViewInfo,
-        DatadogRouteAwareMixin;
+        DatadogRouteAwareMixin,
+        ViewInfoExtractor;
+export 'src/rum/rum_gesture_detector.dart';
 export 'src/traces/ddtraces.dart'
     show DdSpan, OTTags, OTLogFields, generateTraceId;
 
@@ -83,7 +87,7 @@ class DatadogSdk {
     _firstPartyHosts = value;
     if (value.isNotEmpty) {
       // pattern = "^(.*\\.)*tracedHost1$|tracedHost2$|...$"
-      var hosts = value.map((e) => RegExp.escape(e) + '\$').join('|');
+      var hosts = value.map((e) => '${RegExp.escape(e)}\$').join('|');
       _firstPartyRegex = RegExp('^(.*\\.)*$hosts');
     } else {
       _firstPartyRegex = null;
@@ -164,7 +168,7 @@ class DatadogSdk {
       _traces = DdTraces(internalLogger);
     }
     if (configuration.rumConfiguration != null) {
-      _rum = DdRum(internalLogger);
+      _rum = DdRum(configuration.rumConfiguration!, internalLogger);
     }
 
     for (final pluginConfig in configuration.additionalPlugins) {
@@ -183,7 +187,8 @@ class DatadogSdk {
   ///
   /// This can be used in addition to or instead of the default logger at [logs]
   DdLogs createLogger(LoggingConfiguration configuration) {
-    final logger = DdLogs(internalLogger);
+    final logger =
+        DdLogs(internalLogger, configuration.datadogReportingThreshold);
     wrap('createLogger', internalLogger, () {
       return DdLogsPlatform.instance
           .createLogger(logger.loggerHandle, configuration);

@@ -90,15 +90,18 @@ class DatadogTrackingHttpClient implements HttpClient {
     final rum = datadogSdk.rum;
     String? rumKey;
     String? traceId, spanId;
+    bool isFirstParty = false;
 
     try {
-      bool isFirstParty = datadogSdk.isFirstPartyHost(url);
-      if (isFirstParty) {
-        traceId = generateTraceId();
-        spanId = generateTraceId();
-      }
+      isFirstParty = datadogSdk.isFirstPartyHost(url);
 
       if (rum != null) {
+        bool shouldSample = isFirstParty && rum.shouldSampleTrace();
+        if (shouldSample) {
+          traceId = generateTraceId();
+          spanId = generateTraceId();
+        }
+
         final attributes = <String, dynamic>{};
         if (traceId != null) {
           attributes[DatadogRumPlatformAttributeKey.traceID] = traceId;
@@ -120,10 +123,12 @@ class DatadogTrackingHttpClient implements HttpClient {
     try {
       request = await innerClient.openUrl(method, url);
       request.headers.add(DatadogTracingHeaders.origin, 'rum');
-      if (traceId != null) {
+      if (traceId != null && spanId != null) {
         request.headers.add(DatadogTracingHeaders.traceId, traceId);
-        request.headers.add(DatadogTracingHeaders.parentId, spanId!);
+        request.headers.add(DatadogTracingHeaders.parentId, spanId);
         request.headers.add(DatadogTracingHeaders.samplingPriority, '1');
+      } else if (isFirstParty) {
+        request.headers.add(DatadogTracingHeaders.samplingPriority, '0');
       }
     } catch (e) {
       if (rumKey != null) {
@@ -145,6 +150,16 @@ class DatadogTrackingHttpClient implements HttpClient {
 
     return request;
   }
+
+  @override
+  set connectionFactory(
+          Future<ConnectionTask<Socket>> Function(
+                  Uri url, String? proxyHost, int? proxyPort)?
+              f) =>
+      innerClient.connectionFactory = f;
+
+  @override
+  set keyLog(Function(String line)? callback) => innerClient.keyLog = callback;
 
   @override
   bool get autoUncompress => innerClient.autoUncompress;

@@ -2,8 +2,9 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_flutter_plugin/src/rum/ddrum.dart';
 import 'package:datadog_flutter_plugin/src/traces/ddtraces.dart';
 import 'package:datadog_grpc_interceptor/datadog_grpc_interceptor.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -34,6 +35,9 @@ void main() {
   late Server server;
   late LoggingGreeterService loggingService;
 
+  late DatadogSdkMock mockDatadog;
+  late RumMock mockRum;
+
   setUpAll(() {
     registerFallbackValue(Uri(host: 'localhost'));
   });
@@ -49,6 +53,11 @@ void main() {
     loggingService = LoggingGreeterService();
     server = Server([loggingService]);
     await server.serve(port: port);
+
+    mockDatadog = DatadogSdkMock();
+    mockRum = RumMock();
+    when(() => mockDatadog.rum).thenReturn(mockRum);
+    when(() => mockRum.shouldSampleTrace()).thenReturn(true);
   });
 
   tearDown(() async {
@@ -57,16 +66,13 @@ void main() {
   });
 
   test('Interceptor calls proper rum functions', () async {
-    final mockDatadog = DatadogSdkMock();
-    final mockRum = RumMock();
-    when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
 
     final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     final captures = verify(() => mockRum.startResourceLoading(
         captureAny(),
@@ -84,16 +90,13 @@ void main() {
   test(
       'Interceptor calls do not send tracing attributes when tracing is disabled',
       () async {
-    final mockDatadog = DatadogSdkMock();
-    final mockRum = RumMock();
-    when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
 
     final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     final captures = verify(() => mockRum.startResourceLoading(
         captureAny(),
@@ -107,10 +110,7 @@ void main() {
 
   test('Interceptor calls send tracing attributes when tracing is enabled',
       () async {
-    final mockDatadog = DatadogSdkMock();
-    final mockRum = RumMock();
     final mockTraces = TracesMock();
-    when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
     when(() => mockDatadog.traces).thenReturn(mockTraces);
 
@@ -118,7 +118,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     final captures = verify(() => mockRum.startResourceLoading(
         captureAny(),
@@ -132,12 +132,33 @@ void main() {
     expect(BigInt.tryParse(attributes['_dd.span_id'] as String), isNotNull);
   });
 
+  test(
+      'Interceptor calls do not send tracing attributes when shouldSample returns false',
+      () async {
+    final mockTraces = TracesMock();
+    when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+    when(() => mockDatadog.traces).thenReturn(mockTraces);
+    when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+
+    final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
+
+    final stub = GreeterClient(channel, interceptors: [interceptor]);
+
+    await stub.sayHello(HelloRequest(name: 'test'));
+
+    final captures = verify(() => mockRum.startResourceLoading(
+        captureAny(),
+        RumHttpMethod.get,
+        'localhost:$port/helloworld.Greeter/SayHello',
+        captureAny())).captured;
+    final attributes = captures[1];
+    expect(attributes['_dd.trace_id'], isNull);
+    expect(attributes['_dd.span_id'], isNull);
+  });
+
   test('Interceptor passes on proper metadata when traces are enabled',
       () async {
-    final mockDatadog = DatadogSdkMock();
-    final mockRum = RumMock();
     final mockTraces = TracesMock();
-    when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
     when(() => mockDatadog.traces).thenReturn(mockTraces);
 
@@ -145,7 +166,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     expect(loggingService.calls.length, 1);
     final call = loggingService.calls[0];
@@ -162,30 +183,45 @@ void main() {
   });
 
   test('Interceptor does not add metadata when traces are disabled', () async {
-    final mockDatadog = DatadogSdkMock();
-    final mockRum = RumMock();
-    when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
 
     final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     expect(loggingService.calls.length, 1);
     final call = loggingService.calls[0];
     expect(call.clientMetadata!['x-datadog-trace-id'], isNull);
     expect(call.clientMetadata!['x-datadog-parent-id'], isNull);
     expect(call.clientMetadata!['x-datadog-origin'], isNull);
-    expect(call.clientMetadata!['x-datadog-sampling-priority'], isNull);
+    expect(call.clientMetadata!['x-datadog-sampling-priority'], '0');
+  });
+
+  test('Interceptor does not send traces for when shouldSample returns false',
+      () async {
+    final mockTraces = TracesMock();
+    when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+    when(() => mockDatadog.traces).thenReturn(mockTraces);
+    when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+
+    final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
+
+    final stub = GreeterClient(channel, interceptors: [interceptor]);
+
+    await stub.sayHello(HelloRequest(name: 'test'));
+
+    expect(loggingService.calls.length, 1);
+    final call = loggingService.calls[0];
+    expect(call.clientMetadata!['x-datadog-trace-id'], isNull);
+    expect(call.clientMetadata!['x-datadog-parent-id'], isNull);
+    expect(call.clientMetadata!['x-datadog-origin'], isNull);
+    expect(call.clientMetadata!['x-datadog-sampling-priority'], '0');
   });
 
   test('Interceptor does not send traces for non-first-party hosts', () async {
-    final mockDatadog = DatadogSdkMock();
-    final mockRum = RumMock();
     final mockTraces = TracesMock();
-    when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(false);
     when(() => mockDatadog.traces).thenReturn(mockTraces);
 
@@ -193,7 +229,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     expect(loggingService.calls.length, 1);
     final call = loggingService.calls[0];
@@ -206,10 +242,7 @@ void main() {
   test(
       'Interceptor calls do not send tracing attributes for non-first-party hosts',
       () async {
-    final mockDatadog = DatadogSdkMock();
-    final mockRum = RumMock();
     final mockTraces = TracesMock();
-    when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(false);
     when(() => mockDatadog.traces).thenReturn(mockTraces);
 
@@ -217,7 +250,7 @@ void main() {
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
-    final _ = await stub.sayHello(HelloRequest(name: 'test'));
+    await stub.sayHello(HelloRequest(name: 'test'));
 
     final captures = verify(() => mockRum.startResourceLoading(
         captureAny(),

@@ -9,7 +9,7 @@ class LoggingScenario extends StatefulWidget {
   const LoggingScenario({Key? key}) : super(key: key);
 
   @override
-  _LoggingScenarioState createState() => _LoggingScenarioState();
+  State<LoggingScenario> createState() => _LoggingScenarioState();
 }
 
 class _LoggingScenarioState extends State<LoggingScenario> {

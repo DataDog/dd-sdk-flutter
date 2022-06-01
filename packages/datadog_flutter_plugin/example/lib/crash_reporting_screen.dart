@@ -2,34 +2,12 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
-import 'dart:ffi';
-import 'dart:io';
-
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-final DynamicLibrary ffiLibrary = Platform.isAndroid
-    ? DynamicLibrary.open('libffi_crash_test.so')
-    : DynamicLibrary.process();
-
-// ignore: non_constant_identifier_names
-final void Function(int attribute) ffi_crash_test = ffiLibrary
-    .lookup<NativeFunction<Void Function(Int32)>>('ffi_crash_test')
-    .asFunction();
-
-typedef NativeFfiCallback = Int32 Function(Int32);
-
-final int Function(
-        int attribute, Pointer<NativeFunction<NativeFfiCallback>> callback)
-    // ignore: non_constant_identifier_names
-    ffi_callback_test = ffiLibrary
-        .lookup<
-                NativeFunction<
-                    Int32 Function(
-                        Int32, Pointer<NativeFunction<NativeFfiCallback>>)>>(
-            'ffi_callback_test')
-        .asFunction();
+import 'ffi_crasher/ffi_crasher.dart';
 
 typedef CrashPluginCallback = void Function(String callbackValue);
 
@@ -67,12 +45,11 @@ class NativeCrashPlugin {
   }
 
   void crashNativeFfi(int value) {
-    ffi_crash_test(value);
+    FfiCrasher().crash(value);
   }
 
-  int ffiCallbackTest(
-      int value, Pointer<NativeFunction<NativeFfiCallback>> callback) {
-    return ffi_callback_test(value, callback);
+  int ffiCallbackTest(int value, NativeCallback callback) {
+    return FfiCrasher().crashCallback(value, callback);
   }
 
   Future<void> _methodCallHandler(MethodCall call) async {
@@ -119,7 +96,7 @@ class CrashReportingScreen extends StatefulWidget {
   const CrashReportingScreen({Key? key}) : super(key: key);
 
   @override
-  _CrashReportingScreenState createState() => _CrashReportingScreenState();
+  State<CrashReportingScreen> createState() => _CrashReportingScreenState();
 }
 
 class _CrashReportingScreenState extends State<CrashReportingScreen> {
@@ -218,14 +195,15 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
         nativeCrashPlugin.crashNativeFfi(23);
         break;
       case CrashType.ffiCallbackException:
-        var value = nativeCrashPlugin.ffiCallbackTest(
-            32, Pointer.fromFunction(nativeCallback, 8));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Native callback threw, returned default value of $value'),
-          ),
-        );
+        if (!kIsWeb) {
+          var value = nativeCrashPlugin.ffiCallbackTest(32, nativeCallback);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Native callback threw, returned default value of $value'),
+            ),
+          );
+        }
         break;
     }
   }
