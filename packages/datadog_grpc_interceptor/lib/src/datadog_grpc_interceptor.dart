@@ -5,28 +5,9 @@
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:grpc/grpc.dart';
 import 'package:uuid/uuid.dart';
-
-class DatadogTracingHeaders {
-  static const traceId = 'x-datadog-trace-id';
-  static const parentId = 'x-datadog-parent-id';
-
-  static const samplingPriority = 'x-datadog-sampling-priority';
-  static const origin = 'x-datadog-origin';
-}
-
-// TODO: These are defined in the main datadog_flutter_plugin package but aren't
-// public. Probably want to fix that.
-class DatadogPlatformAttributeKey {
-  /// Trace ID. Used in RUM resources created by automatic resource tracking.
-  /// Expects `String` value.
-  static const traceID = '_dd.trace_id';
-
-  /// Span ID. Used in RUM resources created by automatic resource tracking.
-  /// Expects `String` value.
-  static const spanID = '_dd.span_id';
-}
 
 /// A client GrpcInterceptor which enables automatic resource tracking and
 /// distributed tracing
@@ -75,8 +56,8 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
       {
         "grpc.method": method.path,
         if (shouldAppendTraces) ...{
-          DatadogPlatformAttributeKey.traceID: traceId,
-          DatadogPlatformAttributeKey.spanID: parentId
+          DatadogRumPlatformAttributeKey.traceID: traceId,
+          DatadogRumPlatformAttributeKey.spanID: parentId
         }
       },
     );

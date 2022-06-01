@@ -6,4 +6,5 @@
 // extension packages, and is not meant for public use. Anything exposed by this
 // file has the potential to change without notice.
 
+export 'src/attributes.dart';
 export 'src/rum/attributes.dart';
