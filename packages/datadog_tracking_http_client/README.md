@@ -8,7 +8,7 @@
 To use this plugin, enable it during configuration of your SDK. In order to enable Datadog Distributed Tracing, you also need to set the `firstPartyHosts` property in your configuration object.
 
 ```dart
-import 'package:datadog_tracking_http_client/datadog_tracing_http_client.dart';
+import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
 
 final configuration = DdSdkConfiguration(
   // configuration
