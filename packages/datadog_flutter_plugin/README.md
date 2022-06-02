@@ -14,7 +14,7 @@ RUM supports monitoring for mobile Flutter Android and iOS applications.
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 1.11.0-rc1 | 1.12.0-alpha2 | v4.11.2 |
+| 1.11.0-rc1 | 1.13.0 | v4.11.2 |
 
 [//]: # (End SDK Table)
 
@@ -203,3 +203,4 @@ For more information, see [Apache License, v2.0][5].
 [5]: https://github.com/DataDog/dd-sdk-flutter/blob/main/LICENSE
 [6]: https://source.android.com/security/app-sandbox
 [7]: https://pub.dev/packages/datadog_tracking_http_client
+client
