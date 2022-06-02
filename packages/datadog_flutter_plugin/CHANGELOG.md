@@ -2,11 +2,17 @@
 
 ## Unreleased
 
+* Update Android SDK to 1.13.0-rc1
+  * Improve local LogCat messages from the SDK.
+  * Disables vitals collection when app is in the background.
+  * Fix updating Global RUM context when a view is stopped.
+  * For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#1130--2022-05-24).
+
 ## 1.0.0-beta.2
 
 * Update iOS SDK to 1.11-rc1
   * Allow manually tracked resources in RUM Sessions to detect first party hosts.
-  * Better error message when encountering an invalid token (Fixes #117)
+  * Better error message when encountering an invalid token (Fixes #117).
   * Fix RUM events to support configured `source` property.
   * For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#1110-rc1--18-05-2022).
 * Added `datadogReportingThreshold` to `LoggingConfiguration` to support only sending logs above a certain threshold to Datadog.
