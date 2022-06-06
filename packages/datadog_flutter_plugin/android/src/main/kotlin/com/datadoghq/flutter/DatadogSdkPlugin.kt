@@ -120,7 +120,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     fun simpleInvokeOn(methodName: String, target: Any) {
         val klass = target.javaClass
         val method = klass.declaredMethods.firstOrNull {
-            it.name == methodName
+            it.name == methodName || it.name == "$methodName\$dd_sdk_android_release"
         }
         method?.let {
             it.isAccessible = true
