@@ -33,52 +33,52 @@ class DdLogs {
 
   /// Sends a `debug` log message.
   ///
-  /// You can provide additional context for this log message using the
-  /// [context] parameter. Values passed into [context] must be supported by
+  /// You can provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
   /// [StandardMessageCodec].
-  void debug(String message, [Map<String, Object?> context = const {}]) {
+  void debug(String message, [Map<String, Object?> attributes = const {}]) {
     if (_reportingThreshold.index <= Verbosity.debug.index) {
       wrap('logs.debug', _internalLogger, () {
-        return _platform.debug(loggerHandle, message, context);
+        return _platform.debug(loggerHandle, message, attributes);
       });
     }
   }
 
   /// Sends an `info` log message.
   ///
-  /// You can provide additional context for this log message using the
-  /// [context] parameter. Values passed into [context] must be supported by
+  /// You can provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
   /// [StandardMessageCodec].
-  void info(String message, [Map<String, Object?> context = const {}]) {
+  void info(String message, [Map<String, Object?> attributes = const {}]) {
     if (_reportingThreshold.index <= Verbosity.info.index) {
       wrap('logs.info', _internalLogger, () {
-        return _platform.info(loggerHandle, message, context);
+        return _platform.info(loggerHandle, message, attributes);
       });
     }
   }
 
   /// Sends a `warn` log message.
   ///
-  /// You can provide additional context for this log message using the
-  /// [context] parameter. Values passed into [context] must be supported by
+  /// You can provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
   /// [StandardMessageCodec].
-  void warn(String message, [Map<String, Object?> context = const {}]) {
+  void warn(String message, [Map<String, Object?> attributes = const {}]) {
     if (_reportingThreshold.index <= Verbosity.warn.index) {
       wrap('logs.warn', _internalLogger, () {
-        return _platform.warn(loggerHandle, message, context);
+        return _platform.warn(loggerHandle, message, attributes);
       });
     }
   }
 
   /// Sends an `error` log message.
   ///
-  /// You can provide additional context for this log message using the
-  /// [context] parameter. Values passed into [context] must be supported by
+  /// You can provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
   /// [StandardMessageCodec].
-  void error(String message, [Map<String, Object?> context = const {}]) {
+  void error(String message, [Map<String, Object?> attributes = const {}]) {
     if (_reportingThreshold.index <= Verbosity.error.index) {
       wrap('logs.error', _internalLogger, () {
-        return _platform.error(loggerHandle, message, context);
+        return _platform.error(loggerHandle, message, attributes);
       });
     }
   }
