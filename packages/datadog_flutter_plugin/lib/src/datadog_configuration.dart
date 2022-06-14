@@ -140,7 +140,7 @@ class LoggingConfiguration {
     this.loggerName,
   });
 
-  Map<String, dynamic> encode() {
+  Map<String, Object?> encode() {
     return {
       'sendNetworkInfo': sendNetworkInfo,
       'printLogsToConsole': printLogsToConsole,
@@ -174,7 +174,7 @@ class TracingConfiguration {
     this.bundleWithRum = true,
   });
 
-  Map<String, dynamic> encode() {
+  Map<String, Object?> encode() {
     return {
       'sendNetworkInfo': sendNetworkInfo,
       'bundleWithRum': bundleWithRum,
@@ -219,7 +219,7 @@ class RumConfiguration {
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100));
 
-  Map<String, dynamic> encode() {
+  Map<String, Object?> encode() {
     return {
       'applicationId': applicationId,
       'sampleRate': sessionSamplingRate,
@@ -290,7 +290,7 @@ class DdSdkConfiguration {
   RumConfiguration? rumConfiguration;
 
   /// Any additional configuration to be passed to the native SDKs
-  final Map<String, dynamic> additionalConfig = {};
+  final Map<String, Object?> additionalConfig = const {};
 
   /// Configurations for additional plugins that will be created after Datadog
   /// is initialized.
@@ -315,7 +315,7 @@ class DdSdkConfiguration {
   void addPlugin(DatadogPluginConfiguration pluginConfiguration) =>
       additionalPlugins.add(pluginConfiguration);
 
-  Map<String, dynamic> encode() {
+  Map<String, Object?> encode() {
     return {
       'clientToken': clientToken,
       'env': env,

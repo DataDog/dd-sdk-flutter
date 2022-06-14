@@ -32,13 +32,13 @@ void main() {
       logger = TestLogger();
       mockPlatform = MockDdLogsPlatform();
       when(() => mockPlatform.debug(any(), any(), any()))
-          .thenAnswer((invocation) => Future.value());
+          .thenAnswer((invocation) => Future<void>.value());
       when(() => mockPlatform.info(any(), any(), any()))
-          .thenAnswer((invocation) => Future.value());
+          .thenAnswer((invocation) => Future<void>.value());
       when(() => mockPlatform.warn(any(), any(), any()))
-          .thenAnswer((invocation) => Future.value());
+          .thenAnswer((invocation) => Future<void>.value());
       when(() => mockPlatform.error(any(), any(), any()))
-          .thenAnswer((invocation) => Future.value());
+          .thenAnswer((invocation) => Future<void>.value());
       DdLogsPlatform.instance = mockPlatform;
       ddLogs = DdLogs(logger, Verbosity.verbose);
     });
@@ -85,13 +85,13 @@ void main() {
       logger = TestLogger();
       mockPlatform = MockDdLogsPlatform();
       when(() => mockPlatform.debug(any(), any(), any()))
-          .thenAnswer((invocation) => Future.value());
+          .thenAnswer((invocation) => Future<void>.value());
       when(() => mockPlatform.info(any(), any(), any()))
-          .thenAnswer((invocation) => Future.value());
+          .thenAnswer((invocation) => Future<void>.value());
       when(() => mockPlatform.warn(any(), any(), any()))
-          .thenAnswer((invocation) => Future.value());
+          .thenAnswer((invocation) => Future<void>.value());
       when(() => mockPlatform.error(any(), any(), any()))
-          .thenAnswer((invocation) => Future.value());
+          .thenAnswer((invocation) => Future<void>.value());
       DdLogsPlatform.instance = mockPlatform;
     });
 
