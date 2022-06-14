@@ -76,10 +76,10 @@ void main() {
       'customEndpoint': null,
       'batchSize': null,
       'uploadFrequency': null,
-      'firstPartyHosts': [],
+      'firstPartyHosts': <Map<String, Object?>>[],
       'tracingConfiguration': null,
       'rumConfiguration': null,
-      'additionalConfig': {},
+      'additionalConfig': <String, Object?>{},
     });
   });
 

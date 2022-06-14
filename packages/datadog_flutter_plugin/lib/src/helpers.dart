@@ -30,7 +30,8 @@ void wrap(String methodName, InternalLogger logger, WrappedCall<void> call) {
   try {
     var result = call();
     if (result is Future) {
-      result.catchError((e, st) => _handleError(e, st, methodName, logger));
+      result.catchError((dynamic e, StackTrace st) =>
+          _handleError(e, st, methodName, logger));
     }
   } catch (e, st) {
     _handleError(e, st, methodName, logger);

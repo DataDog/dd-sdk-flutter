@@ -33,7 +33,7 @@ dynamic valueToJs(Object? value, String parameterName) {
   }
 
   if (value is Map) {
-    final jsMap = jsutil.newObject();
+    final jsMap = jsutil.newObject<Map<String, Object?>>();
     for (final item in value.entries) {
       jsutil.setProperty(
           jsMap, item.key, valueToJs(item.value, '$parameterName.${item.key}'));
@@ -42,7 +42,7 @@ dynamic valueToJs(Object? value, String parameterName) {
   }
 
   if (value is List) {
-    final jsList = [];
+    List jsList = <dynamic>[];
     for (int i = 0; i < value.length; ++i) {
       jsList.add(valueToJs(value[i], '$parameterName[$i]'));
     }

@@ -66,7 +66,7 @@ class _RumAutoInstrumentationSecondScreenState
       appBar: AppBar(
         title: const Text('Secondary Screen'),
       ),
-      body: FutureBuilder(
+      body: FutureBuilder<void>(
         future: _loadingFuture,
         builder: (context, snapshot) {
           return snapshot.connectionState == ConnectionState.done
@@ -99,7 +99,7 @@ class _RumAutoInstrumentationSecondScreenState
   }
 
   void _onNext() {
-    Navigator.of(context).push(
+    Navigator.of(context).push<void>(
       MaterialPageRoute(
           builder: (_) => const RumAutoInstrumentationThirdScreen()),
     );

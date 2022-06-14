@@ -41,11 +41,11 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
             logCallback(call.arguments as String);
             break;
         }
-        return Future.value();
+        return Future<void>.value();
       });
     }
 
-    await methodChannel.invokeMethod('initialize', {
+    await methodChannel.invokeMethod<void>('initialize', {
       'configuration': configuration.encode(),
       'setLogCallback': logCallback != null,
     });
@@ -53,6 +53,7 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 
   @override
   Future<void> flushAndDeinitialize() {
-    return methodChannel.invokeMethod('flushAndDeinitialize', {});
+    return methodChannel
+        .invokeMethod('flushAndDeinitialize', <Object?, Object?>{});
   }
 }

@@ -57,7 +57,7 @@ class _IntegrationScenariosScreenState
             title: Text(item.label),
             trailing: const Icon(Icons.arrow_right_sharp),
             onTap: () {
-              Navigator.push(
+              Navigator.push<void>(
                 context,
                 MaterialPageRoute(
                   builder: (_) => item.navItem(),

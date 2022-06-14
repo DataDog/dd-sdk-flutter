@@ -13,7 +13,7 @@ import '../web_helpers.dart';
 import 'ddrum_platform_interface.dart';
 
 class DdRumWeb extends DdRumPlatform {
-  final Map<String, dynamic> currentAttributes = {};
+  final Map<String, Object?> currentAttributes = {};
 
   void initRum(DdSdkConfiguration configuration) {
     final rumConfiguration = configuration.rumConfiguration;

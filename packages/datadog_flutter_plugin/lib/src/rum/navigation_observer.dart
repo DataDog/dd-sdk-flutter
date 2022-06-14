@@ -15,7 +15,7 @@ class RumViewInfo {
   final String? path;
 
   /// Any attributes to be associated with this view
-  final Map<String, dynamic> attributes;
+  final Map<String, Object?> attributes;
 
   RumViewInfo({
     required this.name,
