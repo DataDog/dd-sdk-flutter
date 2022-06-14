@@ -171,7 +171,7 @@ class DatadogSdk {
   DdLogs createLogger(LoggingConfiguration configuration) {
     final logger =
         DdLogs(internalLogger, configuration.datadogReportingThreshold);
-    wrap('createLogger', internalLogger, () {
+    wrap('createLogger', internalLogger, null, () {
       return DdLogsPlatform.instance
           .createLogger(logger.loggerHandle, configuration);
     });
@@ -186,13 +186,13 @@ class DatadogSdk {
     String? email,
     Map<String, Object?> extraInfo = const {},
   }) {
-    wrap('setUserInfo', internalLogger, () {
+    wrap('setUserInfo', internalLogger, extraInfo, () {
       return _platform.setUserInfo(id, name, email, extraInfo);
     });
   }
 
   void setTrackingConsent(TrackingConsent trackingConsent) {
-    wrap('setTrackingConsent', internalLogger, () {
+    wrap('setTrackingConsent', internalLogger, null, () {
       return _platform.setTrackingConsent(trackingConsent);
     });
   }
