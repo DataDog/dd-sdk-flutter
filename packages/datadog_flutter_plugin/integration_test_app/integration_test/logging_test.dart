@@ -36,12 +36,11 @@ void main() {
               // return null;
             })
             .whereType<List>()
-            .expand<Map<String, Object?>>(
-                (e) => e as List<Map<String, Object?>>)
+            .expand<dynamic>((e) => e)
+            .whereType<Map<String, Object?>>()
             // Ignore RUM sessions
             .where((e) => !(e).containsKey('session'))
             .forEach((e) => logs.add(LogDecoder(e)));
-
         return logs.length >= 5;
       },
     );
