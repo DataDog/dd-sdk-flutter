@@ -23,7 +23,7 @@ class DdRumMethodChannel extends DdRumPlatform {
 
   @override
   Future<void> startView(
-      String key, String name, Map<String, dynamic> attributes) {
+      String key, String name, Map<String, Object?> attributes) {
     return methodChannel.invokeMethod(
       'startView',
       {'key': key, 'name': name, 'attributes': attributes},
@@ -31,7 +31,7 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> stopView(String key, Map<String, dynamic> attributes) {
+  Future<void> stopView(String key, Map<String, Object?> attributes) {
     return methodChannel.invokeMethod(
       'stopView',
       {'key': key, 'attributes': attributes},
@@ -43,7 +43,7 @@ class DdRumMethodChannel extends DdRumPlatform {
     String key,
     RumHttpMethod httpMethod,
     String url, [
-    Map<String, dynamic> attributes = const {},
+    Map<String, Object?> attributes = const {},
   ]) {
     return methodChannel.invokeMethod('startResourceLoading', {
       'key': key,
@@ -56,7 +56,7 @@ class DdRumMethodChannel extends DdRumPlatform {
   @override
   Future<void> stopResourceLoading(
       String key, int? statusCode, RumResourceType kind,
-      [int? size, Map<String, dynamic>? attributes = const {}]) {
+      [int? size, Map<String, Object?>? attributes = const {}]) {
     return methodChannel.invokeMethod('stopResourceLoading', {
       'key': key,
       'statusCode': statusCode,
@@ -68,7 +68,7 @@ class DdRumMethodChannel extends DdRumPlatform {
 
   @override
   Future<void> stopResourceLoadingWithError(String key, Exception error,
-      [Map<String, dynamic> attributes = const {}]) {
+      [Map<String, Object?> attributes = const {}]) {
     return stopResourceLoadingWithErrorInfo(
         key, error.toString(), error.runtimeType.toString(), attributes);
   }
@@ -78,7 +78,7 @@ class DdRumMethodChannel extends DdRumPlatform {
     String key,
     String message,
     String type, [
-    Map<String, dynamic> attributes = const {},
+    Map<String, Object?> attributes = const {},
   ]) {
     return methodChannel.invokeMethod('stopResourceLoadingWithError', {
       'key': key,
@@ -90,13 +90,13 @@ class DdRumMethodChannel extends DdRumPlatform {
 
   @override
   Future<void> addError(Object error, RumErrorSource source,
-      StackTrace? stackTrace, Map<String, dynamic> attributes) {
+      StackTrace? stackTrace, Map<String, Object?> attributes) {
     return addErrorInfo(error.toString(), source, stackTrace, attributes);
   }
 
   @override
   Future<void> addErrorInfo(String message, RumErrorSource source,
-      StackTrace? stackTrace, Map<String, dynamic> attributes) {
+      StackTrace? stackTrace, Map<String, Object?> attributes) {
     return methodChannel.invokeMethod('addError', {
       'message': message,
       'source': source.toString(),
@@ -107,7 +107,7 @@ class DdRumMethodChannel extends DdRumPlatform {
 
   @override
   Future<void> addUserAction(
-      RumUserActionType type, String? name, Map<String, dynamic> attributes) {
+      RumUserActionType type, String? name, Map<String, Object?> attributes) {
     return methodChannel.invokeMethod('addUserAction', {
       'type': type.toString(),
       'name': name,
@@ -117,20 +117,20 @@ class DdRumMethodChannel extends DdRumPlatform {
 
   @override
   Future<void> startUserAction(
-      RumUserActionType type, String name, Map<String, dynamic> attributes) {
+      RumUserActionType type, String name, Map<String, Object?> attributes) {
     return methodChannel.invokeMethod('startUserAction',
         {'type': type.toString(), 'name': name, 'attributes': attributes});
   }
 
   @override
   Future<void> stopUserAction(
-      RumUserActionType type, String name, Map<String, dynamic> attributes) {
+      RumUserActionType type, String name, Map<String, Object?> attributes) {
     return methodChannel.invokeMethod('stopUserAction',
         {'type': type.toString(), 'name': name, 'attributes': attributes});
   }
 
   @override
-  Future<void> addAttribute(String key, value) {
+  Future<void> addAttribute(String key, Object? value) {
     return methodChannel
         .invokeMethod('addAttribute', {'key': key, 'value': value});
   }

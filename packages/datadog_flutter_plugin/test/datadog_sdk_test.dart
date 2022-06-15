@@ -34,11 +34,11 @@ void main() {
     mockPlatform = MockDatadogSdkPlatform();
     when(() => mockPlatform.initialize(any(),
             logCallback: any(named: 'logCallback')))
-        .thenAnswer((_) => Future.value());
+        .thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.setUserInfo(any(), any(), any(), any()))
-        .thenAnswer((_) => Future.value());
+        .thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.setTrackingConsent(any()))
-        .thenAnswer((_) => Future.value());
+        .thenAnswer((_) => Future<void>.value());
     DatadogSdkPlatform.instance = mockPlatform;
     datadogSdk = DatadogSdk.instance;
 
@@ -76,10 +76,10 @@ void main() {
       'customEndpoint': null,
       'batchSize': null,
       'uploadFrequency': null,
-      'firstPartyHosts': [],
+      'firstPartyHosts': <String>[],
       'tracingConfiguration': null,
       'rumConfiguration': null,
-      'additionalConfig': {},
+      'additionalConfig': <String, Object?>{},
     });
   });
 
@@ -122,7 +122,7 @@ void main() {
 
   test('initialize with logging configuration creates logger', () async {
     when(() => mockLogsPlatform.createLogger(any(), any()))
-        .thenAnswer((_) => Future.value());
+        .thenAnswer((_) => Future<void>.value());
 
     final loggingConfiguration = LoggingConfiguration();
     final configuration = DdSdkConfiguration(
@@ -272,7 +272,7 @@ void main() {
 
   test('createLogger calls into logs platform', () {
     when(() => mockLogsPlatform.createLogger(any(), any()))
-        .thenAnswer((_) => Future.value());
+        .thenAnswer((_) => Future<void>.value());
     final config = LoggingConfiguration(loggerName: 'test_logger');
 
     final logger = datadogSdk.createLogger(config);

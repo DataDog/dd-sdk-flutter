@@ -51,8 +51,8 @@ void main() {
 
   test('start root span calls to platform', () async {
     var startTime = DateTime.now();
-    final success = await ddTracesPlatform.startRootSpan(
-        1, 'Root Operation', null, {'testTag': 'testValue'}, startTime);
+    final success = await ddTracesPlatform.startRootSpan(1, 'Root Operation',
+        null, <String, Object?>{'testTag': 'testValue'}, startTime);
 
     expect(success, isTrue);
     expect(log, <Matcher>[
@@ -68,8 +68,8 @@ void main() {
 
   test('start span calls to platform', () async {
     var startTime = DateTime.now();
-    final success = await ddTracesPlatform.startSpan(
-        3, 'Operation', null, null, {'testTag': 'testValue'}, startTime);
+    final success = await ddTracesPlatform.startSpan(3, 'Operation', null, null,
+        <String, Object?>{'testTag': 'testValue'}, startTime);
 
     expect(success, isTrue);
     expect(log, <Matcher>[

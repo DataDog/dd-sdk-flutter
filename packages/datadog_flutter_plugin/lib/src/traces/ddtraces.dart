@@ -227,7 +227,7 @@ class DdTraces {
     String operationName, {
     DdSpan? parentSpan,
     String? resourceName,
-    Map<String, dynamic>? tags,
+    Map<String, Object?>? tags,
     DateTime? startTime,
   }) {
     final spanHandle = _nextSpanHandle++;

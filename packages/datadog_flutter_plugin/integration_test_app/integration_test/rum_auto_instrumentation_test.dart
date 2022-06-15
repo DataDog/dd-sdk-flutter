@@ -68,7 +68,7 @@ void main() {
             testRequests.add(request);
           } else {
             request.data.split('\n').forEach((e) {
-              var jsonValue = json.decode(e);
+              dynamic jsonValue = json.decode(e);
               if (jsonValue is Map<String, dynamic>) {
                 rumLog.add(RumEventDecoder(jsonValue));
               }

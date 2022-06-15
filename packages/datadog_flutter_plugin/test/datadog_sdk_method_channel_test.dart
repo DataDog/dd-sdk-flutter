@@ -87,7 +87,7 @@ void main() {
         'id': 'fake_id',
         'name': 'fake_name',
         'email': 'fake_email',
-        'extraInfo': const {}
+        'extraInfo': const <String, Object?>{}
       })
     ]);
   });

@@ -30,9 +30,9 @@ void main() {
     when(() => mockPlatform.startSpan(any(), any(), any(), any(), any(), any()))
         .thenAnswer((invocation) => Future.value(true));
     when(() => mockPlatform.spanSetError(any(), any(), any(), any()))
-        .thenAnswer((invocation) => Future.value());
+        .thenAnswer((invocation) => Future<void>.value());
     when(() => mockPlatform.spanCancel(any()))
-        .thenAnswer((invocation) => Future.value());
+        .thenAnswer((invocation) => Future<void>.value());
   });
 
   test('setError passes null stack trace by default', () async {

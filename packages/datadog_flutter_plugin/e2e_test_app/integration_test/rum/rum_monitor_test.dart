@@ -90,7 +90,7 @@ void main() {
       e2eAttributes(tester),
     );
 
-    await Future.delayed(Duration(milliseconds: delay));
+    await Future<void>.delayed(Duration(milliseconds: delay));
     await measure('flutter_rum_add_timing', () {
       datadog.rum!.addTiming('time_event');
     });

@@ -39,7 +39,7 @@ void main() {
       (requests) {
         requestsLog.addAll(requests);
         requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
-          var envelope = json.decode(e);
+          dynamic envelope = json.decode(e);
           if (envelope is Map<String, Object?>) {
             var spanList = envelope['spans'];
             envelope.remove('spans');
@@ -130,11 +130,11 @@ void main() {
       // Android error remaps "error.message" to message on the log...
       expect(logs[1].log['message'], contains('PlatformException'));
       // ... and sets tags on the span
-      expect(
-          presentationSpan.getTag('error.type'), contains('PlatformException'));
-      expect(
-          presentationSpan.getTag('error.msg'), contains('PlatformException'));
-      expect(presentationSpan.getTag('error.stack'),
+      expect(presentationSpan.getTag<String>('error.type'),
+          contains('PlatformException'));
+      expect(presentationSpan.getTag<String>('error.msg'),
+          contains('PlatformException'));
+      expect(presentationSpan.getTag<String>('error.stack'),
           contains('_TracesScenarioState'));
     }
 

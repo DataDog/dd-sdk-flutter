@@ -49,8 +49,8 @@ void main() {
       (requests) {
         requestLog.addAll(requests);
         requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
-          var jsonValue = json.decode(e);
-          if (jsonValue is Map<String, dynamic>) {
+          dynamic jsonValue = json.decode(e);
+          if (jsonValue is Map<String, Object?>) {
             final rumEvent = RumEventDecoder.fromJson(jsonValue);
             if (rumEvent != null) {
               rumLog.add(rumEvent);
@@ -208,7 +208,7 @@ class _BecameInactiveMatcher extends Matcher {
   }
 
   @override
-  bool matches(item, Map matchState) {
+  bool matches(dynamic item, Map matchState) {
     if (item is RumViewVisit) {
       return item.viewEvents.last.view.isActive == false;
     }

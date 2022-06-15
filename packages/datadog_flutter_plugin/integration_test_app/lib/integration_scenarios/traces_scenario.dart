@@ -47,7 +47,7 @@ class _TracesScenarioState extends State<TracesScenario> {
   }
 
   Future<void> _simulateDataDownload() async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     dataDownloadingSpan?.log({
       OTLogFields.message: 'download progress',
       'progress': 0.99,
@@ -58,7 +58,7 @@ class _TracesScenarioState extends State<TracesScenario> {
     if (traces != null) {
       final dataPresentationSpan = traces.startSpan('data presentation');
       dataPresentationSpan.setActive();
-      await Future.delayed(const Duration(milliseconds: 60));
+      await Future<void>.delayed(const Duration(milliseconds: 60));
       dataPresentationSpan.setTag(OTTags.error, true);
       final stackTrace = StackTrace.current;
       dataPresentationSpan.setError(

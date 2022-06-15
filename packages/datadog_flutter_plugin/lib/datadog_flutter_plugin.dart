@@ -184,7 +184,7 @@ class DatadogSdk {
     String? id,
     String? name,
     String? email,
-    Map<String, dynamic> extraInfo = const {},
+    Map<String, Object?> extraInfo = const {},
   }) {
     wrap('setUserInfo', internalLogger, () {
       return _platform.setUserInfo(id, name, email, extraInfo);
