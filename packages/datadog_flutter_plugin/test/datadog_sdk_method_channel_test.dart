@@ -79,8 +79,8 @@ void main() {
   });
 
   test('setUserInfo calls to method channel', () {
-    unawaited(ddSdkPlatform.setUserInfo(
-        'fake_id', 'fake_name', 'fake_email', const <String, Object?>{}));
+    unawaited(ddSdkPlatform
+        .setUserInfo('fake_id', 'fake_name', 'fake_email', const {}));
 
     expect(log, [
       isMethodCall('setUserInfo', arguments: {
@@ -93,8 +93,8 @@ void main() {
   });
 
   test('setUserInfo calls to method channel passing attributes and nulls', () {
-    unawaited(ddSdkPlatform.setUserInfo(
-        'fake_id', null, null, const <String, Object?>{'attribute': 124.3}));
+    unawaited(ddSdkPlatform
+        .setUserInfo('fake_id', null, null, const {'attribute': 124.3}));
 
     expect(log, [
       isMethodCall('setUserInfo', arguments: {

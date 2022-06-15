@@ -17,7 +17,8 @@ class DdLogsWeb extends DdLogsPlatform {
   final Map<String, Logger> _activeLoggers = {};
 
   static void initLogs(DdSdkConfiguration configuration) {
-    String? version = configuration.additionalConfig[DatadogConfigKey.version];
+    String? version =
+        configuration.additionalConfig[DatadogConfigKey.version] as String;
 
     init(_LogInitOptions(
       clientToken: configuration.clientToken,

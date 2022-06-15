@@ -26,7 +26,7 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 
   @override
   Future<void> setUserInfo(
-      String? id, String? name, String? email, Map<String, dynamic> extraInfo) {
+      String? id, String? name, String? email, Map<String, Object?> extraInfo) {
     return methodChannel.invokeMethod('setUserInfo',
         {'id': id, 'name': name, 'email': email, 'extraInfo': extraInfo});
   }
@@ -54,6 +54,6 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   @override
   Future<void> flushAndDeinitialize() {
     return methodChannel
-        .invokeMethod('flushAndDeinitialize', <Object?, Object?>{});
+        .invokeMethod('flushAndDeinitialize', <String, Object?>{});
   }
 }

@@ -42,7 +42,7 @@ dynamic valueToJs(Object? value, String parameterName) {
   }
 
   if (value is List) {
-    List jsList = <dynamic>[];
+    final jsList = <Object?>[];
     for (int i = 0; i < value.length; ++i) {
       jsList.add(valueToJs(value[i], '$parameterName[$i]'));
     }

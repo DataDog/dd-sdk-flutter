@@ -23,7 +23,7 @@ void main() {
       const Duration(seconds: 30),
       (requests) {
         requests
-            .map<dynamic>((e) {
+            .map((e) {
               try {
                 return e.jsonData as List;
               } on FormatException {
@@ -36,12 +36,11 @@ void main() {
               // return null;
             })
             .whereType<List>()
-            .expand<dynamic>((e) => e)
+            .expand<Map<String, Object?>>(
+                (e) => e as List<Map<String, Object?>>)
             // Ignore RUM sessions
-            .where((dynamic e) =>
-                !(e as Map<String, dynamic>).containsKey('session'))
-            .forEach(
-                (dynamic e) => logs.add(LogDecoder(e as Map<String, dynamic>)));
+            .where((e) => !(e).containsKey('session'))
+            .forEach((e) => logs.add(LogDecoder(e)));
 
         return logs.length >= 5;
       },

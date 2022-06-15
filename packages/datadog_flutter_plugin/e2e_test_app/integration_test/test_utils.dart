@@ -82,8 +82,7 @@ void sendRandomLog(WidgetTester tester) {
 DdSpan startSpan(String operationName) {
   // Not used in any currently running tests, ignoring deprecated use for now.
   // ignore: deprecated_member_use
-  return DatadogSdk.instance.traces!
-      .startSpan(operationName, tags: <String, Object?>{
+  return DatadogSdk.instance.traces!.startSpan(operationName, tags: {
     'operating_system': Platform.operatingSystem,
   });
 }

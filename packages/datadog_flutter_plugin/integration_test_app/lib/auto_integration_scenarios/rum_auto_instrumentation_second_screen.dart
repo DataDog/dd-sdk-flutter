@@ -18,7 +18,7 @@ class RumAutoInstrumentationSecondScreen extends StatefulWidget {
 
 class _RumAutoInstrumentationSecondScreenState
     extends State<RumAutoInstrumentationSecondScreen> {
-  late Future _loadingFuture;
+  late Future<void> _loadingFuture;
   late RumAutoInstrumentationScenarioConfig _config;
   var currentStatus = 'Starting fetch';
 
@@ -66,7 +66,7 @@ class _RumAutoInstrumentationSecondScreenState
       appBar: AppBar(
         title: const Text('Secondary Screen'),
       ),
-      body: FutureBuilder<void>(
+      body: FutureBuilder(
         future: _loadingFuture,
         builder: (context, snapshot) {
           return snapshot.connectionState == ConnectionState.done

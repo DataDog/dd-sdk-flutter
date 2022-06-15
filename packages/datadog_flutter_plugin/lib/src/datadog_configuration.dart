@@ -290,7 +290,7 @@ class DdSdkConfiguration {
   RumConfiguration? rumConfiguration;
 
   /// Any additional configuration to be passed to the native SDKs
-  final Map<String, String?> additionalConfig = {};
+  final Map<String, Object?> additionalConfig = {};
 
   /// Configurations for additional plugins that will be created after Datadog
   /// is initialized.

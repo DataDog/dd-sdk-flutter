@@ -76,7 +76,7 @@ void main() {
       'customEndpoint': null,
       'batchSize': null,
       'uploadFrequency': null,
-      'firstPartyHosts': <Map<String, Object?>>[],
+      'firstPartyHosts': <String>[],
       'tracingConfiguration': null,
       'rumConfiguration': null,
       'additionalConfig': <String, Object?>{},
