@@ -102,7 +102,7 @@ class DdRum {
   void startView(String key,
       [String? name, Map<String, Object?> attributes = const {}]) {
     name ??= key;
-    wrap('rum.startView', logger, () {
+    wrap('rum.startView', logger, attributes, () {
       return _platform.startView(key, name!, attributes);
     });
   }
@@ -113,7 +113,7 @@ class DdRum {
   ///
   /// The [key] passed here must match the [key] passed to [startView].
   void stopView(String key, [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopView', logger, () {
+    wrap('rum.stopView', logger, attributes, () {
       return _platform.stopView(key, attributes);
     });
   }
@@ -122,7 +122,7 @@ class DdRum {
   /// timing duration will be computed as the number of nanoseconds between the
   /// time the View was started and the time the timing was added.
   void addTiming(String name) {
-    wrap('rum.addTiming', logger, () {
+    wrap('rum.addTiming', logger, null, () {
       return _platform.addTiming(name);
     });
   }
@@ -132,7 +132,7 @@ class DdRum {
   /// additional [attributes] for this error
   void addError(Object error, RumErrorSource source,
       {StackTrace? stackTrace, Map<String, Object?> attributes = const {}}) {
-    wrap('rum.addError', logger, () {
+    wrap('rum.addError', logger, attributes, () {
       return _platform.addError(error, source, stackTrace, {
         DatadogPlatformAttributeKey.errorSourceType: 'flutter',
         ...attributes
@@ -145,7 +145,7 @@ class DdRum {
   /// supply a [stackTrace] and send additional [attributes] for this error
   void addErrorInfo(String message, RumErrorSource source,
       {StackTrace? stackTrace, Map<String, Object?> attributes = const {}}) {
-    wrap('rum.addErrorInfo', logger, () {
+    wrap('rum.addErrorInfo', logger, attributes, () {
       return _platform.addErrorInfo(message, source, stackTrace, {
         DatadogPlatformAttributeKey.errorSourceType: 'flutter',
         ...attributes
@@ -181,7 +181,7 @@ class DdRum {
   /// resource loading is complete.
   void startResourceLoading(String key, RumHttpMethod httpMethod, String url,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.startResourceLoading', logger, () {
+    wrap('rum.startResourceLoading', logger, attributes, () {
       return _platform.startResourceLoading(key, httpMethod, url, attributes);
     });
   }
@@ -192,7 +192,7 @@ class DdRum {
   /// Resource, and any other custom [attributes] to attach to the resource.
   void stopResourceLoading(String key, int? statusCode, RumResourceType kind,
       [int? size, Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopResourceLoading', logger, () {
+    wrap('rum.stopResourceLoading', logger, attributes, () {
       return _platform.stopResourceLoading(
           key, statusCode, kind, size, attributes);
     });
@@ -203,7 +203,7 @@ class DdRum {
   /// [attributes] to attach to this Resource.
   void stopResourceLoadingWithError(String key, Exception error,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopResourceLoadingWithError', logger, () {
+    wrap('rum.stopResourceLoadingWithError', logger, attributes, () {
       return _platform.stopResourceLoadingWithError(key, error, attributes);
     });
   }
@@ -213,7 +213,7 @@ class DdRum {
   /// attach to this Resource.
   void stopResourceLoadingWithErrorInfo(String key, String message, String type,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopResourceLoadingWithErrorInfo', logger, () {
+    wrap('rum.stopResourceLoadingWithErrorInfo', logger, attributes, () {
       return _platform.stopResourceLoadingWithErrorInfo(
           key, message, type, attributes);
     });
@@ -226,7 +226,7 @@ class DdRum {
   /// user action.
   void addUserAction(RumUserActionType type, String name,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.addUserAction', logger, () {
+    wrap('rum.addUserAction', logger, attributes, () {
       return _platform.addUserAction(type, name, attributes);
     });
   }
@@ -238,7 +238,7 @@ class DdRum {
   /// provide custom [attributes].
   void startUserAction(RumUserActionType type, String name,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.startUserAction', logger, () {
+    wrap('rum.startUserAction', logger, attributes, () {
       return _platform.startUserAction(type, name, attributes);
     });
   }
@@ -248,7 +248,7 @@ class DdRum {
   /// started with [startUserAction].
   void stopUserAction(RumUserActionType type, String name,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopUserAction', logger, () {
+    wrap('rum.stopUserAction', logger, attributes, () {
       return _platform.stopUserAction(type, name, attributes);
     });
   }
@@ -257,7 +257,7 @@ class DdRum {
   /// by the RUM monitor. Note that [value] must be supported by
   /// [StandardMessageCodec].
   void addAttribute(String key, dynamic value) {
-    wrap('rum.addAttributes', logger, () {
+    wrap('rum.addAttributes', logger, {'value': value}, () {
       return _platform.addAttribute(key, value);
     });
   }
@@ -265,7 +265,7 @@ class DdRum {
   /// Removes the custom attribute [key] from all future events sent by the RUM
   /// monitor. Events created prior to this call will not lose this attribute.
   void removeAttribute(String key) {
-    wrap('rum.removeAttribute', logger, () {
+    wrap('rum.removeAttribute', logger, null, () {
       return _platform.removeAttribute(key);
     });
   }

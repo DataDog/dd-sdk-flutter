@@ -113,7 +113,7 @@ class DdSpan {
       return;
     }
 
-    wrap('span.setActive', _logger!, () {
+    wrap('span.setActive', _logger!, null, () {
       return _platform.spanSetActive(this);
     });
   }
@@ -124,7 +124,7 @@ class DdSpan {
       return;
     }
 
-    wrap('span.setBaggageItem', _logger!, () {
+    wrap('span.setBaggageItem', _logger!, null, () {
       return _platform.spanSetBaggageItem(this, key, value);
     });
   }
@@ -138,7 +138,7 @@ class DdSpan {
       return;
     }
 
-    wrap('span.setTag', _logger!, () {
+    wrap('span.setTag', _logger!, {'value': value}, () {
       return _platform.spanSetTag(this, key, value);
     });
   }
@@ -149,7 +149,7 @@ class DdSpan {
       return;
     }
 
-    wrap('span.setError', _logger!, () {
+    wrap('span.setError', _logger!, null, () {
       return setErrorInfo(
           error.runtimeType.toString(), error.toString(), stackTrace);
     });
@@ -161,7 +161,7 @@ class DdSpan {
       return;
     }
 
-    wrap('span.setErrorInfo', _logger!, () {
+    wrap('span.setErrorInfo', _logger!, null, () {
       return _platform.spanSetError(
           this, kind, message, stackTrace?.toString());
     });
@@ -173,7 +173,7 @@ class DdSpan {
       return;
     }
 
-    wrap('span.log', _logger!, () {
+    wrap('span.log', _logger!, fields, () {
       return _platform.spanLog(this, fields);
     });
   }
@@ -188,7 +188,7 @@ class DdSpan {
     final currentHandle = _handle;
     _handle = -1;
 
-    wrap('span.finish', _logger!, () async {
+    wrap('span.finish', _logger!, null, () async {
       final resolvedTime = finishTime ?? _timeProvider();
       await _platform.spanFinish(currentHandle, resolvedTime);
     });
@@ -205,7 +205,7 @@ class DdSpan {
     final currentHandle = _handle;
     _handle = -1;
 
-    wrap('span.cancel', _logger!, () async {
+    wrap('span.cancel', _logger!, null, () async {
       await _platform.spanCancel(currentHandle);
     });
   }
@@ -235,7 +235,7 @@ class DdTraces {
     span._logger = _logger;
     final resolvedTime = startTime ?? timeProvider();
 
-    wrapAsync('traces.startSpan', _logger, () {
+    wrapAsync('traces.startSpan', _logger, tags, () {
       return _platform.startSpan(spanHandle, operationName, parentSpan,
           resourceName, tags, resolvedTime);
     }).then((success) {
@@ -263,7 +263,7 @@ class DdTraces {
     span._logger = _logger;
     final resolvedTime = startTime ?? timeProvider();
 
-    wrapAsync('traces.startSpan', _logger, () {
+    wrapAsync('traces.startSpan', _logger, tags, () {
       return _platform.startRootSpan(
           spanHandle, operationName, resourceName, tags, resolvedTime);
     }).then((success) {
@@ -282,7 +282,7 @@ class DdTraces {
 
   Future<Map<String, String>> getTracePropagationHeaders(DdSpan span) async {
     final headers =
-        await wrapAsync('traces.getTracePropagationHeaders', _logger, () {
+        await wrapAsync('traces.getTracePropagationHeaders', _logger, null, () {
       return _platform.getTracePropagationHeaders(span);
     });
 

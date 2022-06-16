@@ -5,6 +5,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'datadog_configuration.dart';
+import 'helpers.dart';
 
 /// This class is used internally by the SDK to log issues to the client
 /// developers. Note that all logging from the Flutter portions of the SDK are
@@ -44,6 +45,17 @@ class InternalLogger {
   }
 
   // Standard error strings
-  static String argumentWarning(String methodName, ArgumentError e) =>
-      'ArgumentError when calling $methodName: parameter ${e.name} could not be properly converted to a supported native type.';
+  static String argumentWarning(String methodName, ArgumentError e,
+      Map<String, Object?>? serializedAttributes) {
+    var warning =
+        'ArgumentError when calling $methodName: parameter ${e.message}.';
+    if (serializedAttributes != null) {
+      final badAttribute = findInvalidAttribute(serializedAttributes);
+      if (badAttribute != null) {
+        warning +=
+            ' It looks like ${badAttribute.propertyName} is of type ${badAttribute.propertyType}, which is not supported.';
+      }
+    }
+    return warning;
+  }
 }

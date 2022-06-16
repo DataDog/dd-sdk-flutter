@@ -23,4 +23,4 @@ swiftlint --fix
 popd
 
 # Run iOS / Android integration tests
-bitrise run push_to_develop_or_master
+bitrise run push_to_develop_or_main
