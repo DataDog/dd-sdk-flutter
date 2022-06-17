@@ -7,6 +7,9 @@
   * Disables vitals collection when app is in the background.
   * Fix updating Global RUM context when a view is stopped.
   * For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#1130--2022-05-24).
+* Update iOS SDK to 1.11.0
+  * For a full list of changes see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#1110--13-06-2022)
+* Made analysis rules stricter and switched several attribute map parameters from `Map<String, dynamic>` to `Map<String, Object?>` for better compatibility with `implicit-dynamic: false` See [#143][] and [#148][]
 
 ## 1.0.0-beta.2
 
