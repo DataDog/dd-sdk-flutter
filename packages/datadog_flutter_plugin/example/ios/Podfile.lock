@@ -1,11 +1,11 @@
 PODS:
   - datadog_flutter_plugin (0.0.1):
-    - DatadogSDK (= 1.11.0)
-    - DatadogSDKCrashReporting (= 1.11.0)
+    - DatadogSDK (= 1.11.1)
+    - DatadogSDKCrashReporting (= 1.11.1)
     - Flutter
-  - DatadogSDK (1.11.0)
-  - DatadogSDKCrashReporting (1.11.0):
-    - DatadogSDK (= 1.11.0)
+  - DatadogSDK (1.11.1)
+  - DatadogSDKCrashReporting (1.11.1):
+    - DatadogSDK (= 1.11.1)
     - PLCrashReporter (~> 1.10.1)
   - Flutter (1.0.0)
   - PLCrashReporter (1.10.1)
@@ -27,9 +27,9 @@ EXTERNAL SOURCES:
     :path: Flutter
 
 SPEC CHECKSUMS:
-  datadog_flutter_plugin: 0ad83d9332a25b8335634cdfeeceb7a7f1a1cd29
-  DatadogSDK: 6680b63a9270a68df47deb25a14addb66a8e0290
-  DatadogSDKCrashReporting: 4257a1968ac94c939a6a6fccd183333e43a927fb
+  datadog_flutter_plugin: 227af43d0a89fca31144d52cd89db26fefff662c
+  DatadogSDK: ba0b08e235f938871691678efc4fb4032e7e27b2
+  DatadogSDKCrashReporting: 416da8463129186dd20497c88d4fff09fb74f3ea
   Flutter: 50d75fe2f02b26cc09d224853bb45737f8b3214a
   PLCrashReporter: b30195e509f07299ea277d1997b3a39449d05698
 
