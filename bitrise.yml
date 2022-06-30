@@ -1,34 +1,114 @@
 ---
-format_version: '8'
+format_version: 11
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 project_type: flutter
 
 workflows:
-  primary:
-    before_run:
-    - _flutter_install
-    - setup
-    - check_dependencies
-    - build
-    - unit_test_ios
-    - unit_test_android
-    - integration_android
-    - integration_ios
+  push_to_pull_request:
+    description: |-
+        This workflow is triggered on starting new PR or pushing new changes to existing PRs.
+        By default, it doesn't run any test phases, but this behavior is overwritten in `choose_workflows.py` when:
+        - one or more `DD_OVERWRITE_RUN_(phase)_TESTS` ENVs are passed to the current CI job:
+            - DD_OVERRIDE_RUN_UNIT_TESTS='1' to run unit tests phase
+            - DD_OVERRIDE_RUN_INTEGRATION_TESTS='1' to run integration tests phase
+        - a phase is selected on the checklist in the PR description,
+        - the PR changes a file which matches phase filter (e.g. changing a file in `packages/*` will trigger unit tests phase)
+    envs:
+      - FLUTTER_VERSION: 2.8.0
+      - DD_RUN_UNIT_TESTS: '0'
+      - DD_RUN_INTEGRATION_TESTS: '0'
     after_run:
-    - _deploy
-  
-  nightly:
-    before_run:
-    - _flutter_install
     - setup
+    - run_conditioned_workflows
+    - _deploy_artifacts
+
+  push_to_develop_or_main:
+    envs:
+      - FLUTTER_VERSION: 2.8.0
+      - DD_RUN_UNIT_TESTS: '1'
+      - DD_RUN_INTEGRATION_TESTS: '1'
+    after_run:
+    - setup
+    - run_conditioned_workflows
+    - _deploy_artifacts
+
+  check_min_supported:
+    description: |-
+      This workflow is run nightly to make sure current packages work with the minimum
+      supported version of Flutter.
+    envs:
+      - FLUTTER_VERSION: 2.8.0
+      - DD_RUN_UNIT_TESTS: '1'
+      - DD_RUN_INTEGRATION_TESTS: '1'
+    after_run:
+    - setup
+    - run_conditioned_workflows
+    - _deploy_artifacts
+  
+  check_beta:
+    envs:
+      - FLUTTER_VERSION: beta
+      - DD_RUN_UNIT_TESTS: '1'
+      - DD_RUN_INTEGRATION_TESTS: '1'
+    after_run:
+    - setup
+    - run_conditioned_workflows
+    - _deploy_artifacts
+
+  nightly_e2e:
+    envs:
+    - FLUTTER_VERSION: stable
+    - DD_RUN_INTEGRATION_TESTS: '1'
+    before_run:
+    - setup
+    - _start_android_emulator
     - nightly_ios
     - nightly_android
+
+  setup:
+    before_run:
+    - _flutter_install
+    - _pub_get
+    steps:
+    - script:
+        title: Generate env files
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            ./generate_env.sh
+
+            pushd packages/datadog_common_test
+            flutter pub run build_runner build
+            popd          
+
+  run_conditioned_workflows:
+    steps:
+    - script:
+        title: Choose which workflows to run
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+
+            cd tools/ci && make
+
+            # The `choose_workflows.py` inspects current ENV variables and Pull Request metadata (if running in PR)
+            # and decides on which from the workflows in `after_run` should be ran. Workflows are opted-in
+            # by modifying `DD_RUN_*` ENV variables with `envman` (ref.: https://github.com/bitrise-io/envman).
+            python3 choose_workflows.py
+    after_run:
+    - _start_android_emulator
+    - check_dependencies
+    - analyze
+    - build
+    - unit_test
+    - integration_test
 
   _flutter_install:
     steps:
     - flutter-installer@0:
         inputs:
-        - version: stable
+        - version: $FLUTTER_VERSION
     
   _prepare_gradle_wrapper:
     steps:
@@ -44,6 +124,7 @@ workflows:
   _launch_ios_simulator:
     steps:
     - script:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         title: Launch iOS Simulator
         inputs:
         - content: |-
@@ -52,6 +133,20 @@ workflows:
             flutter emulators --launch apple_ios_simulator
             # Sleep while the simulator warms a bit
             sleep 5
+
+  _start_android_emulator:
+    steps:
+      - avd-manager@1:
+          run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
+          inputs:
+          - api_level: '30'
+      - wait-for-android-emulator@1:
+          run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
+
+  _deploy_artifacts:
+    steps:
+    - deploy-to-bitrise-io: {}
+
 
   _pub_get:
     steps:
@@ -97,12 +192,17 @@ workflows:
               done
           - working_dir: "$BITRISE_SOURCE_DIR"
 
-  build:
-    steps:
-    - flutter-analyze@0.3.1:
+  analyze:
+    steps: 
+    - flutter-analyze@0:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/"
-
+    - flutter-analyze@0:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/"
+    - flutter-analyze@0:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor/"
     - script:
         title: Android lint and static analysis
         inputs:
@@ -112,74 +212,57 @@ workflows:
             gradle wrapper
             ./gradlew ktlintCheck detekt
         - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/android"
-    
-    - flutter-test@1.0.1:
+
+  unit_test:
+    before_run:
+    - _prepare_gradle_wrapper
+    steps:
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin"
-    
-    - flutter-test@1.0.1:
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example"
-
-    - flutter-test@1.0.1:
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client"
-    
-    - flutter-test@1.0.1:
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor"
-    
-
-    - flutter-build@0.14.0:
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example"
-        - platform: both
-  
-  _deploy:
-    steps:
-    - deploy-to-bitrise-io: {}
-
-  setup:
-    before_run:
-    - _pub_get
-    steps:
-    - script:
-        title: Generate env files
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            set -e
-            ./generate_env.sh
-    - avd-manager@1:
-        inputs:
-        - api_level: '30'
-    - wait-for-android-emulator@1: {}
-
-  unit_test_ios:
-    steps:
     - xcode-test@4.0.2:
+        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
         - project_path: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/ios/Runner.xcworkspace"
         - scheme: Runner
         - destination: platform=iOS Simulator,name=iPhone 13,OS=latest
-
-  unit_test_android:
-    before_run:
-    - _prepare_gradle_wrapper
-    steps:
     - android-unit-test@1.0.5:
+        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/android"
         - module: datadog_flutter_plugin
 
+  build:
+    steps:
+    - flutter-build@0:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example"
+        - platform: both
+  
+  integration_test:
+    before_run:
+    - integration_ios
+    - integration_android
+
   integration_android:
     steps:
     - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
     - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
         - tests_path_pattern: "integration_test"
@@ -190,15 +273,45 @@ workflows:
     - _launch_ios_simulator
     steps:
     - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
     - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+
+  integration_web:
+    steps:
+    - script:
+        title: Run pub get in all projects
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+
+            ./tools/chromedriver --port=4444 &
+
+            pushd "packages/datadog_flutter_plugin/integration_test_app"
+            testfiles=( 
+              "integration_test/logging_test.dart"
+              "integration_test/rum_manual_test.dart"
+              "integration_test/rum_manual_error_reporting_test.dart"
+              "integration_test/rum_no_auto_instrumentation_test.dart"
+              "integration_test/rum_auto_instrumentation_test.dart"
+            )
+
+            for test in "${testfiles[@]}" ; do
+              echo 'Testing $test'
+              flutter drive --driver=test_driver/integration_test.dart --target=$test -d "Chrome"
+            done
+
+            popd
+        - working_dir: "$BITRISE_SOURCE_DIR"
 
   nightly_ios:
     before_run:
