@@ -17,3 +17,5 @@ tools/e2e_generator/secrets.tf
 tools/e2e_generator/terraform.tfstate
 *.backup
 **/.flutter-plugins*
+__pycache__
+venv/
