@@ -12,6 +12,7 @@ import '../attributes.dart';
 import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddrum_platform_interface.dart';
+import 'rum_long_task_observer.dart';
 
 /// HTTP method of the resource
 enum RumHttpMethod { post, get, head, put, delete, patch }
@@ -91,7 +92,17 @@ class DdRum {
   final RumConfiguration configuration;
   final InternalLogger logger;
 
-  DdRum(this.configuration, this.logger);
+  RumLongTaskObserver? _longTaskObserver;
+
+  DdRum(this.configuration, this.logger) {
+    if (configuration.detectLongTasks) {
+      _longTaskObserver = RumLongTaskObserver(
+        longTaskThreshold: configuration.longTaskThreshold,
+        rumInstance: this,
+      );
+      _longTaskObserver!.init();
+    }
+  }
 
   /// Notifies that the View identified by [key] starts being presented to the
   /// user. This view will show as [name] in the RUM explorer, and defaults to

@@ -28,7 +28,10 @@ void main() async {
         printLogsToConsole: true,
       ),
       rumConfiguration: applicationId != null
-          ? RumConfiguration(applicationId: applicationId)
+          ? RumConfiguration(
+              applicationId: applicationId,
+              detectLongTasks: true,
+            )
           : null,
     );
 

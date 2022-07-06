@@ -181,12 +181,34 @@ class RumConfiguration {
   /// Defaults to `20.0`.
   double tracingSamplingRate;
 
+  /// Enable or disable detection of "long tasks"
+  ///
+  /// Long task detection attempts to detect when an application is doing too
+  /// much work on the main isolate, which could prevent your app from rendering
+  /// at a smooth framerate.
+  ///
+  /// Defaults to false.
+  bool detectLongTasks;
+
+  /// The amount of elapsed time that is considered to be a "long task", in
+  /// seconds.
+  ///
+  /// If the main isolate takes more than [longTaskThreshold] seconds to process
+  /// a microtask, it will appear as a Long Task in Datadog RUM Explorer. This
+  /// has a minimum of 0.02 seconds.
+  ///
+  /// Defaults to 0.1 seconds
+  double longTaskThreshold;
+
   RumConfiguration({
     required this.applicationId,
     double sessionSamplingRate = 100.0,
     double tracingSamplingRate = 20.0,
+    this.detectLongTasks = false,
+    double longTaskThreshold = 0.1,
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
-        tracingSamplingRate = max(0, min(tracingSamplingRate, 100));
+        tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),
+        longTaskThreshold = max(0.02, longTaskThreshold);
 
   Map<String, Object?> encode() {
     return {
