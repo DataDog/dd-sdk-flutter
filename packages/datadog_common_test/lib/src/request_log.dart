@@ -12,13 +12,28 @@ part 'request_log.g.dart';
 @JsonSerializable()
 class RequestLog {
   final String requestedUrl;
+  final Map<String, String> queryParameters;
   final String requestMethod;
   final Map<String, List<String>> requestHeaders;
   final String data;
   Object? get jsonData => json.decode(data);
 
+  Map<String, String> get tags {
+    var tagMap = <String, String>{};
+    for (var tag in queryParameters['ddtags']!.split(',')) {
+      var colon = tag.indexOf(':');
+      if (colon == -1) {
+        tagMap[tag] = '';
+      } else {
+        tagMap[tag.substring(0, colon)] = tag.substring(colon + 1);
+      }
+    }
+    return tagMap;
+  }
+
   RequestLog({
     required this.requestedUrl,
+    required this.queryParameters,
     required this.requestMethod,
     required this.requestHeaders,
     required this.data,
@@ -48,6 +63,7 @@ class RequestLog {
 
     return RequestLog(
       requestedUrl: url,
+      queryParameters: request.requestedUri.queryParameters,
       requestMethod: request.method,
       requestHeaders: headers,
       data: decoded,

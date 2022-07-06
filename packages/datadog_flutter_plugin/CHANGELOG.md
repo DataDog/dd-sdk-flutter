@@ -10,6 +10,7 @@
 * Update iOS SDK to 1.11.0
   * For a full list of changes see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#1110--13-06-2022)
 * Made analysis rules stricter and switched several attribute map parameters from `Map<String, dynamic>` to `Map<String, Object?>` for better compatibility with `implicit-dynamic: false` See [#143][] and [#148][]
+* Fix `serviceName` configuration parameter [#159][]
 
 ## 1.0.0-beta.2
 

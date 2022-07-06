@@ -5,8 +5,6 @@
 class DatadogConfigKey {
   static const source = '_dd.source';
   static const version = '_dd.sdk_version';
-  static const serviceName = '_dd.service_name';
-  static const verbosity = '_dd.sdk_verbosity';
   static const nativeViewTracking = '_dd.native_view_tracking';
 }
 

@@ -146,6 +146,7 @@ class DatadogConfigurationTest {
             "clientToken" to clientToken,
             "env" to environment,
             "nativeCrashReportEnabled" to true,
+            "serviceName" to null,
             "site" to "DatadogSite.us3",
             "batchSize" to "BatchSize.small",
             "uploadFrequency" to "UploadFrequency.frequent",
@@ -171,6 +172,42 @@ class DatadogConfigurationTest {
             additionalKey to additionalValue
         ))
         assertThat(config.firstPartyHosts).isEqualTo(listOf(firstPartyHost))
+    }
+
+    @Test
+    @Suppress("LongParameterList")
+    fun `M decode serviceName W fromEncoded`(
+        @StringForgery clientToken: String,
+        @StringForgery environment: String,
+        @StringForgery additionalKey: String,
+        @StringForgery additionalValue: String,
+        @StringForgery firstPartyHost: String,
+        @StringForgery serviceName: String,
+    ) {
+        // GIVEN
+        val encoded = mapOf<String, Any?>(
+            "clientToken" to clientToken,
+            "env" to environment,
+            "nativeCrashReportEnabled" to true,
+            "serviceName" to serviceName,
+            "site" to "DatadogSite.us3",
+            "batchSize" to "BatchSize.small",
+            "uploadFrequency" to "UploadFrequency.frequent",
+            "trackingConsent" to "TrackingConsent.granted",
+            "customEndpoint" to "customEndpoint",
+            "firstPartyHosts" to listOf(firstPartyHost),
+            "tracingConfiguration" to null,
+            "rumConfiguration" to null,
+            "additionalConfig" to mapOf<String, Any?>(
+                additionalKey to additionalValue
+            )
+        )
+
+        // WHEN
+        val config = DatadogFlutterConfiguration(encoded)
+
+        // THEN
+        assertThat(config.serviceName).isEqualTo(serviceName)
     }
 
     @Test
@@ -250,15 +287,13 @@ class DatadogConfigurationTest {
         val config = DatadogFlutterConfiguration(
             clientToken = clientToken,
             env = env,
+            serviceName = serviceName,
             nativeCrashReportEnabled = true,
             trackingConsent = TrackingConsent.PENDING,
             rumConfiguration = DatadogFlutterConfiguration.RumConfiguration(
                 applicationId = applicationId,
                 sampleRate = 100.0f
             ),
-            additionalConfig = mapOf<String, Any?>(
-                "_dd.service_name" to serviceName
-            )
         )
 
         // WHEN

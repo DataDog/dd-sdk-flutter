@@ -31,7 +31,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         DatadogRumPlugin.register(with: registrar)
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         guard let arguments = call.arguments as? [String: Any] else {
             result(
@@ -154,7 +154,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             _ = ddConfigBuilder.trackUIKitRUMViews()
         }
 
-        if let serviceName = flutterConfig.additionalConfig["_dd.service_name"] as? String {
+        if let serviceName = flutterConfig.serviceName {
             _ = ddConfigBuilder.set(serviceName: serviceName)
         }
 

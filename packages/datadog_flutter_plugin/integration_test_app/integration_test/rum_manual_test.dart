@@ -3,6 +3,7 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:flutter/foundation.dart';
@@ -162,6 +163,7 @@ void main() {
     if (!kIsWeb) {
       expect(view2.actionEvents[0].actionType, 'scroll');
       expect(view2.actionEvents[0].actionName, 'User Scrolling');
+
       expect(view2.actionEvents[0].loadingTime,
           greaterThan(1800 * 1000 * 1000)); // 1.8s
       // TODO: Figure out why occasionally these have really high values
@@ -194,6 +196,21 @@ void main() {
     }
     expect(view3.viewEvents.last.view.actionCount, 0);
     expect(view3.viewEvents.last.view.errorCount, 0);
+
+    // Verify service name
+    for (var event in rumLog) {
+      if (!kIsWeb) {
+        if (Platform.isIOS) {
+          for (final event in rumLog) {
+            expect(event.service, 'com.datadoghq.flutter.integration');
+          }
+        }
+
+        for (final request in requestLog) {
+          expect(request.tags['service'], 'com.datadoghq.flutter.integration');
+        }
+      }
+    }
   });
 }
 

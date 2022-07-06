@@ -2,6 +2,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+
 class RumSessionDecoder {
   final List<RumViewVisit> visits;
 
@@ -93,6 +97,13 @@ class RumEventDecoder {
   final Dd dd;
 
   String get eventType => rumEvent['type'] as String;
+  String get service {
+    if (!kIsWeb) {
+      if (Platform.isIOS) return rumEvent['service'];
+    }
+    return rumEvent['service'];
+  }
+
   int get date => rumEvent['date'] as int;
 
   Map<String, dynamic>? get context => rumEvent['context'];
