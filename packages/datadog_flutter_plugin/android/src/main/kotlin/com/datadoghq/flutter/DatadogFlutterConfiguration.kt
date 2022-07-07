@@ -43,6 +43,7 @@ data class DatadogFlutterConfiguration(
     var nativeCrashReportEnabled: Boolean,
     var trackingConsent: TrackingConsent,
     var site: DatadogSite? = null,
+    var serviceName: String? = null,
     var batchSize: BatchSize? = null,
     var uploadFrequency: UploadFrequency? = null,
     var customEndpoint: String? = null,
@@ -84,6 +85,9 @@ data class DatadogFlutterConfiguration(
         (encoded["site"] as? String)?.let {
             site = parseSite(it)
         }
+        (encoded["serviceName"] as? String)?.let {
+            serviceName = it
+        }
         (encoded["batchSize"] as? String)?.let {
             batchSize = parseBatchSize(it)
         }
@@ -109,7 +113,6 @@ data class DatadogFlutterConfiguration(
     }
 
     fun toCredentials(): Credentials {
-        val serviceName = additionalConfig["_dd.service_name"] as? String
         return Credentials(
             clientToken = clientToken,
             envName = env,

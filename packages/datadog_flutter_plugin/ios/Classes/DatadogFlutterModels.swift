@@ -78,6 +78,7 @@ class DatadogFlutterConfiguration {
 
   let clientToken: String
   let env: String
+  let serviceName: String?
   let nativeCrashReportingEnabled: Bool
   let trackingConsent: TrackingConsent
 
@@ -94,6 +95,7 @@ class DatadogFlutterConfiguration {
   init(
     clientToken: String,
     env: String,
+    serviceName: String?,
     trackingConsent: TrackingConsent,
     nativeCrashReportingEnabled: Bool,
     site: Datadog.Configuration.DatadogEndpoint? = nil,
@@ -107,6 +109,7 @@ class DatadogFlutterConfiguration {
   ) {
     self.clientToken = clientToken
     self.env = env
+    self.serviceName = serviceName
     self.trackingConsent = trackingConsent
     self.nativeCrashReportingEnabled = nativeCrashReportingEnabled
     self.site = site
@@ -124,6 +127,7 @@ class DatadogFlutterConfiguration {
     do {
       clientToken = try castUnwrap(encoded["clientToken"])
       env = try castUnwrap(encoded["env"])
+      serviceName = try? castUnwrap(encoded["serviceName"])
       nativeCrashReportingEnabled = try castUnwrap(encoded["nativeCrashReportEnabled"])
       trackingConsent = try TrackingConsent.parseFromFlutter(castUnwrap(encoded["trackingConsent"]))
     } catch {

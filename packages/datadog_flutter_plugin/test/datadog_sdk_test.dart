@@ -71,6 +71,7 @@ void main() {
       'clientToken': 'fake-client-token',
       'env': 'prod',
       'site': 'DatadogSite.us1',
+      'serviceName': null,
       'nativeCrashReportEnabled': false,
       'trackingConsent': 'TrackingConsent.pending',
       'customEndpoint': null,
@@ -98,6 +99,20 @@ void main() {
     expect(encoded['batchSize'], 'BatchSize.small');
     expect(encoded['uploadFrequency'], 'UploadFrequency.frequent');
     expect(encoded['site'], 'DatadogSite.eu1');
+  });
+
+  test('configuration encodes serviceName', () {
+    final configuration = DdSdkConfiguration(
+      clientToken: 'fakeClientToken',
+      env: 'fake-env',
+      serviceName: 'com.servicename',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.notGranted,
+    );
+
+    final encoded = configuration.encode();
+    // Logging configuration is purposefully not encoded
+    expect(encoded['serviceName'], 'com.servicename');
   });
 
   test('configuration encodes default sub-configuration', () {

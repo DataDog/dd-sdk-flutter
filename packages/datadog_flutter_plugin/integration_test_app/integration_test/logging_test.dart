@@ -98,7 +98,7 @@ void main() {
 
     for (final log in logs) {
       expect(log.serviceName,
-          equalsIgnoringCase('com.datadoghq.flutter.integrationtestapp'));
+          equalsIgnoringCase('com.datadoghq.flutter.integration'));
       if (!kIsWeb) {
         expect(log.threadName, 'main');
       }

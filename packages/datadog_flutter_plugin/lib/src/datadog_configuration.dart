@@ -321,6 +321,7 @@ class DdSdkConfiguration {
       'env': env,
       'nativeCrashReportEnabled': nativeCrashReportEnabled,
       'site': site.toString(),
+      'serviceName': serviceName,
       'batchSize': batchSize?.toString(),
       'uploadFrequency': uploadFrequency?.toString(),
       'trackingConsent': trackingConsent.toString(),

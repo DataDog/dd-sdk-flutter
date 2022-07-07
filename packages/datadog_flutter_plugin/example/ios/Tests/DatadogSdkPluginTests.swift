@@ -27,6 +27,7 @@ class FlutterSdkTests: XCTestCase {
         let flutterConfig = DatadogFlutterConfiguration(
             clientToken: "fakeClientToken",
             env: "prod",
+            serviceName: "serviceName",
             trackingConsent: TrackingConsent.granted,
             nativeCrashReportingEnabled: false
         )
@@ -48,6 +49,7 @@ class FlutterSdkTests: XCTestCase {
         let flutterConfig = DatadogFlutterConfiguration(
             clientToken: "fakeClientToken",
             env: "prod",
+            serviceName: "serviceName",
             trackingConsent: TrackingConsent.granted,
             nativeCrashReportingEnabled: true,
             tracingConfiguration: DatadogFlutterConfiguration.TracingConfiguration(
@@ -69,6 +71,7 @@ class FlutterSdkTests: XCTestCase {
         let flutterConfig = DatadogFlutterConfiguration(
             clientToken: "fakeClientToken",
             env: "prod",
+            serviceName: "serviceName",
             trackingConsent: TrackingConsent.granted,
             nativeCrashReportingEnabled: true,
             rumConfiguration: DatadogFlutterConfiguration.RumConfiguration(
@@ -111,6 +114,7 @@ class FlutterSdkTests: XCTestCase {
         let flutterConfig = DatadogFlutterConfiguration(
             clientToken: "fakeClientToken",
             env: "prod",
+            serviceName: "serviceName",
             trackingConsent: TrackingConsent.granted,
             nativeCrashReportingEnabled: false
         )
@@ -135,6 +139,7 @@ class FlutterSdkTests: XCTestCase {
         let flutterConfig = DatadogFlutterConfiguration(
             clientToken: "fakeClientToken",
             env: "prod",
+            serviceName: "serviceName",
             trackingConsent: TrackingConsent.granted,
             nativeCrashReportingEnabled: false
         )
@@ -159,6 +164,7 @@ class FlutterSdkTests: XCTestCase {
         let flutterConfig = DatadogFlutterConfiguration(
             clientToken: "fakeClientToken",
             env: "prod",
+            serviceName: "serviceName",
             trackingConsent: TrackingConsent.granted,
             nativeCrashReportingEnabled: false
         )
@@ -187,6 +193,7 @@ class FlutterSdkTests: XCTestCase {
         let flutterConfig = DatadogFlutterConfiguration(
             clientToken: "fakeClientToken",
             env: "prod",
+            serviceName: "serviceName",
             trackingConsent: TrackingConsent.granted,
             nativeCrashReportingEnabled: false
         )
