@@ -6,10 +6,33 @@ import 'package:logging/logging.dart';
 
 import 'command.dart';
 
-class CreateChoreBranchCommand extends Command {
+class CreateBranchCommand extends Command {
+  String branchName;
+
+  CreateBranchCommand(this.branchName);
+
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
-    final branchName = 'chore/${args.packageName}/release-${args.version}';
+    logger.info('ℹ️ Creating branch $branchName');
+
+    if (!args.dryRun) {
+      var result = await args.gitDir.runCommand(['checkout', '-b', branchName]);
+
+      if (result.exitCode != 0) {
+        logger.shout('❌ Error creating branch:');
+        logger.shout(result.stderr);
+        return false;
+      }
+    }
+
+    return true;
+  }
+}
+
+class CreateReleaseBranchCommand extends Command {
+  @override
+  Future<bool> run(CommandArguments args, Logger logger) async {
+    final branchName = 'release/${args.packageName}/v${args.version}';
     logger.info('ℹ️ Creating branch $branchName');
 
     if (!args.dryRun) {
@@ -27,6 +50,10 @@ class CreateChoreBranchCommand extends Command {
 }
 
 class CommitChangesCommand extends Command {
+  final String commitMessage;
+
+  CommitChangesCommand(this.commitMessage);
+
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
     logger.info('ℹ️ Committing changes');
@@ -39,13 +66,31 @@ class CommitChangesCommand extends Command {
         logger.shout('❌ Failed to stage: ${result.stderr}');
         return false;
       }
-      result = await args.gitDir.runCommand([
-        'commit',
-        '-m',
-        '🚀 Preparing for release of ${args.packageName} ${args.version}'
-      ]);
+      result = await args.gitDir.runCommand(['commit', '-m', commitMessage]);
       if (result.exitCode != 0) {
         logger.shout('❌ Failed to commit: ${result.stderr}');
+        return false;
+      }
+    }
+    return true;
+  }
+}
+
+class SwitchBranchCommand extends Command {
+  final String branch;
+
+  SwitchBranchCommand(this.branch);
+
+  @override
+  Future<bool> run(CommandArguments args, Logger logger) async {
+    logger.info('ℹ️ Switching to branch $branch');
+    if (!args.dryRun) {
+      var result = await args.gitDir.runCommand([
+        'checkout',
+        branch,
+      ]);
+      if (result.exitCode != 0) {
+        logger.shout('❌ Failed to checkout branch $branch: ${result.stderr}');
         return false;
       }
     }

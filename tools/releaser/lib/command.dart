@@ -18,9 +18,6 @@ class CommandArguments {
   // Skip git and branch checks during the validate step
   final bool skipGitChecks;
 
-  // Whether to commit changes and push them to github
-  final bool commitChanges;
-
   // The version we're releasing
   final String version;
 
@@ -32,7 +29,6 @@ class CommandArguments {
     required this.packageRoot,
     required this.gitDir,
     required this.skipGitChecks,
-    required this.commitChanges,
     required this.version,
     required this.dryRun,
   });
