@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.0-beta.3
+
 * Update Android SDK to 1.13.0-rc1
   * Improve local LogCat messages from the SDK.
   * Disables vitals collection when app is in the background.
