@@ -62,7 +62,7 @@ class ValidateReleaseCommand extends Command {
     if (!(currentBranch.branchName == 'develop' ||
         currentBranch.branchName.startsWith('release'))) {
       logger.shout(
-          '❌ We really should only prep releases from `develop` or another `release` branch.');
+          '❌ We really should only release from `develop` or another `release` branch.');
       return false;
     }
 
