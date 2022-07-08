@@ -116,7 +116,6 @@ class DatadogConfigurationTest {
             "trackingConsent" to "TrackingConsent.granted",
             "customEndpoint" to null,
             "firstPartyHosts" to listOf<String>(),
-            "tracingConfiguration" to null,
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>()
         )
@@ -129,7 +128,6 @@ class DatadogConfigurationTest {
         assertThat(config.env).isEqualTo(environment)
         assertThat(config.trackingConsent).isEqualTo(TrackingConsent.GRANTED)
 
-        assertThat(config.tracingConfiguration).isNull()
         assertThat(config.rumConfiguration).isNull()
     }
 
@@ -153,7 +151,6 @@ class DatadogConfigurationTest {
             "trackingConsent" to "TrackingConsent.granted",
             "customEndpoint" to "customEndpoint",
             "firstPartyHosts" to listOf(firstPartyHost),
-            "tracingConfiguration" to null,
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>(
                 additionalKey to additionalValue
@@ -196,7 +193,6 @@ class DatadogConfigurationTest {
             "trackingConsent" to "TrackingConsent.granted",
             "customEndpoint" to "customEndpoint",
             "firstPartyHosts" to listOf(firstPartyHost),
-            "tracingConfiguration" to null,
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>(
                 additionalKey to additionalValue
@@ -211,7 +207,7 @@ class DatadogConfigurationTest {
     }
 
     @Test
-    fun `M decode nestedConfiguration W fromEncoded {tracingConfiguration, rumConfiguration}`(
+    fun `M decode nestedConfiguration W fromEncoded {rumConfiguration}`(
         @StringForgery clientToken: String,
         @StringForgery environment: String,
         @StringForgery applicationId: String,
@@ -228,10 +224,6 @@ class DatadogConfigurationTest {
             "trackingConsent" to "TrackingConsent.pending",
             "customEndpoint" to null,
             "firstPartyHosts" to listOf<String>(),
-            "tracingConfiguration" to mapOf(
-                "sendNetworkInfo" to true,
-                "bundleWithRum" to false,
-            ),
             "rumConfiguration" to mapOf(
                 "applicationId" to applicationId,
                 "sampleRate" to 35.0f
@@ -243,10 +235,6 @@ class DatadogConfigurationTest {
         val config = DatadogFlutterConfiguration(encoded)
 
         // THEN
-        assertThat(config.tracingConfiguration).isNotNull()
-        assertThat(config.tracingConfiguration?.sendNetworkInfo).isEqualTo(true)
-        assertThat(config.tracingConfiguration?.bundleWithRum).isEqualTo(false)
-
         assertThat(config.rumConfiguration).isNotNull()
         assertThat(config.rumConfiguration?.applicationId).isEqualTo(applicationId)
         assertThat(config.rumConfiguration?.sampleRate).isEqualTo(35.0f)
@@ -260,7 +248,6 @@ class DatadogConfigurationTest {
             "printLogsToConsole" to true,
             "sendLogsToDatadog" to false,
             "bundleWithRum" to true,
-            "bundleWithTraces" to true,
             "loggerName" to "my_logger"
         )
 
@@ -272,7 +259,6 @@ class DatadogConfigurationTest {
         assertThat(config.printLogsToConsole).isTrue()
         assertThat(config.sendLogsToDatadog).isFalse()
         assertThat(config.bundleWithRum).isTrue()
-        assertThat(config.bundleWithTraces).isTrue()
         assertThat(config.loggerName).isEqualTo("my_logger")
     }
 

@@ -27,9 +27,6 @@ void main() async {
         sendNetworkInfo: true,
         printLogsToConsole: true,
       ),
-      tracingConfiguration: TracingConfiguration(
-        sendNetworkInfo: true,
-      ),
       rumConfiguration: applicationId != null
           ? RumConfiguration(applicationId: applicationId)
           : null,

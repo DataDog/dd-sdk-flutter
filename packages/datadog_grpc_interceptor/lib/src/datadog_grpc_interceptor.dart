@@ -38,8 +38,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
 
     bool shouldSample = _datadog.rum?.shouldSampleTrace() ?? false;
     bool isFirstPartyHost = _datadog.isFirstPartyHost(Uri.parse(fullPath));
-    bool shouldAppendTraces =
-        shouldSample && _datadog.traces != null && isFirstPartyHost;
+    bool shouldAppendTraces = shouldSample && isFirstPartyHost;
 
     String? traceId;
     String? parentId;

@@ -41,30 +41,7 @@ class FlutterSdkTests: XCTestCase {
         XCTAssertNotNil(Global.sharedTracer as? DDNoopTracer)
 
         XCTAssertNil(plugin.logs)
-        XCTAssertNil(plugin.tracer)
         XCTAssertNil(plugin.rum)
-    }
-
-    func testInitialization_TracingConfiguration_InitializesTracing() {
-        let flutterConfig = DatadogFlutterConfiguration(
-            clientToken: "fakeClientToken",
-            env: "prod",
-            serviceName: "serviceName",
-            trackingConsent: TrackingConsent.granted,
-            nativeCrashReportingEnabled: true,
-            tracingConfiguration: DatadogFlutterConfiguration.TracingConfiguration(
-                sendNetworkInfo: true,
-                bundleWithRum: true
-            )
-        )
-
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-        plugin.initialize(configuration: flutterConfig)
-
-        XCTAssertNotNil(plugin.tracer)
-        XCTAssertEqual(plugin.tracer?.isInitialized, true)
-        XCTAssertNotNil(Global.sharedTracer)
-        XCTAssertNil(Global.sharedTracer as? DDNoopTracer)
     }
 
     func testInitialization_RumConfiguration_InitializesRum() {

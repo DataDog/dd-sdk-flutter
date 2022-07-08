@@ -71,7 +71,6 @@ class DatadogLogsPluginTests: XCTestCase {
       "printLogsToConsole": true,
       "sendLogsToDatadog": false,
       "bundleWithRum": true,
-      "bundleWithTraces": true,
       "loggerName": "my_logger"
     ]
   }
@@ -83,7 +82,6 @@ class DatadogLogsPluginTests: XCTestCase {
     XCTAssertTrue(loggingConfig!.printLogsToConsole)
     XCTAssertFalse(loggingConfig!.sendLogsToDatadog)
     XCTAssertTrue(loggingConfig!.bundleWithRum)
-    XCTAssertTrue(loggingConfig!.bundleWithTraces)
     XCTAssertEqual(loggingConfig!.loggerName, "my_logger")
   }
 
