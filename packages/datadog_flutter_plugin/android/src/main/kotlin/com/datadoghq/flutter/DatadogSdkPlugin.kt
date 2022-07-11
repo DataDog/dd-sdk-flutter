@@ -13,7 +13,6 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import io.opentracing.util.GlobalTracer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
@@ -36,8 +35,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     )
 
     var logsPlugin: DatadogLogsPlugin? = null
-        private set
-    var tracesPlugin: DatadogTracesPlugin? = null
         private set
     var rumPlugin: DatadogRumPlugin? = null
         private set
@@ -106,12 +103,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         // Always setup logging as a user can create a log after initialization
         logsPlugin = DatadogLogsPlugin().apply { setup(binding) }
 
-        if (config.tracingConfiguration != null) {
-            tracesPlugin = DatadogTracesPlugin().apply {
-                setup(binding, config.tracingConfiguration!!)
-            }
-        }
-
         if (config.rumConfiguration != null) {
             rumPlugin = DatadogRumPlugin().apply { setup(binding, config.rumConfiguration!!) }
         }
@@ -133,10 +124,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             simpleInvokeOn("flushAndShutdownExecutors", Datadog)
             simpleInvokeOn("stop", Datadog)
 
-            val trackerRegisteredField = GlobalTracer::class.java.getDeclaredField("isRegistered")
-            trackerRegisteredField.isAccessible = true
-            trackerRegisteredField.set(null, false)
-
             val rumRegisteredField = GlobalRum::class.java.getDeclaredField("isRegistered")
             rumRegisteredField.isAccessible = true
             val isRegistered: AtomicBoolean = rumRegisteredField.get(null) as AtomicBoolean
@@ -144,9 +131,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
             logsPlugin?.teardown(binding)
             logsPlugin = null
-
-            tracesPlugin?.teardown(binding)
-            tracesPlugin = null
 
             rumPlugin?.teardown(binding)
             rumPlugin = null
@@ -160,9 +144,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
         logsPlugin?.teardown(binding)
         logsPlugin = null
-
-        tracesPlugin?.teardown(binding)
-        tracesPlugin = null
 
         rumPlugin?.teardown(binding)
         rumPlugin = null

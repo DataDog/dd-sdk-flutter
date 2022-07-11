@@ -162,7 +162,6 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
             .setDatadogLogsEnabled(configuration.sendLogsToDatadog)
             .setLogcatLogsEnabled(configuration.printLogsToConsole)
             .setNetworkInfoEnabled(configuration.sendNetworkInfo)
-            .setBundleWithTraceEnabled(configuration.bundleWithTraces)
             .setBundleWithRumEnabled(configuration.bundleWithRum)
 
         configuration.loggerName?.let {

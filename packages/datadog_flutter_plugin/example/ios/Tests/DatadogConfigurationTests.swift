@@ -96,7 +96,6 @@ class DatadogConfigurationTests: XCTestCase {
       "customEndpoint": nil,
       "firstPartyHosts": [],
       "loggingConfiguration": nil,
-      "tracingConfiguration": nil,
       "rumConfiguration": nil,
       "additionalConfig": [:]
     ]
@@ -109,7 +108,6 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.nativeCrashReportingEnabled, false)
     XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
 
-    XCTAssertNil(config.tracingConfiguration)
     XCTAssertNil(config.rumConfiguration)
   }
 
@@ -125,7 +123,6 @@ class DatadogConfigurationTests: XCTestCase {
       "customEndpoint": nil,
       "firstPartyHosts": [ "first_party.com" ],
       "loggingConfiguration": nil,
-      "tracingConfiguration": nil,
       "rumConfiguration": nil,
       "additionalConfig": [:]
     ]
@@ -140,7 +137,6 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.firstPartyHosts, ["first_party.com"])
     XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
 
-    XCTAssertNil(config.tracingConfiguration)
     XCTAssertNil(config.rumConfiguration)
   }
 
@@ -157,7 +153,6 @@ class DatadogConfigurationTests: XCTestCase {
         "customEndpoint": nil,
         "firstPartyHosts": [ "first_party.com" ],
         "loggingConfiguration": nil,
-        "tracingConfiguration": nil,
         "rumConfiguration": nil,
         "additionalConfig": [:]
       ]
@@ -182,10 +177,6 @@ class DatadogConfigurationTests: XCTestCase {
         "sendNetworkInfo": NSNumber(true),
         "printLogsToConsole": NSNumber(true)
       ],
-      "tracingConfiguration": [
-        "sendNetworkInfo": NSNumber(true),
-        "bundleWithRum": NSNumber(true)
-      ],
       "rumConfiguration": [
         "applicationId": "fakeApplicationId"
       ],
@@ -193,9 +184,6 @@ class DatadogConfigurationTests: XCTestCase {
     ]
 
     let config = DatadogFlutterConfiguration(fromEncoded: encoded)!
-
-    XCTAssertNotNil(config.tracingConfiguration)
-    XCTAssertEqual(config.tracingConfiguration?.sendNetworkInfo, true)
 
     XCTAssertNotNil(config.rumConfiguration)
     XCTAssertEqual(config.rumConfiguration?.applicationId, "fakeApplicationId")

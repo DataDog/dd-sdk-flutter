@@ -17,14 +17,12 @@ import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
 import 'src/logs/ddlogs_platform_interface.dart';
 import 'src/rum/rum.dart';
-import 'src/traces/ddtraces.dart';
 import 'src/version.dart' show ddPackageVersion;
 
 export 'src/datadog_configuration.dart';
 export 'src/datadog_plugin.dart';
 export 'src/logs/ddlogs.dart';
 export 'src/rum/rum.dart';
-export 'src/traces/ddtraces.dart';
 
 typedef AppRunner = void Function();
 
@@ -49,11 +47,6 @@ class DatadogSdk {
 
   DdLogs? _logs;
   DdLogs? get logs => _logs;
-
-  // ignore: deprecated_member_use_from_same_package
-  DdTraces? _traces;
-  @Deprecated('Tracing is deprecated and will be removed before 1.0')
-  DdTraces? get traces => _traces;
 
   DdRum? _rum;
   DdRum? get rum => _rum;
@@ -102,7 +95,6 @@ class DatadogSdk {
   Future<void> flushAndDeinitialize() async {
     await _platform.flushAndDeinitialize();
     _logs = null;
-    _traces = null;
     _rum = null;
   }
 
@@ -144,10 +136,6 @@ class DatadogSdk {
 
     if (configuration.loggingConfiguration != null) {
       _logs = createLogger(configuration.loggingConfiguration!);
-    }
-    if (configuration.tracingConfiguration != null) {
-      // ignore: deprecated_member_use_from_same_package
-      _traces = DdTraces(internalLogger);
     }
     if (configuration.rumConfiguration != null) {
       _rum = DdRum(configuration.rumConfiguration!, internalLogger);

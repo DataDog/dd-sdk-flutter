@@ -11,7 +11,6 @@ class DatadogLoggingConfiguration {
   let printLogsToConsole: Bool
   let sendLogsToDatadog: Bool
   let bundleWithRum: Bool
-  let bundleWithTraces: Bool
   let loggerName: String?
 
   init(
@@ -19,14 +18,12 @@ class DatadogLoggingConfiguration {
     printLogsToConsole: Bool = false,
     sendLogsToDatadog: Bool = true,
     bundleWithRum: Bool = true,
-    bundleWithTraces: Bool = true,
     loggerName: String? = nil
   ) {
     self.sendNetworkInfo = sendNetworkInfo
     self.printLogsToConsole = printLogsToConsole
     self.sendLogsToDatadog = sendLogsToDatadog
     self.bundleWithRum = bundleWithRum
-    self.bundleWithTraces = bundleWithTraces
     self.loggerName = loggerName
   }
 
@@ -35,27 +32,11 @@ class DatadogLoggingConfiguration {
     printLogsToConsole = (encoded["printLogsToConsole"] as? NSNumber)?.boolValue ?? false
     sendLogsToDatadog = (encoded["sendLogsToDatadog"] as? NSNumber)?.boolValue ?? true
     bundleWithRum = (encoded["bundleWithRum"] as? NSNumber)?.boolValue ?? true
-    bundleWithTraces = (encoded["bundleWithTraces"] as? NSNumber)?.boolValue ?? true
     loggerName = encoded["loggerName"] as? String
   }
 }
 
 class DatadogFlutterConfiguration {
-  class TracingConfiguration {
-    let sendNetworkInfo: Bool
-    let bundleWithRum: Bool
-
-    init(sendNetworkInfo: Bool = false, bundleWithRum: Bool = true) {
-      self.sendNetworkInfo = sendNetworkInfo
-      self.bundleWithRum = bundleWithRum
-    }
-
-    init?(fromEncoded encoded: [String: Any?]) {
-      sendNetworkInfo = (encoded["sendNetworkInfo"] as? NSNumber)?.boolValue ?? false
-      bundleWithRum = (encoded["bundleWithRum"] as? NSNumber)?.boolValue ?? true
-    }
-  }
-
   class RumConfiguration {
     let applicationId: String
     let sampleRate: Float
@@ -89,7 +70,6 @@ class DatadogFlutterConfiguration {
   let customEndpoint: String?
   let additionalConfig: [String: Any]
 
-  let tracingConfiguration: TracingConfiguration?
   let rumConfiguration: RumConfiguration?
 
   init(
@@ -104,7 +84,6 @@ class DatadogFlutterConfiguration {
     firstPartyHosts: [String] = [],
     customEndpoint: String? = nil,
     additionalConfig: [String: Any] = [:],
-    tracingConfiguration: TracingConfiguration? = nil,
     rumConfiguration: RumConfiguration? = nil
   ) {
     self.clientToken = clientToken
@@ -118,7 +97,6 @@ class DatadogFlutterConfiguration {
     self.firstPartyHosts = firstPartyHosts
     self.customEndpoint = customEndpoint
     self.additionalConfig = additionalConfig
-    self.tracingConfiguration = tracingConfiguration
     self.rumConfiguration = rumConfiguration
   }
 
@@ -147,9 +125,6 @@ class DatadogFlutterConfiguration {
     firstPartyHosts = encoded["firstPartyHosts"] as? [String] ?? []
     additionalConfig = encoded["additionalConfig"] as? [String: Any] ?? [:]
 
-    tracingConfiguration = convertOptional(encoded["tracingConfiguration"]) {
-      .init(fromEncoded: $0)
-    }
     rumConfiguration = convertOptional(encoded["rumConfiguration"]) {
       .init(fromEncoded: $0)
     }
@@ -184,7 +159,6 @@ class DatadogFlutterConfiguration {
       if let customEndpointUrl = URL(string: customEndpoint) {
         _ = ddConfigBuilder
           .set(customLogsEndpoint: customEndpointUrl)
-          .set(customTracesEndpoint: customEndpointUrl)
           .set(customRUMEndpoint: customEndpointUrl)
       }
     }

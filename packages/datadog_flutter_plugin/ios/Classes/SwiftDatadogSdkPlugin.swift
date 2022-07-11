@@ -13,7 +13,6 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     // NOTE: Although these are instances, they are still registered globally to
     // a method channel. That might be something we want to change in the future
     public private(set) var logs: DatadogLogsPlugin?
-    public private(set) var tracer: DatadogTracesPlugin?
     public private(set) var rum: DatadogRumPlugin?
 
     public init(channel: FlutterMethodChannel) {
@@ -27,7 +26,6 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         registrar.addMethodCallDelegate(instance, channel: channel)
 
         DatadogLogsPlugin.register(with: registrar)
-        DatadogTracesPlugin.register(with: registrar)
         DatadogRumPlugin.register(with: registrar)
     }
 
@@ -80,7 +78,6 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             Datadog.flushAndDeinitialize()
             consolePrint = { value in print(value) }
             logs = nil
-            tracer = nil
             rum = nil
             result(nil)
 #endif
@@ -96,10 +93,6 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                            trackingConsent: configuration.trackingConsent,
                            configuration: ddConfiguration)
 
-        if let tracingConfiguration = configuration.tracingConfiguration {
-            tracer = DatadogTracesPlugin.instance
-            tracer?.initialize(configuration: tracingConfiguration)
-        }
         if let rumConfiguration = configuration.rumConfiguration {
             rum = DatadogRumPlugin.instance
             rum?.initialize(configuration: rumConfiguration)

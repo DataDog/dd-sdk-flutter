@@ -22,7 +22,6 @@ data class LoggingConfiguration(
     var printLogsToConsole: Boolean,
     var sendLogsToDatadog: Boolean,
     var bundleWithRum: Boolean,
-    var bundleWithTraces: Boolean,
     var loggerName: String?
 ) {
     constructor(encoded: Map<String, Any?>) : this(
@@ -30,7 +29,6 @@ data class LoggingConfiguration(
         (encoded["printLogsToConsole"] as? Boolean) ?: false,
         (encoded["sendLogsToDatadog"] as? Boolean) ?: true,
         (encoded["bundleWithRum"] as? Boolean) ?: true,
-        (encoded["bundleWithTraces"] as? Boolean) ?: true,
         (encoded["loggerName"] as? String)
     )
 }
@@ -50,19 +48,8 @@ data class DatadogFlutterConfiguration(
     var firstPartyHosts: List<String> = listOf(),
     var additionalConfig: Map<String, Any?> = mapOf(),
 
-    var tracingConfiguration: TracingConfiguration? = null,
     var rumConfiguration: RumConfiguration? = null
 ) {
-    data class TracingConfiguration(
-        var sendNetworkInfo: Boolean,
-        var bundleWithRum: Boolean,
-    ) {
-        constructor(encoded: Map<String, Any?>) : this(
-            encoded["sendNetworkInfo"] as? Boolean ?: false,
-            encoded["bundleWithRum"] as? Boolean ?: true
-        )
-    }
-
     data class RumConfiguration(
         var applicationId: String,
         var sampleRate: Float
@@ -103,10 +90,6 @@ data class DatadogFlutterConfiguration(
         additionalConfig = (encoded["additionalConfig"] as? Map<String, Any?>) ?: mapOf()
 
         @Suppress("UNCHECKED_CAST")
-        (encoded["tracingConfiguration"] as? Map<String, Any?>)?.let {
-            tracingConfiguration = TracingConfiguration(it)
-        }
-        @Suppress("UNCHECKED_CAST")
         (encoded["rumConfiguration"] as? Map<String, Any?>)?.let {
             rumConfiguration = RumConfiguration(it)
         }
@@ -126,8 +109,8 @@ data class DatadogFlutterConfiguration(
         val configBuilder = Configuration.Builder(
             // Always enable logging as users can create logs post initialization
             logsEnabled = true,
-            tracesEnabled = tracingConfiguration != null,
             crashReportsEnabled = nativeCrashReportEnabled,
+            tracesEnabled = false,
             rumEnabled = rumConfiguration != null
         )
             .setAdditionalConfiguration(
@@ -148,7 +131,6 @@ data class DatadogFlutterConfiguration(
         }
         customEndpoint?.let {
             configBuilder.useCustomLogsEndpoint(it)
-            configBuilder.useCustomTracesEndpoint(it)
             configBuilder.useCustomRumEndpoint(it)
         }
         configBuilder.setFirstPartyHosts(firstPartyHosts)

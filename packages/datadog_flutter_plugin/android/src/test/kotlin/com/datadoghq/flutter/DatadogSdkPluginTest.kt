@@ -93,40 +93,13 @@ class DatadogSdkPluginTest {
 
         // THEN
         assertThat(Datadog.isInitialized()).isTrue()
-        assertThat(plugin.tracesPlugin).isNull()
         assertThat(plugin.rumPlugin).isNull()
 
         // Because we have no way to reset these, we can't test
         // that they're registered properly.
         //assertThat(GlobalRum.isRegistered()).isFalse()
-        //assertThat(GlobalTracer.isRegistered()).isFalse()
     }
 
-    @Test
-    fun `M initialize traces W DatadogFlutterConfiguation { tracingConfiguration }`(
-        @StringForgery clientToken: String,
-        @StringForgery environment: String
-    ) {
-        // GIVEN
-        val configuration = DatadogFlutterConfiguration(
-            clientToken = clientToken,
-            env = environment,
-            nativeCrashReportEnabled = false,
-            trackingConsent = TrackingConsent.GRANTED,
-            tracingConfiguration = DatadogFlutterConfiguration.TracingConfiguration(
-                sendNetworkInfo = true,
-                bundleWithRum = true
-            )
-        )
-
-        // WHEN
-        plugin.initialize(configuration)
-
-        // THEN
-        assertThat(plugin.tracesPlugin).isNotNull()
-        // NOTE: We have no way of knowing if this was set in a previous test
-        assertThat(GlobalTracer.isRegistered()).isTrue()
-    }
 
     @Test
     fun `M initialize RUM W DatadogFlutterConfiguration { rumConfiguration }`(

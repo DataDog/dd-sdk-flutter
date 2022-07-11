@@ -78,7 +78,6 @@ void main() {
       'batchSize': null,
       'uploadFrequency': null,
       'firstPartyHosts': <String>[],
-      'tracingConfiguration': null,
       'rumConfiguration': null,
       'additionalConfig': <String, Object?>{},
     });
@@ -122,15 +121,12 @@ void main() {
       site: DatadogSite.us1,
       trackingConsent: TrackingConsent.notGranted,
       loggingConfiguration: LoggingConfiguration(),
-      tracingConfiguration: TracingConfiguration(),
       rumConfiguration: RumConfiguration(applicationId: 'fake-application-id'),
     );
 
     final encoded = configuration.encode();
     // Logging configuration is purposefully not encoded
     expect(encoded['loggingConfiguration'], isNull);
-    expect(encoded['tracingConfiguration'],
-        configuration.tracingConfiguration?.encode());
     expect(
         encoded['rumConfiguration'], configuration.rumConfiguration?.encode());
   });

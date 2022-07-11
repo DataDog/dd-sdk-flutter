@@ -146,38 +146,7 @@ class LoggingConfiguration {
       'printLogsToConsole': printLogsToConsole,
       'sendLogsToDatadog': sendLogsToDatadog,
       'bundleWithRum': bundleWithRum,
-      'bundleWithTrace': bundleWithTrace,
       'loggerName': loggerName,
-    };
-  }
-}
-
-/// Configuration options for the Datadog Tracing feature.
-class TracingConfiguration {
-  /// Enriches traces with network connection info.
-  ///
-  /// This means: reachability status, connection type, mobile carrier name and
-  /// many more will be added to every span and span logs.
-  ///
-  /// Defaults to `false`.
-  bool sendNetworkInfo;
-
-  /// Enables the traces integration with RUM.
-  ///
-  /// If enabled all the spans will be enriched with the current RUM View information and
-  /// it will be possible to see all the spans produced during a specific View lifespan in the RUM Explorer.
-  /// Defaults to `true`.
-  bool bundleWithRum;
-
-  TracingConfiguration({
-    this.sendNetworkInfo = false,
-    this.bundleWithRum = true,
-  });
-
-  Map<String, Object?> encode() {
-    return {
-      'sendNetworkInfo': sendNetworkInfo,
-      'bundleWithRum': bundleWithRum,
     };
   }
 }
@@ -281,10 +250,6 @@ class DdSdkConfiguration {
   /// logging is disabled.
   LoggingConfiguration? loggingConfiguration;
 
-  /// Configuration for the tracing feature. If this configuration is null,
-  /// tracing is disabled.
-  TracingConfiguration? tracingConfiguration;
-
   /// Configuration for the Real User Monitoring (RUM) feature. If this
   /// configuration is null, RUM is disabled
   RumConfiguration? rumConfiguration;
@@ -308,7 +273,6 @@ class DdSdkConfiguration {
     this.customEndpoint,
     this.firstPartyHosts = const [],
     this.loggingConfiguration,
-    this.tracingConfiguration,
     this.rumConfiguration,
   });
 
@@ -327,7 +291,6 @@ class DdSdkConfiguration {
       'trackingConsent': trackingConsent.toString(),
       'firstPartyHosts': firstPartyHosts,
       'customEndpoint': customEndpoint,
-      'tracingConfiguration': tracingConfiguration?.encode(),
       'rumConfiguration': rumConfiguration?.encode(),
       'additionalConfig': additionalConfig
     };

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Remove deprecated tracing feature.
+
 ## 1.0.0-beta.3
 
 * Update Android SDK to 1.13.0-rc1
