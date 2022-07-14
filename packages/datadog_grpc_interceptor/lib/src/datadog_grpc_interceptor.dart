@@ -64,7 +64,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
       fullPath,
       {
         "grpc.method": method.path.split('/').lastWhere(
-              (e) => e == '/',
+              (e) => e.isNotEmpty,
               orElse: () => method.path,
             ),
         "grpc.path": method.path,
