@@ -60,10 +60,14 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
     final rumKey = uuid.v1();
     _datadog.rum?.startResourceLoading(
       rumKey,
-      RumHttpMethod.get,
+      RumHttpMethod.unknown,
       fullPath,
       {
-        "grpc.method": method.path,
+        "grpc.method": method.path.split('/').lastWhere(
+              (e) => e == '/',
+              orElse: () => method.path,
+            ),
+        "grpc.path": method.path,
         if (shouldAppendTraces) ...{
           DatadogRumPlatformAttributeKey.traceID: traceId,
           DatadogRumPlatformAttributeKey.spanID: parentId
