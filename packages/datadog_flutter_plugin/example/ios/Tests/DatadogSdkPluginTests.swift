@@ -87,6 +87,83 @@ class FlutterSdkTests: XCTestCase {
         XCTAssertNotNil(Global.sharedTracer as? DDNoopTracer)
     }
 
+    func testRepeatInitialization_FromMethodChannelSameOptions_DoesNothing() {
+        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+        let configuration: [String: Any?] = [
+            "clientToken": "fakeClientToken",
+            "env": "prod",
+            "trackingConsent": "TrackingConsent.granted",
+            "nativeCrashReportEnabled": false,
+            "loggingConfiguration": nil
+        ]
+
+        let methodCallA = FlutterMethodCall(
+            methodName: "initialize",
+            arguments: [
+                "configuration": configuration
+            ]
+        )
+        plugin.handle(methodCallA) { _ in }
+
+        XCTAssertTrue(Datadog.isInitialized)
+
+        var loggedConsoleLines: [String] = []
+        consolePrint = { str in loggedConsoleLines.append(str) }
+
+        let methodCallB = FlutterMethodCall(
+            methodName: "initialize",
+            arguments: [
+                "configuration": configuration
+            ]
+        )
+        plugin.handle(methodCallB) { _ in }
+
+        print(loggedConsoleLines)
+
+        XCTAssertTrue(loggedConsoleLines.isEmpty)
+    }
+
+    func testRepeatInitialization_FromMethodChannelDifferentOptions_PrintsError() {
+        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+        let methodCallA = FlutterMethodCall(
+            methodName: "initialize",
+            arguments: [
+                "configuration": [
+                    "clientToken": "fakeClientToken",
+                    "env": "prod",
+                    "trackingConsent": "TrackingConsent.granted",
+                    "nativeCrashReportEnabled": false,
+                    "loggingConfiguration": nil
+                ]
+            ]
+        )
+        plugin.handle(methodCallA) { _ in }
+
+        XCTAssertTrue(Datadog.isInitialized)
+
+        var loggedConsoleLines: [String] = []
+        consolePrint = { str in loggedConsoleLines.append(str) }
+
+        let methodCallB = FlutterMethodCall(
+            methodName: "initialize",
+            arguments: [
+                "configuration": [
+                    "clientToken": "changedClientToken",
+                    "env": "debug",
+                    "trackingConsent": "TrackingConsent.granted",
+                    "nativeCrashReportEnabled": false,
+                    "loggingConfiguration": nil
+                ]
+            ]
+        )
+        plugin.handle(methodCallB) { _ in }
+
+        print(loggedConsoleLines)
+
+        XCTAssertFalse(loggedConsoleLines.isEmpty)
+        XCTAssertTrue(loggedConsoleLines.first?.contains("🔥") == true)
+    }
+
     func testSetVerbosity_FromMethodChannel_SetsVerbosity() {
         let flutterConfig = DatadogFlutterConfiguration(
             clientToken: "fakeClientToken",
