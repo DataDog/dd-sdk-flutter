@@ -1,6 +1,6 @@
 # Overview
 
-> *NOTICE* These instructions are for early adopters looking to symbolicate iOS and Android native crashes. These instructions and temporary and will change as Datadog adds more support for Flutter error tracking in the future.
+> *NOTICE* These instructions are for early adopters looking to symbolicate iOS and Android native crashes. These instructions are temporary and will change as Datadog adds more support for Flutter error tracking in the future.
 > 
 > Note that Dart stack traces for Flutter applications using the `--split-debug-info` and `--obfuscate` flags are currently not supported.
 >
@@ -11,11 +11,13 @@ Your crash reports appear in [**Error Tracking**][8].
 
 ## Setup
 
-If you have not set up the Fluter SDK yet, the the instructions in the [documentation][2].
+If you have not set up the Flutter SDK yet, follow the instructions in the [documentation][2].
 
 ### Add Crash Reporting
 
-Update your initialization configuration to set `nativeCrashReportEnabled` to `true`
+Update your initialization configuration to set `nativeCrashReportEnabled` to `true`.
+
+For example:
 
 ```dart
 final configuration = DdSdkConfiguration(
@@ -30,7 +32,7 @@ final configuration = DdSdkConfiguration(
 DatadogSdk.instance.initialize(configuration);
 ```
 
-This will enable native crash reporting for iOS and Android.
+This enables native crash reporting for iOS and Android.
 
 ## Manually uploading iOS dSYMs to Datadog
 
@@ -55,11 +57,11 @@ npx @datadog/datadog-ci dsyms upload ./build/ios/archive/Runner.xcarchive/dSYMs
 **Note**: To configure the tool using the EU endpoint, set the `DATADOG_SITE` environment variable to `datadoghq.eu`. To override the full URL for the intake endpoint, define the `DATADOG_DSYM_INTAKE_URL` environment variable. 
 
 
-## Manually uploading Android Proguard Mapping Files to Datadog
+## Manually upload Android ProGuard mapping files to Datadog
 
-If you are using the `--obfuscate` parameter on Android builds, you will need to upload your Proguard mapping file to Datadog in order to deobfuscate your stack traces. The [Gradle Plugin for datadog Android SDK][1] supports uploading your mapping file directly to Datadog.
+If you are using the `--obfuscate` parameter on Android builds, and you wish to deobfuscate your traces, you need to upload your ProGuard mapping file to Datadog. The [Gradle plugin for the Datadog Android SDK][1] supports uploading your mapping file directly to Datadog.
 
-You can configure the plugin by adding the following to you `./android/app/build.gradle` file:
+You can configure the plugin by adding the following lines to your `./android/app/build.gradle` file:
 
 ```
 plugins {
@@ -67,7 +69,7 @@ plugins {
 }
 ```
 
-In addition, if you need to configure the upload, you can add the following block to the end of you `./android/app/build.gradle` file:
+In addition, if you need to configure the upload, you can add the following block to the end of your `./android/app/build.gradle` file:
 
 ```
 datadog {
@@ -79,7 +81,7 @@ datadog {
 }
 ```
 
-After building your Flutter application with `flutter build apk` or `flutter build appbundle`, use the following shell commands to upload your Mapping file to Datadog:
+After building your Flutter application with `flutter build apk` or `flutter build appbundle`, use the following shell commands to upload your mapping file to Datadog:
 
 ```sh
 export DD_API_KEY="<API KEY>"
