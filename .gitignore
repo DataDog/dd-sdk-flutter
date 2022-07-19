@@ -19,3 +19,4 @@ tools/e2e_generator/terraform.tfstate
 **/.flutter-plugins*
 __pycache__
 tools/ci/venv
+ndk_crash_reports_v2/

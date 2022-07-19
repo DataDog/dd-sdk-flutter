@@ -5,6 +5,7 @@
  */
 package com.datadoghq.flutter
 
+import android.util.Log
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
 import com.datadog.android.rum.GlobalRum
@@ -27,6 +28,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
+    private var previousConfiguration: DatadogFlutterConfiguration? = null
 
     // Only used to shutdown Datadog in debug builds
     private val executor: ExecutorService = ThreadPoolExecutor(
@@ -54,7 +56,13 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 val configArg = call.argument<Map<String, Any?>>("configuration")
                 if (configArg != null) {
                     val config = DatadogFlutterConfiguration(configArg)
-                    initialize(config)
+                    if (!Datadog.isInitialized()) {
+                        initialize(config)
+                        previousConfiguration = config
+                    } else if (config != previousConfiguration) {
+                        // Maybe use DevLogger instead?
+                        Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION)
+                    }
                 }
                 result.success(null)
             }
@@ -119,7 +127,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
-    fun invokePrivateShutdown(result: Result) {
+    internal fun invokePrivateShutdown(result: Result) {
         executor.execute {
             simpleInvokeOn("flushAndShutdownExecutors", Datadog)
             simpleInvokeOn("stop", Datadog)
@@ -149,3 +157,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         rumPlugin = null
     }
 }
+
+internal const val DATADOG_FLUTTER_TAG = "DatadogFlutter"
+
+internal const val MESSAGE_INVALID_REINITIALIZATION =
+    "🔥 Reinitialziing the DatadogSDK with different options, even after a hot restart, is not" +
+        "supported. Cold restart your application to change your current configuation."

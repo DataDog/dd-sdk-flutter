@@ -58,6 +58,7 @@ private fun <T : Any> T.getDeclaredMethodRecursively(
         val lookingInClass = classesToSearch.removeAt(0)
         classesSearched.add(lookingInClass)
         method = try {
+            var methods = lookingInClass.declaredMethods
             if (matchingParams) {
                 lookingInClass.getDeclaredMethod(methodName, *declarationParams)
             } else {

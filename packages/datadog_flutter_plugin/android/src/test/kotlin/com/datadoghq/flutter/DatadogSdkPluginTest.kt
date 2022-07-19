@@ -30,11 +30,15 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.mockk.mockkStatic
 import io.opentracing.util.GlobalTracer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.MockedStatic
+import org.mockito.Mockito
+import org.mockito.Mockito.mockStatic
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
@@ -72,7 +76,8 @@ class DatadogSdkPluginTest {
 
     @AfterEach
     fun afterEach() {
-        Datadog.invokeMethod("flushAndShutdownExecutors")
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.invokePrivateShutdown(mockResult)
     }
 
     @Test
@@ -155,6 +160,87 @@ class DatadogSdkPluginTest {
         assertThat(Datadog.isInitialized())
         assertThat(plugin.logsPlugin).isNotNull()
         verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M not issue warning W initialize called with same configuration`(
+        forge: Forge
+    ) {
+        // GIVEN
+        mockkStatic(Log::class)
+        Datadog.setVerbosity(Log.INFO)
+
+        val config = mapOf(
+            "clientToken" to forge.anAlphaNumericalString(),
+            "env" to forge.anAlphabeticalString(),
+            "trackingConsent" to "TrackingConsent.granted",
+            "nativeCrashReportEnabled" to true,
+            "loggingConfiguration" to null
+        )
+        val methodCall = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to config
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // WHEN
+        val methodCallB = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to config
+            )
+        )
+        val mockResultB = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCallB, mockResultB)
+
+        // THEN
+        io.mockk.verify(exactly = 0) { Log.println(any(), any(), any()) }
+    }
+
+    @Test
+    fun `M issue warning W initialize called with different configuration`(
+        forge: Forge
+    ) {
+        // GIVEN
+        Datadog.setVerbosity(Log.INFO)
+
+        val methodCall = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to mapOf(
+                    "clientToken" to forge.anAlphaNumericalString(),
+                    "env" to forge.anAlphabeticalString(),
+                    "trackingConsent" to "TrackingConsent.granted",
+                    "nativeCrashReportEnabled" to true,
+                    "loggingConfiguration" to null
+                )
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // WHEN
+        mockkStatic(Log::class)
+        val methodCallB = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to mapOf(
+                    "clientToken" to forge.anAlphaNumericalString(),
+                    "env" to forge.anAlphabeticalString(),
+                    "trackingConsent" to "TrackingConsent.granted",
+                    "nativeCrashReportEnabled" to true,
+                    "loggingConfiguration" to null
+                )
+            )
+        )
+        val mockResultB = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCallB, mockResultB)
+
+        // THEN
+        io.mockk.verify(exactly = 1) { Log.e(any(), match { it.contains("🔥") }) }
     }
 
     @Test
