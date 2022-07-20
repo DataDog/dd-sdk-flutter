@@ -15,6 +15,8 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     public private(set) var logs: DatadogLogsPlugin?
     public private(set) var rum: DatadogRumPlugin?
 
+    var currentConfiguration: [AnyHashable: Any]?
+
     public init(channel: FlutterMethodChannel) {
         self.channel = channel
         super.init()
@@ -42,12 +44,22 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         case "initialize":
             let configArg = arguments["configuration"] as! [String: Any?]
             if let config = DatadogFlutterConfiguration(fromEncoded: configArg) {
-                initialize(configuration: config)
+                if !Datadog.isInitialized {
+                    initialize(configuration: config)
+                    currentConfiguration = configArg as [AnyHashable: Any]
 
-                if let setLogCallback = arguments["setLogCallback"] as? Bool,
-                   setLogCallback {
-                    consolePrint = { value in
-                        self.channel.invokeMethod("logCallback", arguments: value)
+                    if let setLogCallback = arguments["setLogCallback"] as? Bool,
+                       setLogCallback {
+                        consolePrint = { value in
+                            self.channel.invokeMethod("logCallback", arguments: value)
+                        }
+                    }
+                } else {
+                    let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
+                    if !dict.isEqual(to: currentConfiguration!) {
+                        consolePrint(
+                            "🔥 Reinitialziing the DatadogSDK with different options, even after a hot restart, is not supported. Cold restart your application to change your current configuation."
+                        )
                     }
                 }
             }

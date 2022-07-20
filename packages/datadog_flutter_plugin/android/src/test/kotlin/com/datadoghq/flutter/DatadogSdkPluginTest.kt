@@ -7,14 +7,12 @@ package com.datadoghq.flutter
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import assertk.assertThat
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
-import assertk.assertions.isFalse
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
@@ -23,14 +21,12 @@ import com.datadog.android.core.model.UserInfo
 import com.datadog.android.privacy.TrackingConsent
 import com.datadog.android.rum.GlobalRum
 import fr.xgouchet.elmyr.Forge
-import fr.xgouchet.elmyr.annotation.Forgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import io.flutter.embedding.engine.plugins.FlutterPlugin
-import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import io.opentracing.util.GlobalTracer
+import io.mockk.mockkStatic
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -72,7 +68,8 @@ class DatadogSdkPluginTest {
 
     @AfterEach
     fun afterEach() {
-        Datadog.invokeMethod("flushAndShutdownExecutors")
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.invokePrivateShutdown(mockResult)
     }
 
     @Test
@@ -155,6 +152,87 @@ class DatadogSdkPluginTest {
         assertThat(Datadog.isInitialized())
         assertThat(plugin.logsPlugin).isNotNull()
         verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M not issue warning W initialize called with same configuration`(
+        forge: Forge
+    ) {
+        // GIVEN
+        mockkStatic(Log::class)
+        Datadog.setVerbosity(Log.INFO)
+
+        val config = mapOf(
+            "clientToken" to forge.anAlphaNumericalString(),
+            "env" to forge.anAlphabeticalString(),
+            "trackingConsent" to "TrackingConsent.granted",
+            "nativeCrashReportEnabled" to true,
+            "loggingConfiguration" to null
+        )
+        val methodCall = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to config
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // WHEN
+        val methodCallB = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to config
+            )
+        )
+        val mockResultB = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCallB, mockResultB)
+
+        // THEN
+        io.mockk.verify(exactly = 0) { Log.println(any(), any(), any()) }
+    }
+
+    @Test
+    fun `M issue warning W initialize called with different configuration`(
+        forge: Forge
+    ) {
+        // GIVEN
+        Datadog.setVerbosity(Log.INFO)
+
+        val methodCall = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to mapOf(
+                    "clientToken" to forge.anAlphaNumericalString(),
+                    "env" to forge.anAlphabeticalString(),
+                    "trackingConsent" to "TrackingConsent.granted",
+                    "nativeCrashReportEnabled" to true,
+                    "loggingConfiguration" to null
+                )
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // WHEN
+        mockkStatic(Log::class)
+        val methodCallB = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to mapOf(
+                    "clientToken" to forge.anAlphaNumericalString(),
+                    "env" to forge.anAlphabeticalString(),
+                    "trackingConsent" to "TrackingConsent.granted",
+                    "nativeCrashReportEnabled" to true,
+                    "loggingConfiguration" to null
+                )
+            )
+        )
+        val mockResultB = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCallB, mockResultB)
+
+        // THEN
+        io.mockk.verify(exactly = 1) { Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION) }
     }
 
     @Test
