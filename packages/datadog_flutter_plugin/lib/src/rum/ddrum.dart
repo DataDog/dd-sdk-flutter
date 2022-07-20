@@ -14,7 +14,7 @@ import '../internal_logger.dart';
 import 'ddrum_platform_interface.dart';
 
 /// HTTP method of the resource
-enum RumHttpMethod { post, get, head, put, delete, patch, unknown }
+enum RumHttpMethod { post, get, head, put, delete, patch }
 
 RumHttpMethod rumMethodFromMethodString(String value) {
   var lowerValue = value.toLowerCase();
