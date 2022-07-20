@@ -162,4 +162,4 @@ internal const val DATADOG_FLUTTER_TAG = "DatadogFlutter"
 
 internal const val MESSAGE_INVALID_REINITIALIZATION =
     "🔥 Reinitialziing the DatadogSDK with different options, even after a hot restart, is not" +
-        "supported. Cold restart your application to change your current configuation."
+        " supported. Cold restart your application to change your current configuation."
