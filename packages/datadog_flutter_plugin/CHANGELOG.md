@@ -3,7 +3,7 @@
 ## Unreleased
 
 * Remove deprecated tracing feature.
-
+* Removed `RumHttpMethod.unknown` as it is translated GET on the native side anyway.
 ## 1.0.0-beta.3
 
 * Update Android SDK to 1.13.0-rc1
