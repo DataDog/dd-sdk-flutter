@@ -33,7 +33,17 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
     if (host is InternetAddress) {
       fullPath = '${host.host}:${_channel.port}$path';
     } else {
-      fullPath = '$host:${_channel.port}$path';
+      /// Account for host not containing a scheme in it
+      if (Uri.parse(_channel.host.toString()).scheme == '') {
+        if (_channel.options.credentials.isSecure) {
+          fullPath = 'https://$host:${_channel.port}$path';
+        } else {
+          fullPath = 'http://$host:${_channel.port}$path';
+        }
+      } else {
+        /// Url has a scheme in it
+        fullPath = '$host:${_channel.port}$path';
+      }
     }
 
     bool shouldSample = _datadog.rum?.shouldSampleTrace() ?? false;
@@ -50,10 +60,14 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
     final rumKey = uuid.v1();
     _datadog.rum?.startResourceLoading(
       rumKey,
-      RumHttpMethod.get,
+      RumHttpMethod.unknown,
       fullPath,
       {
-        "grpc.method": method.path,
+        "grpc.method": method.path.split('/').lastWhere(
+              (e) => e.isNotEmpty,
+              orElse: () => method.path,
+            ),
+        "grpc.path": method.path,
         if (shouldAppendTraces) ...{
           DatadogRumPlatformAttributeKey.traceID: traceId,
           DatadogRumPlatformAttributeKey.spanID: parentId
