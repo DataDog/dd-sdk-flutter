@@ -166,7 +166,7 @@ final configuration = DdSdkConfiguration(
 )..enableHttpTracking()
 ```
 
-In order to enable Datadog Distributed Tracing, the `DdSdkConfiguration.firstPartyHosts` property in your configutation object must be set to a domain that supports distributed tracing. You can also modify the sampling rate for Datadog distributed tracing by setting the `tracingSamplingRate` on your `RumConfiguration`.
+In order to enable Datadog Distributed Tracing, the `DdSdkConfiguration.firstPartyHosts` property in your configuration object must be set to a domain that supports distributed tracing. You can also modify the sampling rate for Datadog distributed tracing by setting the `tracingSamplingRate` on your `RumConfiguration`.
 
 ## Data Storage
 
