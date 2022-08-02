@@ -245,6 +245,22 @@ void main() {
     expect(datadogSdk.isFirstPartyHost(uri), isFalse);
   });
 
+  test('isFirstPartyHost escapes special characters in hosts', () async {
+    var firstPartyHosts = ['test.datadoghq.com'];
+
+    final configuration = DdSdkConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.pending,
+      firstPartyHosts: firstPartyHosts,
+    );
+    await datadogSdk.initialize(configuration);
+
+    var uri = Uri.parse('https://testdatadoghq.com/path');
+    expect(datadogSdk.isFirstPartyHost(uri), isFalse);
+  });
+
   test('set user info calls into platform', () {
     datadogSdk.setUserInfo(
         id: 'fake_id', name: 'fake_name', email: 'fake_email');
