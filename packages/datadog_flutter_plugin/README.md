@@ -172,7 +172,7 @@ In order to enable Datadog Distributed Tracing, the `DdSdkConfiguration.firstPar
 
 ### Cocoapods issues
 
-If you are having trouble building your iOS application after adding the Datadog SDK because of errors being thrown by Cocoapods, check which error you are getting. The most common error is an issue getting the most up to date native library from Cocoapods, which can be solved by running the following in your `ios` directory:
+If you have trouble building your iOS application after adding the Datadog SDK because of errors being thrown by Cocoapods, check which error you are getting. The most common error is an issue getting the most up-to-date native library from Cocoapods, which can be solved by running the following in your `ios` directory:
 
 ```bash
 pod install --repo-update
@@ -198,7 +198,7 @@ If you're able to run your app, but you are not seeing the data you expect on th
 DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
 ```
 
-This will cause the SDK to output additional information about what it's doing and what errors it's encountering, which may help you and Datadog support narrow down your issue.
+This causes the SDK to output additional information about what it's doing and what errors it's encountering, which may help you and Datadog Support narrow down your issue.
 
 ## Data Storage
 
