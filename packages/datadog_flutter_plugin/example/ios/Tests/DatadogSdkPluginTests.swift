@@ -13,7 +13,7 @@ extension UserInfo: EquatableInTests { }
 class FlutterSdkTests: XCTestCase {
 
     override func setUp() {
-        if Datadog.instance != nil {
+        if Datadog.isInitialized {
             // Somehow we ended up with an extra instance of Datadog?
             Datadog.flushAndDeinitialize()
         }
@@ -210,7 +210,8 @@ class FlutterSdkTests: XCTestCase {
             callResult = ResultStatus.called(value: result)
         }
 
-        XCTAssertEqual(Datadog.instance?.consentProvider.currentValue, .notGranted)
+        let core = defaultDatadogCore as? DatadogCore
+        XCTAssertEqual(core?.dependencies.consentProvider.currentValue, .notGranted)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
@@ -238,8 +239,9 @@ class FlutterSdkTests: XCTestCase {
             callResult = ResultStatus.called(value: result)
         }
 
+        let core = defaultDatadogCore as? DatadogCore
         let expectedUserInfo = UserInfo(id: "fakeUserId", name: "fake user name", email: "fake email", extraInfo: [:])
-        XCTAssertEqual(Datadog.instance?.userInfoProvider.value, expectedUserInfo)
+        XCTAssertEqual(core?.dependencies.userInfoProvider.value, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
@@ -275,7 +277,9 @@ class FlutterSdkTests: XCTestCase {
                                         extraInfo: [
                                             "attribute": 23.3
                                         ])
-        XCTAssertEqual(Datadog.instance?.userInfoProvider.value, expectedUserInfo)
+
+        let core = defaultDatadogCore as? DatadogCore
+        XCTAssertEqual(core?.dependencies.userInfoProvider.value, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 }
