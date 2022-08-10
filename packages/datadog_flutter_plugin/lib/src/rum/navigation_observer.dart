@@ -95,7 +95,7 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
   void didPop(Route route, Route? previousRoute) {
     super.didPop(route, previousRoute);
 
-    // On pop, the "previous" route is now the new roue.
+    // On pop, the "previous" route is now the new route.
     _sendScreenView(previousRoute, route);
   }
 }
@@ -226,7 +226,7 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
 /// void main() {
 ///   // Other setup code
 ///   final observer = DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
-///   runApp(DatadogRouteAwareMixin(
+///   runApp(DatadogNavigationObserverProvider(
 ///     navObserver: observer,
 ///     child: MaterialApp(
 ///       navigatorObservers: [observer],
