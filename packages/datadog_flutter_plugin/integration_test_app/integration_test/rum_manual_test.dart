@@ -86,18 +86,23 @@ void main() {
     } else {
       expect(view1.path, 'RumManualInstrumentationScenario');
     }
-    expect(view1.viewEvents.last.view.actionCount, kIsWeb ? 2 : 3);
+
+    // In some cases, application_start doesn't get associated to the first view
+    var actionCount = 2;
+    var baseAction = 0;
+    if (view1.actionEvents[0].actionType == 'application_start') {
+      actionCount = 3;
+      baseAction = 1;
+    }
+    expect(view1.viewEvents.last.view.actionCount, actionCount);
+
     if (!kIsWeb) {
       // Manual resources on web don't work (the error is a resource loading error)
       expect(view1.viewEvents.last.view.resourceCount, 1);
       expect(view1.viewEvents.last.view.errorCount, 1);
     }
     expect(view1.viewEvents.last.context![contextKey], expectedContextValue);
-    const baseAction = kIsWeb ? 0 : 1;
-    if (!kIsWeb) {
-      // No application start event on web.
-      expect(view1.actionEvents[0].actionType, 'application_start');
-    }
+
     expect(view1.actionEvents[baseAction + 0].actionType,
         kIsWeb ? 'custom' : 'tap');
     expect(view1.actionEvents[baseAction + 0].actionName, 'Tapped Download');

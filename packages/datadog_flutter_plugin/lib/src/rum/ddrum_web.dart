@@ -117,7 +117,7 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  Future<void> reportLongTask(DateTime at, int duration) async {
+  Future<void> reportLongTask(DateTime at, int durationMs) async {
     // NOOP - The browser SDK will report this automatically
   }
 }

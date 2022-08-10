@@ -141,10 +141,10 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> reportLongTask(DateTime at, int duration) {
+  Future<void> reportLongTask(DateTime at, int durationMs) {
     return methodChannel.invokeMethod('reportLongTask', {
       'at': at.millisecondsSinceEpoch,
-      'duration': duration,
+      'duration': durationMs,
     });
   }
 }

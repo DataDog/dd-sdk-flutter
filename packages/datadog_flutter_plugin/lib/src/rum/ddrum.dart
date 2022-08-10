@@ -295,9 +295,9 @@ class DdRum {
   }
 
   @internal
-  void reportLongTask(int taskLength) {
+  void reportLongTask(int taskLengthMs) {
     wrap('rum.reportLongTask', logger, null, () {
-      return _platform.reportLongTask(DateTime.now(), taskLength);
+      return _platform.reportLongTask(DateTime.now(), taskLengthMs);
     });
   }
 }

@@ -58,7 +58,8 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                     let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
                     if !dict.isEqual(to: currentConfiguration!) {
                         consolePrint(
-                            "🔥 Reinitialziing the DatadogSDK with different options, even after a hot restart, is not supported. Cold restart your application to change your current configuation."
+                            "🔥 Reinitialziing the DatadogSDK with different options, even after a hot restart," +
+                            " is not supported. Cold restart your application to change your current configuation."
                         )
                     }
                 }
