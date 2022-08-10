@@ -187,7 +187,7 @@ class RumConfiguration {
   /// much work on the main isolate, which could prevent your app from rendering
   /// at a smooth framerate.
   ///
-  /// Defaults to false.
+  /// Defaults to true.
   bool detectLongTasks;
 
   /// The amount of elapsed time that is considered to be a "long task", in
@@ -204,7 +204,7 @@ class RumConfiguration {
     required this.applicationId,
     double sessionSamplingRate = 100.0,
     double tracingSamplingRate = 20.0,
-    this.detectLongTasks = false,
+    this.detectLongTasks = true,
     double longTaskThreshold = 0.1,
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),

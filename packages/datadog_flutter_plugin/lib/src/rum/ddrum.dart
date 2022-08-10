@@ -5,7 +5,8 @@
 import 'dart:io';
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:meta/meta.dart';
 
 import '../../datadog_flutter_plugin.dart';
 import '../attributes.dart';
@@ -95,7 +96,9 @@ class DdRum {
   RumLongTaskObserver? _longTaskObserver;
 
   DdRum(this.configuration, this.logger) {
-    if (configuration.detectLongTasks) {
+    // Never use long task observer on web -- the Browser SDK should
+    // capture stalls on the main thread automatically.
+    if (!kIsWeb && configuration.detectLongTasks) {
       _longTaskObserver = RumLongTaskObserver(
         longTaskThreshold: configuration.longTaskThreshold,
         rumInstance: this,
@@ -289,5 +292,12 @@ class DdRum {
   bool shouldSampleTrace() {
     return (sampleRandom.nextDouble() * 100) <
         configuration.tracingSamplingRate;
+  }
+
+  @internal
+  void reportLongTask(int taskLength) {
+    wrap('rum.reportLongTask', logger, null, () {
+      return _platform.reportLongTask(DateTime.now(), taskLength);
+    });
   }
 }

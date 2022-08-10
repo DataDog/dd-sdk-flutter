@@ -33,11 +33,20 @@ void main() {
     await tester.tap(nextButton);
     await tester.pumpAndSettle();
 
-    // wait for this view to throw an error and scroll
+    var longTaskButton =
+        find.widgetWithText(ElevatedButton, 'Trigger Long Task');
+    await tester.waitFor(
+      longTaskButton,
+      const Duration(seconds: 5),
+      (e) => (e.widget as ElevatedButton).enabled,
+    );
+    await tester.tap(longTaskButton);
+    await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
     nextButton = find.widgetWithText(ElevatedButton, 'Next Screen');
     await tester.waitFor(
       nextButton,
-      const Duration(seconds: 5),
+      const Duration(seconds: 2),
       (e) => (e.widget as ElevatedButton).enabled,
     );
     await tester.tap(nextButton);
@@ -59,7 +68,7 @@ void main() {
           }
         });
         return RumSessionDecoder.fromEvents(rumLog).visits.length >=
-            (kIsWeb ? 3 : 4);
+            (kIsWeb ? 4 : 3);
       },
     );
 
@@ -146,6 +155,8 @@ void main() {
     }
     expect(view2.viewEvents.last.view.errorCount, 1);
     expect(view2.viewEvents.last.view.actionCount, kIsWeb ? 1 : 2);
+    // We can have multiple long tasks
+    expect(view2.viewEvents.last.view.longTaskCount, greaterThanOrEqualTo(1));
     if (!kIsWeb) {
       // Web can download extra resources
       expect(view2.viewEvents.last.view.resourceCount, 0);
@@ -157,6 +168,17 @@ void main() {
     expect(view2.errorEvents[0].source, kIsWeb ? 'custom' : 'source');
     expect(view2.errorEvents[0].context![contextKey], expectedContextValue);
     expect(view2.errorEvents[0].context!['custom_attribute'], 'my_attribute');
+
+    // Check all long tasks are over 100 ms (the default) and that one is greater
+    // than 200 ms (triggered by the tapping of the button)
+    var over200 = 0;
+    for (var longTask in view2.longTaskEvents) {
+      expect(longTask.duration, greaterThan(100000));
+      if (longTask.duration! > 200000) {
+        over200++;
+      }
+    }
+    expect(over200, greaterThanOrEqualTo(1));
 
     // Web doesn't support start/stopUserAction
     RumActionEventDecoder tapAction;

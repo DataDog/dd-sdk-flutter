@@ -115,6 +115,11 @@ class DdRumWeb extends DdRumPlatform {
   Future<void> stopView(String key, Map<String, dynamic> attributes) async {
     // NOOP
   }
+
+  @override
+  Future<void> reportLongTask(DateTime at, int duration) async {
+    // NOOP - The browser SDK will report this automatically
+  }
 }
 
 @JS()

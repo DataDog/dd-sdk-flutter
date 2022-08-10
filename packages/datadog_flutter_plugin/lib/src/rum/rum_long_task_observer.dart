@@ -28,13 +28,13 @@ class RumLongTaskObserver with WidgetsBindingObserver {
         _startLongTaskDetection();
         break;
       case AppLifecycleState.inactive:
-        _stopLongTaskDetection();
+        stopLongTaskDetection();
         break;
       case AppLifecycleState.paused:
-        _stopLongTaskDetection();
+        stopLongTaskDetection();
         break;
       case AppLifecycleState.detached:
-        _stopLongTaskDetection();
+        stopLongTaskDetection();
         break;
     }
   }
@@ -42,6 +42,10 @@ class RumLongTaskObserver with WidgetsBindingObserver {
   void init() {
     WidgetsBinding.instance.addObserver(this);
     _startLongTaskDetection();
+  }
+
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
   }
 
   void _startLongTaskDetection() async {
@@ -56,7 +60,8 @@ class RumLongTaskObserver with WidgetsBindingObserver {
     }
   }
 
-  void _stopLongTaskDetection() async {
+  @visibleForTesting
+  Future<void> stopLongTaskDetection() async {
     if (_detectingLongTasks) {
       _detectingLongTasks = false;
       await _longTaskDetectorFuture;
@@ -71,8 +76,10 @@ class RumLongTaskObserver with WidgetsBindingObserver {
       await Future<void>.delayed(const Duration(milliseconds: 13));
       final check = DateTime.now().millisecondsSinceEpoch;
       final taskLength = check - lastCheck;
-      if (check - lastCheck > millisecondThreshold) {
-        print('LONG TASK DETECTED: $taskLength ms');
+      if (_detectingLongTasks) {
+        if (check - lastCheck > millisecondThreshold) {
+          rumInstance?.reportLongTask(taskLength);
+        }
       }
       lastCheck = check;
     }
