@@ -3,6 +3,8 @@
 ## Unreleased
 
 * Update Android SDK to 1.14.0-beta1
+* Update iOS SDK to 1.12.0-beta2
+  * Include the exact model information in RUM `device.model`. Also fixes [#133][]
 * Remove deprecated tracing feature.
 * Removed `RumHttpMethod.unknown` as it is translated GET on the native side anyway.
 
@@ -62,3 +64,8 @@
   * Android Support with Datadog SDK for Android 1.12.0-alpha2
 * Automatically track network requests with `DatadogTrackingHttpClient`
 * Error reporting for iOS, Android, and Android NDK crashes.
+
+[#133]: https://github.com/DataDog/dd-sdk-flutter/issues/133
+[#143]: https://github.com/DataDog/dd-sdk-flutter/issues/143
+[#148]: https://github.com/DataDog/dd-sdk-flutter/issues/148
+[#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159
