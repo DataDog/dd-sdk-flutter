@@ -5,7 +5,7 @@
 * Update Android SDK to 1.14.0-beta1
 * Remove deprecated tracing feature.
 * Removed `RumHttpMethod.unknown` as it is translated GET on the native side anyway.
-* Added Long Task reporting
+* Added Long Task reporting.
 
 ## 1.0.0-beta.3
 

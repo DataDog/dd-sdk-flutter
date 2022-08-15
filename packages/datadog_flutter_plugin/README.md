@@ -77,7 +77,7 @@ final configuration = DdSdkConfiguration(
 );
 ```
 
-For more information on available configuration options, consult the documentation for the [DdSdkConfiguration][8] object.
+For more information on available configuration options, see the [DdSdkConfiguration object][8] documentation.
 
 ### Initialize the library
 
