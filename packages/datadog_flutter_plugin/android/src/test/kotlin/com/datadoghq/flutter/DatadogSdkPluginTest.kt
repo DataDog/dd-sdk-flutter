@@ -29,8 +29,11 @@ import io.flutter.plugin.common.MethodChannel
 import io.mockk.mockkStatic
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
@@ -72,6 +75,42 @@ class DatadogSdkPluginTest {
         plugin.invokePrivateShutdown(mockResult)
     }
 
+    val contracts = listOf(
+        Contract("setSdkVerbosity", mapOf(
+            "value" to ContractParameter.Type(SupportedContractType.STRING)
+        )),
+        Contract("setUserInfo", mapOf(
+            "extraInfo" to ContractParameter.Type(SupportedContractType.MAP)
+        )),
+        Contract("setTrackingConsent", mapOf(
+            "value" to ContractParameter.Type(SupportedContractType.STRING)
+        )),
+        Contract("telemetryDebug", mapOf(
+            "message" to ContractParameter.Type(SupportedContractType.STRING)
+        )),
+        Contract("telemetryError", mapOf(
+            "message" to ContractParameter.Type(SupportedContractType.STRING)
+        ))
+    )
+
+    @Test
+    fun `M report contract violation W missing parameters in contract`(
+        @StringForgery clientToken: String,
+        @StringForgery environment: String,
+        forge: Forge
+    ) {
+        // GIVEN
+        val configuration = DatadogFlutterConfiguration(
+            clientToken = clientToken,
+            env = environment,
+            nativeCrashReportEnabled = false,
+            trackingConsent = TrackingConsent.GRANTED
+        )
+        plugin.initialize(configuration)
+
+        testContracts(contracts, forge, plugin)
+    }
+
     @Test
     fun `M not initialize features W no nested configuration`(
         @StringForgery clientToken: String,
@@ -99,6 +138,7 @@ class DatadogSdkPluginTest {
 
 
     @Test
+    @Disabled("There's an issue calling Choreographer in RUM vital initialization")
     fun `M initialize RUM W DatadogFlutterConfiguration { rumConfiguration }`(
         @StringForgery clientToken: String,
         @StringForgery environment: String,

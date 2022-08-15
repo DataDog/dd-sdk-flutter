@@ -74,6 +74,7 @@ void main() {
       'serviceName': null,
       'nativeCrashReportEnabled': false,
       'trackingConsent': 'TrackingConsent.pending',
+      'telemetrySampleRate': null,
       'customEndpoint': null,
       'batchSize': null,
       'uploadFrequency': null,
@@ -98,6 +99,18 @@ void main() {
     expect(encoded['batchSize'], 'BatchSize.small');
     expect(encoded['uploadFrequency'], 'UploadFrequency.frequent');
     expect(encoded['site'], 'DatadogSite.eu1');
+  });
+
+  test('configuration encodes telemetrySampleRate', () {
+    final configuration = DdSdkConfiguration(
+      clientToken: 'fake-client-token',
+      env: 'prod',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.pending,
+      telemetrySampleRate: 21.0,
+    );
+    final encoded = configuration.encode();
+    expect(encoded['telemetrySampleRate'], 21.0);
   });
 
   test('configuration encodes serviceName', () {

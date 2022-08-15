@@ -105,4 +105,28 @@ void main() {
       })
     ]);
   });
+
+  test('sendTelemetryDebug calls to method channel', () {
+    unawaited(ddSdkPlatform.sendTelemetryDebug('debug telemetry method'));
+
+    expect(log, [
+      isMethodCall('telemetryDebug', arguments: {
+        'message': 'debug telemetry method',
+      })
+    ]);
+  });
+
+  test('sendTelemetryError calls to method channel', () {
+    final st = StackTrace.current;
+    unawaited(ddSdkPlatform.sendTelemetryError(
+        'error telemetry method', st.toString(), 'fake error'));
+
+    expect(log, [
+      isMethodCall('telemetryError', arguments: {
+        'message': 'error telemetry method',
+        'stack': st.toString(),
+        'kind': 'fake error',
+      })
+    ]);
+  });
 }

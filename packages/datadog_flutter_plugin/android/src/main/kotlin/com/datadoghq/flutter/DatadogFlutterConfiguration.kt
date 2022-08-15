@@ -40,6 +40,7 @@ data class DatadogFlutterConfiguration(
     var env: String,
     var nativeCrashReportEnabled: Boolean,
     var trackingConsent: TrackingConsent,
+    var telemetrySampleRate: Float? = null,
     var site: DatadogSite? = null,
     var serviceName: String? = null,
     var batchSize: BatchSize? = null,
@@ -66,6 +67,7 @@ data class DatadogFlutterConfiguration(
         (encoded["nativeCrashReportEnabled"] as? Boolean) ?: false,
         TrackingConsent.PENDING
     ) {
+        telemetrySampleRate = (encoded["telemetrySampleRate"] as? Number)?.toFloat()
         (encoded["trackingConsent"] as? String)?.let {
             trackingConsent = parseTrackingConsent(it)
         }
@@ -125,6 +127,7 @@ data class DatadogFlutterConfiguration(
         site?.let { configBuilder.useSite(it) }
         batchSize?.let { configBuilder.setBatchSize(it) }
         uploadFrequency?.let { configBuilder.setUploadFrequency(it) }
+        telemetrySampleRate?.let { configBuilder.sampleTelemetry(it) }
         rumConfiguration?.let {
             configBuilder.sampleRumSessions(it.sampleRate)
             configBuilder.useViewTrackingStrategy(NoOpViewTrackingStrategy)

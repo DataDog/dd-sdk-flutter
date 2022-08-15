@@ -81,7 +81,12 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
       RumUserActionDetector.elementMap.remove(oldWidget);
       RumUserActionDetector.elementMap[widget] = element;
     } else {
-      // Telemetry -- this shouldn't happen
+      final st = StackTrace.current;
+      widget.rum?.logger.sendToDatadog(
+        'Error locating old widget in element map during didUpdateWidget',
+        st,
+        null,
+      );
     }
   }
 

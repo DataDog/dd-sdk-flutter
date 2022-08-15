@@ -92,6 +92,7 @@ class DatadogConfigurationTests: XCTestCase {
       "site": nil,
       "batchSize": nil,
       "uploadFrequency": nil,
+      "telemetrySampleRate": nil,
       "trackingConsent": "TrackingConsent.pending",
       "customEndpoint": nil,
       "firstPartyHosts": [],
@@ -106,6 +107,7 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.clientToken, "fakeClientToken")
     XCTAssertEqual(config.env, "fakeEnvironment")
     XCTAssertEqual(config.nativeCrashReportingEnabled, false)
+    XCTAssertNil(config.telemetrySampleRate)
     XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
 
     XCTAssertNil(config.rumConfiguration)
@@ -120,6 +122,7 @@ class DatadogConfigurationTests: XCTestCase {
       "batchSize": "BatchSize.small",
       "uploadFrequency": "UploadFrequency.frequent",
       "trackingConsent": "TrackingConsent.pending",
+      "telemetrySampleRate": 44,
       "customEndpoint": nil,
       "firstPartyHosts": [ "first_party.com" ],
       "loggingConfiguration": nil,
@@ -136,6 +139,7 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.uploadFrequency, .frequent)
     XCTAssertEqual(config.firstPartyHosts, ["first_party.com"])
     XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
+    XCTAssertEqual(config.telemetrySampleRate, 44)
 
     XCTAssertNil(config.rumConfiguration)
   }

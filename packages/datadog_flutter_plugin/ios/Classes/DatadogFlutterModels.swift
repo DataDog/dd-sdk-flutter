@@ -62,6 +62,7 @@ class DatadogFlutterConfiguration {
   let serviceName: String?
   let nativeCrashReportingEnabled: Bool
   let trackingConsent: TrackingConsent
+  let telemetrySampleRate: Float?
 
   let site: Datadog.Configuration.DatadogEndpoint?
   let batchSize: Datadog.Configuration.BatchSize?
@@ -77,6 +78,7 @@ class DatadogFlutterConfiguration {
     env: String,
     serviceName: String?,
     trackingConsent: TrackingConsent,
+    telemetrySampleRate: Float? = nil,
     nativeCrashReportingEnabled: Bool,
     site: Datadog.Configuration.DatadogEndpoint? = nil,
     batchSize: Datadog.Configuration.BatchSize? = nil,
@@ -90,6 +92,7 @@ class DatadogFlutterConfiguration {
     self.env = env
     self.serviceName = serviceName
     self.trackingConsent = trackingConsent
+    self.telemetrySampleRate = telemetrySampleRate
     self.nativeCrashReportingEnabled = nativeCrashReportingEnabled
     self.site = site
     self.batchSize = batchSize
@@ -108,6 +111,7 @@ class DatadogFlutterConfiguration {
       serviceName = try? castUnwrap(encoded["serviceName"])
       nativeCrashReportingEnabled = try castUnwrap(encoded["nativeCrashReportEnabled"])
       trackingConsent = try TrackingConsent.parseFromFlutter(castUnwrap(encoded["trackingConsent"]))
+      telemetrySampleRate = (encoded["telemetrySampleRate"] as? NSNumber)?.floatValue
     } catch {
       return nil
     }
@@ -144,6 +148,10 @@ class DatadogFlutterConfiguration {
 
     if nativeCrashReportingEnabled {
       _ = ddConfigBuilder.enableCrashReporting(using: DDCrashReportingPlugin())
+    }
+
+    if let telemetrySampleRate = telemetrySampleRate {
+      _ = ddConfigBuilder.set(sampleTelemetry: telemetrySampleRate)
     }
 
     if let site = site {

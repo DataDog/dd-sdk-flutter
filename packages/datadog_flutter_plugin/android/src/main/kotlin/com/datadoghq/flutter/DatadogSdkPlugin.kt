@@ -50,6 +50,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         binding = flutterPluginBinding
     }
 
+    @Suppress("LongMethod")
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
         when (call.method) {
             "initialize" -> {
@@ -63,22 +64,30 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                         // Maybe use DevLogger instead?
                         Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION)
                     }
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
                 }
-                result.success(null)
             }
             "setSdkVerbosity" -> {
-                call.argument<String>("value")?.let {
-                    val verbosity = parseVerbosity(it)
+                val value = call.argument<String>("value")
+                if (value != null) {
+                    val verbosity = parseVerbosity(value)
                     Datadog.setVerbosity(verbosity)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
                 }
-                result.success(null)
             }
             "setTrackingConsent" -> {
-                call.argument<String>("value")?.let {
-                    val trackingConsent = parseTrackingConsent(it)
+                val value = call.argument<String>("value")
+                if (value != null) {
+                    val trackingConsent = parseTrackingConsent(value)
                     Datadog.setTrackingConsent(trackingConsent)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
                 }
-                result.success(null)
             }
             "setUserInfo" -> {
                 val id = call.argument<String>("id")
@@ -87,8 +96,30 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 val extraInfo = call.argument<Map<String, Any?>>("extraInfo")
                 if (extraInfo != null) {
                     Datadog.setUserInfo(id, name, email, extraInfo)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
                 }
-                result.success(null)
+            }
+            "telemetryDebug" -> {
+                val message = call.argument<String>("message")
+                if (message != null) {
+                    Datadog._internal._telemetry.debug(message)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
+                }
+            }
+            "telemetryError" -> {
+                val message = call.argument<String>("message")
+                if (message != null) {
+                    val stack = call.argument<String>("stack")
+                    val kind = call.argument<String>("kind")
+                    Datadog._internal._telemetry.error(message, stack, kind)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
+                }
             }
             "flushAndDeinitialize" -> {
                 invokePrivateShutdown(result)
@@ -128,7 +159,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     internal fun invokePrivateShutdown(result: Result) {
-        executor.execute {
+        executor.submit {
             simpleInvokeOn("flushAndShutdownExecutors", Datadog)
             simpleInvokeOn("stop", Datadog)
 
@@ -142,9 +173,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
             rumPlugin?.teardown(binding)
             rumPlugin = null
+        }.get()
 
-            result.success(null)
-        }
+        result.success(null)
     }
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {

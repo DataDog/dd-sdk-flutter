@@ -56,4 +56,18 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
     return methodChannel
         .invokeMethod('flushAndDeinitialize', <String, Object?>{});
   }
+
+  @override
+  Future<void> sendTelemetryDebug(String message) {
+    return methodChannel.invokeMethod('telemetryDebug', {'message': message});
+  }
+
+  @override
+  Future<void> sendTelemetryError(String message, String? stack, String? kind) {
+    return methodChannel.invokeMethod('telemetryError', {
+      'message': message,
+      'stack': stack,
+      'kind': kind,
+    });
+  }
 }

@@ -68,8 +68,10 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             if let verbosityString = arguments["value"] as? String {
                 let verbosity = LogLevel.parseFromFlutter(verbosityString)
                 Datadog.verbosityLevel = verbosity
+                result(nil)
+            } else {
+                result(FlutterError.missingParameter(methodName: call.method))
             }
-            result(nil)
         case "setUserInfo":
             if let extraInfo = arguments["extraInfo"] as? [String: Any?] {
                 let id = arguments["id"] as? String
@@ -77,14 +79,35 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                 let email = arguments["email"] as? String
                 let encodedAttributes = castFlutterAttributesToSwift(extraInfo)
                 Datadog.setUserInfo(id: id, name: name, email: email, extraInfo: encodedAttributes)
+                result(nil)
+            } else {
+                result(FlutterError.missingParameter(methodName: call.method))
             }
-            result(nil)
         case "setTrackingConsent":
             if let trackingConsentString = arguments["value"] as? String {
                 let trackingConsent = TrackingConsent.parseFromFlutter(trackingConsentString)
                 Datadog.set(trackingConsent: trackingConsent)
+                result(nil)
+            } else {
+                result(FlutterError.missingParameter(methodName: call.method))
             }
-            result(nil)
+        case "telemetryDebug":
+            if let message = arguments["message"] as? String {
+                Datadog._internal._telemtry.debug(id: "datadog_flutter:\(message)", message: message)
+                result(nil)
+            } else {
+                result(FlutterError.missingParameter(methodName: call.method))
+            }
+        case "telemetryError":
+            if let message = arguments["message"] as? String {
+                let stack = arguments["stack"] as? String
+                let kind = arguments["kind"] as? String
+                Datadog._internal._telemtry.error(id: "datadog_flutter:\(String(describing: kind)):\(message)",
+                                                  message: message, kind: kind, stack: stack)
+                result(nil)
+            } else {
+                result(FlutterError.missingParameter(methodName: call.method))
+            }
 #if DD_SDK_COMPILED_FOR_TESTING
         case "flushAndDeinitialize":
             Datadog.flushAndDeinitialize()

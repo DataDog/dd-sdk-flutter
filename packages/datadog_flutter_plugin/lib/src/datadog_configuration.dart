@@ -229,6 +229,15 @@ class DdSdkConfiguration {
   /// Set a custom endpoint to send information to.
   String? customEndpoint;
 
+  /// The sampling rate for Internal Telemetry (info related to the work of the
+  /// SDK internals).
+  ///
+  /// The sampling rate must be a value between 0 and 100. A value of 0 means no
+  /// telemetry will be sent, 100 means all telemetry will be sent. When
+  /// [telemetrySampleRate] is set to null, the default value from the iOS and
+  /// Android SDK is used, which is 20.
+  double? telemetrySampleRate;
+
   /// A list of first party hosts, used in conjunction with [trackHttpClient]
   ///
   /// Each request will be classified as 1st- or 3rd-party based on the host
@@ -271,6 +280,7 @@ class DdSdkConfiguration {
     this.uploadFrequency,
     this.batchSize,
     this.customEndpoint,
+    this.telemetrySampleRate,
     this.firstPartyHosts = const [],
     this.loggingConfiguration,
     this.rumConfiguration,
@@ -287,6 +297,7 @@ class DdSdkConfiguration {
       'site': site.toString(),
       'serviceName': serviceName,
       'batchSize': batchSize?.toString(),
+      'telemetrySampleRate': telemetrySampleRate,
       'uploadFrequency': uploadFrequency?.toString(),
       'trackingConsent': trackingConsent.toString(),
       'firstPartyHosts': firstPartyHosts,

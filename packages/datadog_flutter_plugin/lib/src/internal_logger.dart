@@ -5,6 +5,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'datadog_configuration.dart';
+import 'datadog_sdk_platform_interface.dart';
 import 'helpers.dart';
 
 /// This class is used internally by the SDK to log issues to the client
@@ -37,11 +38,11 @@ class InternalLogger {
   }
 
   /// Send a log to the Datadog org, not to the customer's org. This feature is
-  /// used mostly to track potential issues in the Datadog SDK. It is opt-in,
-  /// and requires specific configuration to be enabled. It is never enabled by
-  /// default.
-  void sendToDatadog(String message) {
-    // TODO: Internal telemetry
+  /// used mostly to track potential issues in the Datadog SDK. The rate at which
+  /// data is sent to Datadog is set by [DdSdkConfiguration.telemetrySampleRate]
+  void sendToDatadog(String message, StackTrace? stack, String? kind) {
+    DatadogSdkPlatform.instance
+        .sendTelemetryError(message, stack.toString(), kind);
   }
 
   // Standard error strings
