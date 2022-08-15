@@ -143,7 +143,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                 clientToken: flutterConfig.clientToken,
                 environment: flutterConfig.env
             )
-                .set(rumSessionsSamplingRate: rumConfig.sampleRate)
+            .set(rumSessionsSamplingRate: rumConfig.sampleRate)
         } else {
             ddConfigBuilder = Datadog.Configuration.builderUsing(
                 clientToken: flutterConfig.clientToken,

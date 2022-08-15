@@ -7,67 +7,67 @@ import Flutter
 import Datadog
 
 enum InternalError: Error {
-  case pluginError
+    case pluginError
 }
 
 @UIApplicationMain
 @objc class AppDelegate: FlutterAppDelegate {
-  var methodChannel: FlutterMethodChannel!
+    var methodChannel: FlutterMethodChannel!
 
-  override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-  ) -> Bool {
-    GeneratedPluginRegistrant.register(with: self)
-    let crashPluginRegistry = registrar(forPlugin: "ExampleCrashPlugin")!
-    registerCrashPlugin(with: crashPluginRegistry)
+    override func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        GeneratedPluginRegistrant.register(with: self)
+        let crashPluginRegistry = registrar(forPlugin: "ExampleCrashPlugin")!
+        registerCrashPlugin(with: crashPluginRegistry)
 
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }
-
-  @objc func registerCrashPlugin(with registrar: FlutterPluginRegistrar) {
-    methodChannel = FlutterMethodChannel(name: "datadog_sdk_flutter.example.crash",
-                                       binaryMessenger: registrar.messenger())
-    methodChannel.setMethodCallHandler { call, result in
-      // swiftlint:disable:next force_try
-      try! self.handle(methodCall: call, result: result)
+        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
-  }
 
-  func handle(methodCall: FlutterMethodCall, result: FlutterResult) throws {
-    switch methodCall.method {
-    case "crashNative":
-      let crashValue: Int? = nil
-      _ = crashValue! + 5
-
-    case "throwException":
-      throw InternalError.pluginError
-
-    case "performCallback":
-      let arguments = methodCall.arguments as! [String: Any?]
-      let callbackId = arguments["callbackId"] as! Int
-
-      methodChannel.invokeMethod("nativeCallback", arguments: [
-        "callbackId": callbackId,
-        "callbackValue": "Value String"
-      ]) { callbackResult in
-        switch callbackResult {
-        case let error as FlutterError:
-          Global.rum.addError(message: error.message ?? "Unknown Dart Error",
-                              source: RUMErrorSource.source,
-                              stack: nil,
-                              attributes: [
-                                "errorCode": error.code
-                              ])
-        default:
-          break
+    @objc func registerCrashPlugin(with registrar: FlutterPluginRegistrar) {
+        methodChannel = FlutterMethodChannel(name: "datadog_sdk_flutter.example.crash",
+                                             binaryMessenger: registrar.messenger())
+        methodChannel.setMethodCallHandler { call, result in
+            // swiftlint:disable:next force_try
+            try! self.handle(methodCall: call, result: result)
         }
-      }
-
-    default:
-      break
     }
 
-    result(nil)
-  }
+    func handle(methodCall: FlutterMethodCall, result: FlutterResult) throws {
+        switch methodCall.method {
+        case "crashNative":
+            let crashValue: Int? = nil
+            _ = crashValue! + 5
+
+        case "throwException":
+            throw InternalError.pluginError
+
+        case "performCallback":
+            let arguments = methodCall.arguments as! [String: Any?]
+            let callbackId = arguments["callbackId"] as! Int
+
+            methodChannel.invokeMethod("nativeCallback", arguments: [
+                "callbackId": callbackId,
+                "callbackValue": "Value String"
+            ]) { callbackResult in
+                switch callbackResult {
+                case let error as FlutterError:
+                    Global.rum.addError(message: error.message ?? "Unknown Dart Error",
+                                        source: RUMErrorSource.source,
+                                        stack: nil,
+                                        attributes: [
+                                            "errorCode": error.code
+                                        ])
+                default:
+                    break
+                }
+            }
+
+        default:
+            break
+        }
+
+        result(nil)
+    }
 }
