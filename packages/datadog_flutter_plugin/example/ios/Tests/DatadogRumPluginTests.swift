@@ -419,10 +419,11 @@ class DatadogRumPluginTests: XCTestCase {
 
     func testReportLongTask_CallsInternal() {
         let startTime = Date.now
+        let startTimeInterval = startTime.timeIntervalSince1970
         let duration = 340124
 
         let call = FlutterMethodCall(methodName: "reportLongTask", arguments: [
-            "at": startTime.timeIntervalSince1970 * 1000.0,
+            "at": startTimeInterval * 1000.0,
             "duration": duration
         ])
 
@@ -433,7 +434,8 @@ class DatadogRumPluginTests: XCTestCase {
 
         let mockInternal = mock._internal as! MockRumInternalProxy
         XCTAssertEqual(mockInternal.callLog, [
-            .addLongTask(at: startTime, duration: TimeInterval(Double(duration) / 1000.0), attributes: [:])
+            .addLongTask(at: Date(timeIntervalSince1970: startTimeInterval), duration: TimeInterval(Double(duration) / 1000.0),
+                         attributes: [:])
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }

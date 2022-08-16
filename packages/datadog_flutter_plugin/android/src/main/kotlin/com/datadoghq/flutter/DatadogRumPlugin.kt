@@ -14,6 +14,7 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.lang.ClassCastException
+import java.util.concurrent.TimeUnit
 
 class DatadogRumPlugin(
     rumInstance: RumMonitor? = null
@@ -214,7 +215,7 @@ class DatadogRumPlugin(
                     val duration = call.argument<Int>(PARAM_DURATION)
                     if (at != null && duration != null) {
                         // Duration is in ms, convert to ns
-                        val durationNs = duration.toLong() * 1000
+                        val durationNs = TimeUnit.MILLISECONDS.toNanos(duration.toLong())
                         rum?._getInternal()?.addLongTask(durationNs, "")
                         result.success(null)
                     } else {

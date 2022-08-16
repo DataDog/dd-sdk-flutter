@@ -26,6 +26,7 @@ import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import java.util.concurrent.TimeUnit
 
 @ExtendWith(ForgeExtension::class)
 @OptIn(kotlin.ExperimentalStdlibApi::class)
@@ -448,7 +449,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        val durationNs = duration.toLong() * 1000
+        val durationNs = TimeUnit.MILLISECONDS.toNanos(duration.toLong())
         verify { mockRumProxy.addLongTask(durationNs, "") }
         verify { mockResult.success(null) }
     }

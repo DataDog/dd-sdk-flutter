@@ -178,8 +178,13 @@ void main() {
     // than 200 ms (triggered by the tapping of the button)
     var over200 = 0;
     for (var longTask in view2.longTaskEvents) {
-      expect(longTask.duration, greaterThan(100000));
-      if (longTask.duration! > 200000) {
+      expect(longTask.duration,
+          greaterThan(const Duration(milliseconds: 100).inNanoseconds));
+      // Nothing should have taken more than 2 seconds
+      expect(longTask.duration,
+          lessThan(const Duration(seconds: 2).inNanoseconds));
+      if (longTask.duration! >
+          const Duration(milliseconds: 200).inNanoseconds) {
         over200++;
       }
     }
