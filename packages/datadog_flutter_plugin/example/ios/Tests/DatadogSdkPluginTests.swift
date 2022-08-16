@@ -10,6 +10,7 @@ extension UserInfo: EquatableInTests { }
 
 // Note: These tests are in the example app because Flutter does not provide a simple
 // way to to include tests in the Podspec.
+// swiftlint:disable:next type_body_length
 class FlutterSdkTests: XCTestCase {
 
     override func setUp() {
@@ -21,6 +22,39 @@ class FlutterSdkTests: XCTestCase {
 
     override func tearDown() {
         Datadog.flushAndDeinitialize()
+    }
+
+    let contracts = [
+        Contract(methodName: "setSdkVerbosity", requiredParameters: [
+            "value": .string
+        ]),
+        Contract(methodName: "setUserInfo", requiredParameters: [
+            "extraInfo": .map
+        ]),
+        Contract(methodName: "setTrackingConsent", requiredParameters: [
+            "value": .string
+        ]),
+        Contract(methodName: "telemetryDebug", requiredParameters: [
+            "message": .string
+        ]),
+        Contract(methodName: "telemetryError", requiredParameters: [
+            "message": .string
+        ])
+    ]
+
+    func testDatadogSdkCalls_FollowContracts() {
+        let flutterConfig = DatadogFlutterConfiguration(
+            clientToken: "fakeClientToken",
+            env: "prod",
+            serviceName: "serviceName",
+            trackingConsent: TrackingConsent.granted,
+            nativeCrashReportingEnabled: false
+        )
+
+        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig)
+
+        testContracts(contracts: contracts, plugin: plugin)
     }
 
     func testInitialziation_MissingConfiguration_DoesNotInitFeatures() {

@@ -21,7 +21,10 @@ void _handleError(Object error, StackTrace stackTrace, String methodName,
     logger.error(
         'This may be a bug in the Datadog SDK. Please report it to Datadog.');
     logger.sendToDatadog(
-        'Platform exception caught by wrap(): ${error.toString()}');
+      'Platform exception caught by wrap(): ${error.toString()}',
+      stackTrace,
+      'PlatformException',
+    );
   } else {
     throw error;
   }

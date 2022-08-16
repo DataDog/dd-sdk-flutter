@@ -17,6 +17,7 @@ import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.privacy.TrackingConsent
+import fr.xgouchet.elmyr.annotation.FloatForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import org.junit.jupiter.api.Test
@@ -114,6 +115,7 @@ class DatadogConfigurationTest {
             "batchSize" to null,
             "uploadFrequency" to null,
             "trackingConsent" to "TrackingConsent.granted",
+            "telemetrySampleRate" to null,
             "customEndpoint" to null,
             "firstPartyHosts" to listOf<String>(),
             "rumConfiguration" to null,
@@ -132,12 +134,14 @@ class DatadogConfigurationTest {
     }
 
     @Test
+    @Suppress("LongParameterList")
     fun `M decode all properties W fromEncoded`(
         @StringForgery clientToken: String,
         @StringForgery environment: String,
         @StringForgery additionalKey: String,
         @StringForgery additionalValue: String,
         @StringForgery firstPartyHost: String,
+        @FloatForgery telemetrySampleRate: Float
     ) {
         // GIVEN
         val encoded = mapOf<String, Any?>(
@@ -149,6 +153,7 @@ class DatadogConfigurationTest {
             "batchSize" to "BatchSize.small",
             "uploadFrequency" to "UploadFrequency.frequent",
             "trackingConsent" to "TrackingConsent.granted",
+            "telemetrySampleRate" to telemetrySampleRate,
             "customEndpoint" to "customEndpoint",
             "firstPartyHosts" to listOf(firstPartyHost),
             "rumConfiguration" to null,
@@ -165,6 +170,7 @@ class DatadogConfigurationTest {
         assertThat(config.site).isEqualTo(DatadogSite.US3)
         assertThat(config.batchSize).isEqualTo(BatchSize.SMALL)
         assertThat(config.customEndpoint).isEqualTo("customEndpoint")
+        assertThat(config.telemetrySampleRate).isEqualTo(telemetrySampleRate)
         assertThat(config.additionalConfig).isEqualTo(mapOf(
             additionalKey to additionalValue
         ))
