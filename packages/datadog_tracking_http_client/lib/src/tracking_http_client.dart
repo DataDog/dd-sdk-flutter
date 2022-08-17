@@ -113,10 +113,13 @@ class DatadogTrackingHttpClient implements HttpClient {
         rum.startResourceLoading(
             rumKey, rumHttpMethod, url.toString(), attributes);
       }
-    } catch (e) {
+    } catch (e, st) {
       datadogSdk.internalLogger.sendToDatadog(
-          '$DatadogTrackingHttpClient encountered an error while attempting '
-          ' to track an _openUrl call: $e');
+        '$DatadogTrackingHttpClient encountered an error while attempting '
+        ' to track an _openUrl call: $e',
+        st,
+        e.runtimeType.toString(),
+      );
     }
 
     HttpClientRequest request;
@@ -135,10 +138,13 @@ class DatadogTrackingHttpClient implements HttpClient {
         try {
           rum?.stopResourceLoadingWithErrorInfo(
               rumKey, e.toString(), e.runtimeType.toString());
-        } catch (innerE) {
+        } catch (innerE, st) {
           datadogSdk.internalLogger.sendToDatadog(
-              '$DatadogTrackingHttpClient encountered an error while attempting '
-              ' to track an _openUrl error: $e');
+            '$DatadogTrackingHttpClient encountered an error while attempting '
+            ' to track an _openUrl error: $e',
+            st,
+            e.runtimeType.toString(),
+          );
         }
       }
       rethrow;
@@ -317,9 +323,12 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
         datadogSdk.rum?.stopResourceLoadingWithErrorInfo(
             rumKey!, e.toString(), e.runtimeType.toString());
       }
-    } catch (e) {
+    } catch (e, st) {
       datadogSdk.internalLogger.sendToDatadog(
-          '$DatadogTrackingHttpClient encountered an error attempting to report a stream error; $e');
+        '$DatadogTrackingHttpClient encountered an error attempting to report a stream error; $e',
+        st,
+        e.runtimeType.toString(),
+      );
     }
   }
 
@@ -463,10 +472,13 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
               ?.stopResourceLoading(rumKey!, statusCode, resourceType, size);
         }
       }
-    } catch (e) {
+    } catch (e, st) {
       datadogSdk.internalLogger.sendToDatadog(
-          '$DatadogTrackingHttpClient encountered an error while attempting '
-          ' to finish a resource: $e');
+        '$DatadogTrackingHttpClient encountered an error while attempting '
+        ' to finish a resource: $e',
+        st,
+        e.runtimeType.toString(),
+      );
     }
   }
 

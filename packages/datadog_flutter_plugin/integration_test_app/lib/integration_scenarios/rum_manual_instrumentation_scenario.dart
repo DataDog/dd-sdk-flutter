@@ -92,7 +92,7 @@ class _RumManualInstrumentationScenarioState
   }
 
   Future<void> _fakeLoading() async {
-    await Future.delayed(const Duration(milliseconds: 50));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
     DatadogSdk.instance.rum?.addTiming('content-ready');
   }
 
@@ -110,7 +110,7 @@ class _RumManualInstrumentationScenarioState
     rum?.startResourceLoading(simulatedResourceKey2, RumHttpMethod.get,
         '$fakeRootUrl$simulatedResourceKey2');
 
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
     rum?.stopResourceLoading(simulatedResourceKey1, 200, RumResourceType.image);
     rum?.stopResourceLoadingWithErrorInfo(
         simulatedResourceKey2, 'Status code 400', 'ErrorLoading');
@@ -142,6 +142,7 @@ class RumManualInstrumentation2 extends StatefulWidget {
 
 class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
     implements RouteAware {
+  bool _longTaskReady = false;
   bool _nextReady = false;
   late String _viewKey;
   final _viewName = 'SecondManualRumView';
@@ -193,16 +194,24 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
         title: const Text('Manual RUM 2'),
       ),
       body: Center(
-        child: ElevatedButton(
-          onPressed: _nextReady ? _onNextTapped : null,
-          child: const Text('Next Screen'),
+        child: Column(
+          children: [
+            ElevatedButton(
+              onPressed: _longTaskReady ? _triggerLongTask : null,
+              child: const Text('Trigger Long Task'),
+            ),
+            ElevatedButton(
+              onPressed: _nextReady ? _onNextTapped : null,
+              child: const Text('Next Screen'),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Future<void> _simulateActions() async {
-    await Future.delayed(const Duration(seconds: 1));
+    await Future<void>.delayed(const Duration(seconds: 1));
     DatadogSdk.instance.rum?.addErrorInfo(
       'Simulated view error',
       RumErrorSource.source,
@@ -212,10 +221,18 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
     );
     DatadogSdk.instance.rum
         ?.startUserAction(RumUserActionType.scroll, 'User Scrolling');
-    await Future.delayed(const Duration(seconds: 2));
+    await Future<void>.delayed(const Duration(seconds: 2));
     DatadogSdk.instance.rum?.stopUserAction(
         RumUserActionType.scroll, 'User Scrolling', {'scroll_distance': 12.2});
 
+    setState(() {
+      _longTaskReady = true;
+    });
+  }
+
+  void _triggerLongTask() {
+    final doneTime = DateTime.now().add(const Duration(milliseconds: 200));
+    while (DateTime.now().compareTo(doneTime) < 0) {}
     setState(() {
       _nextReady = true;
     });
@@ -224,7 +241,7 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
   void _onNextTapped() {
     DatadogSdk.instance.rum
         ?.addUserAction(RumUserActionType.tap, 'Next Screen');
-    Navigator.push(
+    Navigator.push<void>(
       context,
       MaterialPageRoute(
         builder: (_) => const RumManualInstrumentation3(),
@@ -297,7 +314,7 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
     DatadogSdk.instance.rum?.addTiming('content-ready');
 
     // Stop the view to make sure it doesn't get held over to the next session.
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future<void>.delayed(const Duration(milliseconds: 500));
     if (kIsWeb) {
       // Since web doesn't have a 'stopView' method, send a new view instead
       DatadogSdk.instance.rum?.startView('blankView');

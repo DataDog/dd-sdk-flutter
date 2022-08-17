@@ -28,16 +28,19 @@ void main() {
                 return e.jsonData as List;
               } on FormatException {
                 // Web sends as newline separated
-                return e.data.split('\n').map((e) => json.decode(e)).toList();
+                return e.data
+                    .split('\n')
+                    .map<dynamic>((e) => json.decode(e))
+                    .toList();
               }
               // return null;
             })
             .whereType<List>()
-            .expand((e) => e)
+            .expand<dynamic>((e) => e)
+            .whereType<Map<String, Object?>>()
             // Ignore RUM sessions
-            .where((e) => !(e as Map<String, dynamic>).containsKey('session'))
-            .forEach((e) => logs.add(LogDecoder(e as Map<String, dynamic>)));
-
+            .where((e) => !(e).containsKey('session'))
+            .forEach((e) => logs.add(LogDecoder(e)));
         return logs.length >= 5;
       },
     );
@@ -90,11 +93,12 @@ void main() {
     expect(logs[4].log['second-logger-attribute'], 'second-value');
     expect(logs[4].log['logger-attribute1'], isNull);
     expect(logs[4].log['logger-attribute2'], isNull);
-    expect(getNestedProperty('logger.name', logs[4].log), 'second_logger');
+    expect(
+        getNestedProperty<String>('logger.name', logs[4].log), 'second_logger');
 
     for (final log in logs) {
       expect(log.serviceName,
-          equalsIgnoringCase('com.datadoghq.flutter.integrationtestapp'));
+          equalsIgnoringCase('com.datadoghq.flutter.integration'));
       if (!kIsWeb) {
         expect(log.threadName, 'main');
       }

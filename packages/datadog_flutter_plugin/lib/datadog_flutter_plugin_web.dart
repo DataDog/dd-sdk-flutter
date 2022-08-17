@@ -48,4 +48,15 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
 
   @override
   Future<void> flushAndDeinitialize() async {}
+
+  @override
+  Future<void> sendTelemetryDebug(String message) async {
+    // Not currently supported
+  }
+
+  @override
+  Future<void> sendTelemetryError(
+      String message, String? stack, String? kind) async {
+    // Not currently supported
+  }
 }

@@ -14,11 +14,14 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.lang.ClassCastException
+import java.util.concurrent.TimeUnit
 
 class DatadogRumPlugin(
     rumInstance: RumMonitor? = null
 ) : MethodChannel.MethodCallHandler {
     companion object RumParameterNames {
+        const val PARAM_AT = "at"
+        const val PARAM_DURATION = "duration"
         const val PARAM_KEY = "key"
         const val PARAM_VALUE = "value"
         const val PARAM_NAME = "name"
@@ -202,6 +205,18 @@ class DatadogRumPlugin(
                     val key = call.argument<String>(PARAM_KEY)
                     if (key != null) {
                         GlobalRum.removeAttribute(key)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
+                }
+                "reportLongTask" -> {
+                    val at = call.argument<Long>(PARAM_AT)
+                    val duration = call.argument<Int>(PARAM_DURATION)
+                    if (at != null && duration != null) {
+                        // Duration is in ms, convert to ns
+                        val durationNs = TimeUnit.MILLISECONDS.toNanos(duration.toLong())
+                        rum?._getInternal()?.addLongTask(durationNs, "")
                         result.success(null)
                     } else {
                         result.missingParameter(call.method)

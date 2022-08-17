@@ -2,11 +2,30 @@
 
 ## Unreleased
 
+* Update Android SDK to 1.14.0-beta1
+* Update iOS SDK to 1.12.0-beta2
+  * Include the exact model information in RUM `device.model`. Also fixes [#133][]
+* Remove deprecated tracing feature.
+* Removed `RumHttpMethod.unknown` as it is translated GET on the native side anyway.
+* Added Long Task reporting.
+
+## 1.0.0-beta.3
+
+* Update Android SDK to 1.13.0-rc1
+  * Improve local LogCat messages from the SDK.
+  * Disables vitals collection when app is in the background.
+  * Fix updating Global RUM context when a view is stopped.
+  * For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#1130--2022-05-24).
+* Update iOS SDK to 1.11.0
+  * For a full list of changes see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#1110--13-06-2022)
+* Made analysis rules stricter and switched several attribute map parameters from `Map<String, dynamic>` to `Map<String, Object?>` for better compatibility with `implicit-dynamic: false` See [#143][] and [#148][]
+* Fix `serviceName` configuration parameter [#159][]
+
 ## 1.0.0-beta.2
 
 * Update iOS SDK to 1.11-rc1
   * Allow manually tracked resources in RUM Sessions to detect first party hosts.
-  * Better error message when encountering an invalid token (Fixes #117)
+  * Better error message when encountering an invalid token (Fixes #117).
   * Fix RUM events to support configured `source` property.
   * For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#1110-rc1--18-05-2022).
 * Added `datadogReportingThreshold` to `LoggingConfiguration` to support only sending logs above a certain threshold to Datadog.
@@ -46,3 +65,8 @@
   * Android Support with Datadog SDK for Android 1.12.0-alpha2
 * Automatically track network requests with `DatadogTrackingHttpClient`
 * Error reporting for iOS, Android, and Android NDK crashes.
+
+[#133]: https://github.com/DataDog/dd-sdk-flutter/issues/133
+[#143]: https://github.com/DataDog/dd-sdk-flutter/issues/143
+[#148]: https://github.com/DataDog/dd-sdk-flutter/issues/148
+[#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159

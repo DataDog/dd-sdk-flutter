@@ -13,7 +13,7 @@ import '../web_helpers.dart';
 import 'ddrum_platform_interface.dart';
 
 class DdRumWeb extends DdRumPlatform {
-  final Map<String, dynamic> currentAttributes = {};
+  final Map<String, Object?> currentAttributes = {};
 
   void initRum(DdSdkConfiguration configuration) {
     final rumConfiguration = configuration.rumConfiguration;
@@ -114,6 +114,11 @@ class DdRumWeb extends DdRumPlatform {
   @override
   Future<void> stopView(String key, Map<String, dynamic> attributes) async {
     // NOOP
+  }
+
+  @override
+  Future<void> reportLongTask(DateTime at, int durationMs) async {
+    // NOOP - The browser SDK will report this automatically
   }
 }
 

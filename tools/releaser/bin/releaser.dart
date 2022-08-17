@@ -25,27 +25,12 @@ void main(List<String> arguments) async {
       defaultsTo: false,
     )
     ..addFlag(
-      'no-commit',
-      help: "Don't commit or push changes",
-      defaultsTo: false,
-    )
-    ..addFlag(
       'dry-run',
       abbr: 'd',
       help: "Don't perform any actual operations. Also bypasses git checks",
       defaultsTo: false,
     )
     ..addFlag('verbose', defaultsTo: false)
-    ..addOption(
-      'branch',
-      abbr: 'b',
-      help: 'The branch to merge into. Defaults to `develop`',
-    )
-    ..addFlag(
-      'no-main',
-      help: 'Do not submit a pull request into main',
-      negatable: false,
-    )
     ..addFlag(
       'help',
       abbr: 'h',
@@ -78,14 +63,24 @@ void main(List<String> arguments) async {
     return;
   }
 
+  final currentBranch = await commandArgs.gitDir.currentBranch();
+  final choreBranch =
+      'chore/${commandArgs.packageName}/prep-v${commandArgs.version}';
+
   final commands = <Command>[
     ValidateReleaseCommand(),
-    CreateChoreBranchCommand(),
+    CreateBranchCommand(choreBranch),
     UpdateVersionsCommand(),
+    CommitChangesCommand(
+        '🚀 Preparing for release of ${commandArgs.packageName} ${commandArgs.version}'),
+    CreateReleaseBranchCommand(),
     ValidatePublishDryRun(),
-    if (commandArgs.commitChanges) ...[
-      CommitChangesCommand(),
-    ]
+    SwitchBranchCommand(choreBranch),
+    // Do pre-release always for now. Later use the branch name as
+    // the indicator.
+    BumpVersionCommand(VersionBumpType.prerelease),
+    CommitChangesCommand(
+        '📝 Bump version of ${commandArgs.packageName} to next potential release.'),
   ];
 
   for (final command in commands) {
@@ -105,7 +100,6 @@ Future<CommandArguments?> _validateArguments(ArgResults argResults) async {
   final version = argResults['version'];
   bool dryRun = argResults['dry-run'];
   bool skipGitChecks = argResults['skip-git-checks'];
-  bool commitChanges = !argResults['no-commit'];
 
   final gitDir = await getGitDir();
   if (gitDir == null) {
@@ -117,7 +111,6 @@ Future<CommandArguments?> _validateArguments(ArgResults argResults) async {
     packageRoot: path.join(gitDir.path, 'packages', packageName),
     gitDir: gitDir,
     skipGitChecks: skipGitChecks,
-    commitChanges: commitChanges,
     version: version,
     dryRun: dryRun,
   );

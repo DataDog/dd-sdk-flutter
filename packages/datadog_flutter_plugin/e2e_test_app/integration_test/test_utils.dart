@@ -30,7 +30,6 @@ Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
       site: DatadogSite.us1,
       trackingConsent: TrackingConsent.granted)
     ..loggingConfiguration = LoggingConfiguration()
-    ..tracingConfiguration = TracingConfiguration()
     ..rumConfiguration = RumConfiguration(applicationId: applicationId)
     ..serviceName = 'com.datadog.flutter.nightly';
 
@@ -77,12 +76,4 @@ void sendRandomLog(WidgetTester tester) {
     randomString(),
     e2eAttributes(tester),
   );
-}
-
-DdSpan startSpan(String operationName) {
-  // Not used in any currently running tests, ignoring deprecated use for now.
-  // ignore: deprecated_member_use
-  return DatadogSdk.instance.traces!.startSpan(operationName, tags: {
-    'operating_system': Platform.operatingSystem,
-  });
 }

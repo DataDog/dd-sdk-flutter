@@ -13,8 +13,9 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     // NOTE: Although these are instances, they are still registered globally to
     // a method channel. That might be something we want to change in the future
     public private(set) var logs: DatadogLogsPlugin?
-    public private(set) var tracer: DatadogTracesPlugin?
     public private(set) var rum: DatadogRumPlugin?
+
+    var currentConfiguration: [AnyHashable: Any]?
 
     public init(channel: FlutterMethodChannel) {
         self.channel = channel
@@ -27,11 +28,10 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         registrar.addMethodCallDelegate(instance, channel: channel)
 
         DatadogLogsPlugin.register(with: registrar)
-        DatadogTracesPlugin.register(with: registrar)
         DatadogRumPlugin.register(with: registrar)
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         guard let arguments = call.arguments as? [String: Any] else {
             result(
@@ -44,12 +44,23 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         case "initialize":
             let configArg = arguments["configuration"] as! [String: Any?]
             if let config = DatadogFlutterConfiguration(fromEncoded: configArg) {
-                initialize(configuration: config)
+                if !Datadog.isInitialized {
+                    initialize(configuration: config)
+                    currentConfiguration = configArg as [AnyHashable: Any]
 
-                if let setLogCallback = arguments["setLogCallback"] as? Bool,
-                   setLogCallback {
-                    consolePrint = { value in
-                        self.channel.invokeMethod("logCallback", arguments: value)
+                    if let setLogCallback = arguments["setLogCallback"] as? Bool,
+                       setLogCallback {
+                        consolePrint = { value in
+                            self.channel.invokeMethod("logCallback", arguments: value)
+                        }
+                    }
+                } else {
+                    let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
+                    if !dict.isEqual(to: currentConfiguration!) {
+                        consolePrint(
+                            "🔥 Reinitialziing the DatadogSDK with different options, even after a hot restart," +
+                            " is not supported. Cold restart your application to change your current configuation."
+                        )
                     }
                 }
             }
@@ -58,8 +69,10 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             if let verbosityString = arguments["value"] as? String {
                 let verbosity = LogLevel.parseFromFlutter(verbosityString)
                 Datadog.verbosityLevel = verbosity
+                result(nil)
+            } else {
+                result(FlutterError.missingParameter(methodName: call.method))
             }
-            result(nil)
         case "setUserInfo":
             if let extraInfo = arguments["extraInfo"] as? [String: Any?] {
                 let id = arguments["id"] as? String
@@ -67,20 +80,40 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                 let email = arguments["email"] as? String
                 let encodedAttributes = castFlutterAttributesToSwift(extraInfo)
                 Datadog.setUserInfo(id: id, name: name, email: email, extraInfo: encodedAttributes)
+                result(nil)
+            } else {
+                result(FlutterError.missingParameter(methodName: call.method))
             }
-            result(nil)
         case "setTrackingConsent":
             if let trackingConsentString = arguments["value"] as? String {
                 let trackingConsent = TrackingConsent.parseFromFlutter(trackingConsentString)
                 Datadog.set(trackingConsent: trackingConsent)
+                result(nil)
+            } else {
+                result(FlutterError.missingParameter(methodName: call.method))
             }
-            result(nil)
+        case "telemetryDebug":
+            if let message = arguments["message"] as? String {
+                Datadog._internal._telemtry.debug(id: "datadog_flutter:\(message)", message: message)
+                result(nil)
+            } else {
+                result(FlutterError.missingParameter(methodName: call.method))
+            }
+        case "telemetryError":
+            if let message = arguments["message"] as? String {
+                let stack = arguments["stack"] as? String
+                let kind = arguments["kind"] as? String
+                Datadog._internal._telemtry.error(id: "datadog_flutter:\(String(describing: kind)):\(message)",
+                                                  message: message, kind: kind, stack: stack)
+                result(nil)
+            } else {
+                result(FlutterError.missingParameter(methodName: call.method))
+            }
 #if DD_SDK_COMPILED_FOR_TESTING
         case "flushAndDeinitialize":
             Datadog.flushAndDeinitialize()
             consolePrint = { value in print(value) }
             logs = nil
-            tracer = nil
             rum = nil
             result(nil)
 #endif
@@ -96,10 +129,6 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                            trackingConsent: configuration.trackingConsent,
                            configuration: ddConfiguration)
 
-        if let tracingConfiguration = configuration.tracingConfiguration {
-            tracer = DatadogTracesPlugin.instance
-            tracer?.initialize(configuration: tracingConfiguration)
-        }
         if let rumConfiguration = configuration.rumConfiguration {
             rum = DatadogRumPlugin.instance
             rum?.initialize(configuration: rumConfiguration)
@@ -154,7 +183,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             _ = ddConfigBuilder.trackUIKitRUMViews()
         }
 
-        if let serviceName = flutterConfig.additionalConfig["_dd.service_name"] as? String {
+        if let serviceName = flutterConfig.serviceName {
             _ = ddConfigBuilder.set(serviceName: serviceName)
         }
 

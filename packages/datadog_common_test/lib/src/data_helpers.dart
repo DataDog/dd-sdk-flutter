@@ -22,3 +22,14 @@ extension RandomExtension<T> on List<T> {
     return this[_random.nextInt(length)];
   }
 }
+
+extension DurationHelpers on Duration {
+  /// The number of whole nanoseconds spanned by this [Duration].
+  ///
+  /// Note, Dart only has precision up to the microsecond level, so the last
+  /// digits of this value will always be zero.
+  /// ```
+  int get inNanoseconds {
+    return inMicroseconds * 1000;
+  }
+}

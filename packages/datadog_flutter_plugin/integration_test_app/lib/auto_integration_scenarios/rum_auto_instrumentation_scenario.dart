@@ -30,7 +30,7 @@ class _RumAutoInstrumentationScenarioState
   void _onTap(int index) {
     switch (index) {
       case 0:
-        Navigator.push(
+        Navigator.push<void>(
           context,
           MaterialPageRoute(
             settings: const RouteSettings(

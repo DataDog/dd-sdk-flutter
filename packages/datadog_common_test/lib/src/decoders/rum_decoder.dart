@@ -2,6 +2,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'dart:io';
+
+import 'package:datadog_common_test/datadog_common_test.dart';
+
 class RumSessionDecoder {
   final List<RumViewVisit> visits;
 
@@ -53,6 +57,10 @@ class RumSessionDecoder {
           final errorEvent = RumErrorEventDecoder(e.rumEvent);
           visit.errorEvents.add(errorEvent);
           break;
+        case 'long_task':
+          final longTaskEvent = RumLongTaskEventDecoder(e.rumEvent);
+          visit.longTaskEvents.add(longTaskEvent);
+          break;
       }
     }
 
@@ -74,6 +82,7 @@ class RumViewVisit {
   final List<RumActionEventDecoder> actionEvents = [];
   final List<RumResourceEventDecoder> resourceEvents = [];
   final List<RumErrorEventDecoder> errorEvents = [];
+  final List<RumLongTaskEventDecoder> longTaskEvents = [];
 
   RumViewVisit(this.id, this.name, this.path);
 }
@@ -93,6 +102,13 @@ class RumEventDecoder {
   final Dd dd;
 
   String get eventType => rumEvent['type'] as String;
+  String get service {
+    if (!kManualIsWeb) {
+      if (Platform.isIOS) return rumEvent['service'];
+    }
+    return rumEvent['service'];
+  }
+
   int get date => rumEvent['date'] as int;
 
   Map<String, dynamic>? get context => rumEvent['context'];
@@ -150,6 +166,12 @@ class RumErrorEventDecoder extends RumEventDecoder {
   int? get resourceStatusCode => rumEvent['error']['resource']?['statusCode'];
 }
 
+class RumLongTaskEventDecoder extends RumEventDecoder {
+  RumLongTaskEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+
+  int? get duration => rumEvent['long_task']['duration'];
+}
+
 class RumViewDecoder {
   final Map<String, dynamic> viewData;
 
@@ -160,6 +182,7 @@ class RumViewDecoder {
   int get actionCount => viewData['action']['count'] as int;
   int get resourceCount => viewData['resource']['count'] as int;
   int get errorCount => viewData['error']['count'] as int;
+  int get longTaskCount => viewData['long_task']['count'] as int;
 
   Map<String, int> get customTimings =>
       (viewData['custom_timings'] as Map<String, dynamic>)

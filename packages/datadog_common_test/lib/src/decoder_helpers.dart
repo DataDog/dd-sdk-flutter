@@ -11,7 +11,7 @@ import 'package:collection/collection.dart';
 // in all tests
 bool kManualIsWeb = false;
 
-T getNestedProperty<T>(String key, Map<String, dynamic> from) {
+T getNestedProperty<T>(String key, Map<String, Object?> from) {
   if (kManualIsWeb || Platform.isAndroid) {
     var lookupMap = from;
     var parts = key.split('.');

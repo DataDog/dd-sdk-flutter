@@ -21,9 +21,9 @@ void main() {
 
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.startView(any(), any(), any()))
-        .thenAnswer((_) => Future.value());
+        .thenAnswer((_) => Future<void>.value());
     when(() => mockRum.stopView(any(), any()))
-        .thenAnswer((_) => Future.value());
+        .thenAnswer((_) => Future<void>.value());
   });
 
   Widget _buildFor({required Widget child}) {
@@ -365,7 +365,7 @@ class SimpleNavigator extends StatelessWidget {
   void _onNavigate(BuildContext context) {
     RouteSettings? settings =
         nextRouteName == null ? null : RouteSettings(name: nextRouteName);
-    Navigator.of(context).push(MaterialPageRoute(
+    Navigator.of(context).push<void>(MaterialPageRoute(
       builder: builder,
       settings: settings,
     ));
@@ -438,7 +438,7 @@ class _MixedDestinationState extends State<MixedDestination>
   }
 
   void _onPush() {
-    Navigator.of(context).push(
+    Navigator.of(context).push<void>(
       MaterialPageRoute(builder: widget.nextPageBuilder!),
     );
   }

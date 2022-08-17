@@ -3,6 +3,7 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:flutter/foundation.dart';
@@ -32,11 +33,20 @@ void main() {
     await tester.tap(nextButton);
     await tester.pumpAndSettle();
 
-    // wait for this view to throw an error and scroll
+    var longTaskButton =
+        find.widgetWithText(ElevatedButton, 'Trigger Long Task');
+    await tester.waitFor(
+      longTaskButton,
+      const Duration(seconds: 5),
+      (e) => (e.widget as ElevatedButton).enabled,
+    );
+    await tester.tap(longTaskButton);
+    await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
     nextButton = find.widgetWithText(ElevatedButton, 'Next Screen');
     await tester.waitFor(
       nextButton,
-      const Duration(seconds: 5),
+      const Duration(seconds: 2),
       (e) => (e.widget as ElevatedButton).enabled,
     );
     await tester.tap(nextButton);
@@ -49,8 +59,8 @@ void main() {
       (requests) {
         requestLog.addAll(requests);
         requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
-          var jsonValue = json.decode(e);
-          if (jsonValue is Map<String, dynamic>) {
+          dynamic jsonValue = json.decode(e);
+          if (jsonValue is Map<String, Object?>) {
             final rumEvent = RumEventDecoder.fromJson(jsonValue);
             if (rumEvent != null) {
               rumLog.add(rumEvent);
@@ -58,7 +68,7 @@ void main() {
           }
         });
         return RumSessionDecoder.fromEvents(rumLog).visits.length >=
-            (kIsWeb ? 3 : 4);
+            (kIsWeb ? 4 : 3);
       },
     );
 
@@ -76,18 +86,23 @@ void main() {
     } else {
       expect(view1.path, 'RumManualInstrumentationScenario');
     }
-    expect(view1.viewEvents.last.view.actionCount, kIsWeb ? 2 : 3);
+
+    // In some cases, application_start doesn't get associated to the first view
+    var actionCount = 2;
+    var baseAction = 0;
+    if (view1.actionEvents[0].actionType == 'application_start') {
+      actionCount = 3;
+      baseAction = 1;
+    }
+    expect(view1.viewEvents.last.view.actionCount, actionCount);
+
     if (!kIsWeb) {
       // Manual resources on web don't work (the error is a resource loading error)
       expect(view1.viewEvents.last.view.resourceCount, 1);
       expect(view1.viewEvents.last.view.errorCount, 1);
     }
     expect(view1.viewEvents.last.context![contextKey], expectedContextValue);
-    const baseAction = kIsWeb ? 0 : 1;
-    if (!kIsWeb) {
-      // No application start event on web.
-      expect(view1.actionEvents[0].actionType, 'application_start');
-    }
+
     expect(view1.actionEvents[baseAction + 0].actionType,
         kIsWeb ? 'custom' : 'tap');
     expect(view1.actionEvents[baseAction + 0].actionName, 'Tapped Download');
@@ -145,6 +160,8 @@ void main() {
     }
     expect(view2.viewEvents.last.view.errorCount, 1);
     expect(view2.viewEvents.last.view.actionCount, kIsWeb ? 1 : 2);
+    // We can have multiple long tasks
+    expect(view2.viewEvents.last.view.longTaskCount, greaterThanOrEqualTo(1));
     if (!kIsWeb) {
       // Web can download extra resources
       expect(view2.viewEvents.last.view.resourceCount, 0);
@@ -157,11 +174,28 @@ void main() {
     expect(view2.errorEvents[0].context![contextKey], expectedContextValue);
     expect(view2.errorEvents[0].context!['custom_attribute'], 'my_attribute');
 
+    // Check all long tasks are over 100 ms (the default) and that one is greater
+    // than 200 ms (triggered by the tapping of the button)
+    var over200 = 0;
+    for (var longTask in view2.longTaskEvents) {
+      expect(longTask.duration,
+          greaterThan(const Duration(milliseconds: 100).inNanoseconds));
+      // Nothing should have taken more than 2 seconds
+      expect(longTask.duration,
+          lessThan(const Duration(seconds: 2).inNanoseconds));
+      if (longTask.duration! >
+          const Duration(milliseconds: 200).inNanoseconds) {
+        over200++;
+      }
+    }
+    expect(over200, greaterThanOrEqualTo(1));
+
     // Web doesn't support start/stopUserAction
     RumActionEventDecoder tapAction;
     if (!kIsWeb) {
       expect(view2.actionEvents[0].actionType, 'scroll');
       expect(view2.actionEvents[0].actionName, 'User Scrolling');
+
       expect(view2.actionEvents[0].loadingTime,
           greaterThan(1800 * 1000 * 1000)); // 1.8s
       // TODO: Figure out why occasionally these have really high values
@@ -194,6 +228,21 @@ void main() {
     }
     expect(view3.viewEvents.last.view.actionCount, 0);
     expect(view3.viewEvents.last.view.errorCount, 0);
+
+    // Verify service name
+    for (var event in rumLog) {
+      if (!kIsWeb) {
+        if (Platform.isIOS) {
+          for (final event in rumLog) {
+            expect(event.service, 'com.datadoghq.flutter.integration');
+          }
+        }
+
+        for (final request in requestLog) {
+          expect(request.tags['service'], 'com.datadoghq.flutter.integration');
+        }
+      }
+    }
   });
 }
 
@@ -208,7 +257,7 @@ class _BecameInactiveMatcher extends Matcher {
   }
 
   @override
-  bool matches(item, Map matchState) {
+  bool matches(dynamic item, Map matchState) {
     if (item is RumViewVisit) {
       return item.viewEvents.last.view.isActive == false;
     }

@@ -16,33 +16,13 @@ import 'src/helpers.dart';
 import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
 import 'src/logs/ddlogs_platform_interface.dart';
-import 'src/rum/ddrum.dart';
-import 'src/traces/ddtraces.dart';
+import 'src/rum/rum.dart';
 import 'src/version.dart' show ddPackageVersion;
 
-export 'src/attributes.dart' show DatadogConfigKey;
 export 'src/datadog_configuration.dart';
 export 'src/datadog_plugin.dart';
 export 'src/logs/ddlogs.dart';
-export 'src/rum/ddrum.dart'
-    show
-        DdRum,
-        RumHttpMethod,
-        RumUserActionType,
-        RumErrorSource,
-        RumResourceType,
-        rumMethodFromMethodString,
-        resourceTypeFromContentType;
-export 'src/rum/navigation_observer.dart'
-    show
-        DatadogNavigationObserver,
-        DatadogNavigationObserverProvider,
-        RumViewInfo,
-        DatadogRouteAwareMixin,
-        ViewInfoExtractor;
-export 'src/rum/rum_gesture_detector.dart';
-export 'src/traces/ddtraces.dart'
-    show DdSpan, OTTags, OTLogFields, generateTraceId;
+export 'src/rum/rum.dart';
 
 typedef AppRunner = void Function();
 
@@ -67,11 +47,6 @@ class DatadogSdk {
 
   DdLogs? _logs;
   DdLogs? get logs => _logs;
-
-  // ignore: deprecated_member_use_from_same_package
-  DdTraces? _traces;
-  @Deprecated('Tracing is deprecated and will be removed before 1.0')
-  DdTraces? get traces => _traces;
 
   DdRum? _rum;
   DdRum? get rum => _rum;
@@ -120,7 +95,6 @@ class DatadogSdk {
   Future<void> flushAndDeinitialize() async {
     await _platform.flushAndDeinitialize();
     _logs = null;
-    _traces = null;
     _rum = null;
   }
 
@@ -163,10 +137,6 @@ class DatadogSdk {
     if (configuration.loggingConfiguration != null) {
       _logs = createLogger(configuration.loggingConfiguration!);
     }
-    if (configuration.tracingConfiguration != null) {
-      // ignore: deprecated_member_use_from_same_package
-      _traces = DdTraces(internalLogger);
-    }
     if (configuration.rumConfiguration != null) {
       _rum = DdRum(configuration.rumConfiguration!, internalLogger);
     }
@@ -189,7 +159,7 @@ class DatadogSdk {
   DdLogs createLogger(LoggingConfiguration configuration) {
     final logger =
         DdLogs(internalLogger, configuration.datadogReportingThreshold);
-    wrap('createLogger', internalLogger, () {
+    wrap('createLogger', internalLogger, null, () {
       return DdLogsPlatform.instance
           .createLogger(logger.loggerHandle, configuration);
     });
@@ -202,15 +172,15 @@ class DatadogSdk {
     String? id,
     String? name,
     String? email,
-    Map<String, dynamic> extraInfo = const {},
+    Map<String, Object?> extraInfo = const {},
   }) {
-    wrap('setUserInfo', internalLogger, () {
+    wrap('setUserInfo', internalLogger, extraInfo, () {
       return _platform.setUserInfo(id, name, email, extraInfo);
     });
   }
 
   void setTrackingConsent(TrackingConsent trackingConsent) {
-    wrap('setTrackingConsent', internalLogger, () {
+    wrap('setTrackingConsent', internalLogger, null, () {
       return _platform.setTrackingConsent(trackingConsent);
     });
   }
