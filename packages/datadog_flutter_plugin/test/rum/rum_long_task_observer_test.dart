@@ -68,7 +68,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     var captured = verify(() => mockRum.reportLongTask(captureAny()));
-    expect(captured.captured[0], closeTo(100, 20));
+    expect(captured.captured[0], closeTo(100, 50));
 
     await shutdownObserver(tester, observer);
   });
