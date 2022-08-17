@@ -71,6 +71,7 @@ void main() {
     final rumConfiguration = RumConfiguration(
       applicationId: 'applicationId',
       tracingSamplingRate: 100,
+      detectLongTasks: false,
     );
     final internalLogger = InternalLogger();
     final rum = DdRum(rumConfiguration, internalLogger);
@@ -84,6 +85,7 @@ void main() {
     final rumConfiguration = RumConfiguration(
       applicationId: 'applicationId',
       tracingSamplingRate: 0,
+      detectLongTasks: false,
     );
     final internalLogger = InternalLogger();
     final rum = DdRum(rumConfiguration, internalLogger);
@@ -97,6 +99,7 @@ void main() {
     final rumConfiguration = RumConfiguration(
       applicationId: 'applicationId',
       tracingSamplingRate: 23,
+      detectLongTasks: false,
     );
     final internalLogger = InternalLogger();
     final rum = DdRum(rumConfiguration, internalLogger);
@@ -119,6 +122,7 @@ void main() {
     final rumConfiguration = RumConfiguration(
       applicationId: 'applicationId',
       tracingSamplingRate: 85,
+      detectLongTasks: false,
     );
     final internalLogger = InternalLogger();
     final rum = DdRum(rumConfiguration, internalLogger);

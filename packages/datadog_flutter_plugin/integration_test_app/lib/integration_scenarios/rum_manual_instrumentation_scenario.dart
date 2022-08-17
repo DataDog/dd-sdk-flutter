@@ -142,6 +142,7 @@ class RumManualInstrumentation2 extends StatefulWidget {
 
 class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
     implements RouteAware {
+  bool _longTaskReady = false;
   bool _nextReady = false;
   late String _viewKey;
   final _viewName = 'SecondManualRumView';
@@ -193,9 +194,17 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
         title: const Text('Manual RUM 2'),
       ),
       body: Center(
-        child: ElevatedButton(
-          onPressed: _nextReady ? _onNextTapped : null,
-          child: const Text('Next Screen'),
+        child: Column(
+          children: [
+            ElevatedButton(
+              onPressed: _longTaskReady ? _triggerLongTask : null,
+              child: const Text('Trigger Long Task'),
+            ),
+            ElevatedButton(
+              onPressed: _nextReady ? _onNextTapped : null,
+              child: const Text('Next Screen'),
+            ),
+          ],
         ),
       ),
     );
@@ -216,6 +225,14 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
     DatadogSdk.instance.rum?.stopUserAction(
         RumUserActionType.scroll, 'User Scrolling', {'scroll_distance': 12.2});
 
+    setState(() {
+      _longTaskReady = true;
+    });
+  }
+
+  void _triggerLongTask() {
+    final doneTime = DateTime.now().add(const Duration(milliseconds: 200));
+    while (DateTime.now().compareTo(doneTime) < 0) {}
     setState(() {
       _nextReady = true;
     });

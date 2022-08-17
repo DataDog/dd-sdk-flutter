@@ -5,13 +5,15 @@
 import 'dart:io';
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:meta/meta.dart';
 
 import '../../datadog_flutter_plugin.dart';
 import '../attributes.dart';
 import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddrum_platform_interface.dart';
+import 'rum_long_task_observer.dart';
 
 /// HTTP method of the resource
 enum RumHttpMethod { post, get, head, put, delete, patch }
@@ -91,7 +93,19 @@ class DdRum {
   final RumConfiguration configuration;
   final InternalLogger logger;
 
-  DdRum(this.configuration, this.logger);
+  RumLongTaskObserver? _longTaskObserver;
+
+  DdRum(this.configuration, this.logger) {
+    // Never use long task observer on web -- the Browser SDK should
+    // capture stalls on the main thread automatically.
+    if (!kIsWeb && configuration.detectLongTasks) {
+      _longTaskObserver = RumLongTaskObserver(
+        longTaskThreshold: configuration.longTaskThreshold,
+        rumInstance: this,
+      );
+      _longTaskObserver!.init();
+    }
+  }
 
   /// Notifies that the View identified by [key] starts being presented to the
   /// user. This view will show as [name] in the RUM explorer, and defaults to
@@ -278,5 +292,12 @@ class DdRum {
   bool shouldSampleTrace() {
     return (sampleRandom.nextDouble() * 100) <
         configuration.tracingSamplingRate;
+  }
+
+  @internal
+  void reportLongTask(int taskLengthMs) {
+    wrap('rum.reportLongTask', logger, null, () {
+      return _platform.reportLongTask(DateTime.now(), taskLengthMs);
+    });
   }
 }

@@ -77,6 +77,8 @@ final configuration = DdSdkConfiguration(
 );
 ```
 
+For more information on available configuration options, see the [DdSdkConfiguration object][8] documentation.
+
 ### Initialize the library
 
 You can initialize RUM using one of two methods in the `main.dart` file.
@@ -203,4 +205,5 @@ For more information, see [Apache License, v2.0][5].
 [5]: https://github.com/DataDog/dd-sdk-flutter/blob/main/LICENSE
 [6]: https://source.android.com/security/app-sandbox
 [7]: https://pub.dev/packages/datadog_tracking_http_client
+[8]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/DdSdkConfiguration-class.html
 client

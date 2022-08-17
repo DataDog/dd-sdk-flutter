@@ -139,4 +139,12 @@ class DdRumMethodChannel extends DdRumPlatform {
   Future<void> removeAttribute(String key) {
     return methodChannel.invokeMethod('removeAttribute', {'key': key});
   }
+
+  @override
+  Future<void> reportLongTask(DateTime at, int durationMs) {
+    return methodChannel.invokeMethod('reportLongTask', {
+      'at': at.millisecondsSinceEpoch,
+      'duration': durationMs,
+    });
+  }
 }
