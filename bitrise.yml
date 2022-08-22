@@ -196,9 +196,6 @@ workflows:
     - flutter-analyze@0:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/"
-    - flutter-analyze@0:
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor/"
     - script:
         title: Android lint and static analysis
         inputs:
@@ -221,10 +218,6 @@ workflows:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client"
-    - flutter-test@1:
-        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor"
     - xcode-test@4.0.2:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
