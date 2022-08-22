@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.1.0-rc.1
+
 * Updated to use `datadog_flutter_plugin` 1.0.0-rc.1
 * Added internal error reporting (telemetry)
 
