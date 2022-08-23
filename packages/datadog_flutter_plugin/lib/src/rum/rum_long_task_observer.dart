@@ -40,12 +40,14 @@ class RumLongTaskObserver with WidgetsBindingObserver {
   }
 
   void init() {
-    WidgetsBinding.instance.addObserver(this);
+    // ignore: invalid_null_aware_operator
+    WidgetsBinding.instance?.addObserver(this);
     _startLongTaskDetection();
   }
 
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
+    // ignore: invalid_null_aware_operator
+    WidgetsBinding.instance?.removeObserver(this);
   }
 
   void _startLongTaskDetection() async {
