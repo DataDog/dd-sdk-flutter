@@ -210,14 +210,20 @@ workflows:
     before_run:
     - _prepare_gradle_wrapper
     steps:
-    - flutter-test@1:
+    - script:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin"
-    - flutter-test@1:
+        - content: |-
+            #!/usr/bin/env bash
+            flutter test
+        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin"
+    - script:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client"
+        - content: |-
+            #!/usr/bin/env bash
+            flutter test
+        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client"
     - xcode-test@4.0.2:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
@@ -244,35 +250,39 @@ workflows:
 
   integration_android:
     steps:
-    - flutter-test@1:
+    - script:
         run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
-        - tests_path_pattern: "integration_test"
-        - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
-    - flutter-test@1:
+        - content: |-
+            #!/usr/bin/env bash
+            flutter test integration_test -d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID
+        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
+    - script:
         run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
-        - tests_path_pattern: "integration_test"
-        - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+        - content: |-
+            #!/usr/bin/env bash
+            flutter test integration_test -d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID
+        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
   
   integration_ios:
     before_run:
     - _launch_ios_simulator
     steps:
-    - flutter-test@1:
+    - script:
         run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
-        - tests_path_pattern: "integration_test"
-        - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
-    - flutter-test@1:
+        - content: |-
+            #!/usr/bin/env bash
+            flutter test integration_test -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID
+        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
+    - script:
         run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
-        - tests_path_pattern: "integration_test"
-        - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+        - content: |-
+            #!/usr/bin/env bash
+            flutter test integration_test -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID
+        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
 
   integration_web:
     steps:
