@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.0-rc.1
+
 * Update Android SDK to 1.14.0-beta1
 * Update iOS SDK to 1.12.0-beta2
   * Include the exact model information in RUM `device.model`. Also fixes [#133][]
