@@ -230,17 +230,15 @@ void main() {
     expect(view3.viewEvents.last.view.errorCount, 0);
 
     // Verify service name
-    for (var event in rumLog) {
-      if (!kIsWeb) {
-        if (Platform.isIOS) {
-          for (final event in rumLog) {
-            expect(event.service, 'com.datadoghq.flutter.integration');
-          }
+    if (!kIsWeb) {
+      if (Platform.isIOS) {
+        for (final event in rumLog) {
+          expect(event.service, 'com.datadoghq.flutter.integration');
         }
+      }
 
-        for (final request in requestLog) {
-          expect(request.tags['service'], 'com.datadoghq.flutter.integration');
-        }
+      for (final request in requestLog) {
+        expect(request.tags['service'], 'com.datadoghq.flutter.integration');
       }
     }
   });
