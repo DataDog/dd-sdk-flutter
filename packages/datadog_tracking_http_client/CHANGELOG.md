@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Minor documentation update to clarify 1.1.x / 1.0.x changes
+
 ## 1.1.0-rc.1
 
 * Updated to use `datadog_flutter_plugin` 1.0.0-rc.1
