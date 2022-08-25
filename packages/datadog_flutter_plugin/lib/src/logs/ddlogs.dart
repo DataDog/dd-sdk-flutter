@@ -33,52 +33,52 @@ class DdLogs {
 
   /// Sends a `debug` log message.
   ///
-  /// You can provide additional context for this log message using the
-  /// [context] parameter. Values passed into [context] must be supported by
+  /// You can provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
   /// [StandardMessageCodec].
-  void debug(String message, [Map<String, Object?> context = const {}]) {
+  void debug(String message, [Map<String, Object?> attributes = const {}]) {
     if (_reportingThreshold.index <= Verbosity.debug.index) {
-      wrap('logs.debug', _internalLogger, () {
-        return _platform.debug(loggerHandle, message, context);
+      wrap('logs.debug', _internalLogger, attributes, () {
+        return _platform.debug(loggerHandle, message, attributes);
       });
     }
   }
 
   /// Sends an `info` log message.
   ///
-  /// You can provide additional context for this log message using the
-  /// [context] parameter. Values passed into [context] must be supported by
+  /// You can provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
   /// [StandardMessageCodec].
-  void info(String message, [Map<String, Object?> context = const {}]) {
+  void info(String message, [Map<String, Object?> attributes = const {}]) {
     if (_reportingThreshold.index <= Verbosity.info.index) {
-      wrap('logs.info', _internalLogger, () {
-        return _platform.info(loggerHandle, message, context);
+      wrap('logs.info', _internalLogger, attributes, () {
+        return _platform.info(loggerHandle, message, attributes);
       });
     }
   }
 
   /// Sends a `warn` log message.
   ///
-  /// You can provide additional context for this log message using the
-  /// [context] parameter. Values passed into [context] must be supported by
+  /// You can provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
   /// [StandardMessageCodec].
-  void warn(String message, [Map<String, Object?> context = const {}]) {
+  void warn(String message, [Map<String, Object?> attributes = const {}]) {
     if (_reportingThreshold.index <= Verbosity.warn.index) {
-      wrap('logs.warn', _internalLogger, () {
-        return _platform.warn(loggerHandle, message, context);
+      wrap('logs.warn', _internalLogger, attributes, () {
+        return _platform.warn(loggerHandle, message, attributes);
       });
     }
   }
 
   /// Sends an `error` log message.
   ///
-  /// You can provide additional context for this log message using the
-  /// [context] parameter. Values passed into [context] must be supported by
+  /// You can provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
   /// [StandardMessageCodec].
-  void error(String message, [Map<String, Object?> context = const {}]) {
+  void error(String message, [Map<String, Object?> attributes = const {}]) {
     if (_reportingThreshold.index <= Verbosity.error.index) {
-      wrap('logs.error', _internalLogger, () {
-        return _platform.error(loggerHandle, message, context);
+      wrap('logs.error', _internalLogger, attributes, () {
+        return _platform.error(loggerHandle, message, attributes);
       });
     }
   }
@@ -90,7 +90,7 @@ class DdLogs {
   ///
   /// All values must be supported by [StandardMessageCodec].
   void addAttribute(String key, Object value) {
-    wrap('logs.addAttribute', _internalLogger, () {
+    wrap('logs.addAttribute', _internalLogger, {'value': value}, () {
       return _platform.addAttribute(loggerHandle, key, value);
     });
   }
@@ -100,7 +100,7 @@ class DdLogs {
   /// Previous logs won't lose the attribute value associated with this [key] if
   /// they were created prior to this call.
   void removeAttribute(String key) {
-    wrap('logs.removeAttribute', _internalLogger, () {
+    wrap('logs.removeAttribute', _internalLogger, null, () {
       return _platform.removeAttribute(loggerHandle, key);
     });
   }
@@ -118,7 +118,7 @@ class DdLogs {
   ///
   /// See also: [Defining Tags](https://docs.datadoghq.com/tagging/#defining-tags)
   void addTag(String key, [String? value]) {
-    wrap('logs.addTag', _internalLogger, () {
+    wrap('logs.addTag', _internalLogger, null, () {
       return _platform.addTag(loggerHandle, key, value);
     });
   }
@@ -127,7 +127,7 @@ class DdLogs {
   ///
   /// Previous logs won't lose the this tag if they were created prior to this call.
   void removeTag(String tag) {
-    wrap('logs.removeTag', _internalLogger, () {
+    wrap('logs.removeTag', _internalLogger, null, () {
       return _platform.removeTag(loggerHandle, tag);
     });
   }
@@ -136,7 +136,7 @@ class DdLogs {
   ///
   /// Previous logs won't lose the this tag if they were created prior to this call.
   void removeTagWithKey(String key) {
-    wrap('logs.removeTagWithKey', _internalLogger, () {
+    wrap('logs.removeTagWithKey', _internalLogger, null, () {
       return _platform.removeTagWithKey(loggerHandle, key);
     });
   }

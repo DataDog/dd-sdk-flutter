@@ -7,14 +7,12 @@ package com.datadoghq.flutter
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import assertk.assertThat
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
-import assertk.assertions.isFalse
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
@@ -23,18 +21,19 @@ import com.datadog.android.core.model.UserInfo
 import com.datadog.android.privacy.TrackingConsent
 import com.datadog.android.rum.GlobalRum
 import fr.xgouchet.elmyr.Forge
-import fr.xgouchet.elmyr.annotation.Forgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import io.flutter.embedding.engine.plugins.FlutterPlugin
-import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import io.opentracing.util.GlobalTracer
+import io.mockk.mockkStatic
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
@@ -72,7 +71,44 @@ class DatadogSdkPluginTest {
 
     @AfterEach
     fun afterEach() {
-        Datadog.invokeMethod("flushAndShutdownExecutors")
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.invokePrivateShutdown(mockResult)
+    }
+
+    val contracts = listOf(
+        Contract("setSdkVerbosity", mapOf(
+            "value" to ContractParameter.Type(SupportedContractType.STRING)
+        )),
+        Contract("setUserInfo", mapOf(
+            "extraInfo" to ContractParameter.Type(SupportedContractType.MAP)
+        )),
+        Contract("setTrackingConsent", mapOf(
+            "value" to ContractParameter.Type(SupportedContractType.STRING)
+        )),
+        Contract("telemetryDebug", mapOf(
+            "message" to ContractParameter.Type(SupportedContractType.STRING)
+        )),
+        Contract("telemetryError", mapOf(
+            "message" to ContractParameter.Type(SupportedContractType.STRING)
+        ))
+    )
+
+    @Test
+    fun `M report contract violation W missing parameters in contract`(
+        @StringForgery clientToken: String,
+        @StringForgery environment: String,
+        forge: Forge
+    ) {
+        // GIVEN
+        val configuration = DatadogFlutterConfiguration(
+            clientToken = clientToken,
+            env = environment,
+            nativeCrashReportEnabled = false,
+            trackingConsent = TrackingConsent.GRANTED
+        )
+        plugin.initialize(configuration)
+
+        testContracts(contracts, forge, plugin)
     }
 
     @Test
@@ -93,42 +129,16 @@ class DatadogSdkPluginTest {
 
         // THEN
         assertThat(Datadog.isInitialized()).isTrue()
-        assertThat(plugin.tracesPlugin).isNull()
         assertThat(plugin.rumPlugin).isNull()
 
         // Because we have no way to reset these, we can't test
         // that they're registered properly.
         //assertThat(GlobalRum.isRegistered()).isFalse()
-        //assertThat(GlobalTracer.isRegistered()).isFalse()
     }
 
-    @Test
-    fun `M initialize traces W DatadogFlutterConfiguation { tracingConfiguration }`(
-        @StringForgery clientToken: String,
-        @StringForgery environment: String
-    ) {
-        // GIVEN
-        val configuration = DatadogFlutterConfiguration(
-            clientToken = clientToken,
-            env = environment,
-            nativeCrashReportEnabled = false,
-            trackingConsent = TrackingConsent.GRANTED,
-            tracingConfiguration = DatadogFlutterConfiguration.TracingConfiguration(
-                sendNetworkInfo = true,
-                bundleWithRum = true
-            )
-        )
-
-        // WHEN
-        plugin.initialize(configuration)
-
-        // THEN
-        assertThat(plugin.tracesPlugin).isNotNull()
-        // NOTE: We have no way of knowing if this was set in a previous test
-        assertThat(GlobalTracer.isRegistered()).isTrue()
-    }
 
     @Test
+    @Disabled("There's an issue calling Choreographer in RUM vital initialization")
     fun `M initialize RUM W DatadogFlutterConfiguration { rumConfiguration }`(
         @StringForgery clientToken: String,
         @StringForgery environment: String,
@@ -182,6 +192,87 @@ class DatadogSdkPluginTest {
         assertThat(Datadog.isInitialized())
         assertThat(plugin.logsPlugin).isNotNull()
         verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M not issue warning W initialize called with same configuration`(
+        forge: Forge
+    ) {
+        // GIVEN
+        mockkStatic(Log::class)
+        Datadog.setVerbosity(Log.INFO)
+
+        val config = mapOf(
+            "clientToken" to forge.anAlphaNumericalString(),
+            "env" to forge.anAlphabeticalString(),
+            "trackingConsent" to "TrackingConsent.granted",
+            "nativeCrashReportEnabled" to true,
+            "loggingConfiguration" to null
+        )
+        val methodCall = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to config
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // WHEN
+        val methodCallB = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to config
+            )
+        )
+        val mockResultB = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCallB, mockResultB)
+
+        // THEN
+        io.mockk.verify(exactly = 0) { Log.println(any(), any(), any()) }
+    }
+
+    @Test
+    fun `M issue warning W initialize called with different configuration`(
+        forge: Forge
+    ) {
+        // GIVEN
+        Datadog.setVerbosity(Log.INFO)
+
+        val methodCall = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to mapOf(
+                    "clientToken" to forge.anAlphaNumericalString(),
+                    "env" to forge.anAlphabeticalString(),
+                    "trackingConsent" to "TrackingConsent.granted",
+                    "nativeCrashReportEnabled" to true,
+                    "loggingConfiguration" to null
+                )
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // WHEN
+        mockkStatic(Log::class)
+        val methodCallB = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to mapOf(
+                    "clientToken" to forge.anAlphaNumericalString(),
+                    "env" to forge.anAlphabeticalString(),
+                    "trackingConsent" to "TrackingConsent.granted",
+                    "nativeCrashReportEnabled" to true,
+                    "loggingConfiguration" to null
+                )
+            )
+        )
+        val mockResultB = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCallB, mockResultB)
+
+        // THEN
+        io.mockk.verify(exactly = 1) { Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION) }
     }
 
     @Test

@@ -22,31 +22,33 @@ abstract class DdRumPlatform extends PlatformInterface {
   }
 
   Future<void> startView(
-      String key, String name, Map<String, dynamic> attributes);
-  Future<void> stopView(String key, Map<String, dynamic> attributes);
+      String key, String name, Map<String, Object?> attributes);
+  Future<void> stopView(String key, Map<String, Object?> attributes);
   Future<void> addTiming(String name);
 
   Future<void> startResourceLoading(String key, RumHttpMethod httpMethod,
-      String url, Map<String, dynamic> attributes);
+      String url, Map<String, Object?> attributes);
   Future<void> stopResourceLoading(String key, int? statusCode,
-      RumResourceType kind, int? size, Map<String, dynamic> attributes);
+      RumResourceType kind, int? size, Map<String, Object?> attributes);
   Future<void> stopResourceLoadingWithError(
-      String key, Exception error, Map<String, dynamic> attributes);
+      String key, Exception error, Map<String, Object?> attributes);
   Future<void> stopResourceLoadingWithErrorInfo(
-      String key, String message, String type, Map<String, dynamic> attributes);
+      String key, String message, String type, Map<String, Object?> attributes);
 
   Future<void> addError(Object error, RumErrorSource source,
-      StackTrace? stackTrace, Map<String, dynamic> attributes);
+      StackTrace? stackTrace, Map<String, Object?> attributes);
   Future<void> addErrorInfo(String message, RumErrorSource source,
-      StackTrace? stackTrace, Map<String, dynamic> attributes);
+      StackTrace? stackTrace, Map<String, Object?> attributes);
 
   Future<void> addUserAction(
-      RumUserActionType type, String name, Map<String, dynamic> attributes);
+      RumUserActionType type, String name, Map<String, Object?> attributes);
   Future<void> startUserAction(
-      RumUserActionType type, String name, Map<String, dynamic> attributes);
+      RumUserActionType type, String name, Map<String, Object?> attributes);
   Future<void> stopUserAction(
-      RumUserActionType type, String name, Map<String, dynamic> attributes);
+      RumUserActionType type, String name, Map<String, Object?> attributes);
 
   Future<void> addAttribute(String key, dynamic value);
   Future<void> removeAttribute(String key);
+
+  Future<void> reportLongTask(DateTime at, int durationMs);
 }

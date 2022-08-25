@@ -91,6 +91,13 @@ class _RumScreenState extends State<RumScreen> {
     });
   }
 
+  void _triggerLongTask() {
+    final done = DateTime.now().add(const Duration(milliseconds: 200));
+    while (DateTime.now().isBefore(done)) {
+      // noop
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     var theme = Theme.of(context);
@@ -170,6 +177,10 @@ class _RumScreenState extends State<RumScreen> {
                         IconButton(
                           onPressed: () {},
                           icon: const Icon(Icons.add),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => _triggerLongTask(),
+                          child: const Text('Trigger Long Task'),
                         ),
                       ],
                     ),

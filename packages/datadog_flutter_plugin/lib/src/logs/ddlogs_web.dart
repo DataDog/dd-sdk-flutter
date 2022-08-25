@@ -9,6 +9,7 @@ library ddlogs_flutter_web;
 import 'package:js/js.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import '../attributes.dart';
 import '../web_helpers.dart';
 import 'ddlogs_platform_interface.dart';
 
@@ -16,7 +17,8 @@ class DdLogsWeb extends DdLogsPlatform {
   final Map<String, Logger> _activeLoggers = {};
 
   static void initLogs(DdSdkConfiguration configuration) {
-    String? version = configuration.additionalConfig[DatadogConfigKey.version];
+    String? version =
+        configuration.additionalConfig[DatadogConfigKey.version] as String;
 
     init(_LogInitOptions(
       clientToken: configuration.clientToken,

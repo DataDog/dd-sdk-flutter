@@ -9,7 +9,7 @@ build/
 
 .bitrise.secrets.yml
 *flutter_junit_test_results.xml
-android/ndk_crash_reports/network_information
+android/ndk_crash_reports*/network_information
 **/.cxx/
 tools/e2e_generator/main.tf
 tools/e2e_generator/secrets.tf
@@ -19,3 +19,6 @@ tools/e2e_generator/terraform.tfstate
 **/.flutter-plugins*
 __pycache__
 tools/ci/venv
+ndk_crash_reports_v2/
+ndk_crash_reports_intermediary_v2/
+.fvm/

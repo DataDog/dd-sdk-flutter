@@ -92,11 +92,11 @@ class DatadogConfigurationTests: XCTestCase {
       "site": nil,
       "batchSize": nil,
       "uploadFrequency": nil,
+      "telemetrySampleRate": nil,
       "trackingConsent": "TrackingConsent.pending",
       "customEndpoint": nil,
       "firstPartyHosts": [],
       "loggingConfiguration": nil,
-      "tracingConfiguration": nil,
       "rumConfiguration": nil,
       "additionalConfig": [:]
     ]
@@ -107,9 +107,9 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.clientToken, "fakeClientToken")
     XCTAssertEqual(config.env, "fakeEnvironment")
     XCTAssertEqual(config.nativeCrashReportingEnabled, false)
+    XCTAssertNil(config.telemetrySampleRate)
     XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
 
-    XCTAssertNil(config.tracingConfiguration)
     XCTAssertNil(config.rumConfiguration)
   }
 
@@ -122,10 +122,10 @@ class DatadogConfigurationTests: XCTestCase {
       "batchSize": "BatchSize.small",
       "uploadFrequency": "UploadFrequency.frequent",
       "trackingConsent": "TrackingConsent.pending",
+      "telemetrySampleRate": 44,
       "customEndpoint": nil,
       "firstPartyHosts": [ "first_party.com" ],
       "loggingConfiguration": nil,
-      "tracingConfiguration": nil,
       "rumConfiguration": nil,
       "additionalConfig": [:]
     ]
@@ -134,14 +134,38 @@ class DatadogConfigurationTests: XCTestCase {
 
     XCTAssertNotNil(config)
     XCTAssertEqual(config.site, .eu1)
+    XCTAssertNil(config.serviceName)
     XCTAssertEqual(config.batchSize, .small)
     XCTAssertEqual(config.uploadFrequency, .frequent)
     XCTAssertEqual(config.firstPartyHosts, ["first_party.com"])
     XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
+    XCTAssertEqual(config.telemetrySampleRate, 44)
 
-    XCTAssertNil(config.tracingConfiguration)
     XCTAssertNil(config.rumConfiguration)
   }
+
+    func testConfiguration_ServiceName_IsDecoded() {
+      let encoded: [String: Any?]  = [
+        "clientToken": "fakeClientToken",
+        "env": "fakeEnvironment",
+        "serviceName": "com.servicename",
+        "nativeCrashReportEnabled": NSNumber(false),
+        "site": "DatadogSite.eu1",
+        "batchSize": "BatchSize.small",
+        "uploadFrequency": "UploadFrequency.frequent",
+        "trackingConsent": "TrackingConsent.pending",
+        "customEndpoint": nil,
+        "firstPartyHosts": [ "first_party.com" ],
+        "loggingConfiguration": nil,
+        "rumConfiguration": nil,
+        "additionalConfig": [:]
+      ]
+
+      let config = DatadogFlutterConfiguration(fromEncoded: encoded)!
+
+      XCTAssertNotNil(config)
+      XCTAssertEqual(config.serviceName, "com.servicename")
+    }
 
   func testConfiguration_NestedConfigurations_AreDecoded() {
     let encoded: [String: Any?]  = [
@@ -157,10 +181,6 @@ class DatadogConfigurationTests: XCTestCase {
         "sendNetworkInfo": NSNumber(true),
         "printLogsToConsole": NSNumber(true)
       ],
-      "tracingConfiguration": [
-        "sendNetworkInfo": NSNumber(true),
-        "bundleWithRum": NSNumber(true)
-      ],
       "rumConfiguration": [
         "applicationId": "fakeApplicationId"
       ],
@@ -168,9 +188,6 @@ class DatadogConfigurationTests: XCTestCase {
     ]
 
     let config = DatadogFlutterConfiguration(fromEncoded: encoded)!
-
-    XCTAssertNotNil(config.tracingConfiguration)
-    XCTAssertEqual(config.tracingConfiguration?.sendNetworkInfo, true)
 
     XCTAssertNotNil(config.rumConfiguration)
     XCTAssertEqual(config.rumConfiguration?.applicationId, "fakeApplicationId")

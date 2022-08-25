@@ -26,7 +26,7 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 
   @override
   Future<void> setUserInfo(
-      String? id, String? name, String? email, Map<String, dynamic> extraInfo) {
+      String? id, String? name, String? email, Map<String, Object?> extraInfo) {
     return methodChannel.invokeMethod('setUserInfo',
         {'id': id, 'name': name, 'email': email, 'extraInfo': extraInfo});
   }
@@ -41,11 +41,11 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
             logCallback(call.arguments as String);
             break;
         }
-        return Future.value();
+        return Future<void>.value();
       });
     }
 
-    await methodChannel.invokeMethod('initialize', {
+    await methodChannel.invokeMethod<void>('initialize', {
       'configuration': configuration.encode(),
       'setLogCallback': logCallback != null,
     });
@@ -53,6 +53,21 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 
   @override
   Future<void> flushAndDeinitialize() {
-    return methodChannel.invokeMethod('flushAndDeinitialize', {});
+    return methodChannel
+        .invokeMethod('flushAndDeinitialize', <String, Object?>{});
+  }
+
+  @override
+  Future<void> sendTelemetryDebug(String message) {
+    return methodChannel.invokeMethod('telemetryDebug', {'message': message});
+  }
+
+  @override
+  Future<void> sendTelemetryError(String message, String? stack, String? kind) {
+    return methodChannel.invokeMethod('telemetryError', {
+      'message': message,
+      'stack': stack,
+      'kind': kind,
+    });
   }
 }

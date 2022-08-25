@@ -35,7 +35,7 @@ Future<void> main() async {
   final configuration = DdSdkConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
-    serviceName: 'com.datadoghq.flutter.integrationtestapp',
+    serviceName: 'com.datadoghq.flutter.integration',
     site: DatadogSite.us1,
     trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
@@ -45,9 +45,6 @@ Future<void> main() async {
     loggingConfiguration: LoggingConfiguration(
       sendNetworkInfo: true,
       printLogsToConsole: true,
-    ),
-    tracingConfiguration: TracingConfiguration(
-      sendNetworkInfo: true,
     ),
     rumConfiguration: applicationId != null
         ? RumConfiguration(applicationId: applicationId)

@@ -5,6 +5,7 @@
  */
 package com.datadoghq.flutter
 
+import android.util.Log
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
 import com.datadog.android.rum.GlobalRum
@@ -13,7 +14,6 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import io.opentracing.util.GlobalTracer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
@@ -28,6 +28,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
+    private var previousConfiguration: DatadogFlutterConfiguration? = null
 
     // Only used to shutdown Datadog in debug builds
     private val executor: ExecutorService = ThreadPoolExecutor(
@@ -36,8 +37,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     )
 
     var logsPlugin: DatadogLogsPlugin? = null
-        private set
-    var tracesPlugin: DatadogTracesPlugin? = null
         private set
     var rumPlugin: DatadogRumPlugin? = null
         private set
@@ -51,29 +50,44 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         binding = flutterPluginBinding
     }
 
+    @Suppress("LongMethod")
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
         when (call.method) {
             "initialize" -> {
                 val configArg = call.argument<Map<String, Any?>>("configuration")
                 if (configArg != null) {
                     val config = DatadogFlutterConfiguration(configArg)
-                    initialize(config)
+                    if (!Datadog.isInitialized()) {
+                        initialize(config)
+                        previousConfiguration = config
+                    } else if (config != previousConfiguration) {
+                        // Maybe use DevLogger instead?
+                        Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION)
+                    }
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
                 }
-                result.success(null)
             }
             "setSdkVerbosity" -> {
-                call.argument<String>("value")?.let {
-                    val verbosity = parseVerbosity(it)
+                val value = call.argument<String>("value")
+                if (value != null) {
+                    val verbosity = parseVerbosity(value)
                     Datadog.setVerbosity(verbosity)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
                 }
-                result.success(null)
             }
             "setTrackingConsent" -> {
-                call.argument<String>("value")?.let {
-                    val trackingConsent = parseTrackingConsent(it)
+                val value = call.argument<String>("value")
+                if (value != null) {
+                    val trackingConsent = parseTrackingConsent(value)
                     Datadog.setTrackingConsent(trackingConsent)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
                 }
-                result.success(null)
             }
             "setUserInfo" -> {
                 val id = call.argument<String>("id")
@@ -82,8 +96,30 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 val extraInfo = call.argument<Map<String, Any?>>("extraInfo")
                 if (extraInfo != null) {
                     Datadog.setUserInfo(id, name, email, extraInfo)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
                 }
-                result.success(null)
+            }
+            "telemetryDebug" -> {
+                val message = call.argument<String>("message")
+                if (message != null) {
+                    Datadog._internal._telemetry.debug(message)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
+                }
+            }
+            "telemetryError" -> {
+                val message = call.argument<String>("message")
+                if (message != null) {
+                    val stack = call.argument<String>("stack")
+                    val kind = call.argument<String>("kind")
+                    Datadog._internal._telemetry.error(message, stack, kind)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
+                }
             }
             "flushAndDeinitialize" -> {
                 invokePrivateShutdown(result)
@@ -106,12 +142,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         // Always setup logging as a user can create a log after initialization
         logsPlugin = DatadogLogsPlugin().apply { setup(binding) }
 
-        if (config.tracingConfiguration != null) {
-            tracesPlugin = DatadogTracesPlugin().apply {
-                setup(binding, config.tracingConfiguration!!)
-            }
-        }
-
         if (config.rumConfiguration != null) {
             rumPlugin = DatadogRumPlugin().apply { setup(binding, config.rumConfiguration!!) }
         }
@@ -120,7 +150,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     fun simpleInvokeOn(methodName: String, target: Any) {
         val klass = target.javaClass
         val method = klass.declaredMethods.firstOrNull {
-            it.name == methodName
+            it.name == methodName || it.name == "$methodName\$dd_sdk_android_release"
         }
         method?.let {
             it.isAccessible = true
@@ -128,14 +158,10 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
-    fun invokePrivateShutdown(result: Result) {
-        executor.execute {
+    internal fun invokePrivateShutdown(result: Result) {
+        executor.submit {
             simpleInvokeOn("flushAndShutdownExecutors", Datadog)
             simpleInvokeOn("stop", Datadog)
-
-            val trackerRegisteredField = GlobalTracer::class.java.getDeclaredField("isRegistered")
-            trackerRegisteredField.isAccessible = true
-            trackerRegisteredField.set(null, false)
 
             val rumRegisteredField = GlobalRum::class.java.getDeclaredField("isRegistered")
             rumRegisteredField.isAccessible = true
@@ -145,14 +171,11 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             logsPlugin?.teardown(binding)
             logsPlugin = null
 
-            tracesPlugin?.teardown(binding)
-            tracesPlugin = null
-
             rumPlugin?.teardown(binding)
             rumPlugin = null
+        }.get()
 
-            result.success(null)
-        }
+        result.success(null)
     }
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
@@ -161,10 +184,13 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         logsPlugin?.teardown(binding)
         logsPlugin = null
 
-        tracesPlugin?.teardown(binding)
-        tracesPlugin = null
-
         rumPlugin?.teardown(binding)
         rumPlugin = null
     }
 }
+
+internal const val DATADOG_FLUTTER_TAG = "DatadogFlutter"
+
+internal const val MESSAGE_INVALID_REINITIALIZATION =
+    "🔥 Reinitialziing the DatadogSDK with different options, even after a hot restart, is not" +
+        " supported. Cold restart your application to change your current configuation."

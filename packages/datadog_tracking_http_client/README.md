@@ -16,7 +16,12 @@ final configuration = DdSdkConfiguration(
 )..enableHttpTracking()
 ```
 
+## Flutter 2.8 Support
 
+Flutter 3.0 updated to Dart 2.17, which added two methods to HttpClient. 
+
+Currently, `version 1.1.x` sets a version constraint to Dart >= 2.17. If you need to support versions of Flutter prior to 3.0, back to flutter 2.8, use `version 1.0.x` instead. There is no difference between these versions other than support for lower versions of Dart.
+  
 # Contributing
 
 Pull requests are welcome. First, open an issue to discuss what you would like

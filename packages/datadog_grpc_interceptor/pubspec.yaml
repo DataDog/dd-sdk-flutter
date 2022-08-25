@@ -5,13 +5,13 @@ homepage: http://datadoghq.com
 repository: https://github.com/DataDog/dd-sdk-flutter
 
 environment:
-  sdk: ">=2.16.1 <3.0.0"
+  sdk: ">=2.15.0 <3.0.0"
   flutter: ">=1.17.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  datadog_flutter_plugin: ^1.0.0-beta.1
+  datadog_flutter_plugin: ^1.0.0-rc.1
   grpc: ^3.0.2
   uuid: ^3.0.5
 

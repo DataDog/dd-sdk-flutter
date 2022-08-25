@@ -87,7 +87,7 @@ void main() {
         'id': 'fake_id',
         'name': 'fake_name',
         'email': 'fake_email',
-        'extraInfo': const {}
+        'extraInfo': const <String, Object?>{}
       })
     ]);
   });
@@ -102,6 +102,30 @@ void main() {
         'name': null,
         'email': null,
         'extraInfo': const {'attribute': 124.3}
+      })
+    ]);
+  });
+
+  test('sendTelemetryDebug calls to method channel', () {
+    unawaited(ddSdkPlatform.sendTelemetryDebug('debug telemetry method'));
+
+    expect(log, [
+      isMethodCall('telemetryDebug', arguments: {
+        'message': 'debug telemetry method',
+      })
+    ]);
+  });
+
+  test('sendTelemetryError calls to method channel', () {
+    final st = StackTrace.current;
+    unawaited(ddSdkPlatform.sendTelemetryError(
+        'error telemetry method', st.toString(), 'fake error'));
+
+    expect(log, [
+      isMethodCall('telemetryError', arguments: {
+        'message': 'error telemetry method',
+        'stack': st.toString(),
+        'kind': 'fake error',
       })
     ]);
   });

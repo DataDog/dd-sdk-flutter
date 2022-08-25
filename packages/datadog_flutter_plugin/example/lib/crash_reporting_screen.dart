@@ -125,6 +125,13 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
             ),
             Wrap(
               children: [
+                Container(
+                  padding: const EdgeInsets.only(left: 5),
+                  child: ElevatedButton(
+                    onPressed: () => _crashNonAsync(),
+                    child: const Text('Non async crash'),
+                  ),
+                ),
                 for (final t in CrashType.values)
                   Container(
                     padding: const EdgeInsets.only(left: 5),
@@ -156,6 +163,13 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
     );
   }
 
+  void _crashNonAsync() {
+    final viewName = _viewName.isEmpty ? 'Rum Crash View' : _viewName;
+    DatadogSdk.instance.rum?.startView(viewName, viewName);
+
+    _flutterException();
+  }
+
   Future<void> _crashAfterRumSession(CrashType crashType) async {
     final viewName = _viewName.isEmpty ? 'Rum Crash View' : _viewName;
     DatadogSdk.instance.rum?.startView(viewName, viewName);
@@ -171,6 +185,16 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
     _crash(crashType).onError((error, stackTrace) => print(error));
   }
 
+  void _flutterException() {
+    // Iterate a list to get a system symbol in the stack.
+    ['a', 'b', 'c'].map((element) {
+      if (element == 'a') {
+        throw Exception("This wasn't supposed to happen!");
+      }
+      return 'x';
+    });
+  }
+
   static int nativeCallback(int value) {
     throw Exception(('FFI Callback Exception with value $value'));
   }
@@ -178,7 +202,8 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
   Future<void> _crash(CrashType crashType) async {
     switch (crashType) {
       case CrashType.flutterException:
-        throw Exception("This wasn't supposed to happen!");
+        _flutterException();
+        break;
       case CrashType.methodChannelCrash:
         await nativeCrashPlugin.crashNative();
         break;
