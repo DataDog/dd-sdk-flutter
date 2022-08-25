@@ -53,7 +53,7 @@ To ensure the safety of your data, you must use a client token. For more informa
 
 ### Create configuration object
 
-Create a configuration object for each Datadog feature (such as Logging, Tracing, and RUM) with the following snippet. By not passing a configuration for a given feature, it is disabled.
+Create a configuration object for each Datadog feature (such as Logging and RUM) with the following snippet. By not passing a configuration for a given feature, it is disabled.
 
 ```dart
 // Determine the user's consent to be tracked
@@ -67,9 +67,6 @@ final configuration = DdSdkConfiguration(
   loggingConfiguration: LoggingConfiguration(
     sendNetworkInfo: true,
     printLogsToConsole: true,
-  ),
-  tracingConfiguration: TracingConfiguration(
-    sendNetworkInfo: true,
   ),
   rumConfiguration: RumConfiguration(
     applicationId: '<RUM_APPLICATION_ID>',

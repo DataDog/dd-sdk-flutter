@@ -50,5 +50,7 @@ In order to enable Datadog Distributed Tracing, the `DdSdkConfiguration.firstPar
 
 Note that `firstPartyHosts` does not allow wildcards, but will match any subdomains for a given domain, so `api.example.com` will match `staging.api.example.com` and `prod.api.example.com`, but not `news.example.com`.
 
+Also note that `RumConfiguration.tracingSamplingRate` sets a default sampling rate of 20%. If you want all resources requests to generate a full distributed trace, set this value to 100.0.
+
 
 [1]: https://pub.dev/packages/datadog_tracking_http_client
