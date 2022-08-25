@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.0-rc.2
+
 * Fix an issue with using `WidgetBindings.instance` as a non-optional (Property is optional pre-Flutter 3.0)
 
 ## 1.0.0-rc.1
