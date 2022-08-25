@@ -44,19 +44,11 @@ dependencies:
   datadog_flutter_plugin: ^1.0.0-rc.1
 ```
 
-### Specify application details in the UI
-
-1. In the [Datadog app][2], navigate to **UX Monitoring** > **RUM Applications** > **New Application**.
-2. Choose `Flutter` as the application type.
-3. Provide an application name to generate a unique Datadog application ID and client token.
-
-{{< img src="real_user_monitoring/flutter/image_flutter.png" alt="Create a RUM application in Datadog workflow" style="width:90%;">}}
-
-To ensure the safety of your data, you must use a client token. For more information about setting up a client token, see the [Client Token documentation][3].
-
 ### Create configuration object
 
-Create a configuration object for each Datadog feature (such as Logging or RUM) with the following snippet. By not passing a configuration for a given feature, it is disabled.
+Create a configuration object for each Datadog feature (such as Logging or RUM) with the following snippet. If you do not pass a configuration for a given feature, that feature is disabled.
+
+If you are using RUM, follow the instructions in for [RUM Collection](rum/rum_collection.md) to setup a **Client Token** and **Application Id**. If you are only using Logging, you can initialize the library with only a [Datadog client token][3]. For security reasons, you must use a client token: you cannot use Datadog API keys to configure the Datadog Flutter Plugin. For more information about setting up a client token, see the client token documentation:
 
 ```dart
 // Determine the user's consent to be tracked
