@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* 🔥 MAJOR - Fixed an issue on Android where Datadog would not properly reinitialize after backing out of an application (pressing the back button on the home screen) and returning to it.
+
 ## 1.0.0-rc.2
 
 * Fix an issue with using `WidgetBindings.instance` as a non-optional (Property is optional pre-Flutter 3.0)
