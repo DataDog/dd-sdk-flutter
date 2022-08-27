@@ -4,15 +4,6 @@
 
 Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real-time performance and user journeys of your application's individual users.
 
-The Datadog Flutter SDK transmits data over an SSL port set to `443` to the following domains:
-
-| Site    | Valid intake URL Pattern                       | Site Parameter      |
-|---------|------------------------------------------------|---------------------|
-| US1     | `https://rum.browser-intake-datadoghq.com`     | `datadoghq.com`     |
-| US3     | `https://rum.browser-intake-us3-datadoghq.com` | `us3.datadoghq.com` |
-| US5     | `https://rum.browser-intake-us5-datadoghq.com` | `us5.datadoghq.com` |
-| EU1     | `https://rum.http-intake.logs.datadoghq.eu`    | `datadoghq.eu`      |
-
 ## Setup
 
 ### Specify application details in the UI
