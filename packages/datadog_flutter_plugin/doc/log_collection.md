@@ -9,11 +9,9 @@ Send logs to Datadog from your Flutter applications with [Datadog's flutter plug
 
 ## Setup
 
-Follow the setup instructions from the [common setup documentation](./common_setup.md).
+To initialize the Datadog Flutter SDK for Logs, see [Setup][2].
 
-## Send Logs
-
-After initializing Datadog with a `LoggingConfiguration`, you can use the default instance of `logs` to send logs to Datadog.
+Once you have initialized the Datadog Flutter SDK with a `LoggingConfiguration` parameter, use the default instance of `logs` to send logs to Datadog.
 
 ```dart
 DatadogSdk.instance.logs?.debug("A debug message.");
@@ -22,7 +20,7 @@ DatadogSdk.instance.logs?.warn("An important warning…");
 DatadogSdk.instance.logs?.error("An error was met!");
 ```
 
-You can also create additional loggers with the `createLogger` method:
+You can create additional loggers using the `createLogger` method:
 
 ```dart
 final myLogger = DatadogSdk.instance.createLogger(
@@ -34,31 +32,33 @@ final myLogger = DatadogSdk.instance.createLogger(
 myLogger.info('Info from my additional logger.');
 ```
 
-For more information on the options available for loggers, see the [LoggingConfiguration documentation][2]
+For more information about available logging options, see the [LoggingConfiguration class documentation][3].
 
-## Tags and Attributes
+## Manage tags and attributes
 
-### Add Tags
+Tags and attributes set on loggers are local to each logger.
+
+### Add tags
 
 Use the `DdLogs.addTag` method to add tags to all logs sent by a specific logger:
 
 ```dart
-// This adds a tag "build_configuration:debug"
+// This adds a "build_configuration:debug" tag
 logger.addTag("build_configuration", "debug")
 ```
 
-### Remove Tags
+### Remove tags
 
 Use the `DdLogs.removeTag` method to remove tags from all logs sent by a specific logger:
 
 ```dart
-// This removes any tag starting with "build_configuration"
+// This removes any tag that starts with "build_configuration"
 logger.removeTag("build_configuration")
 ```
 
-[Learn more about Datadog tags][3].
+For more information, see [Getting Started with Tags][4].
 
-### Add attributes
+## Default attributes
 
 By default, the following attributes are added to all logs sent by a logger:
 
@@ -69,15 +69,17 @@ By default, the following attributes are added to all logs sent by a logger:
 * `version`, client's app version extracted from either the `Info.plist` or `application.manifest`
 * `environment`, the environment name used to initialize the SDK
 
+### Add attributes
+
 Use the `DdLogs.addAttribute` method to add a custom attribute to all logs sent by a specific logger:
 
 ```dart
 logger.addAttribute("user-status", "unregistered")
 ```
 
-**Note**: `value` can be most types supported by the `StandardMessageCodec`l
+The `value` can be most types supported by the [`StandardMessageCodec` class][5].
 
-##### Remove attributes
+### Remove attributes
 
 Use the `DdLogs.removeAttribute` method to remove a custom attribute from all logs sent by a specific logger:
 
@@ -86,13 +88,13 @@ Use the `DdLogs.removeAttribute` method to remove a custom attribute from all lo
 logger.removeAttribute("user-status")
 ```
 
-## Further Reading
+## Further reading
 
 {{< partial name="whats-next/whats-next.html" >}}
 
-Tags and attributes set on loggers are local to each logger.
-
 
 [1]: https://pub.dev/packages/datadog_flutter_plugin
-[2]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/LoggingConfiguration-class.html
-[3]: https://docs.datadoghq.com/tagging/
+[2]: https://docs.datadoghq.com/real_user_monitoring/flutter/setup
+[3]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/LoggingConfiguration-class.html
+[4]: https://docs.datadoghq.com/getting_started/tagging/
+[5]: https://api.flutter.dev/flutter/services/StandardMessageCodec-class.html

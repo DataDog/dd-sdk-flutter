@@ -1,12 +1,9 @@
-<div class="alert alert-info"><p>Flutter monitoring is in beta.</p>
-</div>
-
 
 ## Overview
 
 Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real-time performance and user journeys of your Flutter application’s individual users.
 
-RUM supports monitoring for mobile Flutter Android and iOS applications.
+RUM supports monitoring for Flutter Android and iOS applications.
 
 ## Current Datadog SDK Versions
 
@@ -37,7 +34,7 @@ On Web, add the following to your `index.html` under your `head` tag:
 <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-rum-slim-v4.js"></script>
 ```
 
-This loads the CDN-delivered Datadog Logging and RUM Browser SDKs. Note that the synchronous CDN-delivered version of the Browser SDK is the only version supported by the Flutter plugin.
+This loads the CDN-delivered Datadog Browser SDKs for Logs and RUM. The synchronous CDN-delivered version of the Datadog Browser SDK is the only version supported by the Flutter plugin.
 
 ## Setup
 
@@ -53,7 +50,7 @@ To ensure the safety of your data, you must use a client token. For more informa
 
 ### Create configuration object
 
-Create a configuration object for each Datadog feature (such as Logging and RUM) with the following snippet. By not passing a configuration for a given feature, it is disabled.
+Create a configuration object for each Datadog feature (such as Logs and RUM) with the following snippet. By not passing a configuration for a given feature, it is disabled.
 
 ```dart
 // Determine the user's consent to be tracked
@@ -190,10 +187,6 @@ For more information, read the [Contributing guidelines][4].
 ## License
 
 For more information, see [Apache License, v2.0][5].
-
-## Further Reading
-
-{{< partial name="whats-next/whats-next.html" >}}
 
 [1]: https://app.datadoghq.com/rum/application/create
 [2]: https://docs.datadoghq.com/account_management/api-app-keys/#api-keys
