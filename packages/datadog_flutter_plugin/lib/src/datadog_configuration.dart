@@ -35,20 +35,19 @@ enum UploadFrequency {
 /// Possible values for the Data Tracking Consent given by the user of the app.
 ///
 /// This value should be used to grant the permission for Datadog SDK to store
-/// data collected in Logging, Tracing or RUM and upload it to Datadog servers.
+/// data collected in Logging / RUM and upload it to Datadog servers.
 enum TrackingConsent {
   /// The permission to persist and send data to the Datadog servers was
   /// granted. Any previously stored pending data will be marked as ready for
   /// sent.
   granted,
 
-  /// Any previously stored pending data will be deleted and all Logging, RUM
-  /// and Tracing events will be dropped from now on, without persisting it in
-  /// any way.
+  /// Any previously stored pending data will be deleted and all Logging and RUM
+  /// events will be dropped from now on, without persisting it in any way.
   notGranted,
 
-  /// All Logging, RUM and Tracing events will be persisted in an intermediate
-  /// location and will be pending there until [TrackingConsent.granted] or
+  /// All Logging and RUM events will be persisted in an intermediate location
+  /// and will be pending there until [TrackingConsent.granted] or
   /// [TrackingConsent.notGranted] consent value is set. Based on the next
   /// consent value, intermediate data will be sent to Datadog or deleted.
   pending
