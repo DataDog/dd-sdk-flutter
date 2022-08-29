@@ -21,14 +21,19 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
-    companion object ErrorCodes {
+    companion object {
         const val CONTRACT_VIOLATION = "DatadogSdk:ContractViolation"
         const val INVALID_OPERATION = "DatadogSdk:InvalidOperation"
+
+        // Flutter can destroy / recreate the plugin object if the engine detaches. If you use the
+        // back button on the first screen, for example, this will detach the Flutter engine
+        // but the application will still be running. We keep the configuration separate
+        // from the plugin to warn about reinitialization.
+        var previousConfiguration: DatadogFlutterConfiguration? = null
     }
 
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
-    private var previousConfiguration: DatadogFlutterConfiguration? = null
 
     // Only used to shutdown Datadog in debug builds
     private val executor: ExecutorService = ThreadPoolExecutor(
@@ -36,10 +41,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         TimeUnit.SECONDS, SynchronousQueue<Runnable>()
     )
 
-    var logsPlugin: DatadogLogsPlugin? = null
-        private set
-    var rumPlugin: DatadogRumPlugin? = null
-        private set
+    val logsPlugin: DatadogLogsPlugin = DatadogLogsPlugin()
+    val rumPlugin: DatadogRumPlugin = DatadogRumPlugin()
 
     override fun onAttachedToEngine(
         @NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
@@ -48,6 +51,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         channel.setMethodCallHandler(this)
 
         binding = flutterPluginBinding
+
+        logsPlugin.attachToEngine(flutterPluginBinding)
+        rumPlugin.attachToEngine(flutterPluginBinding)
     }
 
     @Suppress("LongMethod")
@@ -139,11 +145,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             config.trackingConsent
         )
 
-        // Always setup logging as a user can create a log after initialization
-        logsPlugin = DatadogLogsPlugin().apply { setup(binding) }
-
         if (config.rumConfiguration != null) {
-            rumPlugin = DatadogRumPlugin().apply { setup(binding, config.rumConfiguration!!) }
+            rumPlugin.setup(config.rumConfiguration!!)
         }
     }
 
@@ -168,11 +171,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             val isRegistered: AtomicBoolean = rumRegisteredField.get(null) as AtomicBoolean
             isRegistered.set(false)
 
-            logsPlugin?.teardown(binding)
-            logsPlugin = null
-
-            rumPlugin?.teardown(binding)
-            rumPlugin = null
+            logsPlugin.detachFromEngine()
+            rumPlugin.detachFromEngine()
         }.get()
 
         result.success(null)
@@ -181,11 +181,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
 
-        logsPlugin?.teardown(binding)
-        logsPlugin = null
-
-        rumPlugin?.teardown(binding)
-        rumPlugin = null
+        logsPlugin.detachFromEngine()
+        rumPlugin.detachFromEngine()
     }
 }
 
@@ -193,4 +190,4 @@ internal const val DATADOG_FLUTTER_TAG = "DatadogFlutter"
 
 internal const val MESSAGE_INVALID_REINITIALIZATION =
     "🔥 Reinitialziing the DatadogSDK with different options, even after a hot restart, is not" +
-        " supported. Cold restart your application to change your current configuation."
+        " supported. Cold restart your application to change your current configuration."
