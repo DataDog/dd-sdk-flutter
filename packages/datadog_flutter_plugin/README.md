@@ -3,7 +3,7 @@
 
 Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real-time performance and user journeys of your Flutter application’s individual users.
 
-RUM supports monitoring for Flutter Android and iOS applications.
+RUM supports monitoring for Flutter Android and iOS applications for Flutter 2.8+.
 
 ## Current Datadog SDK Versions
 

@@ -9,7 +9,7 @@ Use the [Datadog Flutter Plugin][1] to set up Log Management or Real User Monito
 First, ensure that you have your environment set up properly for each platform. 
 
 <div class="alert alert-info">
-Datadog supports Flutter Monitoring for iOS and Android, and support for Flutter Web is in alpha.
+Datadog supports Flutter Monitoring for iOS and Android for Flutter 2.8+. Support for Flutter Web is in alpha.
 </div>
 
 ### iOS
