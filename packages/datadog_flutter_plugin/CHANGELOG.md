@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Fix Flutter 3 log spam regarding use of `?.` on WidgetBindings.instance. See [#203][]
+
 ## 1.0.0-rc.2
 
 * Fix an issue with using `WidgetBindings.instance` as a non-optional (Property is optional pre-Flutter 3.0)
@@ -76,3 +78,4 @@
 [#143]: https://github.com/DataDog/dd-sdk-flutter/issues/143
 [#148]: https://github.com/DataDog/dd-sdk-flutter/issues/148
 [#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159
+[#203]: https://github.com/DataDog/dd-sdk-flutter/issues/203
