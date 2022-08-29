@@ -232,7 +232,9 @@ class DatadogConfigurationTest {
             "firstPartyHosts" to listOf<String>(),
             "rumConfiguration" to mapOf(
                 "applicationId" to applicationId,
-                "sampleRate" to 35.0f
+                "sampleRate" to 35.0f,
+                "detectLongTasks" to false,
+                "longTaskThreshold" to 0.3f
             ),
             "additionalConfig" to mapOf<String, Any?>()
         )
@@ -244,6 +246,8 @@ class DatadogConfigurationTest {
         assertThat(config.rumConfiguration).isNotNull()
         assertThat(config.rumConfiguration?.applicationId).isEqualTo(applicationId)
         assertThat(config.rumConfiguration?.sampleRate).isEqualTo(35.0f)
+        assertThat(config.rumConfiguration?.detectLongTasks).isEqualTo(false)
+        assertThat(config.rumConfiguration?.longTaskThreshold).isEqualTo(0.3f)
     }
 
     @Test
@@ -284,7 +288,9 @@ class DatadogConfigurationTest {
             trackingConsent = TrackingConsent.PENDING,
             rumConfiguration = DatadogFlutterConfiguration.RumConfiguration(
                 applicationId = applicationId,
-                sampleRate = 100.0f
+                sampleRate = 100.0f,
+                detectLongTasks = true,
+                longTaskThreshold = 0.1f
             ),
         )
 

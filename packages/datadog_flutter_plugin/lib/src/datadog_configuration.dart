@@ -184,8 +184,8 @@ class RumConfiguration {
   /// Enable or disable detection of "long tasks"
   ///
   /// Long task detection attempts to detect when an application is doing too
-  /// much work on the main isolate, which could prevent your app from rendering
-  /// at a smooth framerate.
+  /// much work on the main isolate, or on the main native thread, which could
+  /// prevent your app from rendering at a smooth framerate.
   ///
   /// Defaults to true.
   bool detectLongTasks;
@@ -196,6 +196,10 @@ class RumConfiguration {
   /// If the main isolate takes more than [longTaskThreshold] seconds to process
   /// a microtask, it will appear as a Long Task in Datadog RUM Explorer. This
   /// has a minimum of 0.02 seconds.
+  ///
+  /// The Datadog iOS and Android SDKs will also report if their main threads
+  /// are stalled for longer than this threshold, and will also appear as a
+  /// Long Task in the Datadog RUM Explorer
   ///
   /// Defaults to 0.1 seconds
   double longTaskThreshold;
@@ -214,6 +218,8 @@ class RumConfiguration {
     return {
       'applicationId': applicationId,
       'sampleRate': sessionSamplingRate,
+      'detectLongTasks': detectLongTasks,
+      'longTaskThreshold': longTaskThreshold,
     };
   }
 }
