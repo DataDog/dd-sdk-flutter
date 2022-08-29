@@ -3,6 +3,7 @@
 ## Unreleased
 
 * 🔥 MAJOR - Fixed an issue on Android where Datadog would not properly reinitialize after backing out of an application (pressing the back button on the home screen) and returning to it.
+* Fix Flutter 3 log spam regarding use of `?.` on WidgetBindings.instance. See [#203][]
 
 ## 1.0.0-rc.2
 
@@ -78,3 +79,4 @@
 [#143]: https://github.com/DataDog/dd-sdk-flutter/issues/143
 [#148]: https://github.com/DataDog/dd-sdk-flutter/issues/148
 [#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159
+[#203]: https://github.com/DataDog/dd-sdk-flutter/issues/203

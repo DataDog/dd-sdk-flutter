@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import '../helpers.dart';
 
 class RumLongTaskObserver with WidgetsBindingObserver {
   // The amount of elapsed time that is considered to be a "long task", in seconds.
@@ -40,14 +41,12 @@ class RumLongTaskObserver with WidgetsBindingObserver {
   }
 
   void init() {
-    // ignore: invalid_null_aware_operator
-    WidgetsBinding.instance?.addObserver(this);
+    ambiguate(WidgetsBinding.instance)?.addObserver(this);
     _startLongTaskDetection();
   }
 
   void dispose() {
-    // ignore: invalid_null_aware_operator
-    WidgetsBinding.instance?.removeObserver(this);
+    ambiguate(WidgetsBinding.instance)?.removeObserver(this);
   }
 
   void _startLongTaskDetection() async {
