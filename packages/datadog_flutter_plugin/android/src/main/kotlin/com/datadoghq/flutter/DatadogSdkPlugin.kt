@@ -44,7 +44,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     val logsPlugin: DatadogLogsPlugin = DatadogLogsPlugin()
     val rumPlugin: DatadogRumPlugin = DatadogRumPlugin()
 
-
     override fun onAttachedToEngine(
         @NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
     ) {
