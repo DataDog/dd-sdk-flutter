@@ -123,7 +123,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     }
 
     internal func initialize(configuration: DatadogFlutterConfiguration) {
-        let ddConfiguration = SwiftDatadogSdkPlugin.buildConfiguration(from: configuration)
+        let ddConfiguration = configuration.toDdConfig()
 
         Datadog.initialize(appContext: Datadog.AppContext(),
                            trackingConsent: configuration.trackingConsent,
@@ -133,66 +133,5 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             rum = DatadogRumPlugin.instance
             rum?.initialize(configuration: rumConfiguration)
         }
-    }
-
-    internal static func buildConfiguration(from flutterConfig: DatadogFlutterConfiguration) -> Datadog.Configuration {
-        let ddConfigBuilder: Datadog.Configuration.Builder
-        if let rumConfig = flutterConfig.rumConfiguration {
-            ddConfigBuilder = Datadog.Configuration.builderUsing(
-                rumApplicationID: rumConfig.applicationId,
-                clientToken: flutterConfig.clientToken,
-                environment: flutterConfig.env
-            )
-            .set(rumSessionsSamplingRate: rumConfig.sampleRate)
-        } else {
-            ddConfigBuilder = Datadog.Configuration.builderUsing(
-                clientToken: flutterConfig.clientToken,
-                environment: flutterConfig.env
-            )
-        }
-
-        if flutterConfig.nativeCrashReportingEnabled {
-            _ = ddConfigBuilder.enableCrashReporting(using: DDCrashReportingPlugin())
-        }
-
-        if let site = flutterConfig.site {
-            _ = ddConfigBuilder.set(endpoint: site)
-        }
-
-        if let batchSize = flutterConfig.batchSize {
-            _ = ddConfigBuilder.set(batchSize: batchSize)
-        }
-        if let uploadFrequency = flutterConfig.uploadFrequency {
-            _ = ddConfigBuilder.set(uploadFrequency: uploadFrequency)
-        }
-
-        if !flutterConfig.firstPartyHosts.isEmpty {
-            _ = ddConfigBuilder.trackURLSession(firstPartyHosts: Set(flutterConfig.firstPartyHosts))
-        }
-
-        if let customEndpoint = flutterConfig.customEndpoint,
-           let customEndpointUrl = URL(string: customEndpoint) {
-            _ = ddConfigBuilder
-                .set(customLogsEndpoint: customEndpointUrl)
-                .set(customTracesEndpoint: customEndpointUrl)
-                .set(customRUMEndpoint: customEndpointUrl)
-        }
-
-        if let enableViewTracking = flutterConfig.additionalConfig["_dd.native_view_tracking"] as? Bool,
-           enableViewTracking {
-            _ = ddConfigBuilder.trackUIKitRUMViews()
-        }
-
-        if let serviceName = flutterConfig.serviceName {
-            _ = ddConfigBuilder.set(serviceName: serviceName)
-        }
-
-        if let threshold = flutterConfig.additionalConfig["_dd.long_task.threshold"] as? TimeInterval {
-            // `_dd.long_task.threshold` attribute is in milliseconds
-            _ = ddConfigBuilder.trackRUMLongTasks(threshold: threshold / 1_000)
-        }
-        _ = ddConfigBuilder.set(additionalConfiguration: flutterConfig.additionalConfig)
-
-        return ddConfigBuilder.build()
     }
 }

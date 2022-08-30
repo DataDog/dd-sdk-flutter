@@ -77,7 +77,7 @@ packages:
       path: "../../datadog_flutter_plugin"
       relative: true
     source: path
-    version: "1.0.0-rc.2"
+    version: "1.0.0-rc.3"
   datadog_tracking_http_client:
     dependency: "direct main"
     description:

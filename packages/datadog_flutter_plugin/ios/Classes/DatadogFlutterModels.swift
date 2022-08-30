@@ -40,10 +40,14 @@ class DatadogFlutterConfiguration {
     class RumConfiguration {
         let applicationId: String
         let sampleRate: Float
+        let detectLongTasks: Bool
+        let longTaskThreshold: Float
 
-        init(applicationId: String, sampleRate: Float) {
+        init(applicationId: String, sampleRate: Float, detectLongTasks: Bool, longTaskThreshold: Float) {
             self.applicationId = applicationId
             self.sampleRate = sampleRate
+            self.detectLongTasks = detectLongTasks
+            self.longTaskThreshold = longTaskThreshold
         }
 
         init?(fromEncoded encoded: [String: Any?]) {
@@ -54,6 +58,8 @@ class DatadogFlutterConfiguration {
             }
 
             sampleRate = (encoded["sampleRate"] as? NSNumber)?.floatValue ?? 100.0
+            detectLongTasks = (encoded["detectLongTasks"] as? NSNumber)?.boolValue ?? true
+            longTaskThreshold = (encoded["longTaskThreshold"] as? NSNumber)?.floatValue ?? 0.1
         }
     }
 
@@ -134,16 +140,25 @@ class DatadogFlutterConfiguration {
         }
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     func toDdConfig() -> Datadog.Configuration {
         let ddConfigBuilder: Datadog.Configuration.Builder
-        if let rumConfiguration = rumConfiguration {
-            ddConfigBuilder = Datadog.Configuration.builderUsing(rumApplicationID: rumConfiguration.applicationId,
-                                                                 clientToken: clientToken,
-                                                                 environment: env)
-            .set(rumSessionsSamplingRate: rumConfiguration.sampleRate)
+        if let rumConfig = rumConfiguration {
+            ddConfigBuilder = Datadog.Configuration.builderUsing(
+                rumApplicationID: rumConfig.applicationId,
+                clientToken: clientToken,
+                environment: env
+            )
+            .set(rumSessionsSamplingRate: rumConfig.sampleRate)
+
+            if rumConfig.detectLongTasks {
+                _ = ddConfigBuilder.trackRUMLongTasks(threshold: TimeInterval(rumConfig.longTaskThreshold))
+            }
         } else {
-            ddConfigBuilder = Datadog.Configuration.builderUsing(clientToken: clientToken,
-                                                                 environment: env)
+            ddConfigBuilder = Datadog.Configuration.builderUsing(
+                clientToken: clientToken,
+                environment: env
+            )
         }
 
         if nativeCrashReportingEnabled {
@@ -157,34 +172,35 @@ class DatadogFlutterConfiguration {
         if let site = site {
             _ = ddConfigBuilder.set(endpoint: site)
         }
+
         if let batchSize = batchSize {
             _ = ddConfigBuilder.set(batchSize: batchSize)
         }
         if let uploadFrequency = uploadFrequency {
             _ = ddConfigBuilder.set(uploadFrequency: uploadFrequency)
         }
-        if let customEndpoint = customEndpoint {
-            if let customEndpointUrl = URL(string: customEndpoint) {
-                _ = ddConfigBuilder
-                    .set(customLogsEndpoint: customEndpointUrl)
-                    .set(customRUMEndpoint: customEndpointUrl)
-            }
+
+        if !firstPartyHosts.isEmpty {
+            _ = ddConfigBuilder.trackURLSession(firstPartyHosts: Set(firstPartyHosts))
         }
 
-        _ = ddConfigBuilder.set(additionalConfiguration: additionalConfig)
+        if let customEndpoint = customEndpoint,
+           let customEndpointUrl = URL(string: customEndpoint) {
+            _ = ddConfigBuilder
+                .set(customLogsEndpoint: customEndpointUrl)
+                .set(customRUMEndpoint: customEndpointUrl)
+        }
 
-        if let enableViewTracking = additionalConfig["_dd.native_view_tracking"] as? Bool, enableViewTracking {
+        if let enableViewTracking = additionalConfig["_dd.native_view_tracking"] as? Bool,
+           enableViewTracking {
             _ = ddConfigBuilder.trackUIKitRUMViews()
         }
 
-        if let serviceName = additionalConfig["_dd.service_name"] as? String {
+        if let serviceName = serviceName {
             _ = ddConfigBuilder.set(serviceName: serviceName)
         }
 
-        if let threshold = additionalConfig["_dd.long_task.threshold"] as? TimeInterval {
-            // `_dd.long_task.threshold` attribute is in milliseconds
-            _ = ddConfigBuilder.trackRUMLongTasks(threshold: threshold / 1_000)
-        }
+        _ = ddConfigBuilder.set(additionalConfiguration: additionalConfig)
 
         return ddConfigBuilder.build()
     }

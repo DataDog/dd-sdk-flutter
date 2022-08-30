@@ -4,6 +4,7 @@
 
 * 🔥 MAJOR - Fixed an issue on Android where Datadog would not properly reinitialize after backing out of an application (pressing the back button on the home screen) and returning to it.
 * Fix Flutter 3 log spam regarding use of `?.` on WidgetBindings.instance. See [#203][]
+* Sync long task threshold between Flutter and Native long task reporting.
 
 ## 1.0.0-rc.2
 

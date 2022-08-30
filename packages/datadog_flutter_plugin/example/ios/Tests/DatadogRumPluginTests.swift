@@ -434,7 +434,8 @@ class DatadogRumPluginTests: XCTestCase {
 
         let mockInternal = mock._internal as! MockRumInternalProxy
         XCTAssertEqual(mockInternal.callLog, [
-            .addLongTask(at: Date(timeIntervalSince1970: startTimeInterval), duration: TimeInterval(Double(duration) / 1000.0),
+            .addLongTask(at: Date(timeIntervalSince1970: startTimeInterval),
+                         duration: TimeInterval(Double(duration) / 1000.0),
                          attributes: [:])
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))

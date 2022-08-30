@@ -53,11 +53,15 @@ data class DatadogFlutterConfiguration(
 ) {
     data class RumConfiguration(
         var applicationId: String,
-        var sampleRate: Float
+        var sampleRate: Float,
+        var detectLongTasks: Boolean,
+        var longTaskThreshold: Float
     ) {
         constructor(encoded: Map<String, Any?>) : this(
             (encoded["applicationId"] as? String) ?: "",
-            (encoded["sampleRate"] as? Number)?.toFloat() ?: 100.0f
+            (encoded["sampleRate"] as? Number)?.toFloat() ?: 100.0f,
+            (encoded["detectLongTasks"] as? Boolean) ?: true,
+            (encoded["longTaskThreshold"] as? Number?)?.toFloat() ?: 0.1f
         )
     }
 
@@ -131,6 +135,8 @@ data class DatadogFlutterConfiguration(
         rumConfiguration?.let {
             configBuilder.sampleRumSessions(it.sampleRate)
             configBuilder.useViewTrackingStrategy(NoOpViewTrackingStrategy)
+            // Native Android always has long task reporting - only sync the threshold
+            configBuilder.trackLongTasks((it.longTaskThreshold * 1000).toLong())
         }
         customEndpoint?.let {
             configBuilder.useCustomLogsEndpoint(it)
