@@ -170,9 +170,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             rumRegisteredField.isAccessible = true
             val isRegistered: AtomicBoolean = rumRegisteredField.get(null) as AtomicBoolean
             isRegistered.set(false)
-
-            logsPlugin.detachFromEngine()
-            rumPlugin.detachFromEngine()
         }.get()
 
         result.success(null)
