@@ -46,4 +46,74 @@ class FlutterSdkAttributesTests: XCTestCase {
         XCTAssertEqual(object?["doubleValue"] as? Double, 3.1415)
         XCTAssertEqual(object?["booleanValue"] as? Bool, true)
     }
+
+    // Testing all FlutterStandardTypedData types
+    func uint8FlutterTypedData() -> FlutterStandardTypedData {
+        var array: [UInt8] = [1, 3]
+        let data = Data(bytes: &array, count: array.count * MemoryLayout<UInt8>.stride)
+
+        return FlutterStandardTypedData(bytes: data)
+    }
+
+    func int32FlutterTypedData() -> FlutterStandardTypedData {
+        var array: [Int32] = [-1, 1442]
+        let data = Data(bytes: &array, count: array.count * MemoryLayout<Int32>.stride)
+
+        return FlutterStandardTypedData(int32: data)
+    }
+
+    func int64FlutterTypedData() -> FlutterStandardTypedData {
+        var array: [Int64] = [-1, 9999991234]
+        let data = Data(bytes: &array, count: array.count * MemoryLayout<Int64>.stride)
+
+        return FlutterStandardTypedData(int64: data)
+    }
+
+    func doubleFlutterTypedData() -> FlutterStandardTypedData {
+        var array: [Double] = [2.3, 3.5]
+        let data = Data(bytes: &array, count: array.count * MemoryLayout<Double>.stride)
+
+        return FlutterStandardTypedData(float64: data)
+    }
+
+    func floatFlutterTypedData() -> FlutterStandardTypedData {
+        var floatData: [Float] = [1.0, 3.3]
+        let data = Data(bytes: &floatData, count: floatData.count * MemoryLayout<Float>.stride)
+
+        return FlutterStandardTypedData(float32: data)
+    }
+
+    func testAttributes_FlutterStandardTypedData_IsEncodedProperly() throws {
+        let flutterTypes: [String: Any?] = [
+            "uint8": uint8FlutterTypedData(),
+            "int32": int32FlutterTypedData(),
+            "int64": int64FlutterTypedData(),
+            "float": floatFlutterTypedData(),
+            "double": doubleFlutterTypedData()
+        ]
+
+        let cast = castFlutterAttributesToSwift(flutterTypes)
+        let encoded = try JSONEncoder().encode(cast)
+        let decoded = try JSONSerialization.jsonObject(with: encoded) as? [String: Any?]
+
+        XCTAssertEqual(decoded?["uint8"] as? [Int], [1, 3])
+        XCTAssertEqual(decoded?["int32"] as? [Int], [-1, 1442])
+        XCTAssertEqual(decoded?["int64"] as? [Int64], [-1, 9999991234])
+        XCTAssertEqual(decoded?["float"] as? [Float], [1.0, 3.3])
+        XCTAssertEqual(decoded?["double"] as? [Double], [2.3, 3.5])
+    }
+}
+
+extension JSONEncoder {
+    private struct EncodableWrapper: Encodable {
+        let wrapped: Encodable
+
+        func encode(to encoder: Encoder) throws {
+            try self.wrapped.encode(to: encoder)
+        }
+    }
+    func encode<Key: Encodable>(_ dictionary: [Key: Encodable]) throws -> Data {
+        let wrappedDict = dictionary.mapValues(EncodableWrapper.init(wrapped:))
+        return try self.encode(wrappedDict)
+    }
 }

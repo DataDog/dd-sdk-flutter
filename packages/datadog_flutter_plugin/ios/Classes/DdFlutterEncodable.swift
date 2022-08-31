@@ -78,6 +78,8 @@ internal class DdFlutterEncodable: Encodable {
             try container.encode(array.map { DdFlutterEncodable($0) })
         case let dictionary as [String: Any]:
             try container.encode(dictionary.mapValues { DdFlutterEncodable($0) })
+        case let typedData as FlutterStandardTypedData:
+            try encodeTypedData(typedData, into: &container)
         default:
             let context = EncodingError.Context(
                 codingPath: container.codingPath,
@@ -86,6 +88,43 @@ internal class DdFlutterEncodable: Encodable {
             )
             throw EncodingError.invalidValue(value, context)
         }
+    }
+}
+
+private func encodeTypedData(_ data: FlutterStandardTypedData,
+                             into container: inout SingleValueEncodingContainer) throws {
+    switch data.type {
+    case .uInt8:
+        let array: [UInt8] = data.data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            return Array(bytes.bindMemory(to: UInt8.self))
+        }
+        try container.encode(array)
+    case .int32:
+        let array: [Int32] = data.data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            return Array(bytes.bindMemory(to: Int32.self))
+        }
+        try container.encode(array)
+    case .int64:
+        let array: [Int64] = data.data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            return Array(bytes.bindMemory(to: Int64.self))
+        }
+        try container.encode(array)
+    case .float32:
+        let array: [Float32] = data.data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            return Array(bytes.bindMemory(to: Float32.self))
+        }
+        try container.encode(array)
+    case .float64:
+        let array: [Float64] = data.data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
+            return Array(bytes.bindMemory(to: Float64.self))
+        }
+        try container.encode(array)
+    @unknown default:
+        let context = EncodingError.Context(
+            codingPath: container.codingPath,
+            debugDescription: "FlutterStandardTypedData has unknown type \(data.type)  and cannot be encoded."
+        )
+        throw EncodingError.invalidValue(data, context)
     }
 }
 

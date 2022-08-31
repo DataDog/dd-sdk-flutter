@@ -5,6 +5,7 @@
 * 🔥 MAJOR - Fixed an issue on Android where Datadog would not properly reinitialize after backing out of an application (pressing the back button on the home screen) and returning to it.
 * Fix Flutter 3 log spam regarding use of `?.` on WidgetBindings.instance. See [#203][]
 * Sync long task threshold between Flutter and Native long task reporting.
+* Fix an issue where events that contained lists from `dart:typed_data` (`Float32List`, `Uint8List`, etc) were not being encoded / sent on iOS.
 * Update iOS SDK to 1.12.0-beta3
 
 ## 1.0.0-rc.2
