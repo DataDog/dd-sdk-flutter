@@ -51,11 +51,24 @@ class CreateReleaseBranchCommand extends Command {
 
 class CommitChangesCommand extends Command {
   final String commitMessage;
+  final bool noChangesOkay;
 
-  CommitChangesCommand(this.commitMessage);
+  CommitChangesCommand(this.commitMessage, {this.noChangesOkay = false});
 
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
+    bool noChanges = await args.gitDir.isWorkingTreeClean();
+    if (noChanges) {
+      if (noChangesOkay) {
+        logger.info('⏩ Skipping commit due to no changes. This is okay.');
+        return true;
+      } else if (!args.dryRun) {
+        logger.shout(
+            '❌ No changes from previous command. This is probably not expected.');
+        return false;
+      }
+    }
+
     logger.info('ℹ️ Committing changes');
     if (!args.dryRun) {
       var result = await args.gitDir.runCommand([
