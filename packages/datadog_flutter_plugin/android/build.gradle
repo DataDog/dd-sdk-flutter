@@ -9,7 +9,7 @@ version "1.0-SNAPSHOT"
 
 buildscript {
     ext.kotlin_version = "1.5.31"
-    ext.datadog_sdk_version = "1.14.0-beta1"
+    ext.datadog_sdk_version = "1.14.0-beta2"
     repositories {
         google()
         mavenCentral()
