@@ -22,17 +22,17 @@ It performs the following actions:
 * Creates a release branch (release/[package]/[version])
 * Removes "dependency_overrides" from releasing pubspec.yaml
 * Commits these changes to the release branch
-* Validates that `dart pub publish --dry-run` runs without errors.
+* Validates that `dart pub publish --dry-run` runs without errors
 * Switches to the chore branch
 * Bump the version in the library to the next possible release
-* Commit these changes to the chore branch to be merged back into develop.
+* Commit these changes to the chore branch to be merged back into develop
 
 Still TODO:
 * Opens a PR on your behalf into `develop` (or branch specified with `--branch`)
 
 ## Post review
 
-After the release branch is finish building, you can deploy it with:
+After the release branch is finished building, you can deploy it with:
 
 ```bash
 dart ./bin/deployer.dart datadog_flutter_plugin
