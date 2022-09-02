@@ -3,6 +3,7 @@
 // Copyright 2016-Present Datadog, Inc.
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +17,11 @@ void main() async {
     await dotenv.load();
 
     var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
+
+    String stagingEndpoint = 'https://rum.browser-intake-datad0g.com/';
+    if (Platform.isIOS) {
+      stagingEndpoint += 'api/v2/rum';
+    }
 
     final configuration = DdSdkConfiguration(
       clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
@@ -31,6 +37,7 @@ void main() async {
           ? RumConfiguration(
               applicationId: applicationId,
               detectLongTasks: true,
+              customEndpoint: stagingEndpoint,
             )
           : null,
     );

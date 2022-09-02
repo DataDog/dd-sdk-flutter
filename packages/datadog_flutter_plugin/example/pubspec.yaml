@@ -1,7 +1,7 @@
 name: datadog_flutter_plugin_example
 description: Demonstrates how to use the datadog_flutter_plugin package.
 publish_to: 'none'
-version: '1.0.0'
+version: '1.0.1'
 
 environment:
   sdk: ">=2.15.0 <3.0.0"
