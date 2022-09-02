@@ -187,12 +187,13 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
 
   void _flutterException() {
     // Iterate a list to get a system symbol in the stack.
-    ['a', 'b', 'c'].map((element) {
+    var xes = ['a', 'b', 'c'].map((element) {
       if (element == 'a') {
         throw Exception("This wasn't supposed to happen!");
       }
       return 'x';
-    });
+    }).toList();
+    xes.length;
   }
 
   static int nativeCallback(int value) {
