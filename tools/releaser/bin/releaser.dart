@@ -10,6 +10,7 @@ import 'package:releaser/git_actions.dart';
 import 'package:releaser/helpers.dart';
 import 'package:releaser/release_validator.dart';
 import 'package:releaser/version_updater.dart';
+import 'package:releaser/yaml_util.dart';
 
 void main(List<String> arguments) async {
   Logger.root.level = Level.INFO;
@@ -72,8 +73,13 @@ void main(List<String> arguments) async {
     CreateBranchCommand(choreBranch),
     UpdateVersionsCommand(),
     CommitChangesCommand(
-        '🚀 Preparing for release of ${commandArgs.packageName} ${commandArgs.version}'),
+        '🚀 Preparing for release of ${commandArgs.packageName} ${commandArgs.version}.'),
     CreateReleaseBranchCommand(),
+    RemoveDependencyOverridesCommand(),
+    CommitChangesCommand(
+      '🧹 Remove dependency overrides for release of ${commandArgs.packageName} ${commandArgs.version}.',
+      noChangesOkay: true,
+    ),
     ValidatePublishDryRun(),
     SwitchBranchCommand(choreBranch),
     // Do pre-release always for now. Later use the branch name as

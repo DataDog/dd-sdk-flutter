@@ -17,17 +17,22 @@ It performs the following actions:
 * Updates packages/[package]/pubspec.yaml with the proper version
 * Updates packages/[package]/CHANGELOG.md to modify the unreleased version to
   the specified version
-* Validates that `dart pub publish --dry-run` runs without errors.
 * Stages and commits these changes to your current branch with the message "🚀
   Preparing for release of [package] [version]"
+* Creates a release branch (release/[package]/[version])
+* Removes "dependency_overrides" from releasing pubspec.yaml
+* Commits these changes to the release branch
+* Validates that `dart pub publish --dry-run` runs without errors
+* Switches to the chore branch
+* Bump the version in the library to the next possible release
+* Commit these changes to the chore branch to be merged back into develop
 
 Still TODO:
 * Opens a PR on your behalf into `develop` (or branch specified with `--branch`)
-* Opens a PR on your behalf into `main` (or not, if `--no-main` is supplied)
 
 ## Post review
 
-After the PR to `main` is merged, the CI (or a person?) should run:
+After the release branch is finished building, you can deploy it with:
 
 ```bash
 dart ./bin/deployer.dart datadog_flutter_plugin
@@ -35,7 +40,7 @@ dart ./bin/deployer.dart datadog_flutter_plugin
 
 which perform the following tasks:
 
-* Checks that you are on `main` or a `release` branch and that your working tree is
+* Checks that you are on a `release` branch and that your working tree is
   clean and up to date with the origin
 * Tags main with the package / version number and pushes the changes
 * Creates a github release for that tag / version number (marked as a

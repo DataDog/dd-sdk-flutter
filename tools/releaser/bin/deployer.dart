@@ -35,6 +35,13 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
+  final githubToken = Platform.environment['GITHUB_TOKEN'];
+  if (githubToken == null) {
+    Logger.root.shout(
+        '❌ Must have the environment variable GITHUB_TOKEN set to deploy.');
+    exit(1);
+  }
+
   var packageName = arguments.first;
 
   final gitDir = await getGitDir();
@@ -51,13 +58,13 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
-  if (!await _performGitHubRelease(gitDir, releaseInfo)) {
+  if (!await _performGitHubRelease(gitDir, releaseInfo, githubToken)) {
     exit(1);
   }
 }
 
 Future<bool> _performGitHubRelease(
-    GitDir gitDir, ReleaseInfo releaseInfo) async {
+    GitDir gitDir, ReleaseInfo releaseInfo, String githubToken) async {
   const githubOrganization = 'DataDog';
   const repoName = 'dd-sdk-flutter';
 
@@ -68,19 +75,24 @@ Future<bool> _performGitHubRelease(
   Logger.root.fine('ℹ️ Pushing to origin');
   await gitDir.runCommand(['push', 'origin', tag]);
 
-  var github = GitHub(auth: findAuthenticationFromEnvironment());
+  var github = GitHub(auth: Authentication.withToken(githubToken));
 
   Logger.root.fine('ℹ️ Creating github release for $tag');
-  var createRelease = CreateRelease.from(
-    tagName: tag,
-    name: '${releaseInfo.package} ${releaseInfo.version}',
-    targetCommitish: releaseInfo.commitSha,
-    body: releaseInfo.changeLog,
-    isDraft: true,
-    isPrerelease: releaseInfo.version.contains('-'),
-  );
-  await github.repositories.createRelease(
-      RepositorySlug(githubOrganization, repoName), createRelease);
+  try {
+    var createRelease = CreateRelease.from(
+      tagName: tag,
+      name: '${releaseInfo.package} ${releaseInfo.version}',
+      targetCommitish: releaseInfo.commitSha,
+      body: releaseInfo.changeLog,
+      isDraft: true,
+      isPrerelease: releaseInfo.version.contains('-'),
+    );
+    await github.repositories.createRelease(
+        RepositorySlug(githubOrganization, repoName), createRelease);
+  } catch (e) {
+    Logger.root.shout('❌ Failed to create release: ${e.toString()}');
+    return false;
+  }
 
   return true;
 }
