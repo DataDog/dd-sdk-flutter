@@ -204,12 +204,16 @@ class RumConfiguration {
   /// Defaults to 0.1 seconds
   double longTaskThreshold;
 
+  /// Use a custom endpoint for sending RUM data.
+  String? customEndpoint;
+
   RumConfiguration({
     required this.applicationId,
     double sessionSamplingRate = 100.0,
     double tracingSamplingRate = 20.0,
     this.detectLongTasks = true,
     double longTaskThreshold = 0.1,
+    this.customEndpoint,
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),
         longTaskThreshold = max(0.02, longTaskThreshold);
@@ -220,6 +224,7 @@ class RumConfiguration {
       'sampleRate': sessionSamplingRate,
       'detectLongTasks': detectLongTasks,
       'longTaskThreshold': longTaskThreshold,
+      'customEndpoint': customEndpoint,
     };
   }
 }
@@ -240,6 +245,9 @@ class DdSdkConfiguration {
   /// used to generate your client token.
   DatadogSite site;
 
+  /// Use a custom endpoint for logs
+  String? customLogsEndpoint;
+
   /// The service name for this application
   String? serviceName;
 
@@ -255,6 +263,11 @@ class DdSdkConfiguration {
   UploadFrequency? uploadFrequency;
 
   /// Set a custom endpoint to send information to.
+  ///
+  /// This is deprecated in favor of [customLogsEndpoint] and
+  /// [RumConfiguration.customEndpoint].
+  @Deprecated(
+      'Use customLogsEndpoint and RumConfiguration.customEndpoint instead')
   String? customEndpoint;
 
   /// The sampling rate for Internal Telemetry (info related to the work of the
@@ -303,6 +316,7 @@ class DdSdkConfiguration {
     required this.env,
     required this.trackingConsent,
     required this.site,
+    this.customLogsEndpoint,
     this.nativeCrashReportEnabled = false,
     this.serviceName,
     this.uploadFrequency,
@@ -312,7 +326,19 @@ class DdSdkConfiguration {
     this.firstPartyHosts = const [],
     this.loggingConfiguration,
     this.rumConfiguration,
-  });
+  }) {
+    // Transfer customEndpoint to other properties if they're not set
+    // ignore: deprecated_member_use_from_same_package
+    if (customEndpoint != null) {
+      // ignore: deprecated_member_use_from_same_package
+      customLogsEndpoint ??= customEndpoint;
+      if (rumConfiguration != null &&
+          rumConfiguration?.customEndpoint == null) {
+        // ignore: deprecated_member_use_from_same_package
+        rumConfiguration?.customEndpoint = customEndpoint;
+      }
+    }
+  }
 
   void addPlugin(DatadogPluginConfiguration pluginConfiguration) =>
       additionalPlugins.add(pluginConfiguration);
@@ -329,9 +355,9 @@ class DdSdkConfiguration {
       'uploadFrequency': uploadFrequency?.toString(),
       'trackingConsent': trackingConsent.toString(),
       'firstPartyHosts': firstPartyHosts,
-      'customEndpoint': customEndpoint,
       'rumConfiguration': rumConfiguration?.encode(),
-      'additionalConfig': additionalConfig
+      'additionalConfig': additionalConfig,
+      'customLogsEndpoint': customLogsEndpoint,
     };
   }
 }

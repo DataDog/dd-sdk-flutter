@@ -28,7 +28,7 @@ class DdRumWeb extends DdRumPlatform {
       sampleRate: rumConfiguration.sessionSamplingRate,
       service: configuration.serviceName,
       env: configuration.env,
-      proxyUrl: configuration.customEndpoint,
+      proxyUrl: configuration.rumConfiguration?.customEndpoint,
       allowedTracingOrigins: configuration.firstPartyHosts,
       trackViewsManually: true,
     ));

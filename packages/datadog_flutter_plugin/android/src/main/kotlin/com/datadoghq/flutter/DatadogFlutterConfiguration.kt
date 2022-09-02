@@ -45,7 +45,7 @@ data class DatadogFlutterConfiguration(
     var serviceName: String? = null,
     var batchSize: BatchSize? = null,
     var uploadFrequency: UploadFrequency? = null,
-    var customEndpoint: String? = null,
+    var customLogsEndpoint: String? = null,
     var firstPartyHosts: List<String> = listOf(),
     var additionalConfig: Map<String, Any?> = mapOf(),
 
@@ -55,13 +55,15 @@ data class DatadogFlutterConfiguration(
         var applicationId: String,
         var sampleRate: Float,
         var detectLongTasks: Boolean,
-        var longTaskThreshold: Float
+        var longTaskThreshold: Float,
+        var customEndpoint: String?
     ) {
         constructor(encoded: Map<String, Any?>) : this(
             (encoded["applicationId"] as? String) ?: "",
             (encoded["sampleRate"] as? Number)?.toFloat() ?: 100.0f,
             (encoded["detectLongTasks"] as? Boolean) ?: true,
-            (encoded["longTaskThreshold"] as? Number?)?.toFloat() ?: 0.1f
+            (encoded["longTaskThreshold"] as? Number?)?.toFloat() ?: 0.1f,
+            encoded["customEndpoint"] as? String
         )
     }
 
@@ -87,7 +89,7 @@ data class DatadogFlutterConfiguration(
         (encoded["uploadFrequency"] as? String)?.let {
             uploadFrequency = parseUploadFrequency(it)
         }
-        customEndpoint = encoded["customEndpoint"] as? String
+        customLogsEndpoint = encoded["customLogsEndpoint"] as? String
         (encoded["firstPartyHosts"] as? List<String>)?.let {
             firstPartyHosts = it
         }
@@ -111,6 +113,7 @@ data class DatadogFlutterConfiguration(
         )
     }
 
+    @Suppress("ComplexMethod")
     fun toSdkConfiguration(): Configuration {
         val configBuilder = Configuration.Builder(
             // Always enable logging as users can create logs post initialization
@@ -137,10 +140,12 @@ data class DatadogFlutterConfiguration(
             configBuilder.useViewTrackingStrategy(NoOpViewTrackingStrategy)
             // Native Android always has long task reporting - only sync the threshold
             configBuilder.trackLongTasks((it.longTaskThreshold * 1000).toLong())
+            it.customEndpoint?.let { ce ->
+                configBuilder.useCustomRumEndpoint(ce)
+            }
         }
-        customEndpoint?.let {
+        customLogsEndpoint?.let {
             configBuilder.useCustomLogsEndpoint(it)
-            configBuilder.useCustomRumEndpoint(it)
         }
         configBuilder.setFirstPartyHosts(firstPartyHosts)
 
