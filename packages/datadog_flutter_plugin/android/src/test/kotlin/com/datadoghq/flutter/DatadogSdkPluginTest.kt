@@ -154,7 +154,8 @@ class DatadogSdkPluginTest {
                 applicationId = applicationId,
                 sampleRate = 82.3f,
                 detectLongTasks = true,
-                longTaskThreshold = 0.1f
+                longTaskThreshold = 0.1f,
+                customEndpoint = null
             )
         )
 

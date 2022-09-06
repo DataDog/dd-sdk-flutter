@@ -51,13 +51,16 @@ Future<void> main() async {
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,
     firstPartyHosts: firstPartyHosts,
-    customEndpoint: customEndpoint,
+    customLogsEndpoint: customEndpoint,
     loggingConfiguration: LoggingConfiguration(
       sendNetworkInfo: true,
       printLogsToConsole: true,
     ),
     rumConfiguration: applicationId != null
-        ? RumConfiguration(applicationId: applicationId)
+        ? RumConfiguration(
+            applicationId: applicationId,
+            customEndpoint: customEndpoint,
+          )
         : null,
   );
 

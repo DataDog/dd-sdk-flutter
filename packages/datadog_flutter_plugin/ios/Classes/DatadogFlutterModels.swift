@@ -42,12 +42,14 @@ class DatadogFlutterConfiguration {
         let sampleRate: Float
         let detectLongTasks: Bool
         let longTaskThreshold: Float
+        let customEndpoint: String?
 
-        init(applicationId: String, sampleRate: Float, detectLongTasks: Bool, longTaskThreshold: Float) {
+        init(applicationId: String, sampleRate: Float, detectLongTasks: Bool, longTaskThreshold: Float, customEndpoint: String?) {
             self.applicationId = applicationId
             self.sampleRate = sampleRate
             self.detectLongTasks = detectLongTasks
             self.longTaskThreshold = longTaskThreshold
+            self.customEndpoint = customEndpoint
         }
 
         init?(fromEncoded encoded: [String: Any?]) {
@@ -60,6 +62,7 @@ class DatadogFlutterConfiguration {
             sampleRate = (encoded["sampleRate"] as? NSNumber)?.floatValue ?? 100.0
             detectLongTasks = (encoded["detectLongTasks"] as? NSNumber)?.boolValue ?? true
             longTaskThreshold = (encoded["longTaskThreshold"] as? NSNumber)?.floatValue ?? 0.1
+            customEndpoint = encoded["customEndpoint"] as? String
         }
     }
 
@@ -74,7 +77,7 @@ class DatadogFlutterConfiguration {
     let batchSize: Datadog.Configuration.BatchSize?
     let uploadFrequency: Datadog.Configuration.UploadFrequency?
     let firstPartyHosts: [String]
-    let customEndpoint: String?
+    let customLogsEndpoint: String?
     let additionalConfig: [String: Any]
 
     let rumConfiguration: RumConfiguration?
@@ -90,7 +93,7 @@ class DatadogFlutterConfiguration {
         batchSize: Datadog.Configuration.BatchSize? = nil,
         uploadFrequency: Datadog.Configuration.UploadFrequency? = nil,
         firstPartyHosts: [String] = [],
-        customEndpoint: String? = nil,
+        customLogsEndpoint: String? = nil,
         additionalConfig: [String: Any] = [:],
         rumConfiguration: RumConfiguration? = nil
     ) {
@@ -104,7 +107,7 @@ class DatadogFlutterConfiguration {
         self.batchSize = batchSize
         self.uploadFrequency = uploadFrequency
         self.firstPartyHosts = firstPartyHosts
-        self.customEndpoint = customEndpoint
+        self.customLogsEndpoint = customLogsEndpoint
         self.additionalConfig = additionalConfig
         self.rumConfiguration = rumConfiguration
     }
@@ -131,7 +134,7 @@ class DatadogFlutterConfiguration {
         uploadFrequency = convertOptional(encoded["uploadFrequency"], {
             .parseFromFlutter($0)
         })
-        customEndpoint = encoded["customEndpoint"] as? String
+        customLogsEndpoint = encoded["customLogsEndpoint"] as? String
         firstPartyHosts = encoded["firstPartyHosts"] as? [String] ?? []
         additionalConfig = encoded["additionalConfig"] as? [String: Any] ?? [:]
 
@@ -153,6 +156,10 @@ class DatadogFlutterConfiguration {
 
             if rumConfig.detectLongTasks {
                 _ = ddConfigBuilder.trackRUMLongTasks(threshold: TimeInterval(rumConfig.longTaskThreshold))
+            }
+            if let customRumEndpoint = rumConfig.customEndpoint,
+               let customRumEndpointUrl = URL(string: customRumEndpoint) {
+                _ = ddConfigBuilder.set(customRUMEndpoint: customRumEndpointUrl)
             }
         } else {
             ddConfigBuilder = Datadog.Configuration.builderUsing(
@@ -184,11 +191,10 @@ class DatadogFlutterConfiguration {
             _ = ddConfigBuilder.trackURLSession(firstPartyHosts: Set(firstPartyHosts))
         }
 
-        if let customEndpoint = customEndpoint,
+        if let customEndpoint = customLogsEndpoint,
            let customEndpointUrl = URL(string: customEndpoint) {
             _ = ddConfigBuilder
                 .set(customLogsEndpoint: customEndpointUrl)
-                .set(customRUMEndpoint: customEndpointUrl)
         }
 
         if let enableViewTracking = additionalConfig["_dd.native_view_tracking"] as? Bool,

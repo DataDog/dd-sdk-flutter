@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Deprecation - `DdSdkConfiguration.customEndpoint` has been deprecated in favor of `DdSdkConfiguration.customLogsEndpoint` and `RumConfiguration.customEndpoint`.
+
 ## 1.0.0-rc.3
 
 * 🔥 MAJOR - Fixed an issue on Android where Datadog would not properly reinitialize after backing out of an application (pressing the back button on the home screen) and returning to it.

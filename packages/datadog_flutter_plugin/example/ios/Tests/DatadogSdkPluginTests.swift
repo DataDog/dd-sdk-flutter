@@ -89,7 +89,8 @@ class FlutterSdkTests: XCTestCase {
                 applicationId: "fakeApplicationId",
                 sampleRate: 100.0,
                 detectLongTasks: true,
-                longTaskThreshold: 0.3
+                longTaskThreshold: 0.3,
+                customEndpoint: nil
             )
         )
 

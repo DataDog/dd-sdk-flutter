@@ -75,7 +75,7 @@ void main() {
       'nativeCrashReportEnabled': false,
       'trackingConsent': 'TrackingConsent.pending',
       'telemetrySampleRate': null,
-      'customEndpoint': null,
+      'customLogsEndpoint': null,
       'batchSize': null,
       'uploadFrequency': null,
       'firstPartyHosts': <String>[],
