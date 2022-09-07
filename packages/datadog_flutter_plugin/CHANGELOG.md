@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Deprecation - `DdSdkConfiguration.customEndpoint` has been deprecated in favor of `DdSdkConfiguration.customLogsEndpoint` and `RumConfiguration.customEndpoint`.
+* Added `DdSdkConfiguration.version` configuration option for specifying a custom application version.
 
 ## 1.0.0-rc.3
 

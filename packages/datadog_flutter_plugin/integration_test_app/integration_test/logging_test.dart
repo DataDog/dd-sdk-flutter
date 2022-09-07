@@ -99,6 +99,7 @@ void main() {
     for (final log in logs) {
       expect(log.serviceName,
           equalsIgnoringCase('com.datadoghq.flutter.integration'));
+      expect(log.applicationVersion, '1.2.3-555');
       if (!kIsWeb) {
         expect(log.threadName, 'main');
       }

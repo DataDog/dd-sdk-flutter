@@ -36,6 +36,7 @@ Future<void> main() async {
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
     serviceName: 'com.datadoghq.flutter.integration',
+    version: '1.2.3+555',
     site: DatadogSite.us1,
     trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
