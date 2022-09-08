@@ -237,8 +237,8 @@ void main() {
     for (final event in rumLog) {
       if (!kIsWeb && Platform.isIOS) {
         expect(event.service, 'com.datadoghq.flutter.integration');
+        expect(event.version, '1.2.3-555');
       }
-      expect(event.version, '1.2.3-555');
     }
   });
 }
