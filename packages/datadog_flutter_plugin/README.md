@@ -50,7 +50,7 @@ This loads the CDN-delivered Datadog Logging and RUM Browser SDKs. Note that the
 
 {{< img src="real_user_monitoring/flutter/image_flutter.png" alt="Create a RUM application in Datadog workflow" style="width:90%;">}}
 
-To ensure the safety of your data, you must use a client token. For more information about setting up a client token, see the [Client Token documentation][4].
+To ensure the safety of your data, you must use a client token. For more information about setting up a client token, see the [Client Token documentation][3].
 
 ### Create configuration object
 
@@ -215,7 +215,7 @@ tampers with the Linux kernel, the stored data might become readable.
 ### iOS
 
 Before data is uploaded to Datadog, it is stored in cleartext in the cache directory (`Library/Caches`)
-of your [application sandbox][2], which can't be read by any other app installed on the device.
+of your [application sandbox][10], which can't be read by any other app installed on the device.
 
 ## Contributing
 
@@ -240,3 +240,4 @@ For more information, see [Apache License, v2.0][5].
 [7]: https://pub.dev/packages/datadog_tracking_http_client
 [8]: https://github.com/flutter/flutter/wiki/Developing-with-Flutter-on-Apple-Silicon
 [9]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/DdSdkConfiguration-class.html
+[10]: https://support.apple.com/guide/security/security-of-runtime-process-sec15bfe098e/web
