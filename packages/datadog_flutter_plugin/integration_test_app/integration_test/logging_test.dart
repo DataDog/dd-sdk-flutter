@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:flutter/foundation.dart';
@@ -100,6 +101,9 @@ void main() {
       expect(log.serviceName,
           equalsIgnoringCase('com.datadoghq.flutter.integration'));
       if (!kIsWeb) {
+        if (Platform.isIOS) {
+          expect(log.applicationVersion, '1.2.3-555');
+        }
         expect(log.threadName, 'main');
       }
     }

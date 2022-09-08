@@ -5,6 +5,7 @@
 import 'dart:math';
 
 import '../datadog_flutter_plugin.dart';
+import '../datadog_internal.dart';
 
 /// Defines the Datadog SDK policy when batching data together before uploading
 /// it to Datadog servers. Smaller batches mean smaller but more network
@@ -262,6 +263,25 @@ class DdSdkConfiguration {
   /// value impacts the frequency of performing network requests by the SDK.
   UploadFrequency? uploadFrequency;
 
+  /// Sets the current version number of the application.
+  ///
+  /// By default, both iOS and Android sync their version numbers with the
+  /// current version in your pubspec, minus any build or pre-release
+  /// information. This property should only be used if you want to add this
+  /// additional information back in, or if the version in your pubspec does not
+  /// match your application version.
+  ///
+  /// Because 'version' is a Datadog tag, it needs to comply with the rules in
+  /// [Defining
+  /// Tags](https://docs.datadoghq.com/getting_started/tagging/#defining-tags)
+  /// Datadog documentation. We will automatically replace `+` with `-` for
+  /// simplicity.
+  ///
+  /// Note: If you are uploading Flutter symbols or an Android mapping file,
+  /// this version MUST match the version specified in the `flutter-symbols
+  /// upload` command in order for symbolication to work.
+  String? version;
+
   /// Set a custom endpoint to send information to.
   ///
   /// This is deprecated in favor of [customLogsEndpoint] and
@@ -321,6 +341,7 @@ class DdSdkConfiguration {
     this.serviceName,
     this.uploadFrequency,
     this.batchSize,
+    this.version,
     this.customEndpoint,
     this.telemetrySampleRate,
     this.firstPartyHosts = const [],
@@ -344,6 +365,13 @@ class DdSdkConfiguration {
       additionalPlugins.add(pluginConfiguration);
 
   Map<String, Object?> encode() {
+    // Add version to additional config as part of encoding
+    final encodedAdditionalConfig = Map<String, Object?>.from(additionalConfig);
+    if (version != null) {
+      final fixedVersion = version?.replaceAll('+', '-');
+      encodedAdditionalConfig[DatadogConfigKey.version] = fixedVersion;
+    }
+
     return {
       'clientToken': clientToken,
       'env': env,
@@ -356,7 +384,7 @@ class DdSdkConfiguration {
       'trackingConsent': trackingConsent.toString(),
       'firstPartyHosts': firstPartyHosts,
       'rumConfiguration': rumConfiguration?.encode(),
-      'additionalConfig': additionalConfig,
+      'additionalConfig': encodedAdditionalConfig,
       'customLogsEndpoint': customLogsEndpoint,
     };
   }

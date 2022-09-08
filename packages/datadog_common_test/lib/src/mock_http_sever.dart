@@ -65,6 +65,7 @@ class RecordingHttpServer {
       }
       if (printRequests) {
         print('---- BEGIN REQUEST ----');
+        print('Requested URL: ${parsed.requestedUrl}');
         print(parsed.data);
         print('---- END REQUEST ----');
       }

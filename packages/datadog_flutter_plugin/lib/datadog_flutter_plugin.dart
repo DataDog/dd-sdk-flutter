@@ -70,7 +70,7 @@ class DatadogSdk {
   }
 
   /// The version of this SDK.
-  String get version => ddPackageVersion;
+  static String get sdkVersion => ddPackageVersion;
 
   /// Logger used internally by Datadog to report errors.
   @internal
@@ -128,7 +128,7 @@ class DatadogSdk {
   /// Initialize the DatadogSdk with the provided [configuration].
   Future<void> initialize(DdSdkConfiguration configuration) async {
     configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
-    configuration.additionalConfig[DatadogConfigKey.version] = version;
+    configuration.additionalConfig[DatadogConfigKey.sdkVersion] = sdkVersion;
 
     _setFirstPartyHosts(configuration.firstPartyHosts);
 
