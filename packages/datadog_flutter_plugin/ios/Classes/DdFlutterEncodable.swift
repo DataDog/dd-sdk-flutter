@@ -72,6 +72,8 @@ internal class DdFlutterEncodable: Encodable {
         switch value {
         case let number as NSNumber:
             try encodeNSNumber(number, into: &container)
+        case is NSNull, is Void:
+            try container.encodeNil()
         case let string as String:
             try container.encode(string)
         case let array as [Any]:

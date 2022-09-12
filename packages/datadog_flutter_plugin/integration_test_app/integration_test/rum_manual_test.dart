@@ -233,6 +233,15 @@ void main() {
     expect(view3.viewEvents.last.view.actionCount, 0);
     expect(view3.viewEvents.last.view.errorCount, 0);
 
+    const expectedNestedAttribute = {
+      'testing_attribute': {
+        'nested_1': 123,
+        'nested_null': null,
+      },
+    };
+    expect(view3.viewEvents.last.context!['nesting_attribute'],
+        expectedNestedAttribute);
+
     // Verify service name in RUM events
     for (final event in rumLog) {
       if (!kIsWeb && Platform.isIOS) {
