@@ -3,7 +3,7 @@
 
 > A plugin for use with the `DatadogSdk`, used to track performance of gRPC and enable Datadog Distributed Tracing.
 
-> ⚠️ This plugin is still in Alpha / Developer Preview. 
+> ⚠️ This plugin is still in Beta
 
 ## Getting started
 
