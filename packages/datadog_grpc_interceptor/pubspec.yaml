@@ -1,6 +1,6 @@
 name: datadog_grpc_interceptor
 description: A plugin for use with the DatadogSdk, used to track performance of gRPC and enable Datadog Distributed Tracing.
-version: 1.0.0-alpha.1
+version: 1.0.0-beta.1
 homepage: http://datadoghq.com
 repository: https://github.com/DataDog/dd-sdk-flutter
 
