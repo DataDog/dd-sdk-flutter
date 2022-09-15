@@ -65,7 +65,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
       RumHttpMethod.get,
       fullPath,
       {
-        "grpc.method": method.path,
+        'grpc.method': method.path,
         if (shouldAppendTraces) ...{
           DatadogRumPlatformAttributeKey.traceID: traceId,
           DatadogRumPlatformAttributeKey.spanID: parentId
@@ -89,7 +89,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
     final future = invoker(method, request, options);
     future.then((v) {
       _datadog.rum?.stopResourceLoading(rumKey, 200, RumResourceType.native);
-    }, onError: (e, st) {
+    }, onError: (Object e, StackTrace? st) {
       _datadog.rum?.stopResourceLoadingWithErrorInfo(
           rumKey, e.toString(), e.runtimeType.toString());
     });

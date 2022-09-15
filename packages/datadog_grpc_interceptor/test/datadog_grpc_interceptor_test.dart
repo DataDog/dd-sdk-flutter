@@ -37,7 +37,7 @@ void main() {
     registerFallbackValue(Uri(host: 'localhost'));
   });
 
-  group("all tests with insecure channel", () {
+  group('all tests with insecure channel', () {
     late ClientChannel channel;
     late Server server;
 
@@ -78,8 +78,8 @@ void main() {
           RumHttpMethod.get,
           'http://localhost:$port/helloworld.Greeter/SayHello',
           captureAny())).captured;
-      final key = captures[0];
-      final attributes = captures[1];
+      final key = captures[0] as String;
+      final attributes = captures[1] as Map<String, Object?>;
 
       expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
@@ -101,7 +101,7 @@ void main() {
           RumHttpMethod.get,
           'http://localhost:$port/helloworld.Greeter/SayHello',
           captureAny())).captured;
-      final attributes = captures[1];
+      final attributes = captures[1] as Map<String, Object?>;
       expect(attributes['_dd.trace_id'], isNotNull);
       expect(BigInt.tryParse(attributes['_dd.trace_id'] as String), isNotNull);
       expect(attributes['_dd.span_id'], isNotNull);
@@ -125,7 +125,7 @@ void main() {
           RumHttpMethod.get,
           'http://localhost:$port/helloworld.Greeter/SayHello',
           captureAny())).captured;
-      final attributes = captures[1];
+      final attributes = captures[1] as Map<String, Object?>;
       expect(attributes['_dd.trace_id'], isNull);
       expect(attributes['_dd.span_id'], isNull);
     });
@@ -154,7 +154,8 @@ void main() {
       expect(call.clientMetadata!['x-datadog-sampling-priority'], '1');
     });
 
-    test('Interceptor does not send traces metadata when shouldSample returns false',
+    test(
+        'Interceptor does not send traces metadata when shouldSample returns false',
         () async {
       when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
       when(() => mockRum.shouldSampleTrace()).thenReturn(false);
@@ -207,13 +208,13 @@ void main() {
           RumHttpMethod.get,
           'http://localhost:$port/helloworld.Greeter/SayHello',
           captureAny())).captured;
-      final attributes = captures[1];
+      final attributes = captures[1] as Map<String, Object?>;
       expect(attributes['_dd.trace_id'], isNull);
       expect(attributes['_dd.span_id'], isNull);
     });
   });
 
-  test("secure channel adds https scheme", () async {
+  test('secure channel adds https scheme', () async {
     final channel = ClientChannel(
       'localhost',
       port: port,
@@ -247,19 +248,19 @@ void main() {
         RumHttpMethod.get,
         'https://localhost:$port/helloworld.Greeter/SayHello',
         captureAny())).captured;
-    final key = captures[0];
-    final attributes = captures[1];
+    final key = captures[0] as String;
+    final attributes = captures[1] as Map<String, Object?>;
 
     expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
     verify(() =>
-        mockRum.stopResourceLoadingWithErrorInfo(key, any(), "GrpcError", {}));
+        mockRum.stopResourceLoadingWithErrorInfo(key, any(), 'GrpcError', {}));
 
-    channel.shutdown();
-    server.shutdown();
+    await channel.shutdown();
+    await server.shutdown();
   });
 
-  test("internet address channel adds scheme", () async {
+  test('internet address channel adds scheme', () async {
     final channel = ClientChannel(
       InternetAddress.loopbackIPv4,
       port: port,
@@ -289,18 +290,18 @@ void main() {
         RumHttpMethod.get,
         'http://127.0.0.1:$port/helloworld.Greeter/SayHello',
         captureAny())).captured;
-    final key = captures[0];
-    final attributes = captures[1];
+    final key = captures[0] as String;
+    final attributes = captures[1] as Map<String, Object?>;
 
     expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
     verify(() => mockRum.stopResourceLoading(key, 200, RumResourceType.native));
 
-    channel.shutdown();
-    server.shutdown();
+    await channel.shutdown();
+    await server.shutdown();
   });
 
-  test("secure internet address channel adds scheme", () async {
+  test('secure internet address channel adds scheme', () async {
     final channel = ClientChannel(
       InternetAddress.loopbackIPv4,
       port: port,
@@ -334,15 +335,15 @@ void main() {
         RumHttpMethod.get,
         'https://127.0.0.1:$port/helloworld.Greeter/SayHello',
         captureAny())).captured;
-    final key = captures[0];
-    final attributes = captures[1];
+    final key = captures[0] as String;
+    final attributes = captures[1] as Map<String, Object?>;
 
     expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
     verify(() =>
-        mockRum.stopResourceLoadingWithErrorInfo(key, any(), "GrpcError", {}));
+        mockRum.stopResourceLoadingWithErrorInfo(key, any(), 'GrpcError', {}));
 
-    channel.shutdown();
-    server.shutdown();
+    await channel.shutdown();
+    await server.shutdown();
   });
 }

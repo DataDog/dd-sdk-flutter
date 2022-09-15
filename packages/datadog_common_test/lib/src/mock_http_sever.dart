@@ -141,7 +141,7 @@ abstract class RecordingServerClient {
       }
 
       if (!stopPolling) {
-        await Future.delayed(const Duration(milliseconds: 1000));
+        await Future<void>.delayed(const Duration(milliseconds: 1000));
       }
     } while (!stopPolling && timeoutTime.isAfter(DateTime.now()));
   }
@@ -192,8 +192,8 @@ class RemoteRecordingServerClient extends RecordingServerClient {
   }
 
   @override
-  Future<String> startNewSession({maxAttempts = 10}) async {
-    await Future.delayed(const Duration(seconds: 3));
+  Future<String> startNewSession({int maxAttempts = 10}) async {
+    await Future<void>.delayed(const Duration(seconds: 3));
     //for (int i = 0; i < maxAttempts; ++i) {
     try {
       var response = await http.post(Uri.parse('$_endpoint/session'));
@@ -203,7 +203,7 @@ class RemoteRecordingServerClient extends RecordingServerClient {
       currentSession = response.body;
       return currentSession;
     } on http.ClientException {
-      await Future.delayed(const Duration(seconds: 3));
+      await Future<void>.delayed(const Duration(seconds: 3));
     }
     return '';
     //}
