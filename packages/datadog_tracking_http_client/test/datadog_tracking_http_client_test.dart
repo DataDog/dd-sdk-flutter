@@ -41,7 +41,7 @@ class HasHost extends CustomMatcher {
   HasHost(Matcher matcher) : super('Uri with host that is', 'host', matcher);
 
   @override
-  Object? featureValueOf(actual) {
+  Object? featureValueOf(Object? actual) {
     return (actual as Uri).host;
   }
 }
@@ -148,7 +148,7 @@ void main() {
     verify(() => headers.add('x-datadog-sampling-priority', '1'));
     var traceValue =
         verify(() => headers.add('x-datadog-trace-id', captureAny()))
-            .captured[0];
+            .captured[0] as String;
     var traceInt = BigInt.tryParse(traceValue);
     expect(traceInt, isNotNull);
     expect(traceInt?.bitLength, lessThanOrEqualTo(63));
@@ -163,12 +163,6 @@ void main() {
 
   void enableRum() {
     when(() => mockDatadog.rum).thenReturn(mockRum);
-    when(() => mockRum.startResourceLoading(any(), any(), any(), any()))
-        .thenAnswer((_) => Future.value());
-    when(() => mockRum.stopResourceLoading(any(), any(), any(), any(), any()))
-        .thenAnswer((_) => Future.value());
-    when(() => mockRum.stopResourceLoadingWithErrorInfo(any(), any(), any()))
-        .thenAnswer((_) => Future.value());
   }
 
   group('when rum is enabled', () {
@@ -305,7 +299,7 @@ void main() {
       // Listen / close the response
       var error = Error();
       Object? caughtError;
-      response.listen((event) {}, onError: (e) {
+      response.listen((event) {}, onError: (Object e) {
         caughtError = e;
       });
       mockResponse.streamController.addError(error);

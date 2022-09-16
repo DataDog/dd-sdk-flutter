@@ -139,6 +139,7 @@ workflows:
           run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
           inputs:
           - api_level: '30'
+          - emulator_channel: 0
       - wait-for-android-emulator@1:
           run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
 

@@ -173,7 +173,7 @@ class DdRum {
   /// ```dart
   /// FlutterError.onError = (FlutterErrorDetails details) {
   ///    FlutterError.presentError(details);
-  ///    DatadogSdk.instance..rum?.handleFlutterError(details);
+  ///    DatadogSdk.instance.rum?.handleFlutterError(details);
   /// };
   /// ```
   void handleFlutterError(FlutterErrorDetails details) {
