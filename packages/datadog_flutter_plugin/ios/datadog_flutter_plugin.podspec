@@ -16,8 +16,8 @@ A new flutter plugin project.
   s.source_files = 'Classes/**/*'
   s.static_framework = true
   s.dependency 'Flutter'
-  s.dependency 'DatadogSDK', '1.12.0-beta3'
-  s.dependency 'DatadogSDKCrashReporting', '1.12.0-beta3'
+  s.dependency 'DatadogSDK', '1.12.0'
+  s.dependency 'DatadogSDKCrashReporting', '1.12.0'
   s.platform = :ios, '11.0'
 
   # Flutter.framework does not contain a i386 slice.
