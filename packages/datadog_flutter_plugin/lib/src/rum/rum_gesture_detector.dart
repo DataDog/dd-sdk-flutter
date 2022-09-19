@@ -4,6 +4,7 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:meta/meta.dart';
 
 import '../../datadog_flutter_plugin.dart';
@@ -171,20 +172,36 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     var rootElement = RumUserActionDetector.elementMap[widget];
     if (rootElement == null) return null;
 
+    final pointerListener = rootElement.renderObject;
+    if (pointerListener == null || pointerListener is! RenderPointerListener) {
+      return null;
+    }
+
+    var hitTestResult = BoxHitTestResult();
+    pointerListener.hitTest(hitTestResult, position: position);
+    var targets = hitTestResult.path.toList();
+
     _ElementDescription? detectingElement;
+
     String? rumTreeAnnotation;
+    RenderObject? lastRenderObject;
 
     void elementVisitor(Element element) {
-      // We already have a candidate element, you can stop now
-      if (detectingElement != null) return;
+      // We already have a candidate element, or we hit something we don't detect
+      if (detectingElement != null || targets.isEmpty) return;
 
       final ro = element.renderObject;
       if (ro == null) return;
 
-      final transform = ro.getTransformTo(rootElement.renderObject);
-      final paintBounds = MatrixUtils.transformRect(transform, ro.paintBounds);
+      // Multiple elements in the tree can share render objects,
+      // including our annotation object. Continue to check if the widgets
+      // are detecting elements
+      if (ro == targets.last.target) {
+        final lastHit = targets.removeLast();
+        lastRenderObject = ro;
+      }
 
-      if (paintBounds.contains(position)) {
+      if (ro == lastRenderObject) {
         final widget = element.widget;
         if (widget is RumUserActionAnnotation) {
           rumTreeAnnotation = widget.description;
@@ -198,6 +215,18 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
         }
         // This annotation was only for this tree
         rumTreeAnnotation = null;
+      } else {
+        // This element got skipped in the hit test, but if we're still
+        // inside it's element tree, keep searching.
+        // This is because large portions of the tree can get discarded
+        // during the hit test process (especially around viewports)
+        final transform = ro.getTransformTo(rootElement.renderObject);
+        final paintBounds =
+            MatrixUtils.transformRect(transform, ro.paintBounds);
+
+        if (paintBounds.contains(position)) {
+          element.visitChildElements(elementVisitor);
+        }
       }
     }
 
