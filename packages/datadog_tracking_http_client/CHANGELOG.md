@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.1.0
+
 * Minor documentation update to clarify 1.1.x / 1.0.x changes
 
 ## 1.1.0-rc.1
