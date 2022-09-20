@@ -282,6 +282,13 @@ class DdSdkConfiguration {
   /// upload` command in order for symbolication to work.
   String? version;
 
+  /// Set the current flavor (variant) of the application
+  ///
+  /// This must match the flavor set during symbol upload in order for stack trace
+  /// deobfuscation to work. By default, the flavor parameter is null and will
+  /// not appear as a tag in RUM, but other tools will default to 'release'
+  String? flavor;
+
   /// Set a custom endpoint to send information to.
   ///
   /// This is deprecated in favor of [customLogsEndpoint] and
@@ -342,6 +349,7 @@ class DdSdkConfiguration {
     this.uploadFrequency,
     this.batchSize,
     this.version,
+    this.flavor,
     this.customEndpoint,
     this.telemetrySampleRate,
     this.firstPartyHosts = const [],
@@ -370,6 +378,10 @@ class DdSdkConfiguration {
     if (version != null) {
       final fixedVersion = version?.replaceAll('+', '-');
       encodedAdditionalConfig[DatadogConfigKey.version] = fixedVersion;
+    }
+
+    if (flavor != null) {
+      encodedAdditionalConfig[DatadogConfigKey.variant] = flavor;
     }
 
     return {

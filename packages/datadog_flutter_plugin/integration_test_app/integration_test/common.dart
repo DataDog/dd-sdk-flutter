@@ -98,7 +98,8 @@ extension Waiter on WidgetTester {
   }
 }
 
-void verifyCommonTags(RequestLog request, String service, String version) {
+void verifyCommonTags(
+    RequestLog request, String service, String version, String? variant) {
   final sdkVersion = request.tags['sdk_version'];
   if (kIsWeb) {
     // Returning the browser version of the SDK.
@@ -115,5 +116,6 @@ void verifyCommonTags(RequestLog request, String service, String version) {
 
     // Not sent as a tag on web
     expect(request.tags['version'], version);
+    expect(request.tags['variant'], variant);
   }
 }
