@@ -1,21 +1,20 @@
-# Overview
-
-> *NOTICE* These instructions are for early adopters looking to symbolicate iOS and Android native crashes. These instructions are temporary and will change as Datadog adds more support for Flutter error tracking in the future.
-> 
-> Note that Dart stack traces for Flutter applications using the `--split-debug-info` and `--obfuscate` flags are currently not supported.
->
+## Overview
 
 Enable Crash Reporting and Error Tracking to get comprehensive crash reports and error trends with Real User Monitoring. 
 
-Your crash reports appear in [**Error Tracking**][8].
+<div class="alert alert-info">
+Dart stack traces on Flutter applications with `--split-debug-info` and `--obfuscate` flags are not supported.
+</div>
+
+Your crash reports appear in [**Error Tracking**][1].
 
 ## Setup
 
-If you have not set up the Flutter SDK yet, follow the instructions in the [documentation][2].
+If you have not set up the Datadog Flutter SDK for RUM yet, follow the [in-app setup instructions][2] or see the [Flutter setup documentation][3].
 
 ### Add Crash Reporting
 
-Update your initialization configuration to set `nativeCrashReportEnabled` to `true`.
+Update your initialization snippet to enable native crash reporting for iOS and Android by setting `nativeCrashReportEnabled` to `true`.
 
 For example:
 
@@ -32,11 +31,11 @@ final configuration = DdSdkConfiguration(
 DatadogSdk.instance.initialize(configuration);
 ```
 
-This enables native crash reporting for iOS and Android.
-
-## Manually uploading iOS dSYMs to Datadog
+## Manually upload iOS dSYMs to Datadog
 
 Crash reports on iOS are collected in a raw format and mostly contain memory addresses. To map these addresses into legible symbol information, Datadog requires .dSYM files, which are generated in your application's build process.
+
+### Find your dYSM file
 
 Every iOS application produces .dSYM files for each application module. These files minimize an application's binary size and enable faster download speed. Each application version contains a set of .dSYM files. 
 
@@ -44,9 +43,9 @@ Every iOS application produces .dSYM files for each application module. These fi
 
 By uploading your .dSYM file to Datadog, you gain access to the file path and line number of each frame in an error's related stack trace.
 
-Once your application crashes and you restart the application, the iOS SDK uploads a crash report to Datadog. 
+Once your application crashes and you restart the application, the Datadog iOS SDK uploads a crash report to Datadog. 
 
-You can use the command line tool [@datadog/datadog-ci][5] to upload your dSYM file. By default, Flutter will put these dSYMs in `./build/ios/archive/Runner.xcarchive/dSYMs`. After building your application with `flutter build ipa`, run the following shell command to upload your dSYMs to Datadog:
+You can use the [@datadog/datadog-ci][4] command line tool to upload your dSYM file. By default, Flutter adds these dSYM files in `./build/ios/archive/Runner.xcarchive/dSYMs`. After building your application with `flutter build ipa`, run the following shell command to upload your dSYMs to Datadog:
 
 ```sh
 export DATADOG_API_KEY="<API KEY>"
@@ -54,12 +53,11 @@ export DATADOG_API_KEY="<API KEY>"
 npx @datadog/datadog-ci dsyms upload ./build/ios/archive/Runner.xcarchive/dSYMs
 ```
 
-**Note**: To configure the tool using the EU endpoint, set the `DATADOG_SITE` environment variable to `datadoghq.eu`. To override the full URL for the intake endpoint, define the `DATADOG_DSYM_INTAKE_URL` environment variable. 
-
+To configure the tool using an EU endpoint, set the `DATADOG_SITE` environment variable to `datadoghq.eu`. To override the full URL for the intake endpoint, define the `DATADOG_DSYM_INTAKE_URL` environment variable. 
 
 ## Manually upload Android ProGuard mapping files to Datadog
 
-If you are using the `--obfuscate` parameter on Android builds, and you wish to deobfuscate your traces, you need to upload your ProGuard mapping file to Datadog. The [Gradle plugin for the Datadog Android SDK][1] supports uploading your mapping file directly to Datadog.
+If you are using the `--obfuscate` parameter on Android builds, and you wish to deobfuscate your traces, you need to upload your ProGuard mapping file to Datadog. The [Datadog Android SDK Gradle plugin][5] supports uploading your mapping file directly to Datadog.
 
 You can configure the plugin by adding the following lines to your `./android/app/build.gradle` file:
 
@@ -69,7 +67,7 @@ plugins {
 }
 ```
 
-In addition, if you need to configure the upload, you can add the following block to the end of your `./android/app/build.gradle` file:
+Additionally, if you need to configure the upload, add the following to the end of your `./android/app/build.gradle` file:
 
 ```
 datadog {
@@ -90,7 +88,12 @@ cd android
 ./gradlew uploadMappingRelease
 ```
 
-[1]: https://github.com/DataDog/dd-sdk-android-gradle-plugin
-[2]: https://docs.datadoghq.com/real_user_monitoring/flutter/#setup
-[5]: https://www.npmjs.com/package/@datadog/datadog-ci
-[8]: https://app.datadoghq.com/rum/error-tracking
+## Further reading
+
+{{< partial name="whats-next/whats-next.html" >}}
+
+[1]: https://app.datadoghq.com/rum/error-tracking
+[2]: https://app.datadoghq.com/rum/application/create
+[3]: https://docs.datadoghq.com/real_user_monitoring/flutter/#setup
+[4]: https://www.npmjs.com/package/@datadog/datadog-ci
+[5]: https://github.com/DataDog/dd-sdk-android-gradle-plugin
