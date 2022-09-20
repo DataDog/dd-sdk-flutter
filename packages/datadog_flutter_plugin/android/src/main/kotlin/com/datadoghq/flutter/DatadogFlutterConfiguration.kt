@@ -139,6 +139,8 @@ data class DatadogFlutterConfiguration(
         telemetrySampleRate?.let { configBuilder.sampleTelemetry(it) }
         rumConfiguration?.let {
             configBuilder.sampleRumSessions(it.sampleRate)
+            // Always disable user action tracking and view tracking for Flutter
+            configBuilder.disableInteractionTracking()
             configBuilder.useViewTrackingStrategy(NoOpViewTrackingStrategy)
             // Native Android always has long task reporting - only sync the threshold
             configBuilder.trackLongTasks((it.longTaskThreshold * 1000).toLong())
@@ -146,6 +148,7 @@ data class DatadogFlutterConfiguration(
                 configBuilder.useCustomRumEndpoint(ce)
             }
         }
+
         customLogsEndpoint?.let {
             configBuilder.useCustomLogsEndpoint(it)
         }
