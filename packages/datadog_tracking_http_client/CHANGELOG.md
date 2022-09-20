@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.0.1
+
+* Stable release of 1.0.x
 
 ## 1.0.1-rc.1
 
