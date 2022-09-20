@@ -1,8 +1,9 @@
+
 ## Overview
 
 Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real-time performance and user journeys of your Flutter application’s individual users.
 
-RUM supports monitoring for mobile Flutter Android and iOS applications.
+RUM supports monitoring for Flutter Android and iOS applications for Flutter 2.8+.
 
 ## Current Datadog SDK Versions
 
@@ -10,8 +11,7 @@ RUM supports monitoring for mobile Flutter Android and iOS applications.
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 1.12.0 | 1.14.0 | v4.11.2 |
-
+| 1.12.0-beta2 | 1.14.0-beta1 | v4.11.2 |
 
 [//]: # (End SDK Table)
 
@@ -34,7 +34,7 @@ On Web, add the following to your `index.html` under your `head` tag:
 <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-rum-slim-v4.js"></script>
 ```
 
-This loads the CDN-delivered Datadog Logging and RUM Browser SDKs. Note that the synchronous CDN-delivered version of the Browser SDK is the only version supported by the Flutter plugin.
+This loads the CDN-delivered Datadog Browser SDKs for Logs and RUM. The synchronous CDN-delivered version of the Datadog Browser SDK is the only version supported by the Flutter plugin.
 
 ## Setup
 
@@ -46,11 +46,11 @@ This loads the CDN-delivered Datadog Logging and RUM Browser SDKs. Note that the
 
 {{< img src="real_user_monitoring/flutter/image_flutter.png" alt="Create a RUM application in Datadog workflow" style="width:90%;">}}
 
-To ensure the safety of your data, you must use a client token. For more information about setting up a client token, see the [Client Token documentation][3].
+To ensure the safety of your data, you must use a client token. For more information about setting up a client token, see the [Client Token documentation][4].
 
 ### Create configuration object
 
-Create a configuration object for each Datadog feature (such as Logging, Tracing, and RUM) with the following snippet. By not passing a configuration for a given feature, it is disabled.
+Create a configuration object for each Datadog feature (such as Logs and RUM) with the following snippet. By not passing a configuration for a given feature, it is disabled.
 
 ```dart
 // Determine the user's consent to be tracked
@@ -64,9 +64,6 @@ final configuration = DdSdkConfiguration(
   loggingConfiguration: LoggingConfiguration(
     sendNetworkInfo: true,
     printLogsToConsole: true,
-  ),
-  tracingConfiguration: TracingConfiguration(
-    sendNetworkInfo: true,
   ),
   rumConfiguration: RumConfiguration(
     applicationId: '<RUM_APPLICATION_ID>',
@@ -167,38 +164,6 @@ final configuration = DdSdkConfiguration(
 
 In order to enable Datadog Distributed Tracing, the `DdSdkConfiguration.firstPartyHosts` property in your configuration object must be set to a domain that supports distributed tracing. You can also modify the sampling rate for Datadog distributed tracing by setting the `tracingSamplingRate` on your `RumConfiguration`.
 
-## Troubleshooting
-
-### Cocoapods issues
-
-If you have trouble building your iOS application after adding the Datadog SDK because of errors being thrown by Cocoapods, check which error you are getting. The most common error is an issue getting the most up-to-date native library from Cocoapods, which can be solved by running the following in your `ios` directory:
-
-```bash
-pod install --repo-update
-```
-
-Another common error is an issue loading the FFI library on Apple Silicon Macs.  If you see an error similar to the following:
-
-```bash
-LoadError - dlsym(0x7fbbeb6837d0, Init_ffi_c): symbol not found - /Library/Ruby/Gems/2.6.0/gems/ffi-1.13.1/lib/ffi_c.bundle
-/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/lib/ruby/2.6.0/rubygems/core_ext/kernel_require.rb:54:in `require'
-/System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/lib/ruby/2.6.0/rubygems/core_ext/kernel_require.rb:54:in `require'
-/Library/Ruby/Gems/2.6.0/gems/ffi-1.13.1/lib/ffi.rb:6:in `rescue in <top (required)>'
-/Library/Ruby/Gems/2.6.0/gems/ffi-1.13.1/lib/ffi.rb:3:in `<top (required)>'
-```
-
-Follow the instructions in the [Flutter documentation][8] for working with Flutter on Apple Silicon.
-
-### Set sdkVerbosity
-
-If you're able to run your app, but you are not seeing the data you expect on the Datadog site, try adding the following to your code before calling `DatadogSdk.initialize`:
-
-```dart
-DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
-```
-
-This causes the SDK to output additional information about what it's doing and what errors it's encountering, which may help you and Datadog Support narrow down your issue.
-
 ## Data Storage
 
 ### Android
@@ -211,7 +176,7 @@ tampers with the Linux kernel, the stored data might become readable.
 ### iOS
 
 Before data is uploaded to Datadog, it is stored in cleartext in the cache directory (`Library/Caches`)
-of your [application sandbox][10], which can't be read by any other app installed on the device.
+of your [application sandbox][2], which can't be read by any other app installed on the device.
 
 ## Contributing
 
@@ -223,10 +188,6 @@ For more information, read the [Contributing guidelines][4].
 
 For more information, see [Apache License, v2.0][5].
 
-## Further Reading
-
-{{< partial name="whats-next/whats-next.html" >}}
-
 [1]: https://app.datadoghq.com/rum/application/create
 [2]: https://docs.datadoghq.com/account_management/api-app-keys/#api-keys
 [3]: https://docs.datadoghq.com/account_management/api-app-keys/#client-tokens
@@ -234,6 +195,4 @@ For more information, see [Apache License, v2.0][5].
 [5]: https://github.com/DataDog/dd-sdk-flutter/blob/main/LICENSE
 [6]: https://source.android.com/security/app-sandbox
 [7]: https://pub.dev/packages/datadog_tracking_http_client
-[8]: https://github.com/flutter/flutter/wiki/Developing-with-Flutter-on-Apple-Silicon
 [9]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/DdSdkConfiguration-class.html
-[10]: https://support.apple.com/guide/security/security-of-runtime-process-sec15bfe098e/web
