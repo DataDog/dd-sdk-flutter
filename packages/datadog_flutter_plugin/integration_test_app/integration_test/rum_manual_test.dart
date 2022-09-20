@@ -76,7 +76,12 @@ void main() {
     const expectedContextValue = 1;
 
     for (var log in requestLog) {
-      verifyCommonTags(log, 'com.datadoghq.flutter.integration', '1.2.3-555');
+      verifyCommonTags(
+        log,
+        'com.datadoghq.flutter.integration',
+        '1.2.3-555',
+        'integration',
+      );
     }
 
     final session = RumSessionDecoder.fromEvents(rumLog);

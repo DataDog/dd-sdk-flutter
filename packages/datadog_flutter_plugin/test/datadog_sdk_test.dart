@@ -143,6 +143,21 @@ void main() {
     expect(additionalConfig[DatadogConfigKey.version], '1.9.8-123');
   });
 
+  test('flavor added to additionalConfiguration', () {
+    final configuration = DdSdkConfiguration(
+      clientToken: 'fakeClientToken',
+      env: 'fake-env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.notGranted,
+      flavor: 'strawberry',
+    );
+
+    final encoded = configuration.encode();
+    final additionalConfig =
+        encoded['additionalConfig'] as Map<String, Object?>;
+    expect(additionalConfig[DatadogConfigKey.variant], 'strawberry');
+  });
+
   test('configuration encodes default sub-configuration', () {
     final configuration = DdSdkConfiguration(
       clientToken: 'fakeClientToken',

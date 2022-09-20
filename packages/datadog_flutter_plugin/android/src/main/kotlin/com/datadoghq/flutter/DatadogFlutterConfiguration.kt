@@ -104,11 +104,13 @@ data class DatadogFlutterConfiguration(
     }
 
     fun toCredentials(): Credentials {
+        val variant = additionalConfig["_dd.variant"] as? String
+
         return Credentials(
             clientToken = clientToken,
             envName = env,
             rumApplicationId = rumConfiguration?.applicationId,
-            variant = Credentials.NO_VARIANT,
+            variant = variant ?: Credentials.NO_VARIANT,
             serviceName = serviceName
         )
     }

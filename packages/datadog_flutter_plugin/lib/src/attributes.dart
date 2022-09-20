@@ -7,6 +7,7 @@ class DatadogConfigKey {
   static const sdkVersion = '_dd.sdk_version';
   static const nativeViewTracking = '_dd.native_view_tracking';
   static const version = '_dd.version';
+  static const variant = '_dd.variant';
 }
 
 class DatadogPlatformAttributeKey {
