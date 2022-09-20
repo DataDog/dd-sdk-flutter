@@ -68,6 +68,17 @@ void main(List<String> arguments) async {
   final choreBranch =
       'chore/${commandArgs.packageName}/prep-v${commandArgs.version}';
 
+  // By default (develop) increment the version by a minor version
+  var versionBumpType = VersionBumpType.minor;
+  // If we're on a release branch, bump by a revision
+  if (currentBranch.branchName.contains('release')) {
+    versionBumpType = VersionBumpType.rev;
+  }
+  // If we're releasing a pre-release, bump by pre-release
+  if (commandArgs.version.contains('-')) {
+    versionBumpType = VersionBumpType.prerelease;
+  }
+
   final commands = <Command>[
     ValidateReleaseCommand(),
     CreateBranchCommand(choreBranch),
@@ -84,7 +95,7 @@ void main(List<String> arguments) async {
     SwitchBranchCommand(choreBranch),
     // Do pre-release always for now. Later use the branch name as
     // the indicator.
-    BumpVersionCommand(VersionBumpType.prerelease),
+    BumpVersionCommand(versionBumpType),
     CommitChangesCommand(
         '📝 Bump version of ${commandArgs.packageName} to next potential release.'),
   ];
