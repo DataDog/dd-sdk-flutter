@@ -6,6 +6,8 @@
 * Added `DdSdkConfiguration.version` configuration option for specifying a custom application version.
 * Fix `null` values in attributes not being correctly encoded on iOS.
 * Add `flavor` as a configuration parameter.
+* Updated iOS SDK to 1.12.0
+* Updated Android SDK to 1.14.0
 
 ## 1.0.0-rc.3
 
