@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.0
+
 * Deprecation - `DdSdkConfiguration.customEndpoint` has been deprecated in favor of `DdSdkConfiguration.customLogsEndpoint` and `RumConfiguration.customEndpoint`.
 * Added `DdSdkConfiguration.version` configuration option for specifying a custom application version.
 * Fix `null` values in attributes not being correctly encoded on iOS.
