@@ -129,10 +129,10 @@ class DatadogSdkPluginTest {
 
         // THEN
         assertThat(Datadog.isInitialized()).isTrue()
-        assertThat(plugin.rumPlugin).isNull()
 
         // Because we have no way to reset these, we can't test
         // that they're registered properly.
+        //assertThat(plugin.rumPlugin).isNull()
         //assertThat(GlobalRum.isRegistered()).isFalse()
     }
 
@@ -152,7 +152,10 @@ class DatadogSdkPluginTest {
             trackingConsent = TrackingConsent.GRANTED,
             rumConfiguration = DatadogFlutterConfiguration.RumConfiguration(
                 applicationId = applicationId,
-                sampleRate = 82.3f
+                sampleRate = 82.3f,
+                detectLongTasks = true,
+                longTaskThreshold = 0.1f,
+                customEndpoint = null
             )
         )
 

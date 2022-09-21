@@ -26,7 +26,7 @@ void main() {
         .thenAnswer((_) => Future<void>.value());
   });
 
-  Widget _buildFor({required Widget child}) {
+  Widget buildFor({required Widget child}) {
     final observer = DatadogNavigationObserver(datadogSdk: mockDatadog);
     return DatadogNavigationObserverProvider(
       navObserver: observer,
@@ -37,12 +37,12 @@ void main() {
     );
   }
 
-  Future<void> _buildAndNavigateTo({
+  Future<void> buildAndNavigateTo({
     required WidgetTester tester,
     String? routeName,
     required WidgetBuilder builder,
   }) async {
-    await tester.pumpWidget(_buildFor(
+    await tester.pumpWidget(buildFor(
       child: SimpleNavigator(
         nextRouteName: routeName,
         builder: builder,
@@ -56,14 +56,14 @@ void main() {
   }
 
   testWidgets('observer starts root view', (WidgetTester tester) async {
-    await tester.pumpWidget(_buildFor(child: Container()));
+    await tester.pumpWidget(buildFor(child: Container()));
 
     verify(() => mockRum.startView('/'));
   });
 
   testWidgets('pushing unnamed route ends current view',
       (WidgetTester tester) async {
-    await _buildAndNavigateTo(tester: tester, builder: (_) => Container());
+    await buildAndNavigateTo(tester: tester, builder: (_) => Container());
 
     verify(() => mockRum.startView('/'));
     verify(() => mockRum.stopView('/'));
@@ -72,7 +72,7 @@ void main() {
 
   testWidgets('popping unnamed route restarts root view ',
       (WidgetTester tester) async {
-    await _buildAndNavigateTo(
+    await buildAndNavigateTo(
         tester: tester, builder: (context) => const SimplePopPage());
     final popButton = find.text('Pop');
     await tester.tap(popButton);
@@ -88,7 +88,7 @@ void main() {
 
   testWidgets('pushing route with name in settings starts new view',
       (WidgetTester tester) async {
-    await _buildAndNavigateTo(
+    await buildAndNavigateTo(
       tester: tester,
       routeName: 'NextRoute',
       builder: (_) => Container(),
@@ -99,16 +99,16 @@ void main() {
 
   testWidgets('popping from settings named route restarts root view ',
       (WidgetTester tester) async {
-    void _onPopPressed(BuildContext context) {
+    void onPopPressed(BuildContext context) {
       Navigator.of(context).pop();
     }
 
-    await _buildAndNavigateTo(
+    await buildAndNavigateTo(
       tester: tester,
       routeName: 'NextRoute',
       builder: (context) => Material(
         child: ElevatedButton(
-          onPressed: () => _onPopPressed(context),
+          onPressed: () => onPopPressed(context),
           child: const Text('Pop'),
         ),
       ),
@@ -127,7 +127,7 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
-  Future<void> _buildNamedRouteTesterAndNavigate({
+  Future<void> buildNamedRouteTesterAndNavigate({
     String initialRoute = '/',
     required WidgetTester tester,
     DatadogNavigationObserver? observer,
@@ -151,7 +151,7 @@ void main() {
 
   testWidgets('using named routes starts route name ',
       (WidgetTester tester) async {
-    await _buildNamedRouteTesterAndNavigate(
+    await buildNamedRouteTesterAndNavigate(
       tester: tester,
     );
 
@@ -165,7 +165,7 @@ void main() {
 
   testWidgets('using named route respects initial route name ',
       (WidgetTester tester) async {
-    await _buildNamedRouteTesterAndNavigate(
+    await buildNamedRouteTesterAndNavigate(
       initialRoute: 'home',
       tester: tester,
     );
@@ -198,7 +198,7 @@ void main() {
       datadogSdk: mockDatadog,
       viewInfoExtractor: infoExtractor,
     );
-    await _buildNamedRouteTesterAndNavigate(tester: tester, observer: observer);
+    await buildNamedRouteTesterAndNavigate(tester: tester, observer: observer);
 
     verifyInOrder([
       () => mockRum.startView('/'),
@@ -212,7 +212,7 @@ void main() {
 
   testWidgets('pushing to route using mixin calls startView',
       (WidgetTester tester) async {
-    await _buildAndNavigateTo(
+    await buildAndNavigateTo(
       tester: tester,
       builder: (_) => const MixedDestination(),
     );
@@ -227,7 +227,7 @@ void main() {
 
   testWidgets('pop from route using mixin calls stopView',
       (WidgetTester tester) async {
-    await _buildAndNavigateTo(
+    await buildAndNavigateTo(
       tester: tester,
       builder: (_) => const MixedDestination(),
     );
@@ -254,7 +254,7 @@ void main() {
         'attribute_key': 'attribute_value',
       },
     );
-    await _buildAndNavigateTo(
+    await buildAndNavigateTo(
       tester: tester,
       builder: (_) => MixedDestination(info: info),
     );
@@ -271,7 +271,7 @@ void main() {
 
   testWidgets('pushing to next route with mixin sends stopView',
       (WidgetTester tester) async {
-    await _buildAndNavigateTo(
+    await buildAndNavigateTo(
       tester: tester,
       builder: (_) => MixedDestination(
         nextPageBuilder: (_) => const SimplePopPage(),
@@ -293,7 +293,7 @@ void main() {
 
   testWidgets('returning to mixin view restarts view',
       (WidgetTester tester) async {
-    await _buildAndNavigateTo(
+    await buildAndNavigateTo(
       tester: tester,
       builder: (_) => MixedDestination(
         nextPageBuilder: (_) => const SimplePopPage(),
@@ -319,7 +319,7 @@ void main() {
 
   testWidgets('mixin on named route does not send extra events',
       (WidgetTester tester) async {
-    await _buildAndNavigateTo(
+    await buildAndNavigateTo(
       tester: tester,
       routeName: 'second_route',
       builder: (_) => const MixedDestination(),

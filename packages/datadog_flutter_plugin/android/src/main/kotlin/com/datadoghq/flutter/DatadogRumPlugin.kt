@@ -43,15 +43,20 @@ class DatadogRumPlugin(
     var rum: RumMonitor? = rumInstance
         private set
 
-    fun setup(
-        flutterPluginBinding: FlutterPlugin.FlutterPluginBinding,
-        configuration: DatadogFlutterConfiguration.RumConfiguration
-    ) {
+    fun attachToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter.rum")
         channel.setMethodCallHandler(this)
 
         binding = flutterPluginBinding
+    }
 
+    fun detachFromEngine() {
+        channel.setMethodCallHandler(null)
+    }
+
+    fun setup(
+        configuration: DatadogFlutterConfiguration.RumConfiguration
+    ) {
         rum = RumMonitor.Builder()
             .sampleRumSessions(configuration.sampleRate)
             .build()
@@ -234,11 +239,6 @@ class DatadogRumPlugin(
                 )
             )
         }
-    }
-
-    @Suppress("UNUSED_PARAMETER")
-    fun teardown(binding: FlutterPlugin.FlutterPluginBinding) {
-        channel.setMethodCallHandler(null)
     }
 }
 

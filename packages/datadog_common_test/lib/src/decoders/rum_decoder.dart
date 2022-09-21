@@ -4,7 +4,7 @@
 
 import 'dart:io';
 
-import 'package:datadog_common_test/datadog_common_test.dart';
+import '../../datadog_common_test.dart';
 
 class RumSessionDecoder {
   final List<RumViewVisit> visits;
@@ -110,6 +110,7 @@ class RumEventDecoder {
   }
 
   int get date => rumEvent['date'] as int;
+  String get version => rumEvent['version'] as String;
 
   Map<String, dynamic>? get context => rumEvent['context'];
 
@@ -185,7 +186,7 @@ class RumViewDecoder {
   int get longTaskCount => viewData['long_task']['count'] as int;
 
   Map<String, int> get customTimings =>
-      (viewData['custom_timings'] as Map<String, dynamic>)
+      (viewData['custom_timings'] as Map<String, Object?>)
           .map((key, value) => MapEntry(key, value as int));
 
   RumViewDecoder(this.viewData);

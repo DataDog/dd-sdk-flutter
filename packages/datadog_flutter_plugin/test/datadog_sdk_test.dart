@@ -3,6 +3,7 @@
 // Copyright 2016-Present Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_flutter_plugin/src/datadog_sdk_platform_interface.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -75,7 +76,7 @@ void main() {
       'nativeCrashReportEnabled': false,
       'trackingConsent': 'TrackingConsent.pending',
       'telemetrySampleRate': null,
-      'customEndpoint': null,
+      'customLogsEndpoint': null,
       'batchSize': null,
       'uploadFrequency': null,
       'firstPartyHosts': <String>[],
@@ -125,6 +126,36 @@ void main() {
     final encoded = configuration.encode();
     // Logging configuration is purposefully not encoded
     expect(encoded['serviceName'], 'com.servicename');
+  });
+
+  test('version added to additionalConfiguration', () {
+    final configuration = DdSdkConfiguration(
+      clientToken: 'fakeClientToken',
+      env: 'fake-env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.notGranted,
+      version: '1.9.8+123',
+    );
+
+    final encoded = configuration.encode();
+    final additionalConfig =
+        encoded['additionalConfig'] as Map<String, Object?>;
+    expect(additionalConfig[DatadogConfigKey.version], '1.9.8-123');
+  });
+
+  test('flavor added to additionalConfiguration', () {
+    final configuration = DdSdkConfiguration(
+      clientToken: 'fakeClientToken',
+      env: 'fake-env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.notGranted,
+      flavor: 'strawberry',
+    );
+
+    final encoded = configuration.encode();
+    final additionalConfig =
+        encoded['additionalConfig'] as Map<String, Object?>;
+    expect(additionalConfig[DatadogConfigKey.variant], 'strawberry');
   });
 
   test('configuration encodes default sub-configuration', () {

@@ -87,7 +87,10 @@ class FlutterSdkTests: XCTestCase {
             nativeCrashReportingEnabled: true,
             rumConfiguration: DatadogFlutterConfiguration.RumConfiguration(
                 applicationId: "fakeApplicationId",
-                sampleRate: 100.0
+                sampleRate: 100.0,
+                detectLongTasks: true,
+                longTaskThreshold: 0.3,
+                customEndpoint: nil
             )
         )
 

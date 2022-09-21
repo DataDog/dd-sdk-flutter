@@ -12,29 +12,41 @@ import 'package:uuid/uuid.dart';
 /// A client GrpcInterceptor which enables automatic resource tracking and
 /// distributed tracing
 ///
-/// Note: This only supports intercepting unary calls. It does not intercepting
+/// Note: This only supports intercepting unary calls. It does not intercept
 /// streaming calls.
 class DatadogGrpcInterceptor extends ClientInterceptor {
   final Uuid uuid = const Uuid();
   final DatadogSdk _datadog;
   final ClientChannel _channel;
 
+  late String _hostPath;
+
   DatadogGrpcInterceptor(
     this._datadog,
     this._channel,
-  );
+  ) {
+    final host = _channel.host;
+    final scheme = _channel.options.credentials.isSecure ? 'https' : 'http';
+    // Add http / https scheme. This scheme is a lie but needed to connect
+    // resources to distributed tracing.
+    if (host is InternetAddress) {
+      _hostPath = '$scheme://${host.host}:${_channel.port}';
+    } else {
+      if (Uri.parse(host.toString()).scheme.isEmpty) {
+        // Add missing scheme
+        _hostPath = '$scheme://$host:${_channel.port}';
+      } else {
+        // Already has scheme
+        _hostPath = '$host:${_channel.port}';
+      }
+    }
+  }
 
   @override
   ResponseFuture<R> interceptUnary<Q, R>(ClientMethod<Q, R> method, Q request,
       CallOptions options, ClientUnaryInvoker<Q, R> invoker) {
-    final host = _channel.host;
     final path = method.path;
-    final String fullPath;
-    if (host is InternetAddress) {
-      fullPath = '${host.host}:${_channel.port}$path';
-    } else {
-      fullPath = '$host:${_channel.port}$path';
-    }
+    final String fullPath = '$_hostPath$path';
 
     bool shouldSample = _datadog.rum?.shouldSampleTrace() ?? false;
     bool isFirstPartyHost = _datadog.isFirstPartyHost(Uri.parse(fullPath));
@@ -53,7 +65,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
       RumHttpMethod.get,
       fullPath,
       {
-        "grpc.method": method.path,
+        'grpc.method': method.path,
         if (shouldAppendTraces) ...{
           DatadogRumPlatformAttributeKey.traceID: traceId,
           DatadogRumPlatformAttributeKey.spanID: parentId
@@ -77,7 +89,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
     final future = invoker(method, request, options);
     future.then((v) {
       _datadog.rum?.stopResourceLoading(rumKey, 200, RumResourceType.native);
-    }, onError: (e, st) {
+    }, onError: (Object e, StackTrace? st) {
       _datadog.rum?.stopResourceLoadingWithErrorInfo(
           rumKey, e.toString(), e.runtimeType.toString());
     });

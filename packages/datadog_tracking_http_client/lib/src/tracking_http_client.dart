@@ -301,7 +301,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
     final innerFuture = innerContext.done;
     return innerFuture.then((value) {
       return _DatadogTrackingHttpResponse(datadogSdk, value, rumKey);
-    }, onError: (e, st) {
+    }, onError: (Object e, StackTrace? st) {
       _onStreamError(e, st);
       throw e;
     });
@@ -311,7 +311,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
   Future<HttpClientResponse> close() {
     return innerContext.close().then((value) {
       return _DatadogTrackingHttpResponse(datadogSdk, value, rumKey);
-    }, onError: (e, st) async {
+    }, onError: (Object e, StackTrace? st) async {
       _onStreamError(e, st);
       throw e;
     });
@@ -428,12 +428,12 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
     return innerResponse.listen(
       onData,
       cancelOnError: cancelOnError,
-      onError: (e, st) {
+      onError: (Object e, StackTrace? st) {
         _onError(e, st);
         if (onError == null) {
           return;
         }
-        if (onError is void Function(Object, StackTrace)) {
+        if (onError is void Function(Object, StackTrace?)) {
           onError(e, st);
         } else {
           assert(onError is void Function(Object));

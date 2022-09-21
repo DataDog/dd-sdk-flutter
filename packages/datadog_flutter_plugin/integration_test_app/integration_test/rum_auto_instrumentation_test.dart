@@ -58,22 +58,17 @@ void main() {
 
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
-    final testRequests = <RequestLog>[];
     await serverRecorder.pollSessionRequests(
       const Duration(seconds: 50),
       (requests) {
         requestLog.addAll(requests);
         for (var request in requests) {
-          if (request.requestedUrl.contains('integration')) {
-            testRequests.add(request);
-          } else {
-            request.data.split('\n').forEach((e) {
-              dynamic jsonValue = json.decode(e);
-              if (jsonValue is Map<String, dynamic>) {
-                rumLog.add(RumEventDecoder(jsonValue));
-              }
-            });
-          }
+          request.data.split('\n').forEach((e) {
+            dynamic jsonValue = json.decode(e);
+            if (jsonValue is Map<String, dynamic>) {
+              rumLog.add(RumEventDecoder(jsonValue));
+            }
+          });
         }
         return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
       },

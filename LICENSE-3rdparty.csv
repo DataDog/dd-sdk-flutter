@@ -33,3 +33,4 @@ import,json_annotation,BSD-3-Clause,"Copyright 2017, the Dart project authors."
 build,json_serializable,BSD-3-Clause,"Copyright 2017, the Dart project authors."
 import,js,BSD-3-Clause,"Copyright 2012, the Dart project authors."
 import,fluro,MIT,Copyright 2021 Luke Pighetti
+build,protobuf,BSD-3-Clause,"Copyright 2013, the Dart project authors."

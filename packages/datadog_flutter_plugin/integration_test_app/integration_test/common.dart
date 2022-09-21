@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:collection/src/iterable_extensions.dart';
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_integration_test_app/main.dart' as app;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -94,5 +95,27 @@ extension Waiter on WidgetTester {
     }
 
     return wasFound;
+  }
+}
+
+void verifyCommonTags(
+    RequestLog request, String service, String version, String? variant) {
+  final sdkVersion = request.tags['sdk_version'];
+  if (kIsWeb) {
+    // Returning the browser version of the SDK.
+    expect(sdkVersion?.startsWith('4.'), true);
+  } else {
+    expect(sdkVersion, DatadogSdk.sdkVersion);
+  }
+
+  expect(request.tags['service'], service);
+
+  if (!kIsWeb) {
+    // Currently coming back as 'browser' on web
+    expect(request.queryParameters['ddsource'], 'flutter');
+
+    // Not sent as a tag on web
+    expect(request.tags['version'], version);
+    expect(request.tags['variant'], variant);
   }
 }

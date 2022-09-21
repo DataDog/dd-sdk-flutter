@@ -41,7 +41,7 @@ class HasHost extends CustomMatcher {
   HasHost(Matcher matcher) : super('Uri with host that is', 'host', matcher);
 
   @override
-  Object? featureValueOf(actual) {
+  Object? featureValueOf(Object? actual) {
     return (actual as Uri).host;
   }
 }
@@ -71,7 +71,7 @@ void main() {
     when(() => mockClient.idleTimeout).thenReturn(const Duration());
   });
 
-  Completer<HttpClientResponse> _setupMockRequest() {
+  Completer<HttpClientResponse> setupMockRequest() {
     final mockRequest = MockHttpClientRequest();
     final mockHeaders = MockHttpHeaders();
     var completer = Completer<HttpClientResponse>();
@@ -84,7 +84,7 @@ void main() {
     return completer;
   }
 
-  MockHttpClientResponse _setupMockClientResponse(int statusCode,
+  MockHttpClientResponse setupMockClientResponse(int statusCode,
       {String mimeType = 'image/png', int size = 88888}) {
     final mockResponse = MockHttpClientResponse();
     when(() => mockResponse.statusCode).thenReturn(statusCode);
@@ -134,7 +134,7 @@ void main() {
     });
 
     test('open calls through when tracing and rum are disabled', () async {
-      _setupMockRequest();
+      setupMockRequest();
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
       var url = Uri.parse('https://test_url/path');
@@ -144,11 +144,11 @@ void main() {
     });
   });
 
-  void _verifyHeaders(HttpHeaders headers) {
+  void verifyHeaders(HttpHeaders headers) {
     verify(() => headers.add('x-datadog-sampling-priority', '1'));
     var traceValue =
         verify(() => headers.add('x-datadog-trace-id', captureAny()))
-            .captured[0];
+            .captured[0] as String;
     var traceInt = BigInt.tryParse(traceValue);
     expect(traceInt, isNotNull);
     expect(traceInt?.bitLength, lessThanOrEqualTo(63));
@@ -161,23 +161,17 @@ void main() {
     expect(spanInt?.bitLength, lessThanOrEqualTo(63));
   }
 
-  void _enableRum() {
+  void enableRum() {
     when(() => mockDatadog.rum).thenReturn(mockRum);
-    when(() => mockRum.startResourceLoading(any(), any(), any(), any()))
-        .thenAnswer((_) => Future.value());
-    when(() => mockRum.stopResourceLoading(any(), any(), any(), any(), any()))
-        .thenAnswer((_) => Future.value());
-    when(() => mockRum.stopResourceLoadingWithErrorInfo(any(), any(), any()))
-        .thenAnswer((_) => Future.value());
   }
 
   group('when rum is enabled', () {
     setUp(() {
-      _enableRum();
+      enableRum();
     });
 
     test('calls start resource and stop resource and calls through', () async {
-      final completer = _setupMockRequest();
+      final completer = setupMockRequest();
 
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
@@ -194,7 +188,7 @@ void main() {
 
       verifyNever(() => mockRum.stopResourceLoading(any(), any(), any()));
 
-      final mockResponse = _setupMockClientResponse(200);
+      final mockResponse = setupMockClientResponse(200);
       completer.complete(mockResponse);
       var response = await request.done;
 
@@ -210,7 +204,7 @@ void main() {
     });
 
     test('calls stop resource with status code', () async {
-      final completer = _setupMockRequest();
+      final completer = setupMockRequest();
 
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
@@ -225,7 +219,7 @@ void main() {
 
       verifyNever(() => mockRum.stopResourceLoading(any(), any(), any()));
 
-      final mockResponse = _setupMockClientResponse(403);
+      final mockResponse = setupMockClientResponse(403);
       completer.complete(mockResponse);
       var response = await request.done;
       response.listen((event) {});
@@ -236,7 +230,7 @@ void main() {
     });
 
     test('sets resource type from headers', () async {
-      final completer = _setupMockRequest();
+      final completer = setupMockRequest();
 
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
@@ -249,7 +243,7 @@ void main() {
             captureAny(), RumHttpMethod.get, url.toString(), any()),
       ).captured[0] as String;
 
-      final mockResponse = _setupMockClientResponse(200, mimeType: 'video/mp4');
+      final mockResponse = setupMockClientResponse(200, mimeType: 'video/mp4');
       completer.complete(mockResponse);
       var response = await request.done;
 
@@ -261,7 +255,7 @@ void main() {
     });
 
     test('calls stop resource with error connection error', () async {
-      final completer = _setupMockRequest();
+      final completer = setupMockRequest();
 
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
@@ -287,7 +281,7 @@ void main() {
     });
 
     test('calls stop resource with error for response error', () async {
-      final completer = _setupMockRequest();
+      final completer = setupMockRequest();
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
       var url = Uri.parse('https://test_url/path');
@@ -297,7 +291,7 @@ void main() {
             captureAny(), RumHttpMethod.get, url.toString(), any()),
       ).captured[0] as String;
 
-      var mockResponse = _setupMockClientResponse(200);
+      var mockResponse = setupMockClientResponse(200);
 
       completer.complete(mockResponse);
       var response = await request.done;
@@ -305,7 +299,7 @@ void main() {
       // Listen / close the response
       var error = Error();
       Object? caughtError;
-      response.listen((event) {}, onError: (e) {
+      response.listen((event) {}, onError: (Object e) {
         caughtError = e;
       });
       mockResponse.streamController.addError(error);
@@ -320,7 +314,7 @@ void main() {
     });
 
     test('start and stop resource loading set tracing attributes', () async {
-      final completer = _setupMockRequest();
+      final completer = setupMockRequest();
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
       var url = Uri.parse('https://test_url/path');
@@ -337,7 +331,7 @@ void main() {
       var capturedStartAttributes =
           capturedStartArgs[1] as Map<String, dynamic>;
 
-      var mockResponse = _setupMockClientResponse(200, size: 12345);
+      var mockResponse = setupMockClientResponse(200, size: 12345);
 
       completer.complete(mockResponse);
       var response = await request.done;
@@ -361,7 +355,7 @@ void main() {
     test(
         'start and stop resource loading do not set tracing attributes if shouldSample returns false',
         () async {
-      final completer = _setupMockRequest();
+      final completer = setupMockRequest();
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
       when(() => mockRum.shouldSampleTrace()).thenReturn(false);
 
@@ -379,7 +373,7 @@ void main() {
       var capturedStartAttributes =
           capturedStartArgs[1] as Map<String, dynamic>;
 
-      var mockResponse = _setupMockClientResponse(200, size: 12345);
+      var mockResponse = setupMockClientResponse(200, size: 12345);
 
       completer.complete(mockResponse);
       var response = await request.done;
@@ -396,17 +390,17 @@ void main() {
     });
 
     test('sets trace headers for first party urls', () async {
-      _setupMockRequest();
+      setupMockRequest();
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
       var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
       final requestHeaders = request.headers;
-      _verifyHeaders(requestHeaders);
+      verifyHeaders(requestHeaders);
     });
 
     test('does not set trace headers for third party urls', () async {
-      _setupMockRequest();
+      setupMockRequest();
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
       var url = Uri.parse('https://non_first_party/path');
@@ -445,7 +439,7 @@ void main() {
     test('does not set trace headers when should sample returns false',
         () async {
       when(() => mockRum.shouldSampleTrace()).thenReturn(false);
-      _setupMockRequest();
+      setupMockRequest();
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
       var url = Uri.parse('https://test_url/path');

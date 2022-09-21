@@ -18,13 +18,13 @@ class DdLogsWeb extends DdLogsPlatform {
 
   static void initLogs(DdSdkConfiguration configuration) {
     String? version =
-        configuration.additionalConfig[DatadogConfigKey.version] as String;
+        configuration.additionalConfig[DatadogConfigKey.version] as String?;
 
     init(_LogInitOptions(
       clientToken: configuration.clientToken,
       env: configuration.env,
       site: siteStringForSite(configuration.site),
-      proxyUrl: configuration.customEndpoint,
+      proxyUrl: configuration.customLogsEndpoint,
       service: configuration.serviceName,
       version: version,
     ));

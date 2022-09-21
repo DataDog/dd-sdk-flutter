@@ -5,6 +5,7 @@
 import 'dart:math';
 
 import '../datadog_flutter_plugin.dart';
+import '../datadog_internal.dart';
 
 /// Defines the Datadog SDK policy when batching data together before uploading
 /// it to Datadog servers. Smaller batches mean smaller but more network
@@ -183,8 +184,8 @@ class RumConfiguration {
   /// Enable or disable detection of "long tasks"
   ///
   /// Long task detection attempts to detect when an application is doing too
-  /// much work on the main isolate, which could prevent your app from rendering
-  /// at a smooth framerate.
+  /// much work on the main isolate, or on the main native thread, which could
+  /// prevent your app from rendering at a smooth framerate.
   ///
   /// Defaults to true.
   bool detectLongTasks;
@@ -196,8 +197,15 @@ class RumConfiguration {
   /// a microtask, it will appear as a Long Task in Datadog RUM Explorer. This
   /// has a minimum of 0.02 seconds.
   ///
+  /// The Datadog iOS and Android SDKs will also report if their main threads
+  /// are stalled for longer than this threshold, and will also appear as a
+  /// Long Task in the Datadog RUM Explorer
+  ///
   /// Defaults to 0.1 seconds
   double longTaskThreshold;
+
+  /// Use a custom endpoint for sending RUM data.
+  String? customEndpoint;
 
   RumConfiguration({
     required this.applicationId,
@@ -205,6 +213,7 @@ class RumConfiguration {
     double tracingSamplingRate = 20.0,
     this.detectLongTasks = true,
     double longTaskThreshold = 0.1,
+    this.customEndpoint,
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),
         longTaskThreshold = max(0.02, longTaskThreshold);
@@ -213,6 +222,9 @@ class RumConfiguration {
     return {
       'applicationId': applicationId,
       'sampleRate': sessionSamplingRate,
+      'detectLongTasks': detectLongTasks,
+      'longTaskThreshold': longTaskThreshold,
+      'customEndpoint': customEndpoint,
     };
   }
 }
@@ -233,6 +245,9 @@ class DdSdkConfiguration {
   /// used to generate your client token.
   DatadogSite site;
 
+  /// Use a custom endpoint for logs
+  String? customLogsEndpoint;
+
   /// The service name for this application
   String? serviceName;
 
@@ -247,7 +262,38 @@ class DdSdkConfiguration {
   /// value impacts the frequency of performing network requests by the SDK.
   UploadFrequency? uploadFrequency;
 
+  /// Sets the current version number of the application.
+  ///
+  /// By default, both iOS and Android sync their version numbers with the
+  /// current version in your pubspec, minus any build or pre-release
+  /// information. This property should only be used if you want to add this
+  /// additional information back in, or if the version in your pubspec does not
+  /// match your application version.
+  ///
+  /// Because 'version' is a Datadog tag, it needs to comply with the rules in
+  /// [Defining
+  /// Tags](https://docs.datadoghq.com/getting_started/tagging/#defining-tags)
+  /// Datadog documentation. We will automatically replace `+` with `-` for
+  /// simplicity.
+  ///
+  /// Note: If you are uploading Flutter symbols or an Android mapping file,
+  /// this version MUST match the version specified in the `flutter-symbols
+  /// upload` command in order for symbolication to work.
+  String? version;
+
+  /// Set the current flavor (variant) of the application
+  ///
+  /// This must match the flavor set during symbol upload in order for stack trace
+  /// deobfuscation to work. By default, the flavor parameter is null and will
+  /// not appear as a tag in RUM, but other tools will default to 'release'
+  String? flavor;
+
   /// Set a custom endpoint to send information to.
+  ///
+  /// This is deprecated in favor of [customLogsEndpoint] and
+  /// [RumConfiguration.customEndpoint].
+  @Deprecated(
+      'Use customLogsEndpoint and RumConfiguration.customEndpoint instead')
   String? customEndpoint;
 
   /// The sampling rate for Internal Telemetry (info related to the work of the
@@ -296,21 +342,47 @@ class DdSdkConfiguration {
     required this.env,
     required this.trackingConsent,
     required this.site,
+    this.customLogsEndpoint,
     this.nativeCrashReportEnabled = false,
     this.serviceName,
     this.uploadFrequency,
     this.batchSize,
+    this.version,
+    this.flavor,
     this.customEndpoint,
     this.telemetrySampleRate,
     this.firstPartyHosts = const [],
     this.loggingConfiguration,
     this.rumConfiguration,
-  });
+  }) {
+    // Transfer customEndpoint to other properties if they're not set
+    // ignore: deprecated_member_use_from_same_package
+    if (customEndpoint != null) {
+      // ignore: deprecated_member_use_from_same_package
+      customLogsEndpoint ??= customEndpoint;
+      if (rumConfiguration != null &&
+          rumConfiguration?.customEndpoint == null) {
+        // ignore: deprecated_member_use_from_same_package
+        rumConfiguration?.customEndpoint = customEndpoint;
+      }
+    }
+  }
 
   void addPlugin(DatadogPluginConfiguration pluginConfiguration) =>
       additionalPlugins.add(pluginConfiguration);
 
   Map<String, Object?> encode() {
+    // Add version to additional config as part of encoding
+    final encodedAdditionalConfig = Map<String, Object?>.from(additionalConfig);
+    if (version != null) {
+      final fixedVersion = version?.replaceAll('+', '-');
+      encodedAdditionalConfig[DatadogConfigKey.version] = fixedVersion;
+    }
+
+    if (flavor != null) {
+      encodedAdditionalConfig[DatadogConfigKey.variant] = flavor;
+    }
+
     return {
       'clientToken': clientToken,
       'env': env,
@@ -322,9 +394,9 @@ class DdSdkConfiguration {
       'uploadFrequency': uploadFrequency?.toString(),
       'trackingConsent': trackingConsent.toString(),
       'firstPartyHosts': firstPartyHosts,
-      'customEndpoint': customEndpoint,
       'rumConfiguration': rumConfiguration?.encode(),
-      'additionalConfig': additionalConfig
+      'additionalConfig': encodedAdditionalConfig,
+      'customLogsEndpoint': customLogsEndpoint,
     };
   }
 }

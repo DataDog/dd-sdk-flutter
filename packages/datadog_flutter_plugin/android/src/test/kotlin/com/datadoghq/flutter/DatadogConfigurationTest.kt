@@ -154,7 +154,7 @@ class DatadogConfigurationTest {
             "uploadFrequency" to "UploadFrequency.frequent",
             "trackingConsent" to "TrackingConsent.granted",
             "telemetrySampleRate" to telemetrySampleRate,
-            "customEndpoint" to "customEndpoint",
+            "customLogsEndpoint" to "customEndpoint",
             "firstPartyHosts" to listOf(firstPartyHost),
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>(
@@ -169,7 +169,7 @@ class DatadogConfigurationTest {
         assertThat(config.nativeCrashReportEnabled).isEqualTo(true)
         assertThat(config.site).isEqualTo(DatadogSite.US3)
         assertThat(config.batchSize).isEqualTo(BatchSize.SMALL)
-        assertThat(config.customEndpoint).isEqualTo("customEndpoint")
+        assertThat(config.customLogsEndpoint).isEqualTo("customEndpoint")
         assertThat(config.telemetrySampleRate).isEqualTo(telemetrySampleRate)
         assertThat(config.additionalConfig).isEqualTo(mapOf(
             additionalKey to additionalValue
@@ -197,7 +197,7 @@ class DatadogConfigurationTest {
             "batchSize" to "BatchSize.small",
             "uploadFrequency" to "UploadFrequency.frequent",
             "trackingConsent" to "TrackingConsent.granted",
-            "customEndpoint" to "customEndpoint",
+            "customLogsEndpoint" to "customEndpoint",
             "firstPartyHosts" to listOf(firstPartyHost),
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>(
@@ -228,11 +228,14 @@ class DatadogConfigurationTest {
             "batchSize" to null,
             "uploadFrequency" to null,
             "trackingConsent" to "TrackingConsent.pending",
-            "customEndpoint" to null,
+            "customLogsEndpoint" to null,
             "firstPartyHosts" to listOf<String>(),
             "rumConfiguration" to mapOf(
                 "applicationId" to applicationId,
-                "sampleRate" to 35.0f
+                "sampleRate" to 35.0f,
+                "detectLongTasks" to false,
+                "longTaskThreshold" to 0.3f,
+                "customEndpoint" to "customEndpoint",
             ),
             "additionalConfig" to mapOf<String, Any?>()
         )
@@ -244,6 +247,9 @@ class DatadogConfigurationTest {
         assertThat(config.rumConfiguration).isNotNull()
         assertThat(config.rumConfiguration?.applicationId).isEqualTo(applicationId)
         assertThat(config.rumConfiguration?.sampleRate).isEqualTo(35.0f)
+        assertThat(config.rumConfiguration?.detectLongTasks).isEqualTo(false)
+        assertThat(config.rumConfiguration?.longTaskThreshold).isEqualTo(0.3f)
+        assertThat(config.rumConfiguration?.customEndpoint).isEqualTo("customEndpoint")
     }
 
     @Test
@@ -284,7 +290,10 @@ class DatadogConfigurationTest {
             trackingConsent = TrackingConsent.PENDING,
             rumConfiguration = DatadogFlutterConfiguration.RumConfiguration(
                 applicationId = applicationId,
-                sampleRate = 100.0f
+                sampleRate = 100.0f,
+                detectLongTasks = true,
+                longTaskThreshold = 0.1f,
+                customEndpoint = null
             ),
         )
 

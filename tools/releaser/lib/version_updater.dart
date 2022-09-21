@@ -2,7 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:logging/logging.dart';
@@ -10,6 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:version/version.dart';
 
 import 'command.dart';
+import 'helpers.dart';
 
 enum VersionBumpType { major, minor, rev, prerelease }
 
@@ -74,31 +74,6 @@ Future<bool> updateVersions(
   return true;
 }
 
-Future<void> _transformFile(
-  File file,
-  Logger logger,
-  bool dryRun,
-  String Function(String e) transformer,
-) async {
-  final newFileBuffer = StringBuffer();
-  await file
-      .openRead()
-      .transform(utf8.decoder)
-      .transform(LineSplitter())
-      .forEach((element) {
-    final newValue = transformer(element);
-    newFileBuffer.writeln(newValue);
-  });
-
-  final filename = path.basename(file.path);
-  logger.finest(' ------- NEW  $filename CONTENTS ------');
-  logger.finest(newFileBuffer.toString());
-  if (!dryRun) {
-    file.openWrite().write(newFileBuffer);
-    logger.info(' ✏️ Wrote ${file.path}');
-  }
-}
-
 Future<bool> _updatePackagePubspec(
     String packageRoot, String version, Logger logger, bool dryRun) async {
   final pubspecFile = File(path.join(packageRoot, 'pubspec.yaml'));
@@ -107,7 +82,7 @@ Future<bool> _updatePackagePubspec(
     return false;
   }
 
-  await _transformFile(pubspecFile, logger, dryRun, (element) {
+  await transformFile(pubspecFile, logger, dryRun, (element) {
     final match = _versionCapture.firstMatch(element);
     if (match != null) {
       final oldVersion = match.namedGroup('version');
@@ -130,7 +105,7 @@ Future<bool> _updateVersionDartFile(
     return false;
   }
 
-  await _transformFile(versionFile, logger, dryRun, (element) {
+  await transformFile(versionFile, logger, dryRun, (element) {
     if (element.startsWith('const ddPackageVersion')) {
       element = "const ddPackageVersion = '$version';";
     }
@@ -148,7 +123,7 @@ Future<bool> _updateChangelog(
     return false;
   }
 
-  await _transformFile(changelogFile, logger, dryRun, (element) {
+  await transformFile(changelogFile, logger, dryRun, (element) {
     if (element.startsWith('## Unreleased')) {
       element = '## Unreleased\n\n## $version';
     }

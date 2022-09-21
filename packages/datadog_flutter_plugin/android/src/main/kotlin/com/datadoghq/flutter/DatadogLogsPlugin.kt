@@ -28,13 +28,15 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
 
     private val loggerRegistry: MutableMap<String, Logger> = mutableMapOf()
 
-    fun setup(
-        flutterPluginBinding: FlutterPlugin.FlutterPluginBinding,
-    ) {
+    fun attachToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter.logs")
         channel.setMethodCallHandler(this)
 
         binding = flutterPluginBinding
+    }
+
+    fun detachFromEngine() {
+        channel.setMethodCallHandler(null)
     }
 
     internal fun addLogger(loggerHandle: String, logger: Logger) {
@@ -169,11 +171,6 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         }
         val logger = logBuilder.build()
         loggerRegistry[loggerHandle] = logger
-    }
-
-    @Suppress("UNUSED_PARAMETER")
-    fun teardown(binding: FlutterPlugin.FlutterPluginBinding) {
-        channel.setMethodCallHandler(null)
     }
 
     @Suppress("TooGenericExceptionCaught")

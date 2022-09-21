@@ -44,7 +44,16 @@ class RequestLog {
   Map<String, dynamic> toJson() => _$RequestLogToJson(this);
 
   static Future<RequestLog> fromRequest(HttpRequest request) async {
-    final url = request.requestedUri.path;
+    var requestedUri = request.requestedUri;
+    final ddforward = requestedUri.queryParameters['ddforward'];
+    if (ddforward != null) {
+      // Web adds this automatically for a custom URL. parse it as if it was the actually
+      // requested url.
+      final decoded = Uri.decodeComponent(ddforward);
+      requestedUri = Uri.parse(decoded);
+    }
+    var url = requestedUri.toString();
+
     final headers = <String, List<String>>{};
     request.headers.forEach((name, values) {
       headers[name] = values;
@@ -63,7 +72,7 @@ class RequestLog {
 
     return RequestLog(
       requestedUrl: url,
-      queryParameters: request.requestedUri.queryParameters,
+      queryParameters: requestedUri.queryParameters,
       requestMethod: request.method,
       requestHeaders: headers,
       data: decoded,

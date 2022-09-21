@@ -182,7 +182,9 @@ class DatadogConfigurationTests: XCTestCase {
         "printLogsToConsole": NSNumber(true)
       ],
       "rumConfiguration": [
-        "applicationId": "fakeApplicationId"
+        "applicationId": "fakeApplicationId",
+        "detectLongTasks": NSNumber(false),
+        "longTaskThreshold": NSNumber(0.3)
       ],
       "additionalConfig": [:]
     ]
@@ -191,5 +193,7 @@ class DatadogConfigurationTests: XCTestCase {
 
     XCTAssertNotNil(config.rumConfiguration)
     XCTAssertEqual(config.rumConfiguration?.applicationId, "fakeApplicationId")
+    XCTAssertEqual(config.rumConfiguration?.detectLongTasks, false)
+    XCTAssertEqual(config.rumConfiguration?.longTaskThreshold, 0.3)
   }
 }

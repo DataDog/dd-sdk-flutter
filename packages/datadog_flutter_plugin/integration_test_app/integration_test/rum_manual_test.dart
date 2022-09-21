@@ -75,6 +75,15 @@ void main() {
     const contextKey = 'onboarding_stage';
     const expectedContextValue = 1;
 
+    for (var log in requestLog) {
+      verifyCommonTags(
+        log,
+        'com.datadoghq.flutter.integration',
+        '1.2.3-555',
+        'integration',
+      );
+    }
+
     final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, kIsWeb ? 4 : 3);
 
@@ -229,16 +238,20 @@ void main() {
     expect(view3.viewEvents.last.view.actionCount, 0);
     expect(view3.viewEvents.last.view.errorCount, 0);
 
-    // Verify service name
-    if (!kIsWeb) {
-      if (Platform.isIOS) {
-        for (final event in rumLog) {
-          expect(event.service, 'com.datadoghq.flutter.integration');
-        }
-      }
+    const expectedNestedAttribute = {
+      'testing_attribute': {
+        'nested_1': 123,
+        'nested_null': null,
+      },
+    };
+    expect(view3.viewEvents.last.context!['nesting_attribute'],
+        expectedNestedAttribute);
 
-      for (final request in requestLog) {
-        expect(request.tags['service'], 'com.datadoghq.flutter.integration');
+    // Verify service name in RUM events
+    for (final event in rumLog) {
+      if (!kIsWeb && Platform.isIOS) {
+        expect(event.service, 'com.datadoghq.flutter.integration');
+        expect(event.version, '1.2.3-555');
       }
     }
   });

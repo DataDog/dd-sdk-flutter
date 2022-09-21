@@ -290,6 +290,13 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
     DatadogSdk.instance.rum?.removeAttribute('onboarding_stage');
     DatadogSdk.instance.rum?.startView(_viewKey, _viewName);
 
+    DatadogSdk.instance.rum?.addAttribute('nesting_attribute', {
+      'testing_attribute': {
+        'nested_1': 123,
+        'nested_null': null,
+      },
+    });
+
     _simulateActions();
   }
 

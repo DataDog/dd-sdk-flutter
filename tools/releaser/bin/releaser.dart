@@ -10,6 +10,7 @@ import 'package:releaser/git_actions.dart';
 import 'package:releaser/helpers.dart';
 import 'package:releaser/release_validator.dart';
 import 'package:releaser/version_updater.dart';
+import 'package:releaser/yaml_util.dart';
 
 void main(List<String> arguments) async {
   Logger.root.level = Level.INFO;
@@ -67,18 +68,34 @@ void main(List<String> arguments) async {
   final choreBranch =
       'chore/${commandArgs.packageName}/prep-v${commandArgs.version}';
 
+  // By default (develop) increment the version by a minor version
+  var versionBumpType = VersionBumpType.minor;
+  // If we're on a release branch, bump by a revision
+  if (currentBranch.branchName.contains('release')) {
+    versionBumpType = VersionBumpType.rev;
+  }
+  // If we're releasing a pre-release, bump by pre-release
+  if (commandArgs.version.contains('-')) {
+    versionBumpType = VersionBumpType.prerelease;
+  }
+
   final commands = <Command>[
     ValidateReleaseCommand(),
     CreateBranchCommand(choreBranch),
     UpdateVersionsCommand(),
     CommitChangesCommand(
-        '🚀 Preparing for release of ${commandArgs.packageName} ${commandArgs.version}'),
+        '🚀 Preparing for release of ${commandArgs.packageName} ${commandArgs.version}.'),
     CreateReleaseBranchCommand(),
+    RemoveDependencyOverridesCommand(),
+    CommitChangesCommand(
+      '🧹 Remove dependency overrides for release of ${commandArgs.packageName} ${commandArgs.version}.',
+      noChangesOkay: true,
+    ),
     ValidatePublishDryRun(),
     SwitchBranchCommand(choreBranch),
     // Do pre-release always for now. Later use the branch name as
     // the indicator.
-    BumpVersionCommand(VersionBumpType.prerelease),
+    BumpVersionCommand(versionBumpType),
     CommitChangesCommand(
         '📝 Bump version of ${commandArgs.packageName} to next potential release.'),
   ];

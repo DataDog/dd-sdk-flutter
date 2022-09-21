@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+* Deprecation - `DdSdkConfiguration.customEndpoint` has been deprecated in favor of `DdSdkConfiguration.customLogsEndpoint` and `RumConfiguration.customEndpoint`.
+* Added `DdSdkConfiguration.version` configuration option for specifying a custom application version.
+* Fix `null` values in attributes not being correctly encoded on iOS.
+* Add `flavor` as a configuration parameter.
+* Updated iOS SDK to 1.12.0
+* Updated Android SDK to 1.14.0
+
+## 1.0.0-rc.3
+
+* 🔥 MAJOR - Fixed an issue on Android where Datadog would not properly reinitialize after backing out of an application (pressing the back button on the home screen) and returning to it.
+* Fix Flutter 3 log spam regarding use of `?.` on WidgetBindings.instance. See [#203][]
+* Sync long task threshold between Flutter and Native long task reporting.
+* Fix an issue where events that contained lists from `dart:typed_data` (`Float32List`, `Uint8List`, etc) were not being encoded / sent on iOS.
+* Update iOS SDK to 1.12.0-beta3
+
 ## 1.0.0-rc.2
 
 * Fix an issue with using `WidgetBindings.instance` as a non-optional (Property is optional pre-Flutter 3.0)
@@ -76,3 +91,4 @@
 [#143]: https://github.com/DataDog/dd-sdk-flutter/issues/143
 [#148]: https://github.com/DataDog/dd-sdk-flutter/issues/148
 [#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159
+[#203]: https://github.com/DataDog/dd-sdk-flutter/issues/203
