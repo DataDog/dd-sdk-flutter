@@ -198,8 +198,12 @@ class RumConfiguration {
   /// has a minimum of 0.02 seconds.
   ///
   /// The Datadog iOS and Android SDKs will also report if their main threads
-  /// are stalled for longer than this threshold, and will also appear as a
-  /// Long Task in the Datadog RUM Explorer
+  /// are stalled for longer than this threshold, and will also appear as a Long
+  /// Task in the Datadog RUM Explorer
+  ///
+  /// Note -- this argument is ignored on Flutter Web, which always uses a value
+  /// of 0.05 seconds (50ms).  See documentation on [RUM Browser
+  /// Monitoring](https://docs.datadoghq.com/real_user_monitoring/browser/data_collected/)
   ///
   /// Defaults to 0.1 seconds
   double longTaskThreshold;
