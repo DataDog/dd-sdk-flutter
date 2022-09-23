@@ -24,8 +24,8 @@
         },
         {
             "name": "auto instrumented app",
-            "cwd": "integration_test_app",
-            "program": "packages/datadog_flutter_plugin/lib/auto_integration_scenarios/main.dart",
+            "cwd": "packages/datadog_flutter_plugin/integration_test_app",
+            "program": "lib/auto_integration_scenarios/main.dart",
             "request": "launch",
             "type": "dart"
         },
