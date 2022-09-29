@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* Update Android SDK to 1.14.1
+  * Add CPU architecture to the collected device information.
+
 ## 1.0.0
 
 * Deprecation - `DdSdkConfiguration.customEndpoint` has been deprecated in favor of `DdSdkConfiguration.customLogsEndpoint` and `RumConfiguration.customEndpoint`.
