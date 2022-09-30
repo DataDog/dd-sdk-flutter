@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.1
+
 * Update Android SDK to 1.14.1
   * Add CPU architecture to the collected device information.
 
