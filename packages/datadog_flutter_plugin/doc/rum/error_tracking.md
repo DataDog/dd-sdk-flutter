@@ -40,7 +40,7 @@ For all crash reports that are built with the `--split-debug-info` option set an
 The [@datadog/datadog-ci][4] command line tool supports uploading all of the necessary files (dSYMs, Android Proguard Mapping, and Dart Symbol Files) in one command.
 
 First, install the `datadog-ci` tool from the instructions above and create a `datadog-ci.json` file at the root of your project, containing your API key and (optionally) your Datadog site:
-```sh
+```json
 {
   "apiKey": "<YOUR_DATADOG_API_KEY>",
   "datadogSite": "datadoghq.eu"  // Optional if you are using datadoghq.com
@@ -57,12 +57,6 @@ datadog-ci flutter-symbols upload --service-name <your_service_name> --dart-symb
 ```
 
 For a full list of options, see the `datadog-ci` [Flutter Symbols documentation][6].
-
-```sh
-export DATADOG_API_KEY="<API KEY>"
-
-npx @datadog/datadog-ci dsyms upload ./build/ios/archive/Runner.xcarchive/dSYMs
-```
 
 ## Further reading
 
