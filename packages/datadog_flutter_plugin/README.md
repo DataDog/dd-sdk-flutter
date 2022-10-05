@@ -151,7 +151,7 @@ This works if you are using named routes or if you have supplied a name to the `
 
 Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction with the `DatadogNavigationObserverProvider` property to start and stop your RUM views automatically. With `DatadogRouteAwareMixin`, move any logic from `initState` to `didPush`. 
 
-Note that, by default, `DatadogRouteAwareMixin` uses the name of the widget as the name of the View. However, this **does not work with obfuscated code** as the name of the Widget class is lost during obfuscation. To keep the correct view name, you should override `rumViewInfo`:
+Note that, by default, `DatadogRouteAwareMixin` uses the name of the widget as the name of the View. However, this **does not work with obfuscated code** as the name of the Widget class is lost during obfuscation. To keep the correct view name, override `rumViewInfo`:
 ```dart
 class _MyHomeScreenState extends State<MyHomeScreen>
     with RouteAware, DatadogRouteAwareMixin {
