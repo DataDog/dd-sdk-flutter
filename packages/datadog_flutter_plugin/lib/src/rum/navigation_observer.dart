@@ -122,8 +122,11 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
 /// ```
 ///
 /// By default, DatadogRouteAwareMixin will use the name of its parent Widget as
-/// the name of the route. You can override this by overriding the [rumViewInfo]
-/// getter, as well as supply additional properties about the view.
+/// the name of the route, **but only when the code is not obfuscated**.
+///
+/// If you are obfuscating your final code, or if you want to provide a
+/// different name or additional view attributes, you should override the
+/// [rumViewInfo] getter.
 ///
 /// [DatadogNavigationObserver] uses the [didChangeDependencies] lifecycle
 /// method to start the RUM view. For this reason, you should avoid calling RUM
