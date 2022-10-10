@@ -75,6 +75,15 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     result.missingParameter(call.method)
                 }
             }
+            "attachToExisting" -> {
+                if (Datadog.isInitialized()) {
+                    val attachResult = attachToExising()
+                    result.success(attachResult)
+                } else {
+                    Log.e(DATADOG_FLUTTER_TAG, MESSAGE_NO_EXISTING_INSTANCE)
+                    result.success(null)
+                }
+            }
             "setSdkVerbosity" -> {
                 val value = call.argument<String>("value")
                 if (value != null) {
@@ -150,6 +159,18 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
+    fun attachToExising(): Map<String, Any> {
+        var rumEnabled = false
+        if (GlobalRum.isRegistered()) {
+            rumEnabled = true
+            rumPlugin.attachToExistingSdk()
+        }
+
+        return mapOf<String, Any>(
+            "rumEnabled" to rumEnabled
+        )
+    }
+
     fun simpleInvokeOn(methodName: String, target: Any) {
         val klass = target.javaClass
         val method = klass.declaredMethods.firstOrNull {
@@ -188,3 +209,7 @@ internal const val DATADOG_FLUTTER_TAG = "DatadogFlutter"
 internal const val MESSAGE_INVALID_REINITIALIZATION =
     "🔥 Reinitialziing the DatadogSDK with different options, even after a hot restart, is not" +
         " supported. Cold restart your application to change your current configuration."
+
+internal const val MESSAGE_NO_EXISTING_INSTANCE =
+    "🔥 attachToExisting was called, but no existing instance of the Datadog SDK exists." +
+        " Make sure to initialize the Native Datadog SDK before calling attachToExisting."

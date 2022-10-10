@@ -61,6 +61,56 @@ void main() {
     ]);
   });
 
+  test('attachToExsiting calls to methodChannel', () {
+    unawaited(ddSdkPlatform.attachToExisting());
+
+    expect(log, [
+      isMethodCall('attachToExisting', arguments: <String, Object>{}),
+    ]);
+  });
+
+  test('attachToExisting response properly returns null from platform',
+      () async {
+    // The mock method channel is already set up to return null, so this should
+    // just pass it through.
+    final response = await ddSdkPlatform.attachToExisting();
+
+    expect(response, isNull);
+  });
+
+  test('attachToExisting response properly deserializes response', () async {
+    ddSdkPlatform.methodChannel.setMockMethodCallHandler((call) {
+      log.add(call);
+      if (call.method == 'attachToExisting') {
+        return Future<Map<String, Object?>>.value(
+            {'loggingEnabled': true, 'rumEnabled': false});
+      }
+
+      return null;
+    });
+    final response = await ddSdkPlatform.attachToExisting();
+
+    expect(response, isNotNull);
+    if (response != null) {
+      expect(response.rumEnabled, false);
+    }
+  });
+
+  test('invalid attachToExisting response returns null', () async {
+    ddSdkPlatform.methodChannel.setMockMethodCallHandler((call) {
+      log.add(call);
+      if (call.method == 'attachToExisting') {
+        return Future<Map<String, Object?>>.value(
+            {'loggingEnabled': 'string', 'rumEnabled': false});
+      }
+
+      return null;
+    });
+    final response = await ddSdkPlatform.attachToExisting();
+
+    expect(response, isNull);
+  });
+
   test('setDebugVerbosity calls to method channel', () {
     unawaited(ddSdkPlatform.setSdkVerbosity(Verbosity.info));
 

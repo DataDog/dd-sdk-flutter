@@ -47,6 +47,11 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   }
 
   @override
+  Future<AttachResponse?> attachToExisting() async {
+    return null;
+  }
+
+  @override
   Future<void> flushAndDeinitialize() async {}
 
   @override

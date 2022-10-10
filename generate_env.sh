@@ -42,3 +42,13 @@ DD_APPLICATION_ID=$DD_APPLICATION_ID
 DD_ENV=prod
 END
 popd
+
+pushd examples/native-hybrid-app/android/app/src/main/res/
+mkdir raw
+tee ./raw/dd_config.json > /dev/null << END
+{
+  "client_token": "$DD_CLIENT_TOKEN",
+  "application_id": "$DD_APPLICATION_ID"
+}
+END
+popd

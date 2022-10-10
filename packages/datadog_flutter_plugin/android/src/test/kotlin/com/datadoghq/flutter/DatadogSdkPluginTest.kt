@@ -17,9 +17,15 @@ import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import com.datadog.android.Datadog
+import com.datadog.android.DatadogSite
+import com.datadog.android.core.configuration.BatchSize
+import com.datadog.android.core.configuration.Configuration
+import com.datadog.android.core.configuration.Credentials
+import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.core.model.UserInfo
 import com.datadog.android.privacy.TrackingConsent
 import com.datadog.android.rum.GlobalRum
+import com.datadog.android.rum.RumMonitor
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
@@ -34,15 +40,14 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD
-import org.mockito.kotlin.any
-import org.mockito.kotlin.doReturn
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
+import org.mockito.Mock
+import org.mockito.kotlin.*
 
 @ExtendWith(ForgeExtension::class)
 class DatadogSdkPluginTest {
     lateinit var plugin: DatadogSdkPlugin
+
+    lateinit var mockContext: Context
 
     @BeforeEach
     fun beforeEach() {
@@ -58,7 +63,7 @@ class DatadogSdkPluginTest {
             on { getPackageInfo(any<String>(), any()) } doReturn mockPackageInfo
         }
         val mockPreferences = mock<SharedPreferences>()
-        val mockContext = mock<Context>() {
+        mockContext = mock<Context>() {
             on { applicationInfo } doReturn mock()
             on { applicationContext } doReturn this.mock
             on { packageName } doReturn "fakePackage"
@@ -276,6 +281,112 @@ class DatadogSdkPluginTest {
 
         // THEN
         io.mockk.verify(exactly = 1) { Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION) }
+    }
+
+    @Test
+    fun `M issue warning W attachToExisting has no existing instance`() {
+        // GIVEN
+        Datadog.setVerbosity(Log.INFO)
+
+        val methodCall = MethodCall(
+            "attachToExisting",
+            mapOf<String, Object?>()
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        mockkStatic(Log::class)
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        io.mockk.verify(exactly = 1) { Log.e(DATADOG_FLUTTER_TAG, MESSAGE_NO_EXISTING_INSTANCE) }
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M return {rumEnabled false} W attachToExisting with rum not initialized`(
+        forge: Forge
+    ) {
+        // GIVEN
+        Datadog.setVerbosity(Log.INFO)
+        val mockCredentials = Credentials(
+            forge.anAlphaNumericalString(),
+            forge.anAlphaNumericalString(),
+            forge.anAlphaNumericalString(),
+            forge.anAlphaNumericalString(),
+            null
+        )
+        val datadogConfig = Configuration.Builder(
+            logsEnabled = true,
+            tracesEnabled = false,
+            crashReportsEnabled = false,
+            rumEnabled = false,
+        ).build()
+        Datadog.initialize(mockContext, mockCredentials, datadogConfig, TrackingConsent.GRANTED)
+
+        val methodCall = MethodCall(
+            "attachToExisting",
+            mapOf<String, Object?>()
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        verify(mockResult).success(argThat {
+            var rumEnabled = false
+            val map = this as? Map<String, Any>
+            map?.let {
+                rumEnabled = (map["rumEnabled"] as? Boolean) ?: false
+            }
+            rumEnabled == false
+        })
+    }
+
+    @Test
+    @Disabled("There's an issue calling Choreographer in RUM vital initialization")
+    fun `M return {rumEnabled true} W attachToExisting with rum initialized`(
+        forge: Forge
+    ) {
+        // GIVEN
+        Datadog.setVerbosity(Log.INFO)
+        val mockCredentials = Credentials(
+            forge.anAlphaNumericalString(),
+            forge.anAlphaNumericalString(),
+            forge.anAlphaNumericalString(),
+            forge.anAlphaNumericalString(),
+            null
+        )
+        val datadogConfig = Configuration.Builder(
+            logsEnabled = true,
+            tracesEnabled = false,
+            crashReportsEnabled = false,
+            rumEnabled = true,
+        ).build()
+        Datadog.initialize(mockContext, mockCredentials, datadogConfig, TrackingConsent.GRANTED)
+
+        val monitor = RumMonitor.Builder().build()
+        GlobalRum.registerIfAbsent(monitor)
+
+        val methodCall = MethodCall(
+            "attachToExisting",
+            mapOf<String, Object?>()
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        verify(mockResult).success(argThat {
+            var correct = false
+            val map = this as? Map<String, Any>
+            map?.let {
+                correct = (map["rumEnabled"] as? Boolean) ?: false
+            }
+            correct
+        })
     }
 
     @Test
