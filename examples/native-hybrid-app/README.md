@@ -16,7 +16,7 @@ void main() {
 }
 ```
 
-### Caviats
+### Caveats
 
 * The 'source' of the data coming from these Hybrid apps will always be the Native platform, no matter whether the event was sent from the Native SDK or the Flutter SDK.
 
@@ -26,8 +26,8 @@ If you are primarily using Flutter and only occasionally need to access the Nati
 
 /// TODO - Example
 
-### Caviats
+### Caveats
 
-* The Datadog Flutter SDK uses its own View, User Action and Resource tracking, so these are disabled in when Flutter performs the initialization. You will need to manually track views and user actions in this scenario.
+* The Datadog Flutter SDK uses its own View, User Action and Resource tracking, so these are disabled when Flutter performs the initialization. You will need to manually track views and user actions in this scenario.
 
 // TODO - iOS and Android Example
