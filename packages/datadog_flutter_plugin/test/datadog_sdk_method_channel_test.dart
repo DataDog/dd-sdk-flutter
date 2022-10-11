@@ -100,8 +100,7 @@ void main() {
     ddSdkPlatform.methodChannel.setMockMethodCallHandler((call) {
       log.add(call);
       if (call.method == 'attachToExisting') {
-        return Future<Map<String, Object?>>.value(
-            {'loggingEnabled': 'string', 'rumEnabled': false});
+        return Future<Map<String, Object?>>.value({'rumEnabled': 'string'});
       }
 
       return null;
