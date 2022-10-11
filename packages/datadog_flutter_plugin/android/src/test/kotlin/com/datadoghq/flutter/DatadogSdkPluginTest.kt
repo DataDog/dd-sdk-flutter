@@ -14,14 +14,10 @@ import assertk.assertThat
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
-import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import com.datadog.android.Datadog
-import com.datadog.android.DatadogSite
-import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Configuration
 import com.datadog.android.core.configuration.Credentials
-import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.core.model.UserInfo
 import com.datadog.android.privacy.TrackingConsent
 import com.datadog.android.rum.GlobalRum
@@ -38,10 +34,12 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.junit.jupiter.api.parallel.Execution
-import org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD
-import org.mockito.Mock
-import org.mockito.kotlin.*
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argThat
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 @ExtendWith(ForgeExtension::class)
 class DatadogSdkPluginTest {
@@ -310,11 +308,11 @@ class DatadogSdkPluginTest {
         // GIVEN
         Datadog.setVerbosity(Log.INFO)
         val mockCredentials = Credentials(
-            forge.anAlphaNumericalString(),
-            forge.anAlphaNumericalString(),
-            forge.anAlphaNumericalString(),
-            forge.anAlphaNumericalString(),
-            null
+            clientToken = forge.anAlphaNumericalString(),
+            envName = forge.anAlphaNumericalString(),
+            variant = forge.anAlphaNumericalString(),
+            rumApplicationId = forge.anAlphaNumericalString(),
+            serviceName = null
         )
         val datadogConfig = Configuration.Builder(
             logsEnabled = true,
