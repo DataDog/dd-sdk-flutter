@@ -18,7 +18,7 @@ void main() {
 
 ### Caveats
 
-* The 'source' of the data coming from these Hybrid apps will always be the Native platform, no matter whether the event was sent from the Native SDK or the Flutter SDK.
+* The `source` of the data coming from these Hybrid apps will always be the Native platform, no matter whether the event was sent from the Native SDK or the Flutter SDK.
 
 ## Flutter App is Primary - use Datadog as Normal
 
