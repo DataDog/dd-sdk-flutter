@@ -1,6 +1,6 @@
 # "Add-To-App" or Hybrid Native + Flutter Applciation Example
 
-This example covers how to use the Datadog Flutter SDK in conjunction with an already existing native application.  This assumes you already have a native iOS or Android Application that is sending datato Datadog, and you have added Flutter to it following Flutter's [Add-to-app documentation](https://docs.flutter.dev/development/add-to-app).
+This example covers how to use the Datadog Flutter SDK in conjunction with an already existing native application.  This assumes you already have a native iOS or Android Application that is sending data to Datadog, and you have added Flutter to it following Flutter's [Add-to-app documentation](https://docs.flutter.dev/development/add-to-app).
 
 ## Native App is Primary and Datadog is Already Initialized -  `attachToExisting`
 
