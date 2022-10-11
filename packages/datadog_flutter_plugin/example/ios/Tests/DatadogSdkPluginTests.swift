@@ -21,7 +21,9 @@ class FlutterSdkTests: XCTestCase {
     }
 
     override func tearDown() {
-        Datadog.flushAndDeinitialize()
+        if Datadog.isInitialized {
+            Datadog.flushAndDeinitialize()
+        }
     }
 
     let contracts = [
@@ -195,10 +197,75 @@ class FlutterSdkTests: XCTestCase {
         )
         plugin.handle(methodCallB) { _ in }
 
-        print(loggedConsoleLines)
+        XCTAssertFalse(loggedConsoleLines.isEmpty)
+        XCTAssertTrue(loggedConsoleLines.first?.contains("🔥") == true)
+    }
+    
+    func testAttachToExisting_WithNoExisting_PrintsError() {
+        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+        let methodCall = FlutterMethodCall(
+            methodName: "attachToExisting", arguments: [:]
+        )
+        
+        var loggedConsoleLines: [String] = []
+        consolePrint = { str in loggedConsoleLines.append(str) }
+
+        plugin.handle(methodCall) { _ in }
 
         XCTAssertFalse(loggedConsoleLines.isEmpty)
         XCTAssertTrue(loggedConsoleLines.first?.contains("🔥") == true)
+    }
+    
+    func testAttachToExisting_RumDisabled_ReturnsRumDisabled() {
+        let config = Datadog.Configuration.builderUsing(
+                    clientToken: "mock_client_token",
+                    environment: "mock"
+                )
+                .set(serviceName: "app-name")
+                .set(endpoint: .us1)
+                .build()
+        Datadog.initialize(appContext: .init(),
+            trackingConsent: .granted, configuration: config)
+        
+        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+        let methodCall = FlutterMethodCall(
+            methodName: "attachToExisting", arguments: [:]
+        )
+        
+        var callResult: [String: Any?]? = nil
+        plugin.handle(methodCall) { result in
+            callResult = result as? Dictionary<String, Any?>
+        }
+        
+        XCTAssertNotNil(callResult)
+        XCTAssertEqual(callResult?["rumEnabled"] as? Bool, false)
+    }
+    
+    func testAttachToExisting_RumEnabled_ReturnsRumEnabled() {
+        let config = Datadog.Configuration.builderUsing(
+                    rumApplicationID: "mock_application_id",
+                    clientToken: "mock_client_token",
+                    environment: "mock"
+                )
+                .set(serviceName: "app-name")
+                .set(endpoint: .us1)
+                .build()
+        Datadog.initialize(appContext: .init(),
+            trackingConsent: .granted, configuration: config)
+        Global.rum = RUMMonitor.initialize()
+        
+        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+        let methodCall = FlutterMethodCall(
+            methodName: "attachToExisting", arguments: [:]
+        )
+        
+        var callResult: [String: Any?]? = nil
+        plugin.handle(methodCall) { result in
+            callResult = result as? Dictionary<String, Any?>
+        }
+        
+        XCTAssertNotNil(callResult)
+        XCTAssertEqual(callResult?["rumEnabled"] as? Bool, true)
     }
 
     func testSetVerbosity_FromMethodChannel_SetsVerbosity() {

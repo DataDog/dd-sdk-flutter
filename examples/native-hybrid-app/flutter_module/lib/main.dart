@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 
 import 'my_app.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  DatadogSdk.instance.attachToExisting();
+  await DatadogSdk.instance.attachToExisting();
 
   runApp(MyApp());
 }

@@ -65,6 +65,16 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                 }
             }
             result(nil)
+        case "attachToExisting":
+            if Datadog.isInitialized {
+                let attachResult = attachToExisting()
+                result(attachResult)
+            } else {
+                consolePrint(
+                    "🔥 attachToExisting was called, but no existing instance of the Datadog SDK exists." +
+                    " Make sure to initialize the Native Datadog SDK before calling attachToExisting.")
+                result(nil)
+            }
         case "setSdkVerbosity":
             if let verbosityString = arguments["value"] as? String {
                 let verbosity = LogLevel.parseFromFlutter(verbosityString)
@@ -121,7 +131,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             result(FlutterMethodNotImplemented)
         }
     }
-
+    
     internal func initialize(configuration: DatadogFlutterConfiguration) {
         let ddConfiguration = configuration.toDdConfig()
 
@@ -133,5 +143,18 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             rum = DatadogRumPlugin.instance
             rum?.initialize(configuration: rumConfiguration)
         }
+    }
+    
+    private func attachToExisting() -> [String: Any?] {
+        var rumEnabled = false
+        if Global.rum is RUMMonitor {
+            rum = DatadogRumPlugin.instance
+            rum?.attachToExisting(rumInstance: Global.rum)
+            rumEnabled = true
+        }
+        
+        return [
+            "rumEnabled": rumEnabled
+        ]
     }
 }

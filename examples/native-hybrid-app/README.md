@@ -7,14 +7,21 @@ This example covers how to use the Datadog Flutter SDK in conjunction with an al
 If you are using an applicaiton that is already using the native Datadog iOS or Datadog Android SDKs, the Flutter SDK can attach to these using the same parameters. In your `main` function, after calling `WidgetsFlutterBinding.ensureInitialized`, call `DatadogSdk.instance.attachToExisting`. You can optionally add a `LoggingConfiguraiton` to this call, which will automatically create a global logger and attach it to `DatadogSdk.logs`.
 
 ```dart
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  DatadogSdk.instance.attachToExising();
+  await DatadogSdk.instance.attachToExisting();
 
   runApp(MyApp());
 }
 ```
+
+### Prewarmed and Cached Flutter Engines
+The Flutter documentation on adding Flutter to an existing app for iOS uses a "prewarmed" Flutter engine by default (see [Create a FlutterEngine](https://docs.flutter.dev/development/add-to-app/ios/add-flutter-screen#create-a-flutterengine)) whereas the Android example does not (see [Launch a FlutterActivity](https://docs.flutter.dev/development/add-to-app/android/add-flutter-screen?tab=default-activity-launch-kotlin-tab#step-2-launch-flutteractivity)).
+
+If you are using a "prewarmed" instance of the Flutter engine, note that iOS will immediately display the Flutter app's initial route, even though that route is off screen. This will result in Datadog incorrectly showing the view starting as soon as the app starts.  Additionally, both prewarmed and cached Flutter engines can "hang on" to screens after the `FlutterViewController` or `FlutterActivity` are dismissed (you'll notice this as retained state when you leave and return to a Flutter screen). This also currently causes the Flutter Datadog Plugin to not report a new view, since Flutter did not actually perform the navigation.
+
+For this reason, the example currently only uses non-prewarmed and non-cached versions of the Flutter engine.
 
 ### Caveats
 

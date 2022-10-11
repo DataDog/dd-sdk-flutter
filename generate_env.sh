@@ -52,3 +52,19 @@ tee ./raw/dd_config.json > /dev/null << END
 }
 END
 popd
+
+pushd examples/native-hybrid-app/ios/iOS\ Flutter\ Hybrid\ Example
+tee ./ddog_config.plist > /dev/null << END
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>client_token</key>
+	<string>$DD_CLIENT_TOKEN</string>
+	<key>application_id</key>
+	<string>$DD_APPLICATION_ID</string>
+</dict>
+</plist>
+END
+popd
+
