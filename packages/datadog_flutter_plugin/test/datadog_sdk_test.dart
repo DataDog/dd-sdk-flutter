@@ -36,15 +36,25 @@ void main() {
     when(() => mockPlatform.initialize(any(),
             logCallback: any(named: 'logCallback')))
         .thenAnswer((_) => Future<void>.value());
+    when(() => mockPlatform.attachToExisting())
+        .thenAnswer((_) => Future<AttachResponse?>.value(AttachResponse(
+              rumEnabled: false,
+            )));
     when(() => mockPlatform.setUserInfo(any(), any(), any(), any()))
         .thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.setTrackingConsent(any()))
+        .thenAnswer((_) => Future<void>.value());
+    when(() => mockPlatform.flushAndDeinitialize())
         .thenAnswer((_) => Future<void>.value());
     DatadogSdkPlatform.instance = mockPlatform;
     datadogSdk = DatadogSdk.instance;
 
     mockLogsPlatform = MockDdLogsPlatform();
     DdLogsPlatform.instance = mockLogsPlatform;
+  });
+
+  tearDown(() async {
+    await datadogSdk.flushAndDeinitialize();
   });
 
   test('initialize passes configuration to platform', () async {
@@ -194,6 +204,51 @@ void main() {
     expect(logger, isNotNull);
     verify(() => mockLogsPlatform.createLogger(
         logger!.loggerHandle, loggingConfiguration));
+  });
+
+  test('attachToExisting calls out to platform', () async {
+    await datadogSdk.attachToExisting();
+
+    verify(() => mockPlatform.attachToExisting());
+    expect(datadogSdk.rum, isNull);
+    expect(datadogSdk.logs, isNull);
+  });
+
+  test('attachToExisiting with loggingConfiguration creates default logger',
+      () async {
+    when(() => mockPlatform.attachToExisting()).thenAnswer(
+        (invocation) => Future<AttachResponse?>.value(AttachResponse(
+              rumEnabled: false,
+            )));
+    when(() => mockLogsPlatform.createLogger(any(), any()))
+        .thenAnswer((_) => Future<void>.value());
+    final logConfig = LoggingConfiguration();
+
+    await datadogSdk.attachToExisting(logConfiguration: logConfig);
+
+    expect(datadogSdk.logs, isNotNull);
+    verify(() => mockLogsPlatform.createLogger(any(), logConfig));
+  });
+
+  test('attachToExisiting without loggingConfiguration does not create logger',
+      () async {
+    when(() => mockPlatform.attachToExisting()).thenAnswer(
+        (invocation) => Future<AttachResponse?>.value(AttachResponse(
+              rumEnabled: false,
+            )));
+
+    await datadogSdk.attachToExisting();
+    expect(datadogSdk.logs, null);
+  });
+
+  test('attachToExisting with rumEnabled creates RUM bridge', () async {
+    when(() => mockPlatform.attachToExisting()).thenAnswer(
+        (invocation) => Future<AttachResponse?>.value(AttachResponse(
+              rumEnabled: true,
+            )));
+
+    await datadogSdk.attachToExisting();
+    expect(datadogSdk.rum, isNotNull);
   });
 
   test('first party hosts get set to sdk', () async {

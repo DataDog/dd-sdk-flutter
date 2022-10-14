@@ -54,6 +54,10 @@ class DatadogRumPlugin(
         channel.setMethodCallHandler(null)
     }
 
+    fun attachToExistingSdk() {
+        rum = GlobalRum.get()
+    }
+
     fun setup(
         configuration: DatadogFlutterConfiguration.RumConfiguration
     ) {

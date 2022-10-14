@@ -4,6 +4,8 @@
 
 import 'dart:math';
 
+import 'package:meta/meta.dart';
+
 import '../datadog_flutter_plugin.dart';
 import '../datadog_internal.dart';
 
@@ -221,6 +223,18 @@ class RumConfiguration {
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),
         longTaskThreshold = max(0.02, longTaskThreshold);
+
+  /// Create a configuration that stands in for the configuration that already occurred from
+  /// an existing instance.
+  ///
+  /// This method is meant for internal Datadog use only.
+  @internal
+  RumConfiguration.existing()
+      : applicationId = '<unknown>',
+        sessionSamplingRate = 100.0,
+        tracingSamplingRate = 20.0,
+        detectLongTasks = false,
+        longTaskThreshold = 0.1;
 
   Map<String, Object?> encode() {
     return {

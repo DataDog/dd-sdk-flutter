@@ -52,6 +52,19 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   }
 
   @override
+  Future<AttachResponse?> attachToExisting() async {
+    final channelResponse = await methodChannel
+        .invokeMapMethod<String, Object?>(
+            'attachToExisting', <String, Object?>{});
+
+    AttachResponse? response;
+    if (channelResponse != null) {
+      response = AttachResponse.decode(channelResponse);
+    }
+    return response;
+  }
+
+  @override
   Future<void> flushAndDeinitialize() {
     return methodChannel
         .invokeMethod('flushAndDeinitialize', <String, Object?>{});

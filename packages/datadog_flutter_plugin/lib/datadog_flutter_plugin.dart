@@ -153,6 +153,39 @@ class DatadogSdk {
     }
   }
 
+  /// Attach the Datadog Flutter SDK to an already initialized Datadog Native
+  /// (iOS or Android) SDK.  This is used for "app in app" embedding of Flutter.
+  ///
+  /// Passing a configuration to [logConfiguration] will create a default global
+  /// log with the given parameters and assign it to [logs]. If logging is not
+  /// enabled in the Native SDK, this log creation will quietly fail.
+  Future<void> attachToExisting(
+      {LoggingConfiguration? logConfiguration}) async {
+    final attachResponse = await wrapAsync<AttachResponse>(
+        'attachToExisting', internalLogger, null, () async {
+      return await _platform.attachToExisting();
+    });
+
+    if (attachResponse != null) {
+      if (logConfiguration != null) {
+        try {
+          _logs = createLogger(logConfiguration);
+        } catch (_) {
+          // This is likely fine. Since we have no simple way of knowing if Logging is
+          // enabled, we try to create a logger anyway, which could potentially fail.
+          internalLogger.debug(
+              'A logging configuration was provided to `attachToExisting` but log creation failed, likey because logging is disabled in the native SDK. No global log was created');
+        }
+      }
+      if (attachResponse.rumEnabled) {
+        _rum = DdRum(RumConfiguration.existing(), internalLogger);
+      }
+    } else {
+      internalLogger.error(
+          'Failed to attach to an existing native instance of the Datadog SDK.');
+    }
+  }
+
   /// Create a new logger.
   ///
   /// This can be used in addition to or instead of the default logger at [logs]

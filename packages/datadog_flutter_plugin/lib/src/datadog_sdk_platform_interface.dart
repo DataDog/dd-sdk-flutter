@@ -9,6 +9,27 @@ import 'datadog_sdk_method_channel.dart';
 
 typedef LogCallback = void Function(String line);
 
+class AttachResponse {
+  final bool rumEnabled;
+
+  AttachResponse({
+    required this.rumEnabled,
+  });
+
+  static AttachResponse? decode(Map<String, Object?> json) {
+    try {
+      return AttachResponse(
+        rumEnabled: json['rumEnabled'] as bool,
+      );
+    } catch (e, st) {
+      DatadogSdk.instance.internalLogger
+          .sendToDatadog('Failed to deserialize AttachResponse: $e', st, null);
+    }
+
+    return null;
+  }
+}
+
 abstract class DatadogSdkPlatform extends PlatformInterface {
   DatadogSdkPlatform() : super(token: _token);
 
@@ -33,5 +54,6 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
 
   Future<void> initialize(DdSdkConfiguration configuration,
       {LogCallback? logCallback});
+  Future<AttachResponse?> attachToExisting();
   Future<void> flushAndDeinitialize();
 }

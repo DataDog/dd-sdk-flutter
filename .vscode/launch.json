@@ -5,6 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Hybrid: attach",
+            "cwd": "examples/native-hybrid-app/flutter_module",
+            "type": "dart",
+            "request": "attach"
+        },
+        {
             "name": "example",
             "cwd": "packages/datadog_flutter_plugin/example",
             "request": "launch",
