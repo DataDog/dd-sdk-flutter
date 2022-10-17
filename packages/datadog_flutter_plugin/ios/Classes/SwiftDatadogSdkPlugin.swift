@@ -104,7 +104,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             }
         case "telemetryDebug":
             if let message = arguments["message"] as? String {
-                Datadog._internal._telemtry.debug(id: "datadog_flutter:\(message)", message: message)
+                Datadog._internal._telemetry.debug(id: "datadog_flutter:\(message)", message: message)
                 result(nil)
             } else {
                 result(FlutterError.missingParameter(methodName: call.method))
@@ -113,7 +113,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             if let message = arguments["message"] as? String {
                 let stack = arguments["stack"] as? String
                 let kind = arguments["kind"] as? String
-                Datadog._internal._telemtry.error(id: "datadog_flutter:\(String(describing: kind)):\(message)",
+                Datadog._internal._telemetry.error(id: "datadog_flutter:\(String(describing: kind)):\(message)",
                                                   message: message, kind: kind, stack: stack)
                 result(nil)
             } else {

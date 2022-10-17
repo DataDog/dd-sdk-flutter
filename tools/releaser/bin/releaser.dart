@@ -2,9 +2,12 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
+import 'package:releaser/cocoapod_util.dart';
 import 'package:releaser/command.dart';
 import 'package:releaser/git_actions.dart';
 import 'package:releaser/helpers.dart';
@@ -24,6 +27,10 @@ void main(List<String> arguments) async {
       'skip-git-checks',
       help: "Don't perform checks on branch names or un-staged files",
       defaultsTo: false,
+    )
+    ..addOption(
+      'ios-version',
+      help: 'Explicitly set the iOS release this release will target',
     )
     ..addFlag(
       'dry-run',
@@ -64,6 +71,13 @@ void main(List<String> arguments) async {
     return;
   }
 
+  final githubToken = Platform.environment['GITHUB_TOKEN'];
+  if (githubToken == null) {
+    Logger.root.shout(
+        '❌ Must have the environment variable GITHUB_TOKEN set to validate native SDK releases.');
+    return;
+  }
+
   final currentBranch = await commandArgs.gitDir.currentBranch();
   final choreBranch =
       'chore/${commandArgs.packageName}/prep-v${commandArgs.version}';
@@ -87,6 +101,7 @@ void main(List<String> arguments) async {
         '🚀 Preparing for release of ${commandArgs.packageName} ${commandArgs.version}.'),
     CreateReleaseBranchCommand(),
     RemoveDependencyOverridesCommand(),
+    RemovePodOverridesCommand(),
     CommitChangesCommand(
       '🧹 Remove dependency overrides for release of ${commandArgs.packageName} ${commandArgs.version}.',
       noChangesOkay: true,
@@ -129,6 +144,7 @@ Future<CommandArguments?> _validateArguments(ArgResults argResults) async {
     gitDir: gitDir,
     skipGitChecks: skipGitChecks,
     version: version,
+    iOSRelease: argResults['ios-version'],
     dryRun: dryRun,
   );
 }

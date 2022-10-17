@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:git/git.dart';
+import 'package:github/github.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 import 'package:version/version.dart';
@@ -34,6 +35,12 @@ class ValidateReleaseCommand extends Command {
 
     isValid &= _validateVersionNumber(args.version, logger);
     isValid &= await _validateChangeLog(packagePath, logger);
+
+    // The only package that as a dependency on the iOS SDK version is datadog_flutter_plugin,
+    // so only check / pin if that's the package we're releasing.
+    if (args.packageName == 'datadog_flutter_plugin') {
+      isValid &= await _validateiOSRelease(packagePath, args, logger);
+    }
 
     return isValid;
   }
@@ -109,6 +116,71 @@ class ValidateReleaseCommand extends Command {
     }
 
     return isValid;
+  }
+
+  Future<bool> _validateiOSRelease(
+      String packagePath, CommandArguments args, Logger logger) async {
+    const githubOrganization = 'DataDog';
+    const repoName = 'dd-sdk-ios';
+
+    final githubToken = Platform.environment['GITHUB_TOKEN'];
+    final github = GitHub(auth: Authentication.withToken(githubToken));
+    final repoSlug = RepositorySlug(githubOrganization, repoName);
+
+    // If we didn't specify a version get the current latest release from cocoapods.
+    // If we did specify a release, check that it actually exists.
+    var release = args.iOSRelease;
+    if (release == null) {
+      logger.fine('🌎 Fetching latest release from github... ');
+      final latestRelease =
+          await github.repositories.getLatestRelease(repoSlug);
+      logger.fine('ℹ️ Latest iOS release is ${latestRelease.name}');
+      release = latestRelease.tagName;
+    } else {
+      try {
+        final targetRelease =
+            await github.repositories.getReleaseByTagName(repoSlug, release);
+      } on RepositoryNotFound {
+        logger.shout(
+            '❌ Could not find target iOS release $release. Please check the tag name');
+        return false;
+      }
+    }
+
+    logger.fine('🌎 Getting the difference between "$release" and "develop"');
+    final compare =
+        await github.repositories.compareCommits(repoSlug, release!, 'develop');
+
+    while (true) {
+      print(
+          'Current code on develop is ahead of $release by ${compare.aheadBy} commits.');
+      print('Are you okay with this? ([Y]es, [N]o, [S]ee Changes: ');
+
+      final input = stdin.readLineSync();
+      if (input != null && input.isNotEmpty) {
+        final firstChar = input[0].toLowerCase();
+        if (firstChar == 'y') {
+          break;
+        } else if (firstChar == 'n') {
+          logger.shout('😳 Oh, I\'m glad we stopped then!');
+          return false;
+        } else if (firstChar == 's') {
+          if (compare.commits != null) {
+            for (final commit in compare.commits!) {
+              final message = commit.commit?.message;
+              if (message != null && !message.startsWith('Merge')) {
+                var firstLine = message.split('\n').first;
+                print('- $firstLine by ${commit.commit?.author?.name}');
+              }
+            }
+          }
+        }
+      }
+    }
+
+    logger.fine('✅ Confirmed okay shipping with release $release');
+    args.iOSRelease = release;
+    return true;
   }
 }
 
