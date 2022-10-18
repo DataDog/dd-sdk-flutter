@@ -30,11 +30,11 @@ DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
 
 This causes the SDK to output additional information about what it's doing and what errors it's encountering, which may help you and Datadog Support narrow down your issue.
 
-## Issues with Automatic Resource Tracking and Distributed Tracing
+## Issues with automatic resource tracking and distributed tracing
 
-The [Datadog Tracking Http Client][2] package  works with most common Flutter networking packages that rely on `dart:io`, including [`http`][3] and [`Dio`][4]. This package does not work with the newly announced "native" http clients, [`cupertino_http`][6] and [`cronet_http`][5]
+The [Datadog tracking HTTP client][2] package works with most common Flutter networking packages that rely on `dart:io`, including [`http`][3] and [`Dio`][4]. This package does not work with the newly announced "native" HTTP clients, [`cupertino_http`][6] and [`cronet_http`][5]
 
-If you are seeing Resources in your RUM Sessions, then the Tracking Http Client is working, but other steps may be required to use Distributed Tracing.
+If you are seeing resources in your RUM Sessions, then the tracking HTTP client is working, but other steps may be required to use distributed tracing.
 
 Be default, the Datadog RUM Flutter SDK samples distributed traces at only 20% of resource requests. While determining if there is an issue with your setup, you should set this value to 100% of traces by modifying your initialization with the following lines:
 ```dart
