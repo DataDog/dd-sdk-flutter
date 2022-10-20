@@ -107,6 +107,8 @@ class DatadogTrackingHttpClient implements HttpClient {
           attributes[DatadogRumPlatformAttributeKey.traceID] = traceId;
           attributes[DatadogRumPlatformAttributeKey.spanID] = spanId;
         }
+        attributes[DatadogRumPlatformAttributeKey.rulePsr] =
+            rum.tracingSamplingRate / 100.0;
 
         rumKey = uuid.v1();
         final rumHttpMethod = rumMethodFromMethodString(method);

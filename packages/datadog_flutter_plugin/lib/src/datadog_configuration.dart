@@ -173,7 +173,7 @@ class RumConfiguration {
   /// Defaults to `100.0`.
   double sessionSamplingRate;
 
-  /// Sets the sampling rate for tracing
+  /// Sets the sampling rate for resource tracing
   ///
   /// The sampling rate must be a value between `0.0` and `100.0`. A value of
   /// `0.0` means no resources will include APM tracing, `100.0` resource will

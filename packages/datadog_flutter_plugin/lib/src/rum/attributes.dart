@@ -18,4 +18,10 @@ class DatadogRumPlatformAttributeKey {
   /// Span ID. Used in RUM resources created by automatic resource tracking.
   /// Expects `String` value.
   static const spanID = '_dd.span_id';
+
+  /// Trace sample rate applied to RUM resources created by cross platform SDK.
+  /// We send cross-platform SDK's sample rate within RUM resource in order to provide accurate visibility into what settings are
+  /// configured at the SDK level. This gets displayed on APM's traffic ingestion control page.
+  /// Expects `double` value between `0.0` and `1.0`.
+  static const rulePsr = '_dd.rule_psr';
 }
