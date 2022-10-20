@@ -87,13 +87,17 @@ class DatadogSdk {
 
   /// Get an instance of a DatadogPlugin that was registered with
   /// [DdSdkConfiguration.addPlugin]
-  T? getPlugin<T>() => _plugins[T.runtimeType] as T?;
+  T? getPlugin<T>() => _plugins[T] as T?;
 
   /// This function is not part of the public interface for Datadog, and may not
   /// be available in all targets. Used for integration and E2E testing purposes only.
   @visibleForTesting
   Future<void> flushAndDeinitialize() async {
     await _platform.flushAndDeinitialize();
+    for (final plugin in _plugins.values) {
+      plugin.shutdown();
+    }
+    _plugins.clear();
     _logs = null;
     _rum = null;
   }
@@ -141,35 +145,25 @@ class DatadogSdk {
       _rum = DdRum(configuration.rumConfiguration!, internalLogger);
     }
 
-    for (final pluginConfig in configuration.additionalPlugins) {
-      var plugin = pluginConfig.create(this);
-      if (_plugins.containsKey(plugin.runtimeType)) {
-        internalLogger.error(
-            'Attempting to setup two plugins of the same type: ${plugin.runtimeType}. The second plugin will be ignored.');
-      } else {
-        plugin.initialize();
-        _plugins[plugin.runtimeType] = plugin;
-      }
-    }
+    _initializePlugins(configuration.additionalPlugins);
   }
 
   /// Attach the Datadog Flutter SDK to an already initialized Datadog Native
   /// (iOS or Android) SDK.  This is used for "app in app" embedding of Flutter.
-  ///
-  /// Passing a configuration to [logConfiguration] will create a default global
-  /// log with the given parameters and assign it to [logs]. If logging is not
-  /// enabled in the Native SDK, this log creation will quietly fail.
   Future<void> attachToExisting(
-      {LoggingConfiguration? logConfiguration}) async {
+    DdSdkExistingConfiguration config,
+  ) async {
     final attachResponse = await wrapAsync<AttachResponse>(
         'attachToExisting', internalLogger, null, () async {
       return await _platform.attachToExisting();
     });
 
     if (attachResponse != null) {
-      if (logConfiguration != null) {
+      _setFirstPartyHosts(config.firstPartyHosts);
+
+      if (config.loggingConfiguration != null) {
         try {
-          _logs = createLogger(logConfiguration);
+          _logs = createLogger(config.loggingConfiguration!);
         } catch (_) {
           // This is likely fine. Since we have no simple way of knowing if Logging is
           // enabled, we try to create a logger anyway, which could potentially fail.
@@ -178,8 +172,16 @@ class DatadogSdk {
         }
       }
       if (attachResponse.rumEnabled) {
-        _rum = DdRum(RumConfiguration.existing(), internalLogger);
+        _rum = DdRum(
+            RumConfiguration.existing(
+              detectLongTasks: config.detectLongTasks,
+              longTaskThreshold: config.longTaskThreshold,
+              tracingSamplingRate: config.tracingSamplingRate,
+            ),
+            internalLogger);
       }
+
+      _initializePlugins(config.additionalPlugins);
     } else {
       internalLogger.error(
           'Failed to attach to an existing native instance of the Datadog SDK.');
@@ -227,6 +229,19 @@ class DatadogSdk {
   void _platformLog(String log) {
     if (kDebugMode) {
       print(log);
+    }
+  }
+
+  void _initializePlugins(List<DatadogPluginConfiguration> plugins) {
+    for (final pluginConfig in plugins) {
+      var plugin = pluginConfig.create(this);
+      if (_plugins.containsKey(plugin.runtimeType)) {
+        internalLogger.error(
+            'Attempting to setup two plugins of the same type: ${plugin.runtimeType}. The second plugin will be ignored.');
+      } else {
+        plugin.initialize();
+        _plugins[plugin.runtimeType] = plugin;
+      }
     }
   }
 }

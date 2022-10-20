@@ -4,7 +4,8 @@
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 
-import 'src/tracking_http_client_plugin.dart';
+import 'src/tracking_http_client_plugin.dart'
+    show DdHttpTrackingPluginConfiguration;
 
 export 'src/tracking_http_client.dart';
 
@@ -27,6 +28,23 @@ extension TrackingExtension on DdSdkConfiguration {
   /// If both RUM and Tracing features are enabled, the SDK will be sending RUM
   /// Resources for 1st- and 3rd-party requests and tracing Spans for
   /// 1st-parties.
+  ///
+  /// See also [firstPartyHosts]
+  void enableHttpTracking() {
+    addPlugin(DdHttpTrackingPluginConfiguration());
+  }
+}
+
+extension TrackingExtensionExisting on DdSdkExistingConfiguration {
+  /// Configures network requests monitoring for Tracing and RUM features.
+  ///
+  /// If enabled, the SDK will override [HttpClient] creation (via
+  /// [HttpOverrides]) to provide its own implementation. For more information,
+  /// check the documentation on [DatadogTrackingHttpClient]
+  ///
+  /// If the RUM feature is enabled, the SDK will send RUM Resources for all
+  /// intercepted requests, along with generated spans for requests to first
+  /// part hosts.
   ///
   /// See also [firstPartyHosts]
   void enableHttpTracking() {

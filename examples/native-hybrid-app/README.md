@@ -10,7 +10,11 @@ If you are using an applicaiton that is already using the native Datadog iOS or 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await DatadogSdk.instance.attachToExisting();
+  final config = DdSdkExistingConfiguration(
+    loggingConfiguration: LoggingConfiguration()
+  );
+
+  await DatadogSdk.instance.attachToExisting(config);
 
   runApp(MyApp());
 }

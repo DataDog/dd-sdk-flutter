@@ -84,8 +84,8 @@ enum Verbosity { verbose, debug, info, warn, error, none }
 /// Configuration options for the Datadog Logging feature.
 class LoggingConfiguration {
   /// Enriches logs with network connection info. This means: reachability
-  /// status, connection type, mobile carrier name and many more will be added to
-  /// each log.
+  /// status, connection type, mobile carrier name and many more will be added
+  /// to each log.
   ///
   /// Defaults to `false`.
   bool sendNetworkInfo;
@@ -102,9 +102,8 @@ class LoggingConfiguration {
 
   /// Sets the level of logs that get sent to Datadog
   ///
-  /// Logs below the configured threshold are not sent to Datadog, while
-  /// logs at this threshold and above are, so long as [sendLogsToDatadog]
-  /// is also set.
+  /// Logs below the configured threshold are not sent to Datadog, while logs at
+  /// this threshold and above are, so long as [sendLogsToDatadog] is also set.
   ///
   /// Defaults to [Verbosity.verbose]
   Verbosity datadogReportingThreshold;
@@ -224,17 +223,17 @@ class RumConfiguration {
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),
         longTaskThreshold = max(0.02, longTaskThreshold);
 
-  /// Create a configuration that stands in for the configuration that already occurred from
-  /// an existing instance.
+  /// Create a configuration that stands in for the configuration that already
+  /// occurred from an existing instance.
   ///
   /// This method is meant for internal Datadog use only.
   @internal
-  RumConfiguration.existing()
-      : applicationId = '<unknown>',
-        sessionSamplingRate = 100.0,
-        tracingSamplingRate = 20.0,
-        detectLongTasks = false,
-        longTaskThreshold = 0.1;
+  RumConfiguration.existing({
+    this.detectLongTasks = true,
+    this.longTaskThreshold = 0.1,
+    this.tracingSamplingRate = 20.0,
+  })  : applicationId = '<unknown>',
+        sessionSamplingRate = 100.0;
 
   Map<String, Object?> encode() {
     return {
@@ -301,9 +300,9 @@ class DdSdkConfiguration {
 
   /// Set the current flavor (variant) of the application
   ///
-  /// This must match the flavor set during symbol upload in order for stack trace
-  /// deobfuscation to work. By default, the flavor parameter is null and will
-  /// not appear as a tag in RUM, but other tools will default to 'release'
+  /// This must match the flavor set during symbol upload in order for stack
+  /// trace deobfuscation to work. By default, the flavor parameter is null and
+  /// will not appear as a tag in RUM, but other tools will default to 'release'
   String? flavor;
 
   /// Set a custom endpoint to send information to.
@@ -323,7 +322,8 @@ class DdSdkConfiguration {
   /// Android SDK is used, which is 20.
   double? telemetrySampleRate;
 
-  /// A list of first party hosts, used in conjunction with [trackHttpClient]
+  /// A list of first party hosts, used in conjunction with Datadog network
+  /// tracking packages like `datadog_tracking_http_client`
   ///
   /// Each request will be classified as 1st- or 3rd-party based on the host
   /// comparison, i.e.:
@@ -373,8 +373,8 @@ class DdSdkConfiguration {
     this.loggingConfiguration,
     this.rumConfiguration,
   }) {
-    // Transfer customEndpoint to other properties if they're not set
-    // ignore: deprecated_member_use_from_same_package
+    // Transfer customEndpoint to other properties if they're not set ignore:
+    // deprecated_member_use_from_same_package
     if (customEndpoint != null) {
       // ignore: deprecated_member_use_from_same_package
       customLogsEndpoint ??= customEndpoint;
@@ -417,4 +417,78 @@ class DdSdkConfiguration {
       'customLogsEndpoint': customLogsEndpoint,
     };
   }
+}
+
+/// Configuration options used when attaching to an existing instance of a
+/// DatadogSdk.
+class DdSdkExistingConfiguration {
+  /// The configuration to use for the default global logger
+  ///
+  /// Passing a configuration to [logConfiguration] will create a default global
+  /// log with the given parameters and assign it to [DatadogSdk.logs]. If
+  /// logging is not enabled in the Native SDK, this log creation will quietly
+  /// fail.
+  LoggingConfiguration? loggingConfiguration;
+
+  /// Enable or disable detection of "long tasks"
+  ///
+  /// Long task detection attempts to detect when an application is doing too
+  /// much work on the main isolate which could prevent your app from rendering
+  /// at a smooth framerate.
+  ///
+  /// This option does not have any affect on options already set in the Native
+  /// SDK, and only initializes long task detection on the main Dart isolate.
+  ///
+  /// Defaults to true.
+  bool detectLongTasks;
+
+  // The amount of elapsed time that is considered to be a "long task", in /
+  //seconds.
+  ///
+  /// If the main isolate takes more than [longTaskThreshold] seconds to process
+  /// a microtask, it will appear as a Long Task in Datadog RUM Explorer. This /
+  //has a minimum of 0.02 seconds.
+  ///
+  /// This threshold only applies to the Dart long task detector. The Native
+  //SDKs / will retain their own thresholds.
+  ///
+  /// Defaults to 0.1 seconds
+  final double longTaskThreshold;
+
+  /// A list of first party hosts, used in conjunction with Datadog network
+  /// tracking packages like `datadog_tracking_http_client`
+  ///
+  /// This property only affects network requests made from Flutter, and is not
+  /// shared with or populated from existing the SDK.
+  ///
+  /// See [DdSdkConfiguration.firstPartyHosts] for more information
+  List<String> firstPartyHosts = [];
+
+  /// Sets the sampling rate for tracing
+  ///
+  /// The sampling rate must be a value between `0.0` and `100.0`. A value of
+  /// `0.0` means no resources will include APM tracing, `100.0` resource will
+  /// include APM tracing
+  ///
+  /// Similarly to [firstPartyHosts], this property only affects network
+  /// requests made from Flutter, and it is not shared or populated from the
+  /// existing SDK.
+  ///
+  /// Defaults to `20.0`.
+  double tracingSamplingRate;
+
+  /// Configurations for additional plugins that will be created after Datadog
+  /// is initialized.
+  final List<DatadogPluginConfiguration> additionalPlugins = [];
+
+  DdSdkExistingConfiguration({
+    this.loggingConfiguration,
+    this.detectLongTasks = true,
+    this.longTaskThreshold = 0.1,
+    this.tracingSamplingRate = 20.0,
+    this.firstPartyHosts = const [],
+  });
+
+  void addPlugin(DatadogPluginConfiguration pluginConfiguration) =>
+      additionalPlugins.add(pluginConfiguration);
 }
