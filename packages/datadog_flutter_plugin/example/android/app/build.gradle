@@ -77,8 +77,6 @@ flutter {
 }
 
 dependencies {
-    implementation "com.datadoghq:dd-sdk-android:1.12.0-alpha2"
-
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.work:work-runtime-ktx:2.7.0'
 }
