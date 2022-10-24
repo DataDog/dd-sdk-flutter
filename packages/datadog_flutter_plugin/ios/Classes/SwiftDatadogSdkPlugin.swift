@@ -131,7 +131,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             result(FlutterMethodNotImplemented)
         }
     }
-    
+
     internal func initialize(configuration: DatadogFlutterConfiguration) {
         let ddConfiguration = configuration.toDdConfig()
 
@@ -144,7 +144,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             rum?.initialize(configuration: rumConfiguration)
         }
     }
-    
+
     private func attachToExisting() -> [String: Any?] {
         var rumEnabled = false
         if Global.rum is RUMMonitor {
@@ -152,7 +152,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             rum?.attachToExisting(rumInstance: Global.rum)
             rumEnabled = true
         }
-        
+
         return [
             "rumEnabled": rumEnabled
         ]

@@ -42,7 +42,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         rumInstance = RUMMonitor.initialize()
         Global.rum = rumInstance!
     }
-    
+
     func attachToExisting(rumInstance: DDRUMMonitor) {
         self.rumInstance = rumInstance
     }
