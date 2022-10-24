@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Add methods for enabling the DatadogTrackingHttpClient in add-to-app scenarios.
+
 ## 1.1.0
 
 * Minor documentation update to clarify 1.1.x / 1.0.x changes

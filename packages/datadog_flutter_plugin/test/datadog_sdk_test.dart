@@ -20,6 +20,11 @@ class MockDdLogsPlatform extends Mock
 
 class FakeDdSdkConfiguration extends Fake implements DdSdkConfiguration {}
 
+class MockDatadogPluginConfiguration extends Mock
+    implements DatadogPluginConfiguration {}
+
+class MockDatadogPlugin extends Mock implements DatadogPlugin {}
+
 void main() {
   late DatadogSdk datadogSdk;
   late MockDatadogSdkPlatform mockPlatform;
@@ -207,11 +212,24 @@ void main() {
   });
 
   test('attachToExisting calls out to platform', () async {
-    await datadogSdk.attachToExisting();
+    await datadogSdk.attachToExisting(DdSdkExistingConfiguration());
 
     verify(() => mockPlatform.attachToExisting());
     expect(datadogSdk.rum, isNull);
     expect(datadogSdk.logs, isNull);
+  });
+
+  test('attachToExisting forwards creation firstPartyHosts', () async {
+    when(() => mockPlatform.attachToExisting()).thenAnswer(
+        (invocation) => Future<AttachResponse?>.value(AttachResponse(
+              rumEnabled: false,
+            )));
+
+    await datadogSdk.attachToExisting(DdSdkExistingConfiguration(
+      firstPartyHosts: ['example.com', 'datadoghq.com'],
+    ));
+
+    expect(datadogSdk.firstPartyHosts, ['example.com', 'datadoghq.com']);
   });
 
   test('attachToExisiting with loggingConfiguration creates default logger',
@@ -224,7 +242,12 @@ void main() {
         .thenAnswer((_) => Future<void>.value());
     final logConfig = LoggingConfiguration();
 
-    await datadogSdk.attachToExisting(logConfiguration: logConfig);
+    await datadogSdk.attachToExisting(
+      DdSdkExistingConfiguration(
+        loggingConfiguration: logConfig,
+        detectLongTasks: false,
+      ),
+    );
 
     expect(datadogSdk.logs, isNotNull);
     verify(() => mockLogsPlatform.createLogger(any(), logConfig));
@@ -237,7 +260,9 @@ void main() {
               rumEnabled: false,
             )));
 
-    await datadogSdk.attachToExisting();
+    await datadogSdk.attachToExisting(DdSdkExistingConfiguration(
+      detectLongTasks: false,
+    ));
     expect(datadogSdk.logs, null);
   });
 
@@ -247,8 +272,26 @@ void main() {
               rumEnabled: true,
             )));
 
-    await datadogSdk.attachToExisting();
+    await datadogSdk.attachToExisting(DdSdkExistingConfiguration(
+      detectLongTasks: false,
+    ));
     expect(datadogSdk.rum, isNotNull);
+  });
+
+  test('attachToExisting with rumEnabled forwards RUM parameters', () async {
+    when(() => mockPlatform.attachToExisting()).thenAnswer(
+        (invocation) => Future<AttachResponse?>.value(AttachResponse(
+              rumEnabled: true,
+            )));
+
+    await datadogSdk.attachToExisting(DdSdkExistingConfiguration(
+      longTaskThreshold: 0.5,
+      tracingSamplingRate: 100.0,
+      detectLongTasks: false,
+    ));
+
+    expect(datadogSdk.rum?.configuration.longTaskThreshold, 0.5);
+    expect(datadogSdk.rum?.configuration.tracingSamplingRate, 100.0);
   });
 
   test('first party hosts get set to sdk', () async {
@@ -405,5 +448,47 @@ void main() {
 
     expect(logger, isNotNull);
     verify(() => mockLogsPlatform.createLogger(logger.loggerHandle, config));
+  });
+
+  test('plugin added to configuration is created during initialization',
+      () async {
+    final mockPluginConfig = MockDatadogPluginConfiguration();
+    final mockPlugin = MockDatadogPlugin();
+    when(() => mockPluginConfig.create(datadogSdk))
+        .thenAnswer((_) => mockPlugin);
+
+    final config = DdSdkConfiguration(
+      clientToken: 'fake_token',
+      env: 'env',
+      trackingConsent: TrackingConsent.granted,
+      site: DatadogSite.us1,
+    )..addPlugin(mockPluginConfig);
+
+    await datadogSdk.initialize(config);
+
+    verify(() => mockPluginConfig.create(datadogSdk));
+    verify(() => mockPlugin.initialize());
+    expect(datadogSdk.getPlugin<MockDatadogPlugin>(), mockPlugin);
+  });
+
+  test('plugin added to configuration is created during attachToExisting',
+      () async {
+    when(() => mockPlatform.attachToExisting()).thenAnswer(
+        (invocation) => Future<AttachResponse?>.value(AttachResponse(
+              rumEnabled: false,
+            )));
+
+    final mockPluginConfig = MockDatadogPluginConfiguration();
+    final mockPlugin = MockDatadogPlugin();
+    when(() => mockPluginConfig.create(datadogSdk))
+        .thenAnswer((_) => mockPlugin);
+
+    final config = DdSdkExistingConfiguration()..addPlugin(mockPluginConfig);
+
+    await datadogSdk.attachToExisting(config);
+
+    verify(() => mockPluginConfig.create(datadogSdk));
+    verify(() => mockPlugin.initialize());
+    expect(datadogSdk.getPlugin<MockDatadogPlugin>(), mockPlugin);
   });
 }

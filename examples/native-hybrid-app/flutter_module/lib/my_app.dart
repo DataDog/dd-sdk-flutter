@@ -1,6 +1,7 @@
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 
 class MyApp extends StatelessWidget {
   MyApp({super.key});
@@ -12,6 +13,10 @@ class MyApp extends StatelessWidget {
         builder: (context, state) =>
             const MyHomePage(title: 'Flutter Demo Home Page'),
       ),
+      GoRoute(
+        path: '/page2',
+        builder: (context, state) => const MySecondPage(),
+      )
     ],
     observers: [
       DatadogNavigationObserver(datadogSdk: DatadogSdk.instance),
@@ -41,11 +46,37 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  bool _performingOperation = false;
 
   void _incrementCounter() {
     setState(() {
       _counter++;
     });
+  }
+
+  Future<void> _triggerResourceFetch() async {
+    DatadogSdk.instance.rum
+        ?.addUserAction(RumUserActionType.tap, 'Resource Fetch');
+
+    setState(() {
+      _performingOperation = true;
+    });
+    final _ = await http.get(Uri.parse('https://httpstat.us/200?sleep=500'));
+
+    setState(() {
+      _performingOperation = false;
+    });
+  }
+
+  void _triggerLongTask() {
+    DatadogSdk.instance.rum
+        ?.addUserAction(RumUserActionType.tap, 'Long Task Button');
+    final delayEnd = DateTime.now().add(const Duration(milliseconds: 300));
+    while (DateTime.now().isBefore(delayEnd)) {}
+  }
+
+  void _pushSecondPage() {
+    GoRouter.of(context).push('/page2');
   }
 
   @override
@@ -65,6 +96,18 @@ class _MyHomePageState extends State<MyHomePage> {
               '$_counter',
               style: Theme.of(context).textTheme.headline4,
             ),
+            ElevatedButton(
+              onPressed: _performingOperation ? null : _triggerResourceFetch,
+              child: const Text('Fetch Resource'),
+            ),
+            ElevatedButton(
+              onPressed: _performingOperation ? null : _triggerLongTask,
+              child: const Text('Trigger Long Task'),
+            ),
+            ElevatedButton(
+              onPressed: _performingOperation ? null : _pushSecondPage,
+              child: const Text('Push Second Page'),
+            ),
           ],
         ),
       ),
@@ -73,6 +116,20 @@ class _MyHomePageState extends State<MyHomePage> {
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ),
+    );
+  }
+}
+
+class MySecondPage extends StatelessWidget {
+  const MySecondPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Second Page'),
+      ),
+      body: const Center(child: Text('This is a second page')),
     );
   }
 }

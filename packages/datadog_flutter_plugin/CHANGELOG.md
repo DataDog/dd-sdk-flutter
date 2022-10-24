@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+* Add methods for attaching to existing instances of the DatadogSdk for "add-to-app" scenarios.
+
+## 1.0.1
+
 * Update Android SDK to 1.14.1
   * Add CPU architecture to the collected device information.
 

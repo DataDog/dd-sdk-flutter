@@ -4,17 +4,23 @@ This example covers how to use the Datadog Flutter SDK in conjunction with an al
 
 ## Native App is Primary and Datadog is Already Initialized -  `attachToExisting`
 
-If you are using an applicaiton that is already using the native Datadog iOS or Datadog Android SDKs, the Flutter SDK can attach to these using the same parameters. In your `main` function, after calling `WidgetsFlutterBinding.ensureInitialized`, call `DatadogSdk.instance.attachToExisting`. You can optionally add a `LoggingConfiguraiton` to this call, which automatically creates a global logger and attaches it to `DatadogSdk.logs`.
+If you are using an application that is already using the native Datadog iOS or Datadog Android SDKs, the Flutter SDK can attach to these using the same parameters. In your `main` function, after calling `WidgetsFlutterBinding.ensureInitialized`, call `DatadogSdk.instance.attachToExisting`. You can optionally add a `LoggingConfiguraiton` to this call, which automatically creates a global logger and attaches it to `DatadogSdk.logs`.
 
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await DatadogSdk.instance.attachToExisting();
+  final config = DdSdkExistingConfiguration(
+    loggingConfiguration: LoggingConfiguration()
+  );
+
+  await DatadogSdk.instance.attachToExisting(config);
 
   runApp(MyApp());
 }
 ```
+
+Additional options for `DdSdkExistingConfiguration` are documented in the [API reference](https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/datadog_flutter_plugin-library.html). Note that options in this class need to be re-specified even if they are already passed during Native SDK initialization.
 
 ### Prewarmed and Cached Flutter Engines
 The Flutter documentation on adding Flutter to an existing app for iOS uses a "prewarmed" Flutter engine by default (see [Create a FlutterEngine](https://docs.flutter.dev/development/add-to-app/ios/add-flutter-screen#create-a-flutterengine)) whereas the Android example does not (see [Launch a FlutterActivity](https://docs.flutter.dev/development/add-to-app/android/add-flutter-screen?tab=default-activity-launch-kotlin-tab#step-2-launch-flutteractivity)).
