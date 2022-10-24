@@ -373,8 +373,8 @@ class DdSdkConfiguration {
     this.loggingConfiguration,
     this.rumConfiguration,
   }) {
-    // Transfer customEndpoint to other properties if they're not set ignore:
-    // deprecated_member_use_from_same_package
+    // Transfer customEndpoint to other properties if they're not set
+    // ignore: deprecated_member_use_from_same_package
     if (customEndpoint != null) {
       // ignore: deprecated_member_use_from_same_package
       customLogsEndpoint ??= customEndpoint;
