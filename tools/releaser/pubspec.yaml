@@ -11,10 +11,7 @@ dependencies:
   logging: ^1.0.2
   path: ^1.8.0
   git: ^2.0.0
-  github:
-    git:
-         url: git@github.com:fuzzybinary/github.dart.git
-         ref: feature/comparison-commits
+  github: ^9.5.0
   version: ^2.0.0
 
 dev_dependencies:
