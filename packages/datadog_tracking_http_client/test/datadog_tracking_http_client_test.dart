@@ -65,6 +65,7 @@ void main() {
         any(that: HasHost(equals('non_first_party'))))).thenReturn(false);
     mockRum = MockDdRum();
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+    when(() => mockRum.tracingSamplingRate).thenReturn(0.5);
 
     mockClient = MockHttpClient();
     when(() => mockClient.autoUncompress).thenReturn(true);
@@ -314,6 +315,8 @@ void main() {
     });
 
     test('start and stop resource loading set tracing attributes', () async {
+      when(() => mockRum.tracingSamplingRate).thenReturn(23.0);
+
       final completer = setupMockRequest();
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
 
@@ -350,6 +353,9 @@ void main() {
           capturedStartAttributes[DatadogRumPlatformAttributeKey.spanID]);
       expect(spanInt, isNotNull);
       expect(spanInt.bitLength, lessThanOrEqualTo(63));
+
+      expect(capturedStartAttributes[DatadogRumPlatformAttributeKey.rulePsr],
+          0.23);
     });
 
     test(
@@ -358,6 +364,7 @@ void main() {
       final completer = setupMockRequest();
       final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
       when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+      when(() => mockRum.tracingSamplingRate).thenReturn(12.0);
 
       var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
@@ -387,6 +394,8 @@ void main() {
           isNull);
       expect(capturedStartAttributes[DatadogRumPlatformAttributeKey.spanID],
           isNull);
+      expect(capturedStartAttributes[DatadogRumPlatformAttributeKey.rulePsr],
+          0.12);
     });
 
     test('sets trace headers for first party urls', () async {
