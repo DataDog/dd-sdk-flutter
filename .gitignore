@@ -22,3 +22,7 @@ tools/ci/venv
 ndk_crash_reports_v2/
 ndk_crash_reports_intermediary_v2/
 .fvm/
+packages/datadog_flutter_plugin/integration_test_app/ios/Podfile.lock
+packages/datadog_flutter_plugin/e2e_test_app/pubspec.lock
+packages/datadog_flutter_plugin/example/pubspec.lock
+packages/datadog_tracking_http_client/example/ios/Podfile.lock
