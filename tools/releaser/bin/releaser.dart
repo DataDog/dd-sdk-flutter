@@ -10,6 +10,7 @@ import 'package:path/path.dart' as path;
 import 'package:releaser/cocoapod_util.dart';
 import 'package:releaser/command.dart';
 import 'package:releaser/git_actions.dart';
+import 'package:releaser/gradle_util.dart';
 import 'package:releaser/helpers.dart';
 import 'package:releaser/release_validator.dart';
 import 'package:releaser/version_updater.dart';
@@ -31,6 +32,10 @@ void main(List<String> arguments) async {
     ..addOption(
       'ios-version',
       help: 'Explicitly set the iOS release this release will target',
+    )
+    ..addOption(
+      'android-version',
+      help: 'Explicitly set the Android release this release will target',
     )
     ..addFlag(
       'dry-run',
@@ -102,14 +107,13 @@ void main(List<String> arguments) async {
     CreateReleaseBranchCommand(),
     RemoveDependencyOverridesCommand(),
     RemovePodOverridesCommand(),
+    UpdateGradleFilesCommand(),
     CommitChangesCommand(
       '🧹 Remove dependency overrides for release of ${commandArgs.packageName} ${commandArgs.version}.',
       noChangesOkay: true,
     ),
     ValidatePublishDryRun(),
     SwitchBranchCommand(choreBranch),
-    // Do pre-release always for now. Later use the branch name as
-    // the indicator.
     BumpVersionCommand(versionBumpType),
     CommitChangesCommand(
         '📝 Bump version of ${commandArgs.packageName} to next potential release.'),
@@ -145,6 +149,7 @@ Future<CommandArguments?> _validateArguments(ArgResults argResults) async {
     skipGitChecks: skipGitChecks,
     version: version,
     iOSRelease: argResults['ios-version'],
+    androidRelease: argResults['android-version'],
     dryRun: dryRun,
   );
 }

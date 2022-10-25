@@ -77,6 +77,8 @@ workflows:
             set -e
             ./generate_env.sh
 
+            pod repo update
+
             pushd packages/datadog_common_test
             flutter pub run build_runner build
             popd          

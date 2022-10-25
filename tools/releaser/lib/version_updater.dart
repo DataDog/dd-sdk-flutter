@@ -21,6 +21,12 @@ class UpdateVersionsCommand extends Command {
       return false;
     }
 
+    if (args.packageName == 'datadog_flutter_plugin') {
+      if (!await _updateReadmeVersions(args, logger)) {
+        return false;
+      }
+    }
+
     return _updateChangelog(
         args.packageRoot, args.version, logger, args.dryRun);
   }
@@ -128,6 +134,44 @@ Future<bool> _updateChangelog(
       element = '## Unreleased\n\n## $version';
     }
     return element;
+  });
+
+  return true;
+}
+
+Future<bool> _updateReadmeVersions(CommandArguments args, Logger logger) async {
+  final changelogFile = File(path.join(args.packageRoot, 'README.md'));
+  if (!changelogFile.existsSync()) {
+    logger.shout('⁉️ Could not find README.md at ${changelogFile.path}');
+    return false;
+  }
+
+  var inVersionTable = false;
+  var sdkColumns = <String>[];
+  await transformFile(changelogFile, logger, args.dryRun, (line) {
+    if (inVersionTable) {
+      if (line.startsWith('[//]: #')) {
+        inVersionTable = false;
+
+        // Write the new version table:
+        line = '''[//]: # (SDK Table)
+| iOS SDK | Android SDK | Browser SDK |
+| :-----: | :---------: | :---------: |
+| ${args.iOSRelease} | ${args.androidRelease} | 4.x.x |
+
+[//]: # (End SDK Table)
+''';
+        return line;
+      }
+
+      // Return no lines for the entire version table.
+      return null;
+    } else if (line == '[//]: # (SDK Table)') {
+      inVersionTable = true;
+      return null;
+    }
+
+    return line;
   });
 
   return true;

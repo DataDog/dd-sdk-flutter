@@ -36,10 +36,17 @@ class ValidateReleaseCommand extends Command {
     isValid &= _validateVersionNumber(args.version, logger);
     isValid &= await _validateChangeLog(packagePath, logger);
 
-    // The only package that as a dependency on the iOS SDK version is datadog_flutter_plugin,
-    // so only check / pin if that's the package we're releasing.
-    if (args.packageName == 'datadog_flutter_plugin') {
-      isValid &= await _validateiOSRelease(packagePath, args, logger);
+    if (isValid) {
+      // The only package that as a dependency on the iOS SDK version is datadog_flutter_plugin,
+      // so only check / pin if that's the package we're releasing.
+      if (args.packageName == 'datadog_flutter_plugin') {
+        if (!await _validateiOSRelease(packagePath, args, logger)) {
+          return false;
+        }
+        if (!await _validateAndroidRelease(packagePath, args, logger)) {
+          return false;
+        }
+      }
     }
 
     return isValid;
@@ -122,30 +129,54 @@ class ValidateReleaseCommand extends Command {
       String packagePath, CommandArguments args, Logger logger) async {
     const githubOrganization = 'DataDog';
     const repoName = 'dd-sdk-ios';
-
-    final githubToken = Platform.environment['GITHUB_TOKEN'];
-    final github = GitHub(auth: Authentication.withToken(githubToken));
     final repoSlug = RepositorySlug(githubOrganization, repoName);
 
-    // If we didn't specify a version get the current latest release from cocoapods.
+    args.iOSRelease =
+        await _validateReleaseVersion(repoSlug, 'iOS', args.iOSRelease, logger);
+    return args.iOSRelease != null;
+  }
+
+  Future<bool> _validateAndroidRelease(
+      String packagePath, CommandArguments args, Logger logger) async {
+    const githubOrganization = 'DataDog';
+    const repoName = 'dd-sdk-android';
+    final repoSlug = RepositorySlug(githubOrganization, repoName);
+
+    args.androidRelease = await _validateReleaseVersion(
+        repoSlug, 'Android', args.androidRelease, logger);
+
+    return args.androidRelease != null;
+  }
+
+  Future<String?> _validateReleaseVersion(
+    RepositorySlug repoSlug,
+    String platform,
+    String? release,
+    Logger logger,
+  ) async {
+    final githubToken = Platform.environment['GITHUB_TOKEN'];
+    final github = GitHub(auth: Authentication.withToken(githubToken));
+
+    // If we didn't specify a version get the current latest release from github.
     // If we did specify a release, check that it actually exists.
-    var release = args.iOSRelease;
     if (release == null) {
-      logger.fine('🌎 Fetching latest release from github... ');
+      logger.fine('🌎 Fetching latest $platform release from github... ');
       final latestRelease =
           await github.repositories.getLatestRelease(repoSlug);
-      logger.fine('ℹ️ Latest iOS release is ${latestRelease.name}');
+      logger.fine('ℹ️ Latest $platform release is ${latestRelease.name}');
       release = latestRelease.tagName;
     } else {
       try {
-        final targetRelease =
+        final _ =
             await github.repositories.getReleaseByTagName(repoSlug, release);
       } on RepositoryNotFound {
         logger.shout(
-            '❌ Could not find target iOS release $release. Please check the tag name');
-        return false;
+            '❌ Could not find target $platform release $release. Please check the tag name');
+        return null;
       }
     }
+
+    logger.info('ℹ️ Releasing with $platform version $release.');
 
     logger.fine('🌎 Getting the difference between "$release" and "develop"');
     final compare =
@@ -153,7 +184,7 @@ class ValidateReleaseCommand extends Command {
 
     while (true) {
       print(
-          'Current code on develop is ahead of $release by ${compare.aheadBy} commits.');
+          'Current $platform code on develop is ahead of $release by ${compare.aheadBy} commits.');
       print('Are you okay with this? ([Y]es, [N]o, [S]ee Changes: ');
 
       final input = stdin.readLineSync();
@@ -163,7 +194,7 @@ class ValidateReleaseCommand extends Command {
           break;
         } else if (firstChar == 'n') {
           logger.shout('😳 Oh, I\'m glad we stopped then!');
-          return false;
+          return null;
         } else if (firstChar == 's') {
           if (compare.commits != null) {
             for (final commit in compare.commits!) {
@@ -178,9 +209,8 @@ class ValidateReleaseCommand extends Command {
       }
     }
 
-    logger.fine('✅ Confirmed okay shipping with release $release');
-    args.iOSRelease = release;
-    return true;
+    logger.fine('✅ Confirmed okay shipping with $platform release $release');
+    return release;
   }
 }
 

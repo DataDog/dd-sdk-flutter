@@ -9,11 +9,10 @@ version "1.0-SNAPSHOT"
 
 buildscript {
     ext.kotlin_version = "1.5.31"
-    ext.datadog_sdk_version = "1.14.1"
+    ext.datadog_sdk_version = "1+"
     repositories {
         google()
         mavenCentral()
-
     }
 
     dependencies {
@@ -27,6 +26,9 @@ rootProject.allprojects {
         google()
         mavenCentral()
         maven { url("https://jitpack.io") }
+        maven {
+            url "https://oss.sonatype.org/content/repositories/snapshots/"
+        }
     }
 }
 
