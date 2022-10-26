@@ -95,12 +95,10 @@ packages:
   github:
     dependency: "direct main"
     description:
-      path: "."
-      ref: "feature/comparison-commits"
-      resolved-ref: b1319158e11481a56569705a78b8e5393cde7770
-      url: "git@github.com:fuzzybinary/github.dart.git"
-    source: git
-    version: "9.4.0"
+      name: github
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "9.5.0"
   glob:
     dependency: transitive
     description:
