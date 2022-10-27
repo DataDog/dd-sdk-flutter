@@ -37,19 +37,26 @@ class DatadogTrackingHttpOverrides extends HttpOverrides {
 /// Resources (calling startLoading, stopLoading, and stopLoadingWithErrorInfo)
 /// for all intercepted requests.
 ///
-/// If the Tracing feature is enabled, the SDK will create and send tracing Span
-/// for each 1st-party request. It will also add extra HTTP headers to further
-/// propagate the trace - which means that if your backend is instrumented with
-/// Datadog agent you will see the full trace (e.g.: client → server → database)
-/// in your dashboard, thanks to Datadog Distributed Tracing.
-///
-/// If both RUM and Tracing features are enabled, the SDK will send RUM
-/// Resources for 1st- and 3rd-party requests as well as tracing Spans for any
-/// 1st-party requests.
+/// The SDK will also create a tracing Span for each 1st-party request, and add
+/// extra HTTP headers to further propagate the trace. The percentage of
+/// resources traced in this way is determined by
+/// [RumConfiguration.tracingSamplingRate].
 ///
 /// To specify which hosts are 1st party (and therefore should have tracing
 /// Spans sent), see [DdSdkConfiguration.firstPartyHosts]. You can also set
-/// first party hosts after initialization setting [DatadogSdk.fistPartyHosts]
+/// first party hosts after initialization setting [DatadogSdk.firstPartyHosts]
+///
+/// Unlike [DatadogClient], the DatadogTrackingHttpClient is able to override
+/// all network operations that use [HttpClient], which includes requests made
+/// by Flutter and other popular networking libraries (like http and Dio).
+/// However, it is not able to intercept calls made from native packages like
+/// `cupertino_http` and `cronet_http`, which should instead use
+/// [DatadogClient].
+///
+/// DatadogTrackingHttpClient and [DatadogClient] can be used together if needed,
+/// and will not interfere with each other.
+///
+/// See also [DatadogClient].
 class DatadogTrackingHttpClient implements HttpClient {
   final Uuid uuid = const Uuid();
   final DatadogSdk datadogSdk;
@@ -443,7 +450,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
         }
       },
       onDone: () {
-        _onFinish(null, null);
+        _onFinish();
         if (onDone != null) {
           onDone();
         }
@@ -455,17 +462,17 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
   // error will be sent.
   void _onError(Object error, StackTrace? stackTrace) {
     lastError = error;
+    datadogSdk.rum?.stopResourceLoadingWithErrorInfo(
+        rumKey!, lastError.toString(), lastError.runtimeType.toString());
   }
 
-  void _onFinish(Object? error, StackTrace? stackTrace) {
+  void _onFinish() {
     try {
       final statusCode = innerResponse.statusCode;
 
       if (rumKey != null) {
-        if (lastError != null) {
-          datadogSdk.rum?.stopResourceLoadingWithErrorInfo(
-              rumKey!, lastError.toString(), lastError.runtimeType.toString());
-        } else {
+        // Error'd streams are already closed
+        if (lastError == null) {
           var resourceType = resourceTypeFromContentType(headers.contentType);
           var size = innerResponse.contentLength > 0
               ? innerResponse.contentLength

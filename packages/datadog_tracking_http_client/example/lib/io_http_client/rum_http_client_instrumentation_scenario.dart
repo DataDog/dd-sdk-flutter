@@ -8,19 +8,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
-import 'custom_card.dart';
-import 'rum_auto_instrumentation_second_screen.dart';
+import '../custom_card.dart';
+import 'rum_http_client_instrumentation_second_screen.dart';
 
-class RumAutoInstrumentationScenario extends StatefulWidget {
-  const RumAutoInstrumentationScenario({Key? key}) : super(key: key);
+class RumHttpClientInstrumentationScenario extends StatefulWidget {
+  const RumHttpClientInstrumentationScenario({Key? key}) : super(key: key);
 
   @override
-  State<RumAutoInstrumentationScenario> createState() =>
-      _RumAutoInstrumentationScenarioState();
+  State<RumHttpClientInstrumentationScenario> createState() =>
+      _RumHttpClientInstrumentationScenarioState();
 }
 
-class _RumAutoInstrumentationScenarioState
-    extends State<RumAutoInstrumentationScenario> {
+class _RumHttpClientInstrumentationScenarioState
+    extends State<RumHttpClientInstrumentationScenario> {
   final images = [
     'https://placekitten.com/300/300',
     'https://imgix.datadoghq.com/img/about/presskit/kit/press_kit.png'
@@ -38,10 +38,10 @@ class _RumAutoInstrumentationScenarioState
           context,
           MaterialPageRoute(
             settings: const RouteSettings(
-              name: 'rum_second_screen',
+              name: 'rum_io_second_screen',
             ),
             builder: (_) {
-              return const RumAutoInstrumentationSecondScreen();
+              return const RumHttpClientInstrumentationSecondScreen();
             },
           ),
         );
