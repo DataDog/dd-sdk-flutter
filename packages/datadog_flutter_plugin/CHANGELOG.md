@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Add methods for attaching to existing instances of the DatadogSdk for "add-to-app" scenarios.
+* Add `addUserExtraInfo` method for providing extra user attributes without overwriting other user info. See [#254][]
 
 ## 1.0.1
 
@@ -101,3 +102,4 @@
 [#148]: https://github.com/DataDog/dd-sdk-flutter/issues/148
 [#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159
 [#203]: https://github.com/DataDog/dd-sdk-flutter/issues/203
+[#254]: https://github.com/DataDog/dd-sdk-flutter/issues/254

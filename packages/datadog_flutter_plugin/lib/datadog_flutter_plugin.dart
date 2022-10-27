@@ -214,6 +214,19 @@ class DatadogSdk {
     });
   }
 
+  /// Add custom attributes to the current user information
+  ///
+  /// This extra info will be added to already existing extra info that is added
+  /// to logs traces and RUM events automatically.
+  ///
+  /// Setting an existing attribute to `null` will remove that attribute from
+  /// the user's extra info
+  void addUserExtraInfo(Map<String, Object?> extraInfo) {
+    wrap('addUserExtraInfo', internalLogger, extraInfo, () {
+      return _platform.addUserExtraInfo(extraInfo);
+    });
+  }
+
   void setTrackingConsent(TrackingConsent trackingConsent) {
     wrap('setTrackingConsent', internalLogger, null, () {
       return _platform.setTrackingConsent(trackingConsent);
