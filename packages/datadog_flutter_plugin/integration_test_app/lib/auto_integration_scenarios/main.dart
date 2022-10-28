@@ -59,6 +59,7 @@ Future<void> main() async {
     rumConfiguration: applicationId != null
         ? RumConfiguration(
             applicationId: applicationId,
+            reportFlutterPerformance: true,
             customEndpoint: customEndpoint,
           )
         : null,

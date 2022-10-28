@@ -129,8 +129,45 @@ class RumEventDecoder {
   }
 }
 
+class Vital {
+  final double minTime;
+  final double maxTime;
+  final double avgTime;
+
+  Vital({
+    required this.minTime,
+    required this.maxTime,
+    required this.avgTime,
+  });
+}
+
 class RumViewEventDecoder extends RumEventDecoder {
   int get timeSpent => rumEvent['view']['time_spent'] as int;
+  Vital? get flutterRasterTime {
+    final rasterTime =
+        rumEvent['view']['flutter_raster_time'] as Map<String, Object?>?;
+    if (rasterTime != null) {
+      return Vital(
+        minTime: rasterTime['min'] as double,
+        maxTime: rasterTime['max'] as double,
+        avgTime: rasterTime['average'] as double,
+      );
+    }
+    return null;
+  }
+
+  Vital? get flutterBuildTime {
+    final buildTime =
+        rumEvent['view']['flutter_build_time'] as Map<String, Object?>?;
+    if (buildTime != null) {
+      return Vital(
+        minTime: buildTime['min'] as double,
+        maxTime: buildTime['max'] as double,
+        avgTime: buildTime['average'] as double,
+      );
+    }
+    return null;
+  }
 
   RumViewEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
 }

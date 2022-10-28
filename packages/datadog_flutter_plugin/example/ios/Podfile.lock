@@ -1,7 +1,7 @@
 PODS:
   - datadog_flutter_plugin (0.0.1):
-    - DatadogSDK (= 1.12.0)
-    - DatadogSDKCrashReporting (= 1.12.0)
+    - DatadogSDK (~> 1)
+    - DatadogSDKCrashReporting (~> 1)
     - Flutter
   - DatadogSDK (1.12.0)
   - DatadogSDKCrashReporting (1.12.0):
@@ -41,7 +41,7 @@ CHECKOUT OPTIONS:
     :git: https://github.com/DataDog/dd-sdk-ios
 
 SPEC CHECKSUMS:
-  datadog_flutter_plugin: c9ec815b884e7e5b176ed697b05bf54d2bfa68b6
+  datadog_flutter_plugin: aca1a089d6704f87468365c91dd7273bbdc48acf
   DatadogSDK: 176291d7422a1f96c8e69793a88b5b72cb0959cb
   DatadogSDKCrashReporting: 505df234595ec89966608363c0437294b4c42820
   Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854

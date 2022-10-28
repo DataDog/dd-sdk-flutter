@@ -147,4 +147,13 @@ class DdRumMethodChannel extends DdRumPlatform {
       'duration': durationMs,
     });
   }
+
+  @override
+  Future<void> updatePerformanceMetrics(
+      List<double> buildTimes, List<double> rasterTimes) {
+    return methodChannel.invokeMethod('updatePerformanceMetrics', {
+      'buildTimes': buildTimes,
+      'rasterTimes': rasterTimes,
+    });
+  }
 }

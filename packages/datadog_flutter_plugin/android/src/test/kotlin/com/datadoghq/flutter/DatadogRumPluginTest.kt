@@ -10,6 +10,7 @@ import assertk.assertions.isEqualTo
 import com.datadog.android.rum.RumActionType
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
+import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
 import com.datadog.android.rum._RumInternalProxy
 import fr.xgouchet.elmyr.Forge
@@ -454,6 +455,33 @@ class DatadogRumPluginTest {
         verify { mockResult.success(null) }
     }
 
+    @Test
+    fun `M call internal updatePerformanceMetrics W updatePerformanceMetrics is called`(
+        forge: Forge,
+    ) {
+        // GIVEN
+        val buildTimes = forge.aList { forge.aDouble() }
+        val rasterTimes = forge.aList { forge.aDouble() }
+        val call = MethodCall( "updatePerformanceMetrics", mapOf(
+            "buildTimes" to buildTimes,
+            "rasterTimes" to rasterTimes,
+        ))
+        val mockResult = mockk<MethodChannel.Result>()
+        every { mockResult.success(any()) } returns Unit
+
+        // WHEN
+        plugin.onMethodCall(call, mockResult)
+
+        // THEN
+        for (raster in rasterTimes) {
+            verify { mockRumProxy.updatePerformanceMetric(RumPerformanceMetric.FLUTTER_RASTER_TIME, raster) }
+        }
+        for (build in buildTimes) {
+            verify { mockRumProxy.updatePerformanceMetric(RumPerformanceMetric.FLUTTER_BUILD_TIME, build) }
+        }
+        verify { mockResult.success(null) }
+    }
+
     val contracts = listOf(
         Contract("startView", mapOf(
             "key" to ContractParameter.Type(SupportedContractType.STRING),
@@ -514,6 +542,10 @@ class DatadogRumPluginTest {
         Contract("reportLongTask", mapOf(
             "at" to ContractParameter.Type(SupportedContractType.LONG),
             "duration" to ContractParameter.Type(SupportedContractType.INT)
+        )),
+        Contract("updatePerformanceMetrics", mapOf(
+            "buildTimes" to ContractParameter.Type(SupportedContractType.LIST),
+            "rasterTimes" to ContractParameter.Type(SupportedContractType.LIST),
         ))
     )
 

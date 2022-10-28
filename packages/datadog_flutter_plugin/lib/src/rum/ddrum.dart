@@ -6,6 +6,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 
 import '../../datadog_flutter_plugin.dart';
@@ -104,6 +105,10 @@ class DdRum {
         rumInstance: this,
       );
       _longTaskObserver!.init();
+    }
+    if (configuration.reportFlutterPerformance) {
+      ambiguate(SchedulerBinding.instance)
+          ?.addTimingsCallback(_timingsCallback);
     }
   }
 
@@ -304,5 +309,22 @@ class DdRum {
     wrap('rum.reportLongTask', logger, null, () {
       return _platform.reportLongTask(DateTime.now(), taskLengthMs);
     });
+  }
+
+  void _timingsCallback(List<FrameTiming> timings) {
+    if (timings.isNotEmpty) {
+      var buildTimes = <double>[];
+      var rasterTimes = <double>[];
+      for (final timing in timings) {
+        buildTimes.add(timing.buildDuration.inMicroseconds /
+            Duration.microsecondsPerSecond);
+        rasterTimes.add(timing.rasterDuration.inMicroseconds /
+            Duration.microsecondsPerSecond);
+      }
+
+      wrap('rum.updatePerformanceMetrics', logger, null, () {
+        return _platform.updatePerformanceMetrics(buildTimes, rasterTimes);
+      });
+    }
   }
 }

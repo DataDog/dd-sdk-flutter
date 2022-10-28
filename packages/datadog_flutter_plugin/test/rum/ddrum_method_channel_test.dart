@@ -273,4 +273,15 @@ void main() {
       }),
     ]);
   });
+
+  test('updatePerformanceMetrics calls to platform', () async {
+    await ddRumPlatform.updatePerformanceMetrics([0.2, 0.3], [0.11, 0.25]);
+
+    expect(log, [
+      isMethodCall('updatePerformanceMetrics', arguments: {
+        'buildTimes': [0.2, 0.3],
+        'rasterTimes': [0.11, 0.25],
+      }),
+    ]);
+  });
 }

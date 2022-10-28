@@ -79,23 +79,31 @@ void main() {
 
     final view1 = session.visits[0];
     expect(view1.name, '/');
-    // Path is the actual browser path in web
     if (!kIsWeb) {
+      // Path is the actual browser path in web
       expect(view1.path, '/');
+
+      // Web doesn't support performance metrics
+      expect(view1.viewEvents.last.flutterBuildTime, isNotNull);
+      expect(view1.viewEvents.last.flutterRasterTime, isNotNull);
     }
 
     final view2 = session.visits[1];
     expect(view2.name, 'rum_second_screen');
-    // Path is the actual browser path in web
     if (!kIsWeb) {
+      // Path is the actual browser path in web
       expect(view2.path, 'rum_second_screen');
+
+      // Web doesn't support performance metrics
+      expect(view2.viewEvents.last.flutterBuildTime, isNotNull);
+      expect(view2.viewEvents.last.flutterRasterTime, isNotNull);
     }
 
     // Check last view name
     final view3 = session.visits[2];
     expect(view3.name, 'RumAutoInstrumentationThirdScreen');
-    // Path is the actual browser path in web
     if (!kIsWeb) {
+      // Path is the actual browser path in web
       expect(view3.path, 'RumAutoInstrumentationThirdScreen');
     }
   });

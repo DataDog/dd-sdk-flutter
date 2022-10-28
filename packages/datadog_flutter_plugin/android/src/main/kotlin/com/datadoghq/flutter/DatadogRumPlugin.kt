@@ -9,6 +9,7 @@ import com.datadog.android.rum.GlobalRum
 import com.datadog.android.rum.RumActionType
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
+import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -35,6 +36,8 @@ class DatadogRumPlugin(
         const val PARAM_SOURCE = "source"
         const val PARAM_STACK_TRACE = "stackTrace"
         const val PARAM_TYPE = "type"
+        const val PARAM_BUILD_TIMES = "buildTimes"
+        const val PARAM_RASTER_TIMES = "rasterTimes"
     }
 
     private lateinit var channel: MethodChannel
@@ -226,6 +229,27 @@ class DatadogRumPlugin(
                         // Duration is in ms, convert to ns
                         val durationNs = TimeUnit.MILLISECONDS.toNanos(duration.toLong())
                         rum?._getInternal()?.addLongTask(durationNs, "")
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
+                }
+                "updatePerformanceMetrics" -> {
+                    val buildTimes = call.argument<List<Double>>(PARAM_BUILD_TIMES)
+                    val rasterTimes = call.argument<List<Double>>(PARAM_RASTER_TIMES)
+                    if(buildTimes != null && rasterTimes != null) {
+                        buildTimes.forEach {
+                            rum?._getInternal()?.updatePerformanceMetric(
+                                RumPerformanceMetric.FLUTTER_BUILD_TIME,
+                                it
+                            )
+                        }
+                        rasterTimes.forEach {
+                            rum?._getInternal()?.updatePerformanceMetric(
+                                RumPerformanceMetric.FLUTTER_RASTER_TIME,
+                                it
+                            )
+                        }
                         result.success(null)
                     } else {
                         result.missingParameter(call.method)

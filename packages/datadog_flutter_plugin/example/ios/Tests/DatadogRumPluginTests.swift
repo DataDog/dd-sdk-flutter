@@ -142,6 +142,10 @@ class DatadogRumPluginTests: XCTestCase {
         Contract(methodName: "reportLongTask", requiredParameters: [
             "at": .int64,
             "duration": .int
+        ]),
+        Contract(methodName: "updatePerformanceMetrics", requiredParameters: [
+            "buildTimes": .list,
+            "rasterTimes": .list
         ])
     ]
 
@@ -440,6 +444,31 @@ class DatadogRumPluginTests: XCTestCase {
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
+    
+    func testUpdatePerformanceMetrics_CallsInternal() {
+        let buildTimes = [ 0.44, 1.23, 6.5 ]
+        let rasterTimes = [ 11.2, 68.1, 0.223 ]
+        
+        let call = FlutterMethodCall(methodName: "updatePerformanceMetrics", arguments: [
+            "buildTimes": buildTimes,
+            "rasterTimes": rasterTimes
+        ])
+        
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+        
+        buildTimes.forEach { val in
+            XCTAssert(mock.callLog.contains(
+                .updatePerformanceMetric(metric: .flutterBuildTime, value: val, attributes: [:])))
+        }
+        rasterTimes.forEach { val in
+            XCTAssert(mock.callLog.contains(
+                .updatePerformanceMetric(metric: .flutterRasterTime, value: val, attributes: [:])))
+        }
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
 }
 
 // MARK: - MockRUMMonitor
@@ -465,7 +494,7 @@ class MockRUMMonitor: DDRUMMonitor {
         case stopUserAction(type: RUMUserActionType, name: String?, attributes: [AttributeKey: AttributeValue])
         case addAttribute(forKey: AttributeKey, value: AttributeValue)
         case removeAttribute(forKey: AttributeKey)
-
+        case updatePerformanceMetric(metric: PerformanceMetric, value: Double, attributes: [AttributeKey: AttributeValue])
     }
 
     var callLog: [MethodCall] = []
@@ -555,6 +584,10 @@ class MockRUMMonitor: DDRUMMonitor {
     override func stopUserAction(type: RUMUserActionType, name: String? = nil,
                                  attributes: [AttributeKey: AttributeValue] = [:]) {
         callLog.append(.stopUserAction(type: type, name: name, attributes: attributes))
+    }
+    
+    override func updatePerformanceMetric(metric: PerformanceMetric, value: Double, attributes: [AttributeKey : AttributeValue] = [:]) {
+        callLog.append(.updatePerformanceMetric(metric: metric, value: value, attributes: attributes))
     }
 }
 
