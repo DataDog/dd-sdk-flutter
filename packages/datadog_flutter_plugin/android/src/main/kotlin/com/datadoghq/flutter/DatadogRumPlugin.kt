@@ -238,18 +238,7 @@ class DatadogRumPlugin(
                     val buildTimes = call.argument<List<Double>>(PARAM_BUILD_TIMES)
                     val rasterTimes = call.argument<List<Double>>(PARAM_RASTER_TIMES)
                     if(buildTimes != null && rasterTimes != null) {
-                        buildTimes.forEach {
-                            rum?._getInternal()?.updatePerformanceMetric(
-                                RumPerformanceMetric.FLUTTER_BUILD_TIME,
-                                it
-                            )
-                        }
-                        rasterTimes.forEach {
-                            rum?._getInternal()?.updatePerformanceMetric(
-                                RumPerformanceMetric.FLUTTER_RASTER_TIME,
-                                it
-                            )
-                        }
+                        updatePerformanceMetrics(buildTimes, rasterTimes)
                         result.success(null)
                     } else {
                         result.missingParameter(call.method)
@@ -265,6 +254,24 @@ class DatadogRumPlugin(
                 mapOf(
                     "methodName" to call.method
                 )
+            )
+        }
+    }
+
+    private fun updatePerformanceMetrics(
+        buildTimes: List<Double>,
+        rasterTimes: List<Double>
+    ) {
+        buildTimes.forEach {
+            rum?._getInternal()?.updatePerformanceMetric(
+                RumPerformanceMetric.FLUTTER_BUILD_TIME,
+                it
+            )
+        }
+        rasterTimes.forEach {
+            rum?._getInternal()?.updatePerformanceMetric(
+                RumPerformanceMetric.FLUTTER_RASTER_TIME,
+                it
             )
         }
     }
