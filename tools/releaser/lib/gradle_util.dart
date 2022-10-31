@@ -7,16 +7,30 @@ import 'command.dart';
 import 'helpers.dart';
 
 class UpdateGradleFilesCommand extends Command {
-  static const versionPrefix = 'ext.datadog_sdk_version';
-
-  final versionRegex = RegExp('\\s+$versionPrefix = "(.*)"');
   final gradleFileLocations = [
     'packages/datadog_flutter_plugin/android/build.gradle',
     'packages/datadog_flutter_plugin/example/android/build.gradle',
   ];
 
+  static const versionPrefix = 'datadog-android';
+  final versionRegex = RegExp('$versionPrefix = "(.*)"');
+  final versionCatalog =
+      'packages/datadog_flutter_plugin/android/datadog_version.toml';
+
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
+    if (!await _updateGradleFiles(args, logger)) {
+      return false;
+    }
+
+    if (!await _updateVersionCatalog(args, logger)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<bool> _updateGradleFiles(CommandArguments args, Logger logger) async {
     for (var filePath in gradleFileLocations) {
       final file = File(path.join(args.gitDir.path, filePath));
       if (!file.existsSync()) {
@@ -30,13 +44,6 @@ class UpdateGradleFilesCommand extends Command {
       bool inMavenBlock = false;
       bool writeMavenBlock = true;
       await transformFile(file, logger, args.dryRun, (line) {
-        final versionMatch = versionRegex.firstMatch(line);
-        if (versionMatch != null) {
-          final oldVersion = versionMatch.group(1);
-          line = line.replaceFirst('$versionPrefix = "$oldVersion"',
-              '$versionPrefix = "${args.androidRelease}"');
-        }
-
         if (line.contains('maven ')) {
           inMavenBlock = true;
         }
@@ -67,6 +74,33 @@ class UpdateGradleFilesCommand extends Command {
         return line;
       });
     }
+
+    return true;
+  }
+
+  Future<bool> _updateVersionCatalog(
+      CommandArguments args, Logger logger) async {
+    final file = File(path.join(args.gitDir.path, versionCatalog));
+    if (!file.existsSync()) {
+      logger.shout('❌ Could not find file $versionCatalog');
+      return false;
+    }
+
+    // IF we see a maven block, hold onto it until we know if it's
+    // one we want to keep or remove
+    final mavenBlock = StringBuffer();
+    bool inMavenBlock = false;
+    bool writeMavenBlock = true;
+    await transformFile(file, logger, args.dryRun, (line) {
+      final versionMatch = versionRegex.firstMatch(line);
+      if (versionMatch != null) {
+        final oldVersion = versionMatch.group(1);
+        line = line.replaceFirst('$versionPrefix = "$oldVersion"',
+            '$versionPrefix = "${args.androidRelease}"');
+      }
+
+      return line;
+    });
 
     return true;
   }
