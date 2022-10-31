@@ -58,7 +58,7 @@ data class Contract(
         return when(type) {
             SupportedContractType.STRING -> forge.anExtendedAsciiString()
             SupportedContractType.MAP -> forge.exhaustiveAttributes()
-            SupportedContractType.LIST -> forge.aList(0) {}
+            SupportedContractType.LIST -> emptyList<Any>()
             SupportedContractType.INT -> forge.anInt()
             SupportedContractType.LONG -> forge.aLong()
         }
