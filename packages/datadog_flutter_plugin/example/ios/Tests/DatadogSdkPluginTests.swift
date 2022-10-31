@@ -33,6 +33,9 @@ class FlutterSdkTests: XCTestCase {
         Contract(methodName: "setUserInfo", requiredParameters: [
             "extraInfo": .map
         ]),
+        Contract(methodName: "addUserExtraInfo", requiredParameters: [
+            "extraInfo": .map
+        ]),
         Contract(methodName: "setTrackingConsent", requiredParameters: [
             "value": .string
         ]),
@@ -381,6 +384,44 @@ class FlutterSdkTests: XCTestCase {
                                         extraInfo: [
                                             "attribute": 23.3
                                         ])
+
+        let core = defaultDatadogCore as? DatadogCore
+        XCTAssertEqual(core?.dependencies.userInfoProvider.value, expectedUserInfo)
+        XCTAssertEqual(callResult, .called(value: nil))
+    }
+    
+    func testAddUserExtraInfo_FromMethodChannel_AddsUserInfo() {
+        let flutterConfig = DatadogFlutterConfiguration(
+            clientToken: "fakeClientToken",
+            env: "prod",
+            serviceName: "serviceName",
+            trackingConsent: TrackingConsent.granted,
+            nativeCrashReportingEnabled: false
+        )
+
+        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig)
+        let methodCall = FlutterMethodCall(
+            methodName: "addUserExtraInfo", arguments: [
+                "extraInfo": [
+                    "attribute_1": NSNumber(23.3),
+                    "attribute_2": "attribute_value"
+                ]
+            ])
+
+        var callResult = ResultStatus.notCalled
+        plugin.handle(methodCall) { result in
+            callResult = ResultStatus.called(value: result)
+        }
+
+        let expectedUserInfo = UserInfo(
+            id: nil,
+            name: nil,
+            email: nil,
+            extraInfo: [
+                "attribute_1": 23.3,
+                "attribute_2": "attribute_value"
+            ])
 
         let core = defaultDatadogCore as? DatadogCore
         XCTAssertEqual(core?.dependencies.userInfoProvider.value, expectedUserInfo)

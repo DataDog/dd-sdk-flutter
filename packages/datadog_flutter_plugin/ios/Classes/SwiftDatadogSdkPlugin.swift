@@ -94,6 +94,14 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             } else {
                 result(FlutterError.missingParameter(methodName: call.method))
             }
+        case "addUserExtraInfo":
+            if let extraInfo = arguments["extraInfo"] as? [String: Any?] {
+                let encodedAttributes = castFlutterAttributesToSwift(extraInfo)
+                Datadog.addUserExtraInfo(encodedAttributes)
+                result(nil)
+            } else {
+                result(FlutterError.missingParameter(methodName: call.method))
+            }
         case "setTrackingConsent":
             if let trackingConsentString = arguments["value"] as? String {
                 let trackingConsent = TrackingConsent.parseFromFlutter(trackingConsentString)
