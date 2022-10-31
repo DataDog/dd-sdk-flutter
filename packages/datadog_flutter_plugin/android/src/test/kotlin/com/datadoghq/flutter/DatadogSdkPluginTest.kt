@@ -235,7 +235,9 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCallB, mockResultB)
 
         // THEN
-        io.mockk.verify(exactly = 0) { Log.println(any(), any(), any()) }
+        io.mockk.verify(exactly = 0) {
+            Log.println(any(), eq(DATADOG_FLUTTER_TAG), any())
+        }
     }
 
     @Test
