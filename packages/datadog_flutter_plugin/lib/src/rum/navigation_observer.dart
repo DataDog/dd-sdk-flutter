@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import '../helpers.dart';
 
 /// Information about a View that will be passed to [DdRum.startView]
 class RumViewInfo {
@@ -57,26 +58,68 @@ RumViewInfo? defaultViewInfoExtractor(Route route) {
 /// you can supply a [ViewInfoExtractor] function to [viewInfoExtractor]. This
 /// function is called with the current Route, and can be used to supply a
 /// different name, path, or extra attributes to any route.
-class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
+class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
+    with WidgetsBindingObserver {
   final ViewInfoExtractor viewInfoExtractor;
   final DatadogSdk datadogSdk;
+
+  RumViewInfo? _currentView;
+  RumViewInfo? _pendingView;
 
   DatadogNavigationObserver({
     required this.datadogSdk,
     this.viewInfoExtractor = defaultViewInfoExtractor,
-  });
+  }) {
+    ambiguate(WidgetsBinding.instance)?.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _startView(_pendingView);
+        _pendingView = null;
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        if (_currentView != null) {
+          _pendingView = _currentView;
+          _stopView(_currentView);
+        }
+        break;
+    }
+  }
+
+  void _startView(RumViewInfo? viewInfo) {
+    if (ambiguate(WidgetsBinding.instance)?.lifecycleState !=
+        AppLifecycleState.resumed) {
+      _pendingView = viewInfo;
+    } else {
+      _currentView = viewInfo;
+      if (viewInfo != null) {
+        datadogSdk.rum?.startView(viewInfo.name, null, viewInfo.attributes);
+      } else {
+        _pendingView = viewInfo;
+      }
+    }
+  }
+
+  void _stopView(RumViewInfo? viewInfo) {
+    if (viewInfo != null) {
+      datadogSdk.rum?.stopView(viewInfo.name);
+    }
+    _currentView = null;
+  }
 
   void _sendScreenView(Route? newRoute, Route? oldRoute) {
-    final oldRouteInfo = oldRoute != null ? viewInfoExtractor(oldRoute) : null;
-    final newRouteInfo = newRoute != null ? viewInfoExtractor(newRoute) : null;
+    final oldViewInfo = oldRoute != null ? viewInfoExtractor(oldRoute) : null;
+    final newViewInfo = newRoute != null ? viewInfoExtractor(newRoute) : null;
 
-    if (oldRouteInfo != null) {
-      datadogSdk.rum?.stopView(oldRouteInfo.name);
-    }
-    if (newRouteInfo != null) {
-      datadogSdk.rum
-          ?.startView(newRouteInfo.name, null, newRouteInfo.attributes);
-    }
+    _stopView(oldViewInfo);
+    _startView(newViewInfo);
   }
 
   @override

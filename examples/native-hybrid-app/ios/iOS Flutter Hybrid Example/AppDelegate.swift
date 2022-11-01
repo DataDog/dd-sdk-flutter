@@ -7,9 +7,21 @@ import Datadog
 import Flutter
 import FlutterPluginRegistrant
 
+class FlutterExcludingRumViewsPredicate: UIKitRUMViewsPredicate {
+    let defaultViewsPredicate = DefaultUIKitRUMViewsPredicate()
+    
+    func rumView(for viewController: UIViewController) -> RUMView? {
+        if (viewController is FlutterViewController) {
+            return nil
+        }
+        
+        return defaultViewsPredicate.rumView(for: viewController)
+    }
+}
+
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    //lazy var flutterEngine = FlutterEngine(name: "my flutter engine")
+    lazy var flutterEngine = FlutterEngine(name: "my flutter engine")
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         
@@ -36,12 +48,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     environment: "prod"
                 )
                 .set(endpoint: .us1)
-                .trackUIKitRUMViews()
+                .trackUIKitRUMViews(using: FlutterExcludingRumViewsPredicate())
                 .trackUIKitRUMActions()
                 .trackURLSession()
                 .build()
         )
         Global.rum = RUMMonitor.initialize()
+        
+        // Note: Datadog needs to be initialized before flutterEngine.run(), as this will call
+        // main() which will look for an existing Datadog instance to attach to.
+        flutterEngine.run();
+        GeneratedPluginRegistrant.register(with: self.flutterEngine);
         
         return true
     }

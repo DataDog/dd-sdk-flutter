@@ -5,6 +5,7 @@
 import UIKit
 import Flutter
 import FlutterPluginRegistrant
+import Datadog
 
 class FirstViewController: UIViewController {
     
@@ -14,10 +15,23 @@ class FirstViewController: UIViewController {
     }
     
     @IBAction func openFlutterView(_ sender: Any) {
-        let flutterViewController =
-            FlutterViewController(project: nil, nibName: nil, bundle: nil)
-        GeneratedPluginRegistrant.register(with: flutterViewController.engine!);
-        present(flutterViewController, animated: true, completion: nil)
+        let flutterEngine = (UIApplication.shared.delegate as! AppDelegate).flutterEngine
+        let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
+        flutterViewController.modalPresentationStyle = .overFullScreen
+        flutterViewController.pushRoute("/")
+        present(flutterViewController, animated: true) {
+            Global.rum.startView(viewController: self)
+        }
+    }
+    
+    @IBAction func openSecondFlutterView(_ sender: Any) {
+        let flutterEngine = (UIApplication.shared.delegate as! AppDelegate).flutterEngine
+        let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
+        flutterViewController.modalPresentationStyle = .overFullScreen
+        flutterViewController.pushRoute("/page2")
+        present(flutterViewController, animated: true) {
+            Global.rum.startView(viewController: self)
+        }
     }
 }
 

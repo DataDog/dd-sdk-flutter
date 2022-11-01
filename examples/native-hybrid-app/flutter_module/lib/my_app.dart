@@ -1,5 +1,6 @@
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 
@@ -79,11 +80,21 @@ class _MyHomePageState extends State<MyHomePage> {
     GoRouter.of(context).push('/page2');
   }
 
+  void _onClose() {
+    SystemNavigator.pop(animated: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        actions: [
+          IconButton(
+            onPressed: _onClose,
+            icon: const Icon(Icons.close),
+          )
+        ],
       ),
       body: Center(
         child: Column(
@@ -123,11 +134,21 @@ class _MyHomePageState extends State<MyHomePage> {
 class MySecondPage extends StatelessWidget {
   const MySecondPage({super.key});
 
+  void _onClose() {
+    SystemNavigator.pop(animated: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Second Page'),
+        actions: [
+          IconButton(
+            onPressed: _onClose,
+            icon: const Icon(Icons.close),
+          )
+        ],
       ),
       body: const Center(child: Text('This is a second page')),
     );
