@@ -155,6 +155,22 @@ void main() {
     ]);
   });
 
+  test('addUserExtraInfo calls to method channel passing attributes', () {
+    unawaited(ddSdkPlatform.addUserExtraInfo({
+      'attribute_1': 'test_attribute',
+      'attribute_2': null,
+    }));
+
+    expect(log, [
+      isMethodCall('addUserExtraInfo', arguments: {
+        'extraInfo': {
+          'attribute_1': 'test_attribute',
+          'attribute_2': null,
+        }
+      })
+    ]);
+  });
+
   test('sendTelemetryDebug calls to method channel', () {
     unawaited(ddSdkPlatform.sendTelemetryDebug('debug telemetry method'));
 

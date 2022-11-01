@@ -237,7 +237,7 @@ class DatadogRumPlugin(
                 "updatePerformanceMetrics" -> {
                     val buildTimes = call.argument<List<Double>>(PARAM_BUILD_TIMES)
                     val rasterTimes = call.argument<List<Double>>(PARAM_RASTER_TIMES)
-                    if(buildTimes != null && rasterTimes != null) {
+                    if (buildTimes != null && rasterTimes != null) {
                         updatePerformanceMetrics(buildTimes, rasterTimes)
                         result.success(null)
                     } else {

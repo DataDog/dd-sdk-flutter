@@ -85,6 +85,9 @@ class DatadogSdkPluginTest {
         Contract("setUserInfo", mapOf(
             "extraInfo" to ContractParameter.Type(SupportedContractType.MAP)
         )),
+        Contract("addUserExtraInfo", mapOf(
+            "extraInfo" to ContractParameter.Type(SupportedContractType.MAP)
+        )),
         Contract("setTrackingConsent", mapOf(
             "value" to ContractParameter.Type(SupportedContractType.STRING)
         )),
@@ -522,6 +525,41 @@ class DatadogSdkPluginTest {
         assertThat(userInfo?.id).isEqualTo(id)
         assertThat(userInfo?.name).isEqualTo(name)
         assertThat(userInfo?.email).isEqualTo(email)
+        assertThat(userInfo?.additionalProperties).isEqualTo(extraInfo)
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M set user extra info W called through MethodChannel(exhaustive attributes)`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val configuration = DatadogFlutterConfiguration(
+            clientToken = forge.aString(),
+            env = forge.anAlphabeticalString(),
+            nativeCrashReportEnabled = false,
+            trackingConsent = TrackingConsent.GRANTED
+        )
+        plugin.initialize(configuration)
+
+        val extraInfo = forge.exhaustiveAttributes()
+        var methodCall = MethodCall(
+            "addUserExtraInfo",
+            mapOf(
+                "extraInfo" to extraInfo
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        var coreFeature = Class.forName("com.datadog.android.core.internal.CoreFeature")
+            .kotlin.objectInstance
+        var userInfo: UserInfo? = coreFeature
+            ?.getFieldValue<Any, Any>("userInfoProvider")
+            ?.getFieldValue("internalUserInfo")
         assertThat(userInfo?.additionalProperties).isEqualTo(extraInfo)
         verify(mockResult).success(null)
     }

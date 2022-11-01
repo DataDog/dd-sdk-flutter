@@ -47,6 +47,8 @@ void main() {
             )));
     when(() => mockPlatform.setUserInfo(any(), any(), any(), any()))
         .thenAnswer((_) => Future<void>.value());
+    when(() => mockPlatform.addUserExtraInfo((any())))
+        .thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.setTrackingConsent(any()))
         .thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.flushAndDeinitialize())
@@ -431,6 +433,18 @@ void main() {
     datadogSdk.setUserInfo(id: null, name: null, email: null);
 
     verify(() => mockPlatform.setUserInfo(null, null, null, {}));
+  });
+
+  test('addUserExtraInfo passes through to platform', () {
+    datadogSdk.addUserExtraInfo({
+      'example_1': 'test',
+      'example_2': null,
+    });
+
+    verify(() => mockPlatform.addUserExtraInfo({
+          'example_1': 'test',
+          'example_2': null,
+        }));
   });
 
   test('set tracking consent calls into platform', () {
