@@ -209,6 +209,16 @@ class RumConfiguration {
   /// Defaults to 0.1 seconds
   double longTaskThreshold;
 
+  /// Whether to report Flutter specific performance metrics (build and raster
+  /// times)
+  ///
+  /// This uses the [SchedulerBinding.addTimingsCallback] method to report build
+  /// and raster times for views, and has a documented negligible impact on
+  /// performance.
+  ///
+  /// Defaults to false
+  bool reportFlutterPerformance = false;
+
   /// Use a custom endpoint for sending RUM data.
   String? customEndpoint;
 
@@ -218,6 +228,7 @@ class RumConfiguration {
     double tracingSamplingRate = 20.0,
     this.detectLongTasks = true,
     double longTaskThreshold = 0.1,
+    this.reportFlutterPerformance = false,
     this.customEndpoint,
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),
@@ -232,6 +243,7 @@ class RumConfiguration {
     this.detectLongTasks = true,
     this.longTaskThreshold = 0.1,
     this.tracingSamplingRate = 20.0,
+    this.reportFlutterPerformance = false,
   })  : applicationId = '<unknown>',
         sessionSamplingRate = 100.0;
 
@@ -241,6 +253,7 @@ class RumConfiguration {
       'sampleRate': sessionSamplingRate,
       'detectLongTasks': detectLongTasks,
       'longTaskThreshold': longTaskThreshold,
+      'reportFlutterPerformance': reportFlutterPerformance,
       'customEndpoint': customEndpoint,
     };
   }

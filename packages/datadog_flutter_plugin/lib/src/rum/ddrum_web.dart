@@ -125,6 +125,12 @@ class DdRumWeb extends DdRumPlatform {
   Future<void> reportLongTask(DateTime at, int durationMs) async {
     // NOOP - The browser SDK will report this automatically
   }
+
+  @override
+  Future<void> updatePerformanceMetrics(
+      List<double> buildTimes, List<double> rasterTimes) async {
+    // NOOP - Not supported by the Browser SDK
+  }
 }
 
 @JS()

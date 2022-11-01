@@ -234,6 +234,21 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
+        case "updatePerformanceMetrics":
+            if let buildTimes = arguments["buildTimes"] as? Array<Double>,
+               let rasterTimes = arguments["rasterTimes"] as? Array<Double> {
+                buildTimes.forEach { val in
+                    rum.updatePerformanceMetric(metric: .flutterBuildTime, value: val)
+                }
+                rasterTimes.forEach { val in
+                    rum.updatePerformanceMetric(metric: .flutterRasterTime, value: val)
+                }
+                result(nil)
+            } else {
+                result(
+                    FlutterError.missingParameter(methodName: call.method)
+                )
+            }
         default:
             result(FlutterMethodNotImplemented)
         }

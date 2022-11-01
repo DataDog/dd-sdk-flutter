@@ -16,6 +16,7 @@ import kotlin.reflect.KType
 enum class SupportedContractType {
     STRING,
     MAP,
+    LIST,
     INT,
     LONG
 }
@@ -57,6 +58,7 @@ data class Contract(
         return when(type) {
             SupportedContractType.STRING -> forge.anExtendedAsciiString()
             SupportedContractType.MAP -> forge.exhaustiveAttributes()
+            SupportedContractType.LIST -> emptyList<Any>()
             SupportedContractType.INT -> forge.anInt()
             SupportedContractType.LONG -> forge.aLong()
         }

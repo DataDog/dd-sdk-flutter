@@ -51,4 +51,6 @@ abstract class DdRumPlatform extends PlatformInterface {
   Future<void> removeAttribute(String key);
 
   Future<void> reportLongTask(DateTime at, int durationMs);
+  Future<void> updatePerformanceMetrics(
+      List<double> buildTimes, List<double> rasterTimes);
 }
