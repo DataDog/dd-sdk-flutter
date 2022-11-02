@@ -34,8 +34,8 @@ class DatadogTrackingHttpOverrides extends HttpOverrides {
 /// sending them to Datadog
 ///
 /// If the RUM feature is enabled, the SDK will send information about RUM
-/// Resources (calling startLoading, stopLoading, and stopLoadingWithErrorInfo)
-/// for all intercepted requests.
+/// Resources (calling startResourceLoading, stopResourceLoading, and
+/// stopResourceLoadingWithErrorInfo) for all intercepted requests.
 ///
 /// The SDK will also create a tracing Span for each 1st-party request, and add
 /// extra HTTP headers to further propagate the trace. The percentage of

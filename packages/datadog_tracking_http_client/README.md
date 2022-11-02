@@ -20,7 +20,7 @@ final configuration = DdSdkConfiguration(
 
 This package also supplies a composable client usable with the [http pub package](https://pub.dev/packages/http) called `DatadogClient`. For most scenarios, Datadog recommends you use the HTTP tracking method above, but there are a few scenarios where using `DatadogClient` might make more sense:
 
-* If you are using native HTTP libraries like [cronet_http](https://pub.dev/packages/cronet_http) or [cupertino_http](https://pub.dev/packages/cupertino_http), which do not work with the above tracking method 
+* If you are using native HTTP libraries like [cronet_http](https://pub.dev/packages/cronet_http) or [cupertino_http](https://pub.dev/packages/cupertino_http), which do not work with the above tracking method.
 * If you only want to track specific resource requests.
 
 If you are using `cronet_http` or `cupertino_http`, you can combine `DatadogClient` with the above tracking method. Otherwise, the two methods may interfere with each other.

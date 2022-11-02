@@ -13,8 +13,8 @@ import 'package:uuid/uuid.dart';
 /// network requests and sending them to Datadog.
 ///
 /// If the RUM feature is enabled, the SDK will send information about RUM
-/// Resources (calling startLoading, stopLoading, and stopLoadingWithErrorInfo)
-/// for all intercepted requests.
+/// Resources (calling startResourceLoading, stopResourceLoading, and
+/// stopResourceLoadingWithErrorInfo) for all intercepted requests.
 ///
 /// The SDK will also create a tracing Span for each 1st-party request, and add
 /// extra HTTP headers to further propagate the trace. The percentage of
@@ -32,8 +32,8 @@ import 'package:uuid/uuid.dart';
 /// `cupertino_http` and `cronet_http`, which [DatadogTrackingHttpClient] would
 /// miss.
 ///
-/// DatadogClient and [DatadogTrackingHttpClient] can be used together if needed,
-/// and will not interfere with each other.
+/// DatadogClient and [DatadogTrackingHttpClient] can be used together if
+/// needed, and will not interfere with each other.
 ///
 /// See also [DatadogTrackingHttpClient]
 class DatadogClient extends http.BaseClient {
@@ -107,7 +107,7 @@ class DatadogClient extends http.BaseClient {
 
     if (rumKey != null) {
       try {
-        // Copy the response so we can spy on the stream. Use
+        // Copy the response so we can spy on the stream.
         final spyStream = StreamController<List<int>>();
 
         Object? firstError;
