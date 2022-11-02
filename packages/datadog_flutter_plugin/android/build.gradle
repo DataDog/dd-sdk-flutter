@@ -61,8 +61,8 @@ android {
 }
 
 dependencies {
-    implementation libs.datadog.sdk.android
-    implementation libs.datadog.sdk.android.ndk
+    implementation libs.datadogSdkAndroid
+    implementation libs.datadogSdkAndroidNdk
     
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 
