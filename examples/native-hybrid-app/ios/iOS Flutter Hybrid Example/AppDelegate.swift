@@ -7,9 +7,40 @@ import Datadog
 import Flutter
 import FlutterPluginRegistrant
 
+class FlutterExcludingRumViewsPredicate: UIKitRUMViewsPredicate {
+    let defaultViewsPredicate = DefaultUIKitRUMViewsPredicate()
+    
+    func rumView(for viewController: UIViewController) -> RUMView? {
+        if (viewController is FlutterViewController) {
+            return nil
+        }
+        
+        return defaultViewsPredicate.rumView(for: viewController)
+    }
+}
+
+class DismissMethodCallHandler {
+    static let shared = DismissMethodCallHandler()
+    
+    private var dismissBlock: (() -> Void)? = nil
+    
+    func setDismissListener(dismissBlock: @escaping () -> Void) {
+        self.dismissBlock = dismissBlock
+    }
+    
+    func callDismissListener() {
+        if let dismissBlock = dismissBlock {
+            dismissBlock()
+            // dismissBlock is a one-shot
+            self.dismissBlock = nil
+        }
+    }
+}
+
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    //lazy var flutterEngine = FlutterEngine(name: "my flutter engine")
+    lazy var flutterEngine = FlutterEngine(name: "my flutter engine")
+    var dismissMethodChannel: FlutterMethodChannel!
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         
@@ -36,12 +67,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     environment: "prod"
                 )
                 .set(endpoint: .us1)
-                .trackUIKitRUMViews()
+                .trackUIKitRUMViews(using: FlutterExcludingRumViewsPredicate())
                 .trackUIKitRUMActions()
                 .trackURLSession()
                 .build()
         )
         Global.rum = RUMMonitor.initialize()
+        
+        // Note: Datadog needs to be initialized before flutterEngine.run(), as this will call
+        // main() which will look for an existing Datadog instance to attach to.
+        flutterEngine.run();
+        GeneratedPluginRegistrant.register(with: self.flutterEngine);
+        dismissMethodChannel = FlutterMethodChannel(name: "com.datadoghq/dismissFlutterViewController",
+                                                    binaryMessenger: self.flutterEngine.binaryMessenger)
+        dismissMethodChannel.setMethodCallHandler { call, result in
+            if (call.method == "dismiss") {
+                DismissMethodCallHandler.shared.callDismissListener()
+                result(nil)
+            } else {
+                result(FlutterMethodNotImplemented)
+            }
+        }
         
         return true
     }

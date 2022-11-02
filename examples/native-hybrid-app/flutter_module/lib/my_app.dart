@@ -1,7 +1,33 @@
+import 'dart:io';
+
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+
+// A helper class to help with dismissing Flutter
+class Dismisser {
+  static Dismisser? _singleton;
+  static Dismisser get instance {
+    _singleton ??= Dismisser._();
+    return _singleton!;
+  }
+
+  // Only used on iOS
+  final _dismissChannel =
+      const MethodChannel("com.datadoghq/dismissFlutterViewController");
+
+  Dismisser._();
+
+  Future<void> dismiss() async {
+    if (Platform.isAndroid) {
+      SystemNavigator.pop(animated: true);
+    } else if (Platform.isIOS) {
+      _dismissChannel.invokeMethod("dismiss");
+    }
+  }
+}
 
 class MyApp extends StatelessWidget {
   MyApp({super.key});
@@ -79,11 +105,21 @@ class _MyHomePageState extends State<MyHomePage> {
     GoRouter.of(context).push('/page2');
   }
 
+  void _onClose() {
+    Dismisser.instance.dismiss();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        actions: [
+          IconButton(
+            onPressed: _onClose,
+            icon: const Icon(Icons.close),
+          )
+        ],
       ),
       body: Center(
         child: Column(
@@ -123,11 +159,21 @@ class _MyHomePageState extends State<MyHomePage> {
 class MySecondPage extends StatelessWidget {
   const MySecondPage({super.key});
 
+  void _onClose() {
+    Dismisser.instance.dismiss();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Second Page'),
+        actions: [
+          IconButton(
+            onPressed: _onClose,
+            icon: const Icon(Icons.close),
+          )
+        ],
       ),
       body: const Center(child: Text('This is a second page')),
     );
