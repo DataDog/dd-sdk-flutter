@@ -12,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 Future<void> performRumUserFlow(WidgetTester tester) async {
-  var scenario = find.text('HttpClient (dart:io) Override');
+  var scenario = find.text('http.Client Override');
   await tester.tap(scenario);
   await tester.pumpAndSettle();
 
@@ -50,9 +50,9 @@ void main() async {
       firstPartyGetUrl: '${sessionRecorder.sessionEndpoint}/integration_get',
       firstPartyPostUrl: '${sessionRecorder.sessionEndpoint}/integration_post',
       firstPartyBadUrl: 'https://foo.bar',
-      thirdPartyGetUrl: 'https://httpbin.org/get',
-      thirdPartyPostUrl: 'https://httpbin.org/post',
-      enableIoHttpTracking: true,
+      thirdPartyGetUrl: 'https://httpbingo.org/get',
+      thirdPartyPostUrl: 'https://httpbingo.org/post',
+      enableIoHttpTracking: false,
     );
     RumAutoInstrumentationScenarioConfig.instance = scenarioConfig;
 
@@ -85,7 +85,7 @@ void main() async {
             });
           }
         }
-        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 4;
+        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
       },
     );
 
@@ -93,15 +93,9 @@ void main() async {
     expect(session.visits.length, 4);
 
     final view1 = session.visits[1];
-    expect(view1.viewEvents.last.view.resourceCount, 2);
-    expect(view1.resourceEvents[0].url, 'https://placekitten.com/300/300');
-    // placekitten.com doesn't set contentType headers properly, so don't test it
-    expect(view1.resourceEvents[1].url,
-        'https://imgix.datadoghq.com/img/about/presskit/kit/press_kit.png');
-    // Allow this to fail since we don't have as much control over them
-    if (view1.resourceEvents[1].statusCode == 200) {
-      expect(view1.resourceEvents[1].resourceType, 'image');
-    }
+    // Images are not fetched with http.Client, so we don't expect them in
+    // the final view
+    expect(view1.viewEvents.last.view.resourceCount, 0);
 
     final view2 = session.visits[2];
     expect(view2.viewEvents.last.view.resourceCount, 4);

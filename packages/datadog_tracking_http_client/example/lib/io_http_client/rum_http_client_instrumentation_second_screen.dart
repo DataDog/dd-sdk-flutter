@@ -5,19 +5,19 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import 'rum_auto_instrumentation_third_screen.dart';
-import 'scenario_config.dart';
+import '../scenario_config.dart';
+import 'rum_http_client_instrumentation_third_screen.dart';
 
-class RumAutoInstrumentationSecondScreen extends StatefulWidget {
-  const RumAutoInstrumentationSecondScreen({Key? key}) : super(key: key);
+class RumHttpClientInstrumentationSecondScreen extends StatefulWidget {
+  const RumHttpClientInstrumentationSecondScreen({Key? key}) : super(key: key);
 
   @override
-  State<RumAutoInstrumentationSecondScreen> createState() =>
-      _RumAutoInstrumentationSecondScreenState();
+  State<RumHttpClientInstrumentationSecondScreen> createState() =>
+      _RumHttpClientInstrumentationSecondScreenState();
 }
 
-class _RumAutoInstrumentationSecondScreenState
-    extends State<RumAutoInstrumentationSecondScreen> {
+class _RumHttpClientInstrumentationSecondScreenState
+    extends State<RumHttpClientInstrumentationSecondScreen> {
   late Future _loadingFuture;
   late RumAutoInstrumentationScenarioConfig _config;
   var currentStatus = 'Starting fetch';
@@ -101,7 +101,9 @@ class _RumAutoInstrumentationSecondScreenState
   void _onNext() {
     Navigator.of(context).push(
       MaterialPageRoute(
-          builder: (_) => const RumAutoInstrumentationThirdScreen()),
+        settings: const RouteSettings(name: 'rum_io_third_screen'),
+        builder: (_) => const RumHttpClientInstrumentationThirdScreen(),
+      ),
     );
   }
 }

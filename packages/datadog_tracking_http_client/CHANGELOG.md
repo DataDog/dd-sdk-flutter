@@ -4,6 +4,7 @@
 
 * Add methods for enabling the DatadogTrackingHttpClient in add-to-app scenarios.
 * Send trace sample rate (`dd.rule_psr`) for APM's traffic ingestion control page.
+* Added DatadogClient for use with the http pub package.
 
 ## 1.1.0
 

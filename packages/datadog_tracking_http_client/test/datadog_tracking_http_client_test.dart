@@ -11,6 +11,8 @@ import 'package:datadog_tracking_http_client/src/tracking_http_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'test_utils.dart';
+
 class MockDatadogSdk extends Mock implements DatadogSdk {}
 
 class MockDdRum extends Mock implements DdRum {}
@@ -37,15 +39,6 @@ class MockHttpClientResponse extends Mock implements HttpClientResponse {
   }
 }
 
-class HasHost extends CustomMatcher {
-  HasHost(Matcher matcher) : super('Uri with host that is', 'host', matcher);
-
-  @override
-  Object? featureValueOf(Object? actual) {
-    return (actual as Uri).host;
-  }
-}
-
 void main() {
   late MockDatadogSdk mockDatadog;
   late MockDdRum mockRum;
@@ -65,7 +58,7 @@ void main() {
         any(that: HasHost(equals('non_first_party'))))).thenReturn(false);
     mockRum = MockDdRum();
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-    when(() => mockRum.tracingSamplingRate).thenReturn(0.5);
+    when(() => mockRum.tracingSamplingRate).thenReturn(50.0);
 
     mockClient = MockHttpClient();
     when(() => mockClient.autoUncompress).thenReturn(true);
