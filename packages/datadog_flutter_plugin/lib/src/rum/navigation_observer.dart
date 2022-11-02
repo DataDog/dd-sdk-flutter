@@ -79,8 +79,9 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
 
     switch (state) {
       case AppLifecycleState.resumed:
-        _startView(_pendingView);
+        final pendingView = _pendingView;
         _pendingView = null;
+        _startView(pendingView);
         break;
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:

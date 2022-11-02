@@ -22,6 +22,7 @@
     "peacock.color": "#7f757f",
     "rewrap.wrappingColumn": 80,
     "cSpell.words": [
+        "Dismisser",
         "jsutil",
         "mocktail",
         "Pubspec",

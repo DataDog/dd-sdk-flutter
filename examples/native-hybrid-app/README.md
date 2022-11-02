@@ -24,11 +24,17 @@ Additional options for `DdSdkExistingConfiguration` are documented in the [API r
 
 ### Avoiding "FlutterViewController" and "FlutterActivity" views
 
-To avoid seeing `FlutterViewController` and `FlutterActivity` in your sessions, add a `UIKitRUMViewsPredicate` and `ComponentPredicate` to your iOS and Android code, respectively.  Very simple examples of these predicates can be found in the example code in [AppDelegate.swift](ios/iOS%20Flutter%20Hybrid%20Example/AppDelegate.swift) and [HybridApplication.kt](android/app/src/main/java/com/datadoghq/hybrid_flutter_example/HybridApplication.kt)
+Depending on your settings, the automatic view tracking in the native iOS and Android SDKs will automatically track the presentation of the `FlutterViewController` and `FlutterActivity`/`FlutterFragment` when they appear, and then immediately add show a view load for your tracked Flutter view.
+
+To avoid seeing the extra `FlutterViewController` and `FlutterActivity` views in your sessions, add a `UIKitRUMViewsPredicate` and `ComponentPredicate` to your iOS and Android code, respectively.  Very simple examples of these predicates can be found in the example code in [AppDelegate.swift](ios/iOS%20Flutter%20Hybrid%20Example/AppDelegate.swift) and [HybridApplication.kt](android/app/src/main/java/com/datadoghq/hybrid_flutter_example/HybridApplication.kt)
 
 ### Restart iOS Views
 
-If you are using automatic view tracking on iOS, there is a known issue that transitioning back from the FlutterViewController does not restart original view. For this reason, the `MainViewController` in this example restarts the view manually in the `completion` block of `present(_:animated:completion:)`. See [FirstViewController.swift](ios/iOS%20Flutter%20Hybrid%20Example/FirstViewController.swift) for an example.
+If you are using automatic view tracking on iOS and filtering `FlutterViewController` views with the predicate above, there is a known issue that transitioning back from the FlutterViewController does not restart the original view, so you have to perform this step manually.
+
+This app uses a `MethodChannel` on iOS specifically for dismissing the `FlutterViewController`. The `MethodChannel` allows a single use block to be triggered when the 'dismiss' method is called, which allows the presenting `ViewController` to also handle dismissal and restart the RUM view. You can see this helper class interaction in [AppDelegate.swift](ios/iOS%20Flutter%20Hybrid%20Example/AppDelegate.swift) and in [my_app.dart](flutter_modules/lib/my_app.dart).
+
+Note that restarting the view in this way is not necessary if you are not using the `UIKitRumViewsPredicate` to prevent "FlutterViewController" from appearing in your sessions.
 
 ### Caveats
 
