@@ -13,7 +13,14 @@ dependencyResolutionManagement {
         mavenCentral()
         maven { url "https://storage.googleapis.com/download.flutter.io" }
     }
+
+    versionCatalogs {
+        libs {
+            from(files('../../../packages/datadog_flutter_plugin/android/datadog_version.toml'))
+        }
+    }
 }
+
 rootProject.name = "Datadog Flutter Hybrid Example"
 include ':app'
 setBinding(new Binding([gradle: this]))

@@ -77,7 +77,7 @@ flutter {
 }
 
 dependencies {
-    implementation "com.datadoghq:dd-sdk-android:$datadog_sdk_version"
+    implementation libs.datadogSdkAndroid
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.work:work-runtime-ktx:2.7.0'
