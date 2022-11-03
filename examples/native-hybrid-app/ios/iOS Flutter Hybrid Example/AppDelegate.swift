@@ -29,11 +29,9 @@ class DismissMethodCallHandler {
     }
     
     func callDismissListener() {
-        if let dismissBlock = dismissBlock {
-            dismissBlock()
-            // dismissBlock is a one-shot
-            self.dismissBlock = nil
-        }
+        dismissBlock?()
+        // dismissBlock is a one-shot
+        self.dismissBlock = nil
     }
 }
 

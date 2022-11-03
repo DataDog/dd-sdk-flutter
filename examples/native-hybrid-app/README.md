@@ -30,7 +30,7 @@ To avoid seeing the extra `FlutterViewController` and `FlutterActivity` views in
 
 ### Restart iOS Views
 
-If you are using automatic view tracking on iOS and filtering `FlutterViewController` views with the predicate above, there is a known issue that transitioning back from the FlutterViewController does not restart the original view, so you have to perform this step manually.
+If you are using automatic view tracking on iOS and filtering `FlutterViewController` views with the predicate above, there is a known issue that transitioning back from the `FlutterViewController` does not restart the original view, so you have to perform this step manually.
 
 This app uses a `MethodChannel` on iOS specifically for dismissing the `FlutterViewController`. The `MethodChannel` allows a single use block to be triggered when the 'dismiss' method is called, which allows the presenting `ViewController` to also handle dismissal and restart the RUM view. You can see this helper class interaction in [AppDelegate.swift](ios/iOS%20Flutter%20Hybrid%20Example/AppDelegate.swift) and in [my_app.dart](flutter_modules/lib/my_app.dart).
 
