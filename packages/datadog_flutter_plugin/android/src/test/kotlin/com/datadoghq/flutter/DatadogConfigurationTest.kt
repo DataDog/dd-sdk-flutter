@@ -16,6 +16,7 @@ import com.datadog.android.DatadogSite
 import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
+import com.datadog.android.core.configuration.VitalsUpdateFrequency
 import com.datadog.android.privacy.TrackingConsent
 import fr.xgouchet.elmyr.annotation.FloatForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
@@ -99,6 +100,19 @@ class DatadogConfigurationTest {
         assertThat(error).isEqualTo(Log.ERROR)
         assertThat(none).isEqualTo(Int.MAX_VALUE)
         assertThat(unknown).isEqualTo(Int.MAX_VALUE)
+    }
+
+    @Test
+    fun `M parse all VitalsFrequency W parseVitalsFrequency`() {
+        val never = parseVitalsFrequency("VitalsFrequency.never")
+        val rare = parseVitalsFrequency("VitalsFrequency.rare")
+        val average = parseVitalsFrequency("VitalsFrequency.average")
+        val frequent = parseVitalsFrequency("VitalsFrequency.frequent")
+
+        assertThat(never).isEqualTo(VitalsUpdateFrequency.NEVER)
+        assertThat(rare).isEqualTo(VitalsUpdateFrequency.RARE)
+        assertThat(average).isEqualTo(VitalsUpdateFrequency.AVERAGE)
+        assertThat(frequent).isEqualTo(VitalsUpdateFrequency.FREQUENT)
     }
 
     @Test
@@ -236,6 +250,7 @@ class DatadogConfigurationTest {
                 "detectLongTasks" to false,
                 "longTaskThreshold" to 0.3f,
                 "customEndpoint" to "customEndpoint",
+                "vitalsFrequency" to "VitalsFrequency.frequent"
             ),
             "additionalConfig" to mapOf<String, Any?>()
         )
@@ -250,6 +265,7 @@ class DatadogConfigurationTest {
         assertThat(config.rumConfiguration?.detectLongTasks).isEqualTo(false)
         assertThat(config.rumConfiguration?.longTaskThreshold).isEqualTo(0.3f)
         assertThat(config.rumConfiguration?.customEndpoint).isEqualTo("customEndpoint")
+        assertThat(config.rumConfiguration?.vitalsFrequency).isEqualTo(VitalsUpdateFrequency.FREQUENT)
     }
 
     @Test

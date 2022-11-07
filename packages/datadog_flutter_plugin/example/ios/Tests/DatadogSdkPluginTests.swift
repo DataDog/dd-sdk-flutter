@@ -95,7 +95,8 @@ class FlutterSdkTests: XCTestCase {
                 sampleRate: 100.0,
                 detectLongTasks: true,
                 longTaskThreshold: 0.3,
-                customEndpoint: nil
+                customEndpoint: nil,
+                vitalsFrequency: nil
             )
         )
 
@@ -389,7 +390,7 @@ class FlutterSdkTests: XCTestCase {
         XCTAssertEqual(core?.dependencies.userInfoProvider.value, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
-    
+
     func testAddUserExtraInfo_FromMethodChannel_AddsUserInfo() {
         let flutterConfig = DatadogFlutterConfiguration(
             clientToken: "fakeClientToken",

@@ -81,6 +81,22 @@ enum DatadogSite {
 
 enum Verbosity { verbose, debug, info, warn, error, none }
 
+/// Defines the frequency at which Datadog SDK will collect mobile vitals, such
+/// as CPU and memory usage.
+enum VitalsFrequency {
+  /// Collect mobile vitals every 100ms.
+  frequent,
+
+  /// Collect mobile vitals every 500ms.
+  average,
+
+  /// Collect mobile vitals every 1000ms.
+  rare,
+
+  /// Don't provide mobile vitals.
+  never,
+}
+
 /// Configuration options for the Datadog Logging feature.
 class LoggingConfiguration {
   /// Enriches logs with network connection info. This means: reachability
@@ -209,6 +225,13 @@ class RumConfiguration {
   /// Defaults to 0.1 seconds
   double longTaskThreshold;
 
+  /// Sets the preferred frequency for collecting mobile vitals.
+  ///
+  /// Note this setting does not affect the sampling done by [reportFlutterPerformance].
+  ///
+  /// Defaults to [VitalsFrequency.average]
+  VitalsFrequency vitalUpdateFrequency;
+
   /// Whether to report Flutter specific performance metrics (build and raster
   /// times)
   ///
@@ -228,6 +251,7 @@ class RumConfiguration {
     double tracingSamplingRate = 20.0,
     this.detectLongTasks = true,
     double longTaskThreshold = 0.1,
+    this.vitalUpdateFrequency = VitalsFrequency.average,
     this.reportFlutterPerformance = false,
     this.customEndpoint,
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
@@ -245,7 +269,8 @@ class RumConfiguration {
     this.tracingSamplingRate = 20.0,
     this.reportFlutterPerformance = false,
   })  : applicationId = '<unknown>',
-        sessionSamplingRate = 100.0;
+        sessionSamplingRate = 100.0,
+        vitalUpdateFrequency = VitalsFrequency.average;
 
   Map<String, Object?> encode() {
     return {
@@ -253,6 +278,7 @@ class RumConfiguration {
       'sampleRate': sessionSamplingRate,
       'detectLongTasks': detectLongTasks,
       'longTaskThreshold': longTaskThreshold,
+      'vitalsFrequency': vitalUpdateFrequency.toString(),
       'reportFlutterPerformance': reportFlutterPerformance,
       'customEndpoint': customEndpoint,
     };

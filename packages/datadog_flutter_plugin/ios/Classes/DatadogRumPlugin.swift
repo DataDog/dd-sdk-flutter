@@ -235,8 +235,8 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 )
             }
         case "updatePerformanceMetrics":
-            if let buildTimes = arguments["buildTimes"] as? Array<Double>,
-               let rasterTimes = arguments["rasterTimes"] as? Array<Double> {
+            if let buildTimes = arguments["buildTimes"] as? [Double],
+               let rasterTimes = arguments["rasterTimes"] as? [Double] {
                 buildTimes.forEach { val in
                     rum.updatePerformanceMetric(metric: .flutterBuildTime, value: val)
                 }
@@ -308,6 +308,18 @@ public extension RUMErrorSource {
         case "RumErrorSource.console": return .console
         case "RumErrorSource.custom": return .custom
         default: return .custom
+        }
+    }
+}
+
+public extension Datadog.Configuration.VitalsFrequency {
+    static func parseFromFlutter(_ value: String) -> Datadog.Configuration.VitalsFrequency {
+        switch value {
+        case "VitalsFrequency.frequent": return .frequent
+        case "VitalsFrequency.average": return .average
+        case "VitalsFrequency.rare": return .rare
+        case "VitalsFrequency.never": return .never
+        default: return .average
         }
     }
 }
