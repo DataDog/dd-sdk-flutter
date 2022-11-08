@@ -21,8 +21,10 @@ class FirstViewController: UIViewController {
         flutterViewController.pushRoute("/")
         
         DismissMethodCallHandler.shared.setDismissListener {
-            self.dismiss(animated: true) {
-                Global.rum.startView(viewController: self)
+            self.dismiss(animated: true) { [weak self] in
+                if let self = self {
+                    Global.rum.startView(viewController: self)
+                }
             }
         }
         present(flutterViewController, animated: true, completion: nil)
@@ -34,8 +36,10 @@ class FirstViewController: UIViewController {
         flutterViewController.modalPresentationStyle = .overFullScreen
         flutterViewController.pushRoute("/page2")
         DismissMethodCallHandler.shared.setDismissListener {
-            self.dismiss(animated: true) {
-                Global.rum.startView(viewController: self)
+            self.dismiss(animated: true) { [weak self] in
+                if let self = self {
+                    Global.rum.startView(viewController: self)
+                }
             }
         }
         present(flutterViewController, animated: true, completion: nil)
