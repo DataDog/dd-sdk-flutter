@@ -12,6 +12,7 @@ import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Configuration
 import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
+import com.datadog.android.core.configuration.VitalsUpdateFrequency
 import com.datadog.android.ndk.NdkCrashReportsPlugin
 import com.datadog.android.plugin.Feature
 import com.datadog.android.privacy.TrackingConsent
@@ -56,15 +57,20 @@ data class DatadogFlutterConfiguration(
         var sampleRate: Float,
         var detectLongTasks: Boolean,
         var longTaskThreshold: Float,
-        var customEndpoint: String?
+        var customEndpoint: String?,
+        var vitalsFrequency: VitalsUpdateFrequency? = null
     ) {
         constructor(encoded: Map<String, Any?>) : this(
             (encoded["applicationId"] as? String) ?: "",
             (encoded["sampleRate"] as? Number)?.toFloat() ?: 100.0f,
             (encoded["detectLongTasks"] as? Boolean) ?: true,
             (encoded["longTaskThreshold"] as? Number?)?.toFloat() ?: 0.1f,
-            encoded["customEndpoint"] as? String
-        )
+            encoded["customEndpoint"] as? String,
+        ) {
+            (encoded["vitalsFrequency"] as? String)?.let {
+                vitalsFrequency = parseVitalsFrequency(it)
+            }
+        }
     }
 
     constructor(encoded: Map<String, Any?>) : this(
@@ -147,6 +153,9 @@ data class DatadogFlutterConfiguration(
             it.customEndpoint?.let { ce ->
                 configBuilder.useCustomRumEndpoint(ce)
             }
+            it.vitalsFrequency?.let { vf ->
+                configBuilder.setVitalsUpdateFrequency(vf)
+            }
         }
 
         customLogsEndpoint?.let {
@@ -215,5 +224,15 @@ internal fun parseVerbosity(verbosity: String): Int {
         "Verbosity.error" -> Log.ERROR
         "Verbosity.none" -> Int.MAX_VALUE
         else -> Int.MAX_VALUE
+    }
+}
+
+internal fun parseVitalsFrequency(vitalsFrequency: String): VitalsUpdateFrequency {
+    return when (vitalsFrequency) {
+        "VitalsFrequency.frequent" -> VitalsUpdateFrequency.FREQUENT
+        "VitalsFrequency.average" -> VitalsUpdateFrequency.AVERAGE
+        "VitalsFrequency.rare" -> VitalsUpdateFrequency.RARE
+        "VitalsFrequency.never" -> VitalsUpdateFrequency.NEVER
+        else -> VitalsUpdateFrequency.AVERAGE
     }
 }

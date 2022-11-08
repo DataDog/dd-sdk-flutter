@@ -72,6 +72,18 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertNil(unknown)
   }
 
+    func testAllVitalsFrequencies_AreParsedCorrectly() {
+        let never = Datadog.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.never")
+        let rare = Datadog.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.rare")
+        let average = Datadog.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.average")
+        let frequent = Datadog.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.frequent")
+
+        XCTAssertEqual(never, .never)
+        XCTAssertEqual(rare, .rare)
+        XCTAssertEqual(average, .average)
+        XCTAssertEqual(frequent, .frequent)
+    }
+
   func testConfiguration_MissingValues_FailsInitialization() {
     let encoded: [String: Any?]  = [
       "env": "fakeEnvironment",
@@ -184,7 +196,8 @@ class DatadogConfigurationTests: XCTestCase {
       "rumConfiguration": [
         "applicationId": "fakeApplicationId",
         "detectLongTasks": NSNumber(false),
-        "longTaskThreshold": NSNumber(0.3)
+        "longTaskThreshold": NSNumber(0.3),
+        "vitalsFrequency": "VitalsFrequency.never"
       ],
       "additionalConfig": [:]
     ]
@@ -195,5 +208,6 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.rumConfiguration?.applicationId, "fakeApplicationId")
     XCTAssertEqual(config.rumConfiguration?.detectLongTasks, false)
     XCTAssertEqual(config.rumConfiguration?.longTaskThreshold, 0.3)
+    XCTAssertEqual(config.rumConfiguration?.vitalsFrequency, .never)
   }
 }

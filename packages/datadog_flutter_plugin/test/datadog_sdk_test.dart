@@ -182,7 +182,10 @@ void main() {
       site: DatadogSite.us1,
       trackingConsent: TrackingConsent.notGranted,
       loggingConfiguration: LoggingConfiguration(),
-      rumConfiguration: RumConfiguration(applicationId: 'fake-application-id'),
+      rumConfiguration: RumConfiguration(
+        applicationId: 'fake-application-id',
+        vitalUpdateFrequency: VitalsFrequency.frequent,
+      ),
     );
 
     final encoded = configuration.encode();

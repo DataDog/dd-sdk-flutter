@@ -43,13 +43,16 @@ class DatadogFlutterConfiguration {
         let detectLongTasks: Bool
         let longTaskThreshold: Float
         let customEndpoint: String?
+        let vitalsFrequency: Datadog.Configuration.VitalsFrequency?
 
-        init(applicationId: String, sampleRate: Float, detectLongTasks: Bool, longTaskThreshold: Float, customEndpoint: String?) {
+        init(applicationId: String, sampleRate: Float, detectLongTasks: Bool, longTaskThreshold: Float,
+             customEndpoint: String?, vitalsFrequency: Datadog.Configuration.VitalsFrequency?) {
             self.applicationId = applicationId
             self.sampleRate = sampleRate
             self.detectLongTasks = detectLongTasks
             self.longTaskThreshold = longTaskThreshold
             self.customEndpoint = customEndpoint
+            self.vitalsFrequency = vitalsFrequency
         }
 
         init?(fromEncoded encoded: [String: Any?]) {
@@ -63,6 +66,10 @@ class DatadogFlutterConfiguration {
             detectLongTasks = (encoded["detectLongTasks"] as? NSNumber)?.boolValue ?? true
             longTaskThreshold = (encoded["longTaskThreshold"] as? NSNumber)?.floatValue ?? 0.1
             customEndpoint = encoded["customEndpoint"] as? String
+
+            vitalsFrequency = convertOptional(encoded["vitalsFrequency"]) {
+                .parseFromFlutter($0)
+            }
         }
     }
 
@@ -160,6 +167,9 @@ class DatadogFlutterConfiguration {
             if let customRumEndpoint = rumConfig.customEndpoint,
                let customRumEndpointUrl = URL(string: customRumEndpoint) {
                 _ = ddConfigBuilder.set(customRUMEndpoint: customRumEndpointUrl)
+            }
+            if let vitalsFrequency = rumConfig.vitalsFrequency {
+                _ = ddConfigBuilder.set(mobileVitalsFrequency: vitalsFrequency)
             }
         } else {
             ddConfigBuilder = Datadog.Configuration.builderUsing(

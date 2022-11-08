@@ -444,21 +444,21 @@ class DatadogRumPluginTests: XCTestCase {
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
-    
+
     func testUpdatePerformanceMetrics_CallsInternal() {
         let buildTimes = [ 0.44, 1.23, 6.5 ]
         let rasterTimes = [ 11.2, 68.1, 0.223 ]
-        
+
         let call = FlutterMethodCall(methodName: "updatePerformanceMetrics", arguments: [
             "buildTimes": buildTimes,
             "rasterTimes": rasterTimes
         ])
-        
+
         var resultStatus = ResultStatus.notCalled
         plugin.handle(call) { result in
             resultStatus = .called(value: result)
         }
-        
+
         buildTimes.forEach { val in
             XCTAssert(mock.callLog.contains(
                 .updatePerformanceMetric(metric: .flutterBuildTime, value: val, attributes: [:])))
@@ -585,8 +585,8 @@ class MockRUMMonitor: DDRUMMonitor {
                                  attributes: [AttributeKey: AttributeValue] = [:]) {
         callLog.append(.stopUserAction(type: type, name: name, attributes: attributes))
     }
-    
-    override func updatePerformanceMetric(metric: PerformanceMetric, value: Double, attributes: [AttributeKey : AttributeValue] = [:]) {
+
+    override func updatePerformanceMetric(metric: PerformanceMetric, value: Double, attributes: [AttributeKey: AttributeValue] = [:]) {
         callLog.append(.updatePerformanceMetric(metric: metric, value: value, attributes: attributes))
     }
 }
