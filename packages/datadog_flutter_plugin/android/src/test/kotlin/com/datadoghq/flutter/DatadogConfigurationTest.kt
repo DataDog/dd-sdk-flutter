@@ -108,11 +108,13 @@ class DatadogConfigurationTest {
         val rare = parseVitalsFrequency("VitalsFrequency.rare")
         val average = parseVitalsFrequency("VitalsFrequency.average")
         val frequent = parseVitalsFrequency("VitalsFrequency.frequent")
+        val unknown = parseVitalsFrequency("unknown")
 
         assertThat(never).isEqualTo(VitalsUpdateFrequency.NEVER)
         assertThat(rare).isEqualTo(VitalsUpdateFrequency.RARE)
         assertThat(average).isEqualTo(VitalsUpdateFrequency.AVERAGE)
         assertThat(frequent).isEqualTo(VitalsUpdateFrequency.FREQUENT)
+        assertThat(unknown).isEqualTo(VitalsUpdateFrequency.AVERAGE)
     }
 
     @Test
