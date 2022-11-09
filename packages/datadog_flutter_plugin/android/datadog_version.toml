@@ -1,5 +1,5 @@
 [versions]
-datadog-android = "1+"
+datadog-android = "1.15.0"
 
 [libraries]
 datadogSdkAndroid = { module = "com.datadoghq:dd-sdk-android", version.ref = "datadog-android" }
