@@ -8,12 +8,12 @@ RUM supports monitoring for Flutter Android and iOS applications for Flutter 2.8
 ## Current Datadog SDK Versions
 
 [//]: # (SDK Table)
-
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 1.12.0 | 1.14.1 | v4.11.2 |
+| 1.13.0 | 1.15.0 | 4.x.x |
 
 [//]: # (End SDK Table)
+
 
 ### iOS
 
