@@ -85,12 +85,12 @@ void main() async {
             });
           }
         }
-        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
+        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 4;
       },
     );
 
     final session = RumSessionDecoder.fromEvents(rumLog);
-    expect(session.visits.length, 4);
+    expect(session.visits.length, greaterThanOrEqualTo(3));
 
     final view1 = session.visits[1];
     // Images are not fetched with http.Client, so we don't expect them in

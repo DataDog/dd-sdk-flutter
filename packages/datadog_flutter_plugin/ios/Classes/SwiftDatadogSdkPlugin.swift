@@ -16,6 +16,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     public private(set) var rum: DatadogRumPlugin?
 
     var currentConfiguration: [AnyHashable: Any]?
+    var oldConsolePrint: ((String) -> Void)? = nil
 
     public init(channel: FlutterMethodChannel) {
         self.channel = channel
@@ -26,6 +27,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: registrar.messenger())
         let instance = SwiftDatadogSdkPlugin(channel: channel)
         registrar.addMethodCallDelegate(instance, channel: channel)
+        registrar.addApplicationDelegate(instance)
 
         DatadogLogsPlugin.register(with: registrar)
         DatadogRumPlugin.register(with: registrar)
@@ -50,6 +52,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
 
                     if let setLogCallback = arguments["setLogCallback"] as? Bool,
                        setLogCallback {
+                        oldConsolePrint = consolePrint
                         consolePrint = { value in
                             self.channel.invokeMethod("logCallback", arguments: value)
                         }
@@ -151,6 +154,25 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             rum = DatadogRumPlugin.instance
             rum?.initialize(configuration: rumConfiguration)
         }
+    }
+
+    public func applicationWillTerminate(_ application: UIApplication) {
+        _onDetach();
+    }
+    
+    public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
+        _onDetach()
+    }
+
+    private func _onDetach() {
+        // Reset consolePrint during detach - any other methodChannel callbacks will
+        // also need to be cleared as well
+        if let oldConsolePrint = oldConsolePrint {
+            consolePrint = oldConsolePrint
+        }
+
+        logs?.onDetach()
+        rum?.onDetach()
     }
 
     private func attachToExisting() -> [String: Any?] {

@@ -5,6 +5,7 @@
 * Add methods for attaching to existing instances of the DatadogSdk for "add-to-app" scenarios.
 * Add `addUserExtraInfo` method for providing extra user attributes without overwriting other user info. See [#254][]
 * Add `RumConfiguration.vitalUpdateFrequency` to allow control over how often the Native SDKs query for vitals (CPU and memory usage).
+* Fix a crash caused by attempting to send logs while an app was terminating See [#271][]
 
 ## 1.0.1
 
@@ -104,3 +105,4 @@
 [#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159
 [#203]: https://github.com/DataDog/dd-sdk-flutter/issues/203
 [#254]: https://github.com/DataDog/dd-sdk-flutter/issues/254
+[#271]: https://github.com/DataDog/dd-sdk-flutter/issues/271

@@ -90,7 +90,7 @@ void main() async {
     );
 
     final session = RumSessionDecoder.fromEvents(rumLog);
-    expect(session.visits.length, 4);
+    expect(session.visits.length, greaterThanOrEqualTo(3));
 
     final view1 = session.visits[1];
     expect(view1.viewEvents.last.view.resourceCount, 2);
