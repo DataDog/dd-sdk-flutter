@@ -43,6 +43,8 @@ Future<void> main() async {
     firstPartyHosts.addAll(testingConfiguration!.firstPartyHosts);
   }
 
+  DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
+
   final configuration = DdSdkConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
@@ -59,6 +61,7 @@ Future<void> main() async {
     ),
     rumConfiguration: applicationId != null
         ? RumConfiguration(
+            detectLongTasks: false,
             applicationId: applicationId,
             tracingSamplingRate: 100,
             customEndpoint: customEndpoint,
