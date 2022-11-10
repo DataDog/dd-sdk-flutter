@@ -5,12 +5,3 @@
  */
 
 rootProject.name = 'datadog_flutter_plugin'
-enableFeaturePreview("VERSION_CATALOGS")
-
-dependencyResolutionManagement {
-    versionCatalogs {
-        libs {
-            from(files('datadog_version.toml'))
-        }
-    }
-}
