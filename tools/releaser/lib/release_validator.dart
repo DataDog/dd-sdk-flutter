@@ -197,13 +197,21 @@ class ValidateReleaseCommand extends Command {
           return null;
         } else if (firstChar == 's') {
           if (compare.commits != null) {
-            for (final commit in compare.commits!) {
+            final nonMergeCommits = compare.commits!.where((commit) {
               final message = commit.commit?.message;
-              if (message != null && !message.startsWith('Merge')) {
-                var firstLine = message.split('\n').first;
+              return message != null && !message.startsWith('Merge');
+            });
+
+            if (nonMergeCommits.isNotEmpty) {
+              for (final commit in nonMergeCommits) {
+                var firstLine = commit.commit!.message!.split('\n').first;
                 print('- $firstLine by ${commit.commit?.author?.name}');
               }
+            } else {
+              print('There are only merge commits.');
             }
+          } else {
+            print('There are no commits to see?');
           }
         }
       }

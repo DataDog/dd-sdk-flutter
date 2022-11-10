@@ -1,3 +1,8 @@
+
+buildscript {
+    ext.datadog_version = "1+"
+}
+
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
@@ -44,7 +49,7 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
     implementation 'androidx.navigation:navigation-fragment-ktx:2.4.1'
     implementation 'androidx.navigation:navigation-ui-ktx:2.4.1'
-    implementation libs.datadogSdkAndroid
+    implementation "com.datadoghq:dd-sdk-android:$datadog_version"
     implementation project(':flutter')
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'

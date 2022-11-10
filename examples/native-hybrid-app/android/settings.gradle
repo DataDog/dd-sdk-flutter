@@ -15,13 +15,7 @@ dependencyResolutionManagement {
         maven {
             url "https://oss.sonatype.org/content/repositories/snapshots/"
         }
-    }
-
-    versionCatalogs {
-        libs {
-            from(files('../../../packages/datadog_flutter_plugin/android/datadog_version.toml'))
-        }
-    }
+    }    
 }
 
 rootProject.name = "Datadog Flutter Hybrid Example"
