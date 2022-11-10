@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.1.1
+
 * Fix a build issue on Android. See [#277][]
 
 ## 1.1.0
