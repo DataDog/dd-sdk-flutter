@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.1.0
+
 * Add methods for attaching to existing instances of the DatadogSdk for "add-to-app" scenarios.
 * Add `addUserExtraInfo` method for providing extra user attributes without overwriting other user info. See [#254][]
 * Add `RumConfiguration.vitalUpdateFrequency` to allow control over how often the Native SDKs query for vitals (CPU and memory usage).
