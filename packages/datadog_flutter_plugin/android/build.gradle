@@ -9,6 +9,8 @@ version "1.0-SNAPSHOT"
 
 buildscript {
     ext.kotlin_version = "1.5.31"
+    ext.datadog_version = "1+"
+
     repositories {
         google()
         mavenCentral()
@@ -60,8 +62,8 @@ android {
 }
 
 dependencies {
-    implementation libs.datadogSdkAndroid
-    implementation libs.datadogSdkAndroidNdk
+    implementation "com.datadoghq:dd-sdk-android:$datadog_version"
+    implementation "com.datadoghq:dd-sdk-android-ndk:$datadog_version"
     
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
 
