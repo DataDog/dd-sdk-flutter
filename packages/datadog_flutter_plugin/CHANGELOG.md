@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Fix a build issue on Android. See [#277][]
+
 ## 1.1.0
 
 * Add methods for attaching to existing instances of the DatadogSdk for "add-to-app" scenarios.
@@ -108,3 +110,4 @@
 [#203]: https://github.com/DataDog/dd-sdk-flutter/issues/203
 [#254]: https://github.com/DataDog/dd-sdk-flutter/issues/254
 [#271]: https://github.com/DataDog/dd-sdk-flutter/issues/271
+[#277]: https://github.com/DataDog/dd-sdk-flutter/issues/277
