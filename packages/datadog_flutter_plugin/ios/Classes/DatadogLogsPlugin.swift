@@ -31,6 +31,7 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
             .sendLogsToDatadog(configuration.sendLogsToDatadog)
             .sendNetworkInfo(configuration.sendNetworkInfo)
             .printLogsToConsole(configuration.printLogsToConsole)
+            .bundleWithTrace(false)
             .bundleWithRUM(configuration.bundleWithRum)
         if let loggerName = configuration.loggerName {
             _ = builder.set(loggerName: loggerName)
