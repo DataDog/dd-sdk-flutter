@@ -319,7 +319,7 @@ class FlutterSdkTests: XCTestCase {
         }
 
         let core = defaultDatadogCore as? DatadogCore
-        XCTAssertEqual(core?.dependencies.consentProvider.currentValue, .notGranted)
+        XCTAssertEqual(core?.consentProvider.currentValue, .notGranted)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
@@ -349,7 +349,7 @@ class FlutterSdkTests: XCTestCase {
 
         let core = defaultDatadogCore as? DatadogCore
         let expectedUserInfo = UserInfo(id: "fakeUserId", name: "fake user name", email: "fake email", extraInfo: [:])
-        XCTAssertEqual(core?.dependencies.userInfoProvider.value, expectedUserInfo)
+        XCTAssertEqual(core?.userInfoProvider.value, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
@@ -387,7 +387,7 @@ class FlutterSdkTests: XCTestCase {
                                         ])
 
         let core = defaultDatadogCore as? DatadogCore
-        XCTAssertEqual(core?.dependencies.userInfoProvider.value, expectedUserInfo)
+        XCTAssertEqual(core?.userInfoProvider.value, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
@@ -425,7 +425,7 @@ class FlutterSdkTests: XCTestCase {
             ])
 
         let core = defaultDatadogCore as? DatadogCore
-        XCTAssertEqual(core?.dependencies.userInfoProvider.value, expectedUserInfo)
+        XCTAssertEqual(core?.userInfoProvider.value, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 }
