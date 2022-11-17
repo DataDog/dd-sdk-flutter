@@ -17,9 +17,9 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
     override private init() {
         super.init()
     }
-    
+
     public func onDetach() {
-        
+
     }
 
     func addLogger(logger: Logger, withHandle handle: String) {

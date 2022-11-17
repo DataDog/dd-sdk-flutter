@@ -72,6 +72,7 @@ private func equalsAny(lhs: Any, rhs: Any) -> Bool {
     let rhsChildren = rhsMirror.children.map { $0.value }
 
     for (lhsChild, rhsChild) in zip(lhsChildren, rhsChildren) { // compare each child
+        // swiftlint:disable:next for_where
         if !equalsAny(lhs: lhsChild, rhs: rhsChild) {
             return false // childs are different
         }

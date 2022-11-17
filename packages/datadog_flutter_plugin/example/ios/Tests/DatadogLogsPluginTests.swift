@@ -9,6 +9,14 @@ import XCTest
 class MockV2Logger: LoggerProtocol {
     enum Method: EquatableInTests {
         case log(level: LogLevel, message: String, error: Error?, attributes: [String: Encodable]?)
+        case logError(
+            level: LogLevel,
+            message: String,
+            errorKeins: String?,
+            errorMessage: String?,
+            stackTrace: String?,
+            attributes: [String: Encodable]?
+        )
         case addAttribute(key: AttributeKey, value: AttributeValue)
         case removeAttribute(key: AttributeKey)
         case addTag(key: String, value: String)
@@ -20,31 +28,52 @@ class MockV2Logger: LoggerProtocol {
     var calls: [Method] = []
 
     func log(level: LogLevel, message: String, error: Error?, attributes: [String: Encodable]?) {
-        calls.append(Method.log(level: level, message: message, error: error, attributes: attributes))
+        calls.append(.log(level: level, message: message, error: error, attributes: attributes))
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    func log(
+        level: LogLevel,
+        message: String,
+        errorKind: String?,
+        errorMessage: String?,
+        stackTrace: String?,
+        attributes: [String: Encodable]?
+    ) {
+        calls.append(
+            .logError(
+                level: level,
+                message: message,
+                errorKeins: errorKind,
+                errorMessage: errorMessage,
+                stackTrace: stackTrace,
+                attributes: attributes
+            )
+        )
     }
 
     func addAttribute(forKey key: AttributeKey, value: AttributeValue) {
-        calls.append(Method.addAttribute(key: key, value: value))
+        calls.append(.addAttribute(key: key, value: value))
     }
 
     func removeAttribute(forKey key: AttributeKey) {
-        calls.append(Method.removeAttribute(key: key))
+        calls.append(.removeAttribute(key: key))
     }
 
     func addTag(withKey key: String, value: String) {
-        calls.append(Method.addTag(key: key, value: value))
+        calls.append(.addTag(key: key, value: value))
     }
 
     func removeTag(withKey key: String) {
-        calls.append(Method.removeTag(key: key))
+        calls.append(.removeTag(key: key))
     }
 
     func add(tag: String) {
-        calls.append(Method.add(tag: tag))
+        calls.append(.add(tag: tag))
     }
 
     func remove(tag: String) {
-        calls.append(Method.remove(tag: tag))
+        calls.append(.remove(tag: tag))
     }
 }
 

@@ -494,7 +494,11 @@ class MockRUMMonitor: DDRUMMonitor {
         case stopUserAction(type: RUMUserActionType, name: String?, attributes: [AttributeKey: AttributeValue])
         case addAttribute(forKey: AttributeKey, value: AttributeValue)
         case removeAttribute(forKey: AttributeKey)
-        case updatePerformanceMetric(metric: PerformanceMetric, value: Double, attributes: [AttributeKey: AttributeValue])
+        case updatePerformanceMetric(
+            metric: PerformanceMetric,
+            value: Double,
+            attributes: [AttributeKey: AttributeValue]
+        )
     }
 
     var callLog: [MethodCall] = []
@@ -586,7 +590,11 @@ class MockRUMMonitor: DDRUMMonitor {
         callLog.append(.stopUserAction(type: type, name: name, attributes: attributes))
     }
 
-    override func updatePerformanceMetric(metric: PerformanceMetric, value: Double, attributes: [AttributeKey: AttributeValue] = [:]) {
+    override func updatePerformanceMetric(
+        metric: PerformanceMetric,
+        value: Double,
+        attributes: [AttributeKey: AttributeValue] = [:]
+    ) {
         callLog.append(.updatePerformanceMetric(metric: metric, value: value, attributes: attributes))
     }
 }

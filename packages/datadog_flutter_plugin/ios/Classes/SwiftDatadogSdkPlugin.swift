@@ -16,7 +16,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     public private(set) var rum: DatadogRumPlugin?
 
     var currentConfiguration: [AnyHashable: Any]?
-    var oldConsolePrint: ((String) -> Void)? = nil
+    var oldConsolePrint: ((String) -> Void)?
 
     public init(channel: FlutterMethodChannel) {
         self.channel = channel
@@ -157,9 +157,9 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     }
 
     public func applicationWillTerminate(_ application: UIApplication) {
-        _onDetach();
+        _onDetach()
     }
-    
+
     public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
         _onDetach()
     }

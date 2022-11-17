@@ -50,9 +50,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
     public func initialize(withRum rum: DDRUMMonitor) {
         rumInstance = rum
     }
-    
+
     public func onDetach() {
-        
+
     }
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
