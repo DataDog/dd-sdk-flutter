@@ -1,6 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2020 Datadog, Inc.
+// swiftlint:disable file_length
 
 import XCTest
 @testable import Datadog
@@ -319,7 +320,7 @@ class FlutterSdkTests: XCTestCase {
         }
 
         let core = defaultDatadogCore as? DatadogCore
-        XCTAssertEqual(core?.dependencies.consentProvider.currentValue, .notGranted)
+        XCTAssertEqual(core?.consentProvider.currentValue, .notGranted)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
@@ -349,7 +350,7 @@ class FlutterSdkTests: XCTestCase {
 
         let core = defaultDatadogCore as? DatadogCore
         let expectedUserInfo = UserInfo(id: "fakeUserId", name: "fake user name", email: "fake email", extraInfo: [:])
-        XCTAssertEqual(core?.dependencies.userInfoProvider.value, expectedUserInfo)
+        XCTAssertEqual(core?.userInfoProvider.value, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
@@ -387,7 +388,7 @@ class FlutterSdkTests: XCTestCase {
                                         ])
 
         let core = defaultDatadogCore as? DatadogCore
-        XCTAssertEqual(core?.dependencies.userInfoProvider.value, expectedUserInfo)
+        XCTAssertEqual(core?.userInfoProvider.value, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
@@ -425,7 +426,7 @@ class FlutterSdkTests: XCTestCase {
             ])
 
         let core = defaultDatadogCore as? DatadogCore
-        XCTAssertEqual(core?.dependencies.userInfoProvider.value, expectedUserInfo)
+        XCTAssertEqual(core?.userInfoProvider.value, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 }
