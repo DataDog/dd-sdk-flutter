@@ -22,10 +22,20 @@ class DdLogsMethodChannel extends DdLogsPlatform {
   }
 
   @override
-  Future<void> debug(String loggerHandle, String message,
-      [Map<String, Object?> context = const {}]) {
-    return methodChannel.invokeMethod('debug', {
+  Future<void> log(
+      String loggerHandle,
+      LogLevel level,
+      String message,
+      String? errorMessage,
+      String? errorKind,
+      StackTrace? errorStackTrace,
+      Map<String, Object?> context) {
+    return methodChannel.invokeMethod('log', {
       'loggerHandle': loggerHandle,
+      'logLevel': level.toString(),
+      'errorMessage': errorMessage,
+      'errorKind': errorKind,
+      'stackTrace': errorStackTrace?.toString(),
       'message': message,
       'context': context,
     });

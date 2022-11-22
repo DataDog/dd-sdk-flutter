@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* 🔥 BREAKING - Log functions (`debug`, `info`, `warn`) now use `attributes` as a named argument instead of a positional argument.
+* Allow errors to be sent on all log functions. See [#264][]
 * Disable tracing by default in iOS. Silences a benign warning from the SDK. See [#280][]
 
 ## 1.1.0
@@ -109,5 +111,6 @@
 [#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159
 [#203]: https://github.com/DataDog/dd-sdk-flutter/issues/203
 [#254]: https://github.com/DataDog/dd-sdk-flutter/issues/254
+[#264]: https://github.com/DataDog/dd-sdk-flutter/issues/264
 [#271]: https://github.com/DataDog/dd-sdk-flutter/issues/271
 [#280]: https://github.com/DataDog/dd-sdk-flutter/issues/280

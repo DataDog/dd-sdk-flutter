@@ -12,7 +12,7 @@ class MockV2Logger: LoggerProtocol {
         case logError(
             level: LogLevel,
             message: String,
-            errorKeins: String?,
+            errorKind: String?,
             errorMessage: String?,
             stackTrace: String?,
             attributes: [String: Encodable]?
@@ -44,7 +44,7 @@ class MockV2Logger: LoggerProtocol {
             .logError(
                 level: level,
                 message: message,
-                errorKeins: errorKind,
+                errorKind: errorKind,
                 errorMessage: errorMessage,
                 stackTrace: stackTrace,
                 attributes: attributes
@@ -86,23 +86,14 @@ class DatadogLogsPluginTests: XCTestCase {
         mockV2Logger = MockV2Logger()
         // "fake string" is the string that the contract tests will send
         plugin.addLogger(logger: Logger(v2Logger: mockV2Logger!), withHandle: "fake string")
+        // Non-contract tests get the same logger with a different it
+        plugin.addLogger(logger: Logger(v2Logger: mockV2Logger!), withHandle: "fake-uuid")
     }
 
     let contracts = [
-        Contract(methodName: "debug", requiredParameters: [
+        Contract(methodName: "log", requiredParameters: [
             "loggerHandle": .string,
-            "message": .string
-        ]),
-        Contract(methodName: "info", requiredParameters: [
-            "loggerHandle": .string,
-            "message": .string
-        ]),
-        Contract(methodName: "warn", requiredParameters: [
-            "loggerHandle": .string,
-            "message": .string
-        ]),
-        Contract(methodName: "error", requiredParameters: [
-            "loggerHandle": .string,
+            "logLevel": .string,
             "message": .string
         ]),
         Contract(methodName: "addAttribute", requiredParameters: [
@@ -169,10 +160,12 @@ class DatadogLogsPluginTests: XCTestCase {
     }
 
     func testLogCalls_WithBadParameter_FailsWithContractViolation() {
-        let logMethods = ["debug", "info", "warn", "error"]
+        let logLevels = ["LogLevel.debug", "LogLevel.info", "LogLevel.warn", "LogLevel.error"]
 
-        for method in logMethods {
-            let call = FlutterMethodCall(methodName: method, arguments: [
+        for level in logLevels {
+            let call = FlutterMethodCall(methodName: "log", arguments: [
+                "loggerHandle": "fake-uuid",
+                "logLevel": level,
                 "message": 123
             ])
 
@@ -192,6 +185,114 @@ class DatadogLogsPluginTests: XCTestCase {
             case .notCalled:
                 XCTFail("result was not called")
             }
+        }
+    }
+
+    func testParseLogLevel_ParsesLevelsCorrectly() {
+        let debug = LogLevel.parseLogLevelFromFlutter("LogLevel.debug")
+        let info = LogLevel.parseLogLevelFromFlutter("LogLevel.info")
+        let notice = LogLevel.parseLogLevelFromFlutter("LogLevel.notice")
+        let warning = LogLevel.parseLogLevelFromFlutter("LogLevel.warning")
+        let error = LogLevel.parseLogLevelFromFlutter("LogLevel.error")
+        let critical = LogLevel.parseLogLevelFromFlutter("LogLevel.critical")
+        let alert = LogLevel.parseLogLevelFromFlutter("LogLevel.alert")
+        let emergency = LogLevel.parseLogLevelFromFlutter("LogLevel.emergency")
+        let unknown = LogLevel.parseLogLevelFromFlutter("unknown")
+
+        XCTAssertEqual(debug, .debug)
+        XCTAssertEqual(info, .info)
+        XCTAssertEqual(notice, .notice)
+        XCTAssertEqual(warning, .warn)
+        XCTAssertEqual(error, .error)
+        XCTAssertEqual(critical, .critical)
+        XCTAssertEqual(alert, .critical)
+        XCTAssertEqual(emergency, .critical)
+        XCTAssertEqual(unknown, .info)
+    }
+
+    func testCallsToLog_CallThroughToLogger() {
+        let logLevels = ["LogLevel.debug", "LogLevel.info", "LogLevel.warning", "LogLevel.error"]
+
+        let context = [
+            "test_attribute": "attribute value"
+        ]
+
+        for level in logLevels {
+            let call = FlutterMethodCall(methodName: "log", arguments: [
+                "loggerHandle": "fake-uuid",
+                "logLevel": level,
+                "message": "\(level) message",
+                "errorKind": nil,
+                "errorMessage": nil,
+                "stackTrace": nil,
+                "context": context
+            ])
+
+            var resultStatus = ResultStatus.notCalled
+            plugin.handle(call) { result in
+                resultStatus = .called(value: result)
+            }
+
+            let parsedLevel = LogLevel.parseLogLevelFromFlutter(level)
+            XCTAssertEqual(resultStatus, .called(value: nil))
+            XCTAssertEqual(mockV2Logger?.calls.count, 1)
+            XCTAssertEqual(
+                mockV2Logger?.calls.first,
+                    .logError(
+                        level: parsedLevel,
+                        message: "\(level) message",
+                        errorKind: nil,
+                        errorMessage: nil,
+                        stackTrace: nil,
+                        attributes: [
+                            "test_attribute": "attribute value"
+                        ]
+                    )
+            )
+            mockV2Logger?.calls.removeAll()
+        }
+    }
+
+    func testCallsToLogWithErrors_CallThroughToLogger() {
+        let logLevels = ["LogLevel.debug", "LogLevel.info", "LogLevel.warning", "LogLevel.error"]
+
+        let context = [
+            "test_attribute": "attribute value"
+        ]
+
+        for level in logLevels {
+            let call = FlutterMethodCall(methodName: "log", arguments: [
+                "loggerHandle": "fake-uuid",
+                "logLevel": level,
+                "message": "\(level) message",
+                "errorKind": "\(level) kind",
+                "errorMessage": "\(level) error message",
+                "stackTrace": "# ----0 Fake stack trace (package:/flutter)",
+                "context": context
+            ])
+
+            var resultStatus = ResultStatus.notCalled
+            plugin.handle(call) { result in
+                resultStatus = .called(value: result)
+            }
+
+            let parsedLevel = LogLevel.parseLogLevelFromFlutter(level)
+            XCTAssertEqual(resultStatus, .called(value: nil))
+            XCTAssertEqual(mockV2Logger?.calls.count, 1)
+            XCTAssertEqual(
+                mockV2Logger?.calls.first,
+                    .logError(
+                        level: parsedLevel,
+                        message: "\(level) message",
+                        errorKind: "\(level) kind",
+                        errorMessage: "\(level) error message",
+                        stackTrace: "# ----0 Fake stack trace (package:/flutter)",
+                        attributes: [
+                            "test_attribute": "attribute value"
+                        ]
+                    )
+            )
+            mockV2Logger?.calls.removeAll()
         }
     }
 

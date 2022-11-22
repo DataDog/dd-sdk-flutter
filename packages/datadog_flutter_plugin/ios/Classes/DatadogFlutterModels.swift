@@ -290,7 +290,7 @@ public extension Datadog.Configuration.DatadogEndpoint {
 }
 
 public extension LogLevel {
-    static func parseFromFlutter(_ value: String) -> Self? {
+    static func parseVerbosityFromFlutter(_ value: String) -> Self? {
         switch value {
         case "Verbosity.verbose": return .debug
         case "Verbosity.debug": return .debug
@@ -299,6 +299,20 @@ public extension LogLevel {
         case "Verbosity.error": return .error
         case "Verbosity.none": return nil
         default: return nil
+        }
+    }
+
+    static func parseLogLevelFromFlutter(_ value: String) -> Self {
+        switch value {
+        case "LogLevel.debug": return .debug
+        case "LogLevel.info": return .info
+        case "LogLevel.notice": return .notice
+        case "LogLevel.warning": return .warn
+        case "LogLevel.error": return .error
+        case "LogLevel.critical": return .critical
+        case "LogLevel.alert": return .critical
+        case "LogLevel.emergency": return .critical
+        default: return .info
         }
     }
 }
