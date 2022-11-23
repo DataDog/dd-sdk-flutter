@@ -8,7 +8,10 @@ package com.datadoghq.flutter
 import android.util.Log
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
+import com.datadog.android._InternalProxy
+import com.datadog.android.event.EventMapper
 import com.datadog.android.rum.GlobalRum
+import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -32,8 +35,22 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         var previousConfiguration: DatadogFlutterConfiguration? = null
     }
 
+    data class ConfigurationTelemetryOverrides(
+        var trackViewsManually: Boolean = true,
+        var trackInteractions: Boolean = false,
+        var trackErrors: Boolean = false,
+        var trackNetworkRequests: Boolean = false,
+        var trackNativeViews: Boolean = false,
+        var trackCrossPlatformLongTasks: Boolean = false,
+        var trackFlutterPerformance: Boolean = false
+    ) {
+
+    }
+
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
+
+    internal val telemetryOverrides: ConfigurationTelemetryOverrides = ConfigurationTelemetryOverrides()
 
     // Only used to shutdown Datadog in debug builds
     private val executor: ExecutorService = ThreadPoolExecutor(
@@ -145,6 +162,10 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     result.missingParameter(call.method)
                 }
             }
+            "updateTelemetryConfiguration" -> {
+                updateTelemetryConfiguration(call)
+                result.success(null)
+            }
             "flushAndDeinitialize" -> {
                 invokePrivateShutdown(result)
             }
@@ -155,11 +176,14 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     fun initialize(config: DatadogFlutterConfiguration) {
-        val configuration = config.toSdkConfiguration()
+        val configurationBuilder = config.toSdkConfiguration()
         val credentials = config.toCredentials()
 
+        _InternalProxy.setTelemetryConfigurationEventMapper(configurationBuilder,
+            FlutterConfigurationTelemetryEventMapper(this))
+
         Datadog.initialize(
-            binding.applicationContext, credentials, configuration,
+            binding.applicationContext, credentials, configurationBuilder.build(),
             config.trackingConsent
         )
 
@@ -178,6 +202,45 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         return mapOf<String, Any>(
             "rumEnabled" to rumEnabled
         )
+    }
+
+    fun updateTelemetryConfiguration(call: MethodCall) {
+        var isValid = true
+
+        val option = call.argument<String>("option")
+        val value = call.argument<Boolean>("value")
+        if (option != null && value != null) {
+            when (option) {
+                "trackViewsManually" -> telemetryOverrides.trackViewsManually = value
+                "trackInteractions" -> telemetryOverrides.trackInteractions = value
+                "trackErrors" -> telemetryOverrides.trackErrors = value
+                "trackNetworkRequests" -> telemetryOverrides.trackNetworkRequests = value
+                "trackNativeViews" -> telemetryOverrides.trackNativeViews = value
+                "trackCrossPlatformLongTasks"-> telemetryOverrides.trackCrossPlatformLongTasks = value
+                "trackFlutterPerformance" -> telemetryOverrides.trackFlutterPerformance = value
+                else -> isValid = false
+            }
+        } else {
+            isValid = false
+        }
+
+        if (!isValid) {
+            Datadog._internal._telemetry.debug(
+                String.format(MESSAGE_BAD_TELEMETRY_CONFIG, option, value)
+            )
+        }
+    }
+
+    fun mapTelemetryConfiguration(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent {
+        event.telemetry.configuration.trackViewsManually = telemetryOverrides.trackViewsManually
+        event.telemetry.configuration.trackInteractions = telemetryOverrides.trackInteractions
+        event.telemetry.configuration.trackErrors = telemetryOverrides.trackErrors
+        event.telemetry.configuration.trackNetworkRequests = telemetryOverrides.trackNetworkRequests
+        event.telemetry.configuration.trackNativeViews = telemetryOverrides.trackNativeViews
+        event.telemetry.configuration.trackCrossPlatformLongTasks = telemetryOverrides.trackCrossPlatformLongTasks
+        event.telemetry.configuration.trackFlutterPerformance = telemetryOverrides.trackFlutterPerformance
+
+        return event
     }
 
     fun simpleInvokeOn(methodName: String, target: Any) {
@@ -215,6 +278,14 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         logsPlugin.detachFromEngine()
         rumPlugin.detachFromEngine()
     }
+
+    class FlutterConfigurationTelemetryEventMapper(
+        val sdk: DatadogSdkPlugin
+    ):  EventMapper<TelemetryConfigurationEvent> {
+        override fun map(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent? {
+            return sdk.mapTelemetryConfiguration(event)
+        }
+    }
 }
 
 internal const val DATADOG_FLUTTER_TAG = "DatadogFlutter"
@@ -226,3 +297,6 @@ internal const val MESSAGE_INVALID_REINITIALIZATION =
 internal const val MESSAGE_NO_EXISTING_INSTANCE =
     "🔥 attachToExisting was called, but no existing instance of the Datadog SDK exists." +
         " Make sure to initialize the Native Datadog SDK before calling attachToExisting."
+
+internal const val MESSAGE_BAD_TELEMETRY_CONFIG =
+    "Attempting to set telemetry configuration option '%s' to '%s', which is invalid."

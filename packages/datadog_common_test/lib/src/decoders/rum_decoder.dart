@@ -111,6 +111,8 @@ class RumEventDecoder {
 
   int get date => rumEvent['date'] as int;
   String get version => rumEvent['version'] as String;
+  Map<String, dynamic>? get telemetryConfiguration =>
+      rumEvent['telemetry']?['configuration'];
 
   Map<String, dynamic>? get context => rumEvent['context'];
 

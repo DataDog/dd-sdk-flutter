@@ -80,6 +80,11 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
       String message, String? stack, String? kind) async {
     // Not currently supported
   }
+
+  @override
+  Future<void> updateTelemetryConfiguration(String property, bool value) async {
+    // Not currently supported
+  }
 }
 
 @JS()

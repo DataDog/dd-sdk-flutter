@@ -429,4 +429,52 @@ class FlutterSdkTests: XCTestCase {
         XCTAssertEqual(core?.userInfoProvider.value, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
+
+    func testConfigurationOverrides_FromMethodChannel_AreOverridden() {
+        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+
+        let trackViewsManually: Bool = .random()
+        let trackInteractions: Bool = .random()
+        let trackErrors: Bool = .random()
+        let trackNetworkRequests: Bool = .random()
+        let trackNativeViews: Bool = .random()
+        let trackCrossPlatformLongTasks: Bool = .random()
+        let trackFlutterPerformance: Bool = .random()
+
+        func callAndCheck(property: String, value: Bool, check: () -> Void) {
+            var callResult = ResultStatus.notCalled
+            let call = FlutterMethodCall(methodName: "updateTelemetryConfiguration", arguments: [
+                "option": property,
+                "value": value
+            ])
+            plugin.handle(call) { result in
+                callResult = .called(value: result)
+            }
+
+            XCTAssertEqual(callResult, .called(value: nil))
+            check()
+        }
+
+        callAndCheck(property: "trackViewsManually", value: trackViewsManually) {
+            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackViewsManually, trackViewsManually)
+        }
+        callAndCheck(property: "trackInteractions", value: trackInteractions) {
+            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackInteractions, trackInteractions)
+        }
+        callAndCheck(property: "trackErrors", value: trackErrors) {
+            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackErrors, trackErrors)
+        }
+        callAndCheck(property: "trackNetworkRequests", value: trackNetworkRequests) {
+            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackNetworkRequests, trackNetworkRequests)
+        }
+        callAndCheck(property: "trackNativeViews", value: trackNativeViews) {
+            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackNativeViews, trackNativeViews)
+        }
+        callAndCheck(property: "trackCrossPlatformLongTasks", value: trackCrossPlatformLongTasks) {
+            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackCrossPlatformLongTasks, trackCrossPlatformLongTasks)
+        }
+        callAndCheck(property: "trackFlutterPerformance", value: trackFlutterPerformance) {
+            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackFlutterPerformance, trackFlutterPerformance)
+        }
+    }
 }

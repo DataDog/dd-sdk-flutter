@@ -34,6 +34,7 @@ void main() {
     registerFallbackValue(FakeDdSdkConfiguration());
     registerFallbackValue(TrackingConsent.granted);
     registerFallbackValue(LoggingConfiguration());
+    registerFallbackValue(LateConfigurationProperty.trackErrors);
   });
 
   setUp(() {
@@ -52,6 +53,8 @@ void main() {
     when(() => mockPlatform.setTrackingConsent(any()))
         .thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.flushAndDeinitialize())
+        .thenAnswer((_) => Future<void>.value());
+    when(() => mockPlatform.updateTelemetryConfiguration(any(), any()))
         .thenAnswer((_) => Future<void>.value());
     DatadogSdkPlatform.instance = mockPlatform;
     datadogSdk = DatadogSdk.instance;
@@ -507,5 +510,25 @@ void main() {
     verify(() => mockPluginConfig.create(datadogSdk));
     verify(() => mockPlugin.initialize());
     expect(datadogSdk.getPlugin<MockDatadogPlugin>(), mockPlugin);
+  });
+
+  test('updateConfigurationInfo calls to platform', () async {
+    final configuration = DdSdkConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.pending,
+    );
+    await datadogSdk.initialize(configuration);
+
+    datadogSdk.updateConfigurationInfo(
+        LateConfigurationProperty.trackInteractions, true);
+    datadogSdk.updateConfigurationInfo(
+        LateConfigurationProperty.trackViewsManually, false);
+
+    verify(() =>
+        mockPlatform.updateTelemetryConfiguration('trackInteractions', true));
+    verify(() =>
+        mockPlatform.updateTelemetryConfiguration('trackViewsManually', false));
   });
 }

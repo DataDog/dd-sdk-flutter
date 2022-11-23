@@ -5,6 +5,7 @@
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 
 import '../datadog_tracking_http_client.dart';
 
@@ -21,5 +22,7 @@ class _DdHttpTrackingPlugin extends DatadogPlugin {
   @override
   void initialize() {
     HttpOverrides.global = DatadogTrackingHttpOverrides(instance);
+    instance.updateConfigurationInfo(
+        LateConfigurationProperty.trackNetworkRequests, true);
   }
 }

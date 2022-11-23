@@ -90,4 +90,12 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
       'kind': kind,
     });
   }
+
+  @override
+  Future<void> updateTelemetryConfiguration(String property, bool value) {
+    return methodChannel.invokeMethod('updateTelemetryConfiguration', {
+      'option': property,
+      'value': value,
+    });
+  }
 }
