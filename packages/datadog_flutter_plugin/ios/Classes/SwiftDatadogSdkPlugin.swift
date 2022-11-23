@@ -80,7 +80,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             }
         case "setSdkVerbosity":
             if let verbosityString = arguments["value"] as? String {
-                let verbosity = LogLevel.parseFromFlutter(verbosityString)
+                let verbosity = LogLevel.parseVerbosityFromFlutter(verbosityString)
                 Datadog.verbosityLevel = verbosity
                 result(nil)
             } else {
