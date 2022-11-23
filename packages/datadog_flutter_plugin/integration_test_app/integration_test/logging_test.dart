@@ -33,6 +33,9 @@ void main() {
                     .split('\n')
                     .map<dynamic>((e) => json.decode(e))
                     .toList();
+              } on TypeError {
+                // This might be the telemetry event
+                return e.jsonData;
               }
               // return null;
             })
@@ -42,10 +45,10 @@ void main() {
             // Ignore RUM sessions
             .where((e) => !(e).containsKey('session'))
             .forEach((e) => logs.add(LogDecoder(e)));
-        return logs.length >= 5;
+        return logs.length >= 6;
       },
     );
-    expect(logs.length, greaterThanOrEqualTo(4));
+    expect(logs.length, greaterThanOrEqualTo(6));
 
     expect(logs[0].status, 'debug');
     expect(logs[0].message, 'debug message');
@@ -64,8 +67,8 @@ void main() {
       expect(logs[1].tags, isNot(contains('my-tag')));
       expect(logs[1].tags, contains('tag1:tag-value'));
     }
-    expect(logs[0].log['logger-attribute1'], 'string value');
-    expect(logs[0].log['logger-attribute2'], 1000);
+    expect(logs[1].log['logger-attribute1'], 'string value');
+    expect(logs[1].log['logger-attribute2'], 1000);
     expect(logs[1].log['nestedAttribute'], containsPair('internal', 'test'));
     expect(logs[1].log['nestedAttribute'], containsPair('isValid', true));
 
@@ -75,8 +78,8 @@ void main() {
       expect(logs[2].tags, isNot(contains('my-tag')));
       expect(logs[2].tags, contains('tag1:tag-value'));
     }
-    expect(logs[0].log['logger-attribute1'], 'string value');
-    expect(logs[0].log['logger-attribute2'], 1000);
+    expect(logs[2].log['logger-attribute1'], 'string value');
+    expect(logs[2].log['logger-attribute2'], 1000);
     expect(logs[2].log['doubleAttribute'], 10.34);
 
     expect(logs[3].status, 'error');
@@ -85,8 +88,8 @@ void main() {
       expect(logs[3].tags, isNot(contains('my-tag')));
       expect(logs[3].tags, isNot(contains('tag1:tag-value')));
     }
-    expect(logs[0].log['logger-attribute1'], 'string value');
-    expect(logs[0].log['logger-attribute2'], 1000);
+    expect(logs[3].log['logger-attribute1'], isNull);
+    expect(logs[3].log['logger-attribute2'], 1000);
     expect(logs[3].log['attribute'], 'value');
 
     expect(logs[4].status, 'info');
@@ -96,6 +99,16 @@ void main() {
     expect(logs[4].log['logger-attribute2'], isNull);
     expect(
         getNestedProperty<String>('logger.name', logs[4].log), 'second_logger');
+
+    expect(logs[5].status, 'warn');
+    expect(logs[5].message, 'Warning: this error occurred');
+    expect(logs[5].log['second-logger-attribute'], 'second-value');
+    expect(logs[5].log['logger-attribute1'], isNull);
+    expect(logs[5].log['logger-attribute2'], isNull);
+    expect(logs[5].errorMessage, 'Error Message');
+    expect(logs[5].errorStack, isNotNull);
+    expect(
+        getNestedProperty<String>('logger.name', logs[5].log), 'second_logger');
 
     for (final log in logs) {
       expect(log.serviceName,

@@ -50,6 +50,14 @@ class _LoggingScenarioState extends State<LoggingScenario> {
 
     secondLogger.addAttribute('second-logger-attribute', 'second-value');
     secondLogger.info('message on second logger');
+
+    final st = StackTrace.current;
+
+    secondLogger.warn(
+      'Warning: this error occurred',
+      errorMessage: 'Error Message',
+      errorStackTrace: st,
+    );
   }
 
   @override
