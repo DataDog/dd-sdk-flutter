@@ -1,0 +1,12 @@
+configurations.all {
+    resolutionStrategy {
+        componentSelection {
+            all { ComponentSelection selection ->
+                if (selection.candidate.group == 'com.datadoghq' &&
+                        selection.candidate.version.contains('dev-SNAPSHOT')) {
+                    selection.reject("Session Replay snapshots are not supposed to be used")
+                }
+            }
+        }
+    }
+}

@@ -4,6 +4,7 @@
  * Copyright 2016-Present Datadog, Inc.
  */
 
+
 group "com.datadoghq.flutter"
 version "1.0-SNAPSHOT"
 
@@ -61,6 +62,8 @@ android {
         multiDexEnabled true
     }
 }
+
+apply from: '../../../ignore_sr_snapshots.gradle'
 
 dependencies {
     implementation "com.datadoghq:dd-sdk-android:$datadog_version"
