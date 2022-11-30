@@ -74,8 +74,7 @@ class DatadogSdkPluginTest {
 
     @AfterEach
     fun afterEach() {
-        val mockResult = mock<MethodChannel.Result>()
-        plugin.invokePrivateShutdown(mockResult)
+        plugin.stop()
     }
 
     val contracts = listOf(
@@ -289,8 +288,6 @@ class DatadogSdkPluginTest {
     @Test
     fun `M issue warning W attachToExisting has no existing instance`() {
         // GIVEN
-        Datadog.setVerbosity(Log.INFO)
-
         val methodCall = MethodCall(
             "attachToExisting",
             mapOf<String, Object?>()
@@ -393,8 +390,18 @@ class DatadogSdkPluginTest {
     }
 
     @Test
-    fun `M set sdk verbosity W called through MethodChannel`() {
+    fun `M set sdk verbosity W called through MethodChannel`(
+        forge: Forge
+    ) {
         // GIVEN
+        val configuration = DatadogFlutterConfiguration(
+            clientToken = forge.aString(),
+            env = "prod",
+            nativeCrashReportEnabled = false,
+            trackingConsent = TrackingConsent.GRANTED
+        )
+        plugin.initialize(configuration)
+
         var methodCall = MethodCall(
             "setSdkVerbosity",
             mapOf( "value" to "Verbosity.info" )
@@ -405,7 +412,8 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        val setVerbosity: Int = Datadog.getFieldValue("libraryVerbosity")
+        var sdkCore: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
+        val setVerbosity: Int = sdkCore?.getFieldValue("libraryVerbosity")
         assertThat(setVerbosity).equals(Log.INFO)
         verify(mockResult).success(null)
     }
@@ -433,8 +441,8 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        var coreFeature = Class.forName("com.datadog.android.core.internal.CoreFeature")
-            .kotlin.objectInstance
+        var coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
+            ?.getFieldValue("coreFeature")
         var trackingConsent: TrackingConsent? = coreFeature
             ?.getFieldValue<Any, Any>("trackingConsentProvider")
             ?.getFieldValue("consent")
@@ -473,8 +481,8 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        var coreFeature = Class.forName("com.datadog.android.core.internal.CoreFeature")
-            .kotlin.objectInstance
+        var coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
+            ?.getFieldValue("coreFeature")
         var userInfo: UserInfo? = coreFeature
             ?.getFieldValue<Any, Any>("userInfoProvider")
             ?.getFieldValue("internalUserInfo")
@@ -517,8 +525,8 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        var coreFeature = Class.forName("com.datadog.android.core.internal.CoreFeature")
-            .kotlin.objectInstance
+        var coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
+            ?.getFieldValue("coreFeature")
         var userInfo: UserInfo? = coreFeature
             ?.getFieldValue<Any, Any>("userInfoProvider")
             ?.getFieldValue("internalUserInfo")
@@ -555,8 +563,8 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        var coreFeature = Class.forName("com.datadog.android.core.internal.CoreFeature")
-            .kotlin.objectInstance
+        var coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
+            ?.getFieldValue("coreFeature")
         var userInfo: UserInfo? = coreFeature
             ?.getFieldValue<Any, Any>("userInfoProvider")
             ?.getFieldValue("internalUserInfo")
