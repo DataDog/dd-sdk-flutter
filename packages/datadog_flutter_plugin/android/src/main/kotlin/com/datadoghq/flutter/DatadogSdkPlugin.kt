@@ -27,6 +27,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     companion object {
         const val CONTRACT_VIOLATION = "DatadogSdk:ContractViolation"
         const val INVALID_OPERATION = "DatadogSdk:InvalidOperation"
+        const val ARG_VALUE = "value"
 
         // Flutter can destroy / recreate the plugin object if the engine detaches. If you use the
         // back button on the first screen, for example, this will detach the Flutter engine
@@ -43,14 +44,12 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         var trackNativeViews: Boolean = false,
         var trackCrossPlatformLongTasks: Boolean = false,
         var trackFlutterPerformance: Boolean = false
-    ) {
-
-    }
+    )
 
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 
-    internal val telemetryOverrides: ConfigurationTelemetryOverrides = ConfigurationTelemetryOverrides()
+    internal val telemetryOverrides = ConfigurationTelemetryOverrides()
 
     // Only used to shutdown Datadog in debug builds
     private val executor: ExecutorService = ThreadPoolExecutor(
@@ -102,7 +101,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 }
             }
             "setSdkVerbosity" -> {
-                val value = call.argument<String>("value")
+                val value = call.argument<String>(ARG_VALUE)
                 if (value != null) {
                     val verbosity = parseVerbosity(value)
                     Datadog.setVerbosity(verbosity)
@@ -112,7 +111,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 }
             }
             "setTrackingConsent" -> {
-                val value = call.argument<String>("value")
+                val value = call.argument<String>(ARG_VALUE)
                 if (value != null) {
                     val trackingConsent = parseTrackingConsent(value)
                     Datadog.setTrackingConsent(trackingConsent)
@@ -179,8 +178,15 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         val configurationBuilder = config.toSdkConfiguration()
         val credentials = config.toCredentials()
 
-        _InternalProxy.setTelemetryConfigurationEventMapper(configurationBuilder,
-            FlutterConfigurationTelemetryEventMapper(this))
+        _InternalProxy.setTelemetryConfigurationEventMapper(
+            configurationBuilder,
+            object : EventMapper<TelemetryConfigurationEvent> {
+                override fun map(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent? {
+                    return mapTelemetryConfiguration(event)
+                }
+            }
+
+        )
 
         Datadog.initialize(
             binding.applicationContext, credentials, configurationBuilder.build(),
@@ -208,7 +214,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         var isValid = true
 
         val option = call.argument<String>("option")
-        val value = call.argument<Boolean>("value")
+        val value = call.argument<Boolean>(ARG_VALUE)
         if (option != null && value != null) {
             when (option) {
                 "trackViewsManually" -> telemetryOverrides.trackViewsManually = value
@@ -216,7 +222,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 "trackErrors" -> telemetryOverrides.trackErrors = value
                 "trackNetworkRequests" -> telemetryOverrides.trackNetworkRequests = value
                 "trackNativeViews" -> telemetryOverrides.trackNativeViews = value
-                "trackCrossPlatformLongTasks"-> telemetryOverrides.trackCrossPlatformLongTasks = value
+                "trackCrossPlatformLongTasks" ->
+                    telemetryOverrides.trackCrossPlatformLongTasks = value
                 "trackFlutterPerformance" -> telemetryOverrides.trackFlutterPerformance = value
                 else -> isValid = false
             }
@@ -237,8 +244,10 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         event.telemetry.configuration.trackErrors = telemetryOverrides.trackErrors
         event.telemetry.configuration.trackNetworkRequests = telemetryOverrides.trackNetworkRequests
         event.telemetry.configuration.trackNativeViews = telemetryOverrides.trackNativeViews
-        event.telemetry.configuration.trackCrossPlatformLongTasks = telemetryOverrides.trackCrossPlatformLongTasks
-        event.telemetry.configuration.trackFlutterPerformance = telemetryOverrides.trackFlutterPerformance
+        event.telemetry.configuration.trackCrossPlatformLongTasks =
+            telemetryOverrides.trackCrossPlatformLongTasks
+        event.telemetry.configuration.trackFlutterPerformance =
+            telemetryOverrides.trackFlutterPerformance
 
         return event
     }
@@ -277,14 +286,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
         logsPlugin.detachFromEngine()
         rumPlugin.detachFromEngine()
-    }
-
-    class FlutterConfigurationTelemetryEventMapper(
-        val sdk: DatadogSdkPlugin
-    ):  EventMapper<TelemetryConfigurationEvent> {
-        override fun map(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent? {
-            return sdk.mapTelemetryConfiguration(event)
-        }
     }
 }
 

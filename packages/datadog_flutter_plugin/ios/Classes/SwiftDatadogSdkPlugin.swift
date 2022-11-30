@@ -197,7 +197,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
 
         if let option = option as? String,
            let value = value as? Bool {
-            switch(option) {
+            switch option {
             case "trackViewsManually":
                 configurationTelemetryOverrides.trackViewsManually = value
             case "trackInteractions":
@@ -219,7 +219,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             wasValid = false
         }
 
-        if (!wasValid) {
+        if !wasValid {
             Datadog._internal._telemetry.debug(
                 id: "datadog_flutter:configuration_error",
                 message: "Attempting to set telemetry configuration option '\(String(describing: option))'" +
