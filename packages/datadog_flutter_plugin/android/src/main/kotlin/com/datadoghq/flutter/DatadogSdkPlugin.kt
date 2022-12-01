@@ -191,15 +191,19 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
+    internal fun stop() {
+        simpleInvokeOn("stop", Datadog)
+
+        val rumRegisteredField = GlobalRum::class.java.getDeclaredField("isRegistered")
+        rumRegisteredField.isAccessible = true
+        val isRegistered: AtomicBoolean = rumRegisteredField.get(null) as AtomicBoolean
+        isRegistered.set(false)
+    }
+
     internal fun invokePrivateShutdown(result: Result) {
         executor.submit {
             simpleInvokeOn("flushAndShutdownExecutors", Datadog)
-            simpleInvokeOn("stop", Datadog)
-
-            val rumRegisteredField = GlobalRum::class.java.getDeclaredField("isRegistered")
-            rumRegisteredField.isAccessible = true
-            val isRegistered: AtomicBoolean = rumRegisteredField.get(null) as AtomicBoolean
-            isRegistered.set(false)
+            stop()
         }.get()
 
         result.success(null)
