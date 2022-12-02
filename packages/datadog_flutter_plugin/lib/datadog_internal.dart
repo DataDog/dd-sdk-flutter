@@ -9,9 +9,9 @@
 import 'dart:math';
 
 import 'datadog_flutter_plugin.dart';
-import 'src/datadog_sdk_platform_interface.dart';
 
 export 'src/attributes.dart';
+export 'src/datadog_sdk_platform_interface.dart';
 export 'src/rum/attributes.dart';
 
 final Random _traceRandom = Random();
@@ -62,7 +62,6 @@ enum LateConfigurationProperty {
 extension DatadogInternal on DatadogSdk {
   /// Update a late configuration property
   void updateConfigurationInfo(LateConfigurationProperty property, bool value) {
-    DatadogSdkPlatform.instance
-        .updateTelemetryConfiguration(property.name, value);
+    platform.updateTelemetryConfiguration(property.name, value);
   }
 }

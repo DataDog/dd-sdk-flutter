@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_tracking_http_client/src/tracking_http.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -14,6 +15,8 @@ import 'package:mocktail/mocktail.dart';
 import 'test_utils.dart';
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
+
+class MockDatadogSdkPlatform extends Mock implements DatadogSdkPlatform {}
 
 class MockDdRum extends Mock implements DdRum {}
 
@@ -25,6 +28,7 @@ class FakeBaseRequest extends Fake implements http.BaseRequest {}
 
 void main() {
   late MockDatadogSdk mockDatadog;
+  late MockDatadogSdkPlatform mockPlatform;
   late MockClient mockClient;
   late MockStreamedResponse mockResponse;
 
@@ -34,11 +38,16 @@ void main() {
   });
 
   setUp(() {
+    mockPlatform = MockDatadogSdkPlatform();
+    when(() => mockPlatform.updateTelemetryConfiguration(any(), any()))
+        .thenAnswer((_) => Future<void>.value());
+
     mockDatadog = MockDatadogSdk();
     when(() => mockDatadog.isFirstPartyHost(
         any(that: HasHost(equals('test_url'))))).thenReturn(true);
     when(() => mockDatadog.isFirstPartyHost(
         any(that: HasHost(equals('non_first_party'))))).thenReturn(false);
+    when(() => mockDatadog.platform).thenReturn(mockPlatform);
 
     mockResponse = MockStreamedResponse();
     when(() => mockResponse.stream)

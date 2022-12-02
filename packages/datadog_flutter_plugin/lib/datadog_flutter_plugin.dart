@@ -75,6 +75,9 @@ class DatadogSdk {
   @internal
   final InternalLogger internalLogger = InternalLogger();
 
+  /// Internal extension access to the configured platform
+  DatadogSdkPlatform get platform => _platform;
+
   /// Set the verbosity of the Datadog SDK. Set to [Verbosity.info] by
   /// default. All internal logging is enabled only when [kDebugMode] is
   /// set.
