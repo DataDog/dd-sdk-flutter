@@ -9,6 +9,8 @@ import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddlogs_platform_interface.dart';
 
+export 'ddlog_event.dart';
+
 const _uuid = Uuid();
 
 /// An interface for sending logs to Datadog.

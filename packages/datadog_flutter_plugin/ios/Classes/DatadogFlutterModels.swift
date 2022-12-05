@@ -150,7 +150,7 @@ class DatadogFlutterConfiguration {
         }
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     func toDdConfig() -> Datadog.Configuration {
         let ddConfigBuilder: Datadog.Configuration.Builder
         if let rumConfig = rumConfiguration {

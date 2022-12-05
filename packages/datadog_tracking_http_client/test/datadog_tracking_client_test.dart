@@ -72,7 +72,7 @@ void main() {
       final client =
           DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
       final testUri = Uri.parse('https://test_url/test');
-      final response =
+      final _ =
           await client.get(testUri, headers: {'x-datadog-header': 'header'});
 
       final captured = verify(() => mockClient.send(captureAny())).captured[0]
@@ -156,7 +156,7 @@ void main() {
       final future =
           client.get(testUri, headers: {'x-datadog-header': 'header'});
 
-      final response = await future;
+      final _ = await future;
 
       final key = verify(() => mockRum.startResourceLoading(
               captureAny(), RumHttpMethod.get, testUri.toString(), any()))
@@ -179,7 +179,7 @@ void main() {
       final future =
           client.get(testUri, headers: {'x-datadog-header': 'header'});
 
-      final response = await future;
+      final _ = await future;
 
       final key = verify(() => mockRum.startResourceLoading(
               captureAny(), RumHttpMethod.get, testUri.toString(), any()))
@@ -220,9 +220,6 @@ void main() {
           DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
       final testUri = Uri.parse('https://test_url/test');
 
-      final errorToThrow = Error();
-      final streamController = StreamController<List<int>>();
-      Object? thrownError;
       when(() => mockResponse.stream).thenAnswer(
           (_) => http.ByteStream.fromBytes([1, 2, 3, 4, 5, 122, 121, 120]));
 

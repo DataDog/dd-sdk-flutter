@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import 'datadog_configuration.dart';
 import 'datadog_sdk_platform_interface.dart';
+import 'logs/ddlog_event.dart';
 
 class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   @visibleForTesting
@@ -41,15 +42,13 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   @override
   Future<void> initialize(DdSdkConfiguration configuration,
       {LogCallback? logCallback}) async {
+    final callbackHandler = MethodCallHandler(
+      logCallback: logCallback,
+      logEventMapper: configuration.logEventMapper,
+    );
+
     if (logCallback != null) {
-      methodChannel.setMethodCallHandler((call) {
-        switch (call.method) {
-          case 'logCallback':
-            logCallback(call.arguments as String);
-            break;
-        }
-        return Future<void>.value();
-      });
+      methodChannel.setMethodCallHandler(callbackHandler.handleMethodCall);
     }
 
     await methodChannel.invokeMethod<void>('initialize', {
@@ -97,5 +96,80 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
       'option': property,
       'value': value,
     });
+  }
+}
+
+@visibleForTesting
+class MethodCallHandler {
+  final LogCallback? logCallback;
+  final LogEventMapper? logEventMapper;
+
+  MethodCallHandler({
+    this.logCallback,
+    this.logEventMapper,
+  });
+
+  Future<dynamic> handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'logCallback':
+        logCallback?.call(call.arguments as String);
+        return null;
+      case 'mapLogEvent':
+        return _mapLogEvent(call);
+    }
+  }
+
+  Map<Object?, Object?>? _mapLogEvent(MethodCall call) {
+    // This is the same list as in LogEvent.kt
+    const reservedAttributes = [
+      'status',
+      'service',
+      'message',
+      'date',
+      'logger',
+      '_dd',
+      'usr',
+      'network',
+      'error',
+      'ddtags'
+    ];
+
+    try {
+      final logEventJson = call.arguments['event'] as Map;
+      if (logEventMapper == null) {
+        // TELEMETRY: Call to the log event mapper when one isn't set (this shouldn't happen)
+        return logEventJson;
+      }
+
+      final logEvent = LogEvent.fromJson(logEventJson);
+      // Pull out any extra attributes
+      for (final item in logEventJson.entries) {
+        final key = item.key as String;
+        if (!reservedAttributes.contains(key)) {
+          logEvent.attributes[key] = item.value;
+        }
+      }
+
+      final mappedLogEvent = logEventMapper?.call(logEvent);
+      if (mappedLogEvent == null) {
+        return null;
+      }
+
+      final mappedJson = mappedLogEvent.toJson();
+      for (final item in mappedLogEvent.attributes.entries) {
+        // Put extra attributes back
+        if (!reservedAttributes.contains(item.key)) {
+          mappedJson[item.key] = item.value;
+        }
+      }
+      return mappedJson;
+    } catch (e) {
+      // Internal telemetry
+      print(e);
+    }
+
+    // Return a special map which will indicate to native code something went wrong, and
+    // we should send the unmodified event.
+    return {'error': 'mapper error'};
   }
 }

@@ -19,7 +19,10 @@ void main() {
   // is instrumented, we expect nothing to be sent back to Datadog
   testWidgets('test auto instrumentation with no results',
       (WidgetTester tester) async {
-    var recordedSession = await openTestScenario(tester, 'Auto RUM Scenario');
+    var recordedSession = await openTestScenario(
+      tester,
+      menuTitle: 'Auto RUM Scenario',
+    );
 
     await performRumUserFlow(tester);
     var requestLog = <RequestLog>[];

@@ -6,6 +6,7 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - "**/*.mocks.dart"
+    - "**/*.g.dart"
   strong-mode:
     implicit-dynamic: false
 

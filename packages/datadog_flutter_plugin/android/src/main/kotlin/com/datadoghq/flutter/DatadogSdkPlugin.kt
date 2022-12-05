@@ -5,19 +5,22 @@
  */
 package com.datadoghq.flutter
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
-import com.datadog.android._InternalProxy
 import com.datadog.android.event.EventMapper
+import com.datadog.android.log.model.LogEvent
 import com.datadog.android.rum.GlobalRum
-import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
+import com.google.gson.JsonObject
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.Semaphore
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -175,21 +178,21 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     fun initialize(config: DatadogFlutterConfiguration) {
-        val configurationBuilder = config.toSdkConfiguration()
+        val configBuilder = config.toSdkConfigurationBuilder()
         val credentials = config.toCredentials()
 
-        _InternalProxy.setTelemetryConfigurationEventMapper(
-            configurationBuilder,
-            object : EventMapper<TelemetryConfigurationEvent> {
-                override fun map(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent? {
-                    return mapTelemetryConfiguration(event)
+        if (config.attachLogMapper) {
+            configBuilder.setLogEventMapper(
+                object : EventMapper<LogEvent> {
+                    override fun map(event: LogEvent): LogEvent? {
+                        return mapLogEvent(event)
+                    }
                 }
-            }
-
-        )
+            )
+        }
 
         Datadog.initialize(
-            binding.applicationContext, credentials, configurationBuilder.build(),
+            binding.applicationContext, credentials, configBuilder.build(),
             config.trackingConsent
         )
 
@@ -272,6 +275,65 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         isRegistered.set(false)
     }
 
+    private fun mapLogEvent(event: LogEvent): LogEvent? {
+        var modifiedEvent: LogEvent? = null
+        val jsonEvent = event.toJson().asMap()
+
+        val semaphore = Semaphore(1)
+        semaphore.acquire()
+
+        val handler = Handler(Looper.getMainLooper())
+        handler.post {
+            try {
+                channel.invokeMethod("mapLogEvent", mapOf(
+                    "event" to jsonEvent
+                ), object : MethodChannel.Result {
+                    override fun success(result: Any?) {
+                        val modifiedEventJson = result as? Map<String, Any?>
+                        modifiedEventJson?.let {
+                            modifiedEvent = LogEvent.fromJsonObject(it.toJsonObject())
+                        }
+                        semaphore.release()
+                    }
+
+                    override fun error(
+                        errorCode: String,
+                        errorMessage: String?,
+                        errorDetails: Any?
+                    ) {
+                        semaphore.release()
+                    }
+
+                    override fun notImplemented() {
+                        // TELEMETRY
+                        semaphore.release()
+                    }
+                })
+            } catch (t: Throwable) {
+                // TELEMETRY
+                semaphore.release()
+            }
+        }
+        // Stalls until the method channel finishes
+        semaphore.acquire()
+
+        // Replace any modifyable info with the new event
+        return modifiedEvent?.let {
+            event.status = it.status
+            event.message = it.message
+            event.ddtags = it.ddtags
+            event.logger.name = it.logger.name
+
+            event.error?.kind = it.error?.kind
+            event.error?.message = it.error?.message
+            event.error?.stack = it.error?.stack
+
+            event.additionalProperties.clear()
+            event.additionalProperties.putAll(it.additionalProperties)
+            return event
+        }
+    }
+
     internal fun invokePrivateShutdown(result: Result) {
         executor.submit {
             simpleInvokeOn("flushAndShutdownExecutors", Datadog)
@@ -287,6 +349,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         logsPlugin.detachFromEngine()
         rumPlugin.detachFromEngine()
     }
+
 }
 
 internal const val DATADOG_FLUTTER_TAG = "DatadogFlutter"

@@ -10,6 +10,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'example_app.dart';
 
+LogEvent? _testLogEventMapper(LogEvent event) {
+  return null;
+}
+
 void main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +27,7 @@ void main() async {
       site: DatadogSite.us1,
       trackingConsent: TrackingConsent.granted,
       nativeCrashReportEnabled: true,
+      logEventMapper: _testLogEventMapper,
       loggingConfiguration: LoggingConfiguration(
         sendNetworkInfo: true,
         printLogsToConsole: true,
