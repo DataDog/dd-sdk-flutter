@@ -15,6 +15,10 @@ enum ResultStatus: EquatableInTests {
     case called(value: Any?)
 }
 
+extension RUMAddLongTaskCommand: EquatableInTests {
+    
+}
+
 // MARK: - Tests
 
 // swiftlint:disable:next type_body_length
@@ -436,12 +440,12 @@ class DatadogRumPluginTests: XCTestCase {
             resultStatus = ResultStatus.called(value: result)
         }
 
-        let mockInternal = mock._internal as! MockRumInternalProxy
-        XCTAssertEqual(mockInternal.callLog, [
-            .addLongTask(at: Date(timeIntervalSince1970: startTimeInterval),
-                         duration: TimeInterval(Double(duration) / 1000.0),
-                         attributes: [:])
-        ])
+        let command = mock.commands.first as? RUMAddLongTaskCommand
+        XCTAssertNotNil(command)
+        XCTAssertEqual(command, RUMAddLongTaskCommand(time: Date(timeIntervalSince1970: startTimeInterval),
+                                                      attributes: [:],
+                                                      duration: TimeInterval(Double(duration) / 1000.0))
+        )
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
@@ -473,7 +477,7 @@ class DatadogRumPluginTests: XCTestCase {
 
 // MARK: - MockRUMMonitor
 
-class MockRUMMonitor: DDRUMMonitor {
+class MockRUMMonitor: DDRUMMonitor, RUMCommandSubscriber {
     enum MethodCall: EquatableInTests {
         case startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue])
         case stopView(key: String, attributes: [AttributeKey: AttributeValue])
@@ -502,11 +506,10 @@ class MockRUMMonitor: DDRUMMonitor {
     }
 
     var callLog: [MethodCall] = []
+    var commands: [RUMCommand] = []
 
     override init() {
         super.init()
-
-        _internal = MockRumInternalProxy(subscriber: NOOPCommandSubscriber())
     }
 
     override func startView(key: String, name: String? = nil, attributes: [AttributeKey: AttributeValue] = [:]) {
@@ -597,24 +600,11 @@ class MockRUMMonitor: DDRUMMonitor {
     ) {
         callLog.append(.updatePerformanceMetric(metric: metric, value: value, attributes: attributes))
     }
-}
 
-class NOOPCommandSubscriber: RUMCommandSubscriber {
+    /// Processes the given RUM Command.
+    ///
+    /// - Parameter command: The RUM command to process.
     func process(command: RUMCommand) {
-        // NOOP
-    }
-}
-
-class MockRumInternalProxy: _RUMInternalProxy {
-    enum MethodCall: EquatableInTests {
-        // swiftlint:disable:next identifier_name
-        case addLongTask(at: Date, duration: TimeInterval, attributes: [AttributeKey: AttributeValue])
-    }
-
-    var callLog: [MethodCall] = []
-
-    // swiftlint:disable:next identifier_name
-    override func addLongTask(at: Date, duration: TimeInterval, attributes: [AttributeKey: AttributeValue]) {
-        callLog.append(.addLongTask(at: at, duration: duration, attributes: attributes))
+        commands.append(command)
     }
 }

@@ -231,7 +231,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             if let atTime = arguments["at"] as? NSNumber,
                let duration = arguments["duration"] as? NSNumber {
                 let atDate = Date(timeIntervalSince1970: TimeInterval(atTime.doubleValue / 1000.0))
-                rum._internal?.addLongTask(at: atDate, duration: TimeInterval(duration.doubleValue / 1000.0))
+                rum._internal.addLongTask(at: atDate, duration: TimeInterval(duration.doubleValue / 1000.0))
                 result(nil)
             } else {
                 result(
