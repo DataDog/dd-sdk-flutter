@@ -13,7 +13,6 @@ import com.datadog.android.Datadog
 import com.datadog.android.event.EventMapper
 import com.datadog.android.log.model.LogEvent
 import com.datadog.android.rum.GlobalRum
-import com.google.gson.JsonObject
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -275,9 +274,11 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         isRegistered.set(false)
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private fun mapLogEvent(event: LogEvent): LogEvent? {
-        var modifiedEvent: LogEvent? = null
         val jsonEvent = event.toJson().asMap()
+
+        var modifiedJson: Map<String, Any?>? = null
 
         val semaphore = Semaphore(1)
         semaphore.acquire()
@@ -285,51 +286,68 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         val handler = Handler(Looper.getMainLooper())
         handler.post {
             try {
-                channel.invokeMethod("mapLogEvent", mapOf(
-                    "event" to jsonEvent
-                ), object : MethodChannel.Result {
-                    override fun success(result: Any?) {
-                        val modifiedEventJson = result as? Map<String, Any?>
-                        modifiedEventJson?.let {
-                            modifiedEvent = LogEvent.fromJsonObject(it.toJsonObject())
+                channel.invokeMethod(
+                    "mapLogEvent",
+                    mapOf(
+                        "event" to jsonEvent
+                    ),
+                    object : MethodChannel.Result {
+                        override fun success(result: Any?) {
+                            modifiedJson = result as? Map<String, Any?>
+                            semaphore.release()
                         }
-                        semaphore.release()
-                    }
 
-                    override fun error(
-                        errorCode: String,
-                        errorMessage: String?,
-                        errorDetails: Any?
-                    ) {
-                        semaphore.release()
-                    }
+                        override fun error(
+                            errorCode: String,
+                            errorMessage: String?,
+                            errorDetails: Any?
+                        ) {
+                            // No telemetry needed, this is likely an issue in user code
+                            semaphore.release()
+                        }
 
-                    override fun notImplemented() {
-                        // TELEMETRY
-                        semaphore.release()
+                        override fun notImplemented() {
+                            Datadog._internal._telemetry.error(
+                                "mapLogEvent returned notImplemented."
+                            )
+                            semaphore.release()
+                        }
                     }
-                })
+                )
             } catch (t: Throwable) {
-                // TELEMETRY
+                Datadog._internal._telemetry.error("Attempting call mapLogEvent failed.", t)
                 semaphore.release()
             }
         }
         // Stalls until the method channel finishes
         semaphore.acquire()
 
-        // Replace any modifyable info with the new event
-        return modifiedEvent?.let {
-            event.status = it.status
-            event.message = it.message
-            event.ddtags = it.ddtags
-            event.logger.name = it.logger.name
+        try {
+            var modifiedEvent: LogEvent? = null
+            modifiedJson?.let {
+                modifiedEvent = LogEvent.fromJsonObject(it.toJsonObject())
+            }
 
-            event.error?.kind = it.error?.kind
-            event.error?.message = it.error?.message
-            event.error?.stack = it.error?.stack
 
-            event.additionalProperties.clear()
-            event.additionalProperties.putAll(it.additionalProperties)
+            // Replace any modifyable info with the new event
+            return modifiedEvent?.let {
+                event.status = it.status
+                event.message = it.message
+                event.ddtags = it.ddtags
+                event.logger.name = it.logger.name
+
+                event.error?.kind = it.error?.kind
+                event.error?.message = it.error?.message
+                event.error?.stack = it.error?.stack
+
+                event.additionalProperties.clear()
+                event.additionalProperties.putAll(it.additionalProperties)
+                return event
+            }
+        } catch (t: Throwable) {
+            Datadog._internal._telemetry.error(
+                "Attempting deserialized mapped log event failed, returning unmodified event", t
+            )
             return event
         }
     }
@@ -349,7 +367,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         logsPlugin.detachFromEngine()
         rumPlugin.detachFromEngine()
     }
-
 }
 
 internal const val DATADOG_FLUTTER_TAG = "DatadogFlutter"

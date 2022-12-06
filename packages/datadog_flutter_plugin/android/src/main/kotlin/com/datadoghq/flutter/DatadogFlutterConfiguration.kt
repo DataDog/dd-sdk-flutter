@@ -166,7 +166,7 @@ data class DatadogFlutterConfiguration(
         }
         configBuilder.setFirstPartyHosts(firstPartyHosts)
 
-        return configBuilder;
+        return configBuilder
     }
 }
 
