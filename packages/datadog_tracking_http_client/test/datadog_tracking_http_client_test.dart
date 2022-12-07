@@ -15,6 +15,8 @@ import 'test_utils.dart';
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
 
+class MockDatadogSdkPlatform extends Mock implements DatadogSdkPlatform {}
+
 class MockDdRum extends Mock implements DdRum {}
 
 class MockHttpClient extends Mock implements HttpClient {}
@@ -41,6 +43,7 @@ class MockHttpClientResponse extends Mock implements HttpClientResponse {
 
 void main() {
   late MockDatadogSdk mockDatadog;
+  late MockDatadogSdkPlatform mockPlatform;
   late MockDdRum mockRum;
   late MockHttpClient mockClient;
 
@@ -51,11 +54,17 @@ void main() {
   });
 
   setUp(() {
+    mockPlatform = MockDatadogSdkPlatform();
+    when(() => mockPlatform.updateTelemetryConfiguration(any(), any()))
+        .thenAnswer((_) => Future<void>.value());
+
     mockDatadog = MockDatadogSdk();
     when(() => mockDatadog.isFirstPartyHost(
         any(that: HasHost(equals('test_url'))))).thenReturn(true);
     when(() => mockDatadog.isFirstPartyHost(
         any(that: HasHost(equals('non_first_party'))))).thenReturn(false);
+    when(() => mockDatadog.platform).thenReturn(mockPlatform);
+
     mockRum = MockDdRum();
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
     when(() => mockRum.tracingSamplingRate).thenReturn(50.0);

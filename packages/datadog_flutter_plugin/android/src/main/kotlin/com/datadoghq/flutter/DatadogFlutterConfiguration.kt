@@ -122,7 +122,7 @@ data class DatadogFlutterConfiguration(
     }
 
     @Suppress("ComplexMethod")
-    fun toSdkConfiguration(): Configuration {
+    fun toSdkConfiguration(): Configuration.Builder {
         val configBuilder = Configuration.Builder(
             // Always enable logging as users can create logs post initialization
             logsEnabled = true,
@@ -163,7 +163,7 @@ data class DatadogFlutterConfiguration(
         }
         configBuilder.setFirstPartyHosts(firstPartyHosts)
 
-        return configBuilder.build()
+        return configBuilder
     }
 }
 

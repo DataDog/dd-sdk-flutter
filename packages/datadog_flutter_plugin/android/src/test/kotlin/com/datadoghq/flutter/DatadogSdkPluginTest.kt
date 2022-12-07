@@ -571,4 +571,62 @@ class DatadogSdkPluginTest {
         assertThat(userInfo?.additionalProperties).isEqualTo(extraInfo)
         verify(mockResult).success(null)
     }
+
+    @Test
+    fun `M set correct telemetry overrides W updateTelemetryConfiguration`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val configuration = DatadogFlutterConfiguration(
+            clientToken = forge.aString(),
+            env = forge.anAlphabeticalString(),
+            nativeCrashReportEnabled = false,
+            trackingConsent = TrackingConsent.GRANTED
+        )
+        plugin.initialize(configuration)
+
+        val trackViewsManually = forge.aBool()
+        val trackInteractions = forge.aBool()
+        val trackErrors = forge.aBool()
+        val trackNetworkRequests = forge.aBool()
+        val trackNativeViews = forge.aBool()
+        val trackCrossPlatformLongTasks = forge.aBool()
+        val trackFlutterPerformance = forge.aBool()
+
+        fun callAndCheck(property: String, value: Boolean, check: () -> Unit) {
+            var methodCall = MethodCall(
+                "updateTelemetryConfiguration",
+                mapOf(
+                    "option" to property,
+                    "value" to value
+                )
+            )
+            val mockResult = mock<MethodChannel.Result>()
+            plugin.onMethodCall(methodCall, mockResult)
+            verify(mockResult).success(null)
+            check()
+        }
+
+        callAndCheck("trackViewsManually", trackViewsManually) {
+            assertThat(plugin.telemetryOverrides.trackViewsManually).isEqualTo(trackViewsManually)
+        }
+        callAndCheck("trackInteractions", trackInteractions) {
+            assertThat(plugin.telemetryOverrides.trackInteractions).isEqualTo(trackInteractions)
+        }
+        callAndCheck("trackErrors", trackErrors) {
+            assertThat(plugin.telemetryOverrides.trackErrors).isEqualTo(trackErrors)
+        }
+        callAndCheck("trackNetworkRequests", trackNetworkRequests) {
+            assertThat(plugin.telemetryOverrides.trackNetworkRequests).isEqualTo(trackNetworkRequests)
+        }
+        callAndCheck("trackNativeViews", trackNativeViews) {
+            assertThat(plugin.telemetryOverrides.trackNativeViews).isEqualTo(trackNativeViews)
+        }
+        callAndCheck("trackCrossPlatformLongTasks", trackCrossPlatformLongTasks) {
+            assertThat(plugin.telemetryOverrides.trackCrossPlatformLongTasks).isEqualTo(trackCrossPlatformLongTasks)
+        }
+        callAndCheck("trackFlutterPerformance", trackFlutterPerformance) {
+            assertThat(plugin.telemetryOverrides.trackFlutterPerformance).isEqualTo(trackFlutterPerformance)
+        }
+    }
 }

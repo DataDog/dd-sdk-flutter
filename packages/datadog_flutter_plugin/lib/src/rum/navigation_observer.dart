@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import '../../datadog_internal.dart';
 import '../helpers.dart';
 
 /// Information about a View that will be passed to [DdRum.startView]
@@ -71,6 +72,8 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
     this.viewInfoExtractor = defaultViewInfoExtractor,
   }) {
     ambiguate(WidgetsBinding.instance)?.addObserver(this);
+    datadogSdk.updateConfigurationInfo(
+        LateConfigurationProperty.trackViewsManually, false);
   }
 
   @override

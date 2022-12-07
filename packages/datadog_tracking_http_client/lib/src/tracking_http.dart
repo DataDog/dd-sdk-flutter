@@ -44,7 +44,10 @@ class DatadogClient extends http.BaseClient {
   DatadogClient({
     required this.datadogSdk,
     http.Client? innerClient,
-  }) : _innerClient = innerClient ?? http.Client();
+  }) : _innerClient = innerClient ?? http.Client() {
+    datadogSdk.updateConfigurationInfo(
+        LateConfigurationProperty.trackNetworkRequests, true);
+  }
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {

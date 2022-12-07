@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 
-import 'src/attributes.dart';
+import 'datadog_internal.dart';
 import 'src/datadog_configuration.dart';
 import 'src/datadog_plugin.dart';
 import 'src/datadog_sdk_platform_interface.dart';
@@ -75,6 +75,9 @@ class DatadogSdk {
   @internal
   final InternalLogger internalLogger = InternalLogger();
 
+  /// Internal extension access to the configured platform
+  DatadogSdkPlatform get platform => _platform;
+
   /// Set the verbosity of the Datadog SDK. Set to [Verbosity.info] by
   /// default. All internal logging is enabled only when [kDebugMode] is
   /// set.
@@ -117,6 +120,8 @@ class DatadogSdk {
       };
 
       await DatadogSdk.instance.initialize(configuration);
+      DatadogSdk.instance
+          .updateConfigurationInfo(LateConfigurationProperty.trackErrors, true);
 
       runner();
     }, (e, s) {
@@ -142,6 +147,13 @@ class DatadogSdk {
     }
     if (configuration.rumConfiguration != null) {
       _rum = DdRum(configuration.rumConfiguration!, internalLogger);
+
+      // Update 'late' configuration
+      updateConfigurationInfo(LateConfigurationProperty.trackFlutterPerformance,
+          configuration.rumConfiguration!.reportFlutterPerformance);
+      updateConfigurationInfo(
+          LateConfigurationProperty.trackCrossPlatformLongTasks,
+          configuration.rumConfiguration!.detectLongTasks);
     }
 
     _initializePlugins(configuration.additionalPlugins);

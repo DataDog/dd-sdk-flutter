@@ -194,4 +194,23 @@ void main() {
       })
     ]);
   });
+
+  test('updateTelemetryConfiguration calls to method channel', () {
+    final st = StackTrace.current;
+    unawaited(
+        ddSdkPlatform.updateTelemetryConfiguration('telemetryProperty', true));
+    unawaited(ddSdkPlatform.updateTelemetryConfiguration(
+        'secondTelemetryProperty', false));
+
+    expect(log, [
+      isMethodCall('updateTelemetryConfiguration', arguments: {
+        'option': 'telemetryProperty',
+        'value': true,
+      }),
+      isMethodCall('updateTelemetryConfiguration', arguments: {
+        'option': 'secondTelemetryProperty',
+        'value': false,
+      })
+    ]);
+  });
 }

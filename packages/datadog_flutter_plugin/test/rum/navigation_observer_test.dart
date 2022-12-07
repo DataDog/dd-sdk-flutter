@@ -3,9 +3,12 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+
+class MockDatadogSdkPlatform extends Mock implements DatadogSdkPlatform {}
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
 
@@ -13,13 +16,19 @@ class MockDdRum extends Mock implements DdRum {}
 
 void main() {
   late MockDdRum mockRum;
+  late MockDatadogSdkPlatform mockPlatform;
   late MockDatadogSdk mockDatadog;
 
   setUp(() {
     mockRum = MockDdRum();
+    mockPlatform = MockDatadogSdkPlatform();
     mockDatadog = MockDatadogSdk();
 
+    when(() => mockPlatform.updateTelemetryConfiguration(any(), any()))
+        .thenAnswer((_) => Future<void>.value());
+
     when(() => mockDatadog.rum).thenReturn(mockRum);
+    when(() => mockDatadog.platform).thenReturn(mockPlatform);
     when(() => mockRum.startView(any(), any(), any()))
         .thenAnswer((_) => Future<void>.value());
     when(() => mockRum.stopView(any(), any()))

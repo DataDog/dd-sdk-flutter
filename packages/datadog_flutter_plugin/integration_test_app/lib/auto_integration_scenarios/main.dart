@@ -52,6 +52,7 @@ Future<void> main() async {
     nativeCrashReportEnabled: true,
     firstPartyHosts: firstPartyHosts,
     customLogsEndpoint: customEndpoint,
+    telemetrySampleRate: 100,
     loggingConfiguration: LoggingConfiguration(
       sendNetworkInfo: true,
       printLogsToConsole: true,
