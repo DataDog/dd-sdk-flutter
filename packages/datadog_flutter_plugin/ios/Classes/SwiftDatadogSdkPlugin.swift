@@ -169,7 +169,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             rum?.initialize(configuration: rumConfiguration)
         }
 
-        Datadog._internal._telemetry.setTelemetryConfigurationMapper { [weak self] event in
+        Datadog._internal.telemetry.setConfigurationMapper { [weak self] event in
             guard let self = self else {
                 return event
             }
@@ -220,7 +220,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         }
 
         if !wasValid {
-            Datadog._internal._telemetry.debug(
+            Datadog._internal.telemetry.debug(
                 id: "datadog_flutter:configuration_error",
                 message: "Attempting to set telemetry configuration option '\(String(describing: option))'" +
                     " to '\(String(describing: value))', which is invalid.")
