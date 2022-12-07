@@ -241,11 +241,14 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         case "updatePerformanceMetrics":
             if let buildTimes = arguments["buildTimes"] as? [Double],
                let rasterTimes = arguments["rasterTimes"] as? [Double] {
+                // TODO: Time isn't that important here, but in the future we should get it either
+                // from Flutter or from the timeProvider anyway
+                let date = Date()
                 buildTimes.forEach { val in
-                    rum.updatePerformanceMetric(metric: .flutterBuildTime, value: val)
+                    rum._internal.updatePerformanceMetric(at: date, metric: .flutterBuildTime, value: val)
                 }
                 rasterTimes.forEach { val in
-                    rum.updatePerformanceMetric(metric: .flutterRasterTime, value: val)
+                    rum._internal.updatePerformanceMetric(at: date, metric: .flutterRasterTime, value: val)
                 }
                 result(nil)
             } else {
