@@ -52,7 +52,7 @@ enum LateConfigurationProperty {
   /// always the same as trackLongTasks
   trackCrossPlatformLongTasks,
 
-  /// Whether native views are being tracked. Currently Unused.
+  /// Whether native views are being tracked. Currently unused.
   trackNativeViews,
 
   /// Whether [DdSdkConfiguration.reportFlutterPerformance] was set to true
