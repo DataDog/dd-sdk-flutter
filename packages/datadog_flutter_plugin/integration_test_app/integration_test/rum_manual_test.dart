@@ -257,7 +257,7 @@ void main() {
 
     // Verify service name in RUM events
     for (final event in rumLog) {
-      if (!kIsWeb && Platform.isIOS) {
+      if (!kIsWeb && Platform.isIOS && event.eventType != 'telemetry') {
         expect(event.service, 'com.datadoghq.flutter.integration');
         expect(event.version, '1.2.3-555');
       }
