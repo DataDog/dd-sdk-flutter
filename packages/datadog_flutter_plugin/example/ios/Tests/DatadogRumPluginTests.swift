@@ -463,13 +463,22 @@ class DatadogRumPluginTests: XCTestCase {
             resultStatus = .called(value: result)
         }
 
-        buildTimes.forEach { val in
-            XCTAssert(mock.callLog.contains(
-                .updatePerformanceMetric(metric: .flutterBuildTime, value: val, attributes: [:])))
-        }
-        rasterTimes.forEach { val in
-            XCTAssert(mock.callLog.contains(
-                .updatePerformanceMetric(metric: .flutterRasterTime, value: val, attributes: [:])))
+        let commands = mock.commands
+        XCTAssertEqual(commands.count, 6)
+        if commands.count == 6 {
+            XCTAssertEqual((commands[0] as! RUMUpdatePerformanceMetric).metric, .flutterBuildTime)
+            XCTAssertEqual((commands[0] as! RUMUpdatePerformanceMetric).value, 0.44)
+            XCTAssertEqual((commands[1] as! RUMUpdatePerformanceMetric).metric, .flutterBuildTime)
+            XCTAssertEqual((commands[1] as! RUMUpdatePerformanceMetric).value, 1.23)
+            XCTAssertEqual((commands[2] as! RUMUpdatePerformanceMetric).metric, .flutterBuildTime)
+            XCTAssertEqual((commands[2] as! RUMUpdatePerformanceMetric).value, 6.5)
+
+            XCTAssertEqual((commands[3] as! RUMUpdatePerformanceMetric).metric, .flutterRasterTime)
+            XCTAssertEqual((commands[3] as! RUMUpdatePerformanceMetric).value, 11.2)
+            XCTAssertEqual((commands[4] as! RUMUpdatePerformanceMetric).metric, .flutterRasterTime)
+            XCTAssertEqual((commands[4] as! RUMUpdatePerformanceMetric).value, 68.1)
+            XCTAssertEqual((commands[5] as! RUMUpdatePerformanceMetric).metric, .flutterRasterTime)
+            XCTAssertEqual((commands[5] as! RUMUpdatePerformanceMetric).value, 0.223)
         }
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
@@ -498,11 +507,6 @@ class MockRUMMonitor: DDRUMMonitor, RUMCommandSubscriber {
         case stopUserAction(type: RUMUserActionType, name: String?, attributes: [AttributeKey: AttributeValue])
         case addAttribute(forKey: AttributeKey, value: AttributeValue)
         case removeAttribute(forKey: AttributeKey)
-        case updatePerformanceMetric(
-            metric: PerformanceMetric,
-            value: Double,
-            attributes: [AttributeKey: AttributeValue]
-        )
     }
 
     var callLog: [MethodCall] = []
@@ -591,14 +595,6 @@ class MockRUMMonitor: DDRUMMonitor, RUMCommandSubscriber {
     override func stopUserAction(type: RUMUserActionType, name: String? = nil,
                                  attributes: [AttributeKey: AttributeValue] = [:]) {
         callLog.append(.stopUserAction(type: type, name: name, attributes: attributes))
-    }
-
-    override func updatePerformanceMetric(
-        metric: PerformanceMetric,
-        value: Double,
-        attributes: [AttributeKey: AttributeValue] = [:]
-    ) {
-        callLog.append(.updatePerformanceMetric(metric: metric, value: value, attributes: attributes))
     }
 
     /// Processes the given RUM Command.
