@@ -298,6 +298,11 @@ struct FlutterLogEventMapper: LogEventMapper {
                 return
             }
 
+            if result["_dd.mapper_error"] != nil {
+                // Error in the mapper, return the unmapped event
+                callback(event)
+            }
+
             // Don't bother to decode, just pull modifiable properties straight from the
             // dictionary.
             var event = event
@@ -318,7 +323,6 @@ struct FlutterLogEventMapper: LogEventMapper {
                 }
                 event.attributes.userAttributes[key] = castAnyToEncodable(value)
             }
-
 
             callback(event)
         }

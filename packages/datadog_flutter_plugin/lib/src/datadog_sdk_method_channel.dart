@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import 'datadog_configuration.dart';
 import 'datadog_sdk_platform_interface.dart';
+import 'internal_logger.dart';
 import 'logs/ddlog_event.dart';
 
 class DatadogSdkMethodChannel extends DatadogSdkPlatform {
@@ -40,11 +41,15 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   }
 
   @override
-  Future<void> initialize(DdSdkConfiguration configuration,
-      {LogCallback? logCallback}) async {
+  Future<void> initialize(
+    DdSdkConfiguration configuration, {
+    LogCallback? logCallback,
+    required InternalLogger internalLogger,
+  }) async {
     final callbackHandler = MethodCallHandler(
       logCallback: logCallback,
       logEventMapper: configuration.logEventMapper,
+      internalLogger: internalLogger,
     );
 
     if (logCallback != null) {
@@ -103,10 +108,12 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 class MethodCallHandler {
   final LogCallback? logCallback;
   final LogEventMapper? logEventMapper;
+  final InternalLogger internalLogger;
 
   MethodCallHandler({
     this.logCallback,
     this.logEventMapper,
+    required this.internalLogger,
   });
 
   Future<dynamic> handleMethodCall(MethodCall call) async {
@@ -138,9 +145,13 @@ class MethodCallHandler {
       final logEventJson = call.arguments['event'] as Map;
       if (logEventMapper == null) {
         // TELEMETRY: Call to the log event mapper when one isn't set (this shouldn't happen)
+        final st = StackTrace.current;
+        internalLogger.sendToDatadog(
+            'Log event mapper called but no logEventMapper is set,',
+            st,
+            'InternalDatadogError');
         return logEventJson;
       }
-
       final logEvent = LogEvent.fromJson(logEventJson);
       // Pull out any extra attributes
       for (final item in logEventJson.entries) {
@@ -150,9 +161,16 @@ class MethodCallHandler {
         }
       }
 
-      final mappedLogEvent = logEventMapper?.call(logEvent);
-      if (mappedLogEvent == null) {
-        return null;
+      var mappedLogEvent = logEvent;
+      try {
+        final mappedLogEvent = logEventMapper?.call(logEvent);
+        if (mappedLogEvent == null) {
+          return null;
+        }
+      } catch (e) {
+        // User error, return unmapped, but report
+        internalLogger.error(
+            'logEventMapper threw an exception: ${e.toString()}.\nReturning unmapped event.');
       }
 
       final mappedJson = mappedLogEvent.toJson();
@@ -163,13 +181,13 @@ class MethodCallHandler {
         }
       }
       return mappedJson;
-    } catch (e) {
-      // Internal telemetry
-      print(e);
+    } catch (e, st) {
+      internalLogger.sendToDatadog('Error mapping log event: ${e.toString()}',
+          st, e.runtimeType.toString());
     }
 
     // Return a special map which will indicate to native code something went wrong, and
     // we should send the unmodified event.
-    return {'error': 'mapper error'};
+    return {'_dd.mapper_error': 'mapper error'};
   }
 }

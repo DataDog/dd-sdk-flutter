@@ -140,7 +140,8 @@ class DatadogSdk {
 
     _setFirstPartyHosts(configuration.firstPartyHosts);
 
-    await _platform.initialize(configuration, logCallback: _platformLog);
+    await _platform.initialize(configuration,
+        logCallback: _platformLog, internalLogger: internalLogger);
 
     if (configuration.loggingConfiguration != null) {
       _logs = createLogger(configuration.loggingConfiguration!);

@@ -5,6 +5,7 @@
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_flutter_plugin/src/datadog_sdk_platform_interface.dart';
+import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -27,6 +28,7 @@ class MockDatadogPlugin extends Mock implements DatadogPlugin {}
 
 void main() {
   late DatadogSdk datadogSdk;
+  late InternalLogger internalLogger;
   late MockDatadogSdkPlatform mockPlatform;
   late MockDdLogsPlatform mockLogsPlatform;
 
@@ -38,10 +40,14 @@ void main() {
   });
 
   setUp(() {
+    internalLogger = InternalLogger();
+
     mockPlatform = MockDatadogSdkPlatform();
-    when(() => mockPlatform.initialize(any(),
-            logCallback: any(named: 'logCallback')))
-        .thenAnswer((_) => Future<void>.value());
+    when(() => mockPlatform.initialize(
+          any(),
+          internalLogger: internalLogger,
+          logCallback: any(named: 'logCallback'),
+        )).thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.attachToExisting())
         .thenAnswer((_) => Future<AttachResponse?>.value(AttachResponse(
               rumEnabled: false,
@@ -76,8 +82,11 @@ void main() {
     );
     await datadogSdk.initialize(configuration);
 
-    verify(() => mockPlatform.initialize(configuration,
-        logCallback: any(named: 'logCallback')));
+    verify(() => mockPlatform.initialize(
+          configuration,
+          internalLogger: internalLogger,
+          logCallback: any(named: 'logCallback'),
+        ));
   });
 
   test('encode base configuration', () {

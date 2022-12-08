@@ -54,7 +54,6 @@ Future<void> runScenario({
 }
 
 LogEvent? _mapLogEvent(LogEvent event) {
-  print('LOG: ${event.message} - tags: ${event.ddtags}');
   event.attributes.remove('logger-attribute2');
 
   if (event.logger.name == 'second_logger' && event.status == LogStatus.info) {

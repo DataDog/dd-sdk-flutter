@@ -20,7 +20,6 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.Semaphore
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -324,16 +323,21 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
         try {
             return if (modifiedJson != null) {
-                val modifiedEvent = LogEvent.fromJsonObject(modifiedJson!!.toJsonObject())
+                if (modifiedJson!!.containsKey("_dd.mapper_error")) {
+                    // Error in the mapper, return unmodified event
+                    event
+                } else {
+                    val modifiedEvent = LogEvent.fromJsonObject(modifiedJson!!.toJsonObject())
 
-                event.status = modifiedEvent.status
-                event.message = modifiedEvent.message
-                event.ddtags = modifiedEvent.ddtags
-                event.logger.name = modifiedEvent.logger.name
+                    event.status = modifiedEvent.status
+                    event.message = modifiedEvent.message
+                    event.ddtags = modifiedEvent.ddtags
+                    event.logger.name = modifiedEvent.logger.name
 
-                event.additionalProperties.clear()
-                event.additionalProperties.putAll(modifiedEvent.additionalProperties)
-                event
+                    event.additionalProperties.clear()
+                    event.additionalProperties.putAll(modifiedEvent.additionalProperties)
+                    event
+                }
             } else {
                 null
             }
