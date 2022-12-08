@@ -4,7 +4,6 @@
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
-import 'package:datadog_flutter_plugin/src/datadog_sdk_platform_interface.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -35,6 +34,7 @@ void main() {
     registerFallbackValue(TrackingConsent.granted);
     registerFallbackValue(LoggingConfiguration());
     registerFallbackValue(LateConfigurationProperty.trackErrors);
+    registerFallbackValue(Verbosity.verbose);
   });
 
   setUp(() {
@@ -46,6 +46,8 @@ void main() {
         .thenAnswer((_) => Future<AttachResponse?>.value(AttachResponse(
               rumEnabled: false,
             )));
+    when(() => mockPlatform.setSdkVerbosity(any()))
+        .thenAnswer((invocation) => Future<void>.value());
     when(() => mockPlatform.setUserInfo(any(), any(), any(), any()))
         .thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.addUserExtraInfo((any())))
