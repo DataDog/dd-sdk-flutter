@@ -44,6 +44,8 @@ class DatadogSdk {
 
   DatadogSdk._();
 
+  bool _initialized = false;
+
   DdLogs? _logs;
   DdLogs? get logs => _logs;
 
@@ -83,7 +85,9 @@ class DatadogSdk {
   Verbosity get sdkVerbosity => internalLogger.sdkVerbosity;
   set sdkVerbosity(Verbosity value) {
     internalLogger.sdkVerbosity = value;
-    unawaited(_platform.setSdkVerbosity(value));
+    if (_initialized) {
+      unawaited(_platform.setSdkVerbosity(value));
+    }
   }
 
   /// Get an instance of a DatadogPlugin that was registered with
@@ -101,10 +105,10 @@ class DatadogSdk {
     _plugins.clear();
     _logs = null;
     _rum = null;
+    _initialized = false;
   }
 
-  /// A helper function that will initialize Datadog setup error reporting, and
-  /// automatic HttpClient tracing.
+  /// A helper function that will initialize Datadog and setup error reporting
   ///
   /// See also, [DdRum.handleFlutterError], [DatadogTrackingHttpClient]
   static Future<void> runApp(
@@ -134,6 +138,9 @@ class DatadogSdk {
 
   /// Initialize the DatadogSdk with the provided [configuration].
   Future<void> initialize(DdSdkConfiguration configuration) async {
+    // First set our SDK verbosity. We can assume WidgetsFlutterBinding has been initialized at this point
+    await _platform.setSdkVerbosity(internalLogger.sdkVerbosity);
+
     configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
     configuration.additionalConfig[DatadogConfigKey.sdkVersion] = sdkVersion;
 
@@ -157,6 +164,7 @@ class DatadogSdk {
     }
 
     _initializePlugins(configuration.additionalPlugins);
+    _initialized = true;
   }
 
   /// Attach the Datadog Flutter SDK to an already initialized Datadog Native
@@ -164,6 +172,9 @@ class DatadogSdk {
   Future<void> attachToExisting(
     DdSdkExistingConfiguration config,
   ) async {
+    // First set our SDK verbosity. We can assume WidgetsFlutterBinding has been initialized at this point
+    await _platform.setSdkVerbosity(internalLogger.sdkVerbosity);
+
     final attachResponse = await wrapAsync<AttachResponse>(
         'attachToExisting', internalLogger, null, () async {
       return await _platform.attachToExisting();
@@ -193,6 +204,7 @@ class DatadogSdk {
       }
 
       _initializePlugins(config.additionalPlugins);
+      _initialized = true;
     } else {
       internalLogger.error(
           'Failed to attach to an existing native instance of the Datadog SDK.');

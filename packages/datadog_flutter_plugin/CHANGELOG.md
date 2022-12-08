@@ -6,6 +6,7 @@
 * Allow errors to be sent on all log functions. See [#264][]
 * Disable tracing by default in iOS. Silences a benign warning from the SDK. See [#280][]
 * Add ability to modify logs before send with `logEventMapper`
+* Allow setting sdkVerbosity prior to calling `DatadogSdk.runApp`
 
 ## 1.1.0
 
