@@ -69,7 +69,7 @@ void main() {
     ]);
   });
 
-  test('attachToExsiting calls to methodChannel', () {
+  test('attachToExisting calls to methodChannel', () {
     unawaited(ddSdkPlatform.attachToExisting());
 
     expect(log, [
@@ -204,7 +204,6 @@ void main() {
   });
 
   test('updateTelemetryConfiguration calls to method channel', () {
-    final st = StackTrace.current;
     unawaited(
         ddSdkPlatform.updateTelemetryConfiguration('telemetryProperty', true));
     unawaited(ddSdkPlatform.updateTelemetryConfiguration(

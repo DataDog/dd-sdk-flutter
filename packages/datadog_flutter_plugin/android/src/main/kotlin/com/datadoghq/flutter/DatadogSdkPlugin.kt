@@ -10,9 +10,11 @@ import android.os.Looper
 import android.util.Log
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
+import com.datadog.android._InternalProxy
 import com.datadog.android.event.EventMapper
 import com.datadog.android.log.model.LogEvent
 import com.datadog.android.rum.GlobalRum
+import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -179,6 +181,16 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     fun initialize(config: DatadogFlutterConfiguration) {
         val configBuilder = config.toSdkConfigurationBuilder()
         val credentials = config.toCredentials()
+
+        _InternalProxy.setTelemetryConfigurationEventMapper(
+            configBuilder,
+            object : EventMapper<TelemetryConfigurationEvent> {
+                override fun map(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent? {
+                    return mapTelemetryConfiguration(event)
+                }
+            }
+
+        )
 
         if (config.attachLogMapper) {
             configBuilder.setLogEventMapper(

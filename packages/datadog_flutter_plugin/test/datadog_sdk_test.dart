@@ -4,7 +4,6 @@
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
-import 'package:datadog_flutter_plugin/src/datadog_sdk_platform_interface.dart';
 import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -249,7 +248,7 @@ void main() {
     expect(datadogSdk.firstPartyHosts, ['example.com', 'datadoghq.com']);
   });
 
-  test('attachToExisiting with loggingConfiguration creates default logger',
+  test('attachToExisting with loggingConfiguration creates default logger',
       () async {
     when(() => mockPlatform.attachToExisting()).thenAnswer(
         (invocation) => Future<AttachResponse?>.value(AttachResponse(
@@ -270,7 +269,7 @@ void main() {
     verify(() => mockLogsPlatform.createLogger(any(), logConfig));
   });
 
-  test('attachToExisiting without loggingConfiguration does not create logger',
+  test('attachToExisting without loggingConfiguration does not create logger',
       () async {
     when(() => mockPlatform.attachToExisting()).thenAnswer(
         (invocation) => Future<AttachResponse?>.value(AttachResponse(

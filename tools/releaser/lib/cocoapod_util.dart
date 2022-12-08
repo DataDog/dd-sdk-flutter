@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:logging/src/logger.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 import 'command.dart';

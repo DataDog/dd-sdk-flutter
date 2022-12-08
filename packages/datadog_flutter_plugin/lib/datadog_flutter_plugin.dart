@@ -11,7 +11,6 @@ import 'package:meta/meta.dart';
 import 'datadog_internal.dart';
 import 'src/datadog_configuration.dart';
 import 'src/datadog_plugin.dart';
-import 'src/datadog_sdk_platform_interface.dart';
 import 'src/helpers.dart';
 import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
@@ -180,7 +179,7 @@ class DatadogSdk {
           // This is likely fine. Since we have no simple way of knowing if Logging is
           // enabled, we try to create a logger anyway, which could potentially fail.
           internalLogger.debug(
-              'A logging configuration was provided to `attachToExisting` but log creation failed, likey because logging is disabled in the native SDK. No global log was created');
+              'A logging configuration was provided to `attachToExisting` but log creation failed, likely because logging is disabled in the native SDK. No global log was created');
         }
       }
       if (attachResponse.rumEnabled) {

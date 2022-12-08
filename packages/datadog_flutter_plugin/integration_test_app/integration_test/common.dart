@@ -74,7 +74,6 @@ Future<RecordingServerClient> openTestScenario(WidgetTester tester,
 
   if (menuTitle != null) {
     var integrationItem = find.byWidgetPredicate((widget) =>
-        widget is Text && (widget.data?.startsWith(scenarioName) ?? false));
         widget is Text && (widget.data?.startsWith(menuTitle) ?? false));
     await tester.tap(integrationItem);
     await tester.pumpAndSettle();
