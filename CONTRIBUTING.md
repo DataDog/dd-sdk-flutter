@@ -26,7 +26,7 @@ them with Datadog. Running `./generate_env.sh` will create `example/.env` and
 Id and Application Id from the Datadog RUM setup.
 
 Lastly, be sure to run `flutter pub run build_runner build` in projects that need
-their JSON models generated, which includes `packages/datadog_flutter_plugin`
+their JSON models generated, which includes `packages/datadog_flutter_plugin`.
 
 ## Code Style
 
@@ -35,7 +35,7 @@ Code style is enforced with the following libraries in the following languages:
 * Flutter - we use the included Flutter analyzer and linter. If you can, set up
   your IDE to format your Dart files on save, which will keep you in conformance
   with the linter
-* iOS / Swift - [Swiftlint](https://github.com/realm/SwiftLint) is configured to
+* iOS / Swift - [Swiftlint](https://github.com/realm/SwiftLint) is configured to`
   run as part of the build in XCode. If you want Swiftlint to autoformat your
   files for you and fix any potential errors, run `swiftlint --fix`
 * Android / Kotlin - We have both [ktlint](https://github.com/pinterest/ktlint)

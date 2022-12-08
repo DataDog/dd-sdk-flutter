@@ -147,7 +147,6 @@ Future<bool> _updateReadmeVersions(CommandArguments args, Logger logger) async {
   }
 
   var inVersionTable = false;
-  var sdkColumns = <String>[];
   await transformFile(changelogFile, logger, args.dryRun, (line) {
     if (inVersionTable) {
       if (line.startsWith('[//]: #')) {

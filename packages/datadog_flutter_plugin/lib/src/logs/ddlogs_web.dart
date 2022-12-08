@@ -110,11 +110,11 @@ class DdLogsWeb extends DdLogsPlatform {
     String? errorMessage,
     String? errorKind,
     StackTrace? errorStackTrace,
-    Map<String, Object?> context,
+    Map<String, Object?> attributes,
   ) async {
     final logger = _activeLoggers[loggerHandle];
     final webLogLevel = _toWebLogLevel(level);
-    logger?.log(message, valueToJs(context, 'context'), webLogLevel);
+    logger?.log(message, valueToJs(attributes, 'attributes'), webLogLevel);
   }
 }
 

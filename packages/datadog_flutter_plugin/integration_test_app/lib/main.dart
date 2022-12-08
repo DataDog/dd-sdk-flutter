@@ -85,7 +85,7 @@ Future<void> main() async {
     }
   }
 
-  final configuration = runScenario(
+  await runScenario(
     clientToken: clientToken,
     applicationId: applicationId,
     customEndpoint: customEndpoint,

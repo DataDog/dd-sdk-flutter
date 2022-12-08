@@ -6,6 +6,7 @@ import Flutter
 import UIKit
 import Datadog
 import DatadogCrashReporting
+import DictionaryCoder
 
 public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     struct ConfigurationTelemetryOverrides {
@@ -158,11 +159,15 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     }
 
     internal func initialize(configuration: DatadogFlutterConfiguration) {
-        let ddConfiguration = configuration.toDdConfig()
+        let ddConfiguration = configuration.toDdConfigBuilder()
+
+        if configuration.attachLogMapper {
+            _ = ddConfiguration._internal.setLogEventMapper(FlutterLogEventMapper(channel: channel))
+        }
 
         Datadog.initialize(appContext: Datadog.AppContext(),
                            trackingConsent: configuration.trackingConsent,
-                           configuration: ddConfiguration)
+                           configuration: ddConfiguration.build())
 
         if let rumConfiguration = configuration.rumConfiguration {
             rum = DatadogRumPlugin.instance
@@ -257,5 +262,65 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         return [
             "rumEnabled": rumEnabled
         ]
+    }
+}
+
+struct FlutterLogEventMapper: LogEventMapper {
+    let reservedAttributes = [
+      "status",
+      "service",
+      "message",
+      "date",
+      "logger",
+      "_dd",
+      "usr",
+      "network",
+      "error",
+      "ddtags"
+    ]
+
+    let channel: FlutterMethodChannel
+
+    public init(channel: FlutterMethodChannel) {
+        self.channel = channel
+    }
+
+    func map(event: LogEvent, callback: @escaping (LogEvent) -> Void) {
+        guard let encoded = logEventToFlutterDictionary(event: event) else {
+            // TELEMETRY
+            callback(event)
+            return
+        }
+
+        channel.invokeMethod("mapLogEvent", arguments: ["event": encoded]) { result in
+            guard let result = result as? [String: Any] else {
+                // Don't call the callback, this event was discarded
+                return
+            }
+
+            // Don't bother to decode, just pull modifiable properties straight from the
+            // dictionary.
+            var event = event
+            if let message = result["message"] as? String {
+                event.message = message
+            }
+            if let tags = result["ddtags"] as? String {
+                let splitTags = tags.split(separator: ",").map { String($0) }
+                event.tags = splitTags
+            }
+
+            // Go through all remaining attributes and add them on to the user
+            // attibutes so long as they aren't reserved
+            event.attributes.userAttributes.removeAll()
+            for (key, value) in result {
+                if reservedAttributes.first(where: { $0 == key || key.starts(with: "\($0).")}) != nil {
+                    continue
+                }
+                event.attributes.userAttributes[key] = castAnyToEncodable(value)
+            }
+
+
+            callback(event)
+        }
     }
 }

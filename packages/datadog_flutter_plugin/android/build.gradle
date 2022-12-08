@@ -70,7 +70,7 @@ dependencies {
     implementation "com.datadoghq:dd-sdk-android-ndk:$datadog_version"
     
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation "com.google.code.gson:gson:2.8.5"
+    implementation "com.google.code.gson:gson:2.8.8"
 
     testImplementation(platform("org.junit:junit-bom:5.8.2"))
     testImplementation "org.junit.jupiter:junit-jupiter"

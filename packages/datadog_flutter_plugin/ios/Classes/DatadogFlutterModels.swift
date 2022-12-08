@@ -86,6 +86,7 @@ class DatadogFlutterConfiguration {
     let firstPartyHosts: [String]
     let customLogsEndpoint: String?
     let additionalConfig: [String: Any]
+    let attachLogMapper: Bool
 
     let rumConfiguration: RumConfiguration?
 
@@ -102,6 +103,7 @@ class DatadogFlutterConfiguration {
         firstPartyHosts: [String] = [],
         customLogsEndpoint: String? = nil,
         additionalConfig: [String: Any] = [:],
+        attachLogMapper: Bool = false,
         rumConfiguration: RumConfiguration? = nil
     ) {
         self.clientToken = clientToken
@@ -116,6 +118,7 @@ class DatadogFlutterConfiguration {
         self.firstPartyHosts = firstPartyHosts
         self.customLogsEndpoint = customLogsEndpoint
         self.additionalConfig = additionalConfig
+        self.attachLogMapper = attachLogMapper
         self.rumConfiguration = rumConfiguration
     }
 
@@ -144,6 +147,7 @@ class DatadogFlutterConfiguration {
         customLogsEndpoint = encoded["customLogsEndpoint"] as? String
         firstPartyHosts = encoded["firstPartyHosts"] as? [String] ?? []
         additionalConfig = encoded["additionalConfig"] as? [String: Any] ?? [:]
+        attachLogMapper = (encoded["attachLogMapper"] as? NSNumber)?.boolValue ?? false
 
         rumConfiguration = convertOptional(encoded["rumConfiguration"]) {
             .init(fromEncoded: $0)
@@ -151,7 +155,7 @@ class DatadogFlutterConfiguration {
     }
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    func toDdConfig() -> Datadog.Configuration {
+    func toDdConfigBuilder() -> Datadog.Configuration.Builder {
         let ddConfigBuilder: Datadog.Configuration.Builder
         if let rumConfig = rumConfiguration {
             ddConfigBuilder = Datadog.Configuration.builderUsing(
@@ -219,7 +223,7 @@ class DatadogFlutterConfiguration {
 
         _ = ddConfigBuilder.set(additionalConfiguration: additionalConfig)
 
-        return ddConfigBuilder.build()
+        return ddConfigBuilder
     }
 }
 

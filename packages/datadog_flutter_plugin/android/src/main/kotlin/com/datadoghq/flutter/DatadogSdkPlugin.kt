@@ -18,6 +18,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Semaphore
 import java.util.concurrent.SynchronousQueue
@@ -280,8 +281,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
         var modifiedJson: Map<String, Any?>? = null
 
-        val semaphore = Semaphore(1)
-        semaphore.acquire()
+        val latch = CountDownLatch(1)
 
         val handler = Handler(Looper.getMainLooper())
         handler.post {
@@ -294,7 +294,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     object : MethodChannel.Result {
                         override fun success(result: Any?) {
                             modifiedJson = result as? Map<String, Any?>
-                            semaphore.release()
+                            latch.countDown()
                         }
 
                         override fun error(
@@ -303,50 +303,43 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                             errorDetails: Any?
                         ) {
                             // No telemetry needed, this is likely an issue in user code
-                            semaphore.release()
+                            latch.countDown()
                         }
 
                         override fun notImplemented() {
                             Datadog._internal._telemetry.error(
                                 "mapLogEvent returned notImplemented."
                             )
-                            semaphore.release()
+                            latch.countDown()
                         }
                     }
                 )
-            } catch (t: Throwable) {
-                Datadog._internal._telemetry.error("Attempting call mapLogEvent failed.", t)
-                semaphore.release()
+            } catch (e: Exception) {
+                Datadog._internal._telemetry.error("Attempting call mapLogEvent failed.", e)
+                latch.countDown()
             }
         }
         // Stalls until the method channel finishes
-        semaphore.acquire()
+        latch.await(1, TimeUnit.SECONDS)
 
         try {
-            var modifiedEvent: LogEvent? = null
-            modifiedJson?.let {
-                modifiedEvent = LogEvent.fromJsonObject(it.toJsonObject())
-            }
+            return if (modifiedJson != null) {
+                val modifiedEvent = LogEvent.fromJsonObject(modifiedJson!!.toJsonObject())
 
-
-            // Replace any modifyable info with the new event
-            return modifiedEvent?.let {
-                event.status = it.status
-                event.message = it.message
-                event.ddtags = it.ddtags
-                event.logger.name = it.logger.name
-
-                event.error?.kind = it.error?.kind
-                event.error?.message = it.error?.message
-                event.error?.stack = it.error?.stack
+                event.status = modifiedEvent.status
+                event.message = modifiedEvent.message
+                event.ddtags = modifiedEvent.ddtags
+                event.logger.name = modifiedEvent.logger.name
 
                 event.additionalProperties.clear()
-                event.additionalProperties.putAll(it.additionalProperties)
-                return event
+                event.additionalProperties.putAll(modifiedEvent.additionalProperties)
+                event
+            } else {
+                null
             }
-        } catch (t: Throwable) {
+        } catch (e: Exception) {
             Datadog._internal._telemetry.error(
-                "Attempting deserialized mapped log event failed, returning unmodified event", t
+                "Attempting deserialized mapped log event failed, returning unmodified event", e
             )
             return event
         }

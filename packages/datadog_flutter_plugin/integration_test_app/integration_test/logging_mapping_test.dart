@@ -58,57 +58,65 @@ void main() {
     //   * the info message from the second_logger is not sent
     expect(logs.length, equals(5));
 
-    expect(logs[0].status, 'debug');
-    expect(logs[0].message, 'debug xxxxxxxx');
+    List<LogDecoder> firstLoggerLogs =
+        logs.where((l) => l.loggerName != 'second_logger').toList();
+
+    expect(firstLoggerLogs[0].status, 'debug');
+    expect(firstLoggerLogs[0].message, 'debug xxxxxxxx');
     // JS SDK doesn't support tags
     if (!kIsWeb) {
-      expect(logs[0].tags, contains('tag1:tag-value'));
-      expect(logs[0].tags, contains('my-tag'));
+      expect(firstLoggerLogs[0].tags, contains('tag1:tag-value'));
+      expect(firstLoggerLogs[0].tags, contains('my-tag'));
     }
-    expect(logs[0].log['logger-attribute1'], 'string value');
-    expect(logs[0].log['logger-attribute2'], isNull);
-    expect(logs[0].log['stringAttribute'], 'string');
+    expect(firstLoggerLogs[0].log['logger-attribute1'], 'string value');
+    expect(firstLoggerLogs[0].log['logger-attribute2'], isNull);
+    expect(firstLoggerLogs[0].log['stringAttribute'], 'string');
 
-    expect(logs[1].status, 'info');
-    expect(logs[1].message, 'info xxxxxxxx');
+    expect(firstLoggerLogs[1].status, 'info');
+    expect(firstLoggerLogs[1].message, 'info xxxxxxxx');
     if (!kIsWeb) {
-      expect(logs[1].tags, isNot(contains('my-tag')));
-      expect(logs[1].tags, contains('tag1:tag-value'));
+      expect(firstLoggerLogs[1].tags, isNot(contains('my-tag')));
+      expect(firstLoggerLogs[1].tags, contains('tag1:tag-value'));
     }
-    expect(logs[1].log['logger-attribute1'], 'string value');
-    expect(logs[1].log['logger-attribute2'], isNull);
-    expect(logs[1].log['nestedAttribute'], containsPair('internal', 'test'));
-    expect(logs[1].log['nestedAttribute'], containsPair('isValid', true));
+    expect(firstLoggerLogs[1].log['logger-attribute1'], 'string value');
+    expect(firstLoggerLogs[1].log['logger-attribute2'], isNull);
+    expect(firstLoggerLogs[1].log['nestedAttribute'],
+        containsPair('internal', 'test'));
+    expect(firstLoggerLogs[1].log['nestedAttribute'],
+        containsPair('isValid', true));
 
-    expect(logs[2].status, 'warn');
-    expect(logs[2].message, 'warn xxxxxxxx');
+    expect(firstLoggerLogs[2].status, 'warn');
+    expect(firstLoggerLogs[2].message, 'warn xxxxxxxx');
     if (!kIsWeb) {
-      expect(logs[2].tags, isNot(contains('my-tag')));
-      expect(logs[2].tags, contains('tag1:tag-value'));
+      expect(firstLoggerLogs[2].tags, isNot(contains('my-tag')));
+      expect(firstLoggerLogs[2].tags, contains('tag1:tag-value'));
     }
-    expect(logs[2].log['logger-attribute1'], 'string value');
-    expect(logs[2].log['logger-attribute2'], isNull);
-    expect(logs[2].log['doubleAttribute'], 10.34);
+    expect(firstLoggerLogs[2].log['logger-attribute1'], 'string value');
+    expect(firstLoggerLogs[2].log['logger-attribute2'], isNull);
+    expect(firstLoggerLogs[2].log['doubleAttribute'], 10.34);
 
-    expect(logs[3].status, 'error');
-    expect(logs[3].message, 'error xxxxxxxx');
+    expect(firstLoggerLogs[3].status, 'error');
+    expect(firstLoggerLogs[3].message, 'error xxxxxxxx');
     if (!kIsWeb) {
-      expect(logs[3].tags, isNot(contains('my-tag')));
-      expect(logs[3].tags, isNot(contains('tag1:tag-value')));
+      expect(firstLoggerLogs[3].tags, isNot(contains('my-tag')));
+      expect(firstLoggerLogs[3].tags, isNot(contains('tag1:tag-value')));
     }
-    expect(logs[3].log['logger-attribute1'], isNull);
-    expect(logs[3].log['logger-attribute2'], isNull);
-    expect(logs[3].log['attribute'], 'value');
+    expect(firstLoggerLogs[3].log['logger-attribute1'], isNull);
+    expect(firstLoggerLogs[3].log['logger-attribute2'], isNull);
+    expect(firstLoggerLogs[3].log['attribute'], 'value');
 
-    expect(logs[4].status, 'warn');
-    expect(logs[4].message, 'Warning: this error occurred');
-    expect(logs[4].log['second-logger-attribute'], 'second-value');
-    expect(logs[4].log['logger-attribute1'], isNull);
-    expect(logs[4].log['logger-attribute2'], isNull);
-    expect(logs[4].errorMessage, 'Error Message');
-    expect(logs[4].errorStack, isNotNull);
-    expect(
-        getNestedProperty<String>('logger.name', logs[5].log), 'second_logger');
+    List<LogDecoder> secondLoggerLogs =
+        logs.where((l) => l.loggerName == 'second_logger').toList();
+
+    expect(secondLoggerLogs[0].status, 'warn');
+    expect(secondLoggerLogs[0].message, 'Warning: this error occurred');
+    expect(secondLoggerLogs[0].log['second-logger-attribute'], 'second-value');
+    expect(secondLoggerLogs[0].log['logger-attribute1'], isNull);
+    expect(secondLoggerLogs[0].log['logger-attribute2'], isNull);
+    expect(secondLoggerLogs[0].errorMessage, 'Error Message');
+    expect(secondLoggerLogs[0].errorStack, isNotNull);
+    expect(getNestedProperty<String>('logger.name', secondLoggerLogs[0].log),
+        'second_logger');
 
     for (final log in logs) {
       expect(log.serviceName,

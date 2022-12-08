@@ -18,6 +18,7 @@ A new flutter plugin project.
   s.dependency 'Flutter'
   s.dependency 'DatadogSDK', '~> 1'
   s.dependency 'DatadogSDKCrashReporting', '~> 1'
+  s.dependency 'DictionaryCoder', '1.0.8'
   s.platform = :ios, '11.0'
 
   # Flutter.framework does not contain a i386 slice.
