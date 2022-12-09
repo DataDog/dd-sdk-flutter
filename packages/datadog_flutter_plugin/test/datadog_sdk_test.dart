@@ -27,7 +27,6 @@ class MockDatadogPlugin extends Mock implements DatadogPlugin {}
 
 void main() {
   late DatadogSdk datadogSdk;
-  late InternalLogger internalLogger;
   late MockDatadogSdkPlatform mockPlatform;
   late MockDdLogsPlatform mockLogsPlatform;
 
@@ -37,15 +36,14 @@ void main() {
     registerFallbackValue(LoggingConfiguration());
     registerFallbackValue(LateConfigurationProperty.trackErrors);
     registerFallbackValue(Verbosity.verbose);
+    registerFallbackValue(InternalLogger());
   });
 
   setUp(() {
-    internalLogger = InternalLogger();
-
     mockPlatform = MockDatadogSdkPlatform();
     when(() => mockPlatform.initialize(
           any(),
-          internalLogger: internalLogger,
+          internalLogger: any(named: 'internalLogger'),
           logCallback: any(named: 'logCallback'),
         )).thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.attachToExisting())
@@ -54,6 +52,7 @@ void main() {
             )));
     when(() => mockPlatform.setSdkVerbosity(any()))
         .thenAnswer((invocation) => Future<void>.value());
+
     when(() => mockPlatform.setUserInfo(any(), any(), any(), any()))
         .thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.addUserExtraInfo((any())))
@@ -86,7 +85,7 @@ void main() {
 
     verify(() => mockPlatform.initialize(
           configuration,
-          internalLogger: internalLogger,
+          internalLogger: any(named: 'internalLogger'),
           logCallback: any(named: 'logCallback'),
         ));
   });
@@ -113,6 +112,7 @@ void main() {
       'firstPartyHosts': <String>[],
       'rumConfiguration': null,
       'additionalConfig': <String, Object?>{},
+      'attachLogMapper': false,
     });
   });
 
