@@ -287,7 +287,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     @Suppress("TooGenericExceptionCaught")
-    private fun mapLogEvent(event: LogEvent): LogEvent? {
+    internal fun mapLogEvent(event: LogEvent): LogEvent? {
         val jsonEvent = event.toJson().asMap()
 
         var modifiedJson: Map<String, Any?>? = null
@@ -302,7 +302,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     mapOf(
                         "event" to jsonEvent
                     ),
-                    object : MethodChannel.Result {
+                    object : Result {
                         override fun success(result: Any?) {
                             modifiedJson = result as? Map<String, Any?>
                             latch.countDown()
@@ -330,15 +330,16 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 latch.countDown()
             }
         }
-        // Stalls until the method channel finishes
-        latch.await(1, TimeUnit.SECONDS)
 
         try {
-            return if (modifiedJson != null) {
-                if (modifiedJson!!.containsKey("_dd.mapper_error")) {
-                    // Error in the mapper, return unmodified event
-                    event
-                } else {
+            // Stalls until the method channel finishes
+            if (!latch.await(1, TimeUnit.SECONDS)) {
+                Datadog._internal._telemetry.debug("logMapper timed out")
+                return event
+            }
+
+            return modifiedJson?.let {
+                if (!it.containsKey("_dd.mapper_error")) {
                     val modifiedEvent = LogEvent.fromJsonObject(modifiedJson!!.toJsonObject())
 
                     event.status = modifiedEvent.status
@@ -348,20 +349,20 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
                     event.additionalProperties.clear()
                     event.additionalProperties.putAll(modifiedEvent.additionalProperties)
-                    event
                 }
-            } else {
-                null
+                event
             }
         } catch (e: Exception) {
             Datadog._internal._telemetry.error(
-                "Attempt to deserialize mapped log event failed, returning unmodified event", e
+                "Attempt to deserialize mapped log event failed, or latch await was interrupted." +
+                    " Returning unmodified event.",
+                e
             )
             return event
         }
     }
 
-    internal fun invokePrivateShutdown(result: Result) {
+    private fun invokePrivateShutdown(result: Result) {
         executor.submit {
             simpleInvokeOn("flushAndShutdownExecutors", Datadog)
             stop()

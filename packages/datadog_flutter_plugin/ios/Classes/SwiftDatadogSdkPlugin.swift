@@ -269,7 +269,7 @@ struct FlutterLogEventMapper: LogEventMapper {
     static let reservedAttributeNames: Set<String> = [
         "host", "message", "status", "service", "source", "ddtags",
         "dd.trace_id", "dd.span_id",
-        "application_id", "session_id", "view.id", "user_action.id",
+        "application_id", "session_id", "view.id", "user_action.id"
     ]
 
     let channel: FlutterMethodChannel
