@@ -109,6 +109,7 @@ class LogEventLoggerInfo {
 
 @commonJsonOptions
 class LogEvent {
+  final String date;
   LogStatus status;
   String message;
   final LogEventError? error;
@@ -125,6 +126,7 @@ class LogEvent {
   String ddtags;
 
   LogEvent({
+    required this.date,
     required this.status,
     required this.message,
     this.error,

@@ -266,17 +266,10 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
 }
 
 struct FlutterLogEventMapper: LogEventMapper {
-    let reservedAttributes = [
-      "status",
-      "service",
-      "message",
-      "date",
-      "logger",
-      "_dd",
-      "usr",
-      "network",
-      "error",
-      "ddtags"
+    static let reservedAttributeNames: Set<String> = [
+        "host", "message", "status", "service", "source", "ddtags",
+        "dd.trace_id", "dd.span_id",
+        "application_id", "session_id", "view.id", "user_action.id",
     ]
 
     let channel: FlutterMethodChannel
@@ -318,7 +311,7 @@ struct FlutterLogEventMapper: LogEventMapper {
             // attibutes so long as they aren't reserved
             event.attributes.userAttributes.removeAll()
             for (key, value) in result {
-                if reservedAttributes.first(where: { $0 == key || key.starts(with: "\($0).")}) != nil {
+                if FlutterLogEventMapper.reservedAttributeNames.contains(key) {
                     continue
                 }
                 event.attributes.userAttributes[key] = castAnyToEncodable(value)

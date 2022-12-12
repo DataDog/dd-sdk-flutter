@@ -26,27 +26,31 @@ func logEventToFlutterDictionary(event: LogEvent) -> [String: Any]? {
     nest(property: "error.message", inDictionary: &encoded)
     nest(property: "error.stack", inDictionary: &encoded)
 
+    // Switch "date" to a string (normally an int)
+    encoded["date"] = event.date.description
+
     return encoded
 }
 
 private func nest(property: String, inDictionary dictionary: inout [String: Any]) {
     var parts = property.split(separator: ".")
-    let value = dictionary[property]
-    var valueAccumulator = [String(parts.removeLast()): value]
+    if let value = dictionary[property] {
+        var valueAccumulator = [String(parts.removeLast()): value]
 
-    for part in parts.reversed() {
-        valueAccumulator = [String(part): valueAccumulator]
-    }
-
-    func dictionaryMerge(current: Any, new: Any) -> Any {
-        if let current = current as? [String: Any],
-           let new = new as? [String: Any] {
-            return current.merging(new, uniquingKeysWith: dictionaryMerge)
+        for part in parts.reversed() {
+            valueAccumulator = [String(part): valueAccumulator]
         }
-        return new
+
+        func dictionaryMerge(current: Any, new: Any) -> Any {
+            if let current = current as? [String: Any],
+               let new = new as? [String: Any] {
+                return current.merging(new, uniquingKeysWith: dictionaryMerge)
+            }
+            return new
+        }
+
+        dictionary.merge(valueAccumulator, uniquingKeysWith: dictionaryMerge)
+
+        dictionary.removeValue(forKey: property)
     }
-
-    dictionary.merge(valueAccumulator, uniquingKeysWith: dictionaryMerge)
-
-    dictionary.removeValue(forKey: property)
 }
