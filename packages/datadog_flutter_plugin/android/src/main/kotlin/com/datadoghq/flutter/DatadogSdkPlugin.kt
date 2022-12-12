@@ -355,7 +355,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             }
         } catch (e: Exception) {
             Datadog._internal._telemetry.error(
-                "Attempting deserialized mapped log event failed, returning unmodified event", e
+                "Attempt to deserialize mapped log event failed, returning unmodified event", e
             )
             return event
         }
