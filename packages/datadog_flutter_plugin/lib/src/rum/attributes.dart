@@ -2,14 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-class DatadogTracingHeaders {
-  static const traceId = 'x-datadog-trace-id';
-  static const parentId = 'x-datadog-parent-id';
-
-  static const samplingPriority = 'x-datadog-sampling-priority';
-  static const origin = 'x-datadog-origin';
-}
-
 class DatadogRumPlatformAttributeKey {
   /// Trace ID. Used in RUM resources created by automatic resource tracking.
   /// Expects `String` value.

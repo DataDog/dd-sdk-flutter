@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_tracking_http_client/src/tracking_http_client.dart';
+import 'package:datadog_tracking_http_client/src/tracking_http_client_plugin.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -108,7 +109,13 @@ void main() {
     });
 
     test('tracking client passes through properties', () {
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
 
       client.autoUncompress;
       client.autoUncompress = true;
@@ -138,7 +145,13 @@ void main() {
 
     test('open calls through when tracing and rum are disabled', () async {
       setupMockRequest();
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
 
       var url = Uri.parse('https://test_url/path');
       await client.openUrl('get', url);
@@ -168,7 +181,7 @@ void main() {
     when(() => mockDatadog.rum).thenReturn(mockRum);
   }
 
-  group('when rum is enabled', () {
+  group('when rum is enabled width datadog tracing headers', () {
     setUp(() {
       enableRum();
     });
@@ -176,7 +189,13 @@ void main() {
     test('calls start resource and stop resource and calls through', () async {
       final completer = setupMockRequest();
 
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
 
       var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
@@ -209,7 +228,13 @@ void main() {
     test('calls stop resource with status code', () async {
       final completer = setupMockRequest();
 
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
 
       var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
@@ -235,7 +260,13 @@ void main() {
     test('sets resource type from headers', () async {
       final completer = setupMockRequest();
 
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
 
       var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
@@ -260,7 +291,13 @@ void main() {
     test('calls stop resource with error connection error', () async {
       final completer = setupMockRequest();
 
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
 
       var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
@@ -285,7 +322,13 @@ void main() {
 
     test('calls stop resource with error for response error', () async {
       final completer = setupMockRequest();
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
 
       var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
@@ -320,7 +363,13 @@ void main() {
       when(() => mockRum.tracingSamplingRate).thenReturn(23.0);
 
       final completer = setupMockRequest();
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
 
       var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
@@ -364,7 +413,13 @@ void main() {
         'start and stop resource loading do not set tracing attributes if shouldSample returns false',
         () async {
       final completer = setupMockRequest();
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
       when(() => mockRum.shouldSampleTrace()).thenReturn(false);
       when(() => mockRum.tracingSamplingRate).thenReturn(12.0);
 
@@ -402,7 +457,13 @@ void main() {
 
     test('sets trace headers for first party urls', () async {
       setupMockRequest();
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
 
       var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
@@ -412,7 +473,13 @@ void main() {
 
     test('does not set trace headers for third party urls', () async {
       setupMockRequest();
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
 
       var url = Uri.parse('https://non_first_party/path');
       var request = await client.openUrl('get', url);
@@ -431,7 +498,13 @@ void main() {
     test('error on openUrl stops resource with error', () async {
       const error = SocketException('Mock socket exception');
       when(() => mockClient.openUrl(any(), any())).thenThrow(error);
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
 
       var url = Uri.parse('https://test_url/path');
 
@@ -451,7 +524,13 @@ void main() {
         () async {
       when(() => mockRum.shouldSampleTrace()).thenReturn(false);
       setupMockRequest();
-      final client = DatadogTrackingHttpClient(mockDatadog, mockClient);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          tracingHeaderTypes: {TracingHeaderType.dd},
+        ),
+        mockClient,
+      );
 
       var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);

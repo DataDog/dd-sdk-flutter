@@ -21,31 +21,37 @@ extension TrackingExtension on DdSdkConfiguration {
   /// intercepted requests. The SDK will also generate and send tracing Spans for
   /// each 1st-party request.
   ///
+  /// The DatadogTracingHttpClient can additionally set tracing headers on your
+  /// requests, which allows for distributed tracing. You can set which format
+  /// of tracing header using the [tracingHeaderTypes] parameter. Multiple
+  /// tracing formats are allowed. The percentage of resources traced in this
+  /// way is determined by [RumConfiguration.tracingSamplingRate].
+  ///
+  /// Note that the client will not overwrite existing OTel tracing headers, and
+  /// will properly propogate these to Datadog Resources so it is safe to
+  /// manually add trace headers to your requests, rather than having Datadog
+  /// add them
+  ///
   /// Note that this is call is not necessary if you only want to track requests
   /// made through [DatadogClient]
   ///
-  /// See also [firstPartyHosts]
-  void enableHttpTracking() {
-    addPlugin(DdHttpTrackingPluginConfiguration());
+  /// See also [firstPartyHosts], [TracingHeaderType]
+  void enableHttpTracking({
+    Set<TracingHeaderType>? tracingHeaderTypes = const {TracingHeaderType.dd},
+  }) {
+    addPlugin(DdHttpTrackingPluginConfiguration(
+      tracingHeaderTypes: tracingHeaderTypes,
+    ));
   }
 }
 
 extension TrackingExtensionExisting on DdSdkExistingConfiguration {
-  /// Configures network requests monitoring for Tracing and RUM features.
-  ///
-  /// If enabled, the SDK will override [HttpClient] creation (via
-  /// [HttpOverrides]) to provide its own implementation. For more information,
-  /// check the documentation on [DatadogTrackingHttpClient]
-  ///
-  /// If the RUM feature is enabled, the SDK will send RUM Resources for all
-  /// intercepted requests, along with generated spans for requests to first
-  /// part hosts.
-  ///
-  /// Note that this is call is not necessary if you only want to track requests
-  /// made through [DatadogClient]
-  ///
-  /// See also [firstPartyHosts]
-  void enableHttpTracking() {
-    addPlugin(DdHttpTrackingPluginConfiguration());
+  /// See [TrackingExtension.enableHttpTracking]
+  void enableHttpTracking({
+    Set<TracingHeaderType>? tracingHeaderTypes = const {TracingHeaderType.dd},
+  }) {
+    addPlugin(DdHttpTrackingPluginConfiguration(
+      tracingHeaderTypes: tracingHeaderTypes,
+    ));
   }
 }

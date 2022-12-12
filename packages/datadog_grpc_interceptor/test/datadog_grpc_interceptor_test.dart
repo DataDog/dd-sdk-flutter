@@ -57,6 +57,7 @@ void main() {
       mockRum = RumMock();
       when(() => mockDatadog.rum).thenReturn(mockRum);
       when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+      when(() => mockRum.tracingSamplingRate).thenReturn(12);
     });
 
     tearDown(() async {
@@ -106,6 +107,7 @@ void main() {
       expect(BigInt.tryParse(attributes['_dd.trace_id'] as String), isNotNull);
       expect(attributes['_dd.span_id'], isNotNull);
       expect(BigInt.tryParse(attributes['_dd.span_id'] as String), isNotNull);
+      expect(attributes['_dd.rule_psr'], 0.12);
     });
 
     test(
@@ -128,6 +130,7 @@ void main() {
       final attributes = captures[1] as Map<String, Object?>;
       expect(attributes['_dd.trace_id'], isNull);
       expect(attributes['_dd.span_id'], isNull);
+      expect(attributes['_dd.rule_psr'], 0.12);
     });
 
     test('Interceptor passes on proper metadata', () async {
@@ -230,7 +233,7 @@ void main() {
     mockRum = RumMock();
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-
+    when(() => mockRum.tracingSamplingRate).thenReturn(12);
     when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
 
     final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
@@ -276,7 +279,7 @@ void main() {
     mockRum = RumMock();
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-
+    when(() => mockRum.tracingSamplingRate).thenReturn(12);
     when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
 
     final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
@@ -317,7 +320,7 @@ void main() {
     mockRum = RumMock();
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-
+    when(() => mockRum.tracingSamplingRate).thenReturn(12);
     when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
 
     final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);

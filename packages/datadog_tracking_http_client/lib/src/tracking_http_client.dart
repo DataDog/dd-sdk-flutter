@@ -12,6 +12,8 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:uuid/uuid.dart';
 
+import 'tracking_http_client_plugin.dart';
+
 /// Overrides to supply the [DatadogTrackingHttpClient] instead of the default
 /// HttpClient
 ///
@@ -20,13 +22,14 @@ import 'package:uuid/uuid.dart';
 /// set to true.
 class DatadogTrackingHttpOverrides extends HttpOverrides {
   final DatadogSdk datadogSdk;
+  final DdHttpTrackingPluginConfiguration configuration;
 
-  DatadogTrackingHttpOverrides(this.datadogSdk);
+  DatadogTrackingHttpOverrides(this.datadogSdk, this.configuration);
 
   @override
   HttpClient createHttpClient(SecurityContext? context) {
     var innerClient = super.createHttpClient(context);
-    return DatadogTrackingHttpClient(datadogSdk, innerClient);
+    return DatadogTrackingHttpClient(datadogSdk, configuration, innerClient);
   }
 }
 
@@ -60,9 +63,14 @@ class DatadogTrackingHttpOverrides extends HttpOverrides {
 class DatadogTrackingHttpClient implements HttpClient {
   final Uuid uuid = const Uuid();
   final DatadogSdk datadogSdk;
+  final DdHttpTrackingPluginConfiguration configuration;
   final HttpClient innerClient;
 
-  DatadogTrackingHttpClient(this.datadogSdk, this.innerClient);
+  DatadogTrackingHttpClient(
+    this.datadogSdk,
+    this.configuration,
+    this.innerClient,
+  );
 
   @override
   Future<HttpClientRequest> open(
@@ -96,26 +104,29 @@ class DatadogTrackingHttpClient implements HttpClient {
   Future<HttpClientRequest> _openUrl(String method, Uri url) async {
     final rum = datadogSdk.rum;
     String? rumKey;
-    String? traceId, spanId;
+    TracingContext? tracingContext;
     bool isFirstParty = false;
+    var tracingHeaderTypes =
+        configuration.tracingHeaderTypes ?? <TracingHeaderType>{};
 
     try {
       isFirstParty = datadogSdk.isFirstPartyHost(url);
 
       if (rum != null) {
-        bool shouldSample = isFirstParty && rum.shouldSampleTrace();
-        if (shouldSample) {
-          traceId = generateTraceId();
-          spanId = generateTraceId();
-        }
+        var attributes = <String, Object?>{};
+        if (isFirstParty && tracingHeaderTypes.isNotEmpty) {
+          final shouldSample = rum.shouldSampleTrace();
+          tracingContext = generateTracingContext(shouldSample);
 
-        final attributes = <String, dynamic>{};
-        if (traceId != null) {
-          attributes[DatadogRumPlatformAttributeKey.traceID] = traceId;
-          attributes[DatadogRumPlatformAttributeKey.spanID] = spanId;
+          attributes[DatadogRumPlatformAttributeKey.rulePsr] =
+              rum.tracingSamplingRate / 100.0;
+          if (tracingContext.sampled) {
+            attributes[DatadogRumPlatformAttributeKey.traceID] =
+                tracingContext.traceId.asString(TraceIdRepresentation.decimal);
+            attributes[DatadogRumPlatformAttributeKey.spanID] =
+                tracingContext.spanId.asString(TraceIdRepresentation.decimal);
+          }
         }
-        attributes[DatadogRumPlatformAttributeKey.rulePsr] =
-            rum.tracingSamplingRate / 100.0;
 
         rumKey = uuid.v1();
         final rumHttpMethod = rumMethodFromMethodString(method);
@@ -134,13 +145,14 @@ class DatadogTrackingHttpClient implements HttpClient {
     HttpClientRequest request;
     try {
       request = await innerClient.openUrl(method, url);
-      request.headers.add(DatadogTracingHeaders.origin, 'rum');
-      if (traceId != null && spanId != null) {
-        request.headers.add(DatadogTracingHeaders.traceId, traceId);
-        request.headers.add(DatadogTracingHeaders.parentId, spanId);
-        request.headers.add(DatadogTracingHeaders.samplingPriority, '1');
-      } else if (isFirstParty) {
-        request.headers.add(DatadogTracingHeaders.samplingPriority, '0');
+      if (tracingContext != null) {
+        Map<String, String> newHeaders = {};
+        for (final headerType in tracingHeaderTypes) {
+          injectHeaders(tracingContext, headerType, newHeaders);
+        }
+        for (final entry in newHeaders.entries) {
+          request.headers.add(entry.key, entry.value);
+        }
       }
     } catch (e) {
       if (rumKey != null) {
@@ -250,17 +262,15 @@ class DatadogTrackingHttpClient implements HttpClient {
   set findProxy(String Function(Uri url)? f) => innerClient.findProxy = f;
 
   @override
-  Future<HttpClientRequest> get(String host, int port, String path) {
-    return innerClient.get(host, port, path);
-  }
+  Future<HttpClientRequest> get(String host, int port, String path) =>
+      open('get', host, port, path);
 
   @override
   Future<HttpClientRequest> getUrl(Uri url) => _openUrl('get', url);
 
   @override
-  Future<HttpClientRequest> head(String host, int port, String path) {
-    return innerClient.head(host, port, path);
-  }
+  Future<HttpClientRequest> head(String host, int port, String path) =>
+      open('head', host, port, path);
 
   @override
   Future<HttpClientRequest> headUrl(Uri url) => _openUrl('head', url);
@@ -270,25 +280,22 @@ class DatadogTrackingHttpClient implements HttpClient {
       _openUrl(method, url);
 
   @override
-  Future<HttpClientRequest> patch(String host, int port, String path) {
-    return innerClient.patch(host, port, path);
-  }
+  Future<HttpClientRequest> patch(String host, int port, String path) =>
+      open('patch', host, port, path);
 
   @override
   Future<HttpClientRequest> patchUrl(Uri url) => _openUrl('patch', url);
 
   @override
-  Future<HttpClientRequest> post(String host, int port, String path) {
-    return innerClient.post(host, port, path);
-  }
+  Future<HttpClientRequest> post(String host, int port, String path) =>
+      open('post', host, port, path);
 
   @override
   Future<HttpClientRequest> postUrl(Uri url) => _openUrl('post', url);
 
   @override
-  Future<HttpClientRequest> put(String host, int port, String path) {
-    return innerClient.put(host, port, path);
-  }
+  Future<HttpClientRequest> put(String host, int port, String path) =>
+      open('post', host, port, path);
 
   @override
   Future<HttpClientRequest> putUrl(Uri url) => _openUrl('put', url);
