@@ -102,77 +102,34 @@ class DatadogTrackingHttpClient implements HttpClient {
   }
 
   Future<HttpClientRequest> _openUrl(String method, Uri url) async {
-    final rum = datadogSdk.rum;
     String? rumKey;
-    TracingContext? tracingContext;
-    bool isFirstParty = false;
-    var tracingHeaderTypes =
-        configuration.tracingHeaderTypes ?? <TracingHeaderType>{};
+    final rum = datadogSdk.rum;
 
-    try {
-      isFirstParty = datadogSdk.isFirstPartyHost(url);
-
-      if (rum != null) {
-        var attributes = <String, Object?>{};
-        if (isFirstParty && tracingHeaderTypes.isNotEmpty) {
-          final shouldSample = rum.shouldSampleTrace();
-          tracingContext = generateTracingContext(shouldSample);
-
-          attributes[DatadogRumPlatformAttributeKey.rulePsr] =
-              rum.tracingSamplingRate / 100.0;
-          if (tracingContext.sampled) {
-            attributes[DatadogRumPlatformAttributeKey.traceID] =
-                tracingContext.traceId.asString(TraceIdRepresentation.decimal);
-            attributes[DatadogRumPlatformAttributeKey.spanID] =
-                tracingContext.spanId.asString(TraceIdRepresentation.decimal);
-          }
-        }
-
+    if (rum != null) {
+      try {
         rumKey = uuid.v1();
         final rumHttpMethod = rumMethodFromMethodString(method);
-        rum.startResourceLoading(
-            rumKey, rumHttpMethod, url.toString(), attributes);
+        rum.startResourceLoading(rumKey, rumHttpMethod, url.toString());
+      } catch (e, st) {
+        datadogSdk.internalLogger.sendToDatadog(
+          '$DatadogTrackingHttpClient encountered an error while attempting '
+          ' to track an _openUrl call: $e',
+          st,
+          e.runtimeType.toString(),
+        );
       }
-    } catch (e, st) {
-      datadogSdk.internalLogger.sendToDatadog(
-        '$DatadogTrackingHttpClient encountered an error while attempting '
-        ' to track an _openUrl call: $e',
-        st,
-        e.runtimeType.toString(),
-      );
     }
 
     HttpClientRequest request;
     try {
       request = await innerClient.openUrl(method, url);
-      if (tracingContext != null) {
-        Map<String, String> newHeaders = {};
-        for (final headerType in tracingHeaderTypes) {
-          injectHeaders(tracingContext, headerType, newHeaders);
-        }
-        for (final entry in newHeaders.entries) {
-          request.headers.add(entry.key, entry.value);
-        }
-      }
+      request = _DatadogTrackingHttpRequest(this, request, rumKey);
     } catch (e) {
-      if (rumKey != null) {
-        try {
-          rum?.stopResourceLoadingWithErrorInfo(
-              rumKey, e.toString(), e.runtimeType.toString());
-        } catch (innerE, st) {
-          datadogSdk.internalLogger.sendToDatadog(
-            '$DatadogTrackingHttpClient encountered an error while attempting '
-            ' to track an _openUrl error: $e',
-            st,
-            e.runtimeType.toString(),
-          );
-        }
+      if (rum != null) {
+        rum.stopResourceLoadingWithErrorInfo(
+            rumKey!, e.toString(), e.runtimeType.toString());
       }
       rethrow;
-    }
-
-    if (rumKey != null) {
-      request = _DatadogTrackingHttpRequest(datadogSdk, request, rumKey);
     }
 
     return request;
@@ -302,21 +259,26 @@ class DatadogTrackingHttpClient implements HttpClient {
 }
 
 class _DatadogTrackingHttpRequest implements HttpClientRequest {
-  final DatadogSdk datadogSdk;
+  final DatadogTrackingHttpClient client;
   final HttpClientRequest innerContext;
   final String? rumKey;
 
-  _DatadogTrackingHttpRequest(
-    this.datadogSdk,
-    this.innerContext,
-    this.rumKey,
-  );
+  TracingContext? _tracingContext;
+  bool _headersInjected = false;
+
+  _DatadogTrackingHttpRequest(this.client, this.innerContext, this.rumKey) {
+    // Don't bother trying to inject headers if we don't have a rum key
+    _headersInjected = rumKey == null;
+  }
 
   @override
   Future<HttpClientResponse> get done {
+    _injectHeaders();
+
     final innerFuture = innerContext.done;
     return innerFuture.then((value) {
-      return _DatadogTrackingHttpResponse(datadogSdk, value, rumKey);
+      return _DatadogTrackingHttpResponse(
+          client.datadogSdk, value, rumKey, _tracingContext);
     }, onError: (Object e, StackTrace? st) {
       _onStreamError(e, st);
       throw e;
@@ -325,22 +287,68 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
 
   @override
   Future<HttpClientResponse> close() {
+    _injectHeaders();
+
     return innerContext.close().then((value) {
-      return _DatadogTrackingHttpResponse(datadogSdk, value, rumKey);
+      return _DatadogTrackingHttpResponse(
+          client.datadogSdk, value, rumKey, _tracingContext);
     }, onError: (Object e, StackTrace? st) async {
       _onStreamError(e, st);
       throw e;
     });
   }
 
-  void _onStreamError(Object e, StackTrace? st) {
+  void _injectHeaders() {
+    if (_headersInjected) return;
+
+    // Regardless of the outcome here, don't try to track again.
+    _headersInjected = true;
+
+    final rum = client.datadogSdk.rum;
+    bool isFirstParty = false;
+    var tracingHeaderTypes =
+        client.configuration.tracingHeaderTypes ?? <TracingHeaderType>{};
+
     try {
-      if (rumKey != null) {
-        datadogSdk.rum?.stopResourceLoadingWithErrorInfo(
-            rumKey!, e.toString(), e.runtimeType.toString());
+      isFirstParty = client.datadogSdk.isFirstPartyHost(innerContext.uri);
+
+      if (rum != null) {
+        if (isFirstParty && tracingHeaderTypes.isNotEmpty) {
+          bool shouldSample = rum.shouldSampleTrace();
+
+          _tracingContext = generateTracingContext(shouldSample);
+          Map<String, String> newHeaders = {};
+          for (final headerType in tracingHeaderTypes) {
+            injectHeaders(_tracingContext!, headerType, newHeaders);
+          }
+          for (final entry in newHeaders.entries) {
+            headers.add(entry.key, entry.value);
+          }
+        }
       }
     } catch (e, st) {
-      datadogSdk.internalLogger.sendToDatadog(
+      client.datadogSdk.internalLogger.sendToDatadog(
+        '$DatadogTrackingHttpClient encountered an error while attempting '
+        ' to track an _openUrl call: $e',
+        st,
+        e.runtimeType.toString(),
+      );
+    }
+  }
+
+  void _onStreamError(Object e, StackTrace? st) {
+    try {
+      final rum = client.datadogSdk.rum;
+      if (rumKey != null && rum != null) {
+        final attributes = generateDatadogAttributes(
+          _tracingContext,
+          rum.tracingSamplingRate,
+        );
+        rum.stopResourceLoadingWithErrorInfo(
+            rumKey!, e.toString(), e.runtimeType.toString(), attributes);
+      }
+    } catch (e, st) {
+      client.datadogSdk.internalLogger.sendToDatadog(
         '$DatadogTrackingHttpClient encountered an error attempting to report a stream error; $e',
         st,
         e.runtimeType.toString(),
@@ -391,7 +399,11 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
       innerContext.addError(error, stackTrace);
 
   @override
-  Future addStream(Stream<List<int>> stream) => innerContext.addStream(stream);
+  Future addStream(Stream<List<int>> stream) {
+    _injectHeaders();
+
+    return innerContext.addStream(stream);
+  }
 
   @override
   HttpConnectionInfo? get connectionInfo => innerContext.connectionInfo;
@@ -412,17 +424,32 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
   Uri get uri => innerContext.uri;
 
   @override
-  void write(Object? object) => innerContext.write(object);
+  void write(Object? object) {
+    _injectHeaders();
+
+    innerContext.write(object);
+  }
 
   @override
-  void writeAll(Iterable objects, [String separator = '']) =>
-      innerContext.writeAll(objects, separator);
+  void writeAll(Iterable objects, [String separator = '']) {
+    _injectHeaders();
+
+    innerContext.writeAll(objects, separator);
+  }
 
   @override
-  void writeCharCode(int charCode) => innerContext.writeCharCode(charCode);
+  void writeCharCode(int charCode) {
+    _injectHeaders();
+
+    innerContext.writeCharCode(charCode);
+  }
 
   @override
-  void writeln([Object? object = '']) => innerContext.writeln(object);
+  void writeln([Object? object = '']) {
+    _injectHeaders();
+
+    innerContext.writeln(object);
+  }
 }
 
 class _DatadogTrackingHttpResponse extends Stream<List<int>>
@@ -430,12 +457,14 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
   final DatadogSdk datadogSdk;
   final HttpClientResponse innerResponse;
   final String? rumKey;
+  final TracingContext? tracingContext;
   Object? lastError;
 
   _DatadogTrackingHttpResponse(
     this.datadogSdk,
     this.innerResponse,
     this.rumKey,
+    this.tracingContext,
   );
 
   @override
@@ -469,23 +498,33 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
   // error will be sent.
   void _onError(Object error, StackTrace? stackTrace) {
     lastError = error;
-    datadogSdk.rum?.stopResourceLoadingWithErrorInfo(
-        rumKey!, lastError.toString(), lastError.runtimeType.toString());
+    final rum = datadogSdk.rum;
+    if (rumKey != null && rum != null) {
+      final attributes = generateDatadogAttributes(
+        tracingContext,
+        rum.tracingSamplingRate,
+      );
+      rum.stopResourceLoadingWithErrorInfo(rumKey!, lastError.toString(),
+          lastError.runtimeType.toString(), attributes);
+    }
   }
 
   void _onFinish() {
     try {
       final statusCode = innerResponse.statusCode;
 
-      if (rumKey != null) {
+      final rum = datadogSdk.rum;
+      if (rumKey != null && rum != null) {
         // Error'd streams are already closed
         if (lastError == null) {
           var resourceType = resourceTypeFromContentType(headers.contentType);
           var size = innerResponse.contentLength > 0
               ? innerResponse.contentLength
               : null;
-          datadogSdk.rum
-              ?.stopResourceLoading(rumKey!, statusCode, resourceType, size);
+          final attributes = generateDatadogAttributes(
+              tracingContext, rum.tracingSamplingRate);
+          rum.stopResourceLoading(
+              rumKey!, statusCode, resourceType, size, attributes);
         }
       }
     } catch (e, st) {

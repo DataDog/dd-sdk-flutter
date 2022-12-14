@@ -6,6 +6,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../datadog_internal.dart';
+
 /// The type of tracing header to inject into first party requests.
 enum TracingHeaderType {
   /// [Datadog's `x-datadog-*` header](https://docs.datadoghq.com/real_user_monitoring/connect_rum_and_traces/?tab=browserrum#how-are-rum-resources-linked-to-traces).
@@ -160,6 +162,23 @@ TracingContext? readTracingContext(Map<String, String> headers) {
 /// Generate a tracing context
 TracingContext generateTracingContext(bool sampled) {
   return TracingContext(_generateTraceId(), _generateTraceId(), null, sampled);
+}
+
+Map<String, Object?> generateDatadogAttributes(
+    TracingContext? context, double samplingRate) {
+  var attributes = <String, Object?>{};
+
+  if (context != null) {
+    attributes[DatadogRumPlatformAttributeKey.rulePsr] = samplingRate / 100.0;
+    if (context.sampled) {
+      attributes[DatadogRumPlatformAttributeKey.traceID] =
+          context.traceId.asString(TraceIdRepresentation.decimal);
+      attributes[DatadogRumPlatformAttributeKey.spanID] =
+          context.spanId.asString(TraceIdRepresentation.decimal);
+    }
+  }
+
+  return attributes;
 }
 
 void injectHeaders(TracingContext context, TracingHeaderType headersType,

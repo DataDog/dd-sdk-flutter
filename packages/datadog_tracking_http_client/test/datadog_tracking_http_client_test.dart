@@ -47,6 +47,7 @@ void main() {
   late MockDatadogSdkPlatform mockPlatform;
   late MockDdRum mockRum;
   late MockHttpClient mockClient;
+  late MockHttpClientRequest mockRequest;
 
   setUpAll(() {
     registerFallbackValue(Uri());
@@ -75,8 +76,9 @@ void main() {
     when(() => mockClient.idleTimeout).thenReturn(const Duration());
   });
 
-  Completer<HttpClientResponse> setupMockRequest() {
-    final mockRequest = MockHttpClientRequest();
+  Completer<HttpClientResponse> setupMockRequest(Uri url) {
+    mockRequest = MockHttpClientRequest();
+    when(() => mockRequest.uri).thenReturn(url);
     final mockHeaders = MockHttpHeaders();
     var completer = Completer<HttpClientResponse>();
     when(() => mockClient.openUrl(any(), any()))
@@ -144,7 +146,8 @@ void main() {
     });
 
     test('open calls through when tracing and rum are disabled', () async {
-      setupMockRequest();
+      var url = Uri.parse('https://test_url/path');
+      setupMockRequest(url);
       final client = DatadogTrackingHttpClient(
         mockDatadog,
         DdHttpTrackingPluginConfiguration(
@@ -153,7 +156,6 @@ void main() {
         mockClient,
       );
 
-      var url = Uri.parse('https://test_url/path');
       await client.openUrl('get', url);
 
       verify(() => mockClient.openUrl('get', url));
@@ -181,13 +183,14 @@ void main() {
     when(() => mockDatadog.rum).thenReturn(mockRum);
   }
 
-  group('when rum is enabled width datadog tracing headers', () {
+  group('when rum is enabled with datadog tracing headers', () {
     setUp(() {
       enableRum();
     });
 
     test('calls start resource and stop resource and calls through', () async {
-      final completer = setupMockRequest();
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
 
       final client = DatadogTrackingHttpClient(
         mockDatadog,
@@ -197,10 +200,9 @@ void main() {
         mockClient,
       );
 
-      var url = Uri.parse('https://test_url/path');
+      when(() => mockRequest.uri).thenReturn(url);
+
       var request = await client.openUrl('get', url);
-      var requestHeaders = request.headers;
-      verify(() => requestHeaders.add('x-datadog-origin', 'rum'));
 
       verify(() => mockClient.openUrl('get', url));
       var capturedKey = verify(
@@ -214,6 +216,9 @@ void main() {
       completer.complete(mockResponse);
       var response = await request.done;
 
+      var requestHeaders = request.headers;
+      verify(() => requestHeaders.add('x-datadog-origin', 'rum'));
+
       var gotData = false;
       response.listen((event) {
         gotData = true;
@@ -222,11 +227,12 @@ void main() {
       await mockResponse.streamController.close();
       expect(gotData, isTrue);
       verify(() => mockRum.stopResourceLoading(
-          capturedKey, 200, RumResourceType.image, 88888));
+          capturedKey, 200, RumResourceType.image, 88888, any()));
     });
 
     test('calls stop resource with status code', () async {
-      final completer = setupMockRequest();
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
 
       final client = DatadogTrackingHttpClient(
         mockDatadog,
@@ -236,7 +242,6 @@ void main() {
         mockClient,
       );
 
-      var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
 
       verify(() => mockClient.openUrl('get', url));
@@ -254,11 +259,12 @@ void main() {
       await mockResponse.streamController.close();
 
       verify(() => mockRum.stopResourceLoading(
-          capturedKey, 403, RumResourceType.image, 88888));
+          capturedKey, 403, RumResourceType.image, 88888, any()));
     });
 
     test('sets resource type from headers', () async {
-      final completer = setupMockRequest();
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
 
       final client = DatadogTrackingHttpClient(
         mockDatadog,
@@ -268,7 +274,6 @@ void main() {
         mockClient,
       );
 
-      var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
 
       verify(() => mockClient.openUrl('get', url));
@@ -285,11 +290,12 @@ void main() {
       await mockResponse.streamController.close();
 
       verify(() => mockRum.stopResourceLoading(
-          capturedKey, 200, RumResourceType.media, 88888));
+          capturedKey, 200, RumResourceType.media, 88888, any()));
     });
 
     test('calls stop resource with error connection error', () async {
-      final completer = setupMockRequest();
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
 
       final client = DatadogTrackingHttpClient(
         mockDatadog,
@@ -299,7 +305,6 @@ void main() {
         mockClient,
       );
 
-      var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
       var capturedKey = verify(
         () => mockRum.startResourceLoading(
@@ -317,11 +322,13 @@ void main() {
 
       expect(caughtError, error);
       verify(() => mockRum.stopResourceLoadingWithErrorInfo(
-          capturedKey, error.toString(), error.runtimeType.toString()));
+          capturedKey, error.toString(), error.runtimeType.toString(), any()));
     });
 
     test('calls stop resource with error for response error', () async {
-      final completer = setupMockRequest();
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
+
       final client = DatadogTrackingHttpClient(
         mockDatadog,
         DdHttpTrackingPluginConfiguration(
@@ -330,7 +337,6 @@ void main() {
         mockClient,
       );
 
-      var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
       var capturedKey = verify(
         () => mockRum.startResourceLoading(
@@ -356,13 +362,15 @@ void main() {
             capturedKey,
             error.toString(),
             error.runtimeType.toString(),
+            any(),
           ));
     });
 
     test('start and stop resource loading set tracing attributes', () async {
       when(() => mockRum.tracingSamplingRate).thenReturn(23.0);
 
-      final completer = setupMockRequest();
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
       final client = DatadogTrackingHttpClient(
         mockDatadog,
         DdHttpTrackingPluginConfiguration(
@@ -371,19 +379,16 @@ void main() {
         mockClient,
       );
 
-      var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
       var capturedStartArgs = verify(
         () => mockRum.startResourceLoading(
           captureAny(),
           RumHttpMethod.get,
           url.toString(),
-          captureAny(),
+          any(),
         ),
       ).captured;
       var capturedKey = capturedStartArgs[0] as String;
-      var capturedStartAttributes =
-          capturedStartArgs[1] as Map<String, dynamic>;
 
       var mockResponse = setupMockClientResponse(200, size: 12345);
 
@@ -392,27 +397,33 @@ void main() {
       response.listen((event) {});
       await mockResponse.streamController.close();
 
-      verify(() => mockRum.stopResourceLoading(
-          capturedKey, 200, RumResourceType.image, 12345));
+      var capturedEndArgs = verify(() => mockRum.stopResourceLoading(
+            capturedKey,
+            200,
+            RumResourceType.image,
+            12345,
+            captureAny(),
+          )).captured;
+      final capturedAttributes = capturedEndArgs[0] as Map<String, dynamic>;
 
       var traceInt = BigInt.parse(
-          capturedStartAttributes[DatadogRumPlatformAttributeKey.traceID]);
+          capturedAttributes[DatadogRumPlatformAttributeKey.traceID]);
       expect(traceInt, isNotNull);
       expect(traceInt.bitLength, lessThanOrEqualTo(63));
 
       var spanInt = BigInt.parse(
-          capturedStartAttributes[DatadogRumPlatformAttributeKey.spanID]);
+          capturedAttributes[DatadogRumPlatformAttributeKey.spanID]);
       expect(spanInt, isNotNull);
       expect(spanInt.bitLength, lessThanOrEqualTo(63));
 
-      expect(capturedStartAttributes[DatadogRumPlatformAttributeKey.rulePsr],
-          0.23);
+      expect(capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.23);
     });
 
     test(
         'start and stop resource loading do not set tracing attributes if shouldSample returns false',
         () async {
-      final completer = setupMockRequest();
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
       final client = DatadogTrackingHttpClient(
         mockDatadog,
         DdHttpTrackingPluginConfiguration(
@@ -423,20 +434,16 @@ void main() {
       when(() => mockRum.shouldSampleTrace()).thenReturn(false);
       when(() => mockRum.tracingSamplingRate).thenReturn(12.0);
 
-      var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
       var capturedStartArgs = verify(
         () => mockRum.startResourceLoading(
           captureAny(),
           RumHttpMethod.get,
           url.toString(),
-          captureAny(),
+          any(),
         ),
       ).captured;
       var capturedKey = capturedStartArgs[0] as String;
-      var capturedStartAttributes =
-          capturedStartArgs[1] as Map<String, dynamic>;
-
       var mockResponse = setupMockClientResponse(200, size: 12345);
 
       completer.complete(mockResponse);
@@ -444,19 +451,26 @@ void main() {
       response.listen((event) {});
       await mockResponse.streamController.close();
 
-      verify(() => mockRum.stopResourceLoading(
-          capturedKey, 200, RumResourceType.image, 12345));
+      final capturedEndArgs = verify(() => mockRum.stopResourceLoading(
+            capturedKey,
+            200,
+            RumResourceType.image,
+            12345,
+            captureAny(),
+          )).captured;
+      final capturedAttributes = capturedEndArgs[0] as Map<String, dynamic>;
 
-      expect(capturedStartAttributes[DatadogRumPlatformAttributeKey.traceID],
-          isNull);
-      expect(capturedStartAttributes[DatadogRumPlatformAttributeKey.spanID],
-          isNull);
-      expect(capturedStartAttributes[DatadogRumPlatformAttributeKey.rulePsr],
-          0.12);
+      expect(
+          capturedAttributes[DatadogRumPlatformAttributeKey.traceID], isNull);
+      expect(capturedAttributes[DatadogRumPlatformAttributeKey.spanID], isNull);
+      expect(capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.12);
     });
 
     test('sets trace headers for first party urls', () async {
-      setupMockRequest();
+      var url = Uri.parse('https://test_url/path');
+      var completer = setupMockRequest(url);
+      var mockResponse = setupMockClientResponse(200);
+
       final client = DatadogTrackingHttpClient(
         mockDatadog,
         DdHttpTrackingPluginConfiguration(
@@ -465,14 +479,19 @@ void main() {
         mockClient,
       );
 
-      var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
+      completer.complete(mockResponse);
+
+      var _ = await request.done;
+
       final requestHeaders = request.headers;
       verifyHeaders(requestHeaders);
     });
 
     test('does not set trace headers for third party urls', () async {
-      setupMockRequest();
+      var url = Uri.parse('https://non_first_party/path');
+      setupMockRequest(url);
+
       final client = DatadogTrackingHttpClient(
         mockDatadog,
         DdHttpTrackingPluginConfiguration(
@@ -481,7 +500,6 @@ void main() {
         mockClient,
       );
 
-      var url = Uri.parse('https://non_first_party/path');
       var request = await client.openUrl('get', url);
       final requestHeaders = request.headers;
 
@@ -523,7 +541,10 @@ void main() {
     test('does not set trace headers when should sample returns false',
         () async {
       when(() => mockRum.shouldSampleTrace()).thenReturn(false);
-      setupMockRequest();
+      var url = Uri.parse('https://test_url/path');
+      var completer = setupMockRequest(url);
+      var mockResponse = setupMockClientResponse(200);
+
       final client = DatadogTrackingHttpClient(
         mockDatadog,
         DdHttpTrackingPluginConfiguration(
@@ -532,8 +553,10 @@ void main() {
         mockClient,
       );
 
-      var url = Uri.parse('https://test_url/path');
       var request = await client.openUrl('get', url);
+      completer.complete(mockResponse);
+
+      var _ = await request.done;
       final requestHeaders = request.headers;
 
       verifyNever(() => requestHeaders.add('x-datadog-trace-id', any()));
