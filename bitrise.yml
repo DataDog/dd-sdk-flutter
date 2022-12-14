@@ -70,7 +70,7 @@ workflows:
     - _pub_get
     steps:
     - script:
-        title: Generate env files
+        title: Generate build files
         inputs:
         - content: |-
             #!/usr/bin/env bash
@@ -79,9 +79,13 @@ workflows:
 
             pod repo update
 
+            pushd packages/datadog_flutter_plugin
+            flutter pub run build_runner build
+            popd
+
             pushd packages/datadog_common_test
             flutter pub run build_runner build
-            popd          
+            popd
 
   run_conditioned_workflows:
     steps:

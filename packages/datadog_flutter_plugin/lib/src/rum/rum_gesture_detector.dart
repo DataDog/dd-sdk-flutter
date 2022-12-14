@@ -210,7 +210,7 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
       // including our annotation object. Continue to check if the widgets
       // are detecting elements
       if (ro == targets.last.target) {
-        final lastHit = targets.removeLast();
+        targets.removeLast();
         lastRenderObject = ro;
       }
 

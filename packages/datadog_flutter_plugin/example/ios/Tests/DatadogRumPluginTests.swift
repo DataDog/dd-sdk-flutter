@@ -16,7 +16,7 @@ enum ResultStatus: EquatableInTests {
 }
 
 extension RUMAddLongTaskCommand: EquatableInTests {
-    
+
 }
 
 // MARK: - Tests

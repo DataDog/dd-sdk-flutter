@@ -16,6 +16,7 @@ import 'package:js/js.dart';
 
 import 'src/datadog_configuration.dart';
 import 'src/datadog_sdk_platform_interface.dart';
+import 'src/internal_logger.dart';
 import 'src/logs/ddlogs_platform_interface.dart';
 import 'src/logs/ddlogs_web.dart';
 import 'src/rum/ddrum_platform_interface.dart';
@@ -51,8 +52,11 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   Future<void> addUserExtraInfo(Map<String, Object?> extraInfo) async {}
 
   @override
-  Future<void> initialize(DdSdkConfiguration configuration,
-      {LogCallback? logCallback}) async {
+  Future<void> initialize(
+    DdSdkConfiguration configuration, {
+    LogCallback? logCallback,
+    required InternalLogger internalLogger,
+  }) async {
     if (configuration.loggingConfiguration != null) {
       DdLogsWeb.initLogs(configuration);
     }

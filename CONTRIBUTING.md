@@ -25,6 +25,9 @@ them with Datadog. Running `./generate_env.sh` will create `example/.env` and
 `integration_test_app/.env`, both of which should be modified with your Client
 Id and Application Id from the Datadog RUM setup.
 
+Lastly, be sure to run `flutter pub run build_runner build` in projects that need
+their JSON models generated, which includes `packages/datadog_flutter_plugin`.
+
 ## Code Style
 
 Code style is enforced with the following libraries in the following languages:

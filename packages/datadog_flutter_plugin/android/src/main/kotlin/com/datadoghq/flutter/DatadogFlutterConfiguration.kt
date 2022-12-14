@@ -49,6 +49,7 @@ data class DatadogFlutterConfiguration(
     var customLogsEndpoint: String? = null,
     var firstPartyHosts: List<String> = listOf(),
     var additionalConfig: Map<String, Any?> = mapOf(),
+    var attachLogMapper: Boolean = false,
 
     var rumConfiguration: RumConfiguration? = null
 ) {
@@ -103,6 +104,8 @@ data class DatadogFlutterConfiguration(
         @Suppress("UNCHECKED_CAST")
         additionalConfig = (encoded["additionalConfig"] as? Map<String, Any?>) ?: mapOf()
 
+        attachLogMapper = (encoded["attachLogMapper"] as? Boolean) ?: false
+
         @Suppress("UNCHECKED_CAST")
         (encoded["rumConfiguration"] as? Map<String, Any?>)?.let {
             rumConfiguration = RumConfiguration(it)
@@ -122,7 +125,7 @@ data class DatadogFlutterConfiguration(
     }
 
     @Suppress("ComplexMethod")
-    fun toSdkConfiguration(): Configuration.Builder {
+    fun toSdkConfigurationBuilder(): Configuration.Builder {
         val configBuilder = Configuration.Builder(
             // Always enable logging as users can create logs post initialization
             logsEnabled = true,

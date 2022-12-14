@@ -29,7 +29,7 @@ class DdLogsMethodChannel extends DdLogsPlatform {
       String? errorMessage,
       String? errorKind,
       StackTrace? errorStackTrace,
-      Map<String, Object?> context) {
+      Map<String, Object?> attributes) {
     return methodChannel.invokeMethod('log', {
       'loggerHandle': loggerHandle,
       'logLevel': level.toString(),
@@ -37,37 +37,7 @@ class DdLogsMethodChannel extends DdLogsPlatform {
       'errorKind': errorKind,
       'stackTrace': errorStackTrace?.toString(),
       'message': message,
-      'context': context,
-    });
-  }
-
-  @override
-  Future<void> info(String loggerHandle, String message,
-      [Map<String, Object?> context = const {}]) {
-    return methodChannel.invokeMethod('info', {
-      'loggerHandle': loggerHandle,
-      'message': message,
-      'context': context,
-    });
-  }
-
-  @override
-  Future<void> warn(String loggerHandle, String message,
-      [Map<String, Object?> context = const {}]) {
-    return methodChannel.invokeMethod('warn', {
-      'loggerHandle': loggerHandle,
-      'message': message,
-      'context': context,
-    });
-  }
-
-  @override
-  Future<void> error(String loggerHandle, String message,
-      [Map<String, Object?> context = const {}]) {
-    return methodChannel.invokeMethod('error', {
-      'loggerHandle': loggerHandle,
-      'message': message,
-      'context': context,
+      'context': attributes,
     });
   }
 

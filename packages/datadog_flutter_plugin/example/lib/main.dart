@@ -10,6 +10,18 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'example_app.dart';
 
+// Rewrite log messages to remove sensitive information
+LogEvent? _testLogEventMapper(LogEvent event) {
+  if (event.message == 'overwrite me') {
+    event.message = 'overwritten';
+  } else if (event.message == 'stop me') {
+    // Return null if you don't want a message to be sent
+    return null;
+  }
+
+  return event;
+}
+
 void main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +35,7 @@ void main() async {
       site: DatadogSite.us1,
       trackingConsent: TrackingConsent.granted,
       nativeCrashReportEnabled: true,
+      logEventMapper: _testLogEventMapper,
       loggingConfiguration: LoggingConfiguration(
         sendNetworkInfo: true,
         printLogsToConsole: true,

@@ -17,8 +17,10 @@ void main() {
 
   testWidgets('test rum manual error reporting scenario',
       (WidgetTester tester) async {
-    var recordedSession =
-        await openTestScenario(tester, 'RUM Error Reporting Scenario');
+    var recordedSession = await openTestScenario(
+      tester,
+      menuTitle: 'RUM Error Reporting Scenario',
+    );
 
     var throwButton =
         find.widgetWithText(ElevatedButton, 'Throw / Catch Exception');

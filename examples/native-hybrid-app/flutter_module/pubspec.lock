@@ -56,7 +56,7 @@ packages:
       path: "../../../packages/datadog_flutter_plugin"
       relative: true
     source: path
-    version: "1.1.0"
+    version: "1.2.0"
   datadog_tracking_http_client:
     dependency: "direct main"
     description:
@@ -121,6 +121,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.6.4"
+  json_annotation:
+    dependency: transitive
+    description:
+      name: json_annotation
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "4.7.0"
   lints:
     dependency: transitive
     description:

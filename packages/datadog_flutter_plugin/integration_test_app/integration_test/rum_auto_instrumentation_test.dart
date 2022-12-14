@@ -5,8 +5,7 @@
 import 'dart:convert';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
-import 'package:datadog_integration_test_app/auto_integration_scenarios/main.dart'
-    as auto_app;
+import 'package:datadog_integration_test_app/auto_integration_scenarios/scenario_runner.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -37,22 +36,8 @@ void main() {
   // scenario with instrumentation enabled, then checks that we got the expected
   // calls.
   testWidgets('test auto instrumentation', (WidgetTester tester) async {
-    var serverRecorder = await startMockServer();
-
-    const clientToken = bool.hasEnvironment('DD_CLIENT_TOKEN')
-        ? String.fromEnvironment('DD_CLIENT_TOKEN')
-        : null;
-    const applicationId = bool.hasEnvironment('DD_APPLICATION_ID')
-        ? String.fromEnvironment('DD_APPLICATION_ID')
-        : null;
-
-    auto_app.testingConfiguration = TestingConfiguration(
-        customEndpoint: serverRecorder.sessionEndpoint,
-        clientToken: clientToken,
-        applicationId: applicationId,
-        firstPartyHosts: ['localhost']);
-    await auto_app.main();
-    await tester.pumpAndSettle();
+    var serverRecorder = await openTestScenario(tester,
+        scenarioName: autoInstrumentationScenarioName);
 
     await performRumUserFlow(tester);
 

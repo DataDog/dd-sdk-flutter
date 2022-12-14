@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/src/datadog_sdk_method_channel.dart';
+import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,6 +14,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late DatadogSdkMethodChannel ddSdkPlatform;
+  late InternalLogger internalLogger;
   final List<MethodCall> log = [];
 
   setUp(() {
@@ -21,6 +23,7 @@ void main() {
       log.add(call);
       return null;
     });
+    internalLogger = InternalLogger();
   });
 
   tearDown(() {
@@ -34,7 +37,8 @@ void main() {
       trackingConsent: TrackingConsent.granted,
       site: DatadogSite.us1,
     );
-    await ddSdkPlatform.initialize(configuration);
+    await ddSdkPlatform.initialize(configuration,
+        internalLogger: internalLogger);
 
     expect(log, [
       isMethodCall('initialize', arguments: {
@@ -51,7 +55,11 @@ void main() {
       trackingConsent: TrackingConsent.granted,
       site: DatadogSite.us1,
     );
-    await ddSdkPlatform.initialize(configuration, logCallback: (_) {});
+    await ddSdkPlatform.initialize(
+      configuration,
+      internalLogger: internalLogger,
+      logCallback: (_) {},
+    );
 
     expect(log, [
       isMethodCall('initialize', arguments: {
@@ -61,7 +69,7 @@ void main() {
     ]);
   });
 
-  test('attachToExsiting calls to methodChannel', () {
+  test('attachToExisting calls to methodChannel', () {
     unawaited(ddSdkPlatform.attachToExisting());
 
     expect(log, [
@@ -196,7 +204,6 @@ void main() {
   });
 
   test('updateTelemetryConfiguration calls to method channel', () {
-    final st = StackTrace.current;
     unawaited(
         ddSdkPlatform.updateTelemetryConfiguration('telemetryProperty', true));
     unawaited(ddSdkPlatform.updateTelemetryConfiguration(

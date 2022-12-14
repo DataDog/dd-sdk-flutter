@@ -4,6 +4,7 @@
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
+import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -35,19 +36,23 @@ void main() {
     registerFallbackValue(LoggingConfiguration());
     registerFallbackValue(LateConfigurationProperty.trackErrors);
     registerFallbackValue(Verbosity.verbose);
+    registerFallbackValue(InternalLogger());
   });
 
   setUp(() {
     mockPlatform = MockDatadogSdkPlatform();
-    when(() => mockPlatform.initialize(any(),
-            logCallback: any(named: 'logCallback')))
-        .thenAnswer((_) => Future<void>.value());
+    when(() => mockPlatform.initialize(
+          any(),
+          internalLogger: any(named: 'internalLogger'),
+          logCallback: any(named: 'logCallback'),
+        )).thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.attachToExisting())
         .thenAnswer((_) => Future<AttachResponse?>.value(AttachResponse(
               rumEnabled: false,
             )));
     when(() => mockPlatform.setSdkVerbosity(any()))
         .thenAnswer((invocation) => Future<void>.value());
+
     when(() => mockPlatform.setUserInfo(any(), any(), any(), any()))
         .thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.addUserExtraInfo((any())))
@@ -78,8 +83,11 @@ void main() {
     );
     await datadogSdk.initialize(configuration);
 
-    verify(() => mockPlatform.initialize(configuration,
-        logCallback: any(named: 'logCallback')));
+    verify(() => mockPlatform.initialize(
+          configuration,
+          internalLogger: any(named: 'internalLogger'),
+          logCallback: any(named: 'logCallback'),
+        ));
   });
 
   test('encode base configuration', () {
@@ -104,6 +112,7 @@ void main() {
       'firstPartyHosts': <String>[],
       'rumConfiguration': null,
       'additionalConfig': <String, Object?>{},
+      'attachLogMapper': false,
     });
   });
 
@@ -242,7 +251,7 @@ void main() {
     expect(datadogSdk.firstPartyHosts, ['example.com', 'datadoghq.com']);
   });
 
-  test('attachToExisiting with loggingConfiguration creates default logger',
+  test('attachToExisting with loggingConfiguration creates default logger',
       () async {
     when(() => mockPlatform.attachToExisting()).thenAnswer(
         (invocation) => Future<AttachResponse?>.value(AttachResponse(
@@ -263,7 +272,7 @@ void main() {
     verify(() => mockLogsPlatform.createLogger(any(), logConfig));
   });
 
-  test('attachToExisiting without loggingConfiguration does not create logger',
+  test('attachToExisting without loggingConfiguration does not create logger',
       () async {
     when(() => mockPlatform.attachToExisting()).thenAnswer(
         (invocation) => Future<AttachResponse?>.value(AttachResponse(

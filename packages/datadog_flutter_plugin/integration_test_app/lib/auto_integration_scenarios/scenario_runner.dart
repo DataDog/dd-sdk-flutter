@@ -1,7 +1,6 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2016-Present Datadog, Inc.
-
+// Copyright 2022-Present Datadog, Inc.
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
@@ -10,34 +9,17 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'rum_auto_instrumentation_scenario.dart';
 import 'scenario_config.dart';
 
-// This file sets up a different application for testing auto instrumentation
-// Using the widgets in this library by themselves won't send any RUM events
-// but, by utilizing this entry point instead, we can test that
-// auto-instrumentation added to an existing app gives us the expected results.
-TestingConfiguration? testingConfiguration;
+const autoInstrumentationScenarioName = 'auto_instrumentation_scenario';
 
-Future<void> main() async {
-  await dotenv.load();
-
-  var clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
-  var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
-  String? customEndpoint = dotenv.maybeGet('DD_CUSTOM_ENDPOINT');
-
-  if (testingConfiguration != null) {
-    if (testingConfiguration!.customEndpoint != null) {
-      customEndpoint = testingConfiguration!.customEndpoint;
-      if (testingConfiguration!.clientToken != null) {
-        clientToken = testingConfiguration!.clientToken!;
-      }
-      if (testingConfiguration!.applicationId != null) {
-        applicationId = testingConfiguration!.applicationId;
-      }
-    }
-  }
-
+Future<void> runScenario({
+  required String clientToken,
+  required String? applicationId,
+  required String? customEndpoint,
+  TestingConfiguration? testingConfiguration,
+}) async {
   final firstPartyHosts = ['datadoghq.com'];
   if (testingConfiguration != null) {
-    firstPartyHosts.addAll(testingConfiguration!.firstPartyHosts);
+    firstPartyHosts.addAll(testingConfiguration.firstPartyHosts);
     firstPartyHosts
         .addAll(RumAutoInstrumentationScenarioConfig.instance.firstPartyHosts);
   }

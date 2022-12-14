@@ -17,7 +17,10 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('test rum scenario', (WidgetTester tester) async {
-    var recordedSession = await openTestScenario(tester, 'Manual RUM Scenario');
+    var recordedSession = await openTestScenario(
+      tester,
+      menuTitle: 'Manual RUM Scenario',
+    );
 
     var downloadButton =
         find.widgetWithText(ElevatedButton, 'Download Resource');

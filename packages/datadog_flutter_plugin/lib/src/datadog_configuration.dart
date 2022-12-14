@@ -9,6 +9,13 @@ import 'package:meta/meta.dart';
 import '../datadog_flutter_plugin.dart';
 import '../datadog_internal.dart';
 
+/// A function that allows you to modify or drop specific [LogEvent]s before
+/// they are sent to Datadog.
+///
+/// The [LogEventMapper] can modify any mutable (non-final) properties in the
+/// [LogEvent], or return null to drop the log entirely.
+typedef LogEventMapper = LogEvent? Function(LogEvent event);
+
 /// Defines the Datadog SDK policy when batching data together before uploading
 /// it to Datadog servers. Smaller batches mean smaller but more network
 /// requests, whereas larger batches mean fewer but larger network requests.
@@ -383,6 +390,10 @@ class DdSdkConfiguration {
   /// logging is disabled.
   LoggingConfiguration? loggingConfiguration;
 
+  /// A function that allows you to modify or drop specific [LogEvent]s
+  /// before they are sent to Datadog.
+  LogEventMapper? logEventMapper;
+
   /// Configuration for the Real User Monitoring (RUM) feature. If this
   /// configuration is null, RUM is disabled
   RumConfiguration? rumConfiguration;
@@ -410,6 +421,7 @@ class DdSdkConfiguration {
     this.telemetrySampleRate,
     this.firstPartyHosts = const [],
     this.loggingConfiguration,
+    this.logEventMapper,
     this.rumConfiguration,
   }) {
     // Transfer customEndpoint to other properties if they're not set
@@ -453,6 +465,7 @@ class DdSdkConfiguration {
       'firstPartyHosts': firstPartyHosts,
       'rumConfiguration': rumConfiguration?.encode(),
       'additionalConfig': encodedAdditionalConfig,
+      'attachLogMapper': logEventMapper != null,
       'customLogsEndpoint': customLogsEndpoint,
     };
   }
