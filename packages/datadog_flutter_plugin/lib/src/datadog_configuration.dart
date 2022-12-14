@@ -9,6 +9,11 @@ import 'package:meta/meta.dart';
 import '../datadog_flutter_plugin.dart';
 import '../datadog_internal.dart';
 
+/// A function that allows you to modify or drop specific [LogEvent]s before
+/// they are sent to Datadog.
+///
+/// The [LogEventMapper] can modify any mutable (non-final) properties in the
+/// [LogEvent], or return null to drop the log entirely.
 typedef LogEventMapper = LogEvent? Function(LogEvent event);
 
 /// Defines the Datadog SDK policy when batching data together before uploading
@@ -385,7 +390,8 @@ class DdSdkConfiguration {
   /// logging is disabled.
   LoggingConfiguration? loggingConfiguration;
 
-  //
+  /// A function that allows you to modify or drop specific [LogEvent]s
+  /// before they are sent to Datadog.
   LogEventMapper? logEventMapper;
 
   /// Configuration for the Real User Monitoring (RUM) feature. If this
