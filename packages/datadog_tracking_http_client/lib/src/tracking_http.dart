@@ -193,16 +193,14 @@ class DatadogClient extends http.BaseClient {
 
       if (shouldSample) {
         attributes[DatadogRumPlatformAttributeKey.traceID] =
-            context.traceId.asString(TraceIdRepresentation.decimal);
+            context.traceId!.asString(TraceIdRepresentation.decimal);
         attributes[DatadogRumPlatformAttributeKey.spanID] =
-            context.spanId.asString(TraceIdRepresentation.decimal);
+            context.spanId!.asString(TraceIdRepresentation.decimal);
       }
 
-      var addedHeaders = <String, String>{};
       for (final headerType in tracingHeaderTypes!) {
-        injectHeaders(context, headerType, addedHeaders);
+        request.headers.addAll(getTracingHeaders(context, headerType));
       }
-      request.headers.addAll(addedHeaders);
     }
 
     return attributes;

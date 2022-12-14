@@ -67,12 +67,12 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
             rum.tracingSamplingRate / 100.0;
         if (tracingContext.sampled) {
           attributes[DatadogRumPlatformAttributeKey.traceID] =
-              tracingContext.traceId.asString(TraceIdRepresentation.decimal);
+              tracingContext.traceId!.asString(TraceIdRepresentation.decimal);
           attributes[DatadogRumPlatformAttributeKey.spanID] =
-              tracingContext.spanId.asString(TraceIdRepresentation.decimal);
+              tracingContext.spanId!.asString(TraceIdRepresentation.decimal);
         }
 
-        injectHeaders(tracingContext, TracingHeaderType.dd, addedHeaders);
+        addedHeaders = getTracingHeaders(tracingContext, TracingHeaderType.dd);
       }
 
       _datadog.rum?.startResourceLoading(
