@@ -73,8 +73,14 @@ class DatadogClient extends http.BaseClient {
       final rumHttpMethod = rumMethodFromMethodString(request.method);
       var attributes = <String, Object?>{};
       if (isFirstParty) {
-        bool shouldSample = rum.shouldSampleTrace();
-        attributes = _appendRequestHeaders(request, shouldSample);
+        TracingContext? context = readTracingContext(request.headers);
+        bool shouldSample = true;
+        if (context == null) {
+          shouldSample = rum.shouldSampleTrace();
+          context = generateTracingContext(shouldSample);
+        }
+
+        attributes = _appendRequestHeaders(request, context);
       }
 
       rumKey = _uuid.v1();
@@ -186,17 +192,12 @@ class DatadogClient extends http.BaseClient {
   }
 
   Map<String, Object?> _appendRequestHeaders(
-      http.BaseRequest request, bool shouldSample) {
+      http.BaseRequest request, TracingContext context) {
     var attributes = <String, Object?>{};
-    if (tracingHeaderTypes != null && tracingHeaderTypes!.isNotEmpty) {
-      final context = generateTracingContext(shouldSample);
 
-      if (shouldSample) {
-        attributes[DatadogRumPlatformAttributeKey.traceID] =
-            context.traceId!.asString(TraceIdRepresentation.decimal);
-        attributes[DatadogRumPlatformAttributeKey.spanID] =
-            context.spanId!.asString(TraceIdRepresentation.decimal);
-      }
+    if (tracingHeaderTypes != null && tracingHeaderTypes!.isNotEmpty) {
+      attributes = generateDatadogAttributes(
+          context, datadogSdk.rum?.tracingSamplingRate ?? 0);
 
       for (final headerType in tracingHeaderTypes!) {
         request.headers.addAll(getTracingHeaders(context, headerType));
