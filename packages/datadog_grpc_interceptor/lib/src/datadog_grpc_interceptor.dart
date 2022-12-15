@@ -18,13 +18,15 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
   final Uuid uuid = const Uuid();
   final DatadogSdk _datadog;
   final ClientChannel _channel;
+  final Set<TracingHeaderType> tracingHeaderTypes;
 
   late String _hostPath;
 
   DatadogGrpcInterceptor(
     this._datadog,
-    this._channel,
-  ) {
+    this._channel, {
+    this.tracingHeaderTypes = const {TracingHeaderType.dd},
+  }) {
     final host = _channel.host;
     final scheme = _channel.options.credentials.isSecure ? 'https' : 'http';
     // Add http / https scheme. This scheme is a lie but needed to connect
@@ -61,7 +63,8 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
       TracingContext? tracingContext;
       bool shouldSample = rum.shouldSampleTrace();
       if (isFirstPartyHost) {
-        tracingContext = generateTracingContext(shouldSample);
+        tracingContext = readTracingContext(options.metadata);
+        tracingContext = tracingContext ?? generateTracingContext(shouldSample);
 
         attributes[DatadogRumPlatformAttributeKey.rulePsr] =
             rum.tracingSamplingRate / 100.0;
@@ -72,7 +75,9 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
               tracingContext.spanId!.asString(TraceIdRepresentation.decimal);
         }
 
-        addedHeaders = getTracingHeaders(tracingContext, TracingHeaderType.dd);
+        for (final tracingType in tracingHeaderTypes) {
+          addedHeaders.addAll(getTracingHeaders(tracingContext, tracingType));
+        }
       }
 
       _datadog.rum?.startResourceLoading(
