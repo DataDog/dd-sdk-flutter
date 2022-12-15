@@ -25,9 +25,14 @@ Next, run the `prepare.sh` script in the root of the repo. This will run
 with `flutter pub run build_runner build`, and generate `.env` files for the
 various apps in order to use them with Datadog. 
 
-Running `./generate_env.sh` or `./prepare.sh` will create `.env` files in the
-various example application, which should be modified with your Client Id and
-Application Id from the Datadog RUM setup.
+Running `./prepare.sh` creates `.env` files in the various example application,
+which should be modified with your Client Id and Application Id from the Datadog
+RUM setup. It can alternately pull this information from environment the
+variables `DD_CLIENT_TOKEN` and `DD_APPLICATION_ID` for most test apps, and
+`DD_E2E_CLIENT_TOKEN` and `DD_E2E_APPLICATION_ID` for the e2e test application.
+
+If you need to switch environments frequently, you can use `./generate_env.sh` to
+only generate the environment files, without re-running other prepare steps.
 
 ## Code Style
 
