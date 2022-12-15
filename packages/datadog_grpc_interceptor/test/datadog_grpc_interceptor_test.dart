@@ -49,7 +49,7 @@ void main() {
         traceInt = BigInt.tryParse(metadata['x-datadog-trace-id'] ?? '');
         spanInt = BigInt.tryParse(metadata['x-datadog-parent-id'] ?? '');
         break;
-      case TracingHeaderType.b3s:
+      case TracingHeaderType.b3:
         var singleHeader = metadata['b3']!;
         var headerParts = singleHeader.split('-');
         if (sampled) {
@@ -64,6 +64,14 @@ void main() {
         expect(metadata['x-b3-sampled'], sampled ? '1' : '0');
         traceInt = BigInt.tryParse(metadata['x-b3-traceid'] ?? '', radix: 16);
         spanInt = BigInt.tryParse(metadata['x-b3-spanid'] ?? '', radix: 16);
+        break;
+      case TracingHeaderType.tracecontext:
+        var header = metadata['traceparent']!;
+        var headerParts = header.split('-');
+        expect(headerParts[0], '00');
+        traceInt = BigInt.tryParse(headerParts[1], radix: 16);
+        spanInt = BigInt.tryParse(headerParts[2], radix: 16);
+        expect(headerParts[3], sampled ? '01' : 00);
         break;
     }
 
@@ -323,6 +331,40 @@ void main() {
       var spanInt = BigInt.parse(
           attributes[DatadogRumPlatformAttributeKey.spanID] as String);
       expect(spanInt, BigInt.from(0x3eb5c1bcb46ab916));
+    });
+
+    test('extracts tracecontext headers and sets attributes', () async {
+      when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+
+      final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
+
+      final stub = GreeterClient(channel, interceptors: [interceptor]);
+      final options = CallOptions(metadata: {
+        'traceparent': '0000000000000000192a1164ba7cbeaa-1786ed9928687322-1',
+      });
+
+      await stub.sayHello(HelloRequest(name: 'test'), options: options);
+
+      expect(loggingService.calls.length, 1);
+      final call = loggingService.calls[0];
+
+      expect(
+          call.clientMetadata!['x-datadog-trace-id']!, '1813280924293185194');
+      expect(
+          call.clientMetadata!['x-datadog-parent-id']!, '1695303551815283490');
+
+      final captures = verify(() => mockRum.startResourceLoading(
+          captureAny(),
+          RumHttpMethod.get,
+          'http://localhost:$port/helloworld.Greeter/SayHello',
+          captureAny())).captured;
+      final attributes = captures[1] as Map<String, Object?>;
+      var traceInt = BigInt.parse(
+          attributes[DatadogRumPlatformAttributeKey.traceID] as String);
+      expect(traceInt, BigInt.from(0x192a1164ba7cbeaa));
+      var spanInt = BigInt.parse(
+          attributes[DatadogRumPlatformAttributeKey.spanID] as String);
+      expect(spanInt, BigInt.from(0x1786ed9928687322));
     });
   });
 

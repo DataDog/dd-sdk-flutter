@@ -73,7 +73,7 @@ void main() {
         traceInt = BigInt.tryParse(headers['x-datadog-trace-id']!);
         spanInt = BigInt.tryParse(headers['x-datadog-parent-id']!);
         break;
-      case TracingHeaderType.b3s:
+      case TracingHeaderType.b3:
         var singleHeader = headers['b3']!;
         var headerParts = singleHeader.split('-');
         traceInt = BigInt.tryParse(headerParts[0], radix: 16);
@@ -84,6 +84,14 @@ void main() {
         expect(headers['X-B3-Sampled'], '1');
         traceInt = BigInt.tryParse(headers['X-B3-TraceId']!, radix: 16);
         spanInt = BigInt.tryParse(headers['X-B3-SpanId']!, radix: 16);
+        break;
+      case TracingHeaderType.tracecontext:
+        var header = headers['traceparent']!;
+        var headerParts = header.split('-');
+        expect(headerParts[0], '00');
+        traceInt = BigInt.tryParse(headerParts[1], radix: 16);
+        spanInt = BigInt.tryParse(headerParts[2], radix: 16);
+        expect(headerParts[3], '01');
         break;
     }
 
@@ -398,6 +406,37 @@ void main() {
       expect(capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.5);
 
       expect(headers['x-datadog-sampling-priority'], '0');
+    });
+
+    test('extracts tracecontext headers and sets attributes', () async {
+      final client =
+          DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
+      final testUri = Uri.parse('https://test_url/test');
+
+      final _ = client.get(testUri, headers: {
+        'traceparent':
+            '00-0000000000000000170767c6ad0dbfa0-31187384ad60a08b-01',
+      });
+
+      final capturedRequest = verify(() => mockClient.send(captureAny()))
+          .captured[0] as http.BaseRequest;
+      expect(capturedRequest.url, testUri);
+      final capturedAttributes = verify(() => mockRum.startResourceLoading(
+              any(), RumHttpMethod.get, testUri.toString(), captureAny()))
+          .captured[0] as Map<String, Object?>;
+
+      final headers = capturedRequest.headers;
+
+      var traceInt = BigInt.parse(
+          capturedAttributes[DatadogRumPlatformAttributeKey.traceID] as String);
+      expect(traceInt, BigInt.from(0x170767c6ad0dbfa0));
+      var spanInt = BigInt.parse(
+          capturedAttributes[DatadogRumPlatformAttributeKey.spanID] as String);
+      expect(spanInt, BigInt.from(0x31187384ad60a08b));
+      expect(capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.5);
+
+      expect(headers['x-datadog-trace-id'], '1659409090713862048');
+      expect(headers['x-datadog-parent-id'], '3537704520981192843');
     });
 
     for (final headerType in TracingHeaderType.values) {

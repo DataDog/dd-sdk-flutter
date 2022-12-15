@@ -140,7 +140,7 @@ void main() {
                 .captured[0] as String;
         spanInt = BigInt.tryParse(spanValue);
         break;
-      case TracingHeaderType.b3s:
+      case TracingHeaderType.b3:
         var singleHeader =
             verify(() => headers.add('b3', captureAny())).captured[0] as String;
         var headerParts = singleHeader.split('-');
@@ -156,6 +156,15 @@ void main() {
         var spanValue = verify(() => headers.add('X-B3-SpanId', captureAny()))
             .captured[0] as String;
         spanInt = BigInt.tryParse(spanValue, radix: 16);
+        break;
+      case TracingHeaderType.tracecontext:
+        var header = verify(() => headers.add('traceparent', captureAny()))
+            .captured[0] as String;
+        var headerParts = header.split('-');
+        expect(headerParts[0], '00');
+        traceInt = BigInt.tryParse(headerParts[1], radix: 16);
+        spanInt = BigInt.tryParse(headerParts[2], radix: 16);
+        expect(headerParts[3], '01');
         break;
     }
 
@@ -664,6 +673,54 @@ void main() {
 
       expect(mockHeaders.value('x-datadog-sampling-priority'), '0');
     });
+
+    test('extracts tracecontext headers to datadog', () async {
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
+
+      final mockHeaders = mockRequest.headers;
+      mockHeaders.add('traceparent',
+          '00-0000000000000000170767c6ad0dbfa0-31187384ad60a08b-01');
+      when(() => mockRum.tracingSamplingRate).thenReturn(23.0);
+
+      var request = await client.openUrl('get', url);
+      var capturedStartArgs = verify(
+        () => mockRum.startResourceLoading(
+          captureAny(),
+          RumHttpMethod.get,
+          url.toString(),
+          any(),
+        ),
+      ).captured;
+      var capturedKey = capturedStartArgs[0] as String;
+
+      var mockResponse = setupMockClientResponse(200, size: 12345);
+
+      completer.complete(mockResponse);
+      var response = await request.done;
+      response.listen((event) {});
+      await mockResponse.streamController.close();
+
+      var capturedEndArgs = verify(() => mockRum.stopResourceLoading(
+            capturedKey,
+            200,
+            RumResourceType.image,
+            12345,
+            captureAny(),
+          )).captured;
+      final capturedAttributes = capturedEndArgs[0] as Map<String, dynamic>;
+
+      var traceInt = BigInt.parse(
+          capturedAttributes[DatadogRumPlatformAttributeKey.traceID]);
+      expect(traceInt, BigInt.from(0x170767c6ad0dbfa0));
+      var spanInt = BigInt.parse(
+          capturedAttributes[DatadogRumPlatformAttributeKey.spanID]);
+      expect(spanInt, BigInt.from(0x31187384ad60a08b));
+      expect(capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.23);
+
+      expect(mockHeaders.value('x-datadog-trace-id'), '1659409090713862048');
+      expect(mockHeaders.value('x-datadog-parent-id'), '3537704520981192843');
+    });
   });
 
   for (final headerType in TracingHeaderType.values) {
@@ -854,7 +911,7 @@ void main() {
       final client = DatadogTrackingHttpClient(
         mockDatadog,
         DdHttpTrackingPluginConfiguration(
-          tracingHeaderTypes: {TracingHeaderType.b3s},
+          tracingHeaderTypes: {TracingHeaderType.b3},
         ),
         mockClient,
       );
