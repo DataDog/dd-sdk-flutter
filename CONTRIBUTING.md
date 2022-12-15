@@ -20,13 +20,14 @@ Make sure you have installed the [Flutter
 SDK](https://docs.flutter.dev/get-started/install), and that `flutter doctor`
 passes without issues.
 
-You will also need to generate `.env` files for the various apps in order to use
-them with Datadog. Running `./generate_env.sh` will create `example/.env` and
-`integration_test_app/.env`, both of which should be modified with your Client
-Id and Application Id from the Datadog RUM setup.
+Next, run the `prepare.sh` script in the root of the repo. This will run
+`flutter pub get` on all of the packages in this repo, generate necessary files
+with `flutter pub run build_runner build`, and generate `.env` files for the
+various apps in order to use them with Datadog. 
 
-Lastly, be sure to run `flutter pub run build_runner build` in projects that need
-their JSON models generated, which includes `packages/datadog_flutter_plugin`.
+Running `./generate_env.sh` or `./prepare.sh` will create `.env` files in the
+various example application, which should be modified with your Client Id and
+Application Id from the Datadog RUM setup.
 
 ## Code Style
 
@@ -54,7 +55,7 @@ There are three types of tests in this repo
 
 * Unit Tests (held in `test`) - These tests mostly check the logic of the
   platform_channel interfaces.
-* Integration Tests (held in `integration_test_app/integration_test`) - These
+* Integration Tests (`integration_test_app/integration_test`) - These
   tests check that that calls to the SDK are sent to a mock server and match our
   expectations for the data that is getting sent to DataDog.
 * E2E tests (held in `e2e_test_app/integration_test`) - These tests are still in

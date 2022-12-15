@@ -67,7 +67,6 @@ workflows:
   setup:
     before_run:
     - _flutter_install
-    - _pub_get
     steps:
     - script:
         title: Generate build files
@@ -75,17 +74,9 @@ workflows:
         - content: |-
             #!/usr/bin/env bash
             set -e
-            ./generate_env.sh
-
             pod repo update
 
-            pushd packages/datadog_flutter_plugin
-            flutter pub run build_runner build
-            popd
-
-            pushd packages/datadog_common_test
-            flutter pub run build_runner build
-            popd
+            ./prepare.sh
 
   run_conditioned_workflows:
     steps:
@@ -152,51 +143,6 @@ workflows:
   _deploy_artifacts:
     steps:
     - deploy-to-bitrise-io: {}
-
-
-  _pub_get:
-    steps:
-      - script:
-          title: Run pub get in all projects
-          inputs:
-          - content: |-
-              #!/usr/bin/env bash
-              set -e
-
-              for d in packages/*/ ; do
-                  pushd "$d"
-                  if [ ! -f "pubspec.yaml" ]; then
-                      echo "Skipping $d because it is missing pubspec.yaml"
-                      popd
-                      continue
-                  fi
-                  echo "pub get in $d"
-                  flutter pub get
-
-                  subapps=( "integration_test_app" "e2e_test_app" )
-                  for subapp in "${subapps[@]}"; do
-                      if [ -d "$subapp" ];  then
-                          pushd "$subapp"
-                          echo "pub get in $d/$subapp"
-                          flutter pub get
-                          popd
-                      fi
-                  done
-                  popd
-              done
-
-              for d in tools/*/ ; do
-                  pushd "$d"
-                  if [ ! -f "pubspec.yaml" ]; then
-                      echo "Skipping $d because it is missing pubspec.yaml"
-                      popd
-                      continue
-                  fi
-                  echo "pub get in $d"
-                  dart pub get
-                  popd
-              done
-          - working_dir: "$BITRISE_SOURCE_DIR"
 
   analyze:
     steps: 
