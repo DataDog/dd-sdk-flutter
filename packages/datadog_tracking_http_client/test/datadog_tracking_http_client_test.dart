@@ -431,7 +431,7 @@ void main() {
       //  - 7386a57f63c48531 == 8324522927794193713
       //
       mockHeaders.add(
-          'b3', '0000000000000000714e65427868bdc8-7386a57f63c48531-1');
+          'b3', '0000000000000000714E65427868BDC8-7386A57F63C48531-1');
       when(() => mockRum.tracingSamplingRate).thenReturn(23.0);
 
       var request = await client.openUrl('get', url);
@@ -482,8 +482,8 @@ void main() {
       //  - 714e65427868bdc8 == 8164574510631665096
       //  - 7386a57f63c48531 == 8324522927794193713
       //
-      mockHeaders.add('X-B3-TraceId', '0000000000000000714e65427868bdc8');
-      mockHeaders.add('X-B3-SpanId', '7386a57f63c48531');
+      mockHeaders.add('X-B3-TraceId', '0000000000000000714E65427868BDC8');
+      mockHeaders.add('X-B3-SpanId', '7386A57F63C48531');
       mockHeaders.add('X-B3-Sampled', '1');
       when(() => mockRum.tracingSamplingRate).thenReturn(23.0);
 
@@ -535,8 +535,8 @@ void main() {
       //  - 714e65427868bdc8 == 8164574510631665096
       //  - 7386a57f63c48531 == 8324522927794193713
       //
-      mockHeaders.add('x-b3-traceid', '0000000000000000714e65427868bdc8');
-      mockHeaders.add('x-b3-spanid', '7386a57f63c48531');
+      mockHeaders.add('x-b3-traceid', '0000000000000000714E65427868BDC8');
+      mockHeaders.add('x-b3-spanid', '7386A57F63C48531');
       mockHeaders.add('x-b3-sampled', '1');
       when(() => mockRum.tracingSamplingRate).thenReturn(23.0);
 

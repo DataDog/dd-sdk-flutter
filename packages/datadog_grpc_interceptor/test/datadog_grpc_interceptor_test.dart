@@ -259,8 +259,8 @@ void main() {
       //  - 61ffb765f4f77e3b == 7061564389269667387
       //  - 3eb5c1bcb46ab916 == 4518730817361066262
       final options = CallOptions(metadata: {
-        'x-b3-traceid': '000000000000000061ffb765f4f77e3b',
-        'x-b3-spanid': '3eb5c1bcb46ab916',
+        'x-b3-traceid': '000000000000000061FFB765F4F77E3B',
+        'x-b3-spanid': '3EB5C1BCB46AB916',
         'x-b3-sampled': '1',
       });
 
@@ -298,7 +298,7 @@ void main() {
       //  - 61ffb765f4f77e3b == 7061564389269667387
       //  - 3eb5c1bcb46ab916 == 4518730817361066262
       final options = CallOptions(metadata: {
-        'b3': '000000000000000061ffb765f4f77e3b-3eb5c1bcb46ab916-1',
+        'b3': '000000000000000061FFB765F4F77E3B-3EB5C1BCB46AB916-1',
       });
 
       await stub.sayHello(HelloRequest(name: 'test'), options: options);

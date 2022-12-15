@@ -254,7 +254,7 @@ void main() {
       //  - 714e65427868bdc8 == 8164574510631665096
       //  - 7386a57f63c48531 == 8324522927794193713
       final _ = client.get(testUri, headers: {
-        'b3': '0000000000000000714e65427868bdc8-7386a57f63c48531-1'
+        'b3': '0000000000000000714E65427868BDC8-7386A57F63C48531-1'
       });
 
       final capturedRequest = verify(() => mockClient.send(captureAny()))
@@ -287,8 +287,8 @@ void main() {
       //  - 714e65427868bdc8 == 8164574510631665096
       //  - 7386a57f63c48531 == 8324522927794193713
       final _ = client.get(testUri, headers: {
-        'X-B3-TraceId': '0000000000000000714e65427868bdc8',
-        'X-B3-SpanId': '7386a57f63c48531',
+        'X-B3-TraceId': '0000000000000000714E65427868BDC8',
+        'X-B3-SpanId': '7386A57F63C48531',
         'X-B3-Sampled': '1',
       });
 
@@ -322,8 +322,8 @@ void main() {
       //  - 714e65427868bdc8 == 8164574510631665096
       //  - 7386a57f63c48531 == 8324522927794193713
       final _ = client.get(testUri, headers: {
-        'x-b3-traceid': '0000000000000000714e65427868bdc8',
-        'x-b3-spanid': '7386a57f63c48531',
+        'x-b3-traceid': '0000000000000000714E65427868BDC8',
+        'x-b3-spanid': '7386A57F63C48531',
         'x-b3-sampled': '1',
       });
 
@@ -353,9 +353,6 @@ void main() {
           DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
       final testUri = Uri.parse('https://test_url/test');
 
-      // Randomly generated
-      //  - 714e65427868bdc8 == 8164574510631665096
-      //  - 7386a57f63c48531 == 8324522927794193713
       final _ = client.get(testUri, headers: {
         'b3': '0',
       });
@@ -382,9 +379,6 @@ void main() {
           DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
       final testUri = Uri.parse('https://test_url/test');
 
-      // Randomly generated
-      //  - 714e65427868bdc8 == 8164574510631665096
-      //  - 7386a57f63c48531 == 8324522927794193713
       final _ = client.get(testUri, headers: {
         'X-B3-Sampled': '0',
       });
