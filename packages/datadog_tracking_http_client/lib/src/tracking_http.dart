@@ -16,9 +16,10 @@ import 'package:uuid/uuid.dart';
 /// Resources (calling startResourceLoading, stopResourceLoading, and
 /// stopResourceLoadingWithErrorInfo) for all intercepted requests.
 ///
-/// The SDK will also create a tracing Span for each 1st-party request, and add
-/// extra HTTP headers to further propagate the trace. The percentage of
-/// resources traced in this way is determined by
+/// This can additionally set tracing headers on your requests, which allows for
+/// distributed tracing. You can set which format of tracing header using the
+/// [tracingHeaderTypes] parameter. Multiple tracing formats are allowed. The
+/// percentage of resources traced in this way is determined by
 /// [RumConfiguration.tracingSamplingRate].
 ///
 /// To specify which hosts are 1st party (and therefore should have tracing
@@ -38,11 +39,13 @@ import 'package:uuid/uuid.dart';
 /// See also [DatadogTrackingHttpClient]
 class DatadogClient extends http.BaseClient {
   final DatadogSdk datadogSdk;
+  final Set<TracingHeaderType>? tracingHeaderTypes;
   final Uuid _uuid = const Uuid();
   final http.Client _innerClient;
 
   DatadogClient({
     required this.datadogSdk,
+    this.tracingHeaderTypes = const {TracingHeaderType.dd},
     http.Client? innerClient,
   }) : _innerClient = innerClient ?? http.Client() {
     datadogSdk.updateConfigurationInfo(
@@ -67,12 +70,20 @@ class DatadogClient extends http.BaseClient {
 
     try {
       isFirstParty = datadogSdk.isFirstPartyHost(request.url);
-      rumKey = _uuid.v1();
-      bool shouldSample = isFirstParty && rum.shouldSampleTrace();
-      final attributes =
-          _appendRequestHeaders(request, rumKey, isFirstParty, shouldSample);
-
       final rumHttpMethod = rumMethodFromMethodString(request.method);
+      var attributes = <String, Object?>{};
+      if (isFirstParty) {
+        TracingContext? context = readTracingContext(request.headers);
+        bool shouldSample = true;
+        if (context == null) {
+          shouldSample = rum.shouldSampleTrace();
+          context = generateTracingContext(shouldSample);
+        }
+
+        attributes = _appendRequestHeaders(request, context);
+      }
+
+      rumKey = _uuid.v1();
       rum.startResourceLoading(
           rumKey, rumHttpMethod, request.url.toString(), attributes);
     } catch (e, st) {
@@ -180,26 +191,17 @@ class DatadogClient extends http.BaseClient {
     }
   }
 
-  Map<String, Object?> _appendRequestHeaders(http.BaseRequest request,
-      String rumKey, bool isFirstParty, bool shouldSample) {
-    request.headers[DatadogTracingHeaders.origin] = 'rum';
+  Map<String, Object?> _appendRequestHeaders(
+      http.BaseRequest request, TracingContext context) {
+    var attributes = <String, Object?>{};
 
-    String? traceId, spanId;
-    if (shouldSample) {
-      traceId = generateTraceId();
-      spanId = generateTraceId();
-    }
+    if (tracingHeaderTypes != null && tracingHeaderTypes!.isNotEmpty) {
+      attributes = generateDatadogAttributes(
+          context, datadogSdk.rum?.tracingSamplingRate ?? 0);
 
-    final attributes = <String, Object?>{};
-    if (traceId != null && spanId != null) {
-      attributes[DatadogRumPlatformAttributeKey.traceID] = traceId;
-      attributes[DatadogRumPlatformAttributeKey.spanID] = spanId;
-
-      request.headers[DatadogTracingHeaders.traceId] = traceId;
-      request.headers[DatadogTracingHeaders.parentId] = spanId;
-      request.headers[DatadogTracingHeaders.samplingPriority] = '1';
-    } else if (isFirstParty) {
-      request.headers[DatadogTracingHeaders.samplingPriority] = '0';
+      for (final headerType in tracingHeaderTypes!) {
+        request.headers.addAll(getTracingHeaders(context, headerType));
+      }
     }
 
     return attributes;

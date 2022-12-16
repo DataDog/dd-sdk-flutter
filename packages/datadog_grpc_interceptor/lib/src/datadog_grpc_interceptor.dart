@@ -18,13 +18,15 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
   final Uuid uuid = const Uuid();
   final DatadogSdk _datadog;
   final ClientChannel _channel;
+  final Set<TracingHeaderType> tracingHeaderTypes;
 
   late String _hostPath;
 
   DatadogGrpcInterceptor(
     this._datadog,
-    this._channel,
-  ) {
+    this._channel, {
+    this.tracingHeaderTypes = const {TracingHeaderType.dd},
+  }) {
     final host = _channel.host;
     final scheme = _channel.options.credentials.isSecure ? 'https' : 'http';
     // Add http / https scheme. This scheme is a lie but needed to connect
@@ -48,43 +50,45 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
     final path = method.path;
     final String fullPath = '$_hostPath$path';
 
-    bool shouldSample = _datadog.rum?.shouldSampleTrace() ?? false;
-    bool isFirstPartyHost = _datadog.isFirstPartyHost(Uri.parse(fullPath));
-    bool shouldAppendTraces = shouldSample && isFirstPartyHost;
-
-    String? traceId;
-    String? parentId;
-    if (shouldAppendTraces) {
-      traceId = generateTraceId();
-      parentId = generateTraceId();
-    }
-
+    final rum = _datadog.rum;
     final rumKey = uuid.v1();
-    _datadog.rum?.startResourceLoading(
-      rumKey,
-      RumHttpMethod.get,
-      fullPath,
-      {
-        'grpc.method': method.path,
-        if (shouldAppendTraces) ...{
-          DatadogRumPlatformAttributeKey.traceID: traceId,
-          DatadogRumPlatformAttributeKey.spanID: parentId
-        }
-      },
-    );
+    bool isFirstPartyHost = _datadog.isFirstPartyHost(Uri.parse(fullPath));
 
-    if (shouldAppendTraces) {
-      options = options.mergedWith(CallOptions(metadata: {
-        DatadogTracingHeaders.origin: 'rum',
-        DatadogTracingHeaders.samplingPriority: '1',
-        DatadogTracingHeaders.traceId: traceId!,
-        DatadogTracingHeaders.parentId: parentId!,
-      }));
-    } else if (isFirstPartyHost) {
-      options = options.mergedWith(CallOptions(metadata: {
-        DatadogTracingHeaders.samplingPriority: '0',
-      }));
+    var addedHeaders = <String, String>{};
+
+    if (rum != null) {
+      var attributes = <String, Object?>{
+        'grpc.method': method.path,
+      };
+      TracingContext? tracingContext;
+      bool shouldSample = rum.shouldSampleTrace();
+      if (isFirstPartyHost) {
+        tracingContext = readTracingContext(options.metadata);
+        tracingContext = tracingContext ?? generateTracingContext(shouldSample);
+
+        attributes[DatadogRumPlatformAttributeKey.rulePsr] =
+            rum.tracingSamplingRate / 100.0;
+        if (tracingContext.sampled) {
+          attributes[DatadogRumPlatformAttributeKey.traceID] =
+              tracingContext.traceId!.asString(TraceIdRepresentation.decimal);
+          attributes[DatadogRumPlatformAttributeKey.spanID] =
+              tracingContext.spanId!.asString(TraceIdRepresentation.decimal);
+        }
+
+        for (final tracingType in tracingHeaderTypes) {
+          addedHeaders.addAll(getTracingHeaders(tracingContext, tracingType));
+        }
+      }
+
+      _datadog.rum?.startResourceLoading(
+        rumKey,
+        RumHttpMethod.get,
+        fullPath,
+        attributes,
+      );
     }
+
+    options = options.mergedWith(CallOptions(metadata: addedHeaders));
 
     final future = invoker(method, request, options);
     future.then((v) {

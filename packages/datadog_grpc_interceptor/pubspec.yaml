@@ -11,7 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  datadog_flutter_plugin: ^1.0.0
+  datadog_flutter_plugin: ^1.2.0
   grpc: ^3.0.2
   uuid: ^3.0.5
 
