@@ -30,6 +30,20 @@ DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
 
 This causes the SDK to output additional information about what it's doing and what errors it's encountering, which may help you and Datadog Support narrow down your issue.
 
+## Not seeing Errors
+
+The most common reason users aren't seeing errors in RUM is because there is no view started. Make sure you are staring a view with `DatadogSdk.instance.rum?.startView` or that if you are using `DatadogRouteObserver` that your current Route has a name.
+
+## Not seeing Distributed Traces on Resources
+
+There are three possible settings you should check related to distributed tracing.  
+
+First, if you are not seeing any resources loads for your RUM View, check that you have setup either the `DatadogTrackingHttpClient` with `enableHttpTracking`, or that you are properly wrapping a `Client` from the `http` package with `DatadogClient`. 
+
+Second, ensure that you have properly set `firstPartyHosts` in your configuration. Datadog only generates and sends tracing headers to the hosts you specify in this property. Note that `firstPartyHosts` does not support wildcards or Regular Expressions.
+
+Lastly, Datadog sets your tracing sample rate to 20% by default, so distributed traces will only be available on 20% of resource loads. While debugging, you may want to set `RumConfiguration.tracingSamplingRate` property to 100.
+
 ## Further Reading
 
 {{< partial name="whats-next/whats-next.html" >}}
