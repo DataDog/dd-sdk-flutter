@@ -286,6 +286,41 @@ void main() {
       expect(headers['x-datadog-parent-id'], '8324522927794193713');
     });
 
+    test('truncates b3s headers and sets attributes', () async {
+      final client =
+          DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
+      final testUri = Uri.parse('https://test_url/test');
+
+      // 5615DD59F1BC26ECA67813E2BE8D9B4B truncated will be 267813E2BE8D9B4B or
+      // 2771987435227028299 in decimal Note the 16th digit goes from an 'A' to
+      // a '2' because the top most bit is ignored.
+      // F386A57F63C48531 truncated will switch the F to a 7, making the decimal
+      // number 8324522927794193713
+      final _ = client.get(testUri, headers: {
+        'b3': '5615DD59F1BC26ECA67813E2BE8D9B4B-F386A57F63C48531-1'
+      });
+
+      final capturedRequest = verify(() => mockClient.send(captureAny()))
+          .captured[0] as http.BaseRequest;
+      expect(capturedRequest.url, testUri);
+      final capturedAttributes = verify(() => mockRum.startResourceLoading(
+              any(), RumHttpMethod.get, testUri.toString(), captureAny()))
+          .captured[0] as Map<String, Object?>;
+
+      final headers = capturedRequest.headers;
+
+      var traceInt = BigInt.parse(
+          capturedAttributes[DatadogRumPlatformAttributeKey.traceID] as String);
+      expect(traceInt, BigInt.from(0x267813e2be8d9b4b));
+      var spanInt = BigInt.parse(
+          capturedAttributes[DatadogRumPlatformAttributeKey.spanID] as String);
+      expect(spanInt, BigInt.from(0x7386a57f63c48531));
+      expect(capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.5);
+
+      expect(headers['x-datadog-trace-id'], '2771987435227028299');
+      expect(headers['x-datadog-parent-id'], '8324522927794193713');
+    });
+
     test('extracts b3m headers and sets attributes', () async {
       final client =
           DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
@@ -353,6 +388,43 @@ void main() {
       expect(capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.5);
 
       expect(headers['x-datadog-trace-id'], '8164574510631665096');
+      expect(headers['x-datadog-parent-id'], '8324522927794193713');
+    });
+
+    test('truncates b3m headers and sets attributes', () async {
+      final client =
+          DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
+      final testUri = Uri.parse('https://test_url/test');
+
+      // 5615DD59F1BC26ECA67813E2BE8D9B4B truncated will be 267813E2BE8D9B4B or
+      // 2771987435227028299 in decimal Note the 16th digit goes from an 'A' to
+      // a '2' because the top most bit is ignored.
+      // F386A57F63C48531 truncated will switch the F to a 7, making the decimal
+      // number 8324522927794193713
+      final _ = client.get(testUri, headers: {
+        'X-B3-TraceId': '5615DD59F1BC26ECA67813E2BE8D9B4B',
+        'X-B3-SpanId': 'F386A57F63C48531',
+        'X-B3-Sampled': '1'
+      });
+
+      final capturedRequest = verify(() => mockClient.send(captureAny()))
+          .captured[0] as http.BaseRequest;
+      expect(capturedRequest.url, testUri);
+      final capturedAttributes = verify(() => mockRum.startResourceLoading(
+              any(), RumHttpMethod.get, testUri.toString(), captureAny()))
+          .captured[0] as Map<String, Object?>;
+
+      final headers = capturedRequest.headers;
+
+      var traceInt = BigInt.parse(
+          capturedAttributes[DatadogRumPlatformAttributeKey.traceID] as String);
+      expect(traceInt, BigInt.from(0x267813e2be8d9b4b));
+      var spanInt = BigInt.parse(
+          capturedAttributes[DatadogRumPlatformAttributeKey.spanID] as String);
+      expect(spanInt, BigInt.from(0x7386a57f63c48531));
+      expect(capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.5);
+
+      expect(headers['x-datadog-trace-id'], '2771987435227028299');
       expect(headers['x-datadog-parent-id'], '8324522927794193713');
     });
 
@@ -437,6 +509,42 @@ void main() {
 
       expect(headers['x-datadog-trace-id'], '1659409090713862048');
       expect(headers['x-datadog-parent-id'], '3537704520981192843');
+    });
+
+    test('truncates tracecontext headers and sets attributes', () async {
+      final client =
+          DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
+      final testUri = Uri.parse('https://test_url/test');
+
+      // 5615DD59F1BC26ECA67813E2BE8D9B4B truncated will be 267813E2BE8D9B4B or
+      // 2771987435227028299 in decimal Note the 16th digit goes from an 'A' to
+      // a '2' because the top most bit is ignored.
+      // F386A57F63C48531 truncated will switch the F to a 7, making the decimal
+      // number 8324522927794193713
+      final _ = client.get(testUri, headers: {
+        'traceparent':
+            '00-5615dd59f1bc26eca67813e2be8d9b4b-f386a57f63c48531-01',
+      });
+
+      final capturedRequest = verify(() => mockClient.send(captureAny()))
+          .captured[0] as http.BaseRequest;
+      expect(capturedRequest.url, testUri);
+      final capturedAttributes = verify(() => mockRum.startResourceLoading(
+              any(), RumHttpMethod.get, testUri.toString(), captureAny()))
+          .captured[0] as Map<String, Object?>;
+
+      final headers = capturedRequest.headers;
+
+      var traceInt = BigInt.parse(
+          capturedAttributes[DatadogRumPlatformAttributeKey.traceID] as String);
+      expect(traceInt, BigInt.from(0x267813e2be8d9b4b));
+      var spanInt = BigInt.parse(
+          capturedAttributes[DatadogRumPlatformAttributeKey.spanID] as String);
+      expect(spanInt, BigInt.from(0x7386a57f63c48531));
+      expect(capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.5);
+
+      expect(headers['x-datadog-trace-id'], '2771987435227028299');
+      expect(headers['x-datadog-parent-id'], '8324522927794193713');
     });
 
     for (final headerType in TracingHeaderType.values) {

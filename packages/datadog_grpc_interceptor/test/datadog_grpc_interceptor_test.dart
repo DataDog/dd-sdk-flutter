@@ -71,7 +71,7 @@ void main() {
         expect(headerParts[0], '00');
         traceInt = BigInt.tryParse(headerParts[1], radix: 16);
         spanInt = BigInt.tryParse(headerParts[2], radix: 16);
-        expect(headerParts[3], sampled ? '01' : 00);
+        expect(headerParts[3], sampled ? '01' : '00');
         break;
     }
 
@@ -81,7 +81,7 @@ void main() {
 
       expect(spanInt, isNotNull);
       expect(spanInt?.bitLength, lessThanOrEqualTo(63));
-    } else {
+    } else if (type != TracingHeaderType.tracecontext) {
       expect(traceInt, isNull);
       expect(spanInt, isNull);
     }
@@ -296,6 +296,48 @@ void main() {
       expect(spanInt, BigInt.from(0x3eb5c1bcb46ab916));
     });
 
+    test('truncates b3m headers and sets attributes', () async {
+      when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+
+      final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
+
+      final stub = GreeterClient(channel, interceptors: [interceptor]);
+
+      // 3c9bdc4fffcb6efe8f19eead81ad506b truncated will be 0f19eead81ad506b or
+      // 1088163213959057515 in decimal Note the 16th digit goes from an '8' to
+      // a '0' because the top most bit is ignored.
+      // cda0ea008499f58b truncated will switch the c to a 4, making the decimal
+      // number 5593728025139737995
+      final options = CallOptions(metadata: {
+        'x-b3-traceid': '3C9BDC4FFFCB6EFE8F19EEAD81AD506B',
+        'x-b3-spanid': 'CDA0EA008499F58B',
+        'x-b3-sampled': '1',
+      });
+
+      await stub.sayHello(HelloRequest(name: 'test'), options: options);
+
+      expect(loggingService.calls.length, 1);
+      final call = loggingService.calls[0];
+
+      expect(
+          call.clientMetadata!['x-datadog-trace-id']!, '1088163213959057515');
+      expect(
+          call.clientMetadata!['x-datadog-parent-id']!, '5593728025139737995');
+
+      final captures = verify(() => mockRum.startResourceLoading(
+          captureAny(),
+          RumHttpMethod.get,
+          'http://localhost:$port/helloworld.Greeter/SayHello',
+          captureAny())).captured;
+      final attributes = captures[1] as Map<String, Object?>;
+      var traceInt = BigInt.parse(
+          attributes[DatadogRumPlatformAttributeKey.traceID] as String);
+      expect(traceInt, BigInt.from(0x0f19eead81ad506b));
+      var spanInt = BigInt.parse(
+          attributes[DatadogRumPlatformAttributeKey.spanID] as String);
+      expect(spanInt, BigInt.from(0x4da0ea008499f58b));
+    });
+
     test('extracts b3s headers and sets attributes', () async {
       when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
 
@@ -333,6 +375,46 @@ void main() {
       expect(spanInt, BigInt.from(0x3eb5c1bcb46ab916));
     });
 
+    test('truncates b3s headers and sets attributes', () async {
+      when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+
+      final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
+
+      final stub = GreeterClient(channel, interceptors: [interceptor]);
+
+      // 3c9bdc4fffcb6efe8f19eead81ad506b truncated will be 0f19eead81ad506b or
+      // 1088163213959057515 in decimal Note the 16th digit goes from an '8' to
+      // a '0' because the top most bit is ignored.
+      // cda0ea008499f58b truncated will switch the c to a 4, making the decimal
+      // number 5593728025139737995
+      final options = CallOptions(metadata: {
+        'b3': '3C9BDC4FFFCB6EFE8F19EEAD81AD506B-CDA0EA008499F58B-1',
+      });
+
+      await stub.sayHello(HelloRequest(name: 'test'), options: options);
+
+      expect(loggingService.calls.length, 1);
+      final call = loggingService.calls[0];
+
+      expect(
+          call.clientMetadata!['x-datadog-trace-id']!, '1088163213959057515');
+      expect(
+          call.clientMetadata!['x-datadog-parent-id']!, '5593728025139737995');
+
+      final captures = verify(() => mockRum.startResourceLoading(
+          captureAny(),
+          RumHttpMethod.get,
+          'http://localhost:$port/helloworld.Greeter/SayHello',
+          captureAny())).captured;
+      final attributes = captures[1] as Map<String, Object?>;
+      var traceInt = BigInt.parse(
+          attributes[DatadogRumPlatformAttributeKey.traceID] as String);
+      expect(traceInt, BigInt.from(0x0f19eead81ad506b));
+      var spanInt = BigInt.parse(
+          attributes[DatadogRumPlatformAttributeKey.spanID] as String);
+      expect(spanInt, BigInt.from(0x4da0ea008499f58b));
+    });
+
     test('extracts tracecontext headers and sets attributes', () async {
       when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
 
@@ -340,7 +422,8 @@ void main() {
 
       final stub = GreeterClient(channel, interceptors: [interceptor]);
       final options = CallOptions(metadata: {
-        'traceparent': '0000000000000000192a1164ba7cbeaa-1786ed9928687322-1',
+        'traceparent':
+            '00-0000000000000000192a1164ba7cbeaa-1786ed9928687322-01',
       });
 
       await stub.sayHello(HelloRequest(name: 'test'), options: options);
@@ -365,6 +448,47 @@ void main() {
       var spanInt = BigInt.parse(
           attributes[DatadogRumPlatformAttributeKey.spanID] as String);
       expect(spanInt, BigInt.from(0x1786ed9928687322));
+    });
+
+    test('truncates tracecontext headers and sets attributes', () async {
+      when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+
+      final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
+
+      final stub = GreeterClient(channel, interceptors: [interceptor]);
+
+      // 3c9bdc4fffcb6efe8f19eead81ad506b truncated will be 0f19eead81ad506b or
+      // 1088163213959057515 in decimal Note the 16th digit goes from an '8' to
+      // a '0' because the top most bit is ignored.
+      // cda0ea008499f58b truncated will switch the c to a 4, making the decimal
+      // number 5593728025139737995
+      final options = CallOptions(metadata: {
+        'traceparent':
+            '00-3C9BDC4FFFCB6EFE8F19EEAD81AD506B-CDA0EA008499F58B-01',
+      });
+
+      await stub.sayHello(HelloRequest(name: 'test'), options: options);
+
+      expect(loggingService.calls.length, 1);
+      final call = loggingService.calls[0];
+
+      expect(
+          call.clientMetadata!['x-datadog-trace-id']!, '1088163213959057515');
+      expect(
+          call.clientMetadata!['x-datadog-parent-id']!, '5593728025139737995');
+
+      final captures = verify(() => mockRum.startResourceLoading(
+          captureAny(),
+          RumHttpMethod.get,
+          'http://localhost:$port/helloworld.Greeter/SayHello',
+          captureAny())).captured;
+      final attributes = captures[1] as Map<String, Object?>;
+      var traceInt = BigInt.parse(
+          attributes[DatadogRumPlatformAttributeKey.traceID] as String);
+      expect(traceInt, BigInt.from(0x0f19eead81ad506b));
+      var spanInt = BigInt.parse(
+          attributes[DatadogRumPlatformAttributeKey.spanID] as String);
+      expect(spanInt, BigInt.from(0x4da0ea008499f58b));
     });
   });
 

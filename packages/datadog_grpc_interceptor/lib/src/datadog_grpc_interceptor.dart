@@ -69,10 +69,12 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
         attributes[DatadogRumPlatformAttributeKey.rulePsr] =
             rum.tracingSamplingRate / 100.0;
         if (tracingContext.sampled) {
-          attributes[DatadogRumPlatformAttributeKey.traceID] =
-              tracingContext.traceId.asString(TraceIdRepresentation.decimal);
-          attributes[DatadogRumPlatformAttributeKey.spanID] =
-              tracingContext.spanId.asString(TraceIdRepresentation.decimal);
+          attributes[DatadogRumPlatformAttributeKey.traceID] = tracingContext
+              .traceId
+              .asString(TraceIdRepresentation.decimal63bit);
+          attributes[DatadogRumPlatformAttributeKey.spanID] = tracingContext
+              .spanId
+              .asString(TraceIdRepresentation.decimal63bit);
         }
 
         for (final tracingType in tracingHeaderTypes) {

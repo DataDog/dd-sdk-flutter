@@ -46,6 +46,7 @@ class W3CTracingHeaders {
 
 enum TraceIdRepresentation {
   decimal,
+  decimal63bit,
   hex,
   hex16Chars,
   hex32Chars,
@@ -53,6 +54,9 @@ enum TraceIdRepresentation {
 
 @immutable
 class TracingUUID {
+  // 63-bit mask for truncating OTel trace Ids.
+  static final BigInt _ddTraceMask = BigInt.from(0x7fffffffffffffff);
+
   // Because TraceIDs are unsigned and Dart ints are signed, we store the trace id as a BigInt.
   // Also this will make it easier to switch to 128-bit trace ids at a later date.
   final BigInt value;
@@ -67,6 +71,7 @@ class TracingUUID {
 
     switch (representation) {
       case TraceIdRepresentation.decimal:
+      case TraceIdRepresentation.decimal63bit:
         final value = BigInt.tryParse(uuid);
         if (value != null) {
           return TracingUUID(value);
@@ -89,6 +94,9 @@ class TracingUUID {
     switch (representation) {
       case TraceIdRepresentation.decimal:
         return value.toString();
+      case TraceIdRepresentation.decimal63bit:
+        final truncatedValue = value & _ddTraceMask;
+        return truncatedValue.toString();
       case TraceIdRepresentation.hex:
         return value.toRadixString(16);
       case TraceIdRepresentation.hex16Chars:
@@ -202,9 +210,9 @@ Map<String, Object?> generateDatadogAttributes(
     attributes[DatadogRumPlatformAttributeKey.rulePsr] = samplingRate / 100.0;
     if (context.sampled) {
       attributes[DatadogRumPlatformAttributeKey.traceID] =
-          context.traceId.asString(TraceIdRepresentation.decimal);
+          context.traceId.asString(TraceIdRepresentation.decimal63bit);
       attributes[DatadogRumPlatformAttributeKey.spanID] =
-          context.spanId.asString(TraceIdRepresentation.decimal);
+          context.spanId.asString(TraceIdRepresentation.decimal63bit);
     }
   }
 
@@ -223,9 +231,9 @@ Map<String, String> getTracingHeaders(
     case TracingHeaderType.dd:
       if (context.sampled) {
         headers[DatadogHttpTracingHeaders.traceId] =
-            context.traceId.asString(TraceIdRepresentation.decimal);
+            context.traceId.asString(TraceIdRepresentation.decimal63bit);
         headers[DatadogHttpTracingHeaders.parentId] =
-            context.spanId.asString(TraceIdRepresentation.decimal);
+            context.spanId.asString(TraceIdRepresentation.decimal63bit);
       }
       headers[DatadogHttpTracingHeaders.origin] = 'rum';
       headers[DatadogHttpTracingHeaders.samplingPriority] = sampledString;
