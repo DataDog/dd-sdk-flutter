@@ -25,7 +25,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
   DatadogGrpcInterceptor(
     this._datadog,
     this._channel, {
-    this.tracingHeaderTypes = const {TracingHeaderType.dd},
+    this.tracingHeaderTypes = const {TracingHeaderType.datadog},
   }) {
     final host = _channel.host;
     final scheme = _channel.options.credentials.isSecure ? 'https' : 'http';
@@ -63,18 +63,15 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
       TracingContext? tracingContext;
       bool shouldSample = rum.shouldSampleTrace();
       if (isFirstPartyHost) {
-        tracingContext = readTracingContext(options.metadata);
-        tracingContext = tracingContext ?? generateTracingContext(shouldSample);
+        tracingContext = generateTracingContext(shouldSample);
 
         attributes[DatadogRumPlatformAttributeKey.rulePsr] =
             rum.tracingSamplingRate / 100.0;
         if (tracingContext.sampled) {
-          attributes[DatadogRumPlatformAttributeKey.traceID] = tracingContext
-              .traceId
-              .asString(TraceIdRepresentation.decimal63bit);
-          attributes[DatadogRumPlatformAttributeKey.spanID] = tracingContext
-              .spanId
-              .asString(TraceIdRepresentation.decimal63bit);
+          attributes[DatadogRumPlatformAttributeKey.traceID] =
+              tracingContext.traceId.asString(TraceIdRepresentation.decimal);
+          attributes[DatadogRumPlatformAttributeKey.spanID] =
+              tracingContext.spanId.asString(TraceIdRepresentation.decimal);
         }
 
         for (final tracingType in tracingHeaderTypes) {

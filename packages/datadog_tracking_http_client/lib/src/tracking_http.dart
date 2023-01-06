@@ -45,7 +45,7 @@ class DatadogClient extends http.BaseClient {
 
   DatadogClient({
     required this.datadogSdk,
-    this.tracingHeaderTypes = const {TracingHeaderType.dd},
+    this.tracingHeaderTypes = const {TracingHeaderType.datadog},
     http.Client? innerClient,
   }) : _innerClient = innerClient ?? http.Client() {
     datadogSdk.updateConfigurationInfo(
@@ -73,12 +73,8 @@ class DatadogClient extends http.BaseClient {
       final rumHttpMethod = rumMethodFromMethodString(request.method);
       var attributes = <String, Object?>{};
       if (isFirstParty) {
-        TracingContext? context = readTracingContext(request.headers);
-        bool shouldSample = true;
-        if (context == null) {
-          shouldSample = rum.shouldSampleTrace();
-          context = generateTracingContext(shouldSample);
-        }
+        var shouldSample = rum.shouldSampleTrace();
+        var context = generateTracingContext(shouldSample);
 
         attributes = _appendRequestHeaders(request, context);
       }

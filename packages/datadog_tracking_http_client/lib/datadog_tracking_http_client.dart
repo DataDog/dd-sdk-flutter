@@ -37,7 +37,9 @@ extension TrackingExtension on DdSdkConfiguration {
   ///
   /// See also [firstPartyHosts], [TracingHeaderType]
   void enableHttpTracking({
-    Set<TracingHeaderType>? tracingHeaderTypes = const {TracingHeaderType.dd},
+    Set<TracingHeaderType>? tracingHeaderTypes = const {
+      TracingHeaderType.datadog
+    },
   }) {
     addPlugin(DdHttpTrackingPluginConfiguration(
       tracingHeaderTypes: tracingHeaderTypes,
@@ -48,7 +50,9 @@ extension TrackingExtension on DdSdkConfiguration {
 extension TrackingExtensionExisting on DdSdkExistingConfiguration {
   /// See [TrackingExtension.enableHttpTracking]
   void enableHttpTracking({
-    Set<TracingHeaderType>? tracingHeaderTypes = const {TracingHeaderType.dd},
+    Set<TracingHeaderType>? tracingHeaderTypes = const {
+      TracingHeaderType.datadog
+    },
   }) {
     addPlugin(DdHttpTrackingPluginConfiguration(
       tracingHeaderTypes: tracingHeaderTypes,
