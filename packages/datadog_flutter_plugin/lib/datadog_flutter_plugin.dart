@@ -53,21 +53,15 @@ class DatadogSdk {
   DdRum? _rum;
   DdRum? get rum => _rum;
 
-  List<String> _firstPartyHosts = [];
-  RegExp? _firstPartyRegex;
+  List<FirstPartyHost> _firstPartyHosts = [];
 
   final Map<Type, DatadogPlugin> _plugins = {};
 
   /// An unmodifiable list of first party hosts for tracing.
-  List<String> get firstPartyHosts => List.unmodifiable(_firstPartyHosts);
-  void _setFirstPartyHosts(List<String> value) {
-    _firstPartyHosts = value;
-    if (value.isNotEmpty) {
-      var hosts = value.map((e) => '${RegExp.escape(e)}\$').join('|');
-      _firstPartyRegex = RegExp('^(.*\\.)*$hosts');
-    } else {
-      _firstPartyRegex = null;
-    }
+  List<FirstPartyHost> get firstPartyHosts =>
+      List.unmodifiable(_firstPartyHosts);
+  void _setFirstPartyHosts(Map<String, Set<TracingHeaderType>> value) {
+    _firstPartyHosts = FirstPartyHost.createSanitized(value, internalLogger);
   }
 
   /// The version of this SDK.
@@ -145,7 +139,7 @@ class DatadogSdk {
     configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
     configuration.additionalConfig[DatadogConfigKey.sdkVersion] = sdkVersion;
 
-    _setFirstPartyHosts(configuration.firstPartyHosts);
+    _setFirstPartyHosts(configuration.firstPartyHostsWithTracingHeaders);
 
     await _platform.initialize(configuration,
         logCallback: _platformLog, internalLogger: internalLogger);
@@ -182,7 +176,7 @@ class DatadogSdk {
     });
 
     if (attachResponse != null) {
-      _setFirstPartyHosts(config.firstPartyHosts);
+      _setFirstPartyHosts(config.firstPartyHostsWithTracingHeaders);
 
       if (config.loggingConfiguration != null) {
         try {
@@ -260,7 +254,17 @@ class DatadogSdk {
   /// Determine if the provided URI is a first party host as determined by the
   /// value of [firstPartyHosts].
   bool isFirstPartyHost(Uri uri) {
-    return _firstPartyRegex?.hasMatch(uri.host) ?? false;
+    return headerTypesForHost(uri).isNotEmpty;
+  }
+
+  Set<TracingHeaderType> headerTypesForHost(Uri uri) {
+    var tracingHeaderTypes = <TracingHeaderType>{};
+    for (var host in firstPartyHosts) {
+      if (host.matches(uri)) {
+        tracingHeaderTypes = tracingHeaderTypes.union(host.headerTypes);
+      }
+    }
+    return tracingHeaderTypes;
   }
 
   void _platformLog(String log) {

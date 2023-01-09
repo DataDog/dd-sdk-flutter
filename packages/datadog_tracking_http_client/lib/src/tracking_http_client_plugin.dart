@@ -10,9 +10,7 @@ import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import '../datadog_tracking_http_client.dart';
 
 class DdHttpTrackingPluginConfiguration extends DatadogPluginConfiguration {
-  final Set<TracingHeaderType>? tracingHeaderTypes;
-
-  DdHttpTrackingPluginConfiguration({required this.tracingHeaderTypes});
+  DdHttpTrackingPluginConfiguration();
 
   @override
   DatadogPlugin create(DatadogSdk datadogInstance) {

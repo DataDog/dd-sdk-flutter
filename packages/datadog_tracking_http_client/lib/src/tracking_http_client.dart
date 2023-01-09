@@ -46,8 +46,7 @@ class DatadogTrackingHttpOverrides extends HttpOverrides {
 /// [RumConfiguration.tracingSamplingRate].
 ///
 /// To specify which hosts are 1st party (and therefore should have tracing
-/// Spans sent), see [DdSdkConfiguration.firstPartyHosts]. You can also set
-/// first party hosts after initialization setting [DatadogSdk.firstPartyHosts]
+/// Spans sent), see [DdSdkConfiguration.firstPartyHostsWithTracingHeaders].
 ///
 /// Unlike [DatadogClient], the DatadogTrackingHttpClient is able to override
 /// all network operations that use [HttpClient], which includes requests made
@@ -305,14 +304,11 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
     _headersInjected = true;
 
     final rum = client.datadogSdk.rum;
-    bool isFirstParty = false;
-    var tracingHeaderTypes =
-        client.configuration.tracingHeaderTypes ?? <TracingHeaderType>{};
-
     try {
-      isFirstParty = client.datadogSdk.isFirstPartyHost(innerContext.uri);
+      final tracingHeaderTypes =
+          client.datadogSdk.headerTypesForHost(innerContext.uri);
 
-      if (rum != null && isFirstParty && tracingHeaderTypes.isNotEmpty) {
+      if (rum != null && tracingHeaderTypes.isNotEmpty) {
         bool shouldSample = rum.shouldSampleTrace();
 
         // No tracing context, generate one ourselves

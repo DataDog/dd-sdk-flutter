@@ -43,10 +43,12 @@ void main() {
         .thenAnswer((_) => Future<void>.value());
 
     mockDatadog = MockDatadogSdk();
-    when(() => mockDatadog.isFirstPartyHost(
-        any(that: HasHost(equals('test_url'))))).thenReturn(true);
-    when(() => mockDatadog.isFirstPartyHost(
-        any(that: HasHost(equals('non_first_party'))))).thenReturn(false);
+    when(() => mockDatadog
+            .headerTypesForHost(any(that: HasHost(equals('test_url')))))
+        .thenReturn({TracingHeaderType.datadog});
+    when(() => mockDatadog.headerTypesForHost(
+        any(that: HasHost(equals('non_first_party'))))).thenReturn({});
+
     when(() => mockDatadog.platform).thenReturn(mockPlatform);
 
     mockResponse = MockStreamedResponse();
@@ -255,10 +257,14 @@ void main() {
 
     for (final headerType in TracingHeaderType.values) {
       group('when rum is enabled with $headerType tracing headers', () {
+        setUp(() {
+          when(() => mockDatadog.headerTypesForHost(
+              any(that: HasHost(equals('test_url'))))).thenReturn({headerType});
+        });
+
         test('adds tracing headers to request', () async {
           final client = DatadogClient(
             datadogSdk: mockDatadog,
-            tracingHeaderTypes: {headerType},
             innerClient: mockClient,
           );
           final testUri = Uri.parse('https://test_url/test');
@@ -277,7 +283,6 @@ void main() {
         test('adds tracing attributes to startResourceLoading', () async {
           final client = DatadogClient(
             datadogSdk: mockDatadog,
-            tracingHeaderTypes: {headerType},
             innerClient: mockClient,
           );
           final testUri = Uri.parse('https://test_url/test');
@@ -303,7 +308,6 @@ void main() {
         test('does not trace 3rd party requests', () async {
           final client = DatadogClient(
             datadogSdk: mockDatadog,
-            tracingHeaderTypes: {headerType},
             innerClient: mockClient,
           );
           final testUri = Uri.parse('https://non_first_party/test');
@@ -334,5 +338,54 @@ void main() {
         });
       });
     }
+
+    test('different hosts can send different tracing headers', () async {
+      when(() => mockDatadog
+              .headerTypesForHost(any(that: HasHost(equals('test_url_a')))))
+          .thenReturn({TracingHeaderType.datadog});
+      when(() => mockDatadog
+              .headerTypesForHost(any(that: HasHost(equals('test_url_b')))))
+          .thenReturn({TracingHeaderType.b3});
+
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+      );
+      final testUriA = Uri.parse('https://test_url_a/test');
+      await client.get(testUriA);
+
+      final testUriB = Uri.parse('https://test_url_b/test');
+      await client.get(testUriB);
+
+      void verifyCall(Uri uri) {
+        final callAttributes = verify(() => mockRum.startResourceLoading(
+                any(), RumHttpMethod.get, uri.toString(), captureAny()))
+            .captured[0] as Map<String, Object?>;
+
+        final traceValue = callAttributes['_dd.trace_id'] as String?;
+        final traceInt =
+            traceValue != null ? BigInt.tryParse(traceValue) : null;
+        expect(traceInt, isNotNull);
+        expect(traceInt?.bitLength, lessThanOrEqualTo(63));
+
+        final spanValue = callAttributes['_dd.span_id'] as String?;
+        final spanInt = spanValue != null ? BigInt.tryParse(spanValue) : null;
+        expect(spanInt, isNotNull);
+        expect(spanInt?.bitLength, lessThanOrEqualTo(63));
+      }
+
+      verifyCall(testUriA);
+      verifyCall(testUriB);
+
+      final captured = verify(() => mockClient.send(captureAny())).captured;
+
+      final capturedA = captured[0] as http.BaseRequest;
+      expect(capturedA.url, testUriA);
+      verifyHeaders(capturedA.headers, TracingHeaderType.datadog);
+
+      final capturedB = captured[1] as http.BaseRequest;
+      expect(capturedB.url, testUriB);
+      verifyHeaders(capturedB.headers, TracingHeaderType.b3);
+    });
   });
 }

@@ -115,7 +115,8 @@ void main() {
     });
 
     test('Interceptor calls proper rum functions', () async {
-      when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+      when(() => mockDatadog.headerTypesForHost(any()))
+          .thenReturn({TracingHeaderType.datadog});
 
       final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
 
@@ -140,12 +141,12 @@ void main() {
     for (var tracingType in TracingHeaderType.values) {
       group('with tracing header type $tracingType', () {
         test('Interceptor calls send tracing attributes', () async {
-          when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+          when(() => mockDatadog.headerTypesForHost(any()))
+              .thenReturn({tracingType});
 
           final interceptor = DatadogGrpcInterceptor(
             mockDatadog,
             channel,
-            tracingHeaderTypes: {tracingType},
           );
 
           final stub = GreeterClient(channel, interceptors: [interceptor]);
@@ -170,13 +171,13 @@ void main() {
         test(
             'Interceptor calls do not send tracing attributes when shouldSample returns false',
             () async {
-          when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+          when(() => mockDatadog.headerTypesForHost(any()))
+              .thenReturn({tracingType});
           when(() => mockRum.shouldSampleTrace()).thenReturn(false);
 
           final interceptor = DatadogGrpcInterceptor(
             mockDatadog,
             channel,
-            tracingHeaderTypes: {tracingType},
           );
 
           final stub = GreeterClient(channel, interceptors: [interceptor]);
@@ -195,12 +196,12 @@ void main() {
         });
 
         test('Interceptor passes on proper metadata', () async {
-          when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+          when(() => mockDatadog.headerTypesForHost(any()))
+              .thenReturn({tracingType});
 
           final interceptor = DatadogGrpcInterceptor(
             mockDatadog,
             channel,
-            tracingHeaderTypes: {tracingType},
           );
 
           final stub = GreeterClient(channel, interceptors: [interceptor]);
@@ -215,13 +216,13 @@ void main() {
         test(
             'Interceptor does not send traces metadata when shouldSample returns false',
             () async {
-          when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+          when(() => mockDatadog.headerTypesForHost(any()))
+              .thenReturn({tracingType});
           when(() => mockRum.shouldSampleTrace()).thenReturn(false);
 
           final interceptor = DatadogGrpcInterceptor(
             mockDatadog,
             channel,
-            tracingHeaderTypes: {tracingType},
           );
 
           final stub = GreeterClient(channel, interceptors: [interceptor]);
@@ -238,7 +239,7 @@ void main() {
     test(
         'Interceptor calls do not send tracing attributes for non-first-party hosts',
         () async {
-      when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(false);
+      when(() => mockDatadog.headerTypesForHost(any())).thenReturn({});
 
       final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
 
@@ -274,7 +275,8 @@ void main() {
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
     when(() => mockRum.tracingSamplingRate).thenReturn(12);
-    when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+    when(() => mockDatadog.headerTypesForHost(any()))
+        .thenReturn({TracingHeaderType.datadog});
 
     final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
 
@@ -320,7 +322,8 @@ void main() {
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
     when(() => mockRum.tracingSamplingRate).thenReturn(12);
-    when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+    when(() => mockDatadog.headerTypesForHost(any()))
+        .thenReturn({TracingHeaderType.datadog});
 
     final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
 
@@ -361,7 +364,8 @@ void main() {
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
     when(() => mockRum.tracingSamplingRate).thenReturn(12);
-    when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
+    when(() => mockDatadog.headerTypesForHost(any()))
+        .thenReturn({TracingHeaderType.datadog});
 
     final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
 
