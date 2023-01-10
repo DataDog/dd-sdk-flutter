@@ -10,6 +10,16 @@ import 'rum_auto_instrumentation_scenario.dart';
 import 'scenario_config.dart';
 
 const autoInstrumentationScenarioName = 'auto_instrumentation_scenario';
+const mappedAutoInstrumentationScenarioName =
+    'mapped_auto_instrumentation_scenario';
+
+RumViewEvent mapRumViewEvent(RumViewEvent event) {
+  if (event.view.name == 'RumAutoInstrumentationThirdScreen') {
+    event.view.name = 'rum_third_screen';
+  }
+
+  return event;
+}
 
 Future<void> runScenario({
   required String clientToken,
@@ -47,6 +57,11 @@ Future<void> runScenario({
           )
         : null,
   );
+
+  if (testingConfiguration?.scenario == mappedAutoInstrumentationScenarioName) {
+    // Add mapping to rum configuration
+    configuration.rumConfiguration?.rumViewEventMapper = mapRumViewEvent;
+  }
 
   await DatadogSdk.runApp(configuration, () async {
     runApp(const DatadogAutoIntegrationTestApp());

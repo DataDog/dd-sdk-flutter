@@ -59,7 +59,9 @@ data class DatadogFlutterConfiguration(
         var detectLongTasks: Boolean,
         var longTaskThreshold: Float,
         var customEndpoint: String?,
-        var vitalsFrequency: VitalsUpdateFrequency? = null
+        var attachViewEventMapper: Boolean = false,
+        var vitalsFrequency: VitalsUpdateFrequency? = null,
+
     ) {
         constructor(encoded: Map<String, Any?>) : this(
             (encoded["applicationId"] as? String) ?: "",
@@ -67,6 +69,7 @@ data class DatadogFlutterConfiguration(
             (encoded["detectLongTasks"] as? Boolean) ?: true,
             (encoded["longTaskThreshold"] as? Number?)?.toFloat() ?: 0.1f,
             encoded["customEndpoint"] as? String,
+            encoded["attachViewEventMapper"] as? Boolean ?: false
         ) {
             (encoded["vitalsFrequency"] as? String)?.let {
                 vitalsFrequency = parseVitalsFrequency(it)

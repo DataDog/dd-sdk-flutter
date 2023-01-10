@@ -145,6 +145,7 @@ class DatadogConfigurationTest {
         assertThat(config.clientToken).isEqualTo(clientToken)
         assertThat(config.env).isEqualTo(environment)
         assertThat(config.trackingConsent).isEqualTo(TrackingConsent.GRANTED)
+        assertThat(config.attachLogMapper).isEqualTo(false)
 
         assertThat(config.rumConfiguration).isNull()
     }
@@ -172,6 +173,7 @@ class DatadogConfigurationTest {
             "telemetrySampleRate" to telemetrySampleRate,
             "customLogsEndpoint" to "customEndpoint",
             "firstPartyHosts" to listOf(firstPartyHost),
+            "attachLogMapper" to true,
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>(
                 additionalKey to additionalValue
@@ -190,6 +192,7 @@ class DatadogConfigurationTest {
         assertThat(config.additionalConfig).isEqualTo(mapOf(
             additionalKey to additionalValue
         ))
+        assertThat(config.attachLogMapper).isEqualTo(true)
         assertThat(config.firstPartyHosts).isEqualTo(listOf(firstPartyHost))
     }
 
@@ -252,6 +255,7 @@ class DatadogConfigurationTest {
                 "detectLongTasks" to false,
                 "longTaskThreshold" to 0.3f,
                 "customEndpoint" to "customEndpoint",
+                "attachViewEventMapper" to true,
                 "vitalsFrequency" to "VitalsFrequency.frequent"
             ),
             "additionalConfig" to mapOf<String, Any?>()
@@ -267,6 +271,7 @@ class DatadogConfigurationTest {
         assertThat(config.rumConfiguration?.detectLongTasks).isEqualTo(false)
         assertThat(config.rumConfiguration?.longTaskThreshold).isEqualTo(0.3f)
         assertThat(config.rumConfiguration?.customEndpoint).isEqualTo("customEndpoint")
+        assertThat(config.rumConfiguration?.attachViewEventMapper).isEqualTo(true)
         assertThat(config.rumConfiguration?.vitalsFrequency).isEqualTo(VitalsUpdateFrequency.FREQUENT)
     }
 

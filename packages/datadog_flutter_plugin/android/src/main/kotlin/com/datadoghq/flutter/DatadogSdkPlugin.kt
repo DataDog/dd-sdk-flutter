@@ -12,8 +12,10 @@ import androidx.annotation.NonNull
 import com.datadog.android.Datadog
 import com.datadog.android._InternalProxy
 import com.datadog.android.event.EventMapper
+import com.datadog.android.event.ViewEventMapper
 import com.datadog.android.log.model.LogEvent
 import com.datadog.android.rum.GlobalRum
+import com.datadog.android.rum.model.ViewEvent
 import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -200,6 +202,18 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     }
                 }
             )
+        }
+
+        config.rumConfiguration?.let {
+            if (it.attachViewEventMapper) {
+                configBuilder.setRumViewEventMapper(
+                    object : ViewEventMapper {
+                        override fun map(event: ViewEvent): ViewEvent {
+                            return rumPlugin.mapViewEvent(event)
+                        }
+                    }
+                )
+            }
         }
 
         Datadog.initialize(

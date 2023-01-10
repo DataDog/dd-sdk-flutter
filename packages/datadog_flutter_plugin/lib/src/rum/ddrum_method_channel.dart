@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 
 import '../../datadog_flutter_plugin.dart';
 import '../internal_logger.dart';
-import 'ddrum_events.dart';
 import 'ddrum_platform_interface.dart';
 
 class DdRumMethodChannel extends DdRumPlatform {
@@ -208,7 +207,7 @@ class MethodCallHandler {
         }
       } catch (e) {
         internalLogger.error(
-            'viewEventMapper threw an exception: ${e.toString()}.\nREturning unmapped event.');
+            'viewEventMapper threw an exception: ${e.toString()}.\nReturning unmapped event.');
         return mapperError;
       }
 

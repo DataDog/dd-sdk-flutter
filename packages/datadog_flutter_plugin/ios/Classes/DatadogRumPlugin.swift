@@ -275,9 +275,6 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             return rumViewEvent
         }
 
-        // Switch "date" to a string (normally an int)
-        encoded["date"] = rumViewEvent.date.description
-
         var encodedResult: [String: Any] = encoded
         let semaphore = DispatchSemaphore(value: 0)
 

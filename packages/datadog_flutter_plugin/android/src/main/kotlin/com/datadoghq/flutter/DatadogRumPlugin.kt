@@ -5,16 +5,23 @@
  */
 package com.datadoghq.flutter
 
+import android.os.Handler
+import android.os.Looper
+import com.datadog.android.Datadog
+import com.datadog.android.log.model.LogEvent
 import com.datadog.android.rum.GlobalRum
 import com.datadog.android.rum.RumActionType
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
+import com.datadog.android.rum.model.ViewEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.MethodChannel.Result
 import java.lang.ClassCastException
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class DatadogRumPlugin(
@@ -273,6 +280,78 @@ class DatadogRumPlugin(
                 RumPerformanceMetric.FLUTTER_RASTER_TIME,
                 it
             )
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    internal fun mapViewEvent(event: ViewEvent): ViewEvent {
+        val jsonEvent = event.toJson().asMap()
+
+        var modifiedJson: Map<String, Any?> = jsonEvent
+        val latch = CountDownLatch(1)
+
+        val handler = Handler(Looper.getMainLooper())
+        handler.post {
+            try {
+                channel.invokeMethod(
+                    "mapViewEvent",
+                    mapOf(
+                        "event" to jsonEvent
+                    ),
+                    object : Result {
+                        override fun success(result: Any?) {
+                            modifiedJson = (result as? Map<String, Any?>) ?: jsonEvent
+                            latch.countDown()
+                        }
+
+                        override fun error(
+                            errorCode: String,
+                            errorMessage: String?,
+                            errorDetails: Any?
+                        ) {
+                            latch.countDown()
+                        }
+
+                        override fun notImplemented() {
+                            Datadog._internal._telemetry.error(
+                                "mapLogEvent returned notImplemented."
+                            )
+                            latch.countDown()
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                Datadog._internal._telemetry.error("Attempting call mapLogEvent failed.", e)
+                latch.countDown()
+            }
+        }
+
+        try {
+            // Stalls until the method channel finishes
+            if (!latch.await(1, TimeUnit.SECONDS)) {
+                Datadog._internal._telemetry.debug("logMapper timed out")
+                return event
+            }
+
+            if (modifiedJson.containsKey("_dd.mapper_error")) {
+                return event
+            }
+
+            // Pull out modifyable elements
+            (modifiedJson["view"] as? Map<String, Any?>)?.let {
+                event.view.name = it["name"] as? String
+                event.view.referrer = it["referrer"] as? String
+                event.view.url = it["url"] as String
+            }
+
+            return event
+        } catch (e: Exception) {
+            Datadog._internal._telemetry.error(
+                "Attempt to deserialize mapped log event failed, or latch await was interrupted." +
+                        " Returning unmodified event.",
+                e
+            )
+            return event
         }
     }
 }

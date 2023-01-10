@@ -17,7 +17,7 @@ class RumViewEvent {
   final RumConnectivity? connectivity;
   @JsonKey(fromJson: attributesFromJson)
   final Map<String, Object?> context;
-  final String date;
+  final int date;
   // Device
   // Display
   // FeatureFlags

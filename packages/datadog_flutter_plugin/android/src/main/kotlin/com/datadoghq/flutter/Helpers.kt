@@ -43,6 +43,13 @@ internal fun Any?.fromJsonElement(): Any? {
                 this
             }
         }
+        is JsonArray -> {
+            val array = mutableListOf<Any?>()
+            this.forEach {
+                array.add(it.fromJsonElement())
+            }
+            array
+        }
         is JsonObject -> this.asMap()
         else -> this
     }
