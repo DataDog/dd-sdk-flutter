@@ -369,7 +369,29 @@ class DdSdkConfiguration {
   double? telemetrySampleRate;
 
   /// A list of first party hosts, used in conjunction with Datadog network
-  /// tracking packages like `datadog_tracking_http_client`
+  /// tracking packages like `datadog_tracking_http_client`.
+  ///
+  /// This also sets all specified hosts to send Datadog tracing headers.
+  ///
+  /// For more information, see [firstPartyHostsWithTracingHeaders].
+  ///
+  /// Note: using this method will override any value set in
+  /// [firstPartHostsWithTracingHeaders]. If you need to specify different
+  /// headers per host, use that property instead.
+  List<String> get firstPartyHosts =>
+      firstPartyHostsWithTracingHeaders.keys.toList();
+  set firstPartyHosts(List<String> hosts) {
+    firstPartyHostsWithTracingHeaders.clear();
+    for (var entry in hosts) {
+      firstPartyHostsWithTracingHeaders[entry] = {TracingHeaderType.datadog};
+    }
+  }
+
+  /// A list of first party hosts and the types of tracing headers Datadog
+  /// should automatically inject on resource calls. This is used in conjunction
+  /// with Datadog network tracking packages like `datadog_tracking_http_client`
+  ///
+  /// For more information about tracing headers, see [TracingHeaderType].
   ///
   /// Each request will be classified as 1st- or 3rd-party based on the host
   /// comparison, i.e.:
@@ -383,8 +405,7 @@ class DdSdkConfiguration {
   ///       https://beta.api.example.com/v2/users
   ///     - 3rd-party URL examples: https://example.com/, https://foo.com/,
   ///       https://api.example.net/v3/users
-  ///
-  List<String> firstPartyHosts = [];
+  Map<String, Set<TracingHeaderType>> firstPartyHostsWithTracingHeaders = {};
 
   /// Configuration for the logging feature. If this configuration is null,
   /// logging is disabled.
@@ -419,7 +440,8 @@ class DdSdkConfiguration {
     this.flavor,
     this.customEndpoint,
     this.telemetrySampleRate,
-    this.firstPartyHosts = const [],
+    List<String>? firstPartyHosts,
+    this.firstPartyHostsWithTracingHeaders = const {},
     this.loggingConfiguration,
     this.logEventMapper,
     this.rumConfiguration,
@@ -433,6 +455,25 @@ class DdSdkConfiguration {
           rumConfiguration?.customEndpoint == null) {
         // ignore: deprecated_member_use_from_same_package
         rumConfiguration?.customEndpoint = customEndpoint;
+      }
+    }
+
+    // Attempt a union if both configuration options are present
+    if (firstPartyHosts != null) {
+      // make map mutable in case it's the default
+      firstPartyHostsWithTracingHeaders =
+          Map<String, Set<TracingHeaderType>>.from(
+              firstPartyHostsWithTracingHeaders);
+
+      for (var entry in firstPartyHosts) {
+        final headerTypes = firstPartyHostsWithTracingHeaders[entry];
+        if (headerTypes == null) {
+          firstPartyHostsWithTracingHeaders[entry] = {
+            TracingHeaderType.datadog
+          };
+        } else {
+          headerTypes.add(TracingHeaderType.datadog);
+        }
       }
     }
   }
@@ -516,6 +557,16 @@ class DdSdkExistingConfiguration {
   /// See [DdSdkConfiguration.firstPartyHosts] for more information
   List<String> firstPartyHosts = [];
 
+  /// A list of first party hosts and the types of tracing headers Datadog
+  /// should automatically inject on resource calls. This is used in conjunction
+  /// with Datadog network tracking packages like `datadog_tracking_http_client`
+  ///
+  /// This property only affects network requests made from Flutter, and is not
+  /// shared with or populated from existing the SDK.
+  ///
+  /// See [DdSdkConfiguration.firstPartyHostsWithTracingHeaders] for more information
+  Map<String, Set<TracingHeaderType>> firstPartyHostsWithTracingHeaders = {};
+
   /// Sets the sampling rate for tracing
   ///
   /// The sampling rate must be a value between `0.0` and `100.0`. A value of
@@ -538,8 +589,28 @@ class DdSdkExistingConfiguration {
     this.detectLongTasks = true,
     this.longTaskThreshold = 0.1,
     this.tracingSamplingRate = 20.0,
-    this.firstPartyHosts = const [],
-  });
+    List<String>? firstPartyHosts,
+    this.firstPartyHostsWithTracingHeaders = const {},
+  }) {
+    // Attempt a union if both configuration options are present
+    if (firstPartyHosts != null) {
+      // make map mutable
+      firstPartyHostsWithTracingHeaders =
+          Map<String, Set<TracingHeaderType>>.from(
+              firstPartyHostsWithTracingHeaders);
+
+      for (var entry in firstPartyHosts) {
+        final headerTypes = firstPartyHostsWithTracingHeaders[entry];
+        if (headerTypes == null) {
+          firstPartyHostsWithTracingHeaders[entry] = {
+            TracingHeaderType.datadog
+          };
+        } else {
+          headerTypes.add(TracingHeaderType.datadog);
+        }
+      }
+    }
+  }
 
   void addPlugin(DatadogPluginConfiguration pluginConfiguration) =>
       additionalPlugins.add(pluginConfiguration);

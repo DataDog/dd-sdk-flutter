@@ -18,15 +18,13 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
   final Uuid uuid = const Uuid();
   final DatadogSdk _datadog;
   final ClientChannel _channel;
-  final Set<TracingHeaderType> tracingHeaderTypes;
 
   late String _hostPath;
 
   DatadogGrpcInterceptor(
     this._datadog,
-    this._channel, {
-    this.tracingHeaderTypes = const {TracingHeaderType.datadog},
-  }) {
+    this._channel,
+  ) {
     final host = _channel.host;
     final scheme = _channel.options.credentials.isSecure ? 'https' : 'http';
     // Add http / https scheme. This scheme is a lie but needed to connect
@@ -52,7 +50,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
 
     final rum = _datadog.rum;
     final rumKey = uuid.v1();
-    bool isFirstPartyHost = _datadog.isFirstPartyHost(Uri.parse(fullPath));
+    final headerTypes = _datadog.headerTypesForHost(Uri.parse(fullPath));
 
     var addedHeaders = <String, String>{};
 
@@ -62,7 +60,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
       };
       TracingContext? tracingContext;
       bool shouldSample = rum.shouldSampleTrace();
-      if (isFirstPartyHost) {
+      if (headerTypes.isNotEmpty) {
         tracingContext = generateTracingContext(shouldSample);
 
         attributes[DatadogRumPlatformAttributeKey.rulePsr] =
@@ -74,7 +72,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
               tracingContext.spanId.asString(TraceIdRepresentation.decimal);
         }
 
-        for (final tracingType in tracingHeaderTypes) {
+        for (final tracingType in headerTypes) {
           addedHeaders.addAll(getTracingHeaders(tracingContext, tracingType));
         }
       }

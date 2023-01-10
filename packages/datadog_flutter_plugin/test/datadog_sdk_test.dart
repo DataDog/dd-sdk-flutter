@@ -248,7 +248,9 @@ void main() {
       firstPartyHosts: ['example.com', 'datadoghq.com'],
     ));
 
-    expect(datadogSdk.firstPartyHosts, ['example.com', 'datadoghq.com']);
+    expect(datadogSdk.firstPartyHosts.length, 2);
+    expect(datadogSdk.firstPartyHosts[0].hostName, 'example.com');
+    expect(datadogSdk.firstPartyHosts[1].hostName, 'datadoghq.com');
   });
 
   test('attachToExisting with loggingConfiguration creates default logger',
@@ -314,18 +316,64 @@ void main() {
   });
 
   test('first party hosts get set to sdk', () async {
-    var firstPartyHosts = ['example.com', 'datadoghq.com'];
-
     final configuration = DdSdkConfiguration(
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
       trackingConsent: TrackingConsent.pending,
-      firstPartyHosts: firstPartyHosts,
+      firstPartyHosts: ['example.com', 'datadoghq.com'],
     );
     await datadogSdk.initialize(configuration);
 
-    expect(datadogSdk.firstPartyHosts, firstPartyHosts);
+    expect(datadogSdk.firstPartyHosts.length, 2);
+    expect(datadogSdk.firstPartyHosts[0].hostName, 'example.com');
+    expect(
+        datadogSdk.firstPartyHosts[0].headerTypes, {TracingHeaderType.datadog});
+    expect(datadogSdk.firstPartyHosts[1].hostName, 'datadoghq.com');
+    expect(
+        datadogSdk.firstPartyHosts[1].headerTypes, {TracingHeaderType.datadog});
+  });
+
+  test('first party hosts with tracing headers set to sdk', () async {
+    final configuration = DdSdkConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.pending,
+      firstPartyHostsWithTracingHeaders: {
+        'example.com': {TracingHeaderType.b3},
+        'datadoghq.com': {TracingHeaderType.datadog},
+      },
+    );
+    await datadogSdk.initialize(configuration);
+
+    expect(datadogSdk.firstPartyHosts.length, 2);
+    expect(datadogSdk.firstPartyHosts[0].hostName, 'example.com');
+    expect(datadogSdk.firstPartyHosts[0].headerTypes, {TracingHeaderType.b3});
+    expect(datadogSdk.firstPartyHosts[1].hostName, 'datadoghq.com');
+    expect(
+        datadogSdk.firstPartyHosts[1].headerTypes, {TracingHeaderType.datadog});
+  });
+
+  test('first party hosts combined tracing headers set to sdk', () async {
+    final configuration = DdSdkConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.pending,
+      firstPartyHosts: ['datadoghq.com'],
+      firstPartyHostsWithTracingHeaders: {
+        'example.com': {TracingHeaderType.b3},
+      },
+    );
+    await datadogSdk.initialize(configuration);
+
+    expect(datadogSdk.firstPartyHosts.length, 2);
+    expect(datadogSdk.firstPartyHosts[0].hostName, 'example.com');
+    expect(datadogSdk.firstPartyHosts[0].headerTypes, {TracingHeaderType.b3});
+    expect(datadogSdk.firstPartyHosts[1].hostName, 'datadoghq.com');
+    expect(
+        datadogSdk.firstPartyHosts[1].headerTypes, {TracingHeaderType.datadog});
   });
 
   test('first party hosts are encoded', () async {
@@ -343,7 +391,7 @@ void main() {
     expect(encoded['firstPartyHosts'], firstPartyHosts);
   });
 
-  test('isFirstPartyHost with no hosts returns false', () async {
+  test('headerTypesForHost with no hosts returns empty set', () async {
     final configuration = DdSdkConfiguration(
       clientToken: 'clientToken',
       env: 'env',
@@ -353,10 +401,11 @@ void main() {
     await datadogSdk.initialize(configuration);
 
     var uri = Uri.parse('https://first_party');
-    expect(datadogSdk.isFirstPartyHost(uri), isFalse);
+    expect(datadogSdk.headerTypesForHost(uri), isEmpty);
   });
 
-  test('isFirstPartyHost with matching host returns true', () async {
+  test('headerTypesForHost with matching host returns datadog by default',
+      () async {
     var firstPartyHosts = ['example.com', 'datadoghq.com'];
 
     final configuration = DdSdkConfiguration(
@@ -369,10 +418,11 @@ void main() {
     await datadogSdk.initialize(configuration);
 
     var uri = Uri.parse('https://datadoghq.com/path');
-    expect(datadogSdk.isFirstPartyHost(uri), isTrue);
+    expect(datadogSdk.headerTypesForHost(uri), {TracingHeaderType.datadog});
   });
 
-  test('isFirstPartyHost with matching host with subdomain returns true',
+  test(
+      'headerTypesForHost with matching host with subdomain returns header type',
       () async {
     var firstPartyHosts = ['example.com', 'datadoghq.com'];
 
@@ -386,10 +436,10 @@ void main() {
     await datadogSdk.initialize(configuration);
 
     var uri = Uri.parse('https://test.datadoghq.com/path');
-    expect(datadogSdk.isFirstPartyHost(uri), isTrue);
+    expect(datadogSdk.headerTypesForHost(uri), {TracingHeaderType.datadog});
   });
 
-  test('isFirstPartyHost with matching subdomain does not match root',
+  test('headerTypesForHost with matching subdomain does not match root',
       () async {
     var firstPartyHosts = ['example.com', 'test.datadoghq.com'];
 
@@ -403,10 +453,10 @@ void main() {
     await datadogSdk.initialize(configuration);
 
     var uri = Uri.parse('https://datadoghq.com/path');
-    expect(datadogSdk.isFirstPartyHost(uri), isFalse);
+    expect(datadogSdk.headerTypesForHost(uri), isEmpty);
   });
 
-  test('isFirstPartyHost escapes special characters in hosts', () async {
+  test('headerTypesForHost escapes special characters in hosts', () async {
     var firstPartyHosts = ['test.datadoghq.com'];
 
     final configuration = DdSdkConfiguration(
@@ -419,7 +469,54 @@ void main() {
     await datadogSdk.initialize(configuration);
 
     var uri = Uri.parse('https://testdatadoghq.com/path');
-    expect(datadogSdk.isFirstPartyHost(uri), isFalse);
+    expect(datadogSdk.headerTypesForHost(uri), isEmpty);
+  });
+
+  test('headerTypesForHost merges header types', () async {
+    var firstPartyHosts = {
+      'datadoghq.com': {TracingHeaderType.datadog},
+      'test.datadoghq.com': {TracingHeaderType.b3},
+    };
+
+    final configuration = DdSdkConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.pending,
+      firstPartyHostsWithTracingHeaders: firstPartyHosts,
+    );
+    await datadogSdk.initialize(configuration);
+
+    var uri = Uri.parse('https://test.datadoghq.com/path');
+    expect(datadogSdk.headerTypesForHost(uri),
+        {TracingHeaderType.datadog, TracingHeaderType.b3});
+  });
+
+  test('firstPartyHosts sanitizes schemas', () async {
+    var firstPartyHosts = {
+      'https://datadoghq.com': {TracingHeaderType.datadog},
+      'http://test.datadoghq.com': {TracingHeaderType.b3},
+      'ws://ws.datadoghq.com': {TracingHeaderType.b3multi},
+    };
+
+    final configuration = DdSdkConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.pending,
+      firstPartyHostsWithTracingHeaders: firstPartyHosts,
+    );
+    await datadogSdk.initialize(configuration);
+
+    expect(datadogSdk.firstPartyHosts.length, 3);
+    expect(datadogSdk.firstPartyHosts[0].hostName, 'datadoghq.com');
+    expect(
+        datadogSdk.firstPartyHosts[0].headerTypes, {TracingHeaderType.datadog});
+    expect(datadogSdk.firstPartyHosts[1].hostName, 'test.datadoghq.com');
+    expect(datadogSdk.firstPartyHosts[1].headerTypes, {TracingHeaderType.b3});
+    expect(datadogSdk.firstPartyHosts[2].hostName, 'ws.datadoghq.com');
+    expect(
+        datadogSdk.firstPartyHosts[2].headerTypes, {TracingHeaderType.b3multi});
   });
 
   test('set user info calls into platform', () {
