@@ -5,7 +5,6 @@
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_grpc_interceptor/datadog_grpc_interceptor.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
@@ -44,12 +43,12 @@ void main() {
     BigInt? spanInt;
 
     switch (type) {
-      case TracingHeaderType.dd:
+      case TracingHeaderType.datadog:
         expect(metadata['x-datadog-sampling-priority'], sampled ? '1' : '0');
         traceInt = BigInt.tryParse(metadata['x-datadog-trace-id'] ?? '');
         spanInt = BigInt.tryParse(metadata['x-datadog-parent-id'] ?? '');
         break;
-      case TracingHeaderType.b3s:
+      case TracingHeaderType.b3:
         var singleHeader = metadata['b3']!;
         var headerParts = singleHeader.split('-');
         if (sampled) {
@@ -60,10 +59,18 @@ void main() {
           expect(singleHeader, '0');
         }
         break;
-      case TracingHeaderType.b3m:
+      case TracingHeaderType.b3multi:
         expect(metadata['x-b3-sampled'], sampled ? '1' : '0');
         traceInt = BigInt.tryParse(metadata['x-b3-traceid'] ?? '', radix: 16);
         spanInt = BigInt.tryParse(metadata['x-b3-spanid'] ?? '', radix: 16);
+        break;
+      case TracingHeaderType.tracecontext:
+        var header = metadata['traceparent']!;
+        var headerParts = header.split('-');
+        expect(headerParts[0], '00');
+        traceInt = BigInt.tryParse(headerParts[1], radix: 16);
+        spanInt = BigInt.tryParse(headerParts[2], radix: 16);
+        expect(headerParts[3], sampled ? '01' : '00');
         break;
     }
 
@@ -73,7 +80,7 @@ void main() {
 
       expect(spanInt, isNotNull);
       expect(spanInt?.bitLength, lessThanOrEqualTo(63));
-    } else {
+    } else if (type != TracingHeaderType.tracecontext) {
       expect(traceInt, isNull);
       expect(spanInt, isNull);
     }
@@ -247,82 +254,6 @@ void main() {
       final attributes = captures[1] as Map<String, Object?>;
       expect(attributes['_dd.trace_id'], isNull);
       expect(attributes['_dd.span_id'], isNull);
-    });
-
-    test('extracts b3m headers and sets attributes', () async {
-      when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
-
-      final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
-
-      final stub = GreeterClient(channel, interceptors: [interceptor]);
-      // Randomly generated
-      //  - 61ffb765f4f77e3b == 7061564389269667387
-      //  - 3eb5c1bcb46ab916 == 4518730817361066262
-      final options = CallOptions(metadata: {
-        'x-b3-traceid': '000000000000000061FFB765F4F77E3B',
-        'x-b3-spanid': '3EB5C1BCB46AB916',
-        'x-b3-sampled': '1',
-      });
-
-      await stub.sayHello(HelloRequest(name: 'test'), options: options);
-
-      expect(loggingService.calls.length, 1);
-      final call = loggingService.calls[0];
-
-      expect(
-          call.clientMetadata!['x-datadog-trace-id']!, '7061564389269667387');
-      expect(
-          call.clientMetadata!['x-datadog-parent-id']!, '4518730817361066262');
-
-      final captures = verify(() => mockRum.startResourceLoading(
-          captureAny(),
-          RumHttpMethod.get,
-          'http://localhost:$port/helloworld.Greeter/SayHello',
-          captureAny())).captured;
-      final attributes = captures[1] as Map<String, Object?>;
-      var traceInt = BigInt.parse(
-          attributes[DatadogRumPlatformAttributeKey.traceID] as String);
-      expect(traceInt, BigInt.from(0x61ffb765f4f77e3b));
-      var spanInt = BigInt.parse(
-          attributes[DatadogRumPlatformAttributeKey.spanID] as String);
-      expect(spanInt, BigInt.from(0x3eb5c1bcb46ab916));
-    });
-
-    test('extracts b3s headers and sets attributes', () async {
-      when(() => mockDatadog.isFirstPartyHost(any())).thenReturn(true);
-
-      final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
-
-      final stub = GreeterClient(channel, interceptors: [interceptor]);
-      // Randomly generated
-      //  - 61ffb765f4f77e3b == 7061564389269667387
-      //  - 3eb5c1bcb46ab916 == 4518730817361066262
-      final options = CallOptions(metadata: {
-        'b3': '000000000000000061FFB765F4F77E3B-3EB5C1BCB46AB916-1',
-      });
-
-      await stub.sayHello(HelloRequest(name: 'test'), options: options);
-
-      expect(loggingService.calls.length, 1);
-      final call = loggingService.calls[0];
-
-      expect(
-          call.clientMetadata!['x-datadog-trace-id']!, '7061564389269667387');
-      expect(
-          call.clientMetadata!['x-datadog-parent-id']!, '4518730817361066262');
-
-      final captures = verify(() => mockRum.startResourceLoading(
-          captureAny(),
-          RumHttpMethod.get,
-          'http://localhost:$port/helloworld.Greeter/SayHello',
-          captureAny())).captured;
-      final attributes = captures[1] as Map<String, Object?>;
-      var traceInt = BigInt.parse(
-          attributes[DatadogRumPlatformAttributeKey.traceID] as String);
-      expect(traceInt, BigInt.from(0x61ffb765f4f77e3b));
-      var spanInt = BigInt.parse(
-          attributes[DatadogRumPlatformAttributeKey.spanID] as String);
-      expect(spanInt, BigInt.from(0x3eb5c1bcb46ab916));
     });
   });
 

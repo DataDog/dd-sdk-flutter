@@ -6,7 +6,8 @@
 * Send trace sample rate (`dd.rule_psr`) for APM's traffic ingestion control page.
 * Added DatadogClient for use with the `http` pub package.
 * Fix an issue where convenience methods on DatadogTrackingHttpClient weren't being tracked properly
-* Support for OTel b3 header injection
+* Support for OTel `b3` and W3C `tracecontext` header injection
+* Fix an issue where convenience methods on DatadogTrackingHttpClient weren't being tracked properly
 
 ## 1.1.0
 

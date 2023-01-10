@@ -11,13 +11,16 @@ import '../../datadog_internal.dart';
 /// The type of tracing header to inject into first party requests.
 enum TracingHeaderType {
   /// [Datadog's `x-datadog-*` header](https://docs.datadoghq.com/real_user_monitoring/connect_rum_and_traces/?tab=browserrum#how-are-rum-resources-linked-to-traces).
-  dd,
+  datadog,
 
   /// Open Telemetry B3 [Single header](https://github.com/openzipkin/b3-propagation#single-headers).
-  b3s,
+  b3,
 
   /// Open Telemetry B3 [Multiple headers](https://github.com/openzipkin/b3-propagation#multiple-headers).
-  b3m,
+  b3multi,
+
+  /// W3C [Trace Context header](https://www.w3.org/TR/trace-context/#tracestate-header)
+  tracecontext,
 }
 
 class DatadogHttpTracingHeaders {
@@ -37,6 +40,10 @@ class OTelHttpTracingHeaders {
   static const singleB3 = 'b3';
 }
 
+class W3CTracingHeaders {
+  static const traceparent = 'traceparent';
+}
+
 enum TraceIdRepresentation {
   decimal,
   hex,
@@ -52,10 +59,10 @@ class TracingUUID {
 
   const TracingUUID(this.value);
 
-  static TracingUUID? fromString(
+  static TracingUUID fromString(
       String? uuid, TraceIdRepresentation representation) {
     if (uuid == null) {
-      return null;
+      return TracingUUID(BigInt.zero);
     }
 
     switch (representation) {
@@ -75,7 +82,7 @@ class TracingUUID {
         break;
     }
 
-    return null;
+    return TracingUUID(BigInt.zero);
   }
 
   String asString(TraceIdRepresentation representation) {
@@ -94,8 +101,8 @@ class TracingUUID {
 
 @immutable
 class TracingContext {
-  final TracingUUID? traceId;
-  final TracingUUID? spanId;
+  final TracingUUID traceId;
+  final TracingUUID spanId;
   final TracingUUID? parentSpanId;
   final bool sampled;
 
@@ -118,54 +125,6 @@ TracingUUID _generateTraceId() {
   return TracingUUID(traceId);
 }
 
-/// Read the tracing context from the requests headers -- note that
-/// headers should be lowercased
-TracingContext? readTracingContext(Map<String, String> headers) {
-  TracingUUID? traceId;
-  TracingUUID? spanId;
-  TracingUUID? parentSpanId;
-  bool? sampled;
-
-  final b3mSampledStr =
-      headers[OTelHttpTracingHeaders.multipleSampled.toLowerCase()];
-  final singleB3Str = headers[OTelHttpTracingHeaders.singleB3.toLowerCase()];
-
-  if (b3mSampledStr != null) {
-    sampled = b3mSampledStr == '1';
-
-    traceId = TracingUUID.fromString(
-        headers[OTelHttpTracingHeaders.multipleTraceId.toLowerCase()],
-        TraceIdRepresentation.hex);
-    spanId = TracingUUID.fromString(
-        headers[OTelHttpTracingHeaders.multipleSpanId.toLowerCase()],
-        TraceIdRepresentation.hex);
-    parentSpanId = TracingUUID.fromString(
-        headers[OTelHttpTracingHeaders.multipleParentId.toLowerCase()],
-        TraceIdRepresentation.hex);
-  } else if (singleB3Str != null) {
-    // Assumption - malformed b3 header is not sampled.
-    sampled = false;
-
-    final components = singleB3Str.split('-');
-
-    if (components.length > 2) {
-      traceId =
-          TracingUUID.fromString(components[0], TraceIdRepresentation.hex);
-      spanId = TracingUUID.fromString(components[1], TraceIdRepresentation.hex);
-      sampled = components[2] == '1';
-      parentSpanId = TracingUUID.fromString(
-          components.length > 3 ? components[3] : null,
-          TraceIdRepresentation.hex);
-
-      return TracingContext(traceId, spanId, parentSpanId, sampled);
-    }
-  }
-
-  return sampled != null
-      ? TracingContext(traceId, spanId, parentSpanId, sampled)
-      : null;
-}
-
 /// Generate a tracing context
 TracingContext generateTracingContext(bool sampled) {
   return TracingContext(_generateTraceId(), _generateTraceId(), null, sampled);
@@ -179,9 +138,9 @@ Map<String, Object?> generateDatadogAttributes(
     attributes[DatadogRumPlatformAttributeKey.rulePsr] = samplingRate / 100.0;
     if (context.sampled) {
       attributes[DatadogRumPlatformAttributeKey.traceID] =
-          context.traceId?.asString(TraceIdRepresentation.decimal);
+          context.traceId.asString(TraceIdRepresentation.decimal);
       attributes[DatadogRumPlatformAttributeKey.spanID] =
-          context.spanId?.asString(TraceIdRepresentation.decimal);
+          context.spanId.asString(TraceIdRepresentation.decimal);
     }
   }
 
@@ -194,31 +153,24 @@ Map<String, String> getTracingHeaders(
 ) {
   var headers = <String, String>{};
 
-  // Shouldn't ever end up in a situation where we're being sampled but don't
-  // have a trace or span id. However, just to be safe....
-  if (context.sampled && (context.traceId == null || context.spanId == null)) {
-    // TODO: Send this to internal telemetry?
-    return headers;
-  }
-
   final sampledString = context.sampled ? '1' : '0';
 
   switch (headersType) {
-    case TracingHeaderType.dd:
+    case TracingHeaderType.datadog:
       if (context.sampled) {
         headers[DatadogHttpTracingHeaders.traceId] =
-            context.traceId!.asString(TraceIdRepresentation.decimal);
+            context.traceId.asString(TraceIdRepresentation.decimal);
         headers[DatadogHttpTracingHeaders.parentId] =
-            context.spanId!.asString(TraceIdRepresentation.decimal);
+            context.spanId.asString(TraceIdRepresentation.decimal);
       }
       headers[DatadogHttpTracingHeaders.origin] = 'rum';
       headers[DatadogHttpTracingHeaders.samplingPriority] = sampledString;
       break;
-    case TracingHeaderType.b3s:
+    case TracingHeaderType.b3:
       if (context.sampled) {
         final headerValue = [
-          context.spanId!.asString(TraceIdRepresentation.hex32Chars),
-          context.traceId!.asString(TraceIdRepresentation.hex16Chars),
+          context.spanId.asString(TraceIdRepresentation.hex32Chars),
+          context.traceId.asString(TraceIdRepresentation.hex16Chars),
           sampledString,
           context.parentSpanId?.asString(TraceIdRepresentation.hex16Chars),
         ].whereType<String>().join('-');
@@ -227,19 +179,28 @@ Map<String, String> getTracingHeaders(
         headers[OTelHttpTracingHeaders.singleB3] = sampledString;
       }
       break;
-    case TracingHeaderType.b3m:
+    case TracingHeaderType.b3multi:
       headers[OTelHttpTracingHeaders.multipleSampled] = sampledString;
 
       if (context.sampled) {
         headers[OTelHttpTracingHeaders.multipleTraceId] =
-            context.traceId!.asString(TraceIdRepresentation.hex32Chars);
+            context.traceId.asString(TraceIdRepresentation.hex32Chars);
         headers[OTelHttpTracingHeaders.multipleSpanId] =
-            context.spanId!.asString(TraceIdRepresentation.hex16Chars);
+            context.spanId.asString(TraceIdRepresentation.hex16Chars);
         if (context.parentSpanId != null) {
           headers[OTelHttpTracingHeaders.multipleParentId] =
               context.parentSpanId!.asString(TraceIdRepresentation.hex16Chars);
         }
       }
+      break;
+    case TracingHeaderType.tracecontext:
+      final headerValue = [
+        '00', // Version Code
+        context.spanId.asString(TraceIdRepresentation.hex32Chars),
+        context.traceId.asString(TraceIdRepresentation.hex16Chars),
+        context.sampled ? '01' : '00'
+      ].join('-');
+      headers[W3CTracingHeaders.traceparent] = headerValue;
       break;
   }
 

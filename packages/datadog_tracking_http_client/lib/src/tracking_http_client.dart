@@ -312,26 +312,18 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
     try {
       isFirstParty = client.datadogSdk.isFirstPartyHost(innerContext.uri);
 
-      if (rum != null && isFirstParty) {
-        final normalizedHeaders = <String, String>{};
-        headers.forEach((name, values) {
-          normalizedHeaders[name.toLowerCase()] = values.join(',');
-        });
-        _tracingContext = readTracingContext(normalizedHeaders);
+      if (rum != null && isFirstParty && tracingHeaderTypes.isNotEmpty) {
+        bool shouldSample = rum.shouldSampleTrace();
 
-        if (isFirstParty && tracingHeaderTypes.isNotEmpty) {
-          bool shouldSample = rum.shouldSampleTrace();
+        // No tracing context, generate one ourselves
+        _tracingContext ??= generateTracingContext(shouldSample);
 
-          // No tracing context, generate one ourselves
-          _tracingContext ??= generateTracingContext(shouldSample);
-
-          for (final headerType in tracingHeaderTypes) {
-            final newHeaders = getTracingHeaders(_tracingContext!, headerType);
-            for (final entry in newHeaders.entries) {
-              // Don't replace exiting headers
-              if (headers.value(entry.key) == null) {
-                headers.add(entry.key, entry.value);
-              }
+        for (final headerType in tracingHeaderTypes) {
+          final newHeaders = getTracingHeaders(_tracingContext!, headerType);
+          for (final entry in newHeaders.entries) {
+            // Don't replace exiting headers
+            if (headers.value(entry.key) == null) {
+              headers.add(entry.key, entry.value);
             }
           }
         }
