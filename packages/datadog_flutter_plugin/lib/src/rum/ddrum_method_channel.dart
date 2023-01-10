@@ -5,13 +5,26 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'ddrum.dart';
+import '../../datadog_flutter_plugin.dart';
+import '../internal_logger.dart';
+import 'ddrum_events.dart';
 import 'ddrum_platform_interface.dart';
 
 class DdRumMethodChannel extends DdRumPlatform {
   @visibleForTesting
   final MethodChannel methodChannel =
       const MethodChannel('datadog_sdk_flutter.rum');
+
+  @override
+  Future<void> initialize(
+      RumConfiguration configuration, InternalLogger internalLogger) async {
+    final callbackHandler = MethodCallHandler(
+      viewEventMapper: configuration.rumViewEventMapper,
+      internalLogger: internalLogger,
+    );
+
+    methodChannel.setMethodCallHandler(callbackHandler.handleMethodCall);
+  }
 
   @override
   Future<void> addTiming(String name) {
@@ -155,5 +168,59 @@ class DdRumMethodChannel extends DdRumPlatform {
       'buildTimes': buildTimes,
       'rasterTimes': rasterTimes,
     });
+  }
+}
+
+class MethodCallHandler {
+  static const mapperError = {'_dd.mapper_error': 'mapper error'};
+
+  final RumViewEventMapper? viewEventMapper;
+  final InternalLogger internalLogger;
+
+  MethodCallHandler({this.viewEventMapper, required this.internalLogger});
+
+  Future<dynamic> handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'mapViewEvent':
+        return _mapViewEvent(call);
+    }
+  }
+
+  Map<Object?, Object?>? _mapViewEvent(MethodCall call) {
+    try {
+      if (viewEventMapper == null) {
+        final st = StackTrace.current;
+        internalLogger.sendToDatadog(
+            'Log event mapper called but no logEventMapper is set,',
+            st,
+            'InternalDatadogError');
+        return mapperError;
+      }
+
+      final viewEventJson = call.arguments['event'] as Map;
+      final viewEvent = RumViewEvent.fromJson(viewEventJson);
+
+      RumViewEvent? mappedViewEvent = viewEvent;
+      try {
+        mappedViewEvent = viewEventMapper?.call(viewEvent);
+        if (mappedViewEvent == null) {
+          return null;
+        }
+      } catch (e) {
+        internalLogger.error(
+            'viewEventMapper threw an exception: ${e.toString()}.\nREturning unmapped event.');
+        return mapperError;
+      }
+
+      final mappedJson = mappedViewEvent.toJson();
+      return mappedJson;
+    } catch (e, st) {
+      internalLogger.sendToDatadog('Error mapping view event: ${e.toString()}',
+          st, e.runtimeType.toString());
+    }
+
+    // Return a special map which will indicate to native code something went wrong, and
+    // we should send the unmodified event.
+    return mapperError;
   }
 }

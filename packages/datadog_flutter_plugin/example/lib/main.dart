@@ -22,6 +22,14 @@ LogEvent? _testLogEventMapper(LogEvent event) {
   return event;
 }
 
+RumViewEvent _testViewEventMapper(RumViewEvent event) {
+  if (event.view.name == 'overwrite me') {
+    event.view.name = 'overwritten';
+  }
+
+  return event;
+}
+
 void main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +52,7 @@ void main() async {
           ? RumConfiguration(
               applicationId: applicationId,
               detectLongTasks: true,
+              rumViewEventMapper: _testViewEventMapper,
             )
           : null,
     );

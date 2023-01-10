@@ -16,6 +16,13 @@ import '../datadog_internal.dart';
 /// [LogEvent], or return null to drop the log entirely.
 typedef LogEventMapper = LogEvent? Function(LogEvent event);
 
+/// A function that allows you to modify or drop specific [RumVewEvent]s before
+/// they are sent to Datadog.
+///
+/// The [RumViewEventMapper] can modify any mutable (non-final) properties in the
+/// [RumViewEvent]
+typedef RumViewEventMapper = RumViewEvent Function(RumViewEvent event);
+
 /// Defines the Datadog SDK policy when batching data together before uploading
 /// it to Datadog servers. Smaller batches mean smaller but more network
 /// requests, whereas larger batches mean fewer but larger network requests.
@@ -252,6 +259,10 @@ class RumConfiguration {
   /// Use a custom endpoint for sending RUM data.
   String? customEndpoint;
 
+  /// A function that allows you to modify or drop specific [RumViewEvent]s
+  /// before they are sent to Datadog.
+  RumViewEventMapper? rumViewEventMapper;
+
   RumConfiguration({
     required this.applicationId,
     double sessionSamplingRate = 100.0,
@@ -261,6 +272,7 @@ class RumConfiguration {
     this.vitalUpdateFrequency = VitalsFrequency.average,
     this.reportFlutterPerformance = false,
     this.customEndpoint,
+    this.rumViewEventMapper,
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),
         longTaskThreshold = max(0.02, longTaskThreshold);
@@ -288,6 +300,7 @@ class RumConfiguration {
       'vitalsFrequency': vitalUpdateFrequency.toString(),
       'reportFlutterPerformance': reportFlutterPerformance,
       'customEndpoint': customEndpoint,
+      'attachViewEventMapper': rumViewEventMapper != null,
     };
   }
 }

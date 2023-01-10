@@ -4,7 +4,8 @@
 
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-import 'ddrum.dart';
+import '../../datadog_flutter_plugin.dart';
+import '../internal_logger.dart';
 import 'ddrum_method_channel.dart';
 
 abstract class DdRumPlatform extends PlatformInterface {
@@ -20,6 +21,9 @@ abstract class DdRumPlatform extends PlatformInterface {
     PlatformInterface.verifyToken(instance, _token);
     _instance = instance;
   }
+
+  Future<void> initialize(
+      RumConfiguration configuration, InternalLogger internalLogger);
 
   Future<void> startView(
       String key, String name, Map<String, Object?> attributes);

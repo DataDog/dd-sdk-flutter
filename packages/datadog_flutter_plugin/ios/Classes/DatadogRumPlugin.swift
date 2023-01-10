@@ -4,6 +4,7 @@
 
 import Foundation
 import Datadog
+import DictionaryCoder
 
 extension FlutterError {
     public enum DdErrorCodes {
@@ -25,10 +26,12 @@ extension FlutterError {
 }
 
 public class DatadogRumPlugin: NSObject, FlutterPlugin {
+    private static var methodChannel: FlutterMethodChannel?
+
     public static let instance =  DatadogRumPlugin()
     public static func register(with registrar: FlutterPluginRegistrar) {
-        let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.rum", binaryMessenger: registrar.messenger())
-        registrar.addMethodCallDelegate(instance, channel: channel)
+        methodChannel = FlutterMethodChannel(name: "datadog_sdk_flutter.rum", binaryMessenger: registrar.messenger())
+        registrar.addMethodCallDelegate(instance, channel: methodChannel!)
     }
 
     private var rumInstance: DDRUMMonitor?
@@ -259,6 +262,52 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         default:
             result(FlutterMethodNotImplemented)
         }
+    }
+
+    func viewEventMapper(rumViewEvent: RUMViewEvent) -> RUMViewEvent {
+        guard let methodChannel = DatadogRumPlugin.methodChannel else {
+            return rumViewEvent
+        }
+
+        let encoder = DictionaryEncoder()
+        guard var encoded = try? encoder.encode(rumViewEvent) else {
+            // TODO: Telemetry
+            return rumViewEvent
+        }
+
+        // Switch "date" to a string (normally an int)
+        encoded["date"] = rumViewEvent.date.description
+
+        var encodedResult: [String: Any] = encoded
+        let semaphore = DispatchSemaphore(value: 0)
+
+        methodChannel.invokeMethod("mapViewEvent", arguments: ["event": encoded]) { result in
+            if let result = result as? [String: Any] {
+                // TODO: Telemetry, shouldn't be able to return null to a view mapper
+                encodedResult = result
+            }
+
+            semaphore.signal()
+        }
+
+        if semaphore.wait(timeout: .now() + DispatchTimeInterval.milliseconds(250)) == .timedOut {
+            return rumViewEvent
+        }
+
+        if encodedResult["_dd.mapper_error"] != nil {
+            // Error in the mapper, return the unmapped event
+            return rumViewEvent
+        }
+
+        // Pull modifyable properties
+        var rumViewEvent = rumViewEvent
+        if let encodedView = encodedResult["view"] as? [String: Any?] {
+            rumViewEvent.view.name = encodedView["name"] as? String
+            rumViewEvent.view.referrer = encodedView["referrer"] as? String
+            rumViewEvent.view.url = encodedView["url"] as! String
+        }
+
+        return rumViewEvent
     }
 }
 

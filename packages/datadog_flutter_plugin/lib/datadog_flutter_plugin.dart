@@ -21,6 +21,7 @@ import 'src/version.dart' show ddPackageVersion;
 export 'src/datadog_configuration.dart';
 export 'src/datadog_plugin.dart';
 export 'src/logs/ddlogs.dart';
+export 'src/rum/ddrum_events.dart';
 export 'src/rum/rum.dart';
 export 'src/tracing/tracing_headers.dart' show TracingHeaderType;
 
@@ -155,6 +156,7 @@ class DatadogSdk {
     }
     if (configuration.rumConfiguration != null) {
       _rum = DdRum(configuration.rumConfiguration!, internalLogger);
+      await _rum!.initialize();
 
       // Update 'late' configuration
       updateConfigurationInfo(LateConfigurationProperty.trackFlutterPerformance,
@@ -202,6 +204,7 @@ class DatadogSdk {
               tracingSamplingRate: config.tracingSamplingRate,
             ),
             internalLogger);
+        await _rum!.initialize();
       }
 
       _initializePlugins(config.additionalPlugins);
