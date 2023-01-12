@@ -16,12 +16,19 @@ import '../datadog_internal.dart';
 /// [LogEvent], or return null to drop the log entirely.
 typedef LogEventMapper = LogEvent? Function(LogEvent event);
 
-/// A function that allows you to modify or drop specific [RumVewEvent]s before
+/// A function that allows you to modify specific [RumViewEvent]s before they
+/// are sent to Datadog.
+///
+/// The [RumViewEventMapper] can modify any mutable (non-final) properties in
+/// the [RumViewEvent]
+typedef RumViewEventMapper = RumViewEvent Function(RumViewEvent event);
+
+/// A function that allows you to modify or drop specific [RumActionEvent]s before
 /// they are sent to Datadog.
 ///
-/// The [RumViewEventMapper] can modify any mutable (non-final) properties in the
-/// [RumViewEvent]
-typedef RumViewEventMapper = RumViewEvent Function(RumViewEvent event);
+/// The [RumActionEventMapper] can modify any mutable (non-final) properties in the
+/// [RumActionEvent]
+typedef RumActionEventMapper = RumActionEvent? Function(RumActionEvent event);
 
 /// Defines the Datadog SDK policy when batching data together before uploading
 /// it to Datadog servers. Smaller batches mean smaller but more network
@@ -263,6 +270,10 @@ class RumConfiguration {
   /// before they are sent to Datadog.
   RumViewEventMapper? rumViewEventMapper;
 
+  /// A function that allows you to modify or drop specific [RumActionEvent]s
+  /// before they are sent to Datadog.
+  RumActionEventMapper? rumActionEventMapper;
+
   RumConfiguration({
     required this.applicationId,
     double sessionSamplingRate = 100.0,
@@ -273,6 +284,7 @@ class RumConfiguration {
     this.reportFlutterPerformance = false,
     this.customEndpoint,
     this.rumViewEventMapper,
+    this.rumActionEventMapper,
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),
         longTaskThreshold = max(0.02, longTaskThreshold);
@@ -301,6 +313,7 @@ class RumConfiguration {
       'reportFlutterPerformance': reportFlutterPerformance,
       'customEndpoint': customEndpoint,
       'attachViewEventMapper': rumViewEventMapper != null,
+      'attachActionEventMapper': rumActionEventMapper != null,
     };
   }
 }

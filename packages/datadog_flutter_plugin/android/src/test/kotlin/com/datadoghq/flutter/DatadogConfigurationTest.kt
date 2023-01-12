@@ -256,6 +256,7 @@ class DatadogConfigurationTest {
                 "longTaskThreshold" to 0.3f,
                 "customEndpoint" to "customEndpoint",
                 "attachViewEventMapper" to true,
+                "attachActionEventMapper" to true,
                 "vitalsFrequency" to "VitalsFrequency.frequent"
             ),
             "additionalConfig" to mapOf<String, Any?>()
@@ -272,6 +273,7 @@ class DatadogConfigurationTest {
         assertThat(config.rumConfiguration?.longTaskThreshold).isEqualTo(0.3f)
         assertThat(config.rumConfiguration?.customEndpoint).isEqualTo("customEndpoint")
         assertThat(config.rumConfiguration?.attachViewEventMapper).isEqualTo(true)
+        assertThat(config.rumConfiguration?.attachActionEventMapper).isEqualTo(true)
         assertThat(config.rumConfiguration?.vitalsFrequency).isEqualTo(VitalsUpdateFrequency.FREQUENT)
     }
 

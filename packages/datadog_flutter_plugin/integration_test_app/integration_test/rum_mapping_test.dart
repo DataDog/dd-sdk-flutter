@@ -20,7 +20,8 @@ void main() {
   // This is the same test as rum_auto_instrumentation_test.dart, but with the following
   // mappers:
   //  * viewMapper renames RumAutoInstrumentationThirdScreen to rum_third_screen
-  //
+  //  * actionMapper removes 'InkWell' from targets
+  //  * actionMapper discards the 'Next Page' tap
   testWidgets('test auto instrumentation with mappers',
       (WidgetTester tester) async {
     var serverRecorder = await openTestScenario(
@@ -60,6 +61,11 @@ void main() {
       // Web doesn't support performance metrics
       expect(view1.viewEvents.last.flutterBuildTime, isNotNull);
       expect(view1.viewEvents.last.flutterRasterTime, isNotNull);
+
+      // Web doesn't support action tracking from Flutter
+      var actionEvent = view1.actionEvents.last;
+      expect(actionEvent.actionType, 'tap');
+      expect(actionEvent.actionName, 'Item 0');
     }
 
     final view2 = session.visits[1];
@@ -71,6 +77,9 @@ void main() {
       // Web doesn't support performance metrics
       expect(view2.viewEvents.last.flutterBuildTime, isNotNull);
       expect(view2.viewEvents.last.flutterRasterTime, isNotNull);
+
+      // Web doesn't support action tracking from Flutter
+      expect(view2.actionEvents.length, 0);
     }
 
     // Check last view name

@@ -45,6 +45,7 @@ class DatadogFlutterConfiguration {
         let customEndpoint: String?
         let vitalsFrequency: Datadog.Configuration.VitalsFrequency?
         let attachViewEventMapper: Bool
+        let attachActionEventMapper: Bool
 
         init(applicationId: String,
              sampleRate: Float,
@@ -52,7 +53,8 @@ class DatadogFlutterConfiguration {
              longTaskThreshold: Float,
              customEndpoint: String?,
              vitalsFrequency: Datadog.Configuration.VitalsFrequency?,
-             attachViewEventMapper: Bool
+             attachViewEventMapper: Bool,
+             attachActionEventMapper: Bool
         ) {
             self.applicationId = applicationId
             self.sampleRate = sampleRate
@@ -61,6 +63,7 @@ class DatadogFlutterConfiguration {
             self.customEndpoint = customEndpoint
             self.vitalsFrequency = vitalsFrequency
             self.attachViewEventMapper = attachViewEventMapper
+            self.attachActionEventMapper = attachActionEventMapper
         }
 
         init?(fromEncoded encoded: [String: Any?]) {
@@ -75,6 +78,7 @@ class DatadogFlutterConfiguration {
             longTaskThreshold = (encoded["longTaskThreshold"] as? NSNumber)?.floatValue ?? 0.1
             customEndpoint = encoded["customEndpoint"] as? String
             attachViewEventMapper = (encoded["attachViewEventMapper"] as? NSNumber)?.boolValue ?? false
+            attachActionEventMapper = (encoded["attachActionEventMapper"] as? NSNumber)?.boolValue ?? false
 
             vitalsFrequency = convertOptional(encoded["vitalsFrequency"]) {
                 .parseFromFlutter($0)

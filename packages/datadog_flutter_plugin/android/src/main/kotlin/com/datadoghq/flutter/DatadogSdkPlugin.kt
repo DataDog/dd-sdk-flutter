@@ -5,6 +5,7 @@
  */
 package com.datadoghq.flutter
 
+import android.app.Notification.Action
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -15,6 +16,7 @@ import com.datadog.android.event.EventMapper
 import com.datadog.android.event.ViewEventMapper
 import com.datadog.android.log.model.LogEvent
 import com.datadog.android.rum.GlobalRum
+import com.datadog.android.rum.model.ActionEvent
 import com.datadog.android.rum.model.ViewEvent
 import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -214,6 +216,15 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     }
                 )
             }
+            if (it.attachActionEventMapper) {
+                configBuilder.setRumActionEventMapper(
+                    object : EventMapper<ActionEvent> {
+                        override fun map(event: ActionEvent): ActionEvent? {
+                          return rumPlugin.mapActionEvent(event)
+                        }
+                    }
+                )
+            }
         }
 
         Datadog.initialize(
@@ -303,7 +314,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     @Suppress("TooGenericExceptionCaught")
     internal fun mapLogEvent(event: LogEvent): LogEvent? {
         val jsonEvent = event.toJson().asMap()
-
         var modifiedJson: Map<String, Any?>? = null
 
         val latch = CountDownLatch(1)

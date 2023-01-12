@@ -8,33 +8,40 @@ import '../json_helpers.dart';
 
 part 'ddrum_events.g.dart';
 
+// Currently excluded
+//  * ciTest
+//  * display
+//  * featureFlags
+//  * source
+//  * synthetics
 @commonJsonOptions
 class RumViewEvent {
   @JsonKey(name: '_dd')
   final RumViewEventDd dd;
-  // Application
-  // CITest
+  final RumApplication application;
   final RumConnectivity? connectivity;
   @JsonKey(fromJson: attributesFromJson)
   final Map<String, Object?> context;
   final int date;
-  // Device
-  // Display
-  // FeatureFlags
-  // os
+  final RumDevice? device;
+  final RumOperatingSystem? os;
   final String service;
-  final RumViewEventSession session;
-  // usr
+  final RumSession session;
+  final RumUser? usr;
   final String version;
   final RumViewDetails view;
 
   RumViewEvent({
     required this.dd,
+    required this.application,
     this.connectivity,
     required this.context,
     required this.date,
+    this.device,
+    this.os,
     required this.service,
     required this.session,
+    this.usr,
     required this.version,
     required this.view,
   });
@@ -57,6 +64,19 @@ class RumViewEventDd {
   factory RumViewEventDd.fromJson(Map<String, dynamic> json) =>
       _$RumViewEventDdFromJson(json);
   Map<String, dynamic> toJson() => _$RumViewEventDdToJson(this);
+}
+
+@commonJsonOptions
+class RumApplication {
+  final String id;
+
+  RumApplication({
+    required this.id,
+  });
+
+  factory RumApplication.fromJson(Map<String, dynamic> json) =>
+      _$RumApplicationFromJson(json);
+  Map<String, dynamic> toJson() => _$RumApplicationToJson(this);
 }
 
 enum RumConnectivityInterfaces {
@@ -111,20 +131,90 @@ class RumCellular {
 }
 
 @commonJsonOptions
-class RumViewEventSession {
+class RumSession {
   final bool? hasReplay;
   final String id;
   final String type;
 
-  RumViewEventSession({
+  RumSession({
     this.hasReplay,
     required this.id,
     required this.type,
   });
 
-  factory RumViewEventSession.fromJson(Map<String, dynamic> json) =>
-      _$RumViewEventSessionFromJson(json);
-  Map<String, dynamic> toJson() => _$RumViewEventSessionToJson(this);
+  factory RumSession.fromJson(Map<String, dynamic> json) =>
+      _$RumSessionFromJson(json);
+  Map<String, dynamic> toJson() => _$RumSessionToJson(this);
+}
+
+enum RumDeviceType {
+  mobile,
+  desktop,
+  tablet,
+  tv,
+  @JsonValue('gaming_console')
+  gamingConsole,
+  bot,
+  other,
+}
+
+@commonJsonOptions
+class RumDevice {
+  final String? architecture;
+  final String? brand;
+  final String? model;
+  final String? name;
+  final RumDeviceType type;
+
+  RumDevice({
+    this.architecture,
+    this.brand,
+    this.model,
+    this.name,
+    required this.type,
+  });
+
+  factory RumDevice.fromJson(Map<String, dynamic> json) =>
+      _$RumDeviceFromJson(json);
+  Map<String, dynamic> toJson() => _$RumDeviceToJson(this);
+}
+
+@commonJsonOptions
+class RumOperatingSystem {
+  final String name;
+  final String version;
+  final String versionMajor;
+
+  RumOperatingSystem({
+    required this.name,
+    required this.version,
+    required this.versionMajor,
+  });
+
+  factory RumOperatingSystem.fromJson(Map<String, dynamic> json) =>
+      _$RumOperatingSystemFromJson(json);
+  Map<String, dynamic> toJson() => _$RumOperatingSystemToJson(this);
+}
+
+@commonJsonOptions
+class RumUser {
+  final String? email;
+  final String? id;
+  final String? name;
+
+  @JsonKey(fromJson: attributesFromJson)
+  final Map<String, Object?> usrInfo;
+
+  RumUser({
+    this.email,
+    this.id,
+    this.name,
+    this.usrInfo = const {},
+  });
+
+  factory RumUser.fromJson(Map<String, dynamic> json) =>
+      _$RumUserFromJson(json);
+  Map<String, dynamic> toJson() => _$RumUserToJson(this);
 }
 
 @commonJsonOptions
@@ -137,8 +227,8 @@ class RumViewDetails {
   final RumCount error;
   final RumPerformanceMetric? flutterBuildTime;
   final RumPerformanceMetric? flutterRasterTime;
-  // frozenframe
-  // frustration
+  final RumCount? frozenFrame;
+  final RumCount? frustration;
   final String id;
   final bool? isActive;
   final bool? isSlowRendered;
@@ -153,28 +243,31 @@ class RumViewDetails {
   final int timeSpent;
   String url;
 
-  RumViewDetails(
-      {required this.action,
-      this.cpuTicksCount,
-      this.cpuTicksPerSecond,
-      required this.crash,
-      this.customTimings,
-      required this.error,
-      this.flutterBuildTime,
-      this.flutterRasterTime,
-      required this.id,
-      this.isActive,
-      this.isSlowRendered,
-      this.longTask,
-      this.memoryAverage,
-      this.memoryMax,
-      this.name,
-      this.referrer,
-      this.refreshRateAverage,
-      this.refreshRateMin,
-      required this.resource,
-      required this.timeSpent,
-      required this.url});
+  RumViewDetails({
+    required this.action,
+    this.cpuTicksCount,
+    this.cpuTicksPerSecond,
+    required this.crash,
+    this.customTimings,
+    required this.error,
+    this.flutterBuildTime,
+    this.flutterRasterTime,
+    this.frozenFrame,
+    this.frustration,
+    required this.id,
+    this.isActive,
+    this.isSlowRendered,
+    this.longTask,
+    this.memoryAverage,
+    this.memoryMax,
+    this.name,
+    this.referrer,
+    this.refreshRateAverage,
+    this.refreshRateMin,
+    required this.resource,
+    required this.timeSpent,
+    required this.url,
+  });
 
   factory RumViewDetails.fromJson(Map<String, dynamic> json) =>
       _$RumViewDetailsFromJson(json);
@@ -214,4 +307,143 @@ class RumPerformanceMetric {
   factory RumPerformanceMetric.fromJson(Map<String, dynamic> json) =>
       _$RumPerformanceMetricFromJson(json);
   Map<String, dynamic> toJson() => _$RumPerformanceMetricToJson(this);
+}
+
+// Excluded:
+// * _dd
+// * ciTest
+// * display
+// * source
+// * synthetics
+@commonJsonOptions
+class RumActionEvent {
+  final RumAction action;
+  final RumApplication application;
+  final RumConnectivity? connectivity;
+  final int date;
+  final RumDevice? device;
+  final RumOperatingSystem? os;
+  final String? service;
+  final RumSession session;
+  final RumUser? usr;
+  final String? version;
+  final RumViewSummary view;
+
+  @JsonKey(fromJson: attributesFromJson)
+  final Map<String, Object?> context;
+
+  RumActionEvent({
+    required this.action,
+    required this.application,
+    this.connectivity,
+    required this.date,
+    this.device,
+    this.os,
+    this.service,
+    required this.session,
+    required this.usr,
+    this.version,
+    required this.view,
+    required this.context,
+  });
+
+  factory RumActionEvent.fromJson(Map<dynamic, dynamic> json) =>
+      _$RumActionEventFromJson(json);
+  Map<String, dynamic> toJson() => _$RumActionEventToJson(this);
+}
+
+enum RumActionType {
+  custom,
+  click,
+  tap,
+  scroll,
+  swipe,
+  @JsonValue('application_start')
+  applicationStart,
+  back,
+}
+
+@commonJsonOptions
+class RumAction {
+  final RumCount? crash;
+  final RumCount? error;
+  final RumActionFrustration? frustration;
+  final String? id;
+  final int? loadingTime;
+  final RumCount? longTask;
+  final RumCount? resource;
+  final RumActionTarget? target;
+  final RumActionType type;
+
+  RumAction({
+    this.crash,
+    this.error,
+    this.frustration,
+    this.id,
+    this.loadingTime,
+    this.longTask,
+    this.resource,
+    this.target,
+    required this.type,
+  });
+
+  factory RumAction.fromJson(Map<String, dynamic> json) =>
+      _$RumActionFromJson(json);
+  Map<String, dynamic> toJson() => _$RumActionToJson(this);
+}
+
+@JsonSerializable()
+class RumActionTarget {
+  String name;
+
+  RumActionTarget({
+    required this.name,
+  });
+
+  factory RumActionTarget.fromJson(Map<String, dynamic> json) =>
+      _$RumActionTargetFromJson(json);
+  Map<String, dynamic> toJson() => _$RumActionTargetToJson(this);
+}
+
+@commonJsonOptions
+class RumViewSummary {
+  final String id;
+  final bool? inForeground;
+  String? name;
+  String? referrer;
+  String url;
+
+  RumViewSummary({
+    required this.id,
+    this.inForeground,
+    this.name,
+    this.referrer,
+    required this.url,
+  });
+
+  factory RumViewSummary.fromJson(Map<String, dynamic> json) =>
+      _$RumViewSummaryFromJson(json);
+  Map<String, dynamic> toJson() => _$RumViewSummaryToJson(this);
+}
+
+@JsonEnum(fieldRename: FieldRename.snake)
+enum RumFrustrationType {
+  rageClick,
+  deadClick,
+  errorClick,
+  rageTap,
+  errorTap,
+}
+
+@commonJsonOptions
+class RumActionFrustration {
+  final List<RumActionFrustration> type;
+
+  RumActionFrustration({
+    required this.type,
+  });
+
+  factory RumActionFrustration.fromJson(Map<String, dynamic> json) =>
+      _$RumActionFrustrationFromJson(json);
+  Map<String, dynamic> toJson() => _$RumActionFrustrationToJson(this);
 }

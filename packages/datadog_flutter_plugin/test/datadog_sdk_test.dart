@@ -221,7 +221,7 @@ void main() {
         encoded['rumConfiguration'], configuration.rumConfiguration?.encode());
   });
 
-  test('configuration with mapper sets attachViewEventMapper', () async {
+  test('configuration with mapper sets attach*Mapper', () async {
     final configuration = DdSdkConfiguration(
       clientToken: 'fakeClientToken',
       env: 'fake-env',
@@ -231,6 +231,7 @@ void main() {
       rumConfiguration: RumConfiguration(
         applicationId: 'fake-application-id',
         rumViewEventMapper: (event) => event,
+        rumActionEventMapper: (event) => event,
       ),
     );
 
@@ -238,6 +239,7 @@ void main() {
     final encodedRumConfiguration =
         encoded['rumConfiguration'] as Map<String, Object?>;
     expect(encodedRumConfiguration['attachViewEventMapper'], isTrue);
+    expect(encodedRumConfiguration['attachActionEventMapper'], isTrue);
   });
 
   test('initialize with logging configuration creates logger', () async {

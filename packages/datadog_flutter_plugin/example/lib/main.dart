@@ -30,6 +30,20 @@ RumViewEvent _testViewEventMapper(RumViewEvent event) {
   return event;
 }
 
+RumActionEvent? _testActionEventMapper(RumActionEvent event) {
+  if (event.view.name == 'overwrite me') {
+    event.view.name = 'overwritten';
+  }
+
+  if (event.action.target?.name == 'discard') {
+    return null;
+  } else if (event.action.target?.name == 'censor me!') {
+    event.action.target?.name = 'xxxxxxx me';
+  }
+
+  return event;
+}
+
 void main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +67,7 @@ void main() async {
               applicationId: applicationId,
               detectLongTasks: true,
               rumViewEventMapper: _testViewEventMapper,
+              rumActionEventMapper: _testActionEventMapper,
             )
           : null,
     );
@@ -60,12 +75,17 @@ void main() async {
     final ddsdk = DatadogSdk.instance;
     ddsdk.sdkVerbosity = Verbosity.verbose;
 
-    DatadogSdk.instance.initialize(configuration);
+    await DatadogSdk.instance.initialize(configuration);
 
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
       ddsdk.rum?.handleFlutterError(details);
     };
+
+    ddsdk.setUserInfo(id: 'test_id', extraInfo: {
+      'user_attribute_1': true,
+      'user_attribute_2': 'testing',
+    });
 
     runApp(const ExampleApp());
   }, (e, s) {

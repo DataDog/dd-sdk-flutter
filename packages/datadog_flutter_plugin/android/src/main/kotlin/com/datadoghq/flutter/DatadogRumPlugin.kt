@@ -8,13 +8,13 @@ package com.datadoghq.flutter
 import android.os.Handler
 import android.os.Looper
 import com.datadog.android.Datadog
-import com.datadog.android.log.model.LogEvent
 import com.datadog.android.rum.GlobalRum
 import com.datadog.android.rum.RumActionType
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
+import com.datadog.android.rum.model.ActionEvent
 import com.datadog.android.rum.model.ViewEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -284,23 +284,21 @@ class DatadogRumPlugin(
     }
 
     @Suppress("TooGenericExceptionCaught")
-    internal fun mapViewEvent(event: ViewEvent): ViewEvent {
-        val jsonEvent = event.toJson().asMap()
-
-        var modifiedJson: Map<String, Any?> = jsonEvent
+    internal fun <T> callEventMapper(mapperName: String, event: T, encodedEvent: Map<String, Any?>, completion: (Map<String, Any?>?, T) -> T?): T? {
+        var modifiedJson: Map<String, Any?>? = encodedEvent
         val latch = CountDownLatch(1)
 
         val handler = Handler(Looper.getMainLooper())
         handler.post {
             try {
                 channel.invokeMethod(
-                    "mapViewEvent",
+                    mapperName,
                     mapOf(
-                        "event" to jsonEvent
+                        "event" to encodedEvent
                     ),
                     object : Result {
                         override fun success(result: Any?) {
-                            modifiedJson = (result as? Map<String, Any?>) ?: jsonEvent
+                            modifiedJson = (result as? Map<String, Any?>)
                             latch.countDown()
                         }
 
@@ -314,14 +312,14 @@ class DatadogRumPlugin(
 
                         override fun notImplemented() {
                             Datadog._internal._telemetry.error(
-                                "mapLogEvent returned notImplemented."
+                                "$mapperName returned notImplemented."
                             )
                             latch.countDown()
                         }
                     }
                 )
             } catch (e: Exception) {
-                Datadog._internal._telemetry.error("Attempting call mapLogEvent failed.", e)
+                Datadog._internal._telemetry.error("Attempting call $mapperName failed.", e)
                 latch.countDown()
             }
         }
@@ -329,22 +327,15 @@ class DatadogRumPlugin(
         try {
             // Stalls until the method channel finishes
             if (!latch.await(1, TimeUnit.SECONDS)) {
-                Datadog._internal._telemetry.debug("logMapper timed out")
+                Datadog._internal._telemetry.debug("$mapperName timed out")
                 return event
             }
 
-            if (modifiedJson.containsKey("_dd.mapper_error")) {
+            if (modifiedJson?.containsKey("_dd.mapper_error") == true) {
                 return event
             }
 
-            // Pull out modifyable elements
-            (modifiedJson["view"] as? Map<String, Any?>)?.let {
-                event.view.name = it["name"] as? String
-                event.view.referrer = it["referrer"] as? String
-                event.view.url = it["url"] as String
-            }
-
-            return event
+            return completion(modifiedJson, event)
         } catch (e: Exception) {
             Datadog._internal._telemetry.error(
                 "Attempt to deserialize mapped log event failed, or latch await was interrupted." +
@@ -353,6 +344,64 @@ class DatadogRumPlugin(
             )
             return event
         }
+    }
+
+
+    internal fun mapViewEvent(event: ViewEvent): ViewEvent {
+        var jsonEvent = event.toJson().asMap()
+        jsonEvent = extractExtraUserInfo(jsonEvent)
+
+        return callEventMapper("mapViewEvent", event, jsonEvent) { encodedResult, event ->
+            (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                event.view.name = it["name"] as? String
+                event.view.referrer = it["referrer"] as? String
+                event.view.url = it["url"] as String
+            }
+
+            event
+        } ?: event
+    }
+
+    internal fun mapActionEvent(event: ActionEvent): ActionEvent? {
+        var jsonEvent = event.toJson().asMap()
+        jsonEvent = extractExtraUserInfo(jsonEvent)
+
+        return callEventMapper("mapActionEvent", event, jsonEvent) { encodedResult, event ->
+            if (encodedResult == null) {
+                null
+            } else {
+                (encodedResult?.get("action") as? Map<String, Any?>)?.let {
+                    val encodedTarget = it["target"] as? Map<String, Any?>
+                    if (encodedTarget != null) {
+                        event.action.target?.name = encodedTarget["name"] as String
+                    }
+                }
+
+                (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                    event.view.name = it["name"] as? String
+                    event.view.referrer = it["referrer"] as? String
+                    event.view.url = it["url"] as String
+                }
+
+                event
+            }
+        }
+    }
+
+    private fun extractExtraUserInfo(encodedEvent: Map<String, Any?>): Map<String, Any?> {
+        val reservedKeys = listOf("email", "id", "name")
+        // Pull out user information
+        val mutableEvent = encodedEvent.toMutableMap()
+        (mutableEvent["usr"] as? MutableMap<String, Any?>)?.let { usr ->
+            var extraUserInfo = mutableMapOf<String, Any?>()
+            usr.filter { !reservedKeys.contains(it.key) }.forEach {
+                extraUserInfo[it.key] = it.value
+                usr.remove(it.key)
+            }
+            usr["usr_info"] = extraUserInfo
+        }
+
+        return mutableEvent
     }
 }
 

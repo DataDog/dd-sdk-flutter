@@ -197,7 +197,9 @@ class DatadogConfigurationTests: XCTestCase {
         "applicationId": "fakeApplicationId",
         "detectLongTasks": NSNumber(false),
         "longTaskThreshold": NSNumber(0.3),
-        "vitalsFrequency": "VitalsFrequency.never"
+        "vitalsFrequency": "VitalsFrequency.never",
+        "attachViewEventMapper": true,
+        "attachActionEventMapper": true
       ],
       "additionalConfig": [:]
     ]
@@ -209,5 +211,7 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.rumConfiguration?.detectLongTasks, false)
     XCTAssertEqual(config.rumConfiguration?.longTaskThreshold, 0.3)
     XCTAssertEqual(config.rumConfiguration?.vitalsFrequency, .never)
+    XCTAssertEqual(config.rumConfiguration?.attachViewEventMapper, true)
+    XCTAssertEqual(config.rumConfiguration?.attachActionEventMapper, true)
   }
 }

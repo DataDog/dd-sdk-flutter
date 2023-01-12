@@ -21,6 +21,21 @@ RumViewEvent mapRumViewEvent(RumViewEvent event) {
   return event;
 }
 
+RumActionEvent? mapRumActionEvent(RumActionEvent event) {
+  var actionTarget = event.action.target;
+  if (actionTarget != null) {
+    if (actionTarget.name.contains('Next Page')) {
+      return null;
+    }
+    if (actionTarget.name.contains('InkWell')) {
+      event.action.target!.name =
+          actionTarget.name.substring(8, actionTarget.name.length - 1);
+    }
+  }
+
+  return event;
+}
+
 Future<void> runScenario({
   required String clientToken,
   required String? applicationId,
@@ -61,6 +76,7 @@ Future<void> runScenario({
   if (testingConfiguration?.scenario == mappedAutoInstrumentationScenarioName) {
     // Add mapping to rum configuration
     configuration.rumConfiguration?.rumViewEventMapper = mapRumViewEvent;
+    configuration.rumConfiguration?.rumActionEventMapper = mapRumActionEvent;
   }
 
   await DatadogSdk.runApp(configuration, () async {
@@ -77,15 +93,18 @@ class DatadogAutoIntegrationTestApp extends StatelessWidget {
         DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
     return DatadogNavigationObserverProvider(
       navObserver: navObserver,
-      child: MaterialApp(
-        title: 'Flutter Demo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
+      child: RumUserActionDetector(
+        rum: DatadogSdk.instance.rum,
+        child: MaterialApp(
+          title: 'Flutter Demo',
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+          ),
+          navigatorObservers: [
+            navObserver,
+          ],
+          home: const RumAutoInstrumentationScenario(),
         ),
-        navigatorObservers: [
-          navObserver,
-        ],
-        home: const RumAutoInstrumentationScenario(),
       ),
     );
   }

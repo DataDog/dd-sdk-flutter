@@ -264,23 +264,18 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         }
     }
 
-    func viewEventMapper(rumViewEvent: RUMViewEvent) -> RUMViewEvent {
+    func callEventMapper<T>(mapperName: String, event: T, encodedEvent: [String: Any?], completion: ([String: Any?]?) -> T?) -> T?{
         guard let methodChannel = DatadogRumPlugin.methodChannel else {
-            return rumViewEvent
+            return event
         }
 
-        let encoder = DictionaryEncoder()
-        guard var encoded = try? encoder.encode(rumViewEvent) else {
-            // TODO: Telemetry
-            return rumViewEvent
-        }
-
-        var encodedResult: [String: Any] = encoded
+        var encodedResult: [String: Any?]? = encodedEvent
         let semaphore = DispatchSemaphore(value: 0)
 
-        methodChannel.invokeMethod("mapViewEvent", arguments: ["event": encoded]) { result in
-            if let result = result as? [String: Any] {
-                // TODO: Telemetry, shouldn't be able to return null to a view mapper
+        methodChannel.invokeMethod(mapperName, arguments: ["event": encodedEvent]) { result in
+            if result == nil {
+                encodedResult = nil
+            } else if let result = result as? [String: Any] {
                 encodedResult = result
             }
 
@@ -288,23 +283,111 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         }
 
         if semaphore.wait(timeout: .now() + DispatchTimeInterval.milliseconds(250)) == .timedOut {
-            return rumViewEvent
+            return event
         }
 
-        if encodedResult["_dd.mapper_error"] != nil {
+        if encodedResult?["_dd.mapper_error"] != nil {
             // Error in the mapper, return the unmapped event
+            return event
+        }
+
+        return completion(encodedResult);
+    }
+
+    func extractUserExtraInfo(usrMember: [String: Any]?) -> [String: Any]? {
+        // Move user attributes into 'usr_info' member
+        if var usrMember = usrMember {
+            let reservedKeys = ["email", "id", "name"]
+            var userExtraInfo: [String: Any?] = [:]
+            usrMember.filter { !reservedKeys.contains($0.key) }.forEach {
+                userExtraInfo[$0] = $1
+                usrMember.removeValue(forKey: $0)
+            }
+
+            usrMember["usr_info"] = userExtraInfo
+        }
+
+        return usrMember
+    }
+
+    func viewEventMapper(rumViewEvent: RUMViewEvent) -> RUMViewEvent {
+        let encoder = DictionaryEncoder()
+        guard var encoded = try? encoder.encode(rumViewEvent) else {
+            Datadog._internal.telemetry.error(
+                id: "datadog_flutter:view_mapping_encoding",
+                message: "Encoding a RUMViewEvent failed",
+                kind: "EncodingError",
+                stack: nil
+            )
             return rumViewEvent
         }
 
-        // Pull modifyable properties
-        var rumViewEvent = rumViewEvent
-        if let encodedView = encodedResult["view"] as? [String: Any?] {
-            rumViewEvent.view.name = encodedView["name"] as? String
-            rumViewEvent.view.referrer = encodedView["referrer"] as? String
-            rumViewEvent.view.url = encodedView["url"] as! String
+        encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
+
+        let result = callEventMapper(mapperName: "mapViewEvent", event: rumViewEvent, encodedEvent: encoded) { encodedResult in
+            guard let encodedResult = encodedResult else {
+                return rumViewEvent
+            }
+
+            // Pull modifyable properties
+            var rumViewEvent = rumViewEvent
+            if let encodedView = encodedResult["view"] as? [String: Any?] {
+                rumViewEvent.view.name = encodedView["name"] as? String
+                rumViewEvent.view.referrer = encodedView["referrer"] as? String
+                rumViewEvent.view.url = encodedView["url"] as! String
+            }
+
+            return rumViewEvent
         }
 
-        return rumViewEvent
+        guard let result = result else {
+            Datadog._internal.telemetry.error(
+                id: "datadog_flutter:null",
+                message: "A Flutter viewEventMapper somehow returned null",
+                kind: nil,
+                stack: nil
+            )
+            return rumViewEvent
+        }
+        
+        return result
+    }
+
+    func actionEventMapper(rumActionEvent: RUMActionEvent) -> RUMActionEvent? {
+        let encoder = DictionaryEncoder()
+        guard var encoded = try? encoder.encode(rumActionEvent) else {
+            Datadog._internal.telemetry.error(
+                id: "datadog_flutter:action_mapping_encoding",
+                message: "Encoding a RUMActionEvent failed",
+                kind: "EncodingError",
+                stack: nil
+            )
+            return rumActionEvent
+        }
+
+        encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
+
+        return callEventMapper(mapperName: "mapActionEvent", event: rumActionEvent, encodedEvent: encoded) { encodedResult in
+            guard let encodedResult = encodedResult else {
+                return nil
+            }
+
+            var rumActionEvent = rumActionEvent
+            if let encodedAction = encodedResult["action"] as? [String: Any?] {
+                if let encodedTarget = encodedAction["target"] as? [String: Any?] {
+                    rumActionEvent.action.target?.name = encodedTarget["name"] as! String
+                } else {
+                    rumActionEvent.action.target = nil
+                }
+            }
+
+            if let encodedView = encodedResult["view"] as? [String: Any?] {
+                rumActionEvent.view.name = encodedView["name"] as? String
+                rumActionEvent.view.referrer = encodedView["referrer"] as? String
+                rumActionEvent.view.url = encodedView["url"] as! String
+            }
+            return rumActionEvent
+        }
     }
 }
 
