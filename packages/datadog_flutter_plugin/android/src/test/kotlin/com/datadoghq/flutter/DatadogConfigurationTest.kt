@@ -18,6 +18,7 @@ import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.core.configuration.VitalsUpdateFrequency
 import com.datadog.android.privacy.TrackingConsent
+import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.FloatForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
@@ -233,12 +234,17 @@ class DatadogConfigurationTest {
 
     @Test
     fun `M decode nestedConfiguration W fromEncoded {rumConfiguration}`(
+        forge: Forge,
         @StringForgery clientToken: String,
         @StringForgery environment: String,
         @StringForgery applicationId: String,
         @StringForgery firstPartyHost: String
     ) {
         // GIVEN
+        val attachViewEventMapper = forge.aBool()
+        val attachActionEventMapper = forge.aBool()
+        val attachResourceEvenMapper = forge.aBool()
+
         val encoded = mapOf(
             "clientToken" to clientToken,
             "env" to environment,
@@ -255,8 +261,9 @@ class DatadogConfigurationTest {
                 "detectLongTasks" to false,
                 "longTaskThreshold" to 0.3f,
                 "customEndpoint" to "customEndpoint",
-                "attachViewEventMapper" to true,
-                "attachActionEventMapper" to true,
+                "attachViewEventMapper" to attachViewEventMapper,
+                "attachActionEventMapper" to attachActionEventMapper,
+                "attachResourceEventMapper" to attachResourceEvenMapper,
                 "vitalsFrequency" to "VitalsFrequency.frequent"
             ),
             "additionalConfig" to mapOf<String, Any?>()
@@ -272,8 +279,9 @@ class DatadogConfigurationTest {
         assertThat(config.rumConfiguration?.detectLongTasks).isEqualTo(false)
         assertThat(config.rumConfiguration?.longTaskThreshold).isEqualTo(0.3f)
         assertThat(config.rumConfiguration?.customEndpoint).isEqualTo("customEndpoint")
-        assertThat(config.rumConfiguration?.attachViewEventMapper).isEqualTo(true)
-        assertThat(config.rumConfiguration?.attachActionEventMapper).isEqualTo(true)
+        assertThat(config.rumConfiguration?.attachViewEventMapper).isEqualTo(attachViewEventMapper)
+        assertThat(config.rumConfiguration?.attachActionEventMapper).isEqualTo(attachActionEventMapper)
+        assertThat(config.rumConfiguration?.attachResourceEventMapper).isEqualTo(attachResourceEvenMapper)
         assertThat(config.rumConfiguration?.vitalsFrequency).isEqualTo(VitalsUpdateFrequency.FREQUENT)
     }
 

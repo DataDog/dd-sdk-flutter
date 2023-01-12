@@ -389,6 +389,42 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             return rumActionEvent
         }
     }
+
+    func resourceEventMapper(rumResourceEvent: RUMResourceEvent) -> RUMResourceEvent? {
+        let encoder = DictionaryEncoder()
+        guard var encoded = try? encoder.encode(rumResourceEvent) else {
+            Datadog._internal.telemetry.error(
+                id: "datadog_flutter:resource_mapping_encoding",
+                message: "Encoding a RUMResourceEvent failed",
+                kind: "EncodingError",
+                stack: nil
+            )
+            return rumResourceEvent
+        }
+
+        encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
+
+        return callEventMapper(mapperName: "mapResourceEvent", event: rumResourceEvent, encodedEvent: encoded) { encodedResult in
+            guard let encodedResult = encodedResult else {
+                return nil
+            }
+
+            var rumResourceEvent = rumResourceEvent
+
+            if let encodedResource = encodedResult["resource"] as? [String: Any?] {
+                rumResourceEvent.resource.url = encodedResource["url"] as? String ?? ""
+            }
+
+            if let encodedView = encodedResult["view"] as? [String: Any?] {
+                rumResourceEvent.view.name = encodedView["name"] as? String
+                rumResourceEvent.view.referrer = encodedView["referrer"] as? String
+                rumResourceEvent.view.url = encodedView["url"] as! String
+            }
+
+            return rumResourceEvent
+        }
+
+    }
 }
 
 public extension RUMResourceType {

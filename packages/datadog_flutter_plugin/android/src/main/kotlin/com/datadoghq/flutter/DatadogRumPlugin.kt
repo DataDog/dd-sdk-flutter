@@ -15,6 +15,7 @@ import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
 import com.datadog.android.rum.model.ActionEvent
+import com.datadog.android.rum.model.ResourceEvent
 import com.datadog.android.rum.model.ViewEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -375,6 +376,29 @@ class DatadogRumPlugin(
                     if (encodedTarget != null) {
                         event.action.target?.name = encodedTarget["name"] as String
                     }
+                }
+
+                (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                    event.view.name = it["name"] as? String
+                    event.view.referrer = it["referrer"] as? String
+                    event.view.url = it["url"] as String
+                }
+
+                event
+            }
+        }
+    }
+
+    internal fun mapResourceEvent(event: ResourceEvent): ResourceEvent? {
+        var jsonEvent = event.toJson().asMap()
+        jsonEvent = extractExtraUserInfo(jsonEvent)
+
+        return callEventMapper("mapResourceEvent", event, jsonEvent) { encodedResult, event ->
+            if (encodedResult == null) {
+                null
+            } else {
+                (encodedResult?.get("resource") as? Map<String, Any?>)?.let {
+                    event.resource.url = it["url"] as String
                 }
 
                 (encodedResult?.get("view") as? Map<String, Any?>)?.let {

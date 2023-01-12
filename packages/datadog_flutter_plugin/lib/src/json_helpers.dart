@@ -16,3 +16,17 @@ Map<String, Object?> attributesFromJson(Map? attributes) {
           (Object? key, Object? value) => MapEntry(key as String, value)) ??
       {};
 }
+
+List<String>? actionListFromJson(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is String) {
+    return [value];
+  }
+  if (value is List) {
+    return value.map((dynamic e) => e.toString()).toList();
+  }
+
+  return null;
+}

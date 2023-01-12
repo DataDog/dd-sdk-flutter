@@ -20,6 +20,7 @@ class DdRumMethodChannel extends DdRumPlatform {
     final callbackHandler = MethodCallHandler(
       viewEventMapper: configuration.rumViewEventMapper,
       actionEventMapper: configuration.rumActionEventMapper,
+      resourceEventMapper: configuration.rumResourceEventMapper,
       internalLogger: internalLogger,
     );
 
@@ -176,11 +177,13 @@ class MethodCallHandler {
 
   final RumViewEventMapper? viewEventMapper;
   final RumActionEventMapper? actionEventMapper;
+  final RumResourceEventMapper? resourceEventMapper;
   final InternalLogger internalLogger;
 
   MethodCallHandler({
     this.viewEventMapper,
     this.actionEventMapper,
+    this.resourceEventMapper,
     required this.internalLogger,
   });
 
@@ -190,39 +193,46 @@ class MethodCallHandler {
         return _mapViewEvent(call);
       case 'mapActionEvent':
         return _mapActionEvent(call);
+      case 'mapResourceEvent':
+        return _mapResourceEvent(call);
     }
 
     throw MissingPluginException(
         'Could not find a method to call for ${call.method}');
   }
 
-  Map<Object?, Object?>? _mapViewEvent(MethodCall call) {
+  Map<String, Object?>? _callMapper<T>(
+    String mapperName,
+    Map encoded,
+    T? Function(T)? mapper,
+    Map<String, dynamic> Function(T) encode,
+    T Function(Map) decode,
+  ) {
     try {
-      if (viewEventMapper == null) {
+      if (mapper == null) {
         final st = StackTrace.current;
         internalLogger.sendToDatadog(
-            'Log event mapper called but no logEventMapper is set,',
+            '$mapperName called but no $mapperName is set,',
             st,
             'InternalDatadogError');
         return mapperError;
       }
 
-      final viewEventJson = call.arguments['event'] as Map;
-      final viewEvent = RumViewEvent.fromJson(viewEventJson);
+      final event = decode(encoded);
 
-      RumViewEvent? mappedViewEvent = viewEvent;
+      T? mappedEvent = event;
       try {
-        mappedViewEvent = viewEventMapper?.call(viewEvent);
-        if (mappedViewEvent == null) {
+        mappedEvent = mapper(event);
+        if (mappedEvent == null) {
           return null;
         }
       } catch (e) {
         internalLogger.error(
-            'viewEventMapper threw an exception: ${e.toString()}.\nReturning unmapped event.');
+            '$mapperName threw an exception: ${e.toString()}.\nReturning unmapped event.');
         return mapperError;
       }
 
-      final mappedJson = mappedViewEvent.toJson();
+      final mappedJson = encode(mappedEvent);
       return mappedJson;
     } catch (e, st) {
       internalLogger.sendToDatadog('Error mapping view event: ${e.toString()}',
@@ -234,41 +244,36 @@ class MethodCallHandler {
     return mapperError;
   }
 
+  Map<Object, Object?>? _mapViewEvent(MethodCall call) {
+    final viewEventJson = call.arguments['event'] as Map;
+    return _callMapper<RumViewEvent>(
+      'mapViewEvent',
+      viewEventJson,
+      viewEventMapper,
+      (e) => e.toJson(),
+      RumViewEvent.fromJson,
+    );
+  }
+
   Map<Object?, Object?>? _mapActionEvent(MethodCall call) {
-    try {
-      if (actionEventMapper == null) {
-        final st = StackTrace.current;
-        internalLogger.sendToDatadog(
-            'Log event mapper called but no logEventMapper is set,',
-            st,
-            'InternalDatadogError');
-        return mapperError;
-      }
+    final eventJson = call.arguments['event'] as Map;
+    return _callMapper<RumActionEvent>(
+      'mapActionEvent',
+      eventJson,
+      actionEventMapper,
+      (e) => e.toJson(),
+      RumActionEvent.fromJson,
+    );
+  }
 
-      final actionEventJson = call.arguments['event'] as Map;
-      final actionEvent = RumActionEvent.fromJson(actionEventJson);
-
-      RumActionEvent? mappedActionEvent = actionEvent;
-      try {
-        mappedActionEvent = actionEventMapper?.call(actionEvent);
-        if (mappedActionEvent == null) {
-          return null;
-        }
-      } catch (e) {
-        internalLogger.error(
-            'viewEventMapper threw an exception: ${e.toString()}.\nReturning unmapped event.');
-        return mapperError;
-      }
-
-      final mappedJson = mappedActionEvent.toJson();
-      return mappedJson;
-    } catch (e, st) {
-      internalLogger.sendToDatadog('Error mapping view event: ${e.toString()}',
-          st, e.runtimeType.toString());
-    }
-
-    // Return a special map which will indicate to native code something went wrong, and
-    // we should send the unmodified event.
-    return mapperError;
+  Map<Object?, Object?>? _mapResourceEvent(MethodCall call) {
+    final eventJson = call.arguments['event'] as Map;
+    return _callMapper<RumResourceEvent>(
+      'mapActionEvent',
+      eventJson,
+      resourceEventMapper,
+      (e) => e.toJson(),
+      RumResourceEvent.fromJson,
+    );
   }
 }

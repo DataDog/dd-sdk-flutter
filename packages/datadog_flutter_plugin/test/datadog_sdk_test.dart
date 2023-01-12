@@ -232,6 +232,7 @@ void main() {
         applicationId: 'fake-application-id',
         rumViewEventMapper: (event) => event,
         rumActionEventMapper: (event) => event,
+        rumResourceEventMapper: (event) => event,
       ),
     );
 
@@ -240,6 +241,7 @@ void main() {
         encoded['rumConfiguration'] as Map<String, Object?>;
     expect(encodedRumConfiguration['attachViewEventMapper'], isTrue);
     expect(encodedRumConfiguration['attachActionEventMapper'], isTrue);
+    expect(encodedRumConfiguration['attachResourceEventMapper'], isTrue);
   });
 
   test('initialize with logging configuration creates logger', () async {

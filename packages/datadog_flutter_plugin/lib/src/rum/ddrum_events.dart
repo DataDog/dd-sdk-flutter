@@ -4,6 +4,7 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
+import '../../datadog_flutter_plugin.dart';
 import '../json_helpers.dart';
 
 part 'ddrum_events.g.dart';
@@ -446,4 +447,77 @@ class RumActionFrustration {
   factory RumActionFrustration.fromJson(Map<String, dynamic> json) =>
       _$RumActionFrustrationFromJson(json);
   Map<String, dynamic> toJson() => _$RumActionFrustrationToJson(this);
+}
+
+// Excluded:
+//   * All timings (not available to Flutter) --
+//      (Connect, DNS, Download, FirstByte, SSL, Redirect)
+//   * provider
+@commonJsonOptions
+class RumResource {
+  final int duration;
+  final String? id;
+  final String method;
+  // Provider
+  final int? size;
+  final int? statusCode;
+  final RumResourceType type;
+  String url;
+
+  RumResource({
+    required this.duration,
+    this.id,
+    required this.method,
+    this.size,
+    this.statusCode,
+    required this.type,
+    required this.url,
+  });
+
+  factory RumResource.fromJson(Map<String, dynamic> json) =>
+      _$RumResourceFromJson(json);
+  Map<String, dynamic> toJson() => _$RumResourceToJson(this);
+}
+
+// Excluded:
+//  * dd
+//  * ciTest
+//  * display
+//  * synthectics
+@commonJsonOptions
+class RumResourceEvent {
+  @JsonKey(fromJson: actionListFromJson)
+  final List<String>? action;
+  final RumApplication application;
+  final RumConnectivity? connectivity;
+  final int date;
+  final RumDevice? device;
+  final RumOperatingSystem? os;
+  final RumResource resource;
+  final String? service;
+  final RumUser? usr;
+  final String? version;
+  final RumViewSummary? view;
+
+  @JsonKey(fromJson: attributesFromJson)
+  final Map<String, Object?> context;
+
+  RumResourceEvent({
+    this.action,
+    required this.application,
+    this.connectivity,
+    required this.date,
+    this.device,
+    this.os,
+    this.service,
+    required this.resource,
+    this.usr,
+    this.version,
+    this.view,
+    required this.context,
+  });
+
+  factory RumResourceEvent.fromJson(Map<dynamic, dynamic> json) =>
+      _$RumResourceEventFromJson(json);
+  Map<String, dynamic> toJson() => _$RumResourceEventToJson(this);
 }

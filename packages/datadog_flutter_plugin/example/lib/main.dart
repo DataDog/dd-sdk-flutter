@@ -44,6 +44,17 @@ RumActionEvent? _testActionEventMapper(RumActionEvent event) {
   return event;
 }
 
+RumResourceEvent? _testResourceEventMapper(RumResourceEvent event) {
+  event.resource.url =
+      event.resource.url.replaceAll(RegExp(r'email=[^&]+'), 'email=REDACTED');
+
+  if (event.resource.url.contains('discard')) {
+    return null;
+  }
+
+  return event;
+}
+
 void main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +79,7 @@ void main() async {
               detectLongTasks: true,
               rumViewEventMapper: _testViewEventMapper,
               rumActionEventMapper: _testActionEventMapper,
+              rumResourceEventMapper: _testResourceEventMapper,
             )
           : null,
     );

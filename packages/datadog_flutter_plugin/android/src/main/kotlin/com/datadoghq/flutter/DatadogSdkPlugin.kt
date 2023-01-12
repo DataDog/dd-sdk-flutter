@@ -12,11 +12,13 @@ import android.util.Log
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
 import com.datadog.android._InternalProxy
+import com.datadog.android.core.configuration.Configuration
 import com.datadog.android.event.EventMapper
 import com.datadog.android.event.ViewEventMapper
 import com.datadog.android.log.model.LogEvent
 import com.datadog.android.rum.GlobalRum
 import com.datadog.android.rum.model.ActionEvent
+import com.datadog.android.rum.model.ResourceEvent
 import com.datadog.android.rum.model.ViewEvent
 import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -196,36 +198,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
         )
 
-        if (config.attachLogMapper) {
-            configBuilder.setLogEventMapper(
-                object : EventMapper<LogEvent> {
-                    override fun map(event: LogEvent): LogEvent? {
-                        return mapLogEvent(event)
-                    }
-                }
-            )
-        }
-
-        config.rumConfiguration?.let {
-            if (it.attachViewEventMapper) {
-                configBuilder.setRumViewEventMapper(
-                    object : ViewEventMapper {
-                        override fun map(event: ViewEvent): ViewEvent {
-                            return rumPlugin.mapViewEvent(event)
-                        }
-                    }
-                )
-            }
-            if (it.attachActionEventMapper) {
-                configBuilder.setRumActionEventMapper(
-                    object : EventMapper<ActionEvent> {
-                        override fun map(event: ActionEvent): ActionEvent? {
-                          return rumPlugin.mapActionEvent(event)
-                        }
-                    }
-                )
-            }
-        }
+        attachEventMappers(config, configBuilder)
 
         Datadog.initialize(
             binding.applicationContext, credentials, configBuilder.build(),
@@ -309,6 +282,48 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         rumRegisteredField.isAccessible = true
         val isRegistered: AtomicBoolean = rumRegisteredField.get(null) as AtomicBoolean
         isRegistered.set(false)
+    }
+
+    fun attachEventMappers(config: DatadogFlutterConfiguration, configBuilder: Configuration.Builder) {
+        if (config.attachLogMapper) {
+            configBuilder.setLogEventMapper(
+                object : EventMapper<LogEvent> {
+                    override fun map(event: LogEvent): LogEvent? {
+                        return mapLogEvent(event)
+                    }
+                }
+            )
+        }
+
+        config.rumConfiguration?.let {
+            if (it.attachViewEventMapper) {
+                configBuilder.setRumViewEventMapper(
+                    object : ViewEventMapper {
+                        override fun map(event: ViewEvent): ViewEvent {
+                            return rumPlugin.mapViewEvent(event)
+                        }
+                    }
+                )
+            }
+            if (it.attachActionEventMapper) {
+                configBuilder.setRumActionEventMapper(
+                    object : EventMapper<ActionEvent> {
+                        override fun map(event: ActionEvent): ActionEvent? {
+                            return rumPlugin.mapActionEvent(event)
+                        }
+                    }
+                )
+            }
+            if(it.attachResourceEventMapper) {
+                configBuilder.setRumResourceEventMapper(
+                    object: EventMapper<ResourceEvent> {
+                        override fun map(event: ResourceEvent): ResourceEvent? {
+                            return rumPlugin.mapResourceEvent(event)
+                        }
+                    }
+                )
+            }
+        }
     }
 
     @Suppress("TooGenericExceptionCaught")

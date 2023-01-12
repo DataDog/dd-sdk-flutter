@@ -199,7 +199,8 @@ class DatadogConfigurationTests: XCTestCase {
         "longTaskThreshold": NSNumber(0.3),
         "vitalsFrequency": "VitalsFrequency.never",
         "attachViewEventMapper": true,
-        "attachActionEventMapper": true
+        "attachActionEventMapper": true,
+        "attachResourceEventMapper": true
       ],
       "additionalConfig": [:]
     ]
@@ -213,5 +214,6 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.rumConfiguration?.vitalsFrequency, .never)
     XCTAssertEqual(config.rumConfiguration?.attachViewEventMapper, true)
     XCTAssertEqual(config.rumConfiguration?.attachActionEventMapper, true)
+    XCTAssertEqual(config.rumConfiguration?.attachResourceEventMapper, true)
   }
 }
