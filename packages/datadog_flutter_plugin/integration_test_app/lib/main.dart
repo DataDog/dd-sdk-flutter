@@ -22,13 +22,13 @@ Future<void> runScenario({
   var scenario = testingConfiguration?.scenario;
   switch (scenario) {
     case auto_config_runners.autoInstrumentationScenarioName:
-    case auto_config_runners.mappedAutoInstrumentationScenarioName:
       await auto_config_runners.runScenario(
           clientToken: clientToken,
           applicationId: applicationId,
           customEndpoint: customEndpoint,
           testingConfiguration: testingConfiguration);
       return;
+    case config_runners.mappedInstrumentationScenarioName:
     case config_runners.mappedLoggingScenarioRunner:
       await config_runners.runScenario(
         clientToken: clientToken,

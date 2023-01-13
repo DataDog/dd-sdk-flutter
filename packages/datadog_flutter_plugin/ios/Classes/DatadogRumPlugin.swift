@@ -25,6 +25,7 @@ extension FlutterError {
     }
 }
 
+// swiftlint:disable:next type_body_length
 public class DatadogRumPlugin: NSObject, FlutterPlugin {
     private static var methodChannel: FlutterMethodChannel?
 
@@ -264,7 +265,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         }
     }
 
-    func callEventMapper<T>(mapperName: String, event: T, encodedEvent: [String: Any?], completion: ([String: Any?]?) -> T?) -> T?{
+    func callEventMapper<T>(mapperName: String, event: T, encodedEvent: [String: Any?], completion: ([String: Any?]?) -> T?) -> T? {
         guard let methodChannel = DatadogRumPlugin.methodChannel else {
             return event
         }
@@ -423,7 +424,65 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
             return rumResourceEvent
         }
+    }
 
+    func errorEventMapper(rumErrorEvent: RUMErrorEvent) -> RUMErrorEvent? {
+        let encoder = DictionaryEncoder()
+        guard var encoded = try? encoder.encode(rumErrorEvent) else {
+            Datadog._internal.telemetry.error(
+                id: "datadog_flutter:error_mapping_encoding",
+                message: "Encoding a RUMErrorEvent failed",
+                kind: "EncodingError",
+                stack: nil
+            )
+            return rumErrorEvent
+        }
+
+        encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
+
+        return callEventMapper(mapperName: "mapErrorEvent", event: rumErrorEvent, encodedEvent: encoded) { encodedResult in
+            guard let encodedResult = encodedResult else {
+                return nil
+            }
+
+            var rumErrorEvent = rumErrorEvent
+
+            if let encodedError = encodedResult["error"] as? [String: Any?] {
+                if var causes = rumErrorEvent.error.causes,
+                   let encodedCauses = encodedError["causes"] as? [Any] {
+                    if encodedCauses.count == causes.count {
+                        for index in 0...causes.count {
+                            if let encodedCause = encodedCauses[index] as? [String: Any?] {
+                                causes[index].message = encodedCause["message"] as? String ?? ""
+                                causes[index].stack = encodedCause["stack"] as? String
+                            }
+                        }
+                        rumErrorEvent.error.causes = causes
+                    } else {
+                        consolePrint(
+                            "🔥 Adding or removing RumErrorCauses to 'errorEvent.error.causes'" +
+                            " in the rumErrorEventMapper is not supported." +
+                            " You can modify individual causes, but do not modify the array.")
+                    }
+                } else {
+                    rumErrorEvent.error.causes = nil
+                }
+
+                if let encodedResource = encodedError["resource"] as? [String: Any?] {
+                    rumErrorEvent.error.resource?.url = encodedResource["url"] as? String ?? ""
+                }
+
+                rumErrorEvent.error.stack = encodedError["stack"] as? String
+            }
+
+            if let encodedView = encodedResult["view"] as? [String: Any?] {
+                rumErrorEvent.view.name = encodedView["name"] as? String
+                rumErrorEvent.view.referrer = encodedView["referrer"] as? String
+                rumErrorEvent.view.url = encodedView["url"] as! String
+            }
+
+            return rumErrorEvent
+        }
     }
 }
 

@@ -18,6 +18,7 @@ import com.datadog.android.event.ViewEventMapper
 import com.datadog.android.log.model.LogEvent
 import com.datadog.android.rum.GlobalRum
 import com.datadog.android.rum.model.ActionEvent
+import com.datadog.android.rum.model.ErrorEvent
 import com.datadog.android.rum.model.ResourceEvent
 import com.datadog.android.rum.model.ViewEvent
 import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
@@ -319,6 +320,15 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     object: EventMapper<ResourceEvent> {
                         override fun map(event: ResourceEvent): ResourceEvent? {
                             return rumPlugin.mapResourceEvent(event)
+                        }
+                    }
+                )
+            }
+            if(it.attachErrorEventMapper) {
+                configBuilder.setRumErrorEventMapper(
+                    object : EventMapper<ErrorEvent> {
+                        override  fun map(event: ErrorEvent): ErrorEvent? {
+                            return rumPlugin.mapErrorEvent(event)
                         }
                     }
                 )

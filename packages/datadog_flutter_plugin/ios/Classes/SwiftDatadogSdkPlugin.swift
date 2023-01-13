@@ -174,6 +174,9 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         if configuration.rumConfiguration?.attachResourceEventMapper == true {
             _ = ddConfiguration.setRUMResourceEventMapper(DatadogRumPlugin.instance.resourceEventMapper)
         }
+        if configuration.rumConfiguration?.attachErrorEventMapper == true {
+            _ = ddConfiguration.setRUMErrorEventMapper(DatadogRumPlugin.instance.errorEventMapper)
+        }
 
         Datadog.initialize(appContext: Datadog.AppContext(),
                            trackingConsent: configuration.trackingConsent,

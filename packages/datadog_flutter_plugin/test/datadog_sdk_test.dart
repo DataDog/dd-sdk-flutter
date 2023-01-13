@@ -233,6 +233,7 @@ void main() {
         rumViewEventMapper: (event) => event,
         rumActionEventMapper: (event) => event,
         rumResourceEventMapper: (event) => event,
+        rumErrorEventMapper: (event) => event,
       ),
     );
 
@@ -242,6 +243,7 @@ void main() {
     expect(encodedRumConfiguration['attachViewEventMapper'], isTrue);
     expect(encodedRumConfiguration['attachActionEventMapper'], isTrue);
     expect(encodedRumConfiguration['attachResourceEventMapper'], isTrue);
+    expect(encodedRumConfiguration['attachErrorEventMapper'], isTrue);
   });
 
   test('initialize with logging configuration creates logger', () async {

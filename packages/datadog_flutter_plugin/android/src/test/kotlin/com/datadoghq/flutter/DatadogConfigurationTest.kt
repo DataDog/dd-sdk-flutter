@@ -243,7 +243,8 @@ class DatadogConfigurationTest {
         // GIVEN
         val attachViewEventMapper = forge.aBool()
         val attachActionEventMapper = forge.aBool()
-        val attachResourceEvenMapper = forge.aBool()
+        val attachResourceEventMapper = forge.aBool()
+        val attachErrorEventMapper = forge.aBool()
 
         val encoded = mapOf(
             "clientToken" to clientToken,
@@ -263,7 +264,8 @@ class DatadogConfigurationTest {
                 "customEndpoint" to "customEndpoint",
                 "attachViewEventMapper" to attachViewEventMapper,
                 "attachActionEventMapper" to attachActionEventMapper,
-                "attachResourceEventMapper" to attachResourceEvenMapper,
+                "attachResourceEventMapper" to attachResourceEventMapper,
+                "attachErrorEventMapper" to attachErrorEventMapper,
                 "vitalsFrequency" to "VitalsFrequency.frequent"
             ),
             "additionalConfig" to mapOf<String, Any?>()
@@ -281,7 +283,8 @@ class DatadogConfigurationTest {
         assertThat(config.rumConfiguration?.customEndpoint).isEqualTo("customEndpoint")
         assertThat(config.rumConfiguration?.attachViewEventMapper).isEqualTo(attachViewEventMapper)
         assertThat(config.rumConfiguration?.attachActionEventMapper).isEqualTo(attachActionEventMapper)
-        assertThat(config.rumConfiguration?.attachResourceEventMapper).isEqualTo(attachResourceEvenMapper)
+        assertThat(config.rumConfiguration?.attachResourceEventMapper).isEqualTo(attachResourceEventMapper)
+        assertThat(config.rumConfiguration?.attachErrorEventMapper).isEqualTo(attachErrorEventMapper)
         assertThat(config.rumConfiguration?.vitalsFrequency).isEqualTo(VitalsUpdateFrequency.FREQUENT)
     }
 

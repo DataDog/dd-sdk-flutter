@@ -63,6 +63,7 @@ data class DatadogFlutterConfiguration(
         var attachViewEventMapper: Boolean = false,
         var attachActionEventMapper: Boolean = false,
         var attachResourceEventMapper: Boolean = false,
+        var attachErrorEventMapper: Boolean = false,
         var vitalsFrequency: VitalsUpdateFrequency? = null,
 
     ) {

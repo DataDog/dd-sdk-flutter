@@ -11,7 +11,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'example_app.dart';
 
 // Rewrite log messages to remove sensitive information
-LogEvent? _testLogEventMapper(LogEvent event) {
+LogEvent? _logEventMapper(LogEvent event) {
   if (event.message == 'overwrite me') {
     event.message = 'overwritten';
   } else if (event.message == 'stop me') {
@@ -22,7 +22,7 @@ LogEvent? _testLogEventMapper(LogEvent event) {
   return event;
 }
 
-RumViewEvent _testViewEventMapper(RumViewEvent event) {
+RumViewEvent _viewEventMapper(RumViewEvent event) {
   if (event.view.name == 'overwrite me') {
     event.view.name = 'overwritten';
   }
@@ -30,7 +30,7 @@ RumViewEvent _testViewEventMapper(RumViewEvent event) {
   return event;
 }
 
-RumActionEvent? _testActionEventMapper(RumActionEvent event) {
+RumActionEvent? _actionEventMapper(RumActionEvent event) {
   if (event.view.name == 'overwrite me') {
     event.view.name = 'overwritten';
   }
@@ -44,12 +44,25 @@ RumActionEvent? _testActionEventMapper(RumActionEvent event) {
   return event;
 }
 
-RumResourceEvent? _testResourceEventMapper(RumResourceEvent event) {
+RumResourceEvent? _resourceEventMapper(RumResourceEvent event) {
   event.resource.url =
       event.resource.url.replaceAll(RegExp(r'email=[^&]+'), 'email=REDACTED');
 
   if (event.resource.url.contains('discard')) {
     return null;
+  }
+
+  return event;
+}
+
+RumErrorEvent? _errorEventMapper(RumErrorEvent event) {
+  if (event.error.message == 'discard') {
+    return null;
+  }
+
+  if (event.error.resource != null) {
+    event.error.resource!.url = event.error.resource!.url
+        .replaceAll(RegExp(r'email=[^&]+'), 'email=REDACTED');
   }
 
   return event;
@@ -68,7 +81,7 @@ void main() async {
       site: DatadogSite.us1,
       trackingConsent: TrackingConsent.granted,
       nativeCrashReportEnabled: true,
-      logEventMapper: _testLogEventMapper,
+      logEventMapper: _logEventMapper,
       loggingConfiguration: LoggingConfiguration(
         sendNetworkInfo: true,
         printLogsToConsole: true,
@@ -77,9 +90,10 @@ void main() async {
           ? RumConfiguration(
               applicationId: applicationId,
               detectLongTasks: true,
-              rumViewEventMapper: _testViewEventMapper,
-              rumActionEventMapper: _testActionEventMapper,
-              rumResourceEventMapper: _testResourceEventMapper,
+              rumViewEventMapper: _viewEventMapper,
+              rumActionEventMapper: _actionEventMapper,
+              rumResourceEventMapper: _resourceEventMapper,
+              rumErrorEventMapper: _errorEventMapper,
             )
           : null,
     );

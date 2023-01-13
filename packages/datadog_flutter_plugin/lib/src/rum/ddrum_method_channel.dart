@@ -21,6 +21,7 @@ class DdRumMethodChannel extends DdRumPlatform {
       viewEventMapper: configuration.rumViewEventMapper,
       actionEventMapper: configuration.rumActionEventMapper,
       resourceEventMapper: configuration.rumResourceEventMapper,
+      errorEventMapper: configuration.rumErrorEventMapper,
       internalLogger: internalLogger,
     );
 
@@ -178,12 +179,14 @@ class MethodCallHandler {
   final RumViewEventMapper? viewEventMapper;
   final RumActionEventMapper? actionEventMapper;
   final RumResourceEventMapper? resourceEventMapper;
+  final RumErrorEventMapper? errorEventMapper;
   final InternalLogger internalLogger;
 
   MethodCallHandler({
     this.viewEventMapper,
     this.actionEventMapper,
     this.resourceEventMapper,
+    this.errorEventMapper,
     required this.internalLogger,
   });
 
@@ -195,6 +198,8 @@ class MethodCallHandler {
         return _mapActionEvent(call);
       case 'mapResourceEvent':
         return _mapResourceEvent(call);
+      case 'mapErrorEvent':
+        return _mapErrorEvent(call);
     }
 
     throw MissingPluginException(
@@ -255,7 +260,7 @@ class MethodCallHandler {
     );
   }
 
-  Map<Object?, Object?>? _mapActionEvent(MethodCall call) {
+  Map<Object, Object?>? _mapActionEvent(MethodCall call) {
     final eventJson = call.arguments['event'] as Map;
     return _callMapper<RumActionEvent>(
       'mapActionEvent',
@@ -266,7 +271,7 @@ class MethodCallHandler {
     );
   }
 
-  Map<Object?, Object?>? _mapResourceEvent(MethodCall call) {
+  Map<Object, Object?>? _mapResourceEvent(MethodCall call) {
     final eventJson = call.arguments['event'] as Map;
     return _callMapper<RumResourceEvent>(
       'mapActionEvent',
@@ -274,6 +279,17 @@ class MethodCallHandler {
       resourceEventMapper,
       (e) => e.toJson(),
       RumResourceEvent.fromJson,
+    );
+  }
+
+  Map<Object, Object?>? _mapErrorEvent(MethodCall call) {
+    final eventJson = call.arguments['event'] as Map;
+    return _callMapper<RumErrorEvent>(
+      'mapErrorEvent',
+      eventJson,
+      errorEventMapper,
+      (e) => e.toJson(),
+      RumErrorEvent.fromJson,
     );
   }
 }

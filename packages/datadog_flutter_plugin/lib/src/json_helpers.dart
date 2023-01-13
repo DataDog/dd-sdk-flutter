@@ -17,16 +17,16 @@ Map<String, Object?> attributesFromJson(Map? attributes) {
       {};
 }
 
-List<String>? actionListFromJson(Object? value) {
+List<String> actionListFromJson(Object? value) {
   if (value == null) {
-    return null;
+    return [];
   }
   if (value is String) {
     return [value];
   }
   if (value is List) {
-    return value.map((dynamic e) => e.toString()).toList();
+    return value.map((dynamic e) => value.toString()).toList();
   }
 
-  return null;
+  return [];
 }

@@ -296,7 +296,7 @@ class RumCount {
 class RumPerformanceMetric {
   final double average;
   final double max;
-  final double metricMax;
+  final double? metricMax;
   final double min;
 
   RumPerformanceMetric(
@@ -438,7 +438,7 @@ enum RumFrustrationType {
 
 @commonJsonOptions
 class RumActionFrustration {
-  final List<RumActionFrustration> type;
+  final List<RumFrustrationType> type;
 
   RumActionFrustration({
     required this.type,
@@ -486,8 +486,7 @@ class RumResource {
 //  * synthectics
 @commonJsonOptions
 class RumResourceEvent {
-  @JsonKey(fromJson: actionListFromJson)
-  final List<String>? action;
+  final RumActionId? action;
   final RumApplication application;
   final RumConnectivity? connectivity;
   final int date;
@@ -520,4 +519,123 @@ class RumResourceEvent {
   factory RumResourceEvent.fromJson(Map<dynamic, dynamic> json) =>
       _$RumResourceEventFromJson(json);
   Map<String, dynamic> toJson() => _$RumResourceEventToJson(this);
+}
+
+@commonJsonOptions
+class RumErrorEvent {
+  final RumActionId? action;
+  final RumApplication application;
+  final RumConnectivity? connectivity;
+  final int date;
+  final RumDevice? device;
+  final RumError error;
+  final RumOperatingSystem? os;
+  final String? service;
+  final RumSession session;
+  final RumUser? usr;
+  final String? version;
+  final RumViewSummary view;
+
+  @JsonKey(fromJson: attributesFromJson)
+  final Map<String, Object?> context;
+
+  RumErrorEvent({
+    this.action,
+    required this.application,
+    this.connectivity,
+    required this.date,
+    this.device,
+    required this.error,
+    this.os,
+    this.service,
+    required this.session,
+    this.usr,
+    this.version,
+    required this.view,
+    required this.context,
+  });
+
+  factory RumErrorEvent.fromJson(Map<dynamic, dynamic> json) =>
+      _$RumErrorEventFromJson(json);
+  Map<String, dynamic> toJson() => _$RumErrorEventToJson(this);
+}
+
+@commonJsonOptions
+class RumActionId {
+  @JsonKey(fromJson: actionListFromJson)
+  final List<String> id;
+
+  RumActionId({required this.id});
+
+  factory RumActionId.fromJson(Map<String, dynamic> json) =>
+      _$RumActionIdFromJson(json);
+  Map<String, dynamic> toJson() => _$RumActionIdToJson(this);
+}
+
+enum RumErrorHandling { handled, unhandled }
+
+@commonJsonOptions
+class RumError {
+  final List<RumErrorCause>? causes;
+  final RumErrorHandling? handling;
+  final String? handlingStack;
+  final String? id;
+  final bool? isCrash;
+  String message;
+  RumResourceSummary? resource;
+  final RumErrorSource source;
+  final String? sourceType;
+  String? stack;
+  final String? type;
+
+  RumError({
+    required this.causes,
+    this.handling,
+    this.handlingStack,
+    this.id,
+    this.isCrash,
+    required this.message,
+    this.resource,
+    required this.source,
+    this.sourceType,
+    this.stack,
+    this.type,
+  });
+
+  factory RumError.fromJson(Map<String, dynamic> json) =>
+      _$RumErrorFromJson(json);
+  Map<String, dynamic> toJson() => _$RumErrorToJson(this);
+}
+
+@commonJsonOptions
+class RumErrorCause {
+  String message;
+  final RumErrorSource source;
+  String? stack;
+  final String? type;
+
+  RumErrorCause({
+    required this.message,
+    required this.source,
+    this.stack,
+    this.type,
+  });
+
+  factory RumErrorCause.fromJson(Map<String, dynamic> json) =>
+      _$RumErrorCauseFromJson(json);
+  Map<String, dynamic> toJson() => _$RumErrorCauseToJson(this);
+}
+
+@commonJsonOptions
+class RumResourceSummary {
+  final String method;
+  final int statusCode;
+  String url;
+
+  RumResourceSummary(
+      {required this.method, required this.statusCode, required this.url});
+
+  factory RumResourceSummary.fromJson(Map<String, dynamic> json) =>
+      _$RumResourceSummaryFromJson(json);
+  Map<String, dynamic> toJson() => _$RumResourceSummaryToJson(this);
 }

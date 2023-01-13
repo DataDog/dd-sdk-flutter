@@ -15,6 +15,7 @@ import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
 import com.datadog.android.rum.model.ActionEvent
+import com.datadog.android.rum.model.ErrorEvent
 import com.datadog.android.rum.model.ResourceEvent
 import com.datadog.android.rum.model.ViewEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -399,6 +400,48 @@ class DatadogRumPlugin(
             } else {
                 (encodedResult?.get("resource") as? Map<String, Any?>)?.let {
                     event.resource.url = it["url"] as String
+                }
+
+                (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                    event.view.name = it["name"] as? String
+                    event.view.referrer = it["referrer"] as? String
+                    event.view.url = it["url"] as String
+                }
+
+                event
+            }
+        }
+    }
+
+    internal fun mapErrorEvent(event: ErrorEvent): ErrorEvent? {
+        var jsonEvent = event.toJson().asMap()
+        jsonEvent = extractExtraUserInfo(jsonEvent)
+
+        return callEventMapper("mapErrorEvent", event, jsonEvent) { encodedResult, event ->
+            if (encodedResult == null) {
+                null
+            } else {
+                (encodedResult?.get("error") as? Map<String, Any?>)?.let { encodedError ->
+                    val encodedCauses = encodedError["causes"] as? List<Map<String, Any?>>
+                    if (encodedCauses != null) {
+                        event.error.causes?.let { causes ->
+                            if (causes.count() == encodedCauses.count()) {
+                                causes.forEachIndexed { i, cause ->
+                                    cause.message = encodedCauses[i]["message"] as? String ?: ""
+                                    cause.stack = encodedCauses[i]["stack"] as? String
+                                }
+                            }
+                        }
+                    } else {
+                        event.error.causes = null
+                    }
+
+                    val encodedResource = encodedError["resource"] as? Map<String, Any?>
+                    if (encodedResource != null) {
+                        event.error.resource?.url = encodedResource["url"] as? String ?: ""
+                    }
+
+                    event.error.stack = encodedError["stack"] as? String
                 }
 
                 (encodedResult?.get("view") as? Map<String, Any?>)?.let {

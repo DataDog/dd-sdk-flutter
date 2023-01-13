@@ -5,31 +5,33 @@
 import 'dart:convert';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
-import 'package:datadog_integration_test_app/auto_integration_scenarios/scenario_runner.dart';
+import 'package:datadog_integration_test_app/integration_scenarios/scenario_runner.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'common.dart';
-import 'rum_auto_instrumentation_test.dart';
+import 'rum_manual_test.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   kManualIsWeb = kIsWeb;
 
-  // This is the same test as rum_auto_instrumentation_test.dart, but with the following
+  // This is the same test as rum_manual_test.dart, but with the following
   // mappers:
-  //  * viewMapper renames RumAutoInstrumentationThirdScreen to rum_third_screen
-  //  * actionMapper removes 'InkWell' from targets
+  //  * viewMapper renames ThirdManualRumView to ThirdView
+  //  * actionMapper changes 'Tapped Download' to 'Download'
   //  * actionMapper discards the 'Next Page' tap
-  testWidgets('test auto instrumentation with mappers',
-      (WidgetTester tester) async {
+  //  * actionMapper discards 'User Scrolling' events
+  //  * resourceMapper and errorMapper rewite the urls to replace 'fake_url' with 'my_url'
+  testWidgets('test instrumentation with mappers', (WidgetTester tester) async {
     var serverRecorder = await openTestScenario(
       tester,
-      scenarioName: mappedAutoInstrumentationScenarioName,
+      menuTitle: 'Manual RUM Scenario',
+      scenarioName: mappedInstrumentationScenarioName,
     );
 
-    await performRumUserFlow(tester);
+    await performUserInteractions(tester);
 
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
@@ -53,41 +55,28 @@ void main() {
     expect(session.visits.length, 3);
 
     final view1 = session.visits[0];
-    expect(view1.name, '/');
-    if (!kIsWeb) {
-      // Path is the actual browser path in web
-      expect(view1.path, '/');
-
-      // Web doesn't support performance metrics
-      expect(view1.viewEvents.last.flutterBuildTime, isNotNull);
-      expect(view1.viewEvents.last.flutterRasterTime, isNotNull);
-
-      // Web doesn't support action tracking from Flutter
-      var actionEvent = view1.actionEvents.last;
-      expect(actionEvent.actionType, 'tap');
-      expect(actionEvent.actionName, 'Item 0');
+    // In some cases, application_start doesn't get associated to the first view
+    var actionCount = 1;
+    var baseAction = 0;
+    if (view1.actionEvents[0].actionType == 'application_start') {
+      actionCount = 2;
+      baseAction = 1;
     }
+    expect(view1.actionEvents.length, actionCount);
+    expect(view1.actionEvents[0 + baseAction].actionType, 'tap');
+    expect(view1.actionEvents[0 + baseAction].actionName, 'Download');
+
+    expect(view1.resourceEvents.length, 1);
+    expect(view1.resourceEvents[0].url, 'https://my_url/resource/1');
+
+    expect(view1.errorEvents.length, 1);
+    expect(view1.errorEvents[0].resourceUrl, 'https://my_url/resource/2');
 
     final view2 = session.visits[1];
-    expect(view2.name, 'rum_second_screen');
-    if (!kIsWeb) {
-      // Path is the actual browser path in web
-      expect(view2.path, 'rum_second_screen');
+    // Scroll and 'Next Screen' tap are discarded
+    expect(view2.actionEvents.length, 0);
 
-      // Web doesn't support performance metrics
-      expect(view2.viewEvents.last.flutterBuildTime, isNotNull);
-      expect(view2.viewEvents.last.flutterRasterTime, isNotNull);
-
-      // Web doesn't support action tracking from Flutter
-      expect(view2.actionEvents.length, 0);
-    }
-
-    // Check last view name
     final view3 = session.visits[2];
-    expect(view3.name, 'rum_third_screen');
-    if (!kIsWeb) {
-      // Path is the actual browser path in web
-      expect(view3.path, 'RumAutoInstrumentationThirdScreen');
-    }
+    expect(view3.name, 'ThirdView');
   });
 }

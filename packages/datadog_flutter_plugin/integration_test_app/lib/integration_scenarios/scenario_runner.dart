@@ -9,6 +9,45 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'integration_scenarios_screen.dart';
 
 const mappedLoggingScenarioRunner = 'mapped_logging_scenario';
+const mappedInstrumentationScenarioName =
+    'mapped_auto_instrumentation_scenario';
+
+RumViewEvent mapRumViewEvent(RumViewEvent event) {
+  if (event.view.name == 'ThirdManualRumView') {
+    event.view.name = 'ThirdView';
+  }
+
+  return event;
+}
+
+RumActionEvent? mapRumActionEvent(RumActionEvent event) {
+  var actionTarget = event.action.target;
+  if (actionTarget != null) {
+    if (actionTarget.name.contains('Next Screen') ||
+        actionTarget.name == 'User Scrolling') {
+      return null;
+    } else if (actionTarget.name == 'Tapped Download') {
+      event.action.target?.name = 'Download';
+    }
+  }
+
+  return event;
+}
+
+RumResourceEvent? mapRumResourceEvent(RumResourceEvent event) {
+  event.resource.url = event.resource.url.replaceAll('fake_url', 'my_url');
+
+  return event;
+}
+
+RumErrorEvent? mapRumErrorEvent(RumErrorEvent event) {
+  if (event.error.resource != null) {
+    event.error.resource?.url =
+        event.error.resource!.url.replaceAll('fake_url', 'my_url');
+  }
+
+  return event;
+}
 
 Future<void> runScenario({
   required String clientToken,
@@ -47,6 +86,15 @@ Future<void> runScenario({
           )
         : null,
   );
+
+  if (testingConfiguration?.scenario == mappedInstrumentationScenarioName) {
+    // Add mapping to rum configuration
+    configuration.rumConfiguration?.rumViewEventMapper = mapRumViewEvent;
+    configuration.rumConfiguration?.rumActionEventMapper = mapRumActionEvent;
+    configuration.rumConfiguration?.rumResourceEventMapper =
+        mapRumResourceEvent;
+    configuration.rumConfiguration?.rumErrorEventMapper = mapRumErrorEvent;
+  }
 
   await DatadogSdk.runApp(configuration, () async {
     runApp(const DatadogIntegrationTestApp());

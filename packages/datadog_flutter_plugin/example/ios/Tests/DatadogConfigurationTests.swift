@@ -200,7 +200,8 @@ class DatadogConfigurationTests: XCTestCase {
         "vitalsFrequency": "VitalsFrequency.never",
         "attachViewEventMapper": true,
         "attachActionEventMapper": true,
-        "attachResourceEventMapper": true
+        "attachResourceEventMapper": true,
+        "attachErrorEventMapper": true,
       ],
       "additionalConfig": [:]
     ]
@@ -215,5 +216,6 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.rumConfiguration?.attachViewEventMapper, true)
     XCTAssertEqual(config.rumConfiguration?.attachActionEventMapper, true)
     XCTAssertEqual(config.rumConfiguration?.attachResourceEventMapper, true)
+    XCTAssertEqual(config.rumConfiguration?.attachErrorEventMapper, true)
   }
 }

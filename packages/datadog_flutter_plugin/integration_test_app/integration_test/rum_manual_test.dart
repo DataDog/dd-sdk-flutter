@@ -13,6 +13,39 @@ import 'package:integration_test/integration_test.dart';
 
 import 'common.dart';
 
+Future<void> performUserInteractions(WidgetTester tester) async {
+  var downloadButton = find.widgetWithText(ElevatedButton, 'Download Resource');
+  await tester.tap(downloadButton);
+  await tester.pumpAndSettle();
+
+  var nextButton = find.widgetWithText(ElevatedButton, 'Next Screen');
+  await tester.waitFor(
+    nextButton,
+    const Duration(seconds: 2),
+    (e) => (e.widget as ElevatedButton).enabled,
+  );
+  await tester.tap(nextButton);
+  await tester.pumpAndSettle();
+
+  var longTaskButton = find.widgetWithText(ElevatedButton, 'Trigger Long Task');
+  await tester.waitFor(
+    longTaskButton,
+    const Duration(seconds: 5),
+    (e) => (e.widget as ElevatedButton).enabled,
+  );
+  await tester.tap(longTaskButton);
+  await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+  nextButton = find.widgetWithText(ElevatedButton, 'Next Screen');
+  await tester.waitFor(
+    nextButton,
+    const Duration(seconds: 2),
+    (e) => (e.widget as ElevatedButton).enabled,
+  );
+  await tester.tap(nextButton);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -22,38 +55,7 @@ void main() {
       menuTitle: 'Manual RUM Scenario',
     );
 
-    var downloadButton =
-        find.widgetWithText(ElevatedButton, 'Download Resource');
-    await tester.tap(downloadButton);
-    await tester.pumpAndSettle();
-
-    var nextButton = find.widgetWithText(ElevatedButton, 'Next Screen');
-    await tester.waitFor(
-      nextButton,
-      const Duration(seconds: 2),
-      (e) => (e.widget as ElevatedButton).enabled,
-    );
-    await tester.tap(nextButton);
-    await tester.pumpAndSettle();
-
-    var longTaskButton =
-        find.widgetWithText(ElevatedButton, 'Trigger Long Task');
-    await tester.waitFor(
-      longTaskButton,
-      const Duration(seconds: 5),
-      (e) => (e.widget as ElevatedButton).enabled,
-    );
-    await tester.tap(longTaskButton);
-    await tester.pumpAndSettle(const Duration(milliseconds: 300));
-
-    nextButton = find.widgetWithText(ElevatedButton, 'Next Screen');
-    await tester.waitFor(
-      nextButton,
-      const Duration(seconds: 2),
-      (e) => (e.widget as ElevatedButton).enabled,
-    );
-    await tester.tap(nextButton);
-    await tester.pumpAndSettle();
+    await performUserInteractions(tester);
 
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
