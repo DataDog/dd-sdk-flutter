@@ -26,6 +26,7 @@ import java.lang.ClassCastException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+@Suppress("StringLiteralDuplication")
 class DatadogRumPlugin(
     rumInstance: RumMonitor? = null
 ) : MethodChannel.MethodCallHandler {
@@ -286,7 +287,12 @@ class DatadogRumPlugin(
     }
 
     @Suppress("TooGenericExceptionCaught")
-    internal fun <T> callEventMapper(mapperName: String, event: T, encodedEvent: Map<String, Any?>, completion: (Map<String, Any?>?, T) -> T?): T? {
+    internal fun <T> callEventMapper(
+        mapperName: String,
+        event: T,
+        encodedEvent: Map<String, Any?>,
+        completion: (Map<String, Any?>?, T) -> T?
+    ): T? {
         var modifiedJson: Map<String, Any?>? = encodedEvent
         val latch = CountDownLatch(1)
 
@@ -341,13 +347,12 @@ class DatadogRumPlugin(
         } catch (e: Exception) {
             Datadog._internal._telemetry.error(
                 "Attempt to deserialize mapped log event failed, or latch await was interrupted." +
-                        " Returning unmodified event.",
+                    " Returning unmodified event.",
                 e
             )
             return event
         }
     }
-
 
     internal fun mapViewEvent(event: ViewEvent): ViewEvent {
         var jsonEvent = event.toJson().asMap()
@@ -413,6 +418,7 @@ class DatadogRumPlugin(
         }
     }
 
+    @Suppress("ComplexMethod")
     internal fun mapErrorEvent(event: ErrorEvent): ErrorEvent? {
         var jsonEvent = event.toJson().asMap()
         jsonEvent = extractExtraUserInfo(jsonEvent)

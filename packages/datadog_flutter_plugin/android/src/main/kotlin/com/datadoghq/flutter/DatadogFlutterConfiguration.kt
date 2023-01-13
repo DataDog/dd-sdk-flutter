@@ -16,7 +16,6 @@ import com.datadog.android.core.configuration.VitalsUpdateFrequency
 import com.datadog.android.ndk.NdkCrashReportsPlugin
 import com.datadog.android.plugin.Feature
 import com.datadog.android.privacy.TrackingConsent
-import com.datadog.android.rum.model.ResourceEvent
 import com.datadog.android.rum.tracking.ViewTrackingStrategy
 
 data class LoggingConfiguration(
@@ -75,7 +74,8 @@ data class DatadogFlutterConfiguration(
             encoded["customEndpoint"] as? String,
             encoded["attachViewEventMapper"] as? Boolean ?: false,
             encoded["attachActionEventMapper"] as? Boolean ?: false,
-            encoded["attachResourceEventMapper"] as? Boolean ?: false
+            encoded["attachResourceEventMapper"] as? Boolean ?: false,
+            encoded["attachErrorEventMapper"] as? Boolean ?: false,
         ) {
             (encoded["vitalsFrequency"] as? String)?.let {
                 vitalsFrequency = parseVitalsFrequency(it)

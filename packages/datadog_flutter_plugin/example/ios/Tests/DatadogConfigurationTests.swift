@@ -201,7 +201,7 @@ class DatadogConfigurationTests: XCTestCase {
         "attachViewEventMapper": true,
         "attachActionEventMapper": true,
         "attachResourceEventMapper": true,
-        "attachErrorEventMapper": true,
+        "attachErrorEventMapper": true
       ],
       "additionalConfig": [:]
     ]

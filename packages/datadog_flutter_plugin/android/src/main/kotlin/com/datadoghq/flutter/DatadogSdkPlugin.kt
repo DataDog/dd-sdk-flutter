@@ -5,7 +5,6 @@
  */
 package com.datadoghq.flutter
 
-import android.app.Notification.Action
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -285,7 +284,10 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         isRegistered.set(false)
     }
 
-    fun attachEventMappers(config: DatadogFlutterConfiguration, configBuilder: Configuration.Builder) {
+    fun attachEventMappers(
+        config: DatadogFlutterConfiguration,
+        configBuilder: Configuration.Builder
+    ) {
         if (config.attachLogMapper) {
             configBuilder.setLogEventMapper(
                 object : EventMapper<LogEvent> {
@@ -315,19 +317,19 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     }
                 )
             }
-            if(it.attachResourceEventMapper) {
+            if (it.attachResourceEventMapper) {
                 configBuilder.setRumResourceEventMapper(
-                    object: EventMapper<ResourceEvent> {
+                    object : EventMapper<ResourceEvent> {
                         override fun map(event: ResourceEvent): ResourceEvent? {
                             return rumPlugin.mapResourceEvent(event)
                         }
                     }
                 )
             }
-            if(it.attachErrorEventMapper) {
+            if (it.attachErrorEventMapper) {
                 configBuilder.setRumErrorEventMapper(
                     object : EventMapper<ErrorEvent> {
-                        override  fun map(event: ErrorEvent): ErrorEvent? {
+                        override fun map(event: ErrorEvent): ErrorEvent? {
                             return rumPlugin.mapErrorEvent(event)
                         }
                     }

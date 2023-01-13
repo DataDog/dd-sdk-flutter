@@ -292,7 +292,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             return event
         }
 
-        return completion(encodedResult);
+        return completion(encodedResult)
     }
 
     func extractUserExtraInfo(usrMember: [String: Any]?) -> [String: Any]? {
@@ -350,7 +350,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             )
             return rumViewEvent
         }
-        
+
         return result
     }
 
