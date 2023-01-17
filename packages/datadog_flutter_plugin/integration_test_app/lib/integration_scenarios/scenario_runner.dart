@@ -87,6 +87,7 @@ Future<void> runScenario({
     nativeCrashReportEnabled: true,
     firstPartyHosts: firstPartyHosts,
     customLogsEndpoint: customEndpoint,
+    telemetrySampleRate: 100,
     logEventMapper: (event) => _mapLogEvent(event),
     loggingConfiguration: LoggingConfiguration(
       sendNetworkInfo: true,

@@ -6,7 +6,10 @@
 // extension packages, and is not meant for public use. Anything exposed by this
 // file has the potential to change without notice.
 
+import 'package:meta/meta.dart';
+
 import 'datadog_flutter_plugin.dart';
+import 'src/internal_logger.dart';
 
 export 'src/attributes.dart';
 export 'src/datadog_sdk_platform_interface.dart';
@@ -47,5 +50,51 @@ extension DatadogInternal on DatadogSdk {
   /// Update a late configuration property
   void updateConfigurationInfo(LateConfigurationProperty property, bool value) {
     platform.updateTelemetryConfiguration(property.name, value);
+  }
+}
+
+/// Used to attach a first party host name to what headers should be
+/// automatically attached by RUM Http Tracking
+@immutable
+class FirstPartyHost {
+  final String hostName;
+  final Set<TracingHeaderType> headerTypes;
+
+  final RegExp _regExp;
+
+  FirstPartyHost._(this.hostName, this.headerTypes)
+      : _regExp = RegExp('^(.*\\.)*${RegExp.escape(hostName)}\$');
+
+  bool matches(Uri uri) {
+    return _regExp.hasMatch(uri.host.toString());
+  }
+
+  static List<FirstPartyHost> createSanitized(
+      Map<String, Set<TracingHeaderType>> hosts, InternalLogger logger) {
+    var firstPartyHosts = <FirstPartyHost>[];
+    for (var entry in hosts.entries) {
+      var sanitizedHost = _sanitizeHost(entry.key, logger);
+      if (sanitizedHost != null) {
+        firstPartyHosts.add(FirstPartyHost._(sanitizedHost, entry.value));
+      }
+    }
+
+    return firstPartyHosts;
+  }
+
+  static String? _sanitizeHost(String host, InternalLogger internalLogger) {
+    final uri = Uri.tryParse(host);
+    if (uri != null) {
+      if (uri.hasScheme) {
+        internalLogger
+            .warn('$host is a url and will be sanitized to: ${uri.host}.');
+        host = uri.host;
+      }
+
+      return host;
+    }
+
+    internalLogger.warn('$host is a not a valid url and will be dropped');
+    return null;
   }
 }

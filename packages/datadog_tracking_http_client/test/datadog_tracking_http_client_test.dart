@@ -61,10 +61,11 @@ void main() {
         .thenAnswer((_) => Future<void>.value());
 
     mockDatadog = MockDatadogSdk();
-    when(() => mockDatadog.isFirstPartyHost(
-        any(that: HasHost(equals('test_url'))))).thenReturn(true);
-    when(() => mockDatadog.isFirstPartyHost(
-        any(that: HasHost(equals('non_first_party'))))).thenReturn(false);
+    when(() => mockDatadog
+            .headerTypesForHost(any(that: HasHost(equals('test_url')))))
+        .thenReturn({TracingHeaderType.datadog});
+    when(() => mockDatadog.headerTypesForHost(
+        any(that: HasHost(equals('non_first_party'))))).thenReturn({});
     when(() => mockDatadog.platform).thenReturn(mockPlatform);
 
     mockRum = MockDdRum();
@@ -183,9 +184,7 @@ void main() {
     test('tracking client passes through properties', () {
       final client = DatadogTrackingHttpClient(
         mockDatadog,
-        DdHttpTrackingPluginConfiguration(
-          tracingHeaderTypes: {TracingHeaderType.datadog},
-        ),
+        DdHttpTrackingPluginConfiguration(),
         mockClient,
       );
 
@@ -220,9 +219,7 @@ void main() {
       setupMockRequest(url);
       final client = DatadogTrackingHttpClient(
         mockDatadog,
-        DdHttpTrackingPluginConfiguration(
-          tracingHeaderTypes: {TracingHeaderType.datadog},
-        ),
+        DdHttpTrackingPluginConfiguration(),
         mockClient,
       );
 
@@ -244,9 +241,7 @@ void main() {
 
       client = DatadogTrackingHttpClient(
         mockDatadog,
-        DdHttpTrackingPluginConfiguration(
-          tracingHeaderTypes: {TracingHeaderType.datadog},
-        ),
+        DdHttpTrackingPluginConfiguration(),
         mockClient,
       );
     });
@@ -435,6 +430,9 @@ void main() {
     group('when rum is enabled with $headerType tracing headers', () {
       setUp(() {
         enableRum();
+
+        when(() => mockDatadog.headerTypesForHost(
+            any(that: HasHost(equals('test_url'))))).thenReturn({headerType});
       });
 
       test('start and stop resource loading set tracing attributes', () async {
@@ -444,9 +442,7 @@ void main() {
         final completer = setupMockRequest(url);
         final client = DatadogTrackingHttpClient(
           mockDatadog,
-          DdHttpTrackingPluginConfiguration(
-            tracingHeaderTypes: {headerType},
-          ),
+          DdHttpTrackingPluginConfiguration(),
           mockClient,
         );
 
@@ -498,9 +494,7 @@ void main() {
 
         final client = DatadogTrackingHttpClient(
           mockDatadog,
-          DdHttpTrackingPluginConfiguration(
-            tracingHeaderTypes: {headerType},
-          ),
+          DdHttpTrackingPluginConfiguration(),
           mockClient,
         );
 
@@ -519,9 +513,7 @@ void main() {
 
         final client = DatadogTrackingHttpClient(
           mockDatadog,
-          DdHttpTrackingPluginConfiguration(
-            tracingHeaderTypes: {headerType},
-          ),
+          DdHttpTrackingPluginConfiguration(),
           mockClient,
         );
 
@@ -548,9 +540,7 @@ void main() {
         when(() => mockClient.openUrl(any(), any())).thenThrow(error);
         final client = DatadogTrackingHttpClient(
           mockDatadog,
-          DdHttpTrackingPluginConfiguration(
-            tracingHeaderTypes: {headerType},
-          ),
+          DdHttpTrackingPluginConfiguration(),
           mockClient,
         );
 
@@ -570,6 +560,42 @@ void main() {
     });
   }
 
+  test('different hosts can send different tracing headers', () async {
+    enableRum();
+
+    when(() => mockDatadog
+            .headerTypesForHost(any(that: HasHost(equals('test_url_a')))))
+        .thenReturn({TracingHeaderType.datadog});
+    when(() => mockDatadog
+            .headerTypesForHost(any(that: HasHost(equals('test_url_b')))))
+        .thenReturn({TracingHeaderType.b3});
+
+    final client = DatadogTrackingHttpClient(
+      mockDatadog,
+      DdHttpTrackingPluginConfiguration(),
+      mockClient,
+    );
+
+    final testUriA = Uri.parse('https://test_url_a/test');
+    final testUriB = Uri.parse('https://test_url_b/test');
+
+    Future<void> verifyCall(Uri uri, TracingHeaderType headerType) async {
+      final completer = setupMockRequest(uri);
+      var mockResponse = setupMockClientResponse(200);
+
+      var request = await client.openUrl('get', uri);
+      completer.complete(mockResponse);
+
+      var _ = await request.done;
+
+      final requestHeaders = request.headers;
+      verifyHeaders(requestHeaders, headerType);
+    }
+
+    await verifyCall(testUriA, TracingHeaderType.datadog);
+    await verifyCall(testUriB, TracingHeaderType.b3);
+  });
+
   group('when rum is enabled with datadog tracing headers', () {
     late DatadogTrackingHttpClient client;
 
@@ -578,9 +604,7 @@ void main() {
 
       client = DatadogTrackingHttpClient(
         mockDatadog,
-        DdHttpTrackingPluginConfiguration(
-          tracingHeaderTypes: {TracingHeaderType.datadog},
-        ),
+        DdHttpTrackingPluginConfiguration(),
         mockClient,
       );
     });
@@ -604,9 +628,13 @@ void main() {
     });
   });
 
-  group('when rum is enabled with b3s tracing headers', () {
+  group('when rum is enabled with b3 tracing headers', () {
     setUp(() {
       enableRum();
+
+      when(() => mockDatadog
+              .headerTypesForHost(any(that: HasHost(equals('test_url')))))
+          .thenReturn({TracingHeaderType.b3});
     });
 
     test('does not set trace headers when should sample returns false',
@@ -618,9 +646,7 @@ void main() {
 
       final client = DatadogTrackingHttpClient(
         mockDatadog,
-        DdHttpTrackingPluginConfiguration(
-          tracingHeaderTypes: {TracingHeaderType.b3},
-        ),
+        DdHttpTrackingPluginConfiguration(),
         mockClient,
       );
 
@@ -634,9 +660,13 @@ void main() {
     });
   });
 
-  group('when rum is enabled with b3m tracing headers', () {
+  group('when rum is enabled with b3multi tracing headers', () {
     setUp(() {
       enableRum();
+
+      when(() => mockDatadog
+              .headerTypesForHost(any(that: HasHost(equals('test_url')))))
+          .thenReturn({TracingHeaderType.b3multi});
     });
 
     test('does not set trace headers when should sample returns false',
@@ -648,9 +678,7 @@ void main() {
 
       final client = DatadogTrackingHttpClient(
         mockDatadog,
-        DdHttpTrackingPluginConfiguration(
-          tracingHeaderTypes: {TracingHeaderType.b3multi},
-        ),
+        DdHttpTrackingPluginConfiguration(),
         mockClient,
       );
 

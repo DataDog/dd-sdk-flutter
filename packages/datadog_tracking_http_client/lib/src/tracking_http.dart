@@ -39,13 +39,11 @@ import 'package:uuid/uuid.dart';
 /// See also [DatadogTrackingHttpClient]
 class DatadogClient extends http.BaseClient {
   final DatadogSdk datadogSdk;
-  final Set<TracingHeaderType>? tracingHeaderTypes;
   final Uuid _uuid = const Uuid();
   final http.Client _innerClient;
 
   DatadogClient({
     required this.datadogSdk,
-    this.tracingHeaderTypes = const {TracingHeaderType.datadog},
     http.Client? innerClient,
   }) : _innerClient = innerClient ?? http.Client() {
     datadogSdk.updateConfigurationInfo(
@@ -66,17 +64,17 @@ class DatadogClient extends http.BaseClient {
   Future<http.StreamedResponse> _trackingSend(
       http.BaseRequest request, DdRum rum) async {
     String? rumKey;
-    bool isFirstParty = false;
 
     try {
-      isFirstParty = datadogSdk.isFirstPartyHost(request.url);
+      final tracingHeaders = datadogSdk.headerTypesForHost(request.url);
       final rumHttpMethod = rumMethodFromMethodString(request.method);
       var attributes = <String, Object?>{};
-      if (isFirstParty) {
+      // Is first party?
+      if (tracingHeaders.isNotEmpty) {
         var shouldSample = rum.shouldSampleTrace();
         var context = generateTracingContext(shouldSample);
 
-        attributes = _appendRequestHeaders(request, context);
+        attributes = _appendRequestHeaders(request, context, tracingHeaders);
       }
 
       rumKey = _uuid.v1();
@@ -188,14 +186,17 @@ class DatadogClient extends http.BaseClient {
   }
 
   Map<String, Object?> _appendRequestHeaders(
-      http.BaseRequest request, TracingContext context) {
+    http.BaseRequest request,
+    TracingContext context,
+    Set<TracingHeaderType> tracingHeaderTypes,
+  ) {
     var attributes = <String, Object?>{};
 
-    if (tracingHeaderTypes != null && tracingHeaderTypes!.isNotEmpty) {
+    if (tracingHeaderTypes.isNotEmpty) {
       attributes = generateDatadogAttributes(
           context, datadogSdk.rum?.tracingSamplingRate ?? 0);
 
-      for (final headerType in tracingHeaderTypes!) {
+      for (final headerType in tracingHeaderTypes) {
         request.headers.addAll(getTracingHeaders(context, headerType));
       }
     }
