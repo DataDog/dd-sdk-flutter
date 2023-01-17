@@ -68,6 +68,14 @@ RumErrorEvent? _errorEventMapper(RumErrorEvent event) {
   return event;
 }
 
+RumLongTaskEvent? _longTaskEventMapper(RumLongTaskEvent event) {
+  if (event.view.name == 'discard') {
+    return null;
+  }
+
+  return event;
+}
+
 void main() async {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
@@ -94,6 +102,7 @@ void main() async {
               rumActionEventMapper: _actionEventMapper,
               rumResourceEventMapper: _resourceEventMapper,
               rumErrorEventMapper: _errorEventMapper,
+              rumLongTaskEventMapper: _longTaskEventMapper,
             )
           : null,
     );

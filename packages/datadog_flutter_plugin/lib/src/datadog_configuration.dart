@@ -45,6 +45,14 @@ typedef RumResourceEventMapper = RumResourceEvent? Function(
 /// [RumErrorEvent]
 typedef RumErrorEventMapper = RumErrorEvent? Function(RumErrorEvent event);
 
+/// A function that allows you to modify or drop specific [RumLongTaskEvent]s before
+/// they are sent to Datadog.
+///
+/// The [RumLongTaskEvent] can modify any mutable (non-final) properties in the
+/// [RumLongTaskEvent]
+typedef RumLongTaskEventMapper = RumLongTaskEvent? Function(
+    RumLongTaskEvent event);
+
 /// Defines the Datadog SDK policy when batching data together before uploading
 /// it to Datadog servers. Smaller batches mean smaller but more network
 /// requests, whereas larger batches mean fewer but larger network requests.
@@ -297,6 +305,10 @@ class RumConfiguration {
   /// before they are sent to Datadog.
   RumErrorEventMapper? rumErrorEventMapper;
 
+  /// A function that allows you to modify or drop specific [RumLongTaskEvent]s
+  /// before they are sent to Datadog.
+  RumLongTaskEventMapper? rumLongTaskEventMapper;
+
   RumConfiguration({
     required this.applicationId,
     double sessionSamplingRate = 100.0,
@@ -310,6 +322,7 @@ class RumConfiguration {
     this.rumActionEventMapper,
     this.rumResourceEventMapper,
     this.rumErrorEventMapper,
+    this.rumLongTaskEventMapper,
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),
         longTaskThreshold = max(0.02, longTaskThreshold);
@@ -341,6 +354,7 @@ class RumConfiguration {
       'attachActionEventMapper': rumActionEventMapper != null,
       'attachResourceEventMapper': rumResourceEventMapper != null,
       'attachErrorEventMapper': rumErrorEventMapper != null,
+      'attachLongTaskEventMapper': rumLongTaskEventMapper != null,
     };
   }
 }

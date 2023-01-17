@@ -24,6 +24,8 @@ void main() {
   //  * actionMapper discards the 'Next Page' tap
   //  * actionMapper discards 'User Scrolling' events
   //  * resourceMapper and errorMapper rewite the urls to replace 'fake_url' with 'my_url'
+  //  * longTask mapper discards all long tasks less than 200 ms
+  //  * longTask mapper renames ThirdManualRumView to ThirdView
   testWidgets('test instrumentation with mappers', (WidgetTester tester) async {
     var serverRecorder = await openTestScenario(
       tester,
@@ -75,8 +77,21 @@ void main() {
     final view2 = session.visits[1];
     // Scroll and 'Next Screen' tap are discarded
     expect(view2.actionEvents.length, 0);
+    expect(view2.longTaskEvents.length, greaterThanOrEqualTo(1));
+    for (var longTask in view2.longTaskEvents) {
+      expect(
+          longTask.duration,
+          greaterThanOrEqualTo(
+              const Duration(milliseconds: 200).inNanoseconds));
+    }
 
     final view3 = session.visits[2];
     expect(view3.name, 'ThirdView');
+
+    if (view3.longTaskEvents.isNotEmpty) {
+      for (var event in view3.longTaskEvents) {
+        expect(event.viewName, 'ThirdView');
+      }
+    }
   });
 }

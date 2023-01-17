@@ -22,6 +22,7 @@ class DdRumMethodChannel extends DdRumPlatform {
       actionEventMapper: configuration.rumActionEventMapper,
       resourceEventMapper: configuration.rumResourceEventMapper,
       errorEventMapper: configuration.rumErrorEventMapper,
+      longTaskEventMapper: configuration.rumLongTaskEventMapper,
       internalLogger: internalLogger,
     );
 
@@ -180,6 +181,8 @@ class MethodCallHandler {
   final RumActionEventMapper? actionEventMapper;
   final RumResourceEventMapper? resourceEventMapper;
   final RumErrorEventMapper? errorEventMapper;
+  final RumLongTaskEventMapper? longTaskEventMapper;
+
   final InternalLogger internalLogger;
 
   MethodCallHandler({
@@ -187,6 +190,7 @@ class MethodCallHandler {
     this.actionEventMapper,
     this.resourceEventMapper,
     this.errorEventMapper,
+    this.longTaskEventMapper,
     required this.internalLogger,
   });
 
@@ -200,6 +204,8 @@ class MethodCallHandler {
         return _mapResourceEvent(call);
       case 'mapErrorEvent':
         return _mapErrorEvent(call);
+      case 'mapLongTaskEvent':
+        return _mapLongTaskEvent(call);
     }
 
     throw MissingPluginException(
@@ -290,6 +296,17 @@ class MethodCallHandler {
       errorEventMapper,
       (e) => e.toJson(),
       RumErrorEvent.fromJson,
+    );
+  }
+
+  Map<Object, Object?>? _mapLongTaskEvent(MethodCall call) {
+    final eventJson = call.arguments['event'] as Map;
+    return _callMapper<RumLongTaskEvent>(
+      'mapLongTaskEvent',
+      eventJson,
+      longTaskEventMapper,
+      (e) => e.toJson(),
+      RumLongTaskEvent.fromJson,
     );
   }
 }

@@ -16,6 +16,7 @@ import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
 import com.datadog.android.rum.model.ActionEvent
 import com.datadog.android.rum.model.ErrorEvent
+import com.datadog.android.rum.model.LongTaskEvent
 import com.datadog.android.rum.model.ResourceEvent
 import com.datadog.android.rum.model.ViewEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -449,6 +450,26 @@ class DatadogRumPlugin(
 
                     event.error.stack = encodedError["stack"] as? String
                 }
+
+                (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                    event.view.name = it["name"] as? String
+                    event.view.referrer = it["referrer"] as? String
+                    event.view.url = it["url"] as String
+                }
+
+                event
+            }
+        }
+    }
+
+    internal fun mapLongTaskEvent(event: LongTaskEvent): LongTaskEvent? {
+        var jsonEvent = event.toJson().asMap()
+        jsonEvent = extractExtraUserInfo(jsonEvent)
+
+        return callEventMapper("mapLongTaskEvent", event, jsonEvent) { encodedResult, event ->
+            if (encodedResult == null) {
+                null
+            } else {
 
                 (encodedResult?.get("view") as? Map<String, Any?>)?.let {
                     event.view.name = it["name"] as? String

@@ -63,8 +63,8 @@ data class DatadogFlutterConfiguration(
         var attachActionEventMapper: Boolean = false,
         var attachResourceEventMapper: Boolean = false,
         var attachErrorEventMapper: Boolean = false,
-        var vitalsFrequency: VitalsUpdateFrequency? = null,
-
+        var attachLongTaskEventMapper: Boolean = false,
+        var vitalsFrequency: VitalsUpdateFrequency? = null
     ) {
         constructor(encoded: Map<String, Any?>) : this(
             (encoded["applicationId"] as? String) ?: "",
@@ -76,6 +76,7 @@ data class DatadogFlutterConfiguration(
             encoded["attachActionEventMapper"] as? Boolean ?: false,
             encoded["attachResourceEventMapper"] as? Boolean ?: false,
             encoded["attachErrorEventMapper"] as? Boolean ?: false,
+            encoded["attachLongTaskEventMapper"] as? Boolean ?: false,
         ) {
             (encoded["vitalsFrequency"] as? String)?.let {
                 vitalsFrequency = parseVitalsFrequency(it)

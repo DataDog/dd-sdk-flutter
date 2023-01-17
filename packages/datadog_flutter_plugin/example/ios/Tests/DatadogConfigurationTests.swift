@@ -201,7 +201,8 @@ class DatadogConfigurationTests: XCTestCase {
         "attachViewEventMapper": true,
         "attachActionEventMapper": true,
         "attachResourceEventMapper": true,
-        "attachErrorEventMapper": true
+        "attachErrorEventMapper": true,
+        "attachLongTaskMapper": true
       ],
       "additionalConfig": [:]
     ]
@@ -217,5 +218,6 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.rumConfiguration?.attachActionEventMapper, true)
     XCTAssertEqual(config.rumConfiguration?.attachResourceEventMapper, true)
     XCTAssertEqual(config.rumConfiguration?.attachErrorEventMapper, true)
+    XCTAssertEqual(config.rumConfiguration?.attachLongTaskMapper, true)
   }
 }

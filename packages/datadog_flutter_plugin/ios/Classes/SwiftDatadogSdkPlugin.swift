@@ -177,6 +177,9 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         if configuration.rumConfiguration?.attachErrorEventMapper == true {
             _ = ddConfiguration.setRUMErrorEventMapper(DatadogRumPlugin.instance.errorEventMapper)
         }
+        if configuration.rumConfiguration?.attachLongTaskMapper == true {
+            _ = ddConfiguration.setRUMLongTaskEventMapper(DatadogRumPlugin.instance.longTaskEventMapper)
+        }
 
         Datadog.initialize(appContext: Datadog.AppContext(),
                            trackingConsent: configuration.trackingConsent,

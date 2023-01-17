@@ -484,6 +484,37 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             return rumErrorEvent
         }
     }
+
+    func longTaskEventMapper(longTaskEvent: RUMLongTaskEvent) -> RUMLongTaskEvent? {
+        let encoder = DictionaryEncoder()
+        guard var encoded = try? encoder.encode(longTaskEvent) else {
+            Datadog._internal.telemetry.error(
+                id: "datadog_flutter:long_task_mapping_encoding",
+                message: "Encoding a RUMLongTaskEvent failed",
+                kind: "EncodingError",
+                stack: nil
+            )
+            return longTaskEvent
+        }
+
+        encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
+
+        return callEventMapper(mapperName: "mapLongTaskEvent", event: longTaskEvent, encodedEvent: encoded) { encodedResult in
+            guard let encodedResult = encodedResult else {
+                return nil
+            }
+
+            var longTaskEvent = longTaskEvent
+
+            if let encodedView = encodedResult["view"] as? [String: Any?] {
+                longTaskEvent.view.name = encodedView["name"] as? String
+                longTaskEvent.view.referrer = encodedView["referrer"] as? String
+                longTaskEvent.view.url = encodedView["url"] as! String
+            }
+
+            return longTaskEvent
+        }
+    }
 }
 
 public extension RUMResourceType {

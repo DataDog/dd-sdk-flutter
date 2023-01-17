@@ -49,6 +49,20 @@ RumErrorEvent? mapRumErrorEvent(RumErrorEvent event) {
   return event;
 }
 
+RumLongTaskEvent? mapRumLongTaskEvent(RumLongTaskEvent event) {
+  // Drop anything less than 200 ms
+  if (event.longTask.duration <
+      const Duration(milliseconds: 200).inNanoseconds) {
+    return null;
+  }
+
+  if (event.view.name == 'ThirdManualRumView') {
+    event.view.name = 'ThirdView';
+  }
+
+  return event;
+}
+
 Future<void> runScenario({
   required String clientToken,
   required String? applicationId,
@@ -94,6 +108,8 @@ Future<void> runScenario({
     configuration.rumConfiguration?.rumResourceEventMapper =
         mapRumResourceEvent;
     configuration.rumConfiguration?.rumErrorEventMapper = mapRumErrorEvent;
+    configuration.rumConfiguration?.rumLongTaskEventMapper =
+        mapRumLongTaskEvent;
   }
 
   await DatadogSdk.runApp(configuration, () async {

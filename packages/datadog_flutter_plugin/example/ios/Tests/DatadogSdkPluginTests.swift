@@ -101,7 +101,8 @@ class FlutterSdkTests: XCTestCase {
                 attachViewEventMapper: false,
                 attachActionEventMapper: false,
                 attachResourceEventMapper: false,
-                attachErrorEventMapper: false
+                attachErrorEventMapper: false,
+                attachLongTaskMapper: false
             )
         )
 

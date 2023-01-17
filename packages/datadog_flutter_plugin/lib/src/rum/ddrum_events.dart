@@ -639,3 +639,59 @@ class RumResourceSummary {
       _$RumResourceSummaryFromJson(json);
   Map<String, dynamic> toJson() => _$RumResourceSummaryToJson(this);
 }
+
+@commonJsonOptions
+class RumLongTaskEvent {
+  final RumActionId? action;
+  final RumApplication application;
+  final RumConnectivity? connectivity;
+  final int date;
+  final RumDevice? device;
+  final RumLongTask longTask;
+  final RumOperatingSystem? os;
+  final String? service;
+  final RumSession session;
+  final RumUser? usr;
+  final String? version;
+  final RumViewSummary view;
+
+  @JsonKey(fromJson: attributesFromJson)
+  final Map<String, Object?> context;
+
+  RumLongTaskEvent({
+    this.action,
+    required this.application,
+    this.connectivity,
+    required this.date,
+    this.device,
+    required this.longTask,
+    this.os,
+    this.service,
+    required this.session,
+    this.usr,
+    this.version,
+    required this.view,
+    required this.context,
+  });
+
+  factory RumLongTaskEvent.fromJson(Map<dynamic, dynamic> json) =>
+      _$RumLongTaskEventFromJson(json);
+  Map<String, dynamic> toJson() => _$RumLongTaskEventToJson(this);
+}
+
+@commonJsonOptions
+class RumLongTask {
+  final int duration;
+  final String? id;
+  final bool? isFrozenFrame;
+
+  RumLongTask({
+    required this.duration,
+    this.id,
+    this.isFrozenFrame,
+  });
+
+  factory RumLongTask.fromJson(Map<String, dynamic> json) =>
+      _$RumLongTaskFromJson(json);
+  Map<String, dynamic> toJson() => _$RumLongTaskToJson(this);
+}
