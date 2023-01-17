@@ -2,6 +2,9 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
+@Skip(
+    'Android no longer sends configuration telemetry 100% of the time. RUMM-2921')
+
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
@@ -18,7 +21,9 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   kManualIsWeb = kIsWeb;
 
-  testWidgets('test telemetry scenario', (WidgetTester tester) async {
+  testWidgets('test telemetry scenario', (
+    WidgetTester tester,
+  ) async {
     var serverRecorder = await openTestScenario(tester,
         scenarioName: autoInstrumentationScenarioName);
 
