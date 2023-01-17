@@ -98,7 +98,10 @@ class FlutterSdkTests: XCTestCase {
                 longTaskThreshold: 0.3,
                 customEndpoint: nil,
                 vitalsFrequency: nil,
-                attachViewEventMapper: false
+                attachViewEventMapper: false,
+                attachActionEventMapper: false,
+                attachResourceEventMapper: false,
+                attachErrorEventMapper: false
             )
         )
 
