@@ -345,9 +345,13 @@ class DatadogRumPlugin(
             }
 
             return completion(modifiedJson, event)
-        } catch (e: Exception) {
+        } catch(e: InterruptedException) {
+            Datadog._internal._telemetry.debug(
+                "Latch await was interrupted. Returning unmodified event.",
+            )
+        }  catch (e: Exception) {
             Datadog._internal._telemetry.error(
-                "Attempt to deserialize mapped log event failed, or latch await was interrupted." +
+                "Unknown exception attempting to deserialize mapped log event." +
                     " Returning unmodified event.",
                 e
             )
