@@ -25,6 +25,38 @@ extension FlutterError {
     }
 }
 
+internal class PerformanceTracker {
+    private(set) var minInMs = Double.infinity
+    private(set) var maxInMs = 0.0
+    private(set) var avgInMs = 0.0
+    private(set) var samples = 0.0
+
+    private var lastStart = 0.0
+
+    func start() {
+        lastStart = CACurrentMediaTime()
+    }
+
+    func finish() {
+        // Check for bad call to finish
+        if lastStart > 0 {
+            let endTime = CACurrentMediaTime()
+            let perfInMs = (endTime - lastStart) * 1000.0
+
+            minInMs = min(perfInMs, minInMs)
+            maxInMs = max(perfInMs, maxInMs)
+            avgInMs = (perfInMs + (samples * avgInMs)) / (samples + 1.0)
+            samples += 1.0
+        }
+
+        lastStart = 0.0
+    }
+
+    func finishUnsampled() {
+        lastStart = 0.0
+    }
+}
+
 // swiftlint:disable:next type_body_length
 public class DatadogRumPlugin: NSObject, FlutterPlugin {
     private static var methodChannel: FlutterMethodChannel?
@@ -37,6 +69,10 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
     private var rumInstance: DDRUMMonitor?
     public var isInitialized: Bool { return rumInstance != nil }
+
+    internal var trackMapperPerf = false
+    internal var mapperPerf = PerformanceTracker()
+    internal var mapperTimeouts = 0
 
     private override init() {
         super.init()
@@ -285,6 +321,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         if semaphore.wait(timeout: .now() + DispatchTimeInterval.milliseconds(250)) == .timedOut {
             Datadog._internal.telemetry.debug(id: "event_mapper_timeout", message: "\(mapperName) timed out.")
+            mapperTimeouts += 1
             return event
         }
 
@@ -313,6 +350,10 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
     }
 
     func viewEventMapper(rumViewEvent: RUMViewEvent) -> RUMViewEvent {
+        if trackMapperPerf {
+            mapperPerf.start()
+        }
+
         let encoder = DictionaryEncoder()
         guard var encoded = try? encoder.encode(rumViewEvent) else {
             Datadog._internal.telemetry.error(
@@ -321,6 +362,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 kind: "EncodingError",
                 stack: nil
             )
+            mapperPerf.finishUnsampled()
             return rumViewEvent
         }
 
@@ -352,10 +394,18 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             return rumViewEvent
         }
 
+        if trackMapperPerf {
+            mapperPerf.finish()
+        }
+
         return result
     }
 
     func actionEventMapper(rumActionEvent: RUMActionEvent) -> RUMActionEvent? {
+        if trackMapperPerf {
+            mapperPerf.start()
+        }
+
         let encoder = DictionaryEncoder()
         guard var encoded = try? encoder.encode(rumActionEvent) else {
             Datadog._internal.telemetry.error(
@@ -364,12 +414,13 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 kind: "EncodingError",
                 stack: nil
             )
+            mapperPerf.finishUnsampled()
             return rumActionEvent
         }
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        return callEventMapper(mapperName: "mapActionEvent", event: rumActionEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapActionEvent", event: rumActionEvent, encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return nil
             }
@@ -388,11 +439,22 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 rumActionEvent.view.referrer = encodedView["referrer"] as? String
                 rumActionEvent.view.url = encodedView["url"] as! String
             }
+
             return rumActionEvent
         }
+
+        if trackMapperPerf {
+            mapperPerf.finish()
+        }
+
+        return result
     }
 
     func resourceEventMapper(rumResourceEvent: RUMResourceEvent) -> RUMResourceEvent? {
+        if trackMapperPerf {
+            mapperPerf.start()
+        }
+
         let encoder = DictionaryEncoder()
         guard var encoded = try? encoder.encode(rumResourceEvent) else {
             Datadog._internal.telemetry.error(
@@ -401,12 +463,13 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 kind: "EncodingError",
                 stack: nil
             )
+            mapperPerf.finishUnsampled()
             return rumResourceEvent
         }
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        return callEventMapper(mapperName: "mapResourceEvent", event: rumResourceEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapResourceEvent", event: rumResourceEvent, encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return nil
             }
@@ -425,9 +488,19 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
             return rumResourceEvent
         }
+
+        if trackMapperPerf {
+            mapperPerf.finish()
+        }
+
+        return result
     }
 
     func errorEventMapper(rumErrorEvent: RUMErrorEvent) -> RUMErrorEvent? {
+        if trackMapperPerf {
+            mapperPerf.start()
+        }
+
         let encoder = DictionaryEncoder()
         guard var encoded = try? encoder.encode(rumErrorEvent) else {
             Datadog._internal.telemetry.error(
@@ -436,12 +509,13 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 kind: "EncodingError",
                 stack: nil
             )
+            mapperPerf.finishUnsampled()
             return rumErrorEvent
         }
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        return callEventMapper(mapperName: "mapErrorEvent", event: rumErrorEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapErrorEvent", event: rumErrorEvent, encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return nil
             }
@@ -484,9 +558,19 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
             return rumErrorEvent
         }
+
+        if trackMapperPerf {
+            mapperPerf.finish()
+        }
+
+        return result
     }
 
     func longTaskEventMapper(longTaskEvent: RUMLongTaskEvent) -> RUMLongTaskEvent? {
+        if trackMapperPerf {
+            mapperPerf.start()
+        }
+
         let encoder = DictionaryEncoder()
         guard var encoded = try? encoder.encode(longTaskEvent) else {
             Datadog._internal.telemetry.error(
@@ -495,12 +579,13 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 kind: "EncodingError",
                 stack: nil
             )
+            mapperPerf.finishUnsampled()
             return longTaskEvent
         }
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        return callEventMapper(mapperName: "mapLongTaskEvent", event: longTaskEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapLongTaskEvent", event: longTaskEvent, encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return nil
             }
@@ -515,6 +600,12 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
             return longTaskEvent
         }
+
+        if trackMapperPerf {
+            mapperPerf.finish()
+        }
+
+        return result
     }
 }
 

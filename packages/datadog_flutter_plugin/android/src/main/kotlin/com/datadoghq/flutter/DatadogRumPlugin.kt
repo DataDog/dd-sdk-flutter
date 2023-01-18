@@ -26,6 +26,7 @@ import io.flutter.plugin.common.MethodChannel.Result
 import java.lang.ClassCastException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlin.system.measureNanoTime
 
 @Suppress("StringLiteralDuplication")
 class DatadogRumPlugin(
@@ -56,6 +57,10 @@ class DatadogRumPlugin(
 
     var rum: RumMonitor? = rumInstance
         private set
+
+    var trackMapperPerf = false
+    val mapperPerf = PerformanceTracker()
+    var mapperTimeouts = 0
 
     fun attachToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter.rum")
@@ -345,145 +350,176 @@ class DatadogRumPlugin(
             }
 
             return completion(modifiedJson, event)
-        } catch(e: InterruptedException) {
+        } catch (e: InterruptedException) {
             Datadog._internal._telemetry.debug(
                 "Latch await was interrupted. Returning unmodified event.",
             )
-        }  catch (e: Exception) {
+        } catch (e: Exception) {
             Datadog._internal._telemetry.error(
                 "Unknown exception attempting to deserialize mapped log event." +
                     " Returning unmodified event.",
                 e
             )
-            return event
         }
+
+        return event
     }
 
     internal fun mapViewEvent(event: ViewEvent): ViewEvent {
-        var jsonEvent = event.toJson().asMap()
-        jsonEvent = extractExtraUserInfo(jsonEvent)
+        var result: ViewEvent
+        val perf = measureNanoTime {
+            var jsonEvent = event.toJson().asMap()
+            jsonEvent = extractExtraUserInfo(jsonEvent)
 
-        return callEventMapper("mapViewEvent", event, jsonEvent) { encodedResult, event ->
-            (encodedResult?.get("view") as? Map<String, Any?>)?.let {
-                event.view.name = it["name"] as? String
-                event.view.referrer = it["referrer"] as? String
-                event.view.url = it["url"] as String
-            }
+            result = callEventMapper("mapViewEvent", event, jsonEvent) { encodedResult, event ->
+                (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                    event.view.name = it["name"] as? String
+                    event.view.referrer = it["referrer"] as? String
+                    event.view.url = it["url"] as String
+                }
 
-            event
-        } ?: event
+                event
+            } ?: event
+        }
+        mapperPerf.addSample(perf)
+
+        return result
     }
 
     internal fun mapActionEvent(event: ActionEvent): ActionEvent? {
-        var jsonEvent = event.toJson().asMap()
-        jsonEvent = extractExtraUserInfo(jsonEvent)
+        val result: ActionEvent?
+        val perf = measureNanoTime {
+            var jsonEvent = event.toJson().asMap()
+            jsonEvent = extractExtraUserInfo(jsonEvent)
 
-        return callEventMapper("mapActionEvent", event, jsonEvent) { encodedResult, event ->
-            if (encodedResult == null) {
-                null
-            } else {
-                (encodedResult?.get("action") as? Map<String, Any?>)?.let {
-                    val encodedTarget = it["target"] as? Map<String, Any?>
-                    if (encodedTarget != null) {
-                        event.action.target?.name = encodedTarget["name"] as String
+            result = callEventMapper("mapActionEvent", event, jsonEvent) { encodedResult, event ->
+                if (encodedResult == null) {
+                    null
+                } else {
+                    (encodedResult?.get("action") as? Map<String, Any?>)?.let {
+                        val encodedTarget = it["target"] as? Map<String, Any?>
+                        if (encodedTarget != null) {
+                            event.action.target?.name = encodedTarget["name"] as String
+                        }
                     }
-                }
 
-                (encodedResult?.get("view") as? Map<String, Any?>)?.let {
-                    event.view.name = it["name"] as? String
-                    event.view.referrer = it["referrer"] as? String
-                    event.view.url = it["url"] as String
-                }
+                    (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                        event.view.name = it["name"] as? String
+                        event.view.referrer = it["referrer"] as? String
+                        event.view.url = it["url"] as String
+                    }
 
-                event
+                    event
+                }
             }
         }
+        mapperPerf.addSample(perf)
+
+        return result
     }
 
     internal fun mapResourceEvent(event: ResourceEvent): ResourceEvent? {
-        var jsonEvent = event.toJson().asMap()
-        jsonEvent = extractExtraUserInfo(jsonEvent)
+        var result: ResourceEvent?
+        val perf = measureNanoTime {
+            var jsonEvent = event.toJson().asMap()
+            jsonEvent = extractExtraUserInfo(jsonEvent)
 
-        return callEventMapper("mapResourceEvent", event, jsonEvent) { encodedResult, event ->
-            if (encodedResult == null) {
-                null
-            } else {
-                (encodedResult?.get("resource") as? Map<String, Any?>)?.let {
-                    event.resource.url = it["url"] as String
+            result = callEventMapper("mapResourceEvent", event, jsonEvent) { encodedResult, event ->
+                if (encodedResult == null) {
+                    null
+                } else {
+                    (encodedResult?.get("resource") as? Map<String, Any?>)?.let {
+                        event.resource.url = it["url"] as String
+                    }
+
+                    (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                        event.view.name = it["name"] as? String
+                        event.view.referrer = it["referrer"] as? String
+                        event.view.url = it["url"] as String
+                    }
+
+                    event
                 }
-
-                (encodedResult?.get("view") as? Map<String, Any?>)?.let {
-                    event.view.name = it["name"] as? String
-                    event.view.referrer = it["referrer"] as? String
-                    event.view.url = it["url"] as String
-                }
-
-                event
             }
         }
+        mapperPerf.addSample(perf)
+
+        return result
     }
 
     @Suppress("ComplexMethod")
     internal fun mapErrorEvent(event: ErrorEvent): ErrorEvent? {
-        var jsonEvent = event.toJson().asMap()
-        jsonEvent = extractExtraUserInfo(jsonEvent)
+        var result: ErrorEvent?
+        val perf = measureNanoTime {
+            var jsonEvent = event.toJson().asMap()
+            jsonEvent = extractExtraUserInfo(jsonEvent)
 
-        return callEventMapper("mapErrorEvent", event, jsonEvent) { encodedResult, event ->
-            if (encodedResult == null) {
-                null
-            } else {
-                (encodedResult?.get("error") as? Map<String, Any?>)?.let { encodedError ->
-                    val encodedCauses = encodedError["causes"] as? List<Map<String, Any?>>
-                    if (encodedCauses != null) {
-                        event.error.causes?.let { causes ->
-                            if (causes.count() == encodedCauses.count()) {
-                                causes.forEachIndexed { i, cause ->
-                                    cause.message = encodedCauses[i]["message"] as? String ?: ""
-                                    cause.stack = encodedCauses[i]["stack"] as? String
+            result = callEventMapper("mapErrorEvent", event, jsonEvent) { encodedResult, event ->
+                if (encodedResult == null) {
+                    null
+                } else {
+                    (encodedResult?.get("error") as? Map<String, Any?>)?.let { encodedError ->
+                        val encodedCauses = encodedError["causes"] as? List<Map<String, Any?>>
+                        if (encodedCauses != null) {
+                            event.error.causes?.let { causes ->
+                                if (causes.count() == encodedCauses.count()) {
+                                    causes.forEachIndexed { i, cause ->
+                                        cause.message = encodedCauses[i]["message"] as? String ?: ""
+                                        cause.stack = encodedCauses[i]["stack"] as? String
+                                    }
                                 }
                             }
+                        } else {
+                            event.error.causes = null
                         }
-                    } else {
-                        event.error.causes = null
+
+                        val encodedResource = encodedError["resource"] as? Map<String, Any?>
+                        if (encodedResource != null) {
+                            event.error.resource?.url = encodedResource["url"] as? String ?: ""
+                        }
+
+                        event.error.stack = encodedError["stack"] as? String
                     }
 
-                    val encodedResource = encodedError["resource"] as? Map<String, Any?>
-                    if (encodedResource != null) {
-                        event.error.resource?.url = encodedResource["url"] as? String ?: ""
+                    (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                        event.view.name = it["name"] as? String
+                        event.view.referrer = it["referrer"] as? String
+                        event.view.url = it["url"] as String
                     }
 
-                    event.error.stack = encodedError["stack"] as? String
+                    event
                 }
-
-                (encodedResult?.get("view") as? Map<String, Any?>)?.let {
-                    event.view.name = it["name"] as? String
-                    event.view.referrer = it["referrer"] as? String
-                    event.view.url = it["url"] as String
-                }
-
-                event
             }
         }
+        mapperPerf.addSample(perf)
+
+        return result
     }
 
     internal fun mapLongTaskEvent(event: LongTaskEvent): LongTaskEvent? {
-        var jsonEvent = event.toJson().asMap()
-        jsonEvent = extractExtraUserInfo(jsonEvent)
+        var result: LongTaskEvent?
+        val perf = measureNanoTime {
+            var jsonEvent = event.toJson().asMap()
+            jsonEvent = extractExtraUserInfo(jsonEvent)
 
-        return callEventMapper("mapLongTaskEvent", event, jsonEvent) { encodedResult, event ->
-            if (encodedResult == null) {
-                null
-            } else {
+            result = callEventMapper("mapLongTaskEvent", event, jsonEvent) { encodedResult, event ->
+                if (encodedResult == null) {
+                    null
+                } else {
 
-                (encodedResult?.get("view") as? Map<String, Any?>)?.let {
-                    event.view.name = it["name"] as? String
-                    event.view.referrer = it["referrer"] as? String
-                    event.view.url = it["url"] as String
+                    (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                        event.view.name = it["name"] as? String
+                        event.view.referrer = it["referrer"] as? String
+                        event.view.url = it["url"] as String
+                    }
+
+                    event
                 }
-
-                event
             }
         }
+        mapperPerf.addSample(perf)
+
+        return result
     }
 
     private fun extractExtraUserInfo(encodedEvent: Map<String, Any?>): Map<String, Any?> {

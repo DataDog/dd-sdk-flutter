@@ -102,6 +102,10 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
       'value': value,
     });
   }
+
+  Future<Object?> getInternalVar(String name) {
+    return methodChannel.invokeMethod('getInternalVar', {'name': name});
+  }
 }
 
 @visibleForTesting

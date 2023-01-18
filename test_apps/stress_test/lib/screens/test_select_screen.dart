@@ -2,11 +2,20 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2022-Present Datadog, Inc.
 
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 
-class TestSelectScreen extends StatelessWidget {
+import 'large_payload_test.dart';
+
+class TestSelectScreen extends StatefulWidget {
   const TestSelectScreen({super.key});
 
+  @override
+  State<TestSelectScreen> createState() => _TestSelectScreenState();
+}
+
+class _TestSelectScreenState extends State<TestSelectScreen>
+    with RouteAware, DatadogRouteAwareMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -15,14 +24,20 @@ class TestSelectScreen extends StatelessWidget {
         children: [
           ListTile(
             title: const Text('Large Payload Test'),
-            onTap: () {},
+            trailing: const Icon(Icons.arrow_right_sharp),
+            onTap: () {
+              Navigator.push<void>(context,
+                  MaterialPageRoute(builder: (_) => const LargePayloadTest()));
+            },
           ),
           ListTile(
             title: const Text('High Frequency Test'),
+            trailing: const Icon(Icons.arrow_right_sharp),
             onTap: () {},
           ),
           ListTile(
             title: const Text('Large Payload + High Frequency'),
+            trailing: const Icon(Icons.arrow_right_sharp),
             onTap: () {},
           )
         ],

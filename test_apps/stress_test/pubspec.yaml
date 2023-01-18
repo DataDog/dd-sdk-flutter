@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
+  flutter_dotenv: ^5.0.2
   datadog_flutter_plugin:
     path: ../../packages/datadog_flutter_plugin
 
@@ -20,3 +21,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - .env
