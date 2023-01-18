@@ -5,14 +5,9 @@ import 'package:path/path.dart' as path;
 
 import 'command.dart';
 import 'helpers.dart';
+import 'package_list.dart';
 
 class UpdateGradleFilesCommand extends Command {
-  final gradleFileLocations = [
-    'packages/datadog_flutter_plugin/android/build.gradle',
-    'packages/datadog_flutter_plugin/example/android/build.gradle',
-    'examples/native-hybrid-app/android/app/build.gradle',
-  ];
-
   static const versionPrefix = 'ext.datadog_version';
   final versionRegex = RegExp('$versionPrefix = "(.*)"');
 
@@ -26,7 +21,7 @@ class UpdateGradleFilesCommand extends Command {
   }
 
   Future<bool> _updateGradleFiles(CommandArguments args, Logger logger) async {
-    for (var filePath in gradleFileLocations) {
+    for (var filePath in gradleList) {
       final file = File(path.join(args.gitDir.path, filePath));
       if (!file.existsSync()) {
         logger.shout('❌ Could not find file $filePath');
