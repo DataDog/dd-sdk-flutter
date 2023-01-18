@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 
 import 'command.dart';
 import 'helpers.dart';
+import 'package_list.dart';
 
 final overridesStartPattern = RegExp(r'\s+# Datadog Pod Overrides');
 final overridesEndPattern = RegExp(r'\s+# End Datadog Pod Overrides');
@@ -12,13 +13,6 @@ final specDependencyPattern =
     RegExp(r"\s+s\.dependency\s+'(?<dependency>Datadog.+)', '.+");
 
 class RemovePodOverridesCommand extends Command {
-  final podfileLocations = [
-    'packages/datadog_flutter_plugin/e2e_test_app/ios/Podfile',
-    'packages/datadog_flutter_plugin/example/ios/Podfile',
-    'packages/datadog_flutter_plugin/integration_test_app/ios/Podfile',
-    'packages/datadog_tracking_http_client/example/ios/Podfile',
-  ];
-
   final podspecLocation =
       'packages/datadog_flutter_plugin/ios/datadog_flutter_plugin.podspec';
 
@@ -38,7 +32,7 @@ class RemovePodOverridesCommand extends Command {
   Future<bool> _removePodfileOverrides(
       CommandArguments args, Logger logger) async {
     logger.info('ℹ️ Removing overrides from Podfiles.');
-    for (var filePath in podfileLocations) {
+    for (var filePath in podfileList) {
       final file = File(path.join(args.gitDir.path, filePath));
       if (!file.existsSync()) {
         logger.shout('❌ Could not find file $filePath');
