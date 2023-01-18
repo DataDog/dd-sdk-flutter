@@ -284,6 +284,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         }
 
         if semaphore.wait(timeout: .now() + DispatchTimeInterval.milliseconds(250)) == .timedOut {
+            Datadog._internal.telemetry.debug(id: "event_mapper_timeout", message: "\(mapperName) timed out.")
             return event
         }
 
