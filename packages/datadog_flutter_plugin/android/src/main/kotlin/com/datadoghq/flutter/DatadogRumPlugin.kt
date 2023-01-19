@@ -356,13 +356,13 @@ class DatadogRumPlugin(
                 e
             )
         }
-        
+
         return event
     }
 
     internal fun mapViewEvent(event: ViewEvent): ViewEvent {
         var jsonEvent = event.toJson().asMap()
-        jsonEvent = extractExtraUserInfo(jsonEvent)
+        jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
         return callEventMapper("mapViewEvent", event, jsonEvent) { encodedResult, event ->
             (encodedResult?.get("view") as? Map<String, Any?>)?.let {
@@ -377,7 +377,7 @@ class DatadogRumPlugin(
 
     internal fun mapActionEvent(event: ActionEvent): ActionEvent? {
         var jsonEvent = event.toJson().asMap()
-        jsonEvent = extractExtraUserInfo(jsonEvent)
+        jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
         return callEventMapper("mapActionEvent", event, jsonEvent) { encodedResult, event ->
             if (encodedResult == null) {
@@ -403,7 +403,7 @@ class DatadogRumPlugin(
 
     internal fun mapResourceEvent(event: ResourceEvent): ResourceEvent? {
         var jsonEvent = event.toJson().asMap()
-        jsonEvent = extractExtraUserInfo(jsonEvent)
+        jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
         return callEventMapper("mapResourceEvent", event, jsonEvent) { encodedResult, event ->
             if (encodedResult == null) {
@@ -427,7 +427,7 @@ class DatadogRumPlugin(
     @Suppress("ComplexMethod")
     internal fun mapErrorEvent(event: ErrorEvent): ErrorEvent? {
         var jsonEvent = event.toJson().asMap()
-        jsonEvent = extractExtraUserInfo(jsonEvent)
+        jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
         return callEventMapper("mapErrorEvent", event, jsonEvent) { encodedResult, event ->
             if (encodedResult == null) {
@@ -469,7 +469,7 @@ class DatadogRumPlugin(
 
     internal fun mapLongTaskEvent(event: LongTaskEvent): LongTaskEvent? {
         var jsonEvent = event.toJson().asMap()
-        jsonEvent = extractExtraUserInfo(jsonEvent)
+        jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
         return callEventMapper("mapLongTaskEvent", event, jsonEvent) { encodedResult, event ->
             if (encodedResult == null) {
@@ -487,17 +487,19 @@ class DatadogRumPlugin(
         }
     }
 
-    private fun extractExtraUserInfo(encodedEvent: Map<String, Any?>): Map<String, Any?> {
-        val reservedKeys = listOf("email", "id", "name")
+    private fun normalizeExtraUserInfo(encodedEvent: Map<String, Any?>): Map<String, Any?> {
+        val reservedKeys = setOf("email", "id", "name")
         // Pull out user information
         val mutableEvent = encodedEvent.toMutableMap()
-        (mutableEvent["usr"] as? MutableMap<String, Any?>)?.let { usr ->
+        (mutableEvent["usr"] as? Map<String, Any?>)?.let { usr ->
+            val mutableUsr = usr.toMutableMap()
             var extraUserInfo = mutableMapOf<String, Any?>()
             usr.filter { !reservedKeys.contains(it.key) }.forEach {
                 extraUserInfo[it.key] = it.value
-                usr.remove(it.key)
+                mutableUsr.remove(it.key)
             }
-            usr["usr_info"] = extraUserInfo
+            mutableUsr["usr_info"] = extraUserInfo
+            mutableEvent["usr"] = mutableUsr
         }
 
         return mutableEvent

@@ -280,7 +280,7 @@ class MethodCallHandler {
   Map<Object, Object?>? _mapResourceEvent(MethodCall call) {
     final eventJson = call.arguments['event'] as Map;
     return _callMapper<RumResourceEvent>(
-      'mapActionEvent',
+      'mapResourceEvent',
       eventJson,
       resourceEventMapper,
       (e) => e.toJson(),
