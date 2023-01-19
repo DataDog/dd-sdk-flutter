@@ -18,6 +18,7 @@ import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.core.configuration.VitalsUpdateFrequency
 import com.datadog.android.privacy.TrackingConsent
+import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.FloatForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
@@ -145,6 +146,7 @@ class DatadogConfigurationTest {
         assertThat(config.clientToken).isEqualTo(clientToken)
         assertThat(config.env).isEqualTo(environment)
         assertThat(config.trackingConsent).isEqualTo(TrackingConsent.GRANTED)
+        assertThat(config.attachLogMapper).isEqualTo(false)
 
         assertThat(config.rumConfiguration).isNull()
     }
@@ -172,6 +174,7 @@ class DatadogConfigurationTest {
             "telemetrySampleRate" to telemetrySampleRate,
             "customLogsEndpoint" to "customEndpoint",
             "firstPartyHosts" to listOf(firstPartyHost),
+            "attachLogMapper" to true,
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>(
                 additionalKey to additionalValue
@@ -190,6 +193,7 @@ class DatadogConfigurationTest {
         assertThat(config.additionalConfig).isEqualTo(mapOf(
             additionalKey to additionalValue
         ))
+        assertThat(config.attachLogMapper).isEqualTo(true)
         assertThat(config.firstPartyHosts).isEqualTo(listOf(firstPartyHost))
     }
 
@@ -230,12 +234,19 @@ class DatadogConfigurationTest {
 
     @Test
     fun `M decode nestedConfiguration W fromEncoded {rumConfiguration}`(
+        forge: Forge,
         @StringForgery clientToken: String,
         @StringForgery environment: String,
         @StringForgery applicationId: String,
         @StringForgery firstPartyHost: String
     ) {
         // GIVEN
+        val attachViewEventMapper = forge.aBool()
+        val attachActionEventMapper = forge.aBool()
+        val attachResourceEventMapper = forge.aBool()
+        val attachErrorEventMapper = forge.aBool()
+        val attachLongTaskEventMapper = forge.aBool()
+
         val encoded = mapOf(
             "clientToken" to clientToken,
             "env" to environment,
@@ -252,6 +263,11 @@ class DatadogConfigurationTest {
                 "detectLongTasks" to false,
                 "longTaskThreshold" to 0.3f,
                 "customEndpoint" to "customEndpoint",
+                "attachViewEventMapper" to attachViewEventMapper,
+                "attachActionEventMapper" to attachActionEventMapper,
+                "attachResourceEventMapper" to attachResourceEventMapper,
+                "attachErrorEventMapper" to attachErrorEventMapper,
+                "attachLongTaskEventMapper" to attachLongTaskEventMapper,
                 "vitalsFrequency" to "VitalsFrequency.frequent"
             ),
             "additionalConfig" to mapOf<String, Any?>()
@@ -267,6 +283,11 @@ class DatadogConfigurationTest {
         assertThat(config.rumConfiguration?.detectLongTasks).isEqualTo(false)
         assertThat(config.rumConfiguration?.longTaskThreshold).isEqualTo(0.3f)
         assertThat(config.rumConfiguration?.customEndpoint).isEqualTo("customEndpoint")
+        assertThat(config.rumConfiguration?.attachViewEventMapper).isEqualTo(attachViewEventMapper)
+        assertThat(config.rumConfiguration?.attachActionEventMapper).isEqualTo(attachActionEventMapper)
+        assertThat(config.rumConfiguration?.attachResourceEventMapper).isEqualTo(attachResourceEventMapper)
+        assertThat(config.rumConfiguration?.attachErrorEventMapper).isEqualTo(attachErrorEventMapper)
+        assertThat(config.rumConfiguration?.attachLongTaskEventMapper).isEqualTo(attachLongTaskEventMapper)
         assertThat(config.rumConfiguration?.vitalsFrequency).isEqualTo(VitalsUpdateFrequency.FREQUENT)
     }
 

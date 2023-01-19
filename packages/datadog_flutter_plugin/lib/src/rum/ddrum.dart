@@ -112,6 +112,10 @@ class DdRum {
     }
   }
 
+  Future<void> initialize() async {
+    await _platform.initialize(configuration, logger);
+  }
+
   /// The sampling rate for tracing resources.
   ///
   /// See [RumConfiguration.tracingSamplingRate]

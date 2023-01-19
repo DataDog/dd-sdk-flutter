@@ -20,21 +20,23 @@ Future<void> runScenario({
   TestingConfiguration? testingConfiguration,
 }) async {
   var scenario = testingConfiguration?.scenario;
-  if (scenario == auto_config_runners.autoInstrumentationScenarioName) {
-    await auto_config_runners.runScenario(
+  switch (scenario) {
+    case auto_config_runners.autoInstrumentationScenarioName:
+      await auto_config_runners.runScenario(
+          clientToken: clientToken,
+          applicationId: applicationId,
+          customEndpoint: customEndpoint,
+          testingConfiguration: testingConfiguration);
+      return;
+    case config_runners.mappedInstrumentationScenarioName:
+    case config_runners.mappedLoggingScenarioRunner:
+      await config_runners.runScenario(
         clientToken: clientToken,
         applicationId: applicationId,
         customEndpoint: customEndpoint,
-        testingConfiguration: testingConfiguration);
-    return;
-  } else if (scenario == config_runners.mappedLoggingScenarioRunner) {
-    await config_runners.runScenario(
-      clientToken: clientToken,
-      applicationId: applicationId,
-      customEndpoint: customEndpoint,
-      testingConfiguration: testingConfiguration,
-    );
-    return;
+        testingConfiguration: testingConfiguration,
+      );
+      return;
   }
 
   // Default runner

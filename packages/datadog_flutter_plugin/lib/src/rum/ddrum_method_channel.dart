@@ -5,13 +5,29 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'ddrum.dart';
+import '../../datadog_flutter_plugin.dart';
+import '../internal_logger.dart';
 import 'ddrum_platform_interface.dart';
 
 class DdRumMethodChannel extends DdRumPlatform {
   @visibleForTesting
   final MethodChannel methodChannel =
       const MethodChannel('datadog_sdk_flutter.rum');
+
+  @override
+  Future<void> initialize(
+      RumConfiguration configuration, InternalLogger internalLogger) async {
+    final callbackHandler = MethodCallHandler(
+      viewEventMapper: configuration.rumViewEventMapper,
+      actionEventMapper: configuration.rumActionEventMapper,
+      resourceEventMapper: configuration.rumResourceEventMapper,
+      errorEventMapper: configuration.rumErrorEventMapper,
+      longTaskEventMapper: configuration.rumLongTaskEventMapper,
+      internalLogger: internalLogger,
+    );
+
+    methodChannel.setMethodCallHandler(callbackHandler.handleMethodCall);
+  }
 
   @override
   Future<void> addTiming(String name) {
@@ -155,5 +171,142 @@ class DdRumMethodChannel extends DdRumPlatform {
       'buildTimes': buildTimes,
       'rasterTimes': rasterTimes,
     });
+  }
+}
+
+class MethodCallHandler {
+  static const mapperError = {'_dd.mapper_error': 'mapper error'};
+
+  final RumViewEventMapper? viewEventMapper;
+  final RumActionEventMapper? actionEventMapper;
+  final RumResourceEventMapper? resourceEventMapper;
+  final RumErrorEventMapper? errorEventMapper;
+  final RumLongTaskEventMapper? longTaskEventMapper;
+
+  final InternalLogger internalLogger;
+
+  MethodCallHandler({
+    this.viewEventMapper,
+    this.actionEventMapper,
+    this.resourceEventMapper,
+    this.errorEventMapper,
+    this.longTaskEventMapper,
+    required this.internalLogger,
+  });
+
+  Future<dynamic> handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'mapViewEvent':
+        return _mapViewEvent(call);
+      case 'mapActionEvent':
+        return _mapActionEvent(call);
+      case 'mapResourceEvent':
+        return _mapResourceEvent(call);
+      case 'mapErrorEvent':
+        return _mapErrorEvent(call);
+      case 'mapLongTaskEvent':
+        return _mapLongTaskEvent(call);
+    }
+
+    throw MissingPluginException(
+        'Could not find a method to call for ${call.method}');
+  }
+
+  Map<String, Object?>? _callMapper<T>(
+    String mapperName,
+    Map encoded,
+    T? Function(T)? mapper,
+    Map<String, dynamic> Function(T) encode,
+    T Function(Map) decode,
+  ) {
+    try {
+      if (mapper == null) {
+        final st = StackTrace.current;
+        internalLogger.sendToDatadog(
+            '$mapperName called but no $mapperName is set,',
+            st,
+            'InternalDatadogError');
+        return mapperError;
+      }
+
+      final event = decode(encoded);
+
+      T? mappedEvent = event;
+      try {
+        mappedEvent = mapper(event);
+        if (mappedEvent == null) {
+          return null;
+        }
+      } catch (e) {
+        internalLogger.error(
+            '$mapperName threw an exception: ${e.toString()}.\nReturning unmapped event.');
+        return mapperError;
+      }
+
+      final mappedJson = encode(mappedEvent);
+      return mappedJson;
+    } catch (e, st) {
+      internalLogger.sendToDatadog('Error mapping view event: ${e.toString()}',
+          st, e.runtimeType.toString());
+    }
+
+    // Return a special map which will indicate to native code something went wrong, and
+    // we should send the unmodified event.
+    return mapperError;
+  }
+
+  Map<Object, Object?>? _mapViewEvent(MethodCall call) {
+    final viewEventJson = call.arguments['event'] as Map;
+    return _callMapper<RumViewEvent>(
+      'mapViewEvent',
+      viewEventJson,
+      viewEventMapper,
+      (e) => e.toJson(),
+      RumViewEvent.fromJson,
+    );
+  }
+
+  Map<Object, Object?>? _mapActionEvent(MethodCall call) {
+    final eventJson = call.arguments['event'] as Map;
+    return _callMapper<RumActionEvent>(
+      'mapActionEvent',
+      eventJson,
+      actionEventMapper,
+      (e) => e.toJson(),
+      RumActionEvent.fromJson,
+    );
+  }
+
+  Map<Object, Object?>? _mapResourceEvent(MethodCall call) {
+    final eventJson = call.arguments['event'] as Map;
+    return _callMapper<RumResourceEvent>(
+      'mapResourceEvent',
+      eventJson,
+      resourceEventMapper,
+      (e) => e.toJson(),
+      RumResourceEvent.fromJson,
+    );
+  }
+
+  Map<Object, Object?>? _mapErrorEvent(MethodCall call) {
+    final eventJson = call.arguments['event'] as Map;
+    return _callMapper<RumErrorEvent>(
+      'mapErrorEvent',
+      eventJson,
+      errorEventMapper,
+      (e) => e.toJson(),
+      RumErrorEvent.fromJson,
+    );
+  }
+
+  Map<Object, Object?>? _mapLongTaskEvent(MethodCall call) {
+    final eventJson = call.arguments['event'] as Map;
+    return _callMapper<RumLongTaskEvent>(
+      'mapLongTaskEvent',
+      eventJson,
+      longTaskEventMapper,
+      (e) => e.toJson(),
+      RumLongTaskEvent.fromJson,
+    );
   }
 }

@@ -144,7 +144,6 @@ class MethodCallHandler {
     try {
       final logEventJson = call.arguments['event'] as Map;
       if (logEventMapper == null) {
-        // TELEMETRY: Call to the log event mapper when one isn't set (this shouldn't happen)
         final st = StackTrace.current;
         internalLogger.sendToDatadog(
             'Log event mapper called but no logEventMapper is set,',
@@ -161,9 +160,9 @@ class MethodCallHandler {
         }
       }
 
-      var mappedLogEvent = logEvent;
+      LogEvent? mappedLogEvent = logEvent;
       try {
-        final mappedLogEvent = logEventMapper?.call(logEvent);
+        mappedLogEvent = logEventMapper?.call(logEvent);
         if (mappedLogEvent == null) {
           return null;
         }
@@ -173,7 +172,7 @@ class MethodCallHandler {
             'logEventMapper threw an exception: ${e.toString()}.\nReturning unmapped event.');
       }
 
-      final mappedJson = mappedLogEvent.toJson();
+      final mappedJson = mappedLogEvent!.toJson();
       for (final item in mappedLogEvent.attributes.entries) {
         // Put extra attributes back
         if (!reservedAttributes.contains(item.key)) {

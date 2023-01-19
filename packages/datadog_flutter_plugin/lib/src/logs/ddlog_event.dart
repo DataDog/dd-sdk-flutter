@@ -4,19 +4,9 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
+import '../json_helpers.dart';
+
 part 'ddlog_event.g.dart';
-
-const commonJsonOptions = JsonSerializable(
-  anyMap: true,
-  includeIfNull: false,
-  explicitToJson: true,
-);
-
-Map<String, Object?> _attributesFromJson(Map? attributes) {
-  return attributes?.map(
-          (Object? key, Object? value) => MapEntry(key as String, value)) ??
-      {};
-}
 
 enum LogStatus {
   debug,
@@ -58,7 +48,10 @@ class LogEventUserInfo {
   final String? name;
   final String? email;
 
-  @JsonKey(fromJson: _attributesFromJson)
+  @JsonKey(
+    name: 'extraInfo',
+    fromJson: attributesFromJson,
+  )
   final Map<String, Object?> extraInfo;
 
   LogEventUserInfo({

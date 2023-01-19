@@ -62,15 +62,18 @@ class DatadogAutoIntegrationTestApp extends StatelessWidget {
         DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
     return DatadogNavigationObserverProvider(
       navObserver: navObserver,
-      child: MaterialApp(
-        title: 'Flutter Demo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
+      child: RumUserActionDetector(
+        rum: DatadogSdk.instance.rum,
+        child: MaterialApp(
+          title: 'Flutter Demo',
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+          ),
+          navigatorObservers: [
+            navObserver,
+          ],
+          home: const RumAutoInstrumentationScenario(),
         ),
-        navigatorObservers: [
-          navObserver,
-        ],
-        home: const RumAutoInstrumentationScenario(),
       ),
     );
   }

@@ -71,6 +71,11 @@ void main() {
       // Web doesn't support performance metrics
       expect(view1.viewEvents.last.flutterBuildTime, isNotNull);
       expect(view1.viewEvents.last.flutterRasterTime, isNotNull);
+
+      // Web doesn't support action tracking from Flutter
+      var actionEvent = view1.actionEvents.last;
+      expect(actionEvent.actionType, 'tap');
+      expect(actionEvent.actionName, 'InkWell(Item 0)');
     }
 
     final view2 = session.visits[1];
@@ -82,6 +87,11 @@ void main() {
       // Web doesn't support performance metrics
       expect(view2.viewEvents.last.flutterBuildTime, isNotNull);
       expect(view2.viewEvents.last.flutterRasterTime, isNotNull);
+
+      // Web doesn't support action tracking from Flutter
+      var actionEvent = view2.actionEvents[0];
+      expect(actionEvent.actionType, 'tap');
+      expect(actionEvent.actionName, 'Button(Next Page)');
     }
 
     // Check last view name

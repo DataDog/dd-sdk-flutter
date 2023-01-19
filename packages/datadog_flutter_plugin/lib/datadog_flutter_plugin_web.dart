@@ -62,7 +62,8 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
     }
     if (configuration.rumConfiguration != null) {
       final rumWeb = DdRumPlatform.instance as DdRumWeb;
-      rumWeb.initRum(configuration);
+      rumWeb.webInitialize(configuration);
+      await rumWeb.initialize(configuration.rumConfiguration!, internalLogger);
     }
   }
 

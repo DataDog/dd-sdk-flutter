@@ -16,6 +16,43 @@ import '../datadog_internal.dart';
 /// [LogEvent], or return null to drop the log entirely.
 typedef LogEventMapper = LogEvent? Function(LogEvent event);
 
+/// A function that allows you to modify specific [RumViewEvent]s before they
+/// are sent to Datadog.
+///
+/// The [RumViewEventMapper] can modify any mutable (non-final) properties in
+/// the [RumViewEvent]
+typedef RumViewEventMapper = RumViewEvent Function(RumViewEvent event);
+
+/// A function that allows you to modify or drop specific [RumActionEvent]s before
+/// they are sent to Datadog.
+///
+/// The [RumActionEventMapper] can modify any mutable (non-final) properties in the
+/// [RumActionEvent]
+typedef RumActionEventMapper = RumActionEvent? Function(RumActionEvent event);
+
+/// A function that allows you to modify or drop specific [RumResourceEvent]s before
+/// they are sent to Datadog.
+///
+/// The [RumResourceEventMapper] can modify any mutable (non-final) properties in the
+/// [RumResourceEvent]
+typedef RumResourceEventMapper = RumResourceEvent? Function(
+    RumResourceEvent event);
+
+/// A function that allows you to modify or drop specific [RumErrorEvent]s before
+/// they are sent to Datadog.
+///
+/// The [RumErrorEventMapper] can modify any mutable (non-final) properties in the
+/// [RumErrorEvent]
+typedef RumErrorEventMapper = RumErrorEvent? Function(RumErrorEvent event);
+
+/// A function that allows you to modify or drop specific [RumLongTaskEvent]s before
+/// they are sent to Datadog.
+///
+/// The [RumLongTaskEvent] can modify any mutable (non-final) properties in the
+/// [RumLongTaskEvent]
+typedef RumLongTaskEventMapper = RumLongTaskEvent? Function(
+    RumLongTaskEvent event);
+
 /// Defines the Datadog SDK policy when batching data together before uploading
 /// it to Datadog servers. Smaller batches mean smaller but more network
 /// requests, whereas larger batches mean fewer but larger network requests.
@@ -252,6 +289,26 @@ class RumConfiguration {
   /// Use a custom endpoint for sending RUM data.
   String? customEndpoint;
 
+  /// A function that allows you to modify or drop specific [RumViewEvent]s
+  /// before they are sent to Datadog.
+  RumViewEventMapper? rumViewEventMapper;
+
+  /// A function that allows you to modify or drop specific [RumActionEvent]s
+  /// before they are sent to Datadog.
+  RumActionEventMapper? rumActionEventMapper;
+
+  /// A function that allows you to modify or drop specific [RumResourceEvent]s
+  /// before they are sent to Datadog.
+  RumResourceEventMapper? rumResourceEventMapper;
+
+  /// A function that allows you to modify or drop specific [RumResourceEvent]s
+  /// before they are sent to Datadog.
+  RumErrorEventMapper? rumErrorEventMapper;
+
+  /// A function that allows you to modify or drop specific [RumLongTaskEvent]s
+  /// before they are sent to Datadog.
+  RumLongTaskEventMapper? rumLongTaskEventMapper;
+
   RumConfiguration({
     required this.applicationId,
     double sessionSamplingRate = 100.0,
@@ -261,6 +318,11 @@ class RumConfiguration {
     this.vitalUpdateFrequency = VitalsFrequency.average,
     this.reportFlutterPerformance = false,
     this.customEndpoint,
+    this.rumViewEventMapper,
+    this.rumActionEventMapper,
+    this.rumResourceEventMapper,
+    this.rumErrorEventMapper,
+    this.rumLongTaskEventMapper,
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),
         longTaskThreshold = max(0.02, longTaskThreshold);
@@ -288,6 +350,11 @@ class RumConfiguration {
       'vitalsFrequency': vitalUpdateFrequency.toString(),
       'reportFlutterPerformance': reportFlutterPerformance,
       'customEndpoint': customEndpoint,
+      'attachViewEventMapper': rumViewEventMapper != null,
+      'attachActionEventMapper': rumActionEventMapper != null,
+      'attachResourceEventMapper': rumResourceEventMapper != null,
+      'attachErrorEventMapper': rumErrorEventMapper != null,
+      'attachLongTaskEventMapper': rumLongTaskEventMapper != null,
     };
   }
 }

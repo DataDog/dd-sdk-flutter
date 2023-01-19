@@ -209,6 +209,7 @@ class RumErrorEventDecoder extends RumEventDecoder {
 class RumLongTaskEventDecoder extends RumEventDecoder {
   RumLongTaskEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
 
+  String? get viewName => rumEvent['view']['name'];
   int? get duration => rumEvent['long_task']['duration'];
 }
 

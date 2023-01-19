@@ -6,6 +6,7 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
+import 'package:datadog_flutter_plugin/src/rum/ddrum_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -25,10 +26,15 @@ class MockDatadogPluginConfiguration extends Mock
 
 class MockDatadogPlugin extends Mock implements DatadogPlugin {}
 
+class MockRumPlatform extends Mock
+    with MockPlatformInterfaceMixin
+    implements DdRumPlatform {}
+
 void main() {
   late DatadogSdk datadogSdk;
   late MockDatadogSdkPlatform mockPlatform;
   late MockDdLogsPlatform mockLogsPlatform;
+  late MockRumPlatform mockRumPlatform;
 
   setUpAll(() {
     registerFallbackValue(FakeDdSdkConfiguration());
@@ -37,6 +43,7 @@ void main() {
     registerFallbackValue(LateConfigurationProperty.trackErrors);
     registerFallbackValue(Verbosity.verbose);
     registerFallbackValue(InternalLogger());
+    registerFallbackValue(RumConfiguration(applicationId: ''));
   });
 
   setUp(() {
@@ -68,6 +75,11 @@ void main() {
 
     mockLogsPlatform = MockDdLogsPlatform();
     DdLogsPlatform.instance = mockLogsPlatform;
+
+    mockRumPlatform = MockRumPlatform();
+    when(() => mockRumPlatform.initialize(any(), any()))
+        .thenAnswer((_) => Future<void>.value());
+    DdRumPlatform.instance = mockRumPlatform;
   });
 
   tearDown(() async {
@@ -207,6 +219,33 @@ void main() {
     expect(encoded['loggingConfiguration'], isNull);
     expect(
         encoded['rumConfiguration'], configuration.rumConfiguration?.encode());
+  });
+
+  test('configuration with mapper sets attach*Mapper', () async {
+    final configuration = DdSdkConfiguration(
+      clientToken: 'fakeClientToken',
+      env: 'fake-env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.notGranted,
+      loggingConfiguration: LoggingConfiguration(),
+      rumConfiguration: RumConfiguration(
+        applicationId: 'fake-application-id',
+        rumViewEventMapper: (event) => event,
+        rumActionEventMapper: (event) => event,
+        rumResourceEventMapper: (event) => event,
+        rumErrorEventMapper: (event) => event,
+        rumLongTaskEventMapper: (event) => event,
+      ),
+    );
+
+    final encoded = configuration.encode();
+    final encodedRumConfiguration =
+        encoded['rumConfiguration'] as Map<String, Object?>;
+    expect(encodedRumConfiguration['attachViewEventMapper'], isTrue);
+    expect(encodedRumConfiguration['attachActionEventMapper'], isTrue);
+    expect(encodedRumConfiguration['attachResourceEventMapper'], isTrue);
+    expect(encodedRumConfiguration['attachErrorEventMapper'], isTrue);
+    expect(encodedRumConfiguration['attachLongTaskEventMapper'], isTrue);
   });
 
   test('initialize with logging configuration creates logger', () async {

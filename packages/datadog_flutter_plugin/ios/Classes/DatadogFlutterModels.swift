@@ -44,15 +44,35 @@ class DatadogFlutterConfiguration {
         let longTaskThreshold: Float
         let customEndpoint: String?
         let vitalsFrequency: Datadog.Configuration.VitalsFrequency?
+        let attachViewEventMapper: Bool
+        let attachActionEventMapper: Bool
+        let attachResourceEventMapper: Bool
+        let attachErrorEventMapper: Bool
+        let attachLongTaskMapper: Bool
 
-        init(applicationId: String, sampleRate: Float, detectLongTasks: Bool, longTaskThreshold: Float,
-             customEndpoint: String?, vitalsFrequency: Datadog.Configuration.VitalsFrequency?) {
+        init(applicationId: String,
+             sampleRate: Float,
+             detectLongTasks: Bool,
+             longTaskThreshold: Float,
+             customEndpoint: String?,
+             vitalsFrequency: Datadog.Configuration.VitalsFrequency?,
+             attachViewEventMapper: Bool,
+             attachActionEventMapper: Bool,
+             attachResourceEventMapper: Bool,
+             attachErrorEventMapper: Bool,
+             attachLongTaskMapper: Bool
+        ) {
             self.applicationId = applicationId
             self.sampleRate = sampleRate
             self.detectLongTasks = detectLongTasks
             self.longTaskThreshold = longTaskThreshold
             self.customEndpoint = customEndpoint
             self.vitalsFrequency = vitalsFrequency
+            self.attachViewEventMapper = attachViewEventMapper
+            self.attachActionEventMapper = attachActionEventMapper
+            self.attachResourceEventMapper = attachResourceEventMapper
+            self.attachErrorEventMapper = attachErrorEventMapper
+            self.attachLongTaskMapper = attachLongTaskMapper
         }
 
         init?(fromEncoded encoded: [String: Any?]) {
@@ -66,6 +86,11 @@ class DatadogFlutterConfiguration {
             detectLongTasks = (encoded["detectLongTasks"] as? NSNumber)?.boolValue ?? true
             longTaskThreshold = (encoded["longTaskThreshold"] as? NSNumber)?.floatValue ?? 0.1
             customEndpoint = encoded["customEndpoint"] as? String
+            attachViewEventMapper = (encoded["attachViewEventMapper"] as? NSNumber)?.boolValue ?? false
+            attachActionEventMapper = (encoded["attachActionEventMapper"] as? NSNumber)?.boolValue ?? false
+            attachResourceEventMapper = (encoded["attachResourceEventMapper"] as? NSNumber)?.boolValue ?? false
+            attachErrorEventMapper = (encoded["attachErrorEventMapper"] as? NSNumber)?.boolValue ?? false
+            attachLongTaskMapper = (encoded["attachLongTaskMapper"] as? NSNumber)?.boolValue ?? false
 
             vitalsFrequency = convertOptional(encoded["vitalsFrequency"]) {
                 .parseFromFlutter($0)
