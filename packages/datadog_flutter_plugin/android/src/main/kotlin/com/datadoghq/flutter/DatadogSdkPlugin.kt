@@ -436,9 +436,16 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         return when (name) {
             "mapperPerformance" ->
                 mapOf(
-                    "minMapperPerfMs" to rumPlugin.mapperPerf.minInMs,
-                    "maxMapperPerfMs" to rumPlugin.mapperPerf.maxInMs,
-                    "avgMapperPerfMs" to rumPlugin.mapperPerf.avgInMs,
+                    "total" to mapOf(
+                        "minMs" to rumPlugin.mapperPerf.minInMs,
+                        "maxMs" to rumPlugin.mapperPerf.maxInMs,
+                        "avgMs" to rumPlugin.mapperPerf.avgInMs,
+                    ),
+                    "mainThread" to mapOf(
+                        "minMs" to rumPlugin.mapperPerfMainThread.minInMs,
+                        "maxMs" to rumPlugin.mapperPerfMainThread.maxInMs,
+                        "avgMs" to rumPlugin.mapperPerfMainThread.avgInMs,
+                    ),
                     "mapperTimeouts" to rumPlugin.mapperTimeouts
                 )
             else -> null

@@ -264,9 +264,16 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         switch name {
         case "mapperPerformance":
             let value: [String: Any?] = [
-                "minMapperPerfMs": rum?.mapperPerf.minInMs,
-                "maxMapperPerfMs": rum?.mapperPerf.maxInMs,
-                "avgMapperPerfMs": rum?.mapperPerf.avgInMs,
+                "total": [
+                    "minMs": rum?.mapperPerf.minInMs,
+                    "maxMs": rum?.mapperPerf.maxInMs,
+                    "avgMs": rum?.mapperPerf.avgInMs,
+                ],
+                "mainThread": [
+                    "minMs": rum?.mainThreadMapperPerf.minInMs,
+                    "maxMs": rum?.mainThreadMapperPerf.maxInMs,
+                    "avgMs": rum?.mainThreadMapperPerf.avgInMs,
+                ],
                 "mapperTimeouts": rum?.mapperTimeouts
             ]
             return value

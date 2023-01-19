@@ -60,6 +60,7 @@ class DatadogRumPlugin(
 
     var trackMapperPerf = false
     val mapperPerf = PerformanceTracker()
+    val mapperPerfMainThread = PerformanceTracker()
     var mapperTimeouts = 0
 
     fun attachToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -304,38 +305,41 @@ class DatadogRumPlugin(
 
         val handler = Handler(Looper.getMainLooper())
         handler.post {
-            try {
-                channel.invokeMethod(
-                    mapperName,
-                    mapOf(
-                        "event" to encodedEvent
-                    ),
-                    object : Result {
-                        override fun success(result: Any?) {
-                            modifiedJson = (result as? Map<String, Any?>)
-                            latch.countDown()
-                        }
+            val perf = measureNanoTime {
+                try {
+                    channel.invokeMethod(
+                        mapperName,
+                        mapOf(
+                            "event" to encodedEvent
+                        ),
+                        object : Result {
+                            override fun success(result: Any?) {
+                                modifiedJson = (result as? Map<String, Any?>)
+                                latch.countDown()
+                            }
 
-                        override fun error(
-                            errorCode: String,
-                            errorMessage: String?,
-                            errorDetails: Any?
-                        ) {
-                            latch.countDown()
-                        }
+                            override fun error(
+                                errorCode: String,
+                                errorMessage: String?,
+                                errorDetails: Any?
+                            ) {
+                                latch.countDown()
+                            }
 
-                        override fun notImplemented() {
-                            Datadog._internal._telemetry.error(
-                                "$mapperName returned notImplemented."
-                            )
-                            latch.countDown()
+                            override fun notImplemented() {
+                                Datadog._internal._telemetry.error(
+                                    "$mapperName returned notImplemented."
+                                )
+                                latch.countDown()
+                            }
                         }
-                    }
-                )
-            } catch (e: Exception) {
-                Datadog._internal._telemetry.error("Attempting call $mapperName failed.", e)
-                latch.countDown()
+                    )
+                } catch (e: Exception) {
+                    Datadog._internal._telemetry.error("Attempting call $mapperName failed.", e)
+                    latch.countDown()
+                }
             }
+            mapperPerfMainThread.addSample(perf)
         }
 
         try {

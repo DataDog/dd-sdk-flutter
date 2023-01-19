@@ -72,6 +72,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
     internal var trackMapperPerf = false
     internal var mapperPerf = PerformanceTracker()
+    internal var mainThreadMapperPerf = PerformanceTracker()
     internal var mapperTimeouts = 0
 
     private override init() {
@@ -309,6 +310,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         var encodedResult: [String: Any?]? = encodedEvent
         let semaphore = DispatchSemaphore(value: 0)
 
+        mainThreadMapperPerf.start()
         methodChannel.invokeMethod(mapperName, arguments: ["event": encodedEvent]) { result in
             if result == nil {
                 encodedResult = nil
@@ -322,8 +324,10 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         if semaphore.wait(timeout: .now() + DispatchTimeInterval.milliseconds(250)) == .timedOut {
             Datadog._internal.telemetry.debug(id: "event_mapper_timeout", message: "\(mapperName) timed out.")
             mapperTimeouts += 1
+            mainThreadMapperPerf.finishUnsampled()
             return event
         }
+        mainThreadMapperPerf.finish()
 
         if encodedResult?["_dd.mapper_error"] != nil {
             // Error in the mapper, return the unmapped event

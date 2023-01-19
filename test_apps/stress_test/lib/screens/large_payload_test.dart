@@ -12,35 +12,31 @@ import 'package:flutter/material.dart';
 import '../payload_creators.dart';
 
 @immutable
-class MapperPerf {
+class PerformanceMeasure {
   final double minTimeMs;
   final double maxTimeMs;
   final double avgTimeMs;
-  final int timeouts;
 
-  const MapperPerf({
+  const PerformanceMeasure({
     required this.minTimeMs,
     required this.maxTimeMs,
     required this.avgTimeMs,
-    required this.timeouts,
   });
 
-  static MapperPerf fromEncoded(Map<Object?, Object?> encoded) {
-    return MapperPerf(
-      minTimeMs: encoded['minMapperPerfMs'] as double,
-      maxTimeMs: encoded['maxMapperPerfMs'] as double,
-      avgTimeMs: encoded['avgMapperPerfMs'] as double,
-      timeouts: encoded['mapperTimeouts'] as int,
+  static PerformanceMeasure fromEncoded(Map<Object?, Object?> encoded) {
+    return PerformanceMeasure(
+      minTimeMs: encoded['minMs'] as double,
+      maxTimeMs: encoded['maxMs'] as double,
+      avgTimeMs: encoded['avgMs'] as double,
     );
   }
 
   @override
   String toString() {
-    return '''Mapping Performance:
+    return '''Performance:
   min: ${minTimeMs.toStringAsFixed(2)}
   max: ${maxTimeMs.toStringAsFixed(2)}
   avg: ${avgTimeMs.toStringAsFixed(2)}
-  timeouts: $timeouts
     ''';
   }
 }
@@ -141,9 +137,14 @@ class _LargePayloadTestState extends State<LargePayloadTest>
     var perfMap = await platform.getInternalVar('mapperPerformance')
         as Map<Object?, Object?>?;
     if (perfMap != null && mounted) {
+      final totalPerf = PerformanceMeasure.fromEncoded(
+          perfMap['total'] as Map<Object?, Object?>);
+      final mainThreadPerf = PerformanceMeasure.fromEncoded(
+          perfMap['mainThread'] as Map<Object?, Object?>);
+      final timeouts = perfMap['mapperTimeouts'] as int;
       setState(() {
-        final perf = MapperPerf.fromEncoded(perfMap);
-        perfStatus = perf.toString();
+        perfStatus =
+            'Total $totalPerf\nMainThread $mainThreadPerf\nTimeouts: $timeouts';
       });
     }
   }
