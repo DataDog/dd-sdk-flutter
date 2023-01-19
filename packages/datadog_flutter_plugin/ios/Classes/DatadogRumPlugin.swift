@@ -321,7 +321,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             semaphore.signal()
         }
 
-        if semaphore.wait(timeout: .now() + DispatchTimeInterval.milliseconds(250)) == .timedOut {
+        if semaphore.wait(timeout: .now() + DispatchTimeInterval.milliseconds(500)) == .timedOut {
             Datadog._internal.telemetry.debug(id: "event_mapper_timeout", message: "\(mapperName) timed out.")
             mapperTimeouts += 1
             mainThreadMapperPerf.finishUnsampled()
@@ -359,16 +359,20 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         }
 
         let encoder = DictionaryEncoder()
-        guard var encoded = try? encoder.encode(rumViewEvent) else {
+        var encoded: [String: Any]
+        do {
+            encoded = try encoder.encode(rumViewEvent)
+        } catch let error {
             Datadog._internal.telemetry.error(
                 id: "datadog_flutter:view_mapping_encoding",
-                message: "Encoding a RUMViewEvent failed",
+                message: "Encoding a RUMViewEvent failed: \(error)",
                 kind: "EncodingError",
                 stack: nil
             )
             mapperPerf.finishUnsampled()
             return rumViewEvent
         }
+
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
@@ -382,7 +386,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             if let encodedView = encodedResult["view"] as? [String: Any?] {
                 rumViewEvent.view.name = encodedView["name"] as? String
                 rumViewEvent.view.referrer = encodedView["referrer"] as? String
-                rumViewEvent.view.url = encodedView["url"] as! String
+                rumViewEvent.view.url = encodedView["url"] as? String ?? ""
             }
 
             return rumViewEvent
@@ -432,7 +436,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             var rumActionEvent = rumActionEvent
             if let encodedAction = encodedResult["action"] as? [String: Any?] {
                 if let encodedTarget = encodedAction["target"] as? [String: Any?] {
-                    rumActionEvent.action.target?.name = encodedTarget["name"] as! String
+                    rumActionEvent.action.target?.name = encodedTarget["name"] as? String ?? ""
                 } else {
                     rumActionEvent.action.target = nil
                 }
@@ -441,7 +445,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             if let encodedView = encodedResult["view"] as? [String: Any?] {
                 rumActionEvent.view.name = encodedView["name"] as? String
                 rumActionEvent.view.referrer = encodedView["referrer"] as? String
-                rumActionEvent.view.url = encodedView["url"] as! String
+                rumActionEvent.view.url = encodedView["url"] as? String ?? ""
             }
 
             return rumActionEvent
@@ -487,7 +491,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             if let encodedView = encodedResult["view"] as? [String: Any?] {
                 rumResourceEvent.view.name = encodedView["name"] as? String
                 rumResourceEvent.view.referrer = encodedView["referrer"] as? String
-                rumResourceEvent.view.url = encodedView["url"] as! String
+                rumResourceEvent.view.url = encodedView["url"] as? String ?? ""
             }
 
             return rumResourceEvent
@@ -557,7 +561,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             if let encodedView = encodedResult["view"] as? [String: Any?] {
                 rumErrorEvent.view.name = encodedView["name"] as? String
                 rumErrorEvent.view.referrer = encodedView["referrer"] as? String
-                rumErrorEvent.view.url = encodedView["url"] as! String
+                rumErrorEvent.view.url = encodedView["url"] as? String ?? ""
             }
 
             return rumErrorEvent
@@ -599,7 +603,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             if let encodedView = encodedResult["view"] as? [String: Any?] {
                 longTaskEvent.view.name = encodedView["name"] as? String
                 longTaskEvent.view.referrer = encodedView["referrer"] as? String
-                longTaskEvent.view.url = encodedView["url"] as! String
+                longTaskEvent.view.url = encodedView["url"] as? String ?? ""
             }
 
             return longTaskEvent
