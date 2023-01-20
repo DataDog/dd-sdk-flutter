@@ -17,4 +17,5 @@ abstract class DatadogPlugin {
   DatadogPlugin(this.instance);
 
   void initialize();
+  void shutdown() {}
 }

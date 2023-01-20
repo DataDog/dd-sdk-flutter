@@ -12,13 +12,13 @@ class RumAutoInstrumentationSecondScreen extends StatefulWidget {
   const RumAutoInstrumentationSecondScreen({Key? key}) : super(key: key);
 
   @override
-  _RumAutoInstrumentationSecondScreenState createState() =>
+  State<RumAutoInstrumentationSecondScreen> createState() =>
       _RumAutoInstrumentationSecondScreenState();
 }
 
 class _RumAutoInstrumentationSecondScreenState
     extends State<RumAutoInstrumentationSecondScreen> {
-  late Future _loadingFuture;
+  late Future<void> _loadingFuture;
   late RumAutoInstrumentationScenarioConfig _config;
   var currentStatus = 'Starting fetch';
 
@@ -99,7 +99,7 @@ class _RumAutoInstrumentationSecondScreenState
   }
 
   void _onNext() {
-    Navigator.of(context).push(
+    Navigator.of(context).push<void>(
       MaterialPageRoute(
           builder: (_) => const RumAutoInstrumentationThirdScreen()),
     );

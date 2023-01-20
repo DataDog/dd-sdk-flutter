@@ -6,7 +6,9 @@ import 'dart:async';
 
 import 'package:collection/src/iterable_extensions.dart';
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_integration_test_app/main.dart' as app;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,18 +29,29 @@ class _IsDecimalVersionOfHex extends CustomMatcher {
 
 Matcher isDecimalVersionOfHex(Object value) => _IsDecimalVersionOfHex(value);
 
-MockHttpServer? mockHttpServer;
+RecordingHttpServer? _mockHttpServer;
 
-void startMockServer() {
-  if (mockHttpServer == null) {
-    mockHttpServer = MockHttpServer();
-    unawaited(mockHttpServer!.start());
+Future<RecordingServerClient> startMockServer() async {
+  if (kIsWeb) {
+    final client = RemoteRecordingServerClient();
+    await client.startNewSession();
+    return client;
+  } else {
+    if (_mockHttpServer == null) {
+      _mockHttpServer = RecordingHttpServer();
+      unawaited(_mockHttpServer!.start());
+    }
+
+    final client = LocalRecordingServerClient(_mockHttpServer!);
+    await client.startNewSession();
+
+    return client;
   }
-  mockHttpServer!.startNewSession();
 }
 
-Future<void> openTestScenario(WidgetTester tester, String scenarioName) async {
-  startMockServer();
+Future<RecordingServerClient> openTestScenario(WidgetTester tester,
+    {String? scenarioName, String? menuTitle}) async {
+  var client = await startMockServer();
 
   // These need to be set as const in order to work, so we
   // can't refactor this out to a function.
@@ -50,17 +63,23 @@ Future<void> openTestScenario(WidgetTester tester, String scenarioName) async {
       : null;
 
   app.testingConfiguration = TestingConfiguration(
-      customEndpoint: mockHttpServer!.endpoint,
+      scenario: scenarioName,
+      customEndpoint: client.sessionEndpoint,
       clientToken: clientToken,
-      applicationId: applicationId);
+      applicationId: applicationId,
+      firstPartyHosts: ['localhost']);
 
   await app.main();
   await tester.pumpAndSettle();
 
-  var integrationItem = find.byWidgetPredicate((widget) =>
-      widget is Text && (widget.data?.startsWith(scenarioName) ?? false));
-  await tester.tap(integrationItem);
-  await tester.pumpAndSettle();
+  if (menuTitle != null) {
+    var integrationItem = find.byWidgetPredicate((widget) =>
+        widget is Text && (widget.data?.startsWith(menuTitle) ?? false));
+    await tester.tap(integrationItem);
+    await tester.pumpAndSettle();
+  }
+
+  return client;
 }
 
 extension Waiter on WidgetTester {
@@ -80,5 +99,27 @@ extension Waiter on WidgetTester {
     }
 
     return wasFound;
+  }
+}
+
+void verifyCommonTags(
+    RequestLog request, String service, String version, String? variant) {
+  final sdkVersion = request.tags['sdk_version'];
+  if (kIsWeb) {
+    // Returning the browser version of the SDK.
+    expect(sdkVersion?.startsWith('4.'), true);
+  } else {
+    expect(sdkVersion, DatadogSdk.sdkVersion);
+  }
+
+  expect(request.tags['service'], service);
+
+  if (!kIsWeb) {
+    // Currently coming back as 'browser' on web
+    expect(request.queryParameters['ddsource'], 'flutter');
+
+    // Not sent as a tag on web
+    expect(request.tags['version'], version);
+    expect(request.tags['variant'], variant);
   }
 }

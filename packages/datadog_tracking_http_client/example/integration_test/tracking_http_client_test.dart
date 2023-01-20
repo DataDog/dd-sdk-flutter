@@ -12,15 +12,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 Future<void> performRumUserFlow(WidgetTester tester) async {
+  var scenario = find.text('HttpClient (dart:io) Override');
+  await tester.tap(scenario);
+  await tester.pumpAndSettle();
+
   // Give a bit of time for the images to be loaded
   await tester.pump(const Duration(seconds: 5));
 
   var topItem = find.text('Item 0');
   await tester.tap(topItem);
   await tester.pumpAndSettle();
-
-  //var readyText = find.text('All Done');
-  //await tester.waitFor(readyText, const Duration(seconds: 100), (e) => true);
 
   var nextButton = find.text('Next Page');
   await tester.tap(nextButton);
@@ -30,14 +31,13 @@ Future<void> performRumUserFlow(WidgetTester tester) async {
 void main() async {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  final mockHttpServer = MockHttpServer();
+  final mockHttpServer = RecordingHttpServer();
   unawaited(mockHttpServer.start());
+  final sessionRecorder = LocalRecordingServerClient(mockHttpServer);
 
-  // This second test boots a different integration test app
-  // (lib/auto_integration_scenario/main.dart) directly to the auto-instrumented
-  // scenario with instrumentation enabled, then checks that we got the expected
-  // calls.
   testWidgets('test auto instrumentation', (WidgetTester tester) async {
+    await sessionRecorder.startNewSession();
+
     const clientToken = bool.hasEnvironment('DD_CLIENT_TOKEN')
         ? String.fromEnvironment('DD_CLIENT_TOKEN')
         : null;
@@ -46,17 +46,18 @@ void main() async {
         : null;
 
     final scenarioConfig = RumAutoInstrumentationScenarioConfig(
-      firstPartyHosts: ['localhost:${MockHttpServer.bindingPort}'],
-      firstPartyGetUrl: '${mockHttpServer.endpoint}/integration_get',
-      firstPartyPostUrl: '${mockHttpServer.endpoint}/integration_post',
+      firstPartyHosts: [(sessionRecorder.sessionEndpoint)],
+      firstPartyGetUrl: '${sessionRecorder.sessionEndpoint}/integration_get',
+      firstPartyPostUrl: '${sessionRecorder.sessionEndpoint}/integration_post',
       firstPartyBadUrl: 'https://foo.bar',
-      thirdPartyGetUrl: 'https://httpbingo.org/get',
-      thirdPartyPostUrl: 'https://httpbingo.org/post',
+      thirdPartyGetUrl: 'https://httpbin.org/get',
+      thirdPartyPostUrl: 'https://httpbin.org/post',
+      enableIoHttpTracking: true,
     );
     RumAutoInstrumentationScenarioConfig.instance = scenarioConfig;
 
     app.testingConfiguration = TestingConfiguration(
-        customEndpoint: mockHttpServer.endpoint,
+        customEndpoint: sessionRecorder.sessionEndpoint,
         clientToken: clientToken,
         applicationId: applicationId,
         firstPartyHosts: ['localhost']);
@@ -68,7 +69,7 @@ void main() async {
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
     final testRequests = <RequestLog>[];
-    await mockHttpServer.pollRequests(
+    await sessionRecorder.pollSessionRequests(
       const Duration(seconds: 50),
       (requests) {
         requestLog.addAll(requests);
@@ -84,14 +85,14 @@ void main() async {
             });
           }
         }
-        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
+        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 4;
       },
     );
 
     final session = RumSessionDecoder.fromEvents(rumLog);
-    expect(session.visits.length, 3);
+    expect(session.visits.length, greaterThanOrEqualTo(3));
 
-    final view1 = session.visits[0];
+    final view1 = session.visits[1];
     expect(view1.viewEvents.last.view.resourceCount, 2);
     expect(view1.resourceEvents[0].url, 'https://placekitten.com/300/300');
     // placekitten.com doesn't set contentType headers properly, so don't test it
@@ -102,7 +103,7 @@ void main() async {
       expect(view1.resourceEvents[1].resourceType, 'image');
     }
 
-    final view2 = session.visits[1];
+    final view2 = session.visits[2];
     expect(view2.viewEvents.last.view.resourceCount, 4);
     expect(view2.viewEvents.last.view.errorCount, 1);
 

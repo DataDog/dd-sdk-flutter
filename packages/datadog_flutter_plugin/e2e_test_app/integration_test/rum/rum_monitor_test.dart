@@ -4,6 +4,7 @@
 
 import 'dart:math';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:e2e_test_app/main.dart' as app;
 import 'package:flutter_test/flutter_test.dart';
@@ -89,7 +90,7 @@ void main() {
       e2eAttributes(tester),
     );
 
-    await Future.delayed(Duration(milliseconds: delay));
+    await Future<void>.delayed(Duration(milliseconds: delay));
     await measure('flutter_rum_add_timing', () {
       datadog.rum!.addTiming('time_event');
     });

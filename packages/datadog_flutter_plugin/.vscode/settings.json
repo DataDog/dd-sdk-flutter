@@ -1,0 +1,30 @@
+{
+    "workbench.colorCustomizations": {
+        "activityBar.activeBackground": "#988f98",
+        "activityBar.activeBorder": "#d7d787",
+        "activityBar.background": "#988f98",
+        "activityBar.foreground": "#15202b",
+        "activityBar.inactiveForeground": "#15202b99",
+        "activityBarBadge.background": "#d7d787",
+        "activityBarBadge.foreground": "#15202b",
+        "sash.hoverBorder": "#988f98",
+        "statusBar.background": "#7f757f",
+        "statusBar.foreground": "#e7e7e7",
+        "statusBarItem.hoverBackground": "#988f98",
+        "statusBarItem.remoteBackground": "#7f757f",
+        "statusBarItem.remoteForeground": "#e7e7e7",
+        "titleBar.activeBackground": "#7f757f",
+        "titleBar.activeForeground": "#e7e7e7",
+        "titleBar.inactiveBackground": "#7f757f99",
+        "titleBar.inactiveForeground": "#e7e7e799"
+    },
+    "peacock.color": "#7f757f",
+    "rewrap.wrappingColumn": 80,
+    "cSpell.words": [
+        "fluro",
+        "mocktail",
+        "rethrown",
+        "Uncompress",
+        "writeln"
+    ]
+}

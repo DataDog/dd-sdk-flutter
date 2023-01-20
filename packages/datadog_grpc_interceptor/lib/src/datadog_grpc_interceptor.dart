@@ -5,93 +5,92 @@
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:grpc/grpc.dart';
 import 'package:uuid/uuid.dart';
-
-class DatadogTracingHeaders {
-  static const traceId = 'x-datadog-trace-id';
-  static const parentId = 'x-datadog-parent-id';
-
-  static const samplingPriority = 'x-datadog-sampling-priority';
-  static const origin = 'x-datadog-origin';
-}
-
-// TODO: These are defined in the main datadog_flutter_plugin package but aren't
-// public. Probably want to fix that.
-class DatadogPlatformAttributeKey {
-  /// Trace ID. Used in RUM resources created by automatic resource tracking.
-  /// Expects `String` value.
-  static const traceID = '_dd.trace_id';
-
-  /// Span ID. Used in RUM resources created by automatic resource tracking.
-  /// Expects `String` value.
-  static const spanID = '_dd.span_id';
-}
 
 /// A client GrpcInterceptor which enables automatic resource tracking and
 /// distributed tracing
 ///
-/// Note: This only supports intercepting unary calls. It does not intercepting
+/// Note: This only supports intercepting unary calls. It does not intercept
 /// streaming calls.
 class DatadogGrpcInterceptor extends ClientInterceptor {
   final Uuid uuid = const Uuid();
   final DatadogSdk _datadog;
   final ClientChannel _channel;
 
+  late String _hostPath;
+
   DatadogGrpcInterceptor(
     this._datadog,
     this._channel,
-  );
+  ) {
+    final host = _channel.host;
+    final scheme = _channel.options.credentials.isSecure ? 'https' : 'http';
+    // Add http / https scheme. This scheme is a lie but needed to connect
+    // resources to distributed tracing.
+    if (host is InternetAddress) {
+      _hostPath = '$scheme://${host.host}:${_channel.port}';
+    } else {
+      if (Uri.parse(host.toString()).scheme.isEmpty) {
+        // Add missing scheme
+        _hostPath = '$scheme://$host:${_channel.port}';
+      } else {
+        // Already has scheme
+        _hostPath = '$host:${_channel.port}';
+      }
+    }
+  }
 
   @override
   ResponseFuture<R> interceptUnary<Q, R>(ClientMethod<Q, R> method, Q request,
       CallOptions options, ClientUnaryInvoker<Q, R> invoker) {
-    final host = _channel.host;
     final path = method.path;
-    final String fullPath;
-    if (host is InternetAddress) {
-      fullPath = '${host.host}:${_channel.port}$path';
-    } else {
-      fullPath = '$host:${_channel.port}$path';
-    }
+    final String fullPath = '$_hostPath$path';
 
-    bool shouldAppendTraces = _datadog.traces != null &&
-        _datadog.isFirstPartyHost(Uri.parse(fullPath));
-
-    String? traceId;
-    String? parentId;
-    if (shouldAppendTraces) {
-      traceId = generateTraceId();
-      parentId = generateTraceId();
-    }
-
+    final rum = _datadog.rum;
     final rumKey = uuid.v1();
-    _datadog.rum?.startResourceLoading(
-      rumKey,
-      RumHttpMethod.get,
-      fullPath,
-      {
-        "grpc.method": method.path,
-        if (shouldAppendTraces) ...{
-          DatadogPlatformAttributeKey.traceID: traceId,
-          DatadogPlatformAttributeKey.spanID: parentId
-        }
-      },
-    );
+    final headerTypes = _datadog.headerTypesForHost(Uri.parse(fullPath));
 
-    if (shouldAppendTraces) {
-      options = options.mergedWith(CallOptions(metadata: {
-        DatadogTracingHeaders.origin: 'rum',
-        DatadogTracingHeaders.samplingPriority: '1',
-        DatadogTracingHeaders.traceId: traceId!,
-        DatadogTracingHeaders.parentId: parentId!,
-      }));
+    var addedHeaders = <String, String>{};
+
+    if (rum != null) {
+      var attributes = <String, Object?>{
+        'grpc.method': method.path,
+      };
+      TracingContext? tracingContext;
+      bool shouldSample = rum.shouldSampleTrace();
+      if (headerTypes.isNotEmpty) {
+        tracingContext = generateTracingContext(shouldSample);
+
+        attributes[DatadogRumPlatformAttributeKey.rulePsr] =
+            rum.tracingSamplingRate / 100.0;
+        if (tracingContext.sampled) {
+          attributes[DatadogRumPlatformAttributeKey.traceID] =
+              tracingContext.traceId.asString(TraceIdRepresentation.decimal);
+          attributes[DatadogRumPlatformAttributeKey.spanID] =
+              tracingContext.spanId.asString(TraceIdRepresentation.decimal);
+        }
+
+        for (final tracingType in headerTypes) {
+          addedHeaders.addAll(getTracingHeaders(tracingContext, tracingType));
+        }
+      }
+
+      _datadog.rum?.startResourceLoading(
+        rumKey,
+        RumHttpMethod.get,
+        fullPath,
+        attributes,
+      );
     }
+
+    options = options.mergedWith(CallOptions(metadata: addedHeaders));
 
     final future = invoker(method, request, options);
     future.then((v) {
       _datadog.rum?.stopResourceLoading(rumKey, 200, RumResourceType.native);
-    }, onError: (e, st) {
+    }, onError: (Object e, StackTrace? st) {
       _datadog.rum?.stopResourceLoadingWithErrorInfo(
           rumKey, e.toString(), e.runtimeType.toString());
     });

@@ -16,7 +16,10 @@ import com.datadog.android.DatadogSite
 import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
+import com.datadog.android.core.configuration.VitalsUpdateFrequency
 import com.datadog.android.privacy.TrackingConsent
+import fr.xgouchet.elmyr.Forge
+import fr.xgouchet.elmyr.annotation.FloatForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import org.junit.jupiter.api.Test
@@ -101,6 +104,21 @@ class DatadogConfigurationTest {
     }
 
     @Test
+    fun `M parse all VitalsFrequency W parseVitalsFrequency`() {
+        val never = parseVitalsFrequency("VitalsFrequency.never")
+        val rare = parseVitalsFrequency("VitalsFrequency.rare")
+        val average = parseVitalsFrequency("VitalsFrequency.average")
+        val frequent = parseVitalsFrequency("VitalsFrequency.frequent")
+        val unknown = parseVitalsFrequency("unknown")
+
+        assertThat(never).isEqualTo(VitalsUpdateFrequency.NEVER)
+        assertThat(rare).isEqualTo(VitalsUpdateFrequency.RARE)
+        assertThat(average).isEqualTo(VitalsUpdateFrequency.AVERAGE)
+        assertThat(frequent).isEqualTo(VitalsUpdateFrequency.FREQUENT)
+        assertThat(unknown).isEqualTo(VitalsUpdateFrequency.AVERAGE)
+    }
+
+    @Test
     fun `M decode defaults W fromEncoded`(
         @StringForgery clientToken: String,
         @StringForgery environment: String
@@ -114,9 +132,9 @@ class DatadogConfigurationTest {
             "batchSize" to null,
             "uploadFrequency" to null,
             "trackingConsent" to "TrackingConsent.granted",
+            "telemetrySampleRate" to null,
             "customEndpoint" to null,
             "firstPartyHosts" to listOf<String>(),
-            "tracingConfiguration" to null,
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>()
         )
@@ -128,31 +146,35 @@ class DatadogConfigurationTest {
         assertThat(config.clientToken).isEqualTo(clientToken)
         assertThat(config.env).isEqualTo(environment)
         assertThat(config.trackingConsent).isEqualTo(TrackingConsent.GRANTED)
+        assertThat(config.attachLogMapper).isEqualTo(false)
 
-        assertThat(config.tracingConfiguration).isNull()
         assertThat(config.rumConfiguration).isNull()
     }
 
     @Test
+    @Suppress("LongParameterList")
     fun `M decode all properties W fromEncoded`(
         @StringForgery clientToken: String,
         @StringForgery environment: String,
         @StringForgery additionalKey: String,
         @StringForgery additionalValue: String,
         @StringForgery firstPartyHost: String,
+        @FloatForgery telemetrySampleRate: Float
     ) {
         // GIVEN
         val encoded = mapOf<String, Any?>(
             "clientToken" to clientToken,
             "env" to environment,
             "nativeCrashReportEnabled" to true,
+            "serviceName" to null,
             "site" to "DatadogSite.us3",
             "batchSize" to "BatchSize.small",
             "uploadFrequency" to "UploadFrequency.frequent",
             "trackingConsent" to "TrackingConsent.granted",
-            "customEndpoint" to "customEndpoint",
+            "telemetrySampleRate" to telemetrySampleRate,
+            "customLogsEndpoint" to "customEndpoint",
             "firstPartyHosts" to listOf(firstPartyHost),
-            "tracingConfiguration" to null,
+            "attachLogMapper" to true,
             "rumConfiguration" to null,
             "additionalConfig" to mapOf<String, Any?>(
                 additionalKey to additionalValue
@@ -166,21 +188,65 @@ class DatadogConfigurationTest {
         assertThat(config.nativeCrashReportEnabled).isEqualTo(true)
         assertThat(config.site).isEqualTo(DatadogSite.US3)
         assertThat(config.batchSize).isEqualTo(BatchSize.SMALL)
-        assertThat(config.customEndpoint).isEqualTo("customEndpoint")
+        assertThat(config.customLogsEndpoint).isEqualTo("customEndpoint")
+        assertThat(config.telemetrySampleRate).isEqualTo(telemetrySampleRate)
         assertThat(config.additionalConfig).isEqualTo(mapOf(
             additionalKey to additionalValue
         ))
+        assertThat(config.attachLogMapper).isEqualTo(true)
         assertThat(config.firstPartyHosts).isEqualTo(listOf(firstPartyHost))
     }
 
     @Test
-    fun `M decode nestedConfiguration W fromEncoded {tracingConfiguration, rumConfiguration}`(
+    @Suppress("LongParameterList")
+    fun `M decode serviceName W fromEncoded`(
+        @StringForgery clientToken: String,
+        @StringForgery environment: String,
+        @StringForgery additionalKey: String,
+        @StringForgery additionalValue: String,
+        @StringForgery firstPartyHost: String,
+        @StringForgery serviceName: String,
+    ) {
+        // GIVEN
+        val encoded = mapOf<String, Any?>(
+            "clientToken" to clientToken,
+            "env" to environment,
+            "nativeCrashReportEnabled" to true,
+            "serviceName" to serviceName,
+            "site" to "DatadogSite.us3",
+            "batchSize" to "BatchSize.small",
+            "uploadFrequency" to "UploadFrequency.frequent",
+            "trackingConsent" to "TrackingConsent.granted",
+            "customLogsEndpoint" to "customEndpoint",
+            "firstPartyHosts" to listOf(firstPartyHost),
+            "rumConfiguration" to null,
+            "additionalConfig" to mapOf<String, Any?>(
+                additionalKey to additionalValue
+            )
+        )
+
+        // WHEN
+        val config = DatadogFlutterConfiguration(encoded)
+
+        // THEN
+        assertThat(config.serviceName).isEqualTo(serviceName)
+    }
+
+    @Test
+    fun `M decode nestedConfiguration W fromEncoded {rumConfiguration}`(
+        forge: Forge,
         @StringForgery clientToken: String,
         @StringForgery environment: String,
         @StringForgery applicationId: String,
         @StringForgery firstPartyHost: String
     ) {
         // GIVEN
+        val attachViewEventMapper = forge.aBool()
+        val attachActionEventMapper = forge.aBool()
+        val attachResourceEventMapper = forge.aBool()
+        val attachErrorEventMapper = forge.aBool()
+        val attachLongTaskEventMapper = forge.aBool()
+
         val encoded = mapOf(
             "clientToken" to clientToken,
             "env" to environment,
@@ -189,15 +255,20 @@ class DatadogConfigurationTest {
             "batchSize" to null,
             "uploadFrequency" to null,
             "trackingConsent" to "TrackingConsent.pending",
-            "customEndpoint" to null,
+            "customLogsEndpoint" to null,
             "firstPartyHosts" to listOf<String>(),
-            "tracingConfiguration" to mapOf(
-                "sendNetworkInfo" to true,
-                "bundleWithRum" to false,
-            ),
             "rumConfiguration" to mapOf(
                 "applicationId" to applicationId,
-                "sampleRate" to 35.0f
+                "sampleRate" to 35.0f,
+                "detectLongTasks" to false,
+                "longTaskThreshold" to 0.3f,
+                "customEndpoint" to "customEndpoint",
+                "attachViewEventMapper" to attachViewEventMapper,
+                "attachActionEventMapper" to attachActionEventMapper,
+                "attachResourceEventMapper" to attachResourceEventMapper,
+                "attachErrorEventMapper" to attachErrorEventMapper,
+                "attachLongTaskEventMapper" to attachLongTaskEventMapper,
+                "vitalsFrequency" to "VitalsFrequency.frequent"
             ),
             "additionalConfig" to mapOf<String, Any?>()
         )
@@ -206,13 +277,18 @@ class DatadogConfigurationTest {
         val config = DatadogFlutterConfiguration(encoded)
 
         // THEN
-        assertThat(config.tracingConfiguration).isNotNull()
-        assertThat(config.tracingConfiguration?.sendNetworkInfo).isEqualTo(true)
-        assertThat(config.tracingConfiguration?.bundleWithRum).isEqualTo(false)
-
         assertThat(config.rumConfiguration).isNotNull()
         assertThat(config.rumConfiguration?.applicationId).isEqualTo(applicationId)
         assertThat(config.rumConfiguration?.sampleRate).isEqualTo(35.0f)
+        assertThat(config.rumConfiguration?.detectLongTasks).isEqualTo(false)
+        assertThat(config.rumConfiguration?.longTaskThreshold).isEqualTo(0.3f)
+        assertThat(config.rumConfiguration?.customEndpoint).isEqualTo("customEndpoint")
+        assertThat(config.rumConfiguration?.attachViewEventMapper).isEqualTo(attachViewEventMapper)
+        assertThat(config.rumConfiguration?.attachActionEventMapper).isEqualTo(attachActionEventMapper)
+        assertThat(config.rumConfiguration?.attachResourceEventMapper).isEqualTo(attachResourceEventMapper)
+        assertThat(config.rumConfiguration?.attachErrorEventMapper).isEqualTo(attachErrorEventMapper)
+        assertThat(config.rumConfiguration?.attachLongTaskEventMapper).isEqualTo(attachLongTaskEventMapper)
+        assertThat(config.rumConfiguration?.vitalsFrequency).isEqualTo(VitalsUpdateFrequency.FREQUENT)
     }
 
     @Test
@@ -223,7 +299,6 @@ class DatadogConfigurationTest {
             "printLogsToConsole" to true,
             "sendLogsToDatadog" to false,
             "bundleWithRum" to true,
-            "bundleWithTraces" to true,
             "loggerName" to "my_logger"
         )
 
@@ -235,7 +310,6 @@ class DatadogConfigurationTest {
         assertThat(config.printLogsToConsole).isTrue()
         assertThat(config.sendLogsToDatadog).isFalse()
         assertThat(config.bundleWithRum).isTrue()
-        assertThat(config.bundleWithTraces).isTrue()
         assertThat(config.loggerName).isEqualTo("my_logger")
     }
 
@@ -250,15 +324,16 @@ class DatadogConfigurationTest {
         val config = DatadogFlutterConfiguration(
             clientToken = clientToken,
             env = env,
+            serviceName = serviceName,
             nativeCrashReportEnabled = true,
             trackingConsent = TrackingConsent.PENDING,
             rumConfiguration = DatadogFlutterConfiguration.RumConfiguration(
                 applicationId = applicationId,
-                sampleRate = 100.0f
+                sampleRate = 100.0f,
+                detectLongTasks = true,
+                longTaskThreshold = 0.1f,
+                customEndpoint = null
             ),
-            additionalConfig = mapOf<String, Any?>(
-                "_dd.service_name" to serviceName
-            )
         )
 
         // WHEN

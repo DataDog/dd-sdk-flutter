@@ -8,37 +8,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 
-import 'src/attributes.dart';
+import 'datadog_internal.dart';
 import 'src/datadog_configuration.dart';
 import 'src/datadog_plugin.dart';
-import 'src/datadog_sdk_platform_interface.dart';
 import 'src/helpers.dart';
 import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
 import 'src/logs/ddlogs_platform_interface.dart';
-import 'src/rum/ddrum.dart';
-import 'src/traces/ddtraces.dart';
+import 'src/rum/rum.dart';
 import 'src/version.dart' show ddPackageVersion;
 
-export 'src/attributes.dart' show DatadogConfigKey;
 export 'src/datadog_configuration.dart';
 export 'src/datadog_plugin.dart';
-export 'src/rum/ddrum.dart'
-    show
-        RumHttpMethod,
-        RumUserActionType,
-        RumErrorSource,
-        RumResourceType,
-        rumMethodFromMethodString,
-        resourceTypeFromContentType;
-export 'src/rum/navigation_observer.dart'
-    show
-        DatadogNavigationObserver,
-        DatadogNavigationObserverProvider,
-        RumViewInfo,
-        DatadogRouteAwareMixin;
-export 'src/traces/ddtraces.dart'
-    show DdSpan, OTTags, OTLogFields, generateTraceId;
+export 'src/logs/ddlogs.dart';
+export 'src/rum/ddrum_events.dart';
+export 'src/rum/rum.dart';
+export 'src/tracing/tracing_headers.dart' show TracingHeaderType;
 
 typedef AppRunner = void Function();
 
@@ -61,41 +46,34 @@ class DatadogSdk {
 
   DatadogSdk._();
 
+  bool _initialized = false;
+
   DdLogs? _logs;
   DdLogs? get logs => _logs;
-
-  // ignore: deprecated_member_use_from_same_package
-  DdTraces? _traces;
-  @Deprecated('Tracing is deprecated and will be removed before 1.0')
-  DdTraces? get traces => _traces;
 
   DdRum? _rum;
   DdRum? get rum => _rum;
 
-  List<String> _firstPartyHosts = [];
-  RegExp? _firstPartyRegex;
+  List<FirstPartyHost> _firstPartyHosts = [];
 
   final Map<Type, DatadogPlugin> _plugins = {};
 
   /// An unmodifiable list of first party hosts for tracing.
-  List<String> get firstPartyHosts => List.unmodifiable(_firstPartyHosts);
-  void _setFirstPartyHosts(List<String> value) {
-    _firstPartyHosts = value;
-    if (value.isNotEmpty) {
-      // pattern = "^(.*\\.)*tracedHost1$|tracedHost2$|...$"
-      var hosts = value.map((e) => RegExp.escape(e) + '\$').join('|');
-      _firstPartyRegex = RegExp('^(.*\\.)*$hosts');
-    } else {
-      _firstPartyRegex = null;
-    }
+  List<FirstPartyHost> get firstPartyHosts =>
+      List.unmodifiable(_firstPartyHosts);
+  void _setFirstPartyHosts(Map<String, Set<TracingHeaderType>> value) {
+    _firstPartyHosts = FirstPartyHost.createSanitized(value, internalLogger);
   }
 
   /// The version of this SDK.
-  String get version => ddPackageVersion;
+  static String get sdkVersion => ddPackageVersion;
 
   /// Logger used internally by Datadog to report errors.
   @internal
   final InternalLogger internalLogger = InternalLogger();
+
+  /// Internal extension access to the configured platform
+  DatadogSdkPlatform get platform => _platform;
 
   /// Set the verbosity of the Datadog SDK. Set to [Verbosity.info] by
   /// default. All internal logging is enabled only when [kDebugMode] is
@@ -103,25 +81,30 @@ class DatadogSdk {
   Verbosity get sdkVerbosity => internalLogger.sdkVerbosity;
   set sdkVerbosity(Verbosity value) {
     internalLogger.sdkVerbosity = value;
-    unawaited(_platform.setSdkVerbosity(value));
+    if (_initialized) {
+      unawaited(_platform.setSdkVerbosity(value));
+    }
   }
 
   /// Get an instance of a DatadogPlugin that was registered with
   /// [DdSdkConfiguration.addPlugin]
-  T? getPlugin<T>() => _plugins[T.runtimeType] as T?;
+  T? getPlugin<T>() => _plugins[T] as T?;
 
   /// This function is not part of the public interface for Datadog, and may not
   /// be available in all targets. Used for integration and E2E testing purposes only.
   @visibleForTesting
   Future<void> flushAndDeinitialize() async {
     await _platform.flushAndDeinitialize();
+    for (final plugin in _plugins.values) {
+      plugin.shutdown();
+    }
+    _plugins.clear();
     _logs = null;
-    _traces = null;
     _rum = null;
+    _initialized = false;
   }
 
-  /// A helper function that will initialize Datadog setup error reporting, and
-  /// automatic HttpClient tracing.
+  /// A helper function that will initialize Datadog and setup error reporting
   ///
   /// See also, [DdRum.handleFlutterError], [DatadogTrackingHttpClient]
   static Future<void> runApp(
@@ -136,6 +119,8 @@ class DatadogSdk {
       };
 
       await DatadogSdk.instance.initialize(configuration);
+      DatadogSdk.instance
+          .updateConfigurationInfo(LateConfigurationProperty.trackErrors, true);
 
       runner();
     }, (e, s) {
@@ -149,33 +134,78 @@ class DatadogSdk {
 
   /// Initialize the DatadogSdk with the provided [configuration].
   Future<void> initialize(DdSdkConfiguration configuration) async {
+    // First set our SDK verbosity. We can assume WidgetsFlutterBinding has been initialized at this point
+    await _platform.setSdkVerbosity(internalLogger.sdkVerbosity);
+
     configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
-    configuration.additionalConfig[DatadogConfigKey.version] = version;
+    configuration.additionalConfig[DatadogConfigKey.sdkVersion] = sdkVersion;
 
-    _setFirstPartyHosts(configuration.firstPartyHosts);
+    _setFirstPartyHosts(configuration.firstPartyHostsWithTracingHeaders);
 
-    await _platform.initialize(configuration, logCallback: _platformLog);
+    await _platform.initialize(configuration,
+        logCallback: _platformLog, internalLogger: internalLogger);
 
     if (configuration.loggingConfiguration != null) {
       _logs = createLogger(configuration.loggingConfiguration!);
     }
-    if (configuration.tracingConfiguration != null) {
-      // ignore: deprecated_member_use_from_same_package
-      _traces = DdTraces(internalLogger);
-    }
     if (configuration.rumConfiguration != null) {
-      _rum = DdRum(internalLogger);
+      _rum = DdRum(configuration.rumConfiguration!, internalLogger);
+      await _rum!.initialize();
+
+      // Update 'late' configuration
+      updateConfigurationInfo(LateConfigurationProperty.trackFlutterPerformance,
+          configuration.rumConfiguration!.reportFlutterPerformance);
+      updateConfigurationInfo(
+          LateConfigurationProperty.trackCrossPlatformLongTasks,
+          configuration.rumConfiguration!.detectLongTasks);
     }
 
-    for (final pluginConfig in configuration.additionalPlugins) {
-      var plugin = pluginConfig.create(this);
-      if (_plugins.containsKey(plugin.runtimeType)) {
-        internalLogger.error(
-            'Attempting to setup two plugins of the same type: ${plugin.runtimeType}. The second plugin will be ignored.');
-      } else {
-        plugin.initialize();
-        _plugins[plugin.runtimeType] = plugin;
+    _initializePlugins(configuration.additionalPlugins);
+    _initialized = true;
+  }
+
+  /// Attach the Datadog Flutter SDK to an already initialized Datadog Native
+  /// (iOS or Android) SDK.  This is used for "app in app" embedding of Flutter.
+  Future<void> attachToExisting(
+    DdSdkExistingConfiguration config,
+  ) async {
+    // First set our SDK verbosity. We can assume WidgetsFlutterBinding has been initialized at this point
+    await _platform.setSdkVerbosity(internalLogger.sdkVerbosity);
+
+    final attachResponse = await wrapAsync<AttachResponse>(
+        'attachToExisting', internalLogger, null, () async {
+      return await _platform.attachToExisting();
+    });
+
+    if (attachResponse != null) {
+      _setFirstPartyHosts(config.firstPartyHostsWithTracingHeaders);
+
+      if (config.loggingConfiguration != null) {
+        try {
+          _logs = createLogger(config.loggingConfiguration!);
+        } catch (_) {
+          // This is likely fine. Since we have no simple way of knowing if Logging is
+          // enabled, we try to create a logger anyway, which could potentially fail.
+          internalLogger.debug(
+              'A logging configuration was provided to `attachToExisting` but log creation failed, likely because logging is disabled in the native SDK. No global log was created');
+        }
       }
+      if (attachResponse.rumEnabled) {
+        _rum = DdRum(
+            RumConfiguration.existing(
+              detectLongTasks: config.detectLongTasks,
+              longTaskThreshold: config.longTaskThreshold,
+              tracingSamplingRate: config.tracingSamplingRate,
+            ),
+            internalLogger);
+        await _rum!.initialize();
+      }
+
+      _initializePlugins(config.additionalPlugins);
+      _initialized = true;
+    } else {
+      internalLogger.error(
+          'Failed to attach to an existing native instance of the Datadog SDK.');
     }
   }
 
@@ -183,8 +213,9 @@ class DatadogSdk {
   ///
   /// This can be used in addition to or instead of the default logger at [logs]
   DdLogs createLogger(LoggingConfiguration configuration) {
-    final logger = DdLogs(internalLogger);
-    wrap('createLogger', internalLogger, () {
+    final logger =
+        DdLogs(internalLogger, configuration.datadogReportingThreshold);
+    wrap('createLogger', internalLogger, null, () {
       return DdLogsPlatform.instance
           .createLogger(logger.loggerHandle, configuration);
     });
@@ -197,15 +228,28 @@ class DatadogSdk {
     String? id,
     String? name,
     String? email,
-    Map<String, dynamic> extraInfo = const {},
+    Map<String, Object?> extraInfo = const {},
   }) {
-    wrap('setUserInfo', internalLogger, () {
+    wrap('setUserInfo', internalLogger, extraInfo, () {
       return _platform.setUserInfo(id, name, email, extraInfo);
     });
   }
 
+  /// Add custom attributes to the current user information
+  ///
+  /// This extra info will be added to already existing extra info that is added
+  /// to logs traces and RUM events automatically.
+  ///
+  /// Setting an existing attribute to `null` will remove that attribute from
+  /// the user's extra info
+  void addUserExtraInfo(Map<String, Object?> extraInfo) {
+    wrap('addUserExtraInfo', internalLogger, extraInfo, () {
+      return _platform.addUserExtraInfo(extraInfo);
+    });
+  }
+
   void setTrackingConsent(TrackingConsent trackingConsent) {
-    wrap('setTrackingConsent', internalLogger, () {
+    wrap('setTrackingConsent', internalLogger, null, () {
       return _platform.setTrackingConsent(trackingConsent);
     });
   }
@@ -213,12 +257,35 @@ class DatadogSdk {
   /// Determine if the provided URI is a first party host as determined by the
   /// value of [firstPartyHosts].
   bool isFirstPartyHost(Uri uri) {
-    return _firstPartyRegex?.hasMatch(uri.host) ?? false;
+    return headerTypesForHost(uri).isNotEmpty;
+  }
+
+  Set<TracingHeaderType> headerTypesForHost(Uri uri) {
+    var tracingHeaderTypes = <TracingHeaderType>{};
+    for (var host in firstPartyHosts) {
+      if (host.matches(uri)) {
+        tracingHeaderTypes = tracingHeaderTypes.union(host.headerTypes);
+      }
+    }
+    return tracingHeaderTypes;
   }
 
   void _platformLog(String log) {
     if (kDebugMode) {
       print(log);
+    }
+  }
+
+  void _initializePlugins(List<DatadogPluginConfiguration> plugins) {
+    for (final pluginConfig in plugins) {
+      var plugin = pluginConfig.create(this);
+      if (_plugins.containsKey(plugin.runtimeType)) {
+        internalLogger.error(
+            'Attempting to setup two plugins of the same type: ${plugin.runtimeType}. The second plugin will be ignored.');
+      } else {
+        plugin.initialize();
+        _plugins[plugin.runtimeType] = plugin;
+      }
     }
   }
 }

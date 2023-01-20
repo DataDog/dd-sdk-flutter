@@ -14,7 +14,6 @@ workflows:
         - a phase is selected on the checklist in the PR description,
         - the PR changes a file which matches phase filter (e.g. changing a file in `packages/*` will trigger unit tests phase)
     envs:
-      - FLUTTER_VERSION: 2.8.0
       - DD_RUN_UNIT_TESTS: '0'
       - DD_RUN_INTEGRATION_TESTS: '0'
     after_run:
@@ -24,7 +23,7 @@ workflows:
 
   push_to_develop_or_main:
     envs:
-      - FLUTTER_VERSION: 2.8.0
+      - FLUTTER_VERSION: stable
       - DD_RUN_UNIT_TESTS: '1'
       - DD_RUN_INTEGRATION_TESTS: '1'
     after_run:
@@ -68,15 +67,16 @@ workflows:
   setup:
     before_run:
     - _flutter_install
-    - _pub_get
     steps:
     - script:
-        title: Generate env files
+        title: Generate build files
         inputs:
         - content: |-
             #!/usr/bin/env bash
             set -e
-            ./generate_env.sh
+            pod repo update
+
+            ./prepare.sh
 
   run_conditioned_workflows:
     steps:
@@ -144,49 +144,18 @@ workflows:
     - deploy-to-bitrise-io: {}
 
 
-  _pub_get:
     steps:
-      - script:
-          title: Run pub get in all projects
+      - avd-manager@1:
+          run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
           inputs:
-          - content: |-
-              #!/usr/bin/env bash
-              set -e
+          - api_level: '30'
+          - emulator_channel: 0
+      - wait-for-android-emulator@1:
+          run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
 
-              for d in packages/*/ ; do
-                  pushd "$d"
-                  if [ ! -f "pubspec.yaml" ]; then
-                      echo "Skipping $d because it is missing pubspec.yaml"
-                      popd
-                      continue
-                  fi
-                  echo "pub get in $d"
-                  flutter pub get
-
-                  subapps=( "integration_test_app" "e2e_test_app" )
-                  for subapp in "${subapps[@]}"; do
-                      if [ -d "$subapp" ];  then
-                          pushd "$subapp"
-                          echo "pub get in $d/$subapp"
-                          flutter pub get
-                          popd
-                      fi
-                  done
-                  popd
-              done
-
-              for d in tools/*/ ; do
-                  pushd "$d"
-                  if [ ! -f "pubspec.yaml" ]; then
-                      echo "Skipping $d because it is missing pubspec.yaml"
-                      popd
-                      continue
-                  fi
-                  echo "pub get in $d"
-                  dart pub get
-                  popd
-              done
-          - working_dir: "$BITRISE_SOURCE_DIR"
+  _deploy_artifacts:
+    steps:
+    - deploy-to-bitrise-io: {}
 
   analyze:
     steps: 
@@ -196,6 +165,9 @@ workflows:
     - flutter-analyze@0:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/"
+    - flutter-analyze@0:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor/"
     - script:
         title: Android lint and static analysis
         inputs:
@@ -210,20 +182,13 @@ workflows:
     before_run:
     - _prepare_gradle_wrapper
     steps:
-    - script:
+    - flutter-test@1:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            flutter test
-        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin"
-    - script:
+    - flutter-test@1:
+  unit_test:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            flutter test
-        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client"
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
     - xcode-test@4.0.2:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:

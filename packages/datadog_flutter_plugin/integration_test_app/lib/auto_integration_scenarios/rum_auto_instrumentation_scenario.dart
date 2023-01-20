@@ -11,14 +11,14 @@ class RumAutoInstrumentationScenario extends StatefulWidget {
   const RumAutoInstrumentationScenario({Key? key}) : super(key: key);
 
   @override
-  _RumAutoInstrumentationScenarioState createState() =>
+  State<RumAutoInstrumentationScenario> createState() =>
       _RumAutoInstrumentationScenarioState();
 }
 
 class _RumAutoInstrumentationScenarioState
     extends State<RumAutoInstrumentationScenario> {
   final images = [
-    'https://placekitten.com/300/300',
+    'https://imgix.datadoghq.com/img/about/presskit/kit/press_kit.png',
     'https://imgix.datadoghq.com/img/about/presskit/kit/press_kit.png'
   ];
 
@@ -30,7 +30,7 @@ class _RumAutoInstrumentationScenarioState
   void _onTap(int index) {
     switch (index) {
       case 0:
-        Navigator.push(
+        Navigator.push<void>(
           context,
           MaterialPageRoute(
             settings: const RouteSettings(
