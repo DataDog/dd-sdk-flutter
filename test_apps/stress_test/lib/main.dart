@@ -13,6 +13,7 @@ void main() async {
   DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
 
   await dotenv.load();
+  var addMappers = true;
 
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
 
@@ -21,8 +22,9 @@ void main() async {
     env: dotenv.get('DD_ENV', fallback: ''),
     site: DatadogSite.us1,
     trackingConsent: TrackingConsent.granted,
+    batchSize: BatchSize.large,
+    uploadFrequency: UploadFrequency.rare,
     nativeCrashReportEnabled: true,
-    logEventMapper: (event) => event,
     loggingConfiguration: LoggingConfiguration(
       sendNetworkInfo: true,
       printLogsToConsole: true,
@@ -32,14 +34,18 @@ void main() async {
             applicationId: applicationId,
             reportFlutterPerformance: true,
             detectLongTasks: true,
-            rumViewEventMapper: (event) => event,
-            rumActionEventMapper: (event) => event,
-            rumResourceEventMapper: (event) => event,
-            rumErrorEventMapper: (event) => event,
-            rumLongTaskEventMapper: (event) => event,
           )
         : null,
   )..additionalConfig[DatadogConfigKey.trackMapperPerformance] = true;
+
+  if (addMappers) {
+    ddconfig.logEventMapper = (event) => event;
+    ddconfig.rumConfiguration?.rumViewEventMapper = (event) => event;
+    ddconfig.rumConfiguration?.rumActionEventMapper = (event) => event;
+    ddconfig.rumConfiguration?.rumResourceEventMapper = (event) => event;
+    ddconfig.rumConfiguration?.rumErrorEventMapper = (event) => event;
+    ddconfig.rumConfiguration?.rumLongTaskEventMapper = (event) => event;
+  }
 
   await DatadogSdk.runApp(
     ddconfig,
