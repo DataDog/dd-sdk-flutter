@@ -2,7 +2,7 @@
 
 This app is meant to be used to stress test the Datadog Flutter SDK.
 
-It divides these tests into three areas:
+It divides tests into three areas:
 * Large payloads - adding large amounts of data to any Log `attributes` or `context` variables
 * High frequency - sending a lot of logs or RUM events
 * Mapping - adding mapping functions
