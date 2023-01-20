@@ -7,6 +7,7 @@
 * Disable tracing by default in iOS. Silences a benign warning from the SDK. See [#280][]
 * Add ability to modify logs before send with `logEventMapper`
 * Allow setting sdkVerbosity prior to calling `DatadogSdk.runApp`
+* Allow users to modify or discard log and RUM events through mapping functions. See [#305][], [#297][], [#175][]
 
 ## 1.1.0
 
@@ -111,8 +112,11 @@
 [#143]: https://github.com/DataDog/dd-sdk-flutter/issues/143
 [#148]: https://github.com/DataDog/dd-sdk-flutter/issues/148
 [#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159
+[#175]: https://github.com/DataDog/dd-sdk-flutter/issues/175
 [#203]: https://github.com/DataDog/dd-sdk-flutter/issues/203
 [#254]: https://github.com/DataDog/dd-sdk-flutter/issues/254
 [#264]: https://github.com/DataDog/dd-sdk-flutter/issues/264
 [#271]: https://github.com/DataDog/dd-sdk-flutter/issues/271
 [#280]: https://github.com/DataDog/dd-sdk-flutter/issues/280
+[#297]: https://github.com/DataDog/dd-sdk-flutter/issues/297
+[#305]: https://github.com/DataDog/dd-sdk-flutter/issues/305

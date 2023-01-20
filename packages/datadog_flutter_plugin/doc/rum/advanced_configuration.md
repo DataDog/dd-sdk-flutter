@@ -72,7 +72,7 @@ DatadogSdk.instance.rum?.stopResourceLoading(
 );
 ```
 
-The `String` used for `resourceKey` in both calls must be unique for the resource you are calling in order for the Datadog iOS SDK to match a resource's start with its completion.
+The `String` used for `resourceKey` in both calls must be unique for the resource you are calling in order for the Flutter Datadog SDK to match a resource's start with its completion.
 
 ### Track custom errors
 
@@ -120,6 +120,102 @@ For example:
 ```dart
 DatadogSdk.instance.setUserInfo("1234", "John Doe", "john@doe.com");
 ```
+
+## Modify or drop RUM events
+
+To modify attributes of a RUM event before it is sent to Datadog or to drop an event entirely, use the Event Mappers API when configuring the Flutter RUM SDK:
+
+```dart
+final config = DdSdkConfiguration(
+    // other configuration...
+    rumConfiguration: RumConfiguration(
+        applicationId: '<YOUR_APPLICATION_ID>',
+        rumViewEventMapper = (event) => event,
+        rumActionEventMapper = (event) => event,
+        rumResourceEventMapper = (event) => event,
+        rumErrorEventMapper = (event) => event,
+        rumLongTaskEventMapper = (event) => event,
+    ),
+);
+```
+
+Each mapper is a function with a signature of `(T) -> T?`, where `T` is a concrete RUM event type. This allows changing portions of the event before it is sent, or drop the event entirely.
+
+For example, to redact sensitive information in a RUM Resource's `url`, implement a custom `redacted` function and use it in `rumResourceEventMapper`:
+
+```dart
+    rumResourceEventMapper = (event) { 
+        var resourceEvent = resourceEvent
+        resourceEvent.resource.url = redacted(resourceEvent.resource.url)
+        return resourceEvent
+    }
+}
+```
+
+Returning `null` from the error, resource, or action mapper drops the event entirely; the event is not sent to Datadog. The value returned from the view event mapper must not be `null`.
+
+Depending on the event's type, only some specific properties can be modified:
+
+| Event Type       | Attribute key                     | Description                                   |
+|------------------|-----------------------------------|-----------------------------------------------|
+| RumViewEvent     | `viewEvent.view.name`             | Name of the view.                             |
+|                  | `viewEvent.view.url`              | URL of the view.                              |
+|                  | `viewEvent.view.referrer`         | Referrer of the view.                         |
+| RumActionEvent   | `actionEvent.action.target?.name` | Name of the action.                           |
+|                  | `actionEvent.view.name`           | Name the view linked to this action.          |
+|                  | `actionEvent.view.referrer`       | Referrer of the view linked to this action.   |
+|                  | `actionEvent.view.url`            | URL of the view linked to this action.        |
+| RumErrorEvent    | `errorEvent.error.message`        | Error message.                                |
+|                  | `errorEvent.error.stack`          | Stacktrace of the error.                      |
+|                  | `errorEvent.error.resource?.url`  | URL of the resource the error refers to.      |
+|                  | `errorEvent.view.name`            | Name the view linked to this action.          |
+|                  | `errorEvent.view.referrer`        | Referrer of the view linked to this action.   |
+|                  | `errorEvent.view.url`             | URL of the view linked to this error.         |
+| RumResourceEvent | `resourceEvent.resource.url`      | URL of the resource.                          |
+|                  | `resourceEvent.view.name`         | Name the view linked to this action.          |
+|                  | `resourceEvent.view.referrer`     | Referrer of the view linked to this action.   |
+|                  | `resourceEvent.view.url`          | URL of the view linked to this resource.      |
+
+## Set tracking consent (GDPR compliance)
+
+To be compliant with the GDPR regulation, the Flutter RUM SDK requires the tracking consent value at initialization.
+
+The `trackingConsent` setting can be one of the following values:
+
+1. `TrackingConsent.pending`: The Flutter RUM SDK starts collecting and batching the data but does not send it to Datadog. The Flutter RUM SDK waits for the new tracking consent value to decide what to do with the batched data.
+2. `TrackingConsent.granted`: The Flutter RUM SDK starts collecting the data and sends it to Datadog.
+3. `TrackingConsent.notGranted`: The Flutter RUM SDK does not collect any data. No logs, traces, or RUM events are sent to Datadog.
+
+To change the tracking consent value after the Flutter RUM SDK is initialized, use the `DatadogSdk.setTrackingConsent` API call. The Flutter RUM SDK changes its behavior according to the new value. 
+
+For example, if the current tracking consent is `TrackingConsent.pending`:
+
+- If you change the value to `TrackingConsent.granted`, the Flutter RUM SDK sends all current and future data to Datadog;
+- If you change the value to `TrackingConsent.notGranted`, the Flutter RUM SDK wipes all current data and does not collect future data.
+
+## Sample RUM sessions
+
+To control the data your application sends to Datadog RUM, you can specify a sampling rate for RUM sessions while [initializing the Flutter RUM SDK][2] as a percentage between 0 and 100.
+
+For example, to only keep 50% of sessions use:
+
+```dart
+final config = DdSdkConfiguration(
+    // other configuration...
+    rumConfiguration: RumConfiguration(
+        applicationId: '<YOUR_APPLICATION_ID>',
+        sessionSamplingRate: 50.0,
+    ),
+);
+```
+
+## Sending data when device is offline
+
+RUM ensures availability of data when your user device is offline. In cases of low-network areas, or when the device battery is too low, all the RUM events are first stored on the local device in batches. They are sent as soon as the network is available, and the battery is high enough to ensure the Flutter RUM SDK does not impact the end user's experience. If the network is not available while your application is in the foreground, or if an upload of data fails, the batch is kept until it can be sent successfully.
+
+This means that even if users open your application while offline, no data is lost.
+
+**Note**: The data on the disk is automatically discarded if it gets too old to ensure the Flutter RUM SDK does not use too much disk space.
 
 ## Further reading
 
