@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+* Add methods for enabling the DatadogTrackingHttpClient in add-to-app scenarios.
+* Send trace sample rate (`dd.rule_psr`) for APM's traffic ingestion control page.
+* Added DatadogClient for use with the `http` pub package.
+* Fix an issue where convenience methods on DatadogTrackingHttpClient weren't being tracked properly
+* Support for OTel `b3` and W3C `tracecontext` header injection
+
 ## 1.0.1
 
 * Stable release of 1.0.x
@@ -12,13 +20,6 @@
 ## 1.0.0-beta.2
 
 * Decrease the SDK constraint from Dart 2.16 (Flutter 2.10) to Dart 2.15 (Flutter 2.8)
-
-* Add methods for enabling the DatadogTrackingHttpClient in add-to-app scenarios.
-* Send trace sample rate (`dd.rule_psr`) for APM's traffic ingestion control page.
-* Added DatadogClient for use with the `http` pub package.
-* Fix an issue where convenience methods on DatadogTrackingHttpClient weren't being tracked properly
-* Support for OTel `b3` and W3C `tracecontext` header injection
-* Fix an issue where convenience methods on DatadogTrackingHttpClient weren't being tracked properly
 
 ## 1.1.0
 
