@@ -14,6 +14,7 @@ workflows:
         - a phase is selected on the checklist in the PR description,
         - the PR changes a file which matches phase filter (e.g. changing a file in `packages/*` will trigger unit tests phase)
     envs:
+      - FLUTTER_VERSION: 2.8.0
       - DD_RUN_UNIT_TESTS: '0'
       - DD_RUN_INTEGRATION_TESTS: '0'
     after_run:
@@ -184,11 +185,16 @@ workflows:
     steps:
     - flutter-test@1:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin"
     - flutter-test@1:
-  unit_test:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client"
     - flutter-test@1:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor"
     - xcode-test@4.0.2:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
