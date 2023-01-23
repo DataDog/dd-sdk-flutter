@@ -3,6 +3,7 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:meta/meta.dart';
@@ -219,8 +220,8 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
         if (widget is RumUserActionAnnotation) {
           rumTreeAnnotation = widget.description;
         } else {
-          detectingElement =
-              _getDetectingElementDescription(element, rumTreeAnnotation);
+          detectingElement = _getDetectingElementDescription(
+              element, targets, rumTreeAnnotation);
         }
 
         if (detectingElement == null) {
@@ -249,7 +250,10 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
   }
 
   _ElementDescription? _getDetectingElementDescription(
-      Element element, String? treeAnnotation) {
+    Element element,
+    List<HitTestEntry<HitTestTarget>> targets,
+    String? treeAnnotation,
+  ) {
     final widget = element.widget;
     if (widget is ButtonStyleButton) {
       if (widget.enabled) {
@@ -281,9 +285,22 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
             treeAnnotation ?? _findElementInnerText(element, false);
         return _ElementDescription(element, 'IconButton($innerDescription)');
       }
+    } else if (widget is BottomNavigationBar) {
+      if (widget.onTap != null) {
+        final detectorElement = _findGestureDetectorElement(element, targets);
+        var innerDescription = 'unknown';
+        if (detectorElement != null) {
+          innerDescription =
+              treeAnnotation ?? _findElementInnerText(detectorElement, true);
+        }
+
+        return _ElementDescription(
+            element, 'BottomNavigationBarItem($innerDescription)');
+      }
     } else if (widget is GestureDetector) {
       if (widget.onTap != null) {
-        final innerDescription = treeAnnotation ?? 'unknown';
+        final innerDescription =
+            treeAnnotation ?? _findElementInnerText(element, false);
         return _ElementDescription(
             element, 'GestureDetector($innerDescription)');
       }
@@ -291,6 +308,46 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
 
     return null;
   }
+}
+
+Element? _findGestureDetectorElement(
+    Element rootElement, List<HitTestEntry<HitTestTarget>> hitTargets) {
+  final targets = List<HitTestEntry<HitTestTarget>>.from(hitTargets);
+  targets.removeLast();
+
+  Element? detectorElement;
+  RenderObject? lastRenderObject;
+
+  void elementVisitor(Element element) {
+    if (detectorElement != null || targets.isEmpty) return;
+
+    final ro = element.renderObject;
+    if (ro == null) return;
+
+    // This is the same logic as above for detecting
+    // re-use of render objects
+    if (ro == targets.last.target) {
+      targets.removeLast();
+      lastRenderObject = ro;
+    }
+
+    if (ro == lastRenderObject) {
+      final widget = element.widget;
+      if (widget is GestureDetector) {
+        detectorElement = element;
+      }
+
+      if (detectorElement == null) {
+        element.visitChildElements(elementVisitor);
+      }
+    } else {
+      element.visitChildElements(elementVisitor);
+    }
+  }
+
+  rootElement.visitChildElements(elementVisitor);
+
+  return detectorElement;
 }
 
 /// Provide information on the user actions that can happen in this tree

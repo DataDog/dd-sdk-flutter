@@ -17,6 +17,10 @@ Widget _buildSimpleApp(DdRum rum, Widget innerWidget) {
     child: MaterialApp(
       color: Colors.blueAccent,
       home: Scaffold(
+        appBar: AppBar(
+          title: const Text('App Bar Title'),
+          actions: const [],
+        ),
         body: Column(
           children: [const Text('This is Text'), innerWidget],
         ),
@@ -47,7 +51,7 @@ void main() {
     verify(() => mockRum.addUserAction(RumUserActionType.tap, any()));
   });
 
-  testWidgets('tap button reports button text to RUM', (tester) async {
+  testWidgets('tap elevated button reports button text to RUM', (tester) async {
     final mockRum = MockDdRum();
 
     final buttonText = randomString();
@@ -60,6 +64,46 @@ void main() {
     ));
 
     final button = find.byType(ElevatedButton);
+    await tester.tap(button);
+
+    verify(() =>
+        mockRum.addUserAction(RumUserActionType.tap, 'Button($buttonText)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap text button reports button text to RUM', (tester) async {
+    final mockRum = MockDdRum();
+
+    final buttonText = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      TextButton(
+        onPressed: () {},
+        child: Text(buttonText),
+      ),
+    ));
+
+    final button = find.byType(TextButton);
+    await tester.tap(button);
+
+    verify(() =>
+        mockRum.addUserAction(RumUserActionType.tap, 'Button($buttonText)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap outlined button reports button text to RUM', (tester) async {
+    final mockRum = MockDdRum();
+
+    final buttonText = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      OutlinedButton(
+        onPressed: () {},
+        child: Text(buttonText),
+      ),
+    ));
+
+    final button = find.byType(OutlinedButton);
     await tester.tap(button);
 
     verify(() =>
@@ -258,6 +302,48 @@ void main() {
 
     verify(() => mockRum.addUserAction(
         RumUserActionType.tap, 'IconButton($semanticLabel)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('Tap BottomNavigationBar reports tap', (tester) async {
+    final mockRum = MockDdRum();
+
+    final app = RumUserActionDetector(
+      rum: mockRum,
+      child: MaterialApp(
+        home: Scaffold(
+          body: const Center(
+            child: Text('Test'),
+          ),
+          bottomNavigationBar: BottomNavigationBar(
+            items: const <BottomNavigationBarItem>[
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.business),
+                label: 'Business',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.school),
+                label: 'School',
+              ),
+            ],
+            currentIndex: 0,
+            onTap: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(app);
+
+    final navItem = find.byIcon(Icons.business).first;
+    await tester.tap(navItem);
+
+    verify(() => mockRum.addUserAction(
+        RumUserActionType.tap, 'BottomNavigationBarItem(Business)'));
     verifyNoMoreInteractions(mockRum);
   });
 }
