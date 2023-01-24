@@ -1,6 +1,7 @@
 name: releaser
 description: A simple command-line application.
 version: 1.0.0
+publish_to: none
 
 environment:
   sdk: '>=2.15.0 <3.0.0'
@@ -10,7 +11,7 @@ dependencies:
   logging: ^1.0.2
   path: ^1.8.0
   git: ^2.0.0
-  github: ^9.0.0
+  github: ^9.5.0
   version: ^2.0.0
 
 dev_dependencies:

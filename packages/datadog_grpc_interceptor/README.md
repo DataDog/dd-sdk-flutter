@@ -3,8 +3,6 @@
 
 > A plugin for use with the `DatadogSdk`, used to track performance of gRPC and enable Datadog Distributed Tracing.
 
-> ⚠️ This plugin is still in Alpha / Developer Preview. 
-
 ## Getting started
 
 To utilize this plugin, create an instance of `DatadogGrpcInterceptor`, then pass it to your generated gRPC client:

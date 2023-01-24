@@ -5,6 +5,7 @@
  */
 package com.datadoghq.flutter
 
+import android.util.Log
 import com.datadog.android.log.Logger
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -16,8 +17,12 @@ import org.json.JSONObject
 
 class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     companion object LogParameterNames {
+        const val LOG_LEVEL = "logLevel"
         const val LOG_MESSAGE = "message"
         const val LOG_CONTEXT = "context"
+        const val LOG_ERROR_MESSAGE = "errorMessage"
+        const val LOG_ERROR_KIND = "errorKind"
+        const val LOG_STACK_TRACE = "stackTrace"
         const val LOG_KEY = "key"
         const val LOG_TAG = "tag"
         const val LOG_VALUE = "value"
@@ -28,13 +33,15 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
 
     private val loggerRegistry: MutableMap<String, Logger> = mutableMapOf()
 
-    fun setup(
-        flutterPluginBinding: FlutterPlugin.FlutterPluginBinding,
-    ) {
+    fun attachToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter.logs")
         channel.setMethodCallHandler(this)
 
         binding = flutterPluginBinding
+    }
+
+    fun detachFromEngine() {
+        channel.setMethodCallHandler(null)
     }
 
     internal fun addLogger(loggerHandle: String, logger: Logger) {
@@ -80,25 +87,8 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     @Suppress("LongMethod", "ComplexMethod", "NestedBlockDepth")
     private fun callLoggingMethod(logger: Logger, call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
-            "debug" -> {
-                internalLog(call, result) { message, context ->
-                    logger.d(message, attributes = context)
-                }
-            }
-            "info" -> {
-                internalLog(call, result) { message, context ->
-                    logger.i(message, attributes = context)
-                }
-            }
-            "warn" -> {
-                internalLog(call, result) { message, context ->
-                    logger.w(message, attributes = context)
-                }
-            }
-            "error" -> {
-                internalLog(call, result) { message, context ->
-                    logger.e(message, attributes = context)
-                }
+            "log" -> {
+                internalLog(logger, call, result)
             }
             "addAttribute" -> {
                 val key = call.argument<String>(LOG_KEY)
@@ -162,7 +152,6 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
             .setDatadogLogsEnabled(configuration.sendLogsToDatadog)
             .setLogcatLogsEnabled(configuration.printLogsToConsole)
             .setNetworkInfoEnabled(configuration.sendNetworkInfo)
-            .setBundleWithTraceEnabled(configuration.bundleWithTraces)
             .setBundleWithRumEnabled(configuration.bundleWithRum)
 
         configuration.loggerName?.let {
@@ -172,22 +161,23 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         loggerRegistry[loggerHandle] = logger
     }
 
-    @Suppress("UNUSED_PARAMETER")
-    fun teardown(binding: FlutterPlugin.FlutterPluginBinding) {
-        channel.setMethodCallHandler(null)
-    }
-
     @Suppress("TooGenericExceptionCaught")
     private fun internalLog(
+        logger: Logger,
         call: MethodCall,
-        result: MethodChannel.Result,
-        logFunction: (message: String, attributes: Map<String, Any?>) -> Unit
+        result: MethodChannel.Result
     ) {
         try {
             val message = call.argument<String>(LOG_MESSAGE)!!
+            val level = parseLogLevel(call.argument<String>(LOG_LEVEL)!!)
             val context = call.argument<Map<String, Any?>>(LOG_CONTEXT)!!
 
-            logFunction(message, context)
+            // Optional parameters
+            val errorKind = call.argument<String>(LOG_ERROR_KIND)
+            val errorMessage = call.argument<String>(LOG_ERROR_MESSAGE)
+            val stackTrace = call.argument<String>(LOG_STACK_TRACE)
+
+            logger.log(level, message, errorKind, errorMessage, stackTrace, context)
 
             result.success(null)
         } catch (e: ClassCastException) {
@@ -213,5 +203,19 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
                 logger.addAttribute(key, jsonObject)
             }
         }
+    }
+}
+
+internal fun parseLogLevel(logLevel: String): Int {
+    return when (logLevel) {
+        "LogLevel.debug" -> Log.DEBUG
+        "LogLevel.info" -> Log.INFO
+        "LogLevel.notice" -> Log.WARN
+        "LogLevel.warning" -> Log.WARN
+        "LogLevel.error" -> Log.ERROR
+        "LogLevel.critical" -> Log.ASSERT
+        "LogLevel.alert" -> Log.ASSERT
+        "LogLevel.emergency" -> Log.ASSERT
+        else -> Log.INFO
     }
 }

@@ -4,8 +4,8 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,10 +30,11 @@ Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
       site: DatadogSite.us1,
       trackingConsent: TrackingConsent.granted)
     ..loggingConfiguration = LoggingConfiguration()
-    ..tracingConfiguration = TracingConfiguration()
-    ..rumConfiguration = RumConfiguration(applicationId: applicationId)
-    ..additionalConfig[DatadogConfigKey.serviceName] =
-        'com.datadog.flutter.nightly';
+    ..rumConfiguration = RumConfiguration(
+      applicationId: applicationId,
+      detectLongTasks: false,
+    )
+    ..serviceName = 'com.datadog.flutter.nightly';
 
   if (configCallback != null) {
     configCallback(configuration);
@@ -57,26 +58,6 @@ Future<void> measure(String resourceName, AsyncVoidCallback callback,
   }
 }
 
-final _random = Random();
-const _alphas = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const _numerics = '0123456789';
-const _alphaNumerics = _alphas + _numerics;
-
-String randomString({int length = 10}) {
-  final result = String.fromCharCodes(Iterable.generate(
-    length,
-    (_) => _alphaNumerics.codeUnitAt(_random.nextInt(_alphaNumerics.length)),
-  ));
-
-  return result;
-}
-
-extension RandomExtension<T> on List<T> {
-  T randomElement() {
-    return this[_random.nextInt(length)];
-  }
-}
-
 Map<String, Object> e2eAttributes(WidgetTester tester) {
   return {
     'test_method_name': tester.testDescription,
@@ -96,14 +77,6 @@ void sendRandomLog(WidgetTester tester) {
 
   method!(
     randomString(),
-    e2eAttributes(tester),
+    attributes: e2eAttributes(tester),
   );
-}
-
-DdSpan startSpan(String operationName) {
-  // Not used in any currently running tests, ignoring deprecated use for now.
-  // ignore: deprecated_member_use
-  return DatadogSdk.instance.traces!.startSpan(operationName, tags: {
-    'operating_system': Platform.operatingSystem,
-  });
 }

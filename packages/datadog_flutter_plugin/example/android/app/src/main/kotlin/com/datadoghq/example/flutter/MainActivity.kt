@@ -43,9 +43,9 @@ class MainActivity : FlutterActivity() {
             "performCallback" -> {
                 val callbackId = call.argument<Int>("callbackId")
 
-                val result = object : MethodChannel.Result {
+                val callbackResult = object : MethodChannel.Result {
                     override fun error(
-                        errorCode: String?,
+                        errorCode: String,
                         errorMessage: String?,
                         errorDetails: Any?
                     ) {
@@ -71,7 +71,7 @@ class MainActivity : FlutterActivity() {
                         "callbackId" to callbackId,
                         "callbackValue" to "Value String"
                     ),
-                    result
+                    callbackResult
                 )
             }
         }

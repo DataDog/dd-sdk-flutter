@@ -4,8 +4,10 @@
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 
-import 'src/tracking_http_client_plugin.dart';
+import 'src/tracking_http_client_plugin.dart'
+    show DdHttpTrackingPluginConfiguration;
 
+export 'src/tracking_http.dart';
 export 'src/tracking_http_client.dart';
 
 extension TrackingExtension on DdSdkConfiguration {
@@ -16,19 +18,29 @@ extension TrackingExtension on DdSdkConfiguration {
   /// check the documentation on [DatadogTrackingHttpClient]
   ///
   /// If the RUM feature is enabled, the SDK will send RUM Resources for all
-  /// intercepted requests.
+  /// intercepted requests. The SDK will also generate and send tracing Spans
+  /// for each 1st-party request.
   ///
-  /// If the Tracing feature is enabled, the SDK will send tracing Span for each
-  /// 1st-party request. It will also add extra HTTP headers to further
-  /// propagate the trace - it means that if your backend is instrumented with
-  /// Datadog agent you will see the full trace (e.g.: client → server →
-  /// database) in your dashboard, thanks to Datadog Distributed Tracing.
+  /// The DatadogTracingHttpClient can additionally set tracing headers on your
+  /// requests, which allows for distributed tracing. You can set which format
+  /// of tracing headers when configuring firstParty hosts with
+  /// [DdSdkConfiguration.firstPartyHostsWithTracingHeaders]. The percentage of
+  /// resources traced in this way is determined by
+  /// [RumConfiguration.tracingSamplingRate].
   ///
-  /// If both RUM and Tracing features are enabled, the SDK will be sending RUM
-  /// Resources for 1st- and 3rd-party requests and tracing Spans for
-  /// 1st-parties.
   ///
-  /// See also [firstPartyHosts]
+  /// Note that this is call is not necessary if you only want to track requests
+  /// made through [DatadogClient]
+  ///
+  /// See also [DdSdkConfiguration.firstPartyHostsWithTracingHeaders],
+  /// [DdSdkConfiguration.firstPartyHosts], [TracingHeaderType]
+  void enableHttpTracking() {
+    addPlugin(DdHttpTrackingPluginConfiguration());
+  }
+}
+
+extension TrackingExtensionExisting on DdSdkExistingConfiguration {
+  /// See [TrackingExtension.enableHttpTracking]
   void enableHttpTracking() {
     addPlugin(DdHttpTrackingPluginConfiguration());
   }

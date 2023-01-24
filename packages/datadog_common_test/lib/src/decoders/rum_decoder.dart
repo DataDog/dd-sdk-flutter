@@ -2,6 +2,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'dart:io';
+
+import '../../datadog_common_test.dart';
+
 class RumSessionDecoder {
   final List<RumViewVisit> visits;
 
@@ -9,8 +13,19 @@ class RumSessionDecoder {
 
   static RumSessionDecoder fromEvents(List<RumEventDecoder> events,
       {bool shouldDiscardApplicationLaunch = true}) {
-    events.sort((firstEvent, secondEvent) =>
-        firstEvent.date.compareTo(secondEvent.date));
+    events.sort((firstEvent, secondEvent) {
+      var comp = firstEvent.date.compareTo(secondEvent.date);
+      // In the BrowserSDK, view events always have their date set to the start of the view
+      // Sort based off time spent
+      if (comp == 0 &&
+          firstEvent.eventType == 'view' &&
+          secondEvent.eventType == 'view') {
+        final firstView = RumViewEventDecoder(firstEvent.rumEvent);
+        final secondView = RumViewEventDecoder(secondEvent.rumEvent);
+        return firstView.timeSpent.compareTo(secondView.timeSpent);
+      }
+      return comp;
+    });
 
     final viewVisitsById = <String, RumViewVisit>{};
     for (var e in events.where((e) => e.eventType == 'view')) {
@@ -42,6 +57,10 @@ class RumSessionDecoder {
           final errorEvent = RumErrorEventDecoder(e.rumEvent);
           visit.errorEvents.add(errorEvent);
           break;
+        case 'long_task':
+          final longTaskEvent = RumLongTaskEventDecoder(e.rumEvent);
+          visit.longTaskEvents.add(longTaskEvent);
+          break;
       }
     }
 
@@ -63,6 +82,7 @@ class RumViewVisit {
   final List<RumActionEventDecoder> actionEvents = [];
   final List<RumResourceEventDecoder> resourceEvents = [];
   final List<RumErrorEventDecoder> errorEvents = [];
+  final List<RumLongTaskEventDecoder> longTaskEvents = [];
 
   RumViewVisit(this.id, this.name, this.path);
 }
@@ -82,16 +102,75 @@ class RumEventDecoder {
   final Dd dd;
 
   String get eventType => rumEvent['type'] as String;
-  int get date => rumEvent['date'] as int;
+  String get service {
+    if (!kManualIsWeb) {
+      if (Platform.isIOS) return rumEvent['service'];
+    }
+    return rumEvent['service'];
+  }
 
-  Map<String, dynamic> get context => rumEvent['context'];
+  int get date => rumEvent['date'] as int;
+  String get version => rumEvent['version'] as String;
+  Map<String, dynamic>? get telemetryConfiguration =>
+      rumEvent['telemetry']?['configuration'];
+
+  Map<String, dynamic>? get context => rumEvent['context'];
 
   RumEventDecoder(this.rumEvent)
       : view = RumViewDecoder(rumEvent['view']),
         dd = Dd(rumEvent['_dd']);
+
+  static RumEventDecoder? fromJson(Map<String, dynamic> eventData) {
+    if (eventData['view'] != null &&
+        eventData['type'] != null &&
+        eventData['_dd'] != null) {
+      return RumEventDecoder(eventData);
+    }
+
+    return null;
+  }
+}
+
+class Vital {
+  final double minTime;
+  final double maxTime;
+  final double avgTime;
+
+  Vital({
+    required this.minTime,
+    required this.maxTime,
+    required this.avgTime,
+  });
 }
 
 class RumViewEventDecoder extends RumEventDecoder {
+  int get timeSpent => rumEvent['view']['time_spent'] as int;
+  Vital? get flutterRasterTime {
+    final rasterTime =
+        rumEvent['view']['flutter_raster_time'] as Map<String, Object?>?;
+    if (rasterTime != null) {
+      return Vital(
+        minTime: rasterTime['min'] as double,
+        maxTime: rasterTime['max'] as double,
+        avgTime: rasterTime['average'] as double,
+      );
+    }
+    return null;
+  }
+
+  Vital? get flutterBuildTime {
+    final buildTime =
+        rumEvent['view']['flutter_build_time'] as Map<String, Object?>?;
+    if (buildTime != null) {
+      return Vital(
+        minTime: buildTime['min'] as double,
+        maxTime: buildTime['max'] as double,
+        avgTime: buildTime['average'] as double,
+      );
+    }
+    return null;
+  }
+
   RumViewEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
 }
 
@@ -127,6 +206,13 @@ class RumErrorEventDecoder extends RumEventDecoder {
   int? get resourceStatusCode => rumEvent['error']['resource']?['statusCode'];
 }
 
+class RumLongTaskEventDecoder extends RumEventDecoder {
+  RumLongTaskEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+
+  String? get viewName => rumEvent['view']['name'];
+  int? get duration => rumEvent['long_task']['duration'];
+}
+
 class RumViewDecoder {
   final Map<String, dynamic> viewData;
 
@@ -137,9 +223,10 @@ class RumViewDecoder {
   int get actionCount => viewData['action']['count'] as int;
   int get resourceCount => viewData['resource']['count'] as int;
   int get errorCount => viewData['error']['count'] as int;
+  int get longTaskCount => viewData['long_task']['count'] as int;
 
   Map<String, int> get customTimings =>
-      (viewData['custom_timings'] as Map<String, dynamic>)
+      (viewData['custom_timings'] as Map<String, Object?>)
           .map((key, value) => MapEntry(key, value as int));
 
   RumViewDecoder(this.viewData);

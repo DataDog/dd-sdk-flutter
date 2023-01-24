@@ -5,21 +5,34 @@
 import 'package:flutter/material.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import '../../datadog_internal.dart';
+import '../helpers.dart';
 
+/// Information about a View that will be passed to [DdRum.startView]
 class RumViewInfo {
+  /// The name of the view
   final String name;
+
+  /// A path to the view
   final String? path;
-  final String? service;
-  final Map<String, dynamic> attributes;
+
+  /// Any attributes to be associated with this view
+  final Map<String, Object?> attributes;
 
   RumViewInfo({
     required this.name,
     this.path,
-    this.service,
     this.attributes = const {},
   });
 }
 
+/// A function that can be used to supply custom information to
+/// [DdRum.startView].
+///
+/// Returning `null` from this function will prevent the call
+/// to [DdRum.startView].
+///
+/// See [DatadogNavigationObserver.viewInfoExtractor].
 typedef ViewInfoExtractor = RumViewInfo? Function(Route route);
 
 RumViewInfo? defaultViewInfoExtractor(Route route) {
@@ -46,26 +59,71 @@ RumViewInfo? defaultViewInfoExtractor(Route route) {
 /// you can supply a [ViewInfoExtractor] function to [viewInfoExtractor]. This
 /// function is called with the current Route, and can be used to supply a
 /// different name, path, or extra attributes to any route.
-class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
+class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
+    with WidgetsBindingObserver {
   final ViewInfoExtractor viewInfoExtractor;
   final DatadogSdk datadogSdk;
+
+  RumViewInfo? _currentView;
+  RumViewInfo? _pendingView;
 
   DatadogNavigationObserver({
     required this.datadogSdk,
     this.viewInfoExtractor = defaultViewInfoExtractor,
-  });
+  }) {
+    ambiguate(WidgetsBinding.instance)?.addObserver(this);
+    datadogSdk.updateConfigurationInfo(
+        LateConfigurationProperty.trackViewsManually, false);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        final pendingView = _pendingView;
+        _pendingView = null;
+        _startView(pendingView);
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        if (_currentView != null) {
+          _pendingView = _currentView;
+          _stopView(_currentView);
+        }
+        break;
+    }
+  }
+
+  void _startView(RumViewInfo? viewInfo) {
+    if (ambiguate(WidgetsBinding.instance)?.lifecycleState !=
+        AppLifecycleState.resumed) {
+      _pendingView = viewInfo;
+    } else {
+      _currentView = viewInfo;
+      if (viewInfo != null) {
+        datadogSdk.rum?.startView(viewInfo.name, null, viewInfo.attributes);
+      } else {
+        _pendingView = viewInfo;
+      }
+    }
+  }
+
+  void _stopView(RumViewInfo? viewInfo) {
+    if (viewInfo != null) {
+      datadogSdk.rum?.stopView(viewInfo.name);
+    }
+    _currentView = null;
+  }
 
   void _sendScreenView(Route? newRoute, Route? oldRoute) {
-    final oldRouteInfo = oldRoute != null ? viewInfoExtractor(oldRoute) : null;
-    final newRouteInfo = newRoute != null ? viewInfoExtractor(newRoute) : null;
+    final oldViewInfo = oldRoute != null ? viewInfoExtractor(oldRoute) : null;
+    final newViewInfo = newRoute != null ? viewInfoExtractor(newRoute) : null;
 
-    if (oldRouteInfo != null) {
-      datadogSdk.rum?.stopView(oldRouteInfo.name);
-    }
-    if (newRouteInfo != null) {
-      datadogSdk.rum
-          ?.startView(newRouteInfo.name, null, newRouteInfo.attributes);
-    }
+    _stopView(oldViewInfo);
+    _startView(newViewInfo);
   }
 
   @override
@@ -84,7 +142,7 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
   void didPop(Route route, Route? previousRoute) {
     super.didPop(route, previousRoute);
 
-    // On pop, the "previous" route is now the new roue.
+    // On pop, the "previous" route is now the new route.
     _sendScreenView(previousRoute, route);
   }
 }
@@ -111,8 +169,11 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>> {
 /// ```
 ///
 /// By default, DatadogRouteAwareMixin will use the name of its parent Widget as
-/// the name of the route. You can override this by overriding the [rumViewInfo]
-/// getter, as well as supply additional properties about the view.
+/// the name of the route, **but only when the code is not obfuscated**.
+///
+/// If you are obfuscating your final code, or if you want to provide a
+/// different name or additional view attributes, you should override the
+/// [rumViewInfo] getter.
 ///
 /// [DatadogNavigationObserver] uses the [didChangeDependencies] lifecycle
 /// method to start the RUM view. For this reason, you should avoid calling RUM
@@ -215,7 +276,7 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
 /// void main() {
 ///   // Other setup code
 ///   final observer = DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
-///   runApp(DatadogRouteAwareMixin(
+///   runApp(DatadogNavigationObserverProvider(
 ///     navObserver: observer,
 ///     child: MaterialApp(
 ///       navigatorObservers: [observer],

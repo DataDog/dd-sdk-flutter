@@ -1,0 +1,37 @@
+name: flutter_module
+version: 1.0.0+1
+publish_to: none
+
+environment:
+  sdk: '>=2.17.0 <3.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.2
+  go_router:  ^5.0.5
+  datadog_flutter_plugin:
+    path: ../../../packages/datadog_flutter_plugin
+  datadog_tracking_http_client:
+    path: ../../../packages/datadog_tracking_http_client
+  http: ^0.13.5
+
+dependency_overrides:
+  datadog_flutter_plugin:
+    path: ../../../packages/datadog_flutter_plugin
+  
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: '>=1.0.0'
+
+flutter:
+  uses-material-design: true
+ 
+  module:
+    androidX: true
+    androidPackage: com.datadoghq.flutter_module
+    iosBundleIdentifier: com.datadoghq.flutterModule

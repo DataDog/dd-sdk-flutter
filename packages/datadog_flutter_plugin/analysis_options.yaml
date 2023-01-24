@@ -6,8 +6,11 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - "**/*.mocks.dart"
-    
-linter:  
+    - "**/*.g.dart"
+  strong-mode:
+    implicit-dynamic: false
+
+linter:
   rules:
     prefer_single_quotes: true
     prefer_relative_imports: true

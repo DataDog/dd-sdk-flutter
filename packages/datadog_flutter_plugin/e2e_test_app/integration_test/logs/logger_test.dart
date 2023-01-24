@@ -5,6 +5,7 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:e2e_test_app/main.dart' as app;
 import 'package:flutter_test/flutter_test.dart';
@@ -59,7 +60,7 @@ void main() {
   /// ```
   testWidgets('logger - debug logs', (tester) async {
     await measure('flutter_log_debug_logs', () {
-      datadog.logs?.debug('fake message', {
+      datadog.logs?.debug('fake message', attributes: {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem
       });
@@ -86,7 +87,7 @@ void main() {
   /// ```
   testWidgets('logger - info logs', (tester) async {
     await measure('flutter_log_info_logs', () async {
-      datadog.logs?.info('fake info message', {
+      datadog.logs?.info('fake info message', attributes: {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem,
       });
@@ -113,7 +114,7 @@ void main() {
   /// ```
   testWidgets('logger - warn logs', (tester) async {
     await measure('flutter_log_warn_logs', () async {
-      datadog.logs?.warn('fake warn message', {
+      datadog.logs?.warn('fake warn message', attributes: {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem,
       });
@@ -140,7 +141,7 @@ void main() {
   /// ```
   testWidgets('logger - error logs', (tester) async {
     await measure('flutter_log_error_logs', () async {
-      datadog.logs?.error('fake error message', {
+      datadog.logs?.error('fake error message', attributes: {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem,
       });

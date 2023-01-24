@@ -3,6 +3,7 @@
 // Copyright 2016-Present Datadog, Inc.
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:datadog_flutter_plugin/src/rum/ddrum.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum_method_channel.dart';
@@ -256,6 +257,31 @@ void main() {
 
     expect(log, [
       isMethodCall('removeAttribute', arguments: {'key': 'attribute_key'})
+    ]);
+  });
+
+  test('reportLongTask calls to platform', () async {
+    final now = DateTime.now();
+    final duration = Random().nextInt(1000) + 100;
+
+    await ddRumPlatform.reportLongTask(now, duration);
+
+    expect(log, [
+      isMethodCall('reportLongTask', arguments: {
+        'at': now.millisecondsSinceEpoch,
+        'duration': duration,
+      }),
+    ]);
+  });
+
+  test('updatePerformanceMetrics calls to platform', () async {
+    await ddRumPlatform.updatePerformanceMetrics([0.2, 0.3], [0.11, 0.25]);
+
+    expect(log, [
+      isMethodCall('updatePerformanceMetrics', arguments: {
+        'buildTimes': [0.2, 0.3],
+        'rasterTimes': [0.11, 0.25],
+      }),
     ]);
   });
 }

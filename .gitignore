@@ -9,7 +9,7 @@ build/
 
 .bitrise.secrets.yml
 *flutter_junit_test_results.xml
-android/ndk_crash_reports/network_information
+android/ndk_crash_reports*/network_information
 **/.cxx/
 tools/e2e_generator/main.tf
 tools/e2e_generator/secrets.tf
@@ -19,4 +19,13 @@ tools/e2e_generator/terraform.tfstate
 **/.flutter-plugins*
 __pycache__
 venv/
+tools/ci/venv
+ndk_crash_reports_v2/
+ndk_crash_reports_intermediary_v2/
 .fvm/
+packages/datadog_flutter_plugin/integration_test_app/ios/Podfile.lock
+packages/datadog_flutter_plugin/e2e_test_app/pubspec.lock
+packages/datadog_flutter_plugin/example/pubspec.lock
+packages/datadog_tracking_http_client/example/ios/Podfile.lock
+examples/native-hybrid-app/ios/Podfile.lock
+packages/datadog_flutter_plugin/example/ios/Podfile.lock

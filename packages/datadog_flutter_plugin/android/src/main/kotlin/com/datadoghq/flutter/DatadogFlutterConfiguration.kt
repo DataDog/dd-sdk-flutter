@@ -12,6 +12,7 @@ import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Configuration
 import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
+import com.datadog.android.core.configuration.VitalsUpdateFrequency
 import com.datadog.android.ndk.NdkCrashReportsPlugin
 import com.datadog.android.plugin.Feature
 import com.datadog.android.privacy.TrackingConsent
@@ -22,7 +23,6 @@ data class LoggingConfiguration(
     var printLogsToConsole: Boolean,
     var sendLogsToDatadog: Boolean,
     var bundleWithRum: Boolean,
-    var bundleWithTraces: Boolean,
     var loggerName: String?
 ) {
     constructor(encoded: Map<String, Any?>) : this(
@@ -30,7 +30,6 @@ data class LoggingConfiguration(
         (encoded["printLogsToConsole"] as? Boolean) ?: false,
         (encoded["sendLogsToDatadog"] as? Boolean) ?: true,
         (encoded["bundleWithRum"] as? Boolean) ?: true,
-        (encoded["bundleWithTraces"] as? Boolean) ?: true,
         (encoded["loggerName"] as? String)
     )
 }
@@ -42,34 +41,47 @@ data class DatadogFlutterConfiguration(
     var env: String,
     var nativeCrashReportEnabled: Boolean,
     var trackingConsent: TrackingConsent,
+    var telemetrySampleRate: Float? = null,
     var site: DatadogSite? = null,
+    var serviceName: String? = null,
     var batchSize: BatchSize? = null,
     var uploadFrequency: UploadFrequency? = null,
-    var customEndpoint: String? = null,
+    var customLogsEndpoint: String? = null,
     var firstPartyHosts: List<String> = listOf(),
     var additionalConfig: Map<String, Any?> = mapOf(),
+    var attachLogMapper: Boolean = false,
 
-    var tracingConfiguration: TracingConfiguration? = null,
     var rumConfiguration: RumConfiguration? = null
 ) {
-    data class TracingConfiguration(
-        var sendNetworkInfo: Boolean,
-        var bundleWithRum: Boolean,
-    ) {
-        constructor(encoded: Map<String, Any?>) : this(
-            encoded["sendNetworkInfo"] as? Boolean ?: false,
-            encoded["bundleWithRum"] as? Boolean ?: true
-        )
-    }
-
     data class RumConfiguration(
         var applicationId: String,
-        var sampleRate: Float
+        var sampleRate: Float,
+        var detectLongTasks: Boolean,
+        var longTaskThreshold: Float,
+        var customEndpoint: String?,
+        var attachViewEventMapper: Boolean = false,
+        var attachActionEventMapper: Boolean = false,
+        var attachResourceEventMapper: Boolean = false,
+        var attachErrorEventMapper: Boolean = false,
+        var attachLongTaskEventMapper: Boolean = false,
+        var vitalsFrequency: VitalsUpdateFrequency? = null
     ) {
         constructor(encoded: Map<String, Any?>) : this(
             (encoded["applicationId"] as? String) ?: "",
-            (encoded["sampleRate"] as? Number)?.toFloat() ?: 100.0f
-        )
+            (encoded["sampleRate"] as? Number)?.toFloat() ?: 100.0f,
+            (encoded["detectLongTasks"] as? Boolean) ?: true,
+            (encoded["longTaskThreshold"] as? Number?)?.toFloat() ?: 0.1f,
+            encoded["customEndpoint"] as? String,
+            encoded["attachViewEventMapper"] as? Boolean ?: false,
+            encoded["attachActionEventMapper"] as? Boolean ?: false,
+            encoded["attachResourceEventMapper"] as? Boolean ?: false,
+            encoded["attachErrorEventMapper"] as? Boolean ?: false,
+            encoded["attachLongTaskEventMapper"] as? Boolean ?: false,
+        ) {
+            (encoded["vitalsFrequency"] as? String)?.let {
+                vitalsFrequency = parseVitalsFrequency(it)
+            }
+        }
     }
 
     constructor(encoded: Map<String, Any?>) : this(
@@ -78,11 +90,15 @@ data class DatadogFlutterConfiguration(
         (encoded["nativeCrashReportEnabled"] as? Boolean) ?: false,
         TrackingConsent.PENDING
     ) {
+        telemetrySampleRate = (encoded["telemetrySampleRate"] as? Number)?.toFloat()
         (encoded["trackingConsent"] as? String)?.let {
             trackingConsent = parseTrackingConsent(it)
         }
         (encoded["site"] as? String)?.let {
             site = parseSite(it)
+        }
+        (encoded["serviceName"] as? String)?.let {
+            serviceName = it
         }
         (encoded["batchSize"] as? String)?.let {
             batchSize = parseBatchSize(it)
@@ -90,7 +106,7 @@ data class DatadogFlutterConfiguration(
         (encoded["uploadFrequency"] as? String)?.let {
             uploadFrequency = parseUploadFrequency(it)
         }
-        customEndpoint = encoded["customEndpoint"] as? String
+        customLogsEndpoint = encoded["customLogsEndpoint"] as? String
         (encoded["firstPartyHosts"] as? List<String>)?.let {
             firstPartyHosts = it
         }
@@ -98,10 +114,8 @@ data class DatadogFlutterConfiguration(
         @Suppress("UNCHECKED_CAST")
         additionalConfig = (encoded["additionalConfig"] as? Map<String, Any?>) ?: mapOf()
 
-        @Suppress("UNCHECKED_CAST")
-        (encoded["tracingConfiguration"] as? Map<String, Any?>)?.let {
-            tracingConfiguration = TracingConfiguration(it)
-        }
+        attachLogMapper = (encoded["attachLogMapper"] as? Boolean) ?: false
+
         @Suppress("UNCHECKED_CAST")
         (encoded["rumConfiguration"] as? Map<String, Any?>)?.let {
             rumConfiguration = RumConfiguration(it)
@@ -109,22 +123,24 @@ data class DatadogFlutterConfiguration(
     }
 
     fun toCredentials(): Credentials {
-        val serviceName = additionalConfig["_dd.service_name"] as? String
+        val variant = additionalConfig["_dd.variant"] as? String
+
         return Credentials(
             clientToken = clientToken,
             envName = env,
             rumApplicationId = rumConfiguration?.applicationId,
-            variant = Credentials.NO_VARIANT,
+            variant = variant ?: Credentials.NO_VARIANT,
             serviceName = serviceName
         )
     }
 
-    fun toSdkConfiguration(): Configuration {
+    @Suppress("ComplexMethod")
+    fun toSdkConfigurationBuilder(): Configuration.Builder {
         val configBuilder = Configuration.Builder(
             // Always enable logging as users can create logs post initialization
             logsEnabled = true,
-            tracesEnabled = tracingConfiguration != null,
             crashReportsEnabled = nativeCrashReportEnabled,
+            tracesEnabled = false,
             rumEnabled = rumConfiguration != null
         )
             .setAdditionalConfiguration(
@@ -139,18 +155,28 @@ data class DatadogFlutterConfiguration(
         site?.let { configBuilder.useSite(it) }
         batchSize?.let { configBuilder.setBatchSize(it) }
         uploadFrequency?.let { configBuilder.setUploadFrequency(it) }
+        telemetrySampleRate?.let { configBuilder.sampleTelemetry(it) }
         rumConfiguration?.let {
             configBuilder.sampleRumSessions(it.sampleRate)
+            // Always disable user action tracking and view tracking for Flutter
+            configBuilder.disableInteractionTracking()
             configBuilder.useViewTrackingStrategy(NoOpViewTrackingStrategy)
+            // Native Android always has long task reporting - only sync the threshold
+            configBuilder.trackLongTasks((it.longTaskThreshold * 1000).toLong())
+            it.customEndpoint?.let { ce ->
+                configBuilder.useCustomRumEndpoint(ce)
+            }
+            it.vitalsFrequency?.let { vf ->
+                configBuilder.setVitalsUpdateFrequency(vf)
+            }
         }
-        customEndpoint?.let {
+
+        customLogsEndpoint?.let {
             configBuilder.useCustomLogsEndpoint(it)
-            configBuilder.useCustomTracesEndpoint(it)
-            configBuilder.useCustomRumEndpoint(it)
         }
         configBuilder.setFirstPartyHosts(firstPartyHosts)
 
-        return configBuilder.build()
+        return configBuilder
     }
 }
 
@@ -211,5 +237,15 @@ internal fun parseVerbosity(verbosity: String): Int {
         "Verbosity.error" -> Log.ERROR
         "Verbosity.none" -> Int.MAX_VALUE
         else -> Int.MAX_VALUE
+    }
+}
+
+internal fun parseVitalsFrequency(vitalsFrequency: String): VitalsUpdateFrequency {
+    return when (vitalsFrequency) {
+        "VitalsFrequency.frequent" -> VitalsUpdateFrequency.FREQUENT
+        "VitalsFrequency.average" -> VitalsUpdateFrequency.AVERAGE
+        "VitalsFrequency.rare" -> VitalsUpdateFrequency.RARE
+        "VitalsFrequency.never" -> VitalsUpdateFrequency.NEVER
+        else -> VitalsUpdateFrequency.AVERAGE
     }
 }

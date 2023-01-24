@@ -8,13 +8,12 @@ import '../auto_integration_scenarios/rum_auto_instrumentation_scenario.dart';
 import 'logging_scenario.dart';
 import 'rum_manual_error_reporting_scenario.dart';
 import 'rum_manual_instrumentation_scenario.dart';
-import 'traces_scenario.dart';
 
 class IntegrationScenariosScreen extends StatefulWidget {
   const IntegrationScenariosScreen({Key? key}) : super(key: key);
 
   @override
-  _IntegrationScenariosScreenState createState() =>
+  State<IntegrationScenariosScreen> createState() =>
       _IntegrationScenariosScreenState();
 }
 
@@ -31,7 +30,6 @@ class _IntegrationScenariosScreenState
     extends State<IntegrationScenariosScreen> {
   final items = <ScenarioItem>[
     ScenarioItem(label: 'Logging Scenario', navItem: LoggingScenario.new),
-    ScenarioItem(label: 'Traces Scenario', navItem: TracesScenario.new),
     ScenarioItem(
         label: 'Manual RUM Scenario',
         navItem: RumManualInstrumentationScenario.new),
@@ -57,7 +55,7 @@ class _IntegrationScenariosScreenState
             title: Text(item.label),
             trailing: const Icon(Icons.arrow_right_sharp),
             onTap: () {
-              Navigator.push(
+              Navigator.push<void>(
                 context,
                 MaterialPageRoute(
                   builder: (_) => item.navItem(),

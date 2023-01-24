@@ -8,7 +8,7 @@ class RumAutoInstrumentationThirdScreen extends StatefulWidget {
   const RumAutoInstrumentationThirdScreen({Key? key}) : super(key: key);
 
   @override
-  _RumAutoInstrumentationThirdScreenState createState() =>
+  State<RumAutoInstrumentationThirdScreen> createState() =>
       _RumAutoInstrumentationThirdScreenState();
 }
 

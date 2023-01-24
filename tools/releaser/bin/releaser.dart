@@ -2,14 +2,19 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
+import 'package:releaser/cocoapod_util.dart';
 import 'package:releaser/command.dart';
 import 'package:releaser/git_actions.dart';
+import 'package:releaser/gradle_util.dart';
 import 'package:releaser/helpers.dart';
 import 'package:releaser/release_validator.dart';
 import 'package:releaser/version_updater.dart';
+import 'package:releaser/yaml_util.dart';
 
 void main(List<String> arguments) async {
   Logger.root.level = Level.INFO;
@@ -24,10 +29,13 @@ void main(List<String> arguments) async {
       help: "Don't perform checks on branch names or un-staged files",
       defaultsTo: false,
     )
-    ..addFlag(
-      'no-commit',
-      help: "Don't commit or push changes",
-      defaultsTo: false,
+    ..addOption(
+      'ios-version',
+      help: 'Explicitly set the iOS release this release will target',
+    )
+    ..addOption(
+      'android-version',
+      help: 'Explicitly set the Android release this release will target',
     )
     ..addFlag(
       'dry-run',
@@ -36,16 +44,6 @@ void main(List<String> arguments) async {
       defaultsTo: false,
     )
     ..addFlag('verbose', defaultsTo: false)
-    ..addOption(
-      'branch',
-      abbr: 'b',
-      help: 'The branch to merge into. Defaults to `develop`',
-    )
-    ..addFlag(
-      'no-main',
-      help: 'Do not submit a pull request into main',
-      negatable: false,
-    )
     ..addFlag(
       'help',
       abbr: 'h',
@@ -78,14 +76,47 @@ void main(List<String> arguments) async {
     return;
   }
 
+  final githubToken = Platform.environment['GITHUB_TOKEN'];
+  if (githubToken == null) {
+    Logger.root.shout(
+        '❌ Must have the environment variable GITHUB_TOKEN set to validate native SDK releases.');
+    return;
+  }
+
+  final currentBranch = await commandArgs.gitDir.currentBranch();
+  final choreBranch =
+      'chore/${commandArgs.packageName}/prep-v${commandArgs.version}';
+
+  // By default (develop) increment the version by a minor version
+  var versionBumpType = VersionBumpType.minor;
+  // If we're on a release branch, bump by a revision
+  if (currentBranch.branchName.contains('release')) {
+    versionBumpType = VersionBumpType.rev;
+  }
+  // If we're releasing a pre-release, bump by pre-release
+  if (commandArgs.version.contains('-')) {
+    versionBumpType = VersionBumpType.prerelease;
+  }
+
   final commands = <Command>[
     ValidateReleaseCommand(),
-    CreateChoreBranchCommand(),
+    CreateBranchCommand(choreBranch),
     UpdateVersionsCommand(),
+    CommitChangesCommand(
+        '🚀 Preparing for release of ${commandArgs.packageName} ${commandArgs.version}.'),
+    CreateReleaseBranchCommand(),
+    RemoveDependencyOverridesCommand(),
+    RemovePodOverridesCommand(),
+    UpdateGradleFilesCommand(),
+    CommitChangesCommand(
+      '🧹 Remove dependency overrides for release of ${commandArgs.packageName} ${commandArgs.version}.',
+      noChangesOkay: true,
+    ),
     ValidatePublishDryRun(),
-    if (commandArgs.commitChanges) ...[
-      CommitChangesCommand(),
-    ]
+    SwitchBranchCommand(choreBranch),
+    BumpVersionCommand(versionBumpType),
+    CommitChangesCommand(
+        '📝 Bump version of ${commandArgs.packageName} to next potential release.'),
   ];
 
   for (final command in commands) {
@@ -105,7 +136,6 @@ Future<CommandArguments?> _validateArguments(ArgResults argResults) async {
   final version = argResults['version'];
   bool dryRun = argResults['dry-run'];
   bool skipGitChecks = argResults['skip-git-checks'];
-  bool commitChanges = !argResults['no-commit'];
 
   final gitDir = await getGitDir();
   if (gitDir == null) {
@@ -117,8 +147,9 @@ Future<CommandArguments?> _validateArguments(ArgResults argResults) async {
     packageRoot: path.join(gitDir.path, 'packages', packageName),
     gitDir: gitDir,
     skipGitChecks: skipGitChecks,
-    commitChanges: commitChanges,
     version: version,
+    iOSRelease: argResults['ios-version'],
+    androidRelease: argResults['android-version'],
     dryRun: dryRun,
   );
 }

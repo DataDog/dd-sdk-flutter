@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/src/datadog_sdk_method_channel.dart';
+import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,6 +14,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late DatadogSdkMethodChannel ddSdkPlatform;
+  late InternalLogger internalLogger;
   final List<MethodCall> log = [];
 
   setUp(() {
@@ -21,6 +23,7 @@ void main() {
       log.add(call);
       return null;
     });
+    internalLogger = InternalLogger();
   });
 
   tearDown(() {
@@ -34,12 +37,85 @@ void main() {
       trackingConsent: TrackingConsent.granted,
       site: DatadogSite.us1,
     );
-    await ddSdkPlatform.initialize(configuration);
+    await ddSdkPlatform.initialize(configuration,
+        internalLogger: internalLogger);
 
     expect(log, [
-      isMethodCall('initialize',
-          arguments: {'configuration': configuration.encode()})
+      isMethodCall('initialize', arguments: {
+        'configuration': configuration.encode(),
+        'setLogCallback': false,
+      })
     ]);
+  });
+
+  test('initialize add setLogCallback when provided', () async {
+    final configuration = DdSdkConfiguration(
+      clientToken: 'fakeClientToken',
+      env: 'environment',
+      trackingConsent: TrackingConsent.granted,
+      site: DatadogSite.us1,
+    );
+    await ddSdkPlatform.initialize(
+      configuration,
+      internalLogger: internalLogger,
+      logCallback: (_) {},
+    );
+
+    expect(log, [
+      isMethodCall('initialize', arguments: {
+        'configuration': configuration.encode(),
+        'setLogCallback': true,
+      })
+    ]);
+  });
+
+  test('attachToExisting calls to methodChannel', () {
+    unawaited(ddSdkPlatform.attachToExisting());
+
+    expect(log, [
+      isMethodCall('attachToExisting', arguments: <String, Object>{}),
+    ]);
+  });
+
+  test('attachToExisting response properly returns null from platform',
+      () async {
+    // The mock method channel is already set up to return null, so this should
+    // just pass it through.
+    final response = await ddSdkPlatform.attachToExisting();
+
+    expect(response, isNull);
+  });
+
+  test('attachToExisting response properly deserializes response', () async {
+    ddSdkPlatform.methodChannel.setMockMethodCallHandler((call) {
+      log.add(call);
+      if (call.method == 'attachToExisting') {
+        return Future<Map<String, Object?>>.value(
+            {'loggingEnabled': true, 'rumEnabled': false});
+      }
+
+      return null;
+    });
+    final response = await ddSdkPlatform.attachToExisting();
+
+    expect(response, isNotNull);
+    if (response != null) {
+      expect(response.rumEnabled, false);
+    }
+  });
+
+  test('invalid attachToExisting response returns null', () async {
+    ddSdkPlatform.methodChannel.setMockMethodCallHandler((call) {
+      log.add(call);
+      if (call.method == 'attachToExisting') {
+        return Future<Map<String, Object?>>.value({'rumEnabled': 'string'});
+      }
+
+      return null;
+    });
+    final response = await ddSdkPlatform.attachToExisting();
+
+    expect(response, isNull);
   });
 
   test('setDebugVerbosity calls to method channel', () {
@@ -68,7 +144,7 @@ void main() {
         'id': 'fake_id',
         'name': 'fake_name',
         'email': 'fake_email',
-        'extraInfo': const {}
+        'extraInfo': const <String, Object?>{}
       })
     ]);
   });
@@ -83,6 +159,64 @@ void main() {
         'name': null,
         'email': null,
         'extraInfo': const {'attribute': 124.3}
+      })
+    ]);
+  });
+
+  test('addUserExtraInfo calls to method channel passing attributes', () {
+    unawaited(ddSdkPlatform.addUserExtraInfo({
+      'attribute_1': 'test_attribute',
+      'attribute_2': null,
+    }));
+
+    expect(log, [
+      isMethodCall('addUserExtraInfo', arguments: {
+        'extraInfo': {
+          'attribute_1': 'test_attribute',
+          'attribute_2': null,
+        }
+      })
+    ]);
+  });
+
+  test('sendTelemetryDebug calls to method channel', () {
+    unawaited(ddSdkPlatform.sendTelemetryDebug('debug telemetry method'));
+
+    expect(log, [
+      isMethodCall('telemetryDebug', arguments: {
+        'message': 'debug telemetry method',
+      })
+    ]);
+  });
+
+  test('sendTelemetryError calls to method channel', () {
+    final st = StackTrace.current;
+    unawaited(ddSdkPlatform.sendTelemetryError(
+        'error telemetry method', st.toString(), 'fake error'));
+
+    expect(log, [
+      isMethodCall('telemetryError', arguments: {
+        'message': 'error telemetry method',
+        'stack': st.toString(),
+        'kind': 'fake error',
+      })
+    ]);
+  });
+
+  test('updateTelemetryConfiguration calls to method channel', () {
+    unawaited(
+        ddSdkPlatform.updateTelemetryConfiguration('telemetryProperty', true));
+    unawaited(ddSdkPlatform.updateTelemetryConfiguration(
+        'secondTelemetryProperty', false));
+
+    expect(log, [
+      isMethodCall('updateTelemetryConfiguration', arguments: {
+        'option': 'telemetryProperty',
+        'value': true,
+      }),
+      isMethodCall('updateTelemetryConfiguration', arguments: {
+        'option': 'secondTelemetryProperty',
+        'value': false,
       })
     ]);
   });

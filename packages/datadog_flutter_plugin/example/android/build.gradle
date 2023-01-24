@@ -6,6 +6,7 @@
 
 buildscript {
     ext.kotlin_version = '1.5.31'
+
     repositories {
         google()
         mavenCentral()
@@ -26,6 +27,9 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven {
+            url "https://oss.sonatype.org/content/repositories/snapshots/"
+        }
     }
 }
 

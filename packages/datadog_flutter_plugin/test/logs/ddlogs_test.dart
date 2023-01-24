@@ -4,7 +4,6 @@
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/src/internal_logger.dart';
-import 'package:datadog_flutter_plugin/src/logs/ddlogs.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -28,54 +27,128 @@ void main() {
   late DdLogs ddLogs;
   late MockDdLogsPlatform mockPlatform;
 
-  setUp(() {
-    logger = TestLogger();
-    mockPlatform = MockDdLogsPlatform();
-    when(() => mockPlatform.debug(any(), any(), any()))
-        .thenAnswer((invocation) => Future.value());
-    when(() => mockPlatform.info(any(), any(), any()))
-        .thenAnswer((invocation) => Future.value());
-    when(() => mockPlatform.warn(any(), any(), any()))
-        .thenAnswer((invocation) => Future.value());
-    when(() => mockPlatform.error(any(), any(), any()))
-        .thenAnswer((invocation) => Future.value());
-    DdLogsPlatform.instance = mockPlatform;
-    ddLogs = DdLogs(logger);
+  group('basic logger tests', () {
+    setUp(() {
+      logger = TestLogger();
+      mockPlatform = MockDdLogsPlatform();
+      registerFallbackValue(LogLevel.info);
+      when(() =>
+              mockPlatform.log(any(), any(), any(), any(), any(), any(), any()))
+          .thenAnswer((invocation) => Future<void>.value());
+      DdLogsPlatform.instance = mockPlatform;
+      ddLogs = DdLogs(logger, Verbosity.verbose);
+    });
+
+    test('debug logs pass to platform', () async {
+      ddLogs.debug('debug message', attributes: {'attribute': 'value'});
+
+      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.debug,
+          'debug message', null, null, null, {'attribute': 'value'}));
+    });
+
+    test('debug info pass to platform', () async {
+      ddLogs.info('info message', attributes: {'attribute': 'value'});
+
+      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.info,
+          'info message', null, null, null, {'attribute': 'value'}));
+    });
+
+    test('debug warn pass to platform', () async {
+      ddLogs.warn('warn message', attributes: {'attribute': 'value'});
+
+      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.warning,
+          'warn message', null, null, null, {'attribute': 'value'}));
+    });
+
+    test('error logs pass to platform', () async {
+      ddLogs.error('error message', attributes: {'attribute': 'value'});
+
+      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.error,
+          'error message', null, null, null, {'attribute': 'value'}));
+    });
+
+    test('addAttribute argumentError sent to logger', () async {
+      when(() => mockPlatform.addAttribute(any(), any(), any()))
+          .thenThrow(ArgumentError());
+      ddLogs.addAttribute('My key', 'Any Value');
+
+      assert(logger.logs.isNotEmpty);
+    });
   });
 
-  test('debug logs pass to platform', () async {
-    ddLogs.debug('debug message', {'attribute': 'value'});
+  group('threshold tests', () {
+    setUp(() {
+      logger = TestLogger();
+      mockPlatform = MockDdLogsPlatform();
+      registerFallbackValue(LogLevel.info);
+      when(() =>
+              mockPlatform.log(any(), any(), any(), any(), any(), any(), any()))
+          .thenAnswer((invocation) => Future<void>.value());
+      DdLogsPlatform.instance = mockPlatform;
+    });
 
-    verify(() => mockPlatform
-        .debug(ddLogs.loggerHandle, 'debug message', {'attribute': 'value'}));
-  });
+    test('threshold set to verbose always calls platform', () async {
+      ddLogs = DdLogs(logger, Verbosity.verbose);
 
-  test('info logs pass to platform', () async {
-    ddLogs.info('info message', {'attribute': 'value'});
+      ddLogs.debug('Debug message');
+      ddLogs.info('Info message');
+      ddLogs.warn('Warn message');
+      ddLogs.error('Error message');
 
-    verify(() => mockPlatform
-        .info(ddLogs.loggerHandle, 'info message', {'attribute': 'value'}));
-  });
+      for (var level in [
+        LogLevel.debug,
+        LogLevel.info,
+        LogLevel.warning,
+        LogLevel.error
+      ]) {
+        verify(() =>
+            mockPlatform.log(any(), level, any(), null, null, null, any()));
+      }
+    });
 
-  test('warn logs pass to platform', () async {
-    ddLogs.warn('warn message', {'attribute': 'value'});
+    test('threshold set to middle sends call proper platform methods',
+        () async {
+      ddLogs = DdLogs(logger, Verbosity.warn);
 
-    verify(() => mockPlatform
-        .warn(ddLogs.loggerHandle, 'warn message', {'attribute': 'value'}));
-  });
+      ddLogs.debug('Debug message');
+      ddLogs.info('Info message');
+      ddLogs.warn('Warn message');
+      ddLogs.error('Error message');
 
-  test('error logs pass to platform', () async {
-    ddLogs.error('error message', {'attribute': 'value'});
+      for (var level in [
+        LogLevel.debug,
+        LogLevel.info,
+      ]) {
+        verifyNever(() =>
+            mockPlatform.log(any(), level, any(), any(), any(), any(), any()));
+      }
 
-    verify(() => mockPlatform
-        .error(ddLogs.loggerHandle, 'error message', {'attribute': 'value'}));
-  });
+      for (var level in [
+        LogLevel.warning,
+        LogLevel.error,
+      ]) {
+        verify(() =>
+            mockPlatform.log(any(), level, any(), null, null, null, any()));
+      }
+    });
 
-  test('addAttribute argumentError sent to logger', () async {
-    when(() => mockPlatform.addAttribute(any(), any(), any()))
-        .thenThrow(ArgumentError());
-    ddLogs.addAttribute('My key', 'Any Value');
+    test('threshold set to none does not call platform', () async {
+      ddLogs = DdLogs(logger, Verbosity.none);
 
-    assert(logger.logs.isNotEmpty);
+      ddLogs.debug('Debug message');
+      ddLogs.info('Info message');
+      ddLogs.warn('Warn message');
+      ddLogs.error('Error message');
+
+      for (var level in [
+        LogLevel.debug,
+        LogLevel.info,
+        LogLevel.warning,
+        LogLevel.error
+      ]) {
+        verifyNever(() =>
+            mockPlatform.log(any(), level, any(), any(), any(), any(), any()));
+      }
+    });
   });
 }

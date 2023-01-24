@@ -54,13 +54,13 @@ class DatadogConfigurationTests: XCTestCase {
   }
 
   func testAllVerbosityLevels_AreParsedCorrectly() {
-    let verbose = LogLevel.parseFromFlutter("Verbosity.verbose")
-    let debug = LogLevel.parseFromFlutter("Verbosity.debug")
-    let info = LogLevel.parseFromFlutter("Verbosity.info")
-    let warn = LogLevel.parseFromFlutter("Verbosity.warn")
-    let error = LogLevel.parseFromFlutter("Verbosity.error")
-    let none = LogLevel.parseFromFlutter("Verbosity.none")
-    let unknown = LogLevel.parseFromFlutter("unknown")
+    let verbose = LogLevel.parseVerbosityFromFlutter("Verbosity.verbose")
+    let debug = LogLevel.parseVerbosityFromFlutter("Verbosity.debug")
+    let info = LogLevel.parseVerbosityFromFlutter("Verbosity.info")
+    let warn = LogLevel.parseVerbosityFromFlutter("Verbosity.warn")
+    let error = LogLevel.parseVerbosityFromFlutter("Verbosity.error")
+    let none = LogLevel.parseVerbosityFromFlutter("Verbosity.none")
+    let unknown = LogLevel.parseVerbosityFromFlutter("unknown")
 
     // iOS doesn't have .verbose so use .debug
     XCTAssertEqual(verbose, .debug)
@@ -71,6 +71,18 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertNil(none)
     XCTAssertNil(unknown)
   }
+
+    func testAllVitalsFrequencies_AreParsedCorrectly() {
+        let never = Datadog.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.never")
+        let rare = Datadog.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.rare")
+        let average = Datadog.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.average")
+        let frequent = Datadog.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.frequent")
+
+        XCTAssertEqual(never, .never)
+        XCTAssertEqual(rare, .rare)
+        XCTAssertEqual(average, .average)
+        XCTAssertEqual(frequent, .frequent)
+    }
 
   func testConfiguration_MissingValues_FailsInitialization() {
     let encoded: [String: Any?]  = [
@@ -92,11 +104,11 @@ class DatadogConfigurationTests: XCTestCase {
       "site": nil,
       "batchSize": nil,
       "uploadFrequency": nil,
+      "telemetrySampleRate": nil,
       "trackingConsent": "TrackingConsent.pending",
       "customEndpoint": nil,
       "firstPartyHosts": [],
       "loggingConfiguration": nil,
-      "tracingConfiguration": nil,
       "rumConfiguration": nil,
       "additionalConfig": [:]
     ]
@@ -107,9 +119,9 @@ class DatadogConfigurationTests: XCTestCase {
     XCTAssertEqual(config.clientToken, "fakeClientToken")
     XCTAssertEqual(config.env, "fakeEnvironment")
     XCTAssertEqual(config.nativeCrashReportingEnabled, false)
+    XCTAssertNil(config.telemetrySampleRate)
     XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
 
-    XCTAssertNil(config.tracingConfiguration)
     XCTAssertNil(config.rumConfiguration)
   }
 
@@ -122,10 +134,10 @@ class DatadogConfigurationTests: XCTestCase {
       "batchSize": "BatchSize.small",
       "uploadFrequency": "UploadFrequency.frequent",
       "trackingConsent": "TrackingConsent.pending",
+      "telemetrySampleRate": 44,
       "customEndpoint": nil,
       "firstPartyHosts": [ "first_party.com" ],
       "loggingConfiguration": nil,
-      "tracingConfiguration": nil,
       "rumConfiguration": nil,
       "additionalConfig": [:]
     ]
@@ -134,14 +146,38 @@ class DatadogConfigurationTests: XCTestCase {
 
     XCTAssertNotNil(config)
     XCTAssertEqual(config.site, .eu1)
+    XCTAssertNil(config.serviceName)
     XCTAssertEqual(config.batchSize, .small)
     XCTAssertEqual(config.uploadFrequency, .frequent)
     XCTAssertEqual(config.firstPartyHosts, ["first_party.com"])
     XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
+    XCTAssertEqual(config.telemetrySampleRate, 44)
 
-    XCTAssertNil(config.tracingConfiguration)
     XCTAssertNil(config.rumConfiguration)
   }
+
+    func testConfiguration_ServiceName_IsDecoded() {
+      let encoded: [String: Any?]  = [
+        "clientToken": "fakeClientToken",
+        "env": "fakeEnvironment",
+        "serviceName": "com.servicename",
+        "nativeCrashReportEnabled": NSNumber(false),
+        "site": "DatadogSite.eu1",
+        "batchSize": "BatchSize.small",
+        "uploadFrequency": "UploadFrequency.frequent",
+        "trackingConsent": "TrackingConsent.pending",
+        "customEndpoint": nil,
+        "firstPartyHosts": [ "first_party.com" ],
+        "loggingConfiguration": nil,
+        "rumConfiguration": nil,
+        "additionalConfig": [:]
+      ]
+
+      let config = DatadogFlutterConfiguration(fromEncoded: encoded)!
+
+      XCTAssertNotNil(config)
+      XCTAssertEqual(config.serviceName, "com.servicename")
+    }
 
   func testConfiguration_NestedConfigurations_AreDecoded() {
     let encoded: [String: Any?]  = [
@@ -157,22 +193,31 @@ class DatadogConfigurationTests: XCTestCase {
         "sendNetworkInfo": NSNumber(true),
         "printLogsToConsole": NSNumber(true)
       ],
-      "tracingConfiguration": [
-        "sendNetworkInfo": NSNumber(true),
-        "bundleWithRum": NSNumber(true)
-      ],
       "rumConfiguration": [
-        "applicationId": "fakeApplicationId"
+        "applicationId": "fakeApplicationId",
+        "detectLongTasks": NSNumber(false),
+        "longTaskThreshold": NSNumber(0.3),
+        "vitalsFrequency": "VitalsFrequency.never",
+        "attachViewEventMapper": true,
+        "attachActionEventMapper": true,
+        "attachResourceEventMapper": true,
+        "attachErrorEventMapper": true,
+        "attachLongTaskMapper": true
       ],
       "additionalConfig": [:]
     ]
 
     let config = DatadogFlutterConfiguration(fromEncoded: encoded)!
 
-    XCTAssertNotNil(config.tracingConfiguration)
-    XCTAssertEqual(config.tracingConfiguration?.sendNetworkInfo, true)
-
     XCTAssertNotNil(config.rumConfiguration)
     XCTAssertEqual(config.rumConfiguration?.applicationId, "fakeApplicationId")
+    XCTAssertEqual(config.rumConfiguration?.detectLongTasks, false)
+    XCTAssertEqual(config.rumConfiguration?.longTaskThreshold, 0.3)
+    XCTAssertEqual(config.rumConfiguration?.vitalsFrequency, .never)
+    XCTAssertEqual(config.rumConfiguration?.attachViewEventMapper, true)
+    XCTAssertEqual(config.rumConfiguration?.attachActionEventMapper, true)
+    XCTAssertEqual(config.rumConfiguration?.attachResourceEventMapper, true)
+    XCTAssertEqual(config.rumConfiguration?.attachErrorEventMapper, true)
+    XCTAssertEqual(config.rumConfiguration?.attachLongTaskMapper, true)
   }
 }

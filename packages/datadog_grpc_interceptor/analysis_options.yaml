@@ -2,3 +2,11 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   exclude: ['**/src/generated/**']
+  strong-mode:
+    implicit-dynamic: false
+
+linter:
+  rules:
+    prefer_single_quotes: true
+    prefer_relative_imports: true
+    unawaited_futures: true
