@@ -305,6 +305,72 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
+  testWidgets('tap Radio reports tap with value', (tester) async {
+    final mockRum = MockDdRum();
+
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      Radio(
+        value: 1,
+        groupValue: 0,
+        onChanged: (value) {},
+      ),
+    ));
+
+    final text = find.byType(Radio<int>);
+    await tester.tap(text);
+
+    verify(() => mockRum.addUserAction(RumUserActionType.tap, 'Radio(1)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap Radio reports tap with Tree annotation', (tester) async {
+    final mockRum = MockDdRum();
+
+    final annotation = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      RumUserActionAnnotation(
+        description: annotation,
+        child: Radio(
+          value: 1,
+          groupValue: 0,
+          onChanged: (value) {},
+        ),
+      ),
+    ));
+
+    final text = find.byType(Radio<int>);
+    await tester.tap(text);
+
+    verify(() =>
+        mockRum.addUserAction(RumUserActionType.tap, 'Radio($annotation)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap Switch reports tap with Tree annotation', (tester) async {
+    final mockRum = MockDdRum();
+
+    final annotation = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      RumUserActionAnnotation(
+        description: annotation,
+        child: Switch(
+          value: false,
+          onChanged: (value) {},
+        ),
+      ),
+    ));
+
+    final text = find.byType(Switch);
+    await tester.tap(text);
+
+    verify(() =>
+        mockRum.addUserAction(RumUserActionType.tap, 'Switch($annotation)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
   testWidgets('tap BottomNavigationBar reports tap', (tester) async {
     final mockRum = MockDdRum();
 

@@ -55,12 +55,13 @@ class _ElementDescription {
 ///
 /// This wrapper widget automatically detects tap user actions that occur in its
 /// tree and sends them to RUM. It detects interactions with several common
-/// Flutter widgets, including [ElevatedButton], [TextButton], [InkWell], and
+/// Flutter widgets, including [ElevatedButton], [TextButton],
+/// [CupertinoButton], [BottomNavigationBar], [TabBar], [InkWell], and
 /// [GestureDetector].
 ///
 /// For most Button types, the detector will look for a [Text] widget child,
 /// which it will use for the description of the action. In other cases, it will
-/// look for a child [Semantics] object, or an [Icon] with its [semanticsLabel]
+/// look for a child [Semantics] object, or an [Icon] with its [Icon.semanticsLabel]
 /// property set.
 ///
 /// Alternately, you can enclose any Widget tree with a
@@ -316,6 +317,12 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
           }
         }
       }
+    } else if (widget is Radio) {
+      elementName = 'Radio';
+      // If there's no tree annotation, use the value on the button
+      treeAnnotation ??= widget.value?.toString();
+    } else if (widget is Switch) {
+      elementName = 'Switch';
     } else if (widget is InkWell) {
       if (widget.onTap != null) {
         elementName = 'InkWell';
