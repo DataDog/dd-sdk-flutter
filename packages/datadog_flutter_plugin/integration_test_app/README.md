@@ -10,12 +10,12 @@ Mobile tests can be run with the regular `flutter test` command:
 flutter test integration_test -d "iPhone"
 ```
 
-The above example will run all integration tests on a device matching the name "iPhone" if one is already booted
+The above example will run all integration tests on a device matching the name "iPhone" if one is already booted.
 
 ## Running Web Tests
 
 Running tests for Flutter web requires a few extra steps, partially outlined in the official [Flutter documentation](https://docs.flutter.dev/cookbook/testing/integration/introduction#5b-web).
-However, instead of downloading a version of chromedriver, one is provided in the repository in `tools`.
+However, instead of downloading a version of `chromedriver`, one is provided in the repository in `tools`.
 
 First, run `chromedriver` on the proper port:
 ```bash
