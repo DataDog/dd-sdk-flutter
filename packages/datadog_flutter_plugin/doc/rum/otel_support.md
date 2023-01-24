@@ -25,7 +25,7 @@ final configuration = DdSdkConfiguration(
 
 Then enable tracing as normal.
 
-Note that this information will be merged with any hosts set on `DdSdkConfiguration.firstPartyHosts`. Hosts specified in `firstPartyHosts` will generate Datadog Tracing Headers by default.
+This information is merged with any hosts set on `DdSdkConfiguration.firstPartyHosts`. Hosts specified in `firstPartyHosts` generate Datadog Tracing Headers by default.
 
 ## Further reading
 

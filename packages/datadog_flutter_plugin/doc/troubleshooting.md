@@ -32,17 +32,17 @@ This causes the SDK to output additional information about what it's doing and w
 
 ## Not seeing Errors
 
-The most common reason users aren't seeing errors in RUM is because there is no view started. Make sure you are staring a view with `DatadogSdk.instance.rum?.startView` or that if you are using `DatadogRouteObserver` that your current Route has a name.
+If you do not see any errors in RUM, it's likely no view has been started. Make sure you have started a view with `DatadogSdk.instance.rum?.startView` or, if you are using `DatadogRouteObserver` make sure your current Route has a name.
 
 ## Not seeing Distributed Traces on Resources
 
 There are three possible settings you should check related to distributed tracing.  
 
-First, if you are not seeing any resources loads for your RUM View, check that you have setup either the `DatadogTrackingHttpClient` with `enableHttpTracking`, or that you are properly wrapping a `Client` from the `http` package with `DatadogClient`. 
+If you are not seeing any resources load for your RUM view, first check that you have set up either the `DatadogTrackingHttpClient` with `enableHttpTracking`, or that you are properly wrapping a `Client` from the `http` package with `DatadogClient`. 
 
-Second, ensure that you have properly set `firstPartyHosts` in your configuration. Datadog only generates and sends tracing headers to the hosts you specify in this property. Note that `firstPartyHosts` does not support wildcards or Regular Expressions.
+Second, ensure that you have properly set `firstPartyHosts` in your configuration. Datadog only generates and sends tracing headers to the hosts you specify in this property. `firstPartyHosts` does not support wildcards or Regular Expressions.
 
-Lastly, Datadog sets your tracing sample rate to 20% by default, so distributed traces will only be available on 20% of resource loads. While debugging, you may want to set `RumConfiguration.tracingSamplingRate` property to 100.
+Lastly, Datadog sets your tracing sample rate to 20% by default, so distributed traces are only available for 20% of resource loads. While debugging, you may want to set `RumConfiguration.tracingSamplingRate` property to 100.
 
 ## Further Reading
 
