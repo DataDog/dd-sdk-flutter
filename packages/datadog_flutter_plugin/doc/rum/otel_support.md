@@ -1,4 +1,4 @@
-# RUM Flutter Open Telemetry Support
+# RUM Flutter OpenTelemetry Support
 
 The [Datadog Tracking Http Client][1] package and [gRPC Interceptor][2] package both support distributed traces through both automatic header generation and header ingestion.
 
