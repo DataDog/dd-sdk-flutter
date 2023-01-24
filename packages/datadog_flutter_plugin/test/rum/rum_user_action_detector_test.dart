@@ -305,7 +305,7 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
-  testWidgets('Tap BottomNavigationBar reports tap', (tester) async {
+  testWidgets('tap BottomNavigationBar reports tap', (tester) async {
     final mockRum = MockDdRum();
 
     final app = RumUserActionDetector(
@@ -344,6 +344,117 @@ void main() {
 
     verify(() => mockRum.addUserAction(
         RumUserActionType.tap, 'BottomNavigationBarItem(Business)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap TabBar reports tap', (tester) async {
+    final mockRum = MockDdRum();
+
+    final app = RumUserActionDetector(
+      rum: mockRum,
+      child: DefaultTabController(
+        initialIndex: 0,
+        length: 3,
+        child: MaterialApp(
+          home: Scaffold(
+            appBar: AppBar(
+              title: const Text('Test'),
+              bottom: const TabBar(
+                tabs: [
+                  Tab(
+                    icon: Icon(
+                      Icons.cloud_outlined,
+                      semanticLabel: 'cloudy',
+                    ),
+                  ),
+                  Tab(
+                    icon: Icon(
+                      Icons.beach_access_sharp,
+                      semanticLabel: 'rainy',
+                    ),
+                  ),
+                  Tab(
+                    icon: Icon(
+                      Icons.brightness_5_sharp,
+                      semanticLabel: 'sunny',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            body: const TabBarView(children: [
+              Center(child: Text('Test 1')),
+              Center(child: Text('Test 2')),
+              Center(child: Text('Test 3')),
+            ]),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(app);
+
+    final navItem = find.byIcon(Icons.beach_access_sharp).first;
+    await tester.tap(navItem);
+
+    verify(() => mockRum.addUserAction(RumUserActionType.tap, 'Tab(rainy)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap TabBar reports tap with text over icon semantics',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final app = RumUserActionDetector(
+      rum: mockRum,
+      child: DefaultTabController(
+        initialIndex: 0,
+        length: 3,
+        child: MaterialApp(
+          home: Scaffold(
+            appBar: AppBar(
+              title: const Text('Test'),
+              bottom: const TabBar(
+                tabs: [
+                  Tab(
+                    icon: Icon(
+                      Icons.cloud_outlined,
+                      semanticLabel: 'cloudy',
+                    ),
+                  ),
+                  Tab(
+                    icon: Icon(
+                      Icons.beach_access_sharp,
+                      semanticLabel: 'rainy',
+                    ),
+                    text: 'Rainy Days',
+                  ),
+                  Tab(
+                    icon: Icon(
+                      Icons.brightness_5_sharp,
+                      semanticLabel: 'sunny',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            body: const TabBarView(children: [
+              Center(child: Text('Test 1')),
+              Center(child: Text('Test 2')),
+              Center(child: Text('Test 3')),
+            ]),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(app);
+
+    final navItem = find.byIcon(Icons.beach_access_sharp).first;
+    await tester.tap(navItem);
+
+    verify(
+        () => mockRum.addUserAction(RumUserActionType.tap, 'Tab(Rainy Days)'));
     verifyNoMoreInteractions(mockRum);
   });
 }

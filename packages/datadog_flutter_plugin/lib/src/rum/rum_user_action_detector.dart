@@ -19,12 +19,36 @@ const _tapSlopSquared = _tapSlop * _tapSlop;
 @immutable
 class _ElementDescription {
   final Element element;
+  final String elementName;
   final String elementDescription;
 
-  const _ElementDescription(
-    this.element,
-    this.elementDescription,
-  );
+  // Whether we can potentially do better than this element further down the
+  // tree. Used for non-specific widgets like `GestureDetector` and `InkWell`
+  // which are meant as a catch all but might have children (like `Tab`) that
+  // are more descriptive.
+  final bool tryForBetter;
+
+  @override
+  String toString() {
+    return '$elementName($elementDescription)';
+  }
+
+  bool betterThan(_ElementDescription? other) {
+    // Literally anything is better than GestureDetector
+    if (element.widget is GestureDetector && other != null) {
+      return false;
+    }
+
+    return true;
+  }
+
+  const _ElementDescription({
+    required this.element,
+    required this.elementName,
+    required this.elementDescription,
+    // ignore: unused_element
+    this.tryForBetter = false,
+  });
 }
 
 /// Detect simple user actions and send them to RUM.
@@ -144,12 +168,12 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     final elementDescription = _getDetectingElementAtPosition(position);
 
     if (elementDescription != null) {
-      widget.rum?.addUserAction(action, elementDescription.elementDescription);
+      widget.rum?.addUserAction(action, elementDescription.toString());
     }
   }
 
-  String _findElementInnerText(Element element, bool allowText) {
-    var elementDescription = 'unknown';
+  String? _findElementInnerText(Element element, bool allowText) {
+    String? elementDescription;
 
     void visitor(Element element) {
       bool stopVisits = false;
@@ -198,11 +222,12 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     _ElementDescription? detectingElement;
 
     String? rumTreeAnnotation;
+    bool excludingSemantics = false;
     RenderObject? lastRenderObject;
 
     void elementVisitor(Element element) {
       // We already have a candidate element, or we hit something we don't detect
-      if (detectingElement != null || targets.isEmpty) return;
+      if (detectingElement?.tryForBetter == false || targets.isEmpty) return;
 
       final ro = element.renderObject;
       if (ro == null) return;
@@ -220,11 +245,15 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
         if (widget is RumUserActionAnnotation) {
           rumTreeAnnotation = widget.description;
         } else {
-          detectingElement = _getDetectingElementDescription(
+          final checkElement = _getDetectingElementDescription(
               element, targets, rumTreeAnnotation);
+          if (checkElement != null &&
+              checkElement.betterThan(detectingElement)) {
+            detectingElement = checkElement;
+          }
         }
 
-        if (detectingElement == null) {
+        if (detectingElement?.tryForBetter != false) {
           element.visitChildElements(elementVisitor);
         }
         // This annotation was only for this tree
@@ -249,61 +278,70 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     return detectingElement;
   }
 
-  _ElementDescription? _getDetectingElementDescription(
-    Element element,
-    List<HitTestEntry<HitTestTarget>> targets,
-    String? treeAnnotation,
-  ) {
+  _ElementDescription? _getDetectingElementDescription(Element element,
+      List<HitTestEntry<HitTestTarget>> targets, String? treeAnnotation) {
     final widget = element.widget;
+    String? elementName;
+    bool searchForBetter = false;
+    bool searchForText = true;
     if (widget is ButtonStyleButton) {
       if (widget.enabled) {
-        final innerDescription =
-            treeAnnotation ?? _findElementInnerText(element, true);
-        return _ElementDescription(element, 'Button($innerDescription)');
+        elementName = 'Button';
       }
     } else if (widget is MaterialButton) {
       if (widget.enabled) {
-        final innerDescription =
-            treeAnnotation ?? _findElementInnerText(element, true);
-        return _ElementDescription(element, 'Button($innerDescription)');
+        elementName = 'Button';
       }
     } else if (widget is CupertinoButton) {
       if (widget.enabled) {
-        final innerDescription =
-            treeAnnotation ?? _findElementInnerText(element, true);
-        return _ElementDescription(element, 'Button($innerDescription)');
-      }
-    } else if (widget is InkWell) {
-      if (widget.onTap != null) {
-        final innerDescription =
-            treeAnnotation ?? _findElementInnerText(element, false);
-        return _ElementDescription(element, 'InkWell($innerDescription)');
+        elementName = 'Button';
       }
     } else if (widget is IconButton) {
       if (widget.onPressed != null) {
-        final innerDescription =
-            treeAnnotation ?? _findElementInnerText(element, false);
-        return _ElementDescription(element, 'IconButton($innerDescription)');
+        elementName = 'IconButton';
+        searchForText = false;
       }
+    } else if (widget is Tab) {
+      elementName = 'Tab';
     } else if (widget is BottomNavigationBar) {
       if (widget.onTap != null) {
-        final detectorElement = _findGestureDetectorElement(element, targets);
-        var innerDescription = 'unknown';
-        if (detectorElement != null) {
-          innerDescription =
-              treeAnnotation ?? _findElementInnerText(detectorElement, true);
+        elementName = 'BottomNavigationBarItem';
+        // Special case, if there's not already a tree annotation, get
+        // the child gesture detector in the hit path and search through it for
+        // a description.
+        if (treeAnnotation == null) {
+          final detectorElement = _findGestureDetectorElement(element, targets);
+          if (detectorElement != null) {
+            treeAnnotation = _findElementInnerText(detectorElement, true);
+          }
         }
-
-        return _ElementDescription(
-            element, 'BottomNavigationBarItem($innerDescription)');
+      }
+    } else if (widget is InkWell) {
+      if (widget.onTap != null) {
+        elementName = 'InkWell';
+        searchForBetter = true;
+        searchForText = false;
       }
     } else if (widget is GestureDetector) {
       if (widget.onTap != null) {
-        final innerDescription =
-            treeAnnotation ?? _findElementInnerText(element, false);
-        return _ElementDescription(
-            element, 'GestureDetector($innerDescription)');
+        elementName = 'GestureDetector';
+        searchForBetter = true;
+        searchForText = false;
       }
+    }
+
+    if (elementName != null) {
+      // A user added annotation takes precedence over a search, but using
+      // semantic information from further up the tree is a last resort.
+      var elementDescription = treeAnnotation ??
+          _findElementInnerText(element, searchForText) ??
+          'unknown';
+      return _ElementDescription(
+        element: element,
+        elementName: elementName,
+        elementDescription: elementDescription,
+        tryForBetter: searchForBetter,
+      );
     }
 
     return null;
