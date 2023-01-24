@@ -78,7 +78,14 @@ workflows:
             pod repo update
 
             ./prepare.sh
-
+    - script:
+        title: Dart 2.15 fix junitreport
+        inputs:
+        - content: |-
+            #!/user/bin/env bash
+            set -e
+            dart pub global activate junitreport
+        
   run_conditioned_workflows:
     steps:
     - script:
