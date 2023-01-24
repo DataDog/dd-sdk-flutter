@@ -1,4 +1,4 @@
-# RUM Flutter Open Telemetry Support
+# RUM Flutter OpenTelemetry Support
 
 The [Datadog Tracking Http Client][1] package and [gRPC Interceptor][2] package both support distributed traces through both automatic header generation and header ingestion.
 
@@ -23,7 +23,7 @@ final configuration = DdSdkConfiguration(
 );
 ```
 
-Then enable tracing as normal.
+You can then enable tracing as usual.
 
 This information is merged with any hosts set on `DdSdkConfiguration.firstPartyHosts`. Hosts specified in `firstPartyHosts` generate Datadog Tracing Headers by default.
 
