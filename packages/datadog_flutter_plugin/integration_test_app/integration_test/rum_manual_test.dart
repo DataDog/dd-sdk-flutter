@@ -201,7 +201,7 @@ void main() {
       expect(
           longTask.duration,
           greaterThanOrEqualTo(
-              const Duration(milliseconds: longTaskThresholdMs).inNanoseconds));
+              Duration(milliseconds: longTaskThresholdMs).inNanoseconds));
       // Nothing should have taken more than 2 seconds
       expect(longTask.duration,
           lessThan(const Duration(seconds: 2).inNanoseconds));

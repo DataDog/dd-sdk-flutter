@@ -21,8 +21,6 @@ declare -a all_dirs=(
     "tools/e2e_generator"
     "tools/releaser"
     "tools/third_party_scanner"
-
-    "examples/native-hybrid-app/flutter_module"
 )
 
 for i in "${all_dirs[@]}"
