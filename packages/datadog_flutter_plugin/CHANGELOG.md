@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+
+
 ## 1.2.0
 
 * 🔥 BREAKING - Log functions (`debug`, `info`, `warn`) now use `attributes` as a named argument instead of a positional argument.
