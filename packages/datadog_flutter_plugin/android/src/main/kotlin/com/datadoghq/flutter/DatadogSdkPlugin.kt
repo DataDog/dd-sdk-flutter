@@ -176,6 +176,15 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 updateTelemetryConfiguration(call)
                 result.success(null)
             }
+            "getInternalVar" -> {
+                val name = call.argument<String>("name")
+                if (name != null) {
+                    val value = getInternalVar(name)
+                    result.success(value)
+                } else {
+                    result.success(null)
+                }
+            }
             "flushAndDeinitialize" -> {
                 invokePrivateShutdown(result)
             }
@@ -420,6 +429,26 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 e
             )
             return event
+        }
+    }
+
+    private fun getInternalVar(name: String): Any? {
+        return when (name) {
+            "mapperPerformance" ->
+                mapOf(
+                    "total" to mapOf(
+                        "minMs" to rumPlugin.mapperPerf.minInMs,
+                        "maxMs" to rumPlugin.mapperPerf.maxInMs,
+                        "avgMs" to rumPlugin.mapperPerf.avgInMs,
+                    ),
+                    "mainThread" to mapOf(
+                        "minMs" to rumPlugin.mapperPerfMainThread.minInMs,
+                        "maxMs" to rumPlugin.mapperPerfMainThread.maxInMs,
+                        "avgMs" to rumPlugin.mapperPerfMainThread.avgInMs,
+                    ),
+                    "mapperTimeouts" to rumPlugin.mapperTimeouts
+                )
+            else -> null
         }
     }
 
