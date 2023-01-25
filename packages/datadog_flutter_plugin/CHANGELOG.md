@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.1
 
 * Remove reference to a gradle file that was not included in `pub deploy`
 
