@@ -18,7 +18,7 @@
 * Update iOS SDK to 1.14.0
   * Add a method for sending error attributes on logs as strings
   * Add a method to add user info properties.
-  
+
 ## 1.1.0
 
 * Add methods for attaching to existing instances of the DatadogSdk for "add-to-app" scenarios.
@@ -122,8 +122,11 @@
 [#143]: https://github.com/DataDog/dd-sdk-flutter/issues/143
 [#148]: https://github.com/DataDog/dd-sdk-flutter/issues/148
 [#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159
+[#175]: https://github.com/DataDog/dd-sdk-flutter/issues/175
 [#203]: https://github.com/DataDog/dd-sdk-flutter/issues/203
 [#254]: https://github.com/DataDog/dd-sdk-flutter/issues/254
 [#264]: https://github.com/DataDog/dd-sdk-flutter/issues/264
 [#271]: https://github.com/DataDog/dd-sdk-flutter/issues/271
 [#280]: https://github.com/DataDog/dd-sdk-flutter/issues/280
+[#297]: https://github.com/DataDog/dd-sdk-flutter/issues/297
+[#305]: https://github.com/DataDog/dd-sdk-flutter/issues/305
