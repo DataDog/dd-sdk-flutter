@@ -176,9 +176,9 @@ Depending on the event's type, only some specific properties can be modified:
 |                  | `resourceEvent.view.referrer`     | Referrer of the view linked to this action.   |
 |                  | `resourceEvent.view.url`          | URL of the view linked to this resource.      |
 
-## Set tracking consent (GDPR compliance)
+## Set tracking consent (GDPR & CCPA compliance)
 
-In order to be compliant with the GDPR regulation, the Flutter RUM SDK requires the tracking consent value at initialization.
+In order to be compliant with data protection and privacy policies, the Flutter RUM SDK requires the tracking consent value at initialization.
 
 The `trackingConsent` setting can be one of the following values:
 
@@ -188,9 +188,9 @@ The `trackingConsent` setting can be one of the following values:
 
 To change the tracking consent value after the Flutter RUM SDK is initialized, use the `DatadogSdk.setTrackingConsent` API call. The Flutter RUM SDK changes its behavior according to the new value. 
 
-For example, if the current tracking consent is `TrackingConsent.pending` and you change the value to `TrackingConsent.granted`, the Flutter RUM SDK sends all current and future data to Datadog.
+For example, if the current tracking consent is `TrackingConsent.pending` and you change the value to `TrackingConsent.granted`, the Flutter RUM SDK sends all previously recorded and future data to Datadog.
 
-Likewise, if you change the value from `TrackingConsent.pending` to `TrackingConsent.notGranted`, the Flutter RUM SDK wipes all current data and does not collect future data.
+Likewise, if you change the value from `TrackingConsent.pending` to `TrackingConsent.notGranted`, the Flutter RUM SDK wipes all data and does not collect any future data.
 
 ## Sample RUM sessions
 
