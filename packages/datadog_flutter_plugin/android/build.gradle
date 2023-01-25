@@ -32,10 +32,9 @@ rootProject.allprojects {
              content {
                 includeGroup "com.github.xgouchet.Elmyr"
              }
+
         }
-        maven {
-            url "https://oss.sonatype.org/content/repositories/snapshots/"
-        }
+
     }
 }
 
