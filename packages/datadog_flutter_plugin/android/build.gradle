@@ -67,8 +67,6 @@ android {
     }
 }
 
-apply from: '../../../ignore_sr_snapshots.gradle'
-
 dependencies {
     implementation "com.datadoghq:dd-sdk-android:$datadog_version"
     implementation "com.datadoghq:dd-sdk-android-ndk:$datadog_version"
