@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+
+
+## 1.2.0
+
 * 🔥 BREAKING - Log functions (`debug`, `info`, `warn`) now use `attributes` as a named argument instead of a positional argument.
 * Allow errors to be sent on all log functions. See [#264][]
 * Disable tracing by default in iOS. Silences a benign warning from the SDK. See [#280][]
