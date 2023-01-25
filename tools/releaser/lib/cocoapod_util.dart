@@ -13,8 +13,7 @@ final specDependencyPattern =
     RegExp(r"\s+s\.dependency\s+'(?<dependency>Datadog.+)', '.+");
 
 class RemovePodOverridesCommand extends Command {
-  final podspecLocation =
-      'packages/datadog_flutter_plugin/ios/datadog_flutter_plugin.podspec';
+  final podspecLocation = 'ios/datadog_flutter_plugin.podspec';
 
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
@@ -32,7 +31,9 @@ class RemovePodOverridesCommand extends Command {
   Future<bool> _removePodfileOverrides(
       CommandArguments args, Logger logger) async {
     logger.info('ℹ️ Removing overrides from Podfiles.');
-    for (var filePath in podfileList) {
+    // Only modify files in the package we're shipping
+    for (var filePath
+        in podfileList.where((e) => e.contains(args.packageName))) {
       final file = File(path.join(args.gitDir.path, filePath));
       if (!file.existsSync()) {
         logger.shout('❌ Could not find file $filePath');
@@ -58,14 +59,16 @@ class RemovePodOverridesCommand extends Command {
   }
 
   Future<bool> _pinPodspecVersion(CommandArguments args, Logger logger) async {
-    logger.info('ℹ️ Setting the iOS Pod Dependency to ${args.iOSRelease}');
+    final file = File(path.join(
+        args.gitDir.path, 'packages/${args.packageName}', podspecLocation));
 
-    final file = File(path.join(args.gitDir.path, podspecLocation));
     if (!file.existsSync()) {
-      logger.shout('❌ Could not find file $podspecLocation');
-      return false;
+      logger.warning(
+          '⚠️ Could not find file $file. This is expected for non-core packages');
+      return true;
     }
 
+    logger.info('ℹ️ Setting the iOS Pod Dependency to ${args.iOSRelease}');
     await transformFile(file, logger, args.dryRun, (element) {
       final match = specDependencyPattern.firstMatch(element);
       if (match != null) {
