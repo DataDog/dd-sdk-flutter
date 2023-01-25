@@ -150,10 +150,9 @@ Future<bool> _updateChangelogAddUnreleased(
     return false;
   }
 
-  bool firstLine = true;
   await transformFile(changelogFile, logger, dryRun, (element) {
-    if (firstLine) {
-      element = '## Unreleased\n\n' + element;
+    if (element.startsWith('# Changelog')) {
+      element += '\n\n## Unreleased\n\n';
     }
 
     return element;

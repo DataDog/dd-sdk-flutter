@@ -57,6 +57,24 @@ class _LoggingScreenState extends State<LoggingScreen> {
     });
   }
 
+  void _sendErrorLog() {
+    setState(() {
+      _disableSendingLogs = true;
+    });
+    try {
+      throw Exception('We threw an exception!');
+    } catch (e, st) {
+      DatadogSdk.instance.logs?.error(
+        'Error you asked for',
+        errorMessage: e.toString(),
+        errorStackTrace: st,
+      );
+    }
+    setState(() {
+      _disableSendingLogs = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -114,6 +132,10 @@ class _LoggingScreenState extends State<LoggingScreen> {
                   ),
                 ),
               ],
+            ),
+            ElevatedButton(
+              onPressed: _disableSendingLogs ? null : () => _sendErrorLog(),
+              child: const Text('Send Log With Exception'),
             ),
           ],
         ),

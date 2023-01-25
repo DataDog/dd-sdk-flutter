@@ -145,6 +145,14 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         case "updateTelemetryConfiguration":
             updateTelemetryConfiguration(arguments: arguments)
             result(nil)
+        case "getInternalVar":
+            guard let varName = arguments["name"] as? String else {
+                result(nil)
+                return
+            }
+
+            let value = getInternalVar(named: varName)
+            result(value)
 #if DD_SDK_COMPILED_FOR_TESTING
         case "flushAndDeinitialize":
             Datadog.flushAndDeinitialize()
@@ -188,6 +196,10 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         if let rumConfiguration = configuration.rumConfiguration {
             rum = DatadogRumPlugin.instance
             rum?.initialize(configuration: rumConfiguration)
+
+            if configuration.additionalConfig["_dd.track_mapper_performance"] as? Bool == true {
+                rum?.trackMapperPerf = true
+            }
         }
 
         Datadog._internal.telemetry.setConfigurationMapper { [weak self] event in
@@ -245,6 +257,28 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                 id: "datadog_flutter:configuration_error",
                 message: "Attempting to set telemetry configuration option '\(String(describing: option))'" +
                     " to '\(String(describing: value))', which is invalid.")
+        }
+    }
+
+    private func getInternalVar(named name: String) -> Any? {
+        switch name {
+        case "mapperPerformance":
+            let value: [String: Any?] = [
+                "total": [
+                    "minMs": rum?.mapperPerf.minInMs,
+                    "maxMs": rum?.mapperPerf.maxInMs,
+                    "avgMs": rum?.mapperPerf.avgInMs,
+                ],
+                "mainThread": [
+                    "minMs": rum?.mainThreadMapperPerf.minInMs,
+                    "maxMs": rum?.mainThreadMapperPerf.maxInMs,
+                    "avgMs": rum?.mainThreadMapperPerf.avgInMs,
+                ],
+                "mapperTimeouts": rum?.mapperTimeouts
+            ]
+            return value
+        default:
+            return nil
         }
     }
 

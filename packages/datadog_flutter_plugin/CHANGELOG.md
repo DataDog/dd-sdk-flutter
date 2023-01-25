@@ -7,6 +7,17 @@
 * Disable tracing by default in iOS. Silences a benign warning from the SDK. See [#280][]
 * Add ability to modify logs before send with `logEventMapper`
 * Allow setting sdkVerbosity prior to calling `DatadogSdk.runApp`
+* Update Android SDK to 1.16.0
+  * Logs: Make a local copy of tags before creating `LogEvent`.
+  * RUM: Synchronize access to `DatadogRumMonitor#rootScope` when processing fatal error.
+  * Logs: Add `device.architecture` to logs.
+  * Logs: Add a logger method to log error information from strings.
+  * RUM: Add frustration signal 'Error Tap'.
+  * RUM: Report frustration count on views.
+  * RUM: Create internal API for sending technical performance metrics.
+* Update iOS SDK to 1.14.0
+  * Add a method for sending error attributes on logs as strings
+  * Add a method to add user info properties.
 
 ## 1.1.0
 
@@ -111,8 +122,11 @@
 [#143]: https://github.com/DataDog/dd-sdk-flutter/issues/143
 [#148]: https://github.com/DataDog/dd-sdk-flutter/issues/148
 [#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159
+[#175]: https://github.com/DataDog/dd-sdk-flutter/issues/175
 [#203]: https://github.com/DataDog/dd-sdk-flutter/issues/203
 [#254]: https://github.com/DataDog/dd-sdk-flutter/issues/254
 [#264]: https://github.com/DataDog/dd-sdk-flutter/issues/264
 [#271]: https://github.com/DataDog/dd-sdk-flutter/issues/271
 [#280]: https://github.com/DataDog/dd-sdk-flutter/issues/280
+[#297]: https://github.com/DataDog/dd-sdk-flutter/issues/297
+[#305]: https://github.com/DataDog/dd-sdk-flutter/issues/305

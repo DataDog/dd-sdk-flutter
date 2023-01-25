@@ -1,8 +1,8 @@
 # "Add-To-App" or Hybrid Native + Flutter Applciation Example
 
-This example covers how to use the Datadog Flutter SDK in conjunction with an already existing native application. This assumes you already have a native iOS or Android Application that is sending data to Datadog, and you have added Flutter to it following Flutter's [Add-to-app documentation](https://docs.flutter.dev/development/add-to-app).
+This example covers how to use the Datadog Flutter SDK in conjunction with an already existing native application. This assumes you already have a native iOS or Android application that is sending data to Datadog, and you have added Flutter to it following Flutter's [Add-to-app documentation](https://docs.flutter.dev/development/add-to-app).
 
-## Native App is Primary and Datadog is Already Initialized -  `attachToExisting`
+## Native app is primary and Datadog is already initialized -  `attachToExisting`
 
 If you are using an application that is already using the native Datadog iOS or Datadog Android SDKs, the Flutter SDK can attach to these using the same parameters. In your `main` function, after calling `WidgetsFlutterBinding.ensureInitialized`, call `DatadogSdk.instance.attachToExisting`. You can optionally add a `LoggingConfiguraiton` to this call, which automatically creates a global logger and attaches it to `DatadogSdk.logs`.
 
@@ -28,7 +28,7 @@ Depending on your settings, the automatic view tracking in the native iOS and An
 
 To avoid seeing the extra `FlutterViewController` and `FlutterActivity` views in your sessions, add a `UIKitRUMViewsPredicate` and `ComponentPredicate` to your iOS and Android code, respectively.  Very simple examples of these predicates can be found in the example code in [AppDelegate.swift](ios/iOS%20Flutter%20Hybrid%20Example/AppDelegate.swift) and [HybridApplication.kt](android/app/src/main/java/com/datadoghq/hybrid_flutter_example/HybridApplication.kt)
 
-### Restart iOS Views
+### Restart iOS views
 
 If you are using automatic view tracking on iOS and filtering `FlutterViewController` views with the predicate above, there is a known issue that transitioning back from the `FlutterViewController` does not restart the original view, so you have to perform this step manually.
 
@@ -40,7 +40,7 @@ Note that restarting the view in this way is not necessary if you are not using 
 
 * The `source` of the data coming from these Hybrid apps is always the Native platform, no matter whether the event was sent from the Native SDK or the Flutter SDK.
 
-## Flutter App is Primary - use Datadog as Normal
+## Flutter app is primary - use Datadog as normal
 
 If you are primarily using Flutter and only occasionally need to access the Native Datadog SDK from a few views, you can assume Datadog has already been initialized and use some of its functionality without issue
 

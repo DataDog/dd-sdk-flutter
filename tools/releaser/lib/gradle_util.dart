@@ -21,7 +21,8 @@ class UpdateGradleFilesCommand extends Command {
   }
 
   Future<bool> _updateGradleFiles(CommandArguments args, Logger logger) async {
-    for (var filePath in gradleList) {
+    for (var filePath
+        in gradleList.where((e) => e.contains(args.packageName))) {
       final file = File(path.join(args.gitDir.path, filePath));
       if (!file.existsSync()) {
         logger.shout('❌ Could not find file $filePath');
