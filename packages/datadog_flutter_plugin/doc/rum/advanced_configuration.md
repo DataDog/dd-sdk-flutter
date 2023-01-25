@@ -139,7 +139,7 @@ final config = DdSdkConfiguration(
 );
 ```
 
-Each mapper is a function with a signature of `(T) -> T?`, where `T` is a concrete RUM event type. This allows changing portions of the event before it is sent, or drop the event entirely.
+Each mapper is a function with a signature of `(T) -> T?`, where `T` is a concrete RUM event type. This allows changing portions of the event before it is sent, or dropping the event entirely.
 
 For example, to redact sensitive information in a RUM Resource's `url`, implement a custom `redacted` function and use it in `rumResourceEventMapper`:
 
@@ -178,7 +178,7 @@ Depending on the event's type, only some specific properties can be modified:
 
 ## Set tracking consent (GDPR compliance)
 
-To be compliant with the GDPR regulation, the Flutter RUM SDK requires the tracking consent value at initialization.
+In order to be compliant with the GDPR regulation, the Flutter RUM SDK requires the tracking consent value at initialization.
 
 The `trackingConsent` setting can be one of the following values:
 
@@ -188,16 +188,15 @@ The `trackingConsent` setting can be one of the following values:
 
 To change the tracking consent value after the Flutter RUM SDK is initialized, use the `DatadogSdk.setTrackingConsent` API call. The Flutter RUM SDK changes its behavior according to the new value. 
 
-For example, if the current tracking consent is `TrackingConsent.pending`:
+For example, if the current tracking consent is `TrackingConsent.pending` and you change the value to `TrackingConsent.granted`, the Flutter RUM SDK sends all current and future data to Datadog.
 
-- If you change the value to `TrackingConsent.granted`, the Flutter RUM SDK sends all current and future data to Datadog;
-- If you change the value to `TrackingConsent.notGranted`, the Flutter RUM SDK wipes all current data and does not collect future data.
+Likewise, if you change the value from `TrackingConsent.pending` to `TrackingConsent.notGranted`, the Flutter RUM SDK wipes all current data and does not collect future data.
 
 ## Sample RUM sessions
 
 To control the data your application sends to Datadog RUM, you can specify a sampling rate for RUM sessions while [initializing the Flutter RUM SDK][2] as a percentage between 0 and 100.
 
-For example, to only keep 50% of sessions use:
+For example, to keep only 50% of sessions, use:
 
 ```dart
 final config = DdSdkConfiguration(
@@ -211,11 +210,11 @@ final config = DdSdkConfiguration(
 
 ## Sending data when device is offline
 
-RUM ensures availability of data when your user device is offline. In cases of low-network areas, or when the device battery is too low, all the RUM events are first stored on the local device in batches. They are sent as soon as the network is available, and the battery is high enough to ensure the Flutter RUM SDK does not impact the end user's experience. If the network is not available while your application is in the foreground, or if an upload of data fails, the batch is kept until it can be sent successfully.
+RUM ensures availability of data when your user device is offline. In cases of low-network areas, or when the device battery is too low, all RUM events are first stored on the local device in batches. They are sent as soon as the network is available, and the battery is high enough to ensure the Flutter RUM SDK does not impact the end user's experience. If the network is not available with your application running in the foreground, or if an upload of data fails, the batch is kept until it can be sent successfully.
 
 This means that even if users open your application while offline, no data is lost.
 
-**Note**: The data on the disk is automatically discarded if it gets too old to ensure the Flutter RUM SDK does not use too much disk space.
+**Note**: The data on the disk is automatically deleted if it gets too old to ensure the Flutter RUM SDK does not use too much disk space.
 
 ## Further reading
 
