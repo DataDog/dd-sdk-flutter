@@ -34,18 +34,34 @@ This causes the SDK to output additional information about what it's doing and w
 
 If you do not see any errors in RUM, it's likely no view has been started. Make sure you have started a view with `DatadogSdk.instance.rum?.startView` or, if you are using `DatadogRouteObserver` make sure your current Route has a name.
 
-## Not seeing Distributed Traces on Resources
+## Issues with automatic resource tracking and distributed tracing
 
-There are three possible settings you should check related to distributed tracing.  
+The [Datadog tracking HTTP client][2] package works with most common Flutter networking packages that rely on `dart:io`, including [`http`][3] and [`Dio`][4].
 
-If you are not seeing any resources load for your RUM view, first check that you have set up either the `DatadogTrackingHttpClient` with `enableHttpTracking`, or that you are properly wrapping a `Client` from the `http` package with `DatadogClient`. 
+If you are seeing resources in your RUM Sessions, then the tracking HTTP client is working, but other steps may be required to use distributed tracing.
 
-Second, ensure that you have properly set `firstPartyHosts` in your configuration. Datadog only generates and sends tracing headers to the hosts you specify in this property. `firstPartyHosts` does not support wildcards or Regular Expressions.
+By default, the Datadog RUM Flutter SDK samples distributed traces at only 20% of resource requests. While determining if there is an issue with your setup, you should set this value to 100% of traces by modifying your initialization with the following lines:
+```dart
+final configuration = DdSdkConfiguration(
+   //
+   rumConfiguration: RumConfiguration(
+    applicationId: '<RUM_APPLICATION_ID>',
+    tracingSamplingRate: 100.0
+   ),
+);
+```
 
-Lastly, Datadog sets your tracing sample rate to 20% by default, so distributed traces are only available for 20% of resource loads. While debugging, you may want to set `RumConfiguration.tracingSamplingRate` property to 100.
+If you are still having issues, check that your `firstPartyHosts` property is set correctly. These should be hosts only, without schemas or paths, and they do not support regular expressions or wildcards. For example:
+    
+    ✅ Good - 'example.com', 'api.example.com', 'us1.api.sample.com'
+    ❌ Bad - 'https://example.com', '*.example.com', 'us1.sample.com/api/*', 'api.sample.com/api'
 
 ## Further Reading
 
 {{< partial name="whats-next/whats-next.html" >}}
 
 [1]: https://github.com/flutter/flutter/wiki/Developing-with-Flutter-on-Apple-Silicon
+[2]: https://pub.dev/packages/datadog_tracking_http_client
+[3]: https://pub.dev/packages/http
+[4]: https://pub.dev/packages/dio
+
