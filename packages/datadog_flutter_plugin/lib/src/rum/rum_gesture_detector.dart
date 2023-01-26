@@ -8,6 +8,7 @@ import 'package:flutter/rendering.dart';
 import 'package:meta/meta.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import '../../datadog_internal.dart';
 
 // The distance a 'pointer' can move and still be considered a tap, in logical
 // pixels.
@@ -69,10 +70,22 @@ class RumUserActionDetector extends StatefulWidget {
 }
 
 class _RumUserActionDetectorState extends State<RumUserActionDetector> {
+  static var _didUpdateTelemetry = false;
+
   final _listenerKey = GlobalKey();
 
   int? _lastPointerId;
   Offset? _lastPointerDownLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_didUpdateTelemetry) {
+      DatadogSdk.instance.updateConfigurationInfo(
+          LateConfigurationProperty.trackInteractions, true);
+      _didUpdateTelemetry = true;
+    }
+  }
 
   @override
   void didUpdateWidget(covariant RumUserActionDetector oldWidget) {
@@ -197,7 +210,7 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
       // including our annotation object. Continue to check if the widgets
       // are detecting elements
       if (ro == targets.last.target) {
-        final lastHit = targets.removeLast();
+        targets.removeLast();
         lastRenderObject = ro;
       }
 

@@ -8,12 +8,14 @@ RUM supports monitoring for Flutter Android and iOS applications for Flutter 2.8
 ## Current Datadog SDK Versions
 
 [//]: # (SDK Table)
-
+        
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 1.12.0 | 1.14.0 | v4.11.2 |
+| 1.14.0 | 1.16.0 | 4.x.x |
 
 [//]: # (End SDK Table)
+
+
 
 ### iOS
 
@@ -150,6 +152,16 @@ MaterialApp(
 This works if you are using named routes or if you have supplied a name to the `settings` parameter of your `PageRoute`.
 
 Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction with the `DatadogNavigationObserverProvider` property to start and stop your RUM views automatically. With `DatadogRouteAwareMixin`, move any logic from `initState` to `didPush`. 
+
+Note that, by default, `DatadogRouteAwareMixin` uses the name of the widget as the name of the View. However, this **does not work with obfuscated code** as the name of the Widget class is lost during obfuscation. To keep the correct view name, override `rumViewInfo`:
+```dart
+class _MyHomeScreenState extends State<MyHomeScreen>
+    with RouteAware, DatadogRouteAwareMixin {
+
+  @override
+  RumViewInfo get rumViewInfo => RumViewInfo(name: 'MyHomeScreen');
+}
+```
 
 ### Automatic Resource Tracking
 

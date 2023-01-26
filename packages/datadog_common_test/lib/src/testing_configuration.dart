@@ -3,12 +3,14 @@
 // Copyright 2016-Present Datadog, Inc.
 
 class TestingConfiguration {
+  String? scenario;
   String? customEndpoint;
   String? clientToken;
   String? applicationId;
   List<String> firstPartyHosts;
 
   TestingConfiguration({
+    this.scenario,
     this.customEndpoint,
     this.clientToken,
     this.applicationId,

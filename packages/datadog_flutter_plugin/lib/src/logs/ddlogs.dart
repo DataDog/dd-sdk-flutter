@@ -1,12 +1,15 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
+
 import 'package:uuid/uuid.dart';
 
 import '../../datadog_flutter_plugin.dart';
 import '../helpers.dart';
 import '../internal_logger.dart';
 import 'ddlogs_platform_interface.dart';
+
+export 'ddlog_event.dart';
 
 const _uuid = Uuid();
 
@@ -33,53 +36,85 @@ class DdLogs {
 
   /// Sends a `debug` log message.
   ///
-  /// You can provide additional attributes for this log message using the
+  /// You can optionally send an [errorMessage], [errorKind], and an [errorStackTrace]
+  /// that will be connected to this log message.
+  ///
+  /// You can also provide additional attributes for this log message using the
   /// [attributes] parameter. Values passed into [attributes] must be supported by
   /// [StandardMessageCodec].
-  void debug(String message, [Map<String, Object?> attributes = const {}]) {
+  void debug(
+    String message, {
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes = const {},
+  }) {
     if (_reportingThreshold.index <= Verbosity.debug.index) {
-      wrap('logs.debug', _internalLogger, attributes, () {
-        return _platform.debug(loggerHandle, message, attributes);
-      });
+      _internalLog(LogLevel.debug, message, errorMessage, errorKind,
+          errorStackTrace, attributes);
     }
   }
 
   /// Sends an `info` log message.
   ///
-  /// You can provide additional attributes for this log message using the
+  /// You can optionally send an [errorMessage], [errorKind], and an [errorStackTrace]
+  /// that will be connected to this log message.
+  ///
+  /// You can also provide additional attributes for this log message using the
   /// [attributes] parameter. Values passed into [attributes] must be supported by
   /// [StandardMessageCodec].
-  void info(String message, [Map<String, Object?> attributes = const {}]) {
+  void info(
+    String message, {
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes = const {},
+  }) {
     if (_reportingThreshold.index <= Verbosity.info.index) {
-      wrap('logs.info', _internalLogger, attributes, () {
-        return _platform.info(loggerHandle, message, attributes);
-      });
+      _internalLog(LogLevel.info, message, errorMessage, errorKind,
+          errorStackTrace, attributes);
     }
   }
 
   /// Sends a `warn` log message.
   ///
-  /// You can provide additional attributes for this log message using the
+  /// You can optionally send an [errorMessage], [errorKind], and an [errorStackTrace]
+  /// that will be connected to this log message.
+  ///
+  /// You can also provide additional attributes for this log message using the
   /// [attributes] parameter. Values passed into [attributes] must be supported by
   /// [StandardMessageCodec].
-  void warn(String message, [Map<String, Object?> attributes = const {}]) {
+  void warn(
+    String message, {
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes = const {},
+  }) {
     if (_reportingThreshold.index <= Verbosity.warn.index) {
-      wrap('logs.warn', _internalLogger, attributes, () {
-        return _platform.warn(loggerHandle, message, attributes);
-      });
+      _internalLog(LogLevel.warning, message, errorMessage, errorKind,
+          errorStackTrace, attributes);
     }
   }
 
   /// Sends an `error` log message.
   ///
+  /// You can optionally send an [errorMessage], [errorKind], and an [errorStackTrace]
+  /// that will be connected to this log message.
+  ///
   /// You can provide additional attributes for this log message using the
   /// [attributes] parameter. Values passed into [attributes] must be supported by
   /// [StandardMessageCodec].
-  void error(String message, [Map<String, Object?> attributes = const {}]) {
+  void error(
+    String message, {
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes = const {},
+  }) {
     if (_reportingThreshold.index <= Verbosity.error.index) {
-      wrap('logs.error', _internalLogger, attributes, () {
-        return _platform.error(loggerHandle, message, attributes);
-      });
+      _internalLog(LogLevel.error, message, errorMessage, errorKind,
+          errorStackTrace, attributes);
     }
   }
 
@@ -138,6 +173,20 @@ class DdLogs {
   void removeTagWithKey(String key) {
     wrap('logs.removeTagWithKey', _internalLogger, null, () {
       return _platform.removeTagWithKey(loggerHandle, key);
+    });
+  }
+
+  void _internalLog(
+    LogLevel level,
+    String message,
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? stackTrace,
+    Map<String, Object?> attributes,
+  ) {
+    wrap('logs._internalLog', _internalLogger, attributes, () {
+      return _platform.log(loggerHandle, level, message, errorMessage,
+          errorKind, stackTrace, attributes);
     });
   }
 }

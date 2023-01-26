@@ -4,16 +4,17 @@
  * Copyright 2016-Present Datadog, Inc.
  */
 
+
 group "com.datadoghq.flutter"
 version "1.0-SNAPSHOT"
 
 buildscript {
     ext.kotlin_version = "1.5.31"
-    ext.datadog_sdk_version = "1.14.0"
+    ext.datadog_version = "1.16.0"
+
     repositories {
         google()
         mavenCentral()
-
     }
 
     dependencies {
@@ -26,7 +27,15 @@ rootProject.allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url("https://jitpack.io") }
+        maven {
+             url("https://jitpack.io")
+             content {
+                includeGroup "com.github.xgouchet.Elmyr"
+             }
+        }
+        maven {
+            url "https://oss.sonatype.org/content/repositories/snapshots/"
+        }
     }
 }
 
@@ -59,11 +68,14 @@ android {
     }
 }
 
+apply from: '../../../ignore_sr_snapshots.gradle'
+
 dependencies {
-    implementation "com.datadoghq:dd-sdk-android:$datadog_sdk_version"
-    implementation "com.datadoghq:dd-sdk-android-ndk:$datadog_sdk_version"
+    implementation "com.datadoghq:dd-sdk-android:$datadog_version"
+    implementation "com.datadoghq:dd-sdk-android-ndk:$datadog_version"
     
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation "com.google.code.gson:gson:2.8.8"
 
     testImplementation(platform("org.junit:junit-bom:5.8.2"))
     testImplementation "org.junit.jupiter:junit-jupiter"

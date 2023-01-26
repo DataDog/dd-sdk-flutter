@@ -5,8 +5,7 @@
 import 'dart:convert';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
-import 'package:datadog_integration_test_app/auto_integration_scenarios/main.dart'
-    as auto_app;
+import 'package:datadog_integration_test_app/auto_integration_scenarios/scenario_runner.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -37,22 +36,8 @@ void main() {
   // scenario with instrumentation enabled, then checks that we got the expected
   // calls.
   testWidgets('test auto instrumentation', (WidgetTester tester) async {
-    var serverRecorder = await startMockServer();
-
-    const clientToken = bool.hasEnvironment('DD_CLIENT_TOKEN')
-        ? String.fromEnvironment('DD_CLIENT_TOKEN')
-        : null;
-    const applicationId = bool.hasEnvironment('DD_APPLICATION_ID')
-        ? String.fromEnvironment('DD_APPLICATION_ID')
-        : null;
-
-    auto_app.testingConfiguration = TestingConfiguration(
-        customEndpoint: serverRecorder.sessionEndpoint,
-        clientToken: clientToken,
-        applicationId: applicationId,
-        firstPartyHosts: ['localhost']);
-    await auto_app.main();
-    await tester.pumpAndSettle();
+    var serverRecorder = await openTestScenario(tester,
+        scenarioName: autoInstrumentationScenarioName);
 
     await performRumUserFlow(tester);
 
@@ -79,23 +64,41 @@ void main() {
 
     final view1 = session.visits[0];
     expect(view1.name, '/');
-    // Path is the actual browser path in web
     if (!kIsWeb) {
+      // Path is the actual browser path in web
       expect(view1.path, '/');
+
+      // Web doesn't support performance metrics
+      expect(view1.viewEvents.last.flutterBuildTime, isNotNull);
+      expect(view1.viewEvents.last.flutterRasterTime, isNotNull);
+
+      // Web doesn't support action tracking from Flutter
+      var actionEvent = view1.actionEvents.last;
+      expect(actionEvent.actionType, 'tap');
+      expect(actionEvent.actionName, 'InkWell(Item 0)');
     }
 
     final view2 = session.visits[1];
     expect(view2.name, 'rum_second_screen');
-    // Path is the actual browser path in web
     if (!kIsWeb) {
+      // Path is the actual browser path in web
       expect(view2.path, 'rum_second_screen');
+
+      // Web doesn't support performance metrics
+      expect(view2.viewEvents.last.flutterBuildTime, isNotNull);
+      expect(view2.viewEvents.last.flutterRasterTime, isNotNull);
+
+      // Web doesn't support action tracking from Flutter
+      var actionEvent = view2.actionEvents[0];
+      expect(actionEvent.actionType, 'tap');
+      expect(actionEvent.actionName, 'Button(Next Page)');
     }
 
     // Check last view name
     final view3 = session.visits[2];
     expect(view3.name, 'RumAutoInstrumentationThirdScreen');
-    // Path is the actual browser path in web
     if (!kIsWeb) {
+      // Path is the actual browser path in web
       expect(view3.path, 'RumAutoInstrumentationThirdScreen');
     }
   });

@@ -3,9 +3,12 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+
+class MockDatadogSdkPlatform extends Mock implements DatadogSdkPlatform {}
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
 
@@ -13,13 +16,19 @@ class MockDdRum extends Mock implements DdRum {}
 
 void main() {
   late MockDdRum mockRum;
+  late MockDatadogSdkPlatform mockPlatform;
   late MockDatadogSdk mockDatadog;
 
   setUp(() {
     mockRum = MockDdRum();
+    mockPlatform = MockDatadogSdkPlatform();
     mockDatadog = MockDatadogSdk();
 
+    when(() => mockPlatform.updateTelemetryConfiguration(any(), any()))
+        .thenAnswer((_) => Future<void>.value());
+
     when(() => mockDatadog.rum).thenReturn(mockRum);
+    when(() => mockDatadog.platform).thenReturn(mockPlatform);
     when(() => mockRum.startView(any(), any(), any()))
         .thenAnswer((_) => Future<void>.value());
     when(() => mockRum.stopView(any(), any()))
@@ -56,6 +65,7 @@ void main() {
   }
 
   testWidgets('observer starts root view', (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpWidget(buildFor(child: Container()));
 
     verify(() => mockRum.startView('/'));
@@ -63,6 +73,7 @@ void main() {
 
   testWidgets('pushing unnamed route ends current view',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(tester: tester, builder: (_) => Container());
 
     verify(() => mockRum.startView('/'));
@@ -72,6 +83,7 @@ void main() {
 
   testWidgets('popping unnamed route restarts root view ',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
         tester: tester, builder: (context) => const SimplePopPage());
     final popButton = find.text('Pop');
@@ -88,6 +100,7 @@ void main() {
 
   testWidgets('pushing route with name in settings starts new view',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
       routeName: 'NextRoute',
@@ -99,6 +112,7 @@ void main() {
 
   testWidgets('popping from settings named route restarts root view ',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     void onPopPressed(BuildContext context) {
       Navigator.of(context).pop();
     }
@@ -132,6 +146,7 @@ void main() {
     required WidgetTester tester,
     DatadogNavigationObserver? observer,
   }) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     observer ??= DatadogNavigationObserver(datadogSdk: mockDatadog);
     await tester.pumpWidget(MaterialApp(
       navigatorObservers: [
@@ -151,6 +166,7 @@ void main() {
 
   testWidgets('using named routes starts route name ',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildNamedRouteTesterAndNavigate(
       tester: tester,
     );
@@ -165,6 +181,7 @@ void main() {
 
   testWidgets('using named route respects initial route name ',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildNamedRouteTesterAndNavigate(
       initialRoute: 'home',
       tester: tester,
@@ -180,6 +197,7 @@ void main() {
 
   testWidgets('overriding extractor sends extra information',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     RumViewInfo? infoExtractor(Route route) {
       var name = route.settings.name;
       if (name == 'my_named_route') {
@@ -212,6 +230,7 @@ void main() {
 
   testWidgets('pushing to route using mixin calls startView',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
       builder: (_) => const MixedDestination(),
@@ -227,6 +246,7 @@ void main() {
 
   testWidgets('pop from route using mixin calls stopView',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
       builder: (_) => const MixedDestination(),
@@ -248,6 +268,7 @@ void main() {
 
   testWidgets('pushing to route using mixin sends extra info',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     final info = RumViewInfo(
       name: 'MixedDestination',
       attributes: {
@@ -271,6 +292,7 @@ void main() {
 
   testWidgets('pushing to next route with mixin sends stopView',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
       builder: (_) => MixedDestination(
@@ -293,6 +315,7 @@ void main() {
 
   testWidgets('returning to mixin view restarts view',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
       builder: (_) => MixedDestination(
@@ -319,6 +342,7 @@ void main() {
 
   testWidgets('mixin on named route does not send extra events',
       (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
       routeName: 'second_route',

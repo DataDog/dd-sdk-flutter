@@ -16,17 +16,42 @@ final configuration = DdSdkConfiguration(
 )..enableHttpTracking()
 ```
 
-## Flutter 2.8 Support
+## Using http.Client wrapping
 
-Flutter 3.0 updated to Dart 2.17, which added two methods to HttpClient. 
+This package also supplies a composable client usable with the [http pub package](https://pub.dev/packages/http) called `DatadogClient`. For most scenarios, Datadog recommends you use the HTTP tracking method above, but there are a few scenarios where using `DatadogClient` might make more sense:
+
+* If you are using native HTTP libraries like [`cronet_http`](https://pub.dev/packages/cronet_http) or [`cupertino_http`](https://pub.dev/packages/cupertino_http), which do not work with the above tracking method.
+* If you only want to track specific resource requests.
+
+If you are using `cronet_http` or `cupertino_http`, you can combine `DatadogClient` with the above tracking method. Otherwise, the two methods may interfere with each other.
+
+To use the `DatadogClient`, create and compose the `Client` from the `http` package:
+
+```dart
+import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
+import 'package:http/http.dart' as http;
+
+final configuration = DdSdkConfiguration(
+  // specifying firstPartyHosts is still necessary to
+  // enable distributed tracing
+  firstPartyHosts: ['example.com'],
+)
+
+final httpClient = http.Client()
+final datadogClient = DatadogClient(datadogSdk: DatadogSdk.instance, innerClient: httpClient);
+```
+
+The `innerClient` parameter is optional. If it is not supplied, DatadogClient will create a `Client` for you with default options.
+
+## Flutter 2.8 support
+
+Flutter 3.0 updated to Dart 2.17, which added two methods to `HttpClient`. 
 
 Currently, `version 1.1.x` sets a version constraint to Dart >= 2.17. If you need to support versions of Flutter prior to 3.0, back to flutter 2.8, use `version 1.0.x` instead. There is no difference between these versions other than support for lower versions of Dart.
   
 # Contributing
 
-Pull requests are welcome. First, open an issue to discuss what you would like
-to change. For more information, read the [Contributing
-guide](../../CONTRIBUTING.md) in the root repository.
+Pull requests are welcome. First, open an issue to discuss what you would like to change. For more information, read the [contributing guide](../../CONTRIBUTING.md) in the root repository.
 
 # License
 

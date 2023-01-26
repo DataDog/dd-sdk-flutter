@@ -4,6 +4,10 @@
  * Copyright 2016-Present Datadog, Inc.
  */
 
+buildscript {
+    ext.datadog_version = "1.16.0"
+}
+
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 if (localPropertiesFile.exists()) {
@@ -76,8 +80,10 @@ flutter {
     source '../..'
 }
 
+apply from: '../../../../../ignore_sr_snapshots.gradle'
+
 dependencies {
-    implementation "com.datadoghq:dd-sdk-android:1.12.0-alpha2"
+    implementation "com.datadoghq:dd-sdk-android:$datadog_version"
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.work:work-runtime-ktx:2.7.0'

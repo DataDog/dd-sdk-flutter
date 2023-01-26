@@ -15,6 +15,10 @@ enum ResultStatus: EquatableInTests {
     case called(value: Any?)
 }
 
+extension RUMAddLongTaskCommand: EquatableInTests {
+
+}
+
 // MARK: - Tests
 
 // swiftlint:disable:next type_body_length
@@ -142,6 +146,10 @@ class DatadogRumPluginTests: XCTestCase {
         Contract(methodName: "reportLongTask", requiredParameters: [
             "at": .int64,
             "duration": .int
+        ]),
+        Contract(methodName: "updatePerformanceMetrics", requiredParameters: [
+            "buildTimes": .list,
+            "rasterTimes": .list
         ])
     ]
 
@@ -432,19 +440,53 @@ class DatadogRumPluginTests: XCTestCase {
             resultStatus = ResultStatus.called(value: result)
         }
 
-        let mockInternal = mock._internal as! MockRumInternalProxy
-        XCTAssertEqual(mockInternal.callLog, [
-            .addLongTask(at: Date(timeIntervalSince1970: startTimeInterval),
-                         duration: TimeInterval(Double(duration) / 1000.0),
-                         attributes: [:])
+        let command = mock.commands.first as? RUMAddLongTaskCommand
+        XCTAssertNotNil(command)
+        XCTAssertEqual(command, RUMAddLongTaskCommand(time: Date(timeIntervalSince1970: startTimeInterval),
+                                                      attributes: [:],
+                                                      duration: TimeInterval(Double(duration) / 1000.0))
+        )
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testUpdatePerformanceMetrics_CallsInternal() {
+        let buildTimes = [ 0.44, 1.23, 6.5 ]
+        let rasterTimes = [ 11.2, 68.1, 0.223 ]
+
+        let call = FlutterMethodCall(methodName: "updatePerformanceMetrics", arguments: [
+            "buildTimes": buildTimes,
+            "rasterTimes": rasterTimes
         ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        let commands = mock.commands
+        XCTAssertEqual(commands.count, 6)
+        if commands.count == 6 {
+            XCTAssertEqual((commands[0] as! RUMUpdatePerformanceMetric).metric, .flutterBuildTime)
+            XCTAssertEqual((commands[0] as! RUMUpdatePerformanceMetric).value, 0.44)
+            XCTAssertEqual((commands[1] as! RUMUpdatePerformanceMetric).metric, .flutterBuildTime)
+            XCTAssertEqual((commands[1] as! RUMUpdatePerformanceMetric).value, 1.23)
+            XCTAssertEqual((commands[2] as! RUMUpdatePerformanceMetric).metric, .flutterBuildTime)
+            XCTAssertEqual((commands[2] as! RUMUpdatePerformanceMetric).value, 6.5)
+
+            XCTAssertEqual((commands[3] as! RUMUpdatePerformanceMetric).metric, .flutterRasterTime)
+            XCTAssertEqual((commands[3] as! RUMUpdatePerformanceMetric).value, 11.2)
+            XCTAssertEqual((commands[4] as! RUMUpdatePerformanceMetric).metric, .flutterRasterTime)
+            XCTAssertEqual((commands[4] as! RUMUpdatePerformanceMetric).value, 68.1)
+            XCTAssertEqual((commands[5] as! RUMUpdatePerformanceMetric).metric, .flutterRasterTime)
+            XCTAssertEqual((commands[5] as! RUMUpdatePerformanceMetric).value, 0.223)
+        }
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 }
 
 // MARK: - MockRUMMonitor
 
-class MockRUMMonitor: DDRUMMonitor {
+class MockRUMMonitor: DDRUMMonitor, RUMCommandSubscriber {
     enum MethodCall: EquatableInTests {
         case startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue])
         case stopView(key: String, attributes: [AttributeKey: AttributeValue])
@@ -465,15 +507,13 @@ class MockRUMMonitor: DDRUMMonitor {
         case stopUserAction(type: RUMUserActionType, name: String?, attributes: [AttributeKey: AttributeValue])
         case addAttribute(forKey: AttributeKey, value: AttributeValue)
         case removeAttribute(forKey: AttributeKey)
-
     }
 
     var callLog: [MethodCall] = []
+    var commands: [RUMCommand] = []
 
     override init() {
         super.init()
-
-        _internal = MockRumInternalProxy(subscriber: NOOPCommandSubscriber())
     }
 
     override func startView(key: String, name: String? = nil, attributes: [AttributeKey: AttributeValue] = [:]) {
@@ -556,24 +596,11 @@ class MockRUMMonitor: DDRUMMonitor {
                                  attributes: [AttributeKey: AttributeValue] = [:]) {
         callLog.append(.stopUserAction(type: type, name: name, attributes: attributes))
     }
-}
 
-class NOOPCommandSubscriber: RUMCommandSubscriber {
+    /// Processes the given RUM Command.
+    ///
+    /// - Parameter command: The RUM command to process.
     func process(command: RUMCommand) {
-        // NOOP
-    }
-}
-
-class MockRumInternalProxy: _RUMInternalProxy {
-    enum MethodCall: EquatableInTests {
-        // swiftlint:disable:next identifier_name
-        case addLongTask(at: Date, duration: TimeInterval, attributes: [AttributeKey: AttributeValue])
-    }
-
-    var callLog: [MethodCall] = []
-
-    // swiftlint:disable:next identifier_name
-    override func addLongTask(at: Date, duration: TimeInterval, attributes: [AttributeKey: AttributeValue]) {
-        callLog.append(.addLongTask(at: at, duration: duration, attributes: attributes))
+        commands.append(command)
     }
 }

@@ -7,31 +7,39 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'auto_integration_scenarios/scenario_runner.dart' as auto_config_runners;
 import 'integration_scenarios/integration_scenarios_screen.dart';
+import 'integration_scenarios/scenario_runner.dart' as config_runners;
 
 TestingConfiguration? testingConfiguration;
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  await dotenv.load();
-
-  var clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
-  var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
-  String? customEndpoint = dotenv.maybeGet('DD_CUSTOM_ENDPOINT');
-
-  if (testingConfiguration != null) {
-    if (testingConfiguration!.customEndpoint != null) {
-      customEndpoint = testingConfiguration!.customEndpoint;
-      if (testingConfiguration!.clientToken != null) {
-        clientToken = testingConfiguration!.clientToken!;
-      }
-      if (testingConfiguration!.applicationId != null) {
-        applicationId = testingConfiguration!.applicationId;
-      }
-    }
+Future<void> runScenario({
+  required String clientToken,
+  required String? applicationId,
+  required String? customEndpoint,
+  TestingConfiguration? testingConfiguration,
+}) async {
+  var scenario = testingConfiguration?.scenario;
+  switch (scenario) {
+    case auto_config_runners.autoInstrumentationScenarioName:
+      await auto_config_runners.runScenario(
+          clientToken: clientToken,
+          applicationId: applicationId,
+          customEndpoint: customEndpoint,
+          testingConfiguration: testingConfiguration);
+      return;
+    case config_runners.mappedInstrumentationScenarioName:
+    case config_runners.mappedLoggingScenarioRunner:
+      await config_runners.runScenario(
+        clientToken: clientToken,
+        applicationId: applicationId,
+        customEndpoint: customEndpoint,
+        testingConfiguration: testingConfiguration,
+      );
+      return;
   }
 
+  // Default runner
   final configuration = DdSdkConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
@@ -57,6 +65,37 @@ Future<void> main() async {
 
   runApp(const DatadogIntegrationTestApp());
 }
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load();
+
+  var clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
+  var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
+  String? customEndpoint = dotenv.maybeGet('DD_CUSTOM_ENDPOINT');
+
+  if (testingConfiguration != null) {
+    if (testingConfiguration!.customEndpoint != null) {
+      customEndpoint = testingConfiguration!.customEndpoint;
+      if (testingConfiguration!.clientToken != null) {
+        clientToken = testingConfiguration!.clientToken!;
+      }
+      if (testingConfiguration!.applicationId != null) {
+        applicationId = testingConfiguration!.applicationId;
+      }
+    }
+  }
+
+  await runScenario(
+    clientToken: clientToken,
+    applicationId: applicationId,
+    customEndpoint: customEndpoint,
+    testingConfiguration: testingConfiguration,
+  );
+}
+
+/// -- Default Runner --
 
 final RouteObserver<ModalRoute> routeObserver = RouteObserver<ModalRoute>();
 

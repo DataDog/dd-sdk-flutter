@@ -10,13 +10,15 @@ import 'package:js/js.dart';
 
 import '../../datadog_flutter_plugin.dart';
 import '../../datadog_internal.dart';
+import '../internal_logger.dart';
 import '../web_helpers.dart';
 import 'ddrum_platform_interface.dart';
 
 class DdRumWeb extends DdRumPlatform {
   final Map<String, Object?> currentAttributes = {};
 
-  void initRum(DdSdkConfiguration configuration) {
+  // Because Web needs the full SDK configuration, we have a separate init method
+  void webInitialize(DdSdkConfiguration configuration) {
     final rumConfiguration = configuration.rumConfiguration;
     if (rumConfiguration == null) {
       return;
@@ -38,6 +40,10 @@ class DdRumWeb extends DdRumPlatform {
       trackViewsManually: true,
     ));
   }
+
+  @override
+  Future<void> initialize(
+      RumConfiguration configuration, InternalLogger internalLogger) async {}
 
   @override
   Future<void> addAttribute(String key, dynamic value) async {
@@ -124,6 +130,12 @@ class DdRumWeb extends DdRumPlatform {
   @override
   Future<void> reportLongTask(DateTime at, int durationMs) async {
     // NOOP - The browser SDK will report this automatically
+  }
+
+  @override
+  Future<void> updatePerformanceMetrics(
+      List<double> buildTimes, List<double> rasterTimes) async {
+    // NOOP - Not supported by the Browser SDK
   }
 }
 

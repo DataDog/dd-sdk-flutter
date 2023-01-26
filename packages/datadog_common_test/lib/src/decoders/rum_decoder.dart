@@ -111,6 +111,8 @@ class RumEventDecoder {
 
   int get date => rumEvent['date'] as int;
   String get version => rumEvent['version'] as String;
+  Map<String, dynamic>? get telemetryConfiguration =>
+      rumEvent['telemetry']?['configuration'];
 
   Map<String, dynamic>? get context => rumEvent['context'];
 
@@ -129,8 +131,45 @@ class RumEventDecoder {
   }
 }
 
+class Vital {
+  final double minTime;
+  final double maxTime;
+  final double avgTime;
+
+  Vital({
+    required this.minTime,
+    required this.maxTime,
+    required this.avgTime,
+  });
+}
+
 class RumViewEventDecoder extends RumEventDecoder {
   int get timeSpent => rumEvent['view']['time_spent'] as int;
+  Vital? get flutterRasterTime {
+    final rasterTime =
+        rumEvent['view']['flutter_raster_time'] as Map<String, Object?>?;
+    if (rasterTime != null) {
+      return Vital(
+        minTime: rasterTime['min'] as double,
+        maxTime: rasterTime['max'] as double,
+        avgTime: rasterTime['average'] as double,
+      );
+    }
+    return null;
+  }
+
+  Vital? get flutterBuildTime {
+    final buildTime =
+        rumEvent['view']['flutter_build_time'] as Map<String, Object?>?;
+    if (buildTime != null) {
+      return Vital(
+        minTime: buildTime['min'] as double,
+        maxTime: buildTime['max'] as double,
+        avgTime: buildTime['average'] as double,
+      );
+    }
+    return null;
+  }
 
   RumViewEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
 }
@@ -170,6 +209,7 @@ class RumErrorEventDecoder extends RumEventDecoder {
 class RumLongTaskEventDecoder extends RumEventDecoder {
   RumLongTaskEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
 
+  String? get viewName => rumEvent['view']['name'];
   int? get duration => rumEvent['long_task']['duration'];
 }
 

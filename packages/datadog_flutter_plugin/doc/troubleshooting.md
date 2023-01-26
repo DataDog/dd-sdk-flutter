@@ -30,9 +30,13 @@ DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
 
 This causes the SDK to output additional information about what it's doing and what errors it's encountering, which may help you and Datadog Support narrow down your issue.
 
+## Not seeing Errors
+
+If you do not see any errors in RUM, it's likely no view has been started. Make sure you have started a view with `DatadogSdk.instance.rum?.startView` or, if you are using `DatadogRouteObserver` make sure your current Route has a name.
+
 ## Issues with automatic resource tracking and distributed tracing
 
-The [Datadog tracking HTTP client][2] package works with most common Flutter networking packages that rely on `dart:io`, including [`http`][3] and [`Dio`][4]. This package does not work with the newly announced "native" HTTP clients, [`cupertino_http`][6] and [`cronet_http`][5]
+The [Datadog tracking HTTP client][2] package works with most common Flutter networking packages that rely on `dart:io`, including [`http`][3] and [`Dio`][4].
 
 If you are seeing resources in your RUM Sessions, then the tracking HTTP client is working, but other steps may be required to use distributed tracing.
 
@@ -60,5 +64,4 @@ If you are still having issues, check that your `firstPartyHosts` property is se
 [2]: https://pub.dev/packages/datadog_tracking_http_client
 [3]: https://pub.dev/packages/http
 [4]: https://pub.dev/packages/dio
-[5]: https://pub.dev/packages/cronet_http
-[6]: https://pub.dev/packages/cupertino_http
+

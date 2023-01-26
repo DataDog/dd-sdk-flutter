@@ -18,4 +18,7 @@ class LogDecoder {
   String get loggerName => getNestedProperty('logger.name', log);
   String get loggerVersion => getNestedProperty('logger.version', log);
   String get threadName => getNestedProperty('logger.thread_name', log);
+  String get errorKind => getNestedProperty('error.kind', log);
+  String get errorMessage => getNestedProperty('error.message', log);
+  String get errorStack => getNestedProperty('error.stack', log);
 }

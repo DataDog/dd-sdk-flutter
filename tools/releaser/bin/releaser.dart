@@ -2,11 +2,15 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
+import 'package:releaser/cocoapod_util.dart';
 import 'package:releaser/command.dart';
 import 'package:releaser/git_actions.dart';
+import 'package:releaser/gradle_util.dart';
 import 'package:releaser/helpers.dart';
 import 'package:releaser/release_validator.dart';
 import 'package:releaser/version_updater.dart';
@@ -24,6 +28,14 @@ void main(List<String> arguments) async {
       'skip-git-checks',
       help: "Don't perform checks on branch names or un-staged files",
       defaultsTo: false,
+    )
+    ..addOption(
+      'ios-version',
+      help: 'Explicitly set the iOS release this release will target',
+    )
+    ..addOption(
+      'android-version',
+      help: 'Explicitly set the Android release this release will target',
     )
     ..addFlag(
       'dry-run',
@@ -64,6 +76,13 @@ void main(List<String> arguments) async {
     return;
   }
 
+  final githubToken = Platform.environment['GITHUB_TOKEN'];
+  if (githubToken == null) {
+    Logger.root.shout(
+        '❌ Must have the environment variable GITHUB_TOKEN set to validate native SDK releases.');
+    return;
+  }
+
   final currentBranch = await commandArgs.gitDir.currentBranch();
   final choreBranch =
       'chore/${commandArgs.packageName}/prep-v${commandArgs.version}';
@@ -87,14 +106,14 @@ void main(List<String> arguments) async {
         '🚀 Preparing for release of ${commandArgs.packageName} ${commandArgs.version}.'),
     CreateReleaseBranchCommand(),
     RemoveDependencyOverridesCommand(),
+    RemovePodOverridesCommand(),
+    UpdateGradleFilesCommand(),
     CommitChangesCommand(
       '🧹 Remove dependency overrides for release of ${commandArgs.packageName} ${commandArgs.version}.',
       noChangesOkay: true,
     ),
     ValidatePublishDryRun(),
     SwitchBranchCommand(choreBranch),
-    // Do pre-release always for now. Later use the branch name as
-    // the indicator.
     BumpVersionCommand(versionBumpType),
     CommitChangesCommand(
         '📝 Bump version of ${commandArgs.packageName} to next potential release.'),
@@ -129,6 +148,8 @@ Future<CommandArguments?> _validateArguments(ArgResults argResults) async {
     gitDir: gitDir,
     skipGitChecks: skipGitChecks,
     version: version,
+    iOSRelease: argResults['ios-version'],
+    androidRelease: argResults['android-version'],
     dryRun: dryRun,
   );
 }

@@ -77,6 +77,6 @@ void sendRandomLog(WidgetTester tester) {
 
   method!(
     randomString(),
-    e2eAttributes(tester),
+    attributes: e2eAttributes(tester),
   );
 }

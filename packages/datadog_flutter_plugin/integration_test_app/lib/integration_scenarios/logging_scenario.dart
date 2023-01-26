@@ -32,17 +32,17 @@ class _LoggingScenarioState extends State<LoggingScenario> {
       logger.addAttribute('logger-attribute1', 'string value');
       logger.addAttribute('logger-attribute2', 1000);
 
-      logger.debug('debug message', {'stringAttribute': 'string'});
+      logger.debug('debug message', attributes: {'stringAttribute': 'string'});
 
       logger.removeTag('my-tag');
-      logger.info('info message', {
+      logger.info('info message', attributes: {
         'nestedAttribute': {'internal': 'test', 'isValid': true}
       });
-      logger.warn('warn message', {'doubleAttribute': 10.34});
+      logger.warn('warn message', attributes: {'doubleAttribute': 10.34});
 
       logger.removeAttribute('logger-attribute1');
       logger.removeTagWithKey('tag1');
-      logger.error('error message', {'attribute': 'value'});
+      logger.error('error message', attributes: {'attribute': 'value'});
     }
 
     final config = LoggingConfiguration(loggerName: 'second_logger');
@@ -50,6 +50,14 @@ class _LoggingScenarioState extends State<LoggingScenario> {
 
     secondLogger.addAttribute('second-logger-attribute', 'second-value');
     secondLogger.info('message on second logger');
+
+    final st = StackTrace.current;
+
+    secondLogger.warn(
+      'Warning: this error occurred',
+      errorMessage: 'Error Message',
+      errorStackTrace: st,
+    );
   }
 
   @override

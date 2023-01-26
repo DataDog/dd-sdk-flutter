@@ -21,7 +21,13 @@ class UpdateVersionsCommand extends Command {
       return false;
     }
 
-    return _updateChangelog(
+    if (args.packageName == 'datadog_flutter_plugin') {
+      if (!await _updateReadmeVersions(args, logger)) {
+        return false;
+      }
+    }
+
+    return _updateChangelogUnreleasedChanges(
         args.packageRoot, args.version, logger, args.dryRun);
   }
 }
@@ -55,6 +61,9 @@ class BumpVersionCommand extends Command {
         }
         break;
     }
+    logger.info('🔀 Adding "Unreleased" back into CHANGELOG');
+    await _updateChangelogAddUnreleased(args.packageRoot, logger, args.dryRun);
+
     logger.info('🔀 Bumping version to $newVersion');
     return updateVersions(
         args.packageRoot, newVersion.toString(), logger, args.dryRun);
@@ -115,7 +124,7 @@ Future<bool> _updateVersionDartFile(
   return true;
 }
 
-Future<bool> _updateChangelog(
+Future<bool> _updateChangelogUnreleasedChanges(
     String packageRoot, String version, Logger logger, bool dryRun) async {
   final changelogFile = File(path.join(packageRoot, 'CHANGELOG.md'));
   if (!changelogFile.existsSync()) {
@@ -125,9 +134,66 @@ Future<bool> _updateChangelog(
 
   await transformFile(changelogFile, logger, dryRun, (element) {
     if (element.startsWith('## Unreleased')) {
-      element = '## Unreleased\n\n## $version';
+      element = '## $version';
     }
     return element;
+  });
+
+  return true;
+}
+
+Future<bool> _updateChangelogAddUnreleased(
+    String packageRoot, Logger logger, bool dryRun) async {
+  final changelogFile = File(path.join(packageRoot, 'CHANGELOG.md'));
+  if (!changelogFile.existsSync()) {
+    logger.shout('⁉️ Could not find CHANGELOG.md at ${changelogFile.path}');
+    return false;
+  }
+
+  await transformFile(changelogFile, logger, dryRun, (element) {
+    if (element.startsWith('# Changelog')) {
+      element += '\n\n## Unreleased\n\n';
+    }
+
+    return element;
+  });
+
+  return true;
+}
+
+Future<bool> _updateReadmeVersions(CommandArguments args, Logger logger) async {
+  final changelogFile = File(path.join(args.packageRoot, 'README.md'));
+  if (!changelogFile.existsSync()) {
+    logger.shout('⁉️ Could not find README.md at ${changelogFile.path}');
+    return false;
+  }
+
+  var inVersionTable = false;
+  await transformFile(changelogFile, logger, args.dryRun, (line) {
+    if (inVersionTable) {
+      if (line.startsWith('[//]: #')) {
+        inVersionTable = false;
+
+        // Write the new version table:
+        line = '''[//]: # (SDK Table)
+        
+| iOS SDK | Android SDK | Browser SDK |
+| :-----: | :---------: | :---------: |
+| ${args.iOSRelease} | ${args.androidRelease} | 4.x.x |
+
+[//]: # (End SDK Table)
+''';
+        return line;
+      }
+
+      // Return no lines for the entire version table.
+      return null;
+    } else if (line == '[//]: # (SDK Table)') {
+      inVersionTable = true;
+      return null;
+    }
+
+    return line;
   });
 
   return true;

@@ -4,6 +4,7 @@
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_method_channel.dart';
+import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -37,51 +38,48 @@ void main() {
     ]);
   });
 
-  test('debug logs passed to method channel', () async {
-    await ddLogsPlatform.debug('uuid', 'debug message', {'attribute': 'value'});
+  test('log messages passed to method channel', () async {
+    for (final logLevel in LogLevel.values) {
+      await ddLogsPlatform.log('uuid', logLevel, '$logLevel message', null,
+          null, null, {'attribute': 'value'});
+    }
 
     expect(log, <Matcher>[
-      isMethodCall('debug', arguments: {
-        'loggerHandle': 'uuid',
-        'message': 'debug message',
-        'context': {'attribute': 'value'}
-      })
+      for (final logLevel in LogLevel.values)
+        isMethodCall('log', arguments: {
+          'loggerHandle': 'uuid',
+          'logLevel': logLevel.toString(),
+          'message': '$logLevel message',
+          'errorMessage': null,
+          'errorKind': null,
+          'stackTrace': null,
+          'context': {
+            'attribute': 'value',
+          }
+        })
     ]);
   });
 
-  test('info logs passed to method channel', () async {
-    await ddLogsPlatform.info('uuid', 'info message', {'attribute': 'value'});
+  test('log messages passed with error passed to method channel', () async {
+    final st = StackTrace.current;
+    for (final logLevel in LogLevel.values) {
+      await ddLogsPlatform.log('uuid', logLevel, '$logLevel message',
+          '$logLevel error message', 'error_type', st, {'attribute': 'value'});
+    }
 
     expect(log, <Matcher>[
-      isMethodCall('info', arguments: {
-        'loggerHandle': 'uuid',
-        'message': 'info message',
-        'context': {'attribute': 'value'}
-      })
-    ]);
-  });
-
-  test('warn logs passed to method channel', () async {
-    await ddLogsPlatform.warn('uuid', 'warn message', {'attribute': 'value'});
-
-    expect(log, <Matcher>[
-      isMethodCall('warn', arguments: {
-        'loggerHandle': 'uuid',
-        'message': 'warn message',
-        'context': {'attribute': 'value'}
-      })
-    ]);
-  });
-
-  test('error logs passed to method channel', () async {
-    await ddLogsPlatform.error('uuid', 'error message', {'attribute': 'value'});
-
-    expect(log, <Matcher>[
-      isMethodCall('error', arguments: {
-        'loggerHandle': 'uuid',
-        'message': 'error message',
-        'context': {'attribute': 'value'}
-      })
+      for (final logLevel in LogLevel.values)
+        isMethodCall('log', arguments: {
+          'loggerHandle': 'uuid',
+          'logLevel': logLevel.toString(),
+          'message': '$logLevel message',
+          'errorMessage': '$logLevel error message',
+          'errorKind': 'error_type',
+          'stackTrace': st.toString(),
+          'context': {
+            'attribute': 'value',
+          }
+        })
     ]);
   });
 

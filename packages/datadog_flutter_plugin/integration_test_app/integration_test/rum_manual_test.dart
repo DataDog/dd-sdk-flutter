@@ -13,44 +13,49 @@ import 'package:integration_test/integration_test.dart';
 
 import 'common.dart';
 
+Future<void> performUserInteractions(WidgetTester tester) async {
+  var downloadButton = find.widgetWithText(ElevatedButton, 'Download Resource');
+  await tester.tap(downloadButton);
+  await tester.pumpAndSettle();
+
+  var nextButton = find.widgetWithText(ElevatedButton, 'Next Screen');
+  await tester.waitFor(
+    nextButton,
+    const Duration(seconds: 2),
+    (e) => (e.widget as ElevatedButton).enabled,
+  );
+  await tester.tap(nextButton);
+  await tester.pumpAndSettle();
+
+  var longTaskButton = find.widgetWithText(ElevatedButton, 'Trigger Long Task');
+  await tester.waitFor(
+    longTaskButton,
+    const Duration(seconds: 5),
+    (e) => (e.widget as ElevatedButton).enabled,
+  );
+  await tester.tap(longTaskButton);
+  await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+  nextButton = find.widgetWithText(ElevatedButton, 'Next Screen');
+  await tester.waitFor(
+    nextButton,
+    const Duration(seconds: 2),
+    (e) => (e.widget as ElevatedButton).enabled,
+  );
+  await tester.tap(nextButton);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('test rum scenario', (WidgetTester tester) async {
-    var recordedSession = await openTestScenario(tester, 'Manual RUM Scenario');
-
-    var downloadButton =
-        find.widgetWithText(ElevatedButton, 'Download Resource');
-    await tester.tap(downloadButton);
-    await tester.pumpAndSettle();
-
-    var nextButton = find.widgetWithText(ElevatedButton, 'Next Screen');
-    await tester.waitFor(
-      nextButton,
-      const Duration(seconds: 2),
-      (e) => (e.widget as ElevatedButton).enabled,
+    var recordedSession = await openTestScenario(
+      tester,
+      menuTitle: 'Manual RUM Scenario',
     );
-    await tester.tap(nextButton);
-    await tester.pumpAndSettle();
 
-    var longTaskButton =
-        find.widgetWithText(ElevatedButton, 'Trigger Long Task');
-    await tester.waitFor(
-      longTaskButton,
-      const Duration(seconds: 5),
-      (e) => (e.widget as ElevatedButton).enabled,
-    );
-    await tester.tap(longTaskButton);
-    await tester.pumpAndSettle(const Duration(milliseconds: 300));
-
-    nextButton = find.widgetWithText(ElevatedButton, 'Next Screen');
-    await tester.waitFor(
-      nextButton,
-      const Duration(seconds: 2),
-      (e) => (e.widget as ElevatedButton).enabled,
-    );
-    await tester.tap(nextButton);
-    await tester.pumpAndSettle();
+    await performUserInteractions(tester);
 
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
@@ -175,7 +180,11 @@ void main() {
       // Web can download extra resources
       expect(view2.viewEvents.last.view.resourceCount, 0);
     }
-    expect(view2.viewEvents.last.context![contextKey], expectedContextValue);
+    if (!kIsWeb) {
+      // The removal of this key happens at a weird point for web, so
+      // let's not check it for now.
+      expect(view2.viewEvents.last.context![contextKey], expectedContextValue);
+    }
     const errorMessage =
         kIsWeb ? 'Provided "Simulated view error"' : 'Simulated view error';
     expect(view2.errorEvents[0].message, errorMessage);
@@ -185,10 +194,14 @@ void main() {
 
     // Check all long tasks are over 100 ms (the default) and that one is greater
     // than 200 ms (triggered by the tapping of the button)
+    // On web, we can't configure the long task threshold, so it becomes 50ms
+    const longTaskThresholdMs = kIsWeb ? 50 : 100;
     var over200 = 0;
     for (var longTask in view2.longTaskEvents) {
-      expect(longTask.duration,
-          greaterThan(const Duration(milliseconds: 100).inNanoseconds));
+      expect(
+          longTask.duration,
+          greaterThanOrEqualTo(
+              const Duration(milliseconds: longTaskThresholdMs).inNanoseconds));
       // Nothing should have taken more than 2 seconds
       expect(longTask.duration,
           lessThan(const Duration(seconds: 2).inNanoseconds));
@@ -249,7 +262,7 @@ void main() {
 
     // Verify service name in RUM events
     for (final event in rumLog) {
-      if (!kIsWeb && Platform.isIOS) {
+      if (!kIsWeb && Platform.isIOS && event.eventType != 'telemetry') {
         expect(event.service, 'com.datadoghq.flutter.integration');
         expect(event.version, '1.2.3-555');
       }

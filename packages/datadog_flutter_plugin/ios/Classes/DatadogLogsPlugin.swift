@@ -18,6 +18,10 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         super.init()
     }
 
+    public func onDetach() {
+
+    }
+
     func addLogger(logger: Logger, withHandle handle: String) {
         loggerRegistry[handle] = logger
     }
@@ -27,6 +31,7 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
             .sendLogsToDatadog(configuration.sendLogsToDatadog)
             .sendNetworkInfo(configuration.sendNetworkInfo)
             .printLogsToConsole(configuration.printLogsToConsole)
+            .bundleWithTrace(false)
             .bundleWithRUM(configuration.bundleWithRum)
         if let loggerName = configuration.loggerName {
             _ = builder.set(loggerName: loggerName)
@@ -76,46 +81,31 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
             return
         }
 
-        let message = arguments["message"] as? String
         var attributes: [String: Encodable]?
         if let context = arguments["context"] as? [String: Any?] {
             attributes = castFlutterAttributesToSwift(context)
         }
 
         switch call.method {
-        case "debug":
-            if let message = message {
-                logger.debug(message, error: nil, attributes: attributes)
-                result(nil)
-            } else {
-                result(
-                    FlutterError.missingParameter(methodName: call.method)
-                )
-            }
+        case "log":
+            if let message = arguments["message"] as? String,
+                let levelString = arguments["logLevel"] as? String {
+                let level = LogLevel.parseLogLevelFromFlutter(levelString)
 
-        case "info":
-            if let message = message {
-                logger.info(message, error: nil, attributes: attributes)
-                result(nil)
-            } else {
-                result(
-                    FlutterError.missingParameter(methodName: call.method)
-                )
-            }
+                // Optional args
+                let errorKind = arguments["errorKind"] as? String
+                let errorMessage = arguments["errorMessage"] as? String
+                let stackTrace = arguments["stackTrace"] as? String
 
-        case "warn":
-            if let message = message {
-                logger.warn(message, error: nil, attributes: attributes)
-                result(nil)
-            } else {
-                result(
-                    FlutterError.missingParameter(methodName: call.method)
+                logger.log(
+                    level: level,
+                    message: message,
+                    errorKind: errorKind,
+                    errorMessage: errorMessage,
+                    stackTrace: stackTrace,
+                    attributes: attributes
                 )
-            }
 
-        case "error":
-            if let message = message {
-                logger.error(message, error: nil, attributes: attributes)
                 result(nil)
             } else {
                 result(

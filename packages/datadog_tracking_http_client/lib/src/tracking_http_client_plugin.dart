@@ -5,21 +5,32 @@
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 
 import '../datadog_tracking_http_client.dart';
 
 class DdHttpTrackingPluginConfiguration extends DatadogPluginConfiguration {
+  DdHttpTrackingPluginConfiguration();
+
   @override
   DatadogPlugin create(DatadogSdk datadogInstance) {
-    return _DdHttpTrackingPlugin(datadogInstance);
+    return _DdHttpTrackingPlugin(datadogInstance, this);
   }
 }
 
 class _DdHttpTrackingPlugin extends DatadogPlugin {
-  _DdHttpTrackingPlugin(DatadogSdk datadogInstance) : super(datadogInstance);
+  final DdHttpTrackingPluginConfiguration configuration;
+
+  _DdHttpTrackingPlugin(
+    DatadogSdk datadogInstance,
+    this.configuration,
+  ) : super(datadogInstance);
 
   @override
   void initialize() {
-    HttpOverrides.global = DatadogTrackingHttpOverrides(instance);
+    HttpOverrides.global =
+        DatadogTrackingHttpOverrides(instance, configuration);
+    instance.updateConfigurationInfo(
+        LateConfigurationProperty.trackNetworkRequests, true);
   }
 }

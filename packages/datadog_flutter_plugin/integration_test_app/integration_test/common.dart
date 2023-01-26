@@ -49,8 +49,8 @@ Future<RecordingServerClient> startMockServer() async {
   }
 }
 
-Future<RecordingServerClient> openTestScenario(
-    WidgetTester tester, String scenarioName) async {
+Future<RecordingServerClient> openTestScenario(WidgetTester tester,
+    {String? scenarioName, String? menuTitle}) async {
   var client = await startMockServer();
 
   // These need to be set as const in order to work, so we
@@ -63,17 +63,21 @@ Future<RecordingServerClient> openTestScenario(
       : null;
 
   app.testingConfiguration = TestingConfiguration(
+      scenario: scenarioName,
       customEndpoint: client.sessionEndpoint,
       clientToken: clientToken,
-      applicationId: applicationId);
+      applicationId: applicationId,
+      firstPartyHosts: ['localhost']);
 
   await app.main();
   await tester.pumpAndSettle();
 
-  var integrationItem = find.byWidgetPredicate((widget) =>
-      widget is Text && (widget.data?.startsWith(scenarioName) ?? false));
-  await tester.tap(integrationItem);
-  await tester.pumpAndSettle();
+  if (menuTitle != null) {
+    var integrationItem = find.byWidgetPredicate((widget) =>
+        widget is Text && (widget.data?.startsWith(menuTitle) ?? false));
+    await tester.tap(integrationItem);
+    await tester.pumpAndSettle();
+  }
 
   return client;
 }

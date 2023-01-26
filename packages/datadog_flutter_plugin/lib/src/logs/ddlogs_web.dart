@@ -62,33 +62,33 @@ class DdLogsWeb extends DdLogsPlatform {
   @override
   Future<void> addTag(String loggerHandle, String tag, [String? value]) async {}
 
-  @override
-  Future<void> debug(String loggerHandle, String message,
-      [Map<String, Object?> context = const {}]) async {
-    final logger = _activeLoggers[loggerHandle];
-    logger?.debug(message, valueToJs(context, 'context'));
-  }
+  // @override
+  // Future<void> debug(String loggerHandle, String message,
+  //     [Map<String, Object?> context = const {}]) async {
+  //   final logger = _activeLoggers[loggerHandle];
+  //   logger?.debug(message, valueToJs(context, 'context'));
+  // }
 
-  @override
-  Future<void> error(String loggerHandle, String message,
-      [Map<String, Object?> context = const {}]) async {
-    final logger = _activeLoggers[loggerHandle];
-    logger?.error(message, valueToJs(context, 'context'));
-  }
+  // @override
+  // Future<void> error(String loggerHandle, String message,
+  //     [Map<String, Object?> context = const {}]) async {
+  //   final logger = _activeLoggers[loggerHandle];
+  //   logger?.error(message, valueToJs(context, 'context'));
+  // }
 
-  @override
-  Future<void> info(String loggerHandle, String message,
-      [Map<String, Object?> context = const {}]) async {
-    final logger = _activeLoggers[loggerHandle];
-    logger?.info(message, valueToJs(context, 'context'));
-  }
+  // @override
+  // Future<void> info(String loggerHandle, String message,
+  //     [Map<String, Object?> context = const {}]) async {
+  //   final logger = _activeLoggers[loggerHandle];
+  //   logger?.info(message, valueToJs(context, 'context'));
+  // }
 
-  @override
-  Future<void> warn(String loggerHandle, String message,
-      [Map<String, Object?> context = const {}]) async {
-    final logger = _activeLoggers[loggerHandle];
-    logger?.warn(message, valueToJs(context, 'context'));
-  }
+  // @override
+  // Future<void> warn(String loggerHandle, String message,
+  //     [Map<String, Object?> context = const {}]) async {
+  //   final logger = _activeLoggers[loggerHandle];
+  //   logger?.warn(message, valueToJs(context, 'context'));
+  // }
 
   @override
   Future<void> removeAttribute(String loggerHandle, String key) async {
@@ -101,6 +101,42 @@ class DdLogsWeb extends DdLogsPlatform {
 
   @override
   Future<void> removeTagWithKey(String loggerHandle, String key) async {}
+
+  @override
+  Future<void> log(
+    String loggerHandle,
+    LogLevel level,
+    String message,
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes,
+  ) async {
+    final logger = _activeLoggers[loggerHandle];
+    final webLogLevel = _toWebLogLevel(level);
+    logger?.log(message, valueToJs(attributes, 'attributes'), webLogLevel);
+  }
+}
+
+String _toWebLogLevel(LogLevel level) {
+  switch (level) {
+    case LogLevel.debug:
+      return 'debug';
+    case LogLevel.info:
+      return 'info';
+    case LogLevel.notice:
+      return 'notice';
+    case LogLevel.warning:
+      return 'warning';
+    case LogLevel.error:
+      return 'error';
+    case LogLevel.critical:
+      return 'critical';
+    case LogLevel.alert:
+      return 'alert';
+    case LogLevel.emergency:
+      return 'emergency';
+  }
 }
 
 @JS()
@@ -139,10 +175,7 @@ class _JsLoggerConfiguration {
 
 @JS('Logger')
 class Logger {
-  external void debug(String message, dynamic messageContext);
-  external void info(String message, dynamic messageContext);
-  external void warn(String message, dynamic messageContext);
-  external void error(String message, dynamic messageContext);
+  external void log(String message, dynamic messageContext, String status);
 
   external void addContext(String key, dynamic value);
   external void removeContext(String key);

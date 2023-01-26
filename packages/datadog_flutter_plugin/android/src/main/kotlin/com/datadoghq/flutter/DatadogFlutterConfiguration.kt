@@ -12,6 +12,7 @@ import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Configuration
 import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
+import com.datadog.android.core.configuration.VitalsUpdateFrequency
 import com.datadog.android.ndk.NdkCrashReportsPlugin
 import com.datadog.android.plugin.Feature
 import com.datadog.android.privacy.TrackingConsent
@@ -48,6 +49,7 @@ data class DatadogFlutterConfiguration(
     var customLogsEndpoint: String? = null,
     var firstPartyHosts: List<String> = listOf(),
     var additionalConfig: Map<String, Any?> = mapOf(),
+    var attachLogMapper: Boolean = false,
 
     var rumConfiguration: RumConfiguration? = null
 ) {
@@ -56,15 +58,30 @@ data class DatadogFlutterConfiguration(
         var sampleRate: Float,
         var detectLongTasks: Boolean,
         var longTaskThreshold: Float,
-        var customEndpoint: String?
+        var customEndpoint: String?,
+        var attachViewEventMapper: Boolean = false,
+        var attachActionEventMapper: Boolean = false,
+        var attachResourceEventMapper: Boolean = false,
+        var attachErrorEventMapper: Boolean = false,
+        var attachLongTaskEventMapper: Boolean = false,
+        var vitalsFrequency: VitalsUpdateFrequency? = null
     ) {
         constructor(encoded: Map<String, Any?>) : this(
             (encoded["applicationId"] as? String) ?: "",
             (encoded["sampleRate"] as? Number)?.toFloat() ?: 100.0f,
             (encoded["detectLongTasks"] as? Boolean) ?: true,
             (encoded["longTaskThreshold"] as? Number?)?.toFloat() ?: 0.1f,
-            encoded["customEndpoint"] as? String
-        )
+            encoded["customEndpoint"] as? String,
+            encoded["attachViewEventMapper"] as? Boolean ?: false,
+            encoded["attachActionEventMapper"] as? Boolean ?: false,
+            encoded["attachResourceEventMapper"] as? Boolean ?: false,
+            encoded["attachErrorEventMapper"] as? Boolean ?: false,
+            encoded["attachLongTaskEventMapper"] as? Boolean ?: false,
+        ) {
+            (encoded["vitalsFrequency"] as? String)?.let {
+                vitalsFrequency = parseVitalsFrequency(it)
+            }
+        }
     }
 
     constructor(encoded: Map<String, Any?>) : this(
@@ -97,6 +114,8 @@ data class DatadogFlutterConfiguration(
         @Suppress("UNCHECKED_CAST")
         additionalConfig = (encoded["additionalConfig"] as? Map<String, Any?>) ?: mapOf()
 
+        attachLogMapper = (encoded["attachLogMapper"] as? Boolean) ?: false
+
         @Suppress("UNCHECKED_CAST")
         (encoded["rumConfiguration"] as? Map<String, Any?>)?.let {
             rumConfiguration = RumConfiguration(it)
@@ -116,7 +135,7 @@ data class DatadogFlutterConfiguration(
     }
 
     @Suppress("ComplexMethod")
-    fun toSdkConfiguration(): Configuration {
+    fun toSdkConfigurationBuilder(): Configuration.Builder {
         val configBuilder = Configuration.Builder(
             // Always enable logging as users can create logs post initialization
             logsEnabled = true,
@@ -147,6 +166,9 @@ data class DatadogFlutterConfiguration(
             it.customEndpoint?.let { ce ->
                 configBuilder.useCustomRumEndpoint(ce)
             }
+            it.vitalsFrequency?.let { vf ->
+                configBuilder.setVitalsUpdateFrequency(vf)
+            }
         }
 
         customLogsEndpoint?.let {
@@ -154,7 +176,7 @@ data class DatadogFlutterConfiguration(
         }
         configBuilder.setFirstPartyHosts(firstPartyHosts)
 
-        return configBuilder.build()
+        return configBuilder
     }
 }
 
@@ -215,5 +237,15 @@ internal fun parseVerbosity(verbosity: String): Int {
         "Verbosity.error" -> Log.ERROR
         "Verbosity.none" -> Int.MAX_VALUE
         else -> Int.MAX_VALUE
+    }
+}
+
+internal fun parseVitalsFrequency(vitalsFrequency: String): VitalsUpdateFrequency {
+    return when (vitalsFrequency) {
+        "VitalsFrequency.frequent" -> VitalsUpdateFrequency.FREQUENT
+        "VitalsFrequency.average" -> VitalsUpdateFrequency.AVERAGE
+        "VitalsFrequency.rare" -> VitalsUpdateFrequency.RARE
+        "VitalsFrequency.never" -> VitalsUpdateFrequency.NEVER
+        else -> VitalsUpdateFrequency.AVERAGE
     }
 }

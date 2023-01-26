@@ -2,12 +2,24 @@
 
 ## Unreleased
 
+* Add methods for enabling the DatadogTrackingHttpClient in add-to-app scenarios.
+* Send trace sample rate (`dd.rule_psr`) for APM's traffic ingestion control page.
+* Added DatadogClient for use with the `http` pub package.
+* Fix an issue where convenience methods on DatadogTrackingHttpClient weren't being tracked properly
+* Support for OTel `b3` and W3C `tracecontext` header injection
+
+## 1.1.0
+
 * Minor documentation update to clarify 1.1.x / 1.0.x changes
 
 ## 1.1.0-rc.1
 
 * Updated to use `datadog_flutter_plugin` 1.0.0-rc.1
 * Added internal error reporting (telemetry)
+
+## 1.0.1
+
+* Stable release of 1.0.x
 
 ## 1.0.1-rc.1
 

@@ -11,6 +11,7 @@ enum SupportedContractType {
     case int
     case int64
     case map
+    case list
 
     func createOfType() -> Any {
         switch self {
@@ -18,6 +19,7 @@ enum SupportedContractType {
         case .int: return 1_234
         case .int64: return 1_223_455_123
         case .map: return ["key to": "value"]
+        case .list: return []
         }
     }
 }

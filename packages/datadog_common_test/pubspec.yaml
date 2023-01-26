@@ -8,7 +8,7 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
-  collection: ^1.16.0
+  collection: ^1.15.0
   flutter:
     sdk: flutter
   http: ^0.13.4

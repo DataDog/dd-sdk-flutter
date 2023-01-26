@@ -20,6 +20,7 @@ class _RumScreenState extends State<RumScreen> {
   var viewName = '';
   var actionName = '';
   var resourceName = '';
+  var sendResourceError = false;
   var errorMessage = '';
 
   Future<void> _sendViewEvent() async {
@@ -83,7 +84,15 @@ class _RumScreenState extends State<RumScreen> {
     if (rum != null) {
       rum.startResourceLoading(resourceKey, RumHttpMethod.get, resource);
       await Future.delayed(const Duration(seconds: 2));
-      rum.stopResourceLoading(resourceKey, 200, RumResourceType.native);
+      if (sendResourceError) {
+        rum.stopResourceLoadingWithErrorInfo(
+          resourceKey,
+          errorMessage,
+          'networkError',
+        );
+      } else {
+        rum.stopResourceLoading(resourceKey, 200, RumResourceType.native);
+      }
     }
 
     setState(() {
@@ -155,12 +164,7 @@ class _RumScreenState extends State<RumScreen> {
                   onChanged: (value) => actionName = value,
                   onSend: _sendAction,
                 ),
-                _viewEventField(
-                  label: 'Resource',
-                  enabled: !performingOperation,
-                  onChanged: (value) => resourceName = value,
-                  onSend: _sendResource,
-                ),
+                _resourceEventField(),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -239,6 +243,61 @@ class _RumScreenState extends State<RumScreen> {
             child: const Text('Send'),
           )
         ])
+      ],
+    );
+  }
+
+  Widget _resourceEventField() {
+    var theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Resource Event',
+          style: theme.textTheme.headline5,
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: _defaultTextField(
+                label: 'Resource',
+                onChanged: (text) => resourceName = text,
+                enabled: !performingOperation,
+              ),
+            ),
+            ElevatedButton(
+              onPressed: performingOperation ? null : _sendResource,
+              child: const Text('Send'),
+            )
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Checkbox(
+                    value: sendResourceError,
+                    onChanged: performingOperation
+                        ? null
+                        : (value) {
+                            setState(() {
+                              sendResourceError = value == true;
+                            });
+                          },
+                  ),
+                  const Text('As Error'),
+                ],
+              ),
+              _defaultTextField(
+                label: 'Error Message',
+                onChanged: (value) => errorMessage = value,
+                enabled: sendResourceError && !performingOperation,
+              ),
+            ],
+          ),
+        )
       ],
     );
   }

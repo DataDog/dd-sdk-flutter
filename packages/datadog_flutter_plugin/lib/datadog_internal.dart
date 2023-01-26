@@ -6,22 +6,95 @@
 // extension packages, and is not meant for public use. Anything exposed by this
 // file has the potential to change without notice.
 
-import 'dart:math';
+import 'package:meta/meta.dart';
+
+import 'datadog_flutter_plugin.dart';
+import 'src/internal_logger.dart';
 
 export 'src/attributes.dart';
+export 'src/datadog_sdk_platform_interface.dart';
 export 'src/rum/attributes.dart';
+export 'src/tracing/tracing_headers.dart';
 
-final Random _traceRandom = Random();
+/// A set of properties that Flutter can configure "late", meaning after the
+/// first call to [DatadogSdk.initialize].
+enum LateConfigurationProperty {
+  /// Whether the user is tracking views manually. This is set to false if a
+  /// DatadogNavigationObserver is constructed.
+  trackViewsManually,
 
-String generateTraceId() {
-  // Though traceid is an unsigned 64-bit int, for compatibility
-  // we assume it needs to be a positive signed 64-bit int, so only
-  // use 63-bits.
-  final highBits = _traceRandom.nextInt(1 << 31);
-  final lowBits = BigInt.from(_traceRandom.nextInt(1 << 32));
+  /// Whether the user is using [RumUserActionDetector]. Set when the first
+  /// [RumUserActionDetector] is constructed.
+  trackInteractions,
 
-  var traceId = BigInt.from(highBits) << 32;
-  traceId += lowBits;
+  /// Whether Datadog is automatically tracking errors, set if
+  /// [DatadogSdk.runApp] is used.
+  trackErrors,
 
-  return traceId.toString();
+  /// Whether or not network requests are being tracked. Set during initialization
+  /// of the datadog_tracking_http_client HttpClient or http.Client classes.
+  trackNetworkRequests,
+
+  /// Whether we are tracking cross platform long tasks. This is currently
+  /// always the same as trackLongTasks
+  trackCrossPlatformLongTasks,
+
+  /// Whether native views are being tracked. Currently unused.
+  trackNativeViews,
+
+  /// Whether [DdSdkConfiguration.reportFlutterPerformance] was set to true
+  trackFlutterPerformance,
+}
+
+extension DatadogInternal on DatadogSdk {
+  /// Update a late configuration property
+  void updateConfigurationInfo(LateConfigurationProperty property, bool value) {
+    platform.updateTelemetryConfiguration(property.name, value);
+  }
+}
+
+/// Used to attach a first party host name to what headers should be
+/// automatically attached by RUM Http Tracking
+@immutable
+class FirstPartyHost {
+  final String hostName;
+  final Set<TracingHeaderType> headerTypes;
+
+  final RegExp _regExp;
+
+  FirstPartyHost._(this.hostName, this.headerTypes)
+      : _regExp = RegExp('^(.*\\.)*${RegExp.escape(hostName)}\$');
+
+  bool matches(Uri uri) {
+    return _regExp.hasMatch(uri.host.toString());
+  }
+
+  static List<FirstPartyHost> createSanitized(
+      Map<String, Set<TracingHeaderType>> hosts, InternalLogger logger) {
+    var firstPartyHosts = <FirstPartyHost>[];
+    for (var entry in hosts.entries) {
+      var sanitizedHost = _sanitizeHost(entry.key, logger);
+      if (sanitizedHost != null) {
+        firstPartyHosts.add(FirstPartyHost._(sanitizedHost, entry.value));
+      }
+    }
+
+    return firstPartyHosts;
+  }
+
+  static String? _sanitizeHost(String host, InternalLogger internalLogger) {
+    final uri = Uri.tryParse(host);
+    if (uri != null) {
+      if (uri.hasScheme) {
+        internalLogger
+            .warn('$host is a url and will be sanitized to: ${uri.host}.');
+        host = uri.host;
+      }
+
+      return host;
+    }
+
+    internalLogger.warn('$host is a not a valid url and will be dropped');
+    return null;
+  }
 }

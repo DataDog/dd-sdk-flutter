@@ -21,6 +21,12 @@ class CommandArguments {
   // The version we're releasing
   final String version;
 
+  // The release of the iOS SDK we want this release to refer to
+  String? iOSRelease;
+
+  // The release of the iOS SDK we want this release to refer to
+  String? androidRelease;
+
   // Whether we're doing a dry run
   final bool dryRun;
 
@@ -30,6 +36,8 @@ class CommandArguments {
     required this.gitDir,
     required this.skipGitChecks,
     required this.version,
+    required this.iOSRelease,
+    required this.androidRelease,
     required this.dryRun,
   });
 }

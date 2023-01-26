@@ -43,13 +43,36 @@ class DatadogFlutterConfiguration {
         let detectLongTasks: Bool
         let longTaskThreshold: Float
         let customEndpoint: String?
+        let vitalsFrequency: Datadog.Configuration.VitalsFrequency?
+        let attachViewEventMapper: Bool
+        let attachActionEventMapper: Bool
+        let attachResourceEventMapper: Bool
+        let attachErrorEventMapper: Bool
+        let attachLongTaskMapper: Bool
 
-        init(applicationId: String, sampleRate: Float, detectLongTasks: Bool, longTaskThreshold: Float, customEndpoint: String?) {
+        init(applicationId: String,
+             sampleRate: Float,
+             detectLongTasks: Bool,
+             longTaskThreshold: Float,
+             customEndpoint: String?,
+             vitalsFrequency: Datadog.Configuration.VitalsFrequency?,
+             attachViewEventMapper: Bool,
+             attachActionEventMapper: Bool,
+             attachResourceEventMapper: Bool,
+             attachErrorEventMapper: Bool,
+             attachLongTaskMapper: Bool
+        ) {
             self.applicationId = applicationId
             self.sampleRate = sampleRate
             self.detectLongTasks = detectLongTasks
             self.longTaskThreshold = longTaskThreshold
             self.customEndpoint = customEndpoint
+            self.vitalsFrequency = vitalsFrequency
+            self.attachViewEventMapper = attachViewEventMapper
+            self.attachActionEventMapper = attachActionEventMapper
+            self.attachResourceEventMapper = attachResourceEventMapper
+            self.attachErrorEventMapper = attachErrorEventMapper
+            self.attachLongTaskMapper = attachLongTaskMapper
         }
 
         init?(fromEncoded encoded: [String: Any?]) {
@@ -63,6 +86,15 @@ class DatadogFlutterConfiguration {
             detectLongTasks = (encoded["detectLongTasks"] as? NSNumber)?.boolValue ?? true
             longTaskThreshold = (encoded["longTaskThreshold"] as? NSNumber)?.floatValue ?? 0.1
             customEndpoint = encoded["customEndpoint"] as? String
+            attachViewEventMapper = (encoded["attachViewEventMapper"] as? NSNumber)?.boolValue ?? false
+            attachActionEventMapper = (encoded["attachActionEventMapper"] as? NSNumber)?.boolValue ?? false
+            attachResourceEventMapper = (encoded["attachResourceEventMapper"] as? NSNumber)?.boolValue ?? false
+            attachErrorEventMapper = (encoded["attachErrorEventMapper"] as? NSNumber)?.boolValue ?? false
+            attachLongTaskMapper = (encoded["attachLongTaskMapper"] as? NSNumber)?.boolValue ?? false
+
+            vitalsFrequency = convertOptional(encoded["vitalsFrequency"]) {
+                .parseFromFlutter($0)
+            }
         }
     }
 
@@ -79,6 +111,7 @@ class DatadogFlutterConfiguration {
     let firstPartyHosts: [String]
     let customLogsEndpoint: String?
     let additionalConfig: [String: Any]
+    let attachLogMapper: Bool
 
     let rumConfiguration: RumConfiguration?
 
@@ -95,6 +128,7 @@ class DatadogFlutterConfiguration {
         firstPartyHosts: [String] = [],
         customLogsEndpoint: String? = nil,
         additionalConfig: [String: Any] = [:],
+        attachLogMapper: Bool = false,
         rumConfiguration: RumConfiguration? = nil
     ) {
         self.clientToken = clientToken
@@ -109,6 +143,7 @@ class DatadogFlutterConfiguration {
         self.firstPartyHosts = firstPartyHosts
         self.customLogsEndpoint = customLogsEndpoint
         self.additionalConfig = additionalConfig
+        self.attachLogMapper = attachLogMapper
         self.rumConfiguration = rumConfiguration
     }
 
@@ -137,14 +172,15 @@ class DatadogFlutterConfiguration {
         customLogsEndpoint = encoded["customLogsEndpoint"] as? String
         firstPartyHosts = encoded["firstPartyHosts"] as? [String] ?? []
         additionalConfig = encoded["additionalConfig"] as? [String: Any] ?? [:]
+        attachLogMapper = (encoded["attachLogMapper"] as? NSNumber)?.boolValue ?? false
 
         rumConfiguration = convertOptional(encoded["rumConfiguration"]) {
             .init(fromEncoded: $0)
         }
     }
 
-    // swiftlint:disable:next cyclomatic_complexity
-    func toDdConfig() -> Datadog.Configuration {
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
+    func toDdConfigBuilder() -> Datadog.Configuration.Builder {
         let ddConfigBuilder: Datadog.Configuration.Builder
         if let rumConfig = rumConfiguration {
             ddConfigBuilder = Datadog.Configuration.builderUsing(
@@ -152,6 +188,7 @@ class DatadogFlutterConfiguration {
                 clientToken: clientToken,
                 environment: env
             )
+            .enableTracing(false)
             .set(rumSessionsSamplingRate: rumConfig.sampleRate)
 
             if rumConfig.detectLongTasks {
@@ -160,6 +197,9 @@ class DatadogFlutterConfiguration {
             if let customRumEndpoint = rumConfig.customEndpoint,
                let customRumEndpointUrl = URL(string: customRumEndpoint) {
                 _ = ddConfigBuilder.set(customRUMEndpoint: customRumEndpointUrl)
+            }
+            if let vitalsFrequency = rumConfig.vitalsFrequency {
+                _ = ddConfigBuilder.set(mobileVitalsFrequency: vitalsFrequency)
             }
         } else {
             ddConfigBuilder = Datadog.Configuration.builderUsing(
@@ -208,7 +248,7 @@ class DatadogFlutterConfiguration {
 
         _ = ddConfigBuilder.set(additionalConfiguration: additionalConfig)
 
-        return ddConfigBuilder.build()
+        return ddConfigBuilder
     }
 }
 
@@ -279,7 +319,7 @@ public extension Datadog.Configuration.DatadogEndpoint {
 }
 
 public extension LogLevel {
-    static func parseFromFlutter(_ value: String) -> Self? {
+    static func parseVerbosityFromFlutter(_ value: String) -> Self? {
         switch value {
         case "Verbosity.verbose": return .debug
         case "Verbosity.debug": return .debug
@@ -288,6 +328,20 @@ public extension LogLevel {
         case "Verbosity.error": return .error
         case "Verbosity.none": return nil
         default: return nil
+        }
+    }
+
+    static func parseLogLevelFromFlutter(_ value: String) -> Self {
+        switch value {
+        case "LogLevel.debug": return .debug
+        case "LogLevel.info": return .info
+        case "LogLevel.notice": return .notice
+        case "LogLevel.warning": return .warn
+        case "LogLevel.error": return .error
+        case "LogLevel.critical": return .critical
+        case "LogLevel.alert": return .critical
+        case "LogLevel.emergency": return .critical
+        default: return .info
         }
     }
 }

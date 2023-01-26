@@ -31,44 +31,40 @@ void main() {
     setUp(() {
       logger = TestLogger();
       mockPlatform = MockDdLogsPlatform();
-      when(() => mockPlatform.debug(any(), any(), any()))
-          .thenAnswer((invocation) => Future<void>.value());
-      when(() => mockPlatform.info(any(), any(), any()))
-          .thenAnswer((invocation) => Future<void>.value());
-      when(() => mockPlatform.warn(any(), any(), any()))
-          .thenAnswer((invocation) => Future<void>.value());
-      when(() => mockPlatform.error(any(), any(), any()))
+      registerFallbackValue(LogLevel.info);
+      when(() =>
+              mockPlatform.log(any(), any(), any(), any(), any(), any(), any()))
           .thenAnswer((invocation) => Future<void>.value());
       DdLogsPlatform.instance = mockPlatform;
       ddLogs = DdLogs(logger, Verbosity.verbose);
     });
 
     test('debug logs pass to platform', () async {
-      ddLogs.debug('debug message', {'attribute': 'value'});
+      ddLogs.debug('debug message', attributes: {'attribute': 'value'});
 
-      verify(() => mockPlatform
-          .debug(ddLogs.loggerHandle, 'debug message', {'attribute': 'value'}));
+      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.debug,
+          'debug message', null, null, null, {'attribute': 'value'}));
     });
 
-    test('info logs pass to platform', () async {
-      ddLogs.info('info message', {'attribute': 'value'});
+    test('debug info pass to platform', () async {
+      ddLogs.info('info message', attributes: {'attribute': 'value'});
 
-      verify(() => mockPlatform
-          .info(ddLogs.loggerHandle, 'info message', {'attribute': 'value'}));
+      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.info,
+          'info message', null, null, null, {'attribute': 'value'}));
     });
 
-    test('warn logs pass to platform', () async {
-      ddLogs.warn('warn message', {'attribute': 'value'});
+    test('debug warn pass to platform', () async {
+      ddLogs.warn('warn message', attributes: {'attribute': 'value'});
 
-      verify(() => mockPlatform
-          .warn(ddLogs.loggerHandle, 'warn message', {'attribute': 'value'}));
+      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.warning,
+          'warn message', null, null, null, {'attribute': 'value'}));
     });
 
     test('error logs pass to platform', () async {
-      ddLogs.error('error message', {'attribute': 'value'});
+      ddLogs.error('error message', attributes: {'attribute': 'value'});
 
-      verify(() => mockPlatform
-          .error(ddLogs.loggerHandle, 'error message', {'attribute': 'value'}));
+      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.error,
+          'error message', null, null, null, {'attribute': 'value'}));
     });
 
     test('addAttribute argumentError sent to logger', () async {
@@ -84,13 +80,9 @@ void main() {
     setUp(() {
       logger = TestLogger();
       mockPlatform = MockDdLogsPlatform();
-      when(() => mockPlatform.debug(any(), any(), any()))
-          .thenAnswer((invocation) => Future<void>.value());
-      when(() => mockPlatform.info(any(), any(), any()))
-          .thenAnswer((invocation) => Future<void>.value());
-      when(() => mockPlatform.warn(any(), any(), any()))
-          .thenAnswer((invocation) => Future<void>.value());
-      when(() => mockPlatform.error(any(), any(), any()))
+      registerFallbackValue(LogLevel.info);
+      when(() =>
+              mockPlatform.log(any(), any(), any(), any(), any(), any(), any()))
           .thenAnswer((invocation) => Future<void>.value());
       DdLogsPlatform.instance = mockPlatform;
     });
@@ -103,10 +95,15 @@ void main() {
       ddLogs.warn('Warn message');
       ddLogs.error('Error message');
 
-      verify(() => mockPlatform.debug(any(), any()));
-      verify(() => mockPlatform.info(any(), any()));
-      verify(() => mockPlatform.warn(any(), any()));
-      verify(() => mockPlatform.error(any(), any()));
+      for (var level in [
+        LogLevel.debug,
+        LogLevel.info,
+        LogLevel.warning,
+        LogLevel.error
+      ]) {
+        verify(() =>
+            mockPlatform.log(any(), level, any(), null, null, null, any()));
+      }
     });
 
     test('threshold set to middle sends call proper platform methods',
@@ -118,10 +115,21 @@ void main() {
       ddLogs.warn('Warn message');
       ddLogs.error('Error message');
 
-      verifyNever(() => mockPlatform.debug(any(), any()));
-      verifyNever(() => mockPlatform.info(any(), any()));
-      verify(() => mockPlatform.warn(any(), any()));
-      verify(() => mockPlatform.error(any(), any()));
+      for (var level in [
+        LogLevel.debug,
+        LogLevel.info,
+      ]) {
+        verifyNever(() =>
+            mockPlatform.log(any(), level, any(), any(), any(), any(), any()));
+      }
+
+      for (var level in [
+        LogLevel.warning,
+        LogLevel.error,
+      ]) {
+        verify(() =>
+            mockPlatform.log(any(), level, any(), null, null, null, any()));
+      }
     });
 
     test('threshold set to none does not call platform', () async {
@@ -132,10 +140,15 @@ void main() {
       ddLogs.warn('Warn message');
       ddLogs.error('Error message');
 
-      verifyNever(() => mockPlatform.debug(any(), any()));
-      verifyNever(() => mockPlatform.info(any(), any()));
-      verifyNever(() => mockPlatform.warn(any(), any()));
-      verifyNever(() => mockPlatform.error(any(), any()));
+      for (var level in [
+        LogLevel.debug,
+        LogLevel.info,
+        LogLevel.warning,
+        LogLevel.error
+      ]) {
+        verifyNever(() =>
+            mockPlatform.log(any(), level, any(), any(), any(), any(), any()));
+      }
     });
   });
 }

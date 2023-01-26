@@ -7,9 +7,11 @@ import 'dart:io';
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
-import 'package:datadog_tracking_http_client_example/rum_auto_instrumentation_scenario.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'scenario_config.dart';
+import 'scenario_select_screen.dart';
 
 // This file sets up a different application for testing auto instrumentation
 // Using the widgets in this library by themselves won't send any RUM events
@@ -41,6 +43,8 @@ Future<void> main() async {
     firstPartyHosts.addAll(testingConfiguration!.firstPartyHosts);
   }
 
+  DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
+
   final configuration = DdSdkConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
@@ -57,12 +61,17 @@ Future<void> main() async {
     ),
     rumConfiguration: applicationId != null
         ? RumConfiguration(
+            detectLongTasks: false,
             applicationId: applicationId,
             tracingSamplingRate: 100,
             customEndpoint: customEndpoint,
           )
         : null,
-  )..enableHttpTracking();
+  );
+
+  if (RumAutoInstrumentationScenarioConfig.instance.enableIoHttpTracking) {
+    configuration.enableHttpTracking();
+  }
 
   await DatadogSdk.runApp(configuration, () async {
     runApp(const DatadogAutoIntegrationTestApp());
@@ -79,15 +88,14 @@ class DatadogAutoIntegrationTestApp extends StatelessWidget {
     return DatadogNavigationObserverProvider(
       navObserver: navObserver,
       child: MaterialApp(
-        title: 'Flutter Demo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
-        navigatorObservers: [
-          navObserver,
-        ],
-        home: const RumAutoInstrumentationScenario(),
-      ),
+          title: 'Flutter Demo',
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+          ),
+          navigatorObservers: [
+            navObserver,
+          ],
+          home: const ScenarioSelectScreen()),
     );
   }
 }
