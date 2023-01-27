@@ -2,12 +2,14 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:fluro/fluro.dart';
 import 'package:flutter/material.dart';
 
 import 'crash_reporting_screen.dart';
 import 'logging_screen.dart';
 import 'rum_screen.dart';
+import 'rum_user_actions_screen.dart';
 
 class NavItem {
   final String label;
@@ -30,6 +32,7 @@ class _ExampleAppState extends State<ExampleApp> {
     NavItem(label: 'Logging', route: '/logging'),
     NavItem(label: 'RUM', route: '/rum'),
     NavItem(label: 'RUM Crash Reporting', route: '/rum_crash'),
+    NavItem(label: 'RUM User Actions', route: '/rum_user_actions')
   ];
 
   @override
@@ -42,31 +45,38 @@ class _ExampleAppState extends State<ExampleApp> {
         handler: Handler(handlerFunc: (_, __) => const RumScreen()));
     router.define('/rum_crash',
         handler: Handler(handlerFunc: (_, __) => const CrashReportingScreen()));
+    router.define('/rum_user_actions',
+        handler: Handler(handlerFunc: (_, __) => const RumUserActionsScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      onGenerateRoute: router.generator,
-      home: Builder(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: const Text('Datadog SDK Example App'),
-          ),
-          body: Center(
-            child: ListView.builder(
-              itemCount: items.length,
-              itemBuilder: (context, i) {
-                var item = items[i];
-                return ListTile(
-                  title: Text(item.label),
-                  trailing: const Icon(Icons.arrow_right_sharp),
-                  onTap: () {
-                    router.navigateTo(context, item.route,
-                        transition: TransitionType.native);
-                  },
-                );
-              },
+    final navigationObserver =
+        DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
+    return DatadogNavigationObserverProvider(
+      navObserver: navigationObserver,
+      child: MaterialApp(
+        onGenerateRoute: router.generator,
+        home: Builder(
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: const Text('Datadog SDK Example App'),
+            ),
+            body: Center(
+              child: ListView.builder(
+                itemCount: items.length,
+                itemBuilder: (context, i) {
+                  var item = items[i];
+                  return ListTile(
+                    title: Text(item.label),
+                    trailing: const Icon(Icons.arrow_right_sharp),
+                    onTap: () {
+                      router.navigateTo(context, item.route,
+                          transition: TransitionType.native);
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ),
