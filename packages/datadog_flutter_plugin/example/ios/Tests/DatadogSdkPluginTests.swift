@@ -325,7 +325,7 @@ class FlutterSdkTests: XCTestCase {
         }
 
         let core = defaultDatadogCore as? DatadogCore
-        XCTAssertEqual(core?.consentProvider.currentValue, .notGranted)
+        XCTAssertEqual(core?.consentPublisher.consent, .notGranted)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
