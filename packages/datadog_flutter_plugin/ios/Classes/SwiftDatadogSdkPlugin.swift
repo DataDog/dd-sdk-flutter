@@ -59,9 +59,8 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             let configArg = arguments["configuration"] as! [String: Any?]
             if let config = DatadogFlutterConfiguration(fromEncoded: configArg) {
                 if !Datadog.isInitialized {
-                    initialize(configuration: config)
-                    currentConfiguration = configArg as [AnyHashable: Any]
-
+                    // Set log callback before initialization so errors in initialization
+                    // get printed
                     if let setLogCallback = arguments["setLogCallback"] as? Bool,
                        setLogCallback {
                         oldConsolePrint = consolePrint
@@ -69,6 +68,9 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                             self.channel.invokeMethod("logCallback", arguments: value)
                         }
                     }
+
+                    initialize(configuration: config)
+                    currentConfiguration = configArg as [AnyHashable: Any]
                 } else {
                     let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
                     if !dict.isEqual(to: currentConfiguration!) {
