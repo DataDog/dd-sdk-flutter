@@ -42,7 +42,7 @@ android {
     }
 }
 
-apply from: '../../../ignore_sr_snapshots.gradle'
+apply from: '../../../../ignore_sr_snapshots.gradle'
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.7.0'

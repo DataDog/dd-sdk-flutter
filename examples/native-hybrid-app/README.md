@@ -24,17 +24,11 @@ Additional options for `DdSdkExistingConfiguration` are documented in the [API r
 
 ### Avoiding "FlutterViewController" and "FlutterActivity" views
 
-Depending on your settings, the automatic view tracking in the native iOS and Android SDKs will automatically track the presentation of the `FlutterViewController` and `FlutterActivity`/`FlutterFragment` when they appear, and then immediately add show a view load for your tracked Flutter view.
+Depending on your settings, the automatic view tracking in the native iOS and Android SDKs will automatically track the presentation of the `FlutterViewController` and `FlutterActivity`/`FlutterFragment` when they appear, and then immediately show a view load for your tracked Flutter view. To avoid seeing the extra `FlutterViewController` and `FlutterActivity` views in your sessions, you need to add a view predicate to filter them.
 
-To avoid seeing the extra `FlutterViewController` and `FlutterActivity` views in your sessions, add a `UIKitRUMViewsPredicate` and `ComponentPredicate` to your iOS and Android code, respectively.  Very simple examples of these predicates can be found in the example code in [AppDelegate.swift](ios/iOS%20Flutter%20Hybrid%20Example/AppDelegate.swift) and [HybridApplication.kt](android/app/src/main/java/com/datadoghq/hybrid_flutter_example/HybridApplication.kt)
+On iOS, create a `UIKitRUMViewsPredicate` to check if the view controller is an instance of FlutterViewController. On iOS 13+, return `nil` from this funciton and the RUM iOS SDK will avoid tracking the FlutterViewController and let the Flutter SDK take over, so long as `isModalInPresentation` is set to true. If you are targeting iOS version lower than 13, or you do not have `isModalInPresentation` set to true, instead return a `RUMView` with the `isUntrackedModal` property set to `true`. This will ensure that your previous view is properly restarted. An example of this predicate can be found in the example code in [AppDelegate.swift](ios/iOS%20Flutter%20Hybrid%20Example/AppDelegate.swift)
 
-### Restart iOS views
-
-If you are using automatic view tracking on iOS and filtering `FlutterViewController` views with the predicate above, there is a known issue that transitioning back from the `FlutterViewController` does not restart the original view, so you have to perform this step manually.
-
-This app uses a `MethodChannel` on iOS specifically for dismissing the `FlutterViewController`. The `MethodChannel` allows a single use block to be triggered when the 'dismiss' method is called, which allows the presenting `ViewController` to also handle dismissal and restart the RUM view. You can see this helper class interaction in [AppDelegate.swift](ios/iOS%20Flutter%20Hybrid%20Example/AppDelegate.swift) and in [my_app.dart](flutter_modules/lib/my_app.dart).
-
-Note that restarting the view in this way is not necessary if you are not using the `UIKitRumViewsPredicate` to prevent "FlutterViewController" from appearing in your sessions.
+On Android, create a `ComponentPredicate` to check if the Activity is an instance of FlutterActivity. If so, return false from this function to avoid tracking the Activity and let Flutter SDK take over.  An example of this predicate can be found in the example code in [HybridApplication.kt](android/app/src/main/java/com/datadoghq/hybrid_flutter_example/HybridApplication.kt)
 
 ### Caveats
 

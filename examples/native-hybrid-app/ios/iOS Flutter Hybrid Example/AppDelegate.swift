@@ -12,26 +12,14 @@ class FlutterExcludingRumViewsPredicate: UIKitRUMViewsPredicate {
     
     func rumView(for viewController: UIViewController) -> RUMView? {
         if (viewController is FlutterViewController) {
-            return nil
+            if #available(iOS 13, *) {
+                return nil
+            } else {
+                return .init(name: "FLutterViewController", isUntrackedModal: true)
+            }
         }
         
         return defaultViewsPredicate.rumView(for: viewController)
-    }
-}
-
-class DismissMethodCallHandler {
-    static let shared = DismissMethodCallHandler()
-    
-    private var dismissBlock: (() -> Void)? = nil
-    
-    func setDismissListener(dismissBlock: @escaping () -> Void) {
-        self.dismissBlock = dismissBlock
-    }
-    
-    func callDismissListener() {
-        dismissBlock?()
-        // dismissBlock is a one-shot
-        self.dismissBlock = nil
     }
 }
 
@@ -76,16 +64,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // main() which will look for an existing Datadog instance to attach to.
         flutterEngine.run();
         GeneratedPluginRegistrant.register(with: self.flutterEngine);
-        dismissMethodChannel = FlutterMethodChannel(name: "com.datadoghq/dismissFlutterViewController",
-                                                    binaryMessenger: self.flutterEngine.binaryMessenger)
-        dismissMethodChannel.setMethodCallHandler { call, result in
-            if (call.method == "dismiss") {
-                DismissMethodCallHandler.shared.callDismissListener()
-                result(nil)
-            } else {
-                result(FlutterMethodNotImplemented)
-            }
-        }
         
         return true
     }
