@@ -9,7 +9,6 @@ library ddrum_flutter_web;
 import 'package:js/js.dart';
 
 import '../../datadog_flutter_plugin.dart';
-import '../../datadog_internal.dart';
 import '../internal_logger.dart';
 import '../web_helpers.dart';
 import 'ddrum_platform_interface.dart';
@@ -24,9 +23,6 @@ class DdRumWeb extends DdRumPlatform {
       return;
     }
 
-    String? version =
-        configuration.additionalConfig[DatadogConfigKey.version] as String?;
-
     init(_RumInitOptions(
       applicationId: rumConfiguration.applicationId,
       clientToken: configuration.clientToken,
@@ -34,7 +30,7 @@ class DdRumWeb extends DdRumPlatform {
       sampleRate: rumConfiguration.sessionSamplingRate,
       service: configuration.serviceName,
       env: configuration.env,
-      version: version,
+      version: configuration.versionTag,
       proxyUrl: configuration.rumConfiguration?.customEndpoint,
       allowedTracingOrigins: configuration.firstPartyHosts,
       trackViewsManually: true,
