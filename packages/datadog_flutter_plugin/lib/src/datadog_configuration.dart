@@ -411,6 +411,15 @@ class DdSdkConfiguration {
   /// upload` command in order for symbolication to work.
   String? version;
 
+  /// Get the defined version as a Datadog compliant tag.
+  ///
+  /// Because 'version' is a Datadog tag, it needs to comply with the rules in
+  /// [Defining
+  /// Tags](https://docs.datadoghq.com/getting_started/tagging/#defining-tags)
+  /// Datadog documentation. This returns your supplied version with on that
+  /// automatically replaces `+` with `-`.
+  String? get versionTag => version?.replaceAll('+', '-');
+
   /// Set the current flavor (variant) of the application
   ///
   /// This must match the flavor set during symbol upload in order for stack
@@ -552,8 +561,7 @@ class DdSdkConfiguration {
     // Add version to additional config as part of encoding
     final encodedAdditionalConfig = Map<String, Object?>.from(additionalConfig);
     if (version != null) {
-      final fixedVersion = version?.replaceAll('+', '-');
-      encodedAdditionalConfig[DatadogConfigKey.version] = fixedVersion;
+      encodedAdditionalConfig[DatadogConfigKey.version] = versionTag;
     }
 
     if (flavor != null) {
