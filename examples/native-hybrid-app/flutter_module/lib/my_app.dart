@@ -1,33 +1,8 @@
-import 'dart:io';
-
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
-
-// A helper class to help with dismissing Flutter
-class Dismisser {
-  static Dismisser? _singleton;
-  static Dismisser get instance {
-    _singleton ??= Dismisser._();
-    return _singleton!;
-  }
-
-  // Only used on iOS
-  final _dismissChannel =
-      const MethodChannel("com.datadoghq/dismissFlutterViewController");
-
-  Dismisser._();
-
-  Future<void> dismiss() async {
-    if (Platform.isAndroid) {
-      SystemNavigator.pop(animated: true);
-    } else if (Platform.isIOS) {
-      _dismissChannel.invokeMethod("dismiss");
-    }
-  }
-}
 
 class MyApp extends StatelessWidget {
   MyApp({super.key});
@@ -51,11 +26,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      routerConfig: _router,
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+    return RumUserActionDetector(
+      rum: DatadogSdk.instance.rum,
+      child: MaterialApp.router(
+        routerConfig: _router,
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+        ),
       ),
     );
   }
@@ -106,7 +84,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _onClose() {
-    Dismisser.instance.dismiss();
+    SystemNavigator.pop(animated: true);
   }
 
   @override
@@ -130,7 +108,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Text(
               '$_counter',
-              style: Theme.of(context).textTheme.headline4,
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
             ElevatedButton(
               onPressed: _performingOperation ? null : _triggerResourceFetch,
@@ -160,7 +138,7 @@ class MySecondPage extends StatelessWidget {
   const MySecondPage({super.key});
 
   void _onClose() {
-    Dismisser.instance.dismiss();
+    SystemNavigator.pop(animated: true);
   }
 
   @override
