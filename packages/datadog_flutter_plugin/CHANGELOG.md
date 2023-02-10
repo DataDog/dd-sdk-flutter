@@ -6,6 +6,10 @@
 * Fix `version` not properly populating on Flutter Web. See [#334]
 * Improve `RumUserActionDetector` to detect more widgets, including `BottomNavigationBar`, `Tab`, `Switch`, and `Radio`
 
+## 1.2.1
+
+* Remove reference to a gradle file that was not included in `pub deploy`
+
 ## 1.2.0
 
 * 🔥 BREAKING - Log functions (`debug`, `info`, `warn`) now use `attributes` as a named argument instead of a positional argument.
