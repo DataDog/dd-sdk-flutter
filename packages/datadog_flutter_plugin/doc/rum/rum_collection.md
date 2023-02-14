@@ -67,4 +67,4 @@ In order to enable Datadog [Distributed Tracing][6], you must set the `DdSdkConf
 [4]: https://pub.dev/packages/datadog_flutter_plugin
 [5]: https://pub.dev/packages/datadog_tracking_http_client
 [6]: https://docs.datadoghq.com/serverless/distributed_tracing
-[7]: /real_user_monitoring/flutter/data_collected/
+[7]: https://docs.datadoghq.com/real_user_monitoring/flutter/data_collected/
