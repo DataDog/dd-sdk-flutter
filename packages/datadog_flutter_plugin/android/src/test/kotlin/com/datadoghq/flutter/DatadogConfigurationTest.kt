@@ -74,6 +74,7 @@ class DatadogConfigurationTest {
         val us5 = parseSite("DatadogSite.us5")
         val eu1 = parseSite("DatadogSite.eu1")
         val us1Fed = parseSite("DatadogSite.us1Fed")
+        val ap1 = parseSite("DatadogSite.ap1")
 
         // THEN
         assertThat(us1).isEqualTo(DatadogSite.US1)
@@ -81,6 +82,7 @@ class DatadogConfigurationTest {
         assertThat(us5).isEqualTo(DatadogSite.US5)
         assertThat(eu1).isEqualTo(DatadogSite.EU1)
         assertThat(us1Fed).isEqualTo(DatadogSite.US1_FED)
+        assertThat(ap1).isEqualTo(DatadogSite.AP1)
     }
 
     @Test
