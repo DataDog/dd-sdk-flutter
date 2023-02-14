@@ -11,8 +11,9 @@ Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real
 1. In the [Datadog app][1], navigate to **UX Monitoring** > **RUM Applications** > **New Application**.
 2. Choose `Flutter` as the application type.
 3. Provide an application name to generate a unique Datadog application ID and client token.
+4. To disable automatic user data collection for either client IP or geolocation data, uncheck the boxes for those settings. For more information, see [RUM Flutter Data Collected][7].
 
-{{< img src="real_user_monitoring/flutter/image_flutter.png" alt="Create a RUM application in Datadog workflow" style="width:90%;">}}
+   {{< img src="real_user_monitoring/flutter/new-rum-app-flutter.png" alt="Create a RUM application for Flutter in Datadog" style="width:90%;">}}
 
 To ensure the safety of your data, you must use a client token. For more information about setting up a client token, see the [Client Token documentation][2].
 
@@ -66,3 +67,4 @@ In order to enable Datadog [Distributed Tracing][6], you must set the `DdSdkConf
 [4]: https://pub.dev/packages/datadog_flutter_plugin
 [5]: https://pub.dev/packages/datadog_tracking_http_client
 [6]: https://docs.datadoghq.com/serverless/distributed_tracing
+[7]: https://docs.datadoghq.com/real_user_monitoring/flutter/data_collected/
