@@ -45,6 +45,10 @@ class FlutterSdkTests: XCTestCase {
         ]),
         Contract(methodName: "telemetryError", requiredParameters: [
             "message": .string
+        ]),
+        Contract(methodName: "initWebView", requiredParameters: [
+            "webViewIdentifier": .int,
+            "allowedHosts": .list
         ])
     ]
 

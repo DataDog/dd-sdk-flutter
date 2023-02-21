@@ -95,6 +95,10 @@ class DatadogSdkPluginTest {
         )),
         Contract("telemetryError", mapOf(
             "message" to ContractParameter.Type(SupportedContractType.STRING)
+        )),
+        Contract("initWebView", mapOf(
+            "webViewIdentifier" to ContractParameter.Type(SupportedContractType.INT),
+            "allowedHosts" to ContractParameter.Type(SupportedContractType.LIST)
         ))
     )
 

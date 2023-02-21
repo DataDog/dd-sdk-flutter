@@ -43,7 +43,7 @@ apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 32
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -73,6 +73,8 @@ apply from: '../../../ignore_sr_snapshots.gradle'
 dependencies {
     implementation "com.datadoghq:dd-sdk-android:$datadog_version"
     implementation "com.datadoghq:dd-sdk-android-ndk:$datadog_version"
+
+    implementation project(":webview_flutter_android")
     
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation "com.google.code.gson:gson:2.8.8"
