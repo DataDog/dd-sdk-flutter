@@ -13,6 +13,7 @@ dependencies:
   cupertino_icons: ^1.0.2
   flutter_dotenv: ^5.0.2
   transparent_image: ^2.0.0
+  webview_flutter: ^4.0.4
 
   datadog_flutter_plugin:
     path: ../

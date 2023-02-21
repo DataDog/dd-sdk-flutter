@@ -22,11 +22,13 @@ import com.datadog.android.rum.model.LongTaskEvent
 import com.datadog.android.rum.model.ResourceEvent
 import com.datadog.android.rum.model.ViewEvent
 import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
+import com.datadog.android.webview.DatadogEventBridge
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.plugins.webviewflutter.WebViewFlutterAndroidExternalApi
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.SynchronousQueue
@@ -58,14 +60,14 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     )
 
     private lateinit var channel: MethodChannel
-    private lateinit var binding: FlutterPlugin.FlutterPluginBinding
+    private var binding: FlutterPlugin.FlutterPluginBinding? = null
 
     internal val telemetryOverrides = ConfigurationTelemetryOverrides()
 
     // Only used to shutdown Datadog in debug builds
     private val executor: ExecutorService = ThreadPoolExecutor(
         0, 1, 30L,
-        TimeUnit.SECONDS, SynchronousQueue<Runnable>()
+        TimeUnit.SECONDS, SynchronousQueue()
     )
 
     val logsPlugin: DatadogLogsPlugin = DatadogLogsPlugin()
@@ -104,7 +106,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             }
             "attachToExisting" -> {
                 if (Datadog.isInitialized()) {
-                    val attachResult = attachToExising()
+                    val attachResult = attachToExisting()
                     result.success(attachResult)
                 } else {
                     Log.e(DATADOG_FLUTTER_TAG, MESSAGE_NO_EXISTING_INSTANCE)
@@ -147,6 +149,16 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 val extraInfo = call.argument<Map<String, Any?>>("extraInfo")
                 if (extraInfo != null) {
                     Datadog.addUserExtraInfo(extraInfo)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
+                }
+            }
+            "initWebView" -> {
+                val identifier = call.argument<Number>("webViewIdentifier")
+                val allowedHosts = call.argument<List<String>>("allowedHosts")
+                if (identifier != null && allowedHosts != null) {
+                    initWebView(identifier.toLong(), allowedHosts)
                     result.success(null)
                 } else {
                     result.missingParameter(call.method)
@@ -210,17 +222,19 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
         attachEventMappers(config, configBuilder)
 
-        Datadog.initialize(
-            binding.applicationContext, credentials, configBuilder.build(),
-            config.trackingConsent
-        )
+        binding?.let {
+            Datadog.initialize(
+                it.applicationContext, credentials, configBuilder.build(),
+                config.trackingConsent
+            )
 
-        if (config.rumConfiguration != null) {
-            rumPlugin.setup(config.rumConfiguration!!)
+            if (config.rumConfiguration != null) {
+                rumPlugin.setup(config.rumConfiguration!!)
+            }
         }
     }
 
-    fun attachToExising(): Map<String, Any> {
+    private fun attachToExisting(): Map<String, Any> {
         var rumEnabled = false
         if (GlobalRum.isRegistered()) {
             rumEnabled = true
@@ -232,7 +246,31 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         )
     }
 
-    fun updateTelemetryConfiguration(call: MethodCall) {
+    private fun initWebView(webViewIdentifier: Long, allowedHosts: List<String>) {
+        // Plugin only accepts a FlutterEngine and this is the only way
+        // I know how to get it.
+        @Suppress("DEPRECATION")
+        val engine = binding?.flutterEngine
+        if (engine != null) {
+            val webView = WebViewFlutterAndroidExternalApi.getWebView(
+                engine, webViewIdentifier
+            )
+            if (webView != null) {
+                if (!webView.settings.javaScriptEnabled) {
+                    Log.e(DATADOG_FLUTTER_TAG, JAVA_SCRIPT_NOT_ENABLED_WARNING_MESSAGE)
+                } else {
+                    val bridge = DatadogEventBridge(allowedHosts)
+                    webView.addJavascriptInterface(bridge, "DatadogEventBridge")
+                }
+            } else {
+                Datadog._internal._telemetry.error(
+                    "Could not find WebView during initialization when an identifier was provided"
+                )
+            }
+        }
+    }
+
+    private fun updateTelemetryConfiguration(call: MethodCall) {
         var isValid = true
 
         val option = call.argument<String>("option")
@@ -260,7 +298,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
-    fun mapTelemetryConfiguration(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent {
+    private fun mapTelemetryConfiguration(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent {
         event.telemetry.configuration.trackViewsManually = telemetryOverrides.trackViewsManually
         event.telemetry.configuration.trackInteractions = telemetryOverrides.trackInteractions
         event.telemetry.configuration.trackErrors = telemetryOverrides.trackErrors
@@ -294,7 +332,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         isRegistered.set(false)
     }
 
-    fun attachEventMappers(
+    private fun attachEventMappers(
         config: DatadogFlutterConfiguration,
         configBuilder: Configuration.Builder
     ) {
@@ -481,3 +519,8 @@ internal const val MESSAGE_NO_EXISTING_INSTANCE =
 
 internal const val MESSAGE_BAD_TELEMETRY_CONFIG =
     "Attempting to set telemetry configuration option '%s' to '%s', which is invalid."
+
+internal const val JAVA_SCRIPT_NOT_ENABLED_WARNING_MESSAGE =
+    "You are trying to enable Datadog WebView tracking but the java script capability was not" +
+        " enabled for the given WebView. Make sure to call" +
+        " .setJavaScriptMode(JavaScriptMode.unrestricted) on your WebViewController"

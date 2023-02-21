@@ -8,6 +8,7 @@ import '../auto_integration_scenarios/rum_auto_instrumentation_scenario.dart';
 import 'logging_scenario.dart';
 import 'rum_manual_error_reporting_scenario.dart';
 import 'rum_manual_instrumentation_scenario.dart';
+import 'webview_scenario.dart';
 
 class IntegrationScenariosScreen extends StatefulWidget {
   const IntegrationScenariosScreen({Key? key}) : super(key: key);
@@ -31,14 +32,21 @@ class _IntegrationScenariosScreenState
   final items = <ScenarioItem>[
     ScenarioItem(label: 'Logging Scenario', navItem: LoggingScenario.new),
     ScenarioItem(
-        label: 'Manual RUM Scenario',
-        navItem: RumManualInstrumentationScenario.new),
+      label: 'Manual RUM Scenario',
+      navItem: RumManualInstrumentationScenario.new,
+    ),
     ScenarioItem(
-        label: 'RUM Error Reporting Scenario',
-        navItem: RumManualErrorReportingScenario.new),
+      label: 'RUM Error Reporting Scenario',
+      navItem: RumManualErrorReportingScenario.new,
+    ),
     ScenarioItem(
-        label: 'Auto RUM Scenario',
-        navItem: RumAutoInstrumentationScenario.new),
+      label: 'Auto RUM Scenario',
+      navItem: RumAutoInstrumentationScenario.new,
+    ),
+    ScenarioItem(
+      label: 'WebView Scenario',
+      navItem: WebViewScenario.new,
+    ),
   ];
 
   @override

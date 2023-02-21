@@ -63,4 +63,5 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
   Future<void> flushAndDeinitialize();
 
   Future<void> updateTelemetryConfiguration(String property, bool value);
+  Future<void> initWebView(int webViewIdentifier, List<String> allowedHosts);
 }

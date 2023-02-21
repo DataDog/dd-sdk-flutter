@@ -75,7 +75,7 @@ class RumSessionDecoder {
 
 class RumViewVisit {
   final String id;
-  final String name;
+  final String? name;
   final String path;
 
   final List<RumViewEventDecoder> viewEvents = [];
@@ -217,7 +217,7 @@ class RumViewDecoder {
   final Map<String, dynamic> viewData;
 
   String get id => viewData['id'] as String;
-  String get name => viewData['name'] as String;
+  String? get name => viewData['name'] as String?;
   String get path => viewData['url'] as String;
   bool get isActive => viewData['is_active'] as bool;
   int get actionCount => viewData['action']['count'] as int;

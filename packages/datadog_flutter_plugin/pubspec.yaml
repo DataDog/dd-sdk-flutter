@@ -17,6 +17,7 @@ dependencies:
   json_annotation: ^4.4.0
   uuid: ^3.0.5
   meta: ^1.7.0
+  webview_flutter: ^4.0.4
   
 dev_dependencies:
   flutter_test:

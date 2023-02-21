@@ -20,6 +20,7 @@ import 'src/version.dart' show ddPackageVersion;
 
 export 'src/datadog_configuration.dart';
 export 'src/datadog_plugin.dart';
+export 'src/datadog_webview.dart';
 export 'src/logs/ddlogs.dart';
 export 'src/rum/ddrum_events.dart';
 export 'src/rum/rum.dart';
