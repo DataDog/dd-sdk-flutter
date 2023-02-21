@@ -45,12 +45,14 @@ class DatadogConfigurationTests: XCTestCase {
     let us5 = Datadog.Configuration.DatadogEndpoint.parseFromFlutter("DatadogSite.us5")
     let eu1 = Datadog.Configuration.DatadogEndpoint.parseFromFlutter("DatadogSite.eu1")
     let us1Fed = Datadog.Configuration.DatadogEndpoint.parseFromFlutter("DatadogSite.us1Fed")
+    let ap1 = Datadog.Configuration.DatadogEndpoint.parseFromFlutter("DatadogSite.ap1")
 
     XCTAssertEqual(us1, .us1)
     XCTAssertEqual(us3, .us3)
     XCTAssertEqual(us5, .us5)
     XCTAssertEqual(eu1, .eu1)
     XCTAssertEqual(us1Fed, .us1_fed)
+    XCTAssertEqual(ap1, .ap1)
   }
 
   func testAllVerbosityLevels_AreParsedCorrectly() {
