@@ -23,6 +23,18 @@ class _RumScreenState extends State<RumScreen> {
   var sendResourceError = false;
   var errorMessage = '';
 
+  @override
+  void dispose() {
+    super.dispose();
+
+    if (inView) {
+      DatadogSdk.instance.rum
+          ?.stopView(viewKey.isEmpty ? 'FooRumScreen' : viewKey);
+      DatadogSdk.instance.rum
+          ?.addUserAction(RumUserActionType.custom, 'Testing Action');
+    }
+  }
+
   Future<void> _sendViewEvent() async {
     setState(() {
       performingOperation = true;
