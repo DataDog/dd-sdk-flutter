@@ -373,7 +373,6 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             return rumViewEvent
         }
 
-
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
         let result = callEventMapper(mapperName: "mapViewEvent", event: rumViewEvent, encodedEvent: encoded) { encodedResult in

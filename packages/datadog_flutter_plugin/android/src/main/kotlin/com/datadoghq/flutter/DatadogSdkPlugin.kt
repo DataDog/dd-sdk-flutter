@@ -298,7 +298,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
-    private fun mapTelemetryConfiguration(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent {
+    private fun mapTelemetryConfiguration(
+        event: TelemetryConfigurationEvent
+    ): TelemetryConfigurationEvent {
         event.telemetry.configuration.trackViewsManually = telemetryOverrides.trackViewsManually
         event.telemetry.configuration.trackInteractions = telemetryOverrides.trackInteractions
         event.telemetry.configuration.trackErrors = telemetryOverrides.trackErrors

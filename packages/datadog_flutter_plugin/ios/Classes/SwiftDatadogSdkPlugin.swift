@@ -285,12 +285,12 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                 "total": [
                     "minMs": rum?.mapperPerf.minInMs,
                     "maxMs": rum?.mapperPerf.maxInMs,
-                    "avgMs": rum?.mapperPerf.avgInMs,
+                    "avgMs": rum?.mapperPerf.avgInMs
                 ],
                 "mainThread": [
                     "minMs": rum?.mainThreadMapperPerf.minInMs,
                     "maxMs": rum?.mainThreadMapperPerf.maxInMs,
-                    "avgMs": rum?.mainThreadMapperPerf.avgInMs,
+                    "avgMs": rum?.mainThreadMapperPerf.avgInMs
                 ],
                 "mapperTimeouts": rum?.mapperTimeouts
             ]
