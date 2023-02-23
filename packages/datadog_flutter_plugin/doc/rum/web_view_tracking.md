@@ -1,6 +1,6 @@
 ## Overview
 
-Real User Monitoring allows you to monitor web views and eliminate blind spots in your hybrid Flutter applications
+Real User Monitoring allows you to monitor web views and eliminate blind spots in your hybrid Flutter applications.
 
 You can perform the following:
 
