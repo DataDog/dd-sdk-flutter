@@ -58,7 +58,7 @@ class DatadogSdkPluginTest {
             mock.versionCode = 1124
         }
         val mockPackageManager = mock<PackageManager> {
-            on { getPackageInfo(any<String>(), any()) } doReturn mockPackageInfo
+            on { getPackageInfo(any<String>(), any<Int>()) } doReturn mockPackageInfo
         }
         val mockPreferences = mock<SharedPreferences>()
         mockContext = mock<Context>() {

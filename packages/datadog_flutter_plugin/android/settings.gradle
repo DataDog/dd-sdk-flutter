@@ -3,5 +3,42 @@
  * This product includes software developed at Datadog (https://www.datadoghq.com/).
  * Copyright 2016-Present Datadog, Inc.
  */
+import groovy.json.JsonSlurper
 
 rootProject.name = 'datadog_flutter_plugin'
+
+// Because Datadog depends on the native functionality of some plugins, we need to import
+// that native functionality, but only know where to look from the "app's" 
+// `.flutter-plugins-dependencies` dependencies file.
+// This logic is copied from flutter/packages/flutter_tools/gradle/app_plugin_loader.gradle
+def flutterProjectRoot = rootProject.projectDir.parentFile
+
+// If this logic is changed, also change the logic in module_plugin_loader.gradle.
+def pluginsFile = new File(flutterProjectRoot, 'example/.flutter-plugins-dependencies')
+if (!pluginsFile.exists()) {
+  return
+}
+
+def object = new JsonSlurper().parseText(pluginsFile.text)
+assert object instanceof Map
+assert object.plugins instanceof Map
+assert object.plugins.android instanceof List
+// Includes the Flutter plugins that support the Android platform.
+object.plugins.android.each { androidPlugin ->
+  assert androidPlugin.name instanceof String
+  assert androidPlugin.path instanceof String
+  // Skip self
+  if (androidPlugin.name == rootProject.name) {
+    return
+  }
+  // Skip plugins that have no native build (such as a Dart-only implementation
+  // of a federated plugin).
+  def needsBuild = androidPlugin.containsKey('native_build') ? androidPlugin['native_build'] : true
+  if (!needsBuild) {
+    return
+  }
+  def pluginDirectory = new File(androidPlugin.path, 'android')
+  assert pluginDirectory.exists()
+  include ":${androidPlugin.name}"
+  project(":${androidPlugin.name}").projectDir = pluginDirectory
+}
