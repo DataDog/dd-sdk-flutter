@@ -18,6 +18,7 @@ RUM supports monitoring for Flutter Android and iOS applications for Flutter 2.8
 
 
 
+
 ### iOS
 
 Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutter) and target iOS version >= 11.0.
