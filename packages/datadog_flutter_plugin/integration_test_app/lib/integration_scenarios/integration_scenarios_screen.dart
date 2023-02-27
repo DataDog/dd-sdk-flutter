@@ -8,7 +8,6 @@ import '../auto_integration_scenarios/rum_auto_instrumentation_scenario.dart';
 import 'logging_scenario.dart';
 import 'rum_manual_error_reporting_scenario.dart';
 import 'rum_manual_instrumentation_scenario.dart';
-import 'webview_scenario.dart';
 
 class IntegrationScenariosScreen extends StatefulWidget {
   const IntegrationScenariosScreen({Key? key}) : super(key: key);
@@ -42,10 +41,6 @@ class _IntegrationScenariosScreenState
     ScenarioItem(
       label: 'Auto RUM Scenario',
       navItem: RumAutoInstrumentationScenario.new,
-    ),
-    ScenarioItem(
-      label: 'WebView Scenario',
-      navItem: WebViewScenario.new,
     ),
   ];
 

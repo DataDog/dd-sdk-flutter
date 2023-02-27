@@ -1,19 +1,22 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2023-Present Datadog, Inc.
+// Copyright 2022-Present Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_webview_tracking/datadog_webview_tracking.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-class WebViewScenario extends StatefulWidget {
-  const WebViewScenario({Key? key}) : super(key: key);
+final testUrl = Uri.parse('https://shopist.io');
+
+class RumWebViewScreen extends StatefulWidget {
+  const RumWebViewScreen({Key? key}) : super(key: key);
 
   @override
-  State<WebViewScenario> createState() => _WebViewScenarioState();
+  State<RumWebViewScreen> createState() => _RumWebViewScreenState();
 }
 
-class _WebViewScenarioState extends State<WebViewScenario> {
+class _RumWebViewScreenState extends State<RumWebViewScreen> {
   WebViewController? webViewController;
 
   @override
@@ -26,7 +29,7 @@ class _WebViewScenarioState extends State<WebViewScenario> {
         DatadogSdk.instance,
         ['shopist.io'],
       )
-      ..loadRequest(Uri.parse('https://shopist.io'));
+      ..loadRequest(testUrl);
   }
 
   @override

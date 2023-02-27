@@ -90,12 +90,6 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   Future<void> updateTelemetryConfiguration(String property, bool value) async {
     // Not currently supported
   }
-
-  @override
-  Future<void> initWebView(
-      int webViewIdentifier, List<String> allowedHosts) async {
-    // Not currently supported
-  }
 }
 
 @JS()

@@ -2,22 +2,39 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'common.dart';
+RecordingHttpServer? _mockHttpServer;
+
+Future<RecordingServerClient> startMockServer() async {
+  if (kIsWeb) {
+    final client = RemoteRecordingServerClient();
+    await client.startNewSession();
+    return client;
+  } else {
+    if (_mockHttpServer == null) {
+      _mockHttpServer = RecordingHttpServer();
+      unawaited(_mockHttpServer!.start());
+    }
+
+    final client = LocalRecordingServerClient(_mockHttpServer!);
+    await client.startNewSession();
+
+    return client;
+  }
+}
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('test webview integrations', (tester) async {
-    var serverRecorder = await openTestScenario(
-      tester,
-      menuTitle: 'WebView Scenario',
-    );
+    var serverRecorder = await startMockServer();
 
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];

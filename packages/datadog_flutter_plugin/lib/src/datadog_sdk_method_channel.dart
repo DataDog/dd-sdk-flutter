@@ -103,14 +103,6 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
     });
   }
 
-  @override
-  Future<void> initWebView(int webViewIdentifier, List<String> allowedHosts) {
-    return methodChannel.invokeMethod('initWebView', {
-      'webViewIdentifier': webViewIdentifier,
-      'allowedHosts': allowedHosts,
-    });
-  }
-
   Future<Object?> getInternalVar(String name) {
     return methodChannel.invokeMethod('getInternalVar', {'name': name});
   }

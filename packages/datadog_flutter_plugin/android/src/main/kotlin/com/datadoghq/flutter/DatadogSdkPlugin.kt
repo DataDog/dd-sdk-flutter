@@ -28,7 +28,6 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import io.flutter.plugins.webviewflutter.WebViewFlutterAndroidExternalApi
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.SynchronousQueue
@@ -154,16 +153,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     result.missingParameter(call.method)
                 }
             }
-            "initWebView" -> {
-                val identifier = call.argument<Number>("webViewIdentifier")
-                val allowedHosts = call.argument<List<String>>("allowedHosts")
-                if (identifier != null && allowedHosts != null) {
-                    initWebView(identifier.toLong(), allowedHosts)
-                    result.success(null)
-                } else {
-                    result.missingParameter(call.method)
-                }
-            }
             "telemetryDebug" -> {
                 val message = call.argument<String>("message")
                 if (message != null) {
@@ -244,30 +233,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         return mapOf<String, Any>(
             "rumEnabled" to rumEnabled
         )
-    }
-
-    private fun initWebView(webViewIdentifier: Long, allowedHosts: List<String>) {
-        // Plugin only accepts a FlutterEngine and this is the only way
-        // I know how to get it.
-        @Suppress("DEPRECATION")
-        val engine = binding?.flutterEngine
-        if (engine != null) {
-            val webView = WebViewFlutterAndroidExternalApi.getWebView(
-                engine, webViewIdentifier
-            )
-            if (webView != null) {
-                if (!webView.settings.javaScriptEnabled) {
-                    Log.e(DATADOG_FLUTTER_TAG, JAVA_SCRIPT_NOT_ENABLED_WARNING_MESSAGE)
-                } else {
-                    val bridge = DatadogEventBridge(allowedHosts)
-                    webView.addJavascriptInterface(bridge, "DatadogEventBridge")
-                }
-            } else {
-                Datadog._internal._telemetry.error(
-                    "Could not find WebView during initialization when an identifier was provided"
-                )
-            }
-        }
     }
 
     private fun updateTelemetryConfiguration(call: MethodCall) {
@@ -521,8 +486,3 @@ internal const val MESSAGE_NO_EXISTING_INSTANCE =
 
 internal const val MESSAGE_BAD_TELEMETRY_CONFIG =
     "Attempting to set telemetry configuration option '%s' to '%s', which is invalid."
-
-internal const val JAVA_SCRIPT_NOT_ENABLED_WARNING_MESSAGE =
-    "You are trying to enable Datadog WebView tracking but the java script capability was not" +
-        " enabled for the given WebView. Make sure to call" +
-        " .setJavaScriptMode(JavaScriptMode.unrestricted) on your WebViewController"

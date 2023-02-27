@@ -74,8 +74,6 @@ dependencies {
     implementation "com.datadoghq:dd-sdk-android:$datadog_version"
     implementation "com.datadoghq:dd-sdk-android-ndk:$datadog_version"
 
-    implementation project(":webview_flutter_android")
-    
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation "com.google.code.gson:gson:2.8.8"
 

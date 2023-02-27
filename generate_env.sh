@@ -11,6 +11,7 @@ dotEnvFiles=(
   "packages/datadog_flutter_plugin/example/.env"
   "packages/datadog_flutter_plugin/integration_test_app/.env"
   "packages/datadog_tracking_http_client/example/.env"
+  "packages/datadog_webview_tracking/example/.env"
   "test_apps/stress_test/.env"
 )
 

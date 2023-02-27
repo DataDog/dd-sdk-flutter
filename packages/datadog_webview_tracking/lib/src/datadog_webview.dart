@@ -2,13 +2,18 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2022-Present Datadog, Inc.
 
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 // ignore: depend_on_referenced_packages
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 // ignore: depend_on_referenced_packages
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
-import '../datadog_flutter_plugin.dart';
+@visibleForTesting
+const methodChannel = MethodChannel('datadog_webview_tracking');
 
 extension DatadogWebview on WebViewController {
   /// Enables the SDK to correlate Datadog RUM events and Logs from the WebView
@@ -30,7 +35,13 @@ extension DatadogWebview on WebViewController {
     }
 
     if (webViewIdentifier != null) {
-      datadog.platform.initWebView(webViewIdentifier, hosts);
+      // ignore: invalid_use_of_internal_member
+      wrap('initWebView', datadog.internalLogger, {}, () {
+        methodChannel.invokeMethod('initWebView', {
+          'webViewIdentifier': webViewIdentifier,
+          'allowedHosts': hosts,
+        });
+      });
     }
   }
 }

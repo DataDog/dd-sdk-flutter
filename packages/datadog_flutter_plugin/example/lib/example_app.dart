@@ -10,7 +10,6 @@ import 'crash_reporting_screen.dart';
 import 'logging_screen.dart';
 import 'rum_screen.dart';
 import 'rum_user_actions_screen.dart';
-import 'rum_webview_screen.dart';
 
 class NavItem {
   final String label;
@@ -49,8 +48,6 @@ class _ExampleAppState extends State<ExampleApp> {
         handler: Handler(handlerFunc: (_, __) => const CrashReportingScreen()));
     router.define('/rum_user_actions',
         handler: Handler(handlerFunc: (_, __) => const RumUserActionsScreen()));
-    router.define('/rum_web_view',
-        handler: Handler(handlerFunc: (_, __) => const RumWebViewScreen()));
   }
 
   @override

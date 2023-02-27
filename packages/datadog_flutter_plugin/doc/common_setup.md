@@ -26,7 +26,7 @@ You can replace `11.0` with any minimum version of iOS you want to support that 
 
 ### Android
 
-For Android, your `minSdkVersion` version must be >= 19, and if you are using Kotlin, it should be a version >= 1.5.31. These constraints are usually in the head in your `app/build.gradle` file.
+For Android, your `minSdkVersion` version must be >= 19, and if you are using Kotlin, it should be a version >= 1.6.21.. These constraints are usually held in your `android/app/build.gradle` file.
 
 ### Web
 
