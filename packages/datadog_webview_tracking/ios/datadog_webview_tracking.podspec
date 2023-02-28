@@ -5,17 +5,19 @@
 Pod::Spec.new do |s|
   s.name             = 'datadog_webview_tracking'
   s.version          = '0.0.1'
-  s.summary          = 'A new Flutter plugin project.'
+  s.summary          = 'A Flutter plugin for Datadog webview tracking.'
   s.description      = <<-DESC
-A new Flutter plugin project.
+A Flutter plugin for use with the Datadog Flutter Plugin to track webviews as part of a user's mobile session.
                        DESC
-  s.homepage         = 'http://example.com'
-  s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Your Company' => 'email@example.com' }
+  s.homepage         = 'https://datadoghq.com'
+  s.license          = { :type => "Apache", :file => '../LICENSE' }
+  s.authors          = { "Jeff Ward" => "jeff.ward@datadoghq.com" }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
-  s.platform = :ios, '9.0'
+  s.dependency 'DatadogSDK', '~> 1'
+  s.dependency 'webview_flutter_wkwebview'
+  s.platform = :ios, '11.0'
 
   # Flutter.framework does not contain a i386 slice.
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }

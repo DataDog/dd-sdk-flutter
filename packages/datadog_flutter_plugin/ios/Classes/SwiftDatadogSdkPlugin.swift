@@ -7,7 +7,6 @@ import UIKit
 import Datadog
 import DatadogCrashReporting
 import DictionaryCoder
-import webview_flutter_wkwebview
 
 public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     struct ConfigurationTelemetryOverrides {
@@ -148,21 +147,6 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         case "updateTelemetryConfiguration":
             updateTelemetryConfiguration(arguments: arguments)
             result(nil)
-        case "initWebView":
-            if let number = arguments["webViewIdentifier"] as? NSNumber,
-               let allowedHosts = arguments["allowedHosts"] as? [String] {
-                let webViewIdentifier = number.intValue
-
-                // TODO: Add to app scenario, search for a FlutterViewController to get the
-                // registry
-                if let pluginRegistry = UIApplication.shared.delegate as? FlutterPluginRegistry,
-                   let webview = FWFWebViewFlutterWKWebViewExternalAPI.webView(forIdentifier: webViewIdentifier, with: pluginRegistry) {
-                    webview.configuration.userContentController.trackDatadogEvents(in: Set(allowedHosts))
-                }
-                result(nil)
-            } else {
-                result(FlutterError.missingParameter(methodName: call.method))
-            }
         case "getInternalVar":
             guard let varName = arguments["name"] as? String else {
                 result(nil)
