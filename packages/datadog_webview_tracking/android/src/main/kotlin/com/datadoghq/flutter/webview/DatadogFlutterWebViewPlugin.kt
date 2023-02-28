@@ -9,7 +9,6 @@ import android.util.Log
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
 import com.datadog.android.webview.DatadogEventBridge
-
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -25,62 +24,63 @@ fun MethodChannel.Result.missingParameter(methodName: String, details: Any? = nu
     )
 }
 
-class DatadogFlutterWebViewPlugin: FlutterPlugin, MethodCallHandler {
-  private lateinit var channel : MethodChannel
-  private var binding: FlutterPlugin.FlutterPluginBinding? = null
+class DatadogFlutterWebViewPlugin : FlutterPlugin, MethodCallHandler {
+    private lateinit var channel: MethodChannel
+    private var binding: FlutterPlugin.FlutterPluginBinding? = null
 
+    override fun onAttachedToEngine(
+        @NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
+    ) {
+        channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_webview_tracking")
+        channel.setMethodCallHandler(this)
 
-  override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-    channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_webview_tracking")
-    channel.setMethodCallHandler(this)
-
-    binding = flutterPluginBinding
-  }
-
-  override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
-    if (call.method == "initWebView") {
-      val identifier = call.argument<Number>("webViewIdentifier")
-      val allowedHosts = call.argument<List<String>>("allowedHosts")
-      if (identifier != null && allowedHosts != null) {
-          initWebView(identifier.toLong(), allowedHosts)
-          result.success(null)
-      } else {
-          result.missingParameter(call.method)
-      }
-    } else {
-      result.notImplemented()
+        binding = flutterPluginBinding
     }
-  }
 
-  override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-    this.binding = null
+    override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+        if (call.method == "initWebView") {
+            val identifier = call.argument<Number>("webViewIdentifier")
+            val allowedHosts = call.argument<List<String>>("allowedHosts")
+            if (identifier != null && allowedHosts != null) {
+                initWebView(identifier.toLong(), allowedHosts)
+                result.success(null)
+            } else {
+                result.missingParameter(call.method)
+            }
+        } else {
+            result.notImplemented()
+        }
+    }
 
-    channel.setMethodCallHandler(null)
-  }
+    override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
+        this.binding = null
 
-  private fun initWebView(webViewIdentifier: Long, allowedHosts: List<String>) {
-      // The webview Plugin only accepts a FlutterEngine and this is the only way
-      // I know how to get it.
-      @Suppress("DEPRECATION")
-      val engine = binding?.flutterEngine
-      if (engine != null) {
-          val webView = WebViewFlutterAndroidExternalApi.getWebView(
-              engine, webViewIdentifier
-          )
-          if (webView != null) {
-              if (!webView.settings.javaScriptEnabled) {
-                  Log.e(DATADOG_FLUTTER_WEBVIEW_TAG, JAVA_SCRIPT_NOT_ENABLED_WARNING_MESSAGE)
-              } else {
-                  val bridge = DatadogEventBridge(allowedHosts)
-                  webView.addJavascriptInterface(bridge, "DatadogEventBridge")
-              }
-          } else {
-              Datadog._internal._telemetry.error(
-                  "Could not find WebView during initialization when an identifier was provided"
-              )
-          }
-      }
-  }
+        channel.setMethodCallHandler(null)
+    }
+
+    private fun initWebView(webViewIdentifier: Long, allowedHosts: List<String>) {
+        // The webview Plugin only accepts a FlutterEngine and this is the only way
+        // I know how to get it.
+        @Suppress("DEPRECATION")
+        val engine = binding?.flutterEngine
+        if (engine != null) {
+            val webView = WebViewFlutterAndroidExternalApi.getWebView(
+                engine, webViewIdentifier
+            )
+            if (webView != null) {
+                if (!webView.settings.javaScriptEnabled) {
+                    Log.e(DATADOG_FLUTTER_WEBVIEW_TAG, JAVA_SCRIPT_NOT_ENABLED_WARNING_MESSAGE)
+                } else {
+                    val bridge = DatadogEventBridge(allowedHosts)
+                    webView.addJavascriptInterface(bridge, "DatadogEventBridge")
+                }
+            } else {
+                Datadog._internal._telemetry.error(
+                    "Could not find WebView during initialization when an identifier was provided"
+                )
+            }
+        }
+    }
 }
 
 internal const val DATADOG_FLUTTER_WEBVIEW_TAG = "DatadogFlutterWebView"
