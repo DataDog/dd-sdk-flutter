@@ -8,7 +8,7 @@
 
 ## 1.2.2
 
-* Potentially fix a crash on exit on iOS. See [#341][]
+* Potentially fix a crash on exit on iOS. See [#341]
 
 ## 1.2.1
 
