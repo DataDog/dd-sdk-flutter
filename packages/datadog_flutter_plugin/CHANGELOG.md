@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* Add Web View tracking through the `webview_flutter` package.
 * Bind `consolePrint` callback earlier in iOS to make sure initialization errors can be seen in the console. See [#328]
 * Fix `version` not properly populating on Flutter Web. See [#334]
 * Improve `RumUserActionDetector` to detect more widgets, including `BottomNavigationBar`, `Tab`, `Switch`, and `Radio`

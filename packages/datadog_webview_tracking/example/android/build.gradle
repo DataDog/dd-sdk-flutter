@@ -1,0 +1,39 @@
+buildscript {
+    ext.kotlin_version = '1.6.21'
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.2.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jlleitschuh.gradle:ktlint-gradle:10.2.0"
+        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.19.0"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(':app')
+
+    apply from: "${project.rootDir}/buildscripts/ktlint.gradle"
+    apply from: "${project.rootDir}/buildscripts/detekt.gradle"
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

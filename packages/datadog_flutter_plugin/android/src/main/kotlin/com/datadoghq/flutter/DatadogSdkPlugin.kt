@@ -58,14 +58,14 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     )
 
     private lateinit var channel: MethodChannel
-    private lateinit var binding: FlutterPlugin.FlutterPluginBinding
+    private var binding: FlutterPlugin.FlutterPluginBinding? = null
 
     internal val telemetryOverrides = ConfigurationTelemetryOverrides()
 
     // Only used to shutdown Datadog in debug builds
     private val executor: ExecutorService = ThreadPoolExecutor(
         0, 1, 30L,
-        TimeUnit.SECONDS, SynchronousQueue<Runnable>()
+        TimeUnit.SECONDS, SynchronousQueue()
     )
 
     val logsPlugin: DatadogLogsPlugin = DatadogLogsPlugin()
@@ -104,7 +104,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             }
             "attachToExisting" -> {
                 if (Datadog.isInitialized()) {
-                    val attachResult = attachToExising()
+                    val attachResult = attachToExisting()
                     result.success(attachResult)
                 } else {
                     Log.e(DATADOG_FLUTTER_TAG, MESSAGE_NO_EXISTING_INSTANCE)
@@ -210,17 +210,19 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
         attachEventMappers(config, configBuilder)
 
-        Datadog.initialize(
-            binding.applicationContext, credentials, configBuilder.build(),
-            config.trackingConsent
-        )
+        binding?.let {
+            Datadog.initialize(
+                it.applicationContext, credentials, configBuilder.build(),
+                config.trackingConsent
+            )
 
-        if (config.rumConfiguration != null) {
-            rumPlugin.setup(config.rumConfiguration!!)
+            if (config.rumConfiguration != null) {
+                rumPlugin.setup(config.rumConfiguration!!)
+            }
         }
     }
 
-    fun attachToExising(): Map<String, Any> {
+    private fun attachToExisting(): Map<String, Any> {
         var rumEnabled = false
         if (GlobalRum.isRegistered()) {
             rumEnabled = true
@@ -232,7 +234,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         )
     }
 
-    fun updateTelemetryConfiguration(call: MethodCall) {
+    private fun updateTelemetryConfiguration(call: MethodCall) {
         var isValid = true
 
         val option = call.argument<String>("option")
@@ -260,7 +262,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
-    fun mapTelemetryConfiguration(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent {
+    private fun mapTelemetryConfiguration(
+        event: TelemetryConfigurationEvent
+    ): TelemetryConfigurationEvent {
         event.telemetry.configuration.trackViewsManually = telemetryOverrides.trackViewsManually
         event.telemetry.configuration.trackInteractions = telemetryOverrides.trackInteractions
         event.telemetry.configuration.trackErrors = telemetryOverrides.trackErrors
@@ -294,7 +298,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         isRegistered.set(false)
     }
 
-    fun attachEventMappers(
+    private fun attachEventMappers(
         config: DatadogFlutterConfiguration,
         configBuilder: Configuration.Builder
     ) {

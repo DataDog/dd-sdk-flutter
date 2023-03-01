@@ -32,7 +32,8 @@ class _ExampleAppState extends State<ExampleApp> {
     NavItem(label: 'Logging', route: '/logging'),
     NavItem(label: 'RUM', route: '/rum'),
     NavItem(label: 'RUM Crash Reporting', route: '/rum_crash'),
-    NavItem(label: 'RUM User Actions', route: '/rum_user_actions')
+    NavItem(label: 'RUM User Actions', route: '/rum_user_actions'),
+    NavItem(label: 'RUM Web View Bridging', route: '/rum_web_view'),
   ];
 
   @override

@@ -11,16 +11,25 @@
 
 set -e
 
-# Fix Android linter issues
-pushd packages/datadog_flutter_plugin/example/android
-./gradlew ktlintFormat
-./gradlew detekt
-popd
+# These are directories that contain native code that needs to be linted
+pluginDirs=(
+  "packages/datadog_flutter_plugin"
+  "packages/datadog_webview_tracking"
+)
 
-# Fix iOS linter issues
-pushd packages/datadog_flutter_plugin
-swiftlint --fix
-popd
+# Fix Android linter issues
+for f in ${pluginDirs[@]}; do
+  pushd $f
+  pushd example/android
+  ./gradlew ktlintFormat
+  ./gradlew detekt
+  popd
+
+  # Fix iOS linter issues
+  swiftlint --fix
+  popd
+done
+
 
 # Run iOS / Android integration tests
 bitrise run push_to_develop_or_main
