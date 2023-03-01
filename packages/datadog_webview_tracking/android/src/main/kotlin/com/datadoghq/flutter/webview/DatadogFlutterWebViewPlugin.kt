@@ -86,6 +86,6 @@ class DatadogFlutterWebViewPlugin : FlutterPlugin, MethodCallHandler {
 internal const val DATADOG_FLUTTER_WEBVIEW_TAG = "DatadogFlutterWebView"
 
 internal const val JAVA_SCRIPT_NOT_ENABLED_WARNING_MESSAGE =
-    "You are trying to enable Datadog WebView tracking but the java script capability was not" +
+    "You are trying to enable Datadog WebView tracking but the JavaScript capability was not" +
         " enabled for the given WebView. Make sure to call" +
         " .setJavaScriptMode(JavaScriptMode.unrestricted) on your WebViewController"

@@ -29,7 +29,7 @@ class FlutterSdkTests: XCTestCase {
             let error = value as? FlutterError
             XCTAssertNotNil(error)
             XCTAssertEqual(error?.code, "DatadogSdk:ContractViolation",
-                           "initwebView did not throw a contact violation when missing parameter 'webViewIdentifier'")
+                           "initWebView did not throw a contact violation when missing parameter 'webViewIdentifier'")
             XCTAssertNotNil(error?.message)
         case .notCalled:
             XCTFail("result was not called during initWebView call")
@@ -52,7 +52,7 @@ class FlutterSdkTests: XCTestCase {
             let error = value as? FlutterError
             XCTAssertNotNil(error)
             XCTAssertEqual(error?.code, "DatadogSdk:ContractViolation",
-                           "initwebView did not throw a contact violation when missing parameter 'allowedHosts'")
+                           "initWebView did not throw a contact violation when missing parameter 'allowedHosts'")
             XCTAssertNotNil(error?.message)
         case .notCalled:
             XCTFail("result was not called during initWebView call")
