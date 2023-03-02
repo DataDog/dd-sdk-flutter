@@ -50,7 +50,7 @@ void main() {
       print('Got a RUM log!? (actually ${rumLog.length})');
       for (var log in rumLog) {
         // ignore: avoid_print
-        print('Log: { event: ${log.eventType}, view: ${log.view.name}');
+        print('Log: { event: ${log.eventType}, view: ${log.viewInfo?.name}');
       }
     }
     expect(session.visits.isEmpty, isTrue);

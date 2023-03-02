@@ -8,6 +8,8 @@ class DatadogConfigKey {
   static const nativeViewTracking = '_dd.native_view_tracking';
   static const version = '_dd.version';
   static const variant = '_dd.variant';
+  static const telemetryConfigurationSampleRate =
+      '_dd.telemetry.configuration_sample_rate';
 
   static const trackMapperPerformance = '_dd.track_mapper_performance';
 }

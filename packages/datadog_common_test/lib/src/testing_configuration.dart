@@ -8,6 +8,7 @@ class TestingConfiguration {
   String? clientToken;
   String? applicationId;
   List<String> firstPartyHosts;
+  Map<String, Object?> additionalConfig;
 
   TestingConfiguration({
     this.scenario,
@@ -15,5 +16,6 @@ class TestingConfiguration {
     this.clientToken,
     this.applicationId,
     this.firstPartyHosts = const [],
+    this.additionalConfig = const {},
   });
 }

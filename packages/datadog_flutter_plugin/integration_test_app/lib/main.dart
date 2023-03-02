@@ -60,6 +60,10 @@ Future<void> runScenario({
         ? RumConfiguration(applicationId: applicationId)
         : null,
   );
+  if (testingConfiguration?.additionalConfig != null) {
+    configuration.additionalConfig
+        .addAll(testingConfiguration!.additionalConfig);
+  }
 
   await DatadogSdk.instance.initialize(configuration);
 

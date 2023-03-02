@@ -49,8 +49,12 @@ Future<RecordingServerClient> startMockServer() async {
   }
 }
 
-Future<RecordingServerClient> openTestScenario(WidgetTester tester,
-    {String? scenarioName, String? menuTitle}) async {
+Future<RecordingServerClient> openTestScenario(
+  WidgetTester tester, {
+  String? scenarioName,
+  String? menuTitle,
+  Map<String, Object?> additionalConfig = const {},
+}) async {
   var client = await startMockServer();
 
   // These need to be set as const in order to work, so we
@@ -63,11 +67,13 @@ Future<RecordingServerClient> openTestScenario(WidgetTester tester,
       : null;
 
   app.testingConfiguration = TestingConfiguration(
-      scenario: scenarioName,
-      customEndpoint: client.sessionEndpoint,
-      clientToken: clientToken,
-      applicationId: applicationId,
-      firstPartyHosts: ['localhost']);
+    scenario: scenarioName,
+    customEndpoint: client.sessionEndpoint,
+    clientToken: clientToken,
+    applicationId: applicationId,
+    firstPartyHosts: ['localhost'],
+    additionalConfig: additionalConfig,
+  );
 
   await app.main();
   await tester.pumpAndSettle();
