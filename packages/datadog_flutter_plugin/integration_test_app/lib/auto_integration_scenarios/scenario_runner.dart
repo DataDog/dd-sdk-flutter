@@ -47,6 +47,10 @@ Future<void> runScenario({
           )
         : null,
   );
+  if (testingConfiguration?.additionalConfig != null) {
+    configuration.additionalConfig
+        .addAll(testingConfiguration!.additionalConfig);
+  }
 
   await DatadogSdk.runApp(configuration, () async {
     runApp(const DatadogAutoIntegrationTestApp());

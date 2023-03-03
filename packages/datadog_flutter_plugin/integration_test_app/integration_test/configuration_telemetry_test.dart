@@ -2,13 +2,11 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
-@Skip(
-    'Android no longer sends configuration telemetry 100% of the time. RUMM-2921')
-
 import 'dart:convert';
 
 import 'package:collection/collection.dart';
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_integration_test_app/auto_integration_scenarios/scenario_runner.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,8 +22,13 @@ void main() {
   testWidgets('test telemetry scenario', (
     WidgetTester tester,
   ) async {
-    var serverRecorder = await openTestScenario(tester,
-        scenarioName: autoInstrumentationScenarioName);
+    var serverRecorder = await openTestScenario(
+      tester,
+      scenarioName: autoInstrumentationScenarioName,
+      additionalConfig: {
+        DatadogConfigKey.telemetryConfigurationSampleRate: 100.0,
+      },
+    );
 
     await performRumUserFlow(tester);
     var endTime = DateTime.now().add(const Duration(seconds: 6));
@@ -64,7 +67,7 @@ void main() {
     if (telemetryEvent != null) {
       final config = telemetryEvent.telemetryConfiguration!;
       expect(config['track_views_manually'], false);
-      expect(config['track_interactions'], false);
+      expect(config['track_interactions'], true);
       expect(config['track_errors'], true);
       expect(config['track_network_requests'], false);
       expect(config['track_native_views'], false);

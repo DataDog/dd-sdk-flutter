@@ -101,6 +101,10 @@ Future<void> runScenario({
           )
         : null,
   );
+  if (testingConfiguration?.additionalConfig != null) {
+    configuration.additionalConfig
+        .addAll(testingConfiguration!.additionalConfig);
+  }
 
   if (testingConfiguration?.scenario == mappedInstrumentationScenarioName) {
     // Add mapping to rum configuration
