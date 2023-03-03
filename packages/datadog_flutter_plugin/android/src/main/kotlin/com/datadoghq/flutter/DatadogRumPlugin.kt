@@ -261,6 +261,16 @@ class DatadogRumPlugin(
                         result.missingParameter(call.method)
                     }
                 }
+                "addFeatureFlagEvaluation" -> {
+                    val name = call.argument<String>(PARAM_NAME)
+                    val value = call.argument<Any>(PARAM_VALUE)
+                    if (name != null && value != null) {
+                        rum?.addFeatureFlagEvaluation(name, value)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }

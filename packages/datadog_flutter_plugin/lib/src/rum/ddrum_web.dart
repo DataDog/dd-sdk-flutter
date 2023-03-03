@@ -124,6 +124,11 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
+  Future<void> addFeatureFlagEvaluation(String name, Object? value) async {
+    _jsAddFeatureFlagEvaluation(name, value);
+  }
+
+  @override
   Future<void> reportLongTask(DateTime at, int durationMs) async {
     // NOOP - The browser SDK will report this automatically
   }
@@ -188,3 +193,6 @@ external void _jsAddError(dynamic error, dynamic context);
 
 @JS('addAction')
 external void _jsAddAction(String action, dynamic context);
+
+@JS('addFeatureFlagEvaluation')
+external void _jsAddFeatureFlagEvaluation(String name, dynamic value);
