@@ -54,7 +54,7 @@ abstract class DdRumPlatform extends PlatformInterface {
   Future<void> addAttribute(String key, dynamic value);
   Future<void> removeAttribute(String key);
 
-  Future<void> addFeatureFlagEvaluation(String name, Object? value);
+  Future<void> addFeatureFlagEvaluation(String name, Object value);
 
   Future<void> reportLongTask(DateTime at, int durationMs);
   Future<void> updatePerformanceMetrics(

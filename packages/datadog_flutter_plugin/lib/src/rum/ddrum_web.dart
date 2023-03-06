@@ -124,7 +124,7 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  Future<void> addFeatureFlagEvaluation(String name, Object? value) async {
+  Future<void> addFeatureFlagEvaluation(String name, Object value) async {
     _jsAddFeatureFlagEvaluation(name, value);
   }
 

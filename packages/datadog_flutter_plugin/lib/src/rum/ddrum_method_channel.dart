@@ -157,7 +157,7 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> addFeatureFlagEvaluation(String name, Object? value) {
+  Future<void> addFeatureFlagEvaluation(String name, Object value) {
     return methodChannel.invokeMethod('addFeatureFlagEvaluation', {
       'name': name,
       'value': value,

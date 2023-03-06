@@ -62,7 +62,17 @@ data class Contract(
             SupportedContractType.LIST -> emptyList<Any>()
             SupportedContractType.INT -> forge.anInt()
             SupportedContractType.LONG -> forge.aLong()
-            SupportedContractType.ANY -> forge.aValueFrom(forge.exhaustiveAttributes())
+            SupportedContractType.ANY -> forge.aValueFrom(
+                listOf(
+                    forge.aBool(),
+                    forge.anInt(),
+                    forge.aLong(),
+                    forge.aFloat(),
+                    forge.aDouble(),
+                    forge.anAsciiString(),
+                    forge.aList { anAlphabeticalString() },
+                ).associateBy { forge.anAlphabeticalString() }
+            )
         }
     }
 }

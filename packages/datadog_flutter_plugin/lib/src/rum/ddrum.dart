@@ -301,7 +301,7 @@ class DdRum {
   /// Adds the result of evaluating a feature flag with a given [name] and
   /// [value] to the view. Feature flag evaluations are local to the active view
   /// and are cleared when the view is stopped
-  void addFeatureFlagEvaluation(String name, Object? value) {
+  void addFeatureFlagEvaluation(String name, Object value) {
     wrap('rum.addFeatureFlagEvaluation', logger, null, () {
       return _platform.addFeatureFlagEvaluation(name, value);
     });
