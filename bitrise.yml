@@ -112,17 +112,6 @@ workflows:
     - flutter-installer@0:
         inputs:
         - version: $FLUTTER_VERSION
-    
-  _prepare_gradle_wrapper:
-    steps:
-    - script:
-        title: Get gradle wrapper
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            set -e
-            gradle wrapper
-        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/android"
   
   _launch_ios_simulator:
     steps:
@@ -168,13 +157,10 @@ workflows:
         - content: |-
             #!/usr/bin/env bash
             set -e
-            gradle wrapper
             ./gradlew ktlintCheck detekt
         - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/android"
 
   unit_test:
-    before_run:
-    - _prepare_gradle_wrapper
     steps:
     - flutter-test@1:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
