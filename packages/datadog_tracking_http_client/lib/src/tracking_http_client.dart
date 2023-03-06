@@ -471,16 +471,19 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
     return innerResponse.listen(
       onData,
       cancelOnError: cancelOnError,
-      onError: (Object e, StackTrace? st) {
+      onError: (Object e, StackTrace st) {
         _onError(e, st);
         if (onError == null) {
           return;
         }
-        if (onError is void Function(Object, StackTrace?)) {
+        if (onError is void Function(Object, StackTrace)) {
           onError(e, st);
-        } else {
-          assert(onError is void Function(Object));
+        } else if (onError is void Function(Object)) {
           onError(e);
+        } else {
+          datadogSdk.internalLogger.warn(
+              "Tracking HTTP client intercepted an error, but doesn't recognize the `onError` callback."
+              ' Expected either `void Function(Object, StackTrace)` or `void Function(Object)`.');
         }
       },
       onDone: () {
