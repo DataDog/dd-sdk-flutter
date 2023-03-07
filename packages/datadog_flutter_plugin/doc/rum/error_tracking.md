@@ -58,6 +58,24 @@ datadog-ci flutter-symbols upload --service-name <your_service_name> --dart-symb
 
 For a full list of options, see the `datadog-ci` [Flutter Symbols documentation][6].
 
+## Advanced Configuration - Flavors and Build Numbers
+
+Datadog uses the combination of the `service-name`, `version`, and `flavor` to locate the correct symbols for deobfuscation, so the parameters sent to the `datadog-ci` command and the parameters set in [DdSdkConfiguration][7]
+
+If you are using app [flavors][8] in Flutter, you will need to set the name of the flavor in [DdSdkConfiguration.flavor][9] since we cannot detect the flavor automatically. You can then pass this to the `--flavor` parameter of the `datadog-ci` command:
+
+```sh
+datadog-ci flutter-symbols upload --service-name <your_service_name> --dart-symbols-location <location_of_dart_symbols> --android-mapping --ios-dsyms --flavor my_flavor
+```
+
+The Datadog SDK will automatically detect the version number of your application specified in your `pubspec.yaml` up to but not including the build number. If you are using build numbers as part of the version in your application and need to upload symbols for each build, you will need to add the version to [DdSdkConfiguration.version][10]. You can then pass this to the `--version` parameter of the `datadog-ci` command:
+
+```sh
+datadog-ci flutter-symbols upload --service-name <your_service_name> --dart-symbols-location <location_of_dart_symbols> --android-mapping --ios-dsyms --version 1.2.3+22
+```
+
+Note that Datadog uses tags for versions which do not allow `+`. All tooling automatically replaces `+` with `-` so that the version tags are searchable in Datadog.
+
 ## Further reading
 
 {{< partial name="whats-next/whats-next.html" >}}
@@ -67,3 +85,7 @@ For a full list of options, see the `datadog-ci` [Flutter Symbols documentation]
 [3]: https://docs.datadoghq.com/real_user_monitoring/flutter/#setup
 [4]: https://www.npmjs.com/package/@datadog/datadog-ci
 [6]: https://github.com/DataDog/datadog-ci/tree/master/src/commands/flutter-symbols
+[7]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/DdSdkConfiguration-class.html
+[8]: https://docs.flutter.dev/deployment/flavors
+[9]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/DdSdkConfiguration/flavor.html
+[10]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/DdSdkConfiguration/version.html
