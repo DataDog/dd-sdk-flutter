@@ -74,7 +74,7 @@ The Datadog SDK will automatically detect the version number of your application
 datadog-ci flutter-symbols upload --service-name <your_service_name> --dart-symbols-location <location_of_dart_symbols> --android-mapping --ios-dsyms --version 1.2.3+22
 ```
 
-Note that Datadog uses tags for versions which do not allow `+`. All tooling will automatically replace `+` with `-` so that the version tags are searchable in Datadog.
+Note that Datadog uses tags for versions which do not allow `+`. All tooling automatically replaces `+` with `-` so that the version tags are searchable in Datadog.
 
 ## Further reading
 
