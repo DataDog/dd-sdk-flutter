@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Fix an invalid assertion when processing stream errors. See [#355]
 
 ## 1.2.0
 
@@ -46,3 +46,5 @@
 ## 1.0.0-alpha.1
 
 * Initial split of DatadogTrackingHttpClient into its own package
+
+[#355]: https://github.com/DataDog/dd-sdk-flutter/issues/355

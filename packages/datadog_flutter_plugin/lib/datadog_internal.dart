@@ -14,6 +14,7 @@ import 'src/internal_logger.dart';
 export 'src/attributes.dart';
 export 'src/datadog_sdk_platform_interface.dart';
 export 'src/helpers.dart';
+export 'src/internal_logger.dart';
 export 'src/rum/attributes.dart';
 export 'src/tracing/tracing_headers.dart';
 
