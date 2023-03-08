@@ -11,7 +11,6 @@ import 'package:meta/meta.dart';
 import 'datadog_internal.dart';
 import 'src/datadog_configuration.dart';
 import 'src/datadog_plugin.dart';
-import 'src/helpers.dart';
 import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
 import 'src/logs/ddlogs_platform_interface.dart';
@@ -113,7 +112,6 @@ class DatadogSdk {
       WidgetsFlutterBinding.ensureInitialized();
       final originalOnError = FlutterError.onError;
       FlutterError.onError = (details) {
-        FlutterError.presentError(details);
         DatadogSdk.instance.rum?.handleFlutterError(details);
         originalOnError?.call(details);
       };

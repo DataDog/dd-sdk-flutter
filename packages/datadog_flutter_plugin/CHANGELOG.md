@@ -6,6 +6,7 @@
 * Bind `consolePrint` callback earlier in iOS to make sure initialization errors can be seen in the console. See [#328]
 * Fix `version` not properly populating on Flutter Web. See [#334]
 * Improve `RumUserActionDetector` to detect more widgets, including `BottomNavigationBar`, `Tab`, `Switch`, and `Radio`
+* Remove an extra call to `FlutterError.presentError` made in `runApp`.  See [#358]
 
 ## 1.2.2
 
@@ -147,3 +148,4 @@
 [#305]: https://github.com/DataDog/dd-sdk-flutter/issues/305
 [#328]: https://github.com/DataDog/dd-sdk-flutter/issues/328
 [#334]: https://github.com/DataDog/dd-sdk-flutter/issues/334
+[#358]: https://github.com/DataDog/dd-sdk-flutter/issues/358
