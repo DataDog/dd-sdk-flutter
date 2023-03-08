@@ -546,6 +546,10 @@ class DatadogRumPluginTest {
         Contract("updatePerformanceMetrics", mapOf(
             "buildTimes" to ContractParameter.Type(SupportedContractType.LIST),
             "rasterTimes" to ContractParameter.Type(SupportedContractType.LIST),
+        )),
+        Contract("addFeatureFlagEvaluation", mapOf(
+            "name" to ContractParameter.Type(SupportedContractType.STRING),
+            "value" to ContractParameter.Type(SupportedContractType.ANY),
         ))
     )
 

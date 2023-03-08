@@ -157,6 +157,14 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
+  Future<void> addFeatureFlagEvaluation(String name, Object value) {
+    return methodChannel.invokeMethod('addFeatureFlagEvaluation', {
+      'name': name,
+      'value': value,
+    });
+  }
+
+  @override
   Future<void> reportLongTask(DateTime at, int durationMs) {
     return methodChannel.invokeMethod('reportLongTask', {
       'at': at.millisecondsSinceEpoch,

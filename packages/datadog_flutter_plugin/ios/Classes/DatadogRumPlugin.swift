@@ -268,6 +268,17 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
+        case "addFeatureFlagEvaluation":
+            if let name = arguments["name"] as? String,
+               let value = arguments["value"] {
+                let encodableValue = castAnyToEncodable(value)
+                rum.addFeatureFlagEvaluation(name: name, value: encodableValue)
+                result(nil)
+            } else {
+                result(
+                    FlutterError.missingParameter(methodName: call.method)
+                )
+            }
         case "reportLongTask":
             if let atTime = arguments["at"] as? NSNumber,
                let duration = arguments["duration"] as? NSNumber {

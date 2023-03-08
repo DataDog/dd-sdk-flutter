@@ -119,6 +119,7 @@ class RumEventDecoder {
       rumEvent['telemetry']?['configuration'];
 
   Map<String, dynamic>? get context => rumEvent['context'];
+  Map<String, dynamic>? get featureFlags => rumEvent['feature_flags'];
 
   RumEventDecoder(this.rumEvent)
       : viewInfo = RumViewInfoDecoder(rumEvent['view']),

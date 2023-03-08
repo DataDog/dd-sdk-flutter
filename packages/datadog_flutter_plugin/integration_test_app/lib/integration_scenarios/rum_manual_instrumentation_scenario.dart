@@ -180,6 +180,10 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
   @override
   void didPush() {
     DatadogSdk.instance.rum?.startView(_viewKey, _viewName);
+
+    DatadogSdk.instance.rum?.addFeatureFlagEvaluation('mock_flag_a', false);
+    DatadogSdk.instance.rum
+        ?.addFeatureFlagEvaluation('mock_flag_b', 'mock_value');
   }
 
   @override

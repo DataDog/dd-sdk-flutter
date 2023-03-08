@@ -150,6 +150,10 @@ class DatadogRumPluginTests: XCTestCase {
         Contract(methodName: "updatePerformanceMetrics", requiredParameters: [
             "buildTimes": .list,
             "rasterTimes": .list
+        ]),
+        Contract(methodName: "addFeatureFlagEvaluation", requiredParameters: [
+            "name": .string,
+            "value": .string
         ])
     ]
 

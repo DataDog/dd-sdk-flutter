@@ -18,7 +18,8 @@ enum class SupportedContractType {
     MAP,
     LIST,
     INT,
-    LONG
+    LONG,
+    ANY,
 }
 
 sealed class ContractParameter {
@@ -54,13 +55,24 @@ data class Contract(
         return arguments
     }
 
-    private fun forgeValue(forge: Forge, type: SupportedContractType): Any {
+    private fun forgeValue(forge: Forge, type: SupportedContractType): Any? {
         return when(type) {
             SupportedContractType.STRING -> forge.anExtendedAsciiString()
             SupportedContractType.MAP -> forge.exhaustiveAttributes()
             SupportedContractType.LIST -> emptyList<Any>()
             SupportedContractType.INT -> forge.anInt()
             SupportedContractType.LONG -> forge.aLong()
+            SupportedContractType.ANY -> forge.aValueFrom(
+                listOf(
+                    forge.aBool(),
+                    forge.anInt(),
+                    forge.aLong(),
+                    forge.aFloat(),
+                    forge.aDouble(),
+                    forge.anAsciiString(),
+                    forge.aList { anAlphabeticalString() },
+                ).associateBy { forge.anAlphabeticalString() }
+            )
         }
     }
 }
