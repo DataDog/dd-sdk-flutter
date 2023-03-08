@@ -7,6 +7,7 @@ import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
+import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:datadog_tracking_http_client/src/tracking_http_client.dart';
 import 'package:datadog_tracking_http_client/src/tracking_http_client_plugin.dart';
 import 'package:flutter_test/flutter_test.dart';
