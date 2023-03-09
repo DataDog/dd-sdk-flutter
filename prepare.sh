@@ -18,6 +18,7 @@ declare -a all_dirs=(
     "packages/datadog_tracking_http_client"
     "packages/datadog_tracking_http_client/example"
     "packages/datadog_grpc_interceptor"
+    "packages/datadog_webview_tracking"
     "tools/e2e_generator"
     "tools/releaser"
     "tools/third_party_scanner"
