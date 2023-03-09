@@ -7,6 +7,7 @@ import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
+import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:datadog_tracking_http_client/src/tracking_http_client.dart';
 import 'package:datadog_tracking_http_client/src/tracking_http_client_plugin.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -67,6 +68,8 @@ void main() {
     when(() => mockDatadog.headerTypesForHost(
         any(that: HasHost(equals('non_first_party'))))).thenReturn({});
     when(() => mockDatadog.platform).thenReturn(mockPlatform);
+    // ignore: invalid_use_of_internal_member
+    when(() => mockDatadog.internalLogger).thenReturn(InternalLogger());
 
     mockRum = MockDdRum();
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
@@ -376,6 +379,73 @@ void main() {
       await mockResponse.streamController.close();
 
       expect(caughtError, error);
+      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+            capturedKey,
+            error.toString(),
+            error.runtimeType.toString(),
+            any(),
+          ));
+    });
+
+    test('calls on error with error for dynamic parameter', () async {
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
+
+      var request = await client.openUrl('get', url);
+      var capturedKey = verify(
+        () => mockRum.startResourceLoading(
+            captureAny(), RumHttpMethod.get, url.toString(), any()),
+      ).captured[0] as String;
+
+      var mockResponse = setupMockClientResponse(200);
+
+      completer.complete(mockResponse);
+      var response = await request.done;
+
+      // Listen / close the response
+      var error = Error();
+      Object? caughtError;
+      response.listen((event) {}, onError: (dynamic e) {
+        caughtError = e;
+      });
+      mockResponse.streamController.addError(error);
+      await mockResponse.streamController.close();
+
+      expect(caughtError, error);
+      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+            capturedKey,
+            error.toString(),
+            error.runtimeType.toString(),
+            any(),
+          ));
+    });
+
+    test('does not throw when listen provides non-standard onError function',
+        () async {
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
+
+      var request = await client.openUrl('get', url);
+      var capturedKey = verify(
+        () => mockRum.startResourceLoading(
+            captureAny(), RumHttpMethod.get, url.toString(), any()),
+      ).captured[0] as String;
+
+      var mockResponse = setupMockClientResponse(200);
+
+      completer.complete(mockResponse);
+      var response = await request.done;
+
+      // Listen / close the response
+      var error = Error();
+      dynamic caughtError;
+      response.listen((event) {}, onError: (int i, double f) {
+        caughtError = i;
+      });
+      mockResponse.streamController.addError(error);
+      await mockResponse.streamController.close();
+
+      expect(caughtError, isNull);
       verify(() => mockRum.stopResourceLoadingWithErrorInfo(
             capturedKey,
             error.toString(),
