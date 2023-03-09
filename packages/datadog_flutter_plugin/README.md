@@ -46,7 +46,7 @@ This loads the CDN-delivered Datadog Browser SDKs for Logs and RUM. The synchron
 2. Choose `Flutter` as the application type.
 3. Provide an application name to generate a unique Datadog application ID and client token.
 
-{{< img src="real_user_monitoring/flutter/image_flutter.png" alt="Create a RUM application in Datadog workflow" style="width:90%;">}}
+{{< img src="real_user_monitoring/flutter/flutter-new-application.png" alt="Create a RUM application in Datadog workflow" style="width:90%;">}}
 
 To ensure the safety of your data, you must use a client token. For more information about setting up a client token, see the [Client Token documentation][3].
 
