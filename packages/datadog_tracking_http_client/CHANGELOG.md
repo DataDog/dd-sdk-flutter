@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.1
 
 * Fix an invalid assertion when processing stream errors. See [#355]
 
