@@ -11,7 +11,6 @@ import 'package:meta/meta.dart';
 import 'datadog_internal.dart';
 import 'src/datadog_configuration.dart';
 import 'src/datadog_plugin.dart';
-import 'src/internal_logger.dart';
 import 'src/logs/ddlogs.dart';
 import 'src/logs/ddlogs_platform_interface.dart';
 import 'src/rum/rum.dart';

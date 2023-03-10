@@ -54,7 +54,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         var trackNetworkRequests: Boolean = false,
         var trackNativeViews: Boolean = false,
         var trackCrossPlatformLongTasks: Boolean = false,
-        var trackFlutterPerformance: Boolean = false
+        var trackFlutterPerformance: Boolean = false,
+        var dartVersion: String? = null
     )
 
     private lateinit var channel: MethodChannel
@@ -97,6 +98,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                         // Maybe use DevLogger instead?
                         Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION)
                     }
+                    telemetryOverrides.dartVersion = call.argument<String>("dartVersion")
                     result.success(null)
                 } else {
                     result.missingParameter(call.method)
@@ -274,6 +276,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             telemetryOverrides.trackCrossPlatformLongTasks
         event.telemetry.configuration.trackFlutterPerformance =
             telemetryOverrides.trackFlutterPerformance
+        event.telemetry.configuration.dartVersion = telemetryOverrides.dartVersion
 
         return event
     }

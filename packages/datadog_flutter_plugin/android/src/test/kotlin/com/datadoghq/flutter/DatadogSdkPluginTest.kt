@@ -203,6 +203,36 @@ class DatadogSdkPluginTest {
     }
 
     @Test
+    fun `M initialize dartVersion telemetry W called through MethodChannel { dartVersion }`(
+        @StringForgery clientToken: String,
+        @StringForgery environment: String,
+        @StringForgery applicationId: String,
+        @StringForgery dartVersion: String
+    ) {
+        // GIVEN
+        val methodCall = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to mapOf(
+                    "clientToken" to clientToken,
+                    "env" to environment,
+                    "trackingConsent" to "TrackingConsent.granted",
+                    "nativeCrashReportEnabled" to true
+                ),
+                "dartVersion" to dartVersion
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        assertThat(plugin.telemetryOverrides.dartVersion).isEqualTo(dartVersion)
+    }
+
+
+    @Test
     fun `M not issue warning W initialize called with same configuration`(
         forge: Forge
     ) {
