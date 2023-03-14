@@ -4,7 +4,7 @@ Real User Monitoring offers Mobile Vitals, a set of metrics that can help comput
 
 Mobile Vitals appear in your application's **Overview** tab and in the side panel under **Performance** > **Event Timings and Mobile Vitals** when you click on an individual view in the [RUM Explorer][2]. Click on a graph in **Mobile Vitals** to apply a filter by version or examine filtered sessions. 
 
-{{< img src="real_user_monitoring/ios/ios_mobile_vitals.png" alt="Mobile Vitals in the Performance Tab" style="width:70%;">}}
+{{< img src="real_user_monitoring/ios/flutter-mobile-vitals-new.png" alt="Mobile Vitals in the Performance Tab" style="width:70%;">}}
 
 Understand your application's overall health and performance with the line graphs displaying metrics across various application versions. To filter on application version or see specific sessions and views, click on a graph. 
 
