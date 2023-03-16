@@ -1,12 +1,16 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
+@Skip(
+    "Android webviews don't load in integration tests. See https://github.com/flutter/flutter/issues/122888")
 
 import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:datadog_webview_tracking_example/main.dart' as app;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -35,6 +39,15 @@ void main() {
 
   testWidgets('test webview integrations', (tester) async {
     var serverRecorder = await startMockServer();
+    app.customEndpoint = serverRecorder.sessionEndpoint;
+
+    await app.main();
+
+    await tester.pumpAndSettle();
+    var button = find.byWidgetPredicate((widget) =>
+        widget is Text && (widget.data?.startsWith('Open WebView') ?? false));
+    await tester.tap(button);
+    await tester.pumpAndSettle();
 
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
@@ -56,11 +69,10 @@ void main() {
       },
     );
 
-    final session = RumSessionDecoder.fromEvents(rumLog,
-        shouldDiscardApplicationLaunch: false);
+    final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, 2);
 
-    // First view is applicaiton start, second view should be the webview
+    // First view is home screen, second view should be the webview
     final startView = session.visits[0];
     String expectedApplicationId =
         startView.viewEvents.first.rumEvent['application']['id'];

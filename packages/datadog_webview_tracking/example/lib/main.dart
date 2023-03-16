@@ -11,12 +11,14 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'app.dart';
 
+String? customEndpoint;
+
 Future<void> main() async {
   await dotenv.load(mergeWith: Platform.environment);
 
   var clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
-  String? customEndpoint = dotenv.maybeGet('DD_CUSTOM_ENDPOINT');
+  customEndpoint ??= dotenv.maybeGet('DD_CUSTOM_ENDPOINT');
 
   DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
 
