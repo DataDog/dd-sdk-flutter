@@ -3,6 +3,7 @@
 // Copyright 2019-2021 Datadog, Inc.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:datadog_common_test/datadog_common_test.dart';
@@ -73,6 +74,9 @@ void main() {
       expect(config['track_native_views'], false);
       expect(config['track_cross_platform_long_tasks'], true);
       expect(config['track_flutter_performance'], true);
+      if (!kIsWeb) {
+        expect(config['dart_version'], Platform.version);
+      }
     }
   });
 }

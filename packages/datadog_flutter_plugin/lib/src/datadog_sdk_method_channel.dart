@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -58,6 +60,7 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 
     await methodChannel.invokeMethod<void>('initialize', {
       'configuration': configuration.encode(),
+      'dartVersion': Platform.version,
       'setLogCallback': logCallback != null,
     });
   }

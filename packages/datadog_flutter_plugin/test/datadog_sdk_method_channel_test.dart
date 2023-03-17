@@ -3,6 +3,7 @@
 // Copyright 2016-Present Datadog, Inc.
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/src/datadog_sdk_method_channel.dart';
@@ -44,6 +45,7 @@ void main() {
       isMethodCall('initialize', arguments: {
         'configuration': configuration.encode(),
         'setLogCallback': false,
+        'dartVersion': Platform.version,
       })
     ]);
   });
@@ -65,6 +67,7 @@ void main() {
       isMethodCall('initialize', arguments: {
         'configuration': configuration.encode(),
         'setLogCallback': true,
+        'dartVersion': Platform.version,
       })
     ]);
   });

@@ -10,6 +10,7 @@ import DictionaryCoder
 
 public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     struct ConfigurationTelemetryOverrides {
+        var dartVersion: String?
         var trackViewsManually: Bool = true
         var trackInteractions: Bool = false
         var trackErrors: Bool = false
@@ -81,6 +82,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                     }
                 }
             }
+            configurationTelemetryOverrides.dartVersion = arguments["dartVersion"] as? String
             result(nil)
         case "attachToExisting":
             if Datadog.isInitialized {
@@ -219,6 +221,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             configuration.trackNativeViews = self.configurationTelemetryOverrides.trackNativeViews
             configuration.trackCrossPlatformLongTasks = self.configurationTelemetryOverrides.trackCrossPlatformLongTasks
             configuration.trackFlutterPerformance = self.configurationTelemetryOverrides.trackFlutterPerformance
+            configuration.dartVersion = self.configurationTelemetryOverrides.dartVersion
             event.telemetry.configuration = configuration
 
             return event

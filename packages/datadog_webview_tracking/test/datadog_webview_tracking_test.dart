@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+// ignore: depend_on_referenced_packages
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}

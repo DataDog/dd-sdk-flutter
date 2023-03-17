@@ -8,9 +8,9 @@ PODS:
     - DatadogSDK (~> 1)
     - Flutter
     - webview_flutter_wkwebview
-  - DatadogSDK (1.15.0)
-  - DatadogSDKCrashReporting (1.15.0):
-    - DatadogSDK (= 1.15.0)
+  - DatadogSDK (1.16.0)
+  - DatadogSDKCrashReporting (1.16.0):
+    - DatadogSDK (= 1.16.0)
     - PLCrashReporter (~> 1.11.0)
   - DictionaryCoder (1.0.8)
   - Flutter (1.0.0)
@@ -54,17 +54,17 @@ EXTERNAL SOURCES:
 
 CHECKOUT OPTIONS:
   DatadogSDK:
-    :commit: 714acf301e185962a6d0cd17f61059673b30ee24
+    :commit: 9c78109db42fdddf4eac90da38d52f230b244d0f
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogSDKCrashReporting:
-    :commit: 714acf301e185962a6d0cd17f61059673b30ee24
+    :commit: 9c78109db42fdddf4eac90da38d52f230b244d0f
     :git: https://github.com/DataDog/dd-sdk-ios
 
 SPEC CHECKSUMS:
   datadog_flutter_plugin: 286f35803b77ceb07bc1e0a383dd9fc231058473
   datadog_webview_tracking: b5e694f36f3a403043cec80bdf1cde72be7699a2
-  DatadogSDK: d7e3ef65693db38842f85885c01ba0865e10a782
-  DatadogSDKCrashReporting: 4be11b3693ed048f461391f724788ea96d31633a
+  DatadogSDK: 7d2d3240a946a5a43b71ae4fa719919d9ed7fc22
+  DatadogSDKCrashReporting: 91f084ca0595a6159c263df9412b0ec7723eba44
   DictionaryCoder: 5f84fff69f54cb806071538430bdafe04a89d658
   Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
   integration_test: a1e7d09bd98eca2fc37aefd79d4f41ad37bdbbe5

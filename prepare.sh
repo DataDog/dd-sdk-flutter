@@ -7,6 +7,7 @@
 # Prepares the repo for development.
 
 set -e
+flutter precache --ios --android --web
 ./generate_env.sh
 
 declare -a all_dirs=(
@@ -30,6 +31,13 @@ for i in "${all_dirs[@]}"
 do
     pushd "$i"
     flutter pub get
+    # Check and update pods
+    if [ -d "example/ios" ]
+    then
+        pushd "example/ios"
+        pod update
+        popd
+    fi
     popd
 done
 

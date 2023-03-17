@@ -48,7 +48,7 @@ void main() {
         });
         var visits = RumSessionDecoder.fromEvents(rumLog).visits;
         return visits.length == 1 &&
-            visits[0].viewEvents.last.view?.errorCount == 3;
+            visits[0].viewEvents.last.view.errorCount == 3;
       },
     );
 
@@ -56,7 +56,7 @@ void main() {
     expect(session.visits.length, 1);
 
     final view = session.visits[0];
-    expect(view.viewEvents.last.view?.errorCount, 3);
+    expect(view.viewEvents.last.view.errorCount, 3);
     expect(view.errorEvents.length, 3);
 
     var exceptionError = view.errorEvents[0];
