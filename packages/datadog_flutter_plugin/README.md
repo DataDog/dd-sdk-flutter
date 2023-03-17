@@ -40,9 +40,11 @@ This loads the CDN-delivered Datadog Browser SDKs for Logs and RUM. The synchron
 
 ## Setup
 
+Use the [Datadog Flutter Plugin][1] to set up Log Management or Real User Monitoring (RUM). The setup instructions may vary based on your decision to use Logs, RUM, or both, but most of the setup steps are consistent.
+
 ### Specify application details in the UI
 
-1. In the [Datadog app][1], navigate to **UX Monitoring** > **RUM Applications** > **New Application**.
+1. In the [Datadog app][2], navigate to **UX Monitoring** > **RUM Applications** > **New Application**.
 2. Choose `Flutter` as the application type.
 3. Provide an application name to generate a unique Datadog application ID and client token.
 
@@ -73,7 +75,7 @@ final configuration = DdSdkConfiguration(
 );
 ```
 
-For more information on available configuration options, see the [DdSdkConfiguration object][9] documentation.
+For more information on available configuration options, see the [DdSdkConfiguration object][8] documentation.
 
 ### Initialize the library
 
@@ -188,7 +190,7 @@ tampers with the Linux kernel, the stored data might become readable.
 ### iOS
 
 Before data is uploaded to Datadog, it is stored in cleartext in the cache directory (`Library/Caches`)
-of your [application sandbox][10], which can't be read by any other app installed on the device.
+of your [application sandbox][9], which can't be read by any other app installed on the device.
 
 ## Contributing
 
@@ -199,13 +201,12 @@ For more information, read the [Contributing guidelines][4].
 ## License
 
 For more information, see [Apache License, v2.0][5].
-
-[1]: https://app.datadoghq.com/rum/application/create
-[2]: https://docs.datadoghq.com/account_management/api-app-keys/#api-keys
+[1]: https://pub.dev/packages/datadog_flutter_plugin
+[2]: https://app.datadoghq.com/rum/application/create
 [3]: https://docs.datadoghq.com/account_management/api-app-keys/#client-tokens
 [4]: https://github.com/DataDog/dd-sdk-flutter/blob/main/CONTRIBUTING.md
 [5]: https://github.com/DataDog/dd-sdk-flutter/blob/main/LICENSE
 [6]: https://source.android.com/security/app-sandbox
 [7]: https://pub.dev/packages/datadog_tracking_http_client
-[9]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/DdSdkConfiguration-class.html
-[10]: https://support.apple.com/guide/security/security-of-runtime-process-sec15bfe098e/web
+[8]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/DdSdkConfiguration-class.html
+[9]: https://support.apple.com/guide/security/security-of-runtime-process-sec15bfe098e/web
