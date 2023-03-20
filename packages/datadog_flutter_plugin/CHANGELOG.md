@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.3
 
 * Fix `b3` and `tracecontext` using incorrect Trace and Span ids during request tracking.
 
