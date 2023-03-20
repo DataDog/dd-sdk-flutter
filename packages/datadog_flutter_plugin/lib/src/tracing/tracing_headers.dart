@@ -169,8 +169,8 @@ Map<String, String> getTracingHeaders(
     case TracingHeaderType.b3:
       if (context.sampled) {
         final headerValue = [
-          context.spanId.asString(TraceIdRepresentation.hex32Chars),
-          context.traceId.asString(TraceIdRepresentation.hex16Chars),
+          context.traceId.asString(TraceIdRepresentation.hex32Chars),
+          context.spanId.asString(TraceIdRepresentation.hex16Chars),
           sampledString,
           context.parentSpanId?.asString(TraceIdRepresentation.hex16Chars),
         ].whereType<String>().join('-');
@@ -196,8 +196,8 @@ Map<String, String> getTracingHeaders(
     case TracingHeaderType.tracecontext:
       final headerValue = [
         '00', // Version Code
-        context.spanId.asString(TraceIdRepresentation.hex32Chars),
-        context.traceId.asString(TraceIdRepresentation.hex16Chars),
+        context.traceId.asString(TraceIdRepresentation.hex32Chars),
+        context.spanId.asString(TraceIdRepresentation.hex16Chars),
         context.sampled ? '01' : '00'
       ].join('-');
       headers[W3CTracingHeaders.traceparent] = headerValue;
