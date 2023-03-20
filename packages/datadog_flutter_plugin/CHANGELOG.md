@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Fix `b3` and `tracecontext` using incorrect Trace and Span ids during request tracking.
 
 ## 1.2.2
 
