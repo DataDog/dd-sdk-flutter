@@ -31,7 +31,11 @@ class _RumManualErrorReportingScenarioState
   void _addErrors() {
     final rum = DatadogSdk.instance.rum;
     if (rum != null) {
-      rum.addError(NullThrownError(), RumErrorSource.source);
+      rum.addError(
+        NullThrownError(),
+        RumErrorSource.source,
+        errorType: 'NullThrown',
+      );
       rum.addErrorInfo('Rum error message', RumErrorSource.network);
     }
   }

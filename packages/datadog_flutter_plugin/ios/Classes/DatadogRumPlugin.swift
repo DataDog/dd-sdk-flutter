@@ -200,9 +200,17 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 let encodedAttributes = castFlutterAttributesToSwift(attributes)
                 let source = RUMErrorSource.parseFromFlutter(sourceString)
                 let stackTrace = arguments["stackTrace"] as? String
+                let errorType = arguments["errorType"] as? String
 
-                rum.addError(message: message, source: source, stack: stackTrace, attributes: encodedAttributes,
-                             file: nil, line: nil)
+                rum.addError(
+                    message: message,
+                    type: errorType,
+                    source: source,
+                    stack: stackTrace,
+                    attributes: encodedAttributes,
+                    file: nil,
+                    line: nil
+                )
                 result(nil)
             } else {
                 result(

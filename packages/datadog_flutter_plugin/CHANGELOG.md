@@ -7,6 +7,7 @@
 * Fix `version` not properly populating on Flutter Web. See [#334]
 * Improve `RumUserActionDetector` to detect more widgets, including `BottomNavigationBar`, `Tab`, `Switch`, and `Radio`
 * Remove an extra call to `FlutterError.presentError` made in `runApp`.  See [#358]
+* Support `errorType` on `DdRum.addError` and `DdRum.addErrorInfo`. See [#372]
 
 ## 1.2.2
 
@@ -149,3 +150,4 @@
 [#328]: https://github.com/DataDog/dd-sdk-flutter/issues/328
 [#334]: https://github.com/DataDog/dd-sdk-flutter/issues/334
 [#358]: https://github.com/DataDog/dd-sdk-flutter/issues/358
+[#372]: https://github.com/DataDog/dd-sdk-flutter/issues/372
