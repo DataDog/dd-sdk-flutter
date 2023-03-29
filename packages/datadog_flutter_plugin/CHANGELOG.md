@@ -7,6 +7,7 @@
 * Fix `version` not properly populating on Flutter Web. See [#334]
 * Improve `RumUserActionDetector` to detect more widgets, including `BottomNavigationBar`, `Tab`, `Switch`, and `Radio`
 * Remove an extra call to `FlutterError.presentError` made in `runApp`.  See [#358]
+* Set `sessionReplaySampleRate` to 0 during initialization for Browser as Session Replay is not supported.
 * Support `errorType` on `DdRum.addError` and `DdRum.addErrorInfo`. See [#372]
 
 ## 1.2.2

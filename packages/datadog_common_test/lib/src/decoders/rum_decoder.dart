@@ -98,6 +98,10 @@ class Dd {
 
   String? get traceId => rawData['trace_id'];
   String? get spanId => rawData['span_id'];
+  int? get plan {
+    final session = rawData['session'] as Map<String, dynamic>;
+    return session['plan'];
+  }
 }
 
 class RumEventDecoder {
