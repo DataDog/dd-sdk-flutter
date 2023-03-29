@@ -313,6 +313,7 @@ class DatadogRumPluginTests: XCTestCase {
             "message": "Error message",
             "source": "RumErrorSource.network",
             "stackTrace": nil,
+            "errorType": "MyErrorType",
             "attributes": [
                 "attribute_key": "attribute_value"
             ]
@@ -324,8 +325,8 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [
-            .addError(message: "Error message", type: nil, source: RUMErrorSource.network, stack: nil,
-                      attributes: ["attribute_key": "attribute_value"], file: nil, line: nil)
+            .addError(message: "Error message", type: "MyErrorType", source: RUMErrorSource.network,
+                      stack: nil, attributes: ["attribute_key": "attribute_value"], file: nil, line: nil)
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
