@@ -28,6 +28,7 @@ class DdRumWeb extends DdRumPlatform {
       clientToken: configuration.clientToken,
       site: siteStringForSite(configuration.site),
       sampleRate: rumConfiguration.sessionSamplingRate,
+      sessionReplaySampleRate: 0,
       service: configuration.serviceName,
       env: configuration.env,
       version: configuration.versionTag,
@@ -153,7 +154,7 @@ class _RumInitOptions {
   external bool? get trackInteractions;
   external String? get defaultPrivacyLevel;
   external num? get sampleRate;
-  external num? get replaySampleRate;
+  external num? get sessionReplaySampleRate;
   external bool? get silentMultipleInit;
   external String? get proxyUrl;
   external List<String> get allowedTracingOrigins;
@@ -169,7 +170,7 @@ class _RumInitOptions {
     bool? trackInteractions,
     String? defaultPrivacyLevel,
     num? sampleRate,
-    num? replaySampleRate,
+    num? sessionReplaySampleRate,
     bool? silentMultipleInit,
     String? proxyUrl,
     List<String> allowedTracingOrigins,

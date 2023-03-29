@@ -89,6 +89,10 @@ void main() {
       );
     }
 
+    for (var log in rumLog) {
+      expect(log.dd.plan, 1);
+    }
+
     final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, kIsWeb ? 4 : 3);
 
