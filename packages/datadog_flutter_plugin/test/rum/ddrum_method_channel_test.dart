@@ -136,7 +136,7 @@ void main() {
     final exception = TimeoutException(
         'Timeout retrieving resource', const Duration(seconds: 5));
     await ddRumPlatform.addError(exception, RumErrorSource.source, null,
-        {'attribute_key': 'attribute_value'});
+        'error_type', {'attribute_key': 'attribute_value'});
 
     expect(log.length, 1);
     final call = log.first;
@@ -144,6 +144,7 @@ void main() {
     expect(call.arguments['message'], exception.toString());
     expect(call.arguments['source'], 'RumErrorSource.source');
     expect(call.arguments['stackTrace'], isNull);
+    expect(call.arguments['errorType'], 'error_type');
     expect(call.arguments['attributes'], {
       // '_dd.error.source_type': 'flutter'
       'attribute_key': 'attribute_value'
@@ -152,7 +153,7 @@ void main() {
 
   test('addErrorInfo calls to platform with info', () async {
     await ddRumPlatform.addErrorInfo('Exception message', RumErrorSource.source,
-        null, {'attribute_key': 'attribute_value'});
+        null, 'error_type', {'attribute_key': 'attribute_value'});
 
     expect(log.length, 1);
     final call = log.first;
@@ -160,6 +161,7 @@ void main() {
     expect(call.arguments['message'], 'Exception message');
     expect(call.arguments['source'], 'RumErrorSource.source');
     expect(call.arguments['stackTrace'], isNull);
+    expect(call.arguments['errorType'], 'error_type');
     expect(call.arguments['attributes'], {
       // '_dd.error.source_type': 'flutter'
       'attribute_key': 'attribute_value'
@@ -171,7 +173,7 @@ void main() {
     final exception = TimeoutException(
         'Timeout retrieving resource', const Duration(seconds: 5));
     await ddRumPlatform.addError(exception, RumErrorSource.source, stackTrace,
-        {'attribute_key': 'attribute_value'});
+        null, {'attribute_key': 'attribute_value'});
 
     expect(log.length, 1);
     final call = log.first;
@@ -179,6 +181,7 @@ void main() {
     expect(call.arguments['message'], exception.toString());
     expect(call.arguments['source'], 'RumErrorSource.source');
     expect(call.arguments['stackTrace'], stackTrace.toString());
+    expect(call.arguments['errorType'], isNull);
     expect(call.arguments['attributes'], {
       // '_dd.error.source_type': 'flutter'
       'attribute_key': 'attribute_value'
@@ -188,7 +191,7 @@ void main() {
   test('addErrorInfo passes stack trace string', () async {
     final stackTrace = StackTrace.current;
     await ddRumPlatform.addErrorInfo('Exception message', RumErrorSource.source,
-        stackTrace, {'attribute_key': 'attribute_value'});
+        stackTrace, 'error_type', {'attribute_key': 'attribute_value'});
 
     expect(log.length, 1);
     final call = log.first;
@@ -196,6 +199,7 @@ void main() {
     expect(call.arguments['message'], 'Exception message');
     expect(call.arguments['source'], 'RumErrorSource.source');
     expect(call.arguments['stackTrace'], stackTrace.toString());
+    expect(call.arguments['errorType'], 'error_type');
     expect(call.arguments['attributes'], {
       // '_dd.error.source_type': 'flutter'
       'attribute_key': 'attribute_value'

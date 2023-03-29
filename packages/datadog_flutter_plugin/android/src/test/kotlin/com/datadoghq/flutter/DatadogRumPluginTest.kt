@@ -328,6 +328,7 @@ class DatadogRumPluginTest {
     fun `M call monitor addError W addError is called`(
         @StringForgery message: String,
         @StringForgery stackTrace: String,
+        @StringForgery errorType: String,
         @StringForgery attributeKey: String,
         @StringForgery attributeValue: String
     ) {
@@ -336,6 +337,7 @@ class DatadogRumPluginTest {
             "message" to message,
             "source" to "RumErrorSource.network",
             "stackTrace" to stackTrace,
+            "errorType" to errorType,
             "attributes" to mapOf(
                 attributeKey to attributeValue
             )
@@ -348,7 +350,10 @@ class DatadogRumPluginTest {
 
         // THEN
         verify { mockRumMonitor.addErrorWithStacktrace(message, RumErrorSource.NETWORK,
-            stackTrace, mapOf(attributeKey to attributeValue)) }
+            stackTrace, mapOf(
+                attributeKey to attributeValue,
+                "_dd.error_type" to errorType
+            )) }
         verify { mockResult.success(null) }
     }
 
