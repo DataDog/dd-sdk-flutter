@@ -10,7 +10,7 @@ version "1.0-SNAPSHOT"
 
 buildscript {
     ext.kotlin_version = "1.6.21"
-    ext.datadog_version = "1+"
+    ext.datadog_version = "1.18.1"
 
     repositories {
         google()
@@ -32,10 +32,9 @@ rootProject.allprojects {
              content {
                 includeGroup "com.github.xgouchet.Elmyr"
              }
+
         }
-        maven {
-            url "https://oss.sonatype.org/content/repositories/snapshots/"
-        }
+
     }
 }
 
