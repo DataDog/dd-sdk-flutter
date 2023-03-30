@@ -10,6 +10,10 @@
 * Set `sessionReplaySampleRate` to 0 during initialization for Browser as Session Replay is not supported.
 * Support `errorType` on `DdRum.addError` and `DdRum.addErrorInfo`. See [#372]
 
+## 1.2.3
+
+* Fix b3 and tracecontext using incorrect Trace and Span ids during request tracking.
+
 ## 1.2.2
 
 * Potentially fix a crash on exit on iOS. See [#341]
