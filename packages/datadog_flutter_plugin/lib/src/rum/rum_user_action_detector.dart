@@ -3,7 +3,6 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:meta/meta.dart';
@@ -280,7 +279,7 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
   }
 
   _ElementDescription? _getDetectingElementDescription(Element element,
-      List<HitTestEntry<HitTestTarget>> targets, String? treeAnnotation) {
+      List<HitTestEntry> targets, String? treeAnnotation) {
     final widget = element.widget;
     String? elementName;
     bool searchForBetter = false;
@@ -356,8 +355,8 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
 }
 
 Element? _findGestureDetectorElement(
-    Element rootElement, List<HitTestEntry<HitTestTarget>> hitTargets) {
-  final targets = List<HitTestEntry<HitTestTarget>>.from(hitTargets);
+    Element rootElement, List<HitTestEntry> hitTargets) {
+  final targets = List<HitTestEntry>.from(hitTargets);
   targets.removeLast();
 
   Element? detectorElement;
