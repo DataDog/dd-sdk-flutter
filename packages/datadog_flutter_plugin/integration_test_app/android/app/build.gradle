@@ -69,8 +69,6 @@ flutter {
     source '../..'
 }
 
-apply from: '../../../../../ignore_sr_snapshots.gradle'
-
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.work:work-runtime-ktx:2.7.0'
