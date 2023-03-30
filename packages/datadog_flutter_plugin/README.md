@@ -11,9 +11,10 @@ RUM supports monitoring for Flutter Android and iOS applications for Flutter 2.8
         
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 1.14.0 | 1.16.0 | 4.x.x |
+| 1.17.0 | 1.18.1 | 4.x.x |
 
 [//]: # (End SDK Table)
+
 
 
 
