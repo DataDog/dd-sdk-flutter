@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+
+
 ## 1.3.0
 
 * Add Web View tracking through the `webview_flutter` package.
