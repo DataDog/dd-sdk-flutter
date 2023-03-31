@@ -7,9 +7,7 @@ import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-// ignore: depend_on_referenced_packages
 import 'package:webview_flutter_android/webview_flutter_android.dart';
-// ignore: depend_on_referenced_packages
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 @visibleForTesting
