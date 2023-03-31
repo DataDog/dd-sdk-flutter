@@ -4,7 +4,7 @@
 
 
 
-## 1.3.0
+## 1.3.2
 
 * Add Web View tracking through the `webview_flutter` package.
 * Bind `consolePrint` callback earlier in iOS to make sure initialization errors can be seen in the console. See [#328]
