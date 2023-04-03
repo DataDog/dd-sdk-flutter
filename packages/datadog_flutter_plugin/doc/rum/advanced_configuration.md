@@ -113,7 +113,7 @@ The following attributes are **optional**, provide **at least** one of them:
 | `usr.name`  | String | User friendly name, displayed by default in the RUM UI.                                                  |
 | `usr.email` | String | User email, displayed in the RUM UI if the user name is not present. It is also used to fetch Gravatars. |
 
-To identify user sessions, use `DdRum.setUserInfo`. 
+To identify user sessions, use `DatadogSdk.setUserInfo`. 
 
 For example:
 
