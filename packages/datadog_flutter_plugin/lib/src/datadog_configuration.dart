@@ -107,11 +107,11 @@ enum DatadogSite {
   us1,
 
   /// US based servers. Sends RUM events to
-  /// [app.datadoghq.com](https://us3.datadoghq.com/).
+  /// [us3.datadoghq.com](https://us3.datadoghq.com/).
   us3,
 
   /// US based servers. Sends RUM events to
-  /// [app.datadoghq.com](https://us5.datadoghq.com/).
+  /// [us5.datadoghq.com](https://us5.datadoghq.com/).
   us5,
 
   /// Europe based servers. Sends RUM events to
@@ -120,7 +120,11 @@ enum DatadogSite {
 
   /// US based servers, FedRAMP compatible. Sends RUM events to
   /// [app.ddog-gov.com](https://app.ddog-gov.com/).
-  us1Fed
+  us1Fed,
+
+  /// Asia baesd servers. Sends data to
+  /// [ap1.datadoghq.com](https://ap1.datadoghq.com).
+  ap1,
 }
 
 enum Verbosity { verbose, debug, info, warn, error, none }
@@ -411,6 +415,15 @@ class DdSdkConfiguration {
   /// upload` command in order for symbolication to work.
   String? version;
 
+  /// Get the defined version as a Datadog compliant tag.
+  ///
+  /// Because 'version' is a Datadog tag, it needs to comply with the rules in
+  /// [Defining
+  /// Tags](https://docs.datadoghq.com/getting_started/tagging/#defining-tags)
+  /// Datadog documentation. This returns your supplied version with on that
+  /// automatically replaces `+` with `-`.
+  String? get versionTag => version?.replaceAll('+', '-');
+
   /// Set the current flavor (variant) of the application
   ///
   /// This must match the flavor set during symbol upload in order for stack
@@ -552,8 +565,7 @@ class DdSdkConfiguration {
     // Add version to additional config as part of encoding
     final encodedAdditionalConfig = Map<String, Object?>.from(additionalConfig);
     if (version != null) {
-      final fixedVersion = version?.replaceAll('+', '-');
-      encodedAdditionalConfig[DatadogConfigKey.version] = fixedVersion;
+      encodedAdditionalConfig[DatadogConfigKey.version] = versionTag;
     }
 
     if (flavor != null) {

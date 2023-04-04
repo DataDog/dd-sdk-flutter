@@ -31,14 +31,17 @@ class _IntegrationScenariosScreenState
   final items = <ScenarioItem>[
     ScenarioItem(label: 'Logging Scenario', navItem: LoggingScenario.new),
     ScenarioItem(
-        label: 'Manual RUM Scenario',
-        navItem: RumManualInstrumentationScenario.new),
+      label: 'Manual RUM Scenario',
+      navItem: RumManualInstrumentationScenario.new,
+    ),
     ScenarioItem(
-        label: 'RUM Error Reporting Scenario',
-        navItem: RumManualErrorReportingScenario.new),
+      label: 'RUM Error Reporting Scenario',
+      navItem: RumManualErrorReportingScenario.new,
+    ),
     ScenarioItem(
-        label: 'Auto RUM Scenario',
-        navItem: RumAutoInstrumentationScenario.new),
+      label: 'Auto RUM Scenario',
+      navItem: RumAutoInstrumentationScenario.new,
+    ),
   ];
 
   @override

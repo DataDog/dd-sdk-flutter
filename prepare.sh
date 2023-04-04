@@ -7,6 +7,7 @@
 # Prepares the repo for development.
 
 set -e
+flutter precache --ios --android --web
 ./generate_env.sh
 
 declare -a all_dirs=(
@@ -18,6 +19,7 @@ declare -a all_dirs=(
     "packages/datadog_tracking_http_client"
     "packages/datadog_tracking_http_client/example"
     "packages/datadog_grpc_interceptor"
+    "packages/datadog_webview_tracking"
     "tools/e2e_generator"
     "tools/releaser"
     "tools/third_party_scanner"
@@ -29,6 +31,13 @@ for i in "${all_dirs[@]}"
 do
     pushd "$i"
     flutter pub get
+    # Check and update pods
+    if [ -d "example/ios" ]
+    then
+        pushd "example/ios"
+        pod update
+        popd
+    fi
     popd
 done
 

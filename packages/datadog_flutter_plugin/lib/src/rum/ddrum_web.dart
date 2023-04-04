@@ -9,7 +9,6 @@ library ddrum_flutter_web;
 import 'package:js/js.dart';
 
 import '../../datadog_flutter_plugin.dart';
-import '../../datadog_internal.dart';
 import '../internal_logger.dart';
 import '../web_helpers.dart';
 import 'ddrum_platform_interface.dart';
@@ -24,17 +23,15 @@ class DdRumWeb extends DdRumPlatform {
       return;
     }
 
-    String? version =
-        configuration.additionalConfig[DatadogConfigKey.version] as String?;
-
     init(_RumInitOptions(
       applicationId: rumConfiguration.applicationId,
       clientToken: configuration.clientToken,
       site: siteStringForSite(configuration.site),
       sampleRate: rumConfiguration.sessionSamplingRate,
+      sessionReplaySampleRate: 0,
       service: configuration.serviceName,
       env: configuration.env,
-      version: version,
+      version: configuration.versionTag,
       proxyUrl: configuration.rumConfiguration?.customEndpoint,
       allowedTracingOrigins: configuration.firstPartyHosts,
       trackViewsManually: true,
@@ -52,14 +49,24 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  Future<void> addError(Object error, RumErrorSource source,
-      StackTrace? stackTrace, Map<String, dynamic> attributes) async {
+  Future<void> addError(
+    Object error,
+    RumErrorSource source,
+    StackTrace? stackTrace,
+    String? errorType,
+    Map<String, dynamic> attributes,
+  ) async {
     _jsAddError(error.toString(), attributesToJs(attributes, 'attributes'));
   }
 
   @override
-  Future<void> addErrorInfo(String message, RumErrorSource source,
-      StackTrace? stackTrace, Map<String, dynamic> attributes) async {
+  Future<void> addErrorInfo(
+    String message,
+    RumErrorSource source,
+    StackTrace? stackTrace,
+    String? errorType,
+    Map<String, dynamic> attributes,
+  ) async {
     _jsAddError(message, attributesToJs(attributes, 'attributes'));
   }
 
@@ -128,6 +135,11 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
+  Future<void> addFeatureFlagEvaluation(String name, Object value) async {
+    _jsAddFeatureFlagEvaluation(name, value);
+  }
+
+  @override
   Future<void> reportLongTask(DateTime at, int durationMs) async {
     // NOOP - The browser SDK will report this automatically
   }
@@ -152,7 +164,7 @@ class _RumInitOptions {
   external bool? get trackInteractions;
   external String? get defaultPrivacyLevel;
   external num? get sampleRate;
-  external num? get replaySampleRate;
+  external num? get sessionReplaySampleRate;
   external bool? get silentMultipleInit;
   external String? get proxyUrl;
   external List<String> get allowedTracingOrigins;
@@ -168,7 +180,7 @@ class _RumInitOptions {
     bool? trackInteractions,
     String? defaultPrivacyLevel,
     num? sampleRate,
-    num? replaySampleRate,
+    num? sessionReplaySampleRate,
     bool? silentMultipleInit,
     String? proxyUrl,
     List<String> allowedTracingOrigins,
@@ -192,3 +204,6 @@ external void _jsAddError(dynamic error, dynamic context);
 
 @JS('addAction')
 external void _jsAddAction(String action, dynamic context);
+
+@JS('addFeatureFlagEvaluation')
+external void _jsAddFeatureFlagEvaluation(String name, dynamic value);

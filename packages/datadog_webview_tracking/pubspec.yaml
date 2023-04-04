@@ -1,0 +1,37 @@
+name: datadog_webview_tracking
+description: A package for tracking Datadog sessions in a webview
+version: 1.1.0
+homepage: http://datadoghq.com
+repository: https://github.com/DataDog/dd-sdk-flutter
+
+environment:
+  sdk: ">=2.17.0 <3.0.0"
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  datadog_flutter_plugin: ^1.3.0
+  webview_flutter: ^4.0.4
+  webview_flutter_android: ^3.4.3
+  webview_flutter_wkwebview: ^3.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.1
+  mocktail: ^0.3.0
+  plugin_platform_interface: ^2.0.2
+  
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.datadoghq.flutter.webview
+        pluginClass: DatadogFlutterWebViewPlugin
+      ios:
+        pluginClass: DatadogWebViewTrackingPlugin
+
+dependency_overrides:
+  datadog_flutter_plugin:
+    path: ../datadog_flutter_plugin

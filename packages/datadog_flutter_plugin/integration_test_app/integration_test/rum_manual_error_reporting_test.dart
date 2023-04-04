@@ -62,6 +62,7 @@ void main() {
     var exceptionError = view.errorEvents[0];
     expect(exceptionError.message, contains(NullThrownError().toString()));
     expect(exceptionError.source, kIsWeb ? 'custom' : 'source');
+    expect(exceptionError.errorType, 'NullThrown');
     if (!kIsWeb) {
       expect(exceptionError.sourceType, 'flutter');
     }

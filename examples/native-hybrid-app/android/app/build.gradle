@@ -1,6 +1,6 @@
 
 buildscript {
-    ext.datadog_version = "1.16.0"
+    ext.datadog_version = "1+"
 }
 
 plugins {
@@ -42,7 +42,7 @@ android {
     }
 }
 
-apply from: '../../../ignore_sr_snapshots.gradle'
+apply from: '../../../../ignore_sr_snapshots.gradle'
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.7.0'

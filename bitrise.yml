@@ -77,7 +77,14 @@ workflows:
             pod repo update
 
             ./prepare.sh
-
+    - script:
+        title: Dart 2.15 fix junitreport
+        inputs:
+        - content: |-
+            #!/user/bin/env bash
+            set -e
+            dart pub global activate junitreport
+        
   run_conditioned_workflows:
     steps:
     - script:
@@ -144,6 +151,9 @@ workflows:
     - flutter-analyze@0:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor/"
+    - flutter-analyze@0:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_webview_tracking/"
     - script:
         title: Android lint and static analysis
         inputs:
@@ -167,6 +177,10 @@ workflows:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor"
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_webview_tracking"
     - xcode-test@4.0.2:
         run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         inputs:
@@ -205,6 +219,12 @@ workflows:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_webview_tracking/example"
+        - tests_path_pattern: "integration_test"
+        - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
   
   integration_ios:
     before_run:
@@ -222,6 +242,13 @@ workflows:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
         - tests_path_pattern: "integration_test"
         - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_webview_tracking/example"
+        - tests_path_pattern: "integration_test"
+        - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+        
 
   integration_web:
     steps:

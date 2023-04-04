@@ -40,7 +40,11 @@ class RumSessionDecoder {
     }
 
     for (var e in events.where((e) => e.eventType != 'view')) {
-      var visit = viewVisitsById[e.view.id];
+      var viewId = e.viewInfo?.id;
+      if (viewId == null) {
+        continue;
+      }
+      var visit = viewVisitsById[viewId];
       if (visit == null) {
         continue;
       }
@@ -75,7 +79,7 @@ class RumSessionDecoder {
 
 class RumViewVisit {
   final String id;
-  final String name;
+  final String? name;
   final String path;
 
   final List<RumViewEventDecoder> viewEvents = [];
@@ -94,11 +98,15 @@ class Dd {
 
   String? get traceId => rawData['trace_id'];
   String? get spanId => rawData['span_id'];
+  int? get plan {
+    final session = rawData['session'] as Map<String, dynamic>;
+    return session['plan'];
+  }
 }
 
 class RumEventDecoder {
   final Map<String, dynamic> rumEvent;
-  final RumViewDecoder view;
+  final RumViewInfoDecoder? viewInfo;
   final Dd dd;
 
   String get eventType => rumEvent['type'] as String;
@@ -115,15 +123,14 @@ class RumEventDecoder {
       rumEvent['telemetry']?['configuration'];
 
   Map<String, dynamic>? get context => rumEvent['context'];
+  Map<String, dynamic>? get featureFlags => rumEvent['feature_flags'];
 
   RumEventDecoder(this.rumEvent)
-      : view = RumViewDecoder(rumEvent['view']),
+      : viewInfo = RumViewInfoDecoder(rumEvent['view']),
         dd = Dd(rumEvent['_dd']);
 
   static RumEventDecoder? fromJson(Map<String, dynamic> eventData) {
-    if (eventData['view'] != null &&
-        eventData['type'] != null &&
-        eventData['_dd'] != null) {
+    if (eventData['type'] != null && eventData['_dd'] != null) {
       return RumEventDecoder(eventData);
     }
 
@@ -144,6 +151,8 @@ class Vital {
 }
 
 class RumViewEventDecoder extends RumEventDecoder {
+  final RumViewDecoder view;
+
   int get timeSpent => rumEvent['view']['time_spent'] as int;
   Vital? get flutterRasterTime {
     final rasterTime =
@@ -171,7 +180,9 @@ class RumViewEventDecoder extends RumEventDecoder {
     return null;
   }
 
-  RumViewEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+  RumViewEventDecoder(Map<String, dynamic> rumEvent)
+      : view = RumViewDecoder(rumEvent['view']),
+        super(rumEvent);
 }
 
 class RumActionEventDecoder extends RumEventDecoder {
@@ -217,7 +228,7 @@ class RumViewDecoder {
   final Map<String, dynamic> viewData;
 
   String get id => viewData['id'] as String;
-  String get name => viewData['name'] as String;
+  String? get name => viewData['name'] as String?;
   String get path => viewData['url'] as String;
   bool get isActive => viewData['is_active'] as bool;
   int get actionCount => viewData['action']['count'] as int;
@@ -230,4 +241,15 @@ class RumViewDecoder {
           .map((key, value) => MapEntry(key, value as int));
 
   RumViewDecoder(this.viewData);
+}
+
+// Similar to RumViewDecoder but can be null and with a subset of properties
+class RumViewInfoDecoder {
+  final Map<String, dynamic>? viewData;
+
+  String? get id => viewData?['id'] as String?;
+  String? get name => viewData?['name'] as String?;
+  String? get path => viewData?['url'] as String?;
+
+  RumViewInfoDecoder(this.viewData);
 }

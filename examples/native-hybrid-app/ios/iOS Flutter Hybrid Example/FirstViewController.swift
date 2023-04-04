@@ -17,31 +17,20 @@ class FirstViewController: UIViewController {
     @IBAction func openFlutterView(_ sender: Any) {
         let flutterEngine = (UIApplication.shared.delegate as! AppDelegate).flutterEngine
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
+        flutterViewController.isModalInPresentation = true
         flutterViewController.modalPresentationStyle = .overFullScreen
         flutterViewController.pushRoute("/")
         
-        DismissMethodCallHandler.shared.setDismissListener {
-            self.dismiss(animated: true) { [weak self] in
-                if let self = self {
-                    Global.rum.startView(viewController: self)
-                }
-            }
-        }
         present(flutterViewController, animated: true, completion: nil)
     }
     
     @IBAction func openSecondFlutterView(_ sender: Any) {
         let flutterEngine = (UIApplication.shared.delegate as! AppDelegate).flutterEngine
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
-        flutterViewController.modalPresentationStyle = .overFullScreen
+        flutterViewController.isModalInPresentation = true
+        flutterViewController.modalPresentationStyle = .fullScreen
         flutterViewController.pushRoute("/page2")
-        DismissMethodCallHandler.shared.setDismissListener {
-            self.dismiss(animated: true) { [weak self] in
-                if let self = self {
-                    Global.rum.startView(viewController: self)
-                }
-            }
-        }
+        
         present(flutterViewController, animated: true, completion: nil)
     }
 }

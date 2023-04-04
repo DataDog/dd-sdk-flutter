@@ -39,10 +39,20 @@ abstract class DdRumPlatform extends PlatformInterface {
   Future<void> stopResourceLoadingWithErrorInfo(
       String key, String message, String type, Map<String, Object?> attributes);
 
-  Future<void> addError(Object error, RumErrorSource source,
-      StackTrace? stackTrace, Map<String, Object?> attributes);
-  Future<void> addErrorInfo(String message, RumErrorSource source,
-      StackTrace? stackTrace, Map<String, Object?> attributes);
+  Future<void> addError(
+    Object error,
+    RumErrorSource source,
+    StackTrace? stackTrace,
+    String? errorType,
+    Map<String, Object?> attributes,
+  );
+  Future<void> addErrorInfo(
+    String message,
+    RumErrorSource source,
+    StackTrace? stackTrace,
+    String? errorType,
+    Map<String, Object?> attributes,
+  );
 
   Future<void> addUserAction(
       RumUserActionType type, String name, Map<String, Object?> attributes);
@@ -53,6 +63,8 @@ abstract class DdRumPlatform extends PlatformInterface {
 
   Future<void> addAttribute(String key, dynamic value);
   Future<void> removeAttribute(String key);
+
+  Future<void> addFeatureFlagEvaluation(String name, Object value);
 
   Future<void> reportLongTask(DateTime at, int durationMs);
   Future<void> updatePerformanceMetrics(

@@ -10,6 +10,7 @@ import DictionaryCoder
 
 public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     struct ConfigurationTelemetryOverrides {
+        var dartVersion: String?
         var trackViewsManually: Bool = true
         var trackInteractions: Bool = false
         var trackErrors: Bool = false
@@ -39,7 +40,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: registrar.messenger())
         let instance = SwiftDatadogSdkPlugin(channel: channel)
         registrar.addMethodCallDelegate(instance, channel: channel)
-        registrar.addApplicationDelegate(instance)
+        registrar.publish(instance)
 
         DatadogLogsPlugin.register(with: registrar)
         DatadogRumPlugin.register(with: registrar)
@@ -59,9 +60,8 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             let configArg = arguments["configuration"] as! [String: Any?]
             if let config = DatadogFlutterConfiguration(fromEncoded: configArg) {
                 if !Datadog.isInitialized {
-                    initialize(configuration: config)
-                    currentConfiguration = configArg as [AnyHashable: Any]
-
+                    // Set log callback before initialization so errors in initialization
+                    // get printed
                     if let setLogCallback = arguments["setLogCallback"] as? Bool,
                        setLogCallback {
                         oldConsolePrint = consolePrint
@@ -69,6 +69,9 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                             self.channel.invokeMethod("logCallback", arguments: value)
                         }
                     }
+
+                    initialize(configuration: config)
+                    currentConfiguration = configArg as [AnyHashable: Any]
                 } else {
                     let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
                     if !dict.isEqual(to: currentConfiguration!) {
@@ -79,6 +82,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                     }
                 }
             }
+            configurationTelemetryOverrides.dartVersion = arguments["dartVersion"] as? String
             result(nil)
         case "attachToExisting":
             if Datadog.isInitialized {
@@ -217,6 +221,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             configuration.trackNativeViews = self.configurationTelemetryOverrides.trackNativeViews
             configuration.trackCrossPlatformLongTasks = self.configurationTelemetryOverrides.trackCrossPlatformLongTasks
             configuration.trackFlutterPerformance = self.configurationTelemetryOverrides.trackFlutterPerformance
+            configuration.dartVersion = self.configurationTelemetryOverrides.dartVersion
             event.telemetry.configuration = configuration
 
             return event
@@ -267,12 +272,12 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                 "total": [
                     "minMs": rum?.mapperPerf.minInMs,
                     "maxMs": rum?.mapperPerf.maxInMs,
-                    "avgMs": rum?.mapperPerf.avgInMs,
+                    "avgMs": rum?.mapperPerf.avgInMs
                 ],
                 "mainThread": [
                     "minMs": rum?.mainThreadMapperPerf.minInMs,
                     "maxMs": rum?.mainThreadMapperPerf.maxInMs,
-                    "avgMs": rum?.mainThreadMapperPerf.avgInMs,
+                    "avgMs": rum?.mainThreadMapperPerf.avgInMs
                 ],
                 "mapperTimeouts": rum?.mapperTimeouts
             ]
@@ -282,11 +287,8 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         }
     }
 
-    public func applicationWillTerminate(_ application: UIApplication) {
-        _onDetach()
-    }
-
     public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
+        registrar.publish(NSNull())
         _onDetach()
     }
 
@@ -296,6 +298,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         if let oldConsolePrint = oldConsolePrint {
             consolePrint = oldConsolePrint
         }
+        oldConsolePrint = nil
 
         logs?.onDetach()
         rum?.onDetach()

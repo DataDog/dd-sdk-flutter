@@ -4,4 +4,4 @@
 
 export 'ddrum.dart';
 export 'navigation_observer.dart';
-export 'rum_gesture_detector.dart';
+export 'rum_user_action_detector.dart';

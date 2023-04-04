@@ -18,10 +18,10 @@ import assertk.assertions.isTrue
 import com.datadog.android.Datadog
 import com.datadog.android.core.configuration.Configuration
 import com.datadog.android.core.configuration.Credentials
-import com.datadog.android.core.model.UserInfo
 import com.datadog.android.privacy.TrackingConsent
 import com.datadog.android.rum.GlobalRum
 import com.datadog.android.rum.RumMonitor
+import com.datadog.android.v2.api.context.UserInfo
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
@@ -58,7 +58,7 @@ class DatadogSdkPluginTest {
             mock.versionCode = 1124
         }
         val mockPackageManager = mock<PackageManager> {
-            on { getPackageInfo(any<String>(), any()) } doReturn mockPackageInfo
+            on { getPackageInfo(any<String>(), any<Int>()) } doReturn mockPackageInfo
         }
         val mockPreferences = mock<SharedPreferences>()
         mockContext = mock<Context>() {
@@ -95,7 +95,7 @@ class DatadogSdkPluginTest {
         )),
         Contract("telemetryError", mapOf(
             "message" to ContractParameter.Type(SupportedContractType.STRING)
-        ))
+        )),
     )
 
     @Test
@@ -201,6 +201,36 @@ class DatadogSdkPluginTest {
         assertThat(plugin.logsPlugin).isNotNull()
         verify(mockResult).success(null)
     }
+
+    @Test
+    fun `M initialize dartVersion telemetry W called through MethodChannel { dartVersion }`(
+        @StringForgery clientToken: String,
+        @StringForgery environment: String,
+        @StringForgery applicationId: String,
+        @StringForgery dartVersion: String
+    ) {
+        // GIVEN
+        val methodCall = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to mapOf(
+                    "clientToken" to clientToken,
+                    "env" to environment,
+                    "trackingConsent" to "TrackingConsent.granted",
+                    "nativeCrashReportEnabled" to true
+                ),
+                "dartVersion" to dartVersion
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        assertThat(plugin.telemetryOverrides.dartVersion).isEqualTo(dartVersion)
+    }
+
 
     @Test
     fun `M not issue warning W initialize called with same configuration`(

@@ -4,6 +4,28 @@
 
 
 
+## 1.3.2
+
+* Add Web View tracking through the `webview_flutter` package.
+* Bind `consolePrint` callback earlier in iOS to make sure initialization errors can be seen in the console. See [#328]
+* Fix `version` not properly populating on Flutter Web. See [#334]
+* Improve `RumUserActionDetector` to detect more widgets, including `BottomNavigationBar`, `Tab`, `Switch`, and `Radio`
+* Remove an extra call to `FlutterError.presentError` made in `runApp`.  See [#358]
+* Set `sessionReplaySampleRate` to 0 during initialization for Browser as Session Replay is not supported.
+* Support `errorType` on `DdRum.addError` and `DdRum.addErrorInfo`. See [#372]
+
+## 1.2.3
+
+* Fix b3 and tracecontext using incorrect Trace and Span ids during request tracking.
+
+## 1.2.2
+
+* Potentially fix a crash on exit on iOS. See [#341]
+
+## 1.2.1
+
+* Remove reference to a gradle file that was not included in `pub deploy`
+
 ## 1.2.0
 
 * 🔥 BREAKING - Log functions (`debug`, `info`, `warn`) now use `attributes` as a named argument instead of a positional argument.
@@ -134,3 +156,7 @@
 [#280]: https://github.com/DataDog/dd-sdk-flutter/issues/280
 [#297]: https://github.com/DataDog/dd-sdk-flutter/issues/297
 [#305]: https://github.com/DataDog/dd-sdk-flutter/issues/305
+[#328]: https://github.com/DataDog/dd-sdk-flutter/issues/328
+[#334]: https://github.com/DataDog/dd-sdk-flutter/issues/334
+[#358]: https://github.com/DataDog/dd-sdk-flutter/issues/358
+[#372]: https://github.com/DataDog/dd-sdk-flutter/issues/372

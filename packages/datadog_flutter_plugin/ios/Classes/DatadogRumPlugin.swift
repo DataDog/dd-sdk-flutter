@@ -200,9 +200,17 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 let encodedAttributes = castFlutterAttributesToSwift(attributes)
                 let source = RUMErrorSource.parseFromFlutter(sourceString)
                 let stackTrace = arguments["stackTrace"] as? String
+                let errorType = arguments["errorType"] as? String
 
-                rum.addError(message: message, source: source, stack: stackTrace, attributes: encodedAttributes,
-                             file: nil, line: nil)
+                rum.addError(
+                    message: message,
+                    type: errorType,
+                    source: source,
+                    stack: stackTrace,
+                    attributes: encodedAttributes,
+                    file: nil,
+                    line: nil
+                )
                 result(nil)
             } else {
                 result(
@@ -262,6 +270,17 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         case "removeAttribute":
             if let key = arguments["key"] as? String {
                 rum.removeAttribute(forKey: key)
+                result(nil)
+            } else {
+                result(
+                    FlutterError.missingParameter(methodName: call.method)
+                )
+            }
+        case "addFeatureFlagEvaluation":
+            if let name = arguments["name"] as? String,
+               let value = arguments["value"] {
+                let encodableValue = castAnyToEncodable(value)
+                rum.addFeatureFlagEvaluation(name: name, value: encodableValue)
                 result(nil)
             } else {
                 result(
@@ -372,7 +391,6 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             mapperPerf.finishUnsampled()
             return rumViewEvent
         }
-
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 

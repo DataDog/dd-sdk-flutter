@@ -157,11 +157,17 @@ class DdRum {
 
   /// Notifies that the Exception or Error [error] occurred in currently
   /// presented View, with an origin of [source]. You can optionally set
-  /// additional [attributes] for this error
-  void addError(Object error, RumErrorSource source,
-      {StackTrace? stackTrace, Map<String, Object?> attributes = const {}}) {
+  /// additional [attributes] for this error, an [errorType] and a
+  /// [stackTrace]
+  void addError(
+    Object error,
+    RumErrorSource source, {
+    StackTrace? stackTrace,
+    String? errorType,
+    Map<String, Object?> attributes = const {},
+  }) {
     wrap('rum.addError', logger, attributes, () {
-      return _platform.addError(error, source, stackTrace, {
+      return _platform.addError(error, source, stackTrace, errorType, {
         DatadogPlatformAttributeKey.errorSourceType: 'flutter',
         ...attributes
       });
@@ -170,11 +176,17 @@ class DdRum {
 
   /// Notifies that an error occurred in currently presented View, with the
   /// supplied [message] and with an origin of [source]. You can optionally
-  /// supply a [stackTrace] and send additional [attributes] for this error
-  void addErrorInfo(String message, RumErrorSource source,
-      {StackTrace? stackTrace, Map<String, Object?> attributes = const {}}) {
+  /// supply a [stackTrace], [errorType], and send additional [attributes] for
+  /// this error
+  void addErrorInfo(
+    String message,
+    RumErrorSource source, {
+    StackTrace? stackTrace,
+    String? errorType,
+    Map<String, Object?> attributes = const {},
+  }) {
     wrap('rum.addErrorInfo', logger, attributes, () {
-      return _platform.addErrorInfo(message, source, stackTrace, {
+      return _platform.addErrorInfo(message, source, stackTrace, errorType, {
         DatadogPlatformAttributeKey.errorSourceType: 'flutter',
         ...attributes
       });
@@ -295,6 +307,15 @@ class DdRum {
   void removeAttribute(String key) {
     wrap('rum.removeAttribute', logger, null, () {
       return _platform.removeAttribute(key);
+    });
+  }
+
+  /// Adds the result of evaluating a feature flag with a given [name] and
+  /// [value] to the view. Feature flag evaluations are local to the active view
+  /// and are cleared when the view is stopped
+  void addFeatureFlagEvaluation(String name, Object value) {
+    wrap('rum.addFeatureFlagEvaluation', logger, null, () {
+      return _platform.addFeatureFlagEvaluation(name, value);
     });
   }
 

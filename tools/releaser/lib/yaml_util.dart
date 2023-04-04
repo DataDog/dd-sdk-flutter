@@ -18,10 +18,26 @@ class RemoveDependencyOverridesCommand extends Command {
       logger.shout('⁉️ Could not find pubspec.yaml at ${pubspecFile.path}');
       return false;
     }
+
+    await _removeDependencyOverrides(logger, pubspecFile, args.dryRun);
+    final examplePubspec =
+        File(path.join(args.packageRoot, 'example', 'pubspec.yaml'));
+    if (await examplePubspec.exists()) {
+      await _removeDependencyOverrides(logger, examplePubspec, args.dryRun);
+    }
+
+    return true;
+  }
+
+  Future<void> _removeDependencyOverrides(
+    Logger logger,
+    File pubspecFile,
+    bool dryRun,
+  ) async {
     logger.info('🔀 Removing dependency_overrides from ${pubspecFile.path}');
 
     var inDependencyOverrides = false;
-    await transformFile(pubspecFile, logger, args.dryRun, (element) {
+    await transformFile(pubspecFile, logger, dryRun, (element) {
       if (inDependencyOverrides) {
         // If the line isn't empty and starts with characters, we're in a new section
         if (element.isNotEmpty && element.startsWith(RegExp(r'\S+'))) {
@@ -34,7 +50,5 @@ class RemoveDependencyOverridesCommand extends Command {
 
       return inDependencyOverrides ? null : element;
     });
-
-    return true;
   }
 }

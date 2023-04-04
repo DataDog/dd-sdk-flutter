@@ -39,8 +39,10 @@ void main() {
                     .split('\n')
                     .map<dynamic>((e) => json.decode(e))
                     .toList();
+              } on TypeError {
+                // This is likely from RUM Telemetry
+                return null;
               }
-              // return null;
             })
             .whereType<List>()
             .expand<dynamic>((e) => e)

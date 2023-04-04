@@ -89,6 +89,10 @@ void main() {
       );
     }
 
+    for (var log in rumLog) {
+      expect(log.dd.plan, 1);
+    }
+
     final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, kIsWeb ? 4 : 3);
 
@@ -116,6 +120,7 @@ void main() {
       expect(view1.viewEvents.last.view.errorCount, 1);
     }
     expect(view1.viewEvents.last.context![contextKey], expectedContextValue);
+    expect(view1.viewEvents.last.featureFlags?.isEmpty, isTrue);
 
     expect(view1.actionEvents[baseAction + 0].actionType,
         kIsWeb ? 'custom' : 'tap');
@@ -185,6 +190,9 @@ void main() {
       // let's not check it for now.
       expect(view2.viewEvents.last.context![contextKey], expectedContextValue);
     }
+    expect(view2.viewEvents.last.featureFlags?['mock_flag_a'], false);
+    expect(view2.viewEvents.last.featureFlags?['mock_flag_b'], 'mock_value');
+
     const errorMessage =
         kIsWeb ? 'Provided "Simulated view error"' : 'Simulated view error';
     expect(view2.errorEvents[0].message, errorMessage);

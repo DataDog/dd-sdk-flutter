@@ -10,6 +10,7 @@ import android.os.Looper
 import com.datadog.android.Datadog
 import com.datadog.android.rum.GlobalRum
 import com.datadog.android.rum.RumActionType
+import com.datadog.android.rum.RumAttributes
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumPerformanceMetric
@@ -47,6 +48,7 @@ class DatadogRumPlugin(
         const val PARAM_MESSAGE = "message"
         const val PARAM_SOURCE = "source"
         const val PARAM_STACK_TRACE = "stackTrace"
+        const val PARAM_ERROR_TYPE = "errorType"
         const val PARAM_TYPE = "type"
         const val PARAM_BUILD_TIMES = "buildTimes"
         const val PARAM_RASTER_TIMES = "rasterTimes"
@@ -87,7 +89,7 @@ class DatadogRumPlugin(
         GlobalRum.registerIfAbsent(rum!!)
     }
 
-    @Suppress("LongMethod", "ComplexMethod", "ComplexCondition")
+    @Suppress("LongMethod", "ComplexMethod", "ComplexCondition", "NestedBlockDepth")
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         try {
             when (call.method) {
@@ -175,10 +177,18 @@ class DatadogRumPlugin(
                     val message = call.argument<String>(PARAM_MESSAGE)
                     val sourceString = call.argument<String>(PARAM_SOURCE)
                     val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                    var stackTrace = call.argument<String>(PARAM_STACK_TRACE)
+                    val stackTrace = call.argument<String>(PARAM_STACK_TRACE)
+                    val errorType = call.argument<String>(PARAM_ERROR_TYPE)
                     if (message != null && sourceString != null && attributes != null) {
+                        var fullAttributes = attributes
+                        if (errorType != null) {
+                            fullAttributes = attributes + Pair(
+                                RumAttributes.INTERNAL_ERROR_TYPE,
+                                errorType
+                            )
+                        }
                         val source = parseRumErrorSource(sourceString)
-                        rum?.addErrorWithStacktrace(message, source, stackTrace, attributes)
+                        rum?.addErrorWithStacktrace(message, source, stackTrace, fullAttributes)
                         result.success(null)
                     } else {
                         result.missingParameter(call.method)
@@ -256,6 +266,16 @@ class DatadogRumPlugin(
                     val rasterTimes = call.argument<List<Double>>(PARAM_RASTER_TIMES)
                     if (buildTimes != null && rasterTimes != null) {
                         updatePerformanceMetrics(buildTimes, rasterTimes)
+                        result.success(null)
+                    } else {
+                        result.missingParameter(call.method)
+                    }
+                }
+                "addFeatureFlagEvaluation" -> {
+                    val name = call.argument<String>(PARAM_NAME)
+                    val value = call.argument<Any>(PARAM_VALUE)
+                    if (name != null && value != null) {
+                        rum?.addFeatureFlagEvaluation(name, value)
                         result.success(null)
                     } else {
                         result.missingParameter(call.method)

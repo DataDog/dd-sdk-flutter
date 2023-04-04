@@ -313,6 +313,7 @@ public extension Datadog.Configuration.DatadogEndpoint {
         case "DatadogSite.us5": return .us5
         case "DatadogSite.eu1": return .eu1
         case "DatadogSite.us1Fed": return .us1_fed
+        case "DatadogSite.ap1": return .ap1
         default: return .us1
         }
     }

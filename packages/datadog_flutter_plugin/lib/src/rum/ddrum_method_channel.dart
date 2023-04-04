@@ -105,18 +105,29 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> addError(Object error, RumErrorSource source,
-      StackTrace? stackTrace, Map<String, Object?> attributes) {
-    return addErrorInfo(error.toString(), source, stackTrace, attributes);
+  Future<void> addError(
+    Object error,
+    RumErrorSource source,
+    StackTrace? stackTrace,
+    String? errorType,
+    Map<String, Object?> attributes,
+  ) {
+    return addErrorInfo(
+        error.toString(), source, stackTrace, errorType, attributes);
   }
 
   @override
-  Future<void> addErrorInfo(String message, RumErrorSource source,
-      StackTrace? stackTrace, Map<String, Object?> attributes) {
+  Future<void> addErrorInfo(
+      String message,
+      RumErrorSource source,
+      StackTrace? stackTrace,
+      String? errorType,
+      Map<String, Object?> attributes) {
     return methodChannel.invokeMethod('addError', {
       'message': message,
       'source': source.toString(),
       'stackTrace': stackTrace?.toString(),
+      'errorType': errorType,
       'attributes': attributes
     });
   }
@@ -154,6 +165,14 @@ class DdRumMethodChannel extends DdRumPlatform {
   @override
   Future<void> removeAttribute(String key) {
     return methodChannel.invokeMethod('removeAttribute', {'key': key});
+  }
+
+  @override
+  Future<void> addFeatureFlagEvaluation(String name, Object value) {
+    return methodChannel.invokeMethod('addFeatureFlagEvaluation', {
+      'name': name,
+      'value': value,
+    });
   }
 
   @override
