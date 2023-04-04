@@ -58,6 +58,21 @@ void main() {
     //   * logger-attribute2 should always be null
     //   * 'message' is replaced by 'xxxxxxxx'
     //   * the info message from the second_logger is not sent
+
+    if (logs.length != 5) {
+      // About to fail, output all logs for debugging purposes
+      // ignore: avoid_print
+      print('All logs recieved: ');
+      for (final log in logs) {
+        try {
+          // ignore: avoid_print
+          print('${log.status}: ${log.message}');
+        } catch (e) {
+          // ignore: avoid_print
+          print('Not a log?: ${json.encode(log.log)}');
+        }
+      }
+    }
     expect(logs.length, equals(5));
 
     List<LogDecoder> firstLoggerLogs =
