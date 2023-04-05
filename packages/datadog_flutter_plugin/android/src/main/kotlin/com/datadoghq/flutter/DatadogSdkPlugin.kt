@@ -5,11 +5,9 @@
  */
 package com.datadoghq.flutter
 
-import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import androidx.annotation.NonNull
 import com.datadog.android.Datadog
 import com.datadog.android._InternalProxy
 import com.datadog.android.core.configuration.Configuration
@@ -74,8 +72,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     val rumPlugin: DatadogRumPlugin = DatadogRumPlugin()
 
     override fun onAttachedToEngine(
-        @SuppressLint("KotlinNullnessAnnotation")
-        @NonNull
         flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
     ) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter")
@@ -88,10 +84,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     @Suppress("LongMethod")
-    override fun onMethodCall(
-        @SuppressLint("KotlinNullnessAnnotation") @NonNull call: MethodCall,
-        @SuppressLint("KotlinNullnessAnnotation") @NonNull result: Result,
-    ) {
+    override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
             "initialize" -> {
                 val configArg = call.argument<Map<String, Any?>>("configuration")
@@ -475,11 +468,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         result.success(null)
     }
 
-    override fun onDetachedFromEngine(
-        @SuppressLint("KotlinNullnessAnnotation")
-        @NonNull
-        binding: FlutterPlugin.FlutterPluginBinding
-    ) {
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
 
         logsPlugin.detachFromEngine()
