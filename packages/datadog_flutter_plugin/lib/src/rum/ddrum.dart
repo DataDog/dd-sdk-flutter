@@ -319,6 +319,16 @@ class DdRum {
     });
   }
 
+  /// Stops the current session. A new session will start in response to a call
+  /// to [startView], [addUserAction], or [startUserAction]. If the session is
+  /// started because of a call to [addUserAction] or [startUserAction], the
+  /// last know view is restarted in the new session.
+  void stopSession() {
+    wrap('rum.stopSession', logger, null, () {
+      return _platform.stopSession();
+    });
+  }
+
   /// Uses the configured [RumConfiguration.tracingSamplingRate] to determine if
   /// a sample should be traced.
   ///

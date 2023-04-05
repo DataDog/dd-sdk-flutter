@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Add the ability to stop a RUM session. A new session is started on the next user interaction or on the next view start. See [#147]
 
 ## 1.3.2
 
@@ -146,6 +146,7 @@
 
 [#133]: https://github.com/DataDog/dd-sdk-flutter/issues/133
 [#143]: https://github.com/DataDog/dd-sdk-flutter/issues/143
+[#147]: https://github.com/DataDog/dd-sdk-flutter/issues/147
 [#148]: https://github.com/DataDog/dd-sdk-flutter/issues/148
 [#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159
 [#175]: https://github.com/DataDog/dd-sdk-flutter/issues/175

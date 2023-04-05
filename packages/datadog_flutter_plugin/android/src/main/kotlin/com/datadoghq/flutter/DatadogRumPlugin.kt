@@ -106,6 +106,7 @@ class DatadogRumPlugin(
                 "reportLongTask" -> reportLongTask(call, result)
                 "updatePerformanceMetrics" -> updatePerformanceMetrics(call, result)
                 "addFeatureFlagEvaluation" -> addFeatureFlagEvaluation(call, result)
+                "stopSession" -> stopSession(call, result)
                 else -> {
                     result.notImplemented()
                 }
@@ -333,6 +334,11 @@ class DatadogRumPlugin(
         } else {
             result.missingParameter(call.method)
         }
+    }
+
+    private fun stopSession(call: MethodCall, result: Result) {
+        rum?.stopSession()
+        result.success(null)
     }
 
     @Suppress("TooGenericExceptionCaught")

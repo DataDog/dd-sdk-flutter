@@ -154,7 +154,8 @@ class DatadogRumPluginTests: XCTestCase {
         Contract(methodName: "addFeatureFlagEvaluation", requiredParameters: [
             "name": .string,
             "value": .string
-        ])
+        ]),
+        Contract(methodName: "stopSession", requiredParameters: [:])
     ]
 
     func testRumPlugin_ContractViolationsThrowErrors() {

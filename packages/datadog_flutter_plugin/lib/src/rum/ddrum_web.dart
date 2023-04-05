@@ -140,6 +140,11 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
+  Future<void> stopSession() async {
+    _jsStopSession();
+  }
+
+  @override
   Future<void> reportLongTask(DateTime at, int durationMs) async {
     // NOOP - The browser SDK will report this automatically
   }
@@ -207,3 +212,6 @@ external void _jsAddAction(String action, dynamic context);
 
 @JS('addFeatureFlagEvaluation')
 external void _jsAddFeatureFlagEvaluation(String name, dynamic value);
+
+@JS('stopSession')
+external void _jsStopSession();

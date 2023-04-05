@@ -264,6 +264,23 @@ void main() {
     ]);
   });
 
+  test('addFeatureFlagEvaluation calls to platform', () async {
+    await ddRumPlatform.addFeatureFlagEvaluation('key_name', 'key_value');
+
+    expect(log, [
+      isMethodCall('addFeatureFlagEvaluation', arguments: {
+        'name': 'key_name',
+        'value': 'key_value',
+      })
+    ]);
+  });
+
+  test('stopSession calls to platform', () async {
+    await ddRumPlatform.stopSession();
+
+    expect(log, [isMethodCall('stopSession', arguments: <String, Object?>{})]);
+  });
+
   test('reportLongTask calls to platform', () async {
     final now = DateTime.now();
     final duration = Random().nextInt(1000) + 100;

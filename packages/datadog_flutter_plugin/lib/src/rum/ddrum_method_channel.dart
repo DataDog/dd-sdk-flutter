@@ -176,6 +176,11 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
+  Future<void> stopSession() {
+    return methodChannel.invokeMethod('stopSession', <String, Object?>{});
+  }
+
+  @override
   Future<void> reportLongTask(DateTime at, int durationMs) {
     return methodChannel.invokeMethod('reportLongTask', {
       'at': at.millisecondsSinceEpoch,

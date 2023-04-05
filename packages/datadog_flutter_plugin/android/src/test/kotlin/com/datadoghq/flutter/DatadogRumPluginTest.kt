@@ -554,7 +554,8 @@ class DatadogRumPluginTest {
         Contract("addFeatureFlagEvaluation", mapOf(
             "name" to ContractParameter.Type(SupportedContractType.STRING),
             "value" to ContractParameter.Type(SupportedContractType.ANY),
-        ))
+        )),
+        Contract("stopSession", mapOf())
     )
 
     @Test
