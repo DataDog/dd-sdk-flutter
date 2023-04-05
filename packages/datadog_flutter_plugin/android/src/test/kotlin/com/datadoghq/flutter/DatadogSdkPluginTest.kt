@@ -320,7 +320,7 @@ class DatadogSdkPluginTest {
         // GIVEN
         val methodCall = MethodCall(
             "attachToExisting",
-            mapOf<String, Object?>()
+            mapOf<String, Any?>()
         )
         val mockResult = mock<MethodChannel.Result>()
         mockkStatic(Log::class)
@@ -356,7 +356,7 @@ class DatadogSdkPluginTest {
 
         val methodCall = MethodCall(
             "attachToExisting",
-            mapOf<String, Object?>()
+            mapOf<String, Any?>()
         )
         val mockResult = mock<MethodChannel.Result>()
 
@@ -366,11 +366,11 @@ class DatadogSdkPluginTest {
         // THEN
         verify(mockResult).success(argThat {
             var rumEnabled = false
-            val map = this as? Map<String, Any>
+            val map = this as? Map<*, *>
             map?.let {
                 rumEnabled = (map["rumEnabled"] as? Boolean) ?: false
             }
-            rumEnabled == false
+            !rumEnabled
         })
     }
 
@@ -401,7 +401,7 @@ class DatadogSdkPluginTest {
 
         val methodCall = MethodCall(
             "attachToExisting",
-            mapOf<String, Object?>()
+            mapOf<String, Any?>()
         )
         val mockResult = mock<MethodChannel.Result>()
 
@@ -411,7 +411,7 @@ class DatadogSdkPluginTest {
         // THEN
         verify(mockResult).success(argThat {
             var correct = false
-            val map = this as? Map<String, Any>
+            val map = this as? Map<*, *>
             map?.let {
                 correct = (map["rumEnabled"] as? Boolean) ?: false
             }
@@ -432,7 +432,7 @@ class DatadogSdkPluginTest {
         )
         plugin.initialize(configuration)
 
-        var methodCall = MethodCall(
+        val methodCall = MethodCall(
             "setSdkVerbosity",
             mapOf( "value" to "Verbosity.info" )
         )
@@ -442,9 +442,9 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        var sdkCore: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
-        val setVerbosity: Int = sdkCore?.getFieldValue("libraryVerbosity")
-        assertThat(setVerbosity).equals(Log.INFO)
+        val sdkCore: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
+        val setVerbosity: Int = sdkCore.getFieldValue("libraryVerbosity")
+        assertThat(setVerbosity).isEqualTo(Log.INFO)
         verify(mockResult).success(null)
     }
 
@@ -461,7 +461,7 @@ class DatadogSdkPluginTest {
         )
         plugin.initialize(configuration)
 
-        var methodCall = MethodCall(
+        val methodCall = MethodCall(
             "setTrackingConsent",
             mapOf( "value" to "TrackingConsent.notGranted" )
         )
@@ -471,11 +471,11 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        var coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
-            ?.getFieldValue("coreFeature")
-        var trackingConsent: TrackingConsent? = coreFeature
-            ?.getFieldValue<Any, Any>("trackingConsentProvider")
-            ?.getFieldValue("consent")
+        val coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
+            .getFieldValue("coreFeature")
+        val trackingConsent: TrackingConsent? = coreFeature
+            .getFieldValue<Any, Any>("trackingConsentProvider")
+            .getFieldValue("consent")
         assertThat(trackingConsent).isEqualTo(TrackingConsent.NOT_GRANTED)
         verify(mockResult).success(null)
     }
@@ -496,7 +496,7 @@ class DatadogSdkPluginTest {
         )
         plugin.initialize(configuration)
 
-        var methodCall = MethodCall(
+        val methodCall = MethodCall(
             "setUserInfo",
             mapOf(
                 "id" to id,
@@ -511,11 +511,11 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        var coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
-            ?.getFieldValue("coreFeature")
-        var userInfo: UserInfo? = coreFeature
-            ?.getFieldValue<Any, Any>("userInfoProvider")
-            ?.getFieldValue("internalUserInfo")
+        val coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
+            .getFieldValue("coreFeature")
+        val userInfo: UserInfo? = coreFeature
+            .getFieldValue<Any, Any>("userInfoProvider")
+            .getFieldValue("internalUserInfo")
         assertThat(userInfo?.id).isEqualTo(id)
         assertThat(userInfo?.name).isEqualTo(name)
         assertThat(userInfo?.email).isEqualTo(email)
@@ -540,7 +540,7 @@ class DatadogSdkPluginTest {
         val name = forge.aNullable { forge.aString() }
         val email = forge.aNullable { forge.aString() }
         val extraInfo = forge.exhaustiveAttributes()
-        var methodCall = MethodCall(
+        val methodCall = MethodCall(
             "setUserInfo",
             mapOf(
                 "id" to id,
@@ -555,11 +555,11 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        var coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
-            ?.getFieldValue("coreFeature")
-        var userInfo: UserInfo? = coreFeature
-            ?.getFieldValue<Any, Any>("userInfoProvider")
-            ?.getFieldValue("internalUserInfo")
+        val coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
+            .getFieldValue("coreFeature")
+        val userInfo: UserInfo? = coreFeature
+            .getFieldValue<Any, Any>("userInfoProvider")
+            .getFieldValue("internalUserInfo")
         assertThat(userInfo?.id).isEqualTo(id)
         assertThat(userInfo?.name).isEqualTo(name)
         assertThat(userInfo?.email).isEqualTo(email)
@@ -581,7 +581,7 @@ class DatadogSdkPluginTest {
         plugin.initialize(configuration)
 
         val extraInfo = forge.exhaustiveAttributes()
-        var methodCall = MethodCall(
+        val methodCall = MethodCall(
             "addUserExtraInfo",
             mapOf(
                 "extraInfo" to extraInfo
@@ -593,11 +593,11 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        var coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
-            ?.getFieldValue("coreFeature")
-        var userInfo: UserInfo? = coreFeature
-            ?.getFieldValue<Any, Any>("userInfoProvider")
-            ?.getFieldValue("internalUserInfo")
+        val coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
+            .getFieldValue("coreFeature")
+        val userInfo: UserInfo? = coreFeature
+            .getFieldValue<Any, Any>("userInfoProvider")
+            .getFieldValue("internalUserInfo")
         assertThat(userInfo?.additionalProperties).isEqualTo(extraInfo)
         verify(mockResult).success(null)
     }
@@ -624,7 +624,7 @@ class DatadogSdkPluginTest {
         val trackFlutterPerformance = forge.aBool()
 
         fun callAndCheck(property: String, value: Boolean, check: () -> Unit) {
-            var methodCall = MethodCall(
+            val methodCall = MethodCall(
                 "updateTelemetryConfiguration",
                 mapOf(
                     "option" to property,

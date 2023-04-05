@@ -8,7 +8,6 @@ package com.datadoghq.flutter
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import androidx.annotation.NonNull
 import com.datadog.android.Datadog
 import com.datadog.android._InternalProxy
 import com.datadog.android.core.configuration.Configuration
@@ -73,7 +72,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     val rumPlugin: DatadogRumPlugin = DatadogRumPlugin()
 
     override fun onAttachedToEngine(
-        @NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
+        flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
     ) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter")
         channel.setMethodCallHandler(this)
@@ -85,7 +84,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     @Suppress("LongMethod")
-    override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+    override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
             "initialize" -> {
                 val configArg = call.argument<Map<String, Any?>>("configuration")
@@ -203,7 +202,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         _InternalProxy.setTelemetryConfigurationEventMapper(
             configBuilder,
             object : EventMapper<TelemetryConfigurationEvent> {
-                override fun map(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent? {
+                override fun map(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent {
                     return mapTelemetryConfiguration(event)
                 }
             }
@@ -281,7 +280,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         return event
     }
 
-    fun simpleInvokeOn(methodName: String, target: Any) {
+    private fun simpleInvokeOn(methodName: String, target: Any) {
         val klass = target.javaClass
         val method = klass.declaredMethods.firstOrNull {
             it.name == methodName || it.name == "$methodName\$dd_sdk_android_release"
@@ -381,6 +380,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     ),
                     object : Result {
                         override fun success(result: Any?) {
+                            @Suppress("UNCHECKED_CAST")
                             modifiedJson = result as? Map<String, Any?>
                             latch.countDown()
                         }
@@ -468,7 +468,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         result.success(null)
     }
 
-    override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
 
         logsPlugin.detachFromEngine()

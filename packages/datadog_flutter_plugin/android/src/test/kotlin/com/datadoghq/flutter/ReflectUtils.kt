@@ -16,7 +16,7 @@ import java.lang.reflect.Method
  * @param params the parameters to provide the method
  * @return the result from the invoked method
  */
-@Suppress("SpreadOperator", "UNCHECKED_CAST", "TooGenericExceptionCaught")
+@Suppress("SpreadOperator", "UNCHECKED_CAST", "TooGenericExceptionCaught", "UNUSED")
 fun <T : Any> T.invokeMethod(
     methodName: String,
     vararg params: Any?

@@ -11,7 +11,6 @@ import org.mockito.kotlin.description
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
-import kotlin.reflect.KType
 
 enum class SupportedContractType {
     STRING,
@@ -43,7 +42,7 @@ data class Contract(
                     is ContractParameter.Type -> forgeValue(forge, contractParameter.type)
                 }
 
-                arguments.put(param.key, value)
+                arguments[param.key] = value
             }
         }
 
@@ -55,7 +54,7 @@ data class Contract(
         return arguments
     }
 
-    private fun forgeValue(forge: Forge, type: SupportedContractType): Any? {
+    private fun forgeValue(forge: Forge, type: SupportedContractType): Any {
         return when(type) {
             SupportedContractType.STRING -> forge.anExtendedAsciiString()
             SupportedContractType.MAP -> forge.exhaustiveAttributes()
@@ -77,13 +76,17 @@ data class Contract(
     }
 }
 
-fun testContracts(contracts: List<Contract>,
-                  forge: Forge,
-                  plugin: MethodChannel.MethodCallHandler,
-                  extraArguments: Map<String, Any?>? = null) {
-    fun callContract(contract: Contract,
-                     arguments: Map<String, Any?>,
-                     plugin: MethodChannel.MethodCallHandler): MethodChannel.Result {
+fun testContracts(
+    contracts: List<Contract>,
+    forge: Forge,
+    plugin: MethodChannel.MethodCallHandler,
+    extraArguments: Map<String, Any?>? = null
+) {
+    fun callContract(
+        contract: Contract,
+        arguments: Map<String, Any?>,
+        plugin: MethodChannel.MethodCallHandler
+    ): MethodChannel.Result {
         val call = MethodCall(contract.methodName, arguments)
         val mockResult = mock<MethodChannel.Result>()
         plugin.onMethodCall(call, mockResult)
@@ -93,11 +96,11 @@ fun testContracts(contracts: List<Contract>,
 
     for(contract in contracts) {
         // Test that a proper contract does not throw a contract violation
-        val arguments = contract.createContractArguments(forge, extraArguments = extraArguments)
-        val result = callContract(contract, arguments, plugin)
+        val allArguments = contract.createContractArguments(forge, extraArguments = extraArguments)
+        val successResult = callContract(contract, allArguments, plugin)
         verify(
-            result,
-            description("${contract.methodName} did not succeed with all required parmeters provided")
+            successResult,
+            description("${contract.methodName} did not succeed with all required parameters provided")
         ).success(anyOrNull())
 
         for (param in contract.requiredParameters) {
