@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -19,6 +20,9 @@ void main() {
     var recordedSession = await openTestScenario(
       tester,
       menuTitle: 'Logging Scenario',
+      additionalConfig: {
+        DatadogConfigKey.telemetryConfigurationSampleRate: 0.0,
+      },
     );
 
     var logs = <LogDecoder>[];
@@ -38,15 +42,17 @@ void main() {
                     .toList();
               } on TypeError {
                 // This might be the telemetry event
-                return e.jsonData;
+                return null;
               }
               // return null;
             })
             .whereType<List>()
             .expand<dynamic>((e) => e)
             .whereType<Map<String, Object?>>()
-            // Ignore RUM sessions
-            .where((e) => !(e).containsKey('session'))
+            // Ignore RUM sessions and telemetry
+            .where((e) {
+              return !(e).containsKey('session') && e['type'] != 'telemetry';
+            })
             .forEach((e) => logs.add(LogDecoder(e)));
         return logs.length >= 6;
       },
@@ -118,8 +124,8 @@ void main() {
     expect(secondLoggerLogs[1].log['logger-attribute2'], isNull);
     expect(secondLoggerLogs[1].errorMessage, 'Error Message');
     expect(secondLoggerLogs[1].errorStack, isNotNull);
-    expect(
-        getNestedProperty<String>('logger.name', secondLoggerLogs[1].log), 'second_logger');
+    expect(getNestedProperty<String>('logger.name', secondLoggerLogs[1].log),
+        'second_logger');
 
     for (final log in logs) {
       expect(log.serviceName,
