@@ -74,9 +74,8 @@ workflows:
         - content: |-
             #!/usr/bin/env bash
             set -e
-            pod repo update
+            set | echo
 
-            ./prepare.sh
     - script:
         title: Dart 2.15 fix junitreport
         inputs:
