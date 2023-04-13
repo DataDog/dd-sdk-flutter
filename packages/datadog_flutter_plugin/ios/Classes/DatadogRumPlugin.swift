@@ -316,6 +316,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
+        case "stopSession":
+            rum.stopSession()
+            result(nil)
         default:
             result(FlutterMethodNotImplemented)
         }
