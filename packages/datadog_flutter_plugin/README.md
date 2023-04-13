@@ -1,4 +1,3 @@
-
 ## Overview
 
 Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real-time performance and user journeys of your Flutter application’s individual users.
@@ -7,16 +6,13 @@ RUM supports monitoring for Flutter Android and iOS applications for Flutter 2.8
 
 ## Current Datadog SDK Versions
 
-[//]: # (SDK Table)
-        
+[//]: # "SDK Table"
+
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 1.17.0 | 1.18.1 | 4.x.x |
+| 1.17.0  |   1.18.1    |    4.x.x    |
 
-[//]: # (End SDK Table)
-
-
-
+[//]: # "End SDK Table"
 
 ### iOS
 
@@ -82,7 +78,7 @@ For more information on available configuration options, see the [DdSdkConfigura
 
 You can initialize RUM using one of two methods in the `main.dart` file.
 
-1. Use `DatadogSdk.runApp`, which automatically sets up error reporting and resource tracing. 
+1. Use `DatadogSdk.runApp`, which automatically sets up error reporting and resource tracing.
 
    ```dart
    await DatadogSdk.runApp(configuration, () async {
@@ -154,9 +150,10 @@ MaterialApp(
 
 This works if you are using named routes or if you have supplied a name to the `settings` parameter of your `PageRoute`.
 
-Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction with the `DatadogNavigationObserverProvider` property to start and stop your RUM views automatically. With `DatadogRouteAwareMixin`, move any logic from `initState` to `didPush`. 
+Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction with the `DatadogNavigationObserverProvider` property to start and stop your RUM views automatically. With `DatadogRouteAwareMixin`, move any logic from `initState` to `didPush`.
 
 Note that, by default, `DatadogRouteAwareMixin` uses the name of the widget as the name of the View. However, this **does not work with obfuscated code** as the name of the Widget class is lost during obfuscation. To keep the correct view name, override `rumViewInfo`:
+
 ```dart
 class _MyHomeScreenState extends State<MyHomeScreen>
     with RouteAware, DatadogRouteAwareMixin {
@@ -195,13 +192,14 @@ of your [application sandbox][9], which can't be read by any other app installed
 
 ## Contributing
 
-Pull requests are welcome. First, open an issue to discuss what you would like to change. 
+Pull requests are welcome. First, open an issue to discuss what you would like to change.
 
 For more information, read the [Contributing guidelines][4].
 
 ## License
 
 For more information, see [Apache License, v2.0][5].
+
 [1]: https://pub.dev/packages/datadog_flutter_plugin
 [2]: https://app.datadoghq.com/rum/application/create
 [3]: https://docs.datadoghq.com/account_management/api-app-keys/#client-tokens
