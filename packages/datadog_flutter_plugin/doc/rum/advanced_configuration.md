@@ -10,23 +10,56 @@ Flutter RUM automatically tracks attributes such as user activity, views (using 
 
 ### Add your own performance timing
 
-In addition to RUM’s default attributes, you can measure where your application is spending its time by using `DdRum.addTiming`. The timing measure is relative to the start of the current RUM view. 
+In addition to RUM’s default attributes, you can measure where your application is spending its time by using `DdRum.addTiming`. The timing measure is relative to the start of the current RUM view.
 
 For example, you can time how long it takes for your hero image to appear:
 
 ```dart
 void _onHeroImageLoaded() {
     DatadogSdk.instance.rum?.addTiming("hero_image");
-} 
+}
 ```
 
-Once you set the timing, it is accessible as `@view.custom_timings.<timing_name>`. For example, `@view.custom_timings.hero_image`. 
+Once you set the timing, it is accessible as `@view.custom_timings.<timing_name>`. For example, `@view.custom_timings.hero_image`.
 
 To create visualizations in your dashboards, [create a measure][4] first.
 
 ### Track user actions
 
-You can track specific user actions such as taps, clicks, and scrolls using `DdRum.addUserAction`. 
+The Datadog Flutter SDK can automatically track certain user actions using the [`RumUserActionDetector`][5]. `RumUserActionDetector` can be placed above any widget tree, to detect tap actions from several standard Flutter widgets.
+
+For example:
+
+```dart
+  Widget build() {
+    return MaterialApp(
+      body: RumUserActionDetector(
+        rum: DatadogSdk.instance.rum,
+        child: Scaffold(
+          // etc.
+        ),
+      ),;
+    )
+  }
+```
+
+`RumUserActionDetector` will detect tap actions with certan standard Flutter widgets including `ElevatedButton`, `TextButton`, `CupertinoButton`, `BottomNavigationBar`, `TabBar`, `InkWell`, and `GestureDetector`.
+
+For most button types, the detector will look for a `Text` widget child to use as the description of the action. In order cases, it will look for a child `Semantics` object, or an `Icon` whith its `Icon.semanticlsLabel` proprety set. If you want more fine grained control of the description of the action, you can also enclose your Widget tree in a [`RumUserActionAnnotation`][6]. All interactions with supported Flutter widgets under the Annotation will use its description.
+
+For example:
+
+```dart
+  RumUserActionAnnotation(
+    description: 'Add Checkout Item',
+    child: FloatingActionButton(
+      child: const Icon(Icons.add)
+      // etc.
+    ),
+  )
+```
+
+To track more complex interactions, or to track specific user actions manually such as scrolls or swipe, you can use `DdRum.addUserAction`, `DdRum.startUserAction` and `DdRum.stopUserAction`.
 
 To manually register instantaneous RUM actions such as `RumUserActionType.tap`, use `DdRum.addUserAction()`. For continuous RUM actions such as `RumUserActionType.scroll`, use `DdRum.startUserAction()` or `DdRum.stopUserAction()`.
 
@@ -45,7 +78,7 @@ When using `DdRum.startUserAction` and `DdRum.stopUserAction`, the `type` action
 
 ### Track custom resources
 
-In addition to tracking resources automatically using the [Datadog Tracking HTTP Client][5], you can track specific custom resources such as network requests or third-party provider APIs using the [following methods][6]:
+In addition to tracking resources automatically using the [Datadog Tracking HTTP Client][7], you can track specific custom resources such as network requests or third-party provider APIs using the [following methods][8]:
 
 - `DdRum.startResourceLoading`
 - `DdRum.stopResourceLoading`
@@ -58,7 +91,7 @@ For example:
 // in your network client:
 
 DatadogSdk.instance.rum?.startResourceLoading(
-    "resource-key", 
+    "resource-key",
     RumHttpMethod.get,
     url,
 );
@@ -84,7 +117,7 @@ DatadogSdk.instance.rum?.addError("This is an error message.");
 
 ## Track custom global attributes
 
-In addition to the [default RUM attributes][3] captured by the Datadog Flutter SDK automatically, you can choose to add additional contextual information (such as custom attributes) to your RUM events to enrich your observability within Datadog. 
+In addition to the [default RUM attributes][3] captured by the Datadog Flutter SDK automatically, you can choose to add additional contextual information (such as custom attributes) to your RUM events to enrich your observability within Datadog.
 
 Custom attributes allow you to filter and group information about observed user behavior (such as the cart value, merchant tier, or ad campaign) with code-level information (such as backend services, session timeline, error logs, and network health).
 
@@ -92,28 +125,28 @@ Custom attributes allow you to filter and group information about observed user 
 
 To set a custom global attribute, use `DdRum.addAttribute`.
 
-* To add or update an attribute, use `DdRum.addAttribute`.
-* To remove the key, use `DdRum.removeAttribute`.
+- To add or update an attribute, use `DdRum.addAttribute`.
+- To remove the key, use `DdRum.removeAttribute`.
 
 ### Track user sessions
 
 Adding user information to your RUM sessions makes it easy to:
 
-* Follow the journey of a given user
-* Know which users are the most impacted by errors
-* Monitor performance for your most important users
+- Follow the journey of a given user
+- Know which users are the most impacted by errors
+- Monitor performance for your most important users
 
 {{< img src="real_user_monitoring/browser/advanced_configuration/user-api.png" alt="User API in the RUM UI" style="width:90%" >}}
 
 The following attributes are **optional**, provide **at least** one of them:
 
-| Attribute | Type   | Description                                                                                              |
-|-----------|--------|----------------------------------------------------------------------------------------------------------|
+| Attribute   | Type   | Description                                                                                              |
+| ----------- | ------ | -------------------------------------------------------------------------------------------------------- |
 | `usr.id`    | String | Unique user identifier.                                                                                  |
 | `usr.name`  | String | User friendly name, displayed by default in the RUM UI.                                                  |
 | `usr.email` | String | User email, displayed in the RUM UI if the user name is not present. It is also used to fetch Gravatars. |
 
-To identify user sessions, use `DatadogSdk.setUserInfo`. 
+To identify user sessions, use `DatadogSdk.setUserInfo`.
 
 For example:
 
@@ -144,37 +177,36 @@ Each mapper is a function with a signature of `(T) -> T?`, where `T` is a concre
 For example, to redact sensitive information in a RUM Resource's `url`, implement a custom `redacted` function and use it in `rumResourceEventMapper`:
 
 ```dart
-    rumResourceEventMapper = (event) { 
+    rumResourceEventMapper = (event) {
         var resourceEvent = resourceEvent
         resourceEvent.resource.url = redacted(resourceEvent.resource.url)
         return resourceEvent
     }
-}
 ```
 
 Returning `null` from the error, resource, or action mapper drops the event entirely; the event is not sent to Datadog. The value returned from the view event mapper must not be `null`.
 
 Depending on the event's type, only some specific properties can be modified:
 
-| Event Type       | Attribute key                     | Description                                   |
-|------------------|-----------------------------------|-----------------------------------------------|
-| RumViewEvent     | `viewEvent.view.name`             | Name of the view.                             |
-|                  | `viewEvent.view.url`              | URL of the view.                              |
-|                  | `viewEvent.view.referrer`         | Referrer of the view.                         |
-| RumActionEvent   | `actionEvent.action.target?.name` | Name of the action.                           |
-|                  | `actionEvent.view.name`           | Name the view linked to this action.          |
-|                  | `actionEvent.view.referrer`       | Referrer of the view linked to this action.   |
-|                  | `actionEvent.view.url`            | URL of the view linked to this action.        |
-| RumErrorEvent    | `errorEvent.error.message`        | Error message.                                |
-|                  | `errorEvent.error.stack`          | Stacktrace of the error.                      |
-|                  | `errorEvent.error.resource?.url`  | URL of the resource the error refers to.      |
-|                  | `errorEvent.view.name`            | Name the view linked to this action.          |
-|                  | `errorEvent.view.referrer`        | Referrer of the view linked to this action.   |
-|                  | `errorEvent.view.url`             | URL of the view linked to this error.         |
-| RumResourceEvent | `resourceEvent.resource.url`      | URL of the resource.                          |
-|                  | `resourceEvent.view.name`         | Name the view linked to this action.          |
-|                  | `resourceEvent.view.referrer`     | Referrer of the view linked to this action.   |
-|                  | `resourceEvent.view.url`          | URL of the view linked to this resource.      |
+| Event Type       | Attribute key                     | Description                                 |
+| ---------------- | --------------------------------- | ------------------------------------------- |
+| RumViewEvent     | `viewEvent.view.name`             | Name of the view.                           |
+|                  | `viewEvent.view.url`              | URL of the view.                            |
+|                  | `viewEvent.view.referrer`         | Referrer of the view.                       |
+| RumActionEvent   | `actionEvent.action.target?.name` | Name of the action.                         |
+|                  | `actionEvent.view.name`           | Name the view linked to this action.        |
+|                  | `actionEvent.view.referrer`       | Referrer of the view linked to this action. |
+|                  | `actionEvent.view.url`            | URL of the view linked to this action.      |
+| RumErrorEvent    | `errorEvent.error.message`        | Error message.                              |
+|                  | `errorEvent.error.stack`          | Stacktrace of the error.                    |
+|                  | `errorEvent.error.resource?.url`  | URL of the resource the error refers to.    |
+|                  | `errorEvent.view.name`            | Name the view linked to this action.        |
+|                  | `errorEvent.view.referrer`        | Referrer of the view linked to this action. |
+|                  | `errorEvent.view.url`             | URL of the view linked to this error.       |
+| RumResourceEvent | `resourceEvent.resource.url`      | URL of the resource.                        |
+|                  | `resourceEvent.view.name`         | Name the view linked to this action.        |
+|                  | `resourceEvent.view.referrer`     | Referrer of the view linked to this action. |
+|                  | `resourceEvent.view.url`          | URL of the view linked to this resource.    |
 
 ## Set tracking consent (GDPR & CCPA compliance)
 
@@ -186,7 +218,7 @@ The `trackingConsent` setting can be one of the following values:
 2. `TrackingConsent.granted`: The Flutter RUM SDK starts collecting the data and sends it to Datadog.
 3. `TrackingConsent.notGranted`: The Flutter RUM SDK does not collect any data. No logs, traces, or RUM events are sent to Datadog.
 
-To change the tracking consent value after the Flutter RUM SDK is initialized, use the `DatadogSdk.setTrackingConsent` API call. The Flutter RUM SDK changes its behavior according to the new value. 
+To change the tracking consent value after the Flutter RUM SDK is initialized, use the `DatadogSdk.setTrackingConsent` API call. The Flutter RUM SDK changes its behavior according to the new value.
 
 For example, if the current tracking consent is `TrackingConsent.pending` and you change the value to `TrackingConsent.granted`, the Flutter RUM SDK sends all previously recorded and future data to Datadog.
 
@@ -224,5 +256,7 @@ This means that even if users open your application while offline, no data is lo
 [2]: https://docs.datadoghq.com/real_user_monitoring/flutter/#setup
 [3]: https://docs.datadoghq.com/real_user_monitoring/flutter/data_collected
 [4]: https://docs.datadoghq.com/real_user_monitoring/explorer/?tab=measures#setup-facets-and-measures
-[5]: https://github.com/DataDog/dd-sdk-flutter/tree/main/packages/datadog_tracking_http_client
-[6]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/
+[5]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/RumUserActionDetector-class.html
+[6]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/RumUserActionAnnotation-class.html
+[7]: https://github.com/DataDog/dd-sdk-flutter/tree/main/packages/datadog_tracking_http_client
+[8]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/
