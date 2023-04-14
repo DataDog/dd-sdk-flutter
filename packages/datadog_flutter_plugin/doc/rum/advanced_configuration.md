@@ -43,9 +43,9 @@ For example:
   }
 ```
 
-`RumUserActionDetector` will detect tap actions with certan standard Flutter widgets including `ElevatedButton`, `TextButton`, `CupertinoButton`, `BottomNavigationBar`, `TabBar`, `InkWell`, and `GestureDetector`.
+`RumUserActionDetector` detects tap actions with certain standard Flutter widgets including `ElevatedButton`, `TextButton`, `CupertinoButton`, `BottomNavigationBar`, `TabBar`, `InkWell`, and `GestureDetector`.
 
-For most button types, the detector will look for a `Text` widget child to use as the description of the action. In order cases, it will look for a child `Semantics` object, or an `Icon` whith its `Icon.semanticlsLabel` proprety set. If you want more fine grained control of the description of the action, you can also enclose your Widget tree in a [`RumUserActionAnnotation`][6]. All interactions with supported Flutter widgets under the Annotation will use its description.
+For most button types, the detector looks for a `Text` widget child to use as the description of the action. In other cases, it looks for a child `Semantics` object, or an `Icon` with its `Icon.semanticlsLabel` property set. If you want more fine grained control of the description of the action, you can enclose your Widget tree in a [`RumUserActionAnnotation`][6]. All interactions with supported Flutter widgets under the Annotation use its description.
 
 For example:
 
@@ -59,7 +59,7 @@ For example:
   )
 ```
 
-To track more complex interactions, or to track specific user actions manually such as scrolls or swipe, you can use `DdRum.addUserAction`, `DdRum.startUserAction` and `DdRum.stopUserAction`.
+To track more complex interactions, or to track specific user actions manually such as scrolls or swipes, you can use `DdRum.addUserAction`, `DdRum.startUserAction` and `DdRum.stopUserAction`.
 
 To manually register instantaneous RUM actions such as `RumUserActionType.tap`, use `DdRum.addUserAction()`. For continuous RUM actions such as `RumUserActionType.scroll`, use `DdRum.startUserAction()` or `DdRum.stopUserAction()`.
 
@@ -259,4 +259,4 @@ This means that even if users open your application while offline, no data is lo
 [5]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/RumUserActionDetector-class.html
 [6]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/RumUserActionAnnotation-class.html
 [7]: https://github.com/DataDog/dd-sdk-flutter/tree/main/packages/datadog_tracking_http_client
-[8]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/
+[8]: https://pub.dev/documentation/datadog_flutter_plugin/latest/
