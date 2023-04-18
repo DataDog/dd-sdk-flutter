@@ -1,11 +1,11 @@
 ## Overview
 
-This package is an extension to the [`datadog_flutter_plugin`][1]. It allows 
-Real User Monitoring allows to monitor web views and eliminate blind spots in your hybrid Flutter applications.
+This package is an extension to the [`datadog_flutter_plugin`][1]. It allows
+Real User Monitoring to monitor web views and eliminate blind spots in your hybrid Flutter applications.
 
-## Instrumentint your web views
+## Instrumenting your web views
 
-The RUM Flutter SDK provides APIs for you to control web view tracking when using the [`webview_flutter`][2] package. 
+The RUM Flutter SDK provides APIs for you to control web view tracking when using the [`webview_flutter`][2] package.
 
 Add both the `datadog_webview_tracking` package and the `webview_flutter` package to your `pubspec.yaml`:
 

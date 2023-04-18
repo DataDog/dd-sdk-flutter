@@ -60,7 +60,7 @@ void main() {
     expect(view.errorEvents.length, 3);
 
     var exceptionError = view.errorEvents[0];
-    expect(exceptionError.message, contains(NullThrownError().toString()));
+    expect(exceptionError.message, contains(TypeError().toString()));
     expect(exceptionError.source, kIsWeb ? 'custom' : 'source');
     expect(exceptionError.errorType, 'NullThrown');
     if (!kIsWeb) {

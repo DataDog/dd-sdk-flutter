@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Add the ability to stop a RUM session. A new session is started on the next user interaction or on the next view start. See [#147]
+* Increase minimum Flutter version to 3.0, Dart 2.17. See [#386]
 
 ## 1.3.2
 

@@ -222,7 +222,6 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     _ElementDescription? detectingElement;
 
     String? rumTreeAnnotation;
-    bool excludingSemantics = false;
     RenderObject? lastRenderObject;
 
     void elementVisitor(Element element) {
@@ -278,8 +277,8 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     return detectingElement;
   }
 
-  _ElementDescription? _getDetectingElementDescription(Element element,
-      List<HitTestEntry> targets, String? treeAnnotation) {
+  _ElementDescription? _getDetectingElementDescription(
+      Element element, List<HitTestEntry> targets, String? treeAnnotation) {
     final widget = element.widget;
     String? elementName;
     bool searchForBetter = false;
