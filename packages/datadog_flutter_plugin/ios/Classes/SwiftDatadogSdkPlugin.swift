@@ -40,6 +40,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: registrar.messenger())
         let instance = SwiftDatadogSdkPlugin(channel: channel)
         registrar.addMethodCallDelegate(instance, channel: channel)
+        registrar.addApplicationDelegate(instance)
         registrar.publish(instance)
 
         DatadogLogsPlugin.register(with: registrar)
@@ -285,6 +286,10 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         default:
             return nil
         }
+    }
+
+    public func applicationWillTerminate(_ application: UIApplication) {
+        _onDetach()
     }
 
     public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
