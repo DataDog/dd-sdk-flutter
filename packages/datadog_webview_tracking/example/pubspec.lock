@@ -78,7 +78,7 @@ packages:
       path: "../../datadog_flutter_plugin"
       relative: true
     source: path
-    version: "1.3.0"
+    version: "1.3.2"
   datadog_webview_tracking:
     dependency: "direct main"
     description:

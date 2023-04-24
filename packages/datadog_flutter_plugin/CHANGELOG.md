@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Fix a crash on exit on iOS. See [#390]
+
 ## 1.3.2
 
 * Add Web View tracking through the `webview_flutter` package.
@@ -156,3 +160,4 @@
 [#334]: https://github.com/DataDog/dd-sdk-flutter/issues/334
 [#358]: https://github.com/DataDog/dd-sdk-flutter/issues/358
 [#372]: https://github.com/DataDog/dd-sdk-flutter/issues/372
+[#390]: https://github.com/DataDog/dd-sdk-flutter/issues/390
