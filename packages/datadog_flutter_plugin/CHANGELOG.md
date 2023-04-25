@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* Fix a crash on exit on iOS. See [#390]
 * Add the ability to stop a RUM session. A new session is started on the next user interaction or on the next view start. See [#147]
 * Increase minimum Flutter version to 3.0, Dart 2.17. See [#386]
 
@@ -162,3 +163,4 @@
 [#334]: https://github.com/DataDog/dd-sdk-flutter/issues/334
 [#358]: https://github.com/DataDog/dd-sdk-flutter/issues/358
 [#372]: https://github.com/DataDog/dd-sdk-flutter/issues/372
+[#390]: https://github.com/DataDog/dd-sdk-flutter/issues/390
