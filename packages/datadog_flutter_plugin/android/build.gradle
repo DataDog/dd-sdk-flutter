@@ -10,7 +10,7 @@ version "1.0-SNAPSHOT"
 
 buildscript {
     ext.kotlin_version = "1.6.21"
-    ext.datadog_version = "1+"
+    ext.datadog_version = "1.19.0"
 
     repositories {
         google()
@@ -32,10 +32,9 @@ rootProject.allprojects {
              content {
                 includeGroup "com.github.xgouchet.Elmyr"
              }
+
         }
-        maven {
-            url "https://oss.sonatype.org/content/repositories/snapshots/"
-        }
+
     }
 }
 
@@ -68,7 +67,6 @@ android {
     }
 }
 
-apply from: '../../../ignore_sr_snapshots.gradle'
 
 dependencies {
     implementation "com.datadoghq:dd-sdk-android:$datadog_version"

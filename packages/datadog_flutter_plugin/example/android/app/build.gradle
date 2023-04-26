@@ -5,7 +5,7 @@
  */
 
 buildscript {
-    ext.datadog_version = "1+"
+    ext.datadog_version = "1.19.0"
 }
 
 def localProperties = new Properties()
@@ -79,7 +79,6 @@ flutter {
     source '../..'
 }
 
-apply from: '../../../../../ignore_sr_snapshots.gradle'
 
 dependencies {
     implementation "com.datadoghq:dd-sdk-android:$datadog_version"
