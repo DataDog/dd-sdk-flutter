@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+
+
+## 1.4.0
+
 * Add the ability to stop a RUM session. A new session is started on the next user interaction or on the next view start. See [#147]
 * Increase minimum Flutter version to 3.0, Dart 2.17. See [#386]
 * Update Android SDK to 1.19.0. For a full list of changes see [https://github.com/DataDog/dd-sdk-android/releases/tag/1.19.0]
