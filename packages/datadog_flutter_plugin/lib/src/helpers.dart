@@ -11,11 +11,13 @@ import 'internal_logger.dart';
 
 typedef WrappedCall<T> = FutureOr<T?> Function();
 
-void _handleError(Object error, StackTrace stackTrace, String methodName,
+// Returns true if the error was handled, false if the error should be re-thrown
+bool _handleError(Object error, StackTrace stackTrace, String methodName,
     InternalLogger logger, Map<String, Object?>? serializedAttributes) {
   if (error is ArgumentError) {
     logger.warn(InternalLogger.argumentWarning(
         methodName, error, serializedAttributes));
+    return true;
   } else if (error is PlatformException) {
     logger.error('Datadog experienced a PlatformException - ${error.message}');
     logger.error(
@@ -25,9 +27,10 @@ void _handleError(Object error, StackTrace stackTrace, String methodName,
       stackTrace,
       'PlatformException',
     );
-  } else {
-    throw error;
+    return true;
   }
+
+  return false;
 }
 
 /// Wraps a call to a platform channel with common error handling and telemetry.
@@ -40,11 +43,16 @@ void wrap(
   try {
     var result = call();
     if (result is Future) {
-      result.catchError((dynamic e, StackTrace st) =>
-          _handleError(e, st, methodName, logger, attributes));
+      result.catchError((dynamic e, StackTrace st) {
+        if (!_handleError(e, st, methodName, logger, attributes)) {
+          throw e;
+        }
+      });
     }
   } catch (e, st) {
-    _handleError(e, st, methodName, logger, attributes);
+    if (!_handleError(e, st, methodName, logger, attributes)) {
+      rethrow;
+    }
   }
 }
 
@@ -57,7 +65,9 @@ Future<T?> wrapAsync<T>(String methodName, InternalLogger logger,
   try {
     result = await call();
   } catch (e, st) {
-    _handleError(e, st, methodName, logger, attributes);
+    if (!_handleError(e, st, methodName, logger, attributes)) {
+      rethrow;
+    }
   }
 
   return result;

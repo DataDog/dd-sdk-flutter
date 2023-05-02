@@ -493,6 +493,89 @@ void main() {
       expect(capturedAttributes[DatadogRumPlatformAttributeKey.spanID], isNull);
       expect(capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.12);
     });
+
+    test('error on openUrl stops resource with error', () async {
+      const error = SocketException('Mock socket exception');
+      when(() => mockClient.openUrl(any(), any())).thenThrow(error);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(),
+        mockClient,
+      );
+
+      var url = Uri.parse('https://test_url/path');
+
+      await expectLater(() async => await client.openUrl('get', url),
+          throwsA(predicate((e) => e == error)));
+      var capturedKey = verify(() => mockRum.startResourceLoading(
+              captureAny(), RumHttpMethod.get, url.toString(), any()))
+          .captured[0] as String;
+      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+            capturedKey,
+            error.toString(),
+            error.runtimeType.toString(),
+          ));
+    });
+
+    test('error on close stops resource with error preserving stack', () async {
+      const error = SocketException('Mock socket exception');
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
+
+      when(() => mockRequest.uri).thenReturn(url);
+
+      var request = await client.openUrl('get', url);
+      verify(() => mockClient.openUrl('get', url));
+      var capturedKey = verify(
+        () => mockRum.startResourceLoading(
+            captureAny(), RumHttpMethod.get, url.toString(), any()),
+      ).captured[0] as String;
+
+      final stack = StackTrace.current;
+      completer.completeError(error, stack);
+      try {
+        await request.close();
+      } catch (e, st) {
+        expect(st, stack);
+        expect(e, error);
+      }
+      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+            capturedKey,
+            error.toString(),
+            error.runtimeType.toString(),
+            any(),
+          ));
+    });
+
+    test('error on done stops resource with error preserving stack', () async {
+      const error = SocketException('Mock socket exception');
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
+
+      when(() => mockRequest.uri).thenReturn(url);
+
+      var request = await client.openUrl('get', url);
+      verify(() => mockClient.openUrl('get', url));
+      var capturedKey = verify(
+        () => mockRum.startResourceLoading(
+            captureAny(), RumHttpMethod.get, url.toString(), any()),
+      ).captured[0] as String;
+
+      final stack = StackTrace.current;
+      completer.completeError(error, stack);
+      try {
+        await request.done;
+      } catch (e, st) {
+        expect(st, stack);
+        expect(e, error);
+      }
+      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+            capturedKey,
+            error.toString(),
+            error.runtimeType.toString(),
+            any(),
+          ));
+    });
   });
 
   for (final headerType in TracingHeaderType.values) {
@@ -602,29 +685,6 @@ void main() {
         for (var header in headers) {
           verifyNever(() => requestHeaders.add(header, any()));
         }
-      });
-
-      test('error on openUrl stops resource with error', () async {
-        const error = SocketException('Mock socket exception');
-        when(() => mockClient.openUrl(any(), any())).thenThrow(error);
-        final client = DatadogTrackingHttpClient(
-          mockDatadog,
-          DdHttpTrackingPluginConfiguration(),
-          mockClient,
-        );
-
-        var url = Uri.parse('https://test_url/path');
-
-        await expectLater(() async => await client.openUrl('get', url),
-            throwsA(predicate((e) => e == error)));
-        var capturedKey = verify(() => mockRum.startResourceLoading(
-                captureAny(), RumHttpMethod.get, url.toString(), any()))
-            .captured[0] as String;
-        verify(() => mockRum.stopResourceLoadingWithErrorInfo(
-              capturedKey,
-              error.toString(),
-              error.runtimeType.toString(),
-            ));
       });
     });
   }

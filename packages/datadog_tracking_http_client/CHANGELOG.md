@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+* Fix rethrown execptions on `close` not having the correct stack trace.
+
+## 1.2.1
+
 * Fix an invalid assertion when processing stream errors. See [#355]
 
 ## 1.2.0

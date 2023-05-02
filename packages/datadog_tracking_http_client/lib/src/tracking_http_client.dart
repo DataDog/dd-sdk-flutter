@@ -291,7 +291,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
     return innerContext.close().then((value) {
       return _DatadogTrackingHttpResponse(
           client.datadogSdk, value, rumKey, _tracingContext);
-    }, onError: (Object e, StackTrace? st) async {
+    }, onError: (Object e, StackTrace? st) {
       _onStreamError(e, st);
       throw e;
     });
