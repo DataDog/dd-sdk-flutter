@@ -11,6 +11,10 @@ import 'internal_logger.dart';
 
 typedef WrappedCall<T> = FutureOr<T?> Function();
 
+bool _willHandleError(Object e) {
+  return e is ArgumentError || e is PlatformException;
+}
+
 // Returns true if the error was handled, false if the error should be re-thrown
 bool _handleError(Object error, StackTrace stackTrace, String methodName,
     InternalLogger logger, Map<String, Object?>? serializedAttributes) {
@@ -44,10 +48,8 @@ void wrap(
     var result = call();
     if (result is Future) {
       result.catchError((dynamic e, StackTrace st) {
-        if (!_handleError(e, st, methodName, logger, attributes)) {
-          throw e;
-        }
-      });
+        _handleError(e, st, methodName, logger, attributes);
+      }, test: _willHandleError);
     }
   } catch (e, st) {
     if (!_handleError(e, st, methodName, logger, attributes)) {
