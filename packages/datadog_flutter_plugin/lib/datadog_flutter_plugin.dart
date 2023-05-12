@@ -103,30 +103,31 @@ class DatadogSdk {
   }
 
   /// A helper function that will initialize Datadog and setup error reporting
-  ///
+  /// 
   /// See also, [DdRum.handleFlutterError], [DatadogTrackingHttpClient]
   static Future<void> runApp(
       DdSdkConfiguration configuration, AppRunner runner) async {
-    return runZonedGuarded(() async {
-      WidgetsFlutterBinding.ensureInitialized();
-      final originalOnError = FlutterError.onError;
-      FlutterError.onError = (details) {
-        DatadogSdk.instance.rum?.handleFlutterError(details);
-        originalOnError?.call(details);
-      };
-
-      await DatadogSdk.instance.initialize(configuration);
-      DatadogSdk.instance
-          .updateConfigurationInfo(LateConfigurationProperty.trackErrors, true);
-
-      runner();
-    }, (e, s) {
+    WidgetsFlutterBinding.ensureInitialized();
+    final originalOnError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      DatadogSdk.instance.rum?.handleFlutterError(details);
+      originalOnError?.call(details);
+    };
+    final platformOriginalOnError = PlatformDispatcher.instance.onError;
+    PlatformDispatcher.instance.onError = (e, st) {
       DatadogSdk.instance.rum?.addErrorInfo(
         e.toString(),
         RumErrorSource.source,
-        stackTrace: s,
+        stackTrace: st,
       );
-    });
+      return platformOriginalOnError?.call(e, st) ?? false;
+    };
+
+    await DatadogSdk.instance.initialize(configuration);
+    DatadogSdk.instance
+        .updateConfigurationInfo(LateConfigurationProperty.trackErrors, true);
+
+    runner();
   }
 
   /// Initialize the DatadogSdk with the provided [configuration].
