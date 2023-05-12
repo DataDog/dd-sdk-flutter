@@ -23,7 +23,7 @@ workflows:
 
   push_to_develop_or_main:
     envs:
-      - FLUTTER_VERSION: stable
+      - FLUTTER_VERSION: 3.7.12
       - DD_RUN_UNIT_TESTS: '1'
       - DD_RUN_INTEGRATION_TESTS: '1'
     after_run:
