@@ -289,7 +289,7 @@ class _BecameInactiveMatcher extends Matcher {
   }
 
   @override
-  bool matches(dynamic item, Map matchState) {
+  bool matches(dynamic item, Map<dynamic, dynamic> matchState) {
     if (item is RumViewVisit) {
       return item.viewEvents.last.view.isActive == false;
     }

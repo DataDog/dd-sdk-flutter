@@ -4,8 +4,8 @@ version: 1.5.0
 repository: https://github.com/DataDog/dd-sdk-flutter
 
 environment:
-  sdk: ">=2.17.0 <3.0.0"
-  flutter: ">=3.0.0"
+  sdk: ">=2.18.0 <3.0.0"
+  flutter: ">=3.3.0"
 
 dependencies:
   flutter:
@@ -14,7 +14,7 @@ dependencies:
     sdk: flutter
   js: ^0.6.3
   plugin_platform_interface: ^2.0.2
-  json_annotation: ^4.8.0
+  json_annotation: ^4.7.0
   uuid: ^3.0.5
   meta: ^1.7.0
 
@@ -23,7 +23,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ">=1.0.0"
   mocktail: ^0.3.0
-  json_serializable: ^6.3.1
+  json_serializable: ">= 6.3.1 <6.6.0"
   build_runner: ^2.1.11
   datadog_common_test:
     path: ../datadog_common_test
