@@ -1,9 +1,9 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
-  exclude: ['**/src/generated/**']
-  strong-mode:
-    implicit-dynamic: false
+  exclude: ["**/src/generated/**"]
+  language:
+    strict-raw-types: true
 
 linter:
   rules:

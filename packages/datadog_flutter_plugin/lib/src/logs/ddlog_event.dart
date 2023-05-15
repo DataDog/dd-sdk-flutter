@@ -113,7 +113,7 @@ class LogEvent {
   @JsonKey(name: '_dd')
   final LogEventDd dd;
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
+  @JsonKey(ignore: true)
   Map<String, Object?> attributes = {};
 
   String ddtags;

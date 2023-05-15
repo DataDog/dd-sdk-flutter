@@ -238,10 +238,10 @@ class MethodCallHandler {
 
   Map<String, Object?>? _callMapper<T>(
     String mapperName,
-    Map encoded,
+    Map<dynamic, dynamic> encoded,
     T? Function(T)? mapper,
     Map<String, dynamic> Function(T) encode,
-    T Function(Map) decode,
+    T Function(Map<dynamic, dynamic>) decode,
   ) {
     try {
       if (mapper == null) {

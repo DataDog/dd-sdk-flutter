@@ -134,7 +134,7 @@ LogEvent? _mapLogEvent(LogEvent event) {
   return event;
 }
 
-final RouteObserver<ModalRoute> routeObserver = RouteObserver<ModalRoute>();
+final routeObserver = RouteObserver<ModalRoute<dynamic>>();
 
 class DatadogIntegrationTestApp extends StatelessWidget {
   const DatadogIntegrationTestApp({Key? key}) : super(key: key);

@@ -48,7 +48,7 @@ void main() {
                 return null;
               }
             })
-            .whereType<List>()
+            .whereType<List<dynamic>>()
             .expand<dynamic>((e) => e)
             .whereType<Map<String, Object?>>()
             // Ignore RUM sessions

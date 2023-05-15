@@ -397,7 +397,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
       innerContext.addError(error, stackTrace);
 
   @override
-  Future addStream(Stream<List<int>> stream) {
+  Future<dynamic> addStream(Stream<List<int>> stream) {
     _injectHeaders();
 
     return innerContext.addStream(stream);
@@ -410,7 +410,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
   List<Cookie> get cookies => innerContext.cookies;
 
   @override
-  Future flush() => innerContext.flush();
+  Future<dynamic> flush() => innerContext.flush();
 
   @override
   HttpHeaders get headers => innerContext.headers;
@@ -429,7 +429,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
   }
 
   @override
-  void writeAll(Iterable objects, [String separator = '']) {
+  void writeAll(Iterable<dynamic> objects, [String separator = '']) {
     _injectHeaders();
 
     innerContext.writeAll(objects, separator);

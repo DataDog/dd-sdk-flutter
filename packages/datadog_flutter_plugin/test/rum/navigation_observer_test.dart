@@ -198,7 +198,7 @@ void main() {
   testWidgets('overriding extractor sends extra information',
       (WidgetTester tester) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    RumViewInfo? infoExtractor(Route route) {
+    RumViewInfo? infoExtractor(Route<dynamic> route) {
       var name = route.settings.name;
       if (name == 'my_named_route') {
         return RumViewInfo(
