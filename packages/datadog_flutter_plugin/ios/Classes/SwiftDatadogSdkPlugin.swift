@@ -67,7 +67,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                        setLogCallback {
                         oldConsolePrint = consolePrint
                         consolePrint = { value in
-                            self.channel.invokeMethod("logCallback", arguments: value)
+                            self.callLogCallback(value)
                         }
                     }
 
@@ -320,6 +320,25 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         return [
             "rumEnabled": rumEnabled
         ]
+    }
+
+    // This is a way to work around https://github.com/flutter/flutter/issues/126671,
+    //
+    private func callLogCallback(_ value: String) {
+        // Dispatch to the main thread. This is partially to combat Flutter shutdown
+        // occuring while we're still processing events
+        DispatchQueue.main.async {
+            // Second, check that the engine hasn't been destroyed, this is the
+            // other work around for https://github.com/flutter/flutter/issues/126671
+            if let flutterViewController = UIApplication.shared.keyWindow?.rootViewController as? FlutterViewController {
+                let engine = flutterViewController.engine
+                if engine?.isolateId == nil {
+                    return
+                }
+            }
+
+            self.channel.invokeMethod("logCallback", arguments: value)
+        }
     }
 }
 

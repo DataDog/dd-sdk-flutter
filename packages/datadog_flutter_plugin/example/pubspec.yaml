@@ -1,7 +1,7 @@
 name: datadog_flutter_plugin_example
 description: Demonstrates how to use the datadog_flutter_plugin package.
-publish_to: 'none'
-version: '1.0.0'
+publish_to: "none"
+version: "1.0.0"
 
 environment:
   sdk: ">=2.15.0 <3.0.0"
@@ -22,11 +22,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: '>= 1.0.0'
+  flutter_lints: ">= 1.0.0"
 
 flutter:
   uses-material-design: true
 
   assets:
     - .env
-  
