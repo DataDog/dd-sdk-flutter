@@ -3,6 +3,7 @@
 // Copyright 2016-Present Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_method_channel.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
 import 'package:flutter/services.dart';
@@ -16,8 +17,10 @@ void main() {
 
   setUp(() {
     ddLogsPlatform = DdLogsMethodChannel();
-    ddLogsPlatform.methodChannel.setMockMethodCallHandler((call) {
-      log.add(call);
+    ambiguate(TestDefaultBinaryMessengerBinding.instance)
+        ?.defaultBinaryMessenger
+        .setMockMethodCallHandler(ddLogsPlatform.methodChannel, (message) {
+      log.add(message);
       return null;
     });
   });

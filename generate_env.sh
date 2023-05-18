@@ -29,18 +29,13 @@ e2eDotEnvFiles=(
   "packages/datadog_flutter_plugin/e2e_test_app/.env"
 )
 
-if [[ ! -z ${DD_E2E_CLIENT_TOKEN+x} ]]; then
-  for f in ${e2eDotEnvFiles[@]}; do
-    tee $f > /dev/null << END
+for f in ${e2eDotEnvFiles[@]}; do
+  tee $f > /dev/null << END
 DD_CLIENT_TOKEN=$DD_E2E_CLIENT_TOKEN
 DD_APPLICATION_ID=$DD_E2E_APPLICATION_ID
 DD_E2E_IS_ON_CI=${IS_ON_CI:-false}
 END
-  done 
-
-else
-    echo "Not generating E2E .env file because DD_E2E_CLIENT_TOKEN is $DD_E2E_CLIENT_TOKEN"
-fi
+done 
 
 pushd examples/native-hybrid-app/android/app/src/main/res/
 mkdir raw
