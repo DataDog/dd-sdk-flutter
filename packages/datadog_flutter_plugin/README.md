@@ -155,6 +155,28 @@ Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction wi
 
 Note that, by default, `DatadogRouteAwareMixin` uses the name of the widget as the name of the View. However, this **does not work with obfuscated code** as the name of the Widget class is lost during obfuscation. To keep the correct view name, override `rumViewInfo`:
 
+To rename your views or supply custom paths, provide a [`viewInfoExtractor`][10] callback. This function can fall back to the default behavior of the observer by calling `defaultviewInfoExtractor`. For example:
+
+```dart
+RumViewInfo? infoExtractor(Route<dynamic> route) {
+  var name = route.settings.name;
+  if (name == 'my_named_route') {
+    return RumViewInfo(
+      name: 'MyDifferentName',
+      attributes: {'extra_attribute': 'attribute_value'},
+    );
+  }
+
+  return defaultViewInfoExtractor(route);
+}
+
+var observer = DatadogNavigationObserver(
+  datadogSdk: DatadogSdk.instance,
+  viewInfoExtractor: infoExtractor,
+);
+```
+
+
 ```dart
 class _MyHomeScreenState extends State<MyHomeScreen>
     with RouteAware, DatadogRouteAwareMixin {
@@ -210,3 +232,4 @@ For more information, see [Apache License, v2.0][5].
 [7]: https://pub.dev/packages/datadog_tracking_http_client
 [8]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/DdSdkConfiguration-class.html
 [9]: https://support.apple.com/guide/security/security-of-runtime-process-sec15bfe098e/web
+[10]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/ViewInfoExtractor.html
