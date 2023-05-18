@@ -14,6 +14,7 @@ workflows:
         - a phase is selected on the checklist in the PR description,
         - the PR changes a file which matches phase filter (e.g. changing a file in `packages/*` will trigger unit tests phase)
     envs:
+      - FLUTTER_VERSION: 3.7.12
       - DD_RUN_UNIT_TESTS: '0'
       - DD_RUN_INTEGRATION_TESTS: '0'
     after_run:
@@ -110,8 +111,21 @@ workflows:
   _flutter_install:
     steps:
     - flutter-installer@0:
+        title: Install Flutter stable
+    - script:
+        title: Install FVM and override Flutter
         inputs:
-        - version: $FLUTTER_VERSION
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+
+            # Install FVM
+            dart pub global activate fvm
+            export PATH="$PATH":"$HOME/.pub-cache/bin"
+            fvm install $FLUTTER_VERSION
+
+            envman add --key PATH --value '/Users/vagrant/fvm/versions/$FLUTTER_VERSION/bin:$PATH'
+            envman run bash -c 'echo "Modified path: $PATH"'
   
   _launch_ios_simulator:
     steps:
