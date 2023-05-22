@@ -34,6 +34,10 @@ class RumViewInfo {
 /// See [DatadogNavigationObserver.viewInfoExtractor].
 typedef ViewInfoExtractor = RumViewInfo? Function(Route<dynamic> route);
 
+/// The function that provides the default route naming behavior for
+/// [DatadogNavigationObserver]. If the supplied route is a PageRoute and contains
+/// a name, it returns a [RumViewInfo] with the supplied name. Otherwise it returns
+/// `null`.
 RumViewInfo? defaultViewInfoExtractor(Route<dynamic> route) {
   if (route is PageRoute) {
     var name = route.settings.name;
@@ -60,6 +64,7 @@ RumViewInfo? defaultViewInfoExtractor(Route<dynamic> route) {
 /// different name, path, or extra attributes to any route.
 class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
     with WidgetsBindingObserver {
+  /// A callback to supply view information to the observer. See [ViewInfoExtractor].
   final ViewInfoExtractor viewInfoExtractor;
   final DatadogSdk datadogSdk;
 
