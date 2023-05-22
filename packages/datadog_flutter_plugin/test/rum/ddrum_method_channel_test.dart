@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum_method_channel.dart';
 import 'package:flutter/services.dart';
@@ -29,8 +30,10 @@ void main() {
 
   setUp(() {
     ddRumPlatform = DdRumMethodChannel();
-    ddRumPlatform.methodChannel.setMockMethodCallHandler((call) async {
-      log.add(call);
+    ambiguate(TestDefaultBinaryMessengerBinding.instance)
+        ?.defaultBinaryMessenger
+        .setMockMethodCallHandler(ddRumPlatform.methodChannel, (message) {
+      log.add(message);
       return null;
     });
   });

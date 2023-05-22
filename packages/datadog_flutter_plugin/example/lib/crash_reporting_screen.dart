@@ -114,7 +114,7 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Crash after starting RUM Session',
-                style: theme.textTheme.headline6),
+                style: theme.textTheme.titleLarge),
             Container(
               padding: const EdgeInsets.all(4),
               child: TextField(
@@ -144,7 +144,7 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
             ),
             const SizedBox(height: 12),
             Text('Crash before starting RUM Session',
-                style: theme.textTheme.headline6),
+                style: theme.textTheme.titleLarge),
             Wrap(
               children: [
                 for (final t in CrashType.values)

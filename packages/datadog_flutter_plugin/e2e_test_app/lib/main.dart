@@ -41,7 +41,10 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
+      // Needs to be backwards compatible to Flutter 3.3
+      // ignore: prefer_const_constructors
       body: Center(
+        // ignore: prefer_const_constructors
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const <Widget>[
