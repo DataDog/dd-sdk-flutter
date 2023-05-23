@@ -38,7 +38,7 @@ extension TrackingExtension on DdSdkConfiguration {
   ///
   /// See also [DdSdkConfiguration.firstPartyHostsWithTracingHeaders],
   /// [DdSdkConfiguration.firstPartyHosts], [TracingHeaderType]
-  void enableHttpTracking(DatadogTrackingHttpClientListener? clientListener) {
+  void enableHttpTracking({DatadogTrackingHttpClientListener? clientListener}) {
     addPlugin(
         DdHttpTrackingPluginConfiguration(clientListener: clientListener));
   }
@@ -46,7 +46,7 @@ extension TrackingExtension on DdSdkConfiguration {
 
 extension TrackingExtensionExisting on DdSdkExistingConfiguration {
   /// See [TrackingExtension.enableHttpTracking]
-  void enableHttpTracking(DatadogTrackingHttpClientListener? clientListener) {
+  void enableHttpTracking({DatadogTrackingHttpClientListener? clientListener}) {
     addPlugin(
         DdHttpTrackingPluginConfiguration(clientListener: clientListener));
   }

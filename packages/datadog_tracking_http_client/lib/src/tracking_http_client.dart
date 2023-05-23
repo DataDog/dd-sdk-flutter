@@ -122,12 +122,14 @@ class DatadogTrackingHttpClient implements HttpClient {
     Map<String, Object?> userAttributes = {};
     try {
       request = await innerClient.openUrl(method, url);
-      if (rum != null) {
-        configuration.clientListener
-            ?.requestStarted(request: request, userAttributes: userAttributes);
-      }
       request =
           _DatadogTrackingHttpRequest(this, request, rumKey, userAttributes);
+      if (rum != null) {
+        configuration.clientListener?.requestStarted(
+            resourceKey: rumKey!,
+            request: request,
+            userAttributes: userAttributes);
+      }
     } catch (e) {
       if (rum != null) {
         rum.stopResourceLoadingWithErrorInfo(
@@ -530,7 +532,8 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
         rum.tracingSamplingRate,
       );
       client.configuration.clientListener?.responseFinished(
-          response: innerResponse,
+          resourceKey: rumKey!,
+          response: this,
           userAttributes: userAttributes,
           error: lastError);
       attributes = _mergeAttributes(attributes, userAttributes);
@@ -554,7 +557,8 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
           var attributes = generateDatadogAttributes(
               tracingContext, rum.tracingSamplingRate);
           client.configuration.clientListener?.responseFinished(
-            response: innerResponse,
+            resourceKey: rumKey!,
+            response: this,
             userAttributes: userAttributes,
           );
           attributes = _mergeAttributes(attributes, userAttributes);

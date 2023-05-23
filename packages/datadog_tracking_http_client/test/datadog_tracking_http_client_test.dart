@@ -56,6 +56,8 @@ void main() {
     registerFallbackValue(Uri());
     registerFallbackValue(RumHttpMethod.get);
     registerFallbackValue(RumResourceType.beacon);
+    registerFallbackValue(MockHttpClientRequest());
+    registerFallbackValue(MockHttpClientResponse());
   });
 
   setUp(() {
@@ -863,10 +865,12 @@ void main() {
         DdHttpTrackingPluginConfiguration(clientListener: mockListener),
         mockClient,
       );
-      await client.openUrl('get', url);
+      final request = await client.openUrl('get', url);
 
-      verify(() => mockListener
-          .requestStarted(request: mockRequest, userAttributes: {}));
+      verify(() => mockListener.requestStarted(
+          resourceKey: any(named: 'resourceKey'),
+          request: request,
+          userAttributes: {}));
     });
 
     test('attributes returned from resourceStarted are added to stopResource',
@@ -875,7 +879,8 @@ void main() {
       final completer = setupMockRequest(url);
       final mockListener = MockTrackingHttpClientListener();
       when(() => mockListener.requestStarted(
-            request: mockRequest,
+            resourceKey: any(named: 'resourceKey'),
+            request: any(named: 'request'),
             userAttributes: any(named: 'userAttributes'),
           )).thenAnswer((invocation) {
         var attrs = invocation.namedArguments[const Symbol('userAttributes')]
@@ -910,7 +915,8 @@ void main() {
       final completer = setupMockRequest(url);
       final mockListener = MockTrackingHttpClientListener();
       when(() => mockListener.requestStarted(
-              request: mockRequest,
+              resourceKey: any(named: 'resourceKey'),
+              request: any(named: 'request'),
               userAttributes: any(named: 'userAttributes')))
           .thenAnswer((invocation) {
         var attrs = invocation.namedArguments[const Symbol('userAttributes')]
@@ -965,7 +971,8 @@ void main() {
       await mockResponse.streamController.close();
 
       verify(() => mockListener.responseFinished(
-            response: mockResponse,
+            resourceKey: any(named: 'resourceKey'),
+            response: response,
             userAttributes: any(named: 'userAttributes'),
             error: null,
           ));
@@ -993,7 +1000,8 @@ void main() {
       await mockResponse.streamController.close();
 
       verify(() => mockListener.responseFinished(
-            response: mockResponse,
+            resourceKey: any(named: 'resourceKey'),
+            response: response,
             userAttributes: any(named: 'userAttributes'),
             error: error,
           ));
@@ -1013,7 +1021,8 @@ void main() {
 
       final mockResponse = setupMockClientResponse(200);
       when(() => mockListener.responseFinished(
-              response: mockResponse,
+              resourceKey: any(named: 'resourceKey'),
+              response: any(named: 'response'),
               userAttributes: any(named: 'userAttributes')))
           .thenAnswer((invocation) {
         var attrs = invocation.namedArguments[const Symbol('userAttributes')]
@@ -1042,7 +1051,8 @@ void main() {
       final completer = setupMockRequest(url);
       final mockListener = MockTrackingHttpClientListener();
       when(() => mockListener.requestStarted(
-              request: mockRequest,
+              resourceKey: any(named: 'resourceKey'),
+              request: any(named: 'request'),
               userAttributes: any(named: 'userAttributes')))
           .thenAnswer((invocation) {
         var attrs = invocation.namedArguments[const Symbol('userAttributes')]
@@ -1081,10 +1091,13 @@ void main() {
       var url = Uri.parse('https://test_url/path');
       final completer = setupMockRequest(url);
       final mockListener = MockTrackingHttpClientListener();
+      Object? requestKey;
       when(() => mockListener.requestStarted(
-              request: mockRequest,
+              resourceKey: any(named: 'resourceKey'),
+              request: any(named: 'request'),
               userAttributes: any(named: 'userAttributes')))
           .thenAnswer((invocation) {
+        requestKey = invocation.namedArguments[const Symbol('resourceKey')];
         var attrs = invocation.namedArguments[const Symbol('userAttributes')]
             as Map<String, Object?>;
         attrs['my_parameter'] = 'my_value';
@@ -1100,11 +1113,16 @@ void main() {
 
       final mockResponse = setupMockClientResponse(200);
       completer.complete(mockResponse);
+
+      Object? responseKey;
       when(() => mockListener.responseFinished(
-            response: mockResponse,
+            resourceKey: any(named: 'resourceKey'),
+            response: any(named: 'response'),
             userAttributes: any(named: 'userAttributes'),
             error: any(named: 'error'),
           )).thenAnswer((invocation) {
+        responseKey = invocation.namedArguments[const Symbol('resourceKey')];
+
         var attrs = invocation.namedArguments[const Symbol('userAttributes')]
             as Map<String, Object?>;
         attrs['response_parameter'] = 'second_value';
@@ -1117,6 +1135,8 @@ void main() {
       response.listen((event) {});
       await mockResponse.streamController.close();
 
+      expect(requestKey, isNotNull);
+      expect(requestKey, responseKey);
       var capturedAttributes = verify(() => mockRum.stopResourceLoading(
           any(), any(), any(), any(), captureAny())).captured[0];
       expect(capturedAttributes['my_parameter'], 'my_value');
@@ -1129,10 +1149,13 @@ void main() {
       var url = Uri.parse('https://test_url/path');
       final completer = setupMockRequest(url);
       final mockListener = MockTrackingHttpClientListener();
+      Object? requestKey;
       when(() => mockListener.requestStarted(
-              request: mockRequest,
+              resourceKey: any(named: 'resourceKey'),
+              request: any(named: 'request'),
               userAttributes: any(named: 'userAttributes')))
           .thenAnswer((invocation) {
+        requestKey = invocation.namedArguments[const Symbol('resourceKey')];
         var attrs = invocation.namedArguments[const Symbol('userAttributes')]
             as Map<String, Object?>;
         attrs['my_parameter'] = 'my_value';
@@ -1148,11 +1171,14 @@ void main() {
 
       final mockResponse = setupMockClientResponse(200);
       completer.complete(mockResponse);
+      Object? responseKey;
       when(() => mockListener.responseFinished(
-            response: mockResponse,
+            resourceKey: any(named: 'resourceKey'),
+            response: any(named: 'response'),
             userAttributes: any(named: 'userAttributes'),
             error: any(named: 'error'),
           )).thenAnswer((invocation) {
+        responseKey = invocation.namedArguments[const Symbol('resourceKey')];
         var attrs = invocation.namedArguments[const Symbol('userAttributes')]
             as Map<String, Object?>;
         attrs['my_parameter'] = 'second_value';
@@ -1165,6 +1191,8 @@ void main() {
       response.listen((event) {});
       await mockResponse.streamController.close();
 
+      expect(requestKey, isNotNull);
+      expect(requestKey, responseKey);
       var capturedAttributes = verify(() => mockRum.stopResourceLoading(
           any(), any(), any(), any(), captureAny())).captured[0];
       expect(capturedAttributes['my_parameter'], 'second_value');
