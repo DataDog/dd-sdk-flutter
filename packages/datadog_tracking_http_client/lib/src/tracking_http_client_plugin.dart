@@ -10,12 +10,12 @@ import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import '../datadog_tracking_http_client.dart';
 
 /// An interface for providing attributes to Datadog RUM resources by listening
-/// to HttpClient requests and responses
+/// to HttpClient requests and responses.
 ///
 /// DatadogTrackingHttpClient allows you to receive a callback when an
 /// HttpClientRequest starts and when an HttpClientResponse finishes. They
 /// provide a resource key and a mutable Map<String, Object?> of attributes that
-/// you can modify to add attributes the the resulting Datadog RUM resource.
+/// you can modify to add attributes to the resulting Datadog RUM resource.
 ///
 /// The userAttributes parameter supplied in [requestStarted] and
 /// [responseFinished] are the same map, and it is possible to inspect and

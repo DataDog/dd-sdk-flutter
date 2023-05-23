@@ -30,7 +30,7 @@ extension TrackingExtension on DdSdkConfiguration {
   /// resources traced in this way is determined by
   /// [RumConfiguration.tracingSamplingRate].
   ///
-  /// You can add attributes to RUM Resources by providing an
+  /// You can add attributes to RUM Resources by providing a
   /// [clientListener]. See [DatadogTrackingHttpClientListener] for more info.
   ///
   /// Note that this is call is not necessary if you only want to track requests
