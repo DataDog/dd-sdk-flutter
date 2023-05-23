@@ -22,12 +22,15 @@ import 'tracking_http_client_plugin.dart';
 class DatadogTrackingHttpOverrides extends HttpOverrides {
   final DatadogSdk datadogSdk;
   final DdHttpTrackingPluginConfiguration configuration;
+  final HttpOverrides? existingOverrides;
 
-  DatadogTrackingHttpOverrides(this.datadogSdk, this.configuration);
+  DatadogTrackingHttpOverrides(
+      this.datadogSdk, this.configuration, this.existingOverrides);
 
   @override
   HttpClient createHttpClient(SecurityContext? context) {
-    var innerClient = super.createHttpClient(context);
+    var innerClient = existingOverrides?.createHttpClient(context) ??
+        super.createHttpClient(context);
     return DatadogTrackingHttpClient(datadogSdk, configuration, innerClient);
   }
 }

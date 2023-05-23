@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* Have `DatadogTrackingHttpClient` use `HttpOverrides.current` if they already exist. See [#424] 
 * Fix rethrown execptions on `close` not having the correct stack trace.
 
 ## 1.2.1
@@ -52,3 +53,4 @@
 * Initial split of DatadogTrackingHttpClient into its own package
 
 [#355]: https://github.com/DataDog/dd-sdk-flutter/issues/355
+[#424]: https://github.com/DataDog/dd-sdk-flutter/issues/424
