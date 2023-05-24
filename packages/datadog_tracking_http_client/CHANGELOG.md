@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Added `attributeProvider` parameter to `DatadogClient` to allow users provide attributes for RUM Resources automatically created by `DatadogClient`.
+* Added `DatadogTrackingHttpClientListener` to allow users to provide attributes for RUM Resources created by `DatadogTrackingHttpClient`.
 * Fix rethrown execptions on `close` not having the correct stack trace.
 
 ## 1.2.1
