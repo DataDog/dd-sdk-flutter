@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.4
 
 * Another attempt to fix the cash on exit on iOS. See [#414]
 
