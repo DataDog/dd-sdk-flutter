@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Another attempt to fix the cash on exit on iOS. See [#414]
 
 ## 1.3.3
 
@@ -165,3 +165,4 @@
 [#358]: https://github.com/DataDog/dd-sdk-flutter/issues/358
 [#372]: https://github.com/DataDog/dd-sdk-flutter/issues/372
 [#390]: https://github.com/DataDog/dd-sdk-flutter/issues/390
+[#414]: https://github.com/DataDog/dd-sdk-flutter/issues/414
