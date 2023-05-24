@@ -10,7 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 /// A callback function that allows you to provide attributes that should be
-/// attached to a Datadog RUM resource created from [DatadogClient].  This
+/// attached to a Datadog RUM resource created from [DatadogClient]. This
 /// callback is called when the resource is finished loading, so the provided
 /// [request] and [response] streams are already closed.
 ///
