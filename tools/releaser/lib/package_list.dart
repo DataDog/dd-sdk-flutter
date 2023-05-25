@@ -16,6 +16,6 @@ final gradleList = [
   'packages/datadog_flutter_plugin/android/build.gradle',
   'packages/datadog_flutter_plugin/example/android/app/build.gradle',
   'packages/datadog_flutter_plugin/integration_test_app/android/app/build.gradle',
-  'packages/datadog_flutter_webview/android/build.gradle',
+  'packages/datadog_webview_tracking/android/build.gradle',
   'examples/native-hybrid-app/android/app/build.gradle'
 ];
