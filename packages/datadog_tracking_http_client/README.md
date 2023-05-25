@@ -16,7 +16,7 @@ final configuration = DdSdkConfiguration(
 )..enableHttpTracking()
 ```
 
-Note that the Datadog Tracking HTTP Client modifies [HttpOverrides.global](). If you need to provide your own `HttpOverrides`, make sure to initialize it prior to initializing Datadot. During initialization, Datadog will check the value of `HttpOverrides.current` and use this for client creation if it exists.
+Note that the Datadog Tracking HTTP Client modifies `[HttpOverrides.global]()`. If you need to provide your own `HttpOverrides`, make sure to initialize it prior to initializing Datadog. During initialization, Datadog will check the value of `HttpOverrides.current` and use this for client creation if it exists.
 
 ## Using http.Client wrapping
 
