@@ -9,6 +9,19 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
+/// A callback function that allows you to provide attributes that should be
+/// attached to a Datadog RUM resource created from [DatadogClient]. This
+/// callback is called when the resource is finished loading, so the provided
+/// [request] and [response] streams are already closed.
+///
+/// If there was an error performing the request, this callback provides the
+/// [error] and, depending on the timing of the error, may send null in the
+/// [response].
+///
+/// If this function throws, it will prevent proper tracking of this resource.
+typedef DatadogClientAttributesProvider = Map<String, Object?> Function(
+    http.BaseRequest request, http.StreamedResponse? response, Object? error);
+
 /// A composable client for use with the `http` package that supports tracking
 /// network requests and sending them to Datadog.
 ///
@@ -24,12 +37,12 @@ import 'package:uuid/uuid.dart';
 ///
 /// To specify which hosts are 1st party (and therefore should have tracing
 /// Spans sent), see [DdSdkConfiguration.firstPartyHosts]. You can also set
-/// first party hosts after initialization setting [DatadogSdk.firstPartyHosts]
+/// first party hosts after initialization by setting [DatadogSdk.firstPartyHosts]
 ///
 /// DatadogClient only modifies calls made through itself, unlike
 /// [DatadogTrackingHttpClient], which overrides all calls made by [HttpClient]
-/// and includes network calls made by Flutter. However, DatadogClient allows
-/// you to compose with other [http.BaseClient] based libraries like
+/// and includes network calls made by the Flutter SDK. However, DatadogClient
+/// allows you to compose with other [http.BaseClient] based libraries like
 /// `cupertino_http` and `cronet_http`, which [DatadogTrackingHttpClient] would
 /// miss.
 ///
@@ -40,10 +53,12 @@ import 'package:uuid/uuid.dart';
 class DatadogClient extends http.BaseClient {
   final DatadogSdk datadogSdk;
   final Uuid _uuid = const Uuid();
+  final DatadogClientAttributesProvider? attributesProvider;
   final http.Client _innerClient;
 
   DatadogClient({
     required this.datadogSdk,
+    this.attributesProvider,
     http.Client? innerClient,
   }) : _innerClient = innerClient ?? http.Client() {
     datadogSdk.updateConfigurationInfo(
@@ -97,8 +112,9 @@ class DatadogClient extends http.BaseClient {
     } catch (e) {
       if (rumKey != null) {
         try {
+          final attributes = attributesProvider?.call(request, null, e) ?? {};
           rum.stopResourceLoadingWithErrorInfo(
-              rumKey, e.toString(), e.runtimeType.toString());
+              rumKey, e.toString(), e.runtimeType.toString(), attributes);
         } catch (innerE, st) {
           datadogSdk.internalLogger.sendToDatadog(
             '$DatadogClient encountered an error while attempting '
@@ -125,14 +141,22 @@ class DatadogClient extends http.BaseClient {
           onError: (Object e, StackTrace? st) {
             if (firstError == null) {
               firstError = e;
-              rum.stopResourceLoadingWithErrorInfo(rumKey!,
-                  firstError.toString(), firstError.runtimeType.toString());
+              final attributes =
+                  attributesProvider?.call(request, response, e) ?? {};
+              rum.stopResourceLoadingWithErrorInfo(
+                rumKey!,
+                firstError.toString(),
+                firstError.runtimeType.toString(),
+                attributes,
+              );
             }
             spyStream.addError(e, st);
           },
           onDone: () {
             if (rumKey != null) {
-              _onFinish(rum, rumKey, response, firstError);
+              final attributes =
+                  attributesProvider?.call(request, response, null) ?? {};
+              _onFinish(rum, rumKey, response, attributes, firstError);
             }
             spyStream.close();
           },
@@ -161,8 +185,8 @@ class DatadogClient extends http.BaseClient {
     return response;
   }
 
-  void _onFinish(
-      DdRum rum, String rumKey, http.StreamedResponse response, Object? error) {
+  void _onFinish(DdRum rum, String rumKey, http.StreamedResponse response,
+      Map<String, Object?> attributes, Object? error) {
     try {
       // If we saw an error, this resource has already been stopped
       if (error == null) {
@@ -173,7 +197,12 @@ class DatadogClient extends http.BaseClient {
             : ContentType.text;
         var resourceType = resourceTypeFromContentType(contentType);
         datadogSdk.rum?.stopResourceLoading(
-            rumKey, response.statusCode, resourceType, response.contentLength);
+          rumKey,
+          response.statusCode,
+          resourceType,
+          response.contentLength,
+          attributes,
+        );
       }
     } catch (e, st) {
       datadogSdk.internalLogger.sendToDatadog(

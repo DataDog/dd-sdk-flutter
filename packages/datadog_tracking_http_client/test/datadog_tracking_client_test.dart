@@ -35,6 +35,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(Uri());
     registerFallbackValue(FakeBaseRequest());
+    registerFallbackValue(RumResourceType.image);
   });
 
   setUp(() {
@@ -120,6 +121,22 @@ void main() {
       expect(captured.url, testUri);
       expect(captured.headers, {'x-datadog-header': 'header'});
     });
+
+    test('attributes provider is not called', () async {
+      var attributesProviderCalled = false;
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+        attributesProvider: (request, response, error) {
+          attributesProviderCalled = true;
+          return {};
+        },
+      );
+      final testUri = Uri.parse('https://test_url/test');
+      await client.get(testUri, headers: {'x-datadog-header': 'header'});
+
+      expect(attributesProviderCalled, isFalse);
+    });
   });
 
   group('when rum is enabled', () {
@@ -183,6 +200,32 @@ void main() {
           key, 200, RumResourceType.image, 88888, any()));
     });
 
+    test('calls stopResourceLoading with provided attributes', () async {
+      http.BaseRequest? providedRequest;
+      http.StreamedResponse? providedResponse;
+      final attributes = {'attribute_a': 'my_value', 'attribute_b': 32.1};
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+        attributesProvider: (request, response, error) {
+          providedRequest = request;
+          providedResponse = response;
+          return attributes;
+        },
+      );
+      final testUri = Uri.parse('https://test_url/test');
+
+      final future =
+          client.get(testUri, headers: {'x-datadog-header': 'header'});
+
+      await future;
+
+      expect(providedRequest, isNotNull);
+      expect(providedResponse, isNotNull);
+      verify(() =>
+          mockRum.stopResourceLoading(any(), any(), any(), any(), attributes));
+    });
+
     test(
         'send throwingError rethrows and calls stopResourceLoadingWithErrorInfo',
         () async {
@@ -207,6 +250,49 @@ void main() {
       expect(thrownError, thrownError);
       verify(() => mockRum.stopResourceLoadingWithErrorInfo(
           key, thrownError.toString(), thrownError.runtimeType.toString()));
+    });
+
+    test(
+        'send throwingError calls attributesProvider with error and sends provided attributes',
+        () async {
+      http.BaseRequest? providedRequest;
+      http.StreamedResponse? providedResponse;
+      Object? providedError;
+      final attributes = {
+        'error_attribute': 'attributeValue',
+        'secondary_attribute': 5549,
+      };
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+        attributesProvider: (request, response, error) {
+          providedRequest = request;
+          providedResponse = response;
+          providedError = error;
+          return attributes;
+        },
+      );
+      final testUri = Uri.parse('https://test_url/test');
+
+      final errorToThrow = Error();
+      Object? thrownError;
+      when(() => mockClient.send(any())).thenThrow(errorToThrow);
+      try {
+        final _ =
+            await client.get(testUri, headers: {'x-datadog-header': 'header'});
+      } catch (e) {
+        thrownError = e;
+      }
+
+      expect(providedRequest, isNotNull);
+      expect(providedResponse, isNull);
+      expect(providedError, thrownError);
+
+      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+          any(),
+          thrownError.toString(),
+          thrownError.runtimeType.toString(),
+          attributes));
     });
 
     test('passes through stream data', () async {
@@ -253,6 +339,56 @@ void main() {
 
       verify(() => mockRum.stopResourceLoadingWithErrorInfo(
           key, errorToThrow.toString(), errorToThrow.runtimeType.toString()));
+    });
+
+    test(
+        'error in stream and calls attributeProvider with error and sends provided attributes',
+        () async {
+      http.BaseRequest? providedRequest;
+      http.StreamedResponse? providedResponse;
+      Object? providedError;
+      final attributes = {
+        'error_attribute': 'attributeValue',
+        'another_attr': 5549,
+      };
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+        attributesProvider: (request, response, error) {
+          providedRequest = request;
+          providedResponse = response;
+          providedError = error;
+          return attributes;
+        },
+      );
+      final testUri = Uri.parse('https://test_url/test');
+
+      final errorToThrow = Error();
+      final streamController = StreamController<List<int>>();
+      Object? thrownError;
+      when(() => mockResponse.stream)
+          .thenAnswer((_) => http.ByteStream(streamController.stream));
+
+      final future =
+          client.get(testUri, headers: {'x-datadog-header': 'header'});
+
+      try {
+        streamController.sink.addError(errorToThrow);
+
+        await future;
+      } catch (e) {
+        thrownError = e;
+      }
+
+      expect(providedRequest, isNotNull);
+      expect(providedResponse, isNotNull);
+      expect(providedError, thrownError);
+
+      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+          any(),
+          errorToThrow.toString(),
+          errorToThrow.runtimeType.toString(),
+          attributes));
     });
 
     for (final headerType in TracingHeaderType.values) {
