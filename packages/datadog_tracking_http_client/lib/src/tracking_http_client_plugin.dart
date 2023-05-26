@@ -65,8 +65,12 @@ class _DdHttpTrackingPlugin extends DatadogPlugin {
 
   @override
   void initialize() {
-    HttpOverrides.global =
-        DatadogTrackingHttpOverrides(instance, configuration);
+    final existingOverrides = HttpOverrides.current;
+    HttpOverrides.global = DatadogTrackingHttpOverrides(
+      instance,
+      configuration,
+      existingOverrides,
+    );
     instance.updateConfigurationInfo(
         LateConfigurationProperty.trackNetworkRequests, true);
   }

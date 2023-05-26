@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* Have `DatadogTrackingHttpClient` use `HttpOverrides.current` if they already exist. See [#424] 
 * Added `attributeProvider` parameter to `DatadogClient` to allow users provide attributes for RUM Resources automatically created by `DatadogClient`.
 * Added `DatadogTrackingHttpClientListener` to allow users to provide attributes for RUM Resources created by `DatadogTrackingHttpClient`.
 * Fix rethrown execptions on `close` not having the correct stack trace.
@@ -54,3 +55,4 @@
 * Initial split of DatadogTrackingHttpClient into its own package
 
 [#355]: https://github.com/DataDog/dd-sdk-flutter/issues/355
+[#424]: https://github.com/DataDog/dd-sdk-flutter/issues/424

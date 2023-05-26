@@ -17,7 +17,10 @@ extension TrackingExtension on DdSdkConfiguration {
   /// Configures network requests monitoring for Tracing and RUM features.
   ///
   /// If enabled, the SDK will override [HttpClient] creation (via
-  /// [HttpOverrides.global]) to provide its own implementation.
+  /// [HttpOverrides.global]) to provide its own implementation. If you need
+  /// to provide your own overrides to [HttpOverrides.global], do so before
+  /// initializing Datadog. The HTTP tracking plugin will use the provided
+  /// [HttpOverrides] before overwriting with its own.
   ///
   /// If the RUM feature is enabled, the SDK will send RUM Resources for all
   /// intercepted requests. The SDK will also generate and send tracing Spans
