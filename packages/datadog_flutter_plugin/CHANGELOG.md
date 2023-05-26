@@ -3,8 +3,9 @@
 ## Unreleased
 
 * Use `PlatformDispatcher.onError` over `runZonedGuarded` for automatic error tracking and to avoid a Zone mismatch exception in Flutter 3.10. See [#416]
-* Increase minimum Flutter version to 3.3, Dart 2.18.
+* Increase minimum Flutter version to 3.3, Dart 2.18, fully support Futter 3.10 / Dart 3
 * Another attempt to fix the crash on exit on iOS. See [#414]
+* Fix an issue where calls into Datadog would not provide accurate stack traces.
 
 ## 1.4.0
 
