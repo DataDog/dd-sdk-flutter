@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+
+
 ## 1.5.0
 
 * Use `PlatformDispatcher.onError` over `runZonedGuarded` for automatic error tracking and to avoid a Zone mismatch exception in Flutter 3.10. See [#416]
