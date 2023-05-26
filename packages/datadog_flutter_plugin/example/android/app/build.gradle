@@ -79,7 +79,6 @@ flutter {
     source '../..'
 }
 
-apply from: '../../../../../ignore_sr_snapshots.gradle'
 
 dependencies {
     implementation "com.datadoghq:dd-sdk-android:$datadog_version"
