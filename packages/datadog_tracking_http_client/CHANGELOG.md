@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+
+
+## 1.3.0
+
 * Have `DatadogTrackingHttpClient` use `HttpOverrides.current` if they already exist. See [#424] 
 * Added `attributeProvider` parameter to `DatadogClient` to allow users provide attributes for RUM Resources automatically created by `DatadogClient`.
 * Added `DatadogTrackingHttpClientListener` to allow users to provide attributes for RUM Resources created by `DatadogTrackingHttpClient`.
