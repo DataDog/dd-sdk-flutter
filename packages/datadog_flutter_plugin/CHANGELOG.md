@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-
+* Update Android SDK to 1.19.1
+  * RUM: Force new session at SDK initialization.
+  * Ignore adding custom timings and feature flags for the stopped view.
 
 ## 1.5.0
 
