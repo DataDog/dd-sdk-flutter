@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+* Update Android SDK to 1.19.1
+  * RUM: Force new session at SDK initialization.
+  * Ignore adding custom timings and feature flags for the stopped view.
+
 ## 1.5.0
 
 * Use `PlatformDispatcher.onError` over `runZonedGuarded` for automatic error tracking and to avoid a Zone mismatch exception in Flutter 3.10. See [#416]
