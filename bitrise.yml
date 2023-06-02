@@ -3,7 +3,52 @@ format_version: 11
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 project_type: flutter
 
+pipelines:
+  pull_request:
+    stages:
+    - stage_build: {}
+    - stage_integration_test: {}
+
+stages:
+  stage_build:
+    workflows:
+    - build: {}
+  stage_integration_test:
+    workflows:
+    - integration_ios_from_stage: {}
+    - integration_android_from_stage: {}
+
 workflows:
+  build:
+    envs:
+    - FLUTTER_VERSION: stable
+    - DD_RUN_UNIT_TESTS: '1'
+    - DD_RUN_INTEGRATION_TESTS: '1'
+    after_run:
+    - setup
+    - analyze
+    - build
+    - unit_test
+
+  integration_ios_from_stage:
+    envs:
+    - FLUTTER_VERSION: stable
+    - DD_RUN_UNIT_TESTS: '1'
+    - DD_RUN_INTEGRATION_TESTS: '1'
+    after_run:
+    - setup
+    - integration_ios
+
+  integration_android_from_stage:
+    envs:
+    - FLUTTER_VERSION: stable
+    - DD_RUN_UNIT_TESTS: '1'
+    - DD_RUN_INTEGRATION_TESTS: '1'
+    after_run:
+    - setup
+    - _start_android_emulator
+    - integration_android
+  
   push_to_pull_request:
     description: |-
         This workflow is triggered on starting new PR or pushing new changes to existing PRs.
@@ -74,7 +119,7 @@ workflows:
         - content: |-
             #!/usr/bin/env bash
             set -e
-            pod repo update
+            # pod repo update
 
             ./prepare.sh
     - script:
