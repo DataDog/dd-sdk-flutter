@@ -12,6 +12,8 @@ import 'src/tracking_http_client_plugin.dart'
 
 export 'src/tracking_http.dart';
 export 'src/tracking_http_client.dart';
+export 'src/tracking_http_client_plugin.dart'
+    show DatadogTrackingHttpClientListener;
 
 extension TrackingExtension on DdSdkConfiguration {
   /// Configures network requests monitoring for Tracing and RUM features.
