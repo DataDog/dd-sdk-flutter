@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Fix not exporting `DatadogTrackingHttpClientListener` from @ClaireDavis.
 
 ## 1.3.0
 
