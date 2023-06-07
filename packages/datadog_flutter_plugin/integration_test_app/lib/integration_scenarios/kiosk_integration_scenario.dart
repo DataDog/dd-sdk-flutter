@@ -170,6 +170,8 @@ class _TestFinishedWaitScreenState extends State<TestFinishedWaitScreen>
   @override
   void didPush() {
     DatadogSdk.instance.rum?.startView('TestFinished');
+    // Immediately stop thew view so Android will send the results.
+    DatadogSdk.instance.rum?.stopView('TestFinished');
   }
 
   @override

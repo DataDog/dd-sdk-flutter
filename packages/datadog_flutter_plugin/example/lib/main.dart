@@ -82,6 +82,8 @@ void main() async {
   final configuration = DdSdkConfiguration(
     clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
     env: dotenv.get('DD_ENV', fallback: ''),
+    serviceName: 'com.datadoghq.example.flutter',
+    version: '1.2.3',
     site: DatadogSite.us1,
     trackingConsent: TrackingConsent.granted,
     nativeCrashReportEnabled: true,
@@ -94,6 +96,7 @@ void main() async {
         ? RumConfiguration(
             applicationId: applicationId,
             detectLongTasks: true,
+            reportFlutterPerformance: true,
             rumViewEventMapper: _viewEventMapper,
             rumActionEventMapper: _actionEventMapper,
             rumResourceEventMapper: _resourceEventMapper,
