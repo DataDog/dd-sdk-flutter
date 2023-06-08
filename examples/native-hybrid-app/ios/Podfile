@@ -10,11 +10,6 @@ target 'iOS Flutter Hybrid Example' do
 
   install_all_flutter_pods(flutter_application_path)
   # Pods for iOS Flutter Hybrid Example  
-  
-  # Datadog Pod Overrides
-  pod 'DatadogSDK', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
-  pod 'DatadogSDKCrashReporting', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
-  # End Datadog Pod Overrides
 end
 
 post_install do |installer|

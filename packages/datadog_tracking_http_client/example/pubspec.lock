@@ -67,10 +67,11 @@ packages:
   datadog_flutter_plugin:
     dependency: "direct main"
     description:
-      path: "../../datadog_flutter_plugin"
-      relative: true
-    source: path
-    version: "1.6.0"
+      name: datadog_flutter_plugin
+      sha256: "4e0e050a826353c209e722d06a47df7992029480f59ce15fa1048148ad4de07e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.5.0"
   datadog_tracking_http_client:
     dependency: "direct main"
     description:
@@ -347,4 +348,4 @@ packages:
     version: "3.0.2"
 sdks:
   dart: ">=3.0.0-0 <4.0.0"
-  flutter: ">=1.17.0"
+  flutter: ">=3.3.0"

@@ -14,8 +14,7 @@ dependencies:
   http: ^0.13.4
   transparent_image: ^2.0.0
 
-  datadog_flutter_plugin:
-    path: ../../datadog_flutter_plugin
+  datadog_flutter_plugin: ^1.2.0
   datadog_tracking_http_client:
     path: ../
   datadog_common_test:
@@ -34,7 +33,6 @@ flutter:
 
   assets:
     - .env
-
 dependency_overrides:
   datadog_flutter_plugin:
     path: ../../datadog_flutter_plugin
