@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+
+
+## 1.5.1
+
 * Update Android SDK to 1.19.2
   * Ignore adding custom timings and feature flags for the stopped view.
 
