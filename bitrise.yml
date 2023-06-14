@@ -259,6 +259,10 @@ workflows:
         - working_dir: "$BITRISE_SOURCE_DIR"
 
   nightly_ios:
+    envs:
+    - FLUTTER_VERSION: stable
+    - DD_RUN_UNIT_TESTS: '1'
+    - DD_RUN_INTEGRATION_TESTS: '1'
     before_run:
     - _setup
     - _launch_ios_simulator
@@ -280,6 +284,10 @@ workflows:
     - _deploy_artifacts
 
   nightly_android:
+    envs:
+    - FLUTTER_VERSION: stable
+    - DD_RUN_UNIT_TESTS: '1'
+    - DD_RUN_INTEGRATION_TESTS: '1'
     before_run:
     - _setup
     - _start_android_emulator
