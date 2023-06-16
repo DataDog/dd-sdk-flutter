@@ -324,12 +324,59 @@ void main() {
           const StandardMethodCodec().encodeMethodCall(
             const MethodCall(
               'rumSessionStarted',
-              {'sessionId': 'fake-session-id', 'sampled': true},
+              {'sessionId': 'fake-session-id', 'sampled': false},
             ),
           ),
           null,
         );
 
     expect(ddRumPlatform.sessionId, 'fake-session-id');
+  });
+
+  test(
+      'rumSessionStarted from method channel sets sessionId to empty if sampled',
+      () async {
+    await ddRumPlatform.initialize(
+        RumConfiguration(applicationId: 'fake-application-id'),
+        InternalLogger());
+    await ambiguate(TestDefaultBinaryMessengerBinding.instance)
+        ?.defaultBinaryMessenger
+        .handlePlatformMessage(
+          'datadog_sdk_flutter.rum',
+          const StandardMethodCodec().encodeMethodCall(
+            const MethodCall(
+              'rumSessionStarted',
+              {'sessionId': 'fake-session-id', 'sampled': true},
+            ),
+          ),
+          null,
+        );
+
+    expect(ddRumPlatform.sessionId, '');
+  });
+
+  test('rumSessionStarted from method channel calls callback', () async {
+    await ddRumPlatform.initialize(
+        RumConfiguration(applicationId: 'fake-application-id'),
+        InternalLogger());
+    String? callbackSessionId;
+    ddRumPlatform.sessionStarted = (sessionId) {
+      callbackSessionId = sessionId;
+    };
+
+    await ambiguate(TestDefaultBinaryMessengerBinding.instance)
+        ?.defaultBinaryMessenger
+        .handlePlatformMessage(
+          'datadog_sdk_flutter.rum',
+          const StandardMethodCodec().encodeMethodCall(
+            const MethodCall(
+              'rumSessionStarted',
+              {'sessionId': 'fake-session-id', 'sampled': false},
+            ),
+          ),
+          null,
+        );
+
+    expect(callbackSessionId, 'fake-session-id');
   });
 }
