@@ -39,6 +39,11 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
+  String get sessionId {
+    return getInternalContext()?.session_id ?? '';
+  }
+
+  @override
   Future<void> initialize(
       RumConfiguration configuration, InternalLogger internalLogger) async {}
 
@@ -215,3 +220,13 @@ external void _jsAddFeatureFlagEvaluation(String name, dynamic value);
 
 @JS('stopSession')
 external void _jsStopSession();
+
+@JS()
+@anonymous
+class _InternalContext {
+  external String? application_id;
+  external String? session_id;
+}
+
+@JS('getInternalContext')
+external _InternalContext? getInternalContext();

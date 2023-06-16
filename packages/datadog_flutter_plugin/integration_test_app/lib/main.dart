@@ -115,7 +115,61 @@ class DatadogIntegrationTestApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       navigatorObservers: [routeObserver],
-      home: const IntegrationScenariosScreen(),
+      home: const Column(
+        children: [
+          Expanded(child: IntegrationScenariosScreen()),
+          SessionFooter(),
+        ],
+      ),
     );
+  }
+}
+
+class SessionFooter extends StatefulWidget {
+  const SessionFooter({super.key});
+
+  @override
+  State<SessionFooter> createState() => _SessionFooterState();
+}
+
+class _SessionFooterState extends State<SessionFooter> {
+  String get currentSessionId => DatadogSdk.instance.rum?.sessionId ?? '<none>';
+
+  @override
+  void initState() {
+    super.initState();
+
+    DatadogSdk.instance.rum?.sessionStarted = (sessionId) {
+      setState(() {});
+    };
+
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      final sessionFooterOverlay = OverlayEntry(builder: (context) {
+        return SafeArea(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: IntrinsicHeight(
+              child: Container(
+                color: Colors.blueAccent,
+                child: Center(
+                  child: Text(
+                    key: const Key('sessionId'),
+                    'sessionId: $currentSessionId',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      });
+
+      Overlay.of(context).insert(sessionFooterOverlay);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox();
   }
 }

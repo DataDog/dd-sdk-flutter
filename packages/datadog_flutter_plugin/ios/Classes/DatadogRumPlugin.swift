@@ -375,6 +375,18 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         return usrMember
     }
 
+    func rumSessionStarted(_ sessionId: String, _ sampled: Bool) {
+        // Dispatch to the main thread. This is partially to combat Flutter shutdown
+        // occuring while we're still processing events
+        let callbackArgs: [String: Any] = [
+            "sessionId": sessionId,
+            "sampled": sampled
+        ]
+        DispatchQueue.main.async {
+            DatadogRumPlugin.methodChannel?.invokeMethod("rumSessionStarted", arguments: callbackArgs)
+        }
+    }
+
     func viewEventMapper(rumViewEvent: RUMViewEvent) -> RUMViewEvent {
         if trackMapperPerf {
             mapperPerf.start()

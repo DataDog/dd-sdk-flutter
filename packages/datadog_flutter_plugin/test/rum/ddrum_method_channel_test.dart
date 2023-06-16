@@ -5,8 +5,8 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
-import 'package:datadog_flutter_plugin/src/rum/ddrum.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum_method_channel.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -307,5 +307,29 @@ void main() {
         'rasterTimes': [0.11, 0.25],
       }),
     ]);
+  });
+
+  test('sessionId returns empty string for no session', () {
+    expect(ddRumPlatform.sessionId, isEmpty);
+  });
+
+  test('rumSessionStarted from method channel sets sessionId', () async {
+    await ddRumPlatform.initialize(
+        RumConfiguration(applicationId: 'fake-application-id'),
+        InternalLogger());
+    await ambiguate(TestDefaultBinaryMessengerBinding.instance)
+        ?.defaultBinaryMessenger
+        .handlePlatformMessage(
+          'datadog_sdk_flutter.rum',
+          const StandardMethodCodec().encodeMethodCall(
+            const MethodCall(
+              'rumSessionStarted',
+              {'sessionId': 'fake-session-id', 'sampled': true},
+            ),
+          ),
+          null,
+        );
+
+    expect(ddRumPlatform.sessionId, 'fake-session-id');
   });
 }

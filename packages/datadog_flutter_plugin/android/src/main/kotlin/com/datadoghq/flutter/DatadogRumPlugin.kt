@@ -15,6 +15,7 @@ import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
+import com.datadog.android.rum.RumSessionListener
 import com.datadog.android.rum.model.ActionEvent
 import com.datadog.android.rum.model.ErrorEvent
 import com.datadog.android.rum.model.LongTaskEvent
@@ -84,6 +85,11 @@ class DatadogRumPlugin(
     ) {
         rum = RumMonitor.Builder()
             .sampleRumSessions(configuration.sampleRate)
+            .setSessionListener(object : RumSessionListener {
+                override fun onSessionStarted(sessionId: String, isDiscarded: Boolean) {
+                    sessionStarted(sessionId, isDiscarded)
+                }
+            })
             .build()
         GlobalRum.registerIfAbsent(rum!!)
     }
@@ -339,6 +345,19 @@ class DatadogRumPlugin(
     private fun stopSession(call: MethodCall, result: Result) {
         rum?.stopSession()
         result.success(null)
+    }
+
+    private fun sessionStarted(sessionId: String, isDiscarded: Boolean) {
+        val handler = Handler(Looper.getMainLooper())
+        handler.post {
+            channel.invokeMethod(
+                "rumSessionStarted",
+                mapOf(
+                    "sessionId" to sessionId,
+                    "sampled" to isDiscarded,
+                )
+            )
+        }
     }
 
     @Suppress("TooGenericExceptionCaught")

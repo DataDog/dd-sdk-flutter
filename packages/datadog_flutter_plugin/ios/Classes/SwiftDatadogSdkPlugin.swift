@@ -178,20 +178,24 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             _ = ddConfiguration._internal.setLogEventMapper(FlutterLogEventMapper(channel: channel))
         }
 
-        if configuration.rumConfiguration?.attachViewEventMapper == true {
-            _ = ddConfiguration.setRUMViewEventMapper(DatadogRumPlugin.instance.viewEventMapper)
-        }
-        if configuration.rumConfiguration?.attachActionEventMapper == true {
-            _ = ddConfiguration.setRUMActionEventMapper(DatadogRumPlugin.instance.actionEventMapper)
-        }
-        if configuration.rumConfiguration?.attachResourceEventMapper == true {
-            _ = ddConfiguration.setRUMResourceEventMapper(DatadogRumPlugin.instance.resourceEventMapper)
-        }
-        if configuration.rumConfiguration?.attachErrorEventMapper == true {
-            _ = ddConfiguration.setRUMErrorEventMapper(DatadogRumPlugin.instance.errorEventMapper)
-        }
-        if configuration.rumConfiguration?.attachLongTaskMapper == true {
-            _ = ddConfiguration.setRUMLongTaskEventMapper(DatadogRumPlugin.instance.longTaskEventMapper)
+        if let rumConfiguration = configuration.rumConfiguration {
+            ddConfiguration.onRUMSessionStart(DatadogRumPlugin.instance.rumSessionStarted)
+
+            if rumConfiguration.attachViewEventMapper {
+                _ = ddConfiguration.setRUMViewEventMapper(DatadogRumPlugin.instance.viewEventMapper)
+            }
+            if rumConfiguration.attachActionEventMapper {
+                _ = ddConfiguration.setRUMActionEventMapper(DatadogRumPlugin.instance.actionEventMapper)
+            }
+            if rumConfiguration.attachResourceEventMapper {
+                _ = ddConfiguration.setRUMResourceEventMapper(DatadogRumPlugin.instance.resourceEventMapper)
+            }
+            if rumConfiguration.attachErrorEventMapper {
+                _ = ddConfiguration.setRUMErrorEventMapper(DatadogRumPlugin.instance.errorEventMapper)
+            }
+            if rumConfiguration.attachLongTaskMapper {
+                _ = ddConfiguration.setRUMLongTaskEventMapper(DatadogRumPlugin.instance.longTaskEventMapper)
+            }
         }
 
         Datadog.initialize(appContext: Datadog.AppContext(),

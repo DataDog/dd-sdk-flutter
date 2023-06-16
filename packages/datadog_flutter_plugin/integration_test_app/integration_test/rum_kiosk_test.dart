@@ -12,10 +12,14 @@ import 'package:integration_test/integration_test.dart';
 
 import 'common.dart';
 
-Future<void> performUserInteractions(WidgetTester tester) async {
+Future<List<String>> performUserInteractions(WidgetTester tester) async {
   final startButton = find.widgetWithText(ElevatedButton, 'Start Session');
   await tester.tap(startButton);
   await tester.pumpAndSettle();
+
+  final sessionIdTextFinder = find.byKey(const Key('sessionId'));
+  final firstSessionId =
+      (sessionIdTextFinder.evaluate().single.widget as Text).data ?? '';
 
   final downloadResourceButton =
       find.widgetWithText(ElevatedButton, 'Download Resource');
@@ -37,6 +41,9 @@ Future<void> performUserInteractions(WidgetTester tester) async {
   await tester.tap(startButton);
   await tester.pumpAndSettle();
 
+  final secondSessionId =
+      (sessionIdTextFinder.evaluate().single.widget as Text).data ?? '';
+
   await tester.tap(downloadResourceButton);
   await tester.pumpAndSettle();
   await tester.waitFor(downloadResourceButton, const Duration(seconds: 2),
@@ -47,6 +54,11 @@ Future<void> performUserInteractions(WidgetTester tester) async {
   final finishButton = find.widgetWithText(ElevatedButton, 'Finish Test');
   await tester.tap(finishButton);
   await tester.pumpAndSettle();
+
+  return [
+    firstSessionId.replaceAll('sessionId: ', '').toLowerCase(),
+    secondSessionId.replaceAll('sessionId: ', '').toLowerCase(),
+  ];
 }
 
 void main() {
@@ -58,7 +70,7 @@ void main() {
       menuTitle: 'Kiosk RUM Scenario',
     );
 
-    await performUserInteractions(tester);
+    final sessionIds = await performUserInteractions(tester);
 
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
@@ -88,7 +100,7 @@ void main() {
     final secondSession =
         sessions.visits[1].viewEvents[0].rumEvent['session']['id'] as String;
 
-    expect(firstSession, isNot(secondSession));
+    expect(firstSession, sessionIds[0]);
     final firstVisit = sessions.visits[0];
     for (final viewEvent in firstVisit.viewEvents) {
       expect(viewEvent.rumEvent['session']['id'], firstSession);
@@ -109,6 +121,7 @@ void main() {
     expect(
         secondVisit.viewEvents.last.rumEvent['session']['is_active'], isTrue);
 
+    expect(secondSession, sessionIds[1]);
     expect(secondVisit.resourceEvents.length, 1);
     expect(
         secondVisit.resourceEvents[0].rumEvent['session']['id'], secondSession);

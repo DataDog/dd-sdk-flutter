@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Add a `sessionId` getter to DdRum, as well as a `sessionStarted` callback. See [#442]
 
 ## 1.5.1
 

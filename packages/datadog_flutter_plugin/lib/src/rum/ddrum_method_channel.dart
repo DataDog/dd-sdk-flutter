@@ -14,10 +14,28 @@ class DdRumMethodChannel extends DdRumPlatform {
   final MethodChannel methodChannel =
       const MethodChannel('datadog_sdk_flutter.rum');
 
+  InternalLogger? _internalLogger;
+  MapperCallbackHelper? _callbackHelper;
+
+  String _lastSessionId = '';
+  @override
+  String get sessionId => _lastSessionId;
+
+  @override
+  void Function(String)? sessionStarted;
+
+  bool _sessionIsSampled = false;
+
+  DdRumMethodChannel() {
+    methodChannel.setMethodCallHandler(handleMethodCall);
+  }
+
   @override
   Future<void> initialize(
       RumConfiguration configuration, InternalLogger internalLogger) async {
-    final callbackHandler = MethodCallHandler(
+    _internalLogger = internalLogger;
+
+    _callbackHelper = MapperCallbackHelper(
       viewEventMapper: configuration.rumViewEventMapper,
       actionEventMapper: configuration.rumActionEventMapper,
       resourceEventMapper: configuration.rumResourceEventMapper,
@@ -25,8 +43,15 @@ class DdRumMethodChannel extends DdRumPlatform {
       longTaskEventMapper: configuration.rumLongTaskEventMapper,
       internalLogger: internalLogger,
     );
+  }
 
-    methodChannel.setMethodCallHandler(callbackHandler.handleMethodCall);
+  Future<dynamic> handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'rumSessionStarted':
+        return _rumSessionStarted(call);
+      default:
+        return _callbackHelper?.handleMethodCall(call);
+    }
   }
 
   @override
@@ -196,9 +221,26 @@ class DdRumMethodChannel extends DdRumPlatform {
       'rasterTimes': rasterTimes,
     });
   }
+
+  void _rumSessionStarted(MethodCall call) {
+    try {
+      final sessionId = call.arguments['sessionId'] as String;
+      final sampled = call.arguments['sampled'] as bool;
+      _sessionIsSampled = sampled;
+      if (!sampled) {
+        _lastSessionId = sessionId;
+      } else {
+        _lastSessionId = '';
+      }
+      sessionStarted?.call(sessionId);
+    } catch (e, st) {
+      _internalLogger?.sendToDatadog(
+          'Error in rumSessionStarted: $e', st, e.runtimeType.toString());
+    }
+  }
 }
 
-class MethodCallHandler {
+class MapperCallbackHelper {
   static const mapperError = {'_dd.mapper_error': 'mapper error'};
 
   final RumViewEventMapper? viewEventMapper;
@@ -209,7 +251,7 @@ class MethodCallHandler {
 
   final InternalLogger internalLogger;
 
-  MethodCallHandler({
+  MapperCallbackHelper({
     this.viewEventMapper,
     this.actionEventMapper,
     this.resourceEventMapper,

@@ -96,6 +96,28 @@ class DdRum {
 
   RumLongTaskObserver? _longTaskObserver;
 
+  /// Get the last active session id, or an empty string if a session hasn't started
+  ///
+  /// Session ids are updated when a new session is started in Datadog, usually
+  /// as a result of a user action. If you are using [stopSession], [sessionId] will
+  /// continue to return the last active session until a new session starts.
+  ///
+  /// You can also listen to sessions start events by setting [sessionStarted]
+  String get sessionId => _platform.sessionId;
+
+  /// Get the current callback listening for `sessionStarted` events.
+  ///
+  /// This callback does not work for Flutter Web.
+  SessionStartedCallback? get sessionStarted => _platform.sessionStarted;
+
+  /// Set the method to be called when new sessions are started in Datadog RUM.
+  ///
+  /// If a session is sampled out, [sessionId] will be an empty string.
+  ///
+  /// This callback does not work on Flutter Web.
+  set sessionStarted(SessionStartedCallback? callback) =>
+      _platform.sessionStarted = callback;
+
   DdRum(this.configuration, this.logger) {
     // Never use long task observer on web -- the Browser SDK should
     // capture stalls on the main thread automatically.
