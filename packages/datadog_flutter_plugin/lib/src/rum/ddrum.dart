@@ -84,6 +84,14 @@ RumResourceType resourceTypeFromContentType(ContentType? type) {
   return RumResourceType.native;
 }
 
+@immutable
+class DdRumSessionInfo {
+  final String sessionId;
+  final bool isSampledOut;
+
+  const DdRumSessionInfo(this.sessionId, this.isSampledOut);
+}
+
 class DdRum {
   static DdRumPlatform get _platform {
     return DdRumPlatform.instance;
@@ -96,18 +104,22 @@ class DdRum {
 
   RumLongTaskObserver? _longTaskObserver;
 
-  /// Get the last active session id, or an empty string if a session hasn't started
+  /// Get the last active session id
   ///
-  /// Session ids are updated when a new session is started in Datadog, usually
+  /// On mobile, session ids are updated when a new session is started in Datadog, usually
   /// as a result of a user action. If you are using [stopSession], [sessionId] will
-  /// continue to return the last active session until a new session starts.
+  /// continue to return the last active session until a new session starts. Untracked
+  /// sessions will have [DdRumSessionInfo.isSampledOut] set to `true`
+  ///
+  /// On web, sessionId is the currently active session, or `null` if the current session
+  /// has been sampled out or if there is no active session.
   ///
   /// You can also listen to sessions start events by setting [sessionStarted]
-  String get sessionId => _platform.sessionId;
+  DdRumSessionInfo? get sessionId => _platform.sessionInfo;
 
   /// Get the current callback listening for `sessionStarted` events.
   ///
-  /// This callback does not work for Flutter Web.
+  /// This callback does not work on Flutter Web.
   SessionStartedCallback? get sessionStarted => _platform.sessionStarted;
 
   /// Set the method to be called when new sessions are started in Datadog RUM.

@@ -39,8 +39,12 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  String get sessionId {
-    return getInternalContext()?.session_id ?? '';
+  DdRumSessionInfo? get sessionInfo {
+    final sessionId = getInternalContext()?.session_id;
+    if (sessionId == null) {
+      return null;
+    }
+    return DdRumSessionInfo(sessionId, false);
   }
 
   @override

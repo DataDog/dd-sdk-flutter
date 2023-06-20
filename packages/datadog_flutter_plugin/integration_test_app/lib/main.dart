@@ -133,7 +133,8 @@ class SessionFooter extends StatefulWidget {
 }
 
 class _SessionFooterState extends State<SessionFooter> {
-  String get currentSessionId => DatadogSdk.instance.rum?.sessionId ?? '<none>';
+  String get currentSessionId =>
+      DatadogSdk.instance.rum?.sessionId?.sessionId ?? '<none>';
 
   @override
   void initState() {

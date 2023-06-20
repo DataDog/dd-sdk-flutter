@@ -354,7 +354,7 @@ class DatadogRumPlugin(
                 "rumSessionStarted",
                 mapOf(
                     "sessionId" to sessionId,
-                    "sampled" to isDiscarded,
+                    "sampledOut" to isDiscarded,
                 )
             )
         }

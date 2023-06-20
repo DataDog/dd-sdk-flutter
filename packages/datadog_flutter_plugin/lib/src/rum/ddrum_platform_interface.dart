@@ -8,7 +8,7 @@ import '../../datadog_flutter_plugin.dart';
 import '../internal_logger.dart';
 import 'ddrum_method_channel.dart';
 
-typedef SessionStartedCallback = void Function(String sessionId);
+typedef SessionStartedCallback = void Function(DdRumSessionInfo sessionId);
 
 abstract class DdRumPlatform extends PlatformInterface {
   DdRumPlatform() : super(token: _token);
@@ -24,7 +24,7 @@ abstract class DdRumPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  String get sessionId;
+  DdRumSessionInfo? get sessionInfo;
   SessionStartedCallback? sessionStarted;
 
   Future<void> initialize(

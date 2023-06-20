@@ -17,14 +17,12 @@ class DdRumMethodChannel extends DdRumPlatform {
   InternalLogger? _internalLogger;
   MapperCallbackHelper? _callbackHelper;
 
-  String _lastSessionId = '';
+  DdRumSessionInfo? _lastSessionInfo;
   @override
-  String get sessionId => _lastSessionId;
+  DdRumSessionInfo? get sessionInfo => _lastSessionInfo;
 
   @override
-  void Function(String)? sessionStarted;
-
-  bool _sessionIsSampled = false;
+  void Function(DdRumSessionInfo)? sessionStarted;
 
   DdRumMethodChannel() {
     methodChannel.setMethodCallHandler(handleMethodCall);
@@ -225,14 +223,9 @@ class DdRumMethodChannel extends DdRumPlatform {
   void _rumSessionStarted(MethodCall call) {
     try {
       final sessionId = call.arguments['sessionId'] as String;
-      final sampled = call.arguments['sampled'] as bool;
-      _sessionIsSampled = sampled;
-      if (!sampled) {
-        _lastSessionId = sessionId;
-      } else {
-        _lastSessionId = '';
-      }
-      sessionStarted?.call(sessionId);
+      final sampledOut = call.arguments['sampledOut'] as bool;
+      _lastSessionInfo = DdRumSessionInfo(sessionId, sampledOut);
+      sessionStarted?.call(_lastSessionInfo!);
     } catch (e, st) {
       _internalLogger?.sendToDatadog(
           'Error in rumSessionStarted: $e', st, e.runtimeType.toString());

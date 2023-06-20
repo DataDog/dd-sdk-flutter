@@ -3,5 +3,6 @@
 // Copyright 2019-Present Datadog, Inc.
 
 export 'ddrum.dart';
+export 'ddrum_platform_interface.dart' show SessionStartedCallback;
 export 'navigation_observer.dart';
 export 'rum_user_action_detector.dart';

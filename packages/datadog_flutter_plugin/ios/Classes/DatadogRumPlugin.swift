@@ -380,7 +380,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         // occuring while we're still processing events
         let callbackArgs: [String: Any] = [
             "sessionId": sessionId,
-            "sampled": sampled
+            "sampledOut": sampled
         ]
         DispatchQueue.main.async {
             DatadogRumPlugin.methodChannel?.invokeMethod("rumSessionStarted", arguments: callbackArgs)

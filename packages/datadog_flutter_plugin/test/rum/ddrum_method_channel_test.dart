@@ -309,11 +309,11 @@ void main() {
     ]);
   });
 
-  test('sessionId returns empty string for no session', () {
-    expect(ddRumPlatform.sessionId, isEmpty);
+  test('sessionInfo returns null for no session', () {
+    expect(ddRumPlatform.sessionInfo, isNull);
   });
 
-  test('rumSessionStarted from method channel sets sessionId', () async {
+  test('rumSessionStarted from method channel sets sessionInfo', () async {
     await ddRumPlatform.initialize(
         RumConfiguration(applicationId: 'fake-application-id'),
         InternalLogger());
@@ -324,17 +324,17 @@ void main() {
           const StandardMethodCodec().encodeMethodCall(
             const MethodCall(
               'rumSessionStarted',
-              {'sessionId': 'fake-session-id', 'sampled': false},
+              {'sessionId': 'fake-session-id', 'sampledOut': false},
             ),
           ),
           null,
         );
 
-    expect(ddRumPlatform.sessionId, 'fake-session-id');
+    expect(ddRumPlatform.sessionInfo?.sessionId, 'fake-session-id');
+    expect(ddRumPlatform.sessionInfo?.isSampledOut, isFalse);
   });
 
-  test(
-      'rumSessionStarted from method channel sets sessionId to empty if sampled',
+  test('rumSessionStarted from method channel sets sessionInfo if sampled out',
       () async {
     await ddRumPlatform.initialize(
         RumConfiguration(applicationId: 'fake-application-id'),
@@ -346,22 +346,23 @@ void main() {
           const StandardMethodCodec().encodeMethodCall(
             const MethodCall(
               'rumSessionStarted',
-              {'sessionId': 'fake-session-id', 'sampled': true},
+              {'sessionId': 'fake-session-id', 'sampledOut': true},
             ),
           ),
           null,
         );
 
-    expect(ddRumPlatform.sessionId, '');
+    expect(ddRumPlatform.sessionInfo?.sessionId, 'fake-session-id');
+    expect(ddRumPlatform.sessionInfo?.isSampledOut, true);
   });
 
   test('rumSessionStarted from method channel calls callback', () async {
     await ddRumPlatform.initialize(
         RumConfiguration(applicationId: 'fake-application-id'),
         InternalLogger());
-    String? callbackSessionId;
-    ddRumPlatform.sessionStarted = (sessionId) {
-      callbackSessionId = sessionId;
+    DdRumSessionInfo? callbackSessionInfo;
+    ddRumPlatform.sessionStarted = (sessionInfo) {
+      callbackSessionInfo = sessionInfo;
     };
 
     await ambiguate(TestDefaultBinaryMessengerBinding.instance)
@@ -371,12 +372,13 @@ void main() {
           const StandardMethodCodec().encodeMethodCall(
             const MethodCall(
               'rumSessionStarted',
-              {'sessionId': 'fake-session-id', 'sampled': false},
+              {'sessionId': 'fake-session-id', 'sampledOut': false},
             ),
           ),
           null,
         );
 
-    expect(callbackSessionId, 'fake-session-id');
+    expect(callbackSessionInfo?.sessionId, 'fake-session-id');
+    expect(callbackSessionInfo?.isSampledOut, false);
   });
 }
