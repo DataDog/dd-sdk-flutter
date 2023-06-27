@@ -76,6 +76,27 @@ class DdLogs {
     }
   }
 
+  /// Sends a `notice` log message.
+  ///
+  /// You can optionally send an [errorMessage], [errorKind], and an [errorStackTrace]
+  /// that will be connected to this log message.
+  ///
+  /// You can also provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
+  /// [StandardMessageCodec].
+  void notice(
+    String message, {
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes = const {},
+  }) {
+    if (_reportingThreshold.index <= Verbosity.notice.index) {
+      _internalLog(LogLevel.notice, message, errorMessage, errorKind,
+          errorStackTrace, attributes);
+    }
+  }
+
   /// Sends a `warn` log message.
   ///
   /// You can optionally send an [errorMessage], [errorKind], and an [errorStackTrace]
@@ -114,6 +135,69 @@ class DdLogs {
   }) {
     if (_reportingThreshold.index <= Verbosity.error.index) {
       _internalLog(LogLevel.error, message, errorMessage, errorKind,
+          errorStackTrace, attributes);
+    }
+  }
+
+  /// Sends a `critical` log message.
+  ///
+  /// You can optionally send an [errorMessage], [errorKind], and an [errorStackTrace]
+  /// that will be connected to this log message.
+  ///
+  /// You can also provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
+  /// [StandardMessageCodec].
+  void critical(
+    String message, {
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes = const {},
+  }) {
+    if (_reportingThreshold.index <= Verbosity.critical.index) {
+      _internalLog(LogLevel.critical, message, errorMessage, errorKind,
+          errorStackTrace, attributes);
+    }
+  }
+
+  /// Sends an `alert` log message.
+  ///
+  /// You can optionally send an [errorMessage], [errorKind], and an [errorStackTrace]
+  /// that will be connected to this log message.
+  ///
+  /// You can also provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
+  /// [StandardMessageCodec].
+  void alert(
+    String message, {
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes = const {},
+  }) {
+    if (_reportingThreshold.index <= Verbosity.alert.index) {
+      _internalLog(LogLevel.alert, message, errorMessage, errorKind,
+          errorStackTrace, attributes);
+    }
+  }
+
+  /// Sends an `emergency` log message.
+  ///
+  /// You can optionally send an [errorMessage], [errorKind], and an [errorStackTrace]
+  /// that will be connected to this log message.
+  ///
+  /// You can also provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
+  /// [StandardMessageCodec].
+  void emergency(
+    String message, {
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes = const {},
+  }) {
+    if (_reportingThreshold.index <= Verbosity.emergency.index) {
+      _internalLog(LogLevel.emergency, message, errorMessage, errorKind,
           errorStackTrace, attributes);
     }
   }

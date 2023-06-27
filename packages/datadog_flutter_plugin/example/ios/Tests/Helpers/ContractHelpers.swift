@@ -28,11 +28,6 @@ struct Contract {
     let methodName: String
     let requiredParameters: [String: SupportedContractType]
 
-    init(methodName: String, requiredParameters: [String: SupportedContractType]) {
-        self.methodName = methodName
-        self.requiredParameters = requiredParameters
-    }
-
     func createContractArguments(excluding: String?, additionalArguments: [String: Any]? = nil) -> [String: Any] {
         var arguments: [String: Any] = [:]
         for param in requiredParameters where param.key != excluding {

@@ -127,7 +127,18 @@ enum DatadogSite {
   ap1,
 }
 
-enum Verbosity { verbose, debug, info, warn, error, none }
+enum Verbosity {
+  verbose,
+  debug,
+  info,
+  notice,
+  warn,
+  error,
+  critical,
+  alert,
+  emergency,
+  none
+}
 
 /// Defines the frequency at which Datadog SDK will collect mobile vitals, such
 /// as CPU and memory usage.

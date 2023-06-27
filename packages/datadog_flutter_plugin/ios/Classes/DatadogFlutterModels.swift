@@ -325,8 +325,12 @@ public extension LogLevel {
         case "Verbosity.verbose": return .debug
         case "Verbosity.debug": return .debug
         case "Verbosity.info": return .info
+        case "Verbosity.notice": return .notice
         case "Verbosity.warn": return .warn
         case "Verbosity.error": return .error
+        case "Verbosity.critical": return .critical
+        case "Verbosity.alert": return .alert
+        case "Verbosity.emergency": return .emergency
         case "Verbosity.none": return nil
         default: return nil
         }
@@ -340,8 +344,8 @@ public extension LogLevel {
         case "LogLevel.warning": return .warn
         case "LogLevel.error": return .error
         case "LogLevel.critical": return .critical
-        case "LogLevel.alert": return .critical
-        case "LogLevel.emergency": return .critical
+        case "LogLevel.alert": return .alert
+        case "LogLevel.emergency": return .emergency
         default: return .info
         }
     }

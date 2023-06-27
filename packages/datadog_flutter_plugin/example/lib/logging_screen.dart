@@ -6,7 +6,7 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-enum LogLevel { debug, info, notice, warn, error }
+enum LogLevel { debug, info, notice, warn, error, critical, alert, emergency }
 
 class LoggingScreen extends StatefulWidget {
   const LoggingScreen({Key? key}) : super(key: key);
@@ -41,13 +41,22 @@ class _LoggingScreenState extends State<LoggingScreen> {
           ddSdk.logs?.info(message);
           break;
         case LogLevel.notice:
-          ddSdk.logs?.info(message);
+          ddSdk.logs?.notice(message);
           break;
         case LogLevel.warn:
           ddSdk.logs?.warn(message);
           break;
         case LogLevel.error:
           ddSdk.logs?.error(message);
+          break;
+        case LogLevel.critical:
+          ddSdk.logs?.critical(message);
+          break;
+        case LogLevel.alert:
+          ddSdk.logs?.alert(message);
+          break;
+        case LogLevel.emergency:
+          ddSdk.logs?.emergency(message);
           break;
       }
     }

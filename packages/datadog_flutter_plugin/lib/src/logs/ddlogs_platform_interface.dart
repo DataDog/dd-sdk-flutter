@@ -11,15 +11,11 @@ import 'ddlogs_method_channel.dart';
 enum LogLevel {
   debug,
   info,
-  // ignore: unused_field
   notice,
   warning,
   error,
-  // ignore: unused_field
   critical,
-  // ignore: unused_field
   alert,
-  // ignore: unused_field
   emergency
 }
 

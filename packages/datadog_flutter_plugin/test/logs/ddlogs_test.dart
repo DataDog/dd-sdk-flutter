@@ -46,14 +46,21 @@ void main() {
           'debug message', null, null, null, {'attribute': 'value'}));
     });
 
-    test('debug info pass to platform', () async {
+    test('info logs pass to platform', () async {
       ddLogs.info('info message', attributes: {'attribute': 'value'});
 
       verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.info,
           'info message', null, null, null, {'attribute': 'value'}));
     });
 
-    test('debug warn pass to platform', () async {
+    test('notice logs pass to platform', () async {
+      ddLogs.notice('notice message', attributes: {'attribute': 'value'});
+
+      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.notice,
+          'notice message', null, null, null, {'attribute': 'value'}));
+    });
+
+    test('warn logs pass to platform', () async {
       ddLogs.warn('warn message', attributes: {'attribute': 'value'});
 
       verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.warning,
@@ -65,6 +72,27 @@ void main() {
 
       verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.error,
           'error message', null, null, null, {'attribute': 'value'}));
+    });
+
+    test('critical logs pass to platform', () async {
+      ddLogs.critical('critical message', attributes: {'attribute': 'value'});
+
+      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.critical,
+          'critical message', null, null, null, {'attribute': 'value'}));
+    });
+
+    test('alert logs pass to platform', () async {
+      ddLogs.alert('alert message', attributes: {'attribute': 'value'});
+
+      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.alert,
+          'alert message', null, null, null, {'attribute': 'value'}));
+    });
+
+    test('emergency logs pass to platform', () async {
+      ddLogs.emergency('emergency message', attributes: {'attribute': 'value'});
+
+      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.emergency,
+          'emergency message', null, null, null, {'attribute': 'value'}));
     });
 
     test('addAttribute argumentError sent to logger', () async {
@@ -92,15 +120,14 @@ void main() {
 
       ddLogs.debug('Debug message');
       ddLogs.info('Info message');
+      ddLogs.notice('Notice message');
       ddLogs.warn('Warn message');
       ddLogs.error('Error message');
+      ddLogs.critical('Critical message');
+      ddLogs.alert('Alert message');
+      ddLogs.emergency('Emergency message');
 
-      for (var level in [
-        LogLevel.debug,
-        LogLevel.info,
-        LogLevel.warning,
-        LogLevel.error
-      ]) {
+      for (var level in LogLevel.values) {
         verify(() =>
             mockPlatform.log(any(), level, any(), null, null, null, any()));
       }
@@ -112,13 +139,14 @@ void main() {
 
       ddLogs.debug('Debug message');
       ddLogs.info('Info message');
+      ddLogs.notice('Notice message');
       ddLogs.warn('Warn message');
       ddLogs.error('Error message');
+      ddLogs.critical('Critical message');
+      ddLogs.alert('Alert message');
+      ddLogs.emergency('Emergency message');
 
-      for (var level in [
-        LogLevel.debug,
-        LogLevel.info,
-      ]) {
+      for (var level in [LogLevel.debug, LogLevel.info, LogLevel.notice]) {
         verifyNever(() =>
             mockPlatform.log(any(), level, any(), any(), any(), any(), any()));
       }
@@ -126,6 +154,9 @@ void main() {
       for (var level in [
         LogLevel.warning,
         LogLevel.error,
+        LogLevel.critical,
+        LogLevel.alert,
+        LogLevel.emergency
       ]) {
         verify(() =>
             mockPlatform.log(any(), level, any(), null, null, null, any()));
@@ -137,15 +168,14 @@ void main() {
 
       ddLogs.debug('Debug message');
       ddLogs.info('Info message');
+      ddLogs.notice('Notice message');
       ddLogs.warn('Warn message');
       ddLogs.error('Error message');
+      ddLogs.critical('Critical message');
+      ddLogs.alert('Alert message');
+      ddLogs.emergency('Emergency message');
 
-      for (var level in [
-        LogLevel.debug,
-        LogLevel.info,
-        LogLevel.warning,
-        LogLevel.error
-      ]) {
+      for (var level in LogLevel.values) {
         verifyNever(() =>
             mockPlatform.log(any(), level, any(), any(), any(), any(), any()));
       }

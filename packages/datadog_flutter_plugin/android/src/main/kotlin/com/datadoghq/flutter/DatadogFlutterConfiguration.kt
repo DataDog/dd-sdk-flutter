@@ -237,6 +237,9 @@ internal fun parseVerbosity(verbosity: String): Int {
         "Verbosity.info" -> Log.INFO
         "Verbosity.warn" -> Log.WARN
         "Verbosity.error" -> Log.ERROR
+        "Verbosity.critical" -> Log.ASSERT
+        "Verbosity.alert" -> Log.ASSERT
+        "Verbosity.emergency" -> Log.ASSERT
         "Verbosity.none" -> Int.MAX_VALUE
         else -> Int.MAX_VALUE
     }

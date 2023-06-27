@@ -15,6 +15,7 @@ enum LogStatus {
   warn,
   error,
   critical,
+  alert,
   emergency,
 }
 

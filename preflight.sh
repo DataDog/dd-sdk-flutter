@@ -32,4 +32,4 @@ done
 
 
 # Run iOS / Android integration tests
-bitrise run push_to_develop_or_main
+bitrise run core_build
