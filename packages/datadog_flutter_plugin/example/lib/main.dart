@@ -84,7 +84,7 @@ void main() async {
     env: dotenv.get('DD_ENV', fallback: ''),
     serviceName: 'com.datadoghq.example.flutter',
     version: '1.2.3',
-    site: DatadogSite.us1,
+    site: DatadogSite.us5,
     trackingConsent: TrackingConsent.granted,
     nativeCrashReportEnabled: true,
     logEventMapper: _logEventMapper,
