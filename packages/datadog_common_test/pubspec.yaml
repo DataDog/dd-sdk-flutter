@@ -1,6 +1,6 @@
 name: datadog_common_test
 description: Common helpers for testing Datadog libraries. Not meant to be a published package.
-version: 0.0.1
+version: 0.0.2
 publish_to: 'none'
 
 environment:
