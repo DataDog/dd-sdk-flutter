@@ -4,6 +4,9 @@
 
 
 
+## 1.5.0
+* Up-to-date http package
+
 ## 1.3.1
 
 * Fix not exporting `DatadogTrackingHttpClientListener` from @ClaireDavis.
