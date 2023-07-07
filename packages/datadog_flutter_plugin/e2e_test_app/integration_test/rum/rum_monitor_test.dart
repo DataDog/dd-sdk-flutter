@@ -106,7 +106,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.custom_attribute:* @operating_system:${{variant}}\").rollup(\"count\").by(\"@type\").last(\"1d\") < 1"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.custom_attribute:* @context.operating_system:${{variant}}\").rollup(\"count\").by(\"@type\").last(\"1d\") < 1"
   /// ```
   ///
   /// - performance monitor:
@@ -138,7 +138,7 @@ void main() {
   /// ```rum(ios, android)
   /// $monitor_id = ${{monitor_prefix}}_data_${{variant}}
   /// $monitor_name = "${{monitor_name_prefix}}: number of views is below expected value"
-  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.custom_attribute:* @operating_system:${{variant}}\").rollup(\"count\").by(\"@type\").last(\"1d\") > 0"
+  /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.custom_attribute:* @context.operating_system:${{variant}}\").rollup(\"count\").by(\"@type\").last(\"1d\") > 0"
   /// $monitor_threshold = 0.0
   /// ```
   ///
@@ -148,7 +148,7 @@ void main() {
   /// $monitor_name = "${{monitor_name_prefix}} Performance: has a high average execution time"
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_rum_remove_attribute,service:${{service}}} > 0.024"
   /// ```
-  testWidgets('rum - add attribute for view', (tester) async {
+  testWidgets('rum - remove attribute for view', (tester) async {
     final viewKey = randomString();
 
     datadog.rum!.addAttribute('custom_attribute', randomString());
@@ -187,11 +187,14 @@ void main() {
     datadog.rum!.startView(
       viewKey,
       randomString(),
-      e2eAttributes(tester),
     );
 
     await measure('flutter_rum_simple_action', () {
-      datadog.rum!.addUserAction(RumUserActionType.tap, randomString());
+      datadog.rum!.addUserAction(
+        RumUserActionType.tap,
+        randomString(),
+        e2eAttributes(tester),
+      );
     });
 
     datadog.rum!.stopView(viewKey);

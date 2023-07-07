@@ -66,6 +66,7 @@ Future<void> runScenario({
   }
 
   await DatadogSdk.instance.initialize(configuration);
+  DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
 
   runApp(const DatadogIntegrationTestApp());
 }
