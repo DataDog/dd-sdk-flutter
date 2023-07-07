@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Update version constraints to allow 1.x.x versions of the `http` package.
 
 ## 1.3.1
 

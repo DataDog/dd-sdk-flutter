@@ -17,7 +17,7 @@ dependencies:
     path: ../../../packages/datadog_flutter_plugin
   datadog_tracking_http_client:
     path: ../../../packages/datadog_tracking_http_client
-  http: ^0.13.5
+  http: ">=0.13.4 <2.0.0"
 
 dependency_overrides:
   datadog_flutter_plugin:
