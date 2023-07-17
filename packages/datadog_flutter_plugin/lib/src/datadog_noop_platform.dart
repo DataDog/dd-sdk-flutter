@@ -5,7 +5,7 @@
 import '../datadog_internal.dart';
 import 'datadog_configuration.dart';
 
-class DatadogSdkNoopPlatform extends DatadogSdkPlatform {
+class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
   @override
   Future<void> addUserExtraInfo(Map<String, Object?> extraInfo) {
     return Future.value();

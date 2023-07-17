@@ -51,7 +51,7 @@ class DatadogSdk {
   /// Not that this disables Datadog, and should only be used when performing
   /// headless integration tests where the underlying platform is not available
   static void initializeForTesting() {
-    DatadogSdkPlatform.instance = DatadogSdkNoopPlatform();
+    DatadogSdkPlatform.instance = DatadogSdkNoOpPlatform();
     DdLogsPlatform.instance = DdNoOpLogsPlatform();
     DdRumPlatform.instance = DdNoOpRumPlatform();
   }
