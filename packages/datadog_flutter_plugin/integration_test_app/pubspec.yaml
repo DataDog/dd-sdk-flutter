@@ -22,7 +22,7 @@ dependencies:
     path: ../
   datadog_common_test:
     path: ../../datadog_common_test
-  http: ^0.13.4
+  http: ">=0.13.4 <2.0.0"
 
 dev_dependencies:
   flutter_test:
