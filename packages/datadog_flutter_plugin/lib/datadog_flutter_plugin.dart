@@ -10,9 +10,13 @@ import 'package:meta/meta.dart';
 
 import 'datadog_internal.dart';
 import 'src/datadog_configuration.dart';
+import 'src/datadog_noop_platform.dart';
 import 'src/datadog_plugin.dart';
 import 'src/logs/ddlogs.dart';
+import 'src/logs/ddlogs_noop_platform.dart';
 import 'src/logs/ddlogs_platform_interface.dart';
+import 'src/rum/ddrum_noop_platform.dart';
+import 'src/rum/ddrum_platform_interface.dart';
 import 'src/rum/rum.dart';
 import 'src/version.dart' show ddPackageVersion;
 
@@ -40,6 +44,16 @@ class DatadogSdk {
   static DatadogSdk get instance {
     _singleton ??= DatadogSdk._();
     return _singleton!;
+  }
+
+  /// Set Datadog to use No Op platform implementations.
+  ///
+  /// Not that this disables Datadog, and should only be used when performing
+  /// headless integration tests where the underlying platform is not available
+  static void initializeForTesting() {
+    DatadogSdkPlatform.instance = DatadogSdkNoOpPlatform();
+    DdLogsPlatform.instance = DdNoOpLogsPlatform();
+    DdRumPlatform.instance = DdNoOpRumPlatform();
   }
 
   DatadogSdk._();
@@ -103,7 +117,7 @@ class DatadogSdk {
   }
 
   /// A helper function that will initialize Datadog and setup error reporting
-  /// 
+  ///
   /// See also, [DdRum.handleFlutterError], [DatadogTrackingHttpClient]
   static Future<void> runApp(
       DdSdkConfiguration configuration, AppRunner runner) async {
