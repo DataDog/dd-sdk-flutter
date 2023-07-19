@@ -2,6 +2,9 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'dart:math';
+
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
@@ -23,20 +26,27 @@ class TestLogger extends InternalLogger {
 }
 
 void main() {
-  late TestLogger logger;
-  late DdLogs ddLogs;
+  late TestLogger internalLogger;
   late MockDdLogsPlatform mockPlatform;
 
+  setUp(() {
+    registerFallbackValue(LogLevel.info);
+    internalLogger = TestLogger();
+    mockPlatform = MockDdLogsPlatform();
+    DdLogsPlatform.instance = mockPlatform;
+  });
+
   group('basic logger tests', () {
+    late DdLogs ddLogs;
+
     setUp(() {
-      logger = TestLogger();
-      mockPlatform = MockDdLogsPlatform();
-      registerFallbackValue(LogLevel.info);
       when(() =>
               mockPlatform.log(any(), any(), any(), any(), any(), any(), any()))
           .thenAnswer((invocation) => Future<void>.value());
-      DdLogsPlatform.instance = mockPlatform;
-      ddLogs = DdLogs(logger, Verbosity.verbose);
+
+      final config =
+          LoggingConfiguration(datadogReportingThreshold: Verbosity.verbose);
+      ddLogs = DdLogs(internalLogger, config);
     });
 
     test('debug logs pass to platform', () async {
@@ -72,23 +82,61 @@ void main() {
           .thenThrow(ArgumentError());
       ddLogs.addAttribute('My key', 'Any Value');
 
-      assert(logger.logs.isNotEmpty);
+      assert(internalLogger.logs.isNotEmpty);
     });
   });
 
+  group('configuration tests', () {
+    test('sampleRate is clamped to 0..100', () {
+      final lowConfiguration = LoggingConfiguration(sampleRate: -12.2);
+
+      final highConfiguration = LoggingConfiguration(sampleRate: 123.5);
+
+      expect(lowConfiguration.sampleRate, 0);
+      expect(highConfiguration.sampleRate, 100);
+    });
+  });
+
+  test('logger samples at configured rate', () {
+    final random = Random();
+    // Sample rate between 10% and 90%
+    final sampleRate = random.nextDouble() * 80 + 10;
+    int logCount = 0;
+    when(() =>
+            mockPlatform.log(any(), any(), any(), any(), any(), any(), any()))
+        .thenAnswer((invocation) {
+      logCount++;
+      return Future.value();
+    });
+
+    final configuration = LoggingConfiguration(sampleRate: sampleRate);
+    final logger = DdLogs(internalLogger, configuration);
+    for (var i = 0; i < 1000; ++i) {
+      logger.info(randomString());
+    }
+
+    final targetLogCount = 1000 * (sampleRate / 100);
+    // Should be target count with a 10% margin of error
+    expect(logCount, greaterThan(targetLogCount * .9));
+    expect(logCount, lessThan(targetLogCount * 1.1));
+  });
+
   group('threshold tests', () {
+    late DdLogs ddLogs;
+
     setUp(() {
-      logger = TestLogger();
-      mockPlatform = MockDdLogsPlatform();
-      registerFallbackValue(LogLevel.info);
       when(() =>
               mockPlatform.log(any(), any(), any(), any(), any(), any(), any()))
           .thenAnswer((invocation) => Future<void>.value());
-      DdLogsPlatform.instance = mockPlatform;
+      final config =
+          LoggingConfiguration(datadogReportingThreshold: Verbosity.verbose);
+      ddLogs = DdLogs(internalLogger, config);
     });
 
     test('threshold set to verbose always calls platform', () async {
-      ddLogs = DdLogs(logger, Verbosity.verbose);
+      final config =
+          LoggingConfiguration(datadogReportingThreshold: Verbosity.verbose);
+      ddLogs = DdLogs(internalLogger, config);
 
       ddLogs.debug('Debug message');
       ddLogs.info('Info message');
@@ -108,7 +156,9 @@ void main() {
 
     test('threshold set to middle sends call proper platform methods',
         () async {
-      ddLogs = DdLogs(logger, Verbosity.warn);
+      final config =
+          LoggingConfiguration(datadogReportingThreshold: Verbosity.warn);
+      ddLogs = DdLogs(internalLogger, config);
 
       ddLogs.debug('Debug message');
       ddLogs.info('Info message');
@@ -133,7 +183,9 @@ void main() {
     });
 
     test('threshold set to none does not call platform', () async {
-      ddLogs = DdLogs(logger, Verbosity.none);
+      final config =
+          LoggingConfiguration(datadogReportingThreshold: Verbosity.none);
+      ddLogs = DdLogs(internalLogger, config);
 
       ddLogs.debug('Debug message');
       ddLogs.info('Info message');

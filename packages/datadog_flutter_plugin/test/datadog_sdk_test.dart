@@ -268,6 +268,28 @@ void main() {
         logger!.loggerHandle, loggingConfiguration));
   });
 
+  test('initialize with logging sample rate creates logger with sample rate',
+      () async {
+    when(() => mockLogsPlatform.createLogger(any(), any()))
+        .thenAnswer((_) => Future<void>.value());
+
+    final loggingConfiguration = LoggingConfiguration();
+    final configuration = DdSdkConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.pending,
+      loggingConfiguration: loggingConfiguration,
+    );
+    await datadogSdk.initialize(configuration);
+
+    final logger = datadogSdk.logs;
+
+    expect(logger, isNotNull);
+    verify(() => mockLogsPlatform.createLogger(
+        logger!.loggerHandle, loggingConfiguration));
+  });
+
   test('attachToExisting calls out to platform', () async {
     await datadogSdk.attachToExisting(DdSdkExistingConfiguration());
 

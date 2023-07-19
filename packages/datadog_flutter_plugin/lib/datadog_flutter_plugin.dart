@@ -225,8 +225,7 @@ class DatadogSdk {
   ///
   /// This can be used in addition to or instead of the default logger at [logs]
   DdLogs createLogger(LoggingConfiguration configuration) {
-    final logger =
-        DdLogs(internalLogger, configuration.datadogReportingThreshold);
+    final logger = DdLogs(internalLogger, configuration);
     wrap('createLogger', internalLogger, null, () {
       return DdLogsPlatform.instance
           .createLogger(logger.loggerHandle, configuration);

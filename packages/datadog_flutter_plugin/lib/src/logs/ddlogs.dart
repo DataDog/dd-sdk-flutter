@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../datadog_flutter_plugin.dart';
 import '../helpers.dart';
 import '../internal_logger.dart';
+import '../sampler.dart';
 import 'ddlogs_platform_interface.dart';
 
 export 'ddlog_event.dart';
@@ -24,11 +25,14 @@ const _uuid = Uuid();
 class DdLogs {
   final InternalLogger _internalLogger;
   final Verbosity _reportingThreshold;
+  final RateBasedSampler _sampler;
 
   final String loggerHandle;
 
-  DdLogs(this._internalLogger, this._reportingThreshold)
-      : loggerHandle = _uuid.v4();
+  DdLogs(this._internalLogger, LoggingConfiguration configuration)
+      : _reportingThreshold = configuration.datadogReportingThreshold,
+        _sampler = RateBasedSampler(configuration.sampleRate / 100.0),
+        loggerHandle = _uuid.v4();
 
   static DdLogsPlatform get _platform {
     return DdLogsPlatform.instance;
@@ -184,9 +188,11 @@ class DdLogs {
     StackTrace? stackTrace,
     Map<String, Object?> attributes,
   ) {
-    wrap('logs._internalLog', _internalLogger, attributes, () {
-      return _platform.log(loggerHandle, level, message, errorMessage,
-          errorKind, stackTrace, attributes);
-    });
+    if (_sampler.sample()) {
+      wrap('logs._internalLog', _internalLogger, attributes, () {
+        return _platform.log(loggerHandle, level, message, errorMessage,
+            errorKind, stackTrace, attributes);
+      });
+    }
   }
 }

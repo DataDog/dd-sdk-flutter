@@ -161,7 +161,7 @@ class DatadogConfigurationTest {
         @StringForgery additionalKey: String,
         @StringForgery additionalValue: String,
         @StringForgery firstPartyHost: String,
-        @FloatForgery telemetrySampleRate: Float
+        @FloatForgery telemetrySampleRate: Float,
     ) {
         // GIVEN
         val encoded = mapOf(
