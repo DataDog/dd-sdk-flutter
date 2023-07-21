@@ -11,6 +11,12 @@
             "request": "attach"
         },
         {
+            "name": "Simple Example",
+            "cwd": "examples/simple_example",
+            "type": "dart",
+            "request": "launch"
+        },
+        {
             "name": "example",
             "cwd": "packages/datadog_flutter_plugin/example",
             "request": "launch",
