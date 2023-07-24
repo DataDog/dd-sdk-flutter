@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-
+* Add the ability to specify a sampling rate for loggers.
+* Add a "NoOp" platform, usable when performing headless Flutter widget tests.
 
 ## 1.5.1
 
