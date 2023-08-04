@@ -17,6 +17,9 @@ dependencies:
   json_annotation: ^4.7.0
   uuid: ^3.0.5
   meta: ^1.7.0
+  ffi: ^2.0.2
+  path: ^1.8.3
+  msgpack_dart: ^1.0.1
 
 dev_dependencies:
   flutter_test:
@@ -39,3 +42,5 @@ flutter:
       web:
         pluginClass: DatadogSdkWeb
         fileName: datadog_flutter_plugin_web.dart
+      macos:
+        ffiPlugin: true

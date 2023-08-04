@@ -2,9 +2,13 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../datadog_flutter_plugin.dart';
+import 'datadog_native_core_platform.dart';
 import 'datadog_sdk_method_channel.dart';
 import 'internal_logger.dart';
 
@@ -36,7 +40,7 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
 
   static final Object _token = Object();
 
-  static DatadogSdkPlatform _instance = DatadogSdkMethodChannel();
+  static DatadogSdkPlatform _instance = getCorrectPlatform();
 
   static DatadogSdkPlatform get instance => _instance;
 
@@ -63,4 +67,14 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
   Future<void> flushAndDeinitialize();
 
   Future<void> updateTelemetryConfiguration(String property, bool value);
+
+  static DatadogSdkPlatform getCorrectPlatform() {
+    if (kIsWeb) return DatadogSdkMethodChannel();
+
+    if (Platform.isMacOS || Platform.isWindows) {
+      return DatadogNativeCorePlatform();
+    }
+
+    return DatadogSdkMethodChannel();
+  }
 }

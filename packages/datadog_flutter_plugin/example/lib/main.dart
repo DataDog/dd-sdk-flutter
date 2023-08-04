@@ -92,18 +92,18 @@ void main() async {
       sendNetworkInfo: true,
       printLogsToConsole: true,
     ),
-    rumConfiguration: applicationId != null
-        ? RumConfiguration(
-            applicationId: applicationId,
-            detectLongTasks: true,
-            reportFlutterPerformance: true,
-            rumViewEventMapper: _viewEventMapper,
-            rumActionEventMapper: _actionEventMapper,
-            rumResourceEventMapper: _resourceEventMapper,
-            rumErrorEventMapper: _errorEventMapper,
-            rumLongTaskEventMapper: _longTaskEventMapper,
-          )
-        : null,
+    // rumConfiguration: applicationId != null
+    //     ? RumConfiguration(
+    //         applicationId: applicationId,
+    //         detectLongTasks: true,
+    //         reportFlutterPerformance: true,
+    //         rumViewEventMapper: _viewEventMapper,
+    //         rumActionEventMapper: _actionEventMapper,
+    //         rumResourceEventMapper: _resourceEventMapper,
+    //         rumErrorEventMapper: _errorEventMapper,
+    //         rumLongTaskEventMapper: _longTaskEventMapper,
+    //       )
+    //     : null,
   );
 
   final ddsdk = DatadogSdk.instance;

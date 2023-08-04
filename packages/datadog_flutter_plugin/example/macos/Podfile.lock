@@ -1,0 +1,22 @@
+PODS:
+  - datadog_flutter_plugin (0.0.1):
+    - FlutterMacOS
+  - FlutterMacOS (1.0.0)
+
+DEPENDENCIES:
+  - datadog_flutter_plugin (from `Flutter/ephemeral/.symlinks/plugins/datadog_flutter_plugin/macos`)
+  - FlutterMacOS (from `Flutter/ephemeral`)
+
+EXTERNAL SOURCES:
+  datadog_flutter_plugin:
+    :path: Flutter/ephemeral/.symlinks/plugins/datadog_flutter_plugin/macos
+  FlutterMacOS:
+    :path: Flutter/ephemeral
+
+SPEC CHECKSUMS:
+  datadog_flutter_plugin: 1e20ca080535ff61a3e0c9bb6f1322c7a2f88982
+  FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
+
+PODFILE CHECKSUM: 236401fc2c932af29a9fcf0e97baeeb2d750d367
+
+COCOAPODS: 1.12.0
