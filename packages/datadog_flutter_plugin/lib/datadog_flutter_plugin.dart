@@ -154,13 +154,13 @@ class DatadogSdk {
 
     _setFirstPartyHosts(configuration.firstPartyHostsWithTracingHeaders);
 
-    await _platform.initialize(configuration,
+    var result = await _platform.initialize(configuration,
         logCallback: _platformLog, internalLogger: internalLogger);
 
-    if (configuration.loggingConfiguration != null) {
+    if (result.logs && configuration.loggingConfiguration != null) {
       _logs = createLogger(configuration.loggingConfiguration!);
     }
-    if (configuration.rumConfiguration != null) {
+    if (result.rum && configuration.rumConfiguration != null) {
       _rum = DdRum(configuration.rumConfiguration!, internalLogger);
       await _rum!.initialize();
 

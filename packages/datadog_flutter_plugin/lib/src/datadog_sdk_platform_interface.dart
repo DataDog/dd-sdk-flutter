@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'package:meta/meta.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../datadog_flutter_plugin.dart';
@@ -31,6 +32,17 @@ class AttachResponse {
   }
 }
 
+/// Result from initializing the platform. Individual members are set to [false]
+/// If there is an error loading that feature, such as being unable to load
+/// required JavaScript modules on web.
+@immutable
+class PlatformInitializationResult {
+  final bool logs;
+  final bool rum;
+
+  const PlatformInitializationResult({required this.logs, required this.rum});
+}
+
 abstract class DatadogSdkPlatform extends PlatformInterface {
   DatadogSdkPlatform() : super(token: _token);
 
@@ -54,7 +66,7 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
   Future<void> sendTelemetryDebug(String message);
   Future<void> sendTelemetryError(String message, String? stack, String? kind);
 
-  Future<void> initialize(
+  Future<PlatformInitializationResult> initialize(
     DdSdkConfiguration configuration, {
     LogCallback? logCallback,
     required InternalLogger internalLogger,
