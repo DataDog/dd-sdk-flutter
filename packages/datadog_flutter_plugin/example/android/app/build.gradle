@@ -73,6 +73,7 @@ android {
             signingConfig signingConfigs.debug
         }
     }
+    namespace 'com.datadoghq.example.flutter'
 }
 
 flutter {

@@ -70,7 +70,7 @@ packages:
       path: "../../../packages/datadog_tracking_http_client"
       relative: true
     source: path
-    version: "1.4.0"
+    version: "1.5.0"
   fake_async:
     dependency: transitive
     description:
