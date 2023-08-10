@@ -32,9 +32,13 @@ class RumViewInfo {
 /// to [DdRum.startView].
 ///
 /// See [DatadogNavigationObserver.viewInfoExtractor].
-typedef ViewInfoExtractor = RumViewInfo? Function(Route route);
+typedef ViewInfoExtractor = RumViewInfo? Function(Route<dynamic> route);
 
-RumViewInfo? defaultViewInfoExtractor(Route route) {
+/// The function that provides the default route naming behavior for
+/// [DatadogNavigationObserver]. If the supplied route is a PageRoute and contains
+/// a name, it returns a [RumViewInfo] with the supplied name. Otherwise it returns
+/// `null`.
+RumViewInfo? defaultViewInfoExtractor(Route<dynamic> route) {
   if (route is PageRoute) {
     var name = route.settings.name;
     if (name != null) {
@@ -60,6 +64,7 @@ RumViewInfo? defaultViewInfoExtractor(Route route) {
 /// different name, path, or extra attributes to any route.
 class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
     with WidgetsBindingObserver {
+  /// A callback to supply view information to the observer. See [ViewInfoExtractor].
   final ViewInfoExtractor viewInfoExtractor;
   final DatadogSdk datadogSdk;
 
@@ -117,7 +122,7 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
     _currentView = null;
   }
 
-  void _sendScreenView(Route? newRoute, Route? oldRoute) {
+  void _sendScreenView(Route<dynamic>? newRoute, Route<dynamic>? oldRoute) {
     final oldViewInfo = oldRoute != null ? viewInfoExtractor(oldRoute) : null;
     final newViewInfo = newRoute != null ? viewInfoExtractor(newRoute) : null;
 
@@ -126,19 +131,19 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
   }
 
   @override
-  void didPush(Route route, Route? previousRoute) {
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _sendScreenView(route, previousRoute);
     super.didPush(route, previousRoute);
   }
 
   @override
-  void didReplace({Route? newRoute, Route? oldRoute}) {
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
     _sendScreenView(newRoute, oldRoute);
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
   }
 
   @override
-  void didPop(Route route, Route? previousRoute) {
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPop(route, previousRoute);
 
     // On pop, the "previous" route is now the new route.

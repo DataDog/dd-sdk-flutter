@@ -46,8 +46,10 @@ void main() {
 
     final List<MethodCall> log = [];
 
-    methodChannel.setMockMethodCallHandler((call) {
-      log.add(call);
+    ambiguate(TestDefaultBinaryMessengerBinding.instance)
+        ?.defaultBinaryMessenger
+        .setMockMethodCallHandler(methodChannel, (message) {
+      log.add(message);
       return null;
     });
 

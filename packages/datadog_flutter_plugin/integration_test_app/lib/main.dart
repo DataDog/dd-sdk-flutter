@@ -66,6 +66,7 @@ Future<void> runScenario({
   }
 
   await DatadogSdk.instance.initialize(configuration);
+  DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
 
   runApp(const DatadogIntegrationTestApp());
 }
@@ -101,7 +102,7 @@ Future<void> main() async {
 
 /// -- Default Runner --
 
-final RouteObserver<ModalRoute> routeObserver = RouteObserver<ModalRoute>();
+final routeObserver = RouteObserver<ModalRoute<dynamic>>();
 
 class DatadogIntegrationTestApp extends StatelessWidget {
   const DatadogIntegrationTestApp({Key? key}) : super(key: key);

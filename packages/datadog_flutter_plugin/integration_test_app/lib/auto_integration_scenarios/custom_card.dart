@@ -38,7 +38,7 @@ class CustomCard extends StatelessWidget {
                 Center(
                   child: Text(
                     text,
-                    style: theme.textTheme.headline5,
+                    style: theme.textTheme.headlineSmall,
                   ),
                 )
               ],

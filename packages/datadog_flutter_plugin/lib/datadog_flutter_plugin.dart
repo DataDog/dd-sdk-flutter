@@ -10,9 +10,13 @@ import 'package:meta/meta.dart';
 
 import 'datadog_internal.dart';
 import 'src/datadog_configuration.dart';
+import 'src/datadog_noop_platform.dart';
 import 'src/datadog_plugin.dart';
 import 'src/logs/ddlogs.dart';
+import 'src/logs/ddlogs_noop_platform.dart';
 import 'src/logs/ddlogs_platform_interface.dart';
+import 'src/rum/ddrum_noop_platform.dart';
+import 'src/rum/ddrum_platform_interface.dart';
 import 'src/rum/rum.dart';
 import 'src/version.dart' show ddPackageVersion;
 
@@ -40,6 +44,16 @@ class DatadogSdk {
   static DatadogSdk get instance {
     _singleton ??= DatadogSdk._();
     return _singleton!;
+  }
+
+  /// Set Datadog to use No Op platform implementations.
+  ///
+  /// Not that this disables Datadog, and should only be used when performing
+  /// headless integration tests where the underlying platform is not available
+  static void initializeForTesting() {
+    DatadogSdkPlatform.instance = DatadogSdkNoOpPlatform();
+    DdLogsPlatform.instance = DdNoOpLogsPlatform();
+    DdRumPlatform.instance = DdNoOpRumPlatform();
   }
 
   DatadogSdk._();
@@ -107,26 +121,27 @@ class DatadogSdk {
   /// See also, [DdRum.handleFlutterError], [DatadogTrackingHttpClient]
   static Future<void> runApp(
       DdSdkConfiguration configuration, AppRunner runner) async {
-    return runZonedGuarded(() async {
-      WidgetsFlutterBinding.ensureInitialized();
-      final originalOnError = FlutterError.onError;
-      FlutterError.onError = (details) {
-        DatadogSdk.instance.rum?.handleFlutterError(details);
-        originalOnError?.call(details);
-      };
-
-      await DatadogSdk.instance.initialize(configuration);
-      DatadogSdk.instance
-          .updateConfigurationInfo(LateConfigurationProperty.trackErrors, true);
-
-      runner();
-    }, (e, s) {
+    WidgetsFlutterBinding.ensureInitialized();
+    final originalOnError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      DatadogSdk.instance.rum?.handleFlutterError(details);
+      originalOnError?.call(details);
+    };
+    final platformOriginalOnError = PlatformDispatcher.instance.onError;
+    PlatformDispatcher.instance.onError = (e, st) {
       DatadogSdk.instance.rum?.addErrorInfo(
         e.toString(),
         RumErrorSource.source,
-        stackTrace: s,
+        stackTrace: st,
       );
-    });
+      return platformOriginalOnError?.call(e, st) ?? false;
+    };
+
+    await DatadogSdk.instance.initialize(configuration);
+    DatadogSdk.instance
+        .updateConfigurationInfo(LateConfigurationProperty.trackErrors, true);
+
+    runner();
   }
 
   /// Initialize the DatadogSdk with the provided [configuration].
@@ -210,8 +225,7 @@ class DatadogSdk {
   ///
   /// This can be used in addition to or instead of the default logger at [logs]
   DdLogs createLogger(LoggingConfiguration configuration) {
-    final logger =
-        DdLogs(internalLogger, configuration.datadogReportingThreshold);
+    final logger = DdLogs(internalLogger, configuration);
     wrap('createLogger', internalLogger, null, () {
       return DdLogsPlatform.instance
           .createLogger(logger.loggerHandle, configuration);

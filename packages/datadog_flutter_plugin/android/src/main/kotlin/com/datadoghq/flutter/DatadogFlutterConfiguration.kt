@@ -107,6 +107,7 @@ data class DatadogFlutterConfiguration(
             uploadFrequency = parseUploadFrequency(it)
         }
         customLogsEndpoint = encoded["customLogsEndpoint"] as? String
+        @Suppress("UNCHECKED_CAST")
         (encoded["firstPartyHosts"] as? List<String>)?.let {
             firstPartyHosts = it
         }
@@ -145,8 +146,8 @@ data class DatadogFlutterConfiguration(
         )
             .setAdditionalConfiguration(
                 additionalConfig
-                    ?.filterValues { it != null }
-                    ?.mapValues { it.value!! } ?: emptyMap()
+                    .filterValues { it != null }
+                    .mapValues { it.value!! }
             )
         if (nativeCrashReportEnabled) {
             configBuilder.addPlugin(NdkCrashReportsPlugin(), Feature.CRASH)

@@ -1,0 +1,36 @@
+name: test_app
+description: A new Flutter project.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.15.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.2
+  datadog_flutter_plugin:
+    path: ../../packages/datadog_flutter_plugin
+  datadog_tracking_http_client:
+    path: ../../packages/datadog_tracking_http_client
+  go_router: ^7.0.0
+  path_provider: ^2.0.0
+  flutter_dotenv: ^5.1.0
+  transparent_image: ^2.0.1
+
+dependency_overrides:
+  datadog_flutter_plugin:
+    path: ../../packages/datadog_flutter_plugin
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ">= 1.0.0"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env

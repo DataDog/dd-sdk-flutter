@@ -2,7 +2,31 @@
 
 ## Unreleased
 
+* Add the ability to specify a sampling rate for loggers.
+* Add a "NoOp" platform, usable when performing headless Flutter widget tests.
 
+## 1.5.1
+
+* Update Android SDK to 1.19.2
+  * Ignore adding custom timings and feature flags for the stopped view.
+
+## 1.5.0
+
+* Use `PlatformDispatcher.onError` over `runZonedGuarded` for automatic error tracking and to avoid a Zone mismatch exception in Flutter 3.10. See [#416]
+* Increase minimum Flutter version to 3.3, Dart 2.18, fully support Futter 3.10 / Dart 3
+* Another attempt to fix the crash on exit on iOS. See [#414]
+* Fix an issue where calls into Datadog would not provide accurate stack traces.
+
+## 1.4.0
+
+* Add the ability to stop a RUM session. A new session is started on the next user interaction or on the next view start. See [#147]
+* Increase minimum Flutter version to 3.0, Dart 2.17. See [#386]
+* Update Android SDK to 1.19.0. For a full list of changes see [https://github.com/DataDog/dd-sdk-android/releases/tag/1.19.0]
+* Update iOS SDK to 1.19.0. For a full list of changes see [https://github.com/DataDog/dd-sdk-ios/releases/tag/1.19.0]
+
+## 1.3.3
+
+* Fix a crash on exit on iOS. See [#390]
 
 ## 1.3.2
 
@@ -146,6 +170,7 @@
 
 [#133]: https://github.com/DataDog/dd-sdk-flutter/issues/133
 [#143]: https://github.com/DataDog/dd-sdk-flutter/issues/143
+[#147]: https://github.com/DataDog/dd-sdk-flutter/issues/147
 [#148]: https://github.com/DataDog/dd-sdk-flutter/issues/148
 [#159]: https://github.com/DataDog/dd-sdk-flutter/issues/159
 [#175]: https://github.com/DataDog/dd-sdk-flutter/issues/175
@@ -160,3 +185,6 @@
 [#334]: https://github.com/DataDog/dd-sdk-flutter/issues/334
 [#358]: https://github.com/DataDog/dd-sdk-flutter/issues/358
 [#372]: https://github.com/DataDog/dd-sdk-flutter/issues/372
+[#390]: https://github.com/DataDog/dd-sdk-flutter/issues/390
+[#414]: https://github.com/DataDog/dd-sdk-flutter/issues/414
+[#416]: https://github.com/DataDog/dd-sdk-flutter/issues/416

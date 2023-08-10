@@ -126,7 +126,7 @@ class DatadogConfigurationTest {
         @StringForgery environment: String
     ) {
         // GIVEN
-        val encoded = mapOf<String, Any?>(
+        val encoded = mapOf(
             "clientToken" to clientToken,
             "env" to environment,
             "nativeCrashReportEnabled" to false,
@@ -161,10 +161,10 @@ class DatadogConfigurationTest {
         @StringForgery additionalKey: String,
         @StringForgery additionalValue: String,
         @StringForgery firstPartyHost: String,
-        @FloatForgery telemetrySampleRate: Float
+        @FloatForgery telemetrySampleRate: Float,
     ) {
         // GIVEN
-        val encoded = mapOf<String, Any?>(
+        val encoded = mapOf(
             "clientToken" to clientToken,
             "env" to environment,
             "nativeCrashReportEnabled" to true,
@@ -210,7 +210,7 @@ class DatadogConfigurationTest {
         @StringForgery serviceName: String,
     ) {
         // GIVEN
-        val encoded = mapOf<String, Any?>(
+        val encoded = mapOf(
             "clientToken" to clientToken,
             "env" to environment,
             "nativeCrashReportEnabled" to true,
@@ -240,7 +240,6 @@ class DatadogConfigurationTest {
         @StringForgery clientToken: String,
         @StringForgery environment: String,
         @StringForgery applicationId: String,
-        @StringForgery firstPartyHost: String
     ) {
         // GIVEN
         val attachViewEventMapper = forge.aBool()

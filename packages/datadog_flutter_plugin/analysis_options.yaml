@@ -7,8 +7,8 @@ analyzer:
   exclude:
     - "**/*.mocks.dart"
     - "**/*.g.dart"
-  strong-mode:
-    implicit-dynamic: false
+  language:
+    strict-raw-types: true
 
 linter:
   rules:

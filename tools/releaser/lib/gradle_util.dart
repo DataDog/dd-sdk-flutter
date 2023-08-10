@@ -42,6 +42,9 @@ class UpdateGradleFilesCommand extends Command {
               '$versionPrefix = "${args.androidRelease}"');
         }
 
+        // Remove requests for external gradle files
+        if (line.contains("apply from: '../")) return null;
+
         if (line.contains('maven ')) {
           inMavenBlock = true;
         }

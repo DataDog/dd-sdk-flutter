@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_integration_test_app/integration_scenarios/scenario_runner.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,6 +23,9 @@ void main() {
     var recordedSession = await openTestScenario(
       tester,
       scenarioName: mappedLoggingScenarioRunner,
+      additionalConfig: {
+        DatadogConfigKey.telemetryConfigurationSampleRate: 0.0,
+      },
       menuTitle: 'Logging Scenario',
     );
     var logs = <LogDecoder>[];
@@ -44,11 +48,12 @@ void main() {
                 return null;
               }
             })
-            .whereType<List>()
+            .whereType<List<dynamic>>()
             .expand<dynamic>((e) => e)
             .whereType<Map<String, Object?>>()
             // Ignore RUM sessions
-            .where((e) => !(e).containsKey('session'))
+            .where(
+                (e) => !(e).containsKey('session') && e['type'] != 'telemetry')
             .forEach((e) => logs.add(LogDecoder(e)));
         return logs.length >= 5;
       },

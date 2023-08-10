@@ -118,8 +118,8 @@ class RumConnectivity {
 
 @JsonSerializable()
 class RumCellular {
-  final String carrierName;
-  final String technology;
+  final String? carrierName;
+  final String? technology;
 
   RumCellular({
     required this.carrierName,
@@ -574,6 +574,18 @@ class RumActionId {
 
 enum RumErrorHandling { handled, unhandled }
 
+/// Error sources that include source used internally by Datadog SDKs
+enum RumInternalErrorSource {
+  source,
+  network,
+  webview,
+  console,
+  logger,
+  agent,
+  report,
+  custom,
+}
+
 @commonJsonOptions
 class RumError {
   final List<RumErrorCause>? causes;
@@ -583,7 +595,7 @@ class RumError {
   final bool? isCrash;
   String message;
   RumResourceSummary? resource;
-  final RumErrorSource source;
+  final RumInternalErrorSource source;
   final String? sourceType;
   String? stack;
   final String? type;

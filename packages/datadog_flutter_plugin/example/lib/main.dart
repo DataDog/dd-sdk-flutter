@@ -2,8 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
-import 'dart:async';
-
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -77,55 +75,45 @@ RumLongTaskEvent? _longTaskEventMapper(RumLongTaskEvent event) {
 }
 
 void main() async {
-  runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    await dotenv.load();
+  await dotenv.load();
 
-    var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
+  var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
 
-    final configuration = DdSdkConfiguration(
-      clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
-      env: dotenv.get('DD_ENV', fallback: ''),
-      site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.granted,
-      nativeCrashReportEnabled: true,
-      logEventMapper: _logEventMapper,
-      loggingConfiguration: LoggingConfiguration(
-        sendNetworkInfo: true,
-        printLogsToConsole: true,
-      ),
-      rumConfiguration: applicationId != null
-          ? RumConfiguration(
-              applicationId: applicationId,
-              detectLongTasks: true,
-              rumViewEventMapper: _viewEventMapper,
-              rumActionEventMapper: _actionEventMapper,
-              rumResourceEventMapper: _resourceEventMapper,
-              rumErrorEventMapper: _errorEventMapper,
-              rumLongTaskEventMapper: _longTaskEventMapper,
-            )
-          : null,
-    );
+  final configuration = DdSdkConfiguration(
+    clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
+    env: dotenv.get('DD_ENV', fallback: ''),
+    serviceName: 'com.datadoghq.example.flutter',
+    version: '1.2.3',
+    site: DatadogSite.us1,
+    trackingConsent: TrackingConsent.granted,
+    nativeCrashReportEnabled: true,
+    logEventMapper: _logEventMapper,
+    loggingConfiguration: LoggingConfiguration(
+      sendNetworkInfo: true,
+      printLogsToConsole: true,
+    ),
+    rumConfiguration: applicationId != null
+        ? RumConfiguration(
+            applicationId: applicationId,
+            detectLongTasks: true,
+            reportFlutterPerformance: true,
+            rumViewEventMapper: _viewEventMapper,
+            rumActionEventMapper: _actionEventMapper,
+            rumResourceEventMapper: _resourceEventMapper,
+            rumErrorEventMapper: _errorEventMapper,
+            rumLongTaskEventMapper: _longTaskEventMapper,
+          )
+        : null,
+  );
 
-    final ddsdk = DatadogSdk.instance;
-    ddsdk.sdkVerbosity = Verbosity.verbose;
-
-    await DatadogSdk.instance.initialize(configuration);
-
-    FlutterError.onError = (FlutterErrorDetails details) {
-      FlutterError.presentError(details);
-      ddsdk.rum?.handleFlutterError(details);
-    };
-
+  final ddsdk = DatadogSdk.instance;
+  ddsdk.sdkVerbosity = Verbosity.verbose;
+  DatadogSdk.runApp(configuration, () async {
     ddsdk.setUserInfo(id: 'test_id', extraInfo: {
       'user_attribute_1': true,
       'user_attribute_2': 'testing',
     });
 
-    runApp(const ExampleApp());
-  }, (e, s) {
-    DatadogSdk.instance.rum
-        ?.addErrorInfo(e.toString(), RumErrorSource.source, stackTrace: s);
-    throw e;
+    return runApp(const ExampleApp());
   });
 }

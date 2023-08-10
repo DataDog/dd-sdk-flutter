@@ -6,8 +6,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_flutter_plugin/src/datadog_sdk_method_channel.dart';
-import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -20,8 +20,11 @@ void main() {
 
   setUp(() {
     ddSdkPlatform = DatadogSdkMethodChannel();
-    ddSdkPlatform.methodChannel.setMockMethodCallHandler((call) {
-      log.add(call);
+
+    ambiguate(TestDefaultBinaryMessengerBinding.instance)
+        ?.defaultBinaryMessenger
+        .setMockMethodCallHandler(ddSdkPlatform.methodChannel, (message) {
+      log.add(message);
       return null;
     });
     internalLogger = InternalLogger();
@@ -90,9 +93,11 @@ void main() {
   });
 
   test('attachToExisting response properly deserializes response', () async {
-    ddSdkPlatform.methodChannel.setMockMethodCallHandler((call) {
-      log.add(call);
-      if (call.method == 'attachToExisting') {
+    ambiguate(TestDefaultBinaryMessengerBinding.instance)
+        ?.defaultBinaryMessenger
+        .setMockMethodCallHandler(ddSdkPlatform.methodChannel, (message) {
+      log.add(message);
+      if (message.method == 'attachToExisting') {
         return Future<Map<String, Object?>>.value(
             {'loggingEnabled': true, 'rumEnabled': false});
       }
@@ -108,9 +113,11 @@ void main() {
   });
 
   test('invalid attachToExisting response returns null', () async {
-    ddSdkPlatform.methodChannel.setMockMethodCallHandler((call) {
-      log.add(call);
-      if (call.method == 'attachToExisting') {
+    ambiguate(TestDefaultBinaryMessengerBinding.instance)
+        ?.defaultBinaryMessenger
+        .setMockMethodCallHandler(ddSdkPlatform.methodChannel, (message) {
+      log.add(message);
+      if (message.method == 'attachToExisting') {
         return Future<Map<String, Object?>>.value({'rumEnabled': 'string'});
       }
 

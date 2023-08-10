@@ -113,6 +113,7 @@ class LogEvent {
   @JsonKey(name: '_dd')
   final LogEventDd dd;
 
+  // ignore: deprecated_member_use
   @JsonKey(ignore: true)
   Map<String, Object?> attributes = {};
 

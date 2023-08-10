@@ -140,7 +140,7 @@ class _RumScreenState extends State<RumScreen> {
               children: [
                 Text(
                   'View Info',
-                  style: theme.textTheme.headline5,
+                  style: theme.textTheme.headlineSmall,
                 ),
                 _defaultTextField(
                   label: 'Key',
@@ -182,7 +182,7 @@ class _RumScreenState extends State<RumScreen> {
                   children: [
                     Text(
                       'Test Buttons',
-                      style: theme.textTheme.headline5,
+                      style: theme.textTheme.headlineSmall,
                     ),
                     Row(
                       children: [
@@ -240,7 +240,7 @@ class _RumScreenState extends State<RumScreen> {
       children: [
         Text(
           '$label Event',
-          style: theme.textTheme.headline5,
+          style: theme.textTheme.headlineSmall,
         ),
         Row(children: [
           Expanded(
@@ -266,7 +266,7 @@ class _RumScreenState extends State<RumScreen> {
       children: [
         Text(
           'Resource Event',
-          style: theme.textTheme.headline5,
+          style: theme.textTheme.headlineSmall,
         ),
         Row(
           children: [

@@ -60,7 +60,6 @@ class DatadogRumPlugin(
     var rum: RumMonitor? = rumInstance
         private set
 
-    var trackMapperPerf = false
     val mapperPerf = PerformanceTracker()
     val mapperPerfMainThread = PerformanceTracker()
     var mapperTimeouts = 0
@@ -89,198 +88,25 @@ class DatadogRumPlugin(
         GlobalRum.registerIfAbsent(rum!!)
     }
 
-    @Suppress("LongMethod", "ComplexMethod", "ComplexCondition", "NestedBlockDepth")
-    override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+    override fun onMethodCall(call: MethodCall, result: Result) {
         try {
             when (call.method) {
-                "startView" -> {
-                    val key = call.argument<String>(PARAM_KEY)
-                    val name = call.argument<String>(PARAM_NAME)
-                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                    if (key != null && name != null && attributes != null) {
-                        rum?.startView(key, name, attributes)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "stopView" -> {
-                    val key = call.argument<String>(PARAM_KEY)
-                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                    if (key != null && attributes != null) {
-                        rum?.stopView(key, attributes)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "addTiming" -> {
-                    val name = call.argument<String>(PARAM_NAME)
-                    if (name != null) {
-                        rum?.addTiming(name)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "startResourceLoading" -> {
-                    val key = call.argument<String>(PARAM_KEY)
-                    val url = call.argument<String>(PARAM_URL)
-                    val method = call.argument<String>(PARAM_HTTP_METHOD)
-                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-
-                    @Suppress("ComplexCondition")
-                    if (key != null && url != null && method != null && attributes != null) {
-                        val httpMethod = parseRumHttpMethod(method)
-                        rum?.startResource(key, httpMethod, url, attributes)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "stopResourceLoading" -> {
-                    val key = call.argument<String>(PARAM_KEY)
-                    val kindString = call.argument<String>(PARAM_KIND)
-                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                    var statusCode = call.argument<Number>(PARAM_STATUS_CODE)
-                    var size = call.argument<Number>(PARAM_SIZE)
-                    if (key != null && kindString != null && attributes != null) {
-                        val kind = parseRumResourceKind(kindString)
-                        rum?.stopResource(
-                            key,
-                            statusCode?.toInt(),
-                            size?.toLong(),
-                            kind,
-                            attributes
-                        )
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "stopResourceLoadingWithError" -> {
-                    val key = call.argument<String>(PARAM_KEY)
-                    val message = call.argument<String>(PARAM_MESSAGE)
-                    val errorType = call.argument<String>(PARAM_TYPE)
-                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                    if (key != null && message != null && errorType != null && attributes != null) {
-                        rum?.stopResourceWithError(
-                            key, null, message, RumErrorSource.NETWORK,
-                            "", errorType, attributes
-                        )
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "addError" -> {
-                    val message = call.argument<String>(PARAM_MESSAGE)
-                    val sourceString = call.argument<String>(PARAM_SOURCE)
-                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                    val stackTrace = call.argument<String>(PARAM_STACK_TRACE)
-                    val errorType = call.argument<String>(PARAM_ERROR_TYPE)
-                    if (message != null && sourceString != null && attributes != null) {
-                        var fullAttributes = attributes
-                        if (errorType != null) {
-                            fullAttributes = attributes + Pair(
-                                RumAttributes.INTERNAL_ERROR_TYPE,
-                                errorType
-                            )
-                        }
-                        val source = parseRumErrorSource(sourceString)
-                        rum?.addErrorWithStacktrace(message, source, stackTrace, fullAttributes)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "addUserAction" -> {
-                    val typeString = call.argument<String>(PARAM_TYPE)
-                    val name = call.argument<String>(PARAM_NAME)
-                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                    if (typeString != null && name != null && attributes != null) {
-                        val actionType = parseRumActionType(typeString)
-                        rum?.addUserAction(actionType, name, attributes)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "startUserAction" -> {
-                    val typeString = call.argument<String>(PARAM_TYPE)
-                    val name = call.argument<String>(PARAM_NAME)
-                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                    if (typeString != null && name != null && attributes != null) {
-                        val actionType = parseRumActionType(typeString)
-                        rum?.startUserAction(actionType, name, attributes)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "stopUserAction" -> {
-                    val typeString = call.argument<String>(PARAM_TYPE)
-                    val name = call.argument<String>(PARAM_NAME)
-                    val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
-                    if (typeString != null && name != null && attributes != null) {
-                        val actionType = parseRumActionType(typeString)
-                        rum?.stopUserAction(actionType, name, attributes)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "addAttribute" -> {
-                    val key = call.argument<String>(PARAM_KEY)
-                    val value = call.argument<Any>(PARAM_VALUE)
-                    if (key != null && value != null) {
-                        GlobalRum.addAttribute(key, value)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "removeAttribute" -> {
-                    val key = call.argument<String>(PARAM_KEY)
-                    if (key != null) {
-                        GlobalRum.removeAttribute(key)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "reportLongTask" -> {
-                    val at = call.argument<Long>(PARAM_AT)
-                    val duration = call.argument<Int>(PARAM_DURATION)
-                    if (at != null && duration != null) {
-                        // Duration is in ms, convert to ns
-                        val durationNs = TimeUnit.MILLISECONDS.toNanos(duration.toLong())
-                        rum?._getInternal()?.addLongTask(durationNs, "")
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "updatePerformanceMetrics" -> {
-                    val buildTimes = call.argument<List<Double>>(PARAM_BUILD_TIMES)
-                    val rasterTimes = call.argument<List<Double>>(PARAM_RASTER_TIMES)
-                    if (buildTimes != null && rasterTimes != null) {
-                        updatePerformanceMetrics(buildTimes, rasterTimes)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
-                "addFeatureFlagEvaluation" -> {
-                    val name = call.argument<String>(PARAM_NAME)
-                    val value = call.argument<Any>(PARAM_VALUE)
-                    if (name != null && value != null) {
-                        rum?.addFeatureFlagEvaluation(name, value)
-                        result.success(null)
-                    } else {
-                        result.missingParameter(call.method)
-                    }
-                }
+                "startView" -> startView(call, result)
+                "stopView" -> stopView(call, result)
+                "addTiming" -> addTiming(call, result)
+                "startResourceLoading" -> startResourceLoading(call, result)
+                "stopResourceLoading" -> stopResourceLoading(call, result)
+                "stopResourceLoadingWithError" -> stopResourceLoadingWithError(call, result)
+                "addError" -> addError(call, result)
+                "addUserAction" -> addUserAction(call, result)
+                "startUserAction" -> startUserAction(call, result)
+                "stopUserAction" -> stopUserAction(call, result)
+                "addAttribute" -> addAttribute(call, result)
+                "removeAttribute" -> removeAttribute(call, result)
+                "reportLongTask" -> reportLongTask(call, result)
+                "updatePerformanceMetrics" -> updatePerformanceMetrics(call, result)
+                "addFeatureFlagEvaluation" -> addFeatureFlagEvaluation(call, result)
+                "stopSession" -> stopSession(call, result)
                 else -> {
                     result.notImplemented()
                 }
@@ -295,22 +121,224 @@ class DatadogRumPlugin(
         }
     }
 
-    private fun updatePerformanceMetrics(
-        buildTimes: List<Double>,
-        rasterTimes: List<Double>
-    ) {
-        buildTimes.forEach {
-            rum?._getInternal()?.updatePerformanceMetric(
-                RumPerformanceMetric.FLUTTER_BUILD_TIME,
-                it
-            )
+    private fun startView(call: MethodCall, result: Result) {
+        val key = call.argument<String>(PARAM_KEY)
+        val name = call.argument<String>(PARAM_NAME)
+        val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+        if (key != null && name != null && attributes != null) {
+            rum?.startView(key, name, attributes)
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
         }
-        rasterTimes.forEach {
-            rum?._getInternal()?.updatePerformanceMetric(
-                RumPerformanceMetric.FLUTTER_RASTER_TIME,
-                it
-            )
+    }
+
+    private fun stopView(call: MethodCall, result: Result) {
+        val key = call.argument<String>(PARAM_KEY)
+        val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+        if (key != null && attributes != null) {
+            rum?.stopView(key, attributes)
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
         }
+    }
+
+    private fun addTiming(call: MethodCall, result: Result) {
+        val name = call.argument<String>(PARAM_NAME)
+        if (name != null) {
+            rum?.addTiming(name)
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun startResourceLoading(call: MethodCall, result: Result) {
+        val key = call.argument<String>(PARAM_KEY)
+        val url = call.argument<String>(PARAM_URL)
+        val method = call.argument<String>(PARAM_HTTP_METHOD)
+        val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+
+        @Suppress("ComplexCondition")
+        if (key != null && url != null && method != null && attributes != null) {
+            val httpMethod = parseRumHttpMethod(method)
+            rum?.startResource(key, httpMethod, url, attributes)
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun stopResourceLoading(call: MethodCall, result: Result) {
+        val key = call.argument<String>(PARAM_KEY)
+        val kindString = call.argument<String>(PARAM_KIND)
+        val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+        val statusCode = call.argument<Number>(PARAM_STATUS_CODE)
+        val size = call.argument<Number>(PARAM_SIZE)
+        if (key != null && kindString != null && attributes != null) {
+            val kind = parseRumResourceKind(kindString)
+            rum?.stopResource(
+                key,
+                statusCode?.toInt(),
+                size?.toLong(),
+                kind,
+                attributes
+            )
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    @Suppress("ComplexCondition")
+    private fun stopResourceLoadingWithError(call: MethodCall, result: Result) {
+        val key = call.argument<String>(PARAM_KEY)
+        val message = call.argument<String>(PARAM_MESSAGE)
+        val errorType = call.argument<String>(PARAM_TYPE)
+        val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+        if (key != null && message != null && errorType != null && attributes != null) {
+            rum?.stopResourceWithError(
+                key, null, message, RumErrorSource.NETWORK,
+                "", errorType, attributes
+            )
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun addError(call: MethodCall, result: Result) {
+        val message = call.argument<String>(PARAM_MESSAGE)
+        val sourceString = call.argument<String>(PARAM_SOURCE)
+        val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+        val stackTrace = call.argument<String>(PARAM_STACK_TRACE)
+        val errorType = call.argument<String>(PARAM_ERROR_TYPE)
+        if (message != null && sourceString != null && attributes != null) {
+            var fullAttributes = attributes
+            if (errorType != null) {
+                fullAttributes = attributes + Pair(
+                    RumAttributes.INTERNAL_ERROR_TYPE,
+                    errorType
+                )
+            }
+            val source = parseRumErrorSource(sourceString)
+            rum?.addErrorWithStacktrace(message, source, stackTrace, fullAttributes)
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun addUserAction(call: MethodCall, result: Result) {
+        val typeString = call.argument<String>(PARAM_TYPE)
+        val name = call.argument<String>(PARAM_NAME)
+        val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+        if (typeString != null && name != null && attributes != null) {
+            val actionType = parseRumActionType(typeString)
+            rum?.addUserAction(actionType, name, attributes)
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun startUserAction(call: MethodCall, result: Result) {
+        val typeString = call.argument<String>(PARAM_TYPE)
+        val name = call.argument<String>(PARAM_NAME)
+        val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+        if (typeString != null && name != null && attributes != null) {
+            val actionType = parseRumActionType(typeString)
+            rum?.startUserAction(actionType, name, attributes)
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun stopUserAction(call: MethodCall, result: Result) {
+        val typeString = call.argument<String>(PARAM_TYPE)
+        val name = call.argument<String>(PARAM_NAME)
+        val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
+        if (typeString != null && name != null && attributes != null) {
+            val actionType = parseRumActionType(typeString)
+            rum?.stopUserAction(actionType, name, attributes)
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun addAttribute(call: MethodCall, result: Result) {
+        val key = call.argument<String>(PARAM_KEY)
+        val value = call.argument<Any>(PARAM_VALUE)
+        if (key != null && value != null) {
+            GlobalRum.addAttribute(key, value)
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun removeAttribute(call: MethodCall, result: Result) {
+        val key = call.argument<String>(PARAM_KEY)
+        if (key != null) {
+            GlobalRum.removeAttribute(key)
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun reportLongTask(call: MethodCall, result: Result) {
+        val at = call.argument<Long>(PARAM_AT)
+        val duration = call.argument<Int>(PARAM_DURATION)
+        if (at != null && duration != null) {
+            // Duration is in ms, convert to ns
+            val durationNs = TimeUnit.MILLISECONDS.toNanos(duration.toLong())
+            rum?._getInternal()?.addLongTask(durationNs, "")
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun updatePerformanceMetrics(call: MethodCall, result: Result) {
+        val buildTimes = call.argument<List<Double>>(PARAM_BUILD_TIMES)
+        val rasterTimes = call.argument<List<Double>>(PARAM_RASTER_TIMES)
+        if (buildTimes != null && rasterTimes != null) {
+            buildTimes.forEach {
+                rum?._getInternal()?.updatePerformanceMetric(
+                    RumPerformanceMetric.FLUTTER_BUILD_TIME,
+                    it
+                )
+            }
+            rasterTimes.forEach {
+                rum?._getInternal()?.updatePerformanceMetric(
+                    RumPerformanceMetric.FLUTTER_RASTER_TIME,
+                    it
+                )
+            }
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun addFeatureFlagEvaluation(call: MethodCall, result: Result) {
+        val name = call.argument<String>(PARAM_NAME)
+        val value = call.argument<Any>(PARAM_VALUE)
+        if (name != null && value != null) {
+            rum?.addFeatureFlagEvaluation(name, value)
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun stopSession(call: MethodCall, result: Result) {
+        rum?.stopSession()
+        result.success(null)
     }
 
     @Suppress("TooGenericExceptionCaught")
@@ -333,6 +361,7 @@ class DatadogRumPlugin(
                             "event" to encodedEvent
                         ),
                         object : Result {
+                            @Suppress("UNCHECKED_CAST")
                             override fun success(result: Any?) {
                                 modifiedJson = (result as? Map<String, Any?>)
                                 latch.countDown()
@@ -389,6 +418,7 @@ class DatadogRumPlugin(
         return event
     }
 
+    @Suppress("UNCHECKED_CAST")
     internal fun mapViewEvent(event: ViewEvent): ViewEvent {
         var result: ViewEvent
         val perf = measureNanoTime {
@@ -410,6 +440,7 @@ class DatadogRumPlugin(
         return result
     }
 
+    @Suppress("UNCHECKED_CAST")
     internal fun mapActionEvent(event: ActionEvent): ActionEvent? {
         val result: ActionEvent?
         val perf = measureNanoTime {
@@ -420,14 +451,14 @@ class DatadogRumPlugin(
                 if (encodedResult == null) {
                     null
                 } else {
-                    (encodedResult?.get("action") as? Map<String, Any?>)?.let {
+                    (encodedResult["action"] as? Map<String, Any?>)?.let {
                         val encodedTarget = it["target"] as? Map<String, Any?>
                         if (encodedTarget != null) {
                             event.action.target?.name = encodedTarget["name"] as String
                         }
                     }
 
-                    (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                    (encodedResult["view"] as? Map<String, Any?>)?.let {
                         event.view.name = it["name"] as? String
                         event.view.referrer = it["referrer"] as? String
                         event.view.url = it["url"] as String
@@ -442,6 +473,7 @@ class DatadogRumPlugin(
         return result
     }
 
+    @Suppress("UNCHECKED_CAST")
     internal fun mapResourceEvent(event: ResourceEvent): ResourceEvent? {
         var result: ResourceEvent?
         val perf = measureNanoTime {
@@ -452,11 +484,11 @@ class DatadogRumPlugin(
                 if (encodedResult == null) {
                     null
                 } else {
-                    (encodedResult?.get("resource") as? Map<String, Any?>)?.let {
+                    (encodedResult["resource"] as? Map<String, Any?>)?.let {
                         event.resource.url = it["url"] as String
                     }
 
-                    (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                    (encodedResult["view"] as? Map<String, Any?>)?.let {
                         event.view.name = it["name"] as? String
                         event.view.referrer = it["referrer"] as? String
                         event.view.url = it["url"] as String
@@ -471,7 +503,7 @@ class DatadogRumPlugin(
         return result
     }
 
-    @Suppress("ComplexMethod")
+    @Suppress("ComplexMethod", "UNCHECKED_CAST")
     internal fun mapErrorEvent(event: ErrorEvent): ErrorEvent? {
         var result: ErrorEvent?
         val perf = measureNanoTime {
@@ -482,7 +514,7 @@ class DatadogRumPlugin(
                 if (encodedResult == null) {
                     null
                 } else {
-                    (encodedResult?.get("error") as? Map<String, Any?>)?.let { encodedError ->
+                    (encodedResult["error"] as? Map<String, Any?>)?.let { encodedError ->
                         val encodedCauses = encodedError["causes"] as? List<Map<String, Any?>>
                         if (encodedCauses != null) {
                             event.error.causes?.let { causes ->
@@ -505,7 +537,7 @@ class DatadogRumPlugin(
                         event.error.stack = encodedError["stack"] as? String
                     }
 
-                    (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                    (encodedResult["view"] as? Map<String, Any?>)?.let {
                         event.view.name = it["name"] as? String
                         event.view.referrer = it["referrer"] as? String
                         event.view.url = it["url"] as String
@@ -520,6 +552,7 @@ class DatadogRumPlugin(
         return result
     }
 
+    @Suppress("UNCHECKED_CAST")
     internal fun mapLongTaskEvent(event: LongTaskEvent): LongTaskEvent? {
         var result: LongTaskEvent?
         val perf = measureNanoTime {
@@ -531,7 +564,7 @@ class DatadogRumPlugin(
                     null
                 } else {
 
-                    (encodedResult?.get("view") as? Map<String, Any?>)?.let {
+                    (encodedResult["view"] as? Map<String, Any?>)?.let {
                         event.view.name = it["name"] as? String
                         event.view.referrer = it["referrer"] as? String
                         event.view.url = it["url"] as String
@@ -546,13 +579,14 @@ class DatadogRumPlugin(
         return result
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun normalizeExtraUserInfo(encodedEvent: Map<String, Any?>): Map<String, Any?> {
         val reservedKeys = setOf("email", "id", "name")
         // Pull out user information
         val mutableEvent = encodedEvent.toMutableMap()
         (mutableEvent["usr"] as? Map<String, Any?>)?.let { usr ->
             val mutableUsr = usr.toMutableMap()
-            var extraUserInfo = mutableMapOf<String, Any?>()
+            val extraUserInfo = mutableMapOf<String, Any?>()
             usr.filter { !reservedKeys.contains(it.key) }.forEach {
                 extraUserInfo[it.key] = it.value
                 mutableUsr.remove(it.key)

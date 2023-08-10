@@ -89,7 +89,7 @@ class _LoggingScreenState extends State<LoggingScreen> {
           children: [
             Text(
               'Single log',
-              style: theme.textTheme.headline6,
+              style: theme.textTheme.titleLarge,
             ),
             _buildField(
               text: 'LEVEL',
@@ -153,7 +153,7 @@ class _LoggingScreenState extends State<LoggingScreen> {
           if (text != null)
             Text(
               text,
-              style: theme.textTheme.subtitle2,
+              style: theme.textTheme.titleSmall,
             ),
           Container(padding: const EdgeInsets.all(4), child: child),
         ],

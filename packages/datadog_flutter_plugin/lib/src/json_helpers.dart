@@ -11,7 +11,7 @@ const commonJsonOptions = JsonSerializable(
   explicitToJson: true,
 );
 
-Map<String, Object?> attributesFromJson(Map? attributes) {
+Map<String, Object?> attributesFromJson(Map<dynamic, dynamic>? attributes) {
   return attributes?.map(
           (Object? key, Object? value) => MapEntry(key as String, value)) ??
       {};

@@ -2,117 +2,48 @@
 format_version: 11
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 project_type: flutter
-
+trigger_map:
+- push_branch: main
+  pipeline: primary
+- push_branch: develop
+  pipeline: primary
+- push_branch: release/*
+  pipeline: primary
+- pull_request_source_branch: "*"
+  pipeline: pull_request
+pipelines:
+  primary:
+    stages:
+    - stage_build: {}
+    - stage_integration_test: {}
+  pull_request:
+    stages:
+    - stage_build: {}
+    - stage_integration_test: {}
+  nightly:
+    stages:
+    - nightly: {}
+stages:
+  stage_build:
+    workflows:
+    - core_build: {}
+  stage_integration_test:
+    workflows:
+    - integration_ios_from_stage: {}
+    - integration_android_from_stage: {}
+  nightly:
+    workflows:
+    - nightly_ios: {}
+    - nightly_android: {}
 workflows:
-  push_to_pull_request:
-    description: |-
-        This workflow is triggered on starting new PR or pushing new changes to existing PRs.
-        By default, it doesn't run any test phases, but this behavior is overwritten in `choose_workflows.py` when:
-        - one or more `DD_OVERWRITE_RUN_(phase)_TESTS` ENVs are passed to the current CI job:
-            - DD_OVERRIDE_RUN_UNIT_TESTS='1' to run unit tests phase
-            - DD_OVERRIDE_RUN_INTEGRATION_TESTS='1' to run integration tests phase
-        - a phase is selected on the checklist in the PR description,
-        - the PR changes a file which matches phase filter (e.g. changing a file in `packages/*` will trigger unit tests phase)
-    envs:
-      - DD_RUN_UNIT_TESTS: '0'
-      - DD_RUN_INTEGRATION_TESTS: '0'
-    after_run:
-    - setup
-    - run_conditioned_workflows
-    - _deploy_artifacts
-
-  push_to_develop_or_main:
-    envs:
-      - FLUTTER_VERSION: stable
-      - DD_RUN_UNIT_TESTS: '1'
-      - DD_RUN_INTEGRATION_TESTS: '1'
-    after_run:
-    - setup
-    - run_conditioned_workflows
-    - _deploy_artifacts
-
-  check_min_supported:
-    description: |-
-      This workflow is run nightly to make sure current packages work with the minimum
-      supported version of Flutter.
-    envs:
-      - FLUTTER_VERSION: 2.10.5
-      - DD_RUN_UNIT_TESTS: '1'
-      - DD_RUN_INTEGRATION_TESTS: '1'
-    after_run:
-    - setup
-    - run_conditioned_workflows
-    - _deploy_artifacts
-  
-  check_beta:
-    envs:
-      - FLUTTER_VERSION: beta
-      - DD_RUN_UNIT_TESTS: '1'
-      - DD_RUN_INTEGRATION_TESTS: '1'
-    after_run:
-    - setup
-    - run_conditioned_workflows
-    - _deploy_artifacts
-
-  nightly_e2e:
-    envs:
-    - FLUTTER_VERSION: stable
-    - DD_RUN_INTEGRATION_TESTS: '1'
-    before_run:
-    - setup
-    - _start_android_emulator
-    - nightly_ios
-    - nightly_android
-
-  setup:
-    before_run:
-    - _flutter_install
+  _deploy_artifacts:
     steps:
-    - script:
-        title: Generate build files
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            set -e
-            pod repo update
-
-            ./prepare.sh
-    - script:
-        title: Dart 2.15 fix junitreport
-        inputs:
-        - content: |-
-            #!/user/bin/env bash
-            set -e
-            dart pub global activate junitreport
-        
-  run_conditioned_workflows:
-    steps:
-    - script:
-        title: Choose which workflows to run
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-
-            cd tools/ci && make
-
-            # The `choose_workflows.py` inspects current ENV variables and Pull Request metadata (if running in PR)
-            # and decides on which from the workflows in `after_run` should be ran. Workflows are opted-in
-            # by modifying `DD_RUN_*` ENV variables with `envman` (ref.: https://github.com/bitrise-io/envman).
-            python3 choose_workflows.py
-    after_run:
-    - _start_android_emulator
-    - check_dependencies
-    - analyze
-    - build
-    - unit_test
-    - integration_test
-
+    - deploy-to-bitrise-io: {}
   _flutter_install:
     steps:
     - flutter-installer@0:
         inputs:
-        - version: $FLUTTER_VERSION
-  
+        - version: "$FLUTTER_VERSION"
   _launch_ios_simulator:
     steps:
     - script:
@@ -125,23 +56,43 @@ workflows:
             flutter emulators --launch apple_ios_simulator
             # Sleep while the simulator warms a bit
             sleep 5
+  _setup:
+    before_run:
+    - _flutter_install
+    steps:
+    - activate-ssh-key@4:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone@8.0: {}
+    - cache-pull@2: {}
+    - script:
+        title: Generate build files
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            if [ "$(uname)" == "Darwin" ]; then
+              pod repo update
+            fi
 
+            ./prepare.sh
+    - script:
+        title: Dart 2.15 fix junitreport
+        inputs:
+        - content: |-
+            #!/user/bin/env bash
+            set -e
+            dart pub global activate junitreport
   _start_android_emulator:
     steps:
-      - avd-manager@1:
-          run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
-          inputs:
-          - api_level: '30'
-          - emulator_channel: 0
-      - wait-for-android-emulator@1:
-          run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
-
-  _deploy_artifacts:
-    steps:
-    - deploy-to-bitrise-io: {}
-
+    - avd-manager@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
+        inputs:
+        - api_level: '30'
+        - emulator_channel: 0
+    - wait-for-android-emulator@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
   analyze:
-    steps: 
+    steps:
     - flutter-analyze@0:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/"
@@ -162,140 +113,12 @@ workflows:
             set -e
             ./gradlew ktlintCheck detekt
         - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/android"
-
-  unit_test:
-    steps:
-    - flutter-test@1:
-        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin"
-    - flutter-test@1:
-        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client"
-    - flutter-test@1:
-        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor"
-    - flutter-test@1:
-        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_webview_tracking"
-    - xcode-test@4.0.2:
-        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
-        inputs:
-        - project_path: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/ios/Runner.xcworkspace"
-        - scheme: Runner
-        - destination: platform=iOS Simulator,name=iPhone 13,OS=latest
-    - android-unit-test@1.0.5:
-        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/android"
-        - module: datadog_flutter_plugin
-
   build:
     steps:
     - flutter-build@0:
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example"
         - platform: both
-  
-  integration_test:
-    before_run:
-    - integration_ios
-    - integration_android
-
-  integration_android:
-    steps:
-    - flutter-test@1:
-        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
-        - tests_path_pattern: "integration_test"
-        - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
-    - flutter-test@1:
-        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
-        - tests_path_pattern: "integration_test"
-        - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
-    - flutter-test@1:
-        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_webview_tracking/example"
-        - tests_path_pattern: "integration_test"
-        - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
-  
-  integration_ios:
-    before_run:
-    - _launch_ios_simulator
-    steps:
-    - flutter-test@1:
-        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
-        - tests_path_pattern: "integration_test"
-        - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
-    - flutter-test@1:
-        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
-        - tests_path_pattern: "integration_test"
-        - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
-    - flutter-test@1:
-        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_webview_tracking/example"
-        - tests_path_pattern: "integration_test"
-        - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
-        
-
-  integration_web:
-    steps:
-    - script:
-        title: Run pub get in all projects
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            set -e
-
-            ./tools/chromedriver --port=4444 &
-
-            pushd "packages/datadog_flutter_plugin/integration_test_app"
-            testfiles=( 
-              "integration_test/logging_test.dart"
-              "integration_test/rum_manual_test.dart"
-              "integration_test/rum_manual_error_reporting_test.dart"
-              "integration_test/rum_no_auto_instrumentation_test.dart"
-              "integration_test/rum_auto_instrumentation_test.dart"
-            )
-
-            for test in "${testfiles[@]}" ; do
-              echo 'Testing $test'
-              flutter drive --driver=test_driver/integration_test.dart --target=$test -d "Chrome"
-            done
-
-            popd
-        - working_dir: "$BITRISE_SOURCE_DIR"
-
-  nightly_ios:
-    before_run:
-    - _launch_ios_simulator
-    steps:
-      - flutter-test@1:
-          inputs:
-          - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/e2e_test_app"
-          - tests_path_pattern: "integration_test"
-          - additional_params: "-d iPhone"
-
-  nightly_android:
-    steps:
-    - flutter-test@1:
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/e2e_test_app"
-        - tests_path_pattern: "integration_test"
-        - additional_params: "-d emulator"
-    
   check_dependencies:
     steps:
     - script:
@@ -306,3 +129,192 @@ workflows:
             set -e
             dart ./bin/third_party_scanner.dart
         - working_dir: "$BITRISE_SOURCE_DIR/tools/third_party_scanner"
+  core_build:
+    envs:
+    - FLUTTER_VERSION: stable
+    - DD_RUN_UNIT_TESTS: '1'
+    - DD_RUN_INTEGRATION_TESTS: '1'
+    after_run:
+    - _setup
+    - check_dependencies
+    - analyze
+    - build
+    - unit_test
+    - _deploy_artifacts
+  integration_android:
+    steps:
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
+        - tests_path_pattern: integration_test
+        - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
+        - tests_path_pattern: integration_test
+        - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_webview_tracking/example"
+        - tests_path_pattern: integration_test
+        - additional_params: "-d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+    meta:
+      bitrise.io:
+        stack: linux-docker-android-20.04
+        machine_type_id: standard
+  integration_android_from_stage:
+    envs:
+    - FLUTTER_VERSION: stable
+    - DD_RUN_UNIT_TESTS: '1'
+    - DD_RUN_INTEGRATION_TESTS: '1'
+    after_run:
+    - _setup
+    - _start_android_emulator
+    - integration_android
+    - _deploy_artifacts
+    meta:
+      bitrise.io:
+        stack: linux-docker-android-20.04
+        machine_type_id: standard
+  integration_ios:
+    before_run:
+    - _launch_ios_simulator
+    steps:
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/integration_test_app"
+        - tests_path_pattern: integration_test
+        - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/example"
+        - tests_path_pattern: integration_test
+        - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+    - flutter-test@1:
+        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_webview_tracking/example"
+        - tests_path_pattern: integration_test
+        - additional_params: "-d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID"
+  integration_ios_from_stage:
+    envs:
+    - FLUTTER_VERSION: stable
+    - DD_RUN_UNIT_TESTS: '1'
+    - DD_RUN_INTEGRATION_TESTS: '1'
+    after_run:
+    - _setup
+    - integration_ios
+    - _deploy_artifacts
+  integration_web:
+    steps:
+    - script:
+        title: Run pub get in all projects
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -e
+            
+            ./tools/chromedriver --port=4444 &
+            
+            pushd "packages/datadog_flutter_plugin/integration_test_app"
+            testfiles=(
+              "integration_test/logging_test.dart"
+              "integration_test/rum_manual_test.dart"
+              "integration_test/rum_manual_error_reporting_test.dart"
+              "integration_test/rum_no_auto_instrumentation_test.dart"
+              "integration_test/rum_auto_instrumentation_test.dart"
+            )
+            
+            for test in "${testfiles[@]}" ; do
+              echo 'Testing $test'
+              flutter drive --driver=test_driver/integration_test.dart --target=$test -d "Chrome"
+            done
+            
+            popd
+        - working_dir: "$BITRISE_SOURCE_DIR"
+  nightly_android:
+    envs:
+    - FLUTTER_VERSION: stable
+    - DD_RUN_UNIT_TESTS: '1'
+    - DD_RUN_INTEGRATION_TESTS: '1'
+    before_run:
+    - _setup
+    - _start_android_emulator
+    steps:
+    - flutter-test@1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/e2e_test_app"
+        - tests_path_pattern: integration_test
+        - additional_params: "-d emulator"
+    after_run:
+    - _deploy_artifacts
+    meta:
+      bitrise.io:
+        stack: linux-docker-android-20.04
+        machine_type_id: standard
+  nightly_ios:
+    envs:
+    - FLUTTER_VERSION: stable
+    - DD_RUN_UNIT_TESTS: '1'
+    - DD_RUN_INTEGRATION_TESTS: '1'
+    before_run:
+    - _setup
+    - _launch_ios_simulator
+    steps:
+    - script:
+        title: Run flutter doctor
+        inputs:
+        - content: |-
+            #!/usr/bin/env/ bash
+            flutter doctor
+        - working_dir: "$BITRISE_SOURCE_DIR"
+    - flutter-test@1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/e2e_test_app"
+        - tests_path_pattern: integration_test
+        - additional_params: "-d iPhone"
+    after_run:
+    - _deploy_artifacts
+  unit_test:
+    steps:
+    - flutter-test@1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin"
+    - flutter-test@1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client"
+    - flutter-test@1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor"
+    - flutter-test@1:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_webview_tracking"
+    - xcode-test@4.0.2:
+        inputs:
+        - project_path: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/ios/Runner.xcworkspace"
+        - scheme: Runner
+        - destination: platform=iOS Simulator,name=iPhone 13,OS=latest
+    - android-unit-test@1.0.5:
+        inputs:
+        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/android"
+        - module: datadog_flutter_plugin
+meta:
+  bitrise.io:
+    stack: osx-xcode-14.3.x-ventura
+    machine_type_id: g2-m1.4core
+app:
+  envs:
+  - opts:
+      is_expand: false
+    BITRISE_FLUTTER_PROJECT_LOCATION: "."
+  - opts:
+      is_expand: false
+    IS_ON_CI: 'true'
+  - opts:
+      is_expand: false
+    FLUTTER_VERSION: stable

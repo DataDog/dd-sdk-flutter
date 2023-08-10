@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+
+
+## 1.4.0
+
+* Update version constraints to allow 1.x.x versions of the `http` package.
+
+## 1.3.1
+
+* Fix not exporting `DatadogTrackingHttpClientListener` from @ClaireDavis.
+
+## 1.3.0
+
+* Have `DatadogTrackingHttpClient` use `HttpOverrides.current` if they already exist. See [#424] 
+* Added `attributeProvider` parameter to `DatadogClient` to allow users provide attributes for RUM Resources automatically created by `DatadogClient`.
+* Added `DatadogTrackingHttpClientListener` to allow users to provide attributes for RUM Resources created by `DatadogTrackingHttpClient`.
+* Fix rethrown execptions on `close` not having the correct stack trace.
+
+## 1.2.1
+
 * Fix an invalid assertion when processing stream errors. See [#355]
 
 ## 1.2.0
@@ -48,3 +67,4 @@
 * Initial split of DatadogTrackingHttpClient into its own package
 
 [#355]: https://github.com/DataDog/dd-sdk-flutter/issues/355
+[#424]: https://github.com/DataDog/dd-sdk-flutter/issues/424

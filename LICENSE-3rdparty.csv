@@ -28,10 +28,12 @@ build,version,BSD-3-Clause,"Copyright (c) 2021, Matthew Barbour"
 build,pana,BSD-3-Clause,"Copyright (c) 2017, the Dart project authors"
 test,datadog_common_test,Apache-2.0,Copyright 2022 Datadog
 import,grpc,Apache-2.0,"Copyright (c) 2018, the gRPC project authors"
-build,build_runner,BSD-3-Clause,"Copyright 2016, the Dart project authors." 
+build,build_runner,BSD-3-Clause,"Copyright 2016, the Dart project authors."
 import,json_annotation,BSD-3-Clause,"Copyright 2017, the Dart project authors."
 build,json_serializable,BSD-3-Clause,"Copyright 2017, the Dart project authors."
 import,js,BSD-3-Clause,"Copyright 2012, the Dart project authors."
 import,fluro,MIT,Copyright 2021 Luke Pighetti
 build,protobuf,BSD-3-Clause,"Copyright 2013, the Dart project authors."
 import,webview_flutter,BSD-3-Clause,Copyright 2013 The Flutter Authors.
+import,webview_flutter_android,BSD-3-Clause,Copyright 2013 The Flutter Authors.
+import,webview_flutter_wkwebview,BSD-3-Clause,Copyright 2013 The Flutter Authors.

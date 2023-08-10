@@ -33,6 +33,7 @@ On Android, create a `ComponentPredicate` to check if the Activity is an instanc
 ### Caveats
 
 * The `source` of the data coming from these Hybrid apps is always the Native platform, no matter whether the event was sent from the Native SDK or the Flutter SDK.
+* Currently, you can only embed your Flutter app using Cocoapods, documented as "Option A" in [Flutter's documentation](https://docs.flutter.dev/add-to-app/ios/project-setup#option-a---embed-with-cocoapods-and-the-flutter-sdk). Using `.xcframeworks` (Options B and C) will generate compiler errors, especially if you are already using Datadog in your native project. See our [Github Issue](https://github.com/DataDog/dd-sdk-flutter/issues/443) for more details.
 
 ## Flutter app is primary - use Datadog as normal
 

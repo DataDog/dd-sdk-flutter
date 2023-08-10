@@ -4,6 +4,7 @@
 
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:meta/meta.dart';
 
 import '../datadog_flutter_plugin.dart';
@@ -195,6 +196,16 @@ class LoggingConfiguration {
   /// sent to Datadog from this logger.
   String? loggerName;
 
+  double _sampleRate = 100;
+
+  /// The sampling rate for this logger.
+  ///
+  /// The sampling rate must be a value between `0.0` and `100.0`. A value of `0.0`
+  /// means no logs will be processed, `100.0` means all logs will be processed.
+  /// The default is `100.0`
+  double get sampleRate => _sampleRate;
+  set sampleRate(double value) => _sampleRate = clampDouble(value, 0, 100);
+
   LoggingConfiguration({
     this.sendNetworkInfo = false,
     this.printLogsToConsole = false,
@@ -202,8 +213,11 @@ class LoggingConfiguration {
     this.datadogReportingThreshold = Verbosity.verbose,
     this.bundleWithRum = true,
     this.bundleWithTrace = true,
+    double sampleRate = 100,
     this.loggerName,
-  });
+  }) {
+    this.sampleRate = sampleRate;
+  }
 
   Map<String, Object?> encode() {
     return {

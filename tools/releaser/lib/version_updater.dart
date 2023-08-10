@@ -181,8 +181,7 @@ Future<bool> _updateReadmeVersions(CommandArguments args, Logger logger) async {
 | :-----: | :---------: | :---------: |
 | ${args.iOSRelease} | ${args.androidRelease} | 4.x.x |
 
-[//]: # (End SDK Table)
-''';
+[//]: # (End SDK Table)''';
         return line;
       }
 

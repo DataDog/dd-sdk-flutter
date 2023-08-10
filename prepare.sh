@@ -32,8 +32,7 @@ do
     pushd "$i"
     flutter pub get
     # Check and update pods
-    if [ -d "example/ios" ]
-    then
+    if [ -d "example/ios" ] && [ "$(uname)" == "Darwin" ]; then
         pushd "example/ios"
         pod update
         popd

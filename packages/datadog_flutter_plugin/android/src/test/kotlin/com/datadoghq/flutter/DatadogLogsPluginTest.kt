@@ -23,7 +23,6 @@ import io.mockk.verify
 import org.junit.jupiter.api.Test
 
 @ExtendWith(ForgeExtension::class)
-@OptIn(kotlin.ExperimentalStdlibApi::class)
 class DatadogLogsPluginTest {
     private lateinit var plugin: DatadogLogsPlugin
     private lateinit var mockLogger: Logger
@@ -94,7 +93,7 @@ class DatadogLogsPluginTest {
         testContracts(contracts, forge, plugin)
     }
 
-    fun defaultLoggingConfig(): Map<String, Any?> {
+    private fun defaultLoggingConfig(): Map<String, Any?> {
         return mapOf(
             "sendNetworkInfo" to true,
             "printLogsToConsole" to true,
@@ -108,15 +107,15 @@ class DatadogLogsPluginTest {
     @Test
     fun `M parse correct level W parseLogLevel`() {
         // WHEN
-        var debug = parseLogLevel("LogLevel.debug")
-        var info = parseLogLevel("LogLevel.info")
-        var notice = parseLogLevel("LogLevel.notice")
-        var warning = parseLogLevel("LogLevel.warning")
-        var error = parseLogLevel("LogLevel.error")
-        var critical = parseLogLevel("LogLevel.critical")
-        var alert = parseLogLevel("LogLevel.alert")
-        var emergency = parseLogLevel("LogLevel.emergency")
-        var unknown = parseLogLevel("LogLevel.unknown")
+        val debug = parseLogLevel("LogLevel.debug")
+        val info = parseLogLevel("LogLevel.info")
+        val notice = parseLogLevel("LogLevel.notice")
+        val warning = parseLogLevel("LogLevel.warning")
+        val error = parseLogLevel("LogLevel.error")
+        val critical = parseLogLevel("LogLevel.critical")
+        val alert = parseLogLevel("LogLevel.alert")
+        val emergency = parseLogLevel("LogLevel.emergency")
+        val unknown = parseLogLevel("LogLevel.unknown")
 
         // THEN
         assertThat(debug).isEqualTo(Log.DEBUG)

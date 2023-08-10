@@ -30,7 +30,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import java.util.concurrent.TimeUnit
 
 @ExtendWith(ForgeExtension::class)
-@OptIn(kotlin.ExperimentalStdlibApi::class)
 class DatadogRumPluginTest {
     private lateinit var plugin: DatadogRumPlugin
     private lateinit var mockRumMonitor: RumMonitor
@@ -76,7 +75,7 @@ class DatadogRumPluginTest {
         val media = parseRumResourceKind("RumResourceType.media")
         val other = parseRumResourceKind("RumResourceType.other")
         val native = parseRumResourceKind("RumResourceType.native")
-        val unknown = parseRumResourceKind("uknowntype")
+        val unknown = parseRumResourceKind("unknownType")
 
         assertThat(document).isEqualTo(RumResourceKind.DOCUMENT)
         assertThat(image).isEqualTo(RumResourceKind.IMAGE)
@@ -487,7 +486,7 @@ class DatadogRumPluginTest {
         verify { mockResult.success(null) }
     }
 
-    val contracts = listOf(
+    private val contracts = listOf(
         Contract("startView", mapOf(
             "key" to ContractParameter.Type(SupportedContractType.STRING),
             "name" to ContractParameter.Type(SupportedContractType.STRING),
@@ -555,7 +554,8 @@ class DatadogRumPluginTest {
         Contract("addFeatureFlagEvaluation", mapOf(
             "name" to ContractParameter.Type(SupportedContractType.STRING),
             "value" to ContractParameter.Type(SupportedContractType.ANY),
-        ))
+        )),
+        Contract("stopSession", mapOf())
     )
 
     @Test
