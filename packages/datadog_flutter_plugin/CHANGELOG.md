@@ -4,6 +4,9 @@
 
 * Add the ability to specify a sampling rate for loggers.
 * Add a "NoOp" platform, usable when performing headless Flutter widget tests.
+* Update iOS SDK to 1.23.0
+  * RUM payloads are now optimised by including less view updates
+  * Prevent attributes from propagating from Errors and LongTasks to Views
 
 ## 1.5.1
 
