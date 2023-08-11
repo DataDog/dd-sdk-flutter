@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+
+
 ## 1.6.0
 
 * Fix an issue where failing to load Datadog modules on Web threw an error (and potentially broke application loading).
