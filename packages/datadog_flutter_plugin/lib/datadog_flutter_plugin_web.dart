@@ -52,19 +52,40 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   Future<void> addUserExtraInfo(Map<String, Object?> extraInfo) async {}
 
   @override
-  Future<void> initialize(
+  Future<PlatformInitializationResult> initialize(
     DdSdkConfiguration configuration, {
     LogCallback? logCallback,
     required InternalLogger internalLogger,
   }) async {
-    if (configuration.loggingConfiguration != null) {
-      DdLogsWeb.initLogs(configuration);
+    bool logsInitialized = false;
+    try {
+      if (configuration.loggingConfiguration != null) {
+        DdLogsWeb.initLogs(configuration);
+        logsInitialized = true;
+      }
+    } catch (e) {
+      internalLogger.warn('DatadogSdk failed to initialize logging: $e');
+      internalLogger
+          .warn('Did you remember to add "datadog-logs" to your scripts?');
     }
-    if (configuration.rumConfiguration != null) {
-      final rumWeb = DdRumPlatform.instance as DdRumWeb;
-      rumWeb.webInitialize(configuration);
-      await rumWeb.initialize(configuration.rumConfiguration!, internalLogger);
+
+    bool rumInitialized = false;
+    try {
+      if (configuration.rumConfiguration != null) {
+        final rumWeb = DdRumPlatform.instance as DdRumWeb;
+        rumWeb.webInitialize(configuration);
+        await rumWeb.initialize(
+            configuration.rumConfiguration!, internalLogger);
+        rumInitialized = true;
+      }
+    } catch (e) {
+      internalLogger.warn('DatadogSdk failed to initialize RUM: $e');
+      internalLogger
+          .warn('Did you remember to add "datadog-rum-slim" to your scripts?');
     }
+
+    return PlatformInitializationResult(
+        logs: logsInitialized, rum: rumInitialized);
   }
 
   @override

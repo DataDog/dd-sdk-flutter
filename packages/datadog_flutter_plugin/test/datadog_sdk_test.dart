@@ -48,10 +48,12 @@ void main() {
   setUp(() {
     mockPlatform = MockDatadogSdkPlatform();
     when(() => mockPlatform.initialize(
-          any(),
-          internalLogger: any(named: 'internalLogger'),
-          logCallback: any(named: 'logCallback'),
-        )).thenAnswer((_) => Future<void>.value());
+              any(),
+              internalLogger: any(named: 'internalLogger'),
+              logCallback: any(named: 'logCallback'),
+            ))
+        .thenAnswer((_) => Future<PlatformInitializationResult>.value(
+            const PlatformInitializationResult(logs: true, rum: true)));
     when(() => mockPlatform.attachToExisting())
         .thenAnswer((_) => Future<AttachResponse?>.value(AttachResponse(
               rumEnabled: false,
@@ -266,6 +268,60 @@ void main() {
     expect(logger, isNotNull);
     verify(() => mockLogsPlatform.createLogger(
         logger!.loggerHandle, loggingConfiguration));
+  });
+
+  test(
+      'initialize with logging configuration does not create logger on platform init failure',
+      () async {
+    when(() => mockPlatform.initialize(
+              any(),
+              internalLogger: any(named: 'internalLogger'),
+              logCallback: any(named: 'logCallback'),
+            ))
+        .thenAnswer((_) => Future<PlatformInitializationResult>.value(
+            const PlatformInitializationResult(logs: false, rum: true)));
+
+    final loggingConfiguration = LoggingConfiguration();
+    final configuration = DdSdkConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.pending,
+      loggingConfiguration: loggingConfiguration,
+    );
+    await datadogSdk.initialize(configuration);
+
+    final logger = datadogSdk.logs;
+    expect(logger, isNull);
+    verifyNever(() => mockLogsPlatform.createLogger(any(), any()));
+  });
+
+  test(
+      'initialize with rum configuration does not create RUM on platform init failure',
+      () async {
+    when(() => mockPlatform.initialize(
+              any(),
+              internalLogger: any(named: 'internalLogger'),
+              logCallback: any(named: 'logCallback'),
+            ))
+        .thenAnswer((_) => Future<PlatformInitializationResult>.value(
+            const PlatformInitializationResult(logs: true, rum: false)));
+
+    final configuration = DdSdkConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+      trackingConsent: TrackingConsent.pending,
+      rumConfiguration: RumConfiguration(
+        applicationId: 'fake-application-id',
+        vitalUpdateFrequency: VitalsFrequency.frequent,
+      ),
+    );
+    await datadogSdk.initialize(configuration);
+
+    final rum = datadogSdk.rum;
+    expect(rum, isNull);
+    verifyNever(() => mockRumPlatform.initialize(any(), any()));
   });
 
   test('attachToExisting calls out to platform', () async {

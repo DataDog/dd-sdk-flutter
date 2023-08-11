@@ -43,7 +43,7 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   }
 
   @override
-  Future<void> initialize(
+  Future<PlatformInitializationResult> initialize(
     DdSdkConfiguration configuration, {
     LogCallback? logCallback,
     required InternalLogger internalLogger,
@@ -63,6 +63,8 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
       'dartVersion': Platform.version,
       'setLogCallback': logCallback != null,
     });
+
+    return const PlatformInitializationResult(logs: true, rum: true);
   }
 
   @override

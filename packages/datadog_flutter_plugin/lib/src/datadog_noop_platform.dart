@@ -22,9 +22,11 @@ class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
   }
 
   @override
-  Future<void> initialize(DdSdkConfiguration configuration,
-      {LogCallback? logCallback, required InternalLogger internalLogger}) {
-    return Future.value();
+  Future<PlatformInitializationResult> initialize(
+      DdSdkConfiguration configuration,
+      {LogCallback? logCallback,
+      required InternalLogger internalLogger}) async {
+    return const PlatformInitializationResult(logs: false, rum: false);
   }
 
   @override
