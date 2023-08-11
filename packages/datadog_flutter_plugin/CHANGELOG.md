@@ -8,6 +8,7 @@
 * Update iOS SDK to 1.23.0
   * RUM payloads are now optimised by including less view updates
   * Prevent attributes from propagating from Errors and LongTasks to Views
+* Added support for Gradle 8 from @wrbl606. See [#462]
 
 ## 1.5.1
 
@@ -192,3 +193,4 @@
 [#390]: https://github.com/DataDog/dd-sdk-flutter/issues/390
 [#414]: https://github.com/DataDog/dd-sdk-flutter/issues/414
 [#416]: https://github.com/DataDog/dd-sdk-flutter/issues/416
+[#462]: https://github.com/DataDog/dd-sdk-flutter/issues/462
