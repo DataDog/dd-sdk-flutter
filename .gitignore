@@ -7,6 +7,9 @@
 build/
 **/.env
 
+pubspec.lock
+**/pubspec_overrides.yaml
+
 .bitrise.secrets.yml
 *flutter_junit_test_results.xml
 android/ndk_crash_reports*/network_information

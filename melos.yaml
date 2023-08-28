@@ -1,0 +1,33 @@
+name: datadog_flutter
+
+packages:
+  - packages/*
+
+scripts:
+  analyze:
+    exec: dart analyze .
+  description: |
+    Run `dart analyze` in all packages
+  
+  prepare:
+    exec: melos build_runner && melos generate_env
+    description: |
+      Run `flutter pub run build_runner build` on all packages and
+      generate `.env` files for all package examples
+  
+  build_runner:
+    exec: flutter pub run build_runner build
+    packageFilters:
+      dependsOn: build_runner
+  
+  generate_env:
+    exec: |
+      echo "Generating example/.env"
+      tee example/.env > /dev/null << END
+      # Edit this file with your Datadog client token, environment and application id
+      DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN
+      DD_APPLICATION_ID=$DD_APPLICATION_ID
+      DD_ENV=prod
+      END
+    packageFilters:
+      dirExists: example

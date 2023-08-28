@@ -5,6 +5,10 @@
 # Copyright 2016-Present Datadog, Inc.
 #
 
+########
+# This script is being moved to `melos.yaml`. Use `melos generate_env` instead.
+########
+
 set echo off
 
 dotEnvFiles=(
