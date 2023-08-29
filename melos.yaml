@@ -5,9 +5,24 @@ packages:
 
 scripts:
   analyze:
+    run: melos analyze:dart && melos analyze:android && melos analyze:ios
+
+  analyze:dart:
     exec: dart analyze .
   description: |
     Run `dart analyze` in all packages
+
+  analyze:android:
+    exec: |
+      cd example/android
+      ./gradlew --console=plain --quiet ktlintCheck detekt
+    packageFilters:
+      dirExists: android
+  
+  analyze:ios:
+    exec: cd ios && swiftlint
+    packageFilters:
+      dirExists: ios
   
   prepare:
     exec: melos build_runner && melos generate_env
@@ -31,3 +46,4 @@ scripts:
       END
     packageFilters:
       dirExists: example
+

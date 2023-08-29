@@ -1,6 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
+// swiftlint:disable file_length
 
 import Flutter
 import UIKit
@@ -8,6 +9,7 @@ import Datadog
 import DatadogCrashReporting
 import DictionaryCoder
 
+// swiftlint:disable:next type_body_length
 public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     struct ConfigurationTelemetryOverrides {
         var dartVersion: String?
@@ -58,6 +60,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
 
         switch call.method {
         case "initialize":
+            // swiftlint:disable:next force_cast
             let configArg = arguments["configuration"] as! [String: Any?]
             if let config = DatadogFlutterConfiguration(fromEncoded: configArg) {
                 if !Datadog.isInitialized {
@@ -330,7 +333,8 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         DispatchQueue.main.async {
             // Second, check that the engine hasn't been destroyed, this is the
             // other work around for https://github.com/flutter/flutter/issues/126671
-            if let flutterViewController = UIApplication.shared.keyWindow?.rootViewController as? FlutterViewController {
+            if let flutterViewController =
+                UIApplication.shared.keyWindow?.rootViewController as? FlutterViewController {
                 let engine = flutterViewController.engine
                 if engine?.isolateId == nil {
                     return

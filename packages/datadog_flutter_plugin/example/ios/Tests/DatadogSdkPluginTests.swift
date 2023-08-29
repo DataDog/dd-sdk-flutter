@@ -125,7 +125,7 @@ class FlutterSdkTests: XCTestCase {
                     "env": "prod",
                     "trackingConsent": "TrackingConsent.granted",
                     "nativeCrashReportEnabled": false
-                ]
+                ] as [String: Any]
             ]
         )
         plugin.handle(methodCall) { _ in }
@@ -183,7 +183,7 @@ class FlutterSdkTests: XCTestCase {
                     "trackingConsent": "TrackingConsent.granted",
                     "nativeCrashReportEnabled": false,
                     "loggingConfiguration": nil
-                ]
+                ] as [String: Any?]
             ]
         )
         plugin.handle(methodCallA) { _ in }
@@ -202,7 +202,7 @@ class FlutterSdkTests: XCTestCase {
                     "trackingConsent": "TrackingConsent.granted",
                     "nativeCrashReportEnabled": false,
                     "loggingConfiguration": nil
-                ]
+                ] as [String: Any?]
             ]
         )
         plugin.handle(methodCallB) { _ in }
@@ -214,7 +214,7 @@ class FlutterSdkTests: XCTestCase {
     func testAttachToExisting_WithNoExisting_PrintsError() {
         let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
         let methodCall = FlutterMethodCall(
-            methodName: "attachToExisting", arguments: [:]
+            methodName: "attachToExisting", arguments: [:] as [String: Any?]
         )
 
         var loggedConsoleLines: [String] = []
@@ -239,7 +239,7 @@ class FlutterSdkTests: XCTestCase {
 
         let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
         let methodCall = FlutterMethodCall(
-            methodName: "attachToExisting", arguments: [:]
+            methodName: "attachToExisting", arguments: [:] as [String: Any]
         )
 
         var callResult: [String: Any?]?
@@ -266,7 +266,7 @@ class FlutterSdkTests: XCTestCase {
 
         let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
         let methodCall = FlutterMethodCall(
-            methodName: "attachToExisting", arguments: [:]
+            methodName: "attachToExisting", arguments: [:] as [String: Any]
         )
 
         var callResult: [String: Any?]?
@@ -345,8 +345,8 @@ class FlutterSdkTests: XCTestCase {
                 "id": "fakeUserId",
                 "name": "fake user name",
                 "email": "fake email",
-                "extraInfo": [:]
-            ])
+                "extraInfo": [:] as [String: Any?]
+            ] as [String: Any?])
 
         var callResult = ResultStatus.notCalled
         plugin.handle(methodCall) { result in
@@ -378,7 +378,7 @@ class FlutterSdkTests: XCTestCase {
                 "extraInfo": [
                     "attribute": NSNumber(23.3)
                 ]
-            ])
+            ] as [String: Any?])
 
         var callResult = ResultStatus.notCalled
         plugin.handle(methodCall) { result in
@@ -413,8 +413,8 @@ class FlutterSdkTests: XCTestCase {
                 "extraInfo": [
                     "attribute_1": NSNumber(23.3),
                     "attribute_2": "attribute_value"
-                ]
-            ])
+                ] as [String: Any?]
+            ] as [String: Any?])
 
         var callResult = ResultStatus.notCalled
         plugin.handle(methodCall) { result in
@@ -451,7 +451,7 @@ class FlutterSdkTests: XCTestCase {
             let call = FlutterMethodCall(methodName: "updateTelemetryConfiguration", arguments: [
                 "option": property,
                 "value": value
-            ])
+            ] as [String: Any?])
             plugin.handle(call) { result in
                 callResult = .called(value: result)
             }
@@ -476,7 +476,9 @@ class FlutterSdkTests: XCTestCase {
             XCTAssertEqual(plugin.configurationTelemetryOverrides.trackNativeViews, trackNativeViews)
         }
         callAndCheck(property: "trackCrossPlatformLongTasks", value: trackCrossPlatformLongTasks) {
-            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackCrossPlatformLongTasks, trackCrossPlatformLongTasks)
+            XCTAssertEqual(
+                plugin.configurationTelemetryOverrides.trackCrossPlatformLongTasks,
+                trackCrossPlatformLongTasks)
         }
         callAndCheck(property: "trackFlutterPerformance", value: trackFlutterPerformance) {
             XCTAssertEqual(plugin.configurationTelemetryOverrides.trackFlutterPerformance, trackFlutterPerformance)

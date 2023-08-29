@@ -1,5 +1,5 @@
 ---
-format_version: 11
+format_version: '11'
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 project_type: flutter
 trigger_map:
@@ -77,7 +77,9 @@ workflows:
               pod repo update
             fi
 
-            ./prepare.sh
+            dart pub global activate melos
+            melos bootstrap
+            melos prepare
     - script:
         title: Dart 2.15 fix junitreport
         inputs:
@@ -96,26 +98,11 @@ workflows:
         run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
   analyze:
     steps:
-    - flutter-analyze@0:
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/"
-    - flutter-analyze@0:
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_tracking_http_client/"
-    - flutter-analyze@0:
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_grpc_interceptor/"
-    - flutter-analyze@0:
-        inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_webview_tracking/"
     - script:
-        title: Android lint and static analysis
+        title: Analyze
         inputs:
         - content: |-
-            #!/usr/bin/env bash
-            set -e
-            ./gradlew ktlintCheck detekt
-        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example/android"
+            melos analyze
   build:
     steps:
     - flutter-build@0:
@@ -130,6 +117,7 @@ workflows:
         - content: |-
             #!/usr/bin/env bash
             set -e
+            dart pub get
             dart ./bin/third_party_scanner.dart
         - working_dir: "$BITRISE_SOURCE_DIR/tools/third_party_scanner"
   core_build:
