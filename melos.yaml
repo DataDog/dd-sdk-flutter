@@ -23,15 +23,91 @@ scripts:
     exec: cd ios && swiftlint
     packageFilters:
       dirExists: ios
+
+  unit_test:all:
+    run: melos unit_test:flutter && melos unit_test:ios && melos unit_test:android
+
+  unit_test:flutter:
+    run: 
+      mkdir -p .build/test-results &&
+      melos exec "flutter test --machine | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml\"" 
+    packageFilters:
+      ignore: 'datadog_common_test'
+
+  unit_test:ios:
+    exec:
+      concurrency: 1
+    run: xcodebuild test -workspace example/ios/Runner.xcworkspace -scheme Runner -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest'
+    packageFilters:
+      dirExists: ios
+      # TODO: These packages should probably have platform unit tests
+      ignore: 
+        - 'datadog_webview_tracking'
+
+  unit_test:android:
+    exec:
+      concurrency: 1
+    run: cd example/android && ./gradlew --console=plain test
+    packageFilters:
+      dirExists: android
+      ignore:
+        - 'datadog_webview_tracking'
+
+  integration_test:ios:
+    run: melos integration_test:ios:main && melos integration_test:ios:other
   
+  integration_test:ios:other:
+    exec:
+      concurrency: 1
+    run: |
+      cd example && \
+      flutter test integration_test --machine -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
+      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_ios_integration.xml"
+    packageFilters:
+      dirExists:  'example/integration_test'
+      ignore: 'datadog_flutter_plugin'
+
+  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
+  # have a separate target just for it that is called by `integration_test:ios``
+  integration_test:ios:main:
+    exec: | 
+      cd integration_test_app && \
+      flutter test integration_test --machine -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
+      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_ios_integration.xml"
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
+  integration_test:android:other:
+    exec:
+      concurrency: 1
+    run: |
+      cd example && \
+      flutter test integration_test --machine -d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
+      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.xml"
+    packageFilters:
+      dirExists:  'example/integration_test'
+      ignore: 'datadog_flutter_plugin'
+
+  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
+  # have a separate target just for it that is called by `integration_test:ios``
+  integration_test:android:main:
+    exec: | 
+      cd integration_test_app && \ 
+      flutter test integration_test --machine -d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
+      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.xml"
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
   prepare:
-    exec: melos build_runner && melos generate_env
+    run: melos build_runner && melos generate_env
     description: |
       Run `flutter pub run build_runner build` on all packages and
       generate `.env` files for all package examples
   
   build_runner:
-    exec: flutter pub run build_runner build
+    exec:
+      concurrency: 1
+    run: flutter pub run build_runner build
     packageFilters:
       dependsOn: build_runner
   
