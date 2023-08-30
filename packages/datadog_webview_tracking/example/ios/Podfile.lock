@@ -1,7 +1,7 @@
 PODS:
   - datadog_flutter_plugin (0.0.1):
-    - DatadogSDK (= 1.23.0)
-    - DatadogSDKCrashReporting (= 1.23.0)
+    - DatadogSDK (~> 1)
+    - DatadogSDKCrashReporting (~> 1)
     - DictionaryCoder (= 1.0.8)
     - Flutter
   - datadog_webview_tracking (0.0.1):
@@ -61,7 +61,7 @@ CHECKOUT OPTIONS:
     :tag: 1.23.0
 
 SPEC CHECKSUMS:
-  datadog_flutter_plugin: 8f47e24d1953bd48658d44bb557e173534f26ac2
+  datadog_flutter_plugin: 286f35803b77ceb07bc1e0a383dd9fc231058473
   datadog_webview_tracking: b5e694f36f3a403043cec80bdf1cde72be7699a2
   DatadogSDK: c2519eea53cc46c17d28a90b9784c3b265afdb52
   DatadogSDKCrashReporting: c3d443bad91788a9c4f781e079fa0a43564bedd7
@@ -73,4 +73,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: bf8312fa44c2d441020a8b687387c34d03347e90
 
-COCOAPODS: 1.12.0
+COCOAPODS: 1.12.1

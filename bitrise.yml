@@ -41,7 +41,7 @@ workflows:
     - deploy-to-bitrise-io: {}
     - deploy-to-bitrise-io:
         inputs:
-          - deploy_path: "$BITRISE_SOURCE_DIR/.build/test-results"
+          - deploy_path: "$BITRISE_SOURCE_DIR/.build/test-results/"
   _flutter_install:
     steps:
     - flutter-installer@0:
@@ -108,10 +108,11 @@ workflows:
             melos analyze
   build:
     steps:
-    - flutter-build@0:
+    - script:
+        title: Build
         inputs:
-        - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/example"
-        - platform: both
+        - content: |-
+            melos build
   check_dependencies:
     steps:
     - script:
@@ -168,7 +169,7 @@ workflows:
     steps:
     - script:
         run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
-        title: Android Integration Tests
+        title: iOS Integration Tests
         inputs:
         - content: |-
             #!/usr/bin/env bash
