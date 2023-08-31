@@ -184,4 +184,10 @@ scripts:
     packageFilters:
       scope: 
         - "*e2e_test_app*"
-        
+
+  pin:ios:
+    exec: 
+      concurrency: 1
+    run: dart $MELOS_ROOT_PATH/tools/releaser/bin/pinner.dart --platform ios --package \$MELOS_PACKAGE_PATH
+    packageFilters:
+      fileExists: "ios/Podfile"
