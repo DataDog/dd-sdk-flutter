@@ -183,6 +183,7 @@ workflows:
     - DD_RUN_INTEGRATION_TESTS: '1'
     after_run:
     - _setup
+    - _launch_ios_simulator
     - integration_ios
     - _deploy_artifacts
   integration_web:

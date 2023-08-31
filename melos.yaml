@@ -118,6 +118,9 @@ scripts:
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
+  integration_test:android:
+    run: melos integration_test:android:main && melos integration_test:android:other
+
   integration_test:android:other:
     exec:
       concurrency: 1
