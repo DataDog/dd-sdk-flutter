@@ -1,6 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
+// swiftlint:disable file_length
 
 import XCTest
 @testable import Datadog
@@ -77,6 +78,7 @@ class MockV2Logger: LoggerProtocol {
     }
 }
 
+// swiftlint:disable:next type_body_length
 class DatadogLogsPluginTests: XCTestCase {
     var plugin: DatadogLogsPlugin!
     var mockV2Logger: MockV2Logger?
@@ -142,7 +144,7 @@ class DatadogLogsPluginTests: XCTestCase {
         let call = FlutterMethodCall(methodName: "createLogger", arguments: [
             "loggerHandle": "fake-uuid",
             "configuration": defaultConfigArgs()
-        ])
+        ] as [String: Any])
 
         var resultStatus = ResultStatus.notCalled
         plugin.handle(call) { result in
@@ -167,7 +169,7 @@ class DatadogLogsPluginTests: XCTestCase {
                 "loggerHandle": "fake-uuid",
                 "logLevel": level,
                 "message": 123
-            ])
+            ] as [String: Any])
 
             var resultStatus = ResultStatus.notCalled
 
@@ -226,7 +228,7 @@ class DatadogLogsPluginTests: XCTestCase {
                 "errorMessage": nil,
                 "stackTrace": nil,
                 "context": context
-            ])
+            ] as [String: Any?])
 
             var resultStatus = ResultStatus.notCalled
             plugin.handle(call) { result in
@@ -269,7 +271,7 @@ class DatadogLogsPluginTests: XCTestCase {
                 "errorMessage": "\(level) error message",
                 "stackTrace": "# ----0 Fake stack trace (package:/flutter)",
                 "context": context
-            ])
+            ] as [String: Any?])
 
             var resultStatus = ResultStatus.notCalled
             plugin.handle(call) { result in

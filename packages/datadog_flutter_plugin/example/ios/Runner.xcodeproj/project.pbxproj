@@ -251,7 +251,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 1310;
-				LastUpgradeCheck = 1300;
+				LastUpgradeCheck = 1430;
 				ORGANIZATIONNAME = "";
 				TargetAttributes = {
 					4962A36B276D322E00507AFD = {
@@ -337,7 +337,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if which swiftlint >/dev/null; then\n  cd ${SOURCE_ROOT}/../..\n  swiftlint\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
+			shellScript = "export PATH=\"$PATH:/opt/homebrew/bin\"\nif which swiftlint >/dev/null; then\n  cd ${SOURCE_ROOT}/../..\n  swiftlint\nelse\n  echo \"warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint\"\nfi\n";
 		};
 		6A724941BA7EA7CA12B70E05 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;

@@ -7,6 +7,9 @@
 build/
 **/.env
 
+pubspec.lock
+**/pubspec_overrides.yaml
+
 .bitrise.secrets.yml
 *flutter_junit_test_results.xml
 android/ndk_crash_reports*/network_information
@@ -28,3 +31,4 @@ packages/datadog_flutter_plugin/example/pubspec.lock
 packages/datadog_tracking_http_client/example/ios/Podfile.lock
 examples/native-hybrid-app/ios/Podfile.lock
 packages/datadog_flutter_plugin/example/ios/Podfile.lock
+.build

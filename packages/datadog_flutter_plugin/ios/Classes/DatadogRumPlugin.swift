@@ -1,6 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
+// swiftlint:disable file_length
 
 import Foundation
 import Datadog
@@ -301,6 +302,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         case "updatePerformanceMetrics":
             if let buildTimes = arguments["buildTimes"] as? [Double],
                let rasterTimes = arguments["rasterTimes"] as? [Double] {
+                // swiftlint:disable:next todo
                 // TODO: Time isn't that important here, but in the future we should get it either
                 // from Flutter or from the timeProvider anyway
                 let date = Date()
@@ -324,7 +326,11 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         }
     }
 
-    func callEventMapper<T>(mapperName: String, event: T, encodedEvent: [String: Any?], completion: ([String: Any?]?) -> T?) -> T? {
+    func callEventMapper<T>(
+        mapperName: String,
+        event: T,
+        encodedEvent: [String: Any?],
+        completion: ([String: Any?]?) -> T?) -> T? {
         guard let methodChannel = DatadogRumPlugin.methodChannel else {
             return event
         }
@@ -397,7 +403,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        let result = callEventMapper(mapperName: "mapViewEvent", event: rumViewEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapViewEvent",
+                                     event: rumViewEvent,
+                                     encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return rumViewEvent
             }
@@ -449,7 +457,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        let result = callEventMapper(mapperName: "mapActionEvent", event: rumActionEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapActionEvent",
+                                     event: rumActionEvent,
+                                     encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return nil
             }
@@ -498,7 +508,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        let result = callEventMapper(mapperName: "mapResourceEvent", event: rumResourceEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapResourceEvent",
+                                     event: rumResourceEvent,
+                                     encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return nil
             }
@@ -525,6 +537,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         return result
     }
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     func errorEventMapper(rumErrorEvent: RUMErrorEvent) -> RUMErrorEvent? {
         if trackMapperPerf {
             mapperPerf.start()
@@ -544,7 +557,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        let result = callEventMapper(mapperName: "mapErrorEvent", event: rumErrorEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapErrorEvent",
+                                     event: rumErrorEvent,
+                                     encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return nil
             }
@@ -614,7 +629,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        let result = callEventMapper(mapperName: "mapLongTaskEvent", event: longTaskEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapLongTaskEvent",
+                                     event: longTaskEvent,
+                                     encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return nil
             }
