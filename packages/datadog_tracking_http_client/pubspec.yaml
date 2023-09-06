@@ -19,6 +19,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  datadog_common_test:
+    path: ../datadog_common_test
   flutter_lints: ^2.0.1
   mocktail: ^0.2.0
 
