@@ -16,10 +16,7 @@ import 'package:uuid/uuid.dart';
 class _GraphQLAttributes {
   static const operationType = 'operation_type';
   static const operationName = 'operation_name';
-}
-
-class _GraphQLTempHeaders {
-  static const resourceId = 'x-datadog-resource-id';
+  static const errors = 'errors';
 }
 
 abstract interface class DatadogGqlListener {
@@ -100,8 +97,18 @@ class DatadogGqlLink extends Link {
           }
         }
 
-        datadogSdk.rum?.stopResourceLoading(resourceId, statusCode,
-            RumResourceType.native, size, userAttributes);
+        final errorMap = _serializeResponseErrors(data);
+
+        datadogSdk.rum?.stopResourceLoading(
+          resourceId,
+          statusCode,
+          RumResourceType.native,
+          size,
+          {
+            if (errorMap != null) ...errorMap,
+            ...userAttributes,
+          },
+        );
 
         sink.add(data);
       },
@@ -203,14 +210,25 @@ class DatadogGqlLink extends Link {
     return request;
   }
 
-  Request _injectTempHeader(
-    Request request,
-    String resourceId,
-  ) {
-    return request.updateContextEntry<HttpLinkHeaders>(
-        (entry) => HttpLinkHeaders(headers: {
-              if (entry != null) ...entry.headers,
-              _GraphQLTempHeaders.resourceId: resourceId,
-            }));
+  Map<String, Object?>? _serializeResponseErrors(Response response) {
+    if (response.errors?.isEmpty ?? true) return null;
+
+    final serializedErrors = response.errors!.map((e) {
+      return {
+        'message': e.message,
+        'locations': e.locations?.map((l) => {
+              'line': l.line,
+              'column': l.column,
+            }),
+        'path': e.path
+      };
+    });
+    return {
+      '_dd': {
+        'graphql': {
+          _GraphQLAttributes.errors: serializedErrors,
+        }
+      }
+    };
   }
 }

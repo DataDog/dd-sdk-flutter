@@ -43,6 +43,7 @@ query UserInfo($id: ID!) {
     registerFallbackValue(RumHttpMethod.get);
     registerFallbackValue(RumResourceType.beacon);
     registerFallbackValue(FakeRequest());
+    registerFallbackValue(StackTrace.current);
   });
 
   setUp(() {
@@ -320,7 +321,7 @@ query UserInfo($id: ID!) {
     });
 
     test(
-        'link combinde attributes from listener request and response to stopResource',
+        'link combines attributes from listener request and response to stopResource',
         () async {
       // Given
       final mockListener = MockDatadogGqlListener();
@@ -362,6 +363,277 @@ query UserInfo($id: ID!) {
       final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
       expect(capturedAttrs['response_attribute'], [1, 2, 3, 4]);
       expect(capturedAttrs['request_attribute'], 'my request');
+    });
+
+    test('link calls stopResourceLoadingWithErrorInfo on stream error',
+        () async {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      when(() => response.context).thenReturn(const Context());
+      String? capturedKey;
+      when(() => mockRum.startResourceLoading(any(), any(), any(), any()))
+          .thenAnswer((i) {
+        capturedKey = i.positionalArguments[0] as String;
+      });
+
+      // When
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+
+      responseController.sink.addError('FakeError', StackTrace.current);
+      unawaited(responseController.sink.close());
+      try {
+        await stream.drain();
+      } catch (_) {}
+
+      // Then
+      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+          capturedKey!, 'FakeError', 'String', {}));
+    });
+
+    test('link calls stopResourceLoadingWithErrorInfo on stream error',
+        () async {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      when(() => response.context).thenReturn(const Context());
+      String? capturedKey;
+      when(() => mockRum.startResourceLoading(any(), any(), any(), any()))
+          .thenAnswer((i) {
+        capturedKey = i.positionalArguments[0] as String;
+      });
+
+      // When
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+
+      responseController.sink.addError('FakeError', StackTrace.current);
+      unawaited(responseController.sink.close());
+      try {
+        await stream.drain();
+      } catch (_) {}
+
+      // Then
+      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+          capturedKey!, 'FakeError', 'String', {}));
+    });
+
+    test('link calls listener on stream error', () async {
+      // Given
+      final listener = MockDatadogGqlListener();
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
+          listener: listener);
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      when(() => response.context).thenReturn(const Context());
+
+      // When
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+
+      final st = StackTrace.current;
+      responseController.sink.addError('FakeError', st);
+      unawaited(responseController.sink.close());
+      try {
+        await stream.drain();
+      } catch (_) {}
+
+      // Then
+      verify(() => listener.requestError('FakeError', st, {}));
+    });
+
+    test('link adds attributes from listener on stream error', () async {
+      // Given
+      final listener = MockDatadogGqlListener();
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
+          listener: listener);
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      when(() => response.context).thenReturn(const Context());
+      when(() => listener.requestError(any(), any(), any()))
+          .thenAnswer((invocation) {
+        final attributes =
+            invocation.positionalArguments[2] as Map<String, Object?>;
+        attributes['error_attribute'] = 'error cause';
+      });
+
+      // When
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+
+      final st = StackTrace.current;
+      responseController.sink.addError('FakeError', st);
+      unawaited(responseController.sink.close());
+      try {
+        await stream.drain();
+      } catch (_) {}
+
+      // Then
+      final captured = verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+          any(), 'FakeError', 'String', captureAny()));
+      final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
+      expect(capturedAttrs['error_attribute'], 'error cause');
+    });
+
+    test('link merges attributes from listener on stream error', () async {
+      // Given
+      final listener = MockDatadogGqlListener();
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
+          listener: listener);
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      when(() => response.context).thenReturn(const Context());
+      when(() => listener.requestStarted(request, any()))
+          .thenAnswer((invocation) {
+        final attributes =
+            invocation.positionalArguments[1] as Map<String, Object?>;
+        attributes['request_attribute'] = 'my request';
+      });
+      when(() => listener.requestError(any(), any(), any()))
+          .thenAnswer((invocation) {
+        final attributes =
+            invocation.positionalArguments[2] as Map<String, Object?>;
+        attributes['error_attribute'] = 'error cause';
+      });
+
+      // When
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+
+      final st = StackTrace.current;
+      responseController.sink.addError('FakeError', st);
+      unawaited(responseController.sink.close());
+      try {
+        await stream.drain();
+      } catch (_) {}
+
+      // Then
+      final captured = verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+          any(), 'FakeError', 'String', captureAny()));
+      final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
+      expect(capturedAttrs['request_attribute'], 'my request');
+      expect(capturedAttrs['error_attribute'], 'error cause');
+    });
+
+    test('link adds graphql errors to attributes', () async {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      when(() => response.context).thenReturn(const Context());
+      when(() => response.errors).thenReturn([
+        const GraphQLError(
+          message: 'GraphQL Error Message',
+          locations: [
+            ErrorLocation(line: 1, column: 10),
+          ],
+          path: ['heroes', 2, 'name'],
+        )
+      ]);
+      // When
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+
+      responseController.sink.add(response);
+      unawaited(responseController.sink.close());
+      await stream.drain();
+
+      // Then
+      final captured = verify(() => mockRum.stopResourceLoading(
+          any(), any(), RumResourceType.native, any(), captureAny()));
+      final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
+      expect(capturedAttrs['_dd']['graphql']['errors'], [
+        {
+          'message': 'GraphQL Error Message',
+          'locations': [
+            {
+              'line': 1,
+              'column': 10,
+            }
+          ],
+          'path': ['heroes', 2, 'name'],
+        }
+      ]);
+    });
+
+    test('link supports mutation operations in attributes', () async {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final mutation = lang.parseString('''
+  mutation AddStar(\$starrableId: ID!) {
+    addStar(input: {starrableId: \$starrableId}) {
+      starrable {
+        viewerHasStarred
+      }
+    }
+  }
+''');
+      final request = Request(
+          operation: Operation(document: mutation, operationName: 'AddStar'));
+
+      // When
+      link.request(request, (request) {
+        return const Stream<Response>.empty();
+      });
+
+      // Then
+      final capturedAttributes = verify(() => mockRum.startResourceLoading(
+              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
+          .captured[0] as Map<String, Object?>;
+      Map<String, dynamic> dd =
+          capturedAttributes['_dd'] as Map<String, dynamic>;
+      expect(dd['graphql']['operation_type'], 'mutation');
+      expect(dd['graphql']['operation_name'], 'AddStar');
+    });
+
+    test('link supports subscription operations in attributes', () async {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final subscription = lang.parseString('''
+  subscription ReviewAdded {
+      reviewAdded {
+        stars, commentary, episode
+      }
+    }
+''');
+      final request = Request(
+          operation:
+              Operation(document: subscription, operationName: 'ReviewAdded'));
+
+      // When
+      link.request(request, (request) {
+        return const Stream<Response>.empty();
+      });
+
+      // Then
+      final capturedAttributes = verify(() => mockRum.startResourceLoading(
+              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
+          .captured[0] as Map<String, Object?>;
+      Map<String, dynamic> dd =
+          capturedAttributes['_dd'] as Map<String, dynamic>;
+      expect(dd['graphql']['operation_type'], 'subscription');
+      expect(dd['graphql']['operation_name'], 'ReviewAdded');
     });
   });
 }
