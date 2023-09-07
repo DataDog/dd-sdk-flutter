@@ -52,8 +52,6 @@ query UserInfo($id: ID!) {
     when(() => mockDatadog
             .headerTypesForHost(any(that: HasHost(equals('test_url')))))
         .thenReturn({TracingHeaderType.datadog});
-    when(() => mockDatadog.headerTypesForHost(
-        any(that: HasHost(equals('non_first_party'))))).thenReturn({});
     when(() => mockDatadog.platform).thenReturn(mockPlatform);
     // ignore: invalid_use_of_internal_member
     when(() => mockDatadog.internalLogger).thenReturn(InternalLogger());
@@ -636,4 +634,206 @@ query UserInfo($id: ID!) {
       expect(dd['graphql']['operation_name'], 'ReviewAdded');
     });
   });
+
+  for (final headerType in TracingHeaderType.values) {
+    group('when rum is enabled with $headerType tracing headers', () {
+      setUp(() {
+        mockPlatform = MockDatadogSdkPlatform();
+        mockDatadog = MockDatadogSdk();
+        when(() => mockDatadog.headerTypesForHost(
+            any(that: HasHost(equals('test_url'))))).thenReturn({headerType});
+        when(() => mockDatadog.headerTypesForHost(
+            any(that: HasHost(equals('non_first_party'))))).thenReturn({});
+        when(() => mockDatadog.platform).thenReturn(mockPlatform);
+        // ignore: invalid_use_of_internal_member
+        when(() => mockDatadog.internalLogger).thenReturn(InternalLogger());
+
+        when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+        when(() => mockRum.tracingSamplingRate).thenReturn(50.0);
+        when(() => mockDatadog.rum).thenReturn(mockRum);
+      });
+
+      test('does not set trace attributes when should sample returns false',
+          () {
+        // Given
+        when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+        final link =
+            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
+        final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'));
+
+        // When
+        link.request(request, (request) {
+          return const Stream<Response>.empty();
+        });
+
+        // Then
+        final capturedAttrs = verify(() =>
+                mockRum.startResourceLoading(any(), any(), any(), captureAny()))
+            .captured[0] as Map<String, Object?>;
+        expect(capturedAttrs[DatadogRumPlatformAttributeKey.traceID], isNull);
+        expect(capturedAttrs[DatadogRumPlatformAttributeKey.spanID], isNull);
+        expect(capturedAttrs[DatadogRumPlatformAttributeKey.rulePsr], 0.50);
+      });
+
+      test('start resource loading sets tracing attributes', () {
+        // Given
+        when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+        final link =
+            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
+        final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'));
+
+        // When
+        link.request(request, (request) {
+          return const Stream<Response>.empty();
+        });
+
+        // Then
+        final capturedAttrs = verify(() =>
+                mockRum.startResourceLoading(any(), any(), any(), captureAny()))
+            .captured[0] as Map<String, dynamic>;
+        var traceId =
+            BigInt.parse(capturedAttrs[DatadogRumPlatformAttributeKey.traceID]);
+        expect(traceId, isNotNull);
+        expect(traceId.bitLength, lessThanOrEqualTo(63));
+
+        var spanId =
+            BigInt.parse(capturedAttrs[DatadogRumPlatformAttributeKey.spanID]);
+        expect(spanId, isNotNull);
+        expect(spanId.bitLength, lessThanOrEqualTo(63));
+        expect(capturedAttrs[DatadogRumPlatformAttributeKey.rulePsr], 0.50);
+      });
+
+      // This should not happen as links are url specific, but we should check anyway.
+      test('does not set trace headers for third party urls', () async {
+        when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+        final link = DatadogGqlLink(
+            mockDatadog, Uri.parse('https://non_first_party/graphql'));
+        final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'));
+
+        // When
+        Request? forwardedRequest;
+        link.request(request, (request) {
+          forwardedRequest = request;
+          return const Stream<Response>.empty();
+        });
+
+        var headers = [
+          'x-datadog-sampling-priority',
+          'x-datadog-trace-id',
+          'x-datadog-parent-id',
+          'b3',
+          'X-B3-TraceId',
+          'X-B3-SpanId',
+          'X-B3-ParentSpanId',
+          'X-B3-Sampled',
+        ];
+        final headersEntry = forwardedRequest!.context.entry<HttpLinkHeaders>();
+        for (var header in headers) {
+          expect(headersEntry?.headers[header], isNull);
+        }
+      });
+
+      test('sets trace headers for first party urls', () {
+        when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+        final link =
+            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
+        final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'));
+
+        // When
+        Request? forwardedRequest;
+        link.request(request, (request) {
+          forwardedRequest = request;
+          return const Stream<Response>.empty();
+        });
+
+        final headersEntry = forwardedRequest!.context.entry<HttpLinkHeaders>();
+        verifyHeaders(headersEntry!.headers, headerType, true);
+      });
+
+      test(
+          'sets trave headers for first party urls when should sample is false',
+          () {
+        when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+        final link =
+            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
+        final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'));
+
+        // When
+        Request? forwardedRequest;
+        link.request(request, (request) {
+          forwardedRequest = request;
+          return const Stream<Response>.empty();
+        });
+
+        final headersEntry = forwardedRequest!.context.entry<HttpLinkHeaders>();
+        verifyHeaders(headersEntry!.headers, headerType, false);
+      });
+    });
+  }
+}
+
+void verifyHeaders(
+    Map<String, String> headers, TracingHeaderType type, bool shouldSample) {
+  BigInt? traceInt;
+  BigInt? spanInt;
+
+  switch (type) {
+    case TracingHeaderType.datadog:
+      expect(headers['x-datadog-origin'], 'rum');
+      expect(headers['x-datadog-sampling-priority'], shouldSample ? '1' : '0');
+      if (shouldSample) {
+        var traceValue = headers['x-datadog-trace-id']!;
+        traceInt = BigInt.tryParse(traceValue);
+        var spanValue = headers['x-datadog-parent-id']!;
+        spanInt = BigInt.tryParse(spanValue);
+      }
+      break;
+    case TracingHeaderType.b3:
+      var singleHeader = headers['b3']!;
+      if (shouldSample) {
+        var headerParts = singleHeader.split('-');
+        traceInt = BigInt.tryParse(headerParts[0], radix: 16);
+        spanInt = BigInt.tryParse(headerParts[1], radix: 16);
+        expect(headerParts[2], shouldSample ? '1' : '0');
+      } else {
+        expect(singleHeader, '0');
+      }
+      break;
+    case TracingHeaderType.b3multi:
+      expect(headers['X-B3-Sampled'], shouldSample ? '1' : '0');
+      if (shouldSample) {
+        var traceValue = headers['X-B3-TraceId']!;
+        traceInt = BigInt.tryParse(traceValue, radix: 16);
+        var spanValue = headers['X-B3-SpanId']!;
+        spanInt = BigInt.tryParse(spanValue, radix: 16);
+      }
+      break;
+    case TracingHeaderType.tracecontext:
+      var header = headers['traceparent']!;
+      var headerParts = header.split('-');
+      expect(headerParts[0], '00');
+      traceInt = BigInt.tryParse(headerParts[1], radix: 16);
+      spanInt = BigInt.tryParse(headerParts[2], radix: 16);
+      expect(headerParts[3], shouldSample ? '01' : '00');
+      break;
+  }
+
+  if (shouldSample) {
+    expect(traceInt, isNotNull);
+  }
+  if (traceInt != null) {
+    expect(traceInt.bitLength, lessThanOrEqualTo(63));
+  }
+
+  if (shouldSample) {
+    expect(spanInt, isNotNull);
+  }
+  if (spanInt != null) {
+    expect(spanInt.bitLength, lessThanOrEqualTo(63));
+  }
 }
