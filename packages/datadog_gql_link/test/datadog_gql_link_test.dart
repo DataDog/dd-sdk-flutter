@@ -257,7 +257,7 @@ query UserInfo($id: ID!) {
           capturedKey!, 418, RumResourceType.native, 66219, any()));
     });
 
-    test('link calls listener on response recieved', () async {
+    test('link calls listener on response received', () async {
       // Given
       final mockListener = MockDatadogGqlListener();
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
