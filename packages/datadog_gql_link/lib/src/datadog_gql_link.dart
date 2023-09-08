@@ -166,7 +166,7 @@ class DatadogGqlLink extends Link {
       },
     };
 
-    // TODO: Assume `post` for now, but most links support `get` queries.
+    // TODO: RUM-1027 - Assume `post` for now, but most links support `get` queries.
     datadogSdk.rum?.startResourceLoading(
         resourceId, RumHttpMethod.post, uri.toString(), attributes);
 
