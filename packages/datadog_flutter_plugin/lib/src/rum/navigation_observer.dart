@@ -102,8 +102,11 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
   }
 
   void _startView(RumViewInfo? viewInfo) {
-    if (ambiguate(WidgetsBinding.instance)?.lifecycleState !=
-        AppLifecycleState.resumed) {
+    // For platforms that don't support app lifecycle state (lifecycleState is null)
+    // assume that the application is foregrounded.
+    final lifecycleState = ambiguate(WidgetsBinding.instance)?.lifecycleState ??
+        AppLifecycleState.resumed;
+    if (lifecycleState != AppLifecycleState.resumed) {
       _pendingView = viewInfo;
     } else {
       _currentView = viewInfo;

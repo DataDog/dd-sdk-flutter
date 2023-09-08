@@ -92,15 +92,15 @@ class RumViewVisit {
 }
 
 class Dd {
-  final Map<String, dynamic> rawData;
+  final Map<String, dynamic>? rawData;
 
   Dd(this.rawData);
 
-  String? get traceId => rawData['trace_id'];
-  String? get spanId => rawData['span_id'];
+  String? get traceId => rawData?['trace_id'];
+  String? get spanId => rawData?['span_id'];
   int? get plan {
-    final session = rawData['session'] as Map<String, dynamic>;
-    return session['plan'];
+    final session = rawData?['session'] as Map<String, dynamic>?;
+    return session?['plan'];
   }
 }
 
