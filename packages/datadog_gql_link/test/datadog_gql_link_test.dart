@@ -278,7 +278,7 @@ query UserInfo($id: ID!) {
       await stream.drain();
 
       // Then
-      verify(() => mockListener.responseRecieved(response, {}));
+      verify(() => mockListener.responseReceived(response, {}));
     });
 
     test('link adds attributes from listener to stopResource', () async {
@@ -289,7 +289,7 @@ query UserInfo($id: ID!) {
       final request = Request(
           operation: Operation(document: query, operationName: 'UserInfo'));
       final response = MockResponse();
-      when(() => mockListener.responseRecieved(response, any()))
+      when(() => mockListener.responseReceived(response, any()))
           .thenAnswer((invocation) {
         final attrs = invocation.positionalArguments[1];
         attrs['response_attribute'] = [1, 2, 3, 4];
@@ -333,7 +333,7 @@ query UserInfo($id: ID!) {
         final attrs = invocation.positionalArguments[1];
         attrs['request_attribute'] = 'my request';
       });
-      when(() => mockListener.responseRecieved(response, any()))
+      when(() => mockListener.responseReceived(response, any()))
           .thenAnswer((invocation) {
         final attrs = invocation.positionalArguments[1];
         attrs['response_attribute'] = [1, 2, 3, 4];

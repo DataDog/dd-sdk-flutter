@@ -84,7 +84,7 @@ class DatadogGqlLink extends Link {
 
     return forward!(request).transform(StreamTransformer.fromHandlers(
       handleData: (data, sink) {
-        listener?.responseRecieved(data, userAttributes);
+        listener?.responseReceived(data, userAttributes);
 
         var linkResponseContext = data.context.entry<HttpLinkResponseContext>();
         int? statusCode;
