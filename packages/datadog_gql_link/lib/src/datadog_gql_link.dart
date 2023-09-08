@@ -21,7 +21,7 @@ class _GraphQLAttributes {
 
 abstract interface class DatadogGqlListener {
   void requestStarted(Request request, Map<String, Object?> attributes);
-  void responseRecieved(Response response, Map<String, Object?> attributes);
+  void responseReceived(Response response, Map<String, Object?> attributes);
   void requestError(
       Object error, StackTrace stackTrace, Map<String, Object?> attributes);
 }
