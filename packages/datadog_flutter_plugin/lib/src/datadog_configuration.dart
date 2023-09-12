@@ -140,10 +140,7 @@ enum VitalsFrequency {
   average,
 
   /// Collect mobile vitals every 1000ms.
-  rare,
-
-  /// Don't provide mobile vitals.
-  never,
+  rare
 }
 
 /// Configuration options for the Datadog Logging feature.
@@ -290,9 +287,10 @@ class RumConfiguration {
   /// Sets the preferred frequency for collecting mobile vitals.
   ///
   /// Note this setting does not affect the sampling done by [reportFlutterPerformance].
+  /// Assign to `null` to disable mobile vitals collection.
   ///
-  /// Defaults to [VitalsFrequency.average]
-  VitalsFrequency vitalUpdateFrequency;
+  /// Defaults to [VitalsFrequency.average].
+  VitalsFrequency? vitalUpdateFrequency;
 
   /// Whether to report Flutter specific performance metrics (build and raster
   /// times)

@@ -4,6 +4,7 @@
 
 import Foundation
 import XCTest
+import Flutter
 @testable import datadog_flutter_plugin
 
 enum SupportedContractType {
@@ -19,7 +20,7 @@ enum SupportedContractType {
         case .int: return 1_234
         case .int64: return 1_223_455_123
         case .map: return ["key to": "value"]
-        case .list: return []
+        case .list: return [] as [Any]
         }
     }
 }

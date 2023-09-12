@@ -4,10 +4,13 @@
 // swiftlint:disable file_length
 
 import XCTest
-@testable import Datadog
+import Flutter
+import DatadogInternal
+@testable import DatadogCore
+@testable import DatadogLogs
 @testable import datadog_flutter_plugin
 
-class MockV2Logger: LoggerProtocol {
+class MockV2Logger: LoggerProtocol, InternalLoggerProtocol {
     enum Method: EquatableInTests {
         case log(level: LogLevel, message: String, error: Error?, attributes: [String: Encodable]?)
         case logError(
@@ -87,9 +90,9 @@ class DatadogLogsPluginTests: XCTestCase {
         plugin = DatadogLogsPlugin.instance
         mockV2Logger = MockV2Logger()
         // "fake string" is the string that the contract tests will send
-        plugin.addLogger(logger: Logger(v2Logger: mockV2Logger!), withHandle: "fake string")
+        plugin.addLogger(logger: mockV2Logger!, withHandle: "fake string")
         // Non-contract tests get the same logger with a different it
-        plugin.addLogger(logger: Logger(v2Logger: mockV2Logger!), withHandle: "fake-uuid")
+        plugin.addLogger(logger: mockV2Logger!, withHandle: "fake-uuid")
     }
 
     let contracts = [
@@ -122,22 +125,27 @@ class DatadogLogsPluginTests: XCTestCase {
 
     func defaultConfigArgs() -> [String: Any] {
         return [
-            "sendNetworkInfo": true,
-            "printLogsToConsole": true,
-            "sendLogsToDatadog": false,
+            "service": "com.service.name",
+            "loggerName": "my_logger",
+            "networkInfoEnabled": true,
             "bundleWithRum": true,
-            "loggerName": "my_logger"
+            "printLogsToConsole": true,
+            "remoteLogThreshold": "LogLevel.alert",
+            "remoteSampleRate": 32.2
         ]
     }
 
     func testLoggingConfiguration_DecodesCorrectly() {
-        let loggingConfig = DatadogLoggingConfiguration.init(fromEncoded: defaultConfigArgs())
-        XCTAssertNotNil(loggingConfig)
-        XCTAssertTrue(loggingConfig!.sendNetworkInfo)
-        XCTAssertTrue(loggingConfig!.printLogsToConsole)
-        XCTAssertFalse(loggingConfig!.sendLogsToDatadog)
-        XCTAssertTrue(loggingConfig!.bundleWithRum)
-        XCTAssertEqual(loggingConfig!.loggerName, "my_logger")
+        let loggingConfig = Logger.Configuration.init(fromEncoded: defaultConfigArgs())
+        XCTAssertEqual(loggingConfig.service, "com.service.name")
+        XCTAssertEqual(loggingConfig.name, "my_logger")
+        XCTAssertTrue(loggingConfig.networkInfoEnabled)
+        XCTAssertTrue(loggingConfig.bundleWithRumEnabled)
+        XCTAssertTrue(loggingConfig.bundleWithTraceEnabled)
+        XCTAssertNil(loggingConfig.consoleLogFormat)
+        XCTAssertEqual(loggingConfig.remoteLogThreshold, .critical)
+        XCTAssertEqual(loggingConfig.remoteSampleRate, 32.2)
+
     }
 
     func testLogs_CreateLogger_CreatesLoggerWithHandle() {

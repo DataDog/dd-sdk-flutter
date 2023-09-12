@@ -3,16 +3,46 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import Foundation
-import Datadog
+import Flutter
+import DatadogCore
+import DatadogLogs
+import DatadogInternal
+
+extension Logs.Configuration {
+    init(fromEncoded encoded: [String: Any?]) {
+        self.init()
+
+        // TODO: EventMapper and customEndpoint
+    }
+}
+
+extension Logger.Configuration {
+    init(fromEncoded encoded: [String: Any?]) {
+        self.init()
+
+        service = encoded["service"] as? String
+        name = encoded["loggerName"] as? String
+        networkInfoEnabled = (encoded["networkInfoEnabled"] as? NSNumber)?.boolValue ?? false
+        bundleWithRumEnabled = (encoded["bundleWithRum"] as? NSNumber)?.boolValue ?? true
+        bundleWithTraceEnabled = true
+        remoteSampleRate = (encoded["remoteSampleRate"] as? NSNumber)?.floatValue ?? 100.0
+        if let logThreshold = encoded["remoteLogThreshold"] as? String {
+            remoteLogThreshold = .parseLogLevelFromFlutter(logThreshold)
+        } else {
+            remoteLogThreshold = .debug
+        }
+    }
+}
 
 public class DatadogLogsPlugin: NSObject, FlutterPlugin {
     public static let instance = DatadogLogsPlugin()
+
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.logs", binaryMessenger: registrar.messenger())
         registrar.addMethodCallDelegate(instance, channel: channel)
     }
 
-    private var loggerRegistry: [String: Logger] = [:]
+    private var loggerRegistry: [String: LoggerProtocol] = [:]
 
     override private init() {
         super.init()
@@ -22,25 +52,17 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
 
     }
 
-    func addLogger(logger: Logger, withHandle handle: String) {
+    func addLogger(logger: LoggerProtocol, withHandle handle: String) {
         loggerRegistry[handle] = logger
     }
 
-    func createLogger(loggerHandle: String, configuration: DatadogLoggingConfiguration) {
-        let builder = Logger.builder
-            .sendLogsToDatadog(configuration.sendLogsToDatadog)
-            .sendNetworkInfo(configuration.sendNetworkInfo)
-            .printLogsToConsole(configuration.printLogsToConsole)
-            .bundleWithTrace(false)
-            .bundleWithRUM(configuration.bundleWithRum)
-        if let loggerName = configuration.loggerName {
-            _ = builder.set(loggerName: loggerName)
-        }
-        let logger = builder.build()
+    func createLogger(loggerHandle: String, configuration: [String: Any?]) {
+        let config = Logger.Configuration(fromEncoded: configuration)
+        let logger = Logger.create(with: config)
         loggerRegistry[loggerHandle] = logger
     }
 
-    internal func logger(withHandle handle: String) -> Logger? {
+    internal func logger(withHandle handle: String) -> LoggerProtocol? {
         return loggerRegistry[handle]
     }
 
@@ -53,6 +75,11 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
             return
         }
 
+        if call.method == "enable" {
+            // When we support multiple cores / instances, pass it in here
+            Logs.enable()
+        }
+
         guard let loggerHandle = arguments["loggerHandle"] as? String else {
             result(
                 FlutterError.missingParameter(methodName: call.method)
@@ -63,12 +90,11 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         // Before other functions, see if we want to create a logger. All other functions
         // require a logger already exist.
         if call.method == "createLogger" {
-            guard let encodedConfiguration = arguments["configuration"] as? [String: Any?],
-                  let configuration = DatadogLoggingConfiguration.init(fromEncoded: encodedConfiguration) else {
+            guard let encodedConfiguration = arguments["configuration"] as? [String: Any?] else {
                 result(FlutterError.invalidOperation(message: "Bad logging configuration sent to createLogger"))
                 return
             }
-            createLogger(loggerHandle: loggerHandle, configuration: configuration)
+            createLogger(loggerHandle: loggerHandle, configuration: encodedConfiguration)
             result(nil)
             return
         }
@@ -97,7 +123,7 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
                 let errorMessage = arguments["errorMessage"] as? String
                 let stackTrace = arguments["stackTrace"] as? String
 
-                logger.log(
+                logger._internal.log(
                     level: level,
                     message: message,
                     errorKind: errorKind,
@@ -170,6 +196,22 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
 
         default:
             result(FlutterMethodNotImplemented)
+        }
+    }
+}
+
+public extension LogLevel {
+    static func parseLogLevelFromFlutter(_ value: String) -> Self {
+        switch value {
+        case "LogLevel.debug": return .debug
+        case "LogLevel.info": return .info
+        case "LogLevel.notice": return .notice
+        case "LogLevel.warning": return .warn
+        case "LogLevel.error": return .error
+        case "LogLevel.critical": return .critical
+        case "LogLevel.alert": return .critical
+        case "LogLevel.emergency": return .critical
+        default: return .info
         }
     }
 }
