@@ -196,7 +196,7 @@ class DatadogClient extends http.BaseClient {
             ? ContentType.parse(contentTypeHeader)
             : ContentType.text;
         var resourceType = resourceTypeFromContentType(contentType);
-        datadogSdk.rum?.stopResourceLoading(
+        datadogSdk.rum?.stopResource(
           rumKey,
           response.statusCode,
           resourceType,

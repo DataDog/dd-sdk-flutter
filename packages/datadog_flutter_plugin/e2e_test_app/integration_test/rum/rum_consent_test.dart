@@ -42,7 +42,7 @@ void main() {
         datadog.rum!.startView(viewKey, viewName, e2eAttributes(tester));
         datadog.rum!.startResourceLoading(
             resourceKey, RumHttpMethod.get, randomString());
-        datadog.rum!.stopResourceLoading(
+        datadog.rum!.stopResource(
             resourceKey, 200, RumResourceType.values.randomElement());
         datadog.rum!.stopView(viewKey);
       },
@@ -54,7 +54,7 @@ void main() {
       () {
         final actionName = randomString();
         datadog.rum!.startView(viewKey, viewName, e2eAttributes(tester));
-        datadog.rum!.addUserAction(RumUserActionType.custom, actionName);
+        datadog.rum!.addUserAction(RumActionType.custom, actionName);
         datadog.rum!.stopView(viewKey);
       }
     ];

@@ -31,7 +31,7 @@ class _RumScreenState extends State<RumScreen> {
       DatadogSdk.instance.rum
           ?.stopView(viewKey.isEmpty ? 'FooRumScreen' : viewKey);
       DatadogSdk.instance.rum
-          ?.addUserAction(RumUserActionType.custom, 'Testing Action');
+          ?.addAction(RumActionType.custom, 'Testing Action');
     }
   }
 
@@ -80,8 +80,7 @@ class _RumScreenState extends State<RumScreen> {
   }
 
   void _sendAction() {
-    DatadogSdk.instance.rum
-        ?.addUserAction(RumUserActionType.custom, actionName);
+    DatadogSdk.instance.rum?.addAction(RumActionType.custom, actionName);
   }
 
   void _sendResource() async {
@@ -97,13 +96,13 @@ class _RumScreenState extends State<RumScreen> {
       rum.startResourceLoading(resourceKey, RumHttpMethod.get, resource);
       await Future.delayed(const Duration(seconds: 2));
       if (sendResourceError) {
-        rum.stopResourceLoadingWithErrorInfo(
+        rum.stopResourceWithErrorInfo(
           resourceKey,
           errorMessage,
           'networkError',
         );
       } else {
-        rum.stopResourceLoading(resourceKey, 200, RumResourceType.native);
+        rum.stopResource(resourceKey, 200, RumResourceType.native);
       }
     }
 

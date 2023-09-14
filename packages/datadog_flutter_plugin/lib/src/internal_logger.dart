@@ -4,7 +4,7 @@
 
 import 'package:flutter/foundation.dart';
 
-import 'datadog_configuration.dart';
+import '../datadog_flutter_plugin.dart';
 import 'datadog_sdk_platform_interface.dart';
 import 'helpers.dart';
 
@@ -13,21 +13,21 @@ import 'helpers.dart';
 /// disabled if kDebugMode is not set.
 class InternalLogger {
   bool useEmoji = true;
-  Verbosity sdkVerbosity = Verbosity.info;
+  CoreLoggerLevel sdkVerbosity = CoreLoggerLevel.warn;
 
   static const _emojiMap = {
-    Verbosity.debug: '🐞',
-    Verbosity.info: 'ℹ️',
-    Verbosity.warn: '⚠️',
-    Verbosity.error: '💥'
+    CoreLoggerLevel.debug: '',
+    CoreLoggerLevel.warn: '⚠️',
+    CoreLoggerLevel.error: '🔥',
+    CoreLoggerLevel.critical: '⛔️'
   };
 
-  void debug(String message) => log(Verbosity.debug, message);
-  void info(String message) => log(Verbosity.info, message);
-  void warn(String message) => log(Verbosity.warn, message);
-  void error(String message) => log(Verbosity.error, message);
+  void debug(String message) => log(CoreLoggerLevel.debug, message);
+  void warn(String message) => log(CoreLoggerLevel.warn, message);
+  void error(String message) => log(CoreLoggerLevel.error, message);
+  void critical(String message) => log(CoreLoggerLevel.critical, message);
 
-  void log(Verbosity verbosity, String message) {
+  void log(CoreLoggerLevel verbosity, String message) {
     if (kDebugMode && verbosity.index >= sdkVerbosity.index) {
       final prefixString = useEmoji
           ? '[Datadog 🐶${_emojiMap[verbosity]} ]'

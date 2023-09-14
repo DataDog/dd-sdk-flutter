@@ -353,7 +353,7 @@ class RumActionEvent {
   Map<String, dynamic> toJson() => _$RumActionEventToJson(this);
 }
 
-enum RumActionType {
+enum RumActionTypeInternal {
   custom,
   click,
   tap,
@@ -374,7 +374,7 @@ class RumAction {
   final RumCount? longTask;
   final RumCount? resource;
   final RumActionTarget? target;
-  final RumActionType type;
+  final RumActionTypeInternal type;
 
   RumAction({
     this.crash,

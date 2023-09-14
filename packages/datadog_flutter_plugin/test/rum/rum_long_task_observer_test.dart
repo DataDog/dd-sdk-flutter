@@ -10,7 +10,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockDdRum extends Mock implements DdRum {}
+class MockDdRum extends Mock implements DatadogRum {}
 
 // These tests need to use testWidgets because the RumLongTaskObserver
 // automatically registers itself to the WidgetsBindingInterface during init

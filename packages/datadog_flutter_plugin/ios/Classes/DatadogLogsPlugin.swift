@@ -12,7 +12,9 @@ extension Logs.Configuration {
     init(fromEncoded encoded: [String: Any?]) {
         self.init()
 
-        // TODO: EventMapper and customEndpoint
+        customEndpoint = convertOptional(encoded["customEndpoint"] as? String, {
+            return URL(string: $0)
+        })
     }
 }
 
@@ -21,16 +23,13 @@ extension Logger.Configuration {
         self.init()
 
         service = encoded["service"] as? String
-        name = encoded["loggerName"] as? String
+        name = encoded["name"] as? String
         networkInfoEnabled = (encoded["networkInfoEnabled"] as? NSNumber)?.boolValue ?? false
-        bundleWithRumEnabled = (encoded["bundleWithRum"] as? NSNumber)?.boolValue ?? true
-        bundleWithTraceEnabled = true
-        remoteSampleRate = (encoded["remoteSampleRate"] as? NSNumber)?.floatValue ?? 100.0
-        if let logThreshold = encoded["remoteLogThreshold"] as? String {
-            remoteLogThreshold = .parseLogLevelFromFlutter(logThreshold)
-        } else {
-            remoteLogThreshold = .debug
-        }
+        bundleWithRumEnabled = (encoded["bundleWithRumEnabled"] as? NSNumber)?.boolValue ?? true
+        bundleWithTraceEnabled = (encoded["bundleWithTraceEnabled"] as? NSNumber)?.boolValue ?? true
+        // Flutter SDK handles sampling and threshold, so set these to their most accepting all the time
+        remoteSampleRate = 100.0
+        remoteLogThreshold = .debug
     }
 }
 
@@ -77,7 +76,15 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
 
         if call.method == "enable" {
             // When we support multiple cores / instances, pass it in here
-            Logs.enable()
+            if let configArg = arguments["configuration"] as? [String: Any?] {
+                let config = Logs.Configuration(fromEncoded: configArg)
+                Logs.enable(with: config)
+            } else {
+                result(
+                    FlutterError.missingParameter(methodName: call.method)
+                )
+            }
+            return
         }
 
         guard let loggerHandle = arguments["loggerHandle"] as? String else {

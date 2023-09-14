@@ -73,12 +73,12 @@ void main() {
     ]);
   });
 
-  test('startResourceLoading calls to platform', () async {
-    await ddRumPlatform.startResourceLoading('resource_key', RumHttpMethod.get,
+  test('startResource calls to platform', () async {
+    await ddRumPlatform.startResource('resource_key', RumHttpMethod.get,
         'https://fakeresource.com/url', {'attribute_key': 'attribute_value'});
 
     expect(log, [
-      isMethodCall('startResourceLoading', arguments: {
+      isMethodCall('startResource', arguments: {
         'key': 'resource_key',
         'httpMethod': 'RumHttpMethod.get',
         'url': 'https://fakeresource.com/url',
@@ -87,12 +87,12 @@ void main() {
     ]);
   });
 
-  test('stopResourceLoading calls to platform', () async {
-    await ddRumPlatform.stopResourceLoading('resource_key', 202,
-        RumResourceType.image, 41123, {'attribute_key': 'attribute_value'});
+  test('stopResource calls to platform', () async {
+    await ddRumPlatform.stopResource('resource_key', 202, RumResourceType.image,
+        41123, {'attribute_key': 'attribute_value'});
 
     expect(log, [
-      isMethodCall('stopResourceLoading', arguments: {
+      isMethodCall('stopResource', arguments: {
         'key': 'resource_key',
         'statusCode': 202,
         'kind': 'RumResourceType.image',
@@ -102,14 +102,14 @@ void main() {
     ]);
   });
 
-  test('stopResourceLoadingWithError calls to platform with info', () async {
+  test('stopResourceWithError calls to platform with info', () async {
     final exception = TimeoutException(
         'Timeout retrieving resource', const Duration(seconds: 5));
-    await ddRumPlatform.stopResourceLoadingWithError(
+    await ddRumPlatform.stopResourceWithError(
         'resource_key', exception, {'attribute_key': 'attribute_value'});
 
     expect(log, [
-      isMethodCall('stopResourceLoadingWithError', arguments: {
+      isMethodCall('stopResourceWithError', arguments: {
         'key': 'resource_key',
         'message': exception.toString(),
         'type': exception.runtimeType.toString(),
@@ -118,15 +118,15 @@ void main() {
     ]);
   });
 
-  test('stopResourceLoadingWithErrorInfo calls to platform', () async {
-    await ddRumPlatform.stopResourceLoadingWithErrorInfo(
+  test('stopResourceWithErrorInfo calls to platform', () async {
+    await ddRumPlatform.stopResourceWithErrorInfo(
         'resource_key',
         'Exception message',
         'Exception type',
         {'attribute_key': 'attribute_value'});
 
     expect(log, [
-      isMethodCall('stopResourceLoadingWithError', arguments: {
+      isMethodCall('stopResourceWithError', arguments: {
         'key': 'resource_key',
         'message': 'Exception message',
         'type': 'Exception type',
@@ -209,41 +209,40 @@ void main() {
     });
   });
 
-  test('addUserAction calls to platform', () async {
-    await ddRumPlatform
-        .addUserAction(RumUserActionType.tap, 'fake_user_action', {
+  test('addAction calls to platform', () async {
+    await ddRumPlatform.addAction(RumActionType.tap, 'fake_user_action', {
       'attribute_name': 'attribute_value',
     });
 
     expect(log, [
-      isMethodCall('addUserAction', arguments: {
-        'type': 'RumUserActionType.tap',
+      isMethodCall('addAction', arguments: {
+        'type': 'RumActionType.tap',
         'name': 'fake_user_action',
         'attributes': {'attribute_name': 'attribute_value'}
       })
     ]);
   });
 
-  test('startUserAction calls to platform', () async {
-    await ddRumPlatform.startUserAction(RumUserActionType.scroll,
-        'user_action_scroll', {'attribute_name': 'attribute_value'});
+  test('startAction calls to platform', () async {
+    await ddRumPlatform.startAction(RumActionType.scroll, 'user_action_scroll',
+        {'attribute_name': 'attribute_value'});
 
     expect(log, [
-      isMethodCall('startUserAction', arguments: {
-        'type': 'RumUserActionType.scroll',
+      isMethodCall('startAction', arguments: {
+        'type': 'RumActionType.scroll',
         'name': 'user_action_scroll',
         'attributes': {'attribute_name': 'attribute_value'}
       })
     ]);
   });
 
-  test('stopUserAction calls to platform', () async {
-    await ddRumPlatform.stopUserAction(RumUserActionType.swipe,
-        'user_action_swipe', {'attribute_name': 'attribute_value'});
+  test('stopAction calls to platform', () async {
+    await ddRumPlatform.stopAction(RumActionType.swipe, 'user_action_swipe',
+        {'attribute_name': 'attribute_value'});
 
     expect(log, [
-      isMethodCall('stopUserAction', arguments: {
-        'type': 'RumUserActionType.swipe',
+      isMethodCall('stopAction', arguments: {
+        'type': 'RumActionType.swipe',
         'name': 'user_action_swipe',
         'attributes': {'attribute_name': 'attribute_value'}
       })

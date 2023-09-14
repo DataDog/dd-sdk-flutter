@@ -2,10 +2,15 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
-import '../datadog_configuration.dart';
 import 'ddlogs_platform_interface.dart';
+import 'log_configuration.dart';
 
 class DdNoOpLogsPlatform extends DdLogsPlatform {
+  @override
+  Future<void> enable(DatadogLoggingConfiguration config) {
+    throw UnimplementedError();
+  }
+
   @override
   Future<void> addAttribute(String loggerHandle, String key, Object value) {
     return Future.value();
@@ -17,7 +22,8 @@ class DdNoOpLogsPlatform extends DdLogsPlatform {
   }
 
   @override
-  Future<void> createLogger(String loggerHandle, LoggingConfiguration config) {
+  Future<void> createLogger(
+      String loggerHandle, DatadogLoggerConfiguration config) {
     return Future.value();
   }
 

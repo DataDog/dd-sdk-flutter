@@ -18,35 +18,36 @@ class _LoggingScenarioState extends State<LoggingScenario> {
     super.initState();
 
     // Create a logger that will not send to Datadog
-    var silentLogger = DatadogSdk.instance.createLogger(LoggingConfiguration(
-      sendLogsToDatadog: false,
-      loggerName: 'silent_logger',
-    ));
+    var silentLogger = DatadogSdk.instance.logs!.createLogger(
+      DatadogLoggerConfiguration(
+        name: 'silent_logger',
+        remoteSampleRate: 0,
+      ),
+    );
     silentLogger.info('Interesting logging information');
 
-    var logger = DatadogSdk.instance.logs;
-    if (logger != null) {
-      logger.addTag('tag1', 'tag-value');
-      logger.addTag('my-tag');
+    var logger =
+        DatadogSdk.instance.logs!.createLogger(DatadogLoggerConfiguration());
+    logger.addTag('tag1', 'tag-value');
+    logger.addTag('my-tag');
 
-      logger.addAttribute('logger-attribute1', 'string value');
-      logger.addAttribute('logger-attribute2', 1000);
+    logger.addAttribute('logger-attribute1', 'string value');
+    logger.addAttribute('logger-attribute2', 1000);
 
-      logger.debug('debug message', attributes: {'stringAttribute': 'string'});
+    logger.debug('debug message', attributes: {'stringAttribute': 'string'});
 
-      logger.removeTag('my-tag');
-      logger.info('info message', attributes: {
-        'nestedAttribute': {'internal': 'test', 'isValid': true}
-      });
-      logger.warn('warn message', attributes: {'doubleAttribute': 10.34});
+    logger.removeTag('my-tag');
+    logger.info('info message', attributes: {
+      'nestedAttribute': {'internal': 'test', 'isValid': true}
+    });
+    logger.warn('warn message', attributes: {'doubleAttribute': 10.34});
 
-      logger.removeAttribute('logger-attribute1');
-      logger.removeTagWithKey('tag1');
-      logger.error('error message', attributes: {'attribute': 'value'});
-    }
+    logger.removeAttribute('logger-attribute1');
+    logger.removeTagWithKey('tag1');
+    logger.error('error message', attributes: {'attribute': 'value'});
 
-    final config = LoggingConfiguration(loggerName: 'second_logger');
-    final secondLogger = DatadogSdk.instance.createLogger(config);
+    final config = DatadogLoggerConfiguration(name: 'second_logger');
+    final secondLogger = DatadogSdk.instance.logs!.createLogger(config);
 
     secondLogger.addAttribute('second-logger-attribute', 'second-value');
     secondLogger.info('message on second logger');

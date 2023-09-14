@@ -15,18 +15,21 @@ class DdRumMethodChannel extends DdRumPlatform {
       const MethodChannel('datadog_sdk_flutter.rum');
 
   @override
-  Future<void> initialize(
-      RumConfiguration configuration, InternalLogger internalLogger) async {
-    final callbackHandler = MethodCallHandler(
-      viewEventMapper: configuration.rumViewEventMapper,
-      actionEventMapper: configuration.rumActionEventMapper,
-      resourceEventMapper: configuration.rumResourceEventMapper,
-      errorEventMapper: configuration.rumErrorEventMapper,
-      longTaskEventMapper: configuration.rumLongTaskEventMapper,
-      internalLogger: internalLogger,
-    );
+  Future<void> enable(DatadogRumConfiguration configuration) async {
+    // final callbackHandler = MethodCallHandler(
+    //   viewEventMapper: configuration.rumViewEventMapper,
+    //   actionEventMapper: configuration.rumActionEventMapper,
+    //   resourceEventMapper: configuration.rumResourceEventMapper,
+    //   errorEventMapper: configuration.rumErrorEventMapper,
+    //   longTaskEventMapper: configuration.rumLongTaskEventMapper,
+    //   internalLogger: internalLogger,
+    // );
 
-    methodChannel.setMethodCallHandler(callbackHandler.handleMethodCall);
+    // methodChannel.setMethodCallHandler(callbackHandler.handleMethodCall);
+
+    return methodChannel.invokeMethod('enable', {
+      'configuration': configuration.encode(),
+    });
   }
 
   @override
@@ -55,13 +58,13 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> startResourceLoading(
+  Future<void> startResource(
     String key,
     RumHttpMethod httpMethod,
     String url, [
     Map<String, Object?> attributes = const {},
   ]) {
-    return methodChannel.invokeMethod('startResourceLoading', {
+    return methodChannel.invokeMethod('startResource', {
       'key': key,
       'httpMethod': httpMethod.toString(),
       'url': url,
@@ -70,10 +73,9 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> stopResourceLoading(
-      String key, int? statusCode, RumResourceType kind,
+  Future<void> stopResource(String key, int? statusCode, RumResourceType kind,
       [int? size, Map<String, Object?>? attributes = const {}]) {
-    return methodChannel.invokeMethod('stopResourceLoading', {
+    return methodChannel.invokeMethod('stopResource', {
       'key': key,
       'statusCode': statusCode,
       'kind': kind.toString(),
@@ -83,20 +85,20 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> stopResourceLoadingWithError(String key, Exception error,
+  Future<void> stopResourceWithError(String key, Exception error,
       [Map<String, Object?> attributes = const {}]) {
-    return stopResourceLoadingWithErrorInfo(
+    return stopResourceWithErrorInfo(
         key, error.toString(), error.runtimeType.toString(), attributes);
   }
 
   @override
-  Future<void> stopResourceLoadingWithErrorInfo(
+  Future<void> stopResourceWithErrorInfo(
     String key,
     String message,
     String type, [
     Map<String, Object?> attributes = const {},
   ]) {
-    return methodChannel.invokeMethod('stopResourceLoadingWithError', {
+    return methodChannel.invokeMethod('stopResourceWithError', {
       'key': key,
       'message': message,
       'type': type,
@@ -133,9 +135,9 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> addUserAction(
-      RumUserActionType type, String? name, Map<String, Object?> attributes) {
-    return methodChannel.invokeMethod('addUserAction', {
+  Future<void> addAction(
+      RumActionType type, String? name, Map<String, Object?> attributes) {
+    return methodChannel.invokeMethod('addAction', {
       'type': type.toString(),
       'name': name,
       'attributes': attributes,
@@ -143,16 +145,16 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> startUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes) {
-    return methodChannel.invokeMethod('startUserAction',
+  Future<void> startAction(
+      RumActionType type, String name, Map<String, Object?> attributes) {
+    return methodChannel.invokeMethod('startAction',
         {'type': type.toString(), 'name': name, 'attributes': attributes});
   }
 
   @override
-  Future<void> stopUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes) {
-    return methodChannel.invokeMethod('stopUserAction',
+  Future<void> stopAction(
+      RumActionType type, String name, Map<String, Object?> attributes) {
+    return methodChannel.invokeMethod('stopAction',
         {'type': type.toString(), 'name': name, 'attributes': attributes});
   }
 

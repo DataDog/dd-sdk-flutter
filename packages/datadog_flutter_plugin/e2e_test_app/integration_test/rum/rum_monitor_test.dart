@@ -191,7 +191,7 @@ void main() {
 
     await measure('flutter_rum_simple_action', () {
       datadog.rum!.addUserAction(
-        RumUserActionType.tap,
+        RumActionType.tap,
         randomString(),
         e2eAttributes(tester),
       );
@@ -233,14 +233,14 @@ void main() {
     final actionName = randomString();
     await measure('flutter_start_user_action', () {
       datadog.rum!.startUserAction(
-        RumUserActionType.scroll,
+        RumActionType.scroll,
         actionName,
         e2eAttributes(tester),
       );
     });
 
     await measure('flutter_stop_user_action', () {
-      datadog.rum!.stopUserAction(RumUserActionType.scroll, actionName);
+      datadog.rum!.stopUserAction(RumActionType.scroll, actionName);
     });
 
     datadog.rum!.stopView(viewKey);
@@ -287,7 +287,7 @@ void main() {
     });
 
     await measure('flutter_stop_resource', () {
-      datadog.rum!.stopResourceLoading(
+      datadog.rum!.stopResource(
           resourceKey, 200, RumResourceType.values.randomElement());
     });
 

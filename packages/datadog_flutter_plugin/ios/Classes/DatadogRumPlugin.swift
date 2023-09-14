@@ -30,6 +30,14 @@ public extension RUM.Configuration {
         }
 
         telemetrySampleRate = (encoded["telemetrySampleRate"] as? NSNumber)?.floatValue ?? 20.0
+
+        if let additionalConfig = encoded["additionalConfig"] as? [String: Any?] {
+            if let sampleRateArg = (additionalConfig["_dd.telemetry.configuration_sample_rate"] as? NSNumber) {
+                self._internal_mutation({
+                    $0.configurationTelemetrySampleRate = sampleRateArg.floatValue
+                })
+            }
+        }
     }
 }
 
@@ -71,7 +79,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             return
         }
 
-        if call.method != "enabled" && rum == nil {
+        if call.method != "enable" && rum == nil {
             result(
                 FlutterError.invalidOperation(
                     message: "Attempting to call RUM method (\(call.method)) when RUM has not been enabled."
@@ -125,7 +133,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
-        case "startResourceLoading":
+        case "startResource":
             if let key = arguments["key"] as? String,
                let methodString = arguments["httpMethod"] as? String,
                let url = arguments["url"] as? String,
@@ -139,7 +147,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
-        case "stopResourceLoading":
+        case "stopResource":
             if let key = arguments["key"] as? String,
                let kindString = arguments["kind"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {
@@ -158,7 +166,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 )
             }
 
-        case "stopResourceLoadingWithError":
+        case "stopResourceWithError":
             if let key = arguments["key"] as? String,
                let message = arguments["message"] as? String,
                let errorType = arguments["type"] as? String,
@@ -189,7 +197,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
-        case "addUserAction":
+        case "addAction":
             if let typeString = arguments["type"] as? String,
                let name = arguments["name"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {
@@ -202,7 +210,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
-        case "startUserAction":
+        case "startAction":
             if let typeString = arguments["type"] as? String,
                let name = arguments["name"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {
@@ -215,7 +223,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
-        case "stopUserAction":
+        case "stopAction":
             if let typeString = arguments["type"] as? String,
                let name = arguments["name"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {

@@ -124,7 +124,7 @@ class DatadogConfigurationTests: XCTestCase {
         let encoded: [String: Any?]  = [
             "clientToken": "fakeClientToken",
             "env": "fakeEnvironment",
-            "serviceName": "com.servicename",
+            "service": "com.servicename",
             "site": "DatadogSite.eu1",
             "batchSize": "BatchSize.small",
             "uploadFrequency": "UploadFrequency.frequent",

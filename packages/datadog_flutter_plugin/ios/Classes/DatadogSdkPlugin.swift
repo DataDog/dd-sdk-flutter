@@ -20,7 +20,7 @@ extension Datadog.Configuration {
             env: env
         )
 
-        service = try? castUnwrap(encoded["serviceName"])
+        service = try? castUnwrap(encoded["service"])
 
         if let site = convertOptional(encoded["site"], DatadogSite.parseFromFlutter) {
             self.site = site

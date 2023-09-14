@@ -10,9 +10,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 
 import '../../datadog_flutter_plugin.dart';
-import '../attributes.dart';
-import '../helpers.dart';
-import '../internal_logger.dart';
+import '../../datadog_internal.dart';
 import 'ddrum_platform_interface.dart';
 import 'rum_long_task_observer.dart';
 
@@ -26,7 +24,7 @@ RumHttpMethod rumMethodFromMethodString(String value) {
 }
 
 /// Describes the type of a RUM Action.
-enum RumUserActionType { tap, scroll, swipe, custom }
+enum RumActionType { tap, scroll, swipe, custom }
 
 /// Describe the source of a RUM Error.
 enum RumErrorSource {
@@ -84,19 +82,37 @@ RumResourceType resourceTypeFromContentType(ContentType? type) {
   return RumResourceType.native;
 }
 
-class DdRum {
+class DatadogRum {
   static DdRumPlatform get _platform {
     return DdRumPlatform.instance;
   }
 
   final sampleRandom = Random();
 
-  final RumConfiguration configuration;
+  final DatadogRumConfiguration configuration;
   final InternalLogger logger;
 
   RumLongTaskObserver? _longTaskObserver;
 
-  DdRum(this.configuration, this.logger) {
+  static Future<DatadogRum?> enable(
+      DatadogSdk core, DatadogRumConfiguration configuration) async {
+    DatadogRum? rum;
+    await wrapAsync('rum.enable', core.internalLogger, null, () {
+      DdRumPlatform.instance.enable(configuration);
+      rum = DatadogRum._(configuration, core.internalLogger);
+
+      core.updateConfigurationInfo(
+          LateConfigurationProperty.trackFlutterPerformance,
+          configuration.reportFlutterPerformance);
+      core.updateConfigurationInfo(
+          LateConfigurationProperty.trackCrossPlatformLongTasks,
+          configuration.detectLongTasks);
+    });
+
+    return rum;
+  }
+
+  DatadogRum._(this.configuration, this.logger) {
     // Never use long task observer on web -- the Browser SDK should
     // capture stalls on the main thread automatically.
     if (!kIsWeb && configuration.detectLongTasks) {
@@ -110,10 +126,6 @@ class DdRum {
       ambiguate(SchedulerBinding.instance)
           ?.addTimingsCallback(_timingsCallback);
     }
-  }
-
-  Future<void> initialize() async {
-    await _platform.initialize(configuration, logger);
   }
 
   /// The sampling rate for tracing resources.
@@ -216,13 +228,13 @@ class DdRum {
   /// [attributes] will be attached to this Resource.
   ///
   /// Note that [key] must be unique among all Resources being currently loaded,
-  /// and should be sent to [stopResourceLoading] or
-  /// [stopResourceLoadingWithError] / [stopResourceLoadingWithErrorInfo] when
+  /// and should be sent to [stopResource] or
+  /// [stopResourceWithError] / [stopResourceWithErrorInfo] when
   /// resource loading is complete.
   void startResourceLoading(String key, RumHttpMethod httpMethod, String url,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.startResourceLoading', logger, attributes, () {
-      return _platform.startResourceLoading(key, httpMethod, url, attributes);
+    wrap('rum.startResource', logger, attributes, () {
+      return _platform.startResource(key, httpMethod, url, attributes);
     });
   }
 
@@ -230,31 +242,30 @@ class DdRum {
   /// successfully and supplies additional information about the Resource loaded,
   /// including its [kind], the [statusCode] of the response, the [size] of the
   /// Resource, and any other custom [attributes] to attach to the resource.
-  void stopResourceLoading(String key, int? statusCode, RumResourceType kind,
+  void stopResource(String key, int? statusCode, RumResourceType kind,
       [int? size, Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopResourceLoading', logger, attributes, () {
-      return _platform.stopResourceLoading(
-          key, statusCode, kind, size, attributes);
+    wrap('rum.stopResource', logger, attributes, () {
+      return _platform.stopResource(key, statusCode, kind, size, attributes);
     });
   }
 
   /// Notifies that the Resource identified by [key] stopped being loaded with an
   /// Exception specified by [error]. You can optionally supply custom
   /// [attributes] to attach to this Resource.
-  void stopResourceLoadingWithError(String key, Exception error,
+  void stopResourceWithError(String key, Exception error,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopResourceLoadingWithError', logger, attributes, () {
-      return _platform.stopResourceLoadingWithError(key, error, attributes);
+    wrap('rum.stopResourceWithError', logger, attributes, () {
+      return _platform.stopResourceWithError(key, error, attributes);
     });
   }
 
   /// Notifies that the Resource identified by [key] stopped being loaded with
   /// the supplied [message]. You can optionally supply custom [attributes] to
   /// attach to this Resource.
-  void stopResourceLoadingWithErrorInfo(String key, String message, String type,
+  void stopResourceWithErrorInfo(String key, String message, String type,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopResourceLoadingWithErrorInfo', logger, attributes, () {
-      return _platform.stopResourceLoadingWithErrorInfo(
+    wrap('rum.stopResourceWithErrorInfo', logger, attributes, () {
+      return _platform.stopResourceWithErrorInfo(
           key, message, type, attributes);
     });
   }
@@ -264,10 +275,10 @@ class DdRum {
   /// This is used to a track discrete User Actions (e.g. "tap") specified by
   /// [type]. The [name] and [attributes] supplied will be associated with this
   /// user action.
-  void addUserAction(RumUserActionType type, String name,
+  void addAction(RumActionType type, String name,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.addUserAction', logger, attributes, () {
-      return _platform.addUserAction(type, name, attributes);
+    wrap('rum.addAction', logger, attributes, () {
+      return _platform.addAction(type, name, attributes);
     });
   }
 
@@ -276,20 +287,20 @@ class DdRum {
   /// Action must be stopped with [stopUserAction], and will be stopped
   /// automatically if it lasts for more than 10 seconds. You can optionally
   /// provide custom [attributes].
-  void startUserAction(RumUserActionType type, String name,
+  void startAction(RumActionType type, String name,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.startUserAction', logger, attributes, () {
-      return _platform.startUserAction(type, name, attributes);
+    wrap('rum.startAction', logger, attributes, () {
+      return _platform.startAction(type, name, attributes);
     });
   }
 
   /// Notifies that the User Action of [type], named [name] has stopped.
   /// This is used to stop tracking long running user actions (e.g. "scroll"),
   /// started with [startUserAction].
-  void stopUserAction(RumUserActionType type, String name,
+  void stopAction(RumActionType type, String name,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopUserAction', logger, attributes, () {
-      return _platform.stopUserAction(type, name, attributes);
+    wrap('rum.stopAction', logger, attributes, () {
+      return _platform.stopAction(type, name, attributes);
     });
   }
 

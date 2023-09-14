@@ -565,8 +565,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
             userAttributes: userAttributes,
           );
           attributes = _mergeAttributes(attributes, userAttributes);
-          rum.stopResourceLoading(
-              rumKey!, statusCode, resourceType, size, attributes);
+          rum.stopResource(rumKey!, statusCode, resourceType, size, attributes);
         }
       }
     } catch (e, st) {

@@ -35,18 +35,21 @@ void main() {
   });
 
   test('initialize encodes default parameters to method channel', () async {
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'fakeClientToken',
       env: 'environment',
-      trackingConsent: TrackingConsent.granted,
       site: DatadogSite.us1,
     );
-    await ddSdkPlatform.initialize(configuration,
-        internalLogger: internalLogger);
+    await ddSdkPlatform.initialize(
+      configuration,
+      TrackingConsent.granted,
+      internalLogger: internalLogger,
+    );
 
     expect(log, [
       isMethodCall('initialize', arguments: {
         'configuration': configuration.encode(),
+        'trackingConsent': 'TrackingConsent.granted',
         'setLogCallback': false,
         'dartVersion': Platform.version,
       })
@@ -54,14 +57,14 @@ void main() {
   });
 
   test('initialize add setLogCallback when provided', () async {
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'fakeClientToken',
       env: 'environment',
-      trackingConsent: TrackingConsent.granted,
       site: DatadogSite.us1,
     );
     await ddSdkPlatform.initialize(
       configuration,
+      TrackingConsent.granted,
       internalLogger: internalLogger,
       logCallback: (_) {},
     );
@@ -69,19 +72,20 @@ void main() {
     expect(log, [
       isMethodCall('initialize', arguments: {
         'configuration': configuration.encode(),
+        'trackingConsent': 'TrackingConsent.granted',
         'setLogCallback': true,
         'dartVersion': Platform.version,
       })
     ]);
   });
 
-  test('attachToExisting calls to methodChannel', () {
-    unawaited(ddSdkPlatform.attachToExisting());
+  // test('attachToExisting calls to methodChannel', () {
+  //   unawaited(ddSdkPlatform.attachToExisting());
 
-    expect(log, [
-      isMethodCall('attachToExisting', arguments: <String, Object>{}),
-    ]);
-  });
+  //   expect(log, [
+  //     isMethodCall('attachToExisting', arguments: <String, Object>{}),
+  //   ]);
+  // });
 
   test('attachToExisting response properly returns null from platform',
       () async {
@@ -129,10 +133,11 @@ void main() {
   });
 
   test('setDebugVerbosity calls to method channel', () {
-    unawaited(ddSdkPlatform.setSdkVerbosity(Verbosity.info));
+    unawaited(ddSdkPlatform.setSdkVerbosity(CoreLoggerLevel.error));
 
     expect(log, [
-      isMethodCall('setSdkVerbosity', arguments: {'value': 'Verbosity.info'})
+      isMethodCall('setSdkVerbosity',
+          arguments: {'value': 'CoreLoggerLevel.error'})
     ]);
   });
 

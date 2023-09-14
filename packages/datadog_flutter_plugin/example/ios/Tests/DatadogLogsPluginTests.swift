@@ -130,8 +130,6 @@ class DatadogLogsPluginTests: XCTestCase {
             "networkInfoEnabled": true,
             "bundleWithRum": true,
             "printLogsToConsole": true,
-            "remoteLogThreshold": "LogLevel.alert",
-            "remoteSampleRate": 32.2
         ]
     }
 
@@ -143,8 +141,8 @@ class DatadogLogsPluginTests: XCTestCase {
         XCTAssertTrue(loggingConfig.bundleWithRumEnabled)
         XCTAssertTrue(loggingConfig.bundleWithTraceEnabled)
         XCTAssertNil(loggingConfig.consoleLogFormat)
-        XCTAssertEqual(loggingConfig.remoteLogThreshold, .critical)
-        XCTAssertEqual(loggingConfig.remoteSampleRate, 32.2)
+        XCTAssertEqual(loggingConfig.remoteLogThreshold, .debug)
+        XCTAssertEqual(loggingConfig.remoteSampleRate, 100)
 
     }
 

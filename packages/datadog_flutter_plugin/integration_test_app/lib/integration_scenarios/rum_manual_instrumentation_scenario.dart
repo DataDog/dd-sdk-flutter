@@ -100,7 +100,7 @@ class _RumManualInstrumentationScenarioState
     final rum = DatadogSdk.instance.rum;
 
     rum?.addTiming('first-interaction');
-    rum?.addUserAction(RumUserActionType.tap, 'Tapped Download');
+    rum?.addAction(RumActionType.tap, 'Tapped Download');
 
     var simulatedResourceKey1 = '/resource/1';
     var simulatedResourceKey2 = '/resource/2';
@@ -111,8 +111,8 @@ class _RumManualInstrumentationScenarioState
         '$fakeRootUrl$simulatedResourceKey2');
 
     await Future<void>.delayed(const Duration(milliseconds: 100));
-    rum?.stopResourceLoading(simulatedResourceKey1, 200, RumResourceType.image);
-    rum?.stopResourceLoadingWithErrorInfo(
+    rum?.stopResource(simulatedResourceKey1, 200, RumResourceType.image);
+    rum?.stopResourceWithErrorInfo(
         simulatedResourceKey2, 'Status code 400', 'ErrorLoading');
 
     setState(() {
@@ -121,8 +121,7 @@ class _RumManualInstrumentationScenarioState
   }
 
   Future<void> _onNextTapped() async {
-    DatadogSdk.instance.rum
-        ?.addUserAction(RumUserActionType.tap, 'Next Screen');
+    DatadogSdk.instance.rum?.addAction(RumActionType.tap, 'Next Screen');
     unawaited(Navigator.push(
       context,
       MaterialPageRoute(
@@ -224,10 +223,10 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
       },
     );
     DatadogSdk.instance.rum
-        ?.startUserAction(RumUserActionType.scroll, 'User Scrolling');
+        ?.startAction(RumActionType.scroll, 'User Scrolling');
     await Future<void>.delayed(const Duration(seconds: 2));
-    DatadogSdk.instance.rum?.stopUserAction(
-        RumUserActionType.scroll, 'User Scrolling', {'scroll_distance': 12.2});
+    DatadogSdk.instance.rum?.stopAction(
+        RumActionType.scroll, 'User Scrolling', {'scroll_distance': 12.2});
 
     setState(() {
       _longTaskReady = true;
@@ -243,8 +242,7 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
   }
 
   void _onNextTapped() {
-    DatadogSdk.instance.rum
-        ?.addUserAction(RumUserActionType.tap, 'Next Screen');
+    DatadogSdk.instance.rum?.addAction(RumActionType.tap, 'Next Screen');
     Navigator.push<void>(
       context,
       MaterialPageRoute(

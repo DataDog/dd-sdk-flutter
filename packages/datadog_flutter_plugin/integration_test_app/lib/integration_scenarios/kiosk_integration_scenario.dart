@@ -105,7 +105,7 @@ class _KioskTrackedStreenState extends State<KioskTrackedStreen>
         resourceKey, RumHttpMethod.get, 'https://foo.com/resources/1');
     await Future<void>.delayed(const Duration(milliseconds: 300));
     DatadogSdk.instance.rum
-        ?.stopResourceLoading(resourceKey, 200, RumResourceType.image);
+        ?.stopResource(resourceKey, 200, RumResourceType.image);
 
     setState(() {
       _resourceDownloadInProgress = false;
@@ -113,8 +113,7 @@ class _KioskTrackedStreenState extends State<KioskTrackedStreen>
   }
 
   void _userAction() {
-    DatadogSdk.instance.rum
-        ?.addUserAction(RumUserActionType.tap, 'Kiosk User Action');
+    DatadogSdk.instance.rum?.addAction(RumActionType.tap, 'Kiosk User Action');
   }
 
   void _finishTest() {

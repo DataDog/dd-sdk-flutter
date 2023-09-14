@@ -119,25 +119,25 @@ class DatadogRumPluginTests: XCTestCase {
         Contract(methodName: "addTiming", requiredParameters: [
             "name": .string
         ]),
-        Contract(methodName: "startResourceLoading", requiredParameters: [
+        Contract(methodName: "startResource", requiredParameters: [
             "key": .string, "url": .string, "httpMethod": .string, "attributes": .map
         ]),
-        Contract(methodName: "stopResourceLoading", requiredParameters: [
+        Contract(methodName: "stopResource", requiredParameters: [
             "key": .string, "kind": .string, "attributes": .map
         ]),
-        Contract(methodName: "stopResourceLoadingWithError", requiredParameters: [
+        Contract(methodName: "stopResourceWithError", requiredParameters: [
             "key": .string, "message": .string, "type": .string, "attributes": .map
         ]),
         Contract(methodName: "addError", requiredParameters: [
             "message": .string, "source": .string, "attributes": .map
         ]),
-        Contract(methodName: "addUserAction", requiredParameters: [
+        Contract(methodName: "addAction", requiredParameters: [
             "type": .string, "name": .string, "attributes": .map
         ]),
-        Contract(methodName: "startUserAction", requiredParameters: [
+        Contract(methodName: "startAction", requiredParameters: [
             "type": .string, "name": .string, "attributes": .map
         ]),
-        Contract(methodName: "stopUserAction", requiredParameters: [
+        Contract(methodName: "stopAction", requiredParameters: [
             "type": .string, "name": .string, "attributes": .map
         ]),
         Contract(methodName: "addAttribute", requiredParameters: [
@@ -212,8 +212,8 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStartResourceLoading_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "startResourceLoading", arguments: [
+    func testStartResource_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "startResource", arguments: [
             "key": "resource_key",
             "httpMethod": "RumHttpMethod.get",
             "url": "https://fakeresource.com/url",
@@ -236,8 +236,8 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStopResourceLoading_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "stopResourceLoading", arguments: [
+    func testStopResource_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopResource", arguments: [
             "key": "resource_key",
             "statusCode": 200,
             "kind": "RumResourceType.image",
@@ -260,8 +260,8 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStopResourceLoading_WithSize_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "stopResourceLoading", arguments: [
+    func testStopResource_WithSize_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopResource", arguments: [
             "key": "resource_key",
             "statusCode": 200,
             "kind": "RumResourceType.image",
@@ -285,8 +285,8 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStopResourceLoadingWithError_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "stopResourceLoadingWithError", arguments: [
+    func testStopResourceWithError_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopResourceWithError", arguments: [
             "key": "resource_key",
             "message": "error message",
             "type": "error kind",
@@ -335,8 +335,8 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testAddUserAction_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "addUserAction", arguments: [
+    func testAddAction_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "addAction", arguments: [
             "type": "RumActionType.tap",
             "name": "Action Name",
             "attributes": [
@@ -357,8 +357,8 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStartUserAction_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "startUserAction", arguments: [
+    func testStartAction_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "startAction", arguments: [
             "type": "RumActionType.scroll",
             "name": "Action Name",
             "attributes": [
@@ -379,8 +379,8 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStopUserAction_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "stopUserAction", arguments: [
+    func testStopAction_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopAction", arguments: [
             "type": "RumActionType.swipe",
             "name": "Action Name",
             "attributes": [

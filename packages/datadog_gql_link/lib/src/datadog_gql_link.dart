@@ -99,7 +99,7 @@ class DatadogGqlLink extends Link {
 
         final errorMap = _serializeResponseErrors(data);
 
-        datadogSdk.rum?.stopResourceLoading(
+        datadogSdk.rum?.stopResource(
           resourceId,
           statusCode,
           RumResourceType.native,

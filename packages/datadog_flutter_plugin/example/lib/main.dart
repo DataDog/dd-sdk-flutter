@@ -79,21 +79,16 @@ void main() async {
 
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
 
-  final configuration = DdSdkConfiguration(
+  final configuration = DatadogConfiguration(
     clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
     env: dotenv.get('DD_ENV', fallback: ''),
-    serviceName: 'com.datadoghq.example.flutter',
+    service: 'com.datadoghq.example.flutter',
     version: '1.2.3',
     site: DatadogSite.us1,
-    trackingConsent: TrackingConsent.granted,
     nativeCrashReportEnabled: true,
-    logEventMapper: _logEventMapper,
-    loggingConfiguration: LoggingConfiguration(
-      sendNetworkInfo: true,
-      printLogsToConsole: true,
-    ),
+    loggingConfiguration: DatadogLoggingConfiguration(),
     rumConfiguration: applicationId != null
-        ? RumConfiguration(
+        ? DatadogRumConfiguration(
             applicationId: applicationId,
             detectLongTasks: true,
             reportFlutterPerformance: true,
@@ -107,8 +102,8 @@ void main() async {
   );
 
   final ddsdk = DatadogSdk.instance;
-  ddsdk.sdkVerbosity = Verbosity.verbose;
-  DatadogSdk.runApp(configuration, () async {
+  ddsdk.sdkVerbosity = CoreLoggerLevel.debug;
+  DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
     ddsdk.setUserInfo(id: 'test_id', extraInfo: {
       'user_attribute_1': true,
       'user_attribute_2': 'testing',

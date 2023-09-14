@@ -2,10 +2,9 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
-import '../datadog_configuration.dart';
-import '../internal_logger.dart';
 import 'ddrum.dart';
 import 'ddrum_platform_interface.dart';
+import 'rum_configuration.dart';
 
 class DdNoOpRumPlatform extends DdRumPlatform {
   @override
@@ -42,14 +41,13 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> addUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes) {
+  Future<void> addAction(
+      RumActionType type, String name, Map<String, Object?> attributes) {
     return Future.value();
   }
 
   @override
-  Future<void> initialize(
-      RumConfiguration configuration, InternalLogger internalLogger) {
+  Future<void> enable(DatadogRumConfiguration configuration) {
     return Future.value();
   }
 
@@ -62,14 +60,14 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> startResourceLoading(String key, RumHttpMethod httpMethod,
-      String url, Map<String, Object?> attributes) {
+  Future<void> startResource(String key, RumHttpMethod httpMethod, String url,
+      Map<String, Object?> attributes) {
     return Future.value();
   }
 
   @override
-  Future<void> startUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes) {
+  Future<void> startAction(
+      RumActionType type, String name, Map<String, Object?> attributes) {
     return Future.value();
   }
 
@@ -80,19 +78,19 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> stopResourceLoading(String key, int? statusCode,
-      RumResourceType kind, int? size, Map<String, Object?> attributes) {
+  Future<void> stopResource(String key, int? statusCode, RumResourceType kind,
+      int? size, Map<String, Object?> attributes) {
     return Future.value();
   }
 
   @override
-  Future<void> stopResourceLoadingWithError(
+  Future<void> stopResourceWithError(
       String key, Exception error, Map<String, Object?> attributes) {
     return Future.value();
   }
 
   @override
-  Future<void> stopResourceLoadingWithErrorInfo(String key, String message,
+  Future<void> stopResourceWithErrorInfo(String key, String message,
       String type, Map<String, Object?> attributes) {
     return Future.value();
   }
@@ -101,8 +99,8 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   Future<void> stopSession() => Future.value();
 
   @override
-  Future<void> stopUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes) {
+  Future<void> stopAction(
+      RumActionType type, String name, Map<String, Object?> attributes) {
     return Future.value();
   }
 

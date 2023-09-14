@@ -1,9 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2019-Present Datadog, Inc.
+// Copyright 2023-Present Datadog, Inc.
 
-export 'ddrum.dart';
-export 'ddrum_events.dart';
-export 'navigation_observer.dart';
-export 'rum_configuration.dart';
-export 'rum_user_action_detector.dart';
+export 'ddlog_event.dart';
+export 'ddlogs.dart';
+export 'log_configuration.dart';

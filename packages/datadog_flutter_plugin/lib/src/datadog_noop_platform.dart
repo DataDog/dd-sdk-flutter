@@ -2,8 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
+import '../datadog_flutter_plugin.dart';
 import '../datadog_internal.dart';
-import 'datadog_configuration.dart';
 
 class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
   @override
@@ -23,9 +23,11 @@ class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
 
   @override
   Future<PlatformInitializationResult> initialize(
-      DdSdkConfiguration configuration,
-      {LogCallback? logCallback,
-      required InternalLogger internalLogger}) async {
+    DatadogConfiguration configuration,
+    TrackingConsent trackingConsent, {
+    LogCallback? logCallback,
+    required InternalLogger internalLogger,
+  }) async {
     return const PlatformInitializationResult(logs: false, rum: false);
   }
 
@@ -40,7 +42,7 @@ class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
   }
 
   @override
-  Future<void> setSdkVerbosity(Verbosity verbosity) {
+  Future<void> setSdkVerbosity(CoreLoggerLevel level) {
     return Future.value();
   }
 
