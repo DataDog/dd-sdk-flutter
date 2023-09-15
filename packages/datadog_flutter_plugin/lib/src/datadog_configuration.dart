@@ -250,6 +250,7 @@ class DatadogConfiguration {
       'clientToken': clientToken,
       'env': env,
       'site': site.toString(),
+      'nativeCrashReportEnabled': nativeCrashReportEnabled,
       'service': service,
       'batchSize': batchSize?.toString(),
       'uploadFrequency': uploadFrequency?.toString(),

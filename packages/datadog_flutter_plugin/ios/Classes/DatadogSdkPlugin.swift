@@ -90,6 +90,12 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
                     core?.telemetry.configuration(
                         dartVersion: arguments["dartVersion"] as? String
                     )
+
+                    if let crashReportingEnabled = (configArg["nativeCrashReportEnabled"] as? NSNumber)?.boolValue {
+                        if crashReportingEnabled {
+                            CrashReporting.enable()
+                        }
+                    }
                 } else {
                     let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
                     if !dict.isEqual(to: currentConfiguration!) {
@@ -99,10 +105,10 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
                         )
                     }
                 }
+                result(nil)
             } else {
-                // Failure
+                result(FlutterError.missingParameter(methodName: call.method))
             }
-            result(nil)
 //        case "attachToExisting":
 //            if Datadog.isInitialized {
 //                let attachResult = attachToExisting()
