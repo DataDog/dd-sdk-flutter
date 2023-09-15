@@ -12,7 +12,7 @@ class MockDatadogSdkPlatform extends Mock implements DatadogSdkPlatform {}
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
 
-class MockDdRum extends Mock implements DdRum {}
+class MockDdRum extends Mock implements DatadogRum {}
 
 void main() {
   late MockDdRum mockRum;

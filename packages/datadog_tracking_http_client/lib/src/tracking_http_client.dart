@@ -110,7 +110,7 @@ class DatadogTrackingHttpClient implements HttpClient {
       try {
         rumKey = uuid.v1();
         final rumHttpMethod = rumMethodFromMethodString(method);
-        rum.startResourceLoading(rumKey, rumHttpMethod, url.toString());
+        rum.startResource(rumKey, rumHttpMethod, url.toString());
       } catch (e, st) {
         datadogSdk.internalLogger.sendToDatadog(
           '$DatadogTrackingHttpClient encountered an error while attempting '
@@ -135,7 +135,7 @@ class DatadogTrackingHttpClient implements HttpClient {
       }
     } catch (e) {
       if (rum != null) {
-        rum.stopResourceLoadingWithErrorInfo(
+        rum.stopResourceWithErrorInfo(
             rumKey!, e.toString(), e.runtimeType.toString(), userAttributes);
       }
       rethrow;
@@ -369,7 +369,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
           rum.tracingSamplingRate,
         );
         attributes = _mergeAttributes(attributes, userAttributes);
-        rum.stopResourceLoadingWithErrorInfo(
+        rum.stopResourceWithErrorInfo(
             rumKey!, e.toString(), e.runtimeType.toString(), attributes);
       }
     } catch (e, st) {
@@ -540,7 +540,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
           userAttributes: userAttributes,
           error: lastError);
       attributes = _mergeAttributes(attributes, userAttributes);
-      rum.stopResourceLoadingWithErrorInfo(rumKey!, lastError.toString(),
+      rum.stopResourceWithErrorInfo(rumKey!, lastError.toString(),
           lastError.runtimeType.toString(), attributes);
     }
   }
@@ -565,8 +565,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
             userAttributes: userAttributes,
           );
           attributes = _mergeAttributes(attributes, userAttributes);
-          rum.stopResourceLoading(
-              rumKey!, statusCode, resourceType, size, attributes);
+          rum.stopResource(rumKey!, statusCode, resourceType, size, attributes);
         }
       }
     } catch (e, st) {

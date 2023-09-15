@@ -3,6 +3,7 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import Foundation
+import Flutter
 
 internal func castFlutterAttributesToSwift(_ flutterAttributes: [String: Any?]) -> [String: Encodable] {
     var casted: [String: Encodable] = [:]

@@ -14,7 +14,7 @@ import 'src/generated/helloworld.pbgrpc.dart';
 
 class DatadogSdkMock extends Mock implements DatadogSdk {}
 
-class RumMock extends Mock implements DdRum {}
+class RumMock extends Mock implements DatadogRum {}
 
 class LoggingGreeterService extends GreeterServiceBase {
   List<ServiceCall> calls = [];
@@ -124,7 +124,7 @@ void main() {
 
       await stub.sayHello(HelloRequest(name: 'test'));
 
-      final captures = verify(() => mockRum.startResourceLoading(
+      final captures = verify(() => mockRum.startResource(
           captureAny(),
           RumHttpMethod.get,
           'http://localhost:$port/helloworld.Greeter/SayHello',
@@ -134,8 +134,7 @@ void main() {
 
       expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
-      verify(
-          () => mockRum.stopResourceLoading(key, 200, RumResourceType.native));
+      verify(() => mockRum.stopResource(key, 200, RumResourceType.native));
     });
 
     for (var tracingType in TracingHeaderType.values) {
@@ -153,7 +152,7 @@ void main() {
 
           await stub.sayHello(HelloRequest(name: 'test'));
 
-          final captures = verify(() => mockRum.startResourceLoading(
+          final captures = verify(() => mockRum.startResource(
               captureAny(),
               RumHttpMethod.get,
               'http://localhost:$port/helloworld.Greeter/SayHello',
@@ -184,7 +183,7 @@ void main() {
 
           await stub.sayHello(HelloRequest(name: 'test'));
 
-          final captures = verify(() => mockRum.startResourceLoading(
+          final captures = verify(() => mockRum.startResource(
               captureAny(),
               RumHttpMethod.get,
               'http://localhost:$port/helloworld.Greeter/SayHello',
@@ -247,7 +246,7 @@ void main() {
 
       await stub.sayHello(HelloRequest(name: 'test'));
 
-      final captures = verify(() => mockRum.startResourceLoading(
+      final captures = verify(() => mockRum.startResource(
           captureAny(),
           RumHttpMethod.get,
           'http://localhost:$port/helloworld.Greeter/SayHello',
@@ -288,7 +287,7 @@ void main() {
       // this is fine, we can't actually connect to a secure channel
     }
 
-    final captures = verify(() => mockRum.startResourceLoading(
+    final captures = verify(() => mockRum.startResource(
         captureAny(),
         RumHttpMethod.get,
         'https://localhost:$port/helloworld.Greeter/SayHello',
@@ -298,8 +297,8 @@ void main() {
 
     expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
-    verify(() =>
-        mockRum.stopResourceLoadingWithErrorInfo(key, any(), 'GrpcError', {}));
+    verify(
+        () => mockRum.stopResourceWithErrorInfo(key, any(), 'GrpcError', {}));
 
     await channel.shutdown();
     await server.shutdown();
@@ -331,7 +330,7 @@ void main() {
 
     await stub.sayHello(HelloRequest(name: 'test'));
 
-    final captures = verify(() => mockRum.startResourceLoading(
+    final captures = verify(() => mockRum.startResource(
         captureAny(),
         RumHttpMethod.get,
         'http://127.0.0.1:$port/helloworld.Greeter/SayHello',
@@ -341,7 +340,7 @@ void main() {
 
     expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
-    verify(() => mockRum.stopResourceLoading(key, 200, RumResourceType.native));
+    verify(() => mockRum.stopResource(key, 200, RumResourceType.native));
 
     await channel.shutdown();
     await server.shutdown();
@@ -377,7 +376,7 @@ void main() {
       // This is okay, we can't actually connect securely
     }
 
-    final captures = verify(() => mockRum.startResourceLoading(
+    final captures = verify(() => mockRum.startResource(
         captureAny(),
         RumHttpMethod.get,
         'https://127.0.0.1:$port/helloworld.Greeter/SayHello',
@@ -387,8 +386,8 @@ void main() {
 
     expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
-    verify(() =>
-        mockRum.stopResourceLoadingWithErrorInfo(key, any(), 'GrpcError', {}));
+    verify(
+        () => mockRum.stopResourceWithErrorInfo(key, any(), 'GrpcError', {}));
 
     await channel.shutdown();
     await server.shutdown();

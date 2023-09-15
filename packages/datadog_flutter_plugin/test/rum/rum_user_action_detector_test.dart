@@ -9,9 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockDdRum extends Mock implements DdRum {}
+class MockDdRum extends Mock implements DatadogRum {}
 
-Widget _buildSimpleApp(DdRum rum, Widget innerWidget) {
+Widget _buildSimpleApp(DatadogRum rum, Widget innerWidget) {
   return RumUserActionDetector(
     rum: rum,
     child: MaterialApp(
@@ -31,7 +31,7 @@ Widget _buildSimpleApp(DdRum rum, Widget innerWidget) {
 
 void main() {
   setUpAll(() {
-    registerFallbackValue(RumUserActionType.custom);
+    registerFallbackValue(RumActionType.custom);
   });
 
   testWidgets('tap button reports tap to RUM', (tester) async {
@@ -48,7 +48,7 @@ void main() {
     final button = find.byType(ElevatedButton);
     await tester.tap(button);
 
-    verify(() => mockRum.addUserAction(RumUserActionType.tap, any()));
+    verify(() => mockRum.addAction(RumActionType.tap, any()));
   });
 
   testWidgets('tap elevated button reports button text to RUM', (tester) async {
@@ -66,8 +66,7 @@ void main() {
     final button = find.byType(ElevatedButton);
     await tester.tap(button);
 
-    verify(() =>
-        mockRum.addUserAction(RumUserActionType.tap, 'Button($buttonText)'));
+    verify(() => mockRum.addAction(RumActionType.tap, 'Button($buttonText)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -86,8 +85,7 @@ void main() {
     final button = find.byType(TextButton);
     await tester.tap(button);
 
-    verify(() =>
-        mockRum.addUserAction(RumUserActionType.tap, 'Button($buttonText)'));
+    verify(() => mockRum.addAction(RumActionType.tap, 'Button($buttonText)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -106,8 +104,7 @@ void main() {
     final button = find.byType(OutlinedButton);
     await tester.tap(button);
 
-    verify(() =>
-        mockRum.addUserAction(RumUserActionType.tap, 'Button($buttonText)'));
+    verify(() => mockRum.addAction(RumActionType.tap, 'Button($buttonText)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -126,7 +123,7 @@ void main() {
     final text = find.byType(Text).first;
     await tester.tap(text);
 
-    verifyNever(() => mockRum.addUserAction(any(), any()));
+    verifyNever(() => mockRum.addAction(any(), any()));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -146,8 +143,8 @@ void main() {
     final text = find.byType(GestureDetector);
     await tester.tap(text);
 
-    verify(() => mockRum.addUserAction(
-        RumUserActionType.tap, 'GestureDetector(unknown)'));
+    verify(
+        () => mockRum.addAction(RumActionType.tap, 'GestureDetector(unknown)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -171,8 +168,8 @@ void main() {
     final text = find.byType(GestureDetector);
     await tester.tap(text);
 
-    verify(() => mockRum.addUserAction(
-        RumUserActionType.tap, 'GestureDetector($annotation)'));
+    verify(() =>
+        mockRum.addAction(RumActionType.tap, 'GestureDetector($annotation)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -196,8 +193,7 @@ void main() {
     final text = find.byType(TextButton);
     await tester.tap(text);
 
-    verify(() =>
-        mockRum.addUserAction(RumUserActionType.tap, 'Button($annotation)'));
+    verify(() => mockRum.addAction(RumActionType.tap, 'Button($annotation)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -216,7 +212,7 @@ void main() {
     final text = find.byType(TextButton);
     await tester.tap(text);
 
-    verifyNever(() => mockRum.addUserAction(any(), any()));
+    verifyNever(() => mockRum.addAction(any(), any()));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -236,7 +232,7 @@ void main() {
     final text = find.byType(GestureDetector);
     await tester.tap(text);
 
-    verifyNever(() => mockRum.addUserAction(any(), any()));
+    verifyNever(() => mockRum.addAction(any(), any()));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -255,8 +251,7 @@ void main() {
     final text = find.byType(GestureDetector);
     await tester.tap(text);
 
-    verify(
-        () => mockRum.addUserAction(RumUserActionType.tap, 'InkWell(unknown)'));
+    verify(() => mockRum.addAction(RumActionType.tap, 'InkWell(unknown)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -275,8 +270,7 @@ void main() {
     final text = find.byType(GestureDetector);
     await tester.tap(text);
 
-    verify(() =>
-        mockRum.addUserAction(RumUserActionType.tap, 'IconButton(unknown)'));
+    verify(() => mockRum.addAction(RumActionType.tap, 'IconButton(unknown)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -300,8 +294,8 @@ void main() {
     final text = find.byType(GestureDetector);
     await tester.tap(text);
 
-    verify(() => mockRum.addUserAction(
-        RumUserActionType.tap, 'IconButton($semanticLabel)'));
+    verify(() =>
+        mockRum.addAction(RumActionType.tap, 'IconButton($semanticLabel)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -320,7 +314,7 @@ void main() {
     final text = find.byType(Radio<int>);
     await tester.tap(text);
 
-    verify(() => mockRum.addUserAction(RumUserActionType.tap, 'Radio(1)'));
+    verify(() => mockRum.addAction(RumActionType.tap, 'Radio(1)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -343,8 +337,7 @@ void main() {
     final text = find.byType(Radio<int>);
     await tester.tap(text);
 
-    verify(() =>
-        mockRum.addUserAction(RumUserActionType.tap, 'Radio($annotation)'));
+    verify(() => mockRum.addAction(RumActionType.tap, 'Radio($annotation)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -366,8 +359,7 @@ void main() {
     final text = find.byType(Switch);
     await tester.tap(text);
 
-    verify(() =>
-        mockRum.addUserAction(RumUserActionType.tap, 'Switch($annotation)'));
+    verify(() => mockRum.addAction(RumActionType.tap, 'Switch($annotation)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -408,8 +400,8 @@ void main() {
     final navItem = find.byIcon(Icons.business).first;
     await tester.tap(navItem);
 
-    verify(() => mockRum.addUserAction(
-        RumUserActionType.tap, 'BottomNavigationBarItem(Business)'));
+    verify(() => mockRum.addAction(
+        RumActionType.tap, 'BottomNavigationBarItem(Business)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -463,7 +455,7 @@ void main() {
     final navItem = find.byIcon(Icons.beach_access_sharp).first;
     await tester.tap(navItem);
 
-    verify(() => mockRum.addUserAction(RumUserActionType.tap, 'Tab(rainy)'));
+    verify(() => mockRum.addAction(RumActionType.tap, 'Tab(rainy)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -519,8 +511,7 @@ void main() {
     final navItem = find.byIcon(Icons.beach_access_sharp).first;
     await tester.tap(navItem);
 
-    verify(
-        () => mockRum.addUserAction(RumUserActionType.tap, 'Tab(Rainy Days)'));
+    verify(() => mockRum.addAction(RumActionType.tap, 'Tab(Rainy Days)'));
     verifyNoMoreInteractions(mockRum);
   });
 }

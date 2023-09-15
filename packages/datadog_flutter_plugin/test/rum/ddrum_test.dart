@@ -7,9 +7,23 @@ import 'dart:io';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockInternalLogger extends Mock implements InternalLogger {}
+
+class MockDatadogSdk extends Mock implements DatadogSdk {}
 
 void main() {
   const numSamples = 500;
+  late MockInternalLogger mockInternalLogger;
+  late MockDatadogSdk mockDatadogSdk;
+
+  setUp(() {
+    mockInternalLogger = MockInternalLogger();
+
+    mockDatadogSdk = MockDatadogSdk();
+    when(() => mockDatadogSdk.internalLogger).thenReturn(mockInternalLogger);
+  });
 
   test('RumResourceType parses simple mimeTypes from ContentType', () {
     final image = ContentType.parse('image/png');
@@ -38,12 +52,12 @@ void main() {
   });
 
   test('Session sampling rate is clamped to 0..100', () {
-    final lowConfiguration = RumConfiguration(
+    final lowConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
       sessionSamplingRate: -12.3,
     );
 
-    final highConfiguration = RumConfiguration(
+    final highConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
       sessionSamplingRate: 137.2,
     );
@@ -53,12 +67,12 @@ void main() {
   });
 
   test('Tracing sampling rate is clamped to 0..100', () {
-    final lowConfiguration = RumConfiguration(
+    final lowConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
       tracingSamplingRate: -12.3,
     );
 
-    final highConfiguration = RumConfiguration(
+    final highConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
       tracingSamplingRate: 137.2,
     );
@@ -67,47 +81,44 @@ void main() {
     expect(highConfiguration.tracingSamplingRate, equals(100.0));
   });
 
-  test('Setting trace sample rate to 100 should always sample', () {
-    final rumConfiguration = RumConfiguration(
+  test('Setting trace sample rate to 100 should always sample', () async {
+    final rumConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
       tracingSamplingRate: 100,
       detectLongTasks: false,
     );
-    final internalLogger = InternalLogger();
-    final rum = DdRum(rumConfiguration, internalLogger);
+    final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
 
     for (int i = 0; i < 10; ++i) {
-      expect(rum.shouldSampleTrace(), isTrue);
+      expect(rum!.shouldSampleTrace(), isTrue);
     }
   });
 
-  test('Setting trace sample rate to 0 should never sample', () {
-    final rumConfiguration = RumConfiguration(
+  test('Setting trace sample rate to 0 should never sample', () async {
+    final rumConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
       tracingSamplingRate: 0,
       detectLongTasks: false,
     );
-    final internalLogger = InternalLogger();
-    final rum = DdRum(rumConfiguration, internalLogger);
+    final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
 
     for (int i = 0; i < 10; ++i) {
-      expect(rum.shouldSampleTrace(), isFalse);
+      expect(rum!.shouldSampleTrace(), isFalse);
     }
   });
 
-  test('Low sampling rate returns samples less often', () {
-    final rumConfiguration = RumConfiguration(
+  test('Low sampling rate returns samples less often', () async {
+    final rumConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
       tracingSamplingRate: 23,
       detectLongTasks: false,
     );
-    final internalLogger = InternalLogger();
-    final rum = DdRum(rumConfiguration, internalLogger);
+    final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
 
     var sampleCount = 0;
     var noSampleCount = 0;
     for (int i = 0; i < numSamples; ++i) {
-      if (rum.shouldSampleTrace()) {
+      if (rum!.shouldSampleTrace()) {
         sampleCount++;
       } else {
         noSampleCount++;
@@ -118,19 +129,19 @@ void main() {
     expect(sampleCount, greaterThanOrEqualTo(1));
   });
 
-  test('High sampling rate returns samples more often', () {
-    final rumConfiguration = RumConfiguration(
+  test('High sampling rate returns samples more often', () async {
+    final rumConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
       tracingSamplingRate: 85,
       detectLongTasks: false,
     );
     final internalLogger = InternalLogger();
-    final rum = DdRum(rumConfiguration, internalLogger);
+    final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
 
     var sampleCount = 0;
     var noSampleCount = 0;
     for (int i = 0; i < numSamples; ++i) {
-      if (rum.shouldSampleTrace()) {
+      if (rum!.shouldSampleTrace()) {
         sampleCount++;
       } else {
         noSampleCount++;

@@ -59,8 +59,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _triggerResourceFetch() async {
-    DatadogSdk.instance.rum
-        ?.addUserAction(RumUserActionType.tap, 'Resource Fetch');
+    DatadogSdk.instance.rum?.addAction(RumActionType.tap, 'Resource Fetch');
 
     setState(() {
       _performingOperation = true;
@@ -73,8 +72,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _triggerLongTask() {
-    DatadogSdk.instance.rum
-        ?.addUserAction(RumUserActionType.tap, 'Long Task Button');
+    DatadogSdk.instance.rum?.addAction(RumActionType.tap, 'Long Task Button');
     final delayEnd = DateTime.now().add(const Duration(milliseconds: 300));
     while (DateTime.now().isBefore(delayEnd)) {}
   }

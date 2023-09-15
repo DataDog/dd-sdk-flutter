@@ -15,26 +15,27 @@ import 'ddlogs_platform_interface.dart';
 class DdLogsWeb extends DdLogsPlatform {
   final Map<String, Logger> _activeLoggers = {};
 
-  static void initLogs(DdSdkConfiguration configuration) {
+  static void initLogs(DatadogConfiguration configuration) {
     init(_LogInitOptions(
       clientToken: configuration.clientToken,
       env: configuration.env,
       site: siteStringForSite(configuration.site),
-      proxyUrl: configuration.customLogsEndpoint,
-      service: configuration.serviceName,
+      service: configuration.service,
       version: configuration.versionTag,
     ));
   }
 
   @override
+  Future<void> enable(DatadogLoggingConfiguration config) async {}
+
+  @override
   Future<void> createLogger(
-      String loggerHandle, LoggingConfiguration config) async {
+      String loggerHandle, DatadogLoggerConfiguration config) async {
     var loggerHandlers = [
-      if (config.sendLogsToDatadog) 'http',
-      if (config.printLogsToConsole) 'console'
+      'http',
     ];
     var logger = _createLogger(
-      config.loggerName ?? 'default',
+      config.name ?? 'default',
       _JsLoggerConfiguration(),
     );
     if (logger != null) {
@@ -57,34 +58,6 @@ class DdLogsWeb extends DdLogsPlatform {
 
   @override
   Future<void> addTag(String loggerHandle, String tag, [String? value]) async {}
-
-  // @override
-  // Future<void> debug(String loggerHandle, String message,
-  //     [Map<String, Object?> context = const {}]) async {
-  //   final logger = _activeLoggers[loggerHandle];
-  //   logger?.debug(message, valueToJs(context, 'context'));
-  // }
-
-  // @override
-  // Future<void> error(String loggerHandle, String message,
-  //     [Map<String, Object?> context = const {}]) async {
-  //   final logger = _activeLoggers[loggerHandle];
-  //   logger?.error(message, valueToJs(context, 'context'));
-  // }
-
-  // @override
-  // Future<void> info(String loggerHandle, String message,
-  //     [Map<String, Object?> context = const {}]) async {
-  //   final logger = _activeLoggers[loggerHandle];
-  //   logger?.info(message, valueToJs(context, 'context'));
-  // }
-
-  // @override
-  // Future<void> warn(String loggerHandle, String message,
-  //     [Map<String, Object?> context = const {}]) async {
-  //   final logger = _activeLoggers[loggerHandle];
-  //   logger?.warn(message, valueToJs(context, 'context'));
-  // }
 
   @override
   Future<void> removeAttribute(String loggerHandle, String key) async {

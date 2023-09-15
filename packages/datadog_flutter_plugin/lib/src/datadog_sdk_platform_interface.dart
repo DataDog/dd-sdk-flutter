@@ -57,7 +57,7 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<void> setSdkVerbosity(Verbosity verbosity);
+  Future<void> setSdkVerbosity(CoreLoggerLevel verbosity);
   Future<void> setTrackingConsent(TrackingConsent trackingConsent);
   Future<void> setUserInfo(
       String? id, String? name, String? email, Map<String, Object?> extraInfo);
@@ -67,7 +67,8 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
   Future<void> sendTelemetryError(String message, String? stack, String? kind);
 
   Future<PlatformInitializationResult> initialize(
-    DdSdkConfiguration configuration, {
+    DatadogConfiguration configuration,
+    TrackingConsent trackingConsent, {
     LogCallback? logCallback,
     required InternalLogger internalLogger,
   });

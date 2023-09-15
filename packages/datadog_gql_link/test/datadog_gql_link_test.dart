@@ -17,7 +17,7 @@ class MockDatadogSdk extends Mock implements DatadogSdk {}
 
 class MockDatadogSdkPlatform extends Mock implements DatadogSdkPlatform {}
 
-class MockDdRum extends Mock implements DdRum {}
+class MockDdRum extends Mock implements DatadogRum {}
 
 class MockDatadogGqlListener extends Mock implements DatadogGqlListener {}
 
@@ -122,7 +122,7 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      verify(() => mockRum.startResourceLoading(
+      verify(() => mockRum.startResource(
           any(), RumHttpMethod.post, 'https://test_uri', any()));
     });
 
@@ -138,7 +138,7 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      final capturedAttributes = verify(() => mockRum.startResourceLoading(
+      final capturedAttributes = verify(() => mockRum.startResource(
               any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
           .captured[0] as Map<String, Object?>;
       Map<String, dynamic> dd =
@@ -198,7 +198,7 @@ query UserInfo($id: ID!) {
       final response = MockResponse();
       when(() => response.context).thenReturn(const Context());
       String? capturedKey;
-      when(() => mockRum.startResourceLoading(any(), any(), any(), any()))
+      when(() => mockRum.startResource(any(), any(), any(), any()))
           .thenAnswer((i) {
         capturedKey = i.positionalArguments[0] as String;
       });
@@ -214,7 +214,7 @@ query UserInfo($id: ID!) {
       await stream.drain();
 
       // Then
-      verify(() => mockRum.stopResourceLoading(
+      verify(() => mockRum.stopResource(
           capturedKey!, null, RumResourceType.native, null, any()));
     });
 
@@ -237,7 +237,7 @@ query UserInfo($id: ID!) {
       );
       when(() => response.context).thenReturn(responseContext);
       String? capturedKey;
-      when(() => mockRum.startResourceLoading(any(), any(), any(), any()))
+      when(() => mockRum.startResource(any(), any(), any(), any()))
           .thenAnswer((i) {
         capturedKey = i.positionalArguments[0] as String;
       });
@@ -253,7 +253,7 @@ query UserInfo($id: ID!) {
       await stream.drain();
 
       // Then
-      verify(() => mockRum.stopResourceLoading(
+      verify(() => mockRum.stopResource(
           capturedKey!, 418, RumResourceType.native, 66219, any()));
     });
 
@@ -296,7 +296,7 @@ query UserInfo($id: ID!) {
       });
       when(() => response.context).thenReturn(const Context());
       String? capturedKey;
-      when(() => mockRum.startResourceLoading(any(), any(), any(), any()))
+      when(() => mockRum.startResource(any(), any(), any(), any()))
           .thenAnswer((i) {
         capturedKey = i.positionalArguments[0] as String;
       });
@@ -312,7 +312,7 @@ query UserInfo($id: ID!) {
       await stream.drain();
 
       // Then
-      final captured = verify(() => mockRum.stopResourceLoading(
+      final captured = verify(() => mockRum.stopResource(
           capturedKey!, any(), RumResourceType.native, any(), captureAny()));
       final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
       expect(capturedAttrs['response_attribute'], [1, 2, 3, 4]);
@@ -340,7 +340,7 @@ query UserInfo($id: ID!) {
       });
       when(() => response.context).thenReturn(const Context());
       String? capturedKey;
-      when(() => mockRum.startResourceLoading(any(), any(), any(), any()))
+      when(() => mockRum.startResource(any(), any(), any(), any()))
           .thenAnswer((i) {
         capturedKey = i.positionalArguments[0] as String;
       });
@@ -356,7 +356,7 @@ query UserInfo($id: ID!) {
       await stream.drain();
 
       // Then
-      final captured = verify(() => mockRum.stopResourceLoading(
+      final captured = verify(() => mockRum.stopResource(
           capturedKey!, any(), RumResourceType.native, any(), captureAny()));
       final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
       expect(capturedAttrs['response_attribute'], [1, 2, 3, 4]);
@@ -372,7 +372,7 @@ query UserInfo($id: ID!) {
       final response = MockResponse();
       when(() => response.context).thenReturn(const Context());
       String? capturedKey;
-      when(() => mockRum.startResourceLoading(any(), any(), any(), any()))
+      when(() => mockRum.startResource(any(), any(), any(), any()))
           .thenAnswer((i) {
         capturedKey = i.positionalArguments[0] as String;
       });
@@ -390,8 +390,8 @@ query UserInfo($id: ID!) {
       } catch (_) {}
 
       // Then
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
-          capturedKey!, 'FakeError', 'String', {}));
+      verify(() => mockRum
+          .stopResourceWithErrorInfo(capturedKey!, 'FakeError', 'String', {}));
     });
 
     test('link calls stopResourceLoadingWithErrorInfo on stream error',
@@ -403,7 +403,7 @@ query UserInfo($id: ID!) {
       final response = MockResponse();
       when(() => response.context).thenReturn(const Context());
       String? capturedKey;
-      when(() => mockRum.startResourceLoading(any(), any(), any(), any()))
+      when(() => mockRum.startResource(any(), any(), any(), any()))
           .thenAnswer((i) {
         capturedKey = i.positionalArguments[0] as String;
       });
@@ -421,8 +421,8 @@ query UserInfo($id: ID!) {
       } catch (_) {}
 
       // Then
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
-          capturedKey!, 'FakeError', 'String', {}));
+      verify(() => mockRum
+          .stopResourceWithErrorInfo(capturedKey!, 'FakeError', 'String', {}));
     });
 
     test('link calls listener on stream error', () async {
@@ -482,7 +482,7 @@ query UserInfo($id: ID!) {
       } catch (_) {}
 
       // Then
-      final captured = verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      final captured = verify(() => mockRum.stopResourceWithErrorInfo(
           any(), 'FakeError', 'String', captureAny()));
       final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
       expect(capturedAttrs['error_attribute'], 'error cause');
@@ -524,7 +524,7 @@ query UserInfo($id: ID!) {
       } catch (_) {}
 
       // Then
-      final captured = verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      final captured = verify(() => mockRum.stopResourceWithErrorInfo(
           any(), 'FakeError', 'String', captureAny()));
       final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
       expect(capturedAttrs['request_attribute'], 'my request');
@@ -558,7 +558,7 @@ query UserInfo($id: ID!) {
       await stream.drain();
 
       // Then
-      final captured = verify(() => mockRum.stopResourceLoading(
+      final captured = verify(() => mockRum.stopResource(
           any(), any(), RumResourceType.native, any(), captureAny()));
       final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
       expect(capturedAttrs['_dd']['graphql']['errors'], [
@@ -596,7 +596,7 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      final capturedAttributes = verify(() => mockRum.startResourceLoading(
+      final capturedAttributes = verify(() => mockRum.startResource(
               any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
           .captured[0] as Map<String, Object?>;
       Map<String, dynamic> dd =
@@ -625,7 +625,7 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      final capturedAttributes = verify(() => mockRum.startResourceLoading(
+      final capturedAttributes = verify(() => mockRum.startResource(
               any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
           .captured[0] as Map<String, Object?>;
       Map<String, dynamic> dd =
@@ -668,8 +668,8 @@ query UserInfo($id: ID!) {
         });
 
         // Then
-        final capturedAttrs = verify(() =>
-                mockRum.startResourceLoading(any(), any(), any(), captureAny()))
+        final capturedAttrs = verify(
+                () => mockRum.startResource(any(), any(), any(), captureAny()))
             .captured[0] as Map<String, Object?>;
         expect(capturedAttrs[DatadogRumPlatformAttributeKey.traceID], isNull);
         expect(capturedAttrs[DatadogRumPlatformAttributeKey.spanID], isNull);
@@ -690,8 +690,8 @@ query UserInfo($id: ID!) {
         });
 
         // Then
-        final capturedAttrs = verify(() =>
-                mockRum.startResourceLoading(any(), any(), any(), captureAny()))
+        final capturedAttrs = verify(
+                () => mockRum.startResource(any(), any(), any(), captureAny()))
             .captured[0] as Map<String, dynamic>;
         var traceId =
             BigInt.parse(capturedAttrs[DatadogRumPlatformAttributeKey.traceID]);

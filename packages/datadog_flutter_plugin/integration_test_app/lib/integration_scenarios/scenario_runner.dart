@@ -74,30 +74,25 @@ Future<void> runScenario({
     firstPartyHosts.addAll(testingConfiguration.firstPartyHosts);
   }
 
-  final configuration = DdSdkConfiguration(
+  final configuration = DatadogConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
-    serviceName: 'com.datadoghq.flutter.integration',
+    service: 'com.datadoghq.flutter.integration',
     version: '1.2.3+555',
     flavor: 'integration',
     site: DatadogSite.us1,
-    trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,
     firstPartyHosts: firstPartyHosts,
-    customLogsEndpoint: customEndpoint,
-    telemetrySampleRate: 100,
-    logEventMapper: (event) => _mapLogEvent(event),
-    loggingConfiguration: LoggingConfiguration(
-      sendNetworkInfo: true,
-      printLogsToConsole: true,
-    ),
+    loggingConfiguration: DatadogLoggingConfiguration(),
     rumConfiguration: applicationId != null
-        ? RumConfiguration(
+        ? DatadogRumConfiguration(
             applicationId: applicationId,
             reportFlutterPerformance: true,
             customEndpoint: customEndpoint,
+            telemetrySampleRate: 100,
+            additionalConfig: testingConfiguration?.additionalConfig ?? {},
           )
         : null,
   );
@@ -117,7 +112,7 @@ Future<void> runScenario({
         mapRumLongTaskEvent;
   }
 
-  await DatadogSdk.runApp(configuration, () async {
+  await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
     runApp(const DatadogIntegrationTestApp());
   });
 }

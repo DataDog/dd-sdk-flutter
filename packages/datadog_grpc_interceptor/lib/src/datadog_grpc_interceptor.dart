@@ -77,7 +77,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
         }
       }
 
-      _datadog.rum?.startResourceLoading(
+      _datadog.rum?.startResource(
         rumKey,
         RumHttpMethod.get,
         fullPath,
@@ -89,9 +89,9 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
 
     final future = invoker(method, request, options);
     future.then((v) {
-      _datadog.rum?.stopResourceLoading(rumKey, 200, RumResourceType.native);
+      _datadog.rum?.stopResource(rumKey, 200, RumResourceType.native);
     }, onError: (Object e, StackTrace? st) {
-      _datadog.rum?.stopResourceLoadingWithErrorInfo(
+      _datadog.rum?.stopResourceWithErrorInfo(
           rumKey, e.toString(), e.runtimeType.toString());
     });
     return future;

@@ -9,7 +9,6 @@ library ddrum_flutter_web;
 import 'package:js/js.dart';
 
 import '../../datadog_flutter_plugin.dart';
-import '../internal_logger.dart';
 import '../web_helpers.dart';
 import 'ddrum_platform_interface.dart';
 
@@ -17,30 +16,25 @@ class DdRumWeb extends DdRumPlatform {
   final Map<String, Object?> currentAttributes = {};
 
   // Because Web needs the full SDK configuration, we have a separate init method
-  void webInitialize(DdSdkConfiguration configuration) {
-    final rumConfiguration = configuration.rumConfiguration;
-    if (rumConfiguration == null) {
-      return;
-    }
-
+  void webInitialize(DatadogConfiguration configuration,
+      DatadogRumConfiguration rumConfiguration) {
     init(_RumInitOptions(
       applicationId: rumConfiguration.applicationId,
       clientToken: configuration.clientToken,
       site: siteStringForSite(configuration.site),
       sampleRate: rumConfiguration.sessionSamplingRate,
       sessionReplaySampleRate: 0,
-      service: configuration.serviceName,
+      service: configuration.service,
       env: configuration.env,
       version: configuration.versionTag,
-      proxyUrl: configuration.rumConfiguration?.customEndpoint,
-      allowedTracingOrigins: configuration.firstPartyHosts,
+      proxyUrl: rumConfiguration.customEndpoint,
+      // allowedTracingOrigins: configuration.firstPartyHosts,
       trackViewsManually: true,
     ));
   }
 
   @override
-  Future<void> initialize(
-      RumConfiguration configuration, InternalLogger internalLogger) async {}
+  Future<void> enable(DatadogRumConfiguration configuration) async {}
 
   @override
   Future<void> addAttribute(String key, dynamic value) async {
@@ -76,8 +70,8 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  Future<void> addUserAction(RumUserActionType type, String name,
-      Map<String, dynamic> attributes) async {
+  Future<void> addAction(
+      RumActionType type, String name, Map<String, dynamic> attributes) async {
     _jsAddAction(name, attributesToJs(attributes, 'attributes'));
   }
 
@@ -88,14 +82,14 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  Future<void> startResourceLoading(String key, RumHttpMethod httpMethod,
-      String url, Map<String, dynamic> attributes) async {
+  Future<void> startResource(String key, RumHttpMethod httpMethod, String url,
+      Map<String, dynamic> attributes) async {
     // NOOP
   }
 
   @override
-  Future<void> startUserAction(RumUserActionType type, String name,
-      Map<String, dynamic> attributes) async {
+  Future<void> startAction(
+      RumActionType type, String name, Map<String, dynamic> attributes) async {
     // NOOP
   }
 
@@ -106,26 +100,26 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  Future<void> stopResourceLoading(String key, int? statusCode,
-      RumResourceType kind, int? size, Map<String, dynamic> attributes) async {
+  Future<void> stopResource(String key, int? statusCode, RumResourceType kind,
+      int? size, Map<String, dynamic> attributes) async {
     // NOOP
   }
 
   @override
-  Future<void> stopResourceLoadingWithError(
+  Future<void> stopResourceWithError(
       String key, Exception error, Map<String, dynamic> attributes) async {
     // NOOP
   }
 
   @override
-  Future<void> stopResourceLoadingWithErrorInfo(String key, String message,
+  Future<void> stopResourceWithErrorInfo(String key, String message,
       String type, Map<String, dynamic> attributes) async {
     // NOOP
   }
 
   @override
-  Future<void> stopUserAction(RumUserActionType type, String name,
-      Map<String, dynamic> attributes) async {
+  Future<void> stopAction(
+      RumActionType type, String name, Map<String, dynamic> attributes) async {
     // NOOP
   }
 

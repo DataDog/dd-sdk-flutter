@@ -7,17 +7,16 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'datadog_configuration.dart';
+import '../datadog_flutter_plugin.dart';
 import 'datadog_sdk_platform_interface.dart';
 import 'internal_logger.dart';
-import 'logs/ddlog_event.dart';
 
 class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   @visibleForTesting
   final methodChannel = const MethodChannel('datadog_sdk_flutter');
 
   @override
-  Future<void> setSdkVerbosity(Verbosity verbosity) {
+  Future<void> setSdkVerbosity(CoreLoggerLevel verbosity) {
     return methodChannel
         .invokeMethod('setSdkVerbosity', {'value': verbosity.toString()});
   }
@@ -44,13 +43,14 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 
   @override
   Future<PlatformInitializationResult> initialize(
-    DdSdkConfiguration configuration, {
+    DatadogConfiguration configuration,
+    TrackingConsent trackingConsent, {
     LogCallback? logCallback,
     required InternalLogger internalLogger,
   }) async {
     final callbackHandler = MethodCallHandler(
       logCallback: logCallback,
-      logEventMapper: configuration.logEventMapper,
+      //logEventMapper: configuration.logEventMapper,
       internalLogger: internalLogger,
     );
 
@@ -60,6 +60,7 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 
     await methodChannel.invokeMethod<void>('initialize', {
       'configuration': configuration.encode(),
+      'trackingConsent': trackingConsent.toString(),
       'dartVersion': Platform.version,
       'setLogCallback': logCallback != null,
     });

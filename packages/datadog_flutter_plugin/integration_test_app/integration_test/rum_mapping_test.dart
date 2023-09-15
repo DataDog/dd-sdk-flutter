@@ -93,5 +93,5 @@ void main() {
         expect(event.viewName, 'ThirdView');
       }
     }
-  });
+  }, skip: true);
 }

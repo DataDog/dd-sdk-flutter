@@ -30,7 +30,7 @@ void main() {
   });
 
   test('create logger passed to method channel', () async {
-    final config = LoggingConfiguration(loggerName: 'loggerName');
+    final config = DatadogLoggerConfiguration(name: 'loggerName');
     await ddLogsPlatform.createLogger('uuid', config);
 
     expect(log, <Matcher>[

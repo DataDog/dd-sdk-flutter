@@ -99,7 +99,7 @@ class DatadogGqlLink extends Link {
 
         final errorMap = _serializeResponseErrors(data);
 
-        datadogSdk.rum?.stopResourceLoading(
+        datadogSdk.rum?.stopResource(
           resourceId,
           statusCode,
           RumResourceType.native,
@@ -114,8 +114,8 @@ class DatadogGqlLink extends Link {
       },
       handleError: (error, stackTrace, sink) {
         listener?.requestError(error, stackTrace, userAttributes);
-        datadogSdk.rum?.stopResourceLoadingWithErrorInfo(resourceId,
-            error.toString(), error.runtimeType.toString(), userAttributes);
+        datadogSdk.rum?.stopResourceWithErrorInfo(resourceId, error.toString(),
+            error.runtimeType.toString(), userAttributes);
 
         sink.addError(error, stackTrace);
       },
@@ -167,7 +167,7 @@ class DatadogGqlLink extends Link {
     };
 
     // TODO: RUM-1027 - Assume `post` for now, but most links support `get` queries.
-    datadogSdk.rum?.startResourceLoading(
+    datadogSdk.rum?.startResource(
         resourceId, RumHttpMethod.post, uri.toString(), attributes);
 
     return resourceId;

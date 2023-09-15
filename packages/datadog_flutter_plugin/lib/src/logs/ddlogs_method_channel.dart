@@ -5,8 +5,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../datadog_configuration.dart';
 import 'ddlogs_platform_interface.dart';
+import 'log_configuration.dart';
 
 class DdLogsMethodChannel extends DdLogsPlatform {
   @visibleForTesting
@@ -14,7 +14,15 @@ class DdLogsMethodChannel extends DdLogsPlatform {
       const MethodChannel('datadog_sdk_flutter.logs');
 
   @override
-  Future<void> createLogger(String loggerHandle, LoggingConfiguration config) {
+  Future<void> enable(DatadogLoggingConfiguration config) {
+    return methodChannel.invokeMethod('enable', {
+      'configuration': config.encode(),
+    });
+  }
+
+  @override
+  Future<void> createLogger(
+      String loggerHandle, DatadogLoggerConfiguration config) {
     return methodChannel.invokeMethod('createLogger', {
       'loggerHandle': loggerHandle,
       'configuration': config.encode(),

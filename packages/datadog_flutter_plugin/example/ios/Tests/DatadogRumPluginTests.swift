@@ -7,7 +7,10 @@
 // swiftlint:disable file_length
 
 import XCTest
-@testable import Datadog
+import Flutter
+import DatadogInternal
+@testable import DatadogCore
+@testable import DatadogRUM
 import datadog_flutter_plugin
 
 enum ResultStatus: EquatableInTests {
@@ -68,11 +71,11 @@ class DatadogRumPluginTests: XCTestCase {
     }
 
     func testAllUserActions_AreParsedCorrectly() {
-        let tap = RUMUserActionType.parseFromFlutter("RumUserActionType.tap")
-        let scroll = RUMUserActionType.parseFromFlutter("RumUserActionType.scroll")
-        let swipe = RUMUserActionType.parseFromFlutter("RumUserActionType.swipe")
-        let custom = RUMUserActionType.parseFromFlutter("RumUserActionType.custom")
-        let unknown = RUMUserActionType.parseFromFlutter("unknowntype")
+        let tap = RUMActionType.parseFromFlutter("RumActionType.tap")
+        let scroll = RUMActionType.parseFromFlutter("RumActionType.scroll")
+        let swipe = RUMActionType.parseFromFlutter("RumActionType.swipe")
+        let custom = RUMActionType.parseFromFlutter("RumActionType.custom")
+        let unknown = RUMActionType.parseFromFlutter("unknowntype")
 
         XCTAssertEqual(tap, .tap)
         XCTAssertEqual(scroll, .scroll)
@@ -103,7 +106,7 @@ class DatadogRumPluginTests: XCTestCase {
     override func setUp() {
         mock = MockRUMMonitor()
         plugin = DatadogRumPlugin.instance
-        plugin.initialize(withRum: mock)
+        plugin.inject(rum: mock)
     }
 
     let contracts = [
@@ -116,25 +119,25 @@ class DatadogRumPluginTests: XCTestCase {
         Contract(methodName: "addTiming", requiredParameters: [
             "name": .string
         ]),
-        Contract(methodName: "startResourceLoading", requiredParameters: [
+        Contract(methodName: "startResource", requiredParameters: [
             "key": .string, "url": .string, "httpMethod": .string, "attributes": .map
         ]),
-        Contract(methodName: "stopResourceLoading", requiredParameters: [
+        Contract(methodName: "stopResource", requiredParameters: [
             "key": .string, "kind": .string, "attributes": .map
         ]),
-        Contract(methodName: "stopResourceLoadingWithError", requiredParameters: [
+        Contract(methodName: "stopResourceWithError", requiredParameters: [
             "key": .string, "message": .string, "type": .string, "attributes": .map
         ]),
         Contract(methodName: "addError", requiredParameters: [
             "message": .string, "source": .string, "attributes": .map
         ]),
-        Contract(methodName: "addUserAction", requiredParameters: [
+        Contract(methodName: "addAction", requiredParameters: [
             "type": .string, "name": .string, "attributes": .map
         ]),
-        Contract(methodName: "startUserAction", requiredParameters: [
+        Contract(methodName: "startAction", requiredParameters: [
             "type": .string, "name": .string, "attributes": .map
         ]),
-        Contract(methodName: "stopUserAction", requiredParameters: [
+        Contract(methodName: "stopAction", requiredParameters: [
             "type": .string, "name": .string, "attributes": .map
         ]),
         Contract(methodName: "addAttribute", requiredParameters: [
@@ -209,15 +212,15 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStartResourceLoading_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "startResourceLoading", arguments: [
+    func testStartResource_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "startResource", arguments: [
             "key": "resource_key",
             "httpMethod": "RumHttpMethod.get",
             "url": "https://fakeresource.com/url",
             "attributes": [
                 "attribute_key": "attribute_value"
             ]
-        ])
+        ] as [String: Any?])
 
         var resultStatus = ResultStatus.notCalled
         plugin.handle(call) { result in
@@ -225,16 +228,16 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [
-            .startResourceLoading(key: "resource_key",
-                                  httpMethod: .get,
-                                  urlString: "https://fakeresource.com/url",
-                                  attributes: ["attribute_key": "attribute_value"])
+            .startResource(key: "resource_key",
+                           httpMethod: .get,
+                           urlString: "https://fakeresource.com/url",
+                           attributes: ["attribute_key": "attribute_value"])
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStopResourceLoading_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "stopResourceLoading", arguments: [
+    func testStopResource_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopResource", arguments: [
             "key": "resource_key",
             "statusCode": 200,
             "kind": "RumResourceType.image",
@@ -242,7 +245,7 @@ class DatadogRumPluginTests: XCTestCase {
             "attributes": [
                 "attribute_key": "attribute_value"
             ]
-        ])
+        ] as [String: Any?])
 
         var resultStatus = ResultStatus.notCalled
         plugin.handle(call) { result in
@@ -250,15 +253,15 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [
-            .stopResourceLoading(key: "resource_key", statusCode: 200, kind: .image, size: nil, attributes: [
+            .stopResource(key: "resource_key", statusCode: 200, kind: .image, size: nil, attributes: [
                 "attribute_key": "attribute_value"
             ])
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStopResourceLoading_WithSize_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "stopResourceLoading", arguments: [
+    func testStopResource_WithSize_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopResource", arguments: [
             "key": "resource_key",
             "statusCode": 200,
             "kind": "RumResourceType.image",
@@ -266,7 +269,7 @@ class DatadogRumPluginTests: XCTestCase {
             "attributes": [
                 "attribute_key": "attribute_value"
             ]
-        ])
+        ] as [String: Any?])
 
         var resultStatus = ResultStatus.notCalled
         plugin.handle(call) { result in
@@ -274,16 +277,16 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [
-            .stopResourceLoading(key: "resource_key", statusCode: 200, kind: .image,
-                                 size: 12_408_812, attributes: [
-                                    "attribute_key": "attribute_value"
-                                 ])
+            .stopResource(key: "resource_key", statusCode: 200, kind: .image,
+                          size: 12_408_812, attributes: [
+                            "attribute_key": "attribute_value"
+                          ])
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStopResourceLoadingWithError_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "stopResourceLoadingWithError", arguments: [
+    func testStopResourceWithError_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopResourceWithError", arguments: [
             "key": "resource_key",
             "message": "error message",
             "type": "error kind",
@@ -298,13 +301,13 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [
-            .stopResourceLoadingWithErrorMessage(key: "resource_key",
-                                                 errorMessage: "error message",
-                                                 type: "error kind",
-                                                 response: nil,
-                                                 attributes: [
-                                                    "attribute_key": "attribute_value"
-                                                 ])
+            .stopResourceWithErrorMessage(key: "resource_key",
+                                          message: "error message",
+                                          type: "error kind",
+                                          response: nil,
+                                          attributes: [
+                                            "attribute_key": "attribute_value"
+                                          ])
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
@@ -318,7 +321,7 @@ class DatadogRumPluginTests: XCTestCase {
             "attributes": [
                 "attribute_key": "attribute_value"
             ]
-        ])
+        ] as [String: Any?])
 
         var resultStatus = ResultStatus.notCalled
         plugin.handle(call) { result in
@@ -332,14 +335,14 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testAddUserAction_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "addUserAction", arguments: [
-            "type": "RumUserActionType.tap",
+    func testAddAction_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "addAction", arguments: [
+            "type": "RumActionType.tap",
             "name": "Action Name",
             "attributes": [
                 "attribute_key": "attribute_value"
             ]
-        ])
+        ] as [String: Any?])
 
         var resultStatus = ResultStatus.notCalled
         plugin.handle(call) { result in
@@ -347,21 +350,21 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [
-            .addUserAction(type: .tap, name: "Action Name", attributes: [
+            .addAction(type: .tap, name: "Action Name", attributes: [
                 "attribute_key": "attribute_value"
             ])
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStartUserAction_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "startUserAction", arguments: [
-            "type": "RumUserActionType.scroll",
+    func testStartAction_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "startAction", arguments: [
+            "type": "RumActionType.scroll",
             "name": "Action Name",
             "attributes": [
                 "attribute_key": "attribute_value"
             ]
-        ])
+        ] as [String: Any?])
 
         var resultStatus = ResultStatus.notCalled
         plugin.handle(call) { result in
@@ -369,21 +372,21 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [
-            .startUserAction(type: .scroll, name: "Action Name", attributes: [
+            .startAction(type: .scroll, name: "Action Name", attributes: [
                 "attribute_key": "attribute_value"
             ])
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStopUserAction_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "stopUserAction", arguments: [
-            "type": "RumUserActionType.swipe",
+    func testStopAction_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopAction", arguments: [
+            "type": "RumActionType.swipe",
             "name": "Action Name",
             "attributes": [
                 "attribute_key": "attribute_value"
             ]
-        ])
+        ] as [String: Any?])
 
         var resultStatus = ResultStatus.notCalled
         plugin.handle(call) { result in
@@ -391,7 +394,7 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [
-            .stopUserAction(type: .swipe, name: "Action Name", attributes: [
+            .stopAction(type: .swipe, name: "Action Name", attributes: [
                 "attribute_key": "attribute_value"
             ])
         ])
@@ -492,25 +495,27 @@ class DatadogRumPluginTests: XCTestCase {
 
 // MARK: - MockRUMMonitor
 
-class MockRUMMonitor: DDRUMMonitor, RUMCommandSubscriber {
+class MockRUMMonitor: RUMMonitorProtocol, RUMCommandSubscriber {
+    var debug: Bool
+
     enum MethodCall: EquatableInTests {
         case startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue])
         case stopView(key: String, attributes: [AttributeKey: AttributeValue])
         case addTiming(name: String)
 
-        case startResourceLoading(key: String, httpMethod: RUMMethod, urlString: String,
-                                  attributes: [AttributeKey: AttributeValue])
-        case stopResourceLoading(key: String, statusCode: Int?, kind: RUMResourceType, size: Int64?,
-                                 attributes: [AttributeKey: AttributeValue])
-        case stopResourceLoadingWithError(key: String, error: Error, response: URLResponse?,
-                                          attributes: [AttributeKey: AttributeValue])
-        case stopResourceLoadingWithErrorMessage(key: String, errorMessage: String, type: String?,
-                                                 response: URLResponse?, attributes: [AttributeKey: AttributeValue])
+        case startResource(key: String, httpMethod: RUMMethod, urlString: String,
+                           attributes: [AttributeKey: AttributeValue])
+        case stopResource(key: String, statusCode: Int?, kind: RUMResourceType, size: Int64?,
+                          attributes: [AttributeKey: AttributeValue])
+        case stopResourceWithError(key: String, error: Error, response: URLResponse?,
+                                   attributes: [AttributeKey: AttributeValue])
+        case stopResourceWithErrorMessage(key: String, message: String, type: String?,
+                                   response: URLResponse?, attributes: [AttributeKey: AttributeValue])
         case addError(message: String, type: String?, source: RUMErrorSource, stack: String?,
                       attributes: [AttributeKey: AttributeValue], file: StaticString?, line: UInt?)
-        case addUserAction(type: RUMUserActionType, name: String, attributes: [AttributeKey: AttributeValue])
-        case startUserAction(type: RUMUserActionType, name: String, attributes: [AttributeKey: AttributeValue])
-        case stopUserAction(type: RUMUserActionType, name: String?, attributes: [AttributeKey: AttributeValue])
+        case addAction(type: RUMActionType, name: String, attributes: [AttributeKey: AttributeValue])
+        case startAction(type: RUMActionType, name: String, attributes: [AttributeKey: AttributeValue])
+        case stopAction(type: RUMActionType, name: String?, attributes: [AttributeKey: AttributeValue])
         case addAttribute(forKey: AttributeKey, value: AttributeValue)
         case removeAttribute(forKey: AttributeKey)
     }
@@ -518,89 +523,96 @@ class MockRUMMonitor: DDRUMMonitor, RUMCommandSubscriber {
     var callLog: [MethodCall] = []
     var commands: [RUMCommand] = []
 
-    override init() {
-        super.init()
+    init() {
+        debug = true
     }
 
-    override func startView(key: String, name: String? = nil, attributes: [AttributeKey: AttributeValue] = [:]) {
+    func startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue]) {
         callLog.append(.startView(key: key, name: name, attributes: attributes))
     }
 
-    override func stopView(key: String, attributes: [AttributeKey: AttributeValue] = [:]) {
+    func stopView(key: String, attributes: [AttributeKey: AttributeValue]) {
         callLog.append(.stopView(key: key, attributes: attributes))
     }
 
-    override func addTiming(name: String) {
+    func addTiming(name: String) {
         callLog.append(.addTiming(name: name))
     }
 
-    override func startResourceLoading(resourceKey: String, httpMethod: RUMMethod,
-                                       urlString: String, attributes: [AttributeKey: AttributeValue] = [:]) {
+    func startResource(resourceKey: String, httpMethod: RUMMethod,
+                       urlString: String, attributes: [AttributeKey: AttributeValue]) {
         callLog.append(
-            .startResourceLoading(key: resourceKey, httpMethod: httpMethod, urlString: urlString,
-                                  attributes: attributes)
+            .startResource(key: resourceKey, httpMethod: httpMethod, urlString: urlString,
+                           attributes: attributes)
         )
     }
 
-    override func stopResourceLoading(resourceKey: String, statusCode: Int?, kind: RUMResourceType,
-                                      size: Int64? = nil, attributes: [AttributeKey: AttributeValue] = [:]) {
+    func stopResource(resourceKey: String, statusCode: Int?, kind: RUMResourceType,
+                      size: Int64?, attributes: [AttributeKey: AttributeValue]) {
         callLog.append(
-            .stopResourceLoading(key: resourceKey, statusCode: statusCode, kind: kind, size: size,
-                                 attributes: attributes)
+            .stopResource(key: resourceKey, statusCode: statusCode, kind: kind, size: size,
+                          attributes: attributes)
         )
     }
 
-    override public func stopResourceLoadingWithError(
+    func stopResourceWithError(
         resourceKey: String,
         error: Error,
-        response: URLResponse? = nil,
-        attributes: [AttributeKey: AttributeValue] = [:]
+        response: URLResponse?,
+        attributes: [AttributeKey: AttributeValue]
     ) {
-        callLog.append(.stopResourceLoadingWithError(key: resourceKey, error: error,
-                                                     response: response, attributes: attributes))
+        callLog.append(.stopResourceWithError(key: resourceKey, error: error,
+                                              response: response, attributes: attributes))
     }
 
-    override func stopResourceLoadingWithError(resourceKey: String,
-                                               errorMessage: String,
-                                               type: String? = nil,
-                                               response: URLResponse? = nil,
-                                               attributes: [AttributeKey: AttributeValue] = [:]) {
+    func stopResourceWithError(resourceKey: String,
+                               message: String,
+                               type: String?,
+                               response: URLResponse?,
+                               attributes: [AttributeKey: AttributeValue]) {
         callLog.append(
-            .stopResourceLoadingWithErrorMessage(key: resourceKey, errorMessage: errorMessage, type: type,
-                                                 response: response, attributes: attributes)
+            .stopResourceWithErrorMessage(key: resourceKey, message: message, type: type,
+                                          response: response, attributes: attributes)
         )
     }
 
-    override func addError(message: String, type: String? = nil, source: RUMErrorSource = .custom, stack: String? = nil,
-                           attributes: [AttributeKey: AttributeValue] = [:],
-                           file: StaticString? = #file, line: UInt? = #line) {
+    // swiftlint:ignore function_parameter_count
+    func addError(message: String, type: String?, stack: String?, source: RUMErrorSource,
+                  attributes: [AttributeKey: AttributeValue], file: StaticString?, line: UInt?) {
         callLog.append(
             .addError(message: message, type: type, source: source, stack: stack,
                       attributes: attributes, file: file, line: line)
         )
     }
 
-    override func addAttribute(forKey key: AttributeKey, value: AttributeValue) {
+    func addAttribute(forKey key: AttributeKey, value: AttributeValue) {
         callLog.append(.addAttribute(forKey: key, value: value))
     }
 
-    override func removeAttribute(forKey key: AttributeKey) {
+    func removeAttribute(forKey key: AttributeKey) {
         callLog.append(.removeAttribute(forKey: key))
     }
 
-    override func addUserAction(type: RUMUserActionType, name: String,
-                                attributes: [AttributeKey: AttributeValue] = [:]) {
-        callLog.append(.addUserAction(type: type, name: name, attributes: attributes))
+    func addAction(type: RUMActionType, name: String,
+                   attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(.addAction(type: type, name: name, attributes: attributes))
     }
 
-    override func startUserAction(type: RUMUserActionType, name: String,
-                                  attributes: [AttributeKey: AttributeValue] = [:]) {
-        callLog.append(.startUserAction(type: type, name: name, attributes: attributes))
+    func startAction(type: RUMActionType, name: String,
+                     attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(.startAction(type: type, name: name, attributes: attributes))
     }
 
-    override func stopUserAction(type: RUMUserActionType, name: String? = nil,
-                                 attributes: [AttributeKey: AttributeValue] = [:]) {
-        callLog.append(.stopUserAction(type: type, name: name, attributes: attributes))
+    func stopAction(type: RUMActionType, name: String?, attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(.stopAction(type: type, name: name, attributes: attributes))
+    }
+
+    func stopSession() {
+
+    }
+
+    func addFeatureFlagEvaluation(name: String, value: Encodable) {
+
     }
 
     /// Processes the given RUM Command.

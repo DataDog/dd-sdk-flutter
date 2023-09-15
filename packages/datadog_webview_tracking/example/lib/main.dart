@@ -20,24 +20,21 @@ Future<void> main() async {
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
   customEndpoint ??= dotenv.maybeGet('DD_CUSTOM_ENDPOINT');
 
-  DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
+  DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
 
-  final configuration = DdSdkConfiguration(
+  final configuration = DatadogConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
     site: DatadogSite.us1,
-    trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,
     firstPartyHosts: [],
-    customLogsEndpoint: customEndpoint,
-    loggingConfiguration: LoggingConfiguration(
-      sendNetworkInfo: true,
-      printLogsToConsole: true,
+    loggingConfiguration: DatadogLoggingConfiguration(
+      customEndpoint: customEndpoint,
     ),
     rumConfiguration: applicationId != null
-        ? RumConfiguration(
+        ? DatadogRumConfiguration(
             detectLongTasks: false,
             applicationId: applicationId,
             tracingSamplingRate: 100,
@@ -46,7 +43,7 @@ Future<void> main() async {
         : null,
   );
 
-  await DatadogSdk.runApp(configuration, () async {
+  await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
     runApp(const MyApp());
   });
 }

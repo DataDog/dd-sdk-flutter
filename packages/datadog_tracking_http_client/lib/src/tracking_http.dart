@@ -77,7 +77,7 @@ class DatadogClient extends http.BaseClient {
   }
 
   Future<http.StreamedResponse> _trackingSend(
-      http.BaseRequest request, DdRum rum) async {
+      http.BaseRequest request, DatadogRum rum) async {
     String? rumKey;
 
     try {
@@ -93,7 +93,7 @@ class DatadogClient extends http.BaseClient {
       }
 
       rumKey = _uuid.v1();
-      rum.startResourceLoading(
+      rum.startResource(
           rumKey, rumHttpMethod, request.url.toString(), attributes);
     } catch (e, st) {
       datadogSdk.internalLogger.sendToDatadog(
@@ -113,7 +113,7 @@ class DatadogClient extends http.BaseClient {
       if (rumKey != null) {
         try {
           final attributes = attributesProvider?.call(request, null, e) ?? {};
-          rum.stopResourceLoadingWithErrorInfo(
+          rum.stopResourceWithErrorInfo(
               rumKey, e.toString(), e.runtimeType.toString(), attributes);
         } catch (innerE, st) {
           datadogSdk.internalLogger.sendToDatadog(
@@ -143,7 +143,7 @@ class DatadogClient extends http.BaseClient {
               firstError = e;
               final attributes =
                   attributesProvider?.call(request, response, e) ?? {};
-              rum.stopResourceLoadingWithErrorInfo(
+              rum.stopResourceWithErrorInfo(
                 rumKey!,
                 firstError.toString(),
                 firstError.runtimeType.toString(),
@@ -185,7 +185,7 @@ class DatadogClient extends http.BaseClient {
     return response;
   }
 
-  void _onFinish(DdRum rum, String rumKey, http.StreamedResponse response,
+  void _onFinish(DatadogRum rum, String rumKey, http.StreamedResponse response,
       Map<String, Object?> attributes, Object? error) {
     try {
       // If we saw an error, this resource has already been stopped
@@ -196,7 +196,7 @@ class DatadogClient extends http.BaseClient {
             ? ContentType.parse(contentTypeHeader)
             : ContentType.text;
         var resourceType = resourceTypeFromContentType(contentType);
-        datadogSdk.rum?.stopResourceLoading(
+        datadogSdk.rum?.stopResource(
           rumKey,
           response.statusCode,
           resourceType,

@@ -73,6 +73,14 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  DatadogLogger? _logger;
+
+  @override
+  void initState() {
+    _logger =
+        DatadogSdk.instance.logs?.createLogger(DatadogLoggerConfiguration());
+    super.initState();
+  }
 
   void _incrementCounter() {
     setState(() {
@@ -81,7 +89,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _goToNamedScreen() {
-    DatadogSdk.instance.logs?.info('Some info');
+    _logger?.info('Some info');
     Navigator.of(context).push(
       MaterialPageRoute(
         settings: const RouteSettings(name: "Named Screen"),
