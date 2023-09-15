@@ -15,7 +15,7 @@ export 'src/tracking_http_client.dart';
 export 'src/tracking_http_client_plugin.dart'
     show DatadogTrackingHttpClientListener;
 
-extension TrackingExtension on DdSdkConfiguration {
+extension TrackingExtension on DatadogConfiguration {
   /// Configures network requests monitoring for Tracing and RUM features.
   ///
   /// If enabled, the SDK will override [HttpClient] creation (via
@@ -49,10 +49,10 @@ extension TrackingExtension on DdSdkConfiguration {
   }
 }
 
-extension TrackingExtensionExisting on DdSdkExistingConfiguration {
-  /// See [TrackingExtension.enableHttpTracking]
-  void enableHttpTracking({DatadogTrackingHttpClientListener? clientListener}) {
-    addPlugin(
-        DdHttpTrackingPluginConfiguration(clientListener: clientListener));
-  }
-}
+// extension TrackingExtensionExisting on DdSdkExistingConfiguration {
+//   /// See [TrackingExtension.enableHttpTracking]
+//   void enableHttpTracking({DatadogTrackingHttpClientListener? clientListener}) {
+//     addPlugin(
+//         DdHttpTrackingPluginConfiguration(clientListener: clientListener));
+//   }
+// }

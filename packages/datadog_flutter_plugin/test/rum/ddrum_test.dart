@@ -81,76 +81,74 @@ void main() {
     expect(highConfiguration.tracingSamplingRate, equals(100.0));
   });
 
-  // test('Setting trace sample rate to 100 should always sample', () async {
-  //   final rumConfiguration = DatadogRumConfiguration(
-  //     applicationId: 'applicationId',
-  //     tracingSamplingRate: 100,
-  //     detectLongTasks: false,
-  //   );
-  //   final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
+  test('Setting trace sample rate to 100 should always sample', () async {
+    final rumConfiguration = DatadogRumConfiguration(
+      applicationId: 'applicationId',
+      tracingSamplingRate: 100,
+      detectLongTasks: false,
+    );
+    final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
 
-  //   for (int i = 0; i < 10; ++i) {
-  //     expect(rum.shouldSampleTrace(), isTrue);
-  //   }
-  // });
+    for (int i = 0; i < 10; ++i) {
+      expect(rum!.shouldSampleTrace(), isTrue);
+    }
+  });
 
-  // test('Setting trace sample rate to 0 should never sample', () {
-  //   final rumConfiguration = RumConfiguration(
-  //     applicationId: 'applicationId',
-  //     tracingSamplingRate: 0,
-  //     detectLongTasks: false,
-  //   );
-  //   final internalLogger = InternalLogger();
-  //   final rum = DdRum(rumConfiguration, internalLogger);
+  test('Setting trace sample rate to 0 should never sample', () async {
+    final rumConfiguration = DatadogRumConfiguration(
+      applicationId: 'applicationId',
+      tracingSamplingRate: 0,
+      detectLongTasks: false,
+    );
+    final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
 
-  //   for (int i = 0; i < 10; ++i) {
-  //     expect(rum.shouldSampleTrace(), isFalse);
-  //   }
-  // });
+    for (int i = 0; i < 10; ++i) {
+      expect(rum!.shouldSampleTrace(), isFalse);
+    }
+  });
 
-  // test('Low sampling rate returns samples less often', () {
-  //   final rumConfiguration = RumConfiguration(
-  //     applicationId: 'applicationId',
-  //     tracingSamplingRate: 23,
-  //     detectLongTasks: false,
-  //   );
-  //   final internalLogger = InternalLogger();
-  //   final rum = DdRum(rumConfiguration, internalLogger);
+  test('Low sampling rate returns samples less often', () async {
+    final rumConfiguration = DatadogRumConfiguration(
+      applicationId: 'applicationId',
+      tracingSamplingRate: 23,
+      detectLongTasks: false,
+    );
+    final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
 
-  //   var sampleCount = 0;
-  //   var noSampleCount = 0;
-  //   for (int i = 0; i < numSamples; ++i) {
-  //     if (rum.shouldSampleTrace()) {
-  //       sampleCount++;
-  //     } else {
-  //       noSampleCount++;
-  //     }
-  //   }
+    var sampleCount = 0;
+    var noSampleCount = 0;
+    for (int i = 0; i < numSamples; ++i) {
+      if (rum!.shouldSampleTrace()) {
+        sampleCount++;
+      } else {
+        noSampleCount++;
+      }
+    }
 
-  //   expect(noSampleCount, greaterThanOrEqualTo(sampleCount));
-  //   expect(sampleCount, greaterThanOrEqualTo(1));
-  // });
+    expect(noSampleCount, greaterThanOrEqualTo(sampleCount));
+    expect(sampleCount, greaterThanOrEqualTo(1));
+  });
 
-  // test('High sampling rate returns samples more often', () {
-  //   final rumConfiguration = RumConfiguration(
-  //     applicationId: 'applicationId',
-  //     tracingSamplingRate: 85,
-  //     detectLongTasks: false,
-  //   );
-  //   final internalLogger = InternalLogger();
-  //   final rum = DdRum(rumConfiguration, internalLogger);
+  test('High sampling rate returns samples more often', () async {
+    final rumConfiguration = DatadogRumConfiguration(
+      applicationId: 'applicationId',
+      tracingSamplingRate: 85,
+      detectLongTasks: false,
+    );
+    final internalLogger = InternalLogger();
+    final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
 
-  //   var sampleCount = 0;
-  //   var noSampleCount = 0;
-  //   for (int i = 0; i < numSamples; ++i) {
-  //     if (rum.shouldSampleTrace()) {
-  //       sampleCount++;
-  //     } else {
-  //       noSampleCount++;
-  //     }
-  //   }
+    var sampleCount = 0;
+    var noSampleCount = 0;
+    for (int i = 0; i < numSamples; ++i) {
+      if (rum!.shouldSampleTrace()) {
+        sampleCount++;
+      } else {
+        noSampleCount++;
+      }
+    }
 
-  //   expect(sampleCount, greaterThanOrEqualTo(noSampleCount));
-  //   expect(noSampleCount, greaterThanOrEqualTo(1));
-  // });
+    expect(sampleCount, greaterThanOrEqualTo(noSampleCount));
+    expect(noSampleCount, greaterThanOrEqualTo(1));
+  });
 }

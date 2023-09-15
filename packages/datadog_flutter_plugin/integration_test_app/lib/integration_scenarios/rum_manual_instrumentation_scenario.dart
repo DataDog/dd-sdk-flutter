@@ -105,9 +105,9 @@ class _RumManualInstrumentationScenarioState
     var simulatedResourceKey1 = '/resource/1';
     var simulatedResourceKey2 = '/resource/2';
 
-    rum?.startResourceLoading(simulatedResourceKey1, RumHttpMethod.get,
+    rum?.startResource(simulatedResourceKey1, RumHttpMethod.get,
         '$fakeRootUrl$simulatedResourceKey1');
-    rum?.startResourceLoading(simulatedResourceKey2, RumHttpMethod.get,
+    rum?.startResource(simulatedResourceKey2, RumHttpMethod.get,
         '$fakeRootUrl$simulatedResourceKey2');
 
     await Future<void>.delayed(const Duration(milliseconds: 100));

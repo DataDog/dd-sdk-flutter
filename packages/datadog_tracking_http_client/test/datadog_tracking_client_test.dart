@@ -17,7 +17,7 @@ class MockDatadogSdk extends Mock implements DatadogSdk {}
 
 class MockDatadogSdkPlatform extends Mock implements DatadogSdkPlatform {}
 
-class MockDdRum extends Mock implements DdRum {}
+class MockDdRum extends Mock implements DatadogRum {}
 
 class MockClient extends Mock implements http.Client {}
 
@@ -155,7 +155,7 @@ void main() {
       final testUri = Uri.parse('https://test_url/test');
       final _ = client.get(testUri, headers: {'x-datadog-header': 'header'});
 
-      verify(() => mockRum.startResourceLoading(
+      verify(() => mockRum.startResource(
           any(), RumHttpMethod.get, testUri.toString(), any()));
     });
 
@@ -168,12 +168,12 @@ void main() {
 
       await future;
 
-      final key = verify(() => mockRum.startResourceLoading(
+      final key = verify(() => mockRum.startResource(
               captureAny(), RumHttpMethod.get, testUri.toString(), any()))
           .captured[0] as String;
 
-      verify(() => mockRum.stopResourceLoading(
-          key, 200, RumResourceType.native, any(), any()));
+      verify(() =>
+          mockRum.stopResource(key, 200, RumResourceType.native, any(), any()));
     });
 
     test('calls stopResourceLoading with size and deduced content type',
@@ -191,12 +191,12 @@ void main() {
 
       await future;
 
-      final key = verify(() => mockRum.startResourceLoading(
+      final key = verify(() => mockRum.startResource(
               captureAny(), RumHttpMethod.get, testUri.toString(), any()))
           .captured[0] as String;
 
-      verify(() => mockRum.stopResourceLoading(
-          key, 200, RumResourceType.image, 88888, any()));
+      verify(() =>
+          mockRum.stopResource(key, 200, RumResourceType.image, 88888, any()));
     });
 
     test('calls stopResourceLoading with provided attributes', () async {
@@ -221,8 +221,8 @@ void main() {
 
       expect(providedRequest, isNotNull);
       expect(providedResponse, isNotNull);
-      verify(() =>
-          mockRum.stopResourceLoading(any(), any(), any(), any(), attributes));
+      verify(
+          () => mockRum.stopResource(any(), any(), any(), any(), attributes));
     });
 
     test(
@@ -242,12 +242,12 @@ void main() {
         thrownError = e;
       }
 
-      final key = verify(() => mockRum.startResourceLoading(
+      final key = verify(() => mockRum.startResource(
               captureAny(), RumHttpMethod.get, testUri.toString(), any()))
           .captured[0] as String;
 
       expect(thrownError, thrownError);
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
           key, thrownError.toString(), thrownError.runtimeType.toString()));
     });
 
@@ -287,7 +287,7 @@ void main() {
       expect(providedResponse, isNull);
       expect(providedError, thrownError);
 
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
           any(),
           thrownError.toString(),
           thrownError.runtimeType.toString(),
@@ -332,11 +332,11 @@ void main() {
       }
 
       expect(errorToThrow, thrownError);
-      final key = verify(() => mockRum.startResourceLoading(
+      final key = verify(() => mockRum.startResource(
               captureAny(), RumHttpMethod.get, testUri.toString(), any()))
           .captured[0] as String;
 
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
           key, errorToThrow.toString(), errorToThrow.runtimeType.toString()));
     });
 
@@ -383,7 +383,7 @@ void main() {
       expect(providedResponse, isNotNull);
       expect(providedError, thrownError);
 
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
           any(),
           errorToThrow.toString(),
           errorToThrow.runtimeType.toString(),
@@ -424,7 +424,7 @@ void main() {
           final _ =
               client.get(testUri, headers: {'x-datadog-header': 'header'});
 
-          final callAttributes = verify(() => mockRum.startResourceLoading(
+          final callAttributes = verify(() => mockRum.startResource(
                   any(), RumHttpMethod.get, testUri.toString(), captureAny()))
               .captured[0] as Map<String, Object?>;
 
@@ -465,7 +465,7 @@ void main() {
           expect(headers['X-B3-ParentSpanId'], isNull);
           expect(headers['X-B3-Sampled'], isNull);
 
-          final callAttributes = verify(() => mockRum.startResourceLoading(
+          final callAttributes = verify(() => mockRum.startResource(
                   any(), RumHttpMethod.get, testUri.toString(), captureAny()))
               .captured[0] as Map<String, Object?>;
           expect(callAttributes['_dd.trace_id'], isNull);
@@ -493,7 +493,7 @@ void main() {
       await client.get(testUriB);
 
       void verifyCall(Uri uri) {
-        final callAttributes = verify(() => mockRum.startResourceLoading(
+        final callAttributes = verify(() => mockRum.startResource(
                 any(), RumHttpMethod.get, uri.toString(), captureAny()))
             .captured[0] as Map<String, Object?>;
 

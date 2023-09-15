@@ -40,8 +40,8 @@ void main() {
       () {
         final resourceKey = randomString();
         datadog.rum!.startView(viewKey, viewName, e2eAttributes(tester));
-        datadog.rum!.startResourceLoading(
-            resourceKey, RumHttpMethod.get, randomString());
+        datadog.rum!
+            .startResource(resourceKey, RumHttpMethod.get, randomString());
         datadog.rum!.stopResource(
             resourceKey, 200, RumResourceType.values.randomElement());
         datadog.rum!.stopView(viewKey);
@@ -54,7 +54,7 @@ void main() {
       () {
         final actionName = randomString();
         datadog.rum!.startView(viewKey, viewName, e2eAttributes(tester));
-        datadog.rum!.addUserAction(RumActionType.custom, actionName);
+        datadog.rum!.addAction(RumActionType.custom, actionName);
         datadog.rum!.stopView(viewKey);
       }
     ];
@@ -85,8 +85,7 @@ void main() {
   /// $monitor_threshold = 0.0
   /// ```
   testWidgets('rum consent - not granted', (tester) async {
-    await initializeDatadog(
-        (config) => config.trackingConsent = TrackingConsent.notGranted);
+    await initializeDatadog(trackingConsent: TrackingConsent.notGranted);
 
     await sendRandomRumEvent(tester);
   });
@@ -100,8 +99,7 @@ void main() {
   /// $monitor_threshold = 0.0
   /// ```
   testWidgets('rum consent - pending', (tester) async {
-    await initializeDatadog(
-        (config) => config.trackingConsent = TrackingConsent.pending);
+    await initializeDatadog(trackingConsent: TrackingConsent.pending);
 
     await sendRandomRumEvent(tester);
   });
@@ -114,8 +112,7 @@ void main() {
   /// $monitor_query = "rum(\"service:${{service}} @context.test_method_name:\\\"${{test_description}}\\\" @type:view @context.operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   testWidgets('rum consent - pending to granted', (tester) async {
-    await initializeDatadog(
-        (config) => config.trackingConsent = TrackingConsent.pending);
+    await initializeDatadog(trackingConsent: TrackingConsent.pending);
 
     await sendRandomRumEvent(tester);
 

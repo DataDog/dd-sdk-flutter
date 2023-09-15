@@ -93,7 +93,7 @@ class _RumScreenState extends State<RumScreen> {
 
     var rum = DatadogSdk.instance.rum;
     if (rum != null) {
-      rum.startResourceLoading(resourceKey, RumHttpMethod.get, resource);
+      rum.startResource(resourceKey, RumHttpMethod.get, resource);
       await Future.delayed(const Duration(seconds: 2));
       if (sendResourceError) {
         rum.stopResourceWithErrorInfo(

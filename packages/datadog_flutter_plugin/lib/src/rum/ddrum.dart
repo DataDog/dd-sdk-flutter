@@ -231,7 +231,7 @@ class DatadogRum {
   /// and should be sent to [stopResource] or
   /// [stopResourceWithError] / [stopResourceWithErrorInfo] when
   /// resource loading is complete.
-  void startResourceLoading(String key, RumHttpMethod httpMethod, String url,
+  void startResource(String key, RumHttpMethod httpMethod, String url,
       [Map<String, Object?> attributes = const {}]) {
     wrap('rum.startResource', logger, attributes, () {
       return _platform.startResource(key, httpMethod, url, attributes);

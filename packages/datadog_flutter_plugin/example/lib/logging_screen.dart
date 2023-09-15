@@ -40,7 +40,6 @@ class _LoggingScreenState extends State<LoggingScreen> {
       _disableSendingLogs = true;
     });
     final message = _message ?? 'Default Message';
-    final ddSdk = DatadogSdk.instance;
     for (var i = 0; i < count; ++i) {
       switch (_selectedLevel) {
         case LogLevel.debug:

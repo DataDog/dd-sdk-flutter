@@ -42,7 +42,7 @@ class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
   }
 
   @override
-  Future<void> setSdkVerbosity(CoreLoggerLevel level) {
+  Future<void> setSdkVerbosity(CoreLoggerLevel verbosity) {
     return Future.value();
   }
 

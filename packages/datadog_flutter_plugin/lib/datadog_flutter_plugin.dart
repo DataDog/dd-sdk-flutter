@@ -67,14 +67,13 @@ class DatadogSdk {
   DatadogRum? _rum;
   DatadogRum? get rum => _rum;
 
+  final List<FirstPartyHost> _firstPartyHosts = [];
+
   final Map<Type, DatadogPlugin> _plugins = {};
 
-  // /// An unmodifiable list of first party hosts for tracing.
-  // List<FirstPartyHost> get firstPartyHosts =>
-  //     List.unmodifiable(_firstPartyHosts);
-  // void _setFirstPartyHosts(Map<String, Set<TracingHeaderType>> value) {
-  //   _firstPartyHosts = FirstPartyHost.createSanitized(value, internalLogger);
-  // }
+  /// An unmodifiable list of first party hosts for tracing.
+  List<FirstPartyHost> get firstPartyHosts =>
+      List.unmodifiable(_firstPartyHosts);
 
   /// The version of this SDK.
   static String get sdkVersion => ddPackageVersion;
@@ -167,21 +166,6 @@ class DatadogSdk {
       _rum = await DatadogRum.enable(this, configuration.rumConfiguration!);
     }
 
-    // if (result.logs && configuration.loggingConfiguration != null) {
-    //   _logs = createLogger(configuration.loggingConfiguration!);
-    // }
-    // if (result.rum && configuration.rumConfiguration != null) {
-    //   _rum = DdRum(configuration.rumConfiguration!, internalLogger);
-    //   await _rum!.initialize();
-
-    //   // Update 'late' configuration
-    //   updateConfigurationInfo(LateConfigurationProperty.trackFlutterPerformance,
-    //       configuration.rumConfiguration!.reportFlutterPerformance);
-    //   updateConfigurationInfo(
-    //       LateConfigurationProperty.trackCrossPlatformLongTasks,
-    //       configuration.rumConfiguration!.detectLongTasks);
-    // }
-
     _initializePlugins(configuration.additionalPlugins);
     _initialized = true;
   }
@@ -231,18 +215,6 @@ class DatadogSdk {
   //   }
   // }
 
-  /// Create a new logger.
-  ///
-  /// This can be used in addition to or instead of the default logger at [logs]
-  // DdLogs createLogger(LoggingConfiguration configuration) {
-  //   final logger = DdLogs(internalLogger, configuration);
-  //   wrap('createLogger', internalLogger, null, () {
-  //     return DdLogsPlatform.instance
-  //         .createLogger(logger.loggerHandle, configuration);
-  //   });
-  //   return logger;
-  // }
-
   /// Sets current user information. User information will be added traces and
   /// RUM events automatically.
   void setUserInfo({
@@ -275,21 +247,21 @@ class DatadogSdk {
     });
   }
 
-  /// Determine if the provided URI is a first party host as determined by the
-  /// value of [firstPartyHosts].
-  // bool isFirstPartyHost(Uri uri) {
-  //   return headerTypesForHost(uri).isNotEmpty;
-  // }
+  // Determine if the provided URI is a first party host as determined by the
+  // value of [firstPartyHosts].
+  bool isFirstPartyHost(Uri uri) {
+    return headerTypesForHost(uri).isNotEmpty;
+  }
 
-  // Set<TracingHeaderType> headerTypesForHost(Uri uri) {
-  //   var tracingHeaderTypes = <TracingHeaderType>{};
-  //   for (var host in firstPartyHosts) {
-  //     if (host.matches(uri)) {
-  //       tracingHeaderTypes = tracingHeaderTypes.union(host.headerTypes);
-  //     }
-  //   }
-  //   return tracingHeaderTypes;
-  // }
+  Set<TracingHeaderType> headerTypesForHost(Uri uri) {
+    var tracingHeaderTypes = <TracingHeaderType>{};
+    for (var host in firstPartyHosts) {
+      if (host.matches(uri)) {
+        tracingHeaderTypes = tracingHeaderTypes.union(host.headerTypes);
+      }
+    }
+    return tracingHeaderTypes;
+  }
 
   void _platformLog(String log) {
     if (kDebugMode) {

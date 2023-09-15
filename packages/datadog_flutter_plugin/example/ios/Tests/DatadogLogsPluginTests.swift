@@ -126,10 +126,10 @@ class DatadogLogsPluginTests: XCTestCase {
     func defaultConfigArgs() -> [String: Any] {
         return [
             "service": "com.service.name",
-            "loggerName": "my_logger",
+            "name": "my_logger",
             "networkInfoEnabled": true,
             "bundleWithRum": true,
-            "printLogsToConsole": true,
+            "printLogsToConsole": true
         ]
     }
 

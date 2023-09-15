@@ -101,7 +101,7 @@ class _KioskTrackedStreenState extends State<KioskTrackedStreen>
     });
 
     const resourceKey = '/resource/1';
-    DatadogSdk.instance.rum?.startResourceLoading(
+    DatadogSdk.instance.rum?.startResource(
         resourceKey, RumHttpMethod.get, 'https://foo.com/resources/1');
     await Future<void>.delayed(const Duration(milliseconds: 300));
     DatadogSdk.instance.rum
