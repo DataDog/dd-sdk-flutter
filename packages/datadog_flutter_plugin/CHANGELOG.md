@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.6.1
+## 1.6.2
 
 * Fix platforms that don't support `lifecycleState` (mostly Web)
 
