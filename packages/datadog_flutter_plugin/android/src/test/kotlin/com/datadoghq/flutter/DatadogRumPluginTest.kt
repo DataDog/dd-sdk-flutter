@@ -140,6 +140,7 @@ class DatadogRumPluginTest {
         assertThat(unknown).isEqualTo(RumActionType.CUSTOM)
     }
 
+    @Suppress("LongParameterList")
     @Test
     fun `M decode configuration W withEncoded is called`(
         @FloatForgery(min = 0.0f, max = 100.0f) sessionSampleRate: Float,

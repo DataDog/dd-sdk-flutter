@@ -207,6 +207,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
+    @Suppress("ComplexMethod", "FunctionMaxLength")
     fun configurationBuilderFromEncoded(encoded: Map<String, Any?>): Configuration.Builder? {
         val clientToken = encoded["clientToken"] as? String
         val env = encoded["env"] as? String

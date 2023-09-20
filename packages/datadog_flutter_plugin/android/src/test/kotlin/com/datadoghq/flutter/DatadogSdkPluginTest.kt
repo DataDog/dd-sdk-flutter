@@ -724,13 +724,14 @@ class DatadogSdkPluginTest {
     }
 }
 
+@Suppress("EmptyCatchBlock")
 fun Any.getPrivate(varName: String): Any? {
     var value: Any? = null
     try {
         val field = javaClass.getDeclaredField(varName)
         field.isAccessible = true
         value = field.get(this)
-    } catch (e: NoSuchFieldException) {
+    } catch (_: NoSuchFieldException) {
 
     }
 

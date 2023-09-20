@@ -7,14 +7,9 @@ import com.datadog.android.rum.RumResourceKind
 import com.datadog.android.rum._RumInternalProxy
 import io.mockk.mockk
 
-class MockRumMonitor() : RumMonitor {
-    val mockMonitor: RumMonitor
-    val mockInternalProxy : _RumInternalProxy
-
-    init {
-        mockMonitor = mockk(relaxed = true)
-        mockInternalProxy = mockk(relaxed = true)
-    }
+class MockRumMonitor : RumMonitor {
+    val mockMonitor: RumMonitor = mockk(relaxed = true)
+    val mockInternalProxy : _RumInternalProxy = mockk(relaxed = true)
 
     override var debug: Boolean
         get() = mockMonitor.debug

@@ -65,7 +65,8 @@ class DatadogFlutterWebViewPlugin : FlutterPlugin, MethodCallHandler {
         val engine = binding?.flutterEngine
         if (engine != null) {
             val webView = WebViewFlutterAndroidExternalApi.getWebView(
-                engine, webViewIdentifier
+                engine,
+                webViewIdentifier
             )
             if (webView != null) {
                 if (!webView.settings.javaScriptEnabled) {
