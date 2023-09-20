@@ -195,6 +195,7 @@ class DatadogRumPluginTest {
         // WHEN
         plugin.onMethodCall(call, mockResult)
 
+        // THEN
         verify { mockResult.invalidOperation(any()) }
     }
 

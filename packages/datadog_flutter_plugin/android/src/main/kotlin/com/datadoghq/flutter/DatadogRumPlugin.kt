@@ -106,13 +106,13 @@ class DatadogRumPlugin(
                 "startView" -> startView(call, result)
                 "stopView" -> stopView(call, result)
                 "addTiming" -> addTiming(call, result)
-                "startResource" -> startResourceLoading(call, result)
-                "stopResource" -> stopResourceLoading(call, result)
-                "stopResourceWithError" -> stopResourceLoadingWithError(call, result)
+                "startResource" -> startResource(call, result)
+                "stopResource" -> stopResource(call, result)
+                "stopResourceWithError" -> stopResourceWithError(call, result)
                 "addError" -> addError(call, result)
-                "addAction" -> addUserAction(call, result)
-                "startAction" -> startUserAction(call, result)
-                "stopAction" -> stopUserAction(call, result)
+                "addAction" -> addAction(call, result)
+                "startAction" -> startAction(call, result)
+                "stopAction" -> stopAction(call, result)
                 "addAttribute" -> addAttribute(call, result)
                 "removeAttribute" -> removeAttribute(call, result)
                 "reportLongTask" -> reportLongTask(call, result)
@@ -213,7 +213,7 @@ class DatadogRumPlugin(
         }
     }
 
-    private fun startResourceLoading(call: MethodCall, result: Result) {
+    private fun startResource(call: MethodCall, result: Result) {
         val key = call.argument<String>(PARAM_KEY)
         val url = call.argument<String>(PARAM_URL)
         val method = call.argument<String>(PARAM_HTTP_METHOD)
@@ -229,7 +229,7 @@ class DatadogRumPlugin(
         }
     }
 
-    private fun stopResourceLoading(call: MethodCall, result: Result) {
+    private fun stopResource(call: MethodCall, result: Result) {
         val key = call.argument<String>(PARAM_KEY)
         val kindString = call.argument<String>(PARAM_KIND)
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
@@ -251,7 +251,7 @@ class DatadogRumPlugin(
     }
 
     @Suppress("ComplexCondition")
-    private fun stopResourceLoadingWithError(call: MethodCall, result: Result) {
+    private fun stopResourceWithError(call: MethodCall, result: Result) {
         val key = call.argument<String>(PARAM_KEY)
         val message = call.argument<String>(PARAM_MESSAGE)
         val errorType = call.argument<String>(PARAM_TYPE)
@@ -294,7 +294,7 @@ class DatadogRumPlugin(
         }
     }
 
-    private fun addUserAction(call: MethodCall, result: Result) {
+    private fun addAction(call: MethodCall, result: Result) {
         val typeString = call.argument<String>(PARAM_TYPE)
         val name = call.argument<String>(PARAM_NAME)
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
@@ -307,7 +307,7 @@ class DatadogRumPlugin(
         }
     }
 
-    private fun startUserAction(call: MethodCall, result: Result) {
+    private fun startAction(call: MethodCall, result: Result) {
         val typeString = call.argument<String>(PARAM_TYPE)
         val name = call.argument<String>(PARAM_NAME)
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
@@ -320,7 +320,7 @@ class DatadogRumPlugin(
         }
     }
 
-    private fun stopUserAction(call: MethodCall, result: Result) {
+    private fun stopAction(call: MethodCall, result: Result) {
         val typeString = call.argument<String>(PARAM_TYPE)
         val name = call.argument<String>(PARAM_NAME)
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
