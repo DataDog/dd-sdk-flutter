@@ -36,10 +36,13 @@ public class DatadogWebViewTrackingPlugin: NSObject, FlutterPlugin {
                let allowedHosts = arguments["allowedHosts"] as? [String] {
                 let webViewIdentifier = number.intValue
 
+                // swiftlint:disable:next todo
                 // TODO: Add to app scenario, search for a FlutterViewController to get the
                 // registry
                 if let pluginRegistry = UIApplication.shared.delegate as? FlutterPluginRegistry,
-                   let webview = FWFWebViewFlutterWKWebViewExternalAPI.webView(forIdentifier: webViewIdentifier, with: pluginRegistry) {
+                   let webview = FWFWebViewFlutterWKWebViewExternalAPI.webView(
+                        forIdentifier: webViewIdentifier,
+                        with: pluginRegistry) {
                     webview.configuration.userContentController.trackDatadogEvents(in: Set(allowedHosts))
                 }
                 result(nil)
