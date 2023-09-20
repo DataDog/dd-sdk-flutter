@@ -92,7 +92,8 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
                 callLoggerMethod(logger, call, result)
             } catch (e: ClassCastException) {
                 result.error(
-                    DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(),
+                    DatadogSdkPlugin.CONTRACT_VIOLATION,
+                    e.toString(),
                     mapOf(
                         "methodName" to call.method
                     )
@@ -260,4 +261,3 @@ internal fun parseLogLevel(logLevel: String): Int {
         else -> Log.INFO
     }
 }
-

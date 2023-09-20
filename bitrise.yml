@@ -79,6 +79,7 @@ workflows:
             if [ "$(uname)" == "Darwin" ]; then
               pod repo update
             fi
+            mkdir -p $BITRISE_SOURCE_DIR/.build/test-results/
 
             dart pub global activate melos
             melos bootstrap

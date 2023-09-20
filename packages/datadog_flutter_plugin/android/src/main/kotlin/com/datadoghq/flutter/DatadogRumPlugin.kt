@@ -40,7 +40,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.system.measureNanoTime
 
-
 @Suppress("StringLiteralDuplication")
 class DatadogRumPlugin(
     rumInstance: RumMonitor? = null
@@ -126,7 +125,8 @@ class DatadogRumPlugin(
             }
         } catch (e: ClassCastException) {
             result.error(
-                DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(),
+                DatadogSdkPlugin.CONTRACT_VIOLATION,
+                e.toString(),
                 mapOf(
                     "methodName" to call.method
                 )
@@ -144,7 +144,9 @@ class DatadogRumPlugin(
             configBuilder = _RumInternalProxy.setTelemetryConfigurationEventMapper(
                 configBuilder,
                 object : EventMapper<TelemetryConfigurationEvent> {
-                    override fun map(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent {
+                    override fun map(
+                        event: TelemetryConfigurationEvent
+                    ): TelemetryConfigurationEvent {
                         return mapTelemetryConfiguration(event)
                     }
                 }
@@ -153,7 +155,6 @@ class DatadogRumPlugin(
             configBuilder = configBuilder
                 .disableUserInteractionTracking()
                 .useViewTrackingStrategy(NoOpViewTrackingStrategy)
-
 
             Rum.enable(configBuilder.build())
             rum = GlobalRumMonitor.get()
@@ -257,8 +258,13 @@ class DatadogRumPlugin(
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
         if (key != null && message != null && errorType != null && attributes != null) {
             rum?.stopResourceWithError(
-                key, null, message, RumErrorSource.NETWORK,
-                "", errorType, attributes
+                key,
+                null,
+                message,
+                RumErrorSource.NETWORK,
+                "",
+                errorType,
+                attributes
             )
             result.success(null)
         } else {
@@ -442,7 +448,10 @@ class DatadogRumPlugin(
                         }
                     )
                 } catch (e: Exception) {
-                    Datadog._internalProxy()._telemetry.error("Attempting call $mapperName failed.", e)
+                    Datadog._internalProxy()._telemetry.error(
+                        "Attempting call $mapperName failed.",
+                        e
+                    )
                     latch.countDown()
                 }
             }
@@ -463,7 +472,7 @@ class DatadogRumPlugin(
             return completion(modifiedJson, event)
         } catch (e: InterruptedException) {
             Datadog._internalProxy()._telemetry.debug(
-                "Latch await was interrupted. Returning unmodified event.",
+                "Latch await was interrupted. Returning unmodified event."
             )
         } catch (e: Exception) {
             Datadog._internalProxy()._telemetry.error(
@@ -621,7 +630,6 @@ class DatadogRumPlugin(
                 if (encodedResult == null) {
                     null
                 } else {
-
                     (encodedResult["view"] as? Map<String, Any?>)?.let {
                         event.view.name = it["name"] as? String
                         event.view.referrer = it["referrer"] as? String

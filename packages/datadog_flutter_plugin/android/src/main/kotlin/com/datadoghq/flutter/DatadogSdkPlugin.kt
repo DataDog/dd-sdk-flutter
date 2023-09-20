@@ -56,8 +56,11 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
     // Only used to shutdown Datadog in debug builds
     private val executor: ExecutorService = ThreadPoolExecutor(
-        0, 1, 30L,
-        TimeUnit.SECONDS, SynchronousQueue()
+        0,
+        1,
+        30L,
+        TimeUnit.SECONDS,
+        SynchronousQueue()
     )
 
     val logsPlugin: DatadogLogsPlugin = DatadogLogsPlugin()
@@ -181,7 +184,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 }
             }
             "flushAndDeinitialize" -> {
-                invokePrivateShutdown(result);
+                invokePrivateShutdown(result)
             }
             else -> {
                 result.notImplemented()
@@ -199,7 +202,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             Datadog.initialize(
                 it.applicationContext,
                 configBuilder.build(),
-                trackingConsent,
+                trackingConsent
             )
         }
     }
@@ -225,7 +228,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             builder = builder.useSite(parseSite(it))
         }
 
-        if(needsClearTextHttp) {
+        if (needsClearTextHttp) {
             builder = _InternalProxy.allowClearTextHttp(builder)
         }
 
@@ -279,7 +282,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
 
         if (isValid) {
-            rumPlugin.telemetryOverrides = telemetryOverrides;
+            rumPlugin.telemetryOverrides = telemetryOverrides
         } else {
             Datadog._internalProxy()._telemetry.debug(
                 String.format(MESSAGE_BAD_TELEMETRY_CONFIG, option, value)
@@ -444,12 +447,12 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     "total" to mapOf(
                         "minMs" to rumPlugin.mapperPerf.minInMs,
                         "maxMs" to rumPlugin.mapperPerf.maxInMs,
-                        "avgMs" to rumPlugin.mapperPerf.avgInMs,
+                        "avgMs" to rumPlugin.mapperPerf.avgInMs
                     ),
                     "mainThread" to mapOf(
                         "minMs" to rumPlugin.mapperPerfMainThread.minInMs,
                         "maxMs" to rumPlugin.mapperPerfMainThread.maxInMs,
-                        "avgMs" to rumPlugin.mapperPerfMainThread.avgInMs,
+                        "avgMs" to rumPlugin.mapperPerfMainThread.avgInMs
                     ),
                     "mapperTimeouts" to rumPlugin.mapperTimeouts
                 )
@@ -498,7 +501,7 @@ internal fun parseSite(site: String): DatadogSite {
 }
 
 internal fun parseCoreLoggerLevel(level: String): Int {
-    return when(level) {
+    return when (level) {
         "CoreLoggerLevel.debug" -> Log.DEBUG
         "CoreLoggerLevel.warn" -> Log.WARN
         "CoreLoggerLevel.error" -> Log.ERROR

@@ -53,7 +53,8 @@ class MainActivity : FlutterActivity() {
                         // is to see what the combined stack trace looks like, so that's why it's here.
                         GlobalRumMonitor.get().addError(
                             errorMessage ?: "Unknown Dart error",
-                            RumErrorSource.SOURCE, Throwable(),
+                            RumErrorSource.SOURCE,
+                            Throwable(),
                             mapOf(
                                 "errorCode" to errorCode,
                                 "errorDetails" to errorDetails
