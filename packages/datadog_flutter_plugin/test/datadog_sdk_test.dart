@@ -118,6 +118,7 @@ void main() {
       'clientToken': 'fake-client-token',
       'env': 'prod',
       'site': 'DatadogSite.us1',
+      'nativeCrashReportEnabled': false,
       'service': null,
       'batchSize': null,
       'uploadFrequency': null,

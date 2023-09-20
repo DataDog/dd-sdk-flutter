@@ -50,7 +50,7 @@ android {
 
     defaultConfig {
         applicationId "com.datadoghq.flutter.integrationtestapp"
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion 33
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
@@ -70,9 +70,8 @@ flutter {
     source '../..'
 }
 
-apply from: '../../../../../ignore_sr_snapshots.gradle'
-
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'androidx.work:work-runtime-ktx:2.7.0'
+    implementation 'androidx.work:work-runtime-ktx:2.8.1'
+    implementation 'androidx.multidex:multidex:2.0.1'
 }

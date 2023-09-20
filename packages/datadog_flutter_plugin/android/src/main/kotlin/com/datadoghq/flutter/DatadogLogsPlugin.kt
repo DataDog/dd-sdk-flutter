@@ -7,6 +7,8 @@ package com.datadoghq.flutter
 
 import android.util.Log
 import com.datadog.android.log.Logger
+import com.datadog.android.log.Logs
+import com.datadog.android.log.LogsConfiguration
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -53,6 +55,21 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        if (call.method == "enable") {
+            val encodedConfig = call.argument<Map<String, Any?>>("configuration")
+            if (encodedConfig != null) {
+                val config = LogsConfiguration.Builder()
+                    .withEncoded(encodedConfig)
+                    .build()
+
+                Logs.enable(config)
+                result.success(null)
+            } else {
+                result.invalidOperation("Bad configuration when enabling logging feature")
+            }
+            return
+        }
+
         val loggerHandle = call.argument<String>("loggerHandle")
         if (loggerHandle == null) {
             result.missingParameter(call.method)
@@ -62,7 +79,7 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         if (call.method == "createLogger") {
             val encodedConfig = call.argument<Map<String, Any?>>("configuration")
             if (encodedConfig != null) {
-                createLogger(loggerHandle, LoggingConfiguration(encodedConfig))
+                createLogger(loggerHandle, encodedConfig)
                 result.success(null)
             } else {
                 result.invalidOperation("Bad logging configuration creating a logger")
@@ -72,7 +89,7 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
 
         getLogger(loggerHandle)?.let { logger ->
             try {
-                callLoggingMethod(logger, call, result)
+                callLoggerMethod(logger, call, result)
             } catch (e: ClassCastException) {
                 result.error(
                     DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(),
@@ -85,7 +102,7 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     }
 
     @Suppress("LongMethod", "ComplexMethod", "NestedBlockDepth")
-    private fun callLoggingMethod(logger: Logger, call: MethodCall, result: MethodChannel.Result) {
+    private fun callLoggerMethod(logger: Logger, call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "log" -> {
                 internalLog(logger, call, result)
@@ -147,16 +164,10 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         }
     }
 
-    private fun createLogger(loggerHandle: String, configuration: LoggingConfiguration) {
+    private fun createLogger(loggerHandle: String, configuration: Map<String, Any?>) {
         val logBuilder = Logger.Builder()
-            .setDatadogLogsEnabled(configuration.sendLogsToDatadog)
-            .setLogcatLogsEnabled(configuration.printLogsToConsole)
-            .setNetworkInfoEnabled(configuration.sendNetworkInfo)
-            .setBundleWithRumEnabled(configuration.bundleWithRum)
+            .withEncoded(configuration)
 
-        configuration.loggerName?.let {
-            logBuilder.setLoggerName(it)
-        }
         val logger = logBuilder.build()
         loggerRegistry[loggerHandle] = logger
     }
@@ -206,6 +217,36 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     }
 }
 
+fun LogsConfiguration.Builder.withEncoded(encoded: Map<String, Any?>): LogsConfiguration.Builder {
+    var builder = this
+
+    (encoded["customEndpoint"] as? String)?.let {
+        builder = builder.useCustomEndpoint(it)
+    }
+    return builder
+}
+
+fun Logger.Builder.withEncoded(encoded: Map<String, Any?>): Logger.Builder {
+    var builder = this
+    (encoded["service"] as? String)?.let {
+        builder = builder.setService(it)
+    }
+    (encoded["name"] as? String)?.let {
+        builder = builder.setName(it)
+    }
+    (encoded["networkInfoEnabled"] as? Boolean)?.let {
+        builder = builder.setNetworkInfoEnabled(it)
+    }
+    (encoded["bundleWithRumEnabled"] as? Boolean)?.let {
+        builder = builder.setBundleWithRumEnabled(it)
+    }
+    (encoded["bundleWithTraceEnabled"] as? Boolean)?.let {
+        builder = builder.setBundleWithTraceEnabled(it)
+    }
+
+    return builder
+}
+
 internal fun parseLogLevel(logLevel: String): Int {
     return when (logLevel) {
         "LogLevel.debug" -> Log.DEBUG
@@ -219,3 +260,4 @@ internal fun parseLogLevel(logLevel: String): Int {
         else -> Log.INFO
     }
 }
+
