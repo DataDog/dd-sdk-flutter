@@ -8,7 +8,7 @@ package com.datadoghq.flutter.webview
 import android.util.Log
 import androidx.annotation.NonNull
 import com.datadog.android.Datadog
-import com.datadog.android.webview.DatadogEventBridge
+import com.datadog.android.webview.WebViewTracking
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -65,17 +65,17 @@ class DatadogFlutterWebViewPlugin : FlutterPlugin, MethodCallHandler {
         val engine = binding?.flutterEngine
         if (engine != null) {
             val webView = WebViewFlutterAndroidExternalApi.getWebView(
-                engine, webViewIdentifier
+                engine,
+                webViewIdentifier
             )
             if (webView != null) {
                 if (!webView.settings.javaScriptEnabled) {
                     Log.e(DATADOG_FLUTTER_WEBVIEW_TAG, JAVA_SCRIPT_NOT_ENABLED_WARNING_MESSAGE)
                 } else {
-                    val bridge = DatadogEventBridge(allowedHosts)
-                    webView.addJavascriptInterface(bridge, "DatadogEventBridge")
+                    WebViewTracking.enable(webView, allowedHosts)
                 }
             } else {
-                Datadog._internal._telemetry.error(
+                Datadog._internalProxy()._telemetry.error(
                     "Could not find WebView during initialization when an identifier was provided"
                 )
             }

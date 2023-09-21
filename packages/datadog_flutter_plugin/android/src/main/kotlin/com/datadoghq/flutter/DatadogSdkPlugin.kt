@@ -9,18 +9,11 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.datadog.android.Datadog
+import com.datadog.android.DatadogSite
 import com.datadog.android._InternalProxy
 import com.datadog.android.core.configuration.Configuration
-import com.datadog.android.event.EventMapper
-import com.datadog.android.event.ViewEventMapper
 import com.datadog.android.log.model.LogEvent
-import com.datadog.android.rum.GlobalRum
-import com.datadog.android.rum.model.ActionEvent
-import com.datadog.android.rum.model.ErrorEvent
-import com.datadog.android.rum.model.LongTaskEvent
-import com.datadog.android.rum.model.ResourceEvent
-import com.datadog.android.rum.model.ViewEvent
-import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
+import com.datadog.android.privacy.TrackingConsent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -31,7 +24,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 
 class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     companion object {
@@ -43,7 +35,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         // back button on the first screen, for example, this will detach the Flutter engine
         // but the application will still be running. We keep the configuration separate
         // from the plugin to warn about reinitialization.
-        var previousConfiguration: DatadogFlutterConfiguration? = null
+        var previousConfiguration: Map<String, Any?>? = null
     }
 
     data class ConfigurationTelemetryOverrides(
@@ -64,8 +56,11 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
     // Only used to shutdown Datadog in debug builds
     private val executor: ExecutorService = ThreadPoolExecutor(
-        0, 1, 30L,
-        TimeUnit.SECONDS, SynchronousQueue()
+        0,
+        1,
+        30L,
+        TimeUnit.SECONDS,
+        SynchronousQueue()
     )
 
     val logsPlugin: DatadogLogsPlugin = DatadogLogsPlugin()
@@ -88,12 +83,14 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         when (call.method) {
             "initialize" -> {
                 val configArg = call.argument<Map<String, Any?>>("configuration")
-                if (configArg != null) {
-                    val config = DatadogFlutterConfiguration(configArg)
+                val trackingConsent = call.argument<String>("trackingConsent")?.let {
+                    parseTrackingConsent(it)
+                }
+                if (configArg != null && trackingConsent != null) {
                     if (!Datadog.isInitialized()) {
-                        initialize(config)
-                        previousConfiguration = config
-                    } else if (config != previousConfiguration) {
+                        initialize(configArg, trackingConsent)
+                        previousConfiguration = configArg
+                    } else if (configArg != previousConfiguration) {
                         // Maybe use DevLogger instead?
                         Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION)
                     }
@@ -103,19 +100,19 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     result.missingParameter(call.method)
                 }
             }
-            "attachToExisting" -> {
-                if (Datadog.isInitialized()) {
-                    val attachResult = attachToExisting()
-                    result.success(attachResult)
-                } else {
-                    Log.e(DATADOG_FLUTTER_TAG, MESSAGE_NO_EXISTING_INSTANCE)
-                    result.success(null)
-                }
-            }
+//            "attachToExisting" -> {
+//                if (Datadog.isInitialized()) {
+//                    val attachResult = attachToExisting()
+//                    result.success(attachResult)
+//                } else {
+//                    Log.e(DATADOG_FLUTTER_TAG, MESSAGE_NO_EXISTING_INSTANCE)
+//                    result.success(null)
+//                }
+//            }
             "setSdkVerbosity" -> {
                 val value = call.argument<String>(ARG_VALUE)
                 if (value != null) {
-                    val verbosity = parseVerbosity(value)
+                    val verbosity = parseCoreLoggerLevel(value)
                     Datadog.setVerbosity(verbosity)
                     result.success(null)
                 } else {
@@ -147,7 +144,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             "addUserExtraInfo" -> {
                 val extraInfo = call.argument<Map<String, Any?>>("extraInfo")
                 if (extraInfo != null) {
-                    Datadog.addUserExtraInfo(extraInfo)
+                    Datadog.addUserProperties(extraInfo)
                     result.success(null)
                 } else {
                     result.missingParameter(call.method)
@@ -156,7 +153,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             "telemetryDebug" -> {
                 val message = call.argument<String>("message")
                 if (message != null) {
-                    Datadog._internal._telemetry.debug(message)
+                    Datadog._internalProxy()._telemetry.debug(message)
                     result.success(null)
                 } else {
                     result.missingParameter(call.method)
@@ -167,7 +164,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 if (message != null) {
                     val stack = call.argument<String>("stack")
                     val kind = call.argument<String>("kind")
-                    Datadog._internal._telemetry.error(message, stack, kind)
+                    Datadog._internalProxy()._telemetry.error(message, stack, kind)
                     result.success(null)
                 } else {
                     result.missingParameter(call.method)
@@ -195,45 +192,74 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
-    fun initialize(config: DatadogFlutterConfiguration) {
-        val configBuilder = config.toSdkConfigurationBuilder()
-        val credentials = config.toCredentials()
-
-        _InternalProxy.setTelemetryConfigurationEventMapper(
-            configBuilder,
-            object : EventMapper<TelemetryConfigurationEvent> {
-                override fun map(event: TelemetryConfigurationEvent): TelemetryConfigurationEvent {
-                    return mapTelemetryConfiguration(event)
-                }
-            }
-
-        )
-
-        attachEventMappers(config, configBuilder)
+    fun initialize(encoded: Map<String, Any?>, trackingConsent: TrackingConsent) {
+        var configBuilder = configurationBuilderFromEncoded(encoded)
+        if (configBuilder == null) {
+            return
+        }
 
         binding?.let {
             Datadog.initialize(
-                it.applicationContext, credentials, configBuilder.build(),
-                config.trackingConsent
+                it.applicationContext,
+                configBuilder.build(),
+                trackingConsent
             )
-
-            if (config.rumConfiguration != null) {
-                rumPlugin.setup(config.rumConfiguration!!)
-            }
         }
     }
 
-    private fun attachToExisting(): Map<String, Any> {
-        var rumEnabled = false
-        if (GlobalRum.isRegistered()) {
-            rumEnabled = true
-            rumPlugin.attachToExistingSdk()
+    @Suppress("ComplexMethod", "FunctionMaxLength")
+    fun configurationBuilderFromEncoded(encoded: Map<String, Any?>): Configuration.Builder? {
+        val clientToken = encoded["clientToken"] as? String
+        val env = encoded["env"] as? String
+        if (clientToken == null || env == null) {
+            return null
         }
 
-        return mapOf<String, Any>(
-            "rumEnabled" to rumEnabled
-        )
+        val service = encoded["service"] as? String
+        var needsClearTextHttp = false
+        var variant = ""
+        (encoded["additionalConfig"] as? Map<String, Any?>)?.let {
+            variant = (it["_dd.variant"] as? String) ?: ""
+            needsClearTextHttp = (it["_dd.needsClearTextHttp"] as? Boolean) ?: false
+        }
+
+        var builder = Configuration.Builder(clientToken, env, variant, service)
+
+        (encoded["site"] as? String)?.let {
+            builder = builder.useSite(parseSite(it))
+        }
+
+        if (needsClearTextHttp) {
+            builder = _InternalProxy.allowClearTextHttp(builder)
+        }
+
+        (encoded["batchSize"] as? String)?.let {
+            builder = builder.setBatchSize(parseBatchSize(it))
+        }
+        (encoded["uploadFrequency"] as? String)?.let {
+            builder = builder.setUploadFrequency(parseUploadFrequency(it))
+        }
+        (encoded["additionalConfig"] as? Map<String, Any>)?.let {
+            builder = builder.setAdditionalConfiguration(it)
+        }
+        (encoded["nativeCrashReportEnabled"] as? Boolean)?.let {
+            builder = builder.setCrashReportsEnabled(it)
+        }
+
+        return builder
     }
+
+//    private fun attachToExisting(): Map<String, Any> {
+//        var rumEnabled = false
+//        if (GlobalRum.isRegistered()) {
+//            rumEnabled = true
+//            rumPlugin.attachToExistingSdk()
+//        }
+//
+//        return mapOf<String, Any>(
+//            "rumEnabled" to rumEnabled
+//        )
+//    }
 
     private fun updateTelemetryConfiguration(call: MethodCall) {
         var isValid = true
@@ -256,34 +282,19 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             isValid = false
         }
 
-        if (!isValid) {
-            Datadog._internal._telemetry.debug(
+        if (isValid) {
+            rumPlugin.telemetryOverrides = telemetryOverrides
+        } else {
+            Datadog._internalProxy()._telemetry.debug(
                 String.format(MESSAGE_BAD_TELEMETRY_CONFIG, option, value)
             )
         }
     }
 
-    private fun mapTelemetryConfiguration(
-        event: TelemetryConfigurationEvent
-    ): TelemetryConfigurationEvent {
-        event.telemetry.configuration.trackViewsManually = telemetryOverrides.trackViewsManually
-        event.telemetry.configuration.trackInteractions = telemetryOverrides.trackInteractions
-        event.telemetry.configuration.trackErrors = telemetryOverrides.trackErrors
-        event.telemetry.configuration.trackNetworkRequests = telemetryOverrides.trackNetworkRequests
-        event.telemetry.configuration.trackNativeViews = telemetryOverrides.trackNativeViews
-        event.telemetry.configuration.trackCrossPlatformLongTasks =
-            telemetryOverrides.trackCrossPlatformLongTasks
-        event.telemetry.configuration.trackFlutterPerformance =
-            telemetryOverrides.trackFlutterPerformance
-        event.telemetry.configuration.dartVersion = telemetryOverrides.dartVersion
-
-        return event
-    }
-
     private fun simpleInvokeOn(methodName: String, target: Any) {
         val klass = target.javaClass
         val method = klass.declaredMethods.firstOrNull {
-            it.name == methodName || it.name == "$methodName\$dd_sdk_android_release"
+            it.name == methodName || it.name == "$methodName\$dd_sdk_android_core_release"
         }
         method?.let {
             it.isAccessible = true
@@ -291,77 +302,68 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
-    internal fun stop() {
-        simpleInvokeOn("stop", Datadog)
-
-        val rumRegisteredField = GlobalRum::class.java.getDeclaredField("isRegistered")
-        rumRegisteredField.isAccessible = true
-        val isRegistered: AtomicBoolean = rumRegisteredField.get(null) as AtomicBoolean
-        isRegistered.set(false)
-    }
-
-    private fun attachEventMappers(
-        config: DatadogFlutterConfiguration,
-        configBuilder: Configuration.Builder
-    ) {
-        if (config.attachLogMapper) {
-            configBuilder.setLogEventMapper(
-                object : EventMapper<LogEvent> {
-                    override fun map(event: LogEvent): LogEvent? {
-                        return mapLogEvent(event)
-                    }
-                }
-            )
-        }
-
-        config.rumConfiguration?.let {
-            if (it.attachViewEventMapper) {
-                configBuilder.setRumViewEventMapper(
-                    object : ViewEventMapper {
-                        override fun map(event: ViewEvent): ViewEvent {
-                            return rumPlugin.mapViewEvent(event)
-                        }
-                    }
-                )
-            }
-            if (it.attachActionEventMapper) {
-                configBuilder.setRumActionEventMapper(
-                    object : EventMapper<ActionEvent> {
-                        override fun map(event: ActionEvent): ActionEvent? {
-                            return rumPlugin.mapActionEvent(event)
-                        }
-                    }
-                )
-            }
-            if (it.attachResourceEventMapper) {
-                configBuilder.setRumResourceEventMapper(
-                    object : EventMapper<ResourceEvent> {
-                        override fun map(event: ResourceEvent): ResourceEvent? {
-                            return rumPlugin.mapResourceEvent(event)
-                        }
-                    }
-                )
-            }
-            if (it.attachErrorEventMapper) {
-                configBuilder.setRumErrorEventMapper(
-                    object : EventMapper<ErrorEvent> {
-                        override fun map(event: ErrorEvent): ErrorEvent? {
-                            return rumPlugin.mapErrorEvent(event)
-                        }
-                    }
-                )
-            }
-            if (it.attachLongTaskEventMapper) {
-                configBuilder.setRumLongTaskEventMapper(
-                    object : EventMapper<LongTaskEvent> {
-                        override fun map(event: LongTaskEvent): LongTaskEvent? {
-                            return rumPlugin.mapLongTaskEvent(event)
-                        }
-                    }
-                )
-            }
-        }
-    }
+//    private fun attachEventMappers(
+//        config: DatadogFlutterConfiguration,
+//        configBuilder: Configuration.Builder
+//    ) {
+//        if (config.attachLogMapper) {
+//            configBuilder.setLogEventMapper(
+//                object : EventMapper<LogEvent> {
+//                    override fun map(event: LogEvent): LogEvent? {
+//                        return mapLogEvent(event)
+//                    }
+//                }
+//            )
+//        }
+//
+//        config.rumConfiguration?.let {
+//            if (it.attachViewEventMapper) {
+//                configBuilder.setRumViewEventMapper(
+//                    object : ViewEventMapper {
+//                        override fun map(event: ViewEvent): ViewEvent {
+//                            return rumPlugin.mapViewEvent(event)
+//                        }
+//                    }
+//                )
+//            }
+//            if (it.attachActionEventMapper) {
+//                configBuilder.setRumActionEventMapper(
+//                    object : EventMapper<ActionEvent> {
+//                        override fun map(event: ActionEvent): ActionEvent? {
+//                            return rumPlugin.mapActionEvent(event)
+//                        }
+//                    }
+//                )
+//            }
+//            if (it.attachResourceEventMapper) {
+//                configBuilder.setRumResourceEventMapper(
+//                    object : EventMapper<ResourceEvent> {
+//                        override fun map(event: ResourceEvent): ResourceEvent? {
+//                            return rumPlugin.mapResourceEvent(event)
+//                        }
+//                    }
+//                )
+//            }
+//            if (it.attachErrorEventMapper) {
+//                configBuilder.setRumErrorEventMapper(
+//                    object : EventMapper<ErrorEvent> {
+//                        override fun map(event: ErrorEvent): ErrorEvent? {
+//                            return rumPlugin.mapErrorEvent(event)
+//                        }
+//                    }
+//                )
+//            }
+//            if (it.attachLongTaskEventMapper) {
+//                configBuilder.setRumLongTaskEventMapper(
+//                    object : EventMapper<LongTaskEvent> {
+//                        override fun map(event: LongTaskEvent): LongTaskEvent? {
+//                            return rumPlugin.mapLongTaskEvent(event)
+//                        }
+//                    }
+//                )
+//            }
+//        }
+//    }
 
     @Suppress("TooGenericExceptionCaught")
     internal fun mapLogEvent(event: LogEvent): LogEvent? {
@@ -395,7 +397,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                         }
 
                         override fun notImplemented() {
-                            Datadog._internal._telemetry.error(
+                            Datadog._internalProxy()._telemetry.error(
                                 "mapLogEvent returned notImplemented."
                             )
                             latch.countDown()
@@ -403,7 +405,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     }
                 )
             } catch (e: Exception) {
-                Datadog._internal._telemetry.error("Attempting call mapLogEvent failed.", e)
+                Datadog._internalProxy()._telemetry.error("Attempting call mapLogEvent failed.", e)
                 latch.countDown()
             }
         }
@@ -411,7 +413,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         try {
             // Stalls until the method channel finishes
             if (!latch.await(1, TimeUnit.SECONDS)) {
-                Datadog._internal._telemetry.debug("logMapper timed out")
+                Datadog._internalProxy()._telemetry.debug("logMapper timed out")
                 return event
             }
 
@@ -430,7 +432,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 event
             }
         } catch (e: Exception) {
-            Datadog._internal._telemetry.error(
+            Datadog._internalProxy()._telemetry.error(
                 "Attempt to deserialize mapped log event failed, or latch await was interrupted." +
                     " Returning unmodified event.",
                 e
@@ -446,12 +448,12 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     "total" to mapOf(
                         "minMs" to rumPlugin.mapperPerf.minInMs,
                         "maxMs" to rumPlugin.mapperPerf.maxInMs,
-                        "avgMs" to rumPlugin.mapperPerf.avgInMs,
+                        "avgMs" to rumPlugin.mapperPerf.avgInMs
                     ),
                     "mainThread" to mapOf(
                         "minMs" to rumPlugin.mapperPerfMainThread.minInMs,
                         "maxMs" to rumPlugin.mapperPerfMainThread.maxInMs,
-                        "avgMs" to rumPlugin.mapperPerfMainThread.avgInMs,
+                        "avgMs" to rumPlugin.mapperPerfMainThread.avgInMs
                     ),
                     "mapperTimeouts" to rumPlugin.mapperTimeouts
                 )
@@ -462,7 +464,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     private fun invokePrivateShutdown(result: Result) {
         executor.submit {
             simpleInvokeOn("flushAndShutdownExecutors", Datadog)
-            stop()
+            Datadog.stopInstance()
+
+            // TODO: deregister logs / RUM plugin
         }.get()
 
         result.success(null)
@@ -476,10 +480,41 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     }
 }
 
+internal fun parseTrackingConsent(trackingConsent: String): TrackingConsent {
+    return when (trackingConsent) {
+        "TrackingConsent.granted" -> TrackingConsent.GRANTED
+        "TrackingConsent.notGranted" -> TrackingConsent.NOT_GRANTED
+        "TrackingConsent.pending" -> TrackingConsent.PENDING
+        else -> TrackingConsent.PENDING
+    }
+}
+
+internal fun parseSite(site: String): DatadogSite {
+    return when (site) {
+        "DatadogSite.us1" -> DatadogSite.US1
+        "DatadogSite.us3" -> DatadogSite.US3
+        "DatadogSite.us5" -> DatadogSite.US5
+        "DatadogSite.eu1" -> DatadogSite.EU1
+        "DatadogSite.us1Fed" -> DatadogSite.US1_FED
+        "DatadogSite.ap1" -> DatadogSite.AP1
+        else -> DatadogSite.US1
+    }
+}
+
+internal fun parseCoreLoggerLevel(level: String): Int {
+    return when (level) {
+        "CoreLoggerLevel.debug" -> Log.DEBUG
+        "CoreLoggerLevel.warn" -> Log.WARN
+        "CoreLoggerLevel.error" -> Log.ERROR
+        "CoreLoggerLevel.critical" -> Log.ASSERT
+        else -> Log.INFO
+    }
+}
+
 internal const val DATADOG_FLUTTER_TAG = "DatadogFlutter"
 
 internal const val MESSAGE_INVALID_REINITIALIZATION =
-    "🔥 Reinitialziing the DatadogSDK with different options, even after a hot restart, is not" +
+    "🔥 Reinitializing the DatadogSDK with different options, even after a hot restart, is not" +
         " supported. Cold restart your application to change your current configuration."
 
 internal const val MESSAGE_NO_EXISTING_INSTANCE =

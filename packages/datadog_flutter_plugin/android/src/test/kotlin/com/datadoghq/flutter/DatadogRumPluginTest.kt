@@ -8,12 +8,17 @@ package com.datadoghq.flutter
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import com.datadog.android.rum.RumActionType
+import com.datadog.android.rum.RumConfiguration
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
 import com.datadog.android.rum._RumInternalProxy
+import com.datadog.android.rum.configuration.VitalsUpdateFrequency
 import fr.xgouchet.elmyr.Forge
+import fr.xgouchet.elmyr.annotation.BoolForgery
+import fr.xgouchet.elmyr.annotation.FloatForgery
+import fr.xgouchet.elmyr.annotation.Forgery
 import fr.xgouchet.elmyr.annotation.IntForgery
 import fr.xgouchet.elmyr.annotation.LongForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
@@ -32,15 +37,27 @@ import java.util.concurrent.TimeUnit
 @ExtendWith(ForgeExtension::class)
 class DatadogRumPluginTest {
     private lateinit var plugin: DatadogRumPlugin
-    private lateinit var mockRumMonitor: RumMonitor
-    private lateinit var mockRumProxy: _RumInternalProxy
+    private lateinit var monitorProxy: MockRumMonitor
 
     @BeforeEach
     fun beforeEach() {
-        mockRumMonitor = mockk(relaxed = true)
-        mockRumProxy = mockk(relaxed = true)
-        every { mockRumMonitor._getInternal() } returns mockRumProxy
-        plugin = DatadogRumPlugin(mockRumMonitor)
+        monitorProxy = MockRumMonitor()
+        plugin = DatadogRumPlugin(monitorProxy)
+    }
+
+    @Test
+    fun `M parse all VitalsFrequency W parseVitalsFrequency`() {
+        val never = parseVitalsFrequency("VitalsFrequency.never")
+        val rare = parseVitalsFrequency("VitalsFrequency.rare")
+        val average = parseVitalsFrequency("VitalsFrequency.average")
+        val frequent = parseVitalsFrequency("VitalsFrequency.frequent")
+        val unknown = parseVitalsFrequency("unknown")
+
+        assertThat(never).isEqualTo(VitalsUpdateFrequency.NEVER)
+        assertThat(rare).isEqualTo(VitalsUpdateFrequency.RARE)
+        assertThat(average).isEqualTo(VitalsUpdateFrequency.AVERAGE)
+        assertThat(frequent).isEqualTo(VitalsUpdateFrequency.FREQUENT)
+        assertThat(unknown).isEqualTo(VitalsUpdateFrequency.AVERAGE)
     }
 
     @Test
@@ -110,10 +127,10 @@ class DatadogRumPluginTest {
 
     @Test
     fun `M convert all action types W parseRumActionType`() {
-        val tap = parseRumActionType(("RumUserActionType.tap"))
-        val scroll = parseRumActionType("RumUserActionType.scroll")
-        val swipe = parseRumActionType("RumUserActionType.swipe")
-        val custom = parseRumActionType("RumUserActionType.custom")
+        val tap = parseRumActionType(("RumActionType.tap"))
+        val scroll = parseRumActionType("RumActionType.scroll")
+        val swipe = parseRumActionType("RumActionType.swipe")
+        val custom = parseRumActionType("RumActionType.custom")
         val unknown = parseRumActionType("unknown")
 
         assertThat(tap).isEqualTo(RumActionType.TAP)
@@ -121,6 +138,65 @@ class DatadogRumPluginTest {
         assertThat(swipe).isEqualTo(RumActionType.SWIPE)
         assertThat(custom).isEqualTo(RumActionType.CUSTOM)
         assertThat(unknown).isEqualTo(RumActionType.CUSTOM)
+    }
+
+    @Suppress("LongParameterList")
+    @Test
+    fun `M decode configuration W withEncoded is called`(
+        @FloatForgery(min = 0.0f, max = 100.0f) sessionSampleRate: Float,
+        @FloatForgery(min = 0.1f, max = 5.0f) longTaskThreshold: Float,
+        @BoolForgery trackFrustration: Boolean,
+        @StringForgery endpoint: String,
+        @FloatForgery(min = 0.0f, max = 100.0f) telemetrySampleRate: Float,
+        forge: Forge
+    ) {
+        // GIVEN
+        val attributes = forge.exhaustiveAttributes()
+        val configArg = mapOf(
+            "sessionSampleRate" to sessionSampleRate,
+            "longTaskThreshold" to longTaskThreshold,
+            "trackFrustrations" to trackFrustration,
+            "customEndpoint" to endpoint,
+            "vitalsUpdateFrequency" to "VitalsFrequency.frequent",
+            "telemetrySampleRate" to telemetrySampleRate,
+            "additionalConfig" to attributes
+        )
+
+        // WHEN
+        val config = RumConfiguration.Builder(forge.aString())
+            .withEncoded(configArg)
+            .build()
+
+        // THEN
+        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        assertThat(featureConfiguration.getPrivate("sampleRate")).isEqualTo(sessionSampleRate)
+        assertThat(featureConfiguration.getPrivate("trackFrustrations")).isEqualTo(trackFrustration)
+        assertThat(featureConfiguration.getPrivate("customEndpointUrl")).isEqualTo(endpoint)
+        assertThat(featureConfiguration.getPrivate("vitalsMonitorUpdateFrequency"))
+            .isEqualTo(VitalsUpdateFrequency.FREQUENT)
+        assertThat(featureConfiguration.getPrivate("additionalConfig")).isEqualTo(attributes)
+    }
+
+    @Test
+    fun `M return invalidOperation W method called { !enabled }`() {
+        //GIVEN
+        val plugin = DatadogRumPlugin()
+        val call = MethodCall(
+            "startView",
+            mapOf(
+                "key" to "fake_key",
+                "name" to "FakeName",
+                "attributes" to mapOf<String, Any?>()
+            )
+        )
+        val mockResult = mockk<MethodChannel.Result>()
+        every { mockResult.invalidOperation(any()) } returns Unit
+
+        // WHEN
+        plugin.onMethodCall(call, mockResult)
+
+        // THEN
+        verify { mockResult.invalidOperation(any()) }
     }
 
     @Test
@@ -138,7 +214,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { mockRumMonitor wasNot Called }
+        verify { monitorProxy.mockMonitor wasNot Called }
         verify { mockResult.notImplemented() }
     }
 
@@ -165,7 +241,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { mockRumMonitor.startView(viewKey, viewName, attributes) }
+        verify { monitorProxy.mockMonitor.startView(viewKey, viewName, attributes) }
         verify { mockResult.success(null) }
     }
 
@@ -211,7 +287,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { mockRumMonitor.stopView(viewKey, attributes) }
+        verify { monitorProxy.mockMonitor.stopView(viewKey, attributes) }
         verify { mockResult.success(null) }
     }
 
@@ -230,19 +306,19 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { mockRumMonitor.addTiming(timingName) }
+        verify { monitorProxy.mockMonitor.addTiming(timingName) }
         verify { mockResult.success(null) }
     }
 
     @Test
-    fun `M call monitor startResource W startResourceLoading is called`(
+    fun `M call monitor startResource W startResource is called`(
         @StringForgery resourceKey: String,
         @StringForgery url: String,
         @StringForgery attributeKey: String,
         @StringForgery attributeValue: String
     ) {
         // GIVEN
-        val call = MethodCall("startResourceLoading", mapOf(
+        val call = MethodCall("startResource", mapOf(
             "key" to resourceKey,
             "url" to url,
             "httpMethod" to "RumHttpMethod.get",
@@ -257,14 +333,14 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { mockRumMonitor.startResource(resourceKey, "GET",  url,
+        verify { monitorProxy.mockMonitor.startResource(resourceKey, "GET",  url,
             mapOf(attributeKey to attributeValue)
         ) }
         verify { mockResult.success(null) }
     }
 
     @Test
-    fun `M call monitor stopResource W stopResourceLoading is called`(
+    fun `M call monitor stopResource W stopResource is called`(
         @StringForgery resourceKey: String,
         @IntForgery statusCode: Int,
         @LongForgery size: Long,
@@ -272,7 +348,7 @@ class DatadogRumPluginTest {
         @StringForgery attributeValue: String
     ) {
         // GIVEN
-        val call = MethodCall("stopResourceLoading", mapOf(
+        val call = MethodCall("stopResource", mapOf(
             "key" to resourceKey,
             "kind" to "RumResourceType.image",
             "statusCode" to statusCode,
@@ -288,13 +364,13 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { mockRumMonitor.stopResource(resourceKey, statusCode, size, RumResourceKind.IMAGE,
+        verify { monitorProxy.mockMonitor.stopResource(resourceKey, statusCode, size, RumResourceKind.IMAGE,
             mapOf(attributeKey to attributeValue)) }
         verify { mockResult.success(null) }
     }
 
     @Test
-    fun `M call monitor stopResourceWithError W stopResourceLoadingWithError is called`(
+    fun `M call monitor stopResourceWithError W stopResourceWithError is called`(
         @StringForgery resourceKey: String,
         @StringForgery message: String,
         @StringForgery errorType: String,
@@ -302,7 +378,7 @@ class DatadogRumPluginTest {
         @StringForgery attributeValue: String
     ) {
         // GIVEN
-        val call = MethodCall("stopResourceLoadingWithError", mapOf(
+        val call = MethodCall("stopResourceWithError", mapOf(
             "key" to resourceKey,
             "message" to message,
             "type" to errorType,
@@ -317,7 +393,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { mockRumMonitor.stopResourceWithError(eq(resourceKey), isNull(), eq(message),
+        verify { monitorProxy.mockMonitor.stopResourceWithError(eq(resourceKey), isNull(), eq(message),
             eq(RumErrorSource.NETWORK), eq(""), eq(errorType),
             eq(mapOf(attributeKey to attributeValue))) }
         verify { mockResult.success(null) }
@@ -348,7 +424,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { mockRumMonitor.addErrorWithStacktrace(message, RumErrorSource.NETWORK,
+        verify { monitorProxy.mockMonitor.addErrorWithStacktrace(message, RumErrorSource.NETWORK,
             stackTrace, mapOf(
                 attributeKey to attributeValue,
                 "_dd.error_type" to errorType
@@ -357,14 +433,14 @@ class DatadogRumPluginTest {
     }
 
     @Test
-    fun `M call monitor addUserAction W addUserAction is called`(
+    fun `M call monitor addAction W addAction is called`(
         @StringForgery name: String,
         @StringForgery attributeKey: String,
         @StringForgery attributeValue: String
     ) {
         // GIVEN
-        val call = MethodCall("addUserAction", mapOf(
-            "type" to "RumUserActionType.tap",
+        val call = MethodCall("addAction", mapOf(
+            "type" to "RumActionType.tap",
             "name" to name,
             "attributes" to mapOf(
                 attributeKey to attributeValue
@@ -377,21 +453,21 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { mockRumMonitor.addUserAction(RumActionType.TAP, name, mapOf(
+        verify { monitorProxy.mockMonitor.addAction(RumActionType.TAP, name, mapOf(
             attributeKey to attributeValue
         )) }
         verify { mockResult.success(null) }
     }
 
     @Test
-    fun `M call monitor startUserAction W startUserAction is called`(
+    fun `M call monitor startAction W startAction is called`(
         @StringForgery name: String,
         @StringForgery attributeKey: String,
         @StringForgery attributeValue: String
     ) {
         // GIVEN
-        val call = MethodCall("startUserAction", mapOf(
-            "type" to "RumUserActionType.scroll",
+        val call = MethodCall("startAction", mapOf(
+            "type" to "RumActionType.scroll",
             "name" to name,
             "attributes" to mapOf(
                 attributeKey to attributeValue
@@ -404,21 +480,21 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { mockRumMonitor.startUserAction(RumActionType.SCROLL, name, mapOf(
+        verify { monitorProxy.mockMonitor.startAction(RumActionType.SCROLL, name, mapOf(
             attributeKey to attributeValue
         )) }
         verify { mockResult.success(null) }
     }
 
     @Test
-    fun `M call monitor stopUserAction W stopUserAction is called`(
+    fun `M call monitor stopAction W stopAction is called`(
         @StringForgery name: String,
         @StringForgery attributeKey: String,
         @StringForgery attributeValue: String
     ) {
         // GIVEN
-        val call = MethodCall("stopUserAction", mapOf(
-            "type" to "RumUserActionType.swipe",
+        val call = MethodCall("stopAction", mapOf(
+            "type" to "RumActionType.swipe",
             "name" to name,
             "attributes" to mapOf(
                 attributeKey to attributeValue
@@ -431,7 +507,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { mockRumMonitor.stopUserAction(RumActionType.SWIPE, name, mapOf(
+        verify { monitorProxy.mockMonitor.stopAction(RumActionType.SWIPE, name, mapOf(
             attributeKey to attributeValue
         )) }
         verify { mockResult.success(null) }
@@ -455,7 +531,7 @@ class DatadogRumPluginTest {
 
         // THEN
         val durationNs = TimeUnit.MILLISECONDS.toNanos(duration.toLong())
-        verify { mockRumProxy.addLongTask(durationNs, "") }
+        verify { monitorProxy.mockInternalProxy.addLongTask(durationNs, "") }
         verify { mockResult.success(null) }
     }
 
@@ -478,10 +554,10 @@ class DatadogRumPluginTest {
 
         // THEN
         for (raster in rasterTimes) {
-            verify { mockRumProxy.updatePerformanceMetric(RumPerformanceMetric.FLUTTER_RASTER_TIME, raster) }
+            verify { monitorProxy.mockInternalProxy.updatePerformanceMetric(RumPerformanceMetric.FLUTTER_RASTER_TIME, raster) }
         }
         for (build in buildTimes) {
-            verify { mockRumProxy.updatePerformanceMetric(RumPerformanceMetric.FLUTTER_BUILD_TIME, build) }
+            verify { monitorProxy.mockInternalProxy.updatePerformanceMetric(RumPerformanceMetric.FLUTTER_BUILD_TIME, build) }
         }
         verify { mockResult.success(null) }
     }
@@ -499,18 +575,18 @@ class DatadogRumPluginTest {
         Contract("addTiming", mapOf(
             "name" to ContractParameter.Type(SupportedContractType.STRING),
         )),
-        Contract("startResourceLoading", mapOf(
+        Contract("startResource", mapOf(
             "key" to ContractParameter.Type(SupportedContractType.STRING),
             "url" to ContractParameter.Type(SupportedContractType.STRING),
             "httpMethod" to ContractParameter.Type(SupportedContractType.STRING),
             "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
-        Contract("stopResourceLoading", mapOf(
+        Contract("stopResource", mapOf(
             "key" to ContractParameter.Type(SupportedContractType.STRING),
             "kind" to ContractParameter.Type(SupportedContractType.STRING),
             "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
-        Contract("stopResourceLoadingWithError", mapOf(
+        Contract("stopResourceWithError", mapOf(
             "key" to ContractParameter.Type(SupportedContractType.STRING),
             "message" to ContractParameter.Type(SupportedContractType.STRING),
             "type" to ContractParameter.Type(SupportedContractType.STRING),
@@ -521,17 +597,17 @@ class DatadogRumPluginTest {
             "source" to ContractParameter.Type(SupportedContractType.STRING),
             "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
-        Contract("addUserAction", mapOf(
+        Contract("addAction", mapOf(
             "type" to ContractParameter.Type(SupportedContractType.STRING),
             "name" to ContractParameter.Type(SupportedContractType.STRING),
             "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
-        Contract("startUserAction", mapOf(
+        Contract("startAction", mapOf(
             "type" to ContractParameter.Type(SupportedContractType.STRING),
             "name" to ContractParameter.Type(SupportedContractType.STRING),
             "attributes" to ContractParameter.Type(SupportedContractType.MAP),
         )),
-        Contract("stopUserAction", mapOf(
+        Contract("stopAction", mapOf(
             "type" to ContractParameter.Type(SupportedContractType.STRING),
             "name" to ContractParameter.Type(SupportedContractType.STRING),
             "attributes" to ContractParameter.Type(SupportedContractType.MAP),

@@ -5,7 +5,9 @@
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_flutter_plugin/src/internal_logger.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
+import 'package:datadog_flutter_plugin/src/rum/ddrum_noop_platform.dart';
+import 'package:datadog_flutter_plugin/src/rum/ddrum_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -13,16 +15,26 @@ class MockInternalLogger extends Mock implements InternalLogger {}
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
 
+class MockDatadogPlatform extends Mock implements DatadogSdkPlatform {}
+
 void main() {
   const numSamples = 500;
   late MockInternalLogger mockInternalLogger;
   late MockDatadogSdk mockDatadogSdk;
+  late MockDatadogPlatform mockDatadogPlatform;
 
   setUp(() {
     mockInternalLogger = MockInternalLogger();
+    DdRumPlatform.instance = DdNoOpRumPlatform();
 
     mockDatadogSdk = MockDatadogSdk();
     when(() => mockDatadogSdk.internalLogger).thenReturn(mockInternalLogger);
+
+    mockDatadogPlatform = MockDatadogPlatform();
+    when(() => mockDatadogPlatform.updateTelemetryConfiguration(any(), any()))
+        .thenAnswer((_) => Future.value());
+
+    when(() => mockDatadogSdk.platform).thenReturn(mockDatadogPlatform);
   });
 
   test('RumResourceType parses simple mimeTypes from ContentType', () {
@@ -135,7 +147,6 @@ void main() {
       tracingSamplingRate: 85,
       detectLongTasks: false,
     );
-    final internalLogger = InternalLogger();
     final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
 
     var sampleCount = 0;

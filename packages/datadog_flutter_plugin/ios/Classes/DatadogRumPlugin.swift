@@ -41,7 +41,7 @@ public extension RUM.Configuration {
     }
 }
 
-// swiftlint:disable:nextline type_body_length
+// swiftlint:disable:next type_body_length
 public class DatadogRumPlugin: NSObject, FlutterPlugin {
     private static var methodChannel: FlutterMethodChannel?
 

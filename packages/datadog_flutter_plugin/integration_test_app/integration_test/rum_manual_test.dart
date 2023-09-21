@@ -90,7 +90,9 @@ void main() {
     }
 
     for (var log in rumLog) {
-      expect(log.dd.plan, 1);
+      if (log.eventType != 'telemetry') {
+        expect(log.dd.plan, 1);
+      }
     }
 
     final session = RumSessionDecoder.fromEvents(rumLog);

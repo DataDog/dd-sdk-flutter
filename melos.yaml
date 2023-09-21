@@ -194,3 +194,10 @@ scripts:
     run: dart $MELOS_ROOT_PATH/tools/releaser/bin/pinner.dart --platform ios --package \$MELOS_PACKAGE_PATH
     packageFilters:
       fileExists: "ios/Podfile"
+  
+  pin:android:
+    exec: 
+      concurrency: 1
+    run: dart $MELOS_ROOT_PATH/tools/releaser/bin/pinner.dart --platform android --package \$MELOS_PACKAGE_PATH
+    packageFilters:
+      fileExists: "android/build.gradle"

@@ -10,10 +10,13 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import com.datadog.android.log.Logger
+import com.datadog.android.log.LogsConfiguration
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 import fr.xgouchet.elmyr.Forge
+import fr.xgouchet.elmyr.annotation.BoolForgery
+import fr.xgouchet.elmyr.annotation.Forgery
 import fr.xgouchet.elmyr.annotation.IntForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import io.flutter.plugin.common.MethodCall
@@ -33,6 +36,54 @@ class DatadogLogsPluginTest {
         mockLogger = mockk(relaxed = true)
 
         plugin.addLogger("mock-logger", mockLogger)
+    }
+
+
+    @Test
+    fun `M decode LogsConfiguration W LogsConfiguration fromEncoded`(
+        @StringForgery customEndpoint: String
+    ) {
+        // GIVEN
+        val encoded = mapOf(
+            "customEndpoint" to customEndpoint
+        )
+
+        // WHEN
+        val config = LogsConfiguration.Builder()
+            .withEncoded(encoded)
+            .build()
+
+        // THEN
+        assertThat(config.getPrivate("customEndpointUrl")).isEqualTo(customEndpoint)
+    }
+
+    @Test
+    fun `M decode LoggerBuilder W LoggerBuilder fromEncoded`(
+        @StringForgery service: String,
+        @StringForgery name: String,
+        @BoolForgery networkInfoEnabled: Boolean,
+        @BoolForgery bundleWithRumEnabled: Boolean,
+        @BoolForgery bundleWithTraceEnabled: Boolean
+    ) {
+        // GIVEN
+        val encoded = mapOf(
+            "service" to service,
+            "name" to name,
+            "networkInfoEnabled" to networkInfoEnabled,
+            "bundleWithRumEnabled" to bundleWithRumEnabled,
+            "bundleWithTraceEnabled" to bundleWithTraceEnabled,
+        )
+
+        // WHEN
+        val builder = Logger.Builder()
+            .withEncoded(encoded)
+
+        // THEN
+        assertThat(builder.getPrivate("serviceName")).isEqualTo(service)
+        assertThat(builder.getPrivate("loggerName")).isEqualTo(name)
+        assertThat(builder.getPrivate("networkInfoEnabled")).isEqualTo(networkInfoEnabled)
+        assertThat(builder.getPrivate("bundleWithRumEnabled")).isEqualTo(bundleWithRumEnabled)
+        assertThat(builder.getPrivate("bundleWithTraceEnabled")).isEqualTo(bundleWithTraceEnabled)
     }
 
     @Test

@@ -42,7 +42,7 @@ Future<void> runScenario({
             additionalConfig: testingConfiguration?.additionalConfig ?? {},
           )
         : null,
-  );
+  )..additionalConfig['_dd.needsClearTextHttp'] = true;
   if (testingConfiguration?.additionalConfig != null) {
     configuration.additionalConfig
         .addAll(testingConfiguration!.additionalConfig);
