@@ -36,6 +36,7 @@ target 'Runner' do
   pod 'DatadogCore', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
   pod 'DatadogLogs', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
   pod 'DatadogRUM', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
+  pod 'DatadogInternal', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
   pod 'DatadogCrashReporting', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
   # End Datadog Pod Overrides
 end

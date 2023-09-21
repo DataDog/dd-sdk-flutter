@@ -50,13 +50,13 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 19
+        minSdkVersion 21
         multiDexEnabled true
     }
 }
 
 dependencies {
-    implementation "com.datadoghq:dd-sdk-android:$datadog_version"
+    implementation "com.datadoghq:dd-sdk-android-webview:$datadog_version"
 
     implementation project(":webview_flutter_android")
 
