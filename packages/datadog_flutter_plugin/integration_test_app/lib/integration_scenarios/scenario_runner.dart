@@ -106,13 +106,11 @@ Future<void> runScenario({
 
   if (testingConfiguration?.scenario == mappedInstrumentationScenarioName) {
     // Add mapping to rum configuration
-    configuration.rumConfiguration?.rumViewEventMapper = mapRumViewEvent;
-    configuration.rumConfiguration?.rumActionEventMapper = mapRumActionEvent;
-    configuration.rumConfiguration?.rumResourceEventMapper =
-        mapRumResourceEvent;
-    configuration.rumConfiguration?.rumErrorEventMapper = mapRumErrorEvent;
-    configuration.rumConfiguration?.rumLongTaskEventMapper =
-        mapRumLongTaskEvent;
+    configuration.rumConfiguration?.viewEventMapper = mapRumViewEvent;
+    configuration.rumConfiguration?.actionEventMapper = mapRumActionEvent;
+    configuration.rumConfiguration?.resourceEventMapper = mapRumResourceEvent;
+    configuration.rumConfiguration?.errorEventMapper = mapRumErrorEvent;
+    configuration.rumConfiguration?.longTaskEventMapper = mapRumLongTaskEvent;
   }
 
   await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {

@@ -18,11 +18,11 @@ class DdRumMethodChannel extends DdRumPlatform {
   Future<void> enable(
       DatadogSdk core, DatadogRumConfiguration configuration) async {
     final callbackHandler = MethodCallHandler(
-      viewEventMapper: configuration.rumViewEventMapper,
-      actionEventMapper: configuration.rumActionEventMapper,
-      resourceEventMapper: configuration.rumResourceEventMapper,
-      errorEventMapper: configuration.rumErrorEventMapper,
-      longTaskEventMapper: configuration.rumLongTaskEventMapper,
+      viewEventMapper: configuration.viewEventMapper,
+      actionEventMapper: configuration.actionEventMapper,
+      resourceEventMapper: configuration.resourceEventMapper,
+      errorEventMapper: configuration.errorEventMapper,
+      longTaskEventMapper: configuration.longTaskEventMapper,
       internalLogger: core.internalLogger,
     );
 

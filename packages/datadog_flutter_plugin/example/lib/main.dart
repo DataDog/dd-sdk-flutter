@@ -92,11 +92,11 @@ void main() async {
             applicationId: applicationId,
             detectLongTasks: true,
             reportFlutterPerformance: true,
-            rumViewEventMapper: _viewEventMapper,
-            rumActionEventMapper: _actionEventMapper,
-            rumResourceEventMapper: _resourceEventMapper,
-            rumErrorEventMapper: _errorEventMapper,
-            rumLongTaskEventMapper: _longTaskEventMapper,
+            viewEventMapper: _viewEventMapper,
+            actionEventMapper: _actionEventMapper,
+            resourceEventMapper: _resourceEventMapper,
+            errorEventMapper: _errorEventMapper,
+            longTaskEventMapper: _longTaskEventMapper,
           )
         : null,
   );

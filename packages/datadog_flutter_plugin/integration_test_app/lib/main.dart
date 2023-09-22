@@ -59,9 +59,9 @@ Future<void> runScenario({
             customEndpoint: customEndpoint,
             telemetrySampleRate: 100,
             additionalConfig: testingConfiguration?.additionalConfig ?? {},
-            rumActionEventMapper: (event) => event,
-            rumViewEventMapper: (event) => event,
-            rumResourceEventMapper: (event) => event,
+            actionEventMapper: (event) => event,
+            viewEventMapper: (event) => event,
+            resourceEventMapper: (event) => event,
           )
         : null,
   )..additionalConfig['_dd.needsClearTextHttp'] = true;
