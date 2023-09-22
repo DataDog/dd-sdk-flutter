@@ -50,14 +50,18 @@ Future<void> runScenario({
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,
-    loggingConfiguration:
-        DatadogLoggingConfiguration(customEndpoint: customEndpoint),
+    loggingConfiguration: DatadogLoggingConfiguration(
+      customEndpoint: customEndpoint,
+    ),
     rumConfiguration: applicationId != null
         ? DatadogRumConfiguration(
             applicationId: applicationId,
             customEndpoint: customEndpoint,
             telemetrySampleRate: 100,
             additionalConfig: testingConfiguration?.additionalConfig ?? {},
+            rumActionEventMapper: (event) => event,
+            rumViewEventMapper: (event) => event,
+            rumResourceEventMapper: (event) => event,
           )
         : null,
   )..additionalConfig['_dd.needsClearTextHttp'] = true;

@@ -21,8 +21,9 @@ void main() async {
     env: dotenv.get('DD_ENV', fallback: ''),
     site: DatadogSite.us1,
     nativeCrashReportEnabled: true,
-    //logEventMapper: (event) => event,
-    loggingConfiguration: DatadogLoggingConfiguration(),
+    loggingConfiguration: DatadogLoggingConfiguration(
+      logEventMapper: (event) => event,
+    ),
     rumConfiguration: applicationId != null
         ? DatadogRumConfiguration(
             applicationId: applicationId,

@@ -15,17 +15,18 @@ class DdRumMethodChannel extends DdRumPlatform {
       const MethodChannel('datadog_sdk_flutter.rum');
 
   @override
-  Future<void> enable(DatadogRumConfiguration configuration) async {
-    // final callbackHandler = MethodCallHandler(
-    //   viewEventMapper: configuration.rumViewEventMapper,
-    //   actionEventMapper: configuration.rumActionEventMapper,
-    //   resourceEventMapper: configuration.rumResourceEventMapper,
-    //   errorEventMapper: configuration.rumErrorEventMapper,
-    //   longTaskEventMapper: configuration.rumLongTaskEventMapper,
-    //   internalLogger: internalLogger,
-    // );
+  Future<void> enable(
+      DatadogSdk core, DatadogRumConfiguration configuration) async {
+    final callbackHandler = MethodCallHandler(
+      viewEventMapper: configuration.rumViewEventMapper,
+      actionEventMapper: configuration.rumActionEventMapper,
+      resourceEventMapper: configuration.rumResourceEventMapper,
+      errorEventMapper: configuration.rumErrorEventMapper,
+      longTaskEventMapper: configuration.rumLongTaskEventMapper,
+      internalLogger: core.internalLogger,
+    );
 
-    // methodChannel.setMethodCallHandler(callbackHandler.handleMethodCall);
+    methodChannel.setMethodCallHandler(callbackHandler.handleMethodCall);
 
     return methodChannel.invokeMethod('enable', {
       'configuration': configuration.encode(),

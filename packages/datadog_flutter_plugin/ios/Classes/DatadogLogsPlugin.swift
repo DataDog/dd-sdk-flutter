@@ -34,16 +34,20 @@ extension Logger.Configuration {
 }
 
 public class DatadogLogsPlugin: NSObject, FlutterPlugin {
-    public static let instance = DatadogLogsPlugin()
-
+    public static var instance: DatadogLogsPlugin?
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.logs", binaryMessenger: registrar.messenger())
-        registrar.addMethodCallDelegate(instance, channel: channel)
+        instance = DatadogLogsPlugin(channel: channel)
+        registrar.addMethodCallDelegate(instance!, channel: channel)
+
     }
 
+    private let channel: FlutterMethodChannel
+    private var currentConfiguration: [AnyHashable: Any]?
     private var loggerRegistry: [String: LoggerProtocol] = [:]
 
-    override private init() {
+    private init(channel: FlutterMethodChannel) {
+        self.channel = channel
         super.init()
     }
 
@@ -75,15 +79,7 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         }
 
         if call.method == "enable" {
-            // When we support multiple cores / instances, pass it in here
-            if let configArg = arguments["configuration"] as? [String: Any?] {
-                let config = Logs.Configuration(fromEncoded: configArg)
-                Logs.enable(with: config)
-            } else {
-                result(
-                    FlutterError.missingParameter(methodName: call.method)
-                )
-            }
+            enable(arguments: arguments, result: result)
             return
         }
 
@@ -205,7 +201,93 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
             result(FlutterMethodNotImplemented)
         }
     }
+
+    private func enable(arguments: [String: Any?], result: @escaping FlutterResult) {
+        if let configArg = arguments["configuration"] as? [String: Any?] {
+            if currentConfiguration == nil {
+                var config = Logs.Configuration(fromEncoded: configArg)
+                let attachLogMapper = (configArg["attachLogMapper"] as? NSNumber)?.boolValue ?? false
+                if attachLogMapper {
+                    config._internal_mutation {
+                        $0.setLogEventMapper(FlutterLogEventMapper(channel: channel))
+                    }
+                }
+                Logs.enable(with: config)
+                currentConfiguration = configArg as [AnyHashable: Any]
+            } else {
+                let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
+                if !dict.isEqual(to: currentConfiguration!) {
+                    consolePrint(
+                        "🔥 Calling Logging `enable` with different options, even after a hot restart," +
+                        " is not supported. Cold restart your application to change your current configuation."
+                    )
+                }
+            }
+            result(nil)
+        } else {
+            result(
+                FlutterError.missingParameter(methodName: "enable")
+            )
+        }
+    }
 }
+
+ struct FlutterLogEventMapper: LogEventMapper {
+    static let reservedAttributeNames: Set<String> = [
+        "host", "message", "status", "service", "source", "ddtags",
+        "dd.trace_id", "dd.span_id",
+        "application_id", "session_id", "view.id", "user_action.id"
+    ]
+
+    let channel: FlutterMethodChannel
+
+    public init(channel: FlutterMethodChannel) {
+        self.channel = channel
+    }
+
+    func map(event: LogEvent, callback: @escaping (LogEvent) -> Void) {
+        guard let encoded = logEventToFlutterDictionary(event: event) else {
+            // TELEMETRY
+            callback(event)
+            return
+        }
+
+        channel.invokeMethod("mapLogEvent", arguments: ["event": encoded]) { result in
+            guard let result = result as? [String: Any] else {
+                // Don't call the callback, this event was discarded
+                return
+            }
+
+            if result["_dd.mapper_error"] != nil {
+                // Error in the mapper, return the unmapped event
+                callback(event)
+            }
+
+            // Don't bother to decode, just pull modifiable properties straight from the
+            // dictionary.
+            var event = event
+            if let message = result["message"] as? String {
+                event.message = message
+            }
+            if let tags = result["ddtags"] as? String {
+                let splitTags = tags.split(separator: ",").map { String($0) }
+                event.tags = splitTags
+            }
+
+            // Go through all remaining attributes and add them on to the user
+            // attibutes so long as they aren't reserved
+            event.attributes.userAttributes.removeAll()
+            for (key, value) in result {
+                if FlutterLogEventMapper.reservedAttributeNames.contains(key) {
+                    continue
+                }
+                event.attributes.userAttributes[key] = castAnyToEncodable(value)
+            }
+
+            callback(event)
+        }
+    }
+ }
 
 public extension LogLevel {
     static func parseLogLevelFromFlutter(_ value: String) -> Self {

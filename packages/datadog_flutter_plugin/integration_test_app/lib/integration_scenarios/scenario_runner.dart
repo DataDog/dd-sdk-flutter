@@ -85,7 +85,10 @@ Future<void> runScenario({
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,
     firstPartyHosts: firstPartyHosts,
-    loggingConfiguration: DatadogLoggingConfiguration(),
+    loggingConfiguration: DatadogLoggingConfiguration(
+      logEventMapper: _mapLogEvent,
+      customEndpoint: customEndpoint,
+    ),
     rumConfiguration: applicationId != null
         ? DatadogRumConfiguration(
             applicationId: applicationId,

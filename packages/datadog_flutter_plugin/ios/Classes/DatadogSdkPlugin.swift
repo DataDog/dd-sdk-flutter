@@ -328,63 +328,6 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
     }
 }
 
-// struct FlutterLogEventMapper: LogEventMapper {
-//    static let reservedAttributeNames: Set<String> = [
-//        "host", "message", "status", "service", "source", "ddtags",
-//        "dd.trace_id", "dd.span_id",
-//        "application_id", "session_id", "view.id", "user_action.id"
-//    ]
-//
-//    let channel: FlutterMethodChannel
-//
-//    public init(channel: FlutterMethodChannel) {
-//        self.channel = channel
-//    }
-//
-//    func map(event: LogEvent, callback: @escaping (LogEvent) -> Void) {
-//        guard let encoded = logEventToFlutterDictionary(event: event) else {
-//            // TELEMETRY
-//            callback(event)
-//            return
-//        }
-//
-//        channel.invokeMethod("mapLogEvent", arguments: ["event": encoded]) { result in
-//            guard let result = result as? [String: Any] else {
-//                // Don't call the callback, this event was discarded
-//                return
-//            }
-//
-//            if result["_dd.mapper_error"] != nil {
-//                // Error in the mapper, return the unmapped event
-//                callback(event)
-//            }
-//
-//            // Don't bother to decode, just pull modifiable properties straight from the
-//            // dictionary.
-//            var event = event
-//            if let message = result["message"] as? String {
-//                event.message = message
-//            }
-//            if let tags = result["ddtags"] as? String {
-//                let splitTags = tags.split(separator: ",").map { String($0) }
-//                event.tags = splitTags
-//            }
-//
-//            // Go through all remaining attributes and add them on to the user
-//            // attibutes so long as they aren't reserved
-//            event.attributes.userAttributes.removeAll()
-//            for (key, value) in result {
-//                if FlutterLogEventMapper.reservedAttributeNames.contains(key) {
-//                    continue
-//                }
-//                event.attributes.userAttributes[key] = castAnyToEncodable(value)
-//            }
-//
-//            callback(event)
-//        }
-//    }
-// }
-
 extension FlutterError {
     public enum DdErrorCodes {
         static let contractViolation = "DatadogSdk:ContractViolation"

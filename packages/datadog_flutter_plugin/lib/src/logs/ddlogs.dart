@@ -15,16 +15,28 @@ export 'ddlog_event.dart';
 const _uuid = Uuid();
 
 class DatadogLogging {
+  static DatadogLogging? _instance;
+
+  static DdLogsPlatform get _platform {
+    return DdLogsPlatform.instance;
+  }
+
   final DatadogSdk core;
 
   DatadogLogging._(this.core);
 
   static Future<DatadogLogging?> enable(
       DatadogSdk core, DatadogLoggingConfiguration config) async {
+    if (_instance != null) {
+      core.internalLogger
+          .error('DatadogLogging is already enabled. Second call is ignored.');
+      return _instance;
+    }
+
     DatadogLogging? logging;
 
     await wrapAsync('logs.enable', core.internalLogger, null, () {
-      DdLogsPlatform.instance.enable(config);
+      _platform.enable(core, config);
       logging = DatadogLogging._(core);
     });
 

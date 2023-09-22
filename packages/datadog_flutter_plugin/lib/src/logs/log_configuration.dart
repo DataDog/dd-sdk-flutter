@@ -4,8 +4,19 @@
 
 import 'package:flutter/foundation.dart';
 
+import 'ddlog_event.dart';
 import 'ddlogs_platform_interface.dart';
 
+/// A function that allows you to modify or drop specific [LogEvent]s before
+/// they are sent to Datadog.
+///
+/// The [LogEventMapper] can modify any mutable (non-final) properties in the
+/// [LogEvent], or return null to drop the log entirely.
+typedef LogEventMapper = LogEvent? Function(LogEvent event);
+
+/// A function that allows you control Datadog's console log output. This function
+/// is called instead of calling Flutter's default `print`, and does not effect what
+/// is sent to Datadog.
 typedef CustomConsoleLogFunction = void Function(
   LogLevel level,
   String message,
@@ -20,15 +31,48 @@ typedef CustomConsoleLogFunction = void Function(
 class DatadogLoggingConfiguration {
   String? customEndpoint;
 
+  /// A function that allows you to modify or drop specific [LogEvent]s
+  /// before they are sent to Datadog.
+  LogEventMapper? logEventMapper;
+
   DatadogLoggingConfiguration({
     this.customEndpoint,
+    this.logEventMapper,
   });
 
   Map<String, Object?> encode() {
     return {
       'customEndpoint': customEndpoint,
+      'attachLogMapper': logEventMapper != null,
     };
   }
+}
+
+/// Print all logs to the console in the form "[level] message" when
+/// [kDebugMode] is true.
+void simpleConsolePrint(
+  LogLevel level,
+  String message,
+  String? errorMessage,
+  String? errorKind,
+  StackTrace? stackTrace,
+  Map<String, Object?> attributes,
+) {
+  if (kDebugMode) {
+    print('[${level.name}] $message');
+  }
+}
+
+/// Print all logs to the console above the given level in the form
+/// "[level] message" when [kDebugMode] is true.
+CustomConsoleLogFunction simpleConsolePrintForLevel(LogLevel level) {
+  return ((inLevel, message, errorMessage, errorKind, stackTrace, attributes) {
+    if (kDebugMode) {
+      if (inLevel.index > level.index) {
+        print('[${level.name}] $message');
+      }
+    }
+  });
 }
 
 /// Configuration options for a Datadog Log. These options are set for an
@@ -75,8 +119,13 @@ class DatadogLoggerConfiguration {
   /// Defaults to `false`.
   bool networkInfoEnabled;
 
-  /// Console
-  CustomConsoleLogFunction? customConsoleLogFunction;
+  /// Control what Datadog outputs to the debug console. Uses [simpleConsolePrint]
+  /// by default, which prints logs all logs to the console in the form "[level] message".
+  ///
+  /// You can filter by level using [simpleConsolePrintForLevel].
+  ///
+  /// To disable console log output, set this option to `null`
+  CustomConsoleLogFunction? customConsoleLogFunction = simpleConsolePrint;
 
   double _sampleRate = 100;
 

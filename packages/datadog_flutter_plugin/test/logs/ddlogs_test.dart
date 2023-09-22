@@ -30,10 +30,12 @@ void main() {
     registerFallbackValue(LogLevel.info);
     registerFallbackValue(DatadogLoggingConfiguration());
     registerFallbackValue(DatadogLoggerConfiguration());
+    registerFallbackValue(DatadogSdk.instance);
 
     mockPlatform = MockDdLogsPlatform();
     DdLogsPlatform.instance = mockPlatform;
-    when(() => mockPlatform.enable(any())).thenAnswer((_) => Future.value());
+    when(() => mockPlatform.enable(any(), any()))
+        .thenAnswer((_) => Future.value());
     when(() => mockPlatform.createLogger(any(), any()))
         .thenAnswer((_) => Future.value());
 

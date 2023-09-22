@@ -2,9 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
-import 'ddrum.dart';
+import '../../datadog_flutter_plugin.dart';
 import 'ddrum_platform_interface.dart';
-import 'rum_configuration.dart';
 
 class DdNoOpRumPlatform extends DdRumPlatform {
   @override
@@ -47,7 +46,7 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> enable(DatadogRumConfiguration configuration) {
+  Future<void> enable(DatadogSdk core, DatadogRumConfiguration configuration) {
     return Future.value();
   }
 

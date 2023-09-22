@@ -5,13 +5,6 @@
 import '../datadog_flutter_plugin.dart';
 import '../datadog_internal.dart';
 
-/// A function that allows you to modify or drop specific [LogEvent]s before
-/// they are sent to Datadog.
-///
-/// The [LogEventMapper] can modify any mutable (non-final) properties in the
-/// [LogEvent], or return null to drop the log entirely.
-typedef LogEventMapper = LogEvent? Function(LogEvent event);
-
 /// Defines the Datadog SDK policy when batching data together before uploading
 /// it to Datadog servers. Smaller batches mean smaller but more network
 /// requests, whereas larger batches mean fewer but larger network requests.

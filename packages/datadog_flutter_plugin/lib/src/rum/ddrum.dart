@@ -98,7 +98,7 @@ class DatadogRum {
       DatadogSdk core, DatadogRumConfiguration configuration) async {
     DatadogRum? rum;
     await wrapAsync('rum.enable', core.internalLogger, null, () {
-      DdRumPlatform.instance.enable(configuration);
+      DdRumPlatform.instance.enable(core, configuration);
       rum = DatadogRum._(configuration, core.internalLogger);
 
       core.updateConfigurationInfo(

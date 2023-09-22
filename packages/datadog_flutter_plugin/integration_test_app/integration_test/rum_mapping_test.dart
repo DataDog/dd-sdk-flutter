@@ -21,7 +21,7 @@ void main() {
   // mappers:
   //  * viewMapper renames ThirdManualRumView to ThirdView
   //  * actionMapper changes 'Tapped Download' to 'Download'
-  //  * actionMapper discards the 'Next Page' tap
+  //  * actionMapper discards the 'Next Screen' tap
   //  * actionMapper discards 'User Scrolling' events
   //  * resourceMapper and errorMapper rewite the urls to replace 'fake_url' with 'my_url'
   //  * longTask mapper discards all long tasks less than 200 ms
@@ -93,5 +93,5 @@ void main() {
         expect(event.viewName, 'ThirdView');
       }
     }
-  }, skip: true);
+  });
 }
