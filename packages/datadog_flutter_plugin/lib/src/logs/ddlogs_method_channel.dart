@@ -24,7 +24,7 @@ class DdLogsMethodChannel extends DdLogsPlatform {
   Future<void> enable(DatadogSdk core, DatadogLoggingConfiguration config) {
     // NOTE: This will break when / if we move to multiple Datadog SDK instances
     _core = core;
-    _logEventMapper = config.logEventMapper;
+    _logEventMapper = config.eventMapper;
     return methodChannel.invokeMethod('enable', {
       'configuration': config.encode(),
     });

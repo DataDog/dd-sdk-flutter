@@ -19,7 +19,7 @@ void main() {
 
   // This is the same test as rum_manual_test.dart, but with the following
   // mappers:
-  //  * viewMapper renames ThirdManualRumView to ThirdView
+  //  * viewMapper renames ThirdManualRumView URL to ThirdView
   //  * actionMapper changes 'Tapped Download' to 'Download'
   //  * actionMapper discards the 'Next Screen' tap
   //  * actionMapper discards 'User Scrolling' events
@@ -86,12 +86,7 @@ void main() {
     }
 
     final view3 = session.visits[2];
-    expect(view3.name, 'ThirdView');
-
-    if (view3.longTaskEvents.isNotEmpty) {
-      for (var event in view3.longTaskEvents) {
-        expect(event.viewName, 'ThirdView');
-      }
-    }
+    expect(view3.name, 'ThirdManualRumView');
+    expect(view3.viewEvents.first.view.viewData['url'], 'ThirdView');
   });
 }

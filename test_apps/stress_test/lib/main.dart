@@ -22,7 +22,7 @@ void main() async {
     site: DatadogSite.us1,
     nativeCrashReportEnabled: true,
     loggingConfiguration: DatadogLoggingConfiguration(
-      logEventMapper: (event) => event,
+      eventMapper: (event) => event,
     ),
     rumConfiguration: applicationId != null
         ? DatadogRumConfiguration(

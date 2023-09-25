@@ -236,7 +236,7 @@ class RumViewDetails {
   final RumCount? longTask;
   final double? memoryAverage;
   final double? memoryMax;
-  String? name;
+  final String? name;
   String? referrer;
   final double? refreshRateAverage;
   final double? refreshRateMin;
@@ -410,7 +410,7 @@ class RumActionTarget {
 class RumViewSummary {
   final String id;
   final bool? inForeground;
-  String? name;
+  final String? name;
   String? referrer;
   String url;
 

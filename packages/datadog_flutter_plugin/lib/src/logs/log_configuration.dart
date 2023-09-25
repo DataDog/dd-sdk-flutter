@@ -33,17 +33,17 @@ class DatadogLoggingConfiguration {
 
   /// A function that allows you to modify or drop specific [LogEvent]s
   /// before they are sent to Datadog.
-  LogEventMapper? logEventMapper;
+  LogEventMapper? eventMapper;
 
   DatadogLoggingConfiguration({
     this.customEndpoint,
-    this.logEventMapper,
+    this.eventMapper,
   });
 
   Map<String, Object?> encode() {
     return {
       'customEndpoint': customEndpoint,
-      'attachLogMapper': logEventMapper != null,
+      'attachLogMapper': eventMapper != null,
     };
   }
 }

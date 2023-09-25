@@ -14,7 +14,7 @@ const mappedInstrumentationScenarioName =
 
 RumViewEvent mapRumViewEvent(RumViewEvent event) {
   if (event.view.name == 'ThirdManualRumView') {
-    event.view.name = 'ThirdView';
+    event.view.url = 'ThirdView';
   }
 
   return event;
@@ -56,10 +56,6 @@ RumLongTaskEvent? mapRumLongTaskEvent(RumLongTaskEvent event) {
     return null;
   }
 
-  if (event.view.name == 'ThirdManualRumView') {
-    event.view.name = 'ThirdView';
-  }
-
   return event;
 }
 
@@ -86,7 +82,7 @@ Future<void> runScenario({
     nativeCrashReportEnabled: true,
     firstPartyHosts: firstPartyHosts,
     loggingConfiguration: DatadogLoggingConfiguration(
-      logEventMapper: _mapLogEvent,
+      eventMapper: _mapLogEvent,
       customEndpoint: customEndpoint,
     ),
     rumConfiguration: applicationId != null
