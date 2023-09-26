@@ -64,10 +64,10 @@ scripts:
 
   unit_test:flutter:
     run: 
-      mkdir -p .build/test-results
-      melos exec "flutter test --machine | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml\"" 
+      mkdir -p .build/test-results &&
+      melos exec "set -e -o pipefail && flutter test --machine | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml\"" 
     packageFilters:
-      ignore: 'datadog_common_test'
+      dirExists: 'test'
 
   unit_test:ios:
     exec:
