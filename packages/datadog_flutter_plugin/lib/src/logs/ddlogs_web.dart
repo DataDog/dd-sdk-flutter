@@ -26,7 +26,8 @@ class DdLogsWeb extends DdLogsPlatform {
   }
 
   @override
-  Future<void> enable(DatadogLoggingConfiguration config) async {}
+  Future<void> enable(
+      DatadogSdk core, DatadogLoggingConfiguration config) async {}
 
   @override
   Future<void> createLogger(

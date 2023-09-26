@@ -8,6 +8,7 @@ package com.datadoghq.flutter
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import com.datadog.android.Datadog
 import com.datadog.android.api.SdkCore
 import com.datadog.android.core.configuration.BatchSize
@@ -24,6 +25,7 @@ import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
 import com.datadog.android.rum._RumInternalProxy
 import com.datadog.android.rum.configuration.VitalsUpdateFrequency
+import com.datadog.android.rum.event.ViewEventMapper
 import com.datadog.android.rum.model.ActionEvent
 import com.datadog.android.rum.model.ErrorEvent
 import com.datadog.android.rum.model.LongTaskEvent
@@ -63,6 +65,14 @@ class DatadogRumPlugin(
         const val PARAM_TYPE = "type"
         const val PARAM_BUILD_TIMES = "buildTimes"
         const val PARAM_RASTER_TIMES = "rasterTimes"
+
+        // See DatadogSdkPlugin's description of this same member
+        private var previousConfiguration: Map<String, Any?>? = null
+
+        // For testing purposes only
+        internal fun resetConfig() {
+            previousConfiguration = null
+        }
     }
 
     private lateinit var channel: MethodChannel
@@ -137,27 +147,36 @@ class DatadogRumPlugin(
     fun enable(call: MethodCall, result: Result) {
         val encodedConfig = call.argument<Map<String, Any?>>("configuration")
         val applicationId = encodedConfig?.get("applicationId") as? String
-        if (encodedConfig != null && applicationId != null) {
-            var configBuilder = RumConfiguration.Builder(applicationId)
-                .withEncoded(encodedConfig)
+        if (previousConfiguration == null) {
+            if (encodedConfig != null && applicationId != null) {
+                var configBuilder = RumConfiguration.Builder(applicationId)
+                    .withEncoded(encodedConfig)
 
-            configBuilder = _RumInternalProxy.setTelemetryConfigurationEventMapper(
-                configBuilder,
-                object : EventMapper<TelemetryConfigurationEvent> {
-                    override fun map(
-                        event: TelemetryConfigurationEvent
-                    ): TelemetryConfigurationEvent {
-                        return mapTelemetryConfiguration(event)
+                configBuilder = _RumInternalProxy.setTelemetryConfigurationEventMapper(
+                    configBuilder,
+                    object : EventMapper<TelemetryConfigurationEvent> {
+                        override fun map(
+                            event: TelemetryConfigurationEvent
+                        ): TelemetryConfigurationEvent {
+                            return mapTelemetryConfiguration(event)
+                        }
                     }
-                }
-            )
-            // Common initialization
-            configBuilder = configBuilder
-                .disableUserInteractionTracking()
-                .useViewTrackingStrategy(NoOpViewTrackingStrategy)
+                )
+                // Common initialization
+                configBuilder = configBuilder
+                    .disableUserInteractionTracking()
+                    .useViewTrackingStrategy(NoOpViewTrackingStrategy)
 
-            Rum.enable(configBuilder.build())
-            rum = GlobalRumMonitor.get()
+                // Mapper initialization
+                configBuilder = attachEventMappers(encodedConfig, configBuilder)
+
+                Rum.enable(configBuilder.build())
+                rum = GlobalRumMonitor.get()
+                previousConfiguration = encodedConfig
+            }
+        } else if (previousConfiguration != encodedConfig) {
+            // Maybe use DevLogger instead?
+            Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_RUM_REINITIALIZATION)
         }
     }
 
@@ -178,6 +197,63 @@ class DatadogRumPlugin(
         }
 
         return event
+    }
+
+    private fun attachEventMappers(
+        config: Map<String, Any?>,
+        configBuilder: RumConfiguration.Builder
+    ): RumConfiguration.Builder {
+        fun optionIsSet(key: String): Boolean {
+            return config[key] as? Boolean ?: false
+        }
+
+        if (optionIsSet("attachViewEventMapper")) {
+            configBuilder.setViewEventMapper(
+                object : ViewEventMapper {
+                    override fun map(event: ViewEvent): ViewEvent {
+                        return mapViewEvent(event)
+                    }
+                }
+            )
+        }
+        if (optionIsSet("attachActionEventMapper")) {
+            configBuilder.setActionEventMapper(
+                object : EventMapper<ActionEvent> {
+                    override fun map(event: ActionEvent): ActionEvent? {
+                        return mapActionEvent(event)
+                    }
+                }
+            )
+        }
+        if (optionIsSet("attachResourceEventMapper")) {
+            configBuilder.setResourceEventMapper(
+                object : EventMapper<ResourceEvent> {
+                    override fun map(event: ResourceEvent): ResourceEvent? {
+                        return mapResourceEvent(event)
+                    }
+                }
+            )
+        }
+        if (optionIsSet("attachErrorEventMapper")) {
+            configBuilder.setErrorEventMapper(
+                object : EventMapper<ErrorEvent> {
+                    override fun map(event: ErrorEvent): ErrorEvent? {
+                        return mapErrorEvent(event)
+                    }
+                }
+            )
+        }
+        if (optionIsSet("attachLongTaskEventMapper")) {
+            configBuilder.setLongTaskEventMapper(
+                object : EventMapper<LongTaskEvent> {
+                    override fun map(event: LongTaskEvent): LongTaskEvent? {
+                        return mapLongTaskEvent(event)
+                    }
+                }
+            )
+        }
+
+        return configBuilder
     }
 
     private fun startView(call: MethodCall, result: Result) {
@@ -489,7 +565,7 @@ class DatadogRumPlugin(
     internal fun mapViewEvent(event: ViewEvent): ViewEvent {
         var result: ViewEvent
         val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asMap()
+            var jsonEvent = event.toJson().asFlutterMap()
             jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
             result = callEventMapper("mapViewEvent", event, jsonEvent) { encodedResult, event ->
@@ -511,7 +587,7 @@ class DatadogRumPlugin(
     internal fun mapActionEvent(event: ActionEvent): ActionEvent? {
         val result: ActionEvent?
         val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asMap()
+            var jsonEvent = event.toJson().asFlutterMap()
             jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
             result = callEventMapper("mapActionEvent", event, jsonEvent) { encodedResult, event ->
@@ -544,7 +620,7 @@ class DatadogRumPlugin(
     internal fun mapResourceEvent(event: ResourceEvent): ResourceEvent? {
         var result: ResourceEvent?
         val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asMap()
+            var jsonEvent = event.toJson().asFlutterMap()
             jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
             result = callEventMapper("mapResourceEvent", event, jsonEvent) { encodedResult, event ->
@@ -574,7 +650,7 @@ class DatadogRumPlugin(
     internal fun mapErrorEvent(event: ErrorEvent): ErrorEvent? {
         var result: ErrorEvent?
         val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asMap()
+            var jsonEvent = event.toJson().asFlutterMap()
             jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
             result = callEventMapper("mapErrorEvent", event, jsonEvent) { encodedResult, event ->
@@ -623,7 +699,7 @@ class DatadogRumPlugin(
     internal fun mapLongTaskEvent(event: LongTaskEvent): LongTaskEvent? {
         var result: LongTaskEvent?
         val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asMap()
+            var jsonEvent = event.toJson().asFlutterMap()
             jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
             result = callEventMapper("mapLongTaskEvent", event, jsonEvent) { encodedResult, event ->
@@ -780,3 +856,7 @@ internal fun parseVitalsFrequency(vitalsFrequency: String): VitalsUpdateFrequenc
         else -> VitalsUpdateFrequency.AVERAGE
     }
 }
+
+internal const val MESSAGE_INVALID_RUM_REINITIALIZATION =
+    "🔥 Re-enabling the Datadog RUM with different options is not supported, even after a" +
+        " hot restart. Cold restart your application to change your current configuration."

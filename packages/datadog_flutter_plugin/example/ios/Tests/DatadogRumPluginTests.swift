@@ -165,12 +165,76 @@ class DatadogRumPluginTests: XCTestCase {
         testContracts(contracts: contracts, plugin: plugin)
     }
 
+    func testRepeatEnable_FromMethodChannelSameOptions_DoesNothing() {
+        // Uninitialize plugin
+        plugin?.inject(rum: nil)
+
+        let configuration: [String: Any?] = [
+            "applicationId": "fake-application-id"
+        ]
+
+        let methodCallA = FlutterMethodCall(
+            methodName: "enable",
+            arguments: [
+                "configuration": configuration
+            ] as [String: Any]
+        )
+        plugin.handle(methodCallA) { _ in }
+
+        var loggedConsoleLines: [String] = []
+        consolePrint = { str in loggedConsoleLines.append(str) }
+
+        let methodCallB = FlutterMethodCall(
+            methodName: "initialize",
+            arguments: [
+                "configuration": configuration
+            ] as [String: Any]
+        )
+        plugin.handle(methodCallB) { _ in }
+
+        print(loggedConsoleLines)
+
+        XCTAssertTrue(loggedConsoleLines.isEmpty)
+    }
+
+    func testRepeatEnable_FromMethodChannelDifferentOptions_PrintsError() {
+        // Uninitialize plugin
+        plugin?.inject(rum: nil)
+        
+        let methodCallA = FlutterMethodCall(
+            methodName: "enable",
+            arguments: [
+                "configuration": [
+                    "applicationId": "fake-application-id"
+                ] as [String: Any?]
+            ] as [String: Any]
+        )
+        plugin.handle(methodCallA) { _ in }
+
+        var loggedConsoleLines: [String] = []
+        consolePrint = { str in loggedConsoleLines.append(str) }
+
+        let methodCallB = FlutterMethodCall(
+            methodName: "enable",
+            arguments: [
+                "configuration": [
+                    "applicationId": "fake-application-id",
+                    "customEndpoint": "http://localhost"
+                ] as [String: Any?]
+            ] as [String: Any]
+        )
+        plugin.handle(methodCallB) { _ in }
+
+        XCTAssertFalse(loggedConsoleLines.isEmpty)
+        XCTAssertTrue(loggedConsoleLines.first?.contains("🔥") == true)
+    }
+
     func testStartViewCall_CallsRumMonitor() {
         let call = FlutterMethodCall(methodName: "startView", arguments: [
             "key": "view_key",
             "name": "view_name",
             "attributes": ["my_attribute": "my_value"]
-        ])
+        ] as [String: Any])
 
         var resultStatus = ResultStatus.notCalled
         plugin.handle(call) { result in
@@ -187,7 +251,7 @@ class DatadogRumPluginTests: XCTestCase {
         let call = FlutterMethodCall(methodName: "stopView", arguments: [
             "key": "view_key",
             "attributes": ["my_attribute": "my_value"]
-        ])
+        ] as [String: Any])
 
         var resultStatus = ResultStatus.notCalled
         plugin.handle(call) { result in

@@ -22,17 +22,13 @@ LogEvent? _logEventMapper(LogEvent event) {
 
 RumViewEvent _viewEventMapper(RumViewEvent event) {
   if (event.view.name == 'overwrite me') {
-    event.view.name = 'overwritten';
+    event.view.url = 'overwritten url';
   }
 
   return event;
 }
 
 RumActionEvent? _actionEventMapper(RumActionEvent event) {
-  if (event.view.name == 'overwrite me') {
-    event.view.name = 'overwritten';
-  }
-
   if (event.action.target?.name == 'discard') {
     return null;
   } else if (event.action.target?.name == 'censor me!') {
@@ -86,17 +82,19 @@ void main() async {
     version: '1.2.3',
     site: DatadogSite.us1,
     nativeCrashReportEnabled: true,
-    loggingConfiguration: DatadogLoggingConfiguration(),
+    loggingConfiguration: DatadogLoggingConfiguration(
+      eventMapper: _logEventMapper,
+    ),
     rumConfiguration: applicationId != null
         ? DatadogRumConfiguration(
             applicationId: applicationId,
             detectLongTasks: true,
             reportFlutterPerformance: true,
-            rumViewEventMapper: _viewEventMapper,
-            rumActionEventMapper: _actionEventMapper,
-            rumResourceEventMapper: _resourceEventMapper,
-            rumErrorEventMapper: _errorEventMapper,
-            rumLongTaskEventMapper: _longTaskEventMapper,
+            viewEventMapper: _viewEventMapper,
+            actionEventMapper: _actionEventMapper,
+            resourceEventMapper: _resourceEventMapper,
+            errorEventMapper: _errorEventMapper,
+            longTaskEventMapper: _longTaskEventMapper,
           )
         : null,
   );

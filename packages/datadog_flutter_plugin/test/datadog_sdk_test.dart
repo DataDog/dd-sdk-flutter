@@ -44,6 +44,7 @@ void main() {
     registerFallbackValue(InternalLogger());
     registerFallbackValue(CoreLoggerLevel.error);
     registerFallbackValue(DatadogRumConfiguration(applicationId: ''));
+    registerFallbackValue(DatadogSdk.instance);
   });
 
   setUp(() {
@@ -78,11 +79,11 @@ void main() {
 
     mockLogsPlatform = MockDdLogsPlatform();
     DdLogsPlatform.instance = mockLogsPlatform;
-    when(() => mockLogsPlatform.enable(any()))
+    when(() => mockLogsPlatform.enable(any(), any()))
         .thenAnswer((_) => Future.value());
 
     mockRumPlatform = MockRumPlatform();
-    when(() => mockRumPlatform.enable(any()))
+    when(() => mockRumPlatform.enable(any(), any()))
         .thenAnswer((_) => Future<void>.value());
     DdRumPlatform.instance = mockRumPlatform;
   });
@@ -226,7 +227,7 @@ void main() {
     final logs = datadogSdk.logs;
 
     expect(logs, isNotNull);
-    verify(() => mockLogsPlatform.enable(loggingConfiguration));
+    verify(() => mockLogsPlatform.enable(datadogSdk, loggingConfiguration));
   });
 
   test('initialize with rum configuration creates RUM', () async {
@@ -254,7 +255,7 @@ void main() {
 
     final rum = datadogSdk.rum;
     expect(rum, isNotNull);
-    verify(() => mockRumPlatform.enable(rumConfiguration));
+    verify(() => mockRumPlatform.enable(datadogSdk, rumConfiguration));
   });
 
   // test('attachToExisting calls out to platform', () async {

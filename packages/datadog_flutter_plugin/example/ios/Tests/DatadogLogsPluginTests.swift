@@ -196,6 +196,59 @@ class DatadogLogsPluginTests: XCTestCase {
         }
     }
 
+    func testRepeatEnable_FromMethodChannelSameOptions_DoesNothing() {
+        let configuration: [String: Any?] = [:]
+
+        let methodCallA = FlutterMethodCall(
+            methodName: "enable",
+            arguments: [
+                "configuration": configuration
+            ] as [String: Any]
+        )
+        plugin.handle(methodCallA) { _ in }
+
+        var loggedConsoleLines: [String] = []
+        consolePrint = { str in loggedConsoleLines.append(str) }
+
+        let methodCallB = FlutterMethodCall(
+            methodName: "initialize",
+            arguments: [
+                "configuration": configuration
+            ] as [String: Any]
+        )
+        plugin.handle(methodCallB) { _ in }
+
+        print(loggedConsoleLines)
+
+        XCTAssertTrue(loggedConsoleLines.isEmpty)
+    }
+
+    func testRepeatEnable_FromMethodChannelDifferentOptions_PrintsError() {
+        let methodCallA = FlutterMethodCall(
+            methodName: "enable",
+            arguments: [
+                "configuration": [:] as [String: Any?]
+            ] as [String: Any]
+        )
+        plugin.handle(methodCallA) { _ in }
+
+        var loggedConsoleLines: [String] = []
+        consolePrint = { str in loggedConsoleLines.append(str) }
+
+        let methodCallB = FlutterMethodCall(
+            methodName: "enable",
+            arguments: [
+                "configuration": [
+                    "customEndpoint": "http://localhost"
+                ] as [String: Any?]
+            ] as [String: Any]
+        )
+        plugin.handle(methodCallB) { _ in }
+
+        XCTAssertFalse(loggedConsoleLines.isEmpty)
+        XCTAssertTrue(loggedConsoleLines.first?.contains("🔥") == true)
+    }
+
     func testParseLogLevel_ParsesLevelsCorrectly() {
         let debug = LogLevel.parseLogLevelFromFlutter("LogLevel.debug")
         let info = LogLevel.parseLogLevelFromFlutter("LogLevel.info")

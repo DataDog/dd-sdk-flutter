@@ -34,7 +34,8 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  Future<void> enable(DatadogRumConfiguration configuration) async {}
+  Future<void> enable(
+      DatadogSdk core, DatadogRumConfiguration configuration) async {}
 
   @override
   Future<void> addAttribute(String key, dynamic value) async {

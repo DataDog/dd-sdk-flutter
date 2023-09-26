@@ -5,21 +5,17 @@
  */
 package com.datadoghq.flutter
 
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
 import com.datadog.android._InternalProxy
 import com.datadog.android.core.configuration.Configuration
-import com.datadog.android.log.model.LogEvent
 import com.datadog.android.privacy.TrackingConsent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
@@ -299,145 +295,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         method?.let {
             it.isAccessible = true
             it.invoke(target)
-        }
-    }
-
-//    private fun attachEventMappers(
-//        config: DatadogFlutterConfiguration,
-//        configBuilder: Configuration.Builder
-//    ) {
-//        if (config.attachLogMapper) {
-//            configBuilder.setLogEventMapper(
-//                object : EventMapper<LogEvent> {
-//                    override fun map(event: LogEvent): LogEvent? {
-//                        return mapLogEvent(event)
-//                    }
-//                }
-//            )
-//        }
-//
-//        config.rumConfiguration?.let {
-//            if (it.attachViewEventMapper) {
-//                configBuilder.setRumViewEventMapper(
-//                    object : ViewEventMapper {
-//                        override fun map(event: ViewEvent): ViewEvent {
-//                            return rumPlugin.mapViewEvent(event)
-//                        }
-//                    }
-//                )
-//            }
-//            if (it.attachActionEventMapper) {
-//                configBuilder.setRumActionEventMapper(
-//                    object : EventMapper<ActionEvent> {
-//                        override fun map(event: ActionEvent): ActionEvent? {
-//                            return rumPlugin.mapActionEvent(event)
-//                        }
-//                    }
-//                )
-//            }
-//            if (it.attachResourceEventMapper) {
-//                configBuilder.setRumResourceEventMapper(
-//                    object : EventMapper<ResourceEvent> {
-//                        override fun map(event: ResourceEvent): ResourceEvent? {
-//                            return rumPlugin.mapResourceEvent(event)
-//                        }
-//                    }
-//                )
-//            }
-//            if (it.attachErrorEventMapper) {
-//                configBuilder.setRumErrorEventMapper(
-//                    object : EventMapper<ErrorEvent> {
-//                        override fun map(event: ErrorEvent): ErrorEvent? {
-//                            return rumPlugin.mapErrorEvent(event)
-//                        }
-//                    }
-//                )
-//            }
-//            if (it.attachLongTaskEventMapper) {
-//                configBuilder.setRumLongTaskEventMapper(
-//                    object : EventMapper<LongTaskEvent> {
-//                        override fun map(event: LongTaskEvent): LongTaskEvent? {
-//                            return rumPlugin.mapLongTaskEvent(event)
-//                        }
-//                    }
-//                )
-//            }
-//        }
-//    }
-
-    @Suppress("TooGenericExceptionCaught")
-    internal fun mapLogEvent(event: LogEvent): LogEvent? {
-        val jsonEvent = event.toJson().asMap()
-        var modifiedJson: Map<String, Any?>? = null
-
-        val latch = CountDownLatch(1)
-
-        val handler = Handler(Looper.getMainLooper())
-        handler.post {
-            try {
-                channel.invokeMethod(
-                    "mapLogEvent",
-                    mapOf(
-                        "event" to jsonEvent
-                    ),
-                    object : Result {
-                        override fun success(result: Any?) {
-                            @Suppress("UNCHECKED_CAST")
-                            modifiedJson = result as? Map<String, Any?>
-                            latch.countDown()
-                        }
-
-                        override fun error(
-                            errorCode: String,
-                            errorMessage: String?,
-                            errorDetails: Any?
-                        ) {
-                            // No telemetry needed, this is likely an issue in user code
-                            latch.countDown()
-                        }
-
-                        override fun notImplemented() {
-                            Datadog._internalProxy()._telemetry.error(
-                                "mapLogEvent returned notImplemented."
-                            )
-                            latch.countDown()
-                        }
-                    }
-                )
-            } catch (e: Exception) {
-                Datadog._internalProxy()._telemetry.error("Attempting call mapLogEvent failed.", e)
-                latch.countDown()
-            }
-        }
-
-        try {
-            // Stalls until the method channel finishes
-            if (!latch.await(1, TimeUnit.SECONDS)) {
-                Datadog._internalProxy()._telemetry.debug("logMapper timed out")
-                return event
-            }
-
-            return modifiedJson?.let {
-                if (!it.containsKey("_dd.mapper_error")) {
-                    val modifiedEvent = LogEvent.fromJsonObject(modifiedJson!!.toJsonObject())
-
-                    event.status = modifiedEvent.status
-                    event.message = modifiedEvent.message
-                    event.ddtags = modifiedEvent.ddtags
-                    event.logger.name = modifiedEvent.logger.name
-
-                    event.additionalProperties.clear()
-                    event.additionalProperties.putAll(modifiedEvent.additionalProperties)
-                }
-                event
-            }
-        } catch (e: Exception) {
-            Datadog._internalProxy()._telemetry.error(
-                "Attempt to deserialize mapped log event failed, or latch await was interrupted." +
-                    " Returning unmodified event.",
-                e
-            )
-            return event
         }
     }
 

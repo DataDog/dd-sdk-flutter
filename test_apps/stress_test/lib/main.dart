@@ -21,18 +21,19 @@ void main() async {
     env: dotenv.get('DD_ENV', fallback: ''),
     site: DatadogSite.us1,
     nativeCrashReportEnabled: true,
-    //logEventMapper: (event) => event,
-    loggingConfiguration: DatadogLoggingConfiguration(),
+    loggingConfiguration: DatadogLoggingConfiguration(
+      eventMapper: (event) => event,
+    ),
     rumConfiguration: applicationId != null
         ? DatadogRumConfiguration(
             applicationId: applicationId,
             reportFlutterPerformance: true,
             detectLongTasks: true,
-            rumViewEventMapper: (event) => event,
-            rumActionEventMapper: (event) => event,
-            rumResourceEventMapper: (event) => event,
-            rumErrorEventMapper: (event) => event,
-            rumLongTaskEventMapper: (event) => event,
+            viewEventMapper: (event) => event,
+            actionEventMapper: (event) => event,
+            resourceEventMapper: (event) => event,
+            errorEventMapper: (event) => event,
+            longTaskEventMapper: (event) => event,
           )
         : null,
   )..additionalConfig[DatadogConfigKey.trackMapperPerformance] = true;

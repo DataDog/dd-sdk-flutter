@@ -319,7 +319,6 @@ class DatadogSdkPluginTest {
             "env" to forge.anAlphabeticalString(),
             "trackingConsent" to "TrackingConsent.granted",
             "nativeCrashReportEnabled" to true,
-            "loggingConfiguration" to null
         )
         val methodCall = MethodCall(
             "initialize",
@@ -363,7 +362,6 @@ class DatadogSdkPluginTest {
                     "env" to forge.anAlphabeticalString(),
                     "trackingConsent" to "TrackingConsent.granted",
                     "nativeCrashReportEnabled" to true,
-                    "loggingConfiguration" to null
                 )
             )
         )
@@ -381,7 +379,6 @@ class DatadogSdkPluginTest {
                     "env" to forge.anAlphabeticalString(),
                     "trackingConsent" to "TrackingConsent.granted",
                     "nativeCrashReportEnabled" to true,
-                    "loggingConfiguration" to null
                 )
             )
         )

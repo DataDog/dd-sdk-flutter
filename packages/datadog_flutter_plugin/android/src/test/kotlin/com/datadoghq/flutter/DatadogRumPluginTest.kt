@@ -5,8 +5,13 @@
  */
 package com.datadoghq.flutter
 
+import android.util.Log
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import com.datadog.android.Datadog
+import com.datadog.android.log.Logs
+import com.datadog.android.log.LogsConfiguration
+import com.datadog.android.rum.Rum
 import com.datadog.android.rum.RumActionType
 import com.datadog.android.rum.RumConfiguration
 import com.datadog.android.rum.RumErrorSource
@@ -28,13 +33,18 @@ import io.flutter.plugin.common.MethodChannel
 import io.mockk.Called
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import io.mockk.verify
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.kotlin.mock
 import java.util.concurrent.TimeUnit
 
 @ExtendWith(ForgeExtension::class)
+@Suppress("LargeClass")
 class DatadogRumPluginTest {
     private lateinit var plugin: DatadogRumPlugin
     private lateinit var monitorProxy: MockRumMonitor
@@ -43,6 +53,14 @@ class DatadogRumPluginTest {
     fun beforeEach() {
         monitorProxy = MockRumMonitor()
         plugin = DatadogRumPlugin(monitorProxy)
+    }
+
+    @AfterEach
+    fun afterEach() {
+        Datadog.stopInstance()
+        DatadogRumPlugin.resetConfig();
+        unmockkStatic(Log::class)
+        unmockkStatic(Rum::class)
     }
 
     @Test
@@ -197,6 +215,123 @@ class DatadogRumPluginTest {
 
         // THEN
         verify { mockResult.invalidOperation(any()) }
+    }
+
+    @Test
+    fun `M call Rum enable with correct config W method channel sends enable`(
+        forge: Forge
+    ) {
+        // GIVEN
+        mockkStatic(Rum::class)
+        val applicationId = forge.aString()
+        val config = mapOf(
+            "applicationId" to applicationId,
+            "trackFrustrations" to true,
+            "vitalsUpdateFrequency" to "VitalsFrequency.frequent",
+            "telemetrySampleRate" to 100.0f,
+        )
+        val methodCall = MethodCall(
+            "enable",
+            mapOf(
+                "configuration" to config
+            )
+        )
+
+        // WHEN
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        io.mockk.verify {
+            // Would like to check the specific configuration, but there are too many
+            // internal variables
+            Rum.enable(any())
+        }
+    }
+
+    @Test
+    fun `M not issue warning W enable called with same configuration`(
+        forge: Forge
+    ) {
+        // GIVEN
+        mockkStatic(Log::class)
+        Datadog.setVerbosity(Log.INFO)
+
+        val applicationId = forge.aString()
+        val config = mapOf(
+            "applicationId" to applicationId,
+            "trackFrustrations" to true,
+            "vitalsUpdateFrequency" to "VitalsFrequency.frequent",
+            "telemetrySampleRate" to 100.0f,
+        )
+        val methodCall = MethodCall(
+            "enable",
+            mapOf(
+                "configuration" to config
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // WHEN
+        val methodCallB = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to config
+            )
+        )
+        val mockResultB = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCallB, mockResultB)
+
+        // THEN
+        io.mockk.verify(exactly = 0) {
+            Log.println(any(), eq(DATADOG_FLUTTER_TAG), any())
+        }
+    }
+
+    @Test
+    fun `M issue warning W enable called with different configuration`(
+        forge: Forge
+    ) {
+        // GIVEN
+        mockkStatic(Log::class)
+        Datadog.setVerbosity(Log.INFO)
+
+        val applicationId = forge.aString()
+        val config = mapOf(
+            "applicationId" to applicationId,
+            "trackFrustrations" to true,
+            "vitalsUpdateFrequency" to "VitalsFrequency.frequent",
+            "telemetrySampleRate" to 100.0f,
+        )
+        val methodCall = MethodCall(
+            "enable",
+            mapOf(
+                "configuration" to config
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // WHEN
+        val methodCallB = MethodCall(
+            "enable",
+            mapOf(
+                "configuration" to mapOf(
+                    "applicationId" to applicationId,
+                    "trackFrustrations" to true,
+                    "vitalsUpdateFrequency" to "VitalsFrequency.rare",
+                    "telemetrySampleRate" to 25.0f,
+                )
+            )
+        )
+        val mockResultB = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCallB, mockResultB)
+
+        // THEN
+        io.mockk.verify(exactly = 1) {
+            Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_RUM_REINITIALIZATION)
+        }
     }
 
     @Test

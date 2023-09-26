@@ -9,12 +9,17 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
 
   cupertino_icons: ^1.0.2
   datadog_flutter_plugin:
     path: ../../packages/datadog_flutter_plugin
   datadog_tracking_http_client:
     path: ../../packages/datadog_tracking_http_client
+  datadog_webview_tracking:
+    path: ../../packages/datadog_webview_tracking
+    
   go_router: ^7.0.0
   path_provider: ^2.0.0
   flutter_dotenv: ^5.1.0

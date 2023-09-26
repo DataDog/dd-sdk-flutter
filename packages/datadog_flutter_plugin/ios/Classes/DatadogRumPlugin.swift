@@ -57,12 +57,14 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
     internal var mainThreadMapperPerf = PerformanceTracker()
     internal var mapperTimeouts = 0
 
+    private var currentConfiguration: [AnyHashable: Any]?
+
     private override init() {
         super.init()
     }
 
     // for unit testing
-    public func inject(rum: RUMMonitorProtocol) {
+    public func inject(rum: RUMMonitorProtocol?) {
         self.rum = rum
     }
 
@@ -90,15 +92,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         switch call.method {
         case "enable":
-            if rum == nil {
-                if let configArg = arguments["configuration"] as? [String: Any?],
-                   let config = RUM.Configuration(fromEncoded: configArg) {
-                    RUM.enable(with: config)
-                    rum = RUMMonitor.shared()
-                }
-            } else {
-                // Already enabled
-            }
+            enable(arguments: arguments, call: call)
 
         case "startView":
             if let key = arguments["key"] as? String,
@@ -302,6 +296,52 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             result(nil)
         default:
             result(FlutterMethodNotImplemented)
+        }
+    }
+
+    private func enable(arguments: [String: Any?], call: FlutterMethodCall) {
+        let configArg = arguments["configuration"] as? [String: Any?]
+        if rum == nil {
+            if let configArg = configArg,
+               var config = RUM.Configuration(fromEncoded: configArg) {
+                attachEventMappers(configArg: configArg, config: &config)
+
+                RUM.enable(with: config)
+                rum = RUMMonitor.shared()
+
+                currentConfiguration = configArg as [AnyHashable: Any]
+            }
+        } else if currentConfiguration != nil,
+                    let configArg = configArg {
+            let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
+            if !dict.isEqual(to: currentConfiguration!) {
+                consolePrint(
+                    "🔥 Calling RUM `enable` with different options, even after a hot restart," +
+                    " is not supported. Cold restart your application to change your current configuation."
+                )
+            }
+        }
+    }
+
+    private func attachEventMappers(configArg: [String: Any?], config: inout RUM.Configuration) {
+        func isOptionSet(_ flag: String) -> Bool {
+            return (configArg[flag] as? NSNumber)?.boolValue ?? false
+        }
+
+        if isOptionSet("attachViewEventMapper") {
+            config.viewEventMapper = viewEventMapper
+        }
+        if isOptionSet("attachActionEventMapper") {
+            config.actionEventMapper = actionEventMapper
+        }
+        if isOptionSet("attachResourceEventMapper") {
+            config.resourceEventMapper = resourceEventMapper
+        }
+        if isOptionSet("attachErrorEventMapper") {
+            config.errorEventMapper = errorEventMapper
+        }
+        if isOptionSet("attachLongTaskEventMapper") {
+            config.longTaskEventMapper = longTaskEventMapper
         }
     }
 

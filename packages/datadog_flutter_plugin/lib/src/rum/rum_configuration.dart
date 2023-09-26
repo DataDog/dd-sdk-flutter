@@ -141,23 +141,23 @@ class DatadogRumConfiguration {
 
   /// A function that allows you to modify or drop specific [RumViewEvent]s
   /// before they are sent to Datadog.
-  RumViewEventMapper? rumViewEventMapper;
+  RumViewEventMapper? viewEventMapper;
 
   /// A function that allows you to modify or drop specific [RumActionEvent]s
   /// before they are sent to Datadog.
-  RumActionEventMapper? rumActionEventMapper;
+  RumActionEventMapper? actionEventMapper;
 
   /// A function that allows you to modify or drop specific [RumResourceEvent]s
   /// before they are sent to Datadog.
-  RumResourceEventMapper? rumResourceEventMapper;
+  RumResourceEventMapper? resourceEventMapper;
 
   /// A function that allows you to modify or drop specific [RumResourceEvent]s
   /// before they are sent to Datadog.
-  RumErrorEventMapper? rumErrorEventMapper;
+  RumErrorEventMapper? errorEventMapper;
 
   /// A function that allows you to modify or drop specific [RumLongTaskEvent]s
   /// before they are sent to Datadog.
-  RumLongTaskEventMapper? rumLongTaskEventMapper;
+  RumLongTaskEventMapper? longTaskEventMapper;
 
   Map<String, Object?> additionalConfig;
 
@@ -172,11 +172,11 @@ class DatadogRumConfiguration {
     this.reportFlutterPerformance = false,
     this.customEndpoint,
     this.telemetrySampleRate = 20.0,
-    this.rumViewEventMapper,
-    this.rumActionEventMapper,
-    this.rumResourceEventMapper,
-    this.rumErrorEventMapper,
-    this.rumLongTaskEventMapper,
+    this.viewEventMapper,
+    this.actionEventMapper,
+    this.resourceEventMapper,
+    this.errorEventMapper,
+    this.longTaskEventMapper,
     this.additionalConfig = const <String, Object>{},
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),
@@ -206,11 +206,11 @@ class DatadogRumConfiguration {
       'reportFlutterPerformance': reportFlutterPerformance,
       'customEndpoint': customEndpoint,
       'telemetrySampleRate': telemetrySampleRate,
-      'attachViewEventMapper': rumViewEventMapper != null,
-      'attachActionEventMapper': rumActionEventMapper != null,
-      'attachResourceEventMapper': rumResourceEventMapper != null,
-      'attachErrorEventMapper': rumErrorEventMapper != null,
-      'attachLongTaskEventMapper': rumLongTaskEventMapper != null,
+      'attachViewEventMapper': viewEventMapper != null,
+      'attachActionEventMapper': actionEventMapper != null,
+      'attachResourceEventMapper': resourceEventMapper != null,
+      'attachErrorEventMapper': errorEventMapper != null,
+      'attachLongTaskEventMapper': longTaskEventMapper != null,
       'additionalConfig': additionalConfig,
     };
   }

@@ -363,8 +363,10 @@ class FlutterSdkTests: XCTestCase {
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
+    // Not sure how to check what changes have been made to the Configuraiton Telemetry in v2
 //    func testConfigurationOverrides_FromMethodChannel_AreOverridden() {
 //        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+//        plugin.core?.
 //
 //        let trackViewsManually: Bool = .random()
 //        let trackInteractions: Bool = .random()
@@ -389,7 +391,6 @@ class FlutterSdkTests: XCTestCase {
 //        }
 //
 //        callAndCheck(property: "trackViewsManually", value: trackViewsManually) {
-//            plugin.core?.telemetry
 //            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackViewsManually, trackViewsManually)
 //        }
 //        callAndCheck(property: "trackInteractions", value: trackInteractions) {

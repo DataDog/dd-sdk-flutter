@@ -14,7 +14,7 @@ const mappedInstrumentationScenarioName =
 
 RumViewEvent mapRumViewEvent(RumViewEvent event) {
   if (event.view.name == 'ThirdManualRumView') {
-    event.view.name = 'ThirdView';
+    event.view.url = 'ThirdView';
   }
 
   return event;
@@ -56,10 +56,6 @@ RumLongTaskEvent? mapRumLongTaskEvent(RumLongTaskEvent event) {
     return null;
   }
 
-  if (event.view.name == 'ThirdManualRumView') {
-    event.view.name = 'ThirdView';
-  }
-
   return event;
 }
 
@@ -85,7 +81,10 @@ Future<void> runScenario({
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,
     firstPartyHosts: firstPartyHosts,
-    loggingConfiguration: DatadogLoggingConfiguration(),
+    loggingConfiguration: DatadogLoggingConfiguration(
+      eventMapper: _mapLogEvent,
+      customEndpoint: customEndpoint,
+    ),
     rumConfiguration: applicationId != null
         ? DatadogRumConfiguration(
             applicationId: applicationId,
@@ -103,13 +102,11 @@ Future<void> runScenario({
 
   if (testingConfiguration?.scenario == mappedInstrumentationScenarioName) {
     // Add mapping to rum configuration
-    configuration.rumConfiguration?.rumViewEventMapper = mapRumViewEvent;
-    configuration.rumConfiguration?.rumActionEventMapper = mapRumActionEvent;
-    configuration.rumConfiguration?.rumResourceEventMapper =
-        mapRumResourceEvent;
-    configuration.rumConfiguration?.rumErrorEventMapper = mapRumErrorEvent;
-    configuration.rumConfiguration?.rumLongTaskEventMapper =
-        mapRumLongTaskEvent;
+    configuration.rumConfiguration?.viewEventMapper = mapRumViewEvent;
+    configuration.rumConfiguration?.actionEventMapper = mapRumActionEvent;
+    configuration.rumConfiguration?.resourceEventMapper = mapRumResourceEvent;
+    configuration.rumConfiguration?.errorEventMapper = mapRumErrorEvent;
+    configuration.rumConfiguration?.longTaskEventMapper = mapRumLongTaskEvent;
   }
 
   await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {

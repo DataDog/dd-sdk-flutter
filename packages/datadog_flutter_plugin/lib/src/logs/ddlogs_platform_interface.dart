@@ -4,8 +4,8 @@
 
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
+import '../../datadog_flutter_plugin.dart';
 import 'ddlogs_method_channel.dart';
-import 'log_configuration.dart';
 
 // Private for now until we can ensure all SDKs support all levels
 enum LogLevel {
@@ -37,7 +37,7 @@ abstract class DdLogsPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<void> enable(DatadogLoggingConfiguration config);
+  Future<void> enable(DatadogSdk core, DatadogLoggingConfiguration config);
 
   Future<void> createLogger(
       String loggerHandle, DatadogLoggerConfiguration config);

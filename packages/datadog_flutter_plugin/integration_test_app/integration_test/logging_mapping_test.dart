@@ -135,5 +135,5 @@ void main() {
         expect(log.threadName, 'main');
       }
     }
-  }, skip: true);
+  });
 }
