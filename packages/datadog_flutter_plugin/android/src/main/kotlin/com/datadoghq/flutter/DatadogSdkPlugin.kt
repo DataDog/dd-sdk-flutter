@@ -10,6 +10,7 @@ import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
 import com.datadog.android._InternalProxy
 import com.datadog.android.core.configuration.Configuration
+import com.datadog.android.ndk.NdkCrashReports
 import com.datadog.android.privacy.TrackingConsent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -200,6 +201,11 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 configBuilder.build(),
                 trackingConsent
             )
+            (encoded["nativeCrashReportEnabled"] as? Boolean)?.let {
+                if (it) {
+                    NdkCrashReports.enable()
+                }
+            }
         }
     }
 
