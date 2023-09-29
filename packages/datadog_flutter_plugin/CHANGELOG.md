@@ -2,7 +2,10 @@
 
 ## Unreleased
 
+Release 2.0 introduces breaking changes. Follow the [Migration Guide](MIGRATING.md) to upgrade from 1.x
 
+* Update to v2.0 of Datadog SDKs.
+* Update UUID to ^4.0. See [#472]
 
 ## 1.6.0
 
@@ -198,3 +201,4 @@
 [#414]: https://github.com/DataDog/dd-sdk-flutter/issues/414
 [#416]: https://github.com/DataDog/dd-sdk-flutter/issues/416
 [#462]: https://github.com/DataDog/dd-sdk-flutter/issues/462
+[#472]: https://github.com/DataDog/dd-sdk-flutter/issues/472

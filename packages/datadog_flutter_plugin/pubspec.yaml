@@ -1,6 +1,6 @@
 name: datadog_flutter_plugin
 description: Flutter bindings and tools for utilizing Datadog Mobile SDks
-version: 1.7.0
+version: 2.0.0
 repository: https://github.com/DataDog/dd-sdk-flutter
 
 environment:
@@ -15,7 +15,7 @@ dependencies:
   js: ^0.6.3
   plugin_platform_interface: ^2.0.2
   json_annotation: ^4.7.0
-  uuid: ^3.0.5
+  uuid: ^4.0.0
   meta: ^1.7.0
 
 dev_dependencies:
