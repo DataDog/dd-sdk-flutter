@@ -180,6 +180,10 @@ class DatadogRumPlugin(
         }
     }
 
+    fun attachToExistingSdk(monitor: RumMonitor) {
+        rum = monitor
+    }
+
     private fun mapTelemetryConfiguration(
         event: TelemetryConfigurationEvent
     ): TelemetryConfigurationEvent {

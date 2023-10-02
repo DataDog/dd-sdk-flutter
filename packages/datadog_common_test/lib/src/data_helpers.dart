@@ -17,6 +17,10 @@ String randomString({int length = 10}) {
   return result;
 }
 
+bool randomBool() {
+  return _random.nextBool();
+}
+
 extension RandomExtension<T> on List<T> {
   T randomElement() {
     return this[_random.nextInt(length)];

@@ -109,6 +109,42 @@ void main() {
       expect(lowConfiguration.remoteSampleRate, 0);
       expect(highConfiguration.remoteSampleRate, 100);
     });
+
+    test('logging configuration is encoded correctly', () {
+      final customEndpoint = randomString();
+      final loggingConfiguration = DatadogLoggingConfiguration(
+        customEndpoint: customEndpoint,
+        eventMapper: (event) => event,
+      );
+
+      final encoded = loggingConfiguration.encode();
+      expect(encoded['customEndpoint'], customEndpoint);
+      expect(encoded['attachLogMapper'], true);
+    });
+
+    test('logger configuraiton is encoded correctly', () {
+      final service = randomString();
+      final remoteLogThreshold = LogLevel.values.randomElement();
+      final bundleWithRum = randomBool();
+      final bundleWithTrace = randomBool();
+      final networkInfoEnabled = randomBool();
+      final logConfiguraiton = DatadogLoggerConfiguration(
+        service: service,
+        remoteLogThreshold: remoteLogThreshold,
+        bundleWithRumEnabled: bundleWithRum,
+        bundleWithTraceEnabled: bundleWithTrace,
+        networkInfoEnabled: networkInfoEnabled,
+        remoteSampleRate: 20.0,
+      );
+
+      final encoded = logConfiguraiton.encode();
+      expect(encoded['service'], service);
+      expect(encoded['remoteLogThreshold'], remoteLogThreshold.toString());
+      expect(encoded['bundleWithRumEnabled'], bundleWithRum);
+      expect(encoded['bundleWithTraceEnabled'], bundleWithTrace);
+      expect(encoded['networkInfoEnabled'], networkInfoEnabled);
+      expect(encoded['remoteSampleRate'], 20.0);
+    });
   });
 
   test('logger samples at configured rate', () async {

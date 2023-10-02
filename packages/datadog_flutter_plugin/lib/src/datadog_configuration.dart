@@ -254,104 +254,119 @@ class DatadogConfiguration {
 
 /// Configuration options used when attaching to an existing instance of a
 /// DatadogSdk.
-// class DdSdkExistingConfiguration {
-//   /// The configuration to use for the default global logger
-//   ///
-//   /// Passing a configuration to [logConfiguration] will create a default global
-//   /// log with the given parameters and assign it to [DatadogSdk.logs]. If
-//   /// logging is not enabled in the Native SDK, this log creation will quietly
-//   /// fail.
-//   LoggingConfiguration? loggingConfiguration;
+class DatadogAttachConfiguration {
+  /// Enable or disable detection of "long tasks"
+  ///
+  /// Long task detection attempts to detect when an application is doing too
+  /// much work on the main isolate which could prevent your app from rendering
+  /// at a smooth framerate.
+  ///
+  /// This option does not have any affect on options already set in the Native
+  /// SDK, and only initializes long task detection on the main Dart isolate.
+  ///
+  /// This option is ignored if RUM is not enabled in the Native SDK.
+  ///
+  /// Defaults to true.
+  bool detectLongTasks;
 
-//   /// Enable or disable detection of "long tasks"
-//   ///
-//   /// Long task detection attempts to detect when an application is doing too
-//   /// much work on the main isolate which could prevent your app from rendering
-//   /// at a smooth framerate.
-//   ///
-//   /// This option does not have any affect on options already set in the Native
-//   /// SDK, and only initializes long task detection on the main Dart isolate.
-//   ///
-//   /// Defaults to true.
-//   bool detectLongTasks;
+  // The amount of elapsed time that is considered to be a "long task", in /
+  //seconds.
+  ///
+  /// If the main isolate takes more than [longTaskThreshold] seconds to process
+  /// a microtask, it will appear as a Long Task in Datadog RUM Explorer. This
+  /// has a minimum of 0.02 seconds.
+  ///
+  /// This threshold only applies to the Dart long task detector. The Native
+  /// SDKs / will retain their own thresholds.
+  ///
+  /// This option is ignored if RUM is not enabled in the Native SDK.
+  ///
+  /// Defaults to 0.1 seconds
+  final double longTaskThreshold;
 
-//   // The amount of elapsed time that is considered to be a "long task", in /
-//   //seconds.
-//   ///
-//   /// If the main isolate takes more than [longTaskThreshold] seconds to process
-//   /// a microtask, it will appear as a Long Task in Datadog RUM Explorer. This /
-//   //has a minimum of 0.02 seconds.
-//   ///
-//   /// This threshold only applies to the Dart long task detector. The Native
-//   //SDKs / will retain their own thresholds.
-//   ///
-//   /// Defaults to 0.1 seconds
-//   final double longTaskThreshold;
+  /// Whether to report Flutter specific performance metrics (build and raster
+  /// times)
+  ///
+  /// This uses the [SchedulerBinding.addTimingsCallback] method to report build
+  /// and raster times for views, and has a documented negligible impact on
+  /// performance.
+  ///
+  /// Defaults to false
+  bool reportFlutterPerformance = false;
 
-//   /// A list of first party hosts, used in conjunction with Datadog network
-//   /// tracking packages like `datadog_tracking_http_client`
-//   ///
-//   /// This property only affects network requests made from Flutter, and is not
-//   /// shared with or populated from existing the SDK.
-//   ///
-//   /// See [DdSdkConfiguration.firstPartyHosts] for more information
-//   List<String> firstPartyHosts = [];
+  /// A list of first party hosts, used in conjunction with Datadog network
+  /// tracking packages like `datadog_tracking_http_client`
+  ///
+  /// This property only affects network requests made from Flutter, and is not
+  /// shared with or populated from existing the SDK.
+  ///
+  /// Overwriting this property will overwrite
+  /// [DatadogAttachConfiguration.firstPartyHostsWithTracingHeaders]
+  ///
+  /// See [DatadogConfiguration.firstPartyHosts] for more information
+  List<String> get firstPartyHosts =>
+      firstPartyHostsWithTracingHeaders.keys.toList();
+  set firstPartyHosts(List<String> hosts) {
+    firstPartyHostsWithTracingHeaders.clear();
+    for (var entry in hosts) {
+      firstPartyHostsWithTracingHeaders[entry] = {TracingHeaderType.datadog};
+    }
+  }
 
-//   /// A list of first party hosts and the types of tracing headers Datadog
-//   /// should automatically inject on resource calls. This is used in conjunction
-//   /// with Datadog network tracking packages like `datadog_tracking_http_client`
-//   ///
-//   /// This property only affects network requests made from Flutter, and is not
-//   /// shared with or populated from existing the SDK.
-//   ///
-//   /// See [DdSdkConfiguration.firstPartyHostsWithTracingHeaders] for more information
-//   Map<String, Set<TracingHeaderType>> firstPartyHostsWithTracingHeaders = {};
+  /// A list of first party hosts and the types of tracing headers Datadog
+  /// should automatically inject on resource calls. This is used in conjunction
+  /// with Datadog network tracking packages like `datadog_tracking_http_client`
+  ///
+  /// This property only affects network requests made from Flutter, and is not
+  /// shared with or populated from existing the SDK.
+  ///
+  /// See [DdSdkConfiguration.firstPartyHostsWithTracingHeaders] for more information
+  Map<String, Set<TracingHeaderType>> firstPartyHostsWithTracingHeaders = {};
 
-//   /// Sets the sampling rate for tracing
-//   ///
-//   /// The sampling rate must be a value between `0.0` and `100.0`. A value of
-//   /// `0.0` means no resources will include APM tracing, `100.0` resource will
-//   /// include APM tracing
-//   ///
-//   /// Similarly to [firstPartyHosts], this property only affects network
-//   /// requests made from Flutter, and it is not shared or populated from the
-//   /// existing SDK.
-//   ///
-//   /// Defaults to `20.0`.
-//   double tracingSamplingRate;
+  /// Sets the sampling rate for tracing
+  ///
+  /// The sampling rate must be a value between `0.0` and `100.0`. A value of
+  /// `0.0` means no resources will include APM tracing, `100.0` resource will
+  /// include APM tracing
+  ///
+  /// This property only affects network requests made from Flutter, and it is
+  /// not shared or populated from the existing SDK.
+  ///
+  /// Defaults to `20.0`.
+  double tracingSamplingRate;
 
-//   /// Configurations for additional plugins that will be created after Datadog
-//   /// is initialized.
-//   final List<DatadogPluginConfiguration> additionalPlugins = [];
+  /// Configurations for additional plugins that will be created after Datadog
+  /// is initialized.
+  final List<DatadogPluginConfiguration> additionalPlugins = [];
 
-//   DdSdkExistingConfiguration({
-//     this.loggingConfiguration,
-//     this.detectLongTasks = true,
-//     this.longTaskThreshold = 0.1,
-//     this.tracingSamplingRate = 20.0,
-//     List<String>? firstPartyHosts,
-//     this.firstPartyHostsWithTracingHeaders = const {},
-//   }) {
-//     // Attempt a union if both configuration options are present
-//     if (firstPartyHosts != null) {
-//       // make map mutable
-//       firstPartyHostsWithTracingHeaders =
-//           Map<String, Set<TracingHeaderType>>.from(
-//               firstPartyHostsWithTracingHeaders);
+  DatadogAttachConfiguration({
+    this.detectLongTasks = true,
+    this.longTaskThreshold = 0.1,
+    this.tracingSamplingRate = 20.0,
+    this.reportFlutterPerformance = false,
+    List<String>? firstPartyHosts,
+    this.firstPartyHostsWithTracingHeaders = const {},
+  }) {
+    // Attempt a union if both configuration options are present
+    if (firstPartyHosts != null) {
+      // make map mutable
+      firstPartyHostsWithTracingHeaders =
+          Map<String, Set<TracingHeaderType>>.from(
+              firstPartyHostsWithTracingHeaders);
 
-//       for (var entry in firstPartyHosts) {
-//         final headerTypes = firstPartyHostsWithTracingHeaders[entry];
-//         if (headerTypes == null) {
-//           firstPartyHostsWithTracingHeaders[entry] = {
-//             TracingHeaderType.datadog
-//           };
-//         } else {
-//           headerTypes.add(TracingHeaderType.datadog);
-//         }
-//       }
-//     }
-//   }
+      for (var entry in firstPartyHosts) {
+        final headerTypes = firstPartyHostsWithTracingHeaders[entry];
+        if (headerTypes == null) {
+          firstPartyHostsWithTracingHeaders[entry] = {
+            TracingHeaderType.datadog
+          };
+        } else {
+          headerTypes.add(TracingHeaderType.datadog);
+        }
+      }
+    }
+  }
 
-//   void addPlugin(DatadogPluginConfiguration pluginConfiguration) =>
-//       additionalPlugins.add(pluginConfiguration);
-// }
+  void addPlugin(DatadogPluginConfiguration pluginConfiguration) =>
+      additionalPlugins.add(pluginConfiguration);
+}

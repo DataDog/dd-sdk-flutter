@@ -13,7 +13,7 @@ class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
 
   @override
   Future<AttachResponse?> attachToExisting() async {
-    return AttachResponse(rumEnabled: false);
+    return AttachResponse(loggingEnabled: false, rumEnabled: false);
   }
 
   @override

@@ -3,7 +3,9 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import UIKit
-import Datadog
+import DatadogCore
+import DatadogLogs
+import DatadogRUM
 import Flutter
 import FlutterPluginRegistrant
 
@@ -42,23 +44,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                   " Did you run './generate_env'?")
         }
         
+        let coreConfig = Datadog.Configuration(
+            clientToken: clientToken,
+            env: "prod")
         Datadog.verbosityLevel = .debug
-        Datadog.initialize(
-            appContext: .init(),
-            trackingConsent: .granted,
-            configuration: Datadog.Configuration
-                .builderUsing(
-                    rumApplicationID: rumApplicationId,
-                    clientToken: clientToken,
-                    environment: "prod"
-                )
-                .set(endpoint: .us1)
-                .trackUIKitRUMViews(using: FlutterExcludingRumViewsPredicate())
-                .trackUIKitRUMActions()
-                .trackURLSession()
-                .build()
-        )
-        Global.rum = RUMMonitor.initialize()
+        Datadog.initialize(with: coreConfig, trackingConsent: TrackingConsent.granted)
+
+        Logs.enable()
+
+        let rumConfig = RUM.Configuration(applicationID: rumApplicationId, uiKitViewsPredicate: FlutterExcludingRumViewsPredicate())
+        RUM.enable(with: rumConfig)
+
         
         // Note: Datadog needs to be initialized before flutterEngine.run(), as this will call
         // main() which will look for an existing Datadog instance to attach to.

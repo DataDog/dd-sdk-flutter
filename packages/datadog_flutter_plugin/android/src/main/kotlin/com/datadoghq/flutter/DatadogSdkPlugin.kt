@@ -10,8 +10,10 @@ import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
 import com.datadog.android._InternalProxy
 import com.datadog.android.core.configuration.Configuration
+import com.datadog.android.log.Logs
 import com.datadog.android.ndk.NdkCrashReports
 import com.datadog.android.privacy.TrackingConsent
+import com.datadog.android.rum.GlobalRumMonitor
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -97,15 +99,15 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     result.missingParameter(call.method)
                 }
             }
-//            "attachToExisting" -> {
-//                if (Datadog.isInitialized()) {
-//                    val attachResult = attachToExisting()
-//                    result.success(attachResult)
-//                } else {
-//                    Log.e(DATADOG_FLUTTER_TAG, MESSAGE_NO_EXISTING_INSTANCE)
-//                    result.success(null)
-//                }
-//            }
+            "attachToExisting" -> {
+                if (Datadog.isInitialized()) {
+                    val attachResult = attachToExisting()
+                    result.success(attachResult)
+                } else {
+                    Log.e(DATADOG_FLUTTER_TAG, MESSAGE_NO_EXISTING_INSTANCE)
+                    result.success(null)
+                }
+            }
             "setSdkVerbosity" -> {
                 val value = call.argument<String>(ARG_VALUE)
                 if (value != null) {
@@ -251,17 +253,23 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         return builder
     }
 
-//    private fun attachToExisting(): Map<String, Any> {
-//        var rumEnabled = false
-//        if (GlobalRum.isRegistered()) {
-//            rumEnabled = true
-//            rumPlugin.attachToExistingSdk()
-//        }
-//
-//        return mapOf<String, Any>(
-//            "rumEnabled" to rumEnabled
-//        )
-//    }
+    private fun attachToExisting(): Map<String, Any> {
+        var loggingEnabled = false
+        if (Logs.isEnabled()) {
+            loggingEnabled = true
+        }
+
+        var rumEnabled = false
+        if (GlobalRumMonitor.isRegistered()) {
+            rumEnabled = true
+            rumPlugin.attachToExistingSdk(GlobalRumMonitor.get())
+        }
+
+        return mapOf<String, Any>(
+            "loggingEnabled" to loggingEnabled,
+            "rumEnabled" to rumEnabled
+        )
+    }
 
     private fun updateTelemetryConfiguration(call: MethodCall) {
         var isValid = true

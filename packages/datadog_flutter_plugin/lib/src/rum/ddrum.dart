@@ -87,9 +87,12 @@ class DatadogRum {
     return DdRumPlatform.instance;
   }
 
-  final sampleRandom = Random();
+  /// The sampling rate for tracing resources.
+  ///
+  /// See [RumConfiguration.tracingSamplingRate]
+  final double tracingSamplingRate;
 
-  final DatadogRumConfiguration configuration;
+  final _sampleRandom = Random();
   final InternalLogger logger;
 
   RumLongTaskObserver? _longTaskObserver;
@@ -99,39 +102,61 @@ class DatadogRum {
     DatadogRum? rum;
     await wrapAsync('rum.enable', core.internalLogger, null, () {
       DdRumPlatform.instance.enable(core, configuration);
-      rum = DatadogRum._(configuration, core.internalLogger);
-
-      core.updateConfigurationInfo(
-          LateConfigurationProperty.trackFlutterPerformance,
-          configuration.reportFlutterPerformance);
-      core.updateConfigurationInfo(
-          LateConfigurationProperty.trackCrossPlatformLongTasks,
-          configuration.detectLongTasks);
+      rum = DatadogRum._(core, configuration);
     });
 
     return rum;
   }
 
-  DatadogRum._(this.configuration, this.logger) {
+  @internal
+  DatadogRum.fromExisting(DatadogSdk core, DatadogAttachConfiguration config)
+      : tracingSamplingRate = config.tracingSamplingRate,
+        logger = core.internalLogger {
+    _init(
+      core: core,
+      detectLongTasks: config.detectLongTasks,
+      longTaskThreshold: config.longTaskThreshold,
+      reportFlutterPerformance: config.reportFlutterPerformance,
+    );
+  }
+
+  DatadogRum._(DatadogSdk core, DatadogRumConfiguration configuration)
+      : tracingSamplingRate = configuration.tracingSamplingRate,
+        logger = core.internalLogger {
+    _init(
+      core: core,
+      detectLongTasks: configuration.detectLongTasks,
+      longTaskThreshold: configuration.longTaskThreshold,
+      reportFlutterPerformance: configuration.reportFlutterPerformance,
+    );
+  }
+
+  void _init({
+    required DatadogSdk core,
+    required bool detectLongTasks,
+    required double longTaskThreshold,
+    required bool reportFlutterPerformance,
+  }) {
     // Never use long task observer on web -- the Browser SDK should
     // capture stalls on the main thread automatically.
-    if (!kIsWeb && configuration.detectLongTasks) {
+    if (!kIsWeb && detectLongTasks) {
       _longTaskObserver = RumLongTaskObserver(
-        longTaskThreshold: configuration.longTaskThreshold,
+        longTaskThreshold: longTaskThreshold,
         rumInstance: this,
       );
       _longTaskObserver!.init();
     }
-    if (configuration.reportFlutterPerformance) {
+    if (reportFlutterPerformance) {
       ambiguate(SchedulerBinding.instance)
           ?.addTimingsCallback(_timingsCallback);
     }
-  }
 
-  /// The sampling rate for tracing resources.
-  ///
-  /// See [RumConfiguration.tracingSamplingRate]
-  double get tracingSamplingRate => configuration.tracingSamplingRate;
+    core.updateConfigurationInfo(
+        LateConfigurationProperty.trackFlutterPerformance,
+        reportFlutterPerformance);
+    core.updateConfigurationInfo(
+        LateConfigurationProperty.trackCrossPlatformLongTasks, detectLongTasks);
+  }
 
   /// Notifies that the View identified by [key] starts being presented to the
   /// user. This view will show as [name] in the RUM explorer, and defaults to
@@ -346,8 +371,7 @@ class DatadogRum {
   /// This is used by Datadog tracing plugins like `datadog_tracing_http_client`
   /// to add the proper headers to network requests.
   bool shouldSampleTrace() {
-    return (sampleRandom.nextDouble() * 100) <
-        configuration.tracingSamplingRate;
+    return (_sampleRandom.nextDouble() * 100) < tracingSamplingRate;
   }
 
   @internal

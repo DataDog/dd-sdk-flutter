@@ -8,6 +8,8 @@ import UIKit
 import DatadogCore
 import DatadogCrashReporting
 import DatadogInternal
+import DatadogRUM
+import DatadogLogs
 
 extension Datadog.Configuration {
     init?(fromEncoded encoded: [String: Any?]) {
@@ -110,16 +112,16 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
             } else {
                 result(FlutterError.missingParameter(methodName: call.method))
             }
-//        case "attachToExisting":
-//            if Datadog.isInitialized {
-//                let attachResult = attachToExisting()
-//                result(attachResult)
-//            } else {
-//                consolePrint(
-//                    "🔥 attachToExisting was called, but no existing instance of the Datadog SDK exists." +
-//                    " Make sure to initialize the Native Datadog SDK before calling attachToExisting.")
-//                result(nil)
-//            }
+        case "attachToExisting":
+            if Datadog.isInitialized() {
+                let attachResult = attachToExisting()
+                result(attachResult)
+            } else {
+                consolePrint(
+                    "🔥 attachToExisting was called, but no existing instance of the Datadog SDK exists." +
+                    " Make sure to initialize the Native Datadog SDK before calling attachToExisting.")
+                result(nil)
+            }
         case "setSdkVerbosity":
             if let verbosityString = arguments["value"] as? String {
                 let verbosity = CoreLoggerLevel.parseFromFlutter(verbosityString)
@@ -294,21 +296,29 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
         rum?.onDetach()
     }
 
-//    private func attachToExisting() -> [String: Any?] {
-//        var rumEnabled = false
-//        if Global.rum is RUMMonitor {
-//            rum = DatadogRumPlugin.instance
-//            rum?.attachToExisting(rumInstance: Global.rum)
-//            rumEnabled = true
-//        }
-//
-//        return [
-//            "rumEnabled": rumEnabled
-//        ]
-//    }
+    private func attachToExisting() -> [String: Any?] {
+        var rumEnabled = false
+        var logsEnabled = false
 
-    // This is a way to work around https://github.com/flutter/flutter/issues/126671,
-    //
+        core = Datadog.sdkInstance(named: CoreRegistry.defaultInstanceName)
+        if Logs._internal.isEnabled() {
+            logs = DatadogLogsPlugin.instance
+            logsEnabled = true
+        }
+
+        if RUM._internal.isEnabled() {
+            rum = DatadogRumPlugin.instance
+            rum?.attachToExisting(rumInstance: RUMMonitor.shared())
+            rumEnabled = true
+        }
+
+        return [
+            "loggingEnabled": logsEnabled,
+            "rumEnabled": rumEnabled
+        ]
+    }
+
+    // This is a way to work around https://github.com/flutter/flutter/issues/126671
     private func callLogCallback(_ value: String) {
         // Dispatch to the main thread. This is partially to combat Flutter shutdown
         // occuring while we're still processing events

@@ -4,6 +4,7 @@
 
 import 'dart:io';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum_noop_platform.dart';
@@ -61,6 +62,51 @@ void main() {
 
     final other = ContentType.parse('application/octet-stream');
     expect(resourceTypeFromContentType(other), RumResourceType.native);
+  });
+
+  test('configuration is encoded correctly', () {
+    final applicationId = randomString();
+    final detectLongTasks = randomBool();
+    final trackFrustrations = randomBool();
+    final vitalUpdateFrequency = VitalsFrequency.values.randomElement();
+    final customEndpoint = randomString();
+    final configuration = DatadogRumConfiguration(
+      applicationId: applicationId,
+      sessionSamplingRate: 12.0,
+      tracingSamplingRate: 50.2,
+      detectLongTasks: detectLongTasks,
+      longTaskThreshold: 0.3,
+      trackFrustrations: trackFrustrations,
+      vitalUpdateFrequency: vitalUpdateFrequency,
+      customEndpoint: customEndpoint,
+    );
+
+    final encoded = configuration.encode();
+    expect(encoded['applicationId'], applicationId);
+    expect(encoded['sessionSampleRate'], 12.0);
+    expect(encoded['detectLongTasks'], detectLongTasks);
+    expect(encoded['longTaskThreshold'], 0.3);
+    expect(encoded['trackFrustrations'], trackFrustrations);
+    expect(encoded['vitalsUpdateFrequency'], vitalUpdateFrequency.toString());
+    expect(encoded['customEndpoint'], customEndpoint);
+  });
+
+  test('configuration with mapper sets attach*Mapper', () {
+    final configuration = DatadogRumConfiguration(
+      applicationId: 'fake-application-id',
+      viewEventMapper: (event) => event,
+      actionEventMapper: (event) => event,
+      resourceEventMapper: (event) => event,
+      errorEventMapper: (event) => event,
+      longTaskEventMapper: (event) => event,
+    );
+
+    final encoded = configuration.encode();
+    expect(encoded['attachViewEventMapper'], isTrue);
+    expect(encoded['attachActionEventMapper'], isTrue);
+    expect(encoded['attachResourceEventMapper'], isTrue);
+    expect(encoded['attachErrorEventMapper'], isTrue);
+    expect(encoded['attachLongTaskEventMapper'], isTrue);
   });
 
   test('Session sampling rate is clamped to 0..100', () {

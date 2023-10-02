@@ -49,10 +49,10 @@ extension TrackingExtension on DatadogConfiguration {
   }
 }
 
-// extension TrackingExtensionExisting on DdSdkExistingConfiguration {
-//   /// See [TrackingExtension.enableHttpTracking]
-//   void enableHttpTracking({DatadogTrackingHttpClientListener? clientListener}) {
-//     addPlugin(
-//         DdHttpTrackingPluginConfiguration(clientListener: clientListener));
-//   }
-// }
+extension TrackingExtensionExisting on DatadogAttachConfiguration {
+  /// See [TrackingExtension.enableHttpTracking]
+  void enableHttpTracking({DatadogTrackingHttpClientListener? clientListener}) {
+    addPlugin(
+        DdHttpTrackingPluginConfiguration(clientListener: clientListener));
+  }
+}
