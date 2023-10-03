@@ -145,13 +145,18 @@ scripts:
       scope: 'datadog_flutter_plugin'
 
   prepare:
-    run: melos pub:get && melos build_runner && melos generate_env && melos generate_env:e2e
+    run: melos pub:get && melos pod_update && melos build_runner && melos generate_env && melos generate_env:e2e
     description: |
       Run `flutter pub run build_runner build` on all packages and
       generate `.env` files for all package examples
 
   pub:get:
     exec: flutter pub get
+
+  pod_update:
+    exec: cd example/ios && pod update --repo-update
+    packageFilters:
+      dirExists: 'example/ios'
   
   build_runner:
     exec:
