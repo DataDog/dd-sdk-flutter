@@ -333,7 +333,7 @@ class DatadogAttachConfiguration {
   /// not shared or populated from the existing SDK.
   ///
   /// Defaults to `20.0`.
-  double tracingSamplingRate;
+  double traceSampleRate;
 
   /// Configurations for additional plugins that will be created after Datadog
   /// is initialized.
@@ -342,7 +342,7 @@ class DatadogAttachConfiguration {
   DatadogAttachConfiguration({
     this.detectLongTasks = true,
     this.longTaskThreshold = 0.1,
-    this.tracingSamplingRate = 20.0,
+    this.traceSampleRate = 20.0,
     this.reportFlutterPerformance = false,
     List<String>? firstPartyHosts,
     this.firstPartyHostsWithTracingHeaders = const {},

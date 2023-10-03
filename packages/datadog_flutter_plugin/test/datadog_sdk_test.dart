@@ -285,11 +285,11 @@ void main() {
 
     await datadogSdk.attachToExisting(DatadogAttachConfiguration(
       longTaskThreshold: 0.5,
-      tracingSamplingRate: 100.0,
+      traceSampleRate: 100.0,
       detectLongTasks: false,
     ));
 
-    expect(datadogSdk.rum?.tracingSamplingRate, 100.0);
+    expect(datadogSdk.rum?.traceSampleRate, 100.0);
   });
 
   test('first party hosts get set to sdk', () async {

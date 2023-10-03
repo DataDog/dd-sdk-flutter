@@ -72,8 +72,6 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
         .invokeMapMethod<String, Object?>(
             'attachToExisting', <String, Object?>{});
 
-    print('channelResponse $channelResponse');
-
     AttachResponse? response;
     if (channelResponse != null) {
       response = AttachResponse.decode(channelResponse);

@@ -76,7 +76,7 @@ void main() {
 
     mockRum = MockDdRum();
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-    when(() => mockRum.tracingSamplingRate).thenReturn(50.0);
+    when(() => mockRum.traceSampleRate).thenReturn(50.0);
 
     mockClient = MockHttpClient();
     when(() => mockClient.autoUncompress).thenReturn(true);
@@ -486,7 +486,7 @@ void main() {
       final completer = setupMockRequest(url);
 
       when(() => mockRum.shouldSampleTrace()).thenReturn(false);
-      when(() => mockRum.tracingSamplingRate).thenReturn(12.0);
+      when(() => mockRum.traceSampleRate).thenReturn(12.0);
 
       var request = await client.openUrl('get', url);
       var capturedStartArgs = verify(
@@ -614,7 +614,7 @@ void main() {
       });
 
       test('start and stop resource loading set tracing attributes', () async {
-        when(() => mockRum.tracingSamplingRate).thenReturn(23.0);
+        when(() => mockRum.traceSampleRate).thenReturn(23.0);
 
         var url = Uri.parse('https://test_url/path');
         final completer = setupMockRequest(url);

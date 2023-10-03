@@ -63,13 +63,6 @@ class DatadogRumConfiguration {
 
   /// Sets the sampling rate for RUM Sessions.
   ///
-  /// This property is deprecated in favor of [sessionSamplingRate]
-  @Deprecated('Use sessionSamplingRate instead')
-  double get sampleRate => sessionSamplingRate;
-  set sampleRate(double value) => sessionSamplingRate = value;
-
-  /// Sets the sampling rate for RUM Sessions.
-  ///
   /// The sampling rate must be a value between `0.0` and `100.0`. A value of
   /// `0.0` means no RUM events will be sent, `100.0` means all sessions will be
   /// sent
@@ -84,7 +77,7 @@ class DatadogRumConfiguration {
   /// include APM tracing
   ///
   /// Defaults to `20.0`.
-  double tracingSamplingRate;
+  double traceSampleRate;
 
   /// Enable or disable detection of "long tasks"
   ///
@@ -164,7 +157,7 @@ class DatadogRumConfiguration {
   DatadogRumConfiguration({
     required this.applicationId,
     double sessionSamplingRate = 100.0,
-    double tracingSamplingRate = 20.0,
+    double traceSampleRate = 20.0,
     this.detectLongTasks = true,
     double longTaskThreshold = 0.1,
     this.trackFrustrations = true,
@@ -179,22 +172,8 @@ class DatadogRumConfiguration {
     this.longTaskEventMapper,
     this.additionalConfig = const <String, Object>{},
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
-        tracingSamplingRate = max(0, min(tracingSamplingRate, 100)),
+        traceSampleRate = max(0, min(traceSampleRate, 100)),
         longTaskThreshold = max(0.02, longTaskThreshold);
-
-  /// Create a configuration that stands in for the configuration that already
-  /// occurred from an existing instance.
-  ///
-  /// This method is meant for internal Datadog use only.
-  // @internal
-  // DatadogRumConfiguration.existing({
-  //   this.detectLongTasks = true,
-  //   this.longTaskThreshold = 0.1,
-  //   this.tracingSamplingRate = 20.0,
-  //   this.reportFlutterPerformance = false,
-  // })  : applicationId = '<unknown>',
-  //       sessionSamplingRate = 100.0,
-  //       vitalUpdateFrequency = VitalsFrequency.average;
 
   Map<String, Object?> encode() {
     return {

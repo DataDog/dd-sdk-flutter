@@ -45,10 +45,10 @@ class DatadogTrackingHttpOverrides extends HttpOverrides {
 /// The SDK will also create a tracing Span for each 1st-party request, and add
 /// extra HTTP headers to further propagate the trace. The percentage of
 /// resources traced in this way is determined by
-/// [RumConfiguration.tracingSamplingRate].
+/// [DatadogRumConfiguration.traceSampleRate].
 ///
 /// To specify which hosts are 1st party (and therefore should have tracing
-/// Spans sent), see [DdSdkConfiguration.firstPartyHostsWithTracingHeaders].
+/// Spans sent), see [DatadogConfiguration.firstPartyHostsWithTracingHeaders].
 ///
 /// Unlike [DatadogClient], the DatadogTrackingHttpClient is able to override
 /// all network operations that use [HttpClient], which includes requests made
@@ -366,7 +366,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
       if (rumKey != null && rum != null) {
         var attributes = generateDatadogAttributes(
           _tracingContext,
-          rum.tracingSamplingRate,
+          rum.traceSampleRate,
         );
         attributes = _mergeAttributes(attributes, userAttributes);
         rum.stopResourceWithErrorInfo(
@@ -532,7 +532,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
     if (rumKey != null && rum != null) {
       var attributes = generateDatadogAttributes(
         tracingContext,
-        rum.tracingSamplingRate,
+        rum.traceSampleRate,
       );
       client.configuration.clientListener?.responseFinished(
           resourceKey: rumKey!,
@@ -557,8 +557,8 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
           var size = innerResponse.contentLength > 0
               ? innerResponse.contentLength
               : null;
-          var attributes = generateDatadogAttributes(
-              tracingContext, rum.tracingSamplingRate);
+          var attributes =
+              generateDatadogAttributes(tracingContext, rum.traceSampleRate);
           client.configuration.clientListener?.responseFinished(
             resourceKey: rumKey!,
             response: this,

@@ -89,8 +89,8 @@ class DatadogRum {
 
   /// The sampling rate for tracing resources.
   ///
-  /// See [RumConfiguration.tracingSamplingRate]
-  final double tracingSamplingRate;
+  /// See [DatadogRumConfiguration.traceSampleRate]
+  final double traceSampleRate;
 
   final _sampleRandom = Random();
   final InternalLogger logger;
@@ -110,7 +110,7 @@ class DatadogRum {
 
   @internal
   DatadogRum.fromExisting(DatadogSdk core, DatadogAttachConfiguration config)
-      : tracingSamplingRate = config.tracingSamplingRate,
+      : traceSampleRate = config.traceSampleRate,
         logger = core.internalLogger {
     _init(
       core: core,
@@ -121,7 +121,7 @@ class DatadogRum {
   }
 
   DatadogRum._(DatadogSdk core, DatadogRumConfiguration configuration)
-      : tracingSamplingRate = configuration.tracingSamplingRate,
+      : traceSampleRate = configuration.traceSampleRate,
         logger = core.internalLogger {
     _init(
       core: core,
@@ -365,13 +365,13 @@ class DatadogRum {
     });
   }
 
-  /// Uses the configured [RumConfiguration.tracingSamplingRate] to determine if
+  /// Uses the configured [DatadogRumConfiguration.traceSampleRate] to determine if
   /// a sample should be traced.
   ///
   /// This is used by Datadog tracing plugins like `datadog_tracing_http_client`
   /// to add the proper headers to network requests.
   bool shouldSampleTrace() {
-    return (_sampleRandom.nextDouble() * 100) < tracingSamplingRate;
+    return (_sampleRandom.nextDouble() * 100) < traceSampleRate;
   }
 
   @internal

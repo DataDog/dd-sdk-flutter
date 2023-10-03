@@ -33,10 +33,10 @@ typedef DatadogClientAttributesProvider = Map<String, Object?> Function(
 /// distributed tracing. You can set which format of tracing header using the
 /// [tracingHeaderTypes] parameter. Multiple tracing formats are allowed. The
 /// percentage of resources traced in this way is determined by
-/// [RumConfiguration.tracingSamplingRate].
+/// [DatadogRumConfiguration.traceSampleRate].
 ///
 /// To specify which hosts are 1st party (and therefore should have tracing
-/// Spans sent), see [DdSdkConfiguration.firstPartyHosts]. You can also set
+/// Spans sent), see [DatadogConfiguration.firstPartyHosts]. You can also set
 /// first party hosts after initialization by setting [DatadogSdk.firstPartyHosts]
 ///
 /// DatadogClient only modifies calls made through itself, unlike
@@ -223,7 +223,7 @@ class DatadogClient extends http.BaseClient {
 
     if (tracingHeaderTypes.isNotEmpty) {
       attributes = generateDatadogAttributes(
-          context, datadogSdk.rum?.tracingSamplingRate ?? 0);
+          context, datadogSdk.rum?.traceSampleRate ?? 0);
 
       for (final headerType in tracingHeaderTypes) {
         request.headers.addAll(getTracingHeaders(context, headerType));

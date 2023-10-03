@@ -58,7 +58,7 @@ query UserInfo($id: ID!) {
 
     mockRum = MockDdRum();
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-    when(() => mockRum.tracingSamplingRate).thenReturn(50.0);
+    when(() => mockRum.traceSampleRate).thenReturn(50.0);
   });
 
   group('when rum is disabled', () {
@@ -649,7 +649,7 @@ query UserInfo($id: ID!) {
         when(() => mockDatadog.internalLogger).thenReturn(InternalLogger());
 
         when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-        when(() => mockRum.tracingSamplingRate).thenReturn(50.0);
+        when(() => mockRum.traceSampleRate).thenReturn(50.0);
         when(() => mockDatadog.rum).thenReturn(mockRum);
       });
 

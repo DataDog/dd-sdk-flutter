@@ -73,7 +73,7 @@ void main() {
     final configuration = DatadogRumConfiguration(
       applicationId: applicationId,
       sessionSamplingRate: 12.0,
-      tracingSamplingRate: 50.2,
+      traceSampleRate: 50.2,
       detectLongTasks: detectLongTasks,
       longTaskThreshold: 0.3,
       trackFrustrations: trackFrustrations,
@@ -127,22 +127,22 @@ void main() {
   test('Tracing sampling rate is clamped to 0..100', () {
     final lowConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
-      tracingSamplingRate: -12.3,
+      traceSampleRate: -12.3,
     );
 
     final highConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
-      tracingSamplingRate: 137.2,
+      traceSampleRate: 137.2,
     );
 
-    expect(lowConfiguration.tracingSamplingRate, equals(0.0));
-    expect(highConfiguration.tracingSamplingRate, equals(100.0));
+    expect(lowConfiguration.traceSampleRate, equals(0.0));
+    expect(highConfiguration.traceSampleRate, equals(100.0));
   });
 
   test('Setting trace sample rate to 100 should always sample', () async {
     final rumConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
-      tracingSamplingRate: 100,
+      traceSampleRate: 100,
       detectLongTasks: false,
     );
     final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
@@ -155,7 +155,7 @@ void main() {
   test('Setting trace sample rate to 0 should never sample', () async {
     final rumConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
-      tracingSamplingRate: 0,
+      traceSampleRate: 0,
       detectLongTasks: false,
     );
     final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
@@ -168,7 +168,7 @@ void main() {
   test('Low sampling rate returns samples less often', () async {
     final rumConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
-      tracingSamplingRate: 23,
+      traceSampleRate: 23,
       detectLongTasks: false,
     );
     final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
@@ -190,7 +190,7 @@ void main() {
   test('High sampling rate returns samples more often', () async {
     final rumConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
-      tracingSamplingRate: 85,
+      traceSampleRate: 85,
       detectLongTasks: false,
     );
     final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);

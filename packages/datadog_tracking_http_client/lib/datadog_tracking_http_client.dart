@@ -31,9 +31,9 @@ extension TrackingExtension on DatadogConfiguration {
   /// The DatadogTracingHttpClient can additionally set tracing headers on your
   /// requests, which allows for distributed tracing. You can set which format
   /// of tracing headers when configuring firstParty hosts with
-  /// [DdSdkConfiguration.firstPartyHostsWithTracingHeaders]. The percentage of
+  /// [DatadogConfiguration.firstPartyHostsWithTracingHeaders]. The percentage of
   /// resources traced in this way is determined by
-  /// [RumConfiguration.tracingSamplingRate].
+  /// [DatadogRumConfiguration.traceSampleRate].
   ///
   /// You can add attributes to RUM Resources by providing a
   /// [clientListener]. See [DatadogTrackingHttpClientListener] for more info.
