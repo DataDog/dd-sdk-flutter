@@ -320,7 +320,7 @@ class DatadogAttachConfiguration {
   /// This property only affects network requests made from Flutter, and is not
   /// shared with or populated from existing the SDK.
   ///
-  /// See [DdSdkConfiguration.firstPartyHostsWithTracingHeaders] for more information
+  /// See [DatadogConfiguration.firstPartyHostsWithTracingHeaders] for more information
   Map<String, Set<TracingHeaderType>> firstPartyHostsWithTracingHeaders = {};
 
   /// Sets the sampling rate for tracing

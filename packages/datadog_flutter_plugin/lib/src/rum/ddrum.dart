@@ -87,7 +87,7 @@ class DatadogRum {
     return DdRumPlatform.instance;
   }
 
-  /// The sampling rate for tracing resources.
+  /// The sample rate for tracing resources.
   ///
   /// See [DatadogRumConfiguration.traceSampleRate]
   final double traceSampleRate;
