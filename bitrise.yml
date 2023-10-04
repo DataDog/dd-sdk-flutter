@@ -76,13 +76,17 @@ workflows:
         - content: |-
             #!/usr/bin/env bash
             set -e
+            dart pub global activate melos
+            melos bootstrap
+
             if [ "$(uname)" == "Darwin" ]; then
+              flutter precache --ios
               pod repo update
+              melos pub:get
+              melos pod_update --no-select
             fi
             mkdir -p $BITRISE_SOURCE_DIR/.build/test-results/
 
-            dart pub global activate melos
-            melos bootstrap
             melos prepare
     - script:
         title: Dart 2.15 fix junitreport
