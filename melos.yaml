@@ -143,7 +143,14 @@ scripts:
       | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.xml"
     packageFilters:
       scope: 'datadog_flutter_plugin'
-  
+
+  integration_test:web:main:
+    run: |
+      cd integration_test_app
+      dart ./bin/web_integration_tests.dart
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
   prepare:
     run: melos pub:get && melos build_runner && melos generate_env && melos generate_env:e2e
     description: |
