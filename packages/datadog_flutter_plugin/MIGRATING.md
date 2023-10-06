@@ -63,6 +63,7 @@ The following APIs have changed:
 |-------|-------|-------|
 | `RumConfiguration` | `DatadogRumConfiguration` | Type renamed |
 | `RumConfiguration.vitalsUpdateFrequency` | `DatadogRumConfiguration.vitalsUpdateFrequency` | Set to `null` to disable vitals updates |
+| `RumConfiguration.tracingSampleRate` | `DatadogRumConfiguration.traceSampleRate` |
 | `RumConfiguration.rumViewEventMapper` | `DatadogRumConfiguration.viewEventMapper` |
 | `RumConfiguration.runActionEventMapper` | `DatadogRumConfiguration.actionEventMapper` |
 | `RumConfiguration.rumResourceEventMapper` | `DatadogRumConfiguration.resourceEventMapper` |

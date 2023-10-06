@@ -7,14 +7,15 @@ import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
 import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Configuration
-import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.privacy.TrackingConsent
-import com.datadog.android.rum.GlobalRum
-import com.datadog.android.rum.RumMonitor
+import com.datadog.android.rum.Rum
+import com.datadog.android.rum.RumConfiguration
 import com.datadog.android.rum.tracking.AcceptAllActivities
 import com.datadog.android.rum.tracking.ActivityViewTrackingStrategy
 import com.datadog.android.rum.tracking.ComponentPredicate
+import com.datadog.android.trace.Trace
+import com.datadog.android.trace.TraceConfiguration
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
@@ -65,33 +66,31 @@ class HybridApplication : Application() {
         Datadog.setVerbosity(Log.VERBOSE)
 
         val datadogConfig = Configuration.Builder(
-            logsEnabled = true,
-            tracesEnabled = true,
-            crashReportsEnabled = true,
-            rumEnabled = true,
+            clientToken,
+            "prod",
+            "release"
         )
             .setBatchSize(BatchSize.SMALL)
             .setUploadFrequency(UploadFrequency.FREQUENT)
             .useSite(DatadogSite.US1)
-            .trackInteractions()
-            .trackLongTasks()
-            .useViewTrackingStrategy(ActivityViewTrackingStrategy(
-                trackExtras = false,
-                componentPredicate = FlutterExcludingComponentPredicate()
-            ))
             .build()
-
-        val datadogCredentials = Credentials(clientToken, "prod", "release", applicationId)
 
         Datadog.initialize(
             this,
-            credentials = datadogCredentials,
             configuration = datadogConfig,
             TrackingConsent.GRANTED
         )
 
-        val monitor = RumMonitor.Builder().build()
-        GlobalRum.registerIfAbsent(monitor)
+        val rumConfiguration = RumConfiguration.Builder(applicationId)
+            .trackLongTasks()
+            .trackUserInteractions()
+            .useViewTrackingStrategy(ActivityViewTrackingStrategy(
+                trackExtras = false,
+                componentPredicate = FlutterExcludingComponentPredicate()
+            ))
+        Rum.enable(rumConfiguration.build())
+        val traceConfig = TraceConfiguration.Builder()
+        Trace.enable(traceConfig.build())
 
         flutterEngine = FlutterEngine(this)
         flutterEngine.dartExecutor.executeDartEntrypoint(

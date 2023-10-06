@@ -299,6 +299,10 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         }
     }
 
+    internal func attachToExisting(rumInstance: RUMMonitorProtocol) {
+        rum = rumInstance
+    }
+
     private func enable(arguments: [String: Any?], call: FlutterMethodCall) {
         let configArg = arguments["configuration"] as? [String: Any?]
         if rum == nil {

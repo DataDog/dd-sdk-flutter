@@ -144,7 +144,7 @@ void main() {
     setUp(() {
       mockRum = MockDdRum();
       when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-      when(() => mockRum.tracingSamplingRate).thenReturn(50.0);
+      when(() => mockRum.traceSampleRate).thenReturn(50.0);
 
       when(() => mockDatadog.rum).thenReturn(mockRum);
     });

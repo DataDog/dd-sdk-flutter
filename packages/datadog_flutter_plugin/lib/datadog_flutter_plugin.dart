@@ -67,13 +67,16 @@ class DatadogSdk {
   DatadogRum? _rum;
   DatadogRum? get rum => _rum;
 
-  final List<FirstPartyHost> _firstPartyHosts = [];
+  List<FirstPartyHost> _firstPartyHosts = [];
 
   final Map<Type, DatadogPlugin> _plugins = {};
 
   /// An unmodifiable list of first party hosts for tracing.
   List<FirstPartyHost> get firstPartyHosts =>
       List.unmodifiable(_firstPartyHosts);
+  void _setFirstPartyHosts(Map<String, Set<TracingHeaderType>> value) {
+    _firstPartyHosts = FirstPartyHost.createSanitized(value, internalLogger);
+  }
 
   /// The version of this SDK.
   static String get sdkVersion => ddPackageVersion;
@@ -109,6 +112,8 @@ class DatadogSdk {
       plugin.shutdown();
     }
     _plugins.clear();
+    _rum = null;
+    _logs = null;
     _initialized = false;
   }
 
@@ -152,7 +157,7 @@ class DatadogSdk {
     configuration.additionalConfig[DatadogConfigKey.source] = 'flutter';
     configuration.additionalConfig[DatadogConfigKey.sdkVersion] = sdkVersion;
 
-    //_setFirstPartyHosts(configuration.firstPartyHostsWithTracingHeaders);
+    _setFirstPartyHosts(configuration.firstPartyHostsWithTracingHeaders);
 
     await _platform.initialize(configuration, trackingConsent,
         logCallback: _platformLog, internalLogger: internalLogger);
@@ -172,48 +177,34 @@ class DatadogSdk {
 
   /// Attach the Datadog Flutter SDK to an already initialized Datadog Native
   /// (iOS or Android) SDK.  This is used for "app in app" embedding of Flutter.
-  // Future<void> attachToExisting(
-  //   DdSdkExistingConfiguration config,
-  // ) async {
-  //   // First set our SDK verbosity. We can assume WidgetsFlutterBinding has been initialized at this point
-  //   await _platform.setSdkVerbosity(internalLogger.sdkVerbosity);
+  Future<void> attachToExisting(
+    DatadogAttachConfiguration config,
+  ) async {
+    // First set our SDK verbosity. We can assume WidgetsFlutterBinding has been initialized at this point
+    await _platform.setSdkVerbosity(internalLogger.sdkVerbosity);
 
-  //   final attachResponse = await wrapAsync<AttachResponse>(
-  //       'attachToExisting', internalLogger, null, () async {
-  //     return await _platform.attachToExisting();
-  //   });
+    final attachResponse = await wrapAsync<AttachResponse>(
+        'attachToExisting', internalLogger, null, () async {
+      return await _platform.attachToExisting();
+    });
 
-  //   if (attachResponse != null) {
-  //     _setFirstPartyHosts(config.firstPartyHostsWithTracingHeaders);
+    if (attachResponse != null) {
+      _setFirstPartyHosts(config.firstPartyHostsWithTracingHeaders);
 
-  //     if (config.loggingConfiguration != null) {
-  //       try {
-  //         _logs = createLogger(config.loggingConfiguration!);
-  //       } catch (_) {
-  //         // This is likely fine. Since we have no simple way of knowing if Logging is
-  //         // enabled, we try to create a logger anyway, which could potentially fail.
-  //         internalLogger.debug(
-  //             'A logging configuration was provided to `attachToExisting` but log creation failed, likely because logging is disabled in the native SDK. No global log was created');
-  //       }
-  //     }
-  //     if (attachResponse.rumEnabled) {
-  //       _rum = DdRum(
-  //           RumConfiguration.existing(
-  //             detectLongTasks: config.detectLongTasks,
-  //             longTaskThreshold: config.longTaskThreshold,
-  //             tracingSamplingRate: config.tracingSamplingRate,
-  //           ),
-  //           internalLogger);
-  //       await _rum!.initialize();
-  //     }
+      if (attachResponse.loggingEnabled) {
+        _logs = DatadogLogging(this);
+      }
+      if (attachResponse.rumEnabled) {
+        _rum = DatadogRum.fromExisting(this, config);
+      }
 
-  //     _initializePlugins(config.additionalPlugins);
-  //     _initialized = true;
-  //   } else {
-  //     internalLogger.error(
-  //         'Failed to attach to an existing native instance of the Datadog SDK.');
-  //   }
-  // }
+      _initializePlugins(config.additionalPlugins);
+      _initialized = true;
+    } else {
+      internalLogger.error(
+          'Failed to attach to an existing native instance of the Datadog SDK.');
+    }
+  }
 
   /// Sets current user information. User information will be added traces and
   /// RUM events automatically.

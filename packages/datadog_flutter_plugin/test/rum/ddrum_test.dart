@@ -4,6 +4,7 @@
 
 import 'dart:io';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum_noop_platform.dart';
@@ -63,6 +64,51 @@ void main() {
     expect(resourceTypeFromContentType(other), RumResourceType.native);
   });
 
+  test('configuration is encoded correctly', () {
+    final applicationId = randomString();
+    final detectLongTasks = randomBool();
+    final trackFrustrations = randomBool();
+    final vitalUpdateFrequency = VitalsFrequency.values.randomElement();
+    final customEndpoint = randomString();
+    final configuration = DatadogRumConfiguration(
+      applicationId: applicationId,
+      sessionSamplingRate: 12.0,
+      traceSampleRate: 50.2,
+      detectLongTasks: detectLongTasks,
+      longTaskThreshold: 0.3,
+      trackFrustrations: trackFrustrations,
+      vitalUpdateFrequency: vitalUpdateFrequency,
+      customEndpoint: customEndpoint,
+    );
+
+    final encoded = configuration.encode();
+    expect(encoded['applicationId'], applicationId);
+    expect(encoded['sessionSampleRate'], 12.0);
+    expect(encoded['detectLongTasks'], detectLongTasks);
+    expect(encoded['longTaskThreshold'], 0.3);
+    expect(encoded['trackFrustrations'], trackFrustrations);
+    expect(encoded['vitalsUpdateFrequency'], vitalUpdateFrequency.toString());
+    expect(encoded['customEndpoint'], customEndpoint);
+  });
+
+  test('configuration with mapper sets attach*Mapper', () {
+    final configuration = DatadogRumConfiguration(
+      applicationId: 'fake-application-id',
+      viewEventMapper: (event) => event,
+      actionEventMapper: (event) => event,
+      resourceEventMapper: (event) => event,
+      errorEventMapper: (event) => event,
+      longTaskEventMapper: (event) => event,
+    );
+
+    final encoded = configuration.encode();
+    expect(encoded['attachViewEventMapper'], isTrue);
+    expect(encoded['attachActionEventMapper'], isTrue);
+    expect(encoded['attachResourceEventMapper'], isTrue);
+    expect(encoded['attachErrorEventMapper'], isTrue);
+    expect(encoded['attachLongTaskEventMapper'], isTrue);
+  });
+
   test('Session sampling rate is clamped to 0..100', () {
     final lowConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
@@ -81,22 +127,22 @@ void main() {
   test('Tracing sampling rate is clamped to 0..100', () {
     final lowConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
-      tracingSamplingRate: -12.3,
+      traceSampleRate: -12.3,
     );
 
     final highConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
-      tracingSamplingRate: 137.2,
+      traceSampleRate: 137.2,
     );
 
-    expect(lowConfiguration.tracingSamplingRate, equals(0.0));
-    expect(highConfiguration.tracingSamplingRate, equals(100.0));
+    expect(lowConfiguration.traceSampleRate, equals(0.0));
+    expect(highConfiguration.traceSampleRate, equals(100.0));
   });
 
   test('Setting trace sample rate to 100 should always sample', () async {
     final rumConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
-      tracingSamplingRate: 100,
+      traceSampleRate: 100,
       detectLongTasks: false,
     );
     final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
@@ -109,7 +155,7 @@ void main() {
   test('Setting trace sample rate to 0 should never sample', () async {
     final rumConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
-      tracingSamplingRate: 0,
+      traceSampleRate: 0,
       detectLongTasks: false,
     );
     final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
@@ -122,7 +168,7 @@ void main() {
   test('Low sampling rate returns samples less often', () async {
     final rumConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
-      tracingSamplingRate: 23,
+      traceSampleRate: 23,
       detectLongTasks: false,
     );
     final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
@@ -144,7 +190,7 @@ void main() {
   test('High sampling rate returns samples more often', () async {
     final rumConfiguration = DatadogRumConfiguration(
       applicationId: 'applicationId',
-      tracingSamplingRate: 85,
+      traceSampleRate: 85,
       detectLongTasks: false,
     );
     final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);

@@ -4,6 +4,7 @@ import com.datadog.android.rum.RumActionType
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumResourceKind
+import com.datadog.android.rum.RumResourceMethod
 import com.datadog.android.rum._RumInternalProxy
 import io.mockk.mockk
 
@@ -69,6 +70,16 @@ class MockRumMonitor : RumMonitor {
         mockMonitor.startAction(type, name, attributes)
     }
 
+    override fun startResource(
+        key: String,
+        method: RumResourceMethod,
+        url: String,
+        attributes: Map<String, Any?>
+    ) {
+        mockMonitor.startResource(key, method, url, attributes)
+    }
+
+    @Deprecated("Deprecated")
     override fun startResource(
         key: String,
         method: String,

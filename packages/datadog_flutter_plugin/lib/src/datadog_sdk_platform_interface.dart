@@ -12,15 +12,18 @@ import 'internal_logger.dart';
 typedef LogCallback = void Function(String line);
 
 class AttachResponse {
+  final bool loggingEnabled;
   final bool rumEnabled;
 
   AttachResponse({
+    required this.loggingEnabled,
     required this.rumEnabled,
   });
 
   static AttachResponse? decode(Map<String, Object?> json) {
     try {
       return AttachResponse(
+        loggingEnabled: json['loggingEnabled'] as bool,
         rumEnabled: json['rumEnabled'] as bool,
       );
     } catch (e, st) {

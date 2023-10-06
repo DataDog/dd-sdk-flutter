@@ -60,7 +60,7 @@ Future<void> main() async {
         ? DatadogRumConfiguration(
             detectLongTasks: false,
             applicationId: applicationId,
-            tracingSamplingRate: 100,
+            traceSampleRate: 100,
             customEndpoint: customEndpoint,
           )
         : null,

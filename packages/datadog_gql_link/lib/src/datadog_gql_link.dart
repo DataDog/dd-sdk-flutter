@@ -155,7 +155,7 @@ class DatadogGqlLink extends Link {
       Map<String, Object?> userAttributes) {
     final resourceId = _uuid.v1();
     final datadogAttributes = generateDatadogAttributes(
-        tracingContext, datadogSdk.rum?.tracingSamplingRate ?? 0);
+        tracingContext, datadogSdk.rum?.traceSampleRate ?? 0);
     final attributes = {
       ...userAttributes,
       ...datadogAttributes,

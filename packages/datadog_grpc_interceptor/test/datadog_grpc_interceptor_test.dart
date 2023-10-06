@@ -106,7 +106,7 @@ void main() {
       mockRum = RumMock();
       when(() => mockDatadog.rum).thenReturn(mockRum);
       when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-      when(() => mockRum.tracingSamplingRate).thenReturn(12);
+      when(() => mockRum.traceSampleRate).thenReturn(12);
     });
 
     tearDown(() async {
@@ -273,7 +273,7 @@ void main() {
     mockRum = RumMock();
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-    when(() => mockRum.tracingSamplingRate).thenReturn(12);
+    when(() => mockRum.traceSampleRate).thenReturn(12);
     when(() => mockDatadog.headerTypesForHost(any()))
         .thenReturn({TracingHeaderType.datadog});
 
@@ -320,7 +320,7 @@ void main() {
     mockRum = RumMock();
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-    when(() => mockRum.tracingSamplingRate).thenReturn(12);
+    when(() => mockRum.traceSampleRate).thenReturn(12);
     when(() => mockDatadog.headerTypesForHost(any()))
         .thenReturn({TracingHeaderType.datadog});
 
@@ -362,7 +362,7 @@ void main() {
     mockRum = RumMock();
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-    when(() => mockRum.tracingSamplingRate).thenReturn(12);
+    when(() => mockRum.traceSampleRate).thenReturn(12);
     when(() => mockDatadog.headerTypesForHost(any()))
         .thenReturn({TracingHeaderType.datadog});
 

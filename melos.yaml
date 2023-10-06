@@ -65,7 +65,7 @@ scripts:
   unit_test:flutter:
     run: 
       mkdir -p .build/test-results &&
-      melos exec "set -e -o pipefail && flutter test --machine | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml\"" 
+      melos exec -c 1 -- "set -e -o pipefail && flutter test --machine | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml\"" 
     packageFilters:
       dirExists: 'test'
 
@@ -143,7 +143,7 @@ scripts:
       | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.xml"
     packageFilters:
       scope: 'datadog_flutter_plugin'
-
+  
   prepare:
     run: melos pub:get && melos build_runner && melos generate_env && melos generate_env:e2e
     description: |
@@ -152,6 +152,13 @@ scripts:
 
   pub:get:
     exec: flutter pub get
+
+  pod_update:
+    run: cd example/ios && pod update --repo-update
+    exec:
+      concurrency: 1
+    packageFilters:
+      dirExists: 'example/ios'
   
   build_runner:
     exec:

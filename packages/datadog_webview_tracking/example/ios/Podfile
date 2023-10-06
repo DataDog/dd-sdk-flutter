@@ -38,6 +38,7 @@ target 'Runner' do
   pod 'DatadogLogs', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
   pod 'DatadogRUM', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
   pod 'DatadogWebViewTracking', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
+  pod 'DatadogCrashReporting', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
   # End Datadog Pod Overrides
 
   target 'datadog_webview_tracking_tests' do

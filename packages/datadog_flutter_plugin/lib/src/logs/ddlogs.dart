@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
+import 'package:meta/meta.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../datadog_flutter_plugin.dart';
@@ -23,7 +24,8 @@ class DatadogLogging {
 
   final DatadogSdk core;
 
-  DatadogLogging._(this.core);
+  @internal
+  DatadogLogging(this.core);
 
   static Future<DatadogLogging?> enable(
       DatadogSdk core, DatadogLoggingConfiguration config) async {
@@ -37,7 +39,7 @@ class DatadogLogging {
 
     await wrapAsync('logs.enable', core.internalLogger, null, () {
       _platform.enable(core, config);
-      logging = DatadogLogging._(core);
+      logging = DatadogLogging(core);
     });
 
     return logging;
