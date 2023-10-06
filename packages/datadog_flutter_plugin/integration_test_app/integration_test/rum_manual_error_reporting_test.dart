@@ -74,8 +74,6 @@ void main() {
     var thrownError = view.errorEvents[2];
     expect(thrownError.message, contains('This was an error!'));
     expect(thrownError.source, kIsWeb ? 'custom' : 'source');
-    if (!kIsWeb) {
-      expect(thrownError.stack, isNotNull);
-    }
+    expect(thrownError.stack, isNotNull);
   });
 }

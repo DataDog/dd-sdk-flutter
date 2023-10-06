@@ -11,6 +11,7 @@ import 'package:js/js.dart';
 import '../../datadog_flutter_plugin.dart';
 import '../web_helpers.dart';
 import 'ddlogs_platform_interface.dart';
+import 'ddweb_helpers.dart';
 
 class DdLogsWeb extends DdLogsPlatform {
   final Map<String, Logger> _activeLoggers = {};
@@ -19,6 +20,7 @@ class DdLogsWeb extends DdLogsPlatform {
     init(_LogInitOptions(
       clientToken: configuration.clientToken,
       env: configuration.env,
+      proxyUrl: configuration.loggingConfiguration?.customEndpoint,
       site: siteStringForSite(configuration.site),
       service: configuration.service,
       version: configuration.versionTag,
@@ -84,7 +86,19 @@ class DdLogsWeb extends DdLogsPlatform {
   ) async {
     final logger = _activeLoggers[loggerHandle];
     final webLogLevel = _toWebLogLevel(level);
-    logger?.log(message, valueToJs(attributes, 'attributes'), webLogLevel);
+    JSError? error;
+    if (errorMessage != null || errorKind != null) {
+      error = JSError();
+      error.stack = convertWebStackTrace(errorStackTrace);
+      error.message = errorMessage;
+      error.name = errorKind ?? 'Error';
+    }
+    logger?.log(
+      message,
+      valueToJs(attributes, 'attributes'),
+      webLogLevel,
+      error,
+    );
   }
 }
 
@@ -95,17 +109,17 @@ String _toWebLogLevel(LogLevel level) {
     case LogLevel.info:
       return 'info';
     case LogLevel.notice:
-      return 'notice';
+      return 'warn';
     case LogLevel.warning:
-      return 'warning';
+      return 'warn';
     case LogLevel.error:
       return 'error';
     case LogLevel.critical:
-      return 'critical';
+      return 'error';
     case LogLevel.alert:
-      return 'alert';
+      return 'error';
     case LogLevel.emergency:
-      return 'emergency';
+      return 'error';
   }
 }
 
@@ -145,7 +159,8 @@ class _JsLoggerConfiguration {
 
 @JS('Logger')
 class Logger {
-  external void log(String message, dynamic messageContext, String status);
+  external void log(
+      String message, dynamic messageContext, String status, JSError? error);
 
   external void addContext(String key, dynamic value);
   external void removeContext(String key);

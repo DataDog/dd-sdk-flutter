@@ -60,7 +60,7 @@ class RecordingHttpServer {
       _recordedRequests[session]!.add(parsed);
       if (serializeSessions) {
         final sessionFile = File('$session.session');
-        await sessionFile.writeAsString(parsed.data,
+        await sessionFile.writeAsString('${parsed.data}\n',
             mode: FileMode.append, flush: true);
       }
       if (printRequests) {
