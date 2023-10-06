@@ -222,7 +222,7 @@ void main() {
     }
     expect(over200, greaterThanOrEqualTo(1));
 
-    // Web doesn't support start/stopUserAction
+    // Web doesn't support start/stopAction
     RumActionEventDecoder tapAction;
     if (!kIsWeb) {
       expect(view2.actionEvents[0].actionType, 'scroll');

@@ -41,8 +41,8 @@ extension TrackingExtension on DatadogConfiguration {
   /// Note that this is call is not necessary if you only want to track requests
   /// made through [DatadogClient]
   ///
-  /// See also [DdSdkConfiguration.firstPartyHostsWithTracingHeaders],
-  /// [DdSdkConfiguration.firstPartyHosts], [TracingHeaderType]
+  /// See also [DatadogConfiguration.firstPartyHostsWithTracingHeaders],
+  /// [DatadogConfiguration.firstPartyHosts], [TracingHeaderType]
   void enableHttpTracking({DatadogTrackingHttpClientListener? clientListener}) {
     addPlugin(
         DdHttpTrackingPluginConfiguration(clientListener: clientListener));

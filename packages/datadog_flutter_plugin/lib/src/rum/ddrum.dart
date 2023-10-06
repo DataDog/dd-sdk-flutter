@@ -309,7 +309,7 @@ class DatadogRum {
 
   /// Notifies that a User Action of [type] has started, named [name]. This is
   /// used to track long running user actions (e.g. "scroll"). Such an User
-  /// Action must be stopped with [stopUserAction], and will be stopped
+  /// Action must be stopped with [stopAction], and will be stopped
   /// automatically if it lasts for more than 10 seconds. You can optionally
   /// provide custom [attributes].
   void startAction(RumActionType type, String name,
@@ -321,7 +321,7 @@ class DatadogRum {
 
   /// Notifies that the User Action of [type], named [name] has stopped.
   /// This is used to stop tracking long running user actions (e.g. "scroll"),
-  /// started with [startUserAction].
+  /// started with [startAction].
   void stopAction(RumActionType type, String name,
       [Map<String, Object?> attributes = const {}]) {
     wrap('rum.stopAction', logger, attributes, () {
@@ -356,8 +356,8 @@ class DatadogRum {
   }
 
   /// Stops the current session. A new session will start in response to a call
-  /// to [startView], [addUserAction], or [startUserAction]. If the session is
-  /// started because of a call to [addUserAction] or [startUserAction], the
+  /// to [startView], [addAction], or [startAction]. If the session is
+  /// started because of a call to [addAction] or [startAction], the
   /// last know view is restarted in the new session.
   void stopSession() {
     wrap('rum.stopSession', logger, null, () {

@@ -44,7 +44,7 @@ enum LateConfigurationProperty {
   /// Whether native views are being tracked. Currently unused.
   trackNativeViews,
 
-  /// Whether [DdSdkConfiguration.reportFlutterPerformance] was set to true
+  /// Whether [DatadogConfiguration.reportFlutterPerformance] was set to true
   trackFlutterPerformance,
 }
 

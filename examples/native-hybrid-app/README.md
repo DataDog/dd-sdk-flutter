@@ -4,14 +4,14 @@ This example covers how to use the Datadog Flutter SDK in conjunction with an al
 
 ## Native app is primary and Datadog is already initialized -  `attachToExisting`
 
-If you are using an application that is already using the native Datadog iOS or Datadog Android SDKs, the Flutter SDK can attach to these using the same parameters. In your `main` function, after calling `WidgetsFlutterBinding.ensureInitialized`, call `DatadogSdk.instance.attachToExisting`. You can optionally add a `LoggingConfiguraiton` to this call, which automatically creates a global logger and attaches it to `DatadogSdk.logs`.
+If you are using an application that is already using the native Datadog iOS or Datadog Android SDKs, the Flutter SDK can attach to these using the same parameters. In your `main` function, after calling `WidgetsFlutterBinding.ensureInitialized`, call `DatadogSdk.instance.attachToExisting`.
 
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final config = DdSdkExistingConfiguration(
-    loggingConfiguration: LoggingConfiguration()
+  final config = DatadogAttachConfiguration(
+    reportFlutterPerformance: true,
   );
 
   await DatadogSdk.instance.attachToExisting(config);

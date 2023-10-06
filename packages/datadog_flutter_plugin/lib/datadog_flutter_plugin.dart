@@ -100,7 +100,7 @@ class DatadogSdk {
   }
 
   /// Get an instance of a DatadogPlugin that was registered with
-  /// [DdSdkConfiguration.addPlugin]
+  /// [DatadogConfiguration.addPlugin]
   T? getPlugin<T>() => _plugins[T] as T?;
 
   /// This function is not part of the public interface for Datadog, and may not

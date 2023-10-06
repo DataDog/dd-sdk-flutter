@@ -10,9 +10,9 @@ To utilize this plugin, create an instance of `DatadogGrpcInterceptor`, then pas
 ```dart
 import 'package:datadog_grpc_interceptor/datadog_grpc_interceptor.dart'
 
-// Initialize Datadog, be sure to set the [DdSdkConfiguration.firstPartyHosts] member
+// Initialize Datadog, be sure to set the [DatadogConfiguration.firstPartyHosts] member
 // to enable Datadog Distributed Tracing
-final config = DdSdkConfiguration(
+final config = DatadogConfiguration(
   // ...
   firstParthHosts = ['localhost']
 )

@@ -26,8 +26,8 @@ typedef DatadogClientAttributesProvider = Map<String, Object?> Function(
 /// network requests and sending them to Datadog.
 ///
 /// If the RUM feature is enabled, the SDK will send information about RUM
-/// Resources (calling startResourceLoading, stopResourceLoading, and
-/// stopResourceLoadingWithErrorInfo) for all intercepted requests.
+/// Resources (calling [DdRum.startResource], [DdRum.stopResource], and
+/// [DdRum.stopResourceWithErrorInfo]) for all intercepted requests.
 ///
 /// This can additionally set tracing headers on your requests, which allows for
 /// distributed tracing. You can set which format of tracing header using the
