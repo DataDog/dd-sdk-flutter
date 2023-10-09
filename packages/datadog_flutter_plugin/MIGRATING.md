@@ -12,7 +12,7 @@ The following structures have been renamed
 | `DdSdkConfiguration` | `DatadogConfiguration` |
 | `LoggingConfiguartion` | `DatadogLoggingConfiguration` |
 | `RumConfiguration` | `DatadogRumConfiguration` |
-| `DdSdkExistingConfiguration` | `DatadogAttachConfiguration` |d
+| `DdSdkExistingConfiguration` | `DatadogAttachConfiguration` |
 
 The following properties have changed:
 
