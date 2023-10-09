@@ -26,6 +26,7 @@ apply plugin: 'kotlin-android'
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
+    namespace "com.example.datadog_webview_tracking"
     compileSdkVersion flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
 
@@ -44,7 +45,7 @@ android {
 
     defaultConfig {
         applicationId "com.datadoghq.flutter.webview.example"
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion 33
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
