@@ -31,7 +31,8 @@ stages:
     workflows:
     - integration_ios_from_stage: {}
     - integration_android_from_stage: {}
-    - integration_web_from_stage: {}
+    # Bitrise is stalling on this step unfortunately
+    # - integration_web_from_stage: {}
   nightly:
     workflows:
     - nightly_ios: {}
@@ -192,6 +193,26 @@ workflows:
     - _launch_ios_simulator
     - integration_ios
     - _deploy_artifacts
+  _install_chrome:
+    steps:
+    - script: 
+        title: Install Chrome and chromedriver (and start chromedriver)
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+
+            # Chrome install
+            sudo apt update
+            wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            sudo dpkg -i google-chrome-stable_current_amd64.deb
+            sudo apt-get install -f
+
+            # Chrome driver install
+            export CHROME_LATEST_STABLE=`curl https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE`
+            wget https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_LATEST_STABLE/linux64/chromedriver-linux64.zip
+            unzip chromedriver-linux64.zip
+            chmod +x ./chromedriver-linux64/chromedriver
+            ./chromedriver-linux64/chromedriver --port=4444 &
   integration_web:
     steps:
     - script:
@@ -209,6 +230,7 @@ workflows:
     - DD_RUN_INTEGRATION_TESTS: '1'
     after_run:
     - _setup
+    - _install_chrome
     - integration_web
     - _deploy_artifacts
     meta:
