@@ -54,11 +54,13 @@ dynamic valueToJs(Object? value, String parameterName) {
       'Could not convert ${value.runtimeType} to javascript.', parameterName);
 }
 
+// Regex specifying the format of a frame in a Dart stack trace.
+final _dartLineRegex =
+    RegExp(r'(?<file>.+) (?<location>\d+:\d+)\s*(?<function>.+)');
+
 String? convertWebStackTrace(StackTrace? stackTrace) {
   if (stackTrace == null) return null;
 
-  final dartLineRegex =
-      RegExp(r'(?<file>.+) (?<location>\d+:\d+)\s*(?<function>.+)');
   var stackTraceString = stackTrace.toString();
   if (kDebugMode) {
     // Datadog Browser SDK parses the stack trace looking for specific
@@ -67,7 +69,7 @@ String? convertWebStackTrace(StackTrace? stackTrace) {
     // we reformat so that it puts something in Datadog logging.
     var sb = StringBuffer();
     for (var line in stackTraceString.split('\n')) {
-      var match = dartLineRegex.firstMatch(line);
+      var match = _dartLineRegex.firstMatch(line);
       if (match != null) {
         final file = match.namedGroup('file');
         final location = match.namedGroup('location');

@@ -145,7 +145,7 @@ scripts:
       scope: 'datadog_flutter_plugin'
 
   integration_test:web:main:
-    run: |
+    exec: |
       cd integration_test_app
       dart ./bin/web_integration_tests.dart
     packageFilters:

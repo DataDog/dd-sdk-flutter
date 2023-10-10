@@ -3,6 +3,7 @@
 // Copyright 2023-Present Datadog, Inc.
 // ignore_for_file: avoid_print
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
@@ -51,11 +52,24 @@ void main() async {
         '--web-port=8080',
       ];
       print('flutter ${args.join(' ')}');
-      final result = await Process.run('flutter', args);
-      print(result.stdout);
-      if (result.exitCode != 0) {
+      final process = await Process.start('flutter', args);
+      process.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((event) {
+        print(event);
+      });
+      process.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((event) {
+        print(event);
+      });
+
+      final exitCode = await process.exitCode;
+      if (exitCode != 0) {
         print('Command failed');
-        exit(result.exitCode);
+        exit(exitCode);
       }
     }
   }
