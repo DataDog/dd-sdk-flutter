@@ -12,6 +12,7 @@ The following structures have been renamed
 | `DdSdkConfiguration` | `DatadogConfiguration` |
 | `LoggingConfiguartion` | `DatadogLoggingConfiguration` |
 | `RumConfiguration` | `DatadogRumConfiguration` |
+| `DdSdkExistingConfiguration` | `DatadogAttachConfiguration` |
 
 The following properties have changed:
 
@@ -65,7 +66,7 @@ The following APIs have changed:
 | `RumConfiguration.vitalsUpdateFrequency` | `DatadogRumConfiguration.vitalsUpdateFrequency` | Set to `null` to disable vitals updates |
 | `RumConfiguration.tracingSampleRate` | `DatadogRumConfiguration.traceSampleRate` |
 | `RumConfiguration.rumViewEventMapper` | `DatadogRumConfiguration.viewEventMapper` |
-| `RumConfiguration.runActionEventMapper` | `DatadogRumConfiguration.actionEventMapper` |
+| `RumConfiguration.rumActionEventMapper` | `DatadogRumConfiguration.actionEventMapper` |
 | `RumConfiguration.rumResourceEventMapper` | `DatadogRumConfiguration.resourceEventMapper` |
 | `RumConfiguration.rumErrorEventMapper` | `DatadogRumConfiguration.rumErrorEventMapper` |
 | `RumConfiguration.rumLongTaskEventMapper` | `DatadogRumConfiguration.longTaskEventMapper` |

@@ -363,8 +363,7 @@ query UserInfo($id: ID!) {
       expect(capturedAttrs['request_attribute'], 'my request');
     });
 
-    test('link calls stopResourceLoadingWithErrorInfo on stream error',
-        () async {
+    test('link calls stopResourceWithErrorInfo on stream error', () async {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final request = Request(
@@ -394,8 +393,7 @@ query UserInfo($id: ID!) {
           .stopResourceWithErrorInfo(capturedKey!, 'FakeError', 'String', {}));
     });
 
-    test('link calls stopResourceLoadingWithErrorInfo on stream error',
-        () async {
+    test('link calls stopResourceWithErrorInfo on stream error', () async {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final request = Request(
