@@ -31,6 +31,8 @@ stages:
     workflows:
     - integration_ios_from_stage: {}
     - integration_android_from_stage: {}
+    # Bitrise is stalling on this step unfortunately
+    # - integration_web_from_stage: {}
   nightly:
     workflows:
     - nightly_ios: {}
@@ -191,33 +193,50 @@ workflows:
     - _launch_ios_simulator
     - integration_ios
     - _deploy_artifacts
+  _install_chrome:
+    steps:
+    - script: 
+        title: Install Chrome and chromedriver (and start chromedriver)
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+
+            # Chrome install
+            sudo apt update
+            wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            sudo dpkg -i google-chrome-stable_current_amd64.deb
+            sudo apt-get install -f
+
+            # Chrome driver install
+            export CHROME_LATEST_STABLE=`curl https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE`
+            wget https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_LATEST_STABLE/linux64/chromedriver-linux64.zip
+            unzip chromedriver-linux64.zip
+            chmod +x ./chromedriver-linux64/chromedriver
+            ./chromedriver-linux64/chromedriver --port=4444 &
   integration_web:
     steps:
     - script:
-        title: Run pub get in all projects
+        title: Web integration tests
         inputs:
         - content: |-
             #!/usr/bin/env bash
             set -e
             
-            ./tools/chromedriver --port=4444 &
-            
-            pushd "packages/datadog_flutter_plugin/integration_test_app"
-            testfiles=(
-              "integration_test/logging_test.dart"
-              "integration_test/rum_manual_test.dart"
-              "integration_test/rum_manual_error_reporting_test.dart"
-              "integration_test/rum_no_auto_instrumentation_test.dart"
-              "integration_test/rum_auto_instrumentation_test.dart"
-            )
-            
-            for test in "${testfiles[@]}" ; do
-              echo 'Testing $test'
-              flutter drive --driver=test_driver/integration_test.dart --target=$test -d "Chrome"
-            done
-            
-            popd
-        - working_dir: "$BITRISE_SOURCE_DIR"
+            melos integration_test:web:main
+  integration_web_from_stage:
+    envs:
+    - FLUTTER_VERSION: stable
+    - DD_RUN_UNIT_TESTS: '1'
+    - DD_RUN_INTEGRATION_TESTS: '1'
+    after_run:
+    - _setup
+    - _install_chrome
+    - integration_web
+    - _deploy_artifacts
+    meta:
+      bitrise.io:
+        stack: linux-docker-android-20.04
+        machine_type_id: standard
   nightly_android:
     envs:
     - FLUTTER_VERSION: stable

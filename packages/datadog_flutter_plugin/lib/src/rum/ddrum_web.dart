@@ -9,6 +9,7 @@ library ddrum_flutter_web;
 import 'package:js/js.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import '../logs/ddweb_helpers.dart';
 import '../web_helpers.dart';
 import 'ddrum_platform_interface.dart';
 
@@ -30,6 +31,9 @@ class DdRumWeb extends DdRumPlatform {
       proxyUrl: rumConfiguration.customEndpoint,
       // allowedTracingOrigins: configuration.firstPartyHosts,
       trackViewsManually: true,
+      trackFrustrations: rumConfiguration.trackFrustrations,
+      trackLongTasks: rumConfiguration.detectLongTasks,
+      enableExperimentalFeatures: ['feature_flags'],
     ));
   }
 
@@ -51,7 +55,12 @@ class DdRumWeb extends DdRumPlatform {
     String? errorType,
     Map<String, dynamic> attributes,
   ) async {
-    _jsAddError(error.toString(), attributesToJs(attributes, 'attributes'));
+    var jsError = JSError();
+    jsError.stack = convertWebStackTrace(stackTrace);
+    jsError.message = error.toString();
+    jsError.name = errorType ?? 'Error';
+
+    _jsAddError(jsError, attributesToJs(attributes, 'attributes'));
   }
 
   @override
@@ -62,7 +71,12 @@ class DdRumWeb extends DdRumPlatform {
     String? errorType,
     Map<String, dynamic> attributes,
   ) async {
-    _jsAddError(message, attributesToJs(attributes, 'attributes'));
+    var jsError = JSError();
+    jsError.stack = convertWebStackTrace(stackTrace);
+    jsError.message = message;
+    jsError.name = errorType ?? 'Error';
+
+    _jsAddError(jsError, attributesToJs(attributes, 'attributes'));
   }
 
   @override
@@ -161,13 +175,16 @@ class _RumInitOptions {
   external String? get env;
   external String? get version;
   external bool? get trackViewsManually;
-  external bool? get trackInteractions;
+  external bool? get trackUserInteractions;
+  external bool? get trackFrustrations;
+  external bool? get trackLongTasks;
   external String? get defaultPrivacyLevel;
   external num? get sampleRate;
   external num? get sessionReplaySampleRate;
   external bool? get silentMultipleInit;
   external String? get proxyUrl;
   external List<String> get allowedTracingOrigins;
+  external List<String> get enableExperimentalFeatures;
 
   external factory _RumInitOptions({
     String applicationId,
@@ -177,13 +194,16 @@ class _RumInitOptions {
     String? env,
     String? version,
     bool? trackViewsManually,
-    bool? trackInteractions,
+    bool? trackUserInteractions,
+    bool? trackFrustrations,
+    bool? trackLongTasks,
     String? defaultPrivacyLevel,
     num? sampleRate,
     num? sessionReplaySampleRate,
     bool? silentMultipleInit,
     String? proxyUrl,
     List<String> allowedTracingOrigins,
+    List<String> enableExperimentalFeatures,
   });
 }
 

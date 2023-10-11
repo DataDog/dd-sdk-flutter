@@ -28,12 +28,19 @@ void main() {
     var logs = <LogDecoder>[];
 
     await recordedSession.pollSessionRequests(
-      const Duration(seconds: 30),
+      const Duration(seconds: 45),
       (requests) {
         requests
             .map((e) {
               try {
-                return e.jsonData as List;
+                if (e.jsonData is List) {
+                  return e.jsonData;
+                } else if (e.jsonData is Map) {
+                  // Web can return a single very long log as a single json object.
+                  // Transform into a list of json data.
+                  return [e.jsonData];
+                }
+                throw const FormatException();
               } on FormatException {
                 // Web sends as newline separated
                 return e.data
@@ -41,7 +48,6 @@ void main() {
                     .map<dynamic>((e) => json.decode(e))
                     .toList();
               } on TypeError {
-                // This might be the telemetry event
                 return null;
               }
               // return null;

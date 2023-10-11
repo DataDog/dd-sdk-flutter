@@ -195,9 +195,7 @@ void main() {
     expect(view2.viewEvents.last.featureFlags?['mock_flag_a'], false);
     expect(view2.viewEvents.last.featureFlags?['mock_flag_b'], 'mock_value');
 
-    const errorMessage =
-        kIsWeb ? 'Provided "Simulated view error"' : 'Simulated view error';
-    expect(view2.errorEvents[0].message, errorMessage);
+    expect(view2.errorEvents[0].message, 'Simulated view error');
     expect(view2.errorEvents[0].source, kIsWeb ? 'custom' : 'source');
     expect(view2.errorEvents[0].context![contextKey], expectedContextValue);
     expect(view2.errorEvents[0].context!['custom_attribute'], 'my_attribute');

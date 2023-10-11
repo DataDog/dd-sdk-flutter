@@ -234,7 +234,7 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
   }
 
   void _triggerLongTask() {
-    final doneTime = DateTime.now().add(const Duration(milliseconds: 200));
+    final doneTime = DateTime.now().add(const Duration(milliseconds: 500));
     while (DateTime.now().compareTo(doneTime) < 0) {}
     setState(() {
       _nextReady = true;
