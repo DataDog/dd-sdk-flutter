@@ -91,7 +91,10 @@ void main() {
 
     for (var log in rumLog) {
       if (log.eventType != 'telemetry') {
-        expect(log.dd.plan, 1);
+        // Web does not use "plan" anymore
+        if (!kIsWeb) {
+          expect(log.dd.plan, 1);
+        }
       }
     }
 

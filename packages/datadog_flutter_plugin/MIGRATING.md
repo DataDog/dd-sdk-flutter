@@ -36,9 +36,21 @@ In addition, the following APIs have changed:
 | `DatadogSdk.runApp` | `DatadogSdk.runApp` | Added `trackingConsent` parameter |
 | `DatadogSdk.initialize` | `DatadogSdk.initialize` | Added `trackingConsent` parameter |
 | `DatadogSdk.createLogger` | `DatadogLogging.createLogger` | Moved |
- 
 
-# Logs Product Changes
+## Flutter Web Changes
+
+Clients using Flutter Web should update to using the Datadog Browser SDK v5.  Change the following import in your `index.html`:
+
+```diff
+-  <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-logs-v4.js"></script>
+-  <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-rum-slim-v4.js"></script>
++  <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v5/datadog-logs.js"></script> 
++  <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v5/datadog-rum-slim.js"></script> 
+```
+ 
+Note that Datadog provides one CDN bundle per site. See the [Browser SDK README](https://github.com/DataDog/browser-sdk/#cdn-bundles) for a list of all site URLs.
+
+## Logs Product Changes
 
 As with `1.x`, Datadog Logging can be enabled by setting the `DatadogConfiguration.loggingConfiguration` member. However, unlike `1.x`, Datadog will not create a default logger for you. `DatadogSdk.logs` is now and instance of `DatadogLogging`, which can be used to create logs. Many options were moved to `DatadogLoggerConfiguration` to give developers more granular support over individual loggers.
 
@@ -56,7 +68,7 @@ The following APIs have changed:
 | `LoggingConfiguration.loggerName` | `DatadogLoggerConfiguration.name` | | 
 | `LoggingConfiguration.sampleRate` | `DatadogLoggerConfiguration.remoteSampleRate` | |
 
-# RUM Product Changes
+## RUM Product Changes
 
 The following APIs have changed:
 

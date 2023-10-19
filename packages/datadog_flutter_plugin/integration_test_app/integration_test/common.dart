@@ -113,7 +113,7 @@ void verifyCommonTags(
   final sdkVersion = request.tags['sdk_version'];
   if (kIsWeb) {
     // Returning the browser version of the SDK.
-    expect(sdkVersion?.startsWith('4.'), true);
+    expect(sdkVersion?.startsWith('5.'), true);
   } else {
     expect(sdkVersion, DatadogSdk.sdkVersion);
   }

@@ -14,8 +14,6 @@ import '../web_helpers.dart';
 import 'ddrum_platform_interface.dart';
 
 class DdRumWeb extends DdRumPlatform {
-  final Map<String, Object?> currentAttributes = {};
-
   // Because Web needs the full SDK configuration, we have a separate init method
   void webInitialize(DatadogConfiguration configuration,
       DatadogRumConfiguration rumConfiguration) {
@@ -23,12 +21,12 @@ class DdRumWeb extends DdRumPlatform {
       applicationId: rumConfiguration.applicationId,
       clientToken: configuration.clientToken,
       site: siteStringForSite(configuration.site),
-      sampleRate: rumConfiguration.sessionSamplingRate,
+      sessionSampleRate: rumConfiguration.sessionSamplingRate,
       sessionReplaySampleRate: 0,
       service: configuration.service,
       env: configuration.env,
       version: configuration.versionTag,
-      proxyUrl: rumConfiguration.customEndpoint,
+      proxy: rumConfiguration.customEndpoint,
       // allowedTracingOrigins: configuration.firstPartyHosts,
       trackViewsManually: true,
       trackFrustrations: rumConfiguration.trackFrustrations,
@@ -43,8 +41,7 @@ class DdRumWeb extends DdRumPlatform {
 
   @override
   Future<void> addAttribute(String key, dynamic value) async {
-    currentAttributes[key] = value;
-    _jsSetRumGlobalContext(attributesToJs(currentAttributes, 'context'));
+    _jsSetGlobalContextProperty(key, valueToJs(value, 'context'));
   }
 
   @override
@@ -92,8 +89,7 @@ class DdRumWeb extends DdRumPlatform {
 
   @override
   Future<void> removeAttribute(String key) async {
-    currentAttributes.remove(key);
-    _jsSetRumGlobalContext(attributesToJs(currentAttributes, 'context'));
+    _jsRemoveGlobalContextProperty(key);
   }
 
   @override
@@ -179,11 +175,11 @@ class _RumInitOptions {
   external bool? get trackFrustrations;
   external bool? get trackLongTasks;
   external String? get defaultPrivacyLevel;
-  external num? get sampleRate;
+  external num? get sessionSampleRate;
   external num? get sessionReplaySampleRate;
   external bool? get silentMultipleInit;
-  external String? get proxyUrl;
-  external List<String> get allowedTracingOrigins;
+  external String? get proxy;
+  external List<String> get allowedTracingUrls;
   external List<String> get enableExperimentalFeatures;
 
   external factory _RumInitOptions({
@@ -198,11 +194,11 @@ class _RumInitOptions {
     bool? trackFrustrations,
     bool? trackLongTasks,
     String? defaultPrivacyLevel,
-    num? sampleRate,
+    num? sessionSampleRate,
     num? sessionReplaySampleRate,
     bool? silentMultipleInit,
-    String? proxyUrl,
-    List<String> allowedTracingOrigins,
+    String? proxy,
+    List<String> allowedTracingUrls,
     List<String> enableExperimentalFeatures,
   });
 }
@@ -213,8 +209,11 @@ external void init(_RumInitOptions configuration);
 @JS('startView')
 external void _jsStartView(String name);
 
-@JS('setRumGlobalContext')
-external void _jsSetRumGlobalContext(dynamic context);
+@JS('setGlobalContextProperty')
+external void _jsSetGlobalContextProperty(String property, dynamic context);
+
+@JS('removeGlobalContextProperty')
+external void _jsRemoveGlobalContextProperty(String property);
 
 @JS('addTiming')
 external void _jsAddTiming(String name);
