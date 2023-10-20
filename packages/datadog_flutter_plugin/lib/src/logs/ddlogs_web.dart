@@ -20,7 +20,7 @@ class DdLogsWeb extends DdLogsPlatform {
     init(_LogInitOptions(
       clientToken: configuration.clientToken,
       env: configuration.env,
-      proxyUrl: configuration.loggingConfiguration?.customEndpoint,
+      proxy: configuration.loggingConfiguration?.customEndpoint,
       site: siteStringForSite(configuration.site),
       service: configuration.service,
       version: configuration.versionTag,
@@ -56,7 +56,7 @@ class DdLogsWeb extends DdLogsPlatform {
   Future<void> addAttribute(
       String loggerHandle, String key, Object value) async {
     final logger = _activeLoggers[loggerHandle];
-    logger?.addContext(key, valueToJs(value, 'value'));
+    logger?.setContextProperty(key, valueToJs(value, 'value'));
   }
 
   @override
@@ -65,7 +65,7 @@ class DdLogsWeb extends DdLogsPlatform {
   @override
   Future<void> removeAttribute(String loggerHandle, String key) async {
     final logger = _activeLoggers[loggerHandle];
-    logger?.removeContext(key);
+    logger?.removeContextProperty(key);
   }
 
   @override
@@ -129,7 +129,7 @@ class _LogInitOptions {
   external String get clientToken;
   external String get site;
   external String get env;
-  external String? get proxyUrl;
+  external String? get proxy;
   external String? get service;
   external String? get version;
 
@@ -138,7 +138,7 @@ class _LogInitOptions {
     String site,
     String env,
     String? service,
-    String? proxyUrl,
+    String? proxy,
     String? version,
   });
 }
@@ -162,8 +162,8 @@ class Logger {
   external void log(
       String message, dynamic messageContext, String status, JSError? error);
 
-  external void addContext(String key, dynamic value);
-  external void removeContext(String key);
+  external void setContextProperty(String key, dynamic value);
+  external void removeContextProperty(String key);
 
   external void setHandler(List<String> handler);
 }

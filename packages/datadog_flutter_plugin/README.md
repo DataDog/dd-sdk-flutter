@@ -11,7 +11,7 @@ Datadog RUM SDK versions >= 1.4 support monitoring for Flutter 3.0+.
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 1.19.0 | 1.19.1 | 4.x.x |
+| 1.19.0 | 1.19.1 | 5.x.x |
 
 [//]: # (End SDK Table)
 
@@ -25,16 +25,18 @@ On Android, your `minSdkVersion` must be >= 21, and if you are using Kotlin, it 
 
 ### Web
 
-`⚠️ Datadog support for Flutter Web is still in early development`
-
 On Web, add the following to your `index.html` under your `head` tag:
 
 ```html
-<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-logs-v4.js"></script>
-<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-rum-slim-v4.js"></script>
+<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v5/datadog-logs.js"></script> 
+<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v5/datadog-rum-slim.js"></script> 
 ```
 
-This loads the CDN-delivered Datadog Browser SDKs for Logs and RUM. The synchronous CDN-delivered version of the Datadog Browser SDK is the only version supported by the Flutter plugin.
+This loads the CDN-delivered Datadog Browser SDKs for Logs and RUM. The synchronous CDN-delivered version of the Datadog Browser SDK is the only version currently supported by the Flutter plugin.
+
+Note that Datadog provides one CDN bundle per site. See the [Browser SDK README](https://github.com/DataDog/browser-sdk/#cdn-bundles) for a list of all site URLs.
+
+See [Flutter Web Support](#web_support) for information on current support for Flutter Web
 
 ## Setup
 
@@ -200,6 +202,20 @@ final configuration = DatadogConfiguration(
 ```
 
 In order to enable Datadog Distributed Tracing, the `DatadogConfiguration.firstPartyHosts` property in your configuration object must be set to a domain that supports distributed tracing. You can also modify the sampling rate for Datadog distributed tracing by setting the `traceSampleRate` on your `DatadogRumConfiguration`.
+
+## <a name="web_support"></a>Flutter Web Support 
+
+The following Datadog SDK features are not supported in Flutter Web:
+
+  * Tags on logs are not supported
+  * Event mappers are not supported.
+  * Manually tracking resources (`start/stopResource`) is not supported.
+  * All manually reported actions (`addAction`) are reported as type `custom`.
+  * Starting long running actions (`start/stopAction`) is not supported.
+  * New sessions are not created after a call to `stopSession`.
+  * Long task length is not configurable
+
+If you have a need for any of these features, please reach out to your CSM and submit a feature request.
 
 ## Data Storage
 
