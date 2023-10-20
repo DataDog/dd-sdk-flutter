@@ -13,7 +13,7 @@ dependencies:
     sdk: flutter
   datadog_flutter_plugin: ^2.0.0
   webview_flutter: ^4.0.4
-  webview_flutter_android: ^3.4.3
+  webview_flutter_android: ^3.8.2
   webview_flutter_wkwebview: ^3.2.3
 
 dev_dependencies:

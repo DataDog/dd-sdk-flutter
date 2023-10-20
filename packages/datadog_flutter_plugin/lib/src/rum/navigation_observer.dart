@@ -93,7 +93,7 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
-      case AppLifecycleState.hidden:
+      default:
         if (_currentView != null) {
           _pendingView = _currentView;
           _stopView(_currentView);

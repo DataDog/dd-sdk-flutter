@@ -37,7 +37,7 @@ class RumLongTaskObserver with WidgetsBindingObserver {
       case AppLifecycleState.detached:
         stopLongTaskDetection();
         break;
-      case AppLifecycleState.hidden:
+      default:
         stopLongTaskDetection();
         break;
     }
