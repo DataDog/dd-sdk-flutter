@@ -231,8 +231,9 @@ class ValidatePublishDryRun extends Command {
       return true;
     }
 
-    logger.info('ℹ️ Running `dart pub publish --dry-run`');
-    var process = await Process.start('dart', ['pub', 'publish', '--dry-run'],
+    logger.info('ℹ️ Running `flutter pub publish --dry-run`');
+    var process = await Process.start(
+        'flutter', ['pub', 'publish', '--dry-run'],
         workingDirectory: args.packageRoot);
     process.stdout
         .transform(utf8.decoder)
