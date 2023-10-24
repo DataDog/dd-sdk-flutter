@@ -156,7 +156,10 @@ class DatadogConfiguration {
   set firstPartyHosts(List<String> hosts) {
     firstPartyHostsWithTracingHeaders.clear();
     for (var entry in hosts) {
-      firstPartyHostsWithTracingHeaders[entry] = {TracingHeaderType.datadog};
+      firstPartyHostsWithTracingHeaders[entry] = {
+        TracingHeaderType.datadog,
+        TracingHeaderType.tracecontext
+      };
     }
   }
 
@@ -216,10 +219,12 @@ class DatadogConfiguration {
         final headerTypes = firstPartyHostsWithTracingHeaders[entry];
         if (headerTypes == null) {
           firstPartyHostsWithTracingHeaders[entry] = {
-            TracingHeaderType.datadog
+            TracingHeaderType.datadog,
+            TracingHeaderType.tracecontext,
           };
         } else {
           headerTypes.add(TracingHeaderType.datadog);
+          headerTypes.add(TracingHeaderType.tracecontext);
         }
       }
     }
@@ -309,7 +314,10 @@ class DatadogAttachConfiguration {
   set firstPartyHosts(List<String> hosts) {
     firstPartyHostsWithTracingHeaders.clear();
     for (var entry in hosts) {
-      firstPartyHostsWithTracingHeaders[entry] = {TracingHeaderType.datadog};
+      firstPartyHostsWithTracingHeaders[entry] = {
+        TracingHeaderType.datadog,
+        TracingHeaderType.tracecontext
+      };
     }
   }
 
@@ -358,10 +366,12 @@ class DatadogAttachConfiguration {
         final headerTypes = firstPartyHostsWithTracingHeaders[entry];
         if (headerTypes == null) {
           firstPartyHostsWithTracingHeaders[entry] = {
-            TracingHeaderType.datadog
+            TracingHeaderType.datadog,
+            TracingHeaderType.tracecontext
           };
         } else {
           headerTypes.add(TracingHeaderType.datadog);
+          headerTypes.add(TracingHeaderType.tracecontext);
         }
       }
     }
