@@ -4,222 +4,136 @@
 
 import Foundation
 import XCTest
-@testable import Datadog
+@testable import DatadogCore
+@testable import DatadogInternal
+@testable import DatadogLogs
+@testable import DatadogRUM
 @testable import datadog_flutter_plugin
 
 class DatadogConfigurationTests: XCTestCase {
 
-  func testAllBatchSizes_AreParsedCorrectly() {
-    let small = Datadog.Configuration.BatchSize.parseFromFlutter("BatchSize.small")
-    let medium = Datadog.Configuration.BatchSize.parseFromFlutter("BatchSize.medium")
-    let large = Datadog.Configuration.BatchSize.parseFromFlutter("BatchSize.large")
+    func testAllBatchSizes_AreParsedCorrectly() {
+        let small = Datadog.Configuration.BatchSize.parseFromFlutter("BatchSize.small")
+        let medium = Datadog.Configuration.BatchSize.parseFromFlutter("BatchSize.medium")
+        let large = Datadog.Configuration.BatchSize.parseFromFlutter("BatchSize.large")
 
-    XCTAssertEqual(small, .small)
-    XCTAssertEqual(medium, .medium)
-    XCTAssertEqual(large, .large)
-  }
+        XCTAssertEqual(small, .small)
+        XCTAssertEqual(medium, .medium)
+        XCTAssertEqual(large, .large)
+    }
 
-  func testAllUploadFrequency_AreParsedCorrectly() {
-    let frequent = Datadog.Configuration.UploadFrequency.parseFromFlutter("UploadFrequency.frequent")
-    let average = Datadog.Configuration.UploadFrequency.parseFromFlutter("UploadFrequency.average")
-    let rare = Datadog.Configuration.UploadFrequency.parseFromFlutter("UploadFrequency.rare")
+    func testAllUploadFrequency_AreParsedCorrectly() {
+        let frequent = Datadog.Configuration.UploadFrequency.parseFromFlutter("UploadFrequency.frequent")
+        let average = Datadog.Configuration.UploadFrequency.parseFromFlutter("UploadFrequency.average")
+        let rare = Datadog.Configuration.UploadFrequency.parseFromFlutter("UploadFrequency.rare")
 
-    XCTAssertEqual(frequent, .frequent)
-    XCTAssertEqual(average, .average)
-    XCTAssertEqual(rare, .rare)
-  }
+        XCTAssertEqual(frequent, .frequent)
+        XCTAssertEqual(average, .average)
+        XCTAssertEqual(rare, .rare)
+    }
 
-  func testAllTrackingConsents_AreParsedCorrectly() {
-    let granted = TrackingConsent.parseFromFlutter("TrackingConsent.granted")
-    let notGranted = TrackingConsent.parseFromFlutter("TrackingConsent.notGranted")
-    let pending = TrackingConsent.parseFromFlutter("TrackingConsent.pending")
+    func testAllTrackingConsents_AreParsedCorrectly() {
+        let granted = TrackingConsent.parseFromFlutter("TrackingConsent.granted")
+        let notGranted = TrackingConsent.parseFromFlutter("TrackingConsent.notGranted")
+        let pending = TrackingConsent.parseFromFlutter("TrackingConsent.pending")
 
-    XCTAssertEqual(granted, .granted)
-    XCTAssertEqual(notGranted, .notGranted)
-    XCTAssertEqual(pending, .pending)
-  }
+        XCTAssertEqual(granted, .granted)
+        XCTAssertEqual(notGranted, .notGranted)
+        XCTAssertEqual(pending, .pending)
+    }
 
-  func testAllSites_AreParsedCorrectly() {
-    let us1 = Datadog.Configuration.DatadogEndpoint.parseFromFlutter("DatadogSite.us1")
-    let us3 = Datadog.Configuration.DatadogEndpoint.parseFromFlutter("DatadogSite.us3")
-    let us5 = Datadog.Configuration.DatadogEndpoint.parseFromFlutter("DatadogSite.us5")
-    let eu1 = Datadog.Configuration.DatadogEndpoint.parseFromFlutter("DatadogSite.eu1")
-    let us1Fed = Datadog.Configuration.DatadogEndpoint.parseFromFlutter("DatadogSite.us1Fed")
-    let ap1 = Datadog.Configuration.DatadogEndpoint.parseFromFlutter("DatadogSite.ap1")
+    func testAllSites_AreParsedCorrectly() {
+        let us1 = DatadogSite.parseFromFlutter("DatadogSite.us1")
+        let us3 = DatadogSite.parseFromFlutter("DatadogSite.us3")
+        let us5 = DatadogSite.parseFromFlutter("DatadogSite.us5")
+        let eu1 = DatadogSite.parseFromFlutter("DatadogSite.eu1")
+        let us1Fed = DatadogSite.parseFromFlutter("DatadogSite.us1Fed")
+        let ap1 = DatadogSite.parseFromFlutter("DatadogSite.ap1")
 
-    XCTAssertEqual(us1, .us1)
-    XCTAssertEqual(us3, .us3)
-    XCTAssertEqual(us5, .us5)
-    XCTAssertEqual(eu1, .eu1)
-    XCTAssertEqual(us1Fed, .us1_fed)
-    XCTAssertEqual(ap1, .ap1)
-  }
-
-  func testAllVerbosityLevels_AreParsedCorrectly() {
-    let verbose = LogLevel.parseVerbosityFromFlutter("Verbosity.verbose")
-    let debug = LogLevel.parseVerbosityFromFlutter("Verbosity.debug")
-    let info = LogLevel.parseVerbosityFromFlutter("Verbosity.info")
-    let warn = LogLevel.parseVerbosityFromFlutter("Verbosity.warn")
-    let error = LogLevel.parseVerbosityFromFlutter("Verbosity.error")
-    let none = LogLevel.parseVerbosityFromFlutter("Verbosity.none")
-    let unknown = LogLevel.parseVerbosityFromFlutter("unknown")
-
-    // iOS doesn't have .verbose so use .debug
-    XCTAssertEqual(verbose, .debug)
-    XCTAssertEqual(debug, .debug)
-    XCTAssertEqual(info, .info)
-    XCTAssertEqual(warn, .warn)
-    XCTAssertEqual(error, .error)
-    XCTAssertNil(none)
-    XCTAssertNil(unknown)
-  }
+        XCTAssertEqual(us1, .us1)
+        XCTAssertEqual(us3, .us3)
+        XCTAssertEqual(us5, .us5)
+        XCTAssertEqual(eu1, .eu1)
+        XCTAssertEqual(us1Fed, .us1_fed)
+        XCTAssertEqual(ap1, .ap1)
+    }
 
     func testAllVitalsFrequencies_AreParsedCorrectly() {
-        let never = Datadog.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.never")
-        let rare = Datadog.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.rare")
-        let average = Datadog.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.average")
-        let frequent = Datadog.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.frequent")
+        let rare = RUM.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.rare")
+        let average = RUM.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.average")
+        let frequent = RUM.Configuration.VitalsFrequency.parseFromFlutter("VitalsFrequency.frequent")
 
-        XCTAssertEqual(never, .never)
         XCTAssertEqual(rare, .rare)
         XCTAssertEqual(average, .average)
         XCTAssertEqual(frequent, .frequent)
     }
 
-  func testConfiguration_MissingValues_FailsInitialization() {
-    let encoded: [String: Any?]  = [
-      "env": "fakeEnvironment",
-      "nativeCrashReportEnabled": NSNumber(false),
-      "trackingConsent": "TrackingConsent.pending",
-      "additionalConfig": [:]
-    ]
+    func testCoreConfiguration_MissingValues_FailsInitialization() {
+        let encoded: [String: Any?]  = [
+            "env": "fakeEnvironment",
+            "trackingConsent": "TrackingConsent.pending",
+            "additionalConfig": [:] as [String: Any?]
+        ]
 
-    let config = DatadogFlutterConfiguration(fromEncoded: encoded)
-    XCTAssertNil(config)
-  }
-
-  func testConfiguration_Defaults_AreDecoded() {
-    let encoded: [String: Any?]  = [
-      "clientToken": "fakeClientToken",
-      "env": "fakeEnvironment",
-      "nativeCrashReportEnabled": NSNumber(false),
-      "site": nil,
-      "batchSize": nil,
-      "uploadFrequency": nil,
-      "telemetrySampleRate": nil,
-      "trackingConsent": "TrackingConsent.pending",
-      "customEndpoint": nil,
-      "firstPartyHosts": [],
-      "loggingConfiguration": nil,
-      "rumConfiguration": nil,
-      "additionalConfig": [:]
-    ]
-
-    let config = DatadogFlutterConfiguration(fromEncoded: encoded)!
-
-    XCTAssertNotNil(config)
-    XCTAssertEqual(config.clientToken, "fakeClientToken")
-    XCTAssertEqual(config.env, "fakeEnvironment")
-    XCTAssertEqual(config.nativeCrashReportingEnabled, false)
-    XCTAssertNil(config.telemetrySampleRate)
-    XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
-
-    XCTAssertNil(config.rumConfiguration)
-  }
-
-  func testConfiguration_Values_AreDecoded() {
-    let encoded: [String: Any?]  = [
-      "clientToken": "fakeClientToken",
-      "env": "fakeEnvironment",
-      "nativeCrashReportEnabled": NSNumber(false),
-      "site": "DatadogSite.eu1",
-      "batchSize": "BatchSize.small",
-      "uploadFrequency": "UploadFrequency.frequent",
-      "trackingConsent": "TrackingConsent.pending",
-      "telemetrySampleRate": 44,
-      "customEndpoint": nil,
-      "firstPartyHosts": [ "first_party.com" ],
-      "loggingConfiguration": nil,
-      "rumConfiguration": nil,
-      "additionalConfig": [:]
-    ]
-
-    let config = DatadogFlutterConfiguration(fromEncoded: encoded)!
-
-    XCTAssertNotNil(config)
-    XCTAssertEqual(config.site, .eu1)
-    XCTAssertNil(config.serviceName)
-    XCTAssertEqual(config.batchSize, .small)
-    XCTAssertEqual(config.uploadFrequency, .frequent)
-    XCTAssertEqual(config.firstPartyHosts, ["first_party.com"])
-    XCTAssertEqual(config.trackingConsent, TrackingConsent.pending)
-    XCTAssertEqual(config.telemetrySampleRate, 44)
-
-    XCTAssertNil(config.rumConfiguration)
-  }
-
-    func testConfiguration_ServiceName_IsDecoded() {
-      let encoded: [String: Any?]  = [
-        "clientToken": "fakeClientToken",
-        "env": "fakeEnvironment",
-        "serviceName": "com.servicename",
-        "nativeCrashReportEnabled": NSNumber(false),
-        "site": "DatadogSite.eu1",
-        "batchSize": "BatchSize.small",
-        "uploadFrequency": "UploadFrequency.frequent",
-        "trackingConsent": "TrackingConsent.pending",
-        "customEndpoint": nil,
-        "firstPartyHosts": [ "first_party.com" ],
-        "loggingConfiguration": nil,
-        "rumConfiguration": nil,
-        "additionalConfig": [:]
-      ]
-
-      let config = DatadogFlutterConfiguration(fromEncoded: encoded)!
-
-      XCTAssertNotNil(config)
-      XCTAssertEqual(config.serviceName, "com.servicename")
+        let config = Datadog.Configuration(fromEncoded: encoded)
+        XCTAssertNil(config)
     }
 
-  func testConfiguration_NestedConfigurations_AreDecoded() {
-    let encoded: [String: Any?]  = [
-      "clientToken": "fakeClientToken",
-      "env": "fakeEnvironment",
-      "nativeCrashReportEnabled": NSNumber(false),
-      "site": nil,
-      "batchSize": nil,
-      "uploadFrequency": nil,
-      "trackingConsent": "TrackingConsent.pending",
-      "customEndpoint": nil,
-      "loggingConfiguration": [
-        "sendNetworkInfo": NSNumber(true),
-        "printLogsToConsole": NSNumber(true)
-      ],
-      "rumConfiguration": [
-        "applicationId": "fakeApplicationId",
-        "detectLongTasks": NSNumber(false),
-        "longTaskThreshold": NSNumber(0.3),
-        "vitalsFrequency": "VitalsFrequency.never",
-        "attachViewEventMapper": true,
-        "attachActionEventMapper": true,
-        "attachResourceEventMapper": true,
-        "attachErrorEventMapper": true,
-        "attachLongTaskMapper": true
-      ],
-      "additionalConfig": [:]
-    ]
+    func testCoreConfiguration_Defaults_AreDecoded() {
+        let encoded: [String: Any?]  = [
+            "clientToken": "fakeClientToken",
+            "env": "fakeEnvironment",
+            "site": nil,
+            "batchSize": nil,
+            "uploadFrequency": nil,
+            "additionalConfig": [:] as [String: Any?]
+        ]
 
-    let config = DatadogFlutterConfiguration(fromEncoded: encoded)!
+        let config = Datadog.Configuration(fromEncoded: encoded)!
 
-    XCTAssertNotNil(config.rumConfiguration)
-    XCTAssertEqual(config.rumConfiguration?.applicationId, "fakeApplicationId")
-    XCTAssertEqual(config.rumConfiguration?.detectLongTasks, false)
-    XCTAssertEqual(config.rumConfiguration?.longTaskThreshold, 0.3)
-    XCTAssertEqual(config.rumConfiguration?.vitalsFrequency, .never)
-    XCTAssertEqual(config.rumConfiguration?.attachViewEventMapper, true)
-    XCTAssertEqual(config.rumConfiguration?.attachActionEventMapper, true)
-    XCTAssertEqual(config.rumConfiguration?.attachResourceEventMapper, true)
-    XCTAssertEqual(config.rumConfiguration?.attachErrorEventMapper, true)
-    XCTAssertEqual(config.rumConfiguration?.attachLongTaskMapper, true)
-  }
+        XCTAssertNotNil(config)
+        XCTAssertEqual(config.clientToken, "fakeClientToken")
+        XCTAssertEqual(config.env, "fakeEnvironment")
+        XCTAssertEqual(config.site, .us1)
+        XCTAssertEqual(config.batchSize, .medium)
+        XCTAssertEqual(config.uploadFrequency, .average)
+
+    }
+
+    func testCoreConfiguration_Values_AreDecoded() {
+        let encoded: [String: Any?]  = [
+            "clientToken": "fakeClientToken",
+            "env": "fakeEnvironment",
+            "site": "DatadogSite.eu1",
+            "batchSize": "BatchSize.small",
+            "uploadFrequency": "UploadFrequency.frequent",
+            "trackingConsent": "TrackingConsent.pending",
+            "additionalConfig": [:] as [String: Any?]
+        ]
+
+        let config = Datadog.Configuration(fromEncoded: encoded)!
+
+        XCTAssertNotNil(config)
+        XCTAssertEqual(config.site, .eu1)
+        XCTAssertNil(config.service)
+        XCTAssertEqual(config.batchSize, .small)
+        XCTAssertEqual(config.uploadFrequency, .frequent)
+    }
+
+    func testCoreConfiguration_ServiceName_IsDecoded() {
+        let encoded: [String: Any?]  = [
+            "clientToken": "fakeClientToken",
+            "env": "fakeEnvironment",
+            "service": "com.servicename",
+            "site": "DatadogSite.eu1",
+            "batchSize": "BatchSize.small",
+            "uploadFrequency": "UploadFrequency.frequent",
+            "additionalConfig": [:] as [String: Any?]
+        ]
+
+        let config = Datadog.Configuration(fromEncoded: encoded)!
+
+        XCTAssertNotNil(config)
+        XCTAssertEqual(config.service, "com.servicename")
+    }
 }

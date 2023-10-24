@@ -5,7 +5,6 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../../datadog_flutter_plugin.dart';
-import '../internal_logger.dart';
 import 'ddrum_method_channel.dart';
 
 abstract class DdRumPlatform extends PlatformInterface {
@@ -22,21 +21,19 @@ abstract class DdRumPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<void> initialize(
-      RumConfiguration configuration, InternalLogger internalLogger);
-
+  Future<void> enable(DatadogSdk core, DatadogRumConfiguration configuration);
   Future<void> startView(
       String key, String name, Map<String, Object?> attributes);
   Future<void> stopView(String key, Map<String, Object?> attributes);
   Future<void> addTiming(String name);
 
-  Future<void> startResourceLoading(String key, RumHttpMethod httpMethod,
-      String url, Map<String, Object?> attributes);
-  Future<void> stopResourceLoading(String key, int? statusCode,
-      RumResourceType kind, int? size, Map<String, Object?> attributes);
-  Future<void> stopResourceLoadingWithError(
+  Future<void> startResource(String key, RumHttpMethod httpMethod, String url,
+      Map<String, Object?> attributes);
+  Future<void> stopResource(String key, int? statusCode, RumResourceType kind,
+      int? size, Map<String, Object?> attributes);
+  Future<void> stopResourceWithError(
       String key, Exception error, Map<String, Object?> attributes);
-  Future<void> stopResourceLoadingWithErrorInfo(
+  Future<void> stopResourceWithErrorInfo(
       String key, String message, String type, Map<String, Object?> attributes);
 
   Future<void> addError(
@@ -54,12 +51,12 @@ abstract class DdRumPlatform extends PlatformInterface {
     Map<String, Object?> attributes,
   );
 
-  Future<void> addUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes);
-  Future<void> startUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes);
-  Future<void> stopUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes);
+  Future<void> addAction(
+      RumActionType type, String name, Map<String, Object?> attributes);
+  Future<void> startAction(
+      RumActionType type, String name, Map<String, Object?> attributes);
+  Future<void> stopAction(
+      RumActionType type, String name, Map<String, Object?> attributes);
 
   Future<void> addAttribute(String key, dynamic value);
   Future<void> removeAttribute(String key);

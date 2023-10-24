@@ -43,27 +43,24 @@ Future<void> main() async {
     firstPartyHosts.addAll(testingConfiguration!.firstPartyHosts);
   }
 
-  DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
+  DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
 
-  final configuration = DdSdkConfiguration(
+  final configuration = DatadogConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
     site: DatadogSite.us1,
-    trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,
     firstPartyHosts: firstPartyHosts,
-    customLogsEndpoint: customEndpoint,
-    loggingConfiguration: LoggingConfiguration(
-      sendNetworkInfo: true,
-      printLogsToConsole: true,
+    loggingConfiguration: DatadogLoggingConfiguration(
+      customEndpoint: customEndpoint,
     ),
     rumConfiguration: applicationId != null
-        ? RumConfiguration(
+        ? DatadogRumConfiguration(
             detectLongTasks: false,
             applicationId: applicationId,
-            tracingSamplingRate: 100,
+            traceSampleRate: 100,
             customEndpoint: customEndpoint,
           )
         : null,
@@ -73,7 +70,7 @@ Future<void> main() async {
     configuration.enableHttpTracking();
   }
 
-  await DatadogSdk.runApp(configuration, () async {
+  await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
     runApp(const DatadogAutoIntegrationTestApp());
   });
 }

@@ -37,7 +37,10 @@ abstract class DdLogsPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<void> createLogger(String loggerHandle, LoggingConfiguration config);
+  Future<void> enable(DatadogSdk core, DatadogLoggingConfiguration config);
+
+  Future<void> createLogger(
+      String loggerHandle, DatadogLoggerConfiguration config);
 
   Future<void> log(
     String loggerHandle,

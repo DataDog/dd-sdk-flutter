@@ -190,8 +190,8 @@ void main() {
     );
 
     await measure('flutter_rum_simple_action', () {
-      datadog.rum!.addUserAction(
-        RumUserActionType.tap,
+      datadog.rum!.addAction(
+        RumActionType.tap,
         randomString(),
         e2eAttributes(tester),
       );
@@ -232,15 +232,15 @@ void main() {
 
     final actionName = randomString();
     await measure('flutter_start_user_action', () {
-      datadog.rum!.startUserAction(
-        RumUserActionType.scroll,
+      datadog.rum!.startAction(
+        RumActionType.scroll,
         actionName,
         e2eAttributes(tester),
       );
     });
 
     await measure('flutter_stop_user_action', () {
-      datadog.rum!.stopUserAction(RumUserActionType.scroll, actionName);
+      datadog.rum!.stopAction(RumActionType.scroll, actionName);
     });
 
     datadog.rum!.stopView(viewKey);
@@ -278,7 +278,7 @@ void main() {
 
     final resourceKey = randomString();
     await measure('flutter_start_resource', () {
-      datadog.rum!.startResourceLoading(
+      datadog.rum!.startResource(
         resourceKey,
         RumHttpMethod.get,
         randomString(),
@@ -287,7 +287,7 @@ void main() {
     });
 
     await measure('flutter_stop_resource', () {
-      datadog.rum!.stopResourceLoading(
+      datadog.rum!.stopResource(
           resourceKey, 200, RumResourceType.values.randomElement());
     });
 
@@ -320,7 +320,7 @@ void main() {
     );
 
     final resourceKey = randomString();
-    datadog.rum!.startResourceLoading(
+    datadog.rum!.startResource(
       resourceKey,
       RumHttpMethod.get,
       randomString(),
@@ -328,7 +328,7 @@ void main() {
     );
 
     await measure('flutter_stop_resource_with_error', () {
-      datadog.rum!.stopResourceLoadingWithErrorInfo(
+      datadog.rum!.stopResourceWithErrorInfo(
           resourceKey, randomString(), randomString(), e2eAttributes(tester));
     });
 

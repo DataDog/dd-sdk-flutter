@@ -15,17 +15,14 @@ void main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
 
-  DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
-  final datadogConfig = DdSdkConfiguration(
+  DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
+
+  final datadogConfig = DatadogConfiguration(
     clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
     env: dotenv.get('DD_ENV', fallback: ''),
-    trackingConsent: TrackingConsent.granted,
     site: DatadogSite.us1,
-    loggingConfiguration: LoggingConfiguration(
-      sendLogsToDatadog: true,
-      printLogsToConsole: true,
-    ),
-    rumConfiguration: RumConfiguration(
+    loggingConfiguration: DatadogLoggingConfiguration(),
+    rumConfiguration: DatadogRumConfiguration(
       applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
     ),
   )..enableHttpTracking();
@@ -34,7 +31,7 @@ void main() async {
   runUsingAlternativeInit(datadogConfig);
 }
 
-Future<void> runUsingAlternativeInit(DdSdkConfiguration datadogConfig) async {
+Future<void> runUsingAlternativeInit(DatadogConfiguration datadogConfig) async {
   final originalOnError = FlutterError.onError;
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
@@ -52,13 +49,12 @@ Future<void> runUsingAlternativeInit(DdSdkConfiguration datadogConfig) async {
     return platformOriginalOnError?.call(e, st) ?? false;
   };
 
-  await DatadogSdk.instance.initialize(datadogConfig);
+  await DatadogSdk.instance.initialize(datadogConfig, TrackingConsent.granted);
   runApp(MyApp());
 }
 
-Future<void> runUsingRunApp(DdSdkConfiguration datadogConfig) async {
-  await DatadogSdk.runApp(datadogConfig, () {
-    DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
+Future<void> runUsingRunApp(DatadogConfiguration datadogConfig) async {
+  await DatadogSdk.runApp(datadogConfig, TrackingConsent.granted, () {
     runApp(MyApp());
   });
 }

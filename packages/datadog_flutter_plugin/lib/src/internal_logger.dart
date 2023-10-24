@@ -4,7 +4,7 @@
 
 import 'package:flutter/foundation.dart';
 
-import 'datadog_configuration.dart';
+import '../datadog_flutter_plugin.dart';
 import 'datadog_sdk_platform_interface.dart';
 import 'helpers.dart';
 
@@ -13,21 +13,21 @@ import 'helpers.dart';
 /// disabled if kDebugMode is not set.
 class InternalLogger {
   bool useEmoji = true;
-  Verbosity sdkVerbosity = Verbosity.info;
+  CoreLoggerLevel sdkVerbosity = CoreLoggerLevel.warn;
 
   static const _emojiMap = {
-    Verbosity.debug: '🐞',
-    Verbosity.info: 'ℹ️',
-    Verbosity.warn: '⚠️',
-    Verbosity.error: '💥'
+    CoreLoggerLevel.debug: '',
+    CoreLoggerLevel.warn: '⚠️',
+    CoreLoggerLevel.error: '🔥',
+    CoreLoggerLevel.critical: '⛔️'
   };
 
-  void debug(String message) => log(Verbosity.debug, message);
-  void info(String message) => log(Verbosity.info, message);
-  void warn(String message) => log(Verbosity.warn, message);
-  void error(String message) => log(Verbosity.error, message);
+  void debug(String message) => log(CoreLoggerLevel.debug, message);
+  void warn(String message) => log(CoreLoggerLevel.warn, message);
+  void error(String message) => log(CoreLoggerLevel.error, message);
+  void critical(String message) => log(CoreLoggerLevel.critical, message);
 
-  void log(Verbosity verbosity, String message) {
+  void log(CoreLoggerLevel verbosity, String message) {
     if (kDebugMode && verbosity.index >= sdkVerbosity.index) {
       final prefixString = useEmoji
           ? '[Datadog 🐶${_emojiMap[verbosity]} ]'
@@ -39,7 +39,7 @@ class InternalLogger {
 
   /// Send a log to the Datadog org, not to the customer's org. This feature is
   /// used mostly to track potential issues in the Datadog SDK. The rate at which
-  /// data is sent to Datadog is set by [DdSdkConfiguration.telemetrySampleRate]
+  /// data is sent to Datadog is set by [DatadogConfiguration.telemetrySampleRate]
   void sendToDatadog(String message, StackTrace? stack, String? kind) {
     DatadogSdkPlatform.instance
         .sendTelemetryError(message, stack.toString(), kind);

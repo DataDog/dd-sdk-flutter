@@ -10,39 +10,37 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/test_select_screen.dart';
 
 void main() async {
-  DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
+  DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
 
   await dotenv.load();
 
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
 
-  final ddconfig = DdSdkConfiguration(
+  final ddconfig = DatadogConfiguration(
     clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
     env: dotenv.get('DD_ENV', fallback: ''),
     site: DatadogSite.us1,
-    trackingConsent: TrackingConsent.granted,
     nativeCrashReportEnabled: true,
-    logEventMapper: (event) => event,
-    loggingConfiguration: LoggingConfiguration(
-      sendNetworkInfo: true,
-      printLogsToConsole: true,
+    loggingConfiguration: DatadogLoggingConfiguration(
+      eventMapper: (event) => event,
     ),
     rumConfiguration: applicationId != null
-        ? RumConfiguration(
+        ? DatadogRumConfiguration(
             applicationId: applicationId,
             reportFlutterPerformance: true,
             detectLongTasks: true,
-            rumViewEventMapper: (event) => event,
-            rumActionEventMapper: (event) => event,
-            rumResourceEventMapper: (event) => event,
-            rumErrorEventMapper: (event) => event,
-            rumLongTaskEventMapper: (event) => event,
+            viewEventMapper: (event) => event,
+            actionEventMapper: (event) => event,
+            resourceEventMapper: (event) => event,
+            errorEventMapper: (event) => event,
+            longTaskEventMapper: (event) => event,
           )
         : null,
   )..additionalConfig[DatadogConfigKey.trackMapperPerformance] = true;
 
   await DatadogSdk.runApp(
     ddconfig,
+    TrackingConsent.granted,
     () {
       return runApp(const MyApp());
     },

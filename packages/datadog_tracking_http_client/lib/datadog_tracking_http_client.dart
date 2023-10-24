@@ -15,7 +15,7 @@ export 'src/tracking_http_client.dart';
 export 'src/tracking_http_client_plugin.dart'
     show DatadogTrackingHttpClientListener;
 
-extension TrackingExtension on DdSdkConfiguration {
+extension TrackingExtension on DatadogConfiguration {
   /// Configures network requests monitoring for Tracing and RUM features.
   ///
   /// If enabled, the SDK will override [HttpClient] creation (via
@@ -31,9 +31,9 @@ extension TrackingExtension on DdSdkConfiguration {
   /// The DatadogTracingHttpClient can additionally set tracing headers on your
   /// requests, which allows for distributed tracing. You can set which format
   /// of tracing headers when configuring firstParty hosts with
-  /// [DdSdkConfiguration.firstPartyHostsWithTracingHeaders]. The percentage of
+  /// [DatadogConfiguration.firstPartyHostsWithTracingHeaders]. The percentage of
   /// resources traced in this way is determined by
-  /// [RumConfiguration.tracingSamplingRate].
+  /// [DatadogRumConfiguration.traceSampleRate].
   ///
   /// You can add attributes to RUM Resources by providing a
   /// [clientListener]. See [DatadogTrackingHttpClientListener] for more info.
@@ -41,15 +41,15 @@ extension TrackingExtension on DdSdkConfiguration {
   /// Note that this is call is not necessary if you only want to track requests
   /// made through [DatadogClient]
   ///
-  /// See also [DdSdkConfiguration.firstPartyHostsWithTracingHeaders],
-  /// [DdSdkConfiguration.firstPartyHosts], [TracingHeaderType]
+  /// See also [DatadogConfiguration.firstPartyHostsWithTracingHeaders],
+  /// [DatadogConfiguration.firstPartyHosts], [TracingHeaderType]
   void enableHttpTracking({DatadogTrackingHttpClientListener? clientListener}) {
     addPlugin(
         DdHttpTrackingPluginConfiguration(clientListener: clientListener));
   }
 }
 
-extension TrackingExtensionExisting on DdSdkExistingConfiguration {
+extension TrackingExtensionExisting on DatadogAttachConfiguration {
   /// See [TrackingExtension.enableHttpTracking]
   void enableHttpTracking({DatadogTrackingHttpClientListener? clientListener}) {
     addPlugin(

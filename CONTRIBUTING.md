@@ -33,8 +33,9 @@ Next, at the root of the repository, bootstrap melos:
 melos bootstrap
 ```
 
-Next, we need to generate some necessary files with `flutter pub run build_runner build`, and generate `.env` files for the
-various apps in order to use them with Datadog. We use Melos for this as well. Run:
+Next, we need to generate some necessary files with `flutter pub run build_runner build`, 
+and generate `.env` files for the various apps in order to use them with
+Datadog. We use Melos for this as well. Run:
 
 ```bash
 melos prepare
@@ -42,7 +43,7 @@ melos prepare
 
 Running `melos prepare` creates `.env` files in the various example application,
 which should be modified with your Client Id and Application Id from the Datadog
-RUM setup. It can alternately pull this information from environment the
+RUM setup. Alternately, it can pull this information from the environment
 variables `DD_CLIENT_TOKEN` and `DD_APPLICATION_ID` for most test apps, and
 `DD_E2E_CLIENT_TOKEN` and `DD_E2E_APPLICATION_ID` for the e2e test application.
 

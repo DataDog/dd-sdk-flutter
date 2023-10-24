@@ -8,7 +8,7 @@ package com.datadoghq.example.flutter
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.NonNull
-import com.datadog.android.rum.GlobalRum
+import com.datadog.android.rum.GlobalRumMonitor
 import com.datadog.android.rum.RumErrorSource
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -51,9 +51,10 @@ class MainActivity : FlutterActivity() {
                     ) {
                         // Creating the throwable here isn't a great idea, however the point of this
                         // is to see what the combined stack trace looks like, so that's why it's here.
-                        GlobalRum.get().addError(
+                        GlobalRumMonitor.get().addError(
                             errorMessage ?: "Unknown Dart error",
-                            RumErrorSource.SOURCE, Throwable(),
+                            RumErrorSource.SOURCE,
+                            Throwable(),
                             mapOf(
                                 "errorCode" to errorCode,
                                 "errorDetails" to errorDetails

@@ -11,7 +11,7 @@ Datadog RUM SDK versions >= 1.4 support monitoring for Flutter 3.0+.
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 1.19.0 | 1.19.1 | 4.x.x |
+| 1.19.0 | 1.19.1 | 5.x.x |
 
 [//]: # (End SDK Table)
 
@@ -21,20 +21,22 @@ Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutte
 
 ### Android
 
-On Android, your `minSdkVersion` must be >= 19, and if you are using Kotlin, it should be version >= 1.6.21.
+On Android, your `minSdkVersion` must be >= 21, and if you are using Kotlin, it should be version >= 1.8.0.
 
 ### Web
-
-`⚠️ Datadog support for Flutter Web is still in early development`
 
 On Web, add the following to your `index.html` under your `head` tag:
 
 ```html
-<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-logs-v4.js"></script>
-<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/datadog-rum-slim-v4.js"></script>
+<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v5/datadog-logs.js"></script> 
+<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v5/datadog-rum-slim.js"></script> 
 ```
 
-This loads the CDN-delivered Datadog Browser SDKs for Logs and RUM. The synchronous CDN-delivered version of the Datadog Browser SDK is the only version supported by the Flutter plugin.
+This loads the CDN-delivered Datadog Browser SDKs for Logs and RUM. The synchronous CDN-delivered version of the Datadog Browser SDK is the only version currently supported by the Flutter plugin.
+
+Note that Datadog provides one CDN bundle per site. See the [Browser SDK README](https://github.com/DataDog/browser-sdk/#cdn-bundles) for a list of all site URLs.
+
+See [Flutter Web Support](#web_support) for information on current support for Flutter Web
 
 ## Setup
 
@@ -57,29 +59,25 @@ Create a configuration object for each Datadog feature (such as Logs and RUM) wi
 ```dart
 // Determine the user's consent to be tracked
 final trackingConsent = ...
-final configuration = DdSdkConfiguration(
+final configuration = DatadogConfiguration(
   clientToken: '<CLIENT_TOKEN>',
   env: '<ENV_NAME>',
   site: DatadogSite.us1,
-  trackingConsent: trackingConsent,
   nativeCrashReportEnabled: true,
-  loggingConfiguration: LoggingConfiguration(
-    sendNetworkInfo: true,
-    printLogsToConsole: true,
-  ),
-  rumConfiguration: RumConfiguration(
+  loggingConfiguration: DatadogLoggingConfiguration(),
+  rumConfiguration: DatadogRumConfiguration(
     applicationId: '<RUM_APPLICATION_ID>',
   )
 );
 ```
 
-For more information on available configuration options, see the [DdSdkConfiguration object][8] documentation.
+For more information on available configuration options, see the [DatadogConfiguration object][8] documentation.
 
 ### Initialize the library
 
 You can initialize RUM using one of two methods in the `main.dart` file.
 
-1. Use `DatadogSdk.runApp`, which automatically sets up error reporting and resource tracing.
+1. Use `DatadogSdk.runApp`, which automatically sets up error reporting.
 
    ```dart
    await DatadogSdk.runApp(configuration, () async {
@@ -89,49 +87,55 @@ You can initialize RUM using one of two methods in the `main.dart` file.
 
 2. Alternatively, you can manually set up error tracking and resource tracking. Because `DatadogSdk.runApp` calls `WidgetsFlutterBinding.ensureInitialized`, if you are not using `DatadogSdk.runApp`, you need to call this method prior to calling `DatadogSdk.instance.initialize`.
 
-   ```dart
-   runZonedGuarded(() async {
-     WidgetsFlutterBinding.ensureInitialized();
-     final originalOnError = FlutterError.onError;
-     FlutterError.onError = (details) {
-       FlutterError.presentError(details);
-       DatadogSdk.instance.rum?.handleFlutterError(details);
-       originalOnError?.call(details);
-     };
+  ```dart
+  WidgetsFlutterBinding.ensureInitialized();
+  final originalOnError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    DatadogSdk.instance.rum?.handleFlutterError(details);
+    originalOnError?.call(details);
+  };
+  final platformOriginalOnError = PlatformDispatcher.instance.onError;
+  PlatformDispatcher.instance.onError = (e, st) {
+    DatadogSdk.instance.rum?.addErrorInfo(
+      e.toString(),
+      RumErrorSource.source,
+      stackTrace: st,
+    );
+    return platformOriginalOnError?.call(e, st) ?? false;
+  };
+  await DatadogSdk.instance.initialize(configuration);
 
-     await DatadogSdk.instance.initialize(configuration);
-
-     runApp(const MyApp());
-   }, (e, s) {
-     DatadogSdk.instance.rum?.addErrorInfo(
-       e.toString(),
-       RumErrorSource.source,
-       stackTrace: s,
-     );
-   });
-   ```
+  runApp(const MyApp());
+  ```
 
 ### Send Logs
 
-After initializing Datadog with a `LoggingConfiguration`, you can use the default instance of `logs` to send logs to Datadog.
+After initializing Datadog with a `DatadogLoggingConfiguration`, you can create an instance of a `DatadogLogger` to send logs to Datadog.
 
 ```dart
-DatadogSdk.instance.logs?.debug("A debug message.");
-DatadogSdk.instance.logs?.info("Some relevant information?");
-DatadogSdk.instance.logs?.warn("An important warning…");
-DatadogSdk.instance.logs?.error("An error was met!");
+final logger = DatadogSdk.instance.logs?.createLogger(
+  DatadogLoggerConfiguration(
+    remoteLogThreshold: LogLevel.warning,
+  ),
+);
+logger?.debug("A debug message.");
+logger?.info("Some relevant information?");
+logger?.warn("An important warning…");
+logger?.error("An error was met!");
 ```
 
-You can also create additional loggers with the `createLogger` method:
+You can name loggers or customize their service:
 
 ```dart
-final myLogger = DatadogSdk.instance.createLogger(
+final secondLogger = DatadogSdk.instance.createLogger(
   LoggingConfiguration({
-    loggerName: 'Additional logger'
+    service: 'my_app.additional_logger',
+    name: 'Additional logger'
   })
 );
 
-myLogger.info('Info from my additional logger.');
+secondLogger.info('Info from my additional logger.');
 ```
 
 Tags and attributes set on loggers are local to each logger.
@@ -155,7 +159,7 @@ Alternately, you can use the `DatadogRouteAwareMixin` property in conjunction wi
 
 Note that, by default, `DatadogRouteAwareMixin` uses the name of the widget as the name of the View. However, this **does not work with obfuscated code** as the name of the Widget class is lost during obfuscation. To keep the correct view name, override `rumViewInfo`:
 
-To rename your views or supply custom paths, provide a [`viewInfoExtractor`][10] callback. This function can fall back to the default behavior of the observer by calling `defaultviewInfoExtractor`. For example:
+To rename your views or supply custom paths, provide a [`viewInfoExtractor`][10] callback. This function can fall back to the default behavior of the observer by calling `defaultViewInfoExtractor`. For example:
 
 ```dart
 RumViewInfo? infoExtractor(Route<dynamic> route) {
@@ -191,13 +195,27 @@ class _MyHomeScreenState extends State<MyHomeScreen>
 You can enable automatic tracking of resources and HTTP calls from your RUM views using the [Datadog Tracking HTTP Client][7] package. Add the package to your `pubspec.yaml`, and add the following to your initialization:
 
 ```dart
-final configuration = DdSdkConfiguration(
+final configuration = DatadogConfiguration(
   // configuration
   firstPartyHosts: ['example.com'],
 )..enableHttpTracking()
 ```
 
-In order to enable Datadog Distributed Tracing, the `DdSdkConfiguration.firstPartyHosts` property in your configuration object must be set to a domain that supports distributed tracing. You can also modify the sampling rate for Datadog distributed tracing by setting the `tracingSamplingRate` on your `RumConfiguration`.
+In order to enable Datadog Distributed Tracing, the `DatadogConfiguration.firstPartyHosts` property in your configuration object must be set to a domain that supports distributed tracing. You can also modify the sampling rate for Datadog distributed tracing by setting the `traceSampleRate` on your `DatadogRumConfiguration`.
+
+## <a name="web_support"></a>Flutter Web Support 
+
+The following Datadog SDK features are not supported in Flutter Web:
+
+  * Tags on logs are not supported
+  * Event mappers are not supported.
+  * Manually tracking resources (`start/stopResource`) is not supported.
+  * All manually reported actions (`addAction`) are reported as type `custom`.
+  * Starting long running actions (`start/stopAction`) is not supported.
+  * New sessions are not created after a call to `stopSession`.
+  * Long task length is not configurable
+
+If you have a need for any of these features, please reach out to your CSM and submit a feature request.
 
 ## Data Storage
 
@@ -230,6 +248,6 @@ For more information, see [Apache License, v2.0][5].
 [5]: https://github.com/DataDog/dd-sdk-flutter/blob/main/LICENSE
 [6]: https://source.android.com/security/app-sandbox
 [7]: https://pub.dev/packages/datadog_tracking_http_client
-[8]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/DdSdkConfiguration-class.html
+[8]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/DatadogConfiguration-class.html
 [9]: https://support.apple.com/guide/security/security-of-runtime-process-sec15bfe098e/web
 [10]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/ViewInfoExtractor.html

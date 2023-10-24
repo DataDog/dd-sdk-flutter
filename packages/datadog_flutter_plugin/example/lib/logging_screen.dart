@@ -20,6 +20,15 @@ class _LoggingScreenState extends State<LoggingScreen> {
   var _selectedLevel = LogLevel.debug;
   String? _message;
 
+  late DatadogLogger? logger;
+
+  @override
+  void initState() {
+    logger =
+        DatadogSdk.instance.logs?.createLogger(DatadogLoggerConfiguration());
+    super.initState();
+  }
+
   void _logLevelChanged(LogLevel? value) {
     setState(() {
       _selectedLevel = value ?? LogLevel.debug;
@@ -31,23 +40,22 @@ class _LoggingScreenState extends State<LoggingScreen> {
       _disableSendingLogs = true;
     });
     final message = _message ?? 'Default Message';
-    final ddSdk = DatadogSdk.instance;
     for (var i = 0; i < count; ++i) {
       switch (_selectedLevel) {
         case LogLevel.debug:
-          ddSdk.logs?.debug(message);
+          logger?.debug(message);
           break;
         case LogLevel.info:
-          ddSdk.logs?.info(message);
+          logger?.info(message);
           break;
         case LogLevel.notice:
-          ddSdk.logs?.info(message);
+          logger?.info(message);
           break;
         case LogLevel.warn:
-          ddSdk.logs?.warn(message);
+          logger?.warn(message);
           break;
         case LogLevel.error:
-          ddSdk.logs?.error(message);
+          logger?.error(message);
           break;
       }
     }
@@ -64,7 +72,7 @@ class _LoggingScreenState extends State<LoggingScreen> {
     try {
       throw Exception('We threw an exception!');
     } catch (e, st) {
-      DatadogSdk.instance.logs?.error(
+      logger?.error(
         'Error you asked for',
         errorMessage: e.toString(),
         errorStackTrace: st,

@@ -2,8 +2,8 @@ group 'com.datadoghq.flutter.webview'
 version '1.0-SNAPSHOT'
 
 buildscript {
-    ext.kotlin_version = '1.6.21'
-    ext.datadog_version = "1.19.2"
+    ext.kotlin_version = '1.8.22'
+    ext.datadog_version = "2+"
 
     repositories {
         google()
@@ -57,7 +57,7 @@ android {
 }
 
 dependencies {
-    implementation "com.datadoghq:dd-sdk-android:$datadog_version"
+    implementation "com.datadoghq:dd-sdk-android-webview:$datadog_version"
 
     implementation project(":webview_flutter_android")
 

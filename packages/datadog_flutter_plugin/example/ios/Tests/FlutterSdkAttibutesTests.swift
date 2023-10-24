@@ -3,8 +3,9 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import Foundation
+import Flutter
 import XCTest
-import Datadog
+import DatadogCore
 
 @testable import datadog_flutter_plugin
 
@@ -27,7 +28,7 @@ class FlutterSdkAttributesTests: XCTestCase {
 
     func testAttributes_NestedTypes_AreEncodedProperly() {
         let flutterTypes: [String: Any?] = [
-            "arrayType": [ "My String Value", NSNumber(value: 32) ],
+            "arrayType": [ "My String Value", NSNumber(value: 32) ] as [Any],
             "objectType": [
                 "doubleValue": NSNumber(value: 3.1415),
                 "booleanValue": NSNumber(value: true)

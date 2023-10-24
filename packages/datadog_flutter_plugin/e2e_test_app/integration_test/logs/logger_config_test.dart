@@ -2,7 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
-import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:e2e_test_app/main.dart' as app;
 import 'package:flutter_test/flutter_test.dart';
@@ -36,80 +35,11 @@ void main() {
   /// ```
   testWidgets('logger config - set service name', (tester) async {
     await initializeDatadog(
-      (config) => config.serviceName = 'com.datadog.flutter.nightly.custom',
+      configCallback: (config) =>
+          config.service = 'com.datadog.flutter.nightly.custom',
     );
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
 
-    sendRandomLog(tester);
-  });
-
-  // - data monitor:
-  /// ```logs
-  /// $monitor_id = ${{feature}}_send_network_info_enabled_ios
-  /// $monitor_name = "[RUM] [Flutter (ios})] Nightly - ${{test_description}}: number of logs is below expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:ios @network.client.reachability:*\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
-  /// ```
-  /// ```logs
-  /// $monitor_id = ${{feature}}_send_network_info_enabled_android
-  /// $monitor_name = "[RUM] [Flutter (android})] Nightly - ${{test_description}}: number of logs is below expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:android @network.client.connectivity:*\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
-  /// ```
-  testWidgets('logger config - send network info enabled', (tester) async {
-    await initializeDatadog(
-      (config) => config.loggingConfiguration!.sendNetworkInfo = true,
-    );
-
-    sendRandomLog(tester);
-  });
-
-  // - data monitor:
-  /// ```logs(ios, android)
-  /// $monitor_id = ${{feature}}_send_network_info_disabled_${{variant}}
-  /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}} @network.client.reachability:*\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
-  /// $monitor_threshold = 0.0
-  /// $notify_no_data = false
-  /// ```
-  testWidgets('logger config - send network info disabled', (tester) async {
-    await initializeDatadog(
-      (config) => config.loggingConfiguration!.sendNetworkInfo = false,
-    );
-
-    sendRandomLog(tester);
-  });
-
-  // - data monitor:
-  /// ```logs(ios, android)
-  /// $monitor_id = ${{feature}}_bundle_with_rum_enabled_${{variant}}
-  /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is below expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}} @application_id:* @session_id:*\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
-  /// ```
-  testWidgets('logger config - bundle with rum enabled', (tester) async {
-    await initializeDatadog(
-      (config) => config.loggingConfiguration!.bundleWithRum = true,
-    );
-
-    final viewKey = randomString();
-    datadog.rum?.startView(viewKey);
-    sendRandomLog(tester);
-    datadog.rum?.stopView(viewKey);
-  });
-
-  // - data monitor:
-  /// ```logs(ios, android)
-  /// $monitor_id = ${{feature}}_bundle_with_rum_disabled_${{variant}}
-  /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is above expected value"
-  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}} @application_id:* @session_id:*\").index(\"*\").rollup(\"count\").last(\"1d\") > 0"
-  /// $monitor_threshold = 0.0
-  /// $notify_no_data = false
-  /// ```
-  testWidgets('logger config - bundle with rum disabled', (tester) async {
-    await initializeDatadog(
-      (config) => config.loggingConfiguration!.bundleWithRum = false,
-    );
-
-    final viewKey = randomString();
-    datadog.rum?.startView(viewKey);
-    sendRandomLog(tester);
-    datadog.rum?.stopView(viewKey);
+    sendRandomLog(logger, tester);
   });
 }

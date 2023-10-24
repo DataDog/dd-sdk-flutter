@@ -26,17 +26,17 @@ typedef DatadogClientAttributesProvider = Map<String, Object?> Function(
 /// network requests and sending them to Datadog.
 ///
 /// If the RUM feature is enabled, the SDK will send information about RUM
-/// Resources (calling startResourceLoading, stopResourceLoading, and
-/// stopResourceLoadingWithErrorInfo) for all intercepted requests.
+/// Resources (calling [DdRum.startResource], [DdRum.stopResource], and
+/// [DdRum.stopResourceWithErrorInfo]) for all intercepted requests.
 ///
 /// This can additionally set tracing headers on your requests, which allows for
 /// distributed tracing. You can set which format of tracing header using the
 /// [tracingHeaderTypes] parameter. Multiple tracing formats are allowed. The
 /// percentage of resources traced in this way is determined by
-/// [RumConfiguration.tracingSamplingRate].
+/// [DatadogRumConfiguration.traceSampleRate].
 ///
 /// To specify which hosts are 1st party (and therefore should have tracing
-/// Spans sent), see [DdSdkConfiguration.firstPartyHosts]. You can also set
+/// Spans sent), see [DatadogConfiguration.firstPartyHosts]. You can also set
 /// first party hosts after initialization by setting [DatadogSdk.firstPartyHosts]
 ///
 /// DatadogClient only modifies calls made through itself, unlike
@@ -77,7 +77,7 @@ class DatadogClient extends http.BaseClient {
   }
 
   Future<http.StreamedResponse> _trackingSend(
-      http.BaseRequest request, DdRum rum) async {
+      http.BaseRequest request, DatadogRum rum) async {
     String? rumKey;
 
     try {
@@ -93,7 +93,7 @@ class DatadogClient extends http.BaseClient {
       }
 
       rumKey = _uuid.v1();
-      rum.startResourceLoading(
+      rum.startResource(
           rumKey, rumHttpMethod, request.url.toString(), attributes);
     } catch (e, st) {
       datadogSdk.internalLogger.sendToDatadog(
@@ -113,7 +113,7 @@ class DatadogClient extends http.BaseClient {
       if (rumKey != null) {
         try {
           final attributes = attributesProvider?.call(request, null, e) ?? {};
-          rum.stopResourceLoadingWithErrorInfo(
+          rum.stopResourceWithErrorInfo(
               rumKey, e.toString(), e.runtimeType.toString(), attributes);
         } catch (innerE, st) {
           datadogSdk.internalLogger.sendToDatadog(
@@ -143,7 +143,7 @@ class DatadogClient extends http.BaseClient {
               firstError = e;
               final attributes =
                   attributesProvider?.call(request, response, e) ?? {};
-              rum.stopResourceLoadingWithErrorInfo(
+              rum.stopResourceWithErrorInfo(
                 rumKey!,
                 firstError.toString(),
                 firstError.runtimeType.toString(),
@@ -185,7 +185,7 @@ class DatadogClient extends http.BaseClient {
     return response;
   }
 
-  void _onFinish(DdRum rum, String rumKey, http.StreamedResponse response,
+  void _onFinish(DatadogRum rum, String rumKey, http.StreamedResponse response,
       Map<String, Object?> attributes, Object? error) {
     try {
       // If we saw an error, this resource has already been stopped
@@ -196,7 +196,7 @@ class DatadogClient extends http.BaseClient {
             ? ContentType.parse(contentTypeHeader)
             : ContentType.text;
         var resourceType = resourceTypeFromContentType(contentType);
-        datadogSdk.rum?.stopResourceLoading(
+        datadogSdk.rum?.stopResource(
           rumKey,
           response.statusCode,
           resourceType,
@@ -223,7 +223,7 @@ class DatadogClient extends http.BaseClient {
 
     if (tracingHeaderTypes.isNotEmpty) {
       attributes = generateDatadogAttributes(
-          context, datadogSdk.rum?.tracingSamplingRate ?? 0);
+          context, datadogSdk.rum?.traceSampleRate ?? 0);
 
       for (final headerType in tracingHeaderTypes) {
         request.headers.addAll(getTracingHeaders(context, headerType));

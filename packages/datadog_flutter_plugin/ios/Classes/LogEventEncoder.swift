@@ -3,8 +3,8 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import Foundation
-import Datadog
 import DictionaryCoder
+import DatadogLogs
 
 // Because iOS and Android differ so much in the structure of this event,
 // we have to fixup / unfixup the positions of several members

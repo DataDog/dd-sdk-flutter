@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
+import 'package:meta/meta.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../datadog_flutter_plugin.dart';
@@ -14,6 +15,44 @@ export 'ddlog_event.dart';
 
 const _uuid = Uuid();
 
+class DatadogLogging {
+  static DatadogLogging? _instance;
+
+  static DdLogsPlatform get _platform {
+    return DdLogsPlatform.instance;
+  }
+
+  final DatadogSdk core;
+
+  @internal
+  DatadogLogging(this.core);
+
+  static Future<DatadogLogging?> enable(
+      DatadogSdk core, DatadogLoggingConfiguration config) async {
+    if (_instance != null) {
+      core.internalLogger
+          .error('DatadogLogging is already enabled. Second call is ignored.');
+      return _instance;
+    }
+
+    DatadogLogging? logging;
+
+    await wrapAsync('logs.enable', core.internalLogger, null, () {
+      _platform.enable(core, config);
+      logging = DatadogLogging(core);
+    });
+
+    return logging;
+  }
+
+  DatadogLogger createLogger(DatadogLoggerConfiguration configuration) {
+    final logger = DatadogLogger(core.internalLogger, configuration);
+    DdLogsPlatform.instance.createLogger(logger.loggerHandle, configuration);
+
+    return logger;
+  }
+}
+
 /// An interface for sending logs to Datadog.
 ///
 /// It allows you to create a specific context (automatic information, custom
@@ -22,16 +61,20 @@ const _uuid = Uuid();
 ///
 /// You can have multiple loggers configured in your application, each with
 /// their own settings.
-class DdLogs {
+class DatadogLogger {
   final InternalLogger _internalLogger;
-  final Verbosity _reportingThreshold;
+  final LogLevel _remoteLogThreshold;
+  final CustomConsoleLogFunction? _consoleLogFunction;
   final RateBasedSampler _sampler;
 
   final String loggerHandle;
 
-  DdLogs(this._internalLogger, LoggingConfiguration configuration)
-      : _reportingThreshold = configuration.datadogReportingThreshold,
-        _sampler = RateBasedSampler(configuration.sampleRate / 100.0),
+  DatadogLogger(
+      InternalLogger internalLogger, DatadogLoggerConfiguration configuration)
+      : _internalLogger = internalLogger,
+        _remoteLogThreshold = configuration.remoteLogThreshold,
+        _consoleLogFunction = configuration.customConsoleLogFunction,
+        _sampler = RateBasedSampler(configuration.remoteSampleRate / 100.0),
         loggerHandle = _uuid.v4();
 
   static DdLogsPlatform get _platform {
@@ -53,10 +96,8 @@ class DdLogs {
     StackTrace? errorStackTrace,
     Map<String, Object?> attributes = const {},
   }) {
-    if (_reportingThreshold.index <= Verbosity.debug.index) {
-      _internalLog(LogLevel.debug, message, errorMessage, errorKind,
-          errorStackTrace, attributes);
-    }
+    _internalLog(LogLevel.debug, message, errorMessage, errorKind,
+        errorStackTrace, attributes);
   }
 
   /// Sends an `info` log message.
@@ -74,10 +115,8 @@ class DdLogs {
     StackTrace? errorStackTrace,
     Map<String, Object?> attributes = const {},
   }) {
-    if (_reportingThreshold.index <= Verbosity.info.index) {
-      _internalLog(LogLevel.info, message, errorMessage, errorKind,
-          errorStackTrace, attributes);
-    }
+    _internalLog(LogLevel.info, message, errorMessage, errorKind,
+        errorStackTrace, attributes);
   }
 
   /// Sends a `warn` log message.
@@ -95,10 +134,8 @@ class DdLogs {
     StackTrace? errorStackTrace,
     Map<String, Object?> attributes = const {},
   }) {
-    if (_reportingThreshold.index <= Verbosity.warn.index) {
-      _internalLog(LogLevel.warning, message, errorMessage, errorKind,
-          errorStackTrace, attributes);
-    }
+    _internalLog(LogLevel.warning, message, errorMessage, errorKind,
+        errorStackTrace, attributes);
   }
 
   /// Sends an `error` log message.
@@ -116,10 +153,8 @@ class DdLogs {
     StackTrace? errorStackTrace,
     Map<String, Object?> attributes = const {},
   }) {
-    if (_reportingThreshold.index <= Verbosity.error.index) {
-      _internalLog(LogLevel.error, message, errorMessage, errorKind,
-          errorStackTrace, attributes);
-    }
+    _internalLog(LogLevel.error, message, errorMessage, errorKind,
+        errorStackTrace, attributes);
   }
 
   /// Add a custom attribute to all future logs sent by this logger.
@@ -188,7 +223,9 @@ class DdLogs {
     StackTrace? stackTrace,
     Map<String, Object?> attributes,
   ) {
-    if (_sampler.sample()) {
+    _consoleLogFunction?.call(
+        level, message, errorMessage, errorKind, stackTrace, attributes);
+    if (_remoteLogThreshold.index <= level.index && _sampler.sample()) {
       wrap('logs._internalLog', _internalLogger, attributes, () {
         return _platform.log(loggerHandle, level, message, errorMessage,
             errorKind, stackTrace, attributes);

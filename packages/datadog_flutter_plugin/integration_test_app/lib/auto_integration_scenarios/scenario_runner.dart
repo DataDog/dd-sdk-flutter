@@ -24,35 +24,33 @@ Future<void> runScenario({
         .addAll(RumAutoInstrumentationScenarioConfig.instance.firstPartyHosts);
   }
 
-  final configuration = DdSdkConfiguration(
+  final configuration = DatadogConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
     site: DatadogSite.us1,
-    trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,
     firstPartyHosts: firstPartyHosts,
-    customLogsEndpoint: customEndpoint,
-    telemetrySampleRate: 100,
-    loggingConfiguration: LoggingConfiguration(
-      sendNetworkInfo: true,
-      printLogsToConsole: true,
+    loggingConfiguration: DatadogLoggingConfiguration(
+      customEndpoint: customEndpoint,
     ),
     rumConfiguration: applicationId != null
-        ? RumConfiguration(
+        ? DatadogRumConfiguration(
             applicationId: applicationId,
             reportFlutterPerformance: true,
+            telemetrySampleRate: 100,
             customEndpoint: customEndpoint,
+            additionalConfig: testingConfiguration?.additionalConfig ?? {},
           )
         : null,
-  );
+  )..additionalConfig['_dd.needsClearTextHttp'] = true;
   if (testingConfiguration?.additionalConfig != null) {
     configuration.additionalConfig
         .addAll(testingConfiguration!.additionalConfig);
   }
 
-  await DatadogSdk.runApp(configuration, () async {
+  await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
     runApp(const DatadogAutoIntegrationTestApp());
   });
 }

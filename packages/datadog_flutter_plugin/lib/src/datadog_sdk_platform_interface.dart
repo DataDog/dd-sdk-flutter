@@ -12,15 +12,18 @@ import 'internal_logger.dart';
 typedef LogCallback = void Function(String line);
 
 class AttachResponse {
+  final bool loggingEnabled;
   final bool rumEnabled;
 
   AttachResponse({
+    required this.loggingEnabled,
     required this.rumEnabled,
   });
 
   static AttachResponse? decode(Map<String, Object?> json) {
     try {
       return AttachResponse(
+        loggingEnabled: json['loggingEnabled'] as bool,
         rumEnabled: json['rumEnabled'] as bool,
       );
     } catch (e, st) {
@@ -57,7 +60,7 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<void> setSdkVerbosity(Verbosity verbosity);
+  Future<void> setSdkVerbosity(CoreLoggerLevel verbosity);
   Future<void> setTrackingConsent(TrackingConsent trackingConsent);
   Future<void> setUserInfo(
       String? id, String? name, String? email, Map<String, Object?> extraInfo);
@@ -67,7 +70,8 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
   Future<void> sendTelemetryError(String message, String? stack, String? kind);
 
   Future<PlatformInitializationResult> initialize(
-    DdSdkConfiguration configuration, {
+    DatadogConfiguration configuration,
+    TrackingConsent trackingConsent, {
     LogCallback? logCallback,
     required InternalLogger internalLogger,
   });

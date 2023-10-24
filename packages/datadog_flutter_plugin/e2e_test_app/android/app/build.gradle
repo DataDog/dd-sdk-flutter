@@ -50,7 +50,7 @@ android {
 
     defaultConfig {
         applicationId "com.datadog.flutter.nightly"
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion 31
         multiDexEnabled true
         versionCode flutterVersionCode.toInteger()
@@ -67,8 +67,6 @@ android {
 flutter {
     source '../..'
 }
-
-apply from: '../../../../../ignore_sr_snapshots.gradle'
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"

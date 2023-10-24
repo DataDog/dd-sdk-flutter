@@ -5,7 +5,6 @@
 import UIKit
 import Flutter
 import FlutterPluginRegistrant
-import Datadog
 
 class FirstViewController: UIViewController {
     

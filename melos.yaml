@@ -64,10 +64,10 @@ scripts:
 
   unit_test:flutter:
     run: 
-      mkdir -p .build/test-results
-      melos exec "flutter test --machine | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml\"" 
+      mkdir -p .build/test-results &&
+      melos exec -c 1 -- "set -e -o pipefail && flutter test --machine | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml\"" 
     packageFilters:
-      ignore: 'datadog_common_test'
+      dirExists: 'test'
 
   unit_test:ios:
     exec:
@@ -144,6 +144,13 @@ scripts:
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
+  integration_test:web:main:
+    exec: |
+      cd integration_test_app
+      dart ./bin/web_integration_tests.dart
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
   prepare:
     run: melos pub:get && melos build_runner && melos generate_env && melos generate_env:e2e
     description: |
@@ -152,6 +159,13 @@ scripts:
 
   pub:get:
     exec: flutter pub get
+
+  pod_update:
+    run: cd example/ios && pod update --repo-update
+    exec:
+      concurrency: 1
+    packageFilters:
+      dirExists: 'example/ios'
   
   build_runner:
     exec:
@@ -194,3 +208,10 @@ scripts:
     run: dart $MELOS_ROOT_PATH/tools/releaser/bin/pinner.dart --platform ios --package \$MELOS_PACKAGE_PATH
     packageFilters:
       fileExists: "ios/Podfile"
+  
+  pin:android:
+    exec: 
+      concurrency: 1
+    run: dart $MELOS_ROOT_PATH/tools/releaser/bin/pinner.dart --platform android --package \$MELOS_PACKAGE_PATH
+    packageFilters:
+      fileExists: "android/build.gradle"

@@ -39,16 +39,16 @@ class DatadogTrackingHttpOverrides extends HttpOverrides {
 /// sending them to Datadog
 ///
 /// If the RUM feature is enabled, the SDK will send information about RUM
-/// Resources (calling startResourceLoading, stopResourceLoading, and
-/// stopResourceLoadingWithErrorInfo) for all intercepted requests.
+/// Resources (calling [DdRum.startResource], [DdRum.stopResource], and
+/// [DdRum.stopResourceWithErrorInfo] for all intercepted requests.
 ///
 /// The SDK will also create a tracing Span for each 1st-party request, and add
 /// extra HTTP headers to further propagate the trace. The percentage of
 /// resources traced in this way is determined by
-/// [RumConfiguration.tracingSamplingRate].
+/// [DatadogRumConfiguration.traceSampleRate].
 ///
 /// To specify which hosts are 1st party (and therefore should have tracing
-/// Spans sent), see [DdSdkConfiguration.firstPartyHostsWithTracingHeaders].
+/// Spans sent), see [DatadogConfiguration.firstPartyHostsWithTracingHeaders].
 ///
 /// Unlike [DatadogClient], the DatadogTrackingHttpClient is able to override
 /// all network operations that use [HttpClient], which includes requests made
@@ -110,7 +110,7 @@ class DatadogTrackingHttpClient implements HttpClient {
       try {
         rumKey = uuid.v1();
         final rumHttpMethod = rumMethodFromMethodString(method);
-        rum.startResourceLoading(rumKey, rumHttpMethod, url.toString());
+        rum.startResource(rumKey, rumHttpMethod, url.toString());
       } catch (e, st) {
         datadogSdk.internalLogger.sendToDatadog(
           '$DatadogTrackingHttpClient encountered an error while attempting '
@@ -135,7 +135,7 @@ class DatadogTrackingHttpClient implements HttpClient {
       }
     } catch (e) {
       if (rum != null) {
-        rum.stopResourceLoadingWithErrorInfo(
+        rum.stopResourceWithErrorInfo(
             rumKey!, e.toString(), e.runtimeType.toString(), userAttributes);
       }
       rethrow;
@@ -366,10 +366,10 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
       if (rumKey != null && rum != null) {
         var attributes = generateDatadogAttributes(
           _tracingContext,
-          rum.tracingSamplingRate,
+          rum.traceSampleRate,
         );
         attributes = _mergeAttributes(attributes, userAttributes);
-        rum.stopResourceLoadingWithErrorInfo(
+        rum.stopResourceWithErrorInfo(
             rumKey!, e.toString(), e.runtimeType.toString(), attributes);
       }
     } catch (e, st) {
@@ -532,7 +532,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
     if (rumKey != null && rum != null) {
       var attributes = generateDatadogAttributes(
         tracingContext,
-        rum.tracingSamplingRate,
+        rum.traceSampleRate,
       );
       client.configuration.clientListener?.responseFinished(
           resourceKey: rumKey!,
@@ -540,7 +540,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
           userAttributes: userAttributes,
           error: lastError);
       attributes = _mergeAttributes(attributes, userAttributes);
-      rum.stopResourceLoadingWithErrorInfo(rumKey!, lastError.toString(),
+      rum.stopResourceWithErrorInfo(rumKey!, lastError.toString(),
           lastError.runtimeType.toString(), attributes);
     }
   }
@@ -557,16 +557,15 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
           var size = innerResponse.contentLength > 0
               ? innerResponse.contentLength
               : null;
-          var attributes = generateDatadogAttributes(
-              tracingContext, rum.tracingSamplingRate);
+          var attributes =
+              generateDatadogAttributes(tracingContext, rum.traceSampleRate);
           client.configuration.clientListener?.responseFinished(
             resourceKey: rumKey!,
             response: this,
             userAttributes: userAttributes,
           );
           attributes = _mergeAttributes(attributes, userAttributes);
-          rum.stopResourceLoading(
-              rumKey!, statusCode, resourceType, size, attributes);
+          rum.stopResource(rumKey!, statusCode, resourceType, size, attributes);
         }
       }
     } catch (e, st) {

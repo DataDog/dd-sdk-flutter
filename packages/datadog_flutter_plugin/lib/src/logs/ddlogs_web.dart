@@ -11,30 +11,34 @@ import 'package:js/js.dart';
 import '../../datadog_flutter_plugin.dart';
 import '../web_helpers.dart';
 import 'ddlogs_platform_interface.dart';
+import 'ddweb_helpers.dart';
 
 class DdLogsWeb extends DdLogsPlatform {
   final Map<String, Logger> _activeLoggers = {};
 
-  static void initLogs(DdSdkConfiguration configuration) {
+  static void initLogs(DatadogConfiguration configuration) {
     init(_LogInitOptions(
       clientToken: configuration.clientToken,
       env: configuration.env,
+      proxy: configuration.loggingConfiguration?.customEndpoint,
       site: siteStringForSite(configuration.site),
-      proxyUrl: configuration.customLogsEndpoint,
-      service: configuration.serviceName,
+      service: configuration.service,
       version: configuration.versionTag,
     ));
   }
 
   @override
+  Future<void> enable(
+      DatadogSdk core, DatadogLoggingConfiguration config) async {}
+
+  @override
   Future<void> createLogger(
-      String loggerHandle, LoggingConfiguration config) async {
+      String loggerHandle, DatadogLoggerConfiguration config) async {
     var loggerHandlers = [
-      if (config.sendLogsToDatadog) 'http',
-      if (config.printLogsToConsole) 'console'
+      'http',
     ];
     var logger = _createLogger(
-      config.loggerName ?? 'default',
+      config.name ?? 'default',
       _JsLoggerConfiguration(),
     );
     if (logger != null) {
@@ -52,44 +56,16 @@ class DdLogsWeb extends DdLogsPlatform {
   Future<void> addAttribute(
       String loggerHandle, String key, Object value) async {
     final logger = _activeLoggers[loggerHandle];
-    logger?.addContext(key, valueToJs(value, 'value'));
+    logger?.setContextProperty(key, valueToJs(value, 'value'));
   }
 
   @override
   Future<void> addTag(String loggerHandle, String tag, [String? value]) async {}
 
-  // @override
-  // Future<void> debug(String loggerHandle, String message,
-  //     [Map<String, Object?> context = const {}]) async {
-  //   final logger = _activeLoggers[loggerHandle];
-  //   logger?.debug(message, valueToJs(context, 'context'));
-  // }
-
-  // @override
-  // Future<void> error(String loggerHandle, String message,
-  //     [Map<String, Object?> context = const {}]) async {
-  //   final logger = _activeLoggers[loggerHandle];
-  //   logger?.error(message, valueToJs(context, 'context'));
-  // }
-
-  // @override
-  // Future<void> info(String loggerHandle, String message,
-  //     [Map<String, Object?> context = const {}]) async {
-  //   final logger = _activeLoggers[loggerHandle];
-  //   logger?.info(message, valueToJs(context, 'context'));
-  // }
-
-  // @override
-  // Future<void> warn(String loggerHandle, String message,
-  //     [Map<String, Object?> context = const {}]) async {
-  //   final logger = _activeLoggers[loggerHandle];
-  //   logger?.warn(message, valueToJs(context, 'context'));
-  // }
-
   @override
   Future<void> removeAttribute(String loggerHandle, String key) async {
     final logger = _activeLoggers[loggerHandle];
-    logger?.removeContext(key);
+    logger?.removeContextProperty(key);
   }
 
   @override
@@ -110,7 +86,19 @@ class DdLogsWeb extends DdLogsPlatform {
   ) async {
     final logger = _activeLoggers[loggerHandle];
     final webLogLevel = _toWebLogLevel(level);
-    logger?.log(message, valueToJs(attributes, 'attributes'), webLogLevel);
+    JSError? error;
+    if (errorMessage != null || errorKind != null) {
+      error = JSError();
+      error.stack = convertWebStackTrace(errorStackTrace);
+      error.message = errorMessage;
+      error.name = errorKind ?? 'Error';
+    }
+    logger?.log(
+      message,
+      valueToJs(attributes, 'attributes'),
+      webLogLevel,
+      error,
+    );
   }
 }
 
@@ -121,17 +109,17 @@ String _toWebLogLevel(LogLevel level) {
     case LogLevel.info:
       return 'info';
     case LogLevel.notice:
-      return 'notice';
+      return 'warn';
     case LogLevel.warning:
-      return 'warning';
+      return 'warn';
     case LogLevel.error:
       return 'error';
     case LogLevel.critical:
-      return 'critical';
+      return 'error';
     case LogLevel.alert:
-      return 'alert';
+      return 'error';
     case LogLevel.emergency:
-      return 'emergency';
+      return 'error';
   }
 }
 
@@ -141,7 +129,7 @@ class _LogInitOptions {
   external String get clientToken;
   external String get site;
   external String get env;
-  external String? get proxyUrl;
+  external String? get proxy;
   external String? get service;
   external String? get version;
 
@@ -150,7 +138,7 @@ class _LogInitOptions {
     String site,
     String env,
     String? service,
-    String? proxyUrl,
+    String? proxy,
     String? version,
   });
 }
@@ -171,10 +159,11 @@ class _JsLoggerConfiguration {
 
 @JS('Logger')
 class Logger {
-  external void log(String message, dynamic messageContext, String status);
+  external void log(
+      String message, dynamic messageContext, String status, JSError? error);
 
-  external void addContext(String key, dynamic value);
-  external void removeContext(String key);
+  external void setContextProperty(String key, dynamic value);
+  external void removeContextProperty(String key);
 
   external void setHandler(List<String> handler);
 }

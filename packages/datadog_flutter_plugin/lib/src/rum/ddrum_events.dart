@@ -236,7 +236,7 @@ class RumViewDetails {
   final RumCount? longTask;
   final double? memoryAverage;
   final double? memoryMax;
-  String? name;
+  final String? name;
   String? referrer;
   final double? refreshRateAverage;
   final double? refreshRateMin;
@@ -353,7 +353,7 @@ class RumActionEvent {
   Map<String, dynamic> toJson() => _$RumActionEventToJson(this);
 }
 
-enum RumActionType {
+enum RumActionTypeInternal {
   custom,
   click,
   tap,
@@ -374,7 +374,7 @@ class RumAction {
   final RumCount? longTask;
   final RumCount? resource;
   final RumActionTarget? target;
-  final RumActionType type;
+  final RumActionTypeInternal type;
 
   RumAction({
     this.crash,
@@ -410,7 +410,7 @@ class RumActionTarget {
 class RumViewSummary {
   final String id;
   final bool? inForeground;
-  String? name;
+  final String? name;
   String? referrer;
   String url;
 

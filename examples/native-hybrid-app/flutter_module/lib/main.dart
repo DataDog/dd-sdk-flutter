@@ -11,9 +11,9 @@ import 'my_app.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final config = DdSdkExistingConfiguration(
-    loggingConfiguration: LoggingConfiguration(),
+  final config = DatadogAttachConfiguration(
     detectLongTasks: true,
+    reportFlutterPerformance: true,
   )..enableHttpTracking();
 
   await DatadogSdk.instance.attachToExisting(config);

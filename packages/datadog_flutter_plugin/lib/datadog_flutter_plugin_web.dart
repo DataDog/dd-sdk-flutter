@@ -14,7 +14,7 @@ import 'dart:html' as html show window;
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:js/js.dart';
 
-import 'src/datadog_configuration.dart';
+import 'datadog_flutter_plugin.dart';
 import 'src/datadog_sdk_platform_interface.dart';
 import 'src/internal_logger.dart';
 import 'src/logs/ddlogs_platform_interface.dart';
@@ -32,7 +32,7 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   }
 
   @override
-  Future<void> setSdkVerbosity(Verbosity verbosity) async {}
+  Future<void> setSdkVerbosity(CoreLoggerLevel verbosity) async {}
 
   @override
   Future<void> setTrackingConsent(TrackingConsent trackingConsent) async {}
@@ -53,7 +53,8 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
 
   @override
   Future<PlatformInitializationResult> initialize(
-    DdSdkConfiguration configuration, {
+    DatadogConfiguration configuration,
+    TrackingConsent trackingConsent, {
     LogCallback? logCallback,
     required InternalLogger internalLogger,
   }) async {
@@ -73,9 +74,7 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
     try {
       if (configuration.rumConfiguration != null) {
         final rumWeb = DdRumPlatform.instance as DdRumWeb;
-        rumWeb.webInitialize(configuration);
-        await rumWeb.initialize(
-            configuration.rumConfiguration!, internalLogger);
+        rumWeb.webInitialize(configuration, configuration.rumConfiguration!);
         rumInitialized = true;
       }
     } catch (e) {

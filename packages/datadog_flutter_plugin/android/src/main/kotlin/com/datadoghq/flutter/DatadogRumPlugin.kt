@@ -5,21 +5,34 @@
  */
 package com.datadoghq.flutter
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import com.datadog.android.Datadog
-import com.datadog.android.rum.GlobalRum
+import com.datadog.android.api.SdkCore
+import com.datadog.android.core.configuration.BatchSize
+import com.datadog.android.core.configuration.UploadFrequency
+import com.datadog.android.event.EventMapper
+import com.datadog.android.rum.GlobalRumMonitor
+import com.datadog.android.rum.Rum
 import com.datadog.android.rum.RumActionType
 import com.datadog.android.rum.RumAttributes
+import com.datadog.android.rum.RumConfiguration
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
+import com.datadog.android.rum._RumInternalProxy
+import com.datadog.android.rum.configuration.VitalsUpdateFrequency
+import com.datadog.android.rum.event.ViewEventMapper
 import com.datadog.android.rum.model.ActionEvent
 import com.datadog.android.rum.model.ErrorEvent
 import com.datadog.android.rum.model.LongTaskEvent
 import com.datadog.android.rum.model.ResourceEvent
 import com.datadog.android.rum.model.ViewEvent
+import com.datadog.android.rum.tracking.ViewTrackingStrategy
+import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -52,6 +65,14 @@ class DatadogRumPlugin(
         const val PARAM_TYPE = "type"
         const val PARAM_BUILD_TIMES = "buildTimes"
         const val PARAM_RASTER_TIMES = "rasterTimes"
+
+        // See DatadogSdkPlugin's description of this same member
+        private var previousConfiguration: Map<String, Any?>? = null
+
+        // For testing purposes only
+        internal fun resetConfig() {
+            previousConfiguration = null
+        }
     }
 
     private lateinit var channel: MethodChannel
@@ -64,6 +85,10 @@ class DatadogRumPlugin(
     val mapperPerfMainThread = PerformanceTracker()
     var mapperTimeouts = 0
 
+    // Might need a better way to deal with this. There's weird shared responsibility for
+    // telemetry between the core and RUM.
+    var telemetryOverrides: DatadogSdkPlugin.ConfigurationTelemetryOverrides? = null
+
     fun attachToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter.rum")
         channel.setMethodCallHandler(this)
@@ -75,32 +100,29 @@ class DatadogRumPlugin(
         channel.setMethodCallHandler(null)
     }
 
-    fun attachToExistingSdk() {
-        rum = GlobalRum.get()
-    }
-
-    fun setup(
-        configuration: DatadogFlutterConfiguration.RumConfiguration
-    ) {
-        rum = RumMonitor.Builder()
-            .sampleRumSessions(configuration.sampleRate)
-            .build()
-        GlobalRum.registerIfAbsent(rum!!)
-    }
+//    fun attachToExistingSdk() {
+//        rum = GlobalRum.get()
+//    }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
+        if (call.method != "enable" && rum == null) {
+            result.invalidOperation("Attempting to use RUM when it has not been enabled")
+            return
+        }
+
         try {
             when (call.method) {
+                "enable" -> enable(call, result)
                 "startView" -> startView(call, result)
                 "stopView" -> stopView(call, result)
                 "addTiming" -> addTiming(call, result)
-                "startResourceLoading" -> startResourceLoading(call, result)
-                "stopResourceLoading" -> stopResourceLoading(call, result)
-                "stopResourceLoadingWithError" -> stopResourceLoadingWithError(call, result)
+                "startResource" -> startResource(call, result)
+                "stopResource" -> stopResource(call, result)
+                "stopResourceWithError" -> stopResourceWithError(call, result)
                 "addError" -> addError(call, result)
-                "addUserAction" -> addUserAction(call, result)
-                "startUserAction" -> startUserAction(call, result)
-                "stopUserAction" -> stopUserAction(call, result)
+                "addAction" -> addAction(call, result)
+                "startAction" -> startAction(call, result)
+                "stopAction" -> stopAction(call, result)
                 "addAttribute" -> addAttribute(call, result)
                 "removeAttribute" -> removeAttribute(call, result)
                 "reportLongTask" -> reportLongTask(call, result)
@@ -113,12 +135,129 @@ class DatadogRumPlugin(
             }
         } catch (e: ClassCastException) {
             result.error(
-                DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(),
+                DatadogSdkPlugin.CONTRACT_VIOLATION,
+                e.toString(),
                 mapOf(
                     "methodName" to call.method
                 )
             )
         }
+    }
+
+    fun enable(call: MethodCall, result: Result) {
+        val encodedConfig = call.argument<Map<String, Any?>>("configuration")
+        val applicationId = encodedConfig?.get("applicationId") as? String
+        if (previousConfiguration == null) {
+            if (encodedConfig != null && applicationId != null) {
+                var configBuilder = RumConfiguration.Builder(applicationId)
+                    .withEncoded(encodedConfig)
+
+                configBuilder = _RumInternalProxy.setTelemetryConfigurationEventMapper(
+                    configBuilder,
+                    object : EventMapper<TelemetryConfigurationEvent> {
+                        override fun map(
+                            event: TelemetryConfigurationEvent
+                        ): TelemetryConfigurationEvent {
+                            return mapTelemetryConfiguration(event)
+                        }
+                    }
+                )
+                // Common initialization
+                configBuilder = configBuilder
+                    .disableUserInteractionTracking()
+                    .useViewTrackingStrategy(NoOpViewTrackingStrategy)
+
+                // Mapper initialization
+                configBuilder = attachEventMappers(encodedConfig, configBuilder)
+
+                Rum.enable(configBuilder.build())
+                rum = GlobalRumMonitor.get()
+                previousConfiguration = encodedConfig
+            }
+        } else if (previousConfiguration != encodedConfig) {
+            // Maybe use DevLogger instead?
+            Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_RUM_REINITIALIZATION)
+        }
+    }
+
+    fun attachToExistingSdk(monitor: RumMonitor) {
+        rum = monitor
+    }
+
+    private fun mapTelemetryConfiguration(
+        event: TelemetryConfigurationEvent
+    ): TelemetryConfigurationEvent {
+        telemetryOverrides?.let {
+            event.telemetry.configuration.trackViewsManually = it.trackViewsManually
+            event.telemetry.configuration.trackInteractions = it.trackInteractions
+            event.telemetry.configuration.trackErrors = it.trackErrors
+            event.telemetry.configuration.trackNetworkRequests = it.trackNetworkRequests
+            event.telemetry.configuration.trackNativeViews = it.trackNativeViews
+            event.telemetry.configuration.trackCrossPlatformLongTasks =
+                it.trackCrossPlatformLongTasks
+            event.telemetry.configuration.trackFlutterPerformance =
+                it.trackFlutterPerformance
+            event.telemetry.configuration.dartVersion = it.dartVersion
+        }
+
+        return event
+    }
+
+    private fun attachEventMappers(
+        config: Map<String, Any?>,
+        configBuilder: RumConfiguration.Builder
+    ): RumConfiguration.Builder {
+        fun optionIsSet(key: String): Boolean {
+            return config[key] as? Boolean ?: false
+        }
+
+        if (optionIsSet("attachViewEventMapper")) {
+            configBuilder.setViewEventMapper(
+                object : ViewEventMapper {
+                    override fun map(event: ViewEvent): ViewEvent {
+                        return mapViewEvent(event)
+                    }
+                }
+            )
+        }
+        if (optionIsSet("attachActionEventMapper")) {
+            configBuilder.setActionEventMapper(
+                object : EventMapper<ActionEvent> {
+                    override fun map(event: ActionEvent): ActionEvent? {
+                        return mapActionEvent(event)
+                    }
+                }
+            )
+        }
+        if (optionIsSet("attachResourceEventMapper")) {
+            configBuilder.setResourceEventMapper(
+                object : EventMapper<ResourceEvent> {
+                    override fun map(event: ResourceEvent): ResourceEvent? {
+                        return mapResourceEvent(event)
+                    }
+                }
+            )
+        }
+        if (optionIsSet("attachErrorEventMapper")) {
+            configBuilder.setErrorEventMapper(
+                object : EventMapper<ErrorEvent> {
+                    override fun map(event: ErrorEvent): ErrorEvent? {
+                        return mapErrorEvent(event)
+                    }
+                }
+            )
+        }
+        if (optionIsSet("attachLongTaskEventMapper")) {
+            configBuilder.setLongTaskEventMapper(
+                object : EventMapper<LongTaskEvent> {
+                    override fun map(event: LongTaskEvent): LongTaskEvent? {
+                        return mapLongTaskEvent(event)
+                    }
+                }
+            )
+        }
+
+        return configBuilder
     }
 
     private fun startView(call: MethodCall, result: Result) {
@@ -154,7 +293,7 @@ class DatadogRumPlugin(
         }
     }
 
-    private fun startResourceLoading(call: MethodCall, result: Result) {
+    private fun startResource(call: MethodCall, result: Result) {
         val key = call.argument<String>(PARAM_KEY)
         val url = call.argument<String>(PARAM_URL)
         val method = call.argument<String>(PARAM_HTTP_METHOD)
@@ -170,7 +309,7 @@ class DatadogRumPlugin(
         }
     }
 
-    private fun stopResourceLoading(call: MethodCall, result: Result) {
+    private fun stopResource(call: MethodCall, result: Result) {
         val key = call.argument<String>(PARAM_KEY)
         val kindString = call.argument<String>(PARAM_KIND)
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
@@ -192,15 +331,20 @@ class DatadogRumPlugin(
     }
 
     @Suppress("ComplexCondition")
-    private fun stopResourceLoadingWithError(call: MethodCall, result: Result) {
+    private fun stopResourceWithError(call: MethodCall, result: Result) {
         val key = call.argument<String>(PARAM_KEY)
         val message = call.argument<String>(PARAM_MESSAGE)
         val errorType = call.argument<String>(PARAM_TYPE)
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
         if (key != null && message != null && errorType != null && attributes != null) {
             rum?.stopResourceWithError(
-                key, null, message, RumErrorSource.NETWORK,
-                "", errorType, attributes
+                key,
+                null,
+                message,
+                RumErrorSource.NETWORK,
+                "",
+                errorType,
+                attributes
             )
             result.success(null)
         } else {
@@ -230,39 +374,39 @@ class DatadogRumPlugin(
         }
     }
 
-    private fun addUserAction(call: MethodCall, result: Result) {
+    private fun addAction(call: MethodCall, result: Result) {
         val typeString = call.argument<String>(PARAM_TYPE)
         val name = call.argument<String>(PARAM_NAME)
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
         if (typeString != null && name != null && attributes != null) {
             val actionType = parseRumActionType(typeString)
-            rum?.addUserAction(actionType, name, attributes)
+            rum?.addAction(actionType, name, attributes)
             result.success(null)
         } else {
             result.missingParameter(call.method)
         }
     }
 
-    private fun startUserAction(call: MethodCall, result: Result) {
+    private fun startAction(call: MethodCall, result: Result) {
         val typeString = call.argument<String>(PARAM_TYPE)
         val name = call.argument<String>(PARAM_NAME)
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
         if (typeString != null && name != null && attributes != null) {
             val actionType = parseRumActionType(typeString)
-            rum?.startUserAction(actionType, name, attributes)
+            rum?.startAction(actionType, name, attributes)
             result.success(null)
         } else {
             result.missingParameter(call.method)
         }
     }
 
-    private fun stopUserAction(call: MethodCall, result: Result) {
+    private fun stopAction(call: MethodCall, result: Result) {
         val typeString = call.argument<String>(PARAM_TYPE)
         val name = call.argument<String>(PARAM_NAME)
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
         if (typeString != null && name != null && attributes != null) {
             val actionType = parseRumActionType(typeString)
-            rum?.stopUserAction(actionType, name, attributes)
+            rum?.stopAction(actionType, name, attributes)
             result.success(null)
         } else {
             result.missingParameter(call.method)
@@ -273,7 +417,7 @@ class DatadogRumPlugin(
         val key = call.argument<String>(PARAM_KEY)
         val value = call.argument<Any>(PARAM_VALUE)
         if (key != null && value != null) {
-            GlobalRum.addAttribute(key, value)
+            rum?.addAttribute(key, value)
             result.success(null)
         } else {
             result.missingParameter(call.method)
@@ -283,7 +427,7 @@ class DatadogRumPlugin(
     private fun removeAttribute(call: MethodCall, result: Result) {
         val key = call.argument<String>(PARAM_KEY)
         if (key != null) {
-            GlobalRum.removeAttribute(key)
+            rum?.removeAttribute(key)
             result.success(null)
         } else {
             result.missingParameter(call.method)
@@ -376,7 +520,7 @@ class DatadogRumPlugin(
                             }
 
                             override fun notImplemented() {
-                                Datadog._internal._telemetry.error(
+                                Datadog._internalProxy()._telemetry.error(
                                     "$mapperName returned notImplemented."
                                 )
                                 latch.countDown()
@@ -384,7 +528,10 @@ class DatadogRumPlugin(
                         }
                     )
                 } catch (e: Exception) {
-                    Datadog._internal._telemetry.error("Attempting call $mapperName failed.", e)
+                    Datadog._internalProxy()._telemetry.error(
+                        "Attempting call $mapperName failed.",
+                        e
+                    )
                     latch.countDown()
                 }
             }
@@ -394,7 +541,7 @@ class DatadogRumPlugin(
         try {
             // Stalls until the method channel finishes
             if (!latch.await(1, TimeUnit.SECONDS)) {
-                Datadog._internal._telemetry.debug("$mapperName timed out")
+                Datadog._internalProxy()._telemetry.debug("$mapperName timed out")
                 return event
             }
 
@@ -404,11 +551,11 @@ class DatadogRumPlugin(
 
             return completion(modifiedJson, event)
         } catch (e: InterruptedException) {
-            Datadog._internal._telemetry.debug(
-                "Latch await was interrupted. Returning unmodified event.",
+            Datadog._internalProxy()._telemetry.debug(
+                "Latch await was interrupted. Returning unmodified event."
             )
         } catch (e: Exception) {
-            Datadog._internal._telemetry.error(
+            Datadog._internalProxy()._telemetry.error(
                 "Unknown exception attempting to deserialize mapped log event." +
                     " Returning unmodified event.",
                 e
@@ -422,7 +569,7 @@ class DatadogRumPlugin(
     internal fun mapViewEvent(event: ViewEvent): ViewEvent {
         var result: ViewEvent
         val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asMap()
+            var jsonEvent = event.toJson().asFlutterMap()
             jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
             result = callEventMapper("mapViewEvent", event, jsonEvent) { encodedResult, event ->
@@ -444,7 +591,7 @@ class DatadogRumPlugin(
     internal fun mapActionEvent(event: ActionEvent): ActionEvent? {
         val result: ActionEvent?
         val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asMap()
+            var jsonEvent = event.toJson().asFlutterMap()
             jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
             result = callEventMapper("mapActionEvent", event, jsonEvent) { encodedResult, event ->
@@ -477,7 +624,7 @@ class DatadogRumPlugin(
     internal fun mapResourceEvent(event: ResourceEvent): ResourceEvent? {
         var result: ResourceEvent?
         val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asMap()
+            var jsonEvent = event.toJson().asFlutterMap()
             jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
             result = callEventMapper("mapResourceEvent", event, jsonEvent) { encodedResult, event ->
@@ -507,7 +654,7 @@ class DatadogRumPlugin(
     internal fun mapErrorEvent(event: ErrorEvent): ErrorEvent? {
         var result: ErrorEvent?
         val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asMap()
+            var jsonEvent = event.toJson().asFlutterMap()
             jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
             result = callEventMapper("mapErrorEvent", event, jsonEvent) { encodedResult, event ->
@@ -556,14 +703,13 @@ class DatadogRumPlugin(
     internal fun mapLongTaskEvent(event: LongTaskEvent): LongTaskEvent? {
         var result: LongTaskEvent?
         val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asMap()
+            var jsonEvent = event.toJson().asFlutterMap()
             jsonEvent = normalizeExtraUserInfo(jsonEvent)
 
             result = callEventMapper("mapLongTaskEvent", event, jsonEvent) { encodedResult, event ->
                 if (encodedResult == null) {
                     null
                 } else {
-
                     (encodedResult["view"] as? Map<String, Any?>)?.let {
                         event.view.name = it["name"] as? String
                         event.view.referrer = it["referrer"] as? String
@@ -597,6 +743,45 @@ class DatadogRumPlugin(
 
         return mutableEvent
     }
+}
+
+object NoOpViewTrackingStrategy : ViewTrackingStrategy {
+    override fun register(sdkCore: SdkCore, context: Context) {
+        // Nop
+    }
+
+    override fun unregister(context: Context?) {
+        // Nop
+    }
+}
+
+fun RumConfiguration.Builder.withEncoded(encoded: Map<String, Any?>): RumConfiguration.Builder {
+    var builder = this
+
+    (encoded["sessionSampleRate"] as? Number)?.let {
+        builder = builder.setSessionSampleRate(it.toFloat())
+    }
+    (encoded["longTaskThreshold"] as? Number)?.let {
+        builder = builder.trackLongTasks((it.toFloat() * 1000).toLong())
+    }
+    (encoded["trackFrustrations"] as? Boolean)?.let {
+        builder = builder.trackFrustrations(it)
+    }
+    (encoded["customEndpoint"] as? String)?.let {
+        builder = builder.useCustomEndpoint(it)
+    }
+    (encoded["vitalsUpdateFrequency"] as? String)?.let {
+        val frequency = parseVitalsFrequency(it)
+        builder = builder.setVitalsUpdateFrequency(frequency)
+    }
+    (encoded["telemetrySampleRate"] as? Number)?.let {
+        builder = builder.setTelemetrySampleRate(it.toFloat())
+    }
+    (encoded["additionalConfig"] as? Map<String, Any>)?.let {
+        builder = _RumInternalProxy.setAdditionalConfiguration(builder, it)
+    }
+
+    return builder
 }
 
 fun parseRumHttpMethod(value: String): String {
@@ -640,10 +825,42 @@ fun parseRumErrorSource(value: String): RumErrorSource {
 
 fun parseRumActionType(value: String): RumActionType {
     return when (value) {
-        "RumUserActionType.tap" -> RumActionType.TAP
-        "RumUserActionType.scroll" -> RumActionType.SCROLL
-        "RumUserActionType.swipe" -> RumActionType.SWIPE
-        "RumUserActionType.custom" -> RumActionType.CUSTOM
+        "RumActionType.tap" -> RumActionType.TAP
+        "RumActionType.scroll" -> RumActionType.SCROLL
+        "RumActionType.swipe" -> RumActionType.SWIPE
+        "RumActionType.custom" -> RumActionType.CUSTOM
         else -> RumActionType.CUSTOM
     }
 }
+
+internal fun parseBatchSize(batchSize: String): BatchSize {
+    return when (batchSize) {
+        "BatchSize.small" -> BatchSize.SMALL
+        "BatchSize.medium" -> BatchSize.MEDIUM
+        "BatchSize.large" -> BatchSize.LARGE
+        else -> BatchSize.MEDIUM
+    }
+}
+
+internal fun parseUploadFrequency(uploadFrequency: String): UploadFrequency {
+    return when (uploadFrequency) {
+        "UploadFrequency.frequent" -> UploadFrequency.FREQUENT
+        "UploadFrequency.average" -> UploadFrequency.AVERAGE
+        "UploadFrequency.rare" -> UploadFrequency.RARE
+        else -> UploadFrequency.AVERAGE
+    }
+}
+
+internal fun parseVitalsFrequency(vitalsFrequency: String): VitalsUpdateFrequency {
+    return when (vitalsFrequency) {
+        "VitalsFrequency.frequent" -> VitalsUpdateFrequency.FREQUENT
+        "VitalsFrequency.average" -> VitalsUpdateFrequency.AVERAGE
+        "VitalsFrequency.rare" -> VitalsUpdateFrequency.RARE
+        "VitalsFrequency.never" -> VitalsUpdateFrequency.NEVER
+        else -> VitalsUpdateFrequency.AVERAGE
+    }
+}
+
+internal const val MESSAGE_INVALID_RUM_REINITIALIZATION =
+    "🔥 Re-enabling the Datadog RUM with different options is not supported, even after a" +
+        " hot restart. Cold restart your application to change your current configuration."

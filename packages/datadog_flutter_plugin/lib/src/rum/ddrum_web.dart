@@ -9,43 +9,39 @@ library ddrum_flutter_web;
 import 'package:js/js.dart';
 
 import '../../datadog_flutter_plugin.dart';
-import '../internal_logger.dart';
+import '../logs/ddweb_helpers.dart';
 import '../web_helpers.dart';
 import 'ddrum_platform_interface.dart';
 
 class DdRumWeb extends DdRumPlatform {
-  final Map<String, Object?> currentAttributes = {};
-
   // Because Web needs the full SDK configuration, we have a separate init method
-  void webInitialize(DdSdkConfiguration configuration) {
-    final rumConfiguration = configuration.rumConfiguration;
-    if (rumConfiguration == null) {
-      return;
-    }
-
+  void webInitialize(DatadogConfiguration configuration,
+      DatadogRumConfiguration rumConfiguration) {
     init(_RumInitOptions(
       applicationId: rumConfiguration.applicationId,
       clientToken: configuration.clientToken,
       site: siteStringForSite(configuration.site),
-      sampleRate: rumConfiguration.sessionSamplingRate,
+      sessionSampleRate: rumConfiguration.sessionSamplingRate,
       sessionReplaySampleRate: 0,
-      service: configuration.serviceName,
+      service: configuration.service,
       env: configuration.env,
       version: configuration.versionTag,
-      proxyUrl: configuration.rumConfiguration?.customEndpoint,
-      allowedTracingOrigins: configuration.firstPartyHosts,
+      proxy: rumConfiguration.customEndpoint,
+      // allowedTracingOrigins: configuration.firstPartyHosts,
       trackViewsManually: true,
+      trackFrustrations: rumConfiguration.trackFrustrations,
+      trackLongTasks: rumConfiguration.detectLongTasks,
+      enableExperimentalFeatures: ['feature_flags'],
     ));
   }
 
   @override
-  Future<void> initialize(
-      RumConfiguration configuration, InternalLogger internalLogger) async {}
+  Future<void> enable(
+      DatadogSdk core, DatadogRumConfiguration configuration) async {}
 
   @override
   Future<void> addAttribute(String key, dynamic value) async {
-    currentAttributes[key] = value;
-    _jsSetRumGlobalContext(attributesToJs(currentAttributes, 'context'));
+    _jsSetGlobalContextProperty(key, valueToJs(value, 'context'));
   }
 
   @override
@@ -56,7 +52,12 @@ class DdRumWeb extends DdRumPlatform {
     String? errorType,
     Map<String, dynamic> attributes,
   ) async {
-    _jsAddError(error.toString(), attributesToJs(attributes, 'attributes'));
+    var jsError = JSError();
+    jsError.stack = convertWebStackTrace(stackTrace);
+    jsError.message = error.toString();
+    jsError.name = errorType ?? 'Error';
+
+    _jsAddError(jsError, attributesToJs(attributes, 'attributes'));
   }
 
   @override
@@ -67,7 +68,12 @@ class DdRumWeb extends DdRumPlatform {
     String? errorType,
     Map<String, dynamic> attributes,
   ) async {
-    _jsAddError(message, attributesToJs(attributes, 'attributes'));
+    var jsError = JSError();
+    jsError.stack = convertWebStackTrace(stackTrace);
+    jsError.message = message;
+    jsError.name = errorType ?? 'Error';
+
+    _jsAddError(jsError, attributesToJs(attributes, 'attributes'));
   }
 
   @override
@@ -76,26 +82,25 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  Future<void> addUserAction(RumUserActionType type, String name,
-      Map<String, dynamic> attributes) async {
+  Future<void> addAction(
+      RumActionType type, String name, Map<String, dynamic> attributes) async {
     _jsAddAction(name, attributesToJs(attributes, 'attributes'));
   }
 
   @override
   Future<void> removeAttribute(String key) async {
-    currentAttributes.remove(key);
-    _jsSetRumGlobalContext(attributesToJs(currentAttributes, 'context'));
+    _jsRemoveGlobalContextProperty(key);
   }
 
   @override
-  Future<void> startResourceLoading(String key, RumHttpMethod httpMethod,
-      String url, Map<String, dynamic> attributes) async {
+  Future<void> startResource(String key, RumHttpMethod httpMethod, String url,
+      Map<String, dynamic> attributes) async {
     // NOOP
   }
 
   @override
-  Future<void> startUserAction(RumUserActionType type, String name,
-      Map<String, dynamic> attributes) async {
+  Future<void> startAction(
+      RumActionType type, String name, Map<String, dynamic> attributes) async {
     // NOOP
   }
 
@@ -106,26 +111,26 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  Future<void> stopResourceLoading(String key, int? statusCode,
-      RumResourceType kind, int? size, Map<String, dynamic> attributes) async {
+  Future<void> stopResource(String key, int? statusCode, RumResourceType kind,
+      int? size, Map<String, dynamic> attributes) async {
     // NOOP
   }
 
   @override
-  Future<void> stopResourceLoadingWithError(
+  Future<void> stopResourceWithError(
       String key, Exception error, Map<String, dynamic> attributes) async {
     // NOOP
   }
 
   @override
-  Future<void> stopResourceLoadingWithErrorInfo(String key, String message,
+  Future<void> stopResourceWithErrorInfo(String key, String message,
       String type, Map<String, dynamic> attributes) async {
     // NOOP
   }
 
   @override
-  Future<void> stopUserAction(RumUserActionType type, String name,
-      Map<String, dynamic> attributes) async {
+  Future<void> stopAction(
+      RumActionType type, String name, Map<String, dynamic> attributes) async {
     // NOOP
   }
 
@@ -166,13 +171,16 @@ class _RumInitOptions {
   external String? get env;
   external String? get version;
   external bool? get trackViewsManually;
-  external bool? get trackInteractions;
+  external bool? get trackUserInteractions;
+  external bool? get trackFrustrations;
+  external bool? get trackLongTasks;
   external String? get defaultPrivacyLevel;
-  external num? get sampleRate;
+  external num? get sessionSampleRate;
   external num? get sessionReplaySampleRate;
   external bool? get silentMultipleInit;
-  external String? get proxyUrl;
-  external List<String> get allowedTracingOrigins;
+  external String? get proxy;
+  external List<String> get allowedTracingUrls;
+  external List<String> get enableExperimentalFeatures;
 
   external factory _RumInitOptions({
     String applicationId,
@@ -182,13 +190,16 @@ class _RumInitOptions {
     String? env,
     String? version,
     bool? trackViewsManually,
-    bool? trackInteractions,
+    bool? trackUserInteractions,
+    bool? trackFrustrations,
+    bool? trackLongTasks,
     String? defaultPrivacyLevel,
-    num? sampleRate,
+    num? sessionSampleRate,
     num? sessionReplaySampleRate,
     bool? silentMultipleInit,
-    String? proxyUrl,
-    List<String> allowedTracingOrigins,
+    String? proxy,
+    List<String> allowedTracingUrls,
+    List<String> enableExperimentalFeatures,
   });
 }
 
@@ -198,8 +209,11 @@ external void init(_RumInitOptions configuration);
 @JS('startView')
 external void _jsStartView(String name);
 
-@JS('setRumGlobalContext')
-external void _jsSetRumGlobalContext(dynamic context);
+@JS('setGlobalContextProperty')
+external void _jsSetGlobalContextProperty(String property, dynamic context);
+
+@JS('removeGlobalContextProperty')
+external void _jsRemoveGlobalContextProperty(String property);
 
 @JS('addTiming')
 external void _jsAddTiming(String name);

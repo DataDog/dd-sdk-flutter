@@ -223,6 +223,7 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
       case CrashType.ffiCallbackException:
         if (!kIsWeb) {
           var value = nativeCrashPlugin.ffiCallbackTest(32, nativeCallback);
+          // ignore: use_build_context_synchronously
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(

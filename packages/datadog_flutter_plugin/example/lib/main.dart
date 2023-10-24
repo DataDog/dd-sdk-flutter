@@ -22,17 +22,13 @@ LogEvent? _logEventMapper(LogEvent event) {
 
 RumViewEvent _viewEventMapper(RumViewEvent event) {
   if (event.view.name == 'overwrite me') {
-    event.view.name = 'overwritten';
+    event.view.url = 'overwritten url';
   }
 
   return event;
 }
 
 RumActionEvent? _actionEventMapper(RumActionEvent event) {
-  if (event.view.name == 'overwrite me') {
-    event.view.name = 'overwritten';
-  }
-
   if (event.action.target?.name == 'discard') {
     return null;
   } else if (event.action.target?.name == 'censor me!') {
@@ -79,36 +75,33 @@ void main() async {
 
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
 
-  final configuration = DdSdkConfiguration(
+  final configuration = DatadogConfiguration(
     clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
     env: dotenv.get('DD_ENV', fallback: ''),
-    serviceName: 'com.datadoghq.example.flutter',
+    service: 'com.datadoghq.example.flutter',
     version: '1.2.3',
     site: DatadogSite.us1,
-    trackingConsent: TrackingConsent.granted,
     nativeCrashReportEnabled: true,
-    logEventMapper: _logEventMapper,
-    loggingConfiguration: LoggingConfiguration(
-      sendNetworkInfo: true,
-      printLogsToConsole: true,
+    loggingConfiguration: DatadogLoggingConfiguration(
+      eventMapper: _logEventMapper,
     ),
     rumConfiguration: applicationId != null
-        ? RumConfiguration(
+        ? DatadogRumConfiguration(
             applicationId: applicationId,
             detectLongTasks: true,
             reportFlutterPerformance: true,
-            rumViewEventMapper: _viewEventMapper,
-            rumActionEventMapper: _actionEventMapper,
-            rumResourceEventMapper: _resourceEventMapper,
-            rumErrorEventMapper: _errorEventMapper,
-            rumLongTaskEventMapper: _longTaskEventMapper,
+            viewEventMapper: _viewEventMapper,
+            actionEventMapper: _actionEventMapper,
+            resourceEventMapper: _resourceEventMapper,
+            errorEventMapper: _errorEventMapper,
+            longTaskEventMapper: _longTaskEventMapper,
           )
         : null,
   );
 
   final ddsdk = DatadogSdk.instance;
-  ddsdk.sdkVerbosity = Verbosity.verbose;
-  DatadogSdk.runApp(configuration, () async {
+  ddsdk.sdkVerbosity = CoreLoggerLevel.debug;
+  DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
     ddsdk.setUserInfo(id: 'test_id', extraInfo: {
       'user_attribute_1': true,
       'user_attribute_2': 'testing',

@@ -5,7 +5,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:datadog_common_test/uri_matchers.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_tracking_http_client/src/tracking_http_client.dart';
@@ -17,7 +17,7 @@ class MockDatadogSdk extends Mock implements DatadogSdk {}
 
 class MockDatadogSdkPlatform extends Mock implements DatadogSdkPlatform {}
 
-class MockDdRum extends Mock implements DdRum {}
+class MockDdRum extends Mock implements DatadogRum {}
 
 class MockHttpClient extends Mock implements HttpClient {}
 
@@ -76,7 +76,7 @@ void main() {
 
     mockRum = MockDdRum();
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-    when(() => mockRum.tracingSamplingRate).thenReturn(50.0);
+    when(() => mockRum.traceSampleRate).thenReturn(50.0);
 
     mockClient = MockHttpClient();
     when(() => mockClient.autoUncompress).thenReturn(true);
@@ -284,11 +284,11 @@ void main() {
 
       verify(() => mockClient.openUrl('get', url));
       var capturedKey = verify(
-        () => mockRum.startResourceLoading(
+        () => mockRum.startResource(
             captureAny(), RumHttpMethod.get, url.toString(), any()),
       ).captured[0] as String;
 
-      verifyNever(() => mockRum.stopResourceLoading(any(), any(), any()));
+      verifyNever(() => mockRum.stopResource(any(), any(), any()));
 
       final mockResponse = setupMockClientResponse(200);
       completer.complete(mockResponse);
@@ -304,7 +304,7 @@ void main() {
       mockResponse.streamController.sink.add([12]);
       await mockResponse.streamController.close();
       expect(gotData, isTrue);
-      verify(() => mockRum.stopResourceLoading(
+      verify(() => mockRum.stopResource(
           capturedKey, 200, RumResourceType.image, 88888, any()));
     });
 
@@ -316,11 +316,11 @@ void main() {
 
       verify(() => mockClient.openUrl('get', url));
       var capturedKey = verify(
-        () => mockRum.startResourceLoading(
+        () => mockRum.startResource(
             captureAny(), RumHttpMethod.get, url.toString(), any()),
       ).captured[0] as String;
 
-      verifyNever(() => mockRum.stopResourceLoading(any(), any(), any()));
+      verifyNever(() => mockRum.stopResource(any(), any(), any()));
 
       final mockResponse = setupMockClientResponse(403);
       completer.complete(mockResponse);
@@ -328,7 +328,7 @@ void main() {
       response.listen((event) {});
       await mockResponse.streamController.close();
 
-      verify(() => mockRum.stopResourceLoading(
+      verify(() => mockRum.stopResource(
           capturedKey, 403, RumResourceType.image, 88888, any()));
     });
 
@@ -340,7 +340,7 @@ void main() {
 
       verify(() => mockClient.openUrl('get', url));
       var capturedKey = verify(
-        () => mockRum.startResourceLoading(
+        () => mockRum.startResource(
             captureAny(), RumHttpMethod.get, url.toString(), any()),
       ).captured[0] as String;
 
@@ -351,7 +351,7 @@ void main() {
       response.listen((event) {});
       await mockResponse.streamController.close();
 
-      verify(() => mockRum.stopResourceLoading(
+      verify(() => mockRum.stopResource(
           capturedKey, 200, RumResourceType.media, 88888, any()));
     });
 
@@ -361,7 +361,7 @@ void main() {
 
       var request = await client.openUrl('get', url);
       var capturedKey = verify(
-        () => mockRum.startResourceLoading(
+        () => mockRum.startResource(
             captureAny(), RumHttpMethod.get, url.toString(), any()),
       ).captured[0] as String;
 
@@ -375,7 +375,7 @@ void main() {
       }
 
       expect(caughtError, error);
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
           capturedKey, error.toString(), error.runtimeType.toString(), any()));
     });
 
@@ -385,7 +385,7 @@ void main() {
 
       var request = await client.openUrl('get', url);
       var capturedKey = verify(
-        () => mockRum.startResourceLoading(
+        () => mockRum.startResource(
             captureAny(), RumHttpMethod.get, url.toString(), any()),
       ).captured[0] as String;
 
@@ -404,7 +404,7 @@ void main() {
       await mockResponse.streamController.close();
 
       expect(caughtError, error);
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
             capturedKey,
             error.toString(),
             error.runtimeType.toString(),
@@ -418,7 +418,7 @@ void main() {
 
       var request = await client.openUrl('get', url);
       var capturedKey = verify(
-        () => mockRum.startResourceLoading(
+        () => mockRum.startResource(
             captureAny(), RumHttpMethod.get, url.toString(), any()),
       ).captured[0] as String;
 
@@ -437,7 +437,7 @@ void main() {
       await mockResponse.streamController.close();
 
       expect(caughtError, error);
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
             capturedKey,
             error.toString(),
             error.runtimeType.toString(),
@@ -452,7 +452,7 @@ void main() {
 
       var request = await client.openUrl('get', url);
       var capturedKey = verify(
-        () => mockRum.startResourceLoading(
+        () => mockRum.startResource(
             captureAny(), RumHttpMethod.get, url.toString(), any()),
       ).captured[0] as String;
 
@@ -471,7 +471,7 @@ void main() {
       await mockResponse.streamController.close();
 
       expect(caughtError, isNull);
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
             capturedKey,
             error.toString(),
             error.runtimeType.toString(),
@@ -486,11 +486,11 @@ void main() {
       final completer = setupMockRequest(url);
 
       when(() => mockRum.shouldSampleTrace()).thenReturn(false);
-      when(() => mockRum.tracingSamplingRate).thenReturn(12.0);
+      when(() => mockRum.traceSampleRate).thenReturn(12.0);
 
       var request = await client.openUrl('get', url);
       var capturedStartArgs = verify(
-        () => mockRum.startResourceLoading(
+        () => mockRum.startResource(
           captureAny(),
           RumHttpMethod.get,
           url.toString(),
@@ -505,7 +505,7 @@ void main() {
       response.listen((event) {});
       await mockResponse.streamController.close();
 
-      final capturedEndArgs = verify(() => mockRum.stopResourceLoading(
+      final capturedEndArgs = verify(() => mockRum.stopResource(
             capturedKey,
             200,
             RumResourceType.image,
@@ -533,10 +533,10 @@ void main() {
 
       await expectLater(() async => await client.openUrl('get', url),
           throwsA(predicate((e) => e == error)));
-      var capturedKey = verify(() => mockRum.startResourceLoading(
+      var capturedKey = verify(() => mockRum.startResource(
               captureAny(), RumHttpMethod.get, url.toString(), any()))
           .captured[0] as String;
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
             capturedKey,
             error.toString(),
             error.runtimeType.toString(),
@@ -553,7 +553,7 @@ void main() {
       var request = await client.openUrl('get', url);
       verify(() => mockClient.openUrl('get', url));
       var capturedKey = verify(
-        () => mockRum.startResourceLoading(
+        () => mockRum.startResource(
             captureAny(), RumHttpMethod.get, url.toString(), any()),
       ).captured[0] as String;
 
@@ -565,7 +565,7 @@ void main() {
         expect(st, stack);
         expect(e, error);
       }
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
             capturedKey,
             error.toString(),
             error.runtimeType.toString(),
@@ -583,7 +583,7 @@ void main() {
       var request = await client.openUrl('get', url);
       verify(() => mockClient.openUrl('get', url));
       var capturedKey = verify(
-        () => mockRum.startResourceLoading(
+        () => mockRum.startResource(
             captureAny(), RumHttpMethod.get, url.toString(), any()),
       ).captured[0] as String;
 
@@ -595,7 +595,7 @@ void main() {
         expect(st, stack);
         expect(e, error);
       }
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
             capturedKey,
             error.toString(),
             error.runtimeType.toString(),
@@ -614,7 +614,7 @@ void main() {
       });
 
       test('start and stop resource loading set tracing attributes', () async {
-        when(() => mockRum.tracingSamplingRate).thenReturn(23.0);
+        when(() => mockRum.traceSampleRate).thenReturn(23.0);
 
         var url = Uri.parse('https://test_url/path');
         final completer = setupMockRequest(url);
@@ -626,7 +626,7 @@ void main() {
 
         var request = await client.openUrl('get', url);
         var capturedStartArgs = verify(
-          () => mockRum.startResourceLoading(
+          () => mockRum.startResource(
             captureAny(),
             RumHttpMethod.get,
             url.toString(),
@@ -642,7 +642,7 @@ void main() {
         response.listen((event) {});
         await mockResponse.streamController.close();
 
-        var capturedEndArgs = verify(() => mockRum.stopResourceLoading(
+        var capturedEndArgs = verify(() => mockRum.stopResource(
               capturedKey,
               200,
               RumResourceType.image,
@@ -901,8 +901,9 @@ void main() {
       response.listen((event) {});
       await mockResponse.streamController.close();
 
-      final captured = verify(() => mockRum.stopResourceLoading(
-          any(), 403, any(), any(), captureAny())).captured;
+      final captured = verify(() =>
+              mockRum.stopResource(any(), 403, any(), any(), captureAny()))
+          .captured;
       expect(captured[0]['my_parameter'], 'my_value');
       expect(captured[0]['other_parameter'], 123);
     });
@@ -939,13 +940,12 @@ void main() {
       mockResponse.streamController.addError(error);
       await mockResponse.streamController.close();
 
-      var capturedAttributes =
-          verify(() => mockRum.stopResourceLoadingWithErrorInfo(
-                any(),
-                error.toString(),
-                error.runtimeType.toString(),
-                captureAny(),
-              )).captured[0];
+      var capturedAttributes = verify(() => mockRum.stopResourceWithErrorInfo(
+            any(),
+            error.toString(),
+            error.runtimeType.toString(),
+            captureAny(),
+          )).captured[0];
       expect(capturedAttributes['my_parameter'], 'my_value');
       expect(capturedAttributes['other_parameter'], 123);
     });
@@ -1037,8 +1037,9 @@ void main() {
       response.listen((event) {});
       await mockResponse.streamController.close();
 
-      var capturedAttributes = verify(() => mockRum.stopResourceLoading(
-          any(), 200, any(), any(), captureAny())).captured[0];
+      var capturedAttributes = verify(() =>
+              mockRum.stopResource(any(), 200, any(), any(), captureAny()))
+          .captured[0];
       expect(capturedAttributes['my_parameter'], 'my_value');
       expect(capturedAttributes['other_parameter'], 123);
     });
@@ -1077,9 +1078,11 @@ void main() {
       mockResponse.streamController.addError(error);
       await mockResponse.streamController.close();
 
-      var capturedAttributes = verify(() =>
-          mockRum.stopResourceLoadingWithErrorInfo(any(), error.toString(),
-              error.runtimeType.toString(), captureAny())).captured[0];
+      var capturedAttributes = verify(() => mockRum.stopResourceWithErrorInfo(
+          any(),
+          error.toString(),
+          error.runtimeType.toString(),
+          captureAny())).captured[0];
       expect(capturedAttributes['my_parameter'], 'my_value');
       expect(capturedAttributes['other_parameter'], 123);
     });
@@ -1136,8 +1139,9 @@ void main() {
 
       expect(requestKey, isNotNull);
       expect(requestKey, responseKey);
-      var capturedAttributes = verify(() => mockRum.stopResourceLoading(
-          any(), any(), any(), any(), captureAny())).captured[0];
+      var capturedAttributes = verify(() =>
+              mockRum.stopResource(any(), any(), any(), any(), captureAny()))
+          .captured[0];
       expect(capturedAttributes['my_parameter'], 'my_value');
       expect(capturedAttributes['other_parameter'], 123);
       expect(capturedAttributes['response_parameter'], 'second_value');
@@ -1192,8 +1196,9 @@ void main() {
 
       expect(requestKey, isNotNull);
       expect(requestKey, responseKey);
-      var capturedAttributes = verify(() => mockRum.stopResourceLoading(
-          any(), any(), any(), any(), captureAny())).captured[0];
+      var capturedAttributes = verify(() =>
+              mockRum.stopResource(any(), any(), any(), any(), captureAny()))
+          .captured[0];
       expect(capturedAttributes['my_parameter'], 'second_value');
       expect(capturedAttributes['other_parameter'], 123);
       expect(capturedAttributes['extra_parameter'], 1928);

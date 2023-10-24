@@ -9,18 +9,30 @@ import android.util.Log
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
+import com.datadog.android.Datadog
 import com.datadog.android.log.Logger
+import com.datadog.android.log.Logs
+import com.datadog.android.log.LogsConfiguration
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 import fr.xgouchet.elmyr.Forge
+import fr.xgouchet.elmyr.annotation.BoolForgery
+import fr.xgouchet.elmyr.annotation.Forgery
 import fr.xgouchet.elmyr.annotation.IntForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.mockk.clearAllMocks
+import io.mockk.clearStaticMockk
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import io.mockk.verify
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.mock
+import java.lang.reflect.Method
 
 @ExtendWith(ForgeExtension::class)
 class DatadogLogsPluginTest {
@@ -33,6 +45,154 @@ class DatadogLogsPluginTest {
         mockLogger = mockk(relaxed = true)
 
         plugin.addLogger("mock-logger", mockLogger)
+    }
+
+    @AfterEach
+    fun afterEach() {
+        DatadogLogsPlugin.resetConfig();
+        unmockkStatic(Log::class)
+        unmockkStatic(Logs::class)
+    }
+
+    @Test
+    fun `M decode LogsConfiguration W LogsConfiguration fromEncoded`(
+        @StringForgery customEndpoint: String
+    ) {
+        // GIVEN
+        val encoded = mapOf(
+            "customEndpoint" to customEndpoint
+        )
+
+        // WHEN
+        val config = LogsConfiguration.Builder()
+            .withEncoded(encoded)
+            .build()
+
+        // THEN
+        assertThat(config.getPrivate("customEndpointUrl")).isEqualTo(customEndpoint)
+    }
+
+    @Test
+    fun `M decode LoggerBuilder W LoggerBuilder fromEncoded`(
+        @StringForgery service: String,
+        @StringForgery name: String,
+        @BoolForgery networkInfoEnabled: Boolean,
+        @BoolForgery bundleWithRumEnabled: Boolean,
+        @BoolForgery bundleWithTraceEnabled: Boolean
+    ) {
+        // GIVEN
+        val encoded = mapOf(
+            "service" to service,
+            "name" to name,
+            "networkInfoEnabled" to networkInfoEnabled,
+            "bundleWithRumEnabled" to bundleWithRumEnabled,
+            "bundleWithTraceEnabled" to bundleWithTraceEnabled,
+        )
+
+        // WHEN
+        val builder = Logger.Builder()
+            .withEncoded(encoded)
+
+        // THEN
+        assertThat(builder.getPrivate("serviceName")).isEqualTo(service)
+        assertThat(builder.getPrivate("loggerName")).isEqualTo(name)
+        assertThat(builder.getPrivate("networkInfoEnabled")).isEqualTo(networkInfoEnabled)
+        assertThat(builder.getPrivate("bundleWithRumEnabled")).isEqualTo(bundleWithRumEnabled)
+        assertThat(builder.getPrivate("bundleWithTraceEnabled")).isEqualTo(bundleWithTraceEnabled)
+    }
+
+    @Test
+    fun `M call Logs enable with correct config W method channel sends enable`() {
+        // GIVEN
+        mockkStatic(Logs::class)
+        val config = mapOf<String, Any?>()
+        val methodCall = MethodCall(
+            "enable",
+            mapOf(
+                "configuration" to config
+            )
+        )
+
+        // WHEN
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        val baseConfig = LogsConfiguration.Builder().build()
+        io.mockk.verify {
+            Logs.enable(baseConfig)
+        }
+    }
+
+    @Test
+    fun `M not issue warning W enable called with same configuration`(
+        forge: Forge
+    ) {
+        // GIVEN
+        mockkStatic(Log::class)
+        Datadog.setVerbosity(Log.INFO)
+
+        val config = mapOf<String, Any?>()
+        val methodCall = MethodCall(
+            "enable",
+            mapOf(
+                "configuration" to config
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // WHEN
+        val methodCallB = MethodCall(
+            "initialize",
+            mapOf(
+                "configuration" to config
+            )
+        )
+        val mockResultB = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCallB, mockResultB)
+
+        // THEN
+        io.mockk.verify(exactly = 0) {
+            Log.println(any(), eq(DATADOG_FLUTTER_TAG), any())
+        }
+    }
+
+    @Test
+    fun `M issue warning W enable called with different configuration`(
+        forge: Forge
+    ) {
+        // GIVEN
+        mockkStatic(Log::class)
+        Datadog.setVerbosity(Log.INFO)
+
+        val methodCall = MethodCall(
+            "enable",
+            mapOf(
+                "configuration" to mapOf(
+                    "attachLogMapper" to false
+                )
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // WHEN
+        val methodCallB = MethodCall(
+            "enable",
+            mapOf(
+                "configuration" to mapOf(
+                    "attachLogMapper" to true
+                )
+            )
+        )
+        val mockResultB = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCallB, mockResultB)
+
+        // THEN
+        io.mockk.verify(exactly = 1) {
+            Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_LOGGER_REINITIALIZATION)
+        }
     }
 
     @Test

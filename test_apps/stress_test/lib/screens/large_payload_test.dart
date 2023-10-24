@@ -90,8 +90,8 @@ class _LargePayloadTestState extends State<LargePayloadTest>
       var eventTypeString = '';
       switch (eventType) {
         case 0:
-          DatadogSdk.instance.rum?.addUserAction(
-              RumUserActionType.tap, 'User Action', eventContext);
+          DatadogSdk.instance.rum
+              ?.addAction(RumActionType.tap, 'User Action', eventContext);
           eventTypeString = 'Action';
           break;
         case 1:

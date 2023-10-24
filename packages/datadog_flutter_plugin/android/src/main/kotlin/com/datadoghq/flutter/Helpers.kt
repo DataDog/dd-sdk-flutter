@@ -50,12 +50,12 @@ internal fun Any?.fromJsonElement(): Any? {
             }
             array
         }
-        is JsonObject -> this.asMap()
+        is JsonObject -> this.asFlutterMap()
         else -> this
     }
 }
 
-internal fun JsonObject.asMap(): Map<String, Any?> {
+internal fun JsonObject.asFlutterMap(): Map<String, Any?> {
     val map = mutableMapOf<String, Any?>()
     entrySet().forEach {
         map[it.key] = it.value.fromJsonElement()
@@ -63,9 +63,9 @@ internal fun JsonObject.asMap(): Map<String, Any?> {
     return map
 }
 
-internal fun JsonElement?.asMap(): Map<String, Any?> {
+internal fun JsonElement?.asFlutterMap(): Map<String, Any?> {
     return if (this is JsonObject) {
-        this.asMap()
+        this.asFlutterMap()
     } else {
         emptyMap()
     }

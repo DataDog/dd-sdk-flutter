@@ -212,7 +212,7 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
         if (route.settings.name == null) {
           _routeObserver?.subscribe(this, route);
         } else {
-          DatadogSdk.instance.internalLogger.info(
+          DatadogSdk.instance.internalLogger.debug(
               '$DatadogRouteAwareMixin for ${rumViewInfo.name} (on widget $T) '
               'will be ignored because it is part of a named route ${route.settings.name}');
         }

@@ -90,7 +90,12 @@ void main() {
     }
 
     for (var log in rumLog) {
-      expect(log.dd.plan, 1);
+      if (log.eventType != 'telemetry') {
+        // Web does not use "plan" anymore
+        if (!kIsWeb) {
+          expect(log.dd.plan, 1);
+        }
+      }
     }
 
     final session = RumSessionDecoder.fromEvents(rumLog);
@@ -193,9 +198,7 @@ void main() {
     expect(view2.viewEvents.last.featureFlags?['mock_flag_a'], false);
     expect(view2.viewEvents.last.featureFlags?['mock_flag_b'], 'mock_value');
 
-    const errorMessage =
-        kIsWeb ? 'Provided "Simulated view error"' : 'Simulated view error';
-    expect(view2.errorEvents[0].message, errorMessage);
+    expect(view2.errorEvents[0].message, 'Simulated view error');
     expect(view2.errorEvents[0].source, kIsWeb ? 'custom' : 'source');
     expect(view2.errorEvents[0].context![contextKey], expectedContextValue);
     expect(view2.errorEvents[0].context!['custom_attribute'], 'my_attribute');
@@ -220,7 +223,7 @@ void main() {
     }
     expect(over200, greaterThanOrEqualTo(1));
 
-    // Web doesn't support start/stopUserAction
+    // Web doesn't support start/stopAction
     RumActionEventDecoder tapAction;
     if (!kIsWeb) {
       expect(view2.actionEvents[0].actionType, 'scroll');

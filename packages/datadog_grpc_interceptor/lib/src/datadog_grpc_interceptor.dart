@@ -64,7 +64,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
         tracingContext = generateTracingContext(shouldSample);
 
         attributes[DatadogRumPlatformAttributeKey.rulePsr] =
-            rum.tracingSamplingRate / 100.0;
+            rum.traceSampleRate / 100.0;
         if (tracingContext.sampled) {
           attributes[DatadogRumPlatformAttributeKey.traceID] =
               tracingContext.traceId.asString(TraceIdRepresentation.decimal);
@@ -77,7 +77,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
         }
       }
 
-      _datadog.rum?.startResourceLoading(
+      _datadog.rum?.startResource(
         rumKey,
         RumHttpMethod.get,
         fullPath,
@@ -89,9 +89,9 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
 
     final future = invoker(method, request, options);
     future.then((v) {
-      _datadog.rum?.stopResourceLoading(rumKey, 200, RumResourceType.native);
+      _datadog.rum?.stopResource(rumKey, 200, RumResourceType.native);
     }, onError: (Object e, StackTrace? st) {
-      _datadog.rum?.stopResourceLoadingWithErrorInfo(
+      _datadog.rum?.stopResourceWithErrorInfo(
           rumKey, e.toString(), e.runtimeType.toString());
     });
     return future;

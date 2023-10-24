@@ -4,6 +4,9 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
+// This is purposefully at the top level because it cannot be imported by
+// web (because of the depenency on flutter_test). Only test platforms
+// that need it should import it.
 class HasHost extends CustomMatcher {
   HasHost(Matcher matcher) : super('Uri with host that is', 'host', matcher);
 

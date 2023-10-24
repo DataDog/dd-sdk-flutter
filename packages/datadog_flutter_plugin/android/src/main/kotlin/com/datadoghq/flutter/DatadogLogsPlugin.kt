@@ -5,13 +5,22 @@
  */
 package com.datadoghq.flutter
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import com.datadog.android.Datadog
+import com.datadog.android.event.EventMapper
 import com.datadog.android.log.Logger
+import com.datadog.android.log.Logs
+import com.datadog.android.log.LogsConfiguration
+import com.datadog.android.log.model.LogEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.lang.ClassCastException
 import java.lang.NullPointerException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -26,6 +35,14 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         const val LOG_KEY = "key"
         const val LOG_TAG = "tag"
         const val LOG_VALUE = "value"
+
+        // See DatadogSdkPlugin's description of this same member
+        private var previousConfiguration: Map<String, Any?>? = null
+
+        // For testing purposes only
+        internal fun resetConfig() {
+            previousConfiguration = null
+        }
     }
 
     private lateinit var channel: MethodChannel
@@ -53,6 +70,11 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        if (call.method == "enable") {
+            enable(call, result)
+            return
+        }
+
         val loggerHandle = call.argument<String>("loggerHandle")
         if (loggerHandle == null) {
             result.missingParameter(call.method)
@@ -62,7 +84,7 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         if (call.method == "createLogger") {
             val encodedConfig = call.argument<Map<String, Any?>>("configuration")
             if (encodedConfig != null) {
-                createLogger(loggerHandle, LoggingConfiguration(encodedConfig))
+                createLogger(loggerHandle, encodedConfig)
                 result.success(null)
             } else {
                 result.invalidOperation("Bad logging configuration creating a logger")
@@ -72,10 +94,11 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
 
         getLogger(loggerHandle)?.let { logger ->
             try {
-                callLoggingMethod(logger, call, result)
+                callLoggerMethod(logger, call, result)
             } catch (e: ClassCastException) {
                 result.error(
-                    DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(),
+                    DatadogSdkPlugin.CONTRACT_VIOLATION,
+                    e.toString(),
                     mapOf(
                         "methodName" to call.method
                     )
@@ -84,8 +107,38 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         }
     }
 
+    private fun enable(call: MethodCall, result: MethodChannel.Result) {
+        val encodedConfig = call.argument<Map<String, Any?>>("configuration")
+        if (previousConfiguration == null) {
+            if (encodedConfig != null) {
+                val config = LogsConfiguration.Builder()
+                    .withEncoded(encodedConfig)
+
+                val attachLogMeapper = (encodedConfig["attachLogMapper"] as? Boolean) ?: false
+                if (attachLogMeapper) {
+                    config.setEventMapper(
+                        object : EventMapper<LogEvent> {
+                            override fun map(event: LogEvent): LogEvent? {
+                                return mapLogEvent(event)
+                            }
+                        }
+                    )
+                }
+
+                Logs.enable(config.build())
+                previousConfiguration = encodedConfig
+                result.success(null)
+            } else {
+                result.invalidOperation("Bad configuration when enabling logging feature")
+            }
+        } else if (previousConfiguration != encodedConfig) {
+            // Maybe use DevLogger instead?
+            Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_LOGGER_REINITIALIZATION)
+        }
+    }
+
     @Suppress("LongMethod", "ComplexMethod", "NestedBlockDepth")
-    private fun callLoggingMethod(logger: Logger, call: MethodCall, result: MethodChannel.Result) {
+    private fun callLoggerMethod(logger: Logger, call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "log" -> {
                 internalLog(logger, call, result)
@@ -147,16 +200,10 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         }
     }
 
-    private fun createLogger(loggerHandle: String, configuration: LoggingConfiguration) {
+    private fun createLogger(loggerHandle: String, configuration: Map<String, Any?>) {
         val logBuilder = Logger.Builder()
-            .setDatadogLogsEnabled(configuration.sendLogsToDatadog)
-            .setLogcatLogsEnabled(configuration.printLogsToConsole)
-            .setNetworkInfoEnabled(configuration.sendNetworkInfo)
-            .setBundleWithRumEnabled(configuration.bundleWithRum)
+            .withEncoded(configuration)
 
-        configuration.loggerName?.let {
-            logBuilder.setLoggerName(it)
-        }
         val logger = logBuilder.build()
         loggerRegistry[loggerHandle] = logger
     }
@@ -204,6 +251,112 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
             }
         }
     }
+
+    @Suppress("TooGenericExceptionCaught")
+    internal fun mapLogEvent(event: LogEvent): LogEvent? {
+        val jsonEvent = event.toJson().asFlutterMap()
+        var modifiedJson: Map<String, Any?>? = null
+
+        val latch = CountDownLatch(1)
+
+        val handler = Handler(Looper.getMainLooper())
+        handler.post {
+            try {
+                channel.invokeMethod(
+                    "mapLogEvent",
+                    mapOf(
+                        "event" to jsonEvent
+                    ),
+                    object : MethodChannel.Result {
+                        override fun success(result: Any?) {
+                            @Suppress("UNCHECKED_CAST")
+                            modifiedJson = result as? Map<String, Any?>
+                            latch.countDown()
+                        }
+
+                        override fun error(
+                            errorCode: String,
+                            errorMessage: String?,
+                            errorDetails: Any?
+                        ) {
+                            // No telemetry needed, this is likely an issue in user code
+                            latch.countDown()
+                        }
+
+                        override fun notImplemented() {
+                            Datadog._internalProxy()._telemetry.error(
+                                "mapLogEvent returned notImplemented."
+                            )
+                            latch.countDown()
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                Datadog._internalProxy()._telemetry.error("Attempting call mapLogEvent failed.", e)
+                latch.countDown()
+            }
+        }
+
+        try {
+            // Stalls until the method channel finishes
+            if (!latch.await(1, TimeUnit.SECONDS)) {
+                Datadog._internalProxy()._telemetry.debug("logMapper timed out")
+                return event
+            }
+
+            return modifiedJson?.let {
+                if (!it.containsKey("_dd.mapper_error")) {
+                    val modifiedEvent = LogEvent.fromJsonObject(modifiedJson!!.toJsonObject())
+
+                    event.status = modifiedEvent.status
+                    event.message = modifiedEvent.message
+                    event.ddtags = modifiedEvent.ddtags
+                    event.logger.name = modifiedEvent.logger.name
+
+                    event.additionalProperties.clear()
+                    event.additionalProperties.putAll(modifiedEvent.additionalProperties)
+                }
+                event
+            }
+        } catch (e: Exception) {
+            Datadog._internalProxy()._telemetry.error(
+                "Attempt to deserialize mapped log event failed, or latch await was interrupted." +
+                    " Returning unmodified event.",
+                e
+            )
+            return event
+        }
+    }
+}
+
+fun LogsConfiguration.Builder.withEncoded(encoded: Map<String, Any?>): LogsConfiguration.Builder {
+    var builder = this
+
+    (encoded["customEndpoint"] as? String)?.let {
+        builder = builder.useCustomEndpoint(it)
+    }
+    return builder
+}
+
+fun Logger.Builder.withEncoded(encoded: Map<String, Any?>): Logger.Builder {
+    var builder = this
+    (encoded["service"] as? String)?.let {
+        builder = builder.setService(it)
+    }
+    (encoded["name"] as? String)?.let {
+        builder = builder.setName(it)
+    }
+    (encoded["networkInfoEnabled"] as? Boolean)?.let {
+        builder = builder.setNetworkInfoEnabled(it)
+    }
+    (encoded["bundleWithRumEnabled"] as? Boolean)?.let {
+        builder = builder.setBundleWithRumEnabled(it)
+    }
+    (encoded["bundleWithTraceEnabled"] as? Boolean)?.let {
+        builder = builder.setBundleWithTraceEnabled(it)
+    }
+
+    return builder
 }
 
 internal fun parseLogLevel(logLevel: String): Int {
@@ -219,3 +372,7 @@ internal fun parseLogLevel(logLevel: String): Int {
         else -> Log.INFO
     }
 }
+
+internal const val MESSAGE_INVALID_LOGGER_REINITIALIZATION =
+    "🔥 Re-enabling the Datadog Logging with different options is not supported, even after a" +
+        " hot restart. Cold restart your application to change your current configuration."

@@ -12,92 +12,142 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
+class MockInternalLogger extends Mock implements InternalLogger {}
+
+class MockDatadogSdk extends Mock implements DatadogSdk {}
+
 class MockDdLogsPlatform extends Mock
     with MockPlatformInterfaceMixin
     implements DdLogsPlatform {}
 
-class TestLogger extends InternalLogger {
-  final logs = <String>[];
-
-  @override
-  void log(Verbosity verbosity, String log) {
-    logs.add(log);
-  }
-}
-
 void main() {
-  late TestLogger internalLogger;
+  late MockDatadogSdk mockCore;
+  late MockInternalLogger mockInternalLogger;
   late MockDdLogsPlatform mockPlatform;
+  late DatadogLogging ddLogs;
 
-  setUp(() {
+  setUp(() async {
     registerFallbackValue(LogLevel.info);
-    internalLogger = TestLogger();
+    registerFallbackValue(DatadogLoggingConfiguration());
+    registerFallbackValue(DatadogLoggerConfiguration());
+    registerFallbackValue(DatadogSdk.instance);
+
     mockPlatform = MockDdLogsPlatform();
     DdLogsPlatform.instance = mockPlatform;
+    when(() => mockPlatform.enable(any(), any()))
+        .thenAnswer((_) => Future.value());
+    when(() => mockPlatform.createLogger(any(), any()))
+        .thenAnswer((_) => Future.value());
+
+    mockInternalLogger = MockInternalLogger();
+    mockCore = MockDatadogSdk();
+    when(() => mockCore.internalLogger).thenReturn(mockInternalLogger);
+
+    final config = DatadogLoggingConfiguration();
+    ddLogs = (await DatadogLogging.enable(mockCore, config))!;
   });
 
   group('basic logger tests', () {
-    late DdLogs ddLogs;
+    late DatadogLogger ddLog;
 
-    setUp(() {
+    setUp(() async {
       when(() =>
               mockPlatform.log(any(), any(), any(), any(), any(), any(), any()))
           .thenAnswer((invocation) => Future<void>.value());
 
-      final config =
-          LoggingConfiguration(datadogReportingThreshold: Verbosity.verbose);
-      ddLogs = DdLogs(internalLogger, config);
+      final logConfig =
+          DatadogLoggerConfiguration(remoteLogThreshold: LogLevel.debug);
+      ddLog = ddLogs.createLogger(logConfig);
     });
 
     test('debug logs pass to platform', () async {
-      ddLogs.debug('debug message', attributes: {'attribute': 'value'});
+      ddLog.debug('debug message', attributes: {'attribute': 'value'});
 
-      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.debug,
+      verify(() => mockPlatform.log(ddLog.loggerHandle, LogLevel.debug,
           'debug message', null, null, null, {'attribute': 'value'}));
     });
 
     test('debug info pass to platform', () async {
-      ddLogs.info('info message', attributes: {'attribute': 'value'});
+      ddLog.info('info message', attributes: {'attribute': 'value'});
 
-      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.info,
+      verify(() => mockPlatform.log(ddLog.loggerHandle, LogLevel.info,
           'info message', null, null, null, {'attribute': 'value'}));
     });
 
     test('debug warn pass to platform', () async {
-      ddLogs.warn('warn message', attributes: {'attribute': 'value'});
+      ddLog.warn('warn message', attributes: {'attribute': 'value'});
 
-      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.warning,
+      verify(() => mockPlatform.log(ddLog.loggerHandle, LogLevel.warning,
           'warn message', null, null, null, {'attribute': 'value'}));
     });
 
     test('error logs pass to platform', () async {
-      ddLogs.error('error message', attributes: {'attribute': 'value'});
+      ddLog.error('error message', attributes: {'attribute': 'value'});
 
-      verify(() => mockPlatform.log(ddLogs.loggerHandle, LogLevel.error,
+      verify(() => mockPlatform.log(ddLog.loggerHandle, LogLevel.error,
           'error message', null, null, null, {'attribute': 'value'}));
     });
 
     test('addAttribute argumentError sent to logger', () async {
       when(() => mockPlatform.addAttribute(any(), any(), any()))
           .thenThrow(ArgumentError());
-      ddLogs.addAttribute('My key', 'Any Value');
+      ddLog.addAttribute('My key', 'Any Value');
 
-      assert(internalLogger.logs.isNotEmpty);
+      verify(
+          () => mockInternalLogger.warn(any(that: contains('ArgumentError'))));
     });
   });
 
   group('configuration tests', () {
     test('sampleRate is clamped to 0..100', () {
-      final lowConfiguration = LoggingConfiguration(sampleRate: -12.2);
+      final lowConfiguration =
+          DatadogLoggerConfiguration(remoteSampleRate: -12.2);
 
-      final highConfiguration = LoggingConfiguration(sampleRate: 123.5);
+      final highConfiguration =
+          DatadogLoggerConfiguration(remoteSampleRate: 123.5);
 
-      expect(lowConfiguration.sampleRate, 0);
-      expect(highConfiguration.sampleRate, 100);
+      expect(lowConfiguration.remoteSampleRate, 0);
+      expect(highConfiguration.remoteSampleRate, 100);
+    });
+
+    test('logging configuration is encoded correctly', () {
+      final customEndpoint = randomString();
+      final loggingConfiguration = DatadogLoggingConfiguration(
+        customEndpoint: customEndpoint,
+        eventMapper: (event) => event,
+      );
+
+      final encoded = loggingConfiguration.encode();
+      expect(encoded['customEndpoint'], customEndpoint);
+      expect(encoded['attachLogMapper'], true);
+    });
+
+    test('logger configuraiton is encoded correctly', () {
+      final service = randomString();
+      final remoteLogThreshold = LogLevel.values.randomElement();
+      final bundleWithRum = randomBool();
+      final bundleWithTrace = randomBool();
+      final networkInfoEnabled = randomBool();
+      final logConfiguraiton = DatadogLoggerConfiguration(
+        service: service,
+        remoteLogThreshold: remoteLogThreshold,
+        bundleWithRumEnabled: bundleWithRum,
+        bundleWithTraceEnabled: bundleWithTrace,
+        networkInfoEnabled: networkInfoEnabled,
+        remoteSampleRate: 20.0,
+      );
+
+      final encoded = logConfiguraiton.encode();
+      expect(encoded['service'], service);
+      expect(encoded['remoteLogThreshold'], remoteLogThreshold.toString());
+      expect(encoded['bundleWithRumEnabled'], bundleWithRum);
+      expect(encoded['bundleWithTraceEnabled'], bundleWithTrace);
+      expect(encoded['networkInfoEnabled'], networkInfoEnabled);
+      expect(encoded['remoteSampleRate'], 20.0);
     });
   });
 
-  test('logger samples at configured rate', () {
+  test('logger samples at configured rate', () async {
     final random = Random();
     // Sample rate between 10% and 90%
     final sampleRate = random.nextDouble() * 80 + 10;
@@ -109,8 +159,13 @@ void main() {
       return Future.value();
     });
 
-    final configuration = LoggingConfiguration(sampleRate: sampleRate);
-    final logger = DdLogs(internalLogger, configuration);
+    final config = DatadogLoggingConfiguration();
+    final ddLogs = (await DatadogLogging.enable(mockCore, config))!;
+    final logConfig = DatadogLoggerConfiguration(
+      remoteLogThreshold: LogLevel.debug,
+      remoteSampleRate: sampleRate,
+    );
+    final logger = ddLogs.createLogger(logConfig);
     for (var i = 0; i < 1000; ++i) {
       logger.info(randomString());
     }
@@ -122,26 +177,26 @@ void main() {
   });
 
   group('threshold tests', () {
-    late DdLogs ddLogs;
+    late DatadogLogger logger;
 
     setUp(() {
       when(() =>
               mockPlatform.log(any(), any(), any(), any(), any(), any(), any()))
           .thenAnswer((invocation) => Future<void>.value());
       final config =
-          LoggingConfiguration(datadogReportingThreshold: Verbosity.verbose);
-      ddLogs = DdLogs(internalLogger, config);
+          DatadogLoggerConfiguration(remoteLogThreshold: LogLevel.debug);
+      logger = ddLogs.createLogger(config);
     });
 
     test('threshold set to verbose always calls platform', () async {
       final config =
-          LoggingConfiguration(datadogReportingThreshold: Verbosity.verbose);
-      ddLogs = DdLogs(internalLogger, config);
+          DatadogLoggerConfiguration(remoteLogThreshold: LogLevel.debug);
+      logger = ddLogs.createLogger(config);
 
-      ddLogs.debug('Debug message');
-      ddLogs.info('Info message');
-      ddLogs.warn('Warn message');
-      ddLogs.error('Error message');
+      logger.debug('Debug message');
+      logger.info('Info message');
+      logger.warn('Warn message');
+      logger.error('Error message');
 
       for (var level in [
         LogLevel.debug,
@@ -157,13 +212,13 @@ void main() {
     test('threshold set to middle sends call proper platform methods',
         () async {
       final config =
-          LoggingConfiguration(datadogReportingThreshold: Verbosity.warn);
-      ddLogs = DdLogs(internalLogger, config);
+          DatadogLoggerConfiguration(remoteLogThreshold: LogLevel.warning);
+      logger = ddLogs.createLogger(config);
 
-      ddLogs.debug('Debug message');
-      ddLogs.info('Info message');
-      ddLogs.warn('Warn message');
-      ddLogs.error('Error message');
+      logger.debug('Debug message');
+      logger.info('Info message');
+      logger.warn('Warn message');
+      logger.error('Error message');
 
       for (var level in [
         LogLevel.debug,
@@ -182,15 +237,14 @@ void main() {
       }
     });
 
-    test('threshold set to none does not call platform', () async {
-      final config =
-          LoggingConfiguration(datadogReportingThreshold: Verbosity.none);
-      ddLogs = DdLogs(internalLogger, config);
+    test('sample set to none does not call platform', () async {
+      final config = DatadogLoggerConfiguration(remoteSampleRate: 0.0);
+      logger = ddLogs.createLogger(config);
 
-      ddLogs.debug('Debug message');
-      ddLogs.info('Info message');
-      ddLogs.warn('Warn message');
-      ddLogs.error('Error message');
+      logger.debug('Debug message');
+      logger.info('Info message');
+      logger.warn('Warn message');
+      logger.error('Error message');
 
       for (var level in [
         LogLevel.debug,

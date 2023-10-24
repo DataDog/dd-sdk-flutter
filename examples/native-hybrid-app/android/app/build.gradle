@@ -1,6 +1,6 @@
 
 buildscript {
-    ext.datadog_version = "1.19.2"
+    ext.datadog_version = "2+"
 }
 
 plugins {
@@ -42,8 +42,6 @@ android {
     }
 }
 
-apply from: '../../../../ignore_sr_snapshots.gradle'
-
 dependencies {
     implementation 'androidx.core:core-ktx:1.7.0'
     implementation 'androidx.appcompat:appcompat:1.4.1'
@@ -51,7 +49,10 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
     implementation 'androidx.navigation:navigation-fragment-ktx:2.4.1'
     implementation 'androidx.navigation:navigation-ui-ktx:2.4.1'
-    implementation "com.datadoghq:dd-sdk-android:$datadog_version"
+    implementation "com.datadoghq:dd-sdk-android-rum:$datadog_version"
+    implementation "com.datadoghq:dd-sdk-android-logs:$datadog_version"
+    implementation "com.datadoghq:dd-sdk-android-trace:$datadog_version"
+    implementation "com.datadoghq:dd-sdk-android-ndk:$datadog_version"
     implementation project(':flutter')
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'

@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-
+* First official release.
+* Update to v2.0 of Datadog SDKs.
 
 ## 1.0.0-beta.2
 

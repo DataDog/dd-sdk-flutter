@@ -5,23 +5,44 @@
 
 import Flutter
 import UIKit
-import Datadog
+import DatadogCore
 import DatadogCrashReporting
-import DictionaryCoder
+import DatadogInternal
+import DatadogRUM
+import DatadogLogs
 
-// swiftlint:disable:next type_body_length
-public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
-    struct ConfigurationTelemetryOverrides {
-        var dartVersion: String?
-        var trackViewsManually: Bool = true
-        var trackInteractions: Bool = false
-        var trackErrors: Bool = false
-        var trackNetworkRequests: Bool = false
-        var trackNativeViews: Bool = false
-        var trackCrossPlatformLongTasks: Bool = false
-        var trackFlutterPerformance: Bool = false
+extension Datadog.Configuration {
+    init?(fromEncoded encoded: [String: Any?]) {
+        guard let clientToken: String = try? castUnwrap(encoded["clientToken"]),
+              let env: String = try? castUnwrap(encoded["env"]) else {
+            return nil
+        }
+
+        self.init(
+            clientToken: clientToken,
+            env: env
+        )
+
+        service = try? castUnwrap(encoded["service"])
+
+        if let site = convertOptional(encoded["site"], DatadogSite.parseFromFlutter) {
+            self.site = site
+        }
+        if let batchSize = convertOptional(encoded["batchSize"], Datadog.Configuration.BatchSize.parseFromFlutter) {
+            self.batchSize = batchSize
+        }
+        if let uploadFrequency = convertOptional(encoded["uploadFrequency"],
+                                                 Datadog.Configuration.UploadFrequency.parseFromFlutter) {
+            self.uploadFrequency = uploadFrequency
+        }
+
+        _internal_mutation { config in
+            config.additionalConfiguration = encoded["additionalConfig"] as? [String: Any] ?? [:]
+        }
     }
+}
 
+public class DatadogSdkPlugin: NSObject, FlutterPlugin {
     let channel: FlutterMethodChannel
 
     // NOTE: Although these are instances, they are still registered globally to
@@ -30,7 +51,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     public private(set) var rum: DatadogRumPlugin?
 
     var currentConfiguration: [AnyHashable: Any]?
-    var configurationTelemetryOverrides: ConfigurationTelemetryOverrides = .init()
+    var core: DatadogCoreProtocol?
     var oldConsolePrint: ((String) -> Void)?
 
     public init(channel: FlutterMethodChannel) {
@@ -40,7 +61,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
 
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: registrar.messenger())
-        let instance = SwiftDatadogSdkPlugin(channel: channel)
+        let instance = DatadogSdkPlugin(channel: channel)
         registrar.addMethodCallDelegate(instance, channel: channel)
         registrar.addApplicationDelegate(instance)
         registrar.publish(instance)
@@ -62,20 +83,22 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         case "initialize":
             // swiftlint:disable:next force_cast
             let configArg = arguments["configuration"] as! [String: Any?]
-            if let config = DatadogFlutterConfiguration(fromEncoded: configArg) {
-                if !Datadog.isInitialized {
-                    // Set log callback before initialization so errors in initialization
-                    // get printed
-                    if let setLogCallback = arguments["setLogCallback"] as? Bool,
-                       setLogCallback {
-                        oldConsolePrint = consolePrint
-                        consolePrint = { value in
-                            self.callLogCallback(value)
+            if let config = Datadog.Configuration.init(fromEncoded: configArg),
+               let trackingConsentString: String = try? castUnwrap(arguments["trackingConsent"]) {
+                let trackingConsent = TrackingConsent.parseFromFlutter(trackingConsentString)
+                if !Datadog.isInitialized() {
+                    initialize(configuration: config, trackingConsent: trackingConsent)
+                    currentConfiguration = configArg as [AnyHashable: Any]
+
+                    core?.telemetry.configuration(
+                        dartVersion: arguments["dartVersion"] as? String
+                    )
+
+                    if let crashReportingEnabled = (configArg["nativeCrashReportEnabled"] as? NSNumber)?.boolValue {
+                        if crashReportingEnabled {
+                            CrashReporting.enable()
                         }
                     }
-
-                    initialize(configuration: config)
-                    currentConfiguration = configArg as [AnyHashable: Any]
                 } else {
                     let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
                     if !dict.isEqual(to: currentConfiguration!) {
@@ -85,11 +108,12 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
                         )
                     }
                 }
+                result(nil)
+            } else {
+                result(FlutterError.missingParameter(methodName: call.method))
             }
-            configurationTelemetryOverrides.dartVersion = arguments["dartVersion"] as? String
-            result(nil)
         case "attachToExisting":
-            if Datadog.isInitialized {
+            if Datadog.isInitialized() {
                 let attachResult = attachToExisting()
                 result(attachResult)
             } else {
@@ -100,7 +124,7 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
             }
         case "setSdkVerbosity":
             if let verbosityString = arguments["value"] as? String {
-                let verbosity = LogLevel.parseVerbosityFromFlutter(verbosityString)
+                let verbosity = CoreLoggerLevel.parseFromFlutter(verbosityString)
                 Datadog.verbosityLevel = verbosity
                 result(nil)
             } else {
@@ -174,62 +198,8 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
         }
     }
 
-    internal func initialize(configuration: DatadogFlutterConfiguration) {
-        let ddConfiguration = configuration.toDdConfigBuilder()
-
-        if configuration.attachLogMapper {
-            _ = ddConfiguration._internal.setLogEventMapper(FlutterLogEventMapper(channel: channel))
-        }
-
-        if configuration.rumConfiguration?.attachViewEventMapper == true {
-            _ = ddConfiguration.setRUMViewEventMapper(DatadogRumPlugin.instance.viewEventMapper)
-        }
-        if configuration.rumConfiguration?.attachActionEventMapper == true {
-            _ = ddConfiguration.setRUMActionEventMapper(DatadogRumPlugin.instance.actionEventMapper)
-        }
-        if configuration.rumConfiguration?.attachResourceEventMapper == true {
-            _ = ddConfiguration.setRUMResourceEventMapper(DatadogRumPlugin.instance.resourceEventMapper)
-        }
-        if configuration.rumConfiguration?.attachErrorEventMapper == true {
-            _ = ddConfiguration.setRUMErrorEventMapper(DatadogRumPlugin.instance.errorEventMapper)
-        }
-        if configuration.rumConfiguration?.attachLongTaskMapper == true {
-            _ = ddConfiguration.setRUMLongTaskEventMapper(DatadogRumPlugin.instance.longTaskEventMapper)
-        }
-
-        Datadog.initialize(appContext: Datadog.AppContext(),
-                           trackingConsent: configuration.trackingConsent,
-                           configuration: ddConfiguration.build())
-
-        if let rumConfiguration = configuration.rumConfiguration {
-            rum = DatadogRumPlugin.instance
-            rum?.initialize(configuration: rumConfiguration)
-
-            if configuration.additionalConfig["_dd.track_mapper_performance"] as? Bool == true {
-                rum?.trackMapperPerf = true
-            }
-        }
-
-        Datadog._internal.telemetry.setConfigurationMapper { [weak self] event in
-            guard let self = self else {
-                return event
-            }
-
-            // Supply configuration overrides
-            var event = event
-            var configuration = event.telemetry.configuration
-            configuration.trackViewsManually = self.configurationTelemetryOverrides.trackViewsManually
-            configuration.trackInteractions = self.configurationTelemetryOverrides.trackInteractions
-            configuration.trackErrors = self.configurationTelemetryOverrides.trackErrors
-            configuration.trackNetworkRequests = self.configurationTelemetryOverrides.trackNetworkRequests
-            configuration.trackNativeViews = self.configurationTelemetryOverrides.trackNativeViews
-            configuration.trackCrossPlatformLongTasks = self.configurationTelemetryOverrides.trackCrossPlatformLongTasks
-            configuration.trackFlutterPerformance = self.configurationTelemetryOverrides.trackFlutterPerformance
-            configuration.dartVersion = self.configurationTelemetryOverrides.dartVersion
-            event.telemetry.configuration = configuration
-
-            return event
-        }
+    internal func initialize(configuration: Datadog.Configuration, trackingConsent: TrackingConsent) {
+        core = Datadog.initialize(with: configuration, trackingConsent: trackingConsent)
     }
 
     private func updateTelemetryConfiguration(arguments: [String: Any]) {
@@ -241,19 +211,33 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
            let value = value as? Bool {
             switch option {
             case "trackViewsManually":
-                configurationTelemetryOverrides.trackViewsManually = value
+                core?.telemetry.configuration(
+                    trackViewsManually: value
+                )
             case "trackInteractions":
-                configurationTelemetryOverrides.trackInteractions = value
+                core?.telemetry.configuration(
+                    trackInteractions: value
+                )
             case "trackErrors":
-                configurationTelemetryOverrides.trackErrors = value
+                core?.telemetry.configuration(
+                    trackErrors: value
+                )
             case "trackNetworkRequests":
-                configurationTelemetryOverrides.trackNetworkRequests = value
+                core?.telemetry.configuration(
+                    trackNetworkRequests: value
+                )
             case "trackNativeViews":
-                configurationTelemetryOverrides.trackNativeViews = value
+                core?.telemetry.configuration(
+                    trackNativeViews: value
+                )
             case "trackCrossPlatformLongTasks":
-                configurationTelemetryOverrides.trackCrossPlatformLongTasks = value
+                core?.telemetry.configuration(
+                    trackCrossPlatformLongTasks: value
+                )
             case "trackFlutterPerformance":
-                configurationTelemetryOverrides.trackFlutterPerformance = value
+                core?.telemetry.configuration(
+                    trackFlutterPerformance: value
+                )
             default:
                 wasValid = false
             }
@@ -314,19 +298,27 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
 
     private func attachToExisting() -> [String: Any?] {
         var rumEnabled = false
-        if Global.rum is RUMMonitor {
+        var logsEnabled = false
+
+        core = Datadog.sdkInstance(named: CoreRegistry.defaultInstanceName)
+        if Logs._internal.isEnabled() {
+            logs = DatadogLogsPlugin.instance
+            logsEnabled = true
+        }
+
+        if RUM._internal.isEnabled() {
             rum = DatadogRumPlugin.instance
-            rum?.attachToExisting(rumInstance: Global.rum)
+            rum?.attachToExisting(rumInstance: RUMMonitor.shared())
             rumEnabled = true
         }
 
         return [
+            "loggingEnabled": logsEnabled,
             "rumEnabled": rumEnabled
         ]
     }
 
-    // This is a way to work around https://github.com/flutter/flutter/issues/126671,
-    //
+    // This is a way to work around https://github.com/flutter/flutter/issues/126671
     private func callLogCallback(_ value: String) {
         // Dispatch to the main thread. This is partially to combat Flutter shutdown
         // occuring while we're still processing events
@@ -346,59 +338,21 @@ public class SwiftDatadogSdkPlugin: NSObject, FlutterPlugin {
     }
 }
 
-struct FlutterLogEventMapper: LogEventMapper {
-    static let reservedAttributeNames: Set<String> = [
-        "host", "message", "status", "service", "source", "ddtags",
-        "dd.trace_id", "dd.span_id",
-        "application_id", "session_id", "view.id", "user_action.id"
-    ]
-
-    let channel: FlutterMethodChannel
-
-    public init(channel: FlutterMethodChannel) {
-        self.channel = channel
+extension FlutterError {
+    public enum DdErrorCodes {
+        static let contractViolation = "DatadogSdk:ContractViolation"
+        static let invalidOperation = "DatadogSdk:InvalidOperation"
     }
 
-    func map(event: LogEvent, callback: @escaping (LogEvent) -> Void) {
-        guard let encoded = logEventToFlutterDictionary(event: event) else {
-            // TELEMETRY
-            callback(event)
-            return
-        }
+    static func missingParameter(methodName: String) -> FlutterError {
+        return FlutterError(code: DdErrorCodes.contractViolation,
+                            message: "Missing parameter in call to \(methodName)",
+                            details: nil)
+    }
 
-        channel.invokeMethod("mapLogEvent", arguments: ["event": encoded]) { result in
-            guard let result = result as? [String: Any] else {
-                // Don't call the callback, this event was discarded
-                return
-            }
-
-            if result["_dd.mapper_error"] != nil {
-                // Error in the mapper, return the unmapped event
-                callback(event)
-            }
-
-            // Don't bother to decode, just pull modifiable properties straight from the
-            // dictionary.
-            var event = event
-            if let message = result["message"] as? String {
-                event.message = message
-            }
-            if let tags = result["ddtags"] as? String {
-                let splitTags = tags.split(separator: ",").map { String($0) }
-                event.tags = splitTags
-            }
-
-            // Go through all remaining attributes and add them on to the user
-            // attibutes so long as they aren't reserved
-            event.attributes.userAttributes.removeAll()
-            for (key, value) in result {
-                if FlutterLogEventMapper.reservedAttributeNames.contains(key) {
-                    continue
-                }
-                event.attributes.userAttributes[key] = castAnyToEncodable(value)
-            }
-
-            callback(event)
-        }
+    static func invalidOperation(message: String) -> FlutterError {
+        return FlutterError(code: DdErrorCodes.invalidOperation,
+                            message: message,
+                            details: nil)
     }
 }

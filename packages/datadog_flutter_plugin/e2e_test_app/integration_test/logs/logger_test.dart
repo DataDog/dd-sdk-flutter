@@ -59,8 +59,10 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_debug_logs,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - debug logs', (tester) async {
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+
     await measure('flutter_log_debug_logs', () {
-      datadog.logs?.debug('fake message', attributes: {
+      logger?.debug('fake message', attributes: {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem
       });
@@ -86,8 +88,10 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_info_logs,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - info logs', (tester) async {
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+
     await measure('flutter_log_info_logs', () async {
-      datadog.logs?.info('fake info message', attributes: {
+      logger?.info('fake info message', attributes: {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem,
       });
@@ -113,8 +117,10 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_warn_logs,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - warn logs', (tester) async {
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+
     await measure('flutter_log_warn_logs', () async {
-      datadog.logs?.warn('fake warn message', attributes: {
+      logger?.warn('fake warn message', attributes: {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem,
       });
@@ -140,8 +146,10 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_error_logs,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - error logs', (tester) async {
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+
     await measure('flutter_log_error_logs', () async {
-      datadog.logs?.error('fake error message', attributes: {
+      logger?.error('fake error message', attributes: {
         'test_method_name': tester.testDescription,
         'operating_system': Platform.operatingSystem,
       });
@@ -167,13 +175,15 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_add_string_attribute,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - add string attribute', (tester) async {
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+
     final attributeValue = 'customAttribute' + randomString();
     await measure('flutter_log_add_string_attribute', () async {
-      datadog.logs?.addAttribute(specialStringAttributeKey, attributeValue);
+      logger?.addAttribute(specialStringAttributeKey, attributeValue);
     });
 
-    sendRandomLog(tester);
-    datadog.logs?.removeAttribute(specialStringAttributeKey);
+    sendRandomLog(logger, tester);
+    logger?.removeAttribute(specialStringAttributeKey);
   });
 
   /// ```global
@@ -195,13 +205,15 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_add_int_attribute,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - add int attribute', (tester) async {
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+
     final attributeValue = random.nextInt(10000) + 11;
     await measure('flutter_log_add_int_attribute', () async {
-      datadog.logs?.addAttribute(specialIntAttributeKey, attributeValue);
+      logger?.addAttribute(specialIntAttributeKey, attributeValue);
     });
 
-    sendRandomLog(tester);
-    datadog.logs?.removeAttribute(specialIntAttributeKey);
+    sendRandomLog(logger, tester);
+    logger?.removeAttribute(specialIntAttributeKey);
   });
 
   /// ```global
@@ -223,13 +235,15 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_add_double_attribute,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - add double attribute', (tester) async {
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+
     final attributeValue = random.nextDouble() * double.maxFinite;
     await measure('flutter_log_add_double_attribute', () async {
-      datadog.logs?.addAttribute(specialDoubleAttributeKey, attributeValue);
+      logger?.addAttribute(specialDoubleAttributeKey, attributeValue);
     });
 
-    sendRandomLog(tester);
-    datadog.logs?.removeAttribute(specialDoubleAttributeKey);
+    sendRandomLog(logger, tester);
+    logger?.removeAttribute(specialDoubleAttributeKey);
   });
 
   /// ```global
@@ -251,13 +265,15 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_add_bool_attribute,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - add bool attribute', (tester) async {
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+
     final attributeValue = random.nextInt(100) < 50 ? true : false;
     await measure('flutter_log_add_bool_attribute', () async {
-      datadog.logs?.addAttribute(specialBoolAttributeKey, attributeValue);
+      logger?.addAttribute(specialBoolAttributeKey, attributeValue);
     });
 
-    sendRandomLog(tester);
-    datadog.logs?.removeAttribute(specialBoolAttributeKey);
+    sendRandomLog(logger, tester);
+    logger?.removeAttribute(specialBoolAttributeKey);
   });
 
   /// ```global
@@ -279,13 +295,15 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_add_tag_value,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - add tag value', (tester) async {
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+
     final tagValue = 'customTag' + randomString();
     await measure('flutter_log_add_tag_value', () async {
-      datadog.logs?.addTag(specialTagKey, tagValue);
+      logger?.addTag(specialTagKey, tagValue);
     });
 
-    sendRandomLog(tester);
-    datadog.logs?.removeTagWithKey(specialTagKey);
+    sendRandomLog(logger, tester);
+    logger?.removeTagWithKey(specialTagKey);
   });
 
   /// ```global
@@ -307,11 +325,12 @@ void main() {
   /// $monitor_query = "avg(last_1d):p50:trace.perf_measure{env:instrumentation,@operating_system:${{variant}},resource_name:flutter_log_add_tag,service:${{service}}} > 0.024"
   /// ```
   testWidgets('logger - add tag', (tester) async {
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
     await measure('flutter_log_add_tag', () async {
-      datadog.logs?.addTag(specialTagKey);
+      logger?.addTag(specialTagKey);
     });
 
-    sendRandomLog(tester);
-    datadog.logs?.removeTag(specialTagKey);
+    sendRandomLog(logger, tester);
+    logger?.removeTag(specialTagKey);
   });
 }
