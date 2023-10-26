@@ -247,7 +247,11 @@ void main() {
 
     expect(datadogSdk.firstPartyHosts.length, 2);
     expect(datadogSdk.firstPartyHosts[0].hostName, 'example.com');
+    expect(datadogSdk.firstPartyHosts[0].headerTypes,
+        {TracingHeaderType.datadog, TracingHeaderType.tracecontext});
     expect(datadogSdk.firstPartyHosts[1].hostName, 'datadoghq.com');
+    expect(datadogSdk.firstPartyHosts[1].headerTypes,
+        {TracingHeaderType.datadog, TracingHeaderType.tracecontext});
   });
 
   test('attachToExisting with loggingEnabled creates Logging bridge', () async {
@@ -303,11 +307,11 @@ void main() {
 
     expect(datadogSdk.firstPartyHosts.length, 2);
     expect(datadogSdk.firstPartyHosts[0].hostName, 'example.com');
-    expect(
-        datadogSdk.firstPartyHosts[0].headerTypes, {TracingHeaderType.datadog});
+    expect(datadogSdk.firstPartyHosts[0].headerTypes,
+        {TracingHeaderType.datadog, TracingHeaderType.tracecontext});
     expect(datadogSdk.firstPartyHosts[1].hostName, 'datadoghq.com');
-    expect(
-        datadogSdk.firstPartyHosts[1].headerTypes, {TracingHeaderType.datadog});
+    expect(datadogSdk.firstPartyHosts[1].headerTypes,
+        {TracingHeaderType.datadog, TracingHeaderType.tracecontext});
   });
 
   test('first party hosts with tracing headers set to sdk', () async {
@@ -346,8 +350,8 @@ void main() {
     expect(datadogSdk.firstPartyHosts[0].hostName, 'example.com');
     expect(datadogSdk.firstPartyHosts[0].headerTypes, {TracingHeaderType.b3});
     expect(datadogSdk.firstPartyHosts[1].hostName, 'datadoghq.com');
-    expect(
-        datadogSdk.firstPartyHosts[1].headerTypes, {TracingHeaderType.datadog});
+    expect(datadogSdk.firstPartyHosts[1].headerTypes,
+        {TracingHeaderType.datadog, TracingHeaderType.tracecontext});
   });
 
   test('headerTypesForHost with no hosts returns empty set', () async {
@@ -375,7 +379,8 @@ void main() {
     await datadogSdk.initialize(configuration, TrackingConsent.pending);
 
     var uri = Uri.parse('https://datadoghq.com/path');
-    expect(datadogSdk.headerTypesForHost(uri), {TracingHeaderType.datadog});
+    expect(datadogSdk.headerTypesForHost(uri),
+        {TracingHeaderType.datadog, TracingHeaderType.tracecontext});
   });
 
   test(
@@ -392,7 +397,8 @@ void main() {
     await datadogSdk.initialize(configuration, TrackingConsent.pending);
 
     var uri = Uri.parse('https://test.datadoghq.com/path');
-    expect(datadogSdk.headerTypesForHost(uri), {TracingHeaderType.datadog});
+    expect(datadogSdk.headerTypesForHost(uri),
+        {TracingHeaderType.datadog, TracingHeaderType.tracecontext});
   });
 
   test('headerTypesForHost with matching subdomain does not match root',

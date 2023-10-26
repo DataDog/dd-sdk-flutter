@@ -519,5 +519,52 @@ void main() {
       expect(capturedB.url, testUriB);
       verifyHeaders(capturedB.headers, TracingHeaderType.b3);
     });
+
+    test('different tracing headers are same trace id', () async {
+      // Given
+      when(() => mockDatadog
+              .headerTypesForHost(any(that: HasHost(equals('test_url_a')))))
+          .thenReturn(
+              {TracingHeaderType.datadog, TracingHeaderType.tracecontext});
+
+      // When
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+      );
+      final testUri = Uri.parse('https://test_url_a/test');
+      await client.get(testUri);
+
+      // Then
+      final callAttributes = verify(() => mockRum.startResource(
+              any(), RumHttpMethod.get, testUri.toString(), captureAny()))
+          .captured[0] as Map<String, Object?>;
+
+      final traceValue = callAttributes['_dd.trace_id'] as String?;
+      final traceInt = traceValue != null ? BigInt.tryParse(traceValue) : null;
+      expect(traceInt, isNotNull);
+      expect(traceInt?.bitLength, lessThanOrEqualTo(63));
+
+      final spanValue = callAttributes['_dd.span_id'] as String?;
+      final spanInt = spanValue != null ? BigInt.tryParse(spanValue) : null;
+      expect(spanInt, isNotNull);
+      expect(spanInt?.bitLength, lessThanOrEqualTo(63));
+
+      final captured = verify(() => mockClient.send(captureAny())).captured[0]
+          as http.BaseRequest;
+
+      final datadogTraceInt =
+          BigInt.tryParse(captured.headers['x-datadog-trace-id']!);
+      expect(traceInt, datadogTraceInt);
+      final datadogSpanInt =
+          BigInt.tryParse(captured.headers['x-datadog-parent-id']!);
+      expect(spanInt, datadogSpanInt);
+
+      final tracecontextParts = captured.headers['traceparent']!.split('-');
+      final contextTraceInt = BigInt.tryParse(tracecontextParts[1], radix: 16);
+      expect(traceInt, contextTraceInt);
+      final contextSpanInt = BigInt.tryParse(tracecontextParts[2], radix: 16);
+      expect(spanInt, contextSpanInt);
+    });
   });
 }
