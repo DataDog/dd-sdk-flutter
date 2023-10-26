@@ -362,14 +362,16 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         let semaphore = DispatchSemaphore(value: 0)
 
         mainThreadMapperPerf.start()
-        methodChannel.invokeMethod(mapperName, arguments: ["event": encodedEvent]) { result in
-            if result == nil {
-                encodedResult = nil
-            } else if let result = result as? [String: Any] {
-                encodedResult = result
-            }
+        DispatchQueue.main.async {
+            methodChannel.invokeMethod(mapperName, arguments: ["event": encodedEvent]) { result in
+                if result == nil {
+                    encodedResult = nil
+                } else if let result = result as? [String: Any] {
+                    encodedResult = result
+                }
 
-            semaphore.signal()
+                semaphore.signal()
+            }
         }
 
         if semaphore.wait(timeout: .now() + DispatchTimeInterval.milliseconds(500)) == .timedOut {
