@@ -42,6 +42,7 @@ class OTelHttpTracingHeaders {
 
 class W3CTracingHeaders {
   static const traceparent = 'traceparent';
+  static const tracestate = 'tracestate';
 }
 
 enum TraceIdRepresentation {
@@ -194,13 +195,18 @@ Map<String, String> getTracingHeaders(
       }
       break;
     case TracingHeaderType.tracecontext:
-      final headerValue = [
+      final parentHeaderValue = [
         '00', // Version Code
         context.traceId.asString(TraceIdRepresentation.hex32Chars),
         context.spanId.asString(TraceIdRepresentation.hex16Chars),
         context.sampled ? '01' : '00'
       ].join('-');
-      headers[W3CTracingHeaders.traceparent] = headerValue;
+      final stateHeaderValue = [
+        's:$sampledString',
+        'o:rum',
+      ].join(';');
+      headers[W3CTracingHeaders.traceparent] = parentHeaderValue;
+      headers[W3CTracingHeaders.tracestate] = stateHeaderValue;
       break;
   }
 
