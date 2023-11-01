@@ -9,14 +9,21 @@ library ddrum_flutter_web;
 import 'package:js/js.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import '../../datadog_internal.dart';
 import '../logs/ddweb_helpers.dart';
 import '../web_helpers.dart';
 import 'ddrum_platform_interface.dart';
 
 class DdRumWeb extends DdRumPlatform {
   // Because Web needs the full SDK configuration, we have a separate init method
-  void webInitialize(DatadogConfiguration configuration,
-      DatadogRumConfiguration rumConfiguration) {
+  void initialize(DatadogConfiguration configuration,
+      DatadogRumConfiguration rumConfiguration, InternalLogger logger) {
+    bool trackResources =
+        configuration.additionalConfig[trackResourcesConfigKey] == true;
+
+    final sanitizedFirstPartyHosts = FirstPartyHost.createSanitized(
+        configuration.firstPartyHostsWithTracingHeaders, logger);
+
     init(_RumInitOptions(
       applicationId: rumConfiguration.applicationId,
       clientToken: configuration.clientToken,
@@ -27,8 +34,16 @@ class DdRumWeb extends DdRumPlatform {
       env: configuration.env,
       version: configuration.versionTag,
       proxy: rumConfiguration.customEndpoint,
-      // allowedTracingOrigins: configuration.firstPartyHosts,
+      allowedTracingUrls: [
+        for (final host in sanitizedFirstPartyHosts)
+          _TracingUrl(
+            match: host.regExp,
+            propagatorTypes:
+                host.headerTypes.map(_headerTypeToPropagatorType).toList(),
+          )
+      ],
       trackViewsManually: true,
+      trackResources: trackResources,
       trackFrustrations: rumConfiguration.trackFrustrations,
       trackLongTasks: rumConfiguration.detectLongTasks,
       enableExperimentalFeatures: ['feature_flags'],
@@ -161,6 +176,31 @@ class DdRumWeb extends DdRumPlatform {
   }
 }
 
+String _headerTypeToPropagatorType(TracingHeaderType type) {
+  switch (type) {
+    case TracingHeaderType.datadog:
+      return 'datadog';
+    case TracingHeaderType.b3:
+      return 'b3';
+    case TracingHeaderType.b3multi:
+      return 'b3multi';
+    case TracingHeaderType.tracecontext:
+      return 'tracecontext';
+  }
+}
+
+@JS()
+@anonymous
+class _TracingUrl {
+  external RegExp match;
+  external List<String> propagatorTypes;
+
+  external factory _TracingUrl({
+    RegExp match,
+    List<String> propagatorTypes,
+  });
+}
+
 @JS()
 @anonymous
 class _RumInitOptions {
@@ -179,7 +219,7 @@ class _RumInitOptions {
   external num? get sessionReplaySampleRate;
   external bool? get silentMultipleInit;
   external String? get proxy;
-  external List<String> get allowedTracingUrls;
+  external List<dynamic> get allowedTracingUrls;
   external List<String> get enableExperimentalFeatures;
 
   external factory _RumInitOptions({
@@ -189,6 +229,7 @@ class _RumInitOptions {
     String? service,
     String? env,
     String? version,
+    bool? trackResources,
     bool? trackViewsManually,
     bool? trackUserInteractions,
     bool? trackFrustrations,
@@ -198,7 +239,7 @@ class _RumInitOptions {
     num? sessionReplaySampleRate,
     bool? silentMultipleInit,
     String? proxy,
-    List<String> allowedTracingUrls,
+    List<dynamic> allowedTracingUrls,
     List<String> enableExperimentalFeatures,
   });
 }

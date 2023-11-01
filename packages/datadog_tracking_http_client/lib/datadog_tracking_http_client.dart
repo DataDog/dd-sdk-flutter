@@ -6,6 +6,7 @@
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 
 import 'src/tracking_http_client_plugin.dart'
     show DdHttpTrackingPluginConfiguration, DatadogTrackingHttpClientListener;
@@ -44,6 +45,7 @@ extension TrackingExtension on DatadogConfiguration {
   /// See also [DatadogConfiguration.firstPartyHostsWithTracingHeaders],
   /// [DatadogConfiguration.firstPartyHosts], [TracingHeaderType]
   void enableHttpTracking({DatadogTrackingHttpClientListener? clientListener}) {
+    additionalConfig[trackResourcesConfigKey] = true;
     addPlugin(
         DdHttpTrackingPluginConfiguration(clientListener: clientListener));
   }
