@@ -7,6 +7,7 @@ Release 2.0 introduces breaking changes. Follow the [Migration Guide](MIGRATING.
 * Update to v2.0 of Datadog SDKs.
 * Update UUID to ^4.0. See [#472]
 * Change default tracing headers for first party hosts to use both Datadog headers and W3C tracecontext headers.
+* Fix automatic resource tracking for Flutter Web
 
 ## 1.6.0
 

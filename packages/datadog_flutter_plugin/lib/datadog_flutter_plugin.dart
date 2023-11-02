@@ -60,6 +60,8 @@ class DatadogSdk {
   }
 
   bool _initialized = false;
+  DatadogConfiguration? _configuration;
+  DatadogConfiguration? get configuration => _configuration;
 
   DatadogLogging? _logs;
   DatadogLogging? get logs => _logs;
