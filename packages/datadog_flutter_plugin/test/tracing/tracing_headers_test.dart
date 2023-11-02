@@ -118,9 +118,11 @@ void main() {
         context.traceId.asString(TraceIdRepresentation.hex32Chars);
     final spanString =
         context.spanId.asString(TraceIdRepresentation.hex16Chars);
-    final expectedHeader = '00-$traceString-$spanString-01';
+    final expectedParentHeader = '00-$traceString-$spanString-01';
+    const expectedStateHeader = 's:1;o:rum';
 
-    expect(headers['traceparent'], expectedHeader);
+    expect(headers['traceparent'], expectedParentHeader);
+    expect(headers['tracestate'], expectedStateHeader);
   });
 
   test('traceparent tracing headers are generated correctly { unsampled }', () {
@@ -132,8 +134,10 @@ void main() {
         context.traceId.asString(TraceIdRepresentation.hex32Chars);
     final spanString =
         context.spanId.asString(TraceIdRepresentation.hex16Chars);
-    final expectedHeader = '00-$traceString-$spanString-00';
+    final expectedParentHeader = '00-$traceString-$spanString-00';
+    const expectedStateHeader = 's:0;o:rum';
 
-    expect(headers['traceparent'], expectedHeader);
+    expect(headers['traceparent'], expectedParentHeader);
+    expect(headers['tracestate'], expectedStateHeader);
   });
 }

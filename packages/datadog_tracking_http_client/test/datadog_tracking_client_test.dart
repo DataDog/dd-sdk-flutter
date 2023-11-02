@@ -94,6 +94,15 @@ void main() {
         traceInt = BigInt.tryParse(headerParts[1], radix: 16);
         spanInt = BigInt.tryParse(headerParts[2], radix: 16);
         expect(headerParts[3], '01');
+        final stateHeader = headers['tracestate']!;
+        final stateParts = stateHeader.split(';').fold<Map<String, String>>({},
+            (Map<String, String> value, element) {
+          final split = element.split(':');
+          value[split[0]] = split[1];
+          return value;
+        });
+        expect(stateParts['s'], '1');
+        expect(stateParts['o'], 'rum');
         break;
     }
 

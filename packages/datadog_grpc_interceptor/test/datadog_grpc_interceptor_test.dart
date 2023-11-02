@@ -65,12 +65,21 @@ void main() {
         spanInt = BigInt.tryParse(metadata['x-b3-spanid'] ?? '', radix: 16);
         break;
       case TracingHeaderType.tracecontext:
-        var header = metadata['traceparent']!;
-        var headerParts = header.split('-');
+        var parentHeader = metadata['traceparent']!;
+        var headerParts = parentHeader.split('-');
         expect(headerParts[0], '00');
         traceInt = BigInt.tryParse(headerParts[1], radix: 16);
         spanInt = BigInt.tryParse(headerParts[2], radix: 16);
         expect(headerParts[3], sampled ? '01' : '00');
+        final stateHeader = metadata['tracestate']!;
+        final stateParts = stateHeader.split(';').fold<Map<String, String>>({},
+            (Map<String, String> value, element) {
+          final split = element.split(':');
+          value[split[0]] = split[1];
+          return value;
+        });
+        expect(stateParts['s'], sampled ? '1' : '0');
+        expect(stateParts['o'], 'rum');
         break;
     }
 
