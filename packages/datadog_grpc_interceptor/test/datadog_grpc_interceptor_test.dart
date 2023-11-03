@@ -4,6 +4,7 @@
 
 import 'dart:io';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_grpc_interceptor/datadog_grpc_interceptor.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,13 +72,9 @@ void main() {
         traceInt = BigInt.tryParse(headerParts[1], radix: 16);
         spanInt = BigInt.tryParse(headerParts[2], radix: 16);
         expect(headerParts[3], sampled ? '01' : '00');
+
         final stateHeader = metadata['tracestate']!;
-        final stateParts = stateHeader.split(';').fold<Map<String, String>>({},
-            (Map<String, String> value, element) {
-          final split = element.split(':');
-          value[split[0]] = split[1];
-          return value;
-        });
+        final stateParts = getDdTraceState(stateHeader);
         expect(stateParts['s'], sampled ? '1' : '0');
         expect(stateParts['o'], 'rum');
         break;
