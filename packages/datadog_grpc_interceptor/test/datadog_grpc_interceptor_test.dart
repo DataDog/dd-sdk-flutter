@@ -77,6 +77,7 @@ void main() {
         final stateParts = getDdTraceState(stateHeader);
         expect(stateParts['s'], sampled ? '1' : '0');
         expect(stateParts['o'], 'rum');
+        expect(stateParts['p'], headerParts[2]);
         break;
     }
 

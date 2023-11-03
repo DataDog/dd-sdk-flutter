@@ -119,7 +119,7 @@ void main() {
     final spanString =
         context.spanId.asString(TraceIdRepresentation.hex16Chars);
     final expectedParentHeader = '00-$traceString-$spanString-01';
-    const expectedStateHeader = 'dd=s:1;o:rum';
+    final expectedStateHeader = 'dd=s:1;o:rum;p:$spanString';
 
     expect(headers['traceparent'], expectedParentHeader);
     expect(headers['tracestate'], expectedStateHeader);
@@ -135,7 +135,7 @@ void main() {
     final spanString =
         context.spanId.asString(TraceIdRepresentation.hex16Chars);
     final expectedParentHeader = '00-$traceString-$spanString-00';
-    const expectedStateHeader = 'dd=s:0;o:rum';
+    final expectedStateHeader = 'dd=s:0;o:rum;p:$spanString';
 
     expect(headers['traceparent'], expectedParentHeader);
     expect(headers['tracestate'], expectedStateHeader);
