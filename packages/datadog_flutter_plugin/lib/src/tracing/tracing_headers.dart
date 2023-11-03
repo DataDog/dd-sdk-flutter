@@ -206,7 +206,7 @@ Map<String, String> getTracingHeaders(
         'o:rum',
       ].join(';');
       headers[W3CTracingHeaders.traceparent] = parentHeaderValue;
-      headers[W3CTracingHeaders.tracestate] = stateHeaderValue;
+      headers[W3CTracingHeaders.tracestate] = 'dd=$stateHeaderValue';
       break;
   }
 

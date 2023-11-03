@@ -5,7 +5,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:datadog_common_test/uri_matchers.dart';
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_tracking_http_client/src/tracking_http_client.dart';
@@ -172,14 +172,10 @@ void main() {
         traceInt = BigInt.tryParse(headerParts[1], radix: 16);
         spanInt = BigInt.tryParse(headerParts[2], radix: 16);
         expect(headerParts[3], '01');
-        var stateHeader = verify(() => headers.add('tracestate', captureAny()))
-            .captured[0] as String;
-        final stateParts = stateHeader.split(';').fold<Map<String, String>>({},
-            (Map<String, String> value, element) {
-          final split = element.split(':');
-          value[split[0]] = split[1];
-          return value;
-        });
+        final stateHeader =
+            verify(() => headers.add('tracestate', captureAny())).captured[0]
+                as String;
+        final stateParts = getDdTraceState(stateHeader);
         expect(stateParts['s'], '1');
         expect(stateParts['o'], 'rum');
         break;
