@@ -195,15 +195,18 @@ Map<String, String> getTracingHeaders(
       }
       break;
     case TracingHeaderType.tracecontext:
+      final spanString =
+          context.spanId.asString(TraceIdRepresentation.hex16Chars);
       final parentHeaderValue = [
         '00', // Version Code
         context.traceId.asString(TraceIdRepresentation.hex32Chars),
-        context.spanId.asString(TraceIdRepresentation.hex16Chars),
+        spanString,
         context.sampled ? '01' : '00'
       ].join('-');
       final stateHeaderValue = [
         's:$sampledString',
         'o:rum',
+        'p:$spanString',
       ].join(';');
       headers[W3CTracingHeaders.traceparent] = parentHeaderValue;
       headers[W3CTracingHeaders.tracestate] = 'dd=$stateHeaderValue';

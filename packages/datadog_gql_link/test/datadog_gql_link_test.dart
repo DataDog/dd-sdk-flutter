@@ -5,7 +5,6 @@
 import 'dart:async';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
-import 'package:datadog_common_test/uri_matchers.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_gql_link/datadog_gql_link.dart';
@@ -824,6 +823,7 @@ void verifyHeaders(
       final stateParts = getDdTraceState(stateHeader);
       expect(stateParts['s'], shouldSample ? '1' : '0');
       expect(stateParts['o'], 'rum');
+      expect(stateParts['p'], headerParts[2]);
       break;
   }
 
