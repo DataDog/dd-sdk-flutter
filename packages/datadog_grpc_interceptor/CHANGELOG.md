@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.0
 
 * First official release.
 * Update to v2.0 of Datadog SDKs.
