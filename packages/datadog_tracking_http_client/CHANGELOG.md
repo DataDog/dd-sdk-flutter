@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+
+
+## 2.0.0
+
 * Update to v2.0 of Datadog SDKs
 
 ## 1.4.0
