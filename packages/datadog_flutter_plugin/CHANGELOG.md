@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+
+
+## 2.0.0
+
 Release 2.0 introduces breaking changes. Follow the [Migration Guide](MIGRATING.md) to upgrade from 1.x
 
 * Update to v2.0 of Datadog SDKs.

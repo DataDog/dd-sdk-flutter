@@ -8,10 +8,10 @@ Datadog RUM SDK versions >= 1.4 support monitoring for Flutter 3.0+.
 ## Current Datadog SDK Versions
 
 [//]: # (SDK Table)
-
+        
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 1.19.0 | 1.19.1 | 5.x.x |
+| 2.4.0 | 2.2.0 | 4.x.x |
 
 [//]: # (End SDK Table)
 
