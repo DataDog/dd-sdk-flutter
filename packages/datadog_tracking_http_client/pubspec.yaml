@@ -1,6 +1,6 @@
 name: datadog_tracking_http_client
 description: A wrapping implementation of HttpClient for tracking resources with Datadog
-version: 2.0.0
+version: 2.0.1
 repository: https://github.com/DataDog/dd-sdk-flutter
 homepage: https://datadoghq.com
 
