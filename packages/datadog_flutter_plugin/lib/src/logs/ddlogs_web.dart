@@ -53,6 +53,11 @@ class DdLogsWeb extends DdLogsPlatform {
   }
 
   @override
+  Future<void> destroyLogger(String loggerHandle) async {
+    _activeLoggers.remove(loggerHandle);
+  }
+
+  @override
   Future<void> addAttribute(
       String loggerHandle, String key, Object value) async {
     final logger = _activeLoggers[loggerHandle];
