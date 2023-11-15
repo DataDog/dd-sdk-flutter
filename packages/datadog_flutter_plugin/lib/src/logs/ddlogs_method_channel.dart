@@ -40,6 +40,13 @@ class DdLogsMethodChannel extends DdLogsPlatform {
   }
 
   @override
+  Future<void> destroyLogger(String loggerHandle) {
+    return methodChannel.invokeMethod('destroyLogger', {
+      'loggerHandle': loggerHandle,
+    });
+  }
+
+  @override
   Future<void> log(
       String loggerHandle,
       LogLevel level,

@@ -116,6 +116,10 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         }
 
         switch call.method {
+        case "destroyLogger":
+            loggerRegistry.removeValue(forKey: loggerHandle)
+            result(nil)
+
         case "log":
             if let message = arguments["message"] as? String,
                 let levelString = arguments["logLevel"] as? String {

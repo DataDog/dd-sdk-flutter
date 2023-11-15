@@ -163,6 +163,30 @@ class DatadogLogsPluginTests: XCTestCase {
         XCTAssertNotNil(log)
     }
 
+    func testLogs_DestroyLogger_RemovesLoggerWithHandle() {
+        // Given
+        let createCall = FlutterMethodCall(methodName: "createLogger", arguments: [
+            "loggerHandle": "fake-uuid",
+            "configuration": defaultConfigArgs()
+        ] as [String: Any])
+        plugin.handle(createCall) { _ in }
+
+        // When
+        let destroyCall = FlutterMethodCall(methodName: "destroyLogger", arguments: [
+            "loggerHandle": "fake-uuid"
+        ] as [String: Any])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(destroyCall) { result in
+            resultStatus = .called(value: result)
+        }
+
+        XCTAssertEqual(resultStatus, .called(value: nil))
+
+        let log = plugin.logger(withHandle: "fake-uuid")
+        XCTAssertNil(log)
+    }
+
     func testLogCalls_WithMissingParameter_FailsWithContractViolation() {
         testContracts(contracts: contracts, plugin: plugin)
     }

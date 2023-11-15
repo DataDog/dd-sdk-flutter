@@ -16,6 +16,10 @@ export 'ddlog_event.dart';
 const _uuid = Uuid();
 
 class DatadogLogging {
+  static final Finalizer<DatadogLogger> _finalizer = Finalizer((logger) {
+    _platform.destroyLogger(logger.loggerHandle);
+  });
+
   static DatadogLogging? _instance;
 
   static DdLogsPlatform get _platform {
@@ -48,6 +52,7 @@ class DatadogLogging {
   DatadogLogger createLogger(DatadogLoggerConfiguration configuration) {
     final logger = DatadogLogger(core.internalLogger, configuration);
     DdLogsPlatform.instance.createLogger(logger.loggerHandle, configuration);
+    _finalizer.attach(logger, logger);
 
     return logger;
   }

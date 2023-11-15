@@ -28,6 +28,11 @@ class DdNoOpLogsPlatform extends DdLogsPlatform {
   }
 
   @override
+  Future<void> destroyLogger(String loggerHandle) {
+    return Future.value();
+  }
+
+  @override
   Future<void> log(
       String loggerHandle,
       LogLevel level,

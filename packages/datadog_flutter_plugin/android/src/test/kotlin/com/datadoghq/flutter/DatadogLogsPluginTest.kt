@@ -9,6 +9,7 @@ import android.util.Log
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
+import assertk.assertions.isNull
 import com.datadog.android.Datadog
 import com.datadog.android.log.Logger
 import com.datadog.android.log.Logs
@@ -18,13 +19,10 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.BoolForgery
-import fr.xgouchet.elmyr.annotation.Forgery
 import fr.xgouchet.elmyr.annotation.IntForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import io.mockk.clearAllMocks
-import io.mockk.clearStaticMockk
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
@@ -312,6 +310,33 @@ class DatadogLogsPluginTest {
 
         val logger = plugin.getLogger(loggerHandle)
         assertThat(logger).isNotNull()
+    }
+
+    @Test
+    fun `M removes logger W destroyLogger`(
+        @StringForgery loggerHandle: String
+    ) {
+        // GIVEN
+        val createCall = MethodCall("createLogger", mapOf(
+            "loggerHandle" to loggerHandle,
+            "configuration" to defaultLoggingConfig()
+        ))
+        val createResult = mockk<MethodChannel.Result>(relaxed = true)
+        plugin.onMethodCall(createCall, createResult)
+
+        val destroyCall = MethodCall("destroyLogger", mapOf(
+            "loggerHandle" to loggerHandle
+        ))
+        val destroyResult = mockk<MethodChannel.Result>(relaxed = true)
+
+        // WHEN
+        plugin.onMethodCall(destroyCall, destroyResult)
+
+        // THEN
+        verify { destroyResult.success(null) }
+
+        val logger = plugin.getLogger(loggerHandle)
+        assertThat(logger).isNull()
     }
 
     @Test

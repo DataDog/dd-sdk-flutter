@@ -94,7 +94,12 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
 
         getLogger(loggerHandle)?.let { logger ->
             try {
-                callLoggerMethod(logger, call, result)
+                if (call.method == "destroyLogger") {
+                    loggerRegistry.remove(loggerHandle)
+                    result.success(null)
+                } else {
+                    callLoggerMethod(logger, call, result)
+                }
             } catch (e: ClassCastException) {
                 result.error(
                     DatadogSdkPlugin.CONTRACT_VIOLATION,
