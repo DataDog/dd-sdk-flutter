@@ -3,7 +3,6 @@
 // Copyright 2016-Present Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 enum LogLevel { debug, info, notice, warn, error }
@@ -16,11 +15,7 @@ class LoggingScreen extends StatefulWidget {
 }
 
 class _LoggingScreenState extends State<LoggingScreen> {
-  var _disableSendingLogs = false;
-  var _selectedLevel = LogLevel.debug;
-  String? _message;
-
-  late DatadogLogger? logger;
+  DatadogLogger? logger;
 
   @override
   void initState() {
@@ -29,121 +24,78 @@ class _LoggingScreenState extends State<LoggingScreen> {
     super.initState();
   }
 
-  void _logLevelChanged(LogLevel? value) {
-    setState(() {
-      _selectedLevel = value ?? LogLevel.debug;
-    });
-  }
-
-  Future<void> _sendPressed(int count) async {
-    setState(() {
-      _disableSendingLogs = true;
-    });
-    final message = _message ?? 'Default Message';
-    for (var i = 0; i < count; ++i) {
-      switch (_selectedLevel) {
-        case LogLevel.debug:
-          logger?.debug(message);
-          break;
-        case LogLevel.info:
-          logger?.info(message);
-          break;
-        case LogLevel.notice:
-          logger?.info(message);
-          break;
-        case LogLevel.warn:
-          logger?.warn(message);
-          break;
-        case LogLevel.error:
-          logger?.error(message);
-          break;
-      }
+  Future<void> _sendPressed(LogLevel logLevel) async {
+    final message = '$logLevel Message';
+    switch (logLevel) {
+      case LogLevel.debug:
+        logger?.debug(message);
+        break;
+      case LogLevel.info:
+        logger?.info(message);
+        break;
+      case LogLevel.notice:
+        logger?.info(message);
+        break;
+      case LogLevel.warn:
+        logger?.warn(message);
+        break;
+      case LogLevel.error:
+        logger?.error(message);
+        break;
     }
-    await Future.delayed(const Duration(milliseconds: 500));
-    setState(() {
-      _disableSendingLogs = false;
-    });
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Sent $message')));
   }
 
-  void _sendErrorLog() {
-    setState(() {
-      _disableSendingLogs = true;
-    });
+  void _sendErrorWithExceptionLog() {
+    const message = 'Error With Exception Log';
     try {
       throw Exception('We threw an exception!');
     } catch (e, st) {
       logger?.error(
-        'Error you asked for',
+        message,
         errorMessage: e.toString(),
         errorStackTrace: st,
       );
     }
-    setState(() {
-      _disableSendingLogs = false;
-    });
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Sent $message')));
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Logging Example'),
+        title: const Text('Logging Tests'),
       ),
       body: Container(
         padding: const EdgeInsets.all(8.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Single log',
-              style: theme.textTheme.titleLarge,
-            ),
-            _buildField(
-              text: 'LEVEL',
-              child: CupertinoSlidingSegmentedControl<LogLevel>(
-                onValueChanged: _logLevelChanged,
-                groupValue: _selectedLevel,
-                children: {
-                  for (var value in LogLevel.values)
-                    value: _buildSegment(
-                      value
-                          .toString()
-                          .replaceFirst('LogLevel.', '')
-                          .toUpperCase(),
-                    )
-                },
-              ),
-            ),
-            _buildField(
-              child: TextField(
-                onChanged: (value) => _message = value,
-                decoration: const InputDecoration(labelText: 'Message'),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed:
-                        _disableSendingLogs ? null : () => _sendPressed(1),
-                    child: const Text('Send once'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed:
-                        _disableSendingLogs ? null : () => _sendPressed(10),
-                    child: const Text('Send 10x'),
-                  ),
-                ),
-              ],
+            ElevatedButton(
+              onPressed: () => _sendPressed(LogLevel.debug),
+              child: const Text('Debug Log'),
             ),
             ElevatedButton(
-              onPressed: _disableSendingLogs ? null : () => _sendErrorLog(),
-              child: const Text('Send Log With Exception'),
+              onPressed: () => _sendPressed(LogLevel.info),
+              child: const Text('Info Log'),
+            ),
+            ElevatedButton(
+              onPressed: () => _sendPressed(LogLevel.notice),
+              child: const Text('Notice Log'),
+            ),
+            ElevatedButton(
+              onPressed: () => _sendPressed(LogLevel.warn),
+              child: const Text('Warn Log'),
+            ),
+            ElevatedButton(
+              onPressed: () => _sendPressed(LogLevel.error),
+              child: const Text('Error Log'),
+            ),
+            ElevatedButton(
+              onPressed: () => _sendErrorWithExceptionLog(),
+              child: const Text('Error With Exception Log'),
             ),
           ],
         ),
