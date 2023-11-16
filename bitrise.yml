@@ -52,7 +52,6 @@ workflows:
   _launch_ios_simulator:
     steps:
     - script:
-        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         title: Launch iOS Simulator
         inputs:
         - content: |-
@@ -100,12 +99,11 @@ workflows:
   _start_android_emulator:
     steps:
     - avd-manager@1:
-        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         inputs:
         - api_level: '30'
         - emulator_channel: 0
     - wait-for-android-emulator@1:
-        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
+        title: Wait for Android Emulator
   analyze:
     steps:
     - script:
@@ -134,8 +132,6 @@ workflows:
   core_build:
     envs:
     - FLUTTER_VERSION: stable
-    - DD_RUN_UNIT_TESTS: '1'
-    - DD_RUN_INTEGRATION_TESTS: '1'
     after_run:
     - _setup
     - check_dependencies
@@ -146,7 +142,6 @@ workflows:
   integration_android:
     steps:
     - script:
-        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         title: Android Integration Tests
         inputs:
         - content: |-
@@ -161,8 +156,6 @@ workflows:
   integration_android_from_stage:
     envs:
     - FLUTTER_VERSION: stable
-    - DD_RUN_UNIT_TESTS: '1'
-    - DD_RUN_INTEGRATION_TESTS: '1'
     after_run:
     - _setup
     - _start_android_emulator
@@ -175,7 +168,6 @@ workflows:
   integration_ios:
     steps:
     - script:
-        run_if: '{{enveq "DD_RUN_INTEGRATION_TESTS" "1"}}'
         title: iOS Integration Tests
         inputs:
         - content: |-
@@ -186,8 +178,6 @@ workflows:
   integration_ios_from_stage:
     envs:
     - FLUTTER_VERSION: stable
-    - DD_RUN_UNIT_TESTS: '1'
-    - DD_RUN_INTEGRATION_TESTS: '1'
     after_run:
     - _setup
     - _launch_ios_simulator
@@ -226,8 +216,6 @@ workflows:
   integration_web_from_stage:
     envs:
     - FLUTTER_VERSION: stable
-    - DD_RUN_UNIT_TESTS: '1'
-    - DD_RUN_INTEGRATION_TESTS: '1'
     after_run:
     - _setup
     - _install_chrome
@@ -240,8 +228,6 @@ workflows:
   nightly_android:
     envs:
     - FLUTTER_VERSION: stable
-    - DD_RUN_UNIT_TESTS: '1'
-    - DD_RUN_INTEGRATION_TESTS: '1'
     before_run:
     - _setup
     - _start_android_emulator
@@ -260,8 +246,6 @@ workflows:
   nightly_ios:
     envs:
     - FLUTTER_VERSION: stable
-    - DD_RUN_UNIT_TESTS: '1'
-    - DD_RUN_INTEGRATION_TESTS: '1'
     before_run:
     - _setup
     - _launch_ios_simulator
@@ -283,7 +267,6 @@ workflows:
   unit_test:
     steps:
     - script:
-        run_if: '{{enveq "DD_RUN_UNIT_TESTS" "1"}}'
         title: All Unit Tests
         inputs:
         - content: |-
