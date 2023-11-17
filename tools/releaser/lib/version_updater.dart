@@ -176,7 +176,7 @@ Future<bool> _updateReadmeVersions(CommandArguments args, Logger logger) async {
 
         // Write the new version table:
         line = '''[//]: # (SDK Table)
-        
+
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
 | ${args.iOSRelease} | ${args.androidRelease} | 4.x.x |

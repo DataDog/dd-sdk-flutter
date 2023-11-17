@@ -34,12 +34,14 @@ class ValidateReleaseCommand extends Command {
     bool isValid = true;
 
     isValid &= _validateVersionNumber(args.version, logger);
-    isValid &= await _validateChangeLog(packagePath, logger);
+    if (!args.skipChangelogCheck) {
+      isValid &= await _validateChangeLog(packagePath, logger);
+    }
 
     if (isValid) {
       // The only package that as a dependency on the iOS SDK version is datadog_flutter_plugin,
       // so only check / pin if that's the package we're releasing.
-      if (args.packageName == 'datadog_flutter_plugin') {
+      if (_hasNativeDependency(args.packageName)) {
         if (!await _validateiOSRelease(packagePath, args, logger)) {
           return false;
         }
@@ -50,6 +52,11 @@ class ValidateReleaseCommand extends Command {
     }
 
     return isValid;
+  }
+
+  bool _hasNativeDependency(String packageName) {
+    return packageName == 'datadog_flutter_plugin' ||
+        packageName == 'datadog_webview_tracking';
   }
 
   bool _validateVersionNumber(String versionNumber, Logger logger) {
