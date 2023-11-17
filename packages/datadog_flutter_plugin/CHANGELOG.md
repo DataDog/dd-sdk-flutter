@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* `DatadogLogger` will no longer leak its reference to its native Logger.
 
 ## 2.0.0
 
