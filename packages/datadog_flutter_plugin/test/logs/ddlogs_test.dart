@@ -38,6 +38,8 @@ void main() {
         .thenAnswer((_) => Future.value());
     when(() => mockPlatform.createLogger(any(), any()))
         .thenAnswer((_) => Future.value());
+    when(() => mockPlatform.destroyLogger(any()))
+        .thenAnswer((_) => Future.value());
 
     mockInternalLogger = MockInternalLogger();
     mockCore = MockDatadogSdk();
