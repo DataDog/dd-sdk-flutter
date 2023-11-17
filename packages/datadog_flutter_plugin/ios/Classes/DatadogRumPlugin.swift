@@ -17,7 +17,8 @@ public extension RUM.Configuration {
         }
 
         self.init(applicationID: applicationId)
-
+        
+        urlSessionTracking = .init()
         sessionSampleRate = (encoded["sessionSampleRate"] as? NSNumber)?.floatValue ?? 100.0
         longTaskThreshold = (encoded["longTaskThreshold"] as? NSNumber)?.doubleValue ?? 0.1
         trackFrustrations = (encoded["trackFrustrations"] as? NSNumber)?.boolValue ?? true
