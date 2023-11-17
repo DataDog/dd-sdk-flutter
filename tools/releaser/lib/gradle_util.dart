@@ -21,8 +21,7 @@ class UpdateGradleFilesCommand extends Command {
   }
 
   Future<bool> _updateGradleFiles(CommandArguments args, Logger logger) async {
-    for (var filePath
-        in gradleList.where((e) => e.contains(args.packageName))) {
+    for (var filePath in gradleList) {
       final file = File(path.join(args.gitDir.path, filePath));
       if (!file.existsSync()) {
         logger.shout('❌ Could not find file $filePath');
@@ -59,8 +58,6 @@ class UpdateGradleFilesCommand extends Command {
             inMavenBlock = false;
             if (writeMavenBlock) {
               line = mavenBlock.toString();
-            } else {
-              line = '';
             }
 
             // Reset to default values

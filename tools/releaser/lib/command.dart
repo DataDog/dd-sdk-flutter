@@ -18,6 +18,9 @@ class CommandArguments {
   // Skip git and branch checks during the validate step
   final bool skipGitChecks;
 
+  // Skip changelog check
+  final bool skipChangelogCheck;
+
   // The version we're releasing
   final String version;
 
@@ -35,6 +38,7 @@ class CommandArguments {
     required this.packageRoot,
     required this.gitDir,
     required this.skipGitChecks,
+    required this.skipChangelogCheck,
     required this.version,
     required this.iOSRelease,
     required this.androidRelease,
