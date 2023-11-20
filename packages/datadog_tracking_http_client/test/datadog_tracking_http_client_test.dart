@@ -276,7 +276,8 @@ void main() {
 
       client = DatadogTrackingHttpClient(
         mockDatadog,
-        DdHttpTrackingPluginConfiguration(),
+        DdHttpTrackingPluginConfiguration(
+            ignoreUrlPatterns: [RegExp('test_url/ignored/')]),
         mockClient,
       );
     });
@@ -525,6 +526,25 @@ void main() {
           capturedAttributes[DatadogRumPlatformAttributeKey.traceID], isNull);
       expect(capturedAttributes[DatadogRumPlatformAttributeKey.spanID], isNull);
       expect(capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.12);
+    });
+
+    test('ignoreUrlPatterns does not perform tracking on matching url',
+        () async {
+      var url = Uri.parse('https://test_url/ignored/test');
+      final completer = setupMockRequest(url);
+
+      // when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+      // when(() => mockRum.traceSampleRate).thenReturn(12.0);
+
+      var request = await client.openUrl('get', url);
+      var mockResponse = setupMockClientResponse(200, size: 12345);
+
+      completer.complete(mockResponse);
+      var response = await request.done;
+      response.listen((event) {});
+      await mockResponse.streamController.close();
+
+      verifyNoMoreInteractions(mockRum);
     });
 
     test('error on openUrl stops resource with error', () async {

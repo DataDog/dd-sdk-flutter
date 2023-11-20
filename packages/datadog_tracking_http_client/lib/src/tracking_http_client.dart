@@ -107,17 +107,20 @@ class DatadogTrackingHttpClient implements HttpClient {
     final rum = datadogSdk.rum;
 
     if (rum != null) {
-      try {
-        rumKey = uuid.v1();
-        final rumHttpMethod = rumMethodFromMethodString(method);
-        rum.startResource(rumKey, rumHttpMethod, url.toString());
-      } catch (e, st) {
-        datadogSdk.internalLogger.sendToDatadog(
-          '$DatadogTrackingHttpClient encountered an error while attempting '
-          ' to track an _openUrl call: $e',
-          st,
-          e.runtimeType.toString(),
-        );
+      bool shouldTrack = _shouldTrackUrl(url);
+      if (shouldTrack) {
+        try {
+          rumKey = uuid.v1();
+          final rumHttpMethod = rumMethodFromMethodString(method);
+          rum.startResource(rumKey, rumHttpMethod, url.toString());
+        } catch (e, st) {
+          datadogSdk.internalLogger.sendToDatadog(
+            '$DatadogTrackingHttpClient encountered an error while attempting '
+            ' to track an _openUrl call: $e',
+            st,
+            e.runtimeType.toString(),
+          );
+        }
       }
     }
 
@@ -142,6 +145,16 @@ class DatadogTrackingHttpClient implements HttpClient {
     }
 
     return request;
+  }
+
+  bool _shouldTrackUrl(Uri url) {
+    final urlString = url.toString();
+    for (final pattern in configuration.ignoreUrlPatterns) {
+      if (pattern.hasMatch(urlString)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @override

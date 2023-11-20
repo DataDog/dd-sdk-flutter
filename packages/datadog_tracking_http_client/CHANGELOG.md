@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Add the ability to ignore tracking on specific url patterns with `ignoreUrlPatterns`.
 
 ## 2.0.0
 
