@@ -46,8 +46,12 @@ abstract class DatadogTrackingHttpClientListener {
 
 class DdHttpTrackingPluginConfiguration extends DatadogPluginConfiguration {
   DatadogTrackingHttpClientListener? clientListener;
+  List<RegExp> ignoreUrlPatterns;
 
-  DdHttpTrackingPluginConfiguration({this.clientListener});
+  DdHttpTrackingPluginConfiguration({
+    this.clientListener,
+    this.ignoreUrlPatterns = const [],
+  });
 
   @override
   DatadogPlugin create(DatadogSdk datadogInstance) {

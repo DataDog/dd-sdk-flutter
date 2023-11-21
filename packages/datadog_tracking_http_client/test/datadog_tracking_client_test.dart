@@ -393,6 +393,46 @@ void main() {
           attributes));
     });
 
+    test('ignorUrlPatterns does not perform tracking on matching url',
+        () async {
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+        ignoreUrlPatterns: [
+          RegExp('ignore_me.com/a/b'),
+        ],
+      );
+      final testUri = Uri.parse('https://ignore_me.com/a/b/c');
+
+      final future =
+          client.get(testUri, headers: {'x-datadog-header': 'header'});
+
+      await future;
+
+      verifyNoMoreInteractions(mockRum);
+    });
+
+    test('ignoreUrlPatterns performs tracking when urls do not match',
+        () async {
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+        ignoreUrlPatterns: [
+          RegExp('test_url/my_endpoint'),
+        ],
+      );
+      final testUri = Uri.parse('https://test_url/test');
+
+      final future =
+          client.get(testUri, headers: {'x-datadog-header': 'header'});
+
+      await future;
+
+      verify(
+          () => mockRum.startResource(any(), RumHttpMethod.get, any(), any()));
+      verify(() => mockRum.stopResource(any(), any(), any(), any(), any()));
+    });
+
     for (final headerType in TracingHeaderType.values) {
       group('when rum is enabled with $headerType tracing headers', () {
         setUp(() {
