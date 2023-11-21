@@ -115,7 +115,7 @@ class DatadogTrackingHttpClient implements HttpClient {
           rum.startResource(rumKey, rumHttpMethod, url.toString());
         } catch (e, st) {
           datadogSdk.internalLogger.sendToDatadog(
-            '$DatadogTrackingHttpClient encountered an error while attempting '
+            '$DatadogTrackingHttpClient encountered an error while attempting'
             ' to track an _openUrl call: $e',
             st,
             e.runtimeType.toString(),

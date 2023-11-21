@@ -105,7 +105,7 @@ class DatadogClient extends http.BaseClient {
             rumKey, rumHttpMethod, request.url.toString(), attributes);
       } catch (e, st) {
         datadogSdk.internalLogger.sendToDatadog(
-          '$DatadogClient encountered an error while attempting '
+          '$DatadogClient encountered an error while attempting'
           ' to track a send call: $e',
           st,
           e.runtimeType.toString(),
