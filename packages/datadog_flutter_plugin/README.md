@@ -5,6 +5,8 @@ Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real
 Datadog RUM SDK versions < 1.4 support monitoring for Flutter 2.8+.
 Datadog RUM SDK versions >= 1.4 support monitoring for Flutter 3.0+.
 
+For complete documentation, visit Datadog's [official documentation][11].
+
 ## Current Datadog SDK Versions
 
 [//]: # (SDK Table)
@@ -42,15 +44,8 @@ See [Flutter Web Support](#web_support) for information on current support for F
 
 Use the [Datadog Flutter Plugin][1] to set up Log Management or Real User Monitoring (RUM). The setup instructions may vary based on your decision to use Logs, RUM, or both, but most of the setup steps are consistent.
 
-### Specify application details in the UI
+For detailed instructions on how to set up the Datadog Flutter Plugin, consult the [Datadog Documentation][11]
 
-1. In the [Datadog app][2], navigate to **UX Monitoring** > **RUM Applications** > **New Application**.
-2. Choose `Flutter` as the application type.
-3. Provide an application name to generate a unique Datadog application ID and client token.
-
-{{< img src="real_user_monitoring/flutter/flutter-new-application.png" alt="Create a RUM application in Datadog workflow" style="width:90%;">}}
-
-To ensure the safety of your data, you must use a client token. For more information about setting up a client token, see the [Client Token documentation][3].
 
 ### Create configuration object
 
@@ -203,34 +198,6 @@ final configuration = DatadogConfiguration(
 
 In order to enable Datadog Distributed Tracing, the `DatadogConfiguration.firstPartyHosts` property in your configuration object must be set to a domain that supports distributed tracing. You can also modify the sampling rate for Datadog distributed tracing by setting the `traceSampleRate` on your `DatadogRumConfiguration`.
 
-## <a name="web_support"></a>Flutter Web Support 
-
-The following Datadog SDK features are not supported in Flutter Web:
-
-  * Tags on logs are not supported
-  * Event mappers are not supported.
-  * Manually tracking resources (`start/stopResource`) is not supported.
-  * All manually reported actions (`addAction`) are reported as type `custom`.
-  * Starting long running actions (`start/stopAction`) is not supported.
-  * New sessions are not created after a call to `stopSession`.
-  * Long task length is not configurable
-
-If you have a need for any of these features, please reach out to your CSM and submit a feature request.
-
-## Data Storage
-
-### Android
-
-Before data is uploaded to Datadog, it is stored in cleartext in your application's cache directory.
-This cache folder is protected by [Android's Application Sandbox][6], meaning that on most devices,
-this data can't be read by other applications. However, if the mobile device is rooted, or someone
-tampers with the Linux kernel, the stored data might become readable.
-
-### iOS
-
-Before data is uploaded to Datadog, it is stored in cleartext in the cache directory (`Library/Caches`)
-of your [application sandbox][9], which can't be read by any other app installed on the device.
-
 ## Contributing
 
 Pull requests are welcome. First, open an issue to discuss what you would like to change.
@@ -246,8 +213,7 @@ For more information, see [Apache License, v2.0][5].
 [3]: https://docs.datadoghq.com/account_management/api-app-keys/#client-tokens
 [4]: https://github.com/DataDog/dd-sdk-flutter/blob/main/CONTRIBUTING.md
 [5]: https://github.com/DataDog/dd-sdk-flutter/blob/main/LICENSE
-[6]: https://source.android.com/security/app-sandbox
 [7]: https://pub.dev/packages/datadog_tracking_http_client
 [8]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/DatadogConfiguration-class.html
-[9]: https://support.apple.com/guide/security/security-of-runtime-process-sec15bfe098e/web
 [10]: https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/ViewInfoExtractor.html
+[11]: https://docs.datadoghq.com/real_user_monitoring/mobile_and_tv_monitoring/setup/flutter/
