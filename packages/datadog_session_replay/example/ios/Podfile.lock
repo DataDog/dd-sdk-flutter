@@ -1,0 +1,69 @@
+PODS:
+  - datadog_flutter_plugin (0.0.1):
+    - DatadogCore (~> 2)
+    - DatadogCrashReporting (~> 2)
+    - DatadogInternal (~> 2)
+    - DatadogLogs (~> 2)
+    - DatadogRUM (~> 2)
+    - DictionaryCoder (= 1.0.8)
+    - Flutter
+  - datadog_session_replay (0.0.1):
+    - Flutter
+  - DatadogCore (2.4.0):
+    - DatadogInternal (= 2.4.0)
+  - DatadogCrashReporting (2.4.0):
+    - DatadogInternal (= 2.4.0)
+    - PLCrashReporter (~> 1.11.1)
+  - DatadogInternal (2.4.0)
+  - DatadogLogs (2.4.0):
+    - DatadogInternal (= 2.4.0)
+  - DatadogRUM (2.4.0):
+    - DatadogInternal (= 2.4.0)
+  - DictionaryCoder (1.0.8)
+  - Flutter (1.0.0)
+  - integration_test (0.0.1):
+    - Flutter
+  - PLCrashReporter (1.11.1)
+
+DEPENDENCIES:
+  - datadog_flutter_plugin (from `.symlinks/plugins/datadog_flutter_plugin/ios`)
+  - datadog_session_replay (from `.symlinks/plugins/datadog_session_replay/ios`)
+  - Flutter (from `Flutter`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
+
+SPEC REPOS:
+  trunk:
+    - DatadogCore
+    - DatadogCrashReporting
+    - DatadogInternal
+    - DatadogLogs
+    - DatadogRUM
+    - DictionaryCoder
+    - PLCrashReporter
+
+EXTERNAL SOURCES:
+  datadog_flutter_plugin:
+    :path: ".symlinks/plugins/datadog_flutter_plugin/ios"
+  datadog_session_replay:
+    :path: ".symlinks/plugins/datadog_session_replay/ios"
+  Flutter:
+    :path: Flutter
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
+
+SPEC CHECKSUMS:
+  datadog_flutter_plugin: 89d7088ec5cc78c0ff2c24dbe7b7e67e6800a10b
+  datadog_session_replay: b8b31433543940fe0455f4cfe2d78b9ccc3a2504
+  DatadogCore: 67ce2f8cd2f58cc90bdee5486d847b49e4b31b0b
+  DatadogCrashReporting: 0d4bd014714946be77a1ed2d34897036892f2b7b
+  DatadogInternal: 5789bca7a0284b20655ba2a79738ac7d0cd56e70
+  DatadogLogs: 3b8c8778c32b780f916c2894b9d2c53bbf590803
+  DatadogRUM: 4207d091be536b888719969a7ca078e2c830819a
+  DictionaryCoder: 5f84fff69f54cb806071538430bdafe04a89d658
+  Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
+  integration_test: 13825b8a9334a850581300559b8839134b124670
+  PLCrashReporter: 5d2d3967afe0efad61b3048d617e2199a5d1b787
+
+PODFILE CHECKSUM: 70d9d25280d0dd177a5f637cdb0f0b0b12c6a189
+
+COCOAPODS: 1.12.1
