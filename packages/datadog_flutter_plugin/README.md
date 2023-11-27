@@ -44,7 +44,7 @@ See [Flutter Web Support](#web_support) for information on current support for F
 
 Use the [Datadog Flutter Plugin][1] to set up Log Management or Real User Monitoring (RUM). The setup instructions may vary based on your decision to use Logs, RUM, or both, but most of the setup steps are consistent.
 
-For detailed instructions on how to set up the Datadog Flutter Plugin, consult the [Datadog Documentation][11]
+For detailed instructions on how to set up the Datadog Flutter Plugin, consult the [Datadog Documentation][11].
 
 
 ### Create configuration object
