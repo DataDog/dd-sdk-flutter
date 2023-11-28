@@ -5,7 +5,7 @@ Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real
 Datadog RUM SDK versions < 1.4 support monitoring for Flutter 2.8+.
 Datadog RUM SDK versions >= 1.4 support monitoring for Flutter 3.0+.
 
-For complete documentation, visit Datadog's [official documentation][11].
+For complete documentation, see the [official Datadog documentation][11].
 
 ## Current Datadog SDK Versions
 
@@ -44,7 +44,7 @@ See [Flutter Web Support](#web_support) for information on current support for F
 
 Use the [Datadog Flutter Plugin][1] to set up Log Management or Real User Monitoring (RUM). The setup instructions may vary based on your decision to use Logs, RUM, or both, but most of the setup steps are consistent.
 
-For detailed instructions on how to set up the Datadog Flutter Plugin, consult the [Datadog Documentation][11].
+For instructions on how to set up the Datadog Flutter Plugin, see the [official Datadog documentation][11].
 
 
 ### Create configuration object
