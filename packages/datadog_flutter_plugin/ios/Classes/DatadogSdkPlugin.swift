@@ -86,7 +86,18 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
             if let config = Datadog.Configuration.init(fromEncoded: configArg),
                let trackingConsentString: String = try? castUnwrap(arguments["trackingConsent"]) {
                 let trackingConsent = TrackingConsent.parseFromFlutter(trackingConsentString)
+
                 if !Datadog.isInitialized() {
+                    // Set log callback before initialization so errors in initialization
+                    // get printed
+                    if let setLogCallback = arguments["setLogCallback"] as? Bool,
+                       setLogCallback {
+                        oldConsolePrint = consolePrint
+                        consolePrint = { value in
+                            self.callLogCallback(value)
+                        }
+                    }
+
                     initialize(configuration: config, trackingConsent: trackingConsent)
                     currentConfiguration = configArg as [AnyHashable: Any]
 
