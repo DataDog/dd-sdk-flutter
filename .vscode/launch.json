@@ -5,6 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "SR Example",
+            "type": "dart",
+            "cwd": "packages/datadog_session_replay/example",
+            "request": "launch",
+            
+        },
+        {
             "name": "Hybrid: attach",
             "cwd": "examples/native-hybrid-app/flutter_module",
             "type": "dart",

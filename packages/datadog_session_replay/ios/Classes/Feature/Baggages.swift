@@ -36,3 +36,14 @@ internal struct RUMContext: Decodable, Equatable {
     /// Current view related server time offset
     let viewServerTimeOffset: TimeInterval?
 }
+
+extension RUMContext {
+    func encodedForFlutter() -> [String: Any?] {
+        return [
+            "applicationId": applicationID,
+            "sessionId": sessionID,
+            "viewId": viewID,
+            "viewServerTimeOffset": viewServerTimeOffset
+        ]
+    }
+}

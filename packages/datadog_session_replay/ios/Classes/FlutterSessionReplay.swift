@@ -5,7 +5,7 @@
 import Foundation
 import DatadogInternal
 
-class FlutterSessionReplay {
+internal class FlutterSessionReplay {
     public struct Configuration {
         public var customEndpoint: URL?
 
@@ -14,23 +14,34 @@ class FlutterSessionReplay {
         ) {
             self.customEndpoint = customEndpoint
         }
+
+        public init?(fromEncoded encoded: [String: Any?]) {
+            var customEndpoint: URL?
+            if let customEndpointString = encoded["customEndpoint"] as? String {
+                customEndpoint = URL(string: customEndpointString)
+            }
+
+            self.init(customEndpoint: customEndpoint)
+        }
     }
 
     public static func enable(
         with configuration: FlutterSessionReplay.Configuration,
         in core: DatadogCoreProtocol = CoreRegistry.default
-    ) {
+    ) -> FlutterSessionReplayFeature? {
         do {
-            try enableOrThrow(with: configuration, in: core)
+            let feature = try enableOrThrow(with: configuration, in: core)
+            return feature
         } catch let error {
             consolePrint("\(error)")
         }
+        return nil
     }
 
     internal static func enableOrThrow(
         with configuration: FlutterSessionReplay.Configuration,
         in core: DatadogCoreProtocol
-    ) throws {
+    ) throws -> FlutterSessionReplayFeature {
         guard !(core is NOPDatadogCore) else {
             throw ProgrammerError(
                 description: "Datadog SDK must be initialized before calling `SessionReplay.enable(with:)`."
@@ -39,7 +50,9 @@ class FlutterSessionReplay {
 
         let sessionReplay = try FlutterSessionReplayFeature(core: core, configuration: configuration)
         try core.register(feature: sessionReplay)
-
-//        sessionReplay.writer.startWriting(to: core)
+        
+        sessionReplay.writer.startWriting(to: core)
+        
+        return sessionReplay
     }
 }

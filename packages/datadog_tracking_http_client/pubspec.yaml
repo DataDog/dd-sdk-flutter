@@ -11,7 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  datadog_flutter_plugin: ^2.0.0
+  datadog_flutter_plugin: ^2.1.0
   uuid: ^4.0.0
   http: ^1.0.0
 
@@ -22,5 +22,6 @@ dev_dependencies:
     path: ../datadog_common_test
   flutter_lints: ^2.0.1
   mocktail: ^0.2.0
+
 
 flutter:    

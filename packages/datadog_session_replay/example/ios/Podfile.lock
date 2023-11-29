@@ -8,6 +8,7 @@ PODS:
     - DictionaryCoder (= 1.0.8)
     - Flutter
   - datadog_session_replay (0.0.1):
+    - DatadogInternal (~> 2)
     - Flutter
   - DatadogCore (2.4.0):
     - DatadogInternal (= 2.4.0)
@@ -53,7 +54,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   datadog_flutter_plugin: 89d7088ec5cc78c0ff2c24dbe7b7e67e6800a10b
-  datadog_session_replay: b8b31433543940fe0455f4cfe2d78b9ccc3a2504
+  datadog_session_replay: d7b11a41bfacc1f95e31453d90a5be3f99832d91
   DatadogCore: 67ce2f8cd2f58cc90bdee5486d847b49e4b31b0b
   DatadogCrashReporting: 0d4bd014714946be77a1ed2d34897036892f2b7b
   DatadogInternal: 5789bca7a0284b20655ba2a79738ac7d0cd56e70

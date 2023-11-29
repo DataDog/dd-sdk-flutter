@@ -111,7 +111,7 @@ class DatadogSdk {
   Future<void> flushAndDeinitialize() async {
     await _platform.flushAndDeinitialize();
     for (final plugin in _plugins.values) {
-      plugin.shutdown();
+      await plugin.shutdown();
     }
     _plugins.clear();
     _rum = null;
@@ -173,7 +173,7 @@ class DatadogSdk {
       _rum = await DatadogRum.enable(this, configuration.rumConfiguration!);
     }
 
-    _initializePlugins(configuration.additionalPlugins);
+    await _initializePlugins(configuration.additionalPlugins);
     _initialized = true;
   }
 
@@ -200,7 +200,7 @@ class DatadogSdk {
         _rum = DatadogRum.fromExisting(this, config);
       }
 
-      _initializePlugins(config.additionalPlugins);
+      await _initializePlugins(config.additionalPlugins);
       _initialized = true;
     } else {
       internalLogger.error(
@@ -262,14 +262,15 @@ class DatadogSdk {
     }
   }
 
-  void _initializePlugins(List<DatadogPluginConfiguration> plugins) {
+  Future<void> _initializePlugins(
+      List<DatadogPluginConfiguration> plugins) async {
     for (final pluginConfig in plugins) {
       var plugin = pluginConfig.create(this);
       if (_plugins.containsKey(plugin.runtimeType)) {
         internalLogger.error(
             'Attempting to setup two plugins of the same type: ${plugin.runtimeType}. The second plugin will be ignored.');
       } else {
-        plugin.initialize();
+        await plugin.initialize();
         _plugins[plugin.runtimeType] = plugin;
       }
     }

@@ -1,5 +1,11 @@
+// Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2023-Present Datadog, Inc.
+
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
+import '../datadog_session_replay.dart';
+import 'datadog_session_replay.dart';
 import 'datadog_session_replay_method_channel.dart';
 
 abstract class DatadogSessionReplayPlatform extends PlatformInterface {
@@ -23,4 +29,9 @@ abstract class DatadogSessionReplayPlatform extends PlatformInterface {
     PlatformInterface.verifyToken(instance, _token);
     _instance = instance;
   }
+
+  Future<void> enable(DatadogSessionReplayConfiguration configuration,
+      void Function(RUMContext) onContextChanged);
+
+  Future<void> writeSegment(String record, String viewId);
 }
