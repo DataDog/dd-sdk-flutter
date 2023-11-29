@@ -6,11 +6,13 @@ import Foundation
 import DatadogInternal
 
 class FlutterSessionReplayFeature: DatadogRemoteFeature {
-    static var name: String = "flutter-session-replay"
+    static var name: String = "session-replay"
 
-    var requestBuilder: DatadogInternal.FeatureRequestBuilder
-    var messageReceiver: DatadogInternal.FeatureMessageReceiver
-    
+    let requestBuilder: DatadogInternal.FeatureRequestBuilder
+    let messageReceiver: DatadogInternal.FeatureMessageReceiver
+
+    let writer: Writer
+
     init(
         core: DatadogCoreProtocol,
         configuration: FlutterSessionReplay.Configuration
@@ -21,5 +23,33 @@ class FlutterSessionReplayFeature: DatadogRemoteFeature {
         )
         
         self.messageReceiver = RUMContextReceiver()
+
+        self.writer = Writer()
+    }
+}
+
+class Writer {
+    private weak var core: DatadogCoreProtocol?
+    private var lastViewId: String?
+
+    func startWriting(to core: DatadogCoreProtocol) {
+        self.core = core
+    }
+
+    func write(record: String, viewId: String) {
+        let forceNewBatch = lastViewId != viewId
+        lastViewId = viewId
+
+        guard let scope = core?.scope(for: FlutterSessionReplayFeature.name) else {
+            return
+        }
+
+        // TODO: Find a better way to do this. We're decoding JSON just to re-encode it in the writer.
+        // May want to add a "writeRaw" to writer
+        let wrapper = RecordWrapper(recordJson: record)
+
+        scope.eventWriteContext(bypassConsent: false, forceNewBatch: forceNewBatch) { _, writer in
+            writer.write(value: wrapper)
+        }
     }
 }

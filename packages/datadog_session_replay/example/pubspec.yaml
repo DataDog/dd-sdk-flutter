@@ -9,6 +9,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_dotenv: ^5.1.0
+  datadog_flutter_plugin: ^2.1.0
   datadog_session_replay:
     path: ../
   cupertino_icons: ^1.0.2
@@ -23,3 +25,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - .env

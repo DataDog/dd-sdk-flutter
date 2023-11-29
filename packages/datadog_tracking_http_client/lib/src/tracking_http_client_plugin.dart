@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
@@ -68,7 +69,7 @@ class _DdHttpTrackingPlugin extends DatadogPlugin {
   ) : super(datadogInstance);
 
   @override
-  void initialize() {
+  FutureOr<void> initialize() {
     final existingOverrides = HttpOverrides.current;
     HttpOverrides.global = DatadogTrackingHttpOverrides(
       instance,

@@ -5,8 +5,18 @@
 import Foundation
 import DatadogInternal
 
+/// An observer notifying on`RUMContext` changes.
+internal protocol RUMContextObserver {
+    /// Starts notifying on distinct changes to `RUMContext`.
+    ///
+    /// - Parameters:
+    ///   - queue: a queue to call `notify` block on
+    ///   - notify: a closure receiving new `RUMContext` or `nil` if current RUM session is not sampled
+    func observe(notify: @escaping (RUMContext?) -> Void)
+}
+
 /// Receives RUM context from `DatadogCore` and notifies it through `RUMContextObserver` interface.
-internal class RUMContextReceiver: FeatureMessageReceiver {
+internal class RUMContextReceiver: FeatureMessageReceiver, RUMContextObserver {
     /// Notifies new `RUMContext` or `nil` if current RUM session is not sampled.
     private var onNew: ((RUMContext?) -> Void)?
     private var previous: RUMContext?
@@ -35,5 +45,11 @@ internal class RUMContextReceiver: FeatureMessageReceiver {
         }
 
         return true
+    }
+
+    func observe(notify: @escaping (RUMContext?) -> Void) {
+        onNew = { new in
+            notify(new)
+        }
     }
 }
