@@ -3,6 +3,7 @@
 ## Unreleased
 
 * `DatadogLogger` will no longer leak its reference to its native Logger.
+* Fix `LogLevel` being private. See [#518]
 
 ## 2.0.0
 
@@ -208,3 +209,4 @@ Release 2.0 introduces breaking changes. Follow the [Migration Guide](MIGRATING.
 [#416]: https://github.com/DataDog/dd-sdk-flutter/issues/416
 [#462]: https://github.com/DataDog/dd-sdk-flutter/issues/462
 [#472]: https://github.com/DataDog/dd-sdk-flutter/issues/472
+[#518]: https://github.com/DataDog/dd-sdk-flutter/issues/518

@@ -35,7 +35,7 @@ class AttachResponse {
   }
 }
 
-/// Result from initializing the platform. Individual members are set to [false]
+/// Result from initializing the platform. Individual members are set to `false`
 /// If there is an error loading that feature, such as being unable to load
 /// required JavaScript modules on web.
 @immutable

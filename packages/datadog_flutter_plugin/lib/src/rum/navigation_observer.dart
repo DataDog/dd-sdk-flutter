@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import '../../datadog_flutter_plugin.dart';
 import '../../datadog_internal.dart';
 
-/// Information about a View that will be passed to [DdRum.startView]
+/// Information about a View that will be passed to [DatadogRum.startView]
 class RumViewInfo {
   /// The name of the view
   final String name;
@@ -26,10 +26,10 @@ class RumViewInfo {
 }
 
 /// A function that can be used to supply custom information to
-/// [DdRum.startView].
+/// [DatadogRum.startView].
 ///
 /// Returning `null` from this function will prevent the call
-/// to [DdRum.startView].
+/// to [DatadogRum.startView].
 ///
 /// See [DatadogNavigationObserver.viewInfoExtractor].
 typedef ViewInfoExtractor = RumViewInfo? Function(Route<dynamic> route);
@@ -299,10 +299,10 @@ class DatadogNavigationObserverProvider extends InheritedWidget {
   final DatadogNavigationObserver navObserver;
 
   const DatadogNavigationObserverProvider({
-    Key? key,
+    super.key,
     required this.navObserver,
-    required Widget child,
-  }) : super(key: key, child: child);
+    required super.child,
+  });
 
   @override
   bool updateShouldNotify(

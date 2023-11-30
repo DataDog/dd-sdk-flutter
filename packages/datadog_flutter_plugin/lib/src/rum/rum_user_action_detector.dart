@@ -78,10 +78,10 @@ class RumUserActionDetector extends StatefulWidget {
   final Widget child;
 
   const RumUserActionDetector({
-    Key? key,
+    super.key,
     required this.rum,
     required this.child,
-  }) : super(key: key);
+  });
 
   @override
   StatefulElement createElement() {
@@ -407,10 +407,10 @@ class RumUserActionAnnotation extends StatelessWidget {
   final Widget child;
 
   const RumUserActionAnnotation({
-    Key? key,
+    super.key,
     required this.description,
     required this.child,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
