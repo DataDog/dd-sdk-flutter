@@ -12,6 +12,9 @@ class FlutterSessionReplayFeature: DatadogRemoteFeature {
     let messageReceiver: DatadogInternal.FeatureMessageReceiver
 
     let writer: Writer
+    var recordCountByViewId: [String: Int] = [:]
+
+    private weak var core: DatadogCoreProtocol?
 
     init(
         core: DatadogCoreProtocol,
@@ -22,9 +25,19 @@ class FlutterSessionReplayFeature: DatadogRemoteFeature {
             telemetry: core.telemetry
         )
         
+        self.core = core
         self.messageReceiver = RUMContextReceiver()
 
         self.writer = Writer()
+    }
+
+    func setHasReplay(_ hasReplay: Bool) {
+        core?.set(baggage: hasReplay, forKey: RUMDependency.hasReplay)
+    }
+
+    func setRecordCount(for viewId: String, count: Int) {
+        recordCountByViewId[viewId] = count
+        core?.set(baggage: recordCountByViewId, forKey: RUMDependency.recordsCountByViewID)
     }
 }
 
@@ -43,7 +56,7 @@ class Writer {
         guard let scope = core?.scope(for: FlutterSessionReplayFeature.name) else {
             return
         }
-
+        
         // TODO: Find a better way to do this. We're decoding JSON just to re-encode it in the writer.
         // May want to add a "writeRaw" to writer
         let wrapper = RecordWrapper(recordJson: record)

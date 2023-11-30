@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../datadog_session_replay.dart';
-import 'datadog_session_replay.dart';
 import 'datadog_session_replay_platform_interface.dart';
 
 /// An implementation of [DatadogSessionReplayPlatform] that uses method channels.
@@ -38,5 +37,18 @@ class MethodChannelDatadogSessionReplay extends DatadogSessionReplayPlatform {
   Future<void> writeSegment(String record, String viewId) {
     final arguments = {'record': record, 'viewId': viewId};
     return methodChannel.invokeMethod('writeSegment', arguments);
+  }
+
+  @override
+  Future<void> setHasReplay(bool hasReplay) {
+    return methodChannel.invokeMethod('setHasReplay', {'hasReplay': hasReplay});
+  }
+
+  @override
+  Future<void> setRecordCount(String viewId, int count) {
+    return methodChannel.invokeMethod('setRecordCount', {
+      'viewId': viewId,
+      'count': count,
+    });
   }
 }

@@ -2,20 +2,20 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/widgets.dart';
 
 import '../datadog_session_replay.dart';
-import 'capture_node.dart';
-
-abstract interface class ElementRecorder {
-  CaptureNode? captureElement(
-      Element element, CapturedViewAttributes attributes);
-}
 
 class SessionReplayCapture extends StatefulWidget {
+  final DatadogRum? rum;
   final Widget child;
 
-  const SessionReplayCapture({super.key, required this.child});
+  const SessionReplayCapture({
+    super.key,
+    required this.rum,
+    required this.child,
+  });
 
   @override
   StatefulElement createElement() {
@@ -42,9 +42,12 @@ class SessionReplayCaptureState extends State<SessionReplayCapture> {
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      key: repaintKey,
-      child: widget.child,
+    return RumUserActionDetector(
+      rum: widget.rum,
+      child: RepaintBoundary(
+        key: repaintKey,
+        child: widget.child,
+      ),
     );
   }
 }

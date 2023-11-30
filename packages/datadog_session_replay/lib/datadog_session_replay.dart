@@ -6,7 +6,7 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 
 import 'src/datadog_session_replay_plugin.dart';
 
-export 'src/capture/session_replay_capture.dart';
+export 'src/capture/session_replay_capture_widget.dart';
 // TODO: Remove this export
 export 'src/datadog_session_replay.dart';
 

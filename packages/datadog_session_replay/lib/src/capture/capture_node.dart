@@ -19,11 +19,6 @@ class CapturedViewAttributes {
 class CaptureNode {
   final CapturedViewAttributes attributes;
   final WireframeBuilder wireframeBuilder;
-  List<CaptureNode> childNodes = [];
 
   CaptureNode(this.attributes, this.wireframeBuilder);
-
-  void addChild(CaptureNode node) {
-    childNodes.add(node);
-  }
 }

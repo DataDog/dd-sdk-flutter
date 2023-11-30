@@ -29,12 +29,13 @@ void main() async {
             applicationId: applicationId,
             detectLongTasks: true,
             reportFlutterPerformance: true,
+            //customEndpoint: 'http://192.168.7.51:8000/rum',
           )
         : null,
   )..enableSessionReplay(
       DatadogSessionReplayConfiguration(
         replaySampleRate: 1.0,
-        customEndpoint: 'http://192.168.7.51:8000/replay',
+        //customEndpoint: 'http://192.168.7.51:8000/replay',
       ),
     );
 
