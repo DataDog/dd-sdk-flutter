@@ -17,8 +17,8 @@ import 'datadog_session_replay_platform_interface.dart';
 import 'sr_data_models.dart';
 
 class KeyGenerator {
-  // This is close to JavaScript's MAX_SAFE_INT (52-bit)
-  static const int maxKey = 0xFFFFFFFFFFFFF;
+  // This is close to JavaScript's MAX_SAFE_INT (53-bit)
+  static const int maxKey = 0x20000000000000;
   var nextKey = 0;
 
   final Expando<int> _expando = Expando('sr-keys');
@@ -29,7 +29,7 @@ class KeyGenerator {
 
     value = nextKey;
     nextKey = nextKey + 1;
-    if (nextKey > maxKey) nextKey = 0;
+    if (nextKey >= maxKey) nextKey = 0;
 
     return value;
   }
@@ -87,18 +87,24 @@ class DatadogSessionReplay {
     }
 
     DateTime now = DateTime.now();
-    final capturedElements = _elements.values
-        .map((e) {
-          return _captureElement(e);
-        })
-        .whereType<CaptureNode>()
-        .toList();
-    if (capturedElements.isNotEmpty) {
+    List<CaptureNode> nodes = [];
+    var size = Size.zero;
+    for (final e in _elements.values) {
+      final elementSize = e.size;
+      if (elementSize != null) {
+        // Need to copy this value because the size class
+        // returned by the element is not serializable over the isolate
+        size = Size(elementSize.width, elementSize.height);
+      }
+      _captureElement(e, nodes);
+    }
+
+    if (nodes.isNotEmpty) {
       final viewTreeCapture = ViewTreeSnapshot(
         date: now,
         context: context,
-        viewportSize: const Size(1000.0, 1000.0),
-        nodes: capturedElements,
+        viewportSize: size,
+        nodes: nodes,
       );
 
       _mainSendPort?.send(viewTreeCapture);
@@ -107,15 +113,17 @@ class DatadogSessionReplay {
 
   void _onContextChanged(RUMContext context) {
     _currentContext = context;
+
+    DatadogSessionReplayPlatform.instance.setHasReplay(context.viewId != null);
   }
 
-  CaptureNode? _captureElement(Element topElement) {
+  void _captureElement(Element topElement, List<CaptureNode> nodes) {
     final stopwatch = Stopwatch();
     stopwatch.start();
 
-    CaptureNode? visit(Element e, int depth) {
+    void visit(Element e, int depth) {
       final renderObject = e.renderObject;
-      if (renderObject == null) return null;
+      if (renderObject == null) return;
 
       final transformMatrix =
           renderObject.getTransformTo(topElement.renderObject);
@@ -123,40 +131,43 @@ class DatadogSessionReplay {
           MatrixUtils.transformRect(transformMatrix, renderObject.paintBounds);
       final viewAttributes = CapturedViewAttributes(paintBounds: paintBounds);
 
-      CaptureNode? node;
-      for (final recorder in _elementRecorders) {
-        final captured = recorder.captureElement(e, viewAttributes);
-        if (captured != null) {
-          node = captured;
+      final elementSemantics = _elementSemantics(e, viewAttributes);
+
+      nodes.addAll(elementSemantics.nodes);
+
+      if (elementSemantics.subtreeStrategy ==
+          CaptureNodeSubtreeStrategy.record) {
+        e.visitChildElements((child) {
+          final renderObject = child.renderObject;
+          if (renderObject == null) return;
+
+          visit(child, depth + 1);
+        });
+      }
+    }
+
+    visit(topElement, 0);
+
+    stopwatch.stop();
+  }
+
+  CaptureNodeSemantics _elementSemantics(
+      Element element, CapturedViewAttributes viewAttributes) {
+    CaptureNodeSemantics semantics = const UnknownElement();
+
+    for (final recorder in _elementRecorders) {
+      final nextSemantics = recorder.captureSemantics(element, viewAttributes);
+      if (nextSemantics == null) continue;
+
+      if (nextSemantics.importance >= semantics.importance) {
+        semantics = nextSemantics;
+        if (semantics.importance == CaptureNodeSemantics.maxImporance) {
           break;
         }
       }
-
-      // TODO: Semantics to prevent recursion
-      //if (node != null) {
-      e.visitChildElements((child) {
-        final renderObject = child.renderObject;
-        if (renderObject == null) return;
-
-        final childNode = visit(child, depth + 1);
-        if (childNode != null) {
-          if (node == null) {
-            node = childNode;
-          } else {
-            node!.addChild(childNode);
-          }
-        }
-      });
-      //}
-
-      return node;
     }
 
-    final node = visit(topElement, 0);
-
-    stopwatch.stop();
-
-    return node;
+    return semantics;
   }
 }
 
@@ -209,6 +220,9 @@ Future<void> _captureProcessor(_ProcessorArgs args) async {
   Isolate.exit();
 }
 
+// TODO: Enclose this in a class
+Map<String, int> _recordCountByViewId = {};
+
 Future<void> _processSnapshot(ViewTreeSnapshot snapshot) async {
   final viewId = snapshot.context.viewId;
   if (viewId == null) return;
@@ -241,11 +255,18 @@ Future<void> _processSnapshot(ViewTreeSnapshot snapshot) async {
       records: records,
       applicationID: snapshot.context.applicationId,
       sessionID: snapshot.context.sessionId,
-      viewID: snapshot.context.viewId!,
+      viewID: viewId,
       hasFullSnapshot: true,
       earliestTimestamp: timestamp,
       latestTimestamp: timestamp,
     );
+
+    var totalRecordCount = _recordCountByViewId[viewId] ?? 0;
+    totalRecordCount += records.length;
+    _recordCountByViewId[viewId] = totalRecordCount;
+    await DatadogSessionReplayPlatform.instance
+        .setRecordCount(viewId, totalRecordCount);
+
     var encoded = jsonEncode(enrichedRecord.toJson());
     await DatadogSessionReplayPlatform.instance.writeSegment(encoded, viewId);
   }

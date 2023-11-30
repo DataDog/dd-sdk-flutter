@@ -6,7 +6,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../sr_data_models.dart';
 import '../capture_node.dart';
-import '../session_replay_capture.dart';
+import '../view_tree_snapshot.dart';
 
 extension HexColor on Color {
   String toHexString() {
@@ -19,7 +19,7 @@ extension HexColor on Color {
 
 class TextElementRecorder implements ElementRecorder {
   @override
-  CaptureNode? captureElement(
+  CaptureNodeSemantics? captureSemantics(
       Element element, CapturedViewAttributes attributes) {
     final widget = element.widget;
     if (widget is! RichText) {
@@ -37,7 +37,9 @@ class TextElementRecorder implements ElementRecorder {
         size: style?.fontSize?.toInt() ?? 10,
       );
 
-      return CaptureNode(attributes, builder);
+      final node = CaptureNode(attributes, builder);
+      return SpecificElement(
+          subtreeStrategy: CaptureNodeSubtreeStrategy.ignore, nodes: [node]);
     }
     return null;
   }

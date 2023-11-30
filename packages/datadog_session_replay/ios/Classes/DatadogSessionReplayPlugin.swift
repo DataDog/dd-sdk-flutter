@@ -30,6 +30,10 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
         switch call.method {
         case "enable":
             enableSessionReplay(argumnets: arguments, result: result)
+        case "setHasReplay":
+            setHasReplay(arguments: arguments, result: result)
+        case "setRecordCount":
+            setRecordCount(arguments: arguments, result: result)
         case "writeSegment":
             writeSegment(arguments: arguments, result: result)
         default:
@@ -52,6 +56,29 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
         }
 
         // TODO: Error handling
+
+        result(nil)
+    }
+
+    private func setHasReplay(arguments: [String: Any?], result: @escaping FlutterResult) {
+        guard let hasReplay = arguments["hasReplay"] as? Bool else {
+            result(FlutterError.missingParameter(methodName: "setHasReplay"))
+            return
+        }
+
+        feature?.setHasReplay(hasReplay)
+
+        result(nil)
+    }
+
+    private func setRecordCount(arguments: [String: Any?], result: @escaping FlutterResult) {
+        guard let viewId = arguments["viewId"] as? String,
+              let count = arguments["count"] as? Int else {
+            result(FlutterError.missingParameter(methodName: "setRecordCount"))
+            return
+        }
+
+        feature?.setRecordCount(for: viewId, count: count)
 
         result(nil)
     }

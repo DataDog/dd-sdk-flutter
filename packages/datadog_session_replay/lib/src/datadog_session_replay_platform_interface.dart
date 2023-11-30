@@ -5,7 +5,6 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../datadog_session_replay.dart';
-import 'datadog_session_replay.dart';
 import 'datadog_session_replay_method_channel.dart';
 
 abstract class DatadogSessionReplayPlatform extends PlatformInterface {
@@ -32,6 +31,10 @@ abstract class DatadogSessionReplayPlatform extends PlatformInterface {
 
   Future<void> enable(DatadogSessionReplayConfiguration configuration,
       void Function(RUMContext) onContextChanged);
+
+  Future<void> setHasReplay(bool hasReplay);
+
+  Future<void> setRecordCount(String viewId, int count);
 
   Future<void> writeSegment(String record, String viewId);
 }
