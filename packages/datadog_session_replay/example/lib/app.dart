@@ -6,6 +6,8 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:flutter/material.dart';
 
+import 'screens/main_screen.dart';
+
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -22,32 +24,21 @@ class _MyAppState extends State<MyApp> {
     super.initState();
   }
 
-  void _onCapture() {
-    DatadogSessionReplay.instance?.performCapture();
-  }
-
   @override
   Widget build(BuildContext context) {
     return SessionReplayCapture(
       rum: DatadogSdk.instance.rum,
       key: captureKey,
       child: MaterialApp(
-        home: Scaffold(
-          appBar: AppBar(
-            title: const Text('Plugin example app'),
-          ),
-          body: Center(
-            child: Column(
-              children: [
-                const Text('Running'),
-                ElevatedButton(
-                  onPressed: _onCapture,
-                  child: const Text('Capture'),
-                ),
-              ],
-            ),
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          appBarTheme: const AppBarTheme(
+            color: Colors.deepPurple,
+            foregroundColor: Colors.white,
           ),
         ),
+        home: const MainScreen(),
       ),
     );
   }

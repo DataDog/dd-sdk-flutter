@@ -11,6 +11,8 @@ import 'package:meta/meta.dart';
 
 import '../datadog_session_replay.dart';
 import 'capture/capture_node.dart';
+import 'capture/element_recorders/container_recorder.dart';
+import 'capture/element_recorders/image_recorder.dart';
 import 'capture/element_recorders/text_recorder.dart';
 import 'capture/view_tree_snapshot.dart';
 import 'datadog_session_replay_platform_interface.dart';
@@ -21,10 +23,11 @@ class KeyGenerator {
   static const int maxKey = 0x20000000000000;
   var nextKey = 0;
 
-  final Expando<int> _expando = Expando('sr-keys');
+  final Expando<int> _nodeIdExpando = Expando('sr-key');
+  final Expando<List<int>> _nodeIdsExpando = Expando('multi-sr-key');
 
   int keyForElement(Element e) {
-    var value = _expando[e];
+    var value = _nodeIdExpando[e];
     if (value != null) return value;
 
     value = nextKey;
@@ -43,8 +46,12 @@ class DatadogSessionReplay {
 
   final Map<Key, Element> _elements = {};
   final List<ElementRecorder> _elementRecorders = [
+    ContainerRecorder(),
     TextElementRecorder(),
+    ImageElementRecorder(),
   ];
+
+  final KeyGenerator keyGenerator = KeyGenerator();
 
   RUMContext? _currentContext;
   ReceivePort? _mainReceivePort;

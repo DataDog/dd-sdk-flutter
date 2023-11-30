@@ -40,10 +40,8 @@ void main() async {
     );
 
   final ddsdk = DatadogSdk.instance;
-  ddsdk.sdkVerbosity = CoreLoggerLevel.debug;
+  ddsdk.sdkVerbosity = CoreLoggerLevel.warn;
   await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
     return runApp(const MyApp());
   });
-
-  runApp(const MyApp());
 }

@@ -128,13 +128,46 @@ Map<String, dynamic> _$SRTextStyleToJson(SRTextStyle instance) =>
     };
 
 SRShapeStyle _$SRShapeStyleFromJson(Map<String, dynamic> json) => SRShapeStyle(
-      cornerRadius: (json['cornerRadius'] as num?)?.toDouble(),
-      backgroundColor: json['backgroundColor'] as String?,
-      opacity: (json['opacity'] as num?)?.toDouble(),
+      cornerRadius: (json['cornerRadius'] as num?)?.toDouble() ?? 0.0,
+      backgroundColor: json['backgroundColor'] as String? ?? '#ffffff00',
+      opacity: (json['opacity'] as num?)?.toDouble() ?? 1.0,
     );
 
-Map<String, dynamic> _$SRShapeStyleToJson(SRShapeStyle instance) {
-  final val = <String, dynamic>{};
+Map<String, dynamic> _$SRShapeStyleToJson(SRShapeStyle instance) =>
+    <String, dynamic>{
+      'cornerRadius': instance.cornerRadius,
+      'backgroundColor': instance.backgroundColor,
+      'opacity': instance.opacity,
+    };
+
+SRShapeWireframe _$SRShapeWireframeFromJson(Map<String, dynamic> json) =>
+    SRShapeWireframe(
+      type: json['type'] as String? ?? 'shape',
+      id: json['id'] as int,
+      x: json['x'] as int,
+      y: json['y'] as int,
+      width: json['width'] as int,
+      height: json['height'] as int,
+      border: json['border'] == null
+          ? null
+          : SRShapeBorder.fromJson(json['border'] as Map<String, dynamic>),
+      clip: json['clip'] == null
+          ? null
+          : SRContentClip.fromJson(json['clip'] as Map<String, dynamic>),
+      shapeStyle: json['shapeStyle'] == null
+          ? null
+          : SRShapeStyle.fromJson(json['shapeStyle'] as Map<String, dynamic>),
+    );
+
+Map<String, dynamic> _$SRShapeWireframeToJson(SRShapeWireframe instance) {
+  final val = <String, dynamic>{
+    'id': instance.id,
+    'type': instance.type,
+    'x': instance.x,
+    'y': instance.y,
+    'width': instance.width,
+    'height': instance.height,
+  };
 
   void writeNotNull(String key, dynamic value) {
     if (value != null) {
@@ -142,9 +175,9 @@ Map<String, dynamic> _$SRShapeStyleToJson(SRShapeStyle instance) {
     }
   }
 
-  writeNotNull('cornerRadius', instance.cornerRadius);
-  writeNotNull('backgroundColor', instance.backgroundColor);
-  writeNotNull('opacity', instance.opacity);
+  writeNotNull('border', instance.border?.toJson());
+  writeNotNull('clip', instance.clip?.toJson());
+  writeNotNull('shapeStyle', instance.shapeStyle?.toJson());
   return val;
 }
 
@@ -257,8 +290,8 @@ SRTextWireframe _$SRTextWireframeFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$SRTextWireframeToJson(SRTextWireframe instance) {
   final val = <String, dynamic>{
-    'type': instance.type,
     'id': instance.id,
+    'type': instance.type,
     'x': instance.x,
     'y': instance.y,
     'width': instance.width,
@@ -279,6 +312,28 @@ Map<String, dynamic> _$SRTextWireframeToJson(SRTextWireframe instance) {
   writeNotNull('textPosition', instance.textPosition?.toJson());
   return val;
 }
+
+SRPlaceholderWireframe _$SRPlaceholderWireframeFromJson(
+        Map<String, dynamic> json) =>
+    SRPlaceholderWireframe(
+      type: json['type'] as String? ?? 'placeholder',
+      id: json['id'] as int,
+      x: json['x'] as int,
+      y: json['y'] as int,
+      width: json['width'] as int,
+      height: json['height'] as int,
+    );
+
+Map<String, dynamic> _$SRPlaceholderWireframeToJson(
+        SRPlaceholderWireframe instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'type': instance.type,
+      'x': instance.x,
+      'y': instance.y,
+      'width': instance.width,
+      'height': instance.height,
+    };
 
 SRIdHolder _$SRIdHolderFromJson(Map<String, dynamic> json) => SRIdHolder(
       id: json['id'] as String,
