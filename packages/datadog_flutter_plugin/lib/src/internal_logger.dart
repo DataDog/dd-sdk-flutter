@@ -39,7 +39,7 @@ class InternalLogger {
 
   /// Send a log to the Datadog org, not to the customer's org. This feature is
   /// used mostly to track potential issues in the Datadog SDK. The rate at which
-  /// data is sent to Datadog is set by [DatadogConfiguration.telemetrySampleRate]
+  /// data is sent to Datadog is set by [DatadogRumConfiguration.telemetrySampleRate]
   void sendToDatadog(String message, StackTrace? stack, String? kind) {
     DatadogSdkPlatform.instance
         .sendTelemetryError(message, stack.toString(), kind);

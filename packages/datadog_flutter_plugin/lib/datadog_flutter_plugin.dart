@@ -90,7 +90,7 @@ class DatadogSdk {
   /// Internal extension access to the configured platform
   DatadogSdkPlatform get platform => _platform;
 
-  /// Set the verbosity of the Datadog SDK. Set to [CoreLoggerLevel.info] by
+  /// Set the verbosity of the Datadog SDK. Set to [CoreLoggerLevel.warn] by
   /// default. All internal logging is enabled only when [kDebugMode] is
   /// set.
   CoreLoggerLevel get sdkVerbosity => internalLogger.sdkVerbosity;
@@ -121,7 +121,7 @@ class DatadogSdk {
 
   /// A helper function that will initialize Datadog and setup error reporting
   ///
-  /// See also, [DdRum.handleFlutterError], [DatadogTrackingHttpClient]
+  /// See also, [DatadogRum.handleFlutterError], [DatadogTrackingHttpClient]
   static Future<void> runApp(
     DatadogConfiguration configuration,
     TrackingConsent trackingConsent,

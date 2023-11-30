@@ -15,6 +15,32 @@ export 'ddlog_event.dart';
 
 const _uuid = Uuid();
 
+/// Log levels defined by Datadog. Note that not all levels
+/// are supported by the Flutter SDK currently, although any
+/// level can be used for [DatadogLoggerConfiguration.remoteLogThreshold].
+enum LogLevel {
+  debug,
+  info,
+
+  /// Currently unsupported
+  // ignore: unused_field
+  notice,
+  warning,
+  error,
+
+  /// Currently unsupported
+  // ignore: unused_field
+  critical,
+
+  /// Currently unsupported
+  // ignore: unused_field
+  alert,
+
+  /// Currently unsupported
+  // ignore: unused_field
+  emergency
+}
+
 class DatadogLogging {
   static final Finalizer<String> _finalizer = Finalizer((loggerHandle) {
     _platform.destroyLogger(loggerHandle);

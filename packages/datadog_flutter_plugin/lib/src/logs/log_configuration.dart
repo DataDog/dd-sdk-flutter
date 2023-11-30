@@ -4,8 +4,7 @@
 
 import 'package:flutter/foundation.dart';
 
-import 'ddlog_event.dart';
-import 'ddlogs_platform_interface.dart';
+import 'ddlogs.dart';
 
 /// A function that allows you to modify or drop specific [LogEvent]s before
 /// they are sent to Datadog.
