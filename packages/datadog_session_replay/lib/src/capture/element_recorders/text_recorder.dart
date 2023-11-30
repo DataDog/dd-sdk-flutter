@@ -4,18 +4,11 @@
 
 import 'package:flutter/widgets.dart';
 
+import '../../datadog_session_replay.dart';
+import '../../extensions.dart';
 import '../../sr_data_models.dart';
 import '../capture_node.dart';
 import '../view_tree_snapshot.dart';
-
-extension HexColor on Color {
-  String toHexString() {
-    return '#${red.toRadixString(16).padLeft(2, '0')}'
-        '${green.toRadixString(16).padLeft(2, '0')}'
-        '${blue.toRadixString(16).padLeft(2, '0')}'
-        '${alpha.toRadixString(16).padLeft(2, '0')}';
-  }
-}
 
 class TextElementRecorder implements ElementRecorder {
   @override
@@ -29,8 +22,12 @@ class TextElementRecorder implements ElementRecorder {
     final textSpan = widget.text;
     // TODO: Support other inline spans / child spans
     if (textSpan is TextSpan) {
+      final key =
+          DatadogSessionReplay.instance?.keyGenerator.keyForElement(element) ??
+              0;
       final style = textSpan.style;
       final builder = TextElementWireframeBuilder(
+        wireframeId: key,
         text: textSpan.text ?? '',
         color: style?.color?.toHexString() ?? '#FF0000FF',
         family: style?.fontFamily ?? '',
@@ -47,12 +44,14 @@ class TextElementRecorder implements ElementRecorder {
 
 @immutable
 class TextElementWireframeBuilder implements WireframeBuilder {
+  final int wireframeId;
   final String text;
   final String color;
   final String family;
   final int size;
 
   const TextElementWireframeBuilder({
+    required this.wireframeId,
     required this.text,
     required this.color,
     required this.family,
@@ -63,7 +62,7 @@ class TextElementWireframeBuilder implements WireframeBuilder {
   List<SRWireframe> buildWireframes(CaptureNode node) {
     return [
       SRTextWireframe(
-        id: 111,
+        id: wireframeId,
         x: node.attributes.paintBounds.left.toInt(),
         y: node.attributes.paintBounds.top.toInt(),
         width: node.attributes.paintBounds.width.toInt(),

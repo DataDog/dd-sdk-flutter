@@ -95,7 +95,6 @@ class SRFocusRecordData {
 
   factory SRFocusRecordData.fromJson(Map<String, dynamic> json) =>
       _$SRFocusRecordDataFromJson(json);
-  @override
   Map<String, dynamic> toJson() => _$SRFocusRecordDataToJson(this);
 }
 
@@ -147,9 +146,11 @@ class SRFullSnapshotRecord extends SRRecord {
 }
 
 abstract class SRWireframe {
+  final int id;
   final String type;
 
   SRWireframe({
+    required this.id,
     required this.type,
   });
 
@@ -212,19 +213,48 @@ class SRTextStyle {
 
 @JsonSerializable()
 class SRShapeStyle {
-  final double? cornerRadius;
-  final String? backgroundColor;
-  final double? opacity;
+  final double cornerRadius;
+  final String backgroundColor;
+  final double opacity;
 
   SRShapeStyle({
-    this.cornerRadius,
-    this.backgroundColor,
-    this.opacity,
+    this.cornerRadius = 0.0,
+    this.backgroundColor = '#ffffff00',
+    this.opacity = 1.0,
   });
 
   factory SRShapeStyle.fromJson(Map<String, dynamic> json) =>
       _$SRShapeStyleFromJson(json);
   Map<String, dynamic> toJson() => _$SRShapeStyleToJson(this);
+}
+
+@JsonSerializable()
+class SRShapeWireframe extends SRWireframe {
+  final int x;
+  final int y;
+  final int width;
+  final int height;
+
+  final SRShapeBorder? border;
+  final SRContentClip? clip;
+  final SRShapeStyle? shapeStyle;
+
+  SRShapeWireframe({
+    super.type = 'shape',
+    required super.id,
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+    this.border,
+    this.clip,
+    this.shapeStyle,
+  });
+
+  factory SRShapeWireframe.fromJson(Map<String, dynamic> json) =>
+      _$SRShapeWireframeFromJson(json);
+  @override
+  Map<String, dynamic> toJson() => _$SRShapeWireframeToJson(this);
 }
 
 @JsonSerializable()
@@ -295,7 +325,6 @@ class SRTextPosition {
 
 @JsonSerializable()
 class SRTextWireframe extends SRWireframe {
-  final int id;
   final int x;
   final int y;
   final int width;
@@ -310,7 +339,7 @@ class SRTextWireframe extends SRWireframe {
 
   SRTextWireframe({
     super.type = 'text',
-    required this.id,
+    required super.id,
     required this.x,
     required this.y,
     required this.width,
@@ -327,6 +356,32 @@ class SRTextWireframe extends SRWireframe {
       _$SRTextWireframeFromJson(json);
   @override
   Map<String, dynamic> toJson() => _$SRTextWireframeToJson(this);
+}
+
+@JsonSerializable()
+class SRPlaceholderWireframe extends SRWireframe {
+  final int x;
+  final int y;
+  final int width;
+  final int height;
+  final String? label;
+  final SRContentClip? clip;
+
+  SRPlaceholderWireframe({
+    super.type = 'placeholder',
+    required super.id,
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+    this.label,
+    this.clip,
+  });
+
+  factory SRPlaceholderWireframe.fromJson(Map<String, dynamic> json) =>
+      _$SRPlaceholderWireframeFromJson(json);
+  @override
+  Map<String, dynamic> toJson() => _$SRPlaceholderWireframeToJson(this);
 }
 
 @JsonSerializable()
