@@ -3,7 +3,7 @@
 ## Unreleased
 
 * `DatadogLogger` will no longer leak its reference to its native Logger.
-* Fix debug output from native DatadogSdk on iOS.
+* Fix debug output from native `DatadogSdk` on iOS.
 
 ## 2.0.0
 
