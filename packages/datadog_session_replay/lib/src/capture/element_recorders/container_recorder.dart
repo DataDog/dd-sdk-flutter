@@ -16,9 +16,12 @@ class ContainerRecorder implements ElementRecorder {
       Element element, CapturedViewAttributes attributes) {
     final widget = element.widget;
 
-    final Color? backgroundColor;
+    Color? backgroundColor;
     if (widget is Material) {
       backgroundColor = widget.color;
+      if (widget.surfaceTintColor != null) {
+        backgroundColor = widget.surfaceTintColor;
+      }
     } else if (widget is Container) {
       backgroundColor = widget.color;
     } else {

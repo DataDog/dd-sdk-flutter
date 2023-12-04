@@ -5,7 +5,9 @@
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import 'screens/input_screen.dart';
 import 'screens/main_screen.dart';
 
 class MyApp extends StatefulWidget {
@@ -18,18 +20,32 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final captureKey = GlobalKey();
 
-  @override
-  void initState() {
-    DatadogSdk.instance.rum?.startView('First View');
-    super.initState();
-  }
+  final router = GoRouter(
+    observers: [DatadogNavigationObserver(datadogSdk: DatadogSdk.instance)],
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) {
+          return const MainScreen();
+        },
+        routes: [
+          GoRoute(
+            path: 'input',
+            builder: (context, state) {
+              return const InputScreen();
+            },
+          )
+        ],
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
     return SessionReplayCapture(
       rum: DatadogSdk.instance.rum,
       key: captureKey,
-      child: MaterialApp(
+      child: MaterialApp.router(
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -38,7 +54,7 @@ class _MyAppState extends State<MyApp> {
             foregroundColor: Colors.white,
           ),
         ),
-        home: const MainScreen(),
+        routerConfig: router,
       ),
     );
   }

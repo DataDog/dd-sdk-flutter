@@ -2,8 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
-import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../widgets/custom_card.dart';
 
@@ -17,8 +17,12 @@ class MainScreen extends StatelessWidget {
 
   const MainScreen({super.key});
 
-  void _onCapture() {
-    DatadogSessionReplay.instance?.performCapture();
+  void _onInputScreen(BuildContext context) {
+    context.go('/input');
+  }
+
+  void _onClick(BuildContext context) {
+    print('Clicked!');
   }
 
   @override
@@ -37,8 +41,14 @@ class MainScreen extends StatelessWidget {
             ),
             Center(
               child: ElevatedButton(
-                onPressed: _onCapture,
-                child: const Text('Capture'),
+                onPressed: () => _onInputScreen(context),
+                child: const Text('Input Screen'),
+              ),
+            ),
+            Center(
+              child: ElevatedButton(
+                onPressed: () => _onClick(context),
+                child: const Text('Click Me'),
               ),
             ),
             for (int i = 0; i < images.length; ++i)

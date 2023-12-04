@@ -12,6 +12,8 @@ import 'app.dart';
 void main() async {
   await dotenv.load();
 
+  const customEndpoint = 'http://192.168.7.51:8000';
+
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
 
   final configuration = DatadogConfiguration(
@@ -29,13 +31,13 @@ void main() async {
             applicationId: applicationId,
             detectLongTasks: true,
             reportFlutterPerformance: true,
-            //customEndpoint: 'http://192.168.7.51:8000/rum',
+            //customEndpoint: '$customEndpoint/rum',
           )
         : null,
   )..enableSessionReplay(
       DatadogSessionReplayConfiguration(
         replaySampleRate: 1.0,
-        //customEndpoint: 'http://192.168.7.51:8000/replay',
+        //customEndpoint: '$customEndpoint/replay',
       ),
     );
 

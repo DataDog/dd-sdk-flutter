@@ -3,8 +3,14 @@
 // Copyright 2023-Present Datadog, Inc.
 
 import 'package:json_annotation/json_annotation.dart';
+import 'package:meta/meta.dart';
 
 part 'sr_data_models.g.dart';
+
+// Helper for mutations, maybe move?
+T? useIfDifferent<T>(T? use, T? compare) {
+  return use == compare ? null : use;
+}
 
 enum SRRecordType {
   @JsonValue(10)
@@ -148,11 +154,33 @@ class SRFullSnapshotRecord extends SRRecord {
 abstract class SRWireframe {
   final int id;
   final String type;
+  final int x;
+  final int y;
+  final int width;
+  final int height;
 
   SRWireframe({
     required this.id,
     required this.type,
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
   });
+
+  @mustBeOverridden
+  bool isDifferent(SRWireframe other) {
+    if (runtimeType != other.runtimeType) return true;
+
+    return !(id == other.id &&
+        type == other.type &&
+        x == other.x &&
+        y == other.y &&
+        width == other.width &&
+        height == other.height);
+  }
+
+  SRIncrementalUpdate mutationsFrom(SRWireframe other);
 
   factory SRWireframe.fromJson(Map<String, dynamic> json) {
     throw Error();
@@ -169,6 +197,13 @@ class SRShapeBorder {
     required this.color,
     required this.width,
   });
+
+  @override
+  bool operator ==(Object other) =>
+      other is SRShapeBorder && color == other.color && width == other.width;
+
+  @override
+  int get hashCode => Object.hash(color, width);
 
   factory SRShapeBorder.fromJson(Map<String, dynamic> json) =>
       _$SRShapeBorderFromJson(json);
@@ -189,6 +224,17 @@ class SRContentClip {
     required this.top,
   });
 
+  @override
+  bool operator ==(Object other) =>
+      other is SRContentClip &&
+      bottom == other.bottom &&
+      left == other.left &&
+      right == other.right &&
+      top == other.top;
+
+  @override
+  int get hashCode => Object.hash(bottom, left, right, top);
+
   factory SRContentClip.fromJson(Map<String, dynamic> json) =>
       _$SRContentClipFromJson(json);
   Map<String, dynamic> toJson() => _$SRContentClipToJson(this);
@@ -205,6 +251,16 @@ class SRTextStyle {
     required this.family,
     required this.size,
   });
+
+  @override
+  bool operator ==(Object other) =>
+      other is SRTextStyle &&
+      color == other.color &&
+      family == other.family &&
+      size == other.size;
+
+  @override
+  int get hashCode => Object.hash(color, family, size);
 
   factory SRTextStyle.fromJson(Map<String, dynamic> json) =>
       _$SRTextStyleFromJson(json);
@@ -223,6 +279,16 @@ class SRShapeStyle {
     this.opacity = 1.0,
   });
 
+  @override
+  bool operator ==(Object other) =>
+      other is SRShapeStyle &&
+      cornerRadius == other.cornerRadius &&
+      backgroundColor == other.backgroundColor &&
+      opacity == other.opacity;
+
+  @override
+  int get hashCode => Object.hash(cornerRadius, backgroundColor, opacity);
+
   factory SRShapeStyle.fromJson(Map<String, dynamic> json) =>
       _$SRShapeStyleFromJson(json);
   Map<String, dynamic> toJson() => _$SRShapeStyleToJson(this);
@@ -230,11 +296,6 @@ class SRShapeStyle {
 
 @JsonSerializable()
 class SRShapeWireframe extends SRWireframe {
-  final int x;
-  final int y;
-  final int width;
-  final int height;
-
   final SRShapeBorder? border;
   final SRContentClip? clip;
   final SRShapeStyle? shapeStyle;
@@ -242,14 +303,42 @@ class SRShapeWireframe extends SRWireframe {
   SRShapeWireframe({
     super.type = 'shape',
     required super.id,
-    required this.x,
-    required this.y,
-    required this.width,
-    required this.height,
+    required super.x,
+    required super.y,
+    required super.width,
+    required super.height,
     this.border,
     this.clip,
     this.shapeStyle,
   });
+
+  @override
+  bool isDifferent(SRWireframe other) {
+    if (other is! SRShapeWireframe) return false;
+
+    return super.isDifferent(other) ||
+        !(border == other.border &&
+            clip == other.clip &&
+            shapeStyle == other.shapeStyle);
+  }
+
+  @override
+  SRIncrementalUpdate mutationsFrom(SRWireframe other) {
+    if (other is! SRShapeWireframe || id != other.id) {
+      throw Error();
+    }
+
+    return SRShapeWireframeUpdate(
+      id: id,
+      x: useIfDifferent(x, other.x),
+      y: useIfDifferent(y, other.y),
+      width: useIfDifferent(width, other.width),
+      height: useIfDifferent(height, other.height),
+      border: useIfDifferent(border, other.border),
+      clip: useIfDifferent(clip, other.clip),
+      shapeStyle: useIfDifferent(shapeStyle, other.shapeStyle),
+    );
+  }
 
   factory SRShapeWireframe.fromJson(Map<String, dynamic> json) =>
       _$SRShapeWireframeFromJson(json);
@@ -265,6 +354,17 @@ class SRPadding {
   final int? right;
 
   SRPadding({this.top, this.left, this.bottom, this.right});
+
+  @override
+  bool operator ==(Object other) =>
+      other is SRPadding &&
+      top == other.top &&
+      left == other.left &&
+      bottom == other.bottom &&
+      right == other.right;
+
+  @override
+  int get hashCode => Object.hash(top, left, bottom, right);
 
   factory SRPadding.fromJson(Map<String, dynamic> json) =>
       _$SRPaddingFromJson(json);
@@ -303,6 +403,15 @@ class SRAlignment {
     this.vertical,
   });
 
+  @override
+  bool operator ==(Object other) =>
+      other is SRAlignment &&
+      horizontal == other.horizontal &&
+      vertical == other.vertical;
+
+  @override
+  int get hashCode => Object.hash(horizontal, vertical);
+
   factory SRAlignment.fromJson(Map<String, dynamic> json) =>
       _$SRAlignmentFromJson(json);
   Map<String, dynamic> toJson() => _$SRAlignmentToJson(this);
@@ -318,6 +427,15 @@ class SRTextPosition {
     this.padding,
   });
 
+  @override
+  bool operator ==(Object other) =>
+      other is SRTextPosition &&
+      alignment == other.alignment &&
+      padding == other.padding;
+
+  @override
+  int get hashCode => Object.hash(alignment, padding);
+
   factory SRTextPosition.fromJson(Map<String, dynamic> json) =>
       _$SRTextPositionFromJson(json);
   Map<String, dynamic> toJson() => _$SRTextPositionToJson(this);
@@ -325,10 +443,6 @@ class SRTextPosition {
 
 @JsonSerializable()
 class SRTextWireframe extends SRWireframe {
-  final int x;
-  final int y;
-  final int width;
-  final int height;
   final String text;
   final SRTextStyle textStyle;
 
@@ -340,10 +454,10 @@ class SRTextWireframe extends SRWireframe {
   SRTextWireframe({
     super.type = 'text',
     required super.id,
-    required this.x,
-    required this.y,
-    required this.width,
-    required this.height,
+    required super.x,
+    required super.y,
+    required super.width,
+    required super.height,
     required this.text,
     required this.textStyle,
     this.border,
@@ -351,6 +465,40 @@ class SRTextWireframe extends SRWireframe {
     this.shapeStyle,
     this.textPosition,
   });
+
+  @override
+  bool isDifferent(SRWireframe other) {
+    if (other is! SRTextWireframe) return false;
+
+    return super.isDifferent(other) ||
+        !(text == other.text &&
+            textStyle == other.textStyle &&
+            border == other.border &&
+            clip == other.clip &&
+            shapeStyle == other.shapeStyle &&
+            textPosition == other.textPosition);
+  }
+
+  @override
+  SRIncrementalUpdate mutationsFrom(SRWireframe other) {
+    if (other is! SRTextWireframe || id != other.id) {
+      throw Error();
+    }
+
+    return SRTextWireframeUpdate(
+      id: id,
+      x: useIfDifferent(x, other.x),
+      y: useIfDifferent(y, other.y),
+      width: useIfDifferent(width, other.width),
+      height: useIfDifferent(height, other.height),
+      text: useIfDifferent(text, other.text),
+      textStyle: useIfDifferent(textStyle, other.textStyle),
+      border: useIfDifferent(border, other.border),
+      clip: useIfDifferent(clip, other.clip),
+      shapeStyle: useIfDifferent(shapeStyle, other.shapeStyle),
+      textPosition: useIfDifferent(textPosition, other.textPosition),
+    );
+  }
 
   factory SRTextWireframe.fromJson(Map<String, dynamic> json) =>
       _$SRTextWireframeFromJson(json);
@@ -360,23 +508,44 @@ class SRTextWireframe extends SRWireframe {
 
 @JsonSerializable()
 class SRPlaceholderWireframe extends SRWireframe {
-  final int x;
-  final int y;
-  final int width;
-  final int height;
   final String? label;
   final SRContentClip? clip;
 
   SRPlaceholderWireframe({
     super.type = 'placeholder',
     required super.id,
-    required this.x,
-    required this.y,
-    required this.width,
-    required this.height,
+    required super.x,
+    required super.y,
+    required super.width,
+    required super.height,
     this.label,
     this.clip,
   });
+
+  @override
+  bool isDifferent(SRWireframe other) {
+    if (other is! SRPlaceholderWireframe) return false;
+
+    return super.isDifferent(other) ||
+        !(label == other.label && clip == other.clip);
+  }
+
+  @override
+  SRIncrementalUpdate mutationsFrom(SRWireframe other) {
+    if (other is! SRPlaceholderWireframe || id != other.id) {
+      throw Error();
+    }
+
+    return SRPlaceholderWireframeUpdate(
+      id: id,
+      x: useIfDifferent(x, other.x),
+      y: useIfDifferent(y, other.y),
+      width: useIfDifferent(width, other.width),
+      height: useIfDifferent(height, other.height),
+      label: useIfDifferent(label, other.label),
+      clip: useIfDifferent(clip, other.clip),
+    );
+  }
 
   factory SRPlaceholderWireframe.fromJson(Map<String, dynamic> json) =>
       _$SRPlaceholderWireframeFromJson(json);
@@ -426,6 +595,204 @@ class SRSegment {
   factory SRSegment.fromJson(Map<String, dynamic> json) =>
       _$SRSegmentFromJson(json);
   Map<String, dynamic> toJson() => _$SRSegmentToJson(this);
+}
+
+abstract class SRIncrementalSnapshotData {
+  final int source;
+
+  SRIncrementalSnapshotData({
+    required this.source,
+  });
+
+  factory SRIncrementalSnapshotData.fromJson(Map<String, dynamic> json) {
+    throw Error();
+  }
+  Map<String, dynamic> toJson();
+}
+
+@JsonSerializable()
+class SRIntrementalAdd {
+  final int? previousId;
+  final SRWireframe wireframe;
+
+  SRIntrementalAdd({this.previousId, required this.wireframe});
+
+  factory SRIntrementalAdd.fromJson(Map<String, dynamic> json) =>
+      _$SRIntrementalAddFromJson(json);
+  Map<String, dynamic> toJson() => _$SRIntrementalAddToJson(this);
+}
+
+@JsonSerializable()
+class SRIncrementalRemove {
+  final int id;
+
+  SRIncrementalRemove({
+    required this.id,
+  });
+
+  factory SRIncrementalRemove.fromJson(Map<String, dynamic> json) =>
+      _$SRIncrementalRemoveFromJson(json);
+  Map<String, dynamic> toJson() => _$SRIncrementalRemoveToJson(this);
+}
+
+abstract class SRIncrementalUpdate {
+  final String type;
+  final int id;
+  final int? x;
+  final int? y;
+  final int? width;
+  final int? height;
+
+  SRIncrementalUpdate({
+    required this.type,
+    required this.id,
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+  });
+
+  factory SRIncrementalUpdate.fromJson(Map<String, dynamic> json) {
+    throw Error();
+  }
+  Map<String, dynamic> toJson();
+}
+
+@JsonSerializable()
+class SRShapeWireframeUpdate extends SRIncrementalUpdate {
+  final SRShapeBorder? border;
+  final SRContentClip? clip;
+  final SRShapeStyle? shapeStyle;
+
+  SRShapeWireframeUpdate({
+    super.type = 'shape',
+    required super.id,
+    super.x,
+    super.y,
+    super.width,
+    super.height,
+    required this.border,
+    required this.clip,
+    required this.shapeStyle,
+  });
+
+  factory SRShapeWireframeUpdate.fromJson(Map<String, dynamic> json) =>
+      _$SRShapeWireframeUpdateFromJson(json);
+  @override
+  Map<String, dynamic> toJson() => _$SRShapeWireframeUpdateToJson(this);
+}
+
+@JsonSerializable()
+class SRTextWireframeUpdate extends SRIncrementalUpdate {
+  final String? text;
+  final SRTextStyle? textStyle;
+
+  final SRShapeBorder? border;
+  final SRContentClip? clip;
+  final SRShapeStyle? shapeStyle;
+  final SRTextPosition? textPosition;
+
+  SRTextWireframeUpdate({
+    super.type = 'text',
+    required super.id,
+    super.x,
+    super.y,
+    super.width,
+    super.height,
+    this.text,
+    this.textStyle,
+    this.border,
+    this.clip,
+    this.shapeStyle,
+    this.textPosition,
+  });
+
+  factory SRTextWireframeUpdate.fromJson(Map<String, dynamic> json) =>
+      _$SRTextWireframeUpdateFromJson(json);
+  @override
+  Map<String, dynamic> toJson() => _$SRTextWireframeUpdateToJson(this);
+}
+
+@JsonSerializable()
+class SRImageWireframeUpdate extends SRIncrementalUpdate {
+  SRShapeBorder? border;
+  SRContentClip? clip;
+  SRShapeStyle? shapeStyle;
+
+  SRImageWireframeUpdate({
+    super.type = 'shape',
+    required super.id,
+    super.x,
+    super.y,
+    super.width,
+    super.height,
+    this.border,
+    this.clip,
+    this.shapeStyle,
+  });
+
+  factory SRImageWireframeUpdate.fromJson(Map<String, dynamic> json) =>
+      _$SRImageWireframeUpdateFromJson(json);
+  @override
+  Map<String, dynamic> toJson() => _$SRImageWireframeUpdateToJson(this);
+}
+
+@JsonSerializable()
+class SRPlaceholderWireframeUpdate extends SRIncrementalUpdate {
+  String? label;
+  SRContentClip? clip;
+
+  SRPlaceholderWireframeUpdate({
+    super.type = 'placeholder',
+    required super.id,
+    super.x,
+    super.y,
+    super.width,
+    super.height,
+    this.label,
+    this.clip,
+  });
+
+  factory SRPlaceholderWireframeUpdate.fromJson(Map<String, dynamic> json) =>
+      _$SRPlaceholderWireframeUpdateFromJson(json);
+  @override
+  Map<String, dynamic> toJson() => _$SRPlaceholderWireframeUpdateToJson(this);
+}
+
+@JsonSerializable()
+class SRIncrementalMutationData extends SRIncrementalSnapshotData {
+  List<SRIntrementalAdd> adds;
+  List<SRIncrementalRemove> removes;
+  List<SRIncrementalUpdate> updates;
+
+  SRIncrementalMutationData({
+    super.source = 0,
+    required this.adds,
+    required this.removes,
+    required this.updates,
+  });
+
+  factory SRIncrementalMutationData.fromJson(Map<String, dynamic> json) =>
+      _$SRIncrementalMutationDataFromJson(json);
+  @override
+  Map<String, dynamic> toJson() => _$SRIncrementalMutationDataToJson(this);
+}
+
+@JsonSerializable()
+class SRIncrementalSnapshotRecord extends SRRecord {
+  final SRIncrementalSnapshotData data;
+  final int timestamp;
+
+  SRIncrementalSnapshotRecord({
+    super.type = 11,
+    required this.data,
+    required this.timestamp,
+  });
+
+  factory SRIncrementalSnapshotRecord.fromJson(Map<String, dynamic> json) =>
+      _$SRIncrementalSnapshotRecordFromJson(json);
+  @override
+  Map<String, dynamic> toJson() => _$SRIncrementalSnapshotRecordToJson(this);
 }
 
 // Don't rename these as they are not used by the SR endpoint, only

@@ -2,10 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
-import 'dart:convert';
-import 'dart:isolate';
+import 'dart:async';
 
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 
@@ -13,10 +11,11 @@ import '../datadog_session_replay.dart';
 import 'capture/capture_node.dart';
 import 'capture/element_recorders/container_recorder.dart';
 import 'capture/element_recorders/image_recorder.dart';
+import 'capture/element_recorders/text_field_recorder.dart';
 import 'capture/element_recorders/text_recorder.dart';
 import 'capture/view_tree_snapshot.dart';
 import 'datadog_session_replay_platform_interface.dart';
-import 'sr_data_models.dart';
+import 'processor/session_replay_processor.dart';
 
 class KeyGenerator {
   // This is close to JavaScript's MAX_SAFE_INT (53-bit)
@@ -34,6 +33,8 @@ class KeyGenerator {
     nextKey = nextKey + 1;
     if (nextKey >= maxKey) nextKey = 0;
 
+    _nodeIdExpando[e] = value;
+
     return value;
   }
 }
@@ -44,18 +45,19 @@ class DatadogSessionReplay {
 
   final DatadogSessionReplayConfiguration _configuration;
 
+  final KeyGenerator keyGenerator = KeyGenerator();
+
   final Map<Key, Element> _elements = {};
   final List<ElementRecorder> _elementRecorders = [
     ContainerRecorder(),
     TextElementRecorder(),
+    TextFieldRecorder(),
     ImageElementRecorder(),
   ];
 
-  final KeyGenerator keyGenerator = KeyGenerator();
-
+  final SessionReplayProcessor _processor = SessionReplayProcessor();
   RUMContext? _currentContext;
-  ReceivePort? _mainReceivePort;
-  SendPort? _mainSendPort;
+  Timer? _replayTimer;
 
   @internal
   static Future<void> init(
@@ -77,14 +79,12 @@ class DatadogSessionReplay {
   Future<void> start() async {
     final platform = DatadogSessionReplayPlatform.instance;
     await platform.enable(_configuration, _onContextChanged);
+    await _processor.start();
 
-    _mainReceivePort = ReceivePort();
-    await Isolate.spawn(
-      _captureProcessor,
-      _ProcessorArgs(RootIsolateToken.instance!, _mainReceivePort!.sendPort),
-    );
-
-    _mainSendPort = await _mainReceivePort!.first;
+    const timerDuration = Duration(milliseconds: 100);
+    _replayTimer = Timer.periodic(timerDuration, (timer) {
+      performCapture();
+    });
   }
 
   void performCapture() {
@@ -107,14 +107,14 @@ class DatadogSessionReplay {
     }
 
     if (nodes.isNotEmpty) {
-      final viewTreeCapture = ViewTreeSnapshot(
+      final viewTreeSnapshot = ViewTreeSnapshot(
         date: now,
         context: context,
         viewportSize: size,
         nodes: nodes,
       );
 
-      _mainSendPort?.send(viewTreeCapture);
+      _processor.process(viewTreeSnapshot);
     }
   }
 
@@ -199,82 +199,5 @@ class RUMContext {
       viewId: map['viewId'] as String?,
       viewServerTimeOffset: map['viewServerTimeOffset'] as double?,
     );
-  }
-}
-
-@immutable
-class _ProcessorArgs {
-  final RootIsolateToken rootIsolateToken;
-  final SendPort sendPort;
-
-  const _ProcessorArgs(this.rootIsolateToken, this.sendPort);
-}
-
-Future<void> _captureProcessor(_ProcessorArgs args) async {
-  BackgroundIsolateBinaryMessenger.ensureInitialized(args.rootIsolateToken);
-  final ReceivePort commandPort = ReceivePort();
-  final responsePort = args.sendPort;
-  responsePort.send(commandPort.sendPort);
-
-  await for (final message in commandPort) {
-    if (message is ViewTreeSnapshot) {
-      await _processSnapshot(message);
-    } else if (message == null) {
-      break;
-    }
-  }
-
-  Isolate.exit();
-}
-
-// TODO: Enclose this in a class
-Map<String, int> _recordCountByViewId = {};
-
-Future<void> _processSnapshot(ViewTreeSnapshot snapshot) async {
-  final viewId = snapshot.context.viewId;
-  if (viewId == null) return;
-
-  final wireframes = snapshot.nodes
-      .expand((element) => element.wireframeBuilder.buildWireframes(element))
-      .toList();
-
-  var records = <SRRecord>[];
-
-  final timestamp = snapshot.date.toUtc().microsecondsSinceEpoch;
-
-  // TODO: Check if anything changed and do an incremental record
-  records.add(
-    SRMetaRecord(
-      data: SRMetaRecordData(
-          width: snapshot.viewportSize.width.toInt(),
-          height: snapshot.viewportSize.height.toInt()),
-      timestamp: timestamp,
-    ),
-  );
-  records.add(SRFocusRecord(
-      data: SRFocusRecordData(hasFocus: true), timestamp: timestamp));
-  records.add(SRFullSnapshotRecord(
-      data: SRFullSnapshotRecordData(wireframes: wireframes),
-      timestamp: timestamp));
-
-  if (records.isNotEmpty) {
-    final enrichedRecord = SREnrichedRecord(
-      records: records,
-      applicationID: snapshot.context.applicationId,
-      sessionID: snapshot.context.sessionId,
-      viewID: viewId,
-      hasFullSnapshot: true,
-      earliestTimestamp: timestamp,
-      latestTimestamp: timestamp,
-    );
-
-    var totalRecordCount = _recordCountByViewId[viewId] ?? 0;
-    totalRecordCount += records.length;
-    _recordCountByViewId[viewId] = totalRecordCount;
-    await DatadogSessionReplayPlatform.instance
-        .setRecordCount(viewId, totalRecordCount);
-
-    var encoded = jsonEncode(enrichedRecord.toJson());
-    await DatadogSessionReplayPlatform.instance.writeSegment(encoded, viewId);
   }
 }
