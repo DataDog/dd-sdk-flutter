@@ -56,10 +56,10 @@ public extension DatadogSite {
 extension CoreLoggerLevel {
     static func parseFromFlutter(_ value: String) -> Self {
         switch value {
-        case "DatadogCoreLoggerLevel.debug": return .debug
-        case "DatadogCoreLoggerLevel.warn": return .warn
-        case "DatadogCoreLoggerLevel.error": return .error
-        case "DatadogCoreLoggerLevel.critical": return .critical
+        case "CoreLoggerLevel.debug": return .debug
+        case "CoreLoggerLevel.warn": return .warn
+        case "CoreLoggerLevel.error": return .error
+        case "CoreLoggerLevel.critical": return .critical
         default: return .debug
         }
     }

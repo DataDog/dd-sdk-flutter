@@ -227,7 +227,7 @@ class FlutterSdkTests: XCTestCase {
         plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
         let methodCall = FlutterMethodCall(
             methodName: "setSdkVerbosity", arguments: [
-                "value": "DatadogCoreLoggerLevel.debug"
+                "value": "CoreLoggerLevel.warn"
             ])
 
         var callResult = ResultStatus.notCalled
@@ -235,7 +235,7 @@ class FlutterSdkTests: XCTestCase {
             callResult = ResultStatus.called(value: result)
         }
 
-        XCTAssertEqual(Datadog.verbosityLevel, .debug)
+        XCTAssertEqual(Datadog.verbosityLevel, .warn)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
