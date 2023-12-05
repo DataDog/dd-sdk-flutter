@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
 import org.json.JSONArray
 import org.json.JSONObject
 
-class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
+class DatadogLogsPlugin internal constructor() : MethodChannel.MethodCallHandler {
     companion object LogParameterNames {
         const val LOG_LEVEL = "logLevel"
         const val LOG_MESSAGE = "message"
@@ -38,6 +38,10 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
 
         // See DatadogSdkPlugin's description of this same member
         private var previousConfiguration: Map<String, Any?>? = null
+
+        val instance: DatadogLogsPlugin by lazy {
+            DatadogLogsPlugin()
+        }
 
         // For testing purposes only
         internal fun resetConfig() {
