@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.system.measureNanoTime
 
 @Suppress("StringLiteralDuplication")
-class DatadogRumPlugin(
+class DatadogRumPlugin internal constructor(
     rumInstance: RumMonitor? = null
 ) : MethodChannel.MethodCallHandler {
     companion object RumParameterNames {
@@ -68,6 +68,10 @@ class DatadogRumPlugin(
 
         // See DatadogSdkPlugin's description of this same member
         private var previousConfiguration: Map<String, Any?>? = null
+
+        val instance: DatadogRumPlugin by lazy {
+            DatadogRumPlugin()
+        }
 
         // For testing purposes only
         internal fun resetConfig() {
@@ -100,13 +104,11 @@ class DatadogRumPlugin(
         channel.setMethodCallHandler(null)
     }
 
-//    fun attachToExistingSdk() {
-//        rum = GlobalRum.get()
-//    }
-
     override fun onMethodCall(call: MethodCall, result: Result) {
         if (call.method != "enable" && rum == null) {
-            result.invalidOperation("Attempting to use RUM when it has not been enabled")
+            result.invalidOperation(
+                "Attempting to call ${call.method} on RUM when it has not been enabled"
+            )
             return
         }
 

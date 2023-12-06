@@ -62,8 +62,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         SynchronousQueue()
     )
 
-    val logsPlugin: DatadogLogsPlugin = DatadogLogsPlugin()
-    val rumPlugin: DatadogRumPlugin = DatadogRumPlugin()
+    // Because Flutter recreates the plugin, we have to rely on singletons for the contained plugins
+    val logsPlugin: DatadogLogsPlugin = DatadogLogsPlugin.instance
+    val rumPlugin: DatadogRumPlugin = DatadogRumPlugin.instance
 
     override fun onAttachedToEngine(
         flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
