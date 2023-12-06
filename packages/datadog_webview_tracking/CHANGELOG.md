@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Loosen restrictions on native SDK versions to allow `datadog_flutter_plugin` to dictate them.
 
 ## 2.0.0
 

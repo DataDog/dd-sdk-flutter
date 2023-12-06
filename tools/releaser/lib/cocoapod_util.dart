@@ -19,8 +19,11 @@ class RemovePodOverridesCommand extends Command {
       return false;
     }
 
-    if (!await _pinPodspecVersion(args, logger)) {
-      return false;
+    // Other packages can keep looser version constraints
+    if (args.packageName == 'datadog_flutter_plugin') {
+      if (!await _pinPodspecVersion(args, logger)) {
+        return false;
+      }
     }
 
     return true;
