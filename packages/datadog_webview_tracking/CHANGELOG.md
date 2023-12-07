@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.0.1
 
 * Loosen restrictions on native SDK versions to allow `datadog_flutter_plugin` to dictate them.
 
