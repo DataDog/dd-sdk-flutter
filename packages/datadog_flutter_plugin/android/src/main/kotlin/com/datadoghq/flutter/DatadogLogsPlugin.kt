@@ -77,6 +77,9 @@ class DatadogLogsPlugin internal constructor() : MethodChannel.MethodCallHandler
         if (call.method == "enable") {
             enable(call, result)
             return
+        } else if (call.method == "deinitialize") {
+            deinitialize(call, result)
+            return
         }
 
         val loggerHandle = call.argument<String>("loggerHandle")
@@ -144,6 +147,11 @@ class DatadogLogsPlugin internal constructor() : MethodChannel.MethodCallHandler
             // Maybe use DevLogger instead?
             Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_LOGGER_REINITIALIZATION)
         }
+    }
+
+    private fun deinitialize(call: MethodCall, result: MethodChannel.Result) {
+        previousConfiguration = null
+        result.success(null)
     }
 
     @Suppress("LongMethod", "ComplexMethod", "NestedBlockDepth")

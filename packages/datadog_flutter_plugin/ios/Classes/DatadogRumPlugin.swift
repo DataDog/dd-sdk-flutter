@@ -94,6 +94,11 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         switch call.method {
         case "enable":
             enable(arguments: arguments, call: call)
+            result(nil)
+
+        case "deinitialize":
+            deinitialize(arguments: arguments, call: call)
+            result(nil)
 
         case "startView":
             if let key = arguments["key"] as? String,
@@ -325,6 +330,13 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                     " is not supported. Cold restart your application to change your current configuation."
                 )
             }
+        }
+    }
+
+    private func deinitialize(arguments: [String: Any?], call: FlutterMethodCall) {
+        if rum != nil {
+            currentConfiguration = nil
+            rum = nil
         }
     }
 

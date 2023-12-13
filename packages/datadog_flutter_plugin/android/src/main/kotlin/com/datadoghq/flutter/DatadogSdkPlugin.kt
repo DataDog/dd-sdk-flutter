@@ -332,8 +332,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         executor.submit {
             simpleInvokeOn("flushAndShutdownExecutors", Datadog)
             Datadog.stopInstance()
-
-            // TODO: deregister logs / RUM plugin
         }.get()
 
         result.success(null)

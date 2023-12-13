@@ -31,6 +31,13 @@ class DdLogsMethodChannel extends DdLogsPlatform {
   }
 
   @override
+  Future<void> deinitialize() {
+    _core = null;
+    _logEventMapper = null;
+    return methodChannel.invokeMethod('deinitialize', {});
+  }
+
+  @override
   Future<void> createLogger(
       String loggerHandle, DatadogLoggerConfiguration config) {
     return methodChannel.invokeMethod('createLogger', {

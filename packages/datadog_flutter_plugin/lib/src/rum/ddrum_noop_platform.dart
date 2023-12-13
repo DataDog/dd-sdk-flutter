@@ -51,6 +51,11 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   }
 
   @override
+  Future<void> deinitialize() {
+    return Future.value();
+  }
+
+  @override
   Future<void> removeAttribute(String key) => Future.value();
 
   @override

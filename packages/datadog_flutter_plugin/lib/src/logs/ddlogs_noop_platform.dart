@@ -8,7 +8,12 @@ import 'ddlogs_platform_interface.dart';
 class DdNoOpLogsPlatform extends DdLogsPlatform {
   @override
   Future<void> enable(DatadogSdk core, DatadogLoggingConfiguration config) {
-    throw UnimplementedError();
+    return Future.value();
+  }
+
+  @override
+  Future<void> deinitialize() {
+    return Future.value();
   }
 
   @override

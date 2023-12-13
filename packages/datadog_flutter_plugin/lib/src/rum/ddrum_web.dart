@@ -55,6 +55,9 @@ class DdRumWeb extends DdRumPlatform {
       DatadogSdk core, DatadogRumConfiguration configuration) async {}
 
   @override
+  Future<void> deinitialize() async {}
+
+  @override
   Future<void> addAttribute(String key, dynamic value) async {
     _jsSetGlobalContextProperty(key, valueToJs(value, 'context'));
   }

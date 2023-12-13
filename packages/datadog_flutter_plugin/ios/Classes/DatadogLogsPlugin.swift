@@ -81,6 +81,9 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         if call.method == "enable" {
             enable(arguments: arguments, result: result)
             return
+        } else if call.method == "deinitialize" {
+            deinitialize(arguments: arguments, result: result)
+            return
         }
 
         guard let loggerHandle = arguments["loggerHandle"] as? String else {
@@ -233,6 +236,11 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
                 FlutterError.missingParameter(methodName: "enable")
             )
         }
+    }
+
+    private func deinitialize(arguments: [String: Any?], result: @escaping FlutterResult) {
+        currentConfiguration = nil        
+        result(nil)
     }
 }
 
