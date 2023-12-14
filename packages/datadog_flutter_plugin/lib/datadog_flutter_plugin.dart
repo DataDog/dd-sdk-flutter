@@ -114,8 +114,12 @@ class DatadogSdk {
       plugin.shutdown();
     }
     _plugins.clear();
+    _rum?.deinitialize();
     _rum = null;
+
+    _logs?.deinitialize();
     _logs = null;
+
     _initialized = false;
   }
 

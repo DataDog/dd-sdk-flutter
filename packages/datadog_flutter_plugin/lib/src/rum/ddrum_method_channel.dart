@@ -34,6 +34,11 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
+  Future<void> deinitialize() {
+    return methodChannel.invokeMethod('deinitialize', {});
+  }
+
+  @override
   Future<void> addTiming(String name) {
     return methodChannel.invokeMethod(
       'addTiming',

@@ -75,6 +75,16 @@ class DatadogLogging {
     return logging;
   }
 
+  /// FOR INTERNAL USE ONLY
+  /// Deinitialize this Logs instance. Note that this does not propertly
+  /// deregister this Logs instance from the default Core, since this should
+  /// only be called from the Core
+  @internal
+  void deinitialize() {
+    wrap('logs.deinitialize', core.internalLogger, null,
+        () => _platform.deinitialize());
+  }
+
   DatadogLogger createLogger(DatadogLoggerConfiguration configuration) {
     final logger = DatadogLogger(core.internalLogger, configuration);
     DdLogsPlatform.instance.createLogger(logger.loggerHandle, configuration);

@@ -32,6 +32,9 @@ class DdLogsWeb extends DdLogsPlatform {
       DatadogSdk core, DatadogLoggingConfiguration config) async {}
 
   @override
+  Future<void> deinitialize() async {}
+
+  @override
   Future<void> createLogger(
       String loggerHandle, DatadogLoggerConfiguration config) async {
     var loggerHandlers = [

@@ -115,6 +115,7 @@ class DatadogRumPlugin internal constructor(
         try {
             when (call.method) {
                 "enable" -> enable(call, result)
+                "deinitialize" -> deinitialize(call, result)
                 "startView" -> startView(call, result)
                 "stopView" -> stopView(call, result)
                 "addTiming" -> addTiming(call, result)
@@ -146,7 +147,7 @@ class DatadogRumPlugin internal constructor(
         }
     }
 
-    fun enable(call: MethodCall, result: Result) {
+    private fun enable(call: MethodCall, result: Result) {
         val encodedConfig = call.argument<Map<String, Any?>>("configuration")
         val applicationId = encodedConfig?.get("applicationId") as? String
         if (previousConfiguration == null) {
@@ -180,6 +181,15 @@ class DatadogRumPlugin internal constructor(
             // Maybe use DevLogger instead?
             Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_RUM_REINITIALIZATION)
         }
+
+        result.success(null)
+    }
+
+    private fun deinitialize(call: MethodCall, result: Result) {
+        previousConfiguration = null
+        rum = null
+
+        result.success(null)
     }
 
     fun attachToExistingSdk(monitor: RumMonitor) {

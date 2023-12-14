@@ -82,12 +82,16 @@ void main() {
     DdLogsPlatform.instance = mockLogsPlatform;
     when(() => mockLogsPlatform.enable(any(), any()))
         .thenAnswer((_) => Future.value());
+    when(() => mockLogsPlatform.deinitialize())
+        .thenAnswer((_) => Future.value());
     when(() => mockLogsPlatform.destroyLogger(any()))
         .thenAnswer((_) => Future.value());
 
     mockRumPlatform = MockRumPlatform();
     when(() => mockRumPlatform.enable(any(), any()))
         .thenAnswer((_) => Future<void>.value());
+    when(() => mockRumPlatform.deinitialize())
+        .thenAnswer((_) => Future.value());
     DdRumPlatform.instance = mockRumPlatform;
   });
 

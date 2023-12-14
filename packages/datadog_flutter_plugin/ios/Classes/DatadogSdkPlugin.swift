@@ -45,11 +45,6 @@ extension Datadog.Configuration {
 public class DatadogSdkPlugin: NSObject, FlutterPlugin {
     let channel: FlutterMethodChannel
 
-    // NOTE: Although these are instances, they are still registered globally to
-    // a method channel. That might be something we want to change in the future
-    public private(set) var logs: DatadogLogsPlugin?
-    public private(set) var rum: DatadogRumPlugin?
-
     var currentConfiguration: [AnyHashable: Any]?
     var core: DatadogCoreProtocol?
     var oldConsolePrint: ((String) -> Void)?
@@ -200,8 +195,6 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
         case "flushAndDeinitialize":
             Datadog.flushAndDeinitialize()
             consolePrint = { value in print(value) }
-            logs = nil
-            rum = nil
             result(nil)
 #endif
         default:
@@ -267,18 +260,19 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
     private func getInternalVar(named name: String) -> Any? {
         switch name {
         case "mapperPerformance":
+            // TODO:
             let value: [String: Any?] = [
                 "total": [
-                    "minMs": rum?.mapperPerf.minInMs,
-                    "maxMs": rum?.mapperPerf.maxInMs,
-                    "avgMs": rum?.mapperPerf.avgInMs
+                    "minMs": DatadogRumPlugin.instance.mapperPerf.minInMs,
+                    "maxMs": DatadogRumPlugin.instance.mapperPerf.maxInMs,
+                    "avgMs": DatadogRumPlugin.instance.mapperPerf.avgInMs
                 ],
                 "mainThread": [
-                    "minMs": rum?.mainThreadMapperPerf.minInMs,
-                    "maxMs": rum?.mainThreadMapperPerf.maxInMs,
-                    "avgMs": rum?.mainThreadMapperPerf.avgInMs
+                    "minMs": DatadogRumPlugin.instance.mainThreadMapperPerf.minInMs,
+                    "maxMs": DatadogRumPlugin.instance.mainThreadMapperPerf.maxInMs,
+                    "avgMs": DatadogRumPlugin.instance.mainThreadMapperPerf.avgInMs
                 ],
-                "mapperTimeouts": rum?.mapperTimeouts
+                "mapperTimeouts": DatadogRumPlugin.instance.mapperTimeouts
             ]
             return value
         default:
@@ -302,9 +296,6 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
             consolePrint = oldConsolePrint
         }
         oldConsolePrint = nil
-
-        logs?.onDetach()
-        rum?.onDetach()
     }
 
     private func attachToExisting() -> [String: Any?] {
@@ -313,13 +304,11 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
 
         core = Datadog.sdkInstance(named: CoreRegistry.defaultInstanceName)
         if Logs._internal.isEnabled() {
-            logs = DatadogLogsPlugin.instance
             logsEnabled = true
         }
 
         if RUM._internal.isEnabled() {
-            rum = DatadogRumPlugin.instance
-            rum?.attachToExisting(rumInstance: RUMMonitor.shared())
+            DatadogRumPlugin.instance.attachToExisting(rumInstance: RUMMonitor.shared())
             rumEnabled = true
         }
 

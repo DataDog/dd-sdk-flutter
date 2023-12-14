@@ -158,6 +158,15 @@ class DatadogRum {
         LateConfigurationProperty.trackCrossPlatformLongTasks, detectLongTasks);
   }
 
+  /// FOR INTERNAL USE ONLY
+  /// Deinitialize this RUM instance. Note that this does not propertly
+  /// deregister this RUM instance from the default Core, since this should
+  /// only be called from the Core
+  @internal
+  void deinitialize() {
+    wrap('rum.deinitialize', logger, null, () => _platform.deinitialize());
+  }
+
   /// Notifies that the View identified by [key] starts being presented to the
   /// user. This view will show as [name] in the RUM explorer, and defaults to
   /// [key] if it is not provided. You can also attach custom [attributes],
