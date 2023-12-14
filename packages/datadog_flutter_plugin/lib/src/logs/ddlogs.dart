@@ -81,7 +81,7 @@ class DatadogLogging {
   /// only be called from the Core
   @internal
   void deinitialize() {
-    wrap('rum.deinitialize', core.internalLogger, null,
+    wrap('logs.deinitialize', core.internalLogger, null,
         () => _platform.deinitialize());
   }
 
