@@ -10,10 +10,10 @@ For complete documentation, see the [official Datadog documentation][11].
 ## Current Datadog SDK Versions
 
 [//]: # (SDK Table)
-        
+
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 2.4.0 | 2.2.0 | 4.x.x |
+| 2.5.0 | 2.3.0 | 4.x.x |
 
 [//]: # (End SDK Table)
 

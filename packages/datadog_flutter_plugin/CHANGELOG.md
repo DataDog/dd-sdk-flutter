@@ -2,10 +2,18 @@
 
 ## Unreleased
 
+
+
+## 2.1.0
+
 * `DatadogLogger` will no longer leak its reference to its native Logger.
 * Fix debug output from native `DatadogSdk` on iOS.
 * Fix `LogLevel` being private. See [#518]
 * Make `DatadogRumPlugin` a singleton on Android to avoid losing its connection to the `RUMMonitor` during backgrounding.
+* Update iOS SDK to 2.5.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#250--08-11-2023)
+* Update Android SDK to 2.3.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#230--2023-11-21)
+  * Make NDK stack traces more standard.
+  * Make sure we use try-locks in our NDK signal catcher.
 
 ## 2.0.0
 
