@@ -102,6 +102,10 @@ class DatadogLogging {
 ///
 /// You can have multiple loggers configured in your application, each with
 /// their own settings.
+///
+/// To create a DatadogLogger, use [DatadogLogging.createLogger]. Attempting
+/// to construct a logger through its constructor will result in an unusable
+/// logger.
 class DatadogLogger {
   final InternalLogger _internalLogger;
   final LogLevel _remoteLogThreshold;
@@ -110,6 +114,9 @@ class DatadogLogger {
 
   final String loggerHandle;
 
+  /// For internal use only. To construct a DatadogLogger, use
+  /// [DatadogLogging.createLogger]
+  @internal
   DatadogLogger(
       InternalLogger internalLogger, DatadogLoggerConfiguration configuration)
       : _internalLogger = internalLogger,
