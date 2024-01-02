@@ -141,10 +141,50 @@ query UserInfo($id: ID!) {
       final capturedAttributes = verify(() => mockRum.startResource(
               any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
           .captured[0] as Map<String, Object?>;
-      Map<String, dynamic> dd =
-          capturedAttributes['_dd'] as Map<String, dynamic>;
-      expect(dd['graphql']['operation_type'], 'query');
-      expect(dd['graphql']['operation_name'], 'UserInfo');
+      expect(capturedAttributes['_dd.graphql.operation_type'], 'query');
+      expect(capturedAttributes['_dd.graphql.operation_name'], 'UserInfo');
+    });
+
+    test('link pulls operation name from query when not given', () {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(operation: Operation(document: query));
+
+      // When
+      link.request(request, (request) {
+        return const Stream<Response>.empty();
+      });
+
+      // Then
+      final capturedAttributes = verify(() => mockRum.startResource(
+              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
+          .captured[0] as Map<String, Object?>;
+      expect(capturedAttributes['_dd.graphql.operation_type'], 'query');
+      expect(capturedAttributes['_dd.graphql.operation_name'], 'UserInfo');
+    });
+
+    test('link adds variables to attributes', () {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final idValue = randomString();
+      final request = Request(
+        operation: Operation(
+          document: query,
+          operationName: 'UserInfo',
+        ),
+        variables: {'id': idValue},
+      );
+
+      // When
+      link.request(request, (request) {
+        return const Stream<Response>.empty();
+      });
+
+      // Then
+      final capturedAttributes = verify(() => mockRum.startResource(
+              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
+          .captured[0] as Map<String, Object?>;
+      expect(capturedAttributes['_dd.graphql.variables'], '{"id":"$idValue"}');
     });
 
     test('link calls listener on start resource', () {
@@ -597,10 +637,8 @@ query UserInfo($id: ID!) {
       final capturedAttributes = verify(() => mockRum.startResource(
               any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
           .captured[0] as Map<String, Object?>;
-      Map<String, dynamic> dd =
-          capturedAttributes['_dd'] as Map<String, dynamic>;
-      expect(dd['graphql']['operation_type'], 'mutation');
-      expect(dd['graphql']['operation_name'], 'AddStar');
+      expect(capturedAttributes['_dd.graphql.operation_type'], 'mutation');
+      expect(capturedAttributes['_dd.graphql.operation_name'], 'AddStar');
     });
 
     test('link supports subscription operations in attributes', () async {
@@ -626,10 +664,8 @@ query UserInfo($id: ID!) {
       final capturedAttributes = verify(() => mockRum.startResource(
               any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
           .captured[0] as Map<String, Object?>;
-      Map<String, dynamic> dd =
-          capturedAttributes['_dd'] as Map<String, dynamic>;
-      expect(dd['graphql']['operation_type'], 'subscription');
-      expect(dd['graphql']['operation_name'], 'ReviewAdded');
+      expect(capturedAttributes['_dd.graphql.operation_type'], 'subscription');
+      expect(capturedAttributes['_dd.graphql.operation_name'], 'ReviewAdded');
     });
   });
 
