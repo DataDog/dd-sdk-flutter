@@ -21,6 +21,7 @@
     },
     "dart.analysisExcludedFolders": [
         ".fvm",
+        ".dart_tool"
     ],
     "peacock.color": "#7f757f",
     "rewrap.wrappingColumn": 80,

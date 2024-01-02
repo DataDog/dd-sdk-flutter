@@ -5,6 +5,7 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
@@ -13,9 +14,12 @@ import 'package:gql_exec/gql_exec.dart';
 import 'package:gql_link/gql_link.dart';
 import 'package:uuid/uuid.dart';
 
+import 'operation_name_visitor.dart';
+
 class _GraphQLAttributes {
-  static const operationType = 'operation_type';
-  static const operationName = 'operation_name';
+  static const operationType = '_dd.graphql.operation_type';
+  static const operationName = '_dd.graphql.operation_name';
+  static const variables = '_dd.graphql.variables';
   static const errors = 'errors';
 }
 
@@ -140,10 +144,21 @@ class DatadogGqlLink extends Link {
       }
     }
 
-    final operationName = request.operation.operationName;
+    var operationName = request.operation.operationName;
+    if (operationName == null) {
+      final visitor = OperationNameVisitor();
+
+      operationName = request.operation.document.definitions
+          .map((d) => d.accept(visitor))
+          .whereType<String>()
+          .firstOrNull;
+    }
+
     if (operationName != null) {
       attributes[_GraphQLAttributes.operationName] = operationName;
     }
+
+    attributes[_GraphQLAttributes.variables] = jsonEncode(request.variables);
 
     return attributes;
   }
@@ -159,11 +174,7 @@ class DatadogGqlLink extends Link {
     final attributes = {
       ...userAttributes,
       ...datadogAttributes,
-      '_dd': {
-        'graphql': {
-          ...internalAttributes,
-        }
-      },
+      ...internalAttributes,
     };
 
     // TODO: RUM-1027 - Assume `post` for now, but most links support `get` queries.
