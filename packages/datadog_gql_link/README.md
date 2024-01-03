@@ -16,7 +16,7 @@ final link = Link.from([
 ]);
 ```
 
-If you are using `datadog_gql_link` in conjunciton with
+If you are using `datadog_gql_link` in conjunction with
 `datadog_tracking_http_client`, you will need to have the tracking plugin ignore
 requests to your GraphQL endpoint, otherwise resources will be double reported,
 and APM traces may be broken. You can ignore your GraphQL endpoint by using the
