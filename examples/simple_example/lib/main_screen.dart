@@ -4,10 +4,12 @@
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:test_app/placeholder_screen.dart';
-import 'package:test_app/screens/crash_screen.dart';
-import 'package:test_app/screens/named_screen.dart';
-import 'package:test_app/screens/network_screen.dart';
+
+import 'placeholder_screen.dart';
+import 'screens/crash_screen.dart';
+import 'screens/graph_ql_screen.dart';
+import 'screens/named_screen.dart';
+import 'screens/network_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final String? tab;
@@ -19,7 +21,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  final tabs = ['home', 'network', 'crash'];
+  final tabs = ['home', 'network', 'graphql', 'crash'];
   var _selectedTabIndex = 0;
 
   @override
@@ -35,6 +37,8 @@ class _MainScreenState extends State<MainScreen> {
         return const MyHomePage(title: 'Home');
       case 'network':
         return const NetworkScreen();
+      case 'graphql':
+        return const GraphQlScreen();
       case 'crash':
         return const CrashTestScreen();
     }
@@ -51,6 +55,7 @@ class _MainScreenState extends State<MainScreen> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.timeline), label: 'Network'),
+          BottomNavigationBarItem(icon: Icon(Icons.wifi), label: 'GraphQL'),
           BottomNavigationBarItem(icon: Icon(Icons.air), label: 'Crash'),
         ],
         onTap: (index) {
@@ -92,7 +97,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _logger?.info('Some info');
     Navigator.of(context).push(
       MaterialPageRoute(
-        settings: const RouteSettings(name: "Named Screen"),
+        settings: const RouteSettings(name: 'Named Screen'),
         builder: (context) => const NamedScreen(),
       ),
     );

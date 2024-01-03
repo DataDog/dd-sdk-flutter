@@ -5,10 +5,14 @@
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:test_app/main_screen.dart';
+import 'package:graphql_flutter/graphql_flutter.dart';
+
+import 'main_screen.dart';
 
 class MyApp extends StatelessWidget {
-  MyApp({Key? key}) : super(key: key);
+  final GraphQLClient graphQLClient;
+
+  MyApp({Key? key, required this.graphQLClient}) : super(key: key);
 
   final router = GoRouter(
     observers: [DatadogNavigationObserver(datadogSdk: DatadogSdk.instance)],
@@ -31,14 +35,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RumUserActionDetector(
-      rum: DatadogSdk.instance.rum,
-      child: MaterialApp.router(
-        title: 'Flutter Demo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
+    return GraphQLProvider(
+      client: ValueNotifier<GraphQLClient>(graphQLClient),
+      child: RumUserActionDetector(
+        rum: DatadogSdk.instance.rum,
+        child: MaterialApp.router(
+          title: 'Flutter Demo',
+          theme: ThemeData.from(
+            colorScheme:
+                ColorScheme.fromSwatch(primarySwatch: Colors.deepPurple),
+          ),
+          routerConfig: router,
         ),
-        routerConfig: router,
       ),
     );
   }
