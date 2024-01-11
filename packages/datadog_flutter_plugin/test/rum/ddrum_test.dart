@@ -11,6 +11,7 @@ import 'package:datadog_flutter_plugin/src/rum/ddrum_noop_platform.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 class MockInternalLogger extends Mock implements InternalLogger {}
 
@@ -18,17 +19,24 @@ class MockDatadogSdk extends Mock implements DatadogSdk {}
 
 class MockDatadogPlatform extends Mock implements DatadogSdkPlatform {}
 
+class MockRumPlatform extends Mock
+    with MockPlatformInterfaceMixin
+    implements DdRumPlatform {}
+
 void main() {
   const numSamples = 500;
   late MockInternalLogger mockInternalLogger;
   late MockDatadogSdk mockDatadogSdk;
   late MockDatadogPlatform mockDatadogPlatform;
+  late MockRumPlatform mockRumPlatform;
 
   setUp(() {
     mockInternalLogger = MockInternalLogger();
     DdRumPlatform.instance = DdNoOpRumPlatform();
 
     mockDatadogSdk = MockDatadogSdk();
+    registerFallbackValue(DatadogSdk.instance);
+    registerFallbackValue(DatadogRumConfiguration(applicationId: ''));
     when(() => mockDatadogSdk.internalLogger).thenReturn(mockInternalLogger);
 
     mockDatadogPlatform = MockDatadogPlatform();
@@ -36,6 +44,8 @@ void main() {
         .thenAnswer((_) => Future.value());
 
     when(() => mockDatadogSdk.platform).thenReturn(mockDatadogPlatform);
+
+    mockRumPlatform = MockRumPlatform();
   });
 
   test('RumResourceType parses simple mimeTypes from ContentType', () {
@@ -207,5 +217,27 @@ void main() {
 
     expect(sampleCount, greaterThanOrEqualTo(noSampleCount));
     expect(noSampleCount, greaterThanOrEqualTo(1));
+  });
+
+  test('getCurrentSessionId returns id from platform', () async {
+    // Given
+    final fakeSessionId = randomString(length: 12);
+    DdRumPlatform.instance = mockRumPlatform;
+    when(() => mockRumPlatform.enable(any(), any()))
+        .thenAnswer((_) => Future.value());
+    when(() => mockRumPlatform.getCurrentSessionId())
+        .thenAnswer((_) => Future.value(fakeSessionId));
+    final rum = await DatadogRum.enable(
+        mockDatadogSdk,
+        DatadogRumConfiguration(
+          applicationId: 'applicationId',
+          detectLongTasks: false,
+        ));
+
+    // When
+    var sessionId = await rum!.getCurrentSessionId();
+
+    // Then
+    expect(sessionId, fakeSessionId);
   });
 }

@@ -39,6 +39,11 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
+  Future<String?> getCurrentSessionId() async {
+    return methodChannel.invokeMethod<String>('getCurrentSessionId', {});
+  }
+
+  @override
   Future<void> addTiming(String name) {
     return methodChannel.invokeMethod(
       'addTiming',

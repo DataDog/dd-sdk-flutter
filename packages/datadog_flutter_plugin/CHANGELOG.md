@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Add an accessor for current session Id.
 
 ## 2.1.0
 

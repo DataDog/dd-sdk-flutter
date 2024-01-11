@@ -167,6 +167,13 @@ class DatadogRum {
     wrap('rum.deinitialize', logger, null, () => _platform.deinitialize());
   }
 
+  /// Get the current active session ID. The session ID will be null if no
+  /// session is active or if the session has been sampled out.
+  Future<String?> getCurrentSessionId() {
+    return wrapAsync('rum.getCurrentSessionId', logger, null,
+        () => _platform.getCurrentSessionId());
+  }
+
   /// Notifies that the View identified by [key] starts being presented to the
   /// user. This view will show as [name] in the RUM explorer, and defaults to
   /// [key] if it is not provided. You can also attach custom [attributes],

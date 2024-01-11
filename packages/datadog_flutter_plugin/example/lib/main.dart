@@ -23,6 +23,7 @@ void main() async {
     loggingConfiguration: DatadogLoggingConfiguration(),
     rumConfiguration: applicationId != null
         ? DatadogRumConfiguration(
+            sessionSamplingRate: 100.0,
             applicationId: applicationId,
             detectLongTasks: true,
             reportFlutterPerformance: true,
