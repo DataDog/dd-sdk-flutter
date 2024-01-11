@@ -563,6 +563,7 @@ class MockRUMMonitor: RUMMonitorProtocol, RUMCommandSubscriber {
     var debug: Bool
 
     enum MethodCall: EquatableInTests {
+        case currentSessionID
         case startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue])
         case stopView(key: String, attributes: [AttributeKey: AttributeValue])
         case addTiming(name: String)
@@ -589,6 +590,11 @@ class MockRUMMonitor: RUMMonitorProtocol, RUMCommandSubscriber {
 
     init() {
         debug = true
+    }
+
+    func currentSessionID(completion: @escaping (String?) -> Void) {
+        callLog.append(.currentSessionID)
+        completion(nil)
     }
 
     func startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue]) {

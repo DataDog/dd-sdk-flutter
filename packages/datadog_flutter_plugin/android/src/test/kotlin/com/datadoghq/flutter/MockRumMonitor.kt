@@ -20,6 +20,10 @@ class MockRumMonitor : RumMonitor {
         return mockInternalProxy
     }
 
+    override fun getCurrentSessionId(callback: (String?) -> Unit) {
+        callback(null)
+    }
+
     override fun addAction(type: RumActionType, name: String, attributes: Map<String, Any?>) {
         mockMonitor.addAction(type, name, attributes)
     }
