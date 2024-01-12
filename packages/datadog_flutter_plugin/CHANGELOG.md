@@ -4,6 +4,11 @@
 
 * Add an accessor for current session Id.
 
+## 2.1.1
+
+* Update iOS SDK to 2.5.1. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#251--20-12-2023)
+  * Fix `view.time_spent` being not reported correctly in RUM views.
+
 ## 2.1.0
 
 * `DatadogLogger` will no longer leak its reference to its native Logger.
