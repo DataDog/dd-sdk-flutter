@@ -118,7 +118,7 @@ void main() {
         context.traceId.asString(TraceIdRepresentation.hex32Chars);
     final spanString =
         context.spanId.asString(TraceIdRepresentation.hex16Chars);
-    final expectedParentHeader = '00-$traceString-$spanString-01';
+    final expectedParentHeader = '00-$traceString-$spanString-01'.toLowerCase();
     final expectedStateHeader = 'dd=s:1;o:rum;p:$spanString';
 
     expect(headers['traceparent'], expectedParentHeader);
@@ -134,7 +134,7 @@ void main() {
         context.traceId.asString(TraceIdRepresentation.hex32Chars);
     final spanString =
         context.spanId.asString(TraceIdRepresentation.hex16Chars);
-    final expectedParentHeader = '00-$traceString-$spanString-00';
+    final expectedParentHeader = '00-$traceString-$spanString-00'.toLowerCase();
     final expectedStateHeader = 'dd=s:0;o:rum;p:$spanString';
 
     expect(headers['traceparent'], expectedParentHeader);
