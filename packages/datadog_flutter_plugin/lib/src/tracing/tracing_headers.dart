@@ -208,7 +208,7 @@ Map<String, String> getTracingHeaders(
         'o:rum',
         'p:$spanString',
       ].join(';');
-      headers[W3CTracingHeaders.traceparent] = parentHeaderValue;
+      headers[W3CTracingHeaders.traceparent] = parentHeaderValue.toLowerCase();
       headers[W3CTracingHeaders.tracestate] = 'dd=$stateHeaderValue';
       break;
   }
