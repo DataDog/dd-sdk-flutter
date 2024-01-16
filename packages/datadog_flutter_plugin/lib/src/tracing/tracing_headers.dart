@@ -93,9 +93,9 @@ class TracingUUID {
       case TraceIdRepresentation.hex:
         return value.toRadixString(16);
       case TraceIdRepresentation.hex16Chars:
-        return value.toRadixString(16).toUpperCase().padLeft(16, '0');
+        return value.toRadixString(16).padLeft(16, '0');
       case TraceIdRepresentation.hex32Chars:
-        return value.toRadixString(16).toUpperCase().padLeft(32, '0');
+        return value.toRadixString(16).padLeft(32, '0');
     }
   }
 }
