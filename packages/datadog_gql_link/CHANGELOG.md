@@ -1,3 +1,5 @@
-## 0.1.0
+# Changelog
+
+## 1.0.0
 
 * Initial release of datadog_gql_link
