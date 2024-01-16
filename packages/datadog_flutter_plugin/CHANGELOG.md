@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.2.0
 
 * Add an accessor for current session Id.
 * Fix OTel trace and span ids to be lower hex. See [#543]
