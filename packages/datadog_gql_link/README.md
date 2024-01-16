@@ -1,7 +1,12 @@
 
 # Datadog GraphQL Link
 
-> A package for tracking GraphQL calls in Datadog compatible with (`gql_link`)[https://pub.dev/packages/gql_link]
+A package for tracking GraphQL calls in Datadog compatible with [`gql_link`](https://pub.dev/packages/gql_link)
+
+Monitor your GraphQL resources with Real User Monitoring (RUM) and perform the following:
+
+* Identify GraphQL queries and mutations
+* Identify GraphQL variables used in queries and mutations
 
 ## Getting started
 
