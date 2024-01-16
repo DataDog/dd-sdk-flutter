@@ -2,8 +2,17 @@
 
 ## Unreleased
 
+
+
+## 2.2.0
+
 * Add an accessor for current session Id.
 * Fix OTel trace and span ids to be lower hex. See [#543]
+* Update iOS SDK to 2.6.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#260--09-01-2024)
+* Update the Android SDK to 2.5.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#250--2024-01-15)
+  * RUM: Better handling of event write errors in RUM. 
+  * RUM: Safe serialization of user-provided attributes.
+  * RUM: Add additional status codes as retryable.
 
 ## 2.1.1
 
@@ -226,3 +235,4 @@ Release 2.0 introduces breaking changes. Follow the [Migration Guide](MIGRATING.
 [#462]: https://github.com/DataDog/dd-sdk-flutter/issues/462
 [#472]: https://github.com/DataDog/dd-sdk-flutter/issues/472
 [#518]: https://github.com/DataDog/dd-sdk-flutter/issues/518
+[#543]: https://github.com/DataDog/dd-sdk-flutter/pull/543
