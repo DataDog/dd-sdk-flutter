@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+
+
 ## 2.2.0
 
 * Add an accessor for current session Id.
