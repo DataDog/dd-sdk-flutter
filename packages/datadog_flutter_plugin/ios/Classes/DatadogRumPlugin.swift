@@ -99,6 +99,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         case "deinitialize":
             deinitialize(arguments: arguments, call: call)
             result(nil)
+        
+        case "getCurrentSessionId":
+            getCurrentSessionId(result: result)
 
         case "startView":
             if let key = arguments["key"] as? String,
@@ -337,6 +340,18 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         if rum != nil {
             currentConfiguration = nil
             rum = nil
+        }
+    }
+
+    private func getCurrentSessionId(result: @escaping FlutterResult) {
+        if let rum = rum {
+            rum.currentSessionID(completion: { sessionId in
+                DispatchQueue.main.async {
+                    result(sessionId)
+                }
+            })
+        } else {
+            result(nil)
         }
     }
 

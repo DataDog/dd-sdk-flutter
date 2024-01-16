@@ -17,6 +17,14 @@ class _RumScreenState extends State<RumScreen> {
   var resourceStarted = false;
   final TextEditingController _viewNameController =
       TextEditingController(text: 'RUM Test View');
+  String? _currentSessionId;
+
+  @override
+  void initState() {
+    _getCurrentSessionId();
+
+    super.initState();
+  }
 
   @override
   void dispose() {
@@ -25,6 +33,14 @@ class _RumScreenState extends State<RumScreen> {
     }
 
     super.dispose();
+  }
+
+  void _getCurrentSessionId() async {
+    _currentSessionId = await DatadogSdk.instance.rum?.getCurrentSessionId();
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _startView() async {
@@ -40,6 +56,10 @@ class _RumScreenState extends State<RumScreen> {
       setState(() {
         viewStarted = true;
       });
+
+      // Because web may not start a session until after a view is started,
+      // refresh the current session id after starting a view.
+      _getCurrentSessionId();
     }
   }
 
@@ -132,63 +152,80 @@ class _RumScreenState extends State<RumScreen> {
       appBar: AppBar(
         title: const Text('RUM'),
       ),
-      body: SingleChildScrollView(
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _defaultTextField(
-                label: 'View Name',
-                controller: _viewNameController,
-                enabled: !viewStarted,
-              ),
-              ElevatedButton(
-                onPressed: viewStarted ? null : _startView,
-                child: const Text('Start View'),
-              ),
-              Row(
-                //mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: (viewStarted && !resourceStarted)
-                          ? _startResource
-                          : null,
-                      child: const Text('Start Resource'),
+      body: SafeArea(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            SingleChildScrollView(
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _defaultTextField(
+                      label: 'View Name',
+                      controller: _viewNameController,
+                      enabled: !viewStarted,
                     ),
-                  ),
-                  const SizedBox(
-                    width: 6,
-                  ),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: (viewStarted && resourceStarted)
-                          ? _stopResource
-                          : null,
-                      child: const Text('Stop Resource'),
+                    ElevatedButton(
+                      onPressed: viewStarted ? null : _startView,
+                      child: const Text('Start View'),
                     ),
+                    Row(
+                      //mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: (viewStarted && !resourceStarted)
+                                ? _startResource
+                                : null,
+                            child: const Text('Start Resource'),
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 6,
+                        ),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: (viewStarted && resourceStarted)
+                                ? _stopResource
+                                : null,
+                            child: const Text('Stop Resource'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton(
+                      onPressed: viewStarted ? _sendAction : null,
+                      child: const Text('Send Action'),
+                    ),
+                    ElevatedButton(
+                      onPressed: viewStarted ? _sendError : null,
+                      child: const Text('Send Error'),
+                    ),
+                    ElevatedButton(
+                      onPressed: viewStarted ? _triggerLongTask : null,
+                      child: const Text('Trigger Long Task'),
+                    ),
+                    ElevatedButton(
+                      onPressed: viewStarted ? _stopView : null,
+                      child: const Text('Stop View'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+                bottom: 0,
+                child: Container(
+                  width: MediaQuery.of(context).size.width,
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Current Session Id:\n$_currentSessionId',
+                    textAlign: TextAlign.center,
                   ),
-                ],
-              ),
-              ElevatedButton(
-                onPressed: viewStarted ? _sendAction : null,
-                child: const Text('Send Action'),
-              ),
-              ElevatedButton(
-                onPressed: viewStarted ? _sendError : null,
-                child: const Text('Send Error'),
-              ),
-              ElevatedButton(
-                onPressed: viewStarted ? _triggerLongTask : null,
-                child: const Text('Trigger Long Task'),
-              ),
-              ElevatedButton(
-                onPressed: viewStarted ? _stopView : null,
-                child: const Text('Stop View'),
-              ),
-            ],
-          ),
+                )),
+          ],
         ),
       ),
     );

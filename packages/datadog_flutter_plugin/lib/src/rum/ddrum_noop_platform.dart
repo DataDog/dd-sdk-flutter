@@ -7,6 +7,9 @@ import 'ddrum_platform_interface.dart';
 
 class DdNoOpRumPlatform extends DdRumPlatform {
   @override
+  Future<String?> getCurrentSessionId() => Future.value(null);
+
+  @override
   Future<void> addAttribute(String key, value) => Future.value();
 
   @override

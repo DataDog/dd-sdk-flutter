@@ -58,6 +58,11 @@ class DdRumWeb extends DdRumPlatform {
   Future<void> deinitialize() async {}
 
   @override
+  Future<String?> getCurrentSessionId() async {
+    return _jsGetInternalContext()?.session_id;
+  }
+
+  @override
   Future<void> addAttribute(String key, dynamic value) async {
     _jsSetGlobalContextProperty(key, valueToJs(value, 'context'));
   }
@@ -248,7 +253,19 @@ class _RumInitOptions {
 }
 
 @JS()
+@anonymous
+class _RumInternalContext {
+  // ignore: non_constant_identifier_names
+  external String? application_id;
+  // ignore: non_constant_identifier_names
+  external String? session_id;
+}
+
+@JS()
 external void init(_RumInitOptions configuration);
+
+@JS('getInternalContext')
+external _RumInternalContext? _jsGetInternalContext();
 
 @JS('startView')
 external void _jsStartView(String name);

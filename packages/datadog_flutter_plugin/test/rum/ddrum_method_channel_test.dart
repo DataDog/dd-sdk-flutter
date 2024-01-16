@@ -34,12 +34,24 @@ void main() {
         ?.defaultBinaryMessenger
         .setMockMethodCallHandler(ddRumPlatform.methodChannel, (message) {
       log.add(message);
+      if (message.method == 'getCurrentSessionId') {
+        return Future.value('fake-session-id');
+      }
       return null;
     });
   });
 
   tearDown(() {
     log.clear();
+  });
+
+  test('getCurrentSessionId calls to platform', () async {
+    var sessionId = await ddRumPlatform.getCurrentSessionId();
+
+    expect(sessionId, 'fake-session-id');
+    expect(log, [
+      isMethodCall('getCurrentSessionId', arguments: {}),
+    ]);
   });
 
   test('startView calls to platform', () async {

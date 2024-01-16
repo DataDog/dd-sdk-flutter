@@ -116,6 +116,7 @@ class DatadogRumPlugin internal constructor(
             when (call.method) {
                 "enable" -> enable(call, result)
                 "deinitialize" -> deinitialize(call, result)
+                "getCurrentSessionId" -> getCurrentSessionId(call, result)
                 "startView" -> startView(call, result)
                 "stopView" -> stopView(call, result)
                 "addTiming" -> addTiming(call, result)
@@ -190,6 +191,14 @@ class DatadogRumPlugin internal constructor(
         rum = null
 
         result.success(null)
+    }
+
+    private fun getCurrentSessionId(call: MethodCall, result: MethodChannel.Result) {
+        rum?.let {
+            it.getCurrentSessionId { sessionId ->
+                result.success(sessionId)
+            }
+        }
     }
 
     fun attachToExistingSdk(monitor: RumMonitor) {

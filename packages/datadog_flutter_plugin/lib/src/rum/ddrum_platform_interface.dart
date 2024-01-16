@@ -23,6 +23,9 @@ abstract class DdRumPlatform extends PlatformInterface {
 
   Future<void> enable(DatadogSdk core, DatadogRumConfiguration configuration);
   Future<void> deinitialize();
+
+  Future<String?> getCurrentSessionId();
+
   Future<void> startView(
       String key, String name, Map<String, Object?> attributes);
   Future<void> stopView(String key, Map<String, Object?> attributes);
