@@ -17,7 +17,7 @@ public extension RUM.Configuration {
         }
 
         self.init(applicationID: applicationId)
-        
+
         urlSessionTracking = .init()
         sessionSampleRate = (encoded["sessionSampleRate"] as? NSNumber)?.floatValue ?? 100.0
         longTaskThreshold = (encoded["longTaskThreshold"] as? NSNumber)?.doubleValue ?? 0.1
@@ -99,7 +99,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         case "deinitialize":
             deinitialize(arguments: arguments, call: call)
             result(nil)
-        
+
         case "getCurrentSessionId":
             getCurrentSessionId(result: result)
 
@@ -330,7 +330,8 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             if !dict.isEqual(to: currentConfiguration!) {
                 consolePrint(
                     "🔥 Calling RUM `enable` with different options, even after a hot restart," +
-                    " is not supported. Cold restart your application to change your current configuation."
+                    " is not supported. Cold restart your application to change your current configuation.",
+                    .error
                 )
             }
         }
@@ -634,7 +635,8 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                         consolePrint(
                             "🔥 Adding or removing RumErrorCauses to 'errorEvent.error.causes'" +
                             " in the rumErrorEventMapper is not supported." +
-                            " You can modify individual causes, but do not modify the array.")
+                            " You can modify individual causes, but do not modify the array.",
+                            .error)
                     }
                 } else {
                     rumErrorEvent.error.causes = nil

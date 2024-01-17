@@ -98,7 +98,7 @@ class FlutterSdkTests: XCTestCase {
         XCTAssertTrue(Datadog.isInitialized())
 
         var loggedConsoleLines: [String] = []
-        consolePrint = { str in loggedConsoleLines.append(str) }
+        consolePrint = { str, _ in loggedConsoleLines.append(str) }
 
         let methodCallB = FlutterMethodCall(
             methodName: "initialize",
@@ -131,7 +131,7 @@ class FlutterSdkTests: XCTestCase {
         XCTAssertTrue(Datadog.isInitialized())
 
         var loggedConsoleLines: [String] = []
-        consolePrint = { str in loggedConsoleLines.append(str) }
+        consolePrint = { str, _ in loggedConsoleLines.append(str) }
 
         let methodCallB = FlutterMethodCall(
             methodName: "initialize",

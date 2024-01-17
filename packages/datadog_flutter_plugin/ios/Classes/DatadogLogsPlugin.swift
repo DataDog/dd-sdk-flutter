@@ -226,8 +226,8 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
                 if !dict.isEqual(to: currentConfiguration!) {
                     consolePrint(
                         "🔥 Calling Logging `enable` with different options, even after a hot restart," +
-                        " is not supported. Cold restart your application to change your current configuation."
-                    )
+                        " is not supported. Cold restart your application to change your current configuation.",
+                        .error)
                 }
             }
             result(nil)
@@ -239,7 +239,7 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
     }
 
     private func deinitialize(arguments: [String: Any?], result: @escaping FlutterResult) {
-        currentConfiguration = nil        
+        currentConfiguration = nil
         result(nil)
     }
 }

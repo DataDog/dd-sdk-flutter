@@ -47,7 +47,7 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
 
     var currentConfiguration: [AnyHashable: Any]?
     var core: DatadogCoreProtocol?
-    var oldConsolePrint: ((String) -> Void)?
+    var oldConsolePrint: ((String, CoreLoggerLevel) -> Void)?
 
     public init(channel: FlutterMethodChannel) {
         self.channel = channel
@@ -88,7 +88,7 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
                     if let setLogCallback = arguments["setLogCallback"] as? Bool,
                        setLogCallback {
                         oldConsolePrint = consolePrint
-                        consolePrint = { value in
+                        consolePrint = { value, _ in
                             self.callLogCallback(value)
                         }
                     }
@@ -110,7 +110,8 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
                     if !dict.isEqual(to: currentConfiguration!) {
                         consolePrint(
                             "🔥 Reinitialziing the DatadogSDK with different options, even after a hot restart," +
-                            " is not supported. Cold restart your application to change your current configuation."
+                            " is not supported. Cold restart your application to change your current configuation.",
+                            .error
                         )
                     }
                 }
@@ -125,7 +126,9 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
             } else {
                 consolePrint(
                     "🔥 attachToExisting was called, but no existing instance of the Datadog SDK exists." +
-                    " Make sure to initialize the Native Datadog SDK before calling attachToExisting.")
+                    " Make sure to initialize the Native Datadog SDK before calling attachToExisting.",
+                    .error
+                )
                 result(nil)
             }
         case "setSdkVerbosity":
@@ -194,7 +197,7 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
 #if DD_SDK_COMPILED_FOR_TESTING
         case "flushAndDeinitialize":
             Datadog.flushAndDeinitialize()
-            consolePrint = { value in print(value) }
+            consolePrint = { value, _ in print(value) }
             result(nil)
 #endif
         default:
