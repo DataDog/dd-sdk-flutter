@@ -257,7 +257,14 @@ workflows:
             #!/usr/bin/env/ bash
             flutter doctor
         - working_dir: "$BITRISE_SOURCE_DIR"
-    - flutter-test@1:
+    - script:
+        title: Update pods
+        inputs:
+        - content: |-
+            #!/usr/bin/env/ bash
+            pod update --repo-update
+        - working_dir: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/e2e_test_app/ios" 
+    - flutter-test@1: 
         inputs:
         - project_location: "$BITRISE_SOURCE_DIR/packages/datadog_flutter_plugin/e2e_test_app"
         - tests_path_pattern: integration_test
