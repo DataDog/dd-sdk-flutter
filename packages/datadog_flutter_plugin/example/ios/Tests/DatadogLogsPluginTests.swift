@@ -232,7 +232,7 @@ class DatadogLogsPluginTests: XCTestCase {
         plugin.handle(methodCallA) { _ in }
 
         var loggedConsoleLines: [String] = []
-        consolePrint = { str in loggedConsoleLines.append(str) }
+        consolePrint = { str, _ in loggedConsoleLines.append(str) }
 
         let methodCallB = FlutterMethodCall(
             methodName: "initialize",
@@ -257,7 +257,7 @@ class DatadogLogsPluginTests: XCTestCase {
         plugin.handle(methodCallA) { _ in }
 
         var loggedConsoleLines: [String] = []
-        consolePrint = { str in loggedConsoleLines.append(str) }
+        consolePrint = { str, _ in loggedConsoleLines.append(str) }
 
         let methodCallB = FlutterMethodCall(
             methodName: "enable",

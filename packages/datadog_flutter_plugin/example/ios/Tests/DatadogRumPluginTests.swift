@@ -182,7 +182,7 @@ class DatadogRumPluginTests: XCTestCase {
         plugin.handle(methodCallA) { _ in }
 
         var loggedConsoleLines: [String] = []
-        consolePrint = { str in loggedConsoleLines.append(str) }
+        consolePrint = { str, _ in loggedConsoleLines.append(str) }
 
         let methodCallB = FlutterMethodCall(
             methodName: "initialize",
@@ -200,7 +200,7 @@ class DatadogRumPluginTests: XCTestCase {
     func testRepeatEnable_FromMethodChannelDifferentOptions_PrintsError() {
         // Uninitialize plugin
         plugin?.inject(rum: nil)
-        
+
         let methodCallA = FlutterMethodCall(
             methodName: "enable",
             arguments: [
@@ -212,7 +212,7 @@ class DatadogRumPluginTests: XCTestCase {
         plugin.handle(methodCallA) { _ in }
 
         var loggedConsoleLines: [String] = []
-        consolePrint = { str in loggedConsoleLines.append(str) }
+        consolePrint = { str, _ in loggedConsoleLines.append(str) }
 
         let methodCallB = FlutterMethodCall(
             methodName: "enable",
