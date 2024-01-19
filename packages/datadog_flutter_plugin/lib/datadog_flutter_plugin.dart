@@ -238,6 +238,15 @@ class DatadogSdk {
     });
   }
 
+  /// Clears all data that has not already been sent to Datadog servers.
+  ///
+  /// This method is not supported on Flutter Web.
+  void clearAllData() {
+    wrap('clearAllData', internalLogger, null, () {
+      return _platform.clearAllData();
+    });
+  }
+
   void setTrackingConsent(TrackingConsent trackingConsent) {
     wrap('setTrackingConsent', internalLogger, null, () {
       return _platform.setTrackingConsent(trackingConsent);

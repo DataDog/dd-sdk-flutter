@@ -61,4 +61,9 @@ class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
   Future<void> updateTelemetryConfiguration(String property, bool value) {
     return Future.value();
   }
+
+  @override
+  Future<void> clearAllData() {
+    return Future.value();
+  }
 }

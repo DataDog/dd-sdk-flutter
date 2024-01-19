@@ -183,6 +183,10 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                     result.success(null)
                 }
             }
+            "clearAllData" -> {
+                Datadog.clearAllData()
+                result.success(null)
+            }
             "flushAndDeinitialize" -> {
                 invokePrivateShutdown(result)
             }

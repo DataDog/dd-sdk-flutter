@@ -235,4 +235,10 @@ void main() {
       })
     ]);
   });
+
+  test('clearAddData calls to method channel', () {
+    unawaited(ddSdkPlatform.clearAllData());
+
+    expect(log, [isMethodCall('clearAllData', arguments: {})]);
+  });
 }

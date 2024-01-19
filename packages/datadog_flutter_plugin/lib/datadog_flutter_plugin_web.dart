@@ -114,6 +114,11 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   Future<void> updateTelemetryConfiguration(String property, bool value) async {
     // Not currently supported
   }
+
+  @override
+  Future<void> clearAllData() async {
+    // Not currently supported
+  }
 }
 
 @JS()

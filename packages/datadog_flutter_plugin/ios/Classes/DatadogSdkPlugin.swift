@@ -186,6 +186,9 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
         case "updateTelemetryConfiguration":
             updateTelemetryConfiguration(arguments: arguments)
             result(nil)
+        case "clearAllData":
+            Datadog.clearAllData()
+            result(nil)
         case "getInternalVar":
             guard let varName = arguments["name"] as? String else {
                 result(nil)
