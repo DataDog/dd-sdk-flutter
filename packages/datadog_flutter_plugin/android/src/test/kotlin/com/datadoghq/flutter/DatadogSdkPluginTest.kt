@@ -92,6 +92,7 @@ class DatadogSdkPluginTest {
         Contract("telemetryError", mapOf(
             "message" to ContractParameter.Type(SupportedContractType.STRING)
         )),
+        Contract("clearAllData", mapOf()),
     )
 
     @Test

@@ -77,6 +77,7 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
   });
   Future<AttachResponse?> attachToExisting();
   Future<void> flushAndDeinitialize();
+  Future<void> clearAllData();
 
   Future<void> updateTelemetryConfiguration(String property, bool value);
 }

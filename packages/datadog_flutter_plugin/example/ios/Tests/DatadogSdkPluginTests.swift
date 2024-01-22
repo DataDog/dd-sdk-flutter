@@ -46,7 +46,8 @@ class FlutterSdkTests: XCTestCase {
         ]),
         Contract(methodName: "telemetryError", requiredParameters: [
             "message": .string
-        ])
+        ]),
+        Contract(methodName: "clearAllData", requiredParameters: [:])
     ]
 
     func testDatadogSdkCalls_FollowContracts() {

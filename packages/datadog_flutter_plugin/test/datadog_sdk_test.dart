@@ -75,6 +75,8 @@ void main() {
         .thenAnswer((_) => Future<void>.value());
     when(() => mockPlatform.updateTelemetryConfiguration(any(), any()))
         .thenAnswer((_) => Future<void>.value());
+    when(() => mockPlatform.clearAllData())
+        .thenAnswer((_) => Future<void>.value());
     DatadogSdkPlatform.instance = mockPlatform;
     datadogSdk = DatadogSdk.instance;
 
@@ -611,5 +613,18 @@ void main() {
         mockPlatform.updateTelemetryConfiguration('trackInteractions', true));
     verify(() =>
         mockPlatform.updateTelemetryConfiguration('trackViewsManually', false));
+  });
+
+  test('clearAllData calls to platform', () async {
+    final configuration = DatadogConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+    );
+    await datadogSdk.initialize(configuration, TrackingConsent.pending);
+
+    datadogSdk.clearAllData();
+
+    verify(() => mockPlatform.clearAllData());
   });
 }

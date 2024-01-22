@@ -107,6 +107,11 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
     });
   }
 
+  @override
+  Future<void> clearAllData() {
+    return methodChannel.invokeMethod('clearAllData', {});
+  }
+
   Future<Object?> getInternalVar(String name) {
     return methodChannel.invokeMethod('getInternalVar', {'name': name});
   }
