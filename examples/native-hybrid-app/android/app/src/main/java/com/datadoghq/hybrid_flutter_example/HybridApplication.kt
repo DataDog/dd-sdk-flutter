@@ -38,65 +38,65 @@ class FlutterExcludingComponentPredicate: ComponentPredicate<Activity> {
     }
 }
 
-class HybridApplication : Application() {
-    private val TAG = "HybridApplication"
-    private lateinit var flutterEngine: FlutterEngine
+// class HybridApplication : Application() {
+//     private val TAG = "HybridApplication"
+//     private lateinit var flutterEngine: FlutterEngine
 
-    override fun onCreate() {
-        super.onCreate()
+//     override fun onCreate() {
+//         super.onCreate()
 
-        var clientToken = ""
-        var applicationId = ""
-        try {
-            val jsonText = resources.openRawResource(R.raw.dd_config).bufferedReader().use {
-                it.readText()
-            }
-            val config = JSONObject(jsonText)
-            clientToken = config.get("client_token") as String
-            applicationId = config.get("application_id") as String
-        } catch (e: Exception) {
-            Log.e(
-                TAG,
-                "Failed to find client token and application id in raw/dd_config.json." +
-                    " Did you run './generate_env'?",
-                e
-            )
-        }
+//         var clientToken = ""
+//         var applicationId = ""
+//         try {
+//             val jsonText = resources.openRawResource(R.raw.dd_config).bufferedReader().use {
+//                 it.readText()
+//             }
+//             val config = JSONObject(jsonText)
+//             clientToken = config.get("client_token") as String
+//             applicationId = config.get("application_id") as String
+//         } catch (e: Exception) {
+//             Log.e(
+//                 TAG,
+//                 "Failed to find client token and application id in raw/dd_config.json." +
+//                     " Did you run './generate_env'?",
+//                 e
+//             )
+//         }
 
-        Datadog.setVerbosity(Log.VERBOSE)
+//         Datadog.setVerbosity(Log.VERBOSE)
 
-        val datadogConfig = Configuration.Builder(
-            clientToken,
-            "prod",
-            "release"
-        )
-            .setBatchSize(BatchSize.SMALL)
-            .setUploadFrequency(UploadFrequency.FREQUENT)
-            .useSite(DatadogSite.US1)
-            .build()
+//         val datadogConfig = Configuration.Builder(
+//             clientToken,
+//             "prod",
+//             "release"
+//         )
+//             .setBatchSize(BatchSize.SMALL)
+//             .setUploadFrequency(UploadFrequency.FREQUENT)
+//             .useSite(DatadogSite.US1)
+//             .build()
 
-        Datadog.initialize(
-            this,
-            configuration = datadogConfig,
-            TrackingConsent.GRANTED
-        )
+//         Datadog.initialize(
+//             this,
+//             configuration = datadogConfig,
+//             TrackingConsent.GRANTED
+//         )
 
-        val rumConfiguration = RumConfiguration.Builder(applicationId)
-            .trackLongTasks()
-            .trackUserInteractions()
-            .useViewTrackingStrategy(ActivityViewTrackingStrategy(
-                trackExtras = false,
-                componentPredicate = FlutterExcludingComponentPredicate()
-            ))
-        Rum.enable(rumConfiguration.build())
-        val traceConfig = TraceConfiguration.Builder()
-        Trace.enable(traceConfig.build())
+//         val rumConfiguration = RumConfiguration.Builder(applicationId)
+//             .trackLongTasks()
+//             .trackUserInteractions()
+//             .useViewTrackingStrategy(ActivityViewTrackingStrategy(
+//                 trackExtras = false,
+//                 componentPredicate = FlutterExcludingComponentPredicate()
+//             ))
+//         Rum.enable(rumConfiguration.build())
+//         val traceConfig = TraceConfiguration.Builder()
+//         Trace.enable(traceConfig.build())
 
-        flutterEngine = FlutterEngine(this)
-        flutterEngine.dartExecutor.executeDartEntrypoint(
-            DartExecutor.DartEntrypoint.createDefault()
-        )
+//         flutterEngine = FlutterEngine(this)
+//         flutterEngine.dartExecutor.executeDartEntrypoint(
+//             DartExecutor.DartEntrypoint.createDefault()
+//         )
 
-        FlutterEngineCache.getInstance().put("datadoghq_engine", flutterEngine)
-    }
-}
+//         FlutterEngineCache.getInstance().put("datadoghq_engine", flutterEngine)
+//     }
+// }

@@ -3,20 +3,39 @@
 // Copyright 2022-Present Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
 import 'package:flutter/material.dart';
 
 import 'my_app.dart';
 
+Future<void> _initializeDatadog() async {
+  print('initializing datadog');
+  DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
+
+  final config = DatadogConfiguration(
+      clientToken: '',
+      env: 'prod',
+      site: DatadogSite.us1,
+      uploadFrequency: UploadFrequency.frequent,
+      batchSize: BatchSize.small,
+      loggingConfiguration: DatadogLoggingConfiguration(),
+      rumConfiguration: DatadogRumConfiguration(
+        applicationId: '',
+        traceSampleRate: 100.0,
+      ));
+  await DatadogSdk.instance.initialize(config, TrackingConsent.granted);
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final config = DatadogAttachConfiguration(
-    detectLongTasks: true,
-    reportFlutterPerformance: true,
-  )..enableHttpTracking();
+  await _initializeDatadog();
 
-  await DatadogSdk.instance.attachToExisting(config);
+  // final config = DatadogAttachConfiguration(
+  //   detectLongTasks: true,
+  //   reportFlutterPerformance: true,
+  // )..enableHttpTracking();
+
+  // await DatadogSdk.instance.attachToExisting(config);
 
   runApp(MyApp());
 }
