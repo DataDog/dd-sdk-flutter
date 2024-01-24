@@ -105,15 +105,21 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
                             CrashReporting.enable()
                         }
                     }
-                } else {
+                } else if let currentConfiguration = currentConfiguration {
                     let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
-                    if !dict.isEqual(to: currentConfiguration!) {
+                    if !dict.isEqual(to: currentConfiguration) {
                         consolePrint(
                             "🔥 Reinitialziing the DatadogSDK with different options, even after a hot restart," +
                             " is not supported. Cold restart your application to change your current configuation.",
                             .error
                         )
                     }
+                } else {
+                    consolePrint(
+                        "🔥 The DatadogSDK is already initialized but no previous configuration exists. Did you mean" +
+                        " to use attachToExisting? Note: Datadog does not currently support multiple Flutter engines on iOS.",
+                        .error
+                    )
                 }
                 result(nil)
             } else {
