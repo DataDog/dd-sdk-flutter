@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-* Fix an issue where initializing the DatadogSDK from multiple engines would crash on iOS. This does not provide multiple engine support.
+* Fix an issue where initializing the Datadog SDK from multiple engines would crash on iOS. This does not provide multiple engine support.
 
 ## 2.2.0
 
