@@ -132,6 +132,7 @@ void main() {
       'service': null,
       'batchSize': null,
       'uploadFrequency': null,
+      'batchProcessingLevel': null,
       'additionalConfig': <String, Object?>{},
     });
   });
@@ -144,11 +145,13 @@ void main() {
     )
       ..batchSize = BatchSize.small
       ..uploadFrequency = UploadFrequency.frequent
+      ..batchProcessingLevel = BatchProcessingLevel.low
       ..site = DatadogSite.eu1;
 
     final encoded = configuration.encode();
     expect(encoded['batchSize'], 'BatchSize.small');
     expect(encoded['uploadFrequency'], 'UploadFrequency.frequent');
+    expect(encoded['batchProcessingLevel'], 'BatchProcessingLevel.low');
     expect(encoded['site'], 'DatadogSite.eu1');
   });
 

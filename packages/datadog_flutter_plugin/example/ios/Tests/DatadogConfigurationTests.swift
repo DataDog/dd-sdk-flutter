@@ -32,6 +32,16 @@ class DatadogConfigurationTests: XCTestCase {
         XCTAssertEqual(rare, .rare)
     }
 
+    func testAllBatchProcessingLevels_AreParsedCorrectly() {
+        let low = Datadog.Configuration.BatchProcessingLevel.parseFromFlutter("BatchProcessingLevel.low")
+        let medium = Datadog.Configuration.BatchProcessingLevel.parseFromFlutter("BatchProcessingLevel.medium")
+        let high = Datadog.Configuration.BatchProcessingLevel.parseFromFlutter("BatchProcessingLevel.high")
+
+        XCTAssertEqual(low, .low)
+        XCTAssertEqual(medium, .medium)
+        XCTAssertEqual(high, .high)
+    }
+
     func testAllTrackingConsents_AreParsedCorrectly() {
         let granted = TrackingConsent.parseFromFlutter("TrackingConsent.granted")
         let notGranted = TrackingConsent.parseFromFlutter("TrackingConsent.notGranted")
@@ -86,6 +96,7 @@ class DatadogConfigurationTests: XCTestCase {
             "site": nil,
             "batchSize": nil,
             "uploadFrequency": nil,
+            "batchProcessingLevel": nil,
             "additionalConfig": [:] as [String: Any?]
         ]
 
@@ -96,6 +107,7 @@ class DatadogConfigurationTests: XCTestCase {
         XCTAssertEqual(config.env, "fakeEnvironment")
         XCTAssertEqual(config.site, .us1)
         XCTAssertEqual(config.batchSize, .medium)
+        XCTAssertEqual(config.batchProcessingLevel, .medium)
         XCTAssertEqual(config.uploadFrequency, .average)
 
     }
@@ -107,6 +119,7 @@ class DatadogConfigurationTests: XCTestCase {
             "site": "DatadogSite.eu1",
             "batchSize": "BatchSize.small",
             "uploadFrequency": "UploadFrequency.frequent",
+            "batchProcessingLevel": "BatchProcessingLevel.low",
             "trackingConsent": "TrackingConsent.pending",
             "additionalConfig": [:] as [String: Any?]
         ]
@@ -118,6 +131,7 @@ class DatadogConfigurationTests: XCTestCase {
         XCTAssertNil(config.service)
         XCTAssertEqual(config.batchSize, .small)
         XCTAssertEqual(config.uploadFrequency, .frequent)
+        XCTAssertEqual(config.batchProcessingLevel, .low)
     }
 
     func testCoreConfiguration_ServiceName_IsDecoded() {

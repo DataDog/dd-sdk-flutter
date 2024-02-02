@@ -9,6 +9,7 @@ import android.util.Log
 import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
 import com.datadog.android._InternalProxy
+import com.datadog.android.core.configuration.BatchProcessingLevel
 import com.datadog.android.core.configuration.Configuration
 import com.datadog.android.log.Logs
 import com.datadog.android.ndk.NdkCrashReports
@@ -248,6 +249,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         (encoded["uploadFrequency"] as? String)?.let {
             builder = builder.setUploadFrequency(parseUploadFrequency(it))
         }
+        (encoded["batchProcessingLevel"] as? String)?.let {
+            builder = builder.setBatchProcessingLevel(parseBatchProcessingLevel(it))
+        }
         (encoded["additionalConfig"] as? Map<String, Any>)?.let {
             builder = builder.setAdditionalConfiguration(it)
         }
@@ -377,6 +381,15 @@ internal fun parseCoreLoggerLevel(level: String): Int {
         "CoreLoggerLevel.error" -> Log.ERROR
         "CoreLoggerLevel.critical" -> Log.ASSERT
         else -> Log.INFO
+    }
+}
+
+internal fun parseBatchProcessingLevel(level: String): BatchProcessingLevel {
+    return when (level) {
+        "BatchProcessingLevel.low" -> BatchProcessingLevel.LOW
+        "BatchProcessingLevel.medium" -> BatchProcessingLevel.MEDIUM
+        "BatchProcessingLevel.high" -> BatchProcessingLevel.HIGH
+        else -> BatchProcessingLevel.MEDIUM
     }
 }
 

@@ -34,6 +34,10 @@ extension Datadog.Configuration {
                                                  Datadog.Configuration.UploadFrequency.parseFromFlutter) {
             self.uploadFrequency = uploadFrequency
         }
+        if let batchProcessingLevel = convertOptional(encoded["batchProcessingLevel"], 
+                                                      Datadog.Configuration.BatchProcessingLevel.parseFromFlutter) {
+            self.batchProcessingLevel = batchProcessingLevel
+        }
 
         _internal_mutation { config in
             config.additionalConfiguration = encoded["additionalConfig"] as? [String: Any] ?? [:]
