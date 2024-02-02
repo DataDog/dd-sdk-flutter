@@ -179,7 +179,7 @@ Future<bool> _updateReadmeVersions(CommandArguments args, Logger logger) async {
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| ${args.iOSRelease} | ${args.androidRelease} | 4.x.x |
+| ${args.iOSRelease} | ${args.androidRelease} | 5.x.x |
 
 [//]: # (End SDK Table)''';
         return line;

@@ -37,7 +37,7 @@ class DdRumWeb extends DdRumPlatform {
       allowedTracingUrls: [
         for (final host in sanitizedFirstPartyHosts)
           _TracingUrl(
-            match: host.regExp,
+            match: host.regExp.toJs(),
             propagatorTypes:
                 host.headerTypes.map(_headerTypeToPropagatorType).toList(),
           )
@@ -200,11 +200,11 @@ String _headerTypeToPropagatorType(TracingHeaderType type) {
 @JS()
 @anonymous
 class _TracingUrl {
-  external RegExp match;
+  external JSRegExp match;
   external List<String> propagatorTypes;
 
   external factory _TracingUrl({
-    RegExp match,
+    JSRegExp match,
     List<String> propagatorTypes,
   });
 }
@@ -250,6 +250,12 @@ class _RumInitOptions {
     List<dynamic> allowedTracingUrls,
     List<String> enableExperimentalFeatures,
   });
+}
+
+extension ToJs on RegExp {
+  JSRegExp toJs() {
+    return JSRegExp(pattern);
+  }
 }
 
 @JS()
