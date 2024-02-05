@@ -1,0 +1,137 @@
+include:
+  - 'https://gitlab-templates.ddbuild.io/slack-notifier/v1/template.yml'
+
+variables:
+  CURRENT_CI_IMAGE: "5"
+  BUILD_STABLE_REGISTRY: 486234852809.dkr.ecr.us-east-1.amazonaws.com
+  CI_IMAGE_REPO: "ci/dd-sdk-flutter"
+  CI_IMAGE_DOCKER: ${BUILD_STABLE_REGISTRY}/${CI_IMAGE_REPO}:$CURRENT_CI_IMAGE
+  DD_CLIENT_TOKEN: "fake-token"
+  DD_APPLICATION_ID: "fake-application-id"
+  IOS_SIMULATOR: "iPhone 15"
+
+  KUBERNETES_MEMORY_REQUEST: "8Gi"
+  KUBERNETES_MEMORY_LIMIT: "16Gi"
+
+# Prebuild - install necessary tools
+
+.pre:
+  script:
+    - export PATH=$PATH:$HOME/.pub-cache/bin
+    - flutter upgrade
+    - flutter --version
+    - dart pub global activate melos
+    - dart pub global activate junitreport
+    - melos bootstrap
+    - mkdir -p $CI_PROJECT_DIR/.build/test-results/
+    - melos prepare
+
+.pre-ios:
+  script:
+    - xcode-select -p
+    - xcodebuild -runFirstLaunch
+    - xcodebuild -downloadPlatform iOS
+
+stages:
+  - ci-image
+  - build
+  - integration-test
+
+ci-image:
+  stage: ci-image
+  when: manual
+  except: [ tags, schedules ]
+  tags: [ "arch:amd64" ]
+  image: "$BUILDENV_REGISTRY/images/docker:24.0.4-gbi-focal"
+  script:
+    - docker buildx build --tag registry.ddbuild.io/${CI_IMAGE_REPO}:${CURRENT_CI_IMAGE} --label target=build -f Dockerfile.gitlab --push .
+
+# Build (And Analyze) Stage
+
+build-flutter:
+  stage: build
+  tags:
+    - macos:sonoma
+    - specific:true
+  script:
+    - !reference [.pre, script]
+    - melos run analyze:dart
+    - melos run unit_test:flutter
+    - melos run build:web
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+build-android:
+  stage: build
+  image: $CI_IMAGE_DOCKER
+  tags: [ "arch:amd64" ]
+  script:
+    - !reference [.pre, script]
+    - melos run analyze:android
+    - melos run build:android  
+    - melos run unit_test:android
+
+build-ios:
+  stage: build
+  tags:
+    - macos:sonoma
+    - specific:true
+  script:
+    - !reference [.pre, script]
+    - !reference [.pre-ios, script]
+    - pod repo update
+    - melos pub:get
+    - melos pod_update --no-select
+    - melos run analyze:ios
+    - melos run build:ios
+    - melos run unit_test:ios    
+
+# Integration Tests
+
+android-integration-test:
+  stage: integration-test  
+  tags: 
+    - macos:sonoma
+    - specific:true
+  script:
+    - !reference [.pre, script]
+    - melos pub:get
+    - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.3" "platform-tools" "platforms;android-33" || true
+    - yes | flutter doctor --android-licenses || true
+    - flutter doctor
+    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform android --sdk "33"
+    - melos run integration_test:android
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - tools/ci/logcat.txt
+
+ios-integration-test:
+  stage: integration-test
+  tags:
+    - macos:sonoma
+    - specific:true
+  script:
+    - !reference [.pre, script]
+    - !reference [.pre-ios, script]
+    - pod repo update
+    - melos pub:get
+    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk "iOS-17" --device "iPhone 14"
+    - melos pod_update --no-select
+    - melos run integration_test:ios
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+# web-integration-test:
+#   stage: integration-test
+#   script:
+#     - melos run integration_test:web
