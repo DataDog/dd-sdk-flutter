@@ -3,6 +3,7 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'package:flutter/foundation.dart';
+import 'package:js/js.dart';
 import 'package:js/js_util.dart' as jsutil;
 
 import '../datadog_flutter_plugin.dart';
@@ -57,6 +58,11 @@ dynamic valueToJs(Object? value, String parameterName) {
 // Regex specifying the format of a frame in a Dart stack trace.
 final _dartLineRegex =
     RegExp(r'(?<file>.+) (?<location>\d+:\d+)\s*(?<function>.+)');
+
+@JS('RegExp')
+class JSRegExp {
+  external factory JSRegExp([String? pattern, String? flags]);
+}
 
 String? convertWebStackTrace(StackTrace? stackTrace) {
   if (stackTrace == null) return null;
