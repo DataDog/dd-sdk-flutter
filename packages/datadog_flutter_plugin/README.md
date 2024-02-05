@@ -13,7 +13,7 @@ For complete documentation, see the [official Datadog documentation][11].
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 2.6.0 | 2.5.0 | 4.x.x |
+| 2.6.0 | 2.5.0 | 5.x.x |
 
 [//]: # (End SDK Table)
 
@@ -38,14 +38,11 @@ This loads the CDN-delivered Datadog Browser SDKs for Logs and RUM. The synchron
 
 Note that Datadog provides one CDN bundle per site. See the [Browser SDK README](https://github.com/DataDog/browser-sdk/#cdn-bundles) for a list of all site URLs.
 
-See [Flutter Web Support](#web_support) for information on current support for Flutter Web
-
 ## Setup
 
 Use the [Datadog Flutter Plugin][1] to set up Log Management or Real User Monitoring (RUM). The setup instructions may vary based on your decision to use Logs, RUM, or both, but most of the setup steps are consistent.
 
 For instructions on how to set up the Datadog Flutter Plugin, see the [official Datadog documentation][11].
-
 
 ### Create configuration object
 
