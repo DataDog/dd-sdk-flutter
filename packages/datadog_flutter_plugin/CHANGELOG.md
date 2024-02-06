@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* Add `batchProcessingLevel` configuration option.
+* Add `clearAllData` method.
+* Fix `firstPartyHosts` not working for Flutter Web. See [#554]
 * Fix an issue where initializing the Datadog SDK from multiple engines would crash on iOS. This does not provide multiple engine support.
 
 ## 2.2.0
@@ -236,3 +239,4 @@ Release 2.0 introduces breaking changes. Follow the [Migration Guide](MIGRATING.
 [#472]: https://github.com/DataDog/dd-sdk-flutter/issues/472
 [#518]: https://github.com/DataDog/dd-sdk-flutter/issues/518
 [#543]: https://github.com/DataDog/dd-sdk-flutter/pull/543
+[#554]: https://github.com/DataDog/dd-sdk-flutter/pull/554
