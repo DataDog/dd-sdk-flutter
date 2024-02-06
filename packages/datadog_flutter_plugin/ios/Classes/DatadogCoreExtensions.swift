@@ -39,6 +39,17 @@ public extension Datadog.Configuration.UploadFrequency {
     }
 }
 
+public extension Datadog.Configuration.BatchProcessingLevel {
+    static func parseFromFlutter(_ value: String) -> Self {
+        switch value {
+        case "BatchProcessingLevel.low": return .low
+        case "BatchProcessingLevel.medium": return .medium
+        case "BatchProcessingLevel.high": return .high
+        default: return .medium
+        }
+    }
+}
+
 public extension DatadogSite {
     static func parseFromFlutter(_ value: String) -> Self {
         switch value {

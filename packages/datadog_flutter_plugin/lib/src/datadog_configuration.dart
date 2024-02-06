@@ -31,6 +31,23 @@ enum UploadFrequency {
   rare
 }
 
+/// Defines the maximum amount of batches processed sequentially without a delay
+/// within one reading/uploading cycle. [high] means that more data will
+/// be sent in a single upload cycle but more CPU and memory will be used to
+/// process the data. [low] means that less data will be sent in a
+/// single upload cycle but less CPU and memory will be used to process the
+/// data.
+enum BatchProcessingLevel {
+  /// Prefer less processing with smaller batches, but less CPU and memory usage
+  low,
+
+  /// Medium batch processing. This is the default.
+  medium,
+
+  /// Prefer higher processing sending larger batches, but more CPU and memory usage
+  high,
+}
+
 /// Possible values for the Data Tracking Consent given by the user of the app.
 ///
 /// This value should be used to grant the permission for Datadog SDK to store
@@ -105,6 +122,9 @@ class DatadogConfiguration {
   /// Sets the preferred frequency of uploading data to Datadog servers. This
   /// value impacts the frequency of performing network requests by the SDK.
   UploadFrequency? uploadFrequency;
+
+  /// Sets the level of batch processing
+  BatchProcessingLevel? batchProcessingLevel;
 
   /// Sets the current version number of the application.
   ///
@@ -201,6 +221,7 @@ class DatadogConfiguration {
     this.service,
     this.uploadFrequency,
     this.batchSize,
+    this.batchProcessingLevel,
     this.version,
     this.flavor,
     List<String>? firstPartyHosts,
@@ -252,6 +273,7 @@ class DatadogConfiguration {
       'service': service,
       'batchSize': batchSize?.toString(),
       'uploadFrequency': uploadFrequency?.toString(),
+      'batchProcessingLevel': batchProcessingLevel?.toString(),
       'additionalConfig': encodedAdditionalConfig,
     };
   }

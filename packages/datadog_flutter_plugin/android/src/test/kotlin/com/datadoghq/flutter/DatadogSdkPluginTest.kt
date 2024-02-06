@@ -17,6 +17,7 @@ import assertk.assertions.isNotNull
 import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
 import com.datadog.android.api.context.UserInfo
+import com.datadog.android.core.configuration.BatchProcessingLevel
 import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.privacy.TrackingConsent
@@ -125,6 +126,19 @@ class DatadogSdkPluginTest {
     }
 
     @Test
+    fun `M parse all batch processing levels W parseBatchProcessingLevel`() {
+        // WHEN
+        val low = parseBatchProcessingLevel("BatchProcessingLevel.low")
+        val medium = parseBatchProcessingLevel("BatchProcessingLevel.medium")
+        val high = parseBatchProcessingLevel("BatchProcessingLevel.high")
+
+        // THEN
+        assertThat(low).isEqualTo(BatchProcessingLevel.LOW)
+        assertThat(medium).isEqualTo(BatchProcessingLevel.MEDIUM)
+        assertThat(high).isEqualTo(BatchProcessingLevel.HIGH)
+    }
+
+    @Test
     fun `M parse all upload frequency W parseUploadFrequency`() {
         // WHEN
         val frequent = parseUploadFrequency("UploadFrequency.frequent")
@@ -198,13 +212,13 @@ class DatadogSdkPluginTest {
             "site" to null,
             "batchSize" to null,
             "uploadFrequency" to null,
+            "batchProcessingLevel" to null,
             "firstPartyHosts" to listOf<String>(),
             "additionalConfig" to mapOf<String, Any?>()
         )
 
         // WHEN
         val config = plugin.configurationBuilderFromEncoded(encoded)!!.build()
-
 
         // THEN
         assertThat(config.getPrivate("clientToken")).isEqualTo(clientToken)
@@ -229,6 +243,7 @@ class DatadogSdkPluginTest {
             "site" to "DatadogSite.us3",
             "batchSize" to "BatchSize.small",
             "uploadFrequency" to "UploadFrequency.frequent",
+            "batchProcessingLevel" to "BatchProcessingLevel.low",
             "additionalConfig" to mapOf<String, Any?>(
                 additionalKey to additionalValue
             )
@@ -242,6 +257,7 @@ class DatadogSdkPluginTest {
         assertThat(config.getPrivate("crashReportsEnabled")).isEqualTo(true)
         assertThat(coreConfig.getPrivate("site")).isEqualTo(DatadogSite.US3)
         assertThat(coreConfig.getPrivate("batchSize")).isEqualTo(BatchSize.SMALL)
+        assertThat(coreConfig.getPrivate("batchProcessingLevel")).isEqualTo(BatchProcessingLevel.LOW)
         assertThat(config.getPrivate("service")).isEqualTo(service)
         assertThat(config.getPrivate("additionalConfig")).isEqualTo(mapOf(
             additionalKey to additionalValue
