@@ -4,6 +4,7 @@
 
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../datadog_internal.dart';
@@ -118,7 +119,7 @@ TracingUUID _generateTraceId() {
   // we assume it needs to be a positive signed 64-bit int, so only
   // use 63-bits.
   final highBits = _traceRandom.nextInt(1 << 31);
-  final lowBits = BigInt.from(_traceRandom.nextInt(1 << 32));
+  final lowBits = BigInt.from(_traceRandom.nextInt(pow(2, 32).toInt()));
 
   var traceId = BigInt.from(highBits) << 32;
   traceId += lowBits;
