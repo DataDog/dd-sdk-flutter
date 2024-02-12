@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.3.0
 
 * Add `batchProcessingLevel` configuration option.
 * Add `clearAllData` method.
