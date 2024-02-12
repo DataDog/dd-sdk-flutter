@@ -1,6 +1,6 @@
 
 buildscript {
-    ext.datadog_version = "2+"
+    ext.datadog_version = "2.5.1"
 }
 
 plugins {
