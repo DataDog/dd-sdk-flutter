@@ -7,6 +7,13 @@
 * Fix `firstPartyHosts` not working for Flutter Web. See [#554]
 * Fix an issue where initializing the Datadog SDK from multiple engines would crash on iOS. This does not provide multiple engine support.
 * Fix an issue where Trace Id generation would throw a range error on Flutter web. See [#558]
+* Update iOS SDK to 2.7.1. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#270--25-01-2024)
+  * Fix `view.time_spent` in RUM view events
+  * Add privacy manifest to `DatadogCore`
+  * Link crashes sent as Log events to RUM session
+* Update Android SDK to 2.5.1. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#251--2024-01-24)
+  * Prevent a crash due to concurrent modification of custom attributes.
+
 
 ## 2.2.0
 
