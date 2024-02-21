@@ -79,6 +79,35 @@ void main() {
           'errorKind': 'error_type',
           'stackTrace': st.toString(),
           'context': {
+            'error.source_type': 'flutter',
+            'attribute': 'value',
+          }
+        })
+    ]);
+  });
+
+  test('log messages wihtout stack trace do not add source_type', () async {
+    for (final logLevel in LogLevel.values) {
+      await ddLogsPlatform.log(
+          'uuid',
+          logLevel,
+          '$logLevel message',
+          '$logLevel error message',
+          'error_type',
+          null,
+          {'attribute': 'value'});
+    }
+
+    expect(log, <Matcher>[
+      for (final logLevel in LogLevel.values)
+        isMethodCall('log', arguments: {
+          'loggerHandle': 'uuid',
+          'logLevel': logLevel.toString(),
+          'message': '$logLevel message',
+          'errorMessage': '$logLevel error message',
+          'errorKind': 'error_type',
+          'stackTrace': null,
+          'context': {
             'attribute': 'value',
           }
         })

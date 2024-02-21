@@ -46,6 +46,13 @@ class _LoggingScenarioState extends State<LoggingScenario> {
     logger.removeTagWithKey('tag1');
     logger.error('error message', attributes: {'attribute': 'value'});
 
+    try {
+      throw Exception('This thing failed');
+    } catch (e, st) {
+      logger.error('Encountered an error',
+          errorMessage: e.toString(), errorStackTrace: st);
+    }
+
     final config = DatadogLoggerConfiguration(name: 'second_logger');
     final secondLogger = DatadogSdk.instance.logs!.createLogger(config);
 

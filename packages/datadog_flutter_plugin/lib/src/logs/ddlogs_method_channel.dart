@@ -55,13 +55,21 @@ class DdLogsMethodChannel extends DdLogsPlatform {
 
   @override
   Future<void> log(
-      String loggerHandle,
-      LogLevel level,
-      String message,
-      String? errorMessage,
-      String? errorKind,
-      StackTrace? errorStackTrace,
-      Map<String, Object?> attributes) {
+    String loggerHandle,
+    LogLevel level,
+    String message,
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes,
+  ) {
+    if (errorStackTrace != null) {
+      // Modify context to supply the source_type
+      attributes = {
+        ...attributes,
+        'error.source_type': 'flutter',
+      };
+    }
     return methodChannel.invokeMethod('log', {
       'loggerHandle': loggerHandle,
       'logLevel': level.toString(),
