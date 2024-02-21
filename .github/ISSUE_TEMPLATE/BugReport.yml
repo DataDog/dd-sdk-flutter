@@ -52,7 +52,7 @@ body:
       label: Latest working SDK version
       description: What was the last SDK version that was working as expected?
     validations:
-      required: true
+      required: false
   - type: dropdown
     id: checked_lastest_sdk
     attributes:
