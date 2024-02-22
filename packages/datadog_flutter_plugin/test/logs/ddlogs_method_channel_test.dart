@@ -86,7 +86,7 @@ void main() {
     ]);
   });
 
-  test('log messages wihtout stack trace do not add source_type', () async {
+  test('log messages without stack trace do not add source_type', () async {
     for (final logLevel in LogLevel.values) {
       await ddLogsPlatform.log(
           'uuid',
