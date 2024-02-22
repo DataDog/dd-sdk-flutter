@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Add `error.source_type` to logs when a stack trace is provided.
 
 ## 2.3.0
 

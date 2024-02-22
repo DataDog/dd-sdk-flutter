@@ -112,6 +112,17 @@ void main() {
     expect(firstLoggerLogs[3].log['logger-attribute2'], 1000);
     expect(firstLoggerLogs[3].log['attribute'], 'value');
 
+    expect(firstLoggerLogs[4].status, 'error');
+    expect(firstLoggerLogs[4].message, 'Encountered an error');
+    expect(firstLoggerLogs[4].errorMessage, isNotNull);
+    if (!kIsWeb) {
+      expect(firstLoggerLogs[4].errorSourceType, 'flutter');
+      expect(firstLoggerLogs[4].tags, isNot(contains('my-tag')));
+      expect(firstLoggerLogs[4].tags, isNot(contains('tag1:tag-value')));
+    }
+    expect(firstLoggerLogs[4].log['logger-attribute1'], isNull);
+    expect(firstLoggerLogs[4].log['logger-attribute2'], 1000);
+
     List<LogDecoder> secondLoggerLogs =
         logs.where((l) => l.loggerName == 'second_logger').toList();
 

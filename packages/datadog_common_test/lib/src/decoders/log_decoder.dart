@@ -21,4 +21,5 @@ class LogDecoder {
   String get errorKind => getNestedProperty('error.kind', log);
   String get errorMessage => getNestedProperty('error.message', log);
   String get errorStack => getNestedProperty('error.stack', log);
+  String get errorSourceType => getNestedProperty('error.source_type', log);
 }
