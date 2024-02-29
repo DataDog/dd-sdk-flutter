@@ -14,18 +14,18 @@ PODS:
     - DatadogWebViewTracking (~> 2)
     - Flutter
     - webview_flutter_wkwebview
-  - DatadogCore (2.5.1):
-    - DatadogInternal (= 2.5.1)
-  - DatadogCrashReporting (2.5.1):
-    - DatadogInternal (= 2.5.1)
+  - DatadogCore (2.7.1):
+    - DatadogInternal (= 2.7.1)
+  - DatadogCrashReporting (2.7.1):
+    - DatadogInternal (= 2.7.1)
     - PLCrashReporter (~> 1.11.1)
-  - DatadogInternal (2.5.1)
-  - DatadogLogs (2.5.1):
-    - DatadogInternal (= 2.5.1)
-  - DatadogRUM (2.5.1):
-    - DatadogInternal (= 2.5.1)
-  - DatadogWebViewTracking (2.5.1):
-    - DatadogInternal (= 2.5.1)
+  - DatadogInternal (2.7.1)
+  - DatadogLogs (2.7.1):
+    - DatadogInternal (= 2.7.1)
+  - DatadogRUM (2.7.1):
+    - DatadogInternal (= 2.7.1)
+  - DatadogWebViewTracking (2.7.1):
+    - DatadogInternal (= 2.7.1)
   - DictionaryCoder (1.0.8)
   - Flutter (1.0.0)
   - path_provider_foundation (0.0.1):
@@ -74,14 +74,14 @@ SPEC CHECKSUMS:
   connectivity_plus: bf0076dd84a130856aa636df1c71ccaff908fa1d
   datadog_flutter_plugin: 89d7088ec5cc78c0ff2c24dbe7b7e67e6800a10b
   datadog_webview_tracking: d46b58a9109c0d29e4d6ffdd4223cb23e4f328a9
-  DatadogCore: 4acbe1aae7f87ed63b1fecdd6cb4264c5fff5de9
-  DatadogCrashReporting: 029e15cfbbacdd278a0d3428dacd3be78b80b3c2
-  DatadogInternal: 8c1de807515237394730e0d0721689adb8f0d7c1
-  DatadogLogs: cd1bbe531cfb56d5aa75ad839c7607ae7b83e3c9
-  DatadogRUM: b800382f479eaa501c99d2e84db8c06deb1409fb
-  DatadogWebViewTracking: 69be2e35bd2ef609853e5d0e1ce3e39a43ce867e
+  DatadogCore: 4a4cdf7beca3aa12b7095bebd926acea1a865a99
+  DatadogCrashReporting: f8b4ea638acaf58b68bbc51cb62a2d876f763241
+  DatadogInternal: b9217da25018284c087a2ed4b9bb3b0f26c767c0
+  DatadogLogs: 3b4132eefa67f196bb3ab2d603c1a2acd1292615
+  DatadogRUM: 8845815ba89f5ab8ceee765ee268f7de36f3e35d
+  DatadogWebViewTracking: 713f862ddd89173e0a3f5342cefa23def40f0f48
   DictionaryCoder: 5f84fff69f54cb806071538430bdafe04a89d658
-  Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
+  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   path_provider_foundation: 29f094ae23ebbca9d3d0cec13889cd9060c0e943
   PLCrashReporter: 5d2d3967afe0efad61b3048d617e2199a5d1b787
   ReachabilitySwift: 985039c6f7b23a1da463388634119492ff86c825

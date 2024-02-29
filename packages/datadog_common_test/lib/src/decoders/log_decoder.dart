@@ -14,6 +14,7 @@ class LogDecoder {
   String get message => log['message'] as String;
   String get serviceName => log['service'] as String;
   String get tags => log['ddtags'] as String;
+  List<String> get tagValues => (log['ddtags'] as String).split(',');
   String get applicationVersion => log['version'] as String;
   String get loggerName => getNestedProperty('logger.name', log);
   String get loggerVersion => getNestedProperty('logger.version', log);

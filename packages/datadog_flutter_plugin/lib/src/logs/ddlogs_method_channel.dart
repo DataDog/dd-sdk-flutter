@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import '../../datadog_internal.dart';
 import 'ddlogs_platform_interface.dart';
 
 class DdLogsMethodChannel extends DdLogsPlatform {
@@ -67,7 +68,7 @@ class DdLogsMethodChannel extends DdLogsPlatform {
       // Modify context to supply the source_type
       attributes = {
         ...attributes,
-        'error.source_type': 'flutter',
+        DatadogPlatformAttributeKey.errorSourceType: 'flutter',
       };
     }
     return methodChannel.invokeMethod('log', {

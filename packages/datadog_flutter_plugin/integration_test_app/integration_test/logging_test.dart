@@ -152,6 +152,11 @@ void main() {
           expect(log.applicationVersion, '1.2.3-555');
         }
         expect(log.threadName, 'main');
+
+        // Verify expected tags
+        expect(log.tagValues.contains('env:prod'), isTrue);
+        expect(log.tagValues.contains('version:1.2.3-555'), isTrue);
+        expect(log.tagValues.contains('variant:integration'), isTrue);
       }
     }
   });
