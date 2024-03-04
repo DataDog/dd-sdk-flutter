@@ -79,7 +79,7 @@ void main() {
           'errorKind': 'error_type',
           'stackTrace': st.toString(),
           'context': {
-            'error.source_type': 'flutter',
+            '_dd.error.source_type': 'flutter',
             'attribute': 'value',
           }
         })

@@ -87,21 +87,21 @@ packages:
       path: "../../packages/datadog_flutter_plugin"
       relative: true
     source: path
-    version: "2.4.0"
+    version: "2.2.0"
   datadog_gql_link:
     dependency: "direct main"
     description:
       path: "../../packages/datadog_gql_link"
       relative: true
     source: path
-    version: "1.1.0"
+    version: "0.1.0"
   datadog_tracking_http_client:
     dependency: "direct main"
     description:
       path: "../../packages/datadog_tracking_http_client"
       relative: true
     source: path
-    version: "2.2.0"
+    version: "2.0.1"
   datadog_webview_tracking:
     dependency: "direct main"
     description:
