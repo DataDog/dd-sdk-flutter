@@ -65,6 +65,10 @@ Future<void> main() async {
           )
         : null,
   );
+  if (testingConfiguration != null) {
+    // Add clear text if we're running an actual test.
+    configuration.additionalConfig['_dd.needsClearTextHttp'] = true;
+  }
 
   if (RumAutoInstrumentationScenarioConfig.instance.enableIoHttpTracking) {
     configuration.enableHttpTracking();
