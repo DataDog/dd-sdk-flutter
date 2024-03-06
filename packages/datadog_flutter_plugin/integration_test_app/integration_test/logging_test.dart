@@ -63,7 +63,7 @@ void main() {
         return logs.length >= 6;
       },
     );
-    expect(logs.length, greaterThanOrEqualTo(6));
+    expect(logs.length, greaterThanOrEqualTo(7));
 
     List<LogDecoder> firstLoggerLogs =
         logs.where((l) => l.loggerName != 'second_logger').toList();
