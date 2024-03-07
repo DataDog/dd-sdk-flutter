@@ -70,7 +70,9 @@ void main() {
       expect(config['track_views_manually'], false);
       expect(config['track_interactions'], true);
       expect(config['track_errors'], true);
-      expect(config['track_network_requests'], false);
+      // iOS's value for this isn't quite right, because we setup url session tracking
+      // even if it's not being used.
+      expect(config['track_network_requests'], Platform.isIOS);
       expect(config['track_native_views'], false);
       expect(config['track_cross_platform_long_tasks'], true);
       expect(config['track_flutter_performance'], true);

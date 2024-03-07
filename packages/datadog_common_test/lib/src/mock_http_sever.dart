@@ -69,8 +69,9 @@ class RecordingHttpServer {
         print(parsed.data);
         print('---- END REQUEST ----');
       }
-    } catch (e) {
+    } catch (e, st) {
       print('Failed parsing request: $e');
+      print(st.toString());
     }
 
     request.response.write('Hello, world!');

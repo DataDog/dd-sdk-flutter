@@ -65,7 +65,7 @@ class RequestLog {
         (contentEncoding.contains('deflate') ||
             contentEncoding.contains('gzip'));
     if (isZipped) {
-      decoded = await utf8.fuse(gzip).decoder.bind(request).single;
+      decoded = await utf8.fuse(gzip).decoder.bind(request).join();
     } else {
       decoded = await utf8.decodeStream(request);
     }
