@@ -2,12 +2,14 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/src/internal_logger.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -259,4 +261,86 @@ void main() {
       }
     });
   });
+
+  if (kDebugMode) {
+    group('console printing', () {
+      setUp(() {
+        when(() => mockPlatform.log(
+                any(), any(), any(), any(), any(), any(), any()))
+            .thenAnswer((invocation) => Future<void>.value());
+      });
+
+      var printLog = <String>[];
+      void Function() overridePrint(void Function() testFn) => () {
+            var spec = ZoneSpecification(print: (_, __, ___, String msg) {
+              // Add to log instead of printing to stdout
+              printLog.add(msg);
+            });
+            printLog.clear();
+            return Zone.current.fork(specification: spec).run<void>(testFn);
+          };
+
+      test('simpleConsolePrint logs to print by default', overridePrint(() {
+        final config =
+            DatadogLoggerConfiguration(remoteLogThreshold: LogLevel.warning);
+        final logger = ddLogs.createLogger(config);
+
+        logger.debug('Debug message');
+        logger.info('Info message');
+        logger.warn('Warn message');
+        logger.error('Error message');
+
+        expect(printLog.length, 4);
+        expect(printLog, [
+          '[debug] Debug message',
+          '[info] Info message',
+          '[warning] Warn message',
+          '[error] Error message',
+        ]);
+      }));
+
+      test('simpleConsolePrintForLevel logs to print by default',
+          overridePrint(() async {
+        final config = DatadogLoggerConfiguration(
+          remoteLogThreshold: LogLevel.warning,
+          customConsoleLogFunction: simpleConsolePrintForLevel(LogLevel.debug),
+        );
+        final logger = ddLogs.createLogger(config);
+
+        logger.debug('Debug message');
+        logger.info('Info message');
+        logger.warn('Warn message');
+        logger.error('Error message');
+
+        expect(printLog.length, 4);
+        expect(printLog, [
+          '[debug] Debug message',
+          '[info] Info message',
+          '[warning] Warn message',
+          '[error] Error message',
+        ]);
+      }));
+
+      test('simpleConsolePrintForLevel filters to correct level',
+          overridePrint(() {
+        final config = DatadogLoggerConfiguration(
+          remoteLogThreshold: LogLevel.warning,
+          customConsoleLogFunction:
+              simpleConsolePrintForLevel(LogLevel.warning),
+        );
+        final logger = ddLogs.createLogger(config);
+
+        logger.debug('Debug message');
+        logger.info('Info message');
+        logger.warn('Warn message');
+        logger.error('Error message');
+
+        expect(printLog.length, 2);
+        expect(printLog, [
+          '[warning] Warn message',
+          '[error] Error message',
+        ]);
+      }));
+    });
+  }
 }

@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Add `error.source_type` to logs when a stack trace is provided.
+* Fix default console print functions. See [#575] and [#574]
 
 ## 2.3.0
 
@@ -253,3 +254,5 @@ Release 2.0 introduces breaking changes. Follow the [Migration Guide](MIGRATING.
 [#543]: https://github.com/DataDog/dd-sdk-flutter/pull/543
 [#554]: https://github.com/DataDog/dd-sdk-flutter/pull/554
 [#558]: https://github.com/DataDog/dd-sdk-flutter/issues/558
+[#574]: https://github.com/DataDog/dd-sdk-flutter/issues/574
+[#575]: https://github.com/DataDog/dd-sdk-flutter/issues/575
