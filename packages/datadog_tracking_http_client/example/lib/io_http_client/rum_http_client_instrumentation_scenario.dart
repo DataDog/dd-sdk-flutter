@@ -22,7 +22,7 @@ class RumHttpClientInstrumentationScenario extends StatefulWidget {
 class _RumHttpClientInstrumentationScenarioState
     extends State<RumHttpClientInstrumentationScenario> {
   final images = [
-    'https://placekitten.com/300/300',
+    'https://picsum.photos/200',
     'https://imgix.datadoghq.com/img/about/presskit/kit/press_kit.png'
   ];
 
