@@ -32,6 +32,12 @@ class DdLogsWeb extends DdLogsPlatform {
       DatadogSdk core, DatadogLoggingConfiguration config) async {}
 
   @override
+  Future<void> addGlobalAttribute(String key, Object value) async {}
+
+  @override
+  Future<void> removeGlobalAttribute(String key) async {}
+
+  @override
   Future<void> deinitialize() async {}
 
   @override

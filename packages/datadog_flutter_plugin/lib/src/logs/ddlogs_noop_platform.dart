@@ -12,6 +12,12 @@ class DdNoOpLogsPlatform extends DdLogsPlatform {
   }
 
   @override
+  Future<void> addGlobalAttribute(String key, Object value) async {}
+
+  @override
+  Future<void> removeGlobalAttribute(String key) async {}
+
+  @override
   Future<void> deinitialize() {
     return Future.value();
   }

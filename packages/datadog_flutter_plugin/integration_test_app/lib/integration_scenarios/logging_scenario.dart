@@ -42,6 +42,8 @@ class _LoggingScenarioState extends State<LoggingScenario> {
     });
     logger.warn('warn message', attributes: {'doubleAttribute': 10.34});
 
+    DatadogSdk.instance.logs?.addAttribute('global-attribute', 'global value');
+
     logger.removeAttribute('logger-attribute1');
     logger.removeTagWithKey('tag1');
     logger.error('error message', attributes: {'attribute': 'value'});
@@ -66,6 +68,10 @@ class _LoggingScenarioState extends State<LoggingScenario> {
       errorMessage: 'Error Message',
       errorStackTrace: st,
     );
+
+    secondLogger.info('Test local attribute override', attributes: {
+      'global-attribute': 'overridden',
+    });
   }
 
   @override
