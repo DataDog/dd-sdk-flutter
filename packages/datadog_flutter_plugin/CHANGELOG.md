@@ -4,7 +4,7 @@
 
 * Add `error.source_type` to logs when a stack trace is provided.
 * Fix default console print functions. See [#575] and [#574]
-* Loosen the restriciton on the `js` package to allow `<0.8`. See [#572]
+* Loosen the restriction on the `js` package to allow `<0.8`. See [#572]
 
 ## 2.3.0
 
