@@ -94,8 +94,8 @@ void main() async {
 
     final view1 = session.visits[1];
     expect(view1.viewEvents.last.view.resourceCount, 2);
-    expect(view1.resourceEvents[0].url, 'https://placekitten.com/300/300');
-    // placekitten.com doesn't set contentType headers properly, so don't test it
+    // After redirects, we don't end up with a picsum.photos url.
+    expect(view1.resourceEvents[0].url.contains('picsum.photos'), isTrue);    
     expect(view1.resourceEvents[1].url,
         'https://imgix.datadoghq.com/img/about/presskit/kit/press_kit.png');
     // Allow this to fail since we don't have as much control over them

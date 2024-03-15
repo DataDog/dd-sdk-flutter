@@ -67,8 +67,8 @@ void simpleConsolePrint(
 CustomConsoleLogFunction simpleConsolePrintForLevel(LogLevel level) {
   return ((inLevel, message, errorMessage, errorKind, stackTrace, attributes) {
     if (kDebugMode) {
-      if (inLevel.index > level.index) {
-        print('[${level.name}] $message');
+      if (inLevel.index >= level.index) {
+        print('[${inLevel.name}] $message');
       }
     }
   });
@@ -145,7 +145,7 @@ class DatadogLoggerConfiguration {
     this.bundleWithTraceEnabled = true,
     this.networkInfoEnabled = true,
     double remoteSampleRate = 100,
-    this.customConsoleLogFunction,
+    this.customConsoleLogFunction = simpleConsolePrint,
   }) {
     this.remoteSampleRate = remoteSampleRate;
   }
