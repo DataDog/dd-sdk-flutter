@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:datadog_common_test/uri_matchers.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_tracking_http_client/src/tracking_http_client.dart';
