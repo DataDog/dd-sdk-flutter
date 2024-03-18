@@ -63,7 +63,7 @@ void main() {
         return logs.length >= 6;
       },
     );
-    expect(logs.length, greaterThanOrEqualTo(7));
+    expect(logs.length, greaterThanOrEqualTo(8));
 
     List<LogDecoder> firstLoggerLogs =
         logs.where((l) => l.loggerName != 'second_logger').toList();
@@ -78,6 +78,9 @@ void main() {
     expect(firstLoggerLogs[0].log['logger-attribute1'], 'string value');
     expect(firstLoggerLogs[0].log['logger-attribute2'], 1000);
     expect(firstLoggerLogs[0].log['stringAttribute'], 'string');
+    if (!kIsWeb) {
+      expect(firstLoggerLogs[0].log['global-attribute'], isNull);
+    }
 
     expect(firstLoggerLogs[1].status, 'info');
     expect(firstLoggerLogs[1].message, 'info message');
@@ -91,6 +94,9 @@ void main() {
         containsPair('internal', 'test'));
     expect(firstLoggerLogs[1].log['nestedAttribute'],
         containsPair('isValid', true));
+    if (!kIsWeb) {
+      expect(firstLoggerLogs[1].log['global-attribute'], isNull);
+    }
 
     expect(firstLoggerLogs[2].status, 'warn');
     expect(firstLoggerLogs[2].message, 'warn message');
@@ -101,6 +107,9 @@ void main() {
     expect(firstLoggerLogs[2].log['logger-attribute1'], 'string value');
     expect(firstLoggerLogs[2].log['logger-attribute2'], 1000);
     expect(firstLoggerLogs[2].log['doubleAttribute'], 10.34);
+    if (!kIsWeb) {
+      expect(firstLoggerLogs[2].log['global-attribute'], isNull);
+    }
 
     expect(firstLoggerLogs[3].status, 'error');
     expect(firstLoggerLogs[3].message, 'error message');
@@ -111,6 +120,9 @@ void main() {
     expect(firstLoggerLogs[3].log['logger-attribute1'], isNull);
     expect(firstLoggerLogs[3].log['logger-attribute2'], 1000);
     expect(firstLoggerLogs[3].log['attribute'], 'value');
+    if (!kIsWeb) {
+      expect(firstLoggerLogs[3].log['global-attribute'], 'global value');
+    }
 
     expect(firstLoggerLogs[4].status, 'error');
     expect(firstLoggerLogs[4].message, 'Encountered an error');
@@ -122,6 +134,9 @@ void main() {
     }
     expect(firstLoggerLogs[4].log['logger-attribute1'], isNull);
     expect(firstLoggerLogs[4].log['logger-attribute2'], 1000);
+    if (!kIsWeb) {
+      expect(firstLoggerLogs[4].log['global-attribute'], 'global value');
+    }
 
     List<LogDecoder> secondLoggerLogs =
         logs.where((l) => l.loggerName == 'second_logger').toList();
@@ -131,6 +146,9 @@ void main() {
     expect(secondLoggerLogs[0].log['second-logger-attribute'], 'second-value');
     expect(secondLoggerLogs[0].log['logger-attribute1'], isNull);
     expect(secondLoggerLogs[0].log['logger-attribute2'], isNull);
+    if (!kIsWeb) {
+      expect(secondLoggerLogs[0].log['global-attribute'], 'global value');
+    }
     expect(getNestedProperty<String>('logger.name', secondLoggerLogs[1].log),
         'second_logger');
 
@@ -139,8 +157,18 @@ void main() {
     expect(secondLoggerLogs[1].log['second-logger-attribute'], 'second-value');
     expect(secondLoggerLogs[1].log['logger-attribute1'], isNull);
     expect(secondLoggerLogs[1].log['logger-attribute2'], isNull);
+    if (!kIsWeb) {
+      expect(secondLoggerLogs[1].log['global-attribute'], 'global value');
+    }
     expect(secondLoggerLogs[1].errorMessage, 'Error Message');
     expect(secondLoggerLogs[1].errorStack, isNotNull);
+    expect(getNestedProperty<String>('logger.name', secondLoggerLogs[1].log),
+        'second_logger');
+
+    expect(secondLoggerLogs[2].status, 'info');
+    expect(secondLoggerLogs[2].message, 'Test local attribute override');
+    expect(secondLoggerLogs[2].log['second-logger-attribute'], 'second-value');
+    expect(secondLoggerLogs[2].log['global-attribute'], 'overridden');
     expect(getNestedProperty<String>('logger.name', secondLoggerLogs[1].log),
         'second_logger');
 

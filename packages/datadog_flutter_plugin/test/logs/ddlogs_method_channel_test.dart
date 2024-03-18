@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_method_channel.dart';
@@ -37,6 +38,26 @@ void main() {
         'loggerHandle': 'uuid',
         'configuration': config.encode(),
       })
+    ]);
+  });
+
+  test('addGlobalAttribute passed to method channel', () async {
+    final key = randomString();
+    final value = randomString();
+    await ddLogsPlatform.addGlobalAttribute(key, value);
+
+    expect(log, <Matcher>[
+      isMethodCall('addGlobalAttribute',
+          arguments: {'key': key, 'value': value})
+    ]);
+  });
+
+  test('removeGlobalAttribute passed to method channel', () async {
+    final key = randomString();
+    await ddLogsPlatform.removeGlobalAttribute(key);
+
+    expect(log, <Matcher>[
+      isMethodCall('removeGlobalAttribute', arguments: {'key': key})
     ]);
   });
 

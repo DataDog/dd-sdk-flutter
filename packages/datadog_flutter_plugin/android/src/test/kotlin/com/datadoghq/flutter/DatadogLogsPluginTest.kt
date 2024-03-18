@@ -215,6 +215,13 @@ class DatadogLogsPluginTest {
     }
 
     private val contracts = listOf(
+        Contract("addGlobalAttribute", mapOf(
+            "key" to ContractParameter.Type(SupportedContractType.STRING),
+            "value" to ContractParameter.Type(SupportedContractType.MAP),
+        )),
+        Contract("removeGlobalAttribute", mapOf(
+            "key" to ContractParameter.Type(SupportedContractType.STRING),
+        )),
         Contract("log", mapOf(
             "loggerHandle" to ContractParameter.Value("mock-logger"),
             "logLevel" to ContractParameter.Type(SupportedContractType.STRING),
