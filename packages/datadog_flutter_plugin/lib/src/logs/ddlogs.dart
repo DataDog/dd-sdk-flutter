@@ -92,6 +92,28 @@ class DatadogLogging {
 
     return logger;
   }
+
+  /// Add a custom attribute to all future logs sent by all loggers.
+  ///
+  /// Values can be nested up to 10 levels deep. Keys using more than 10 levels
+  /// will be sanitized by SDK.
+  ///
+  /// All values must be supported by [StandardMessageCodec].
+  void addAttribute(String key, Object value) {
+    wrap('logs.addGlobalAttribute', core.internalLogger, {'value': value}, () {
+      return _platform.addGlobalAttribute(key, value);
+    });
+  }
+
+  /// Remove a custom attribute from all future logs sent by this logger.
+  ///
+  /// Previous logs won't lose the attribute value associated with this [key] if
+  /// they were created prior to this call.
+  void removeAttribute(String key) {
+    wrap('logs.removeGlobalAttribute', core.internalLogger, null, () {
+      return _platform.removeGlobalAttribute(key);
+    });
+  }
 }
 
 /// An interface for sending logs to Datadog.

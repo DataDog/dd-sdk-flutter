@@ -96,6 +96,13 @@ class DatadogLogsPluginTests: XCTestCase {
     }
 
     let contracts = [
+        Contract(methodName: "addGlobalAttribute", requiredParameters: [
+            "key": .string,
+            "value": .map
+        ]),
+        Contract(methodName: "removeGlobalAttribute", requiredParameters: [
+            "key": .string            
+        ]),
         Contract(methodName: "log", requiredParameters: [
             "loggerHandle": .string,
             "logLevel": .string,
@@ -103,7 +110,8 @@ class DatadogLogsPluginTests: XCTestCase {
         ]),
         Contract(methodName: "addAttribute", requiredParameters: [
             "loggerHandle": .string,
-            "key": .string, "value": .map
+            "key": .string, 
+            "value": .map
         ]),
         Contract(methodName: "addTag", requiredParameters: [
             "loggerHandle": .string,

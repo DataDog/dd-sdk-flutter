@@ -74,11 +74,7 @@ class DatadogLogsPlugin internal constructor() : MethodChannel.MethodCallHandler
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        if (call.method == "enable") {
-            enable(call, result)
-            return
-        } else if (call.method == "deinitialize") {
-            deinitialize(call, result)
+        if (handleGlobalMethod(call, result)) {
             return
         }
 
@@ -117,6 +113,37 @@ class DatadogLogsPlugin internal constructor() : MethodChannel.MethodCallHandler
                 )
             }
         }
+    }
+
+    private fun handleGlobalMethod(call: MethodCall, result: MethodChannel.Result): Boolean {
+        if (call.method == "enable") {
+            enable(call, result)
+            return true
+        } else if (call.method == "deinitialize") {
+            deinitialize(call, result)
+            return true
+        } else if (call.method == "addGlobalAttribute") {
+            val key = call.argument<String>(LOG_KEY)
+            val value = call.argument<Any>(LOG_VALUE)
+            if (key != null && value != null) {
+                Logs.addAttribute(key, value)
+                result.success(null)
+            } else {
+                result.missingParameter(call.method)
+            }
+            return true
+        } else if (call.method == "removeGlobalAttribute") {
+            val key = call.argument<String>(LOG_KEY)
+            if (key != null) {
+                Logs.removeAttribute(key)
+                result.success(null)
+            } else {
+                result.missingParameter(call.method)
+            }
+            return true
+        }
+
+        return false
     }
 
     private fun enable(call: MethodCall, result: MethodChannel.Result) {

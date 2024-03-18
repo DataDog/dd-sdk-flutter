@@ -32,6 +32,21 @@ class DdLogsMethodChannel extends DdLogsPlatform {
   }
 
   @override
+  Future<void> addGlobalAttribute(String key, Object value) {
+    return methodChannel.invokeMethod('addGlobalAttribute', {
+      'key': key,
+      'value': value,
+    });
+  }
+
+  @override
+  Future<void> removeGlobalAttribute(String key) {
+    return methodChannel.invokeMethod('removeGlobalAttribute', {
+      'key': key,
+    });
+  }
+
+  @override
   Future<void> deinitialize() {
     _core = null;
     _logEventMapper = null;

@@ -78,11 +78,7 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
             return
         }
 
-        if call.method == "enable" {
-            enable(arguments: arguments, result: result)
-            return
-        } else if call.method == "deinitialize" {
-            deinitialize(arguments: arguments, result: result)
+        if handleGlobalMethod(call: call, arguments: arguments, result: result) {
             return
         }
 
@@ -93,8 +89,7 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
             return
         }
 
-        // Before other functions, see if we want to create a logger. All other functions
-        // require a logger already exist.
+        // Global 'logs' functions don't require a logger, all others do
         if call.method == "createLogger" {
             guard let encodedConfiguration = arguments["configuration"] as? [String: Any?] else {
                 result(FlutterError.invalidOperation(message: "Bad logging configuration sent to createLogger"))
@@ -207,6 +202,39 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         default:
             result(FlutterMethodNotImplemented)
         }
+    }
+
+    // Returns true if this method was handled
+    private func handleGlobalMethod(call: FlutterMethodCall, arguments: [String: Any?], result: @escaping FlutterResult) -> Bool {
+        if call.method == "enable" {
+            enable(arguments: arguments, result: result)
+            return true
+        } else if call.method == "deinitialize" {
+            deinitialize(arguments: arguments, result: result)
+            return true
+        } else if call.method == "addGlobalAttribute" {
+            if let key = arguments["key"] as? String,
+               let value = arguments["value"] {
+                Logs.addAttribute(forKey: key, value: DdFlutterEncodable(value))
+                result(nil)
+            } else {
+                result(
+                    FlutterError.missingParameter(methodName: call.method)
+                )
+            }
+            return true
+        } else if call.method == "removeGlobalAttribute" {
+            if let key = arguments["key"] as? String {
+                Logs.removeAttribute(forKey: key)
+                result(nil)
+            } else {
+                result(
+                    FlutterError.missingParameter(methodName: call.method)
+                )
+            }
+            return true
+        }
+        return false
     }
 
     private func enable(arguments: [String: Any?], result: @escaping FlutterResult) {

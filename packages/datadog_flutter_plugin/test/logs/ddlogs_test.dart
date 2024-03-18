@@ -42,6 +42,10 @@ void main() {
         .thenAnswer((_) => Future.value());
     when(() => mockPlatform.destroyLogger(any()))
         .thenAnswer((_) => Future.value());
+    when(() => mockPlatform.addGlobalAttribute(any(), any()))
+        .thenAnswer((_) => Future.value());
+    when(() => mockPlatform.removeGlobalAttribute(any()))
+        .thenAnswer((_) => Future.value());
 
     mockInternalLogger = MockInternalLogger();
     mockCore = MockDatadogSdk();
@@ -62,6 +66,21 @@ void main() {
       final logConfig =
           DatadogLoggerConfiguration(remoteLogThreshold: LogLevel.debug);
       ddLog = ddLogs.createLogger(logConfig);
+    });
+
+    test('logs.addAttribute calls to platform', () async {
+      final key = randomString();
+      final value = randomString();
+      ddLogs.addAttribute(key, value);
+
+      verify(() => mockPlatform.addGlobalAttribute(key, value));
+    });
+
+    test('logs.removeAttribute calls to platform', () async {
+      final key = randomString();
+      ddLogs.removeAttribute(key);
+
+      verify(() => mockPlatform.removeGlobalAttribute(key));
     });
 
     test('debug logs pass to platform', () async {
