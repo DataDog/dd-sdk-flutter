@@ -347,8 +347,13 @@ class DatadogRum {
 
   /// Adds a custom attribute with [key] and [value] to all future events sent
   /// by the RUM monitor. Note that [value] must be supported by
-  /// [StandardMessageCodec].
+  /// [StandardMessageCodec]. Passing a [value] of null is the same as calling
+  /// [removeAttribute]
   void addAttribute(String key, dynamic value) {
+    if (value == null) {
+      removeAttribute(key);
+      return;
+    }
     wrap('rum.addAttributes', logger, {'value': value}, () {
       return _platform.addAttribute(key, value);
     });

@@ -240,4 +240,26 @@ void main() {
     // Then
     expect(sessionId, fakeSessionId);
   });
+
+  test('addAttribute with null calls remove attribute instead', () async {
+    // Given
+    DdRumPlatform.instance = mockRumPlatform;
+    when(() => mockRumPlatform.enable(any(), any()))
+        .thenAnswer((_) => Future.value());
+    when(() => mockRumPlatform.removeAttribute(any()))
+        .thenAnswer((_) => Future.value());
+    final rum = await DatadogRum.enable(
+        mockDatadogSdk,
+        DatadogRumConfiguration(
+          applicationId: 'applicationId',
+          detectLongTasks: false,
+        ));
+
+    // when
+    rum!.addAttribute('attribute-key', null);
+
+    // Then
+    verify(() => mockRumPlatform.removeAttribute('attribute-key'));
+    verifyNever(() => mockRumPlatform.addAttribute(any(), any()));
+  });
 }
