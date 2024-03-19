@@ -22,6 +22,14 @@ class MockDdLogsPlatform extends Mock
     with MockPlatformInterfaceMixin
     implements DdLogsPlatform {}
 
+void silentLogger(
+    LogLevel level,
+    String message,
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? stackTrace,
+    Map<String, Object?> attributes) {}
+
 void main() {
   late MockDatadogSdk mockCore;
   late MockInternalLogger mockInternalLogger;
@@ -63,8 +71,10 @@ void main() {
               mockPlatform.log(any(), any(), any(), any(), any(), any(), any()))
           .thenAnswer((invocation) => Future<void>.value());
 
-      final logConfig =
-          DatadogLoggerConfiguration(remoteLogThreshold: LogLevel.debug);
+      final logConfig = DatadogLoggerConfiguration(
+        remoteLogThreshold: LogLevel.debug,
+        customConsoleLogFunction: silentLogger,
+      );
       ddLog = ddLogs.createLogger(logConfig);
     });
 
@@ -187,6 +197,7 @@ void main() {
     final logConfig = DatadogLoggerConfiguration(
       remoteLogThreshold: LogLevel.debug,
       remoteSampleRate: sampleRate,
+      customConsoleLogFunction: silentLogger,
     );
     final logger = ddLogs.createLogger(logConfig);
     for (var i = 0; i < 1000; ++i) {
@@ -212,8 +223,10 @@ void main() {
     });
 
     test('threshold set to verbose always calls platform', () async {
-      final config =
-          DatadogLoggerConfiguration(remoteLogThreshold: LogLevel.debug);
+      final config = DatadogLoggerConfiguration(
+        remoteLogThreshold: LogLevel.debug,
+        customConsoleLogFunction: silentLogger,
+      );
       logger = ddLogs.createLogger(config);
 
       logger.debug('Debug message');
@@ -234,8 +247,10 @@ void main() {
 
     test('threshold set to middle sends call proper platform methods',
         () async {
-      final config =
-          DatadogLoggerConfiguration(remoteLogThreshold: LogLevel.warning);
+      final config = DatadogLoggerConfiguration(
+        remoteLogThreshold: LogLevel.warning,
+        customConsoleLogFunction: silentLogger,
+      );
       logger = ddLogs.createLogger(config);
 
       logger.debug('Debug message');
@@ -261,7 +276,10 @@ void main() {
     });
 
     test('sample set to none does not call platform', () async {
-      final config = DatadogLoggerConfiguration(remoteSampleRate: 0.0);
+      final config = DatadogLoggerConfiguration(
+        remoteSampleRate: 0.0,
+        customConsoleLogFunction: silentLogger,
+      );
       logger = ddLogs.createLogger(config);
 
       logger.debug('Debug message');
