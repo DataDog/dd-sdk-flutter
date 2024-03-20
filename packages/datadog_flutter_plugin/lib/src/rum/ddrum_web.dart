@@ -80,6 +80,11 @@ class DdRumWeb extends DdRumPlatform {
     jsError.message = error.toString();
     jsError.name = errorType ?? 'Error';
 
+    final fingerprint = attributes.remove(DatadogAttributes.errorFingerprint);
+    if (fingerprint != null) {
+      jsError.dd_fingerprint = fingerprint;
+    }
+
     _jsAddError(jsError, attributesToJs(attributes, 'attributes'));
   }
 
@@ -95,6 +100,11 @@ class DdRumWeb extends DdRumPlatform {
     jsError.stack = convertWebStackTrace(stackTrace);
     jsError.message = message;
     jsError.name = errorType ?? 'Error';
+
+    final fingerprint = attributes.remove(DatadogAttributes.errorFingerprint);
+    if (fingerprint != null) {
+      jsError.dd_fingerprint = fingerprint;
+    }
 
     _jsAddError(jsError, attributesToJs(attributes, 'attributes'));
   }

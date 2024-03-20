@@ -5,6 +5,7 @@
 import 'dart:async';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -220,6 +221,7 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
       RumErrorSource.source,
       attributes: {
         'custom_attribute': 'my_attribute',
+        DatadogAttributes.errorFingerprint: 'custom-fingerprint',
       },
     );
     DatadogSdk.instance.rum

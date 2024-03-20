@@ -171,6 +171,7 @@ void main() {
       expect(view1.errorEvents[0].source, 'network');
       expect(view1.errorEvents[0].context![contextKey], expectedContextValue);
     }
+
     expect(view1, becameInactive);
 
     final view2 = session.visits[1];
@@ -202,6 +203,7 @@ void main() {
     expect(view2.errorEvents[0].source, kIsWeb ? 'custom' : 'source');
     expect(view2.errorEvents[0].context![contextKey], expectedContextValue);
     expect(view2.errorEvents[0].context!['custom_attribute'], 'my_attribute');
+    expect(view2.errorEvents[0].fingerprint, 'custom-fingerprint');
 
     // Check all long tasks are over 100 ms (the default) and that one is greater
     // than 200 ms (triggered by the tapping of the button)

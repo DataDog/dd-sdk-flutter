@@ -647,6 +647,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 }
 
                 rumErrorEvent.error.stack = encodedError["stack"] as? String
+                rumErrorEvent.error.fingerprint = encodedError["fingerprint"] as? String
             }
 
             if let encodedView = encodedResult["view"] as? [String: Any?] {

@@ -7,6 +7,7 @@
 * Loosen the restriction on the `js` package to allow `<0.8`. See [#572]
 * Add support for global attributes for logs.
 * Passing `null` to `addAttribute` now calls `removeAttribute` instead of silently failing.
+* Add support for custom error fingerprints with `DatadogAttributes.errorFingerprint`.
 
 ## 2.3.0
 

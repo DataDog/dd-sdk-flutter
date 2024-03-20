@@ -3,6 +3,7 @@
 // Copyright 2016-Present Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/material.dart';
 
 class LoggingScenario extends StatefulWidget {
@@ -67,6 +68,9 @@ class _LoggingScenarioState extends State<LoggingScenario> {
       'Warning: this error occurred',
       errorMessage: 'Error Message',
       errorStackTrace: st,
+      attributes: {
+        DatadogAttributes.errorFingerprint: 'custom-fingerprint',
+      },
     );
 
     secondLogger.info('Test local attribute override', attributes: {

@@ -23,4 +23,11 @@ class LogDecoder {
   String get errorMessage => getNestedProperty('error.message', log);
   String get errorStack => getNestedProperty('error.stack', log);
   String get errorSourceType => getNestedProperty('error.source_type', log);
+  String? get errorFingerprint {
+    if (!kManualIsWeb) {
+      return getNestedProperty('error.fingerprint', log);
+    } else {
+      return log['error.fingerprint'] as String?;
+    }
+  }
 }

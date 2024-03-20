@@ -17,4 +17,6 @@ extension JSErrorExtension on JSError {
   external String? stack;
   external String? message;
   external String? name;
+  // ignore: non_constant_identifier_names
+  external String? dd_fingerprint;
 }

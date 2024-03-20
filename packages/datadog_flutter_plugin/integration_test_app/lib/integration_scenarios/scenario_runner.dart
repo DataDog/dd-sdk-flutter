@@ -45,6 +45,9 @@ RumErrorEvent? mapRumErrorEvent(RumErrorEvent event) {
     event.error.resource?.url =
         event.error.resource!.url.replaceAll('fake_url', 'my_url');
   }
+  if (event.error.fingerprint == 'custom-fingerprint') {
+    event.error.fingerprint = 'mapped fingerprint';
+  }
 
   return event;
 }
@@ -117,8 +120,11 @@ Future<void> runScenario({
 LogEvent? _mapLogEvent(LogEvent event) {
   event.attributes.remove('logger-attribute2');
 
-  if (event.logger.name == 'second_logger' && event.status == LogStatus.info) {
-    return null;
+  if (event.logger.name == 'second_logger') {
+    if (event.status == LogStatus.info) {
+      return null;
+    }
+    event.error?.fingerprint = 'mapped print';
   }
 
   event.message = event.message.replaceAll('message', 'xxxxxxxx');

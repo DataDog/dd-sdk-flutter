@@ -5,6 +5,7 @@
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/material.dart';
 
 class RumManualErrorReportingScenario extends StatefulWidget {
@@ -36,7 +37,10 @@ class _RumManualErrorReportingScenarioState
         RumErrorSource.source,
         errorType: 'NullThrown',
       );
-      rum.addErrorInfo('Rum error message', RumErrorSource.network);
+      rum.addErrorInfo('Rum error message', RumErrorSource.network,
+          attributes: {
+            DatadogAttributes.errorFingerprint: 'custom-fingerprint',
+          },);
     }
   }
 

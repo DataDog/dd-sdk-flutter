@@ -356,6 +356,7 @@ class DatadogLogsPlugin internal constructor() : MethodChannel.MethodCallHandler
                     event.message = modifiedEvent.message
                     event.ddtags = modifiedEvent.ddtags
                     event.logger.name = modifiedEvent.logger.name
+                    event.error?.fingerprint = modifiedEvent.error?.fingerprint
 
                     event.additionalProperties.clear()
                     event.additionalProperties.putAll(modifiedEvent.additionalProperties)
