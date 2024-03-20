@@ -703,6 +703,7 @@ class DatadogRumPlugin internal constructor(
                         }
 
                         event.error.stack = encodedError["stack"] as? String
+                        event.error.fingerprint = encodedError["fingerprint"] as? String
                     }
 
                     (encodedResult["view"] as? Map<String, Any?>)?.let {

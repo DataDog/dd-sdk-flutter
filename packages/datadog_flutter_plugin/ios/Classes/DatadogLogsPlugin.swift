@@ -314,6 +314,10 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
                     let splitTags = tags.split(separator: ",").map { String($0) }
                     event.tags = splitTags
                 }
+                if let error = result["error"] as? [String: Any], 
+                   let fingerprint = error["fingerprint"] as? String {
+                    event.error?.fingerprint = fingerprint
+                }
 
                 // Go through all remaining attributes and add them on to the user
                 // attibutes so long as they aren't reserved

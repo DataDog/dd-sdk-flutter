@@ -599,6 +599,7 @@ class RumError {
   final String? sourceType;
   String? stack;
   final String? type;
+  String? fingerprint;
 
   RumError({
     required this.causes,
@@ -612,6 +613,7 @@ class RumError {
     this.sourceType,
     this.stack,
     this.type,
+    this.fingerprint,
   });
 
   factory RumError.fromJson(Map<String, dynamic> json) =>

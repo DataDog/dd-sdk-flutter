@@ -9,6 +9,7 @@ library ddlogs_flutter_web;
 import 'package:js/js.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import '../../datadog_internal.dart';
 import '../web_helpers.dart';
 import 'ddlogs_platform_interface.dart';
 import 'ddweb_helpers.dart';
@@ -106,6 +107,14 @@ class DdLogsWeb extends DdLogsPlatform {
       error.stack = convertWebStackTrace(errorStackTrace);
       error.message = errorMessage;
       error.name = errorKind ?? 'Error';
+
+      // Move error fingerprint to its proper location
+      final fingerprint = attributes[DatadogAttributes.errorFingerprint];
+      if (fingerprint != null) {
+        attributes = Map.from(attributes)
+          ..remove(DatadogAttributes.errorFingerprint)
+          ..putIfAbsent('error.fingerprint', () => fingerprint);
+      }
     }
     logger?.log(
       message,

@@ -60,7 +60,7 @@ void main() {
               return !(e).containsKey('session') && e['type'] != 'telemetry';
             })
             .forEach((e) => logs.add(LogDecoder(e)));
-        return logs.length >= 6;
+        return logs.length >= 8;
       },
     );
     expect(logs.length, greaterThanOrEqualTo(8));
@@ -162,6 +162,7 @@ void main() {
     }
     expect(secondLoggerLogs[1].errorMessage, 'Error Message');
     expect(secondLoggerLogs[1].errorStack, isNotNull);
+    expect(secondLoggerLogs[1].errorFingerprint, 'custom-fingerprint');
     expect(getNestedProperty<String>('logger.name', secondLoggerLogs[1].log),
         'second_logger');
 

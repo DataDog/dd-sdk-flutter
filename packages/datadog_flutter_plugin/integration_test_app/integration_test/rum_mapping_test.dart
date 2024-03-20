@@ -24,6 +24,7 @@ void main() {
   //  * actionMapper discards the 'Next Screen' tap
   //  * actionMapper discards 'User Scrolling' events
   //  * resourceMapper and errorMapper rewite the urls to replace 'fake_url' with 'my_url'
+  //  * errorMapper changes 'custom-fingerprint' to 'mapped fingerprint'
   //  * longTask mapper discards all long tasks less than 200 ms
   //  * longTask mapper renames ThirdManualRumView to ThirdView
   testWidgets('test instrumentation with mappers', (WidgetTester tester) async {
@@ -84,6 +85,8 @@ void main() {
           greaterThanOrEqualTo(
               const Duration(milliseconds: 200).inNanoseconds));
     }
+
+    expect(view2.errorEvents[0].fingerprint, 'mapped fingerprint');
 
     final view3 = session.visits[2];
     expect(view3.name, 'ThirdManualRumView');

@@ -55,7 +55,7 @@ void main() {
             .where(
                 (e) => !(e).containsKey('session') && e['type'] != 'telemetry')
             .forEach((e) => logs.add(LogDecoder(e)));
-        return logs.length >= 5;
+        return logs.length >= 6;
       },
     );
 
@@ -63,6 +63,7 @@ void main() {
     //   * logger-attribute2 should always be null
     //   * 'message' is replaced by 'xxxxxxxx'
     //   * the info message from the second_logger is not sent
+    //   * all error fingerprints on the second-logger are replaced with 'mapped print'
     expect(logs.length, equals(6));
 
     List<LogDecoder> firstLoggerLogs =
@@ -133,6 +134,7 @@ void main() {
     expect(secondLoggerLogs[0].log['logger-attribute2'], isNull);
     expect(secondLoggerLogs[0].errorMessage, 'Error Message');
     expect(secondLoggerLogs[0].errorStack, isNotNull);
+    expect(secondLoggerLogs[0].errorFingerprint, 'mapped print');
     expect(getNestedProperty<String>('logger.name', secondLoggerLogs[0].log),
         'second_logger');
 
