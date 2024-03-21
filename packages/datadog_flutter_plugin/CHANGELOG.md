@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+
+
 ## 2.4.0
 
 * Add `error.source_type` to logs when a stack trace is provided.
