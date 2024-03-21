@@ -8,6 +8,20 @@
 * Add support for global attributes for logs.
 * Passing `null` to `addAttribute` now calls `removeAttribute` instead of silently failing.
 * Add support for custom error fingerprints with `DatadogAttributes.errorFingerprint`.
+* Upgrade iOS SDK to 2.8.1. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#280--19-03-2024)
+  * Add global log attributes
+  * Add Device's Brand, Name, and Model in LogEvent.
+  * Add source_type when sent from cross platform logs.
+  * Allow setting custom fingerprints on errors
+* Update Android SDK to 2.7.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#270--2024-03-21)
+  * Add source_type when sent from cross platform logs.
+  * Add support for global attributes on logs.
+  * Allow setting custom fingerprints on errors.
+  * Set source_type on native crashes to ndk.
+  * Do not update RUM View global properties after the view is stopped.
+  * Make a copy of attributes before passing them to RUM event.
+  * RUM\Logs: Report all threads in case of crash.
+  * Fix crash in frame rate vital detection.
 
 ## 2.3.0
 
