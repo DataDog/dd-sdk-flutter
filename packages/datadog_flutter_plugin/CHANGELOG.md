@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.4.0
 
 * Add `error.source_type` to logs when a stack trace is provided.
 * Fix default console print functions. See [#575] and [#574]
