@@ -1,5 +1,7 @@
 # Changelog
 
+## 2.0.2
+
 * Re-restrict `datadog_webview_plugin` version.
 
 ## 2.0.1
