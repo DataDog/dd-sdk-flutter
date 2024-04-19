@@ -236,7 +236,7 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
                 )
             case "trackInteractions":
                 core?.telemetry.configuration(
-                    trackInteractions: value
+                    trackUserInteractions: value
                 )
             case "trackErrors":
                 core?.telemetry.configuration(

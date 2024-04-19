@@ -54,6 +54,10 @@ class MockRumMonitor : RumMonitor {
         mockMonitor.addFeatureFlagEvaluation(name, value)
     }
 
+    override fun addFeatureFlagEvaluations(featureFlags: Map<String, Any>) {
+        mockMonitor.addFeatureFlagEvaluations(featureFlags)
+    }
+
     override fun addTiming(name: String) {
         mockMonitor.addTiming(name)
     }
