@@ -137,9 +137,9 @@ class DatadogTrackingHttpClient implements HttpClient {
             userAttributes: userAttributes);
       }
     } catch (e) {
-      if (rum != null) {
+      if (rum != null && rumKey != null) {
         rum.stopResourceWithErrorInfo(
-            rumKey!, e.toString(), e.runtimeType.toString(), userAttributes);
+            rumKey, e.toString(), e.runtimeType.toString(), userAttributes);
       }
       rethrow;
     }
