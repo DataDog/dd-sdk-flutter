@@ -3,7 +3,7 @@ version '1.0-SNAPSHOT'
 
 buildscript {
     ext.kotlin_version = '1.8.22'
-    ext.datadog_version = "2+"
+    ext.datadog_version = "2.5.0"
 
     repositories {
         google()
