@@ -547,6 +547,27 @@ void main() {
       verifyNoMoreInteractions(mockRum);
     });
 
+    test('ignoreUrlPatterns does not perform tracking on matching url even though innerClient throw error', () async {
+      const error = SocketException('Mock socket exception');
+      when(() => mockClient.openUrl(any(), any())).thenThrow(error);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(
+          ignoreUrlPatterns: [
+            RegExp('test_url/path'),
+          ]
+        ),
+        mockClient,
+      );
+
+      var url = Uri.parse('https://test_url/path');
+
+      await expectLater(() async => await client.openUrl('get', url),
+          throwsA(predicate((e) => e == error)));
+
+      verifyNoMoreInteractions(mockRum);
+    });
+
     test('error on openUrl stops resource with error', () async {
       const error = SocketException('Mock socket exception');
       when(() => mockClient.openUrl(any(), any())).thenThrow(error);
