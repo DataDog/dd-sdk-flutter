@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Fix _TypeError when request URL is matched ignoreUrlPatterns. See [#590] (Thanks [@ronnnnn][])
+
 ## 2.1.0
 
 * Add the ability to ignore tracking on specific url patterns with `ignoreUrlPatterns`.
@@ -72,3 +76,5 @@
 
 [#355]: https://github.com/DataDog/dd-sdk-flutter/issues/355
 [#424]: https://github.com/DataDog/dd-sdk-flutter/issues/424
+[#590]: https://github.com/DataDog/dd-sdk-flutter/pull/590
+[@ronnnnn]: https://github.com/ronnnnn
