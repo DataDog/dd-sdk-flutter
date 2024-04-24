@@ -4,7 +4,7 @@
 
 ## 2.1.1
 
-* Fix _TypeError when request URL is matched ignoreUrlPatterns. See [#590] (Thanks [@ronnnnn][])
+* Fix `_TypeError` when request URL is matched `ignoreUrlPatterns`. See [#590] (Thanks [@ronnnnn][])
 
 ## 2.1.0
 
