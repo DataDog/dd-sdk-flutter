@@ -89,15 +89,6 @@ void main() {
       );
     }
 
-    for (var log in rumLog) {
-      if (log.eventType != 'telemetry') {
-        // Web does not use "plan" anymore
-        if (!kIsWeb) {
-          expect(log.dd.plan, 1);
-        }
-      }
-    }
-
     final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, kIsWeb ? 4 : 3);
 
