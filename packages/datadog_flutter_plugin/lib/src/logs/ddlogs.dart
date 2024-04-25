@@ -227,6 +227,26 @@ class DatadogLogger {
         errorStackTrace, attributes);
   }
 
+  /// Sends a log message with `LogLevel` of [level].
+  ///
+  /// You can optionally send an [errorMessage], [errorKind], and an [errorStackTrace]
+  /// that will be connected to this log message.
+  ///
+  /// You can provide additional attributes for this log message using the
+  /// [attributes] parameter. Values passed into [attributes] must be supported by
+  /// [StandardMessageCodec].
+  void log(
+    LogLevel level,
+    String message, {
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes = const {},
+  }) {
+    _internalLog(
+        level, message, errorMessage, errorKind, errorStackTrace, attributes);
+  }
+
   /// Add a custom attribute to all future logs sent by this logger.
   ///
   /// Values can be nested up to 10 levels deep. Keys using more than 10 levels

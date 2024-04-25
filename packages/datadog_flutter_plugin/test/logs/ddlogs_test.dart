@@ -121,6 +121,22 @@ void main() {
           'error message', null, null, null, {'attribute': 'value'}));
     });
 
+    test('log logs pass to platform', () async {
+      ddLog.log(LogLevel.info, 'log message',
+          attributes: {'attribute': 'value'});
+
+      verify(() => mockPlatform.log(ddLog.loggerHandle, LogLevel.info,
+          'log message', null, null, null, {'attribute': 'value'}));
+    });
+
+    test('log passes along the provided LogLevel to platform', () async {
+      for (var level in LogLevel.values) {
+        ddLog.log(level, 'log message', attributes: {'attribute': 'value'});
+        verify(() => mockPlatform.log(ddLog.loggerHandle, level, 'log message',
+            null, null, null, {'attribute': 'value'}));
+      }
+    });
+
     test('addAttribute argumentError sent to logger', () async {
       when(() => mockPlatform.addAttribute(any(), any(), any()))
           .thenThrow(ArgumentError());
