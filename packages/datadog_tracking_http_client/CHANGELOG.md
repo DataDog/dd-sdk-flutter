@@ -2,7 +2,9 @@
 
 ## Unreleased
 
+## 2.1.1
 
+* Fix `_TypeError` when request URL is matched `ignoreUrlPatterns`. See [#590] (Thanks [@ronnnnn][])
 
 ## 2.1.0
 
@@ -76,3 +78,5 @@
 
 [#355]: https://github.com/DataDog/dd-sdk-flutter/issues/355
 [#424]: https://github.com/DataDog/dd-sdk-flutter/issues/424
+[#590]: https://github.com/DataDog/dd-sdk-flutter/pull/590
+[@ronnnnn]: https://github.com/ronnnnn
