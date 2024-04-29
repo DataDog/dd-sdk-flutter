@@ -2,8 +2,15 @@
 
 ## 2.5.0
 
-
-
+* Update iOS to 2.10.0. For a full list of changes see the [iOS CHnagelog](https://github.com/DataDog/dd-sdk-ios/releases/tag/2.10.0)
+  * Add Fatal App hang tracking in RUM.
+  * Solve false-positive Privacy Manifest warnings on Required Reason API usage.
+  * Call RUM's `errorEventMapper` for crashes.
+  * Support calling log event mapper for crashes
+* Update Android to 2.8.0. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#270--2024-03-21)
+  * Call RUM's `errorEventMapper` for crashes.
+  * Support calling log event mapper for crashes
+  
 ## 2.4.0
 
 * Add `error.source_type` to logs when a stack trace is provided.
