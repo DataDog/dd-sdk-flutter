@@ -34,7 +34,7 @@ void main() {
   test('generateTracingContext generates proper bit values', () {
     final context = generateTracingContext(true);
 
-    expect(context.traceId.value.bitLength, lessThanOrEqualTo(128));
+    expect(context.traceId.value.bitLength, lessThanOrEqualTo(127));
     expect(context.spanId.value.bitLength, lessThanOrEqualTo(63));
     expect(context.sampled, true);
   });
