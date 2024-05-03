@@ -31,10 +31,21 @@ void main() {
         '91303371895026875');
   });
 
+  test('traceId generates proper values', () {
+    final nowSeconds = (DateTime.now().millisecondsSinceEpoch ~/ 1000);
+    final traceId = TracingId.traceId();
+
+    final traceIdString = traceId.asString(TracingIdRepresentation.hex);
+    int traceSeconds = int.parse(traceIdString.substring(0, 8), radix: 16);
+    expect(traceSeconds, closeTo(nowSeconds, 1));
+    expect('00000000', traceIdString.substring(8, 16));
+    expect(traceIdString.substring(16), isNot('0000000000000000'));
+  });
+
   test('generateTracingContext generates proper bit values', () {
     final context = generateTracingContext(true);
 
-    expect(context.traceId.value.bitLength, lessThanOrEqualTo(127));
+    expect(context.traceId.value.bitLength, lessThanOrEqualTo(128));
     expect(context.spanId.value.bitLength, lessThanOrEqualTo(63));
     expect(context.sampled, true);
   });

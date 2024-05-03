@@ -732,7 +732,7 @@ query UserInfo($id: ID!) {
             capturedAttrs[DatadogRumPlatformAttributeKey.traceID],
             radix: 16);
         expect(traceId, isNotNull);
-        expect(traceId.bitLength, lessThanOrEqualTo(127));
+        expect(traceId.bitLength, lessThanOrEqualTo(128));
 
         var spanId =
             BigInt.parse(capturedAttrs[DatadogRumPlatformAttributeKey.spanID]);
@@ -880,7 +880,7 @@ void verifyHeaders(
     if (type == TracingHeaderType.datadog) {
       expect(traceInt.bitLength, lessThanOrEqualTo(64));
     } else {
-      expect(traceInt.bitLength, lessThanOrEqualTo(127));
+      expect(traceInt.bitLength, lessThanOrEqualTo(128));
     }
   }
 

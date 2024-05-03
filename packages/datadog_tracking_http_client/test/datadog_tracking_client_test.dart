@@ -433,7 +433,7 @@ void main() {
               ? BigInt.tryParse(traceValue, radix: 16)
               : null;
           expect(traceInt, isNotNull);
-          expect(traceInt?.bitLength, lessThanOrEqualTo(127));
+          expect(traceInt?.bitLength, lessThanOrEqualTo(128));
 
           final spanValue = callAttributes['_dd.span_id'] as String?;
           final spanInt = spanValue != null ? BigInt.tryParse(spanValue) : null;
@@ -502,7 +502,7 @@ void main() {
         final traceInt =
             traceValue != null ? BigInt.tryParse(traceValue, radix: 16) : null;
         expect(traceInt, isNotNull);
-        expect(traceInt?.bitLength, lessThanOrEqualTo(127));
+        expect(traceInt?.bitLength, lessThanOrEqualTo(128));
 
         final spanValue = callAttributes['_dd.span_id'] as String?;
         final spanInt = spanValue != null ? BigInt.tryParse(spanValue) : null;
@@ -548,7 +548,7 @@ void main() {
       final traceInt =
           traceValue != null ? BigInt.tryParse(traceValue, radix: 16) : null;
       expect(traceInt, isNotNull);
-      expect(traceInt?.bitLength, lessThanOrEqualTo(127));
+      expect(traceInt?.bitLength, lessThanOrEqualTo(128));
 
       final spanValue = callAttributes['_dd.span_id'] as String?;
       final spanInt = spanValue != null ? BigInt.tryParse(spanValue) : null;

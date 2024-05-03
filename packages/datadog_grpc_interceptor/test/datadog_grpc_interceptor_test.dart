@@ -96,7 +96,7 @@ void main() {
         expect(traceInt?.bitLength, lessThanOrEqualTo(64));
       } else {
         expect(traceInt, isNotNull);
-        expect(traceInt?.bitLength, lessThanOrEqualTo(127));
+        expect(traceInt?.bitLength, lessThanOrEqualTo(128));
       }
 
       expect(spanInt, isNotNull);

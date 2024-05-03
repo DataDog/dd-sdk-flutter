@@ -68,7 +68,7 @@ void verifyHeaders(Map<String, String> headers, TracingHeaderType type) {
   if (type == TracingHeaderType.datadog) {
     expect(traceInt?.bitLength, lessThanOrEqualTo(64));
   } else {
-    expect(traceInt?.bitLength, lessThanOrEqualTo(127));
+    expect(traceInt?.bitLength, lessThanOrEqualTo(128));
   }
 
   expect(spanInt, isNotNull);

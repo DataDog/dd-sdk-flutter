@@ -87,15 +87,15 @@ class TracingId {
   const TracingId(this.value);
 
   static TracingId fromString(
-      String? uuid, TracingIdRepresentation representation) {
-    if (uuid == null) {
+      String? id, TracingIdRepresentation representation) {
+    if (id == null) {
       return TracingId(BigInt.zero);
     }
 
     switch (representation) {
       case TracingIdRepresentation.lowDecimal:
       case TracingIdRepresentation.decimal:
-        final value = BigInt.tryParse(uuid);
+        final value = BigInt.tryParse(id);
         if (value != null) {
           return TracingId(value);
         }
@@ -103,17 +103,17 @@ class TracingId {
       case TracingIdRepresentation.hex:
       case TracingIdRepresentation.hex16Chars:
       case TracingIdRepresentation.hex32Chars:
-        final value = BigInt.tryParse(uuid, radix: 16);
+        final value = BigInt.tryParse(id, radix: 16);
         if (value != null) {
           return TracingId(value);
         }
         break;
       case TracingIdRepresentation.highHex16Chars:
         // Take only the last 16 chars
-        if (uuid.length > 16) {
-          uuid = uuid.substring(uuid.length - 16);
+        if (id.length > 16) {
+          id = id.substring(id.length - 16);
         }
-        final value = BigInt.tryParse(uuid, radix: 16);
+        final value = BigInt.tryParse(id, radix: 16);
         if (value != null) {
           return TracingId(value);
         }
