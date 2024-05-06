@@ -728,10 +728,11 @@ query UserInfo($id: ID!) {
         final capturedAttrs = verify(
                 () => mockRum.startResource(any(), any(), any(), captureAny()))
             .captured[0] as Map<String, dynamic>;
-        var traceId =
-            BigInt.parse(capturedAttrs[DatadogRumPlatformAttributeKey.traceID]);
+        var traceId = BigInt.parse(
+            capturedAttrs[DatadogRumPlatformAttributeKey.traceID],
+            radix: 16);
         expect(traceId, isNotNull);
-        expect(traceId.bitLength, lessThanOrEqualTo(63));
+        expect(traceId.bitLength, lessThanOrEqualTo(128));
 
         var spanId =
             BigInt.parse(capturedAttrs[DatadogRumPlatformAttributeKey.spanID]);
@@ -826,6 +827,14 @@ void verifyHeaders(
         traceInt = BigInt.tryParse(traceValue);
         var spanValue = headers['x-datadog-parent-id']!;
         spanInt = BigInt.tryParse(spanValue);
+        var tagsHeader = headers['x-datadog-tags'];
+        expect(tagsHeader, isNotNull);
+        final parts = tagsHeader?.split('=');
+        expect(parts, isNotNull);
+        expect(parts?[0], '_dd.p.tid');
+        BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
+        expect(highTraceInt, isNotNull);
+        expect(highTraceInt?.bitLength, lessThanOrEqualTo(64));
       }
       break;
     case TracingHeaderType.b3:
@@ -868,7 +877,11 @@ void verifyHeaders(
     expect(traceInt, isNotNull);
   }
   if (traceInt != null) {
-    expect(traceInt.bitLength, lessThanOrEqualTo(63));
+    if (type == TracingHeaderType.datadog) {
+      expect(traceInt.bitLength, lessThanOrEqualTo(64));
+    } else {
+      expect(traceInt.bitLength, lessThanOrEqualTo(128));
+    }
   }
 
   if (shouldSample) {

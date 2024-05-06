@@ -5,7 +5,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_common_test/uri_matchers.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
@@ -13,6 +12,8 @@ import 'package:datadog_tracking_http_client/src/tracking_http_client.dart';
 import 'package:datadog_tracking_http_client/src/tracking_http_client_plugin.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+
+import 'test_helpers.dart';
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
 
@@ -130,64 +131,6 @@ void main() {
     when(() => mockResponse.contentLength).thenReturn(size);
 
     return mockResponse;
-  }
-
-  void verifyHeaders(HttpHeaders headers, TracingHeaderType type) {
-    BigInt? traceInt;
-    BigInt? spanInt;
-
-    switch (type) {
-      case TracingHeaderType.datadog:
-        verify(() => headers.add('x-datadog-sampling-priority', '1'));
-        var traceValue =
-            verify(() => headers.add('x-datadog-trace-id', captureAny()))
-                .captured[0] as String;
-        traceInt = BigInt.tryParse(traceValue);
-        var spanValue =
-            verify(() => headers.add('x-datadog-parent-id', captureAny()))
-                .captured[0] as String;
-        spanInt = BigInt.tryParse(spanValue);
-        break;
-      case TracingHeaderType.b3:
-        var singleHeader =
-            verify(() => headers.add('b3', captureAny())).captured[0] as String;
-        var headerParts = singleHeader.split('-');
-        traceInt = BigInt.tryParse(headerParts[0], radix: 16);
-        spanInt = BigInt.tryParse(headerParts[1], radix: 16);
-        expect(headerParts[2], '1');
-        break;
-      case TracingHeaderType.b3multi:
-        verify(() => headers.add('X-B3-Sampled', '1'));
-        var traceValue = verify(() => headers.add('X-B3-TraceId', captureAny()))
-            .captured[0] as String;
-        traceInt = BigInt.tryParse(traceValue, radix: 16);
-        var spanValue = verify(() => headers.add('X-B3-SpanId', captureAny()))
-            .captured[0] as String;
-        spanInt = BigInt.tryParse(spanValue, radix: 16);
-        break;
-      case TracingHeaderType.tracecontext:
-        var header = verify(() => headers.add('traceparent', captureAny()))
-            .captured[0] as String;
-        var headerParts = header.split('-');
-        expect(headerParts[0], '00');
-        traceInt = BigInt.tryParse(headerParts[1], radix: 16);
-        spanInt = BigInt.tryParse(headerParts[2], radix: 16);
-        expect(headerParts[3], '01');
-        final stateHeader =
-            verify(() => headers.add('tracestate', captureAny())).captured[0]
-                as String;
-        final stateParts = getDdTraceState(stateHeader);
-        expect(stateParts['s'], '1');
-        expect(stateParts['o'], 'rum');
-        expect(stateParts['p'], headerParts[2]);
-        break;
-    }
-
-    expect(traceInt, isNotNull);
-    expect(traceInt?.bitLength, lessThanOrEqualTo(63));
-
-    expect(spanInt, isNotNull);
-    expect(spanInt?.bitLength, lessThanOrEqualTo(63));
   }
 
   group('when rum is disabled', () {
@@ -548,16 +491,16 @@ void main() {
       verifyNoMoreInteractions(mockRum);
     });
 
-    test('ignoreUrlPatterns does not perform tracking on matching url even though innerClient throw error', () async {
+    test(
+        'ignoreUrlPatterns does not perform tracking on matching url even though innerClient throw error',
+        () async {
       const error = SocketException('Mock socket exception');
       when(() => mockClient.openUrl(any(), any())).thenThrow(error);
       final client = DatadogTrackingHttpClient(
         mockDatadog,
-        DdHttpTrackingPluginConfiguration(
-          ignoreUrlPatterns: [
-            RegExp('test_url/path'),
-          ]
-        ),
+        DdHttpTrackingPluginConfiguration(ignoreUrlPatterns: [
+          RegExp('test_url/path'),
+        ]),
         mockClient,
       );
 
@@ -701,9 +644,10 @@ void main() {
         final capturedAttributes = capturedEndArgs[0] as Map<String, dynamic>;
 
         var traceInt = BigInt.parse(
-            capturedAttributes[DatadogRumPlatformAttributeKey.traceID]);
+            capturedAttributes[DatadogRumPlatformAttributeKey.traceID],
+            radix: 16);
         expect(traceInt, isNotNull);
-        expect(traceInt.bitLength, lessThanOrEqualTo(63));
+        expect(traceInt.bitLength, lessThanOrEqualTo(128));
 
         var spanInt = BigInt.parse(
             capturedAttributes[DatadogRumPlatformAttributeKey.spanID]);
@@ -730,7 +674,7 @@ void main() {
 
         var _ = await request.done;
 
-        final requestHeaders = request.headers;
+        final requestHeaders = request.headers.toMap();
         verifyHeaders(requestHeaders, headerType);
       });
 
@@ -792,7 +736,7 @@ void main() {
 
       var _ = await request.done;
 
-      final requestHeaders = request.headers;
+      final requestHeaders = request.headers.toMap();
       verifyHeaders(requestHeaders, headerType);
     }
 
@@ -830,9 +774,10 @@ void main() {
         .captured[0] as Map<String, Object?>;
 
     final traceValue = callAttributes['_dd.trace_id'] as String?;
-    final traceInt = traceValue != null ? BigInt.tryParse(traceValue) : null;
+    final traceInt =
+        traceValue != null ? BigInt.tryParse(traceValue, radix: 16) : null;
     expect(traceInt, isNotNull);
-    expect(traceInt?.bitLength, lessThanOrEqualTo(63));
+    expect(traceInt?.bitLength, lessThanOrEqualTo(128));
 
     final spanValue = callAttributes['_dd.span_id'] as String?;
     final spanInt = spanValue != null ? BigInt.tryParse(spanValue) : null;
@@ -844,7 +789,16 @@ void main() {
         verify(() => headers.add('x-datadog-trace-id', captureAny()))
             .captured[0];
     final datadogTraceInt = BigInt.tryParse(datadogTraceString);
-    expect(traceInt, datadogTraceInt);
+    expect(traceInt! & lowTraceMask, datadogTraceInt);
+    final datadogTagString =
+        verify(() => headers.add('x-datadog-tags', captureAny())).captured[0]
+            as String?;
+    final parts = datadogTagString?.split('=');
+    expect(parts?[0], '_dd.p.tid');
+    BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
+    expect(highTraceInt, isNotNull);
+    expect(highTraceInt, traceInt >> 64);
+
     final datadogSpanString =
         verify(() => headers.add('x-datadog-parent-id', captureAny()))
             .captured[0];

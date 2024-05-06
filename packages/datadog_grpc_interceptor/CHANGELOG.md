@@ -2,8 +2,9 @@
 
 ## Unreleased
 
+* Support 128-bit trace ids in distributed tracing.
 
-
+# 1.0.0
 
 * First official release.
 * Update to v2.0 of Datadog SDKs.

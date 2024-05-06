@@ -11,6 +11,8 @@ import 'package:datadog_tracking_http_client_example/scenario_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'tracing_id_helpers.dart';
+
 Future<void> performRumUserFlow(WidgetTester tester) async {
   var scenario = find.text('http.Client Override');
   await tester.tap(scenario);
@@ -109,19 +111,17 @@ void main() async {
     }
 
     final getEvent = view2.resourceEvents[0];
-    final getTraceId =
-        testRequests[0].requestHeaders['x-datadog-trace-id']?.first;
+    final getTraceId = extractDatadogTraceId(testRequests[0].requestHeaders);
     final getSpanId =
         testRequests[0].requestHeaders['x-datadog-parent-id']?.first;
     expect(getEvent.url, scenarioConfig.firstPartyGetUrl);
     expect(getEvent.statusCode, 200);
     expect(getEvent.method, 'GET');
     expect(getEvent.duration, greaterThan(0));
-    expect(getEvent.dd.traceId, getTraceId!);
+    expect(getEvent.dd.traceId, getTraceId?.toRadixString(16));
     expect(getEvent.dd.spanId, getSpanId!);
 
-    final postTraceId =
-        testRequests[1].requestHeaders['x-datadog-trace-id']?.first;
+    final postTraceId = extractDatadogTraceId(testRequests[1].requestHeaders);
     final postSpanId =
         testRequests[1].requestHeaders['x-datadog-parent-id']?.first;
     final postEvent = view2.resourceEvents[1];
@@ -129,7 +129,7 @@ void main() async {
     expect(postEvent.statusCode, 200);
     expect(postEvent.method, 'POST');
     expect(postEvent.duration, greaterThan(0));
-    expect(postEvent.dd.traceId, postTraceId!);
+    expect(postEvent.dd.traceId, postTraceId?.toRadixString(16));
     expect(postEvent.dd.spanId, postSpanId!);
 
     // Third party requests

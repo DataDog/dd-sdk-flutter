@@ -6,10 +6,46 @@ import 'package:datadog_flutter_plugin/src/tracing/tracing_headers.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('generateTracingContext generates 64-bit values', () {
+  test('TracingIdRepresentation generates proper values', () {
+    // Create a value in 128-bit hex that has leading zeros on both
+    // the low and high 64-bits, and ensure we get the proper values
+    const low = 0x01445feed89934bb;
+    const high = 0x01222f00d89934ba;
+
+    var combined = BigInt.from(high);
+    combined = (combined << 64) + BigInt.from(low);
+
+    final tracingId = TracingId(combined);
+
+    expect(tracingId.asString(TracingIdRepresentation.hex),
+        '1222f00d89934ba01445feed89934bb');
+    expect(tracingId.asString(TracingIdRepresentation.hex32Chars),
+        '01222f00d89934ba01445feed89934bb');
+    expect(tracingId.asString(TracingIdRepresentation.hex16Chars),
+        '01445feed89934bb');
+    expect(tracingId.asString(TracingIdRepresentation.highHex16Chars),
+        '01222f00d89934ba');
+    expect(tracingId.asString(TracingIdRepresentation.decimal),
+        '1506719429260448406838152867989763259');
+    expect(tracingId.asString(TracingIdRepresentation.lowDecimal),
+        '91303371895026875');
+  });
+
+  test('traceId generates proper values', () {
+    final nowSeconds = (DateTime.now().millisecondsSinceEpoch ~/ 1000);
+    final traceId = TracingId.traceId();
+
+    final traceIdString = traceId.asString(TracingIdRepresentation.hex);
+    int traceSeconds = int.parse(traceIdString.substring(0, 8), radix: 16);
+    expect(traceSeconds, closeTo(nowSeconds, 1));
+    expect('00000000', traceIdString.substring(8, 16));
+    expect(traceIdString.substring(16), isNot('0000000000000000'));
+  });
+
+  test('generateTracingContext generates proper bit values', () {
     final context = generateTracingContext(true);
 
-    expect(context.traceId.value.bitLength, lessThanOrEqualTo(63));
+    expect(context.traceId.value.bitLength, lessThanOrEqualTo(128));
     expect(context.spanId.value.bitLength, lessThanOrEqualTo(63));
     expect(context.sampled, true);
   });
@@ -20,9 +56,9 @@ void main() {
     final attributes = generateDatadogAttributes(context, 30.0);
 
     expect(attributes['_dd.trace_id'],
-        context.traceId.asString(TraceIdRepresentation.decimal));
+        context.traceId.asString(TracingIdRepresentation.hex32Chars));
     expect(attributes['_dd.span_id'],
-        context.spanId.asString(TraceIdRepresentation.decimal));
+        context.spanId.asString(TracingIdRepresentation.decimal));
     expect(attributes['_dd.rule_psr'], 0.3);
   });
 
@@ -42,9 +78,11 @@ void main() {
     final headers = getTracingHeaders(context, TracingHeaderType.datadog);
 
     expect(headers['x-datadog-trace-id'],
-        context.traceId.asString(TraceIdRepresentation.decimal));
+        context.traceId.asString(TracingIdRepresentation.lowDecimal));
+    expect(headers['x-datadog-tags'],
+        '_dd.p.tid=${context.traceId.asString(TracingIdRepresentation.highHex16Chars)}');
     expect(headers['x-datadog-parent-id'],
-        context.spanId.asString(TraceIdRepresentation.decimal));
+        context.spanId.asString(TracingIdRepresentation.decimal));
     expect(headers['x-datadog-sampling-priority'], '1');
     expect(headers['x-datadog-origin'], 'rum');
   });
@@ -66,9 +104,9 @@ void main() {
     final headers = getTracingHeaders(context, TracingHeaderType.b3);
 
     final traceString =
-        context.traceId.asString(TraceIdRepresentation.hex32Chars);
+        context.traceId.asString(TracingIdRepresentation.hex32Chars);
     final spanString =
-        context.spanId.asString(TraceIdRepresentation.hex16Chars);
+        context.spanId.asString(TracingIdRepresentation.hex16Chars);
     final expectedHeader = '$traceString-$spanString-1'.toLowerCase();
 
     expect(headers['b3'], expectedHeader);
@@ -88,9 +126,9 @@ void main() {
     final headers = getTracingHeaders(context, TracingHeaderType.b3multi);
 
     final traceString =
-        context.traceId.asString(TraceIdRepresentation.hex32Chars);
+        context.traceId.asString(TracingIdRepresentation.hex32Chars);
     final spanString =
-        context.spanId.asString(TraceIdRepresentation.hex16Chars);
+        context.spanId.asString(TracingIdRepresentation.hex16Chars);
 
     expect(headers['X-B3-TraceId'], traceString.toLowerCase());
     expect(headers['X-B3-SpanId'], spanString.toLowerCase());
@@ -115,9 +153,9 @@ void main() {
     final headers = getTracingHeaders(context, TracingHeaderType.tracecontext);
 
     final traceString =
-        context.traceId.asString(TraceIdRepresentation.hex32Chars);
+        context.traceId.asString(TracingIdRepresentation.hex32Chars);
     final spanString =
-        context.spanId.asString(TraceIdRepresentation.hex16Chars);
+        context.spanId.asString(TracingIdRepresentation.hex16Chars);
     final expectedParentHeader = '00-$traceString-$spanString-01';
     final expectedStateHeader = 'dd=s:1;o:rum;p:$spanString';
 
@@ -131,9 +169,9 @@ void main() {
     final headers = getTracingHeaders(context, TracingHeaderType.tracecontext);
 
     final traceString =
-        context.traceId.asString(TraceIdRepresentation.hex32Chars);
+        context.traceId.asString(TracingIdRepresentation.hex32Chars);
     final spanString =
-        context.spanId.asString(TraceIdRepresentation.hex16Chars);
+        context.spanId.asString(TracingIdRepresentation.hex16Chars);
     final expectedParentHeader = '00-$traceString-$spanString-00';
     final expectedStateHeader = 'dd=s:0;o:rum;p:$spanString';
 

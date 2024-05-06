@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Support 128-bit trace ids in distributed tracing.
 
 ## 1.0.0
 

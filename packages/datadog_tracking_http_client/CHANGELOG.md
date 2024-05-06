@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Support 128-bit trace ids in distributed tracing.
+
 ## 2.1.1
 
 * Fix `_TypeError` when request URL is matched `ignoreUrlPatterns`. See [#590] (Thanks [@ronnnnn][])

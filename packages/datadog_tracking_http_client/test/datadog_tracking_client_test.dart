@@ -5,7 +5,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_common_test/uri_matchers.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
@@ -13,6 +12,8 @@ import 'package:datadog_tracking_http_client/src/tracking_http.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
+
+import 'test_helpers.dart';
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
 
@@ -65,51 +66,6 @@ void main() {
     when(() => mockClient.send(any()))
         .thenAnswer((_) => Future.value(mockResponse));
   });
-
-  void verifyHeaders(Map<String, String> headers, TracingHeaderType type) {
-    BigInt? traceInt;
-    BigInt? spanInt;
-
-    switch (type) {
-      case TracingHeaderType.datadog:
-        expect(headers['x-datadog-sampling-priority'], '1');
-        traceInt = BigInt.tryParse(headers['x-datadog-trace-id']!);
-        spanInt = BigInt.tryParse(headers['x-datadog-parent-id']!);
-        break;
-      case TracingHeaderType.b3:
-        var singleHeader = headers['b3']!;
-        var headerParts = singleHeader.split('-');
-        traceInt = BigInt.tryParse(headerParts[0], radix: 16);
-        spanInt = BigInt.tryParse(headerParts[1], radix: 16);
-        expect(headerParts[2], '1');
-        break;
-      case TracingHeaderType.b3multi:
-        expect(headers['X-B3-Sampled'], '1');
-        traceInt = BigInt.tryParse(headers['X-B3-TraceId']!, radix: 16);
-        spanInt = BigInt.tryParse(headers['X-B3-SpanId']!, radix: 16);
-        break;
-      case TracingHeaderType.tracecontext:
-        var header = headers['traceparent']!;
-        var headerParts = header.split('-');
-        expect(headerParts[0], '00');
-        traceInt = BigInt.tryParse(headerParts[1], radix: 16);
-        spanInt = BigInt.tryParse(headerParts[2], radix: 16);
-        expect(headerParts[3], '01');
-
-        final stateHeader = headers['tracestate']!;
-        final stateParts = getDdTraceState(stateHeader);
-        expect(stateParts['s'], '1');
-        expect(stateParts['o'], 'rum');
-        expect(stateParts['p'], headerParts[2]);
-        break;
-    }
-
-    expect(traceInt, isNotNull);
-    expect(traceInt?.bitLength, lessThanOrEqualTo(63));
-
-    expect(spanInt, isNotNull);
-    expect(spanInt?.bitLength, lessThanOrEqualTo(63));
-  }
 
   group('when rum is disabled', () {
     setUp(() {
@@ -473,10 +429,11 @@ void main() {
               .captured[0] as Map<String, Object?>;
 
           final traceValue = callAttributes['_dd.trace_id'] as String?;
-          final traceInt =
-              traceValue != null ? BigInt.tryParse(traceValue) : null;
+          final traceInt = traceValue != null
+              ? BigInt.tryParse(traceValue, radix: 16)
+              : null;
           expect(traceInt, isNotNull);
-          expect(traceInt?.bitLength, lessThanOrEqualTo(63));
+          expect(traceInt?.bitLength, lessThanOrEqualTo(128));
 
           final spanValue = callAttributes['_dd.span_id'] as String?;
           final spanInt = spanValue != null ? BigInt.tryParse(spanValue) : null;
@@ -543,9 +500,9 @@ void main() {
 
         final traceValue = callAttributes['_dd.trace_id'] as String?;
         final traceInt =
-            traceValue != null ? BigInt.tryParse(traceValue) : null;
+            traceValue != null ? BigInt.tryParse(traceValue, radix: 16) : null;
         expect(traceInt, isNotNull);
-        expect(traceInt?.bitLength, lessThanOrEqualTo(63));
+        expect(traceInt?.bitLength, lessThanOrEqualTo(128));
 
         final spanValue = callAttributes['_dd.span_id'] as String?;
         final spanInt = spanValue != null ? BigInt.tryParse(spanValue) : null;
@@ -588,9 +545,10 @@ void main() {
           .captured[0] as Map<String, Object?>;
 
       final traceValue = callAttributes['_dd.trace_id'] as String?;
-      final traceInt = traceValue != null ? BigInt.tryParse(traceValue) : null;
+      final traceInt =
+          traceValue != null ? BigInt.tryParse(traceValue, radix: 16) : null;
       expect(traceInt, isNotNull);
-      expect(traceInt?.bitLength, lessThanOrEqualTo(63));
+      expect(traceInt?.bitLength, lessThanOrEqualTo(128));
 
       final spanValue = callAttributes['_dd.span_id'] as String?;
       final spanInt = spanValue != null ? BigInt.tryParse(spanValue) : null;
@@ -600,9 +558,15 @@ void main() {
       final captured = verify(() => mockClient.send(captureAny())).captured[0]
           as http.BaseRequest;
 
-      final datadogTraceInt =
+      var datadogTraceInt =
           BigInt.tryParse(captured.headers['x-datadog-trace-id']!);
+      final parts = captured.headers['x-datadog-tags']?.split('=');
+      expect(parts?[0], '_dd.p.tid');
+      BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
+      expect(highTraceInt, isNotNull);
+      datadogTraceInt = (highTraceInt! << 64) + datadogTraceInt!;
       expect(traceInt, datadogTraceInt);
+
       final datadogSpanInt =
           BigInt.tryParse(captured.headers['x-datadog-parent-id']!);
       expect(spanInt, datadogSpanInt);

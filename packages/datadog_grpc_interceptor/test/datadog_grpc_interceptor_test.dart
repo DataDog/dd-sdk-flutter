@@ -48,6 +48,15 @@ void main() {
         expect(metadata['x-datadog-sampling-priority'], sampled ? '1' : '0');
         traceInt = BigInt.tryParse(metadata['x-datadog-trace-id'] ?? '');
         spanInt = BigInt.tryParse(metadata['x-datadog-parent-id'] ?? '');
+        if (sampled) {
+          final tagsHeader = metadata['x-datadog-tags'];
+          final parts = tagsHeader?.split('=');
+          expect(parts, isNotNull);
+          expect(parts?[0], '_dd.p.tid');
+          BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
+          expect(highTraceInt, isNotNull);
+          expect(highTraceInt?.bitLength, lessThanOrEqualTo(64));
+        }
         break;
       case TracingHeaderType.b3:
         var singleHeader = metadata['b3']!;
@@ -82,8 +91,13 @@ void main() {
     }
 
     if (sampled) {
-      expect(traceInt, isNotNull);
-      expect(traceInt?.bitLength, lessThanOrEqualTo(63));
+      if (type == TracingHeaderType.datadog) {
+        expect(traceInt, isNotNull);
+        expect(traceInt?.bitLength, lessThanOrEqualTo(64));
+      } else {
+        expect(traceInt, isNotNull);
+        expect(traceInt?.bitLength, lessThanOrEqualTo(128));
+      }
 
       expect(spanInt, isNotNull);
       expect(spanInt?.bitLength, lessThanOrEqualTo(63));
@@ -167,7 +181,8 @@ void main() {
           final attributes = captures[1] as Map<String, Object?>;
           expect(attributes['_dd.trace_id'], isNotNull);
           expect(
-              BigInt.tryParse(attributes['_dd.trace_id'] as String), isNotNull);
+              BigInt.tryParse(attributes['_dd.trace_id'] as String, radix: 16),
+              isNotNull);
           expect(attributes['_dd.span_id'], isNotNull);
           expect(
               BigInt.tryParse(attributes['_dd.span_id'] as String), isNotNull);
