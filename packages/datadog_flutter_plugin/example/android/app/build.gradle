@@ -4,7 +4,7 @@
  * Copyright 2016-Present Datadog, Inc.
  */
 buildscript {
-    ext.datadog_version = "2+"
+    ext.datadog_version = "2.9.0"
 }
 
 plugins {
