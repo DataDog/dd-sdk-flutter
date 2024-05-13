@@ -4,6 +4,10 @@
 
 * Support 128-bit trace ids in distributed tracing.
 
+## 2.1.2
+
+* Constrain compatible `datadog_flutter_plugin` to <2.5.0
+
 ## 2.1.1
 
 * Fix `_TypeError` when request URL is matched `ignoreUrlPatterns`. See [#590] (Thanks [@ronnnnn][])
