@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.1.2
 
 * Constrain compatible `datadog_flutter_plugin` to <2.5.0
 
