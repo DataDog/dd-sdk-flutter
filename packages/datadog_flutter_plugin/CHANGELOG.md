@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.5.0
 
 * Support 128-bit trace ids in distributed tracing.
 
