@@ -11,7 +11,6 @@
   * Start sending data immediately after SDK is initialized.
 * Update Android to 2.9.0. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#290--2024-05-02)
   * Call RUM's `errorEventMapper` for crashes.
-  * Support calling log event mapper for crashes.
   * Start sending batches immediately after feature is initialized.
 
 ## 2.4.0
