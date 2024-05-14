@@ -2,7 +2,20 @@
 
 ## Unreleased
 
+
+
+## 2.5.0
+
 * Support 128-bit trace ids in distributed tracing.
+* Update iOS to 2.11.0. For a full list of changes, see the [iOS changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#2110--08-05-2024).
+  * Add fatal app hang tracking in RUM.
+  * Solve false-positive privacy manifest warnings on Required Reason API usage.
+  * Call RUM's `errorEventMapper` for crashes.
+  * Support calling log event mapper for crashes.
+  * Start sending data immediately after SDK is initialized.
+* Update Android to 2.9.0. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#290--2024-05-02)
+  * Call RUM's `errorEventMapper` for crashes.
+  * Start sending batches immediately after feature is initialized.
 
 ## 2.4.0
 
