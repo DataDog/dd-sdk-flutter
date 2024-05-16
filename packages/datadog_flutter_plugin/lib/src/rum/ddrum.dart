@@ -7,6 +7,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:meta/meta.dart';
 
 import '../../datadog_flutter_plugin.dart';
@@ -219,6 +220,14 @@ class DatadogRum {
     String? errorType,
     Map<String, Object?> attributes = const {},
   }) {
+    // If the RUM method channel is somehow disconnected, it will throw a MissingPluginException. If
+    // we then proceed to call `addError`, it will throw the exception again.
+    // We do this here (instead of in Wrap) so the exception is still bubbled up to Flutter.
+    if (error is MissingPluginException) {
+      if (error.message?.contains('datadog_sdk_flutter') ?? false) {
+        return;
+      }
+    }
     wrap('rum.addError', logger, attributes, () {
       return _platform.addError(error, source, stackTrace, errorType, {
         DatadogPlatformAttributeKey.errorSourceType: 'flutter',
@@ -238,6 +247,13 @@ class DatadogRum {
     String? errorType,
     Map<String, Object?> attributes = const {},
   }) {
+    // If the RUM method channel is somehow disconnected, it will throw a MissingPluginException. If
+    // we then proceed to call `addErrorInfo`, it will throw the exception again.
+    // We do this here (instead of in `wrap`) so the exception is still bubbled up to Flutter.
+    if (message.contains('MissingPluginException') &&
+        message.contains('datadog_sdk_flutter')) {
+      return;
+    }
     wrap('rum.addErrorInfo', logger, attributes, () {
       return _platform.addErrorInfo(message, source, stackTrace, errorType, {
         DatadogPlatformAttributeKey.errorSourceType: 'flutter',

@@ -9,6 +9,7 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum_noop_platform.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum_platform_interface.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -37,6 +38,7 @@ void main() {
     mockDatadogSdk = MockDatadogSdk();
     registerFallbackValue(DatadogSdk.instance);
     registerFallbackValue(DatadogRumConfiguration(applicationId: ''));
+    registerFallbackValue(RumErrorSource.source);
     when(() => mockDatadogSdk.internalLogger).thenReturn(mockInternalLogger);
 
     mockDatadogPlatform = MockDatadogPlatform();
@@ -261,5 +263,55 @@ void main() {
     // Then
     verify(() => mockRumPlatform.removeAttribute('attribute-key'));
     verifyNever(() => mockRumPlatform.addAttribute(any(), any()));
+  });
+
+  test('addError does not forward to platform on MissingPluginException',
+      () async {
+    // Given
+    DdRumPlatform.instance = mockRumPlatform;
+    when(() => mockRumPlatform.enable(any(), any()))
+        .thenAnswer((_) => Future.value());
+    when(() => mockRumPlatform.removeAttribute(any()))
+        .thenAnswer((_) => Future.value());
+    final rum = await DatadogRum.enable(
+        mockDatadogSdk,
+        DatadogRumConfiguration(
+          applicationId: 'applicationId',
+          detectLongTasks: false,
+        ));
+
+    // when
+    final exception = MissingPluginException(
+        'No implementation found for method addError on channel datadog_sdk_flutter.rum');
+    rum!.addError(exception, RumErrorSource.source);
+
+    // Then
+    verifyNever(() => rum.addError(any(), any(),
+        stackTrace: any(), errorType: any(), attributes: any()));
+  });
+
+  test('addErrorInfo does not forward to platform on MissingPluginException',
+      () async {
+    // Given
+    DdRumPlatform.instance = mockRumPlatform;
+    when(() => mockRumPlatform.enable(any(), any()))
+        .thenAnswer((_) => Future.value());
+    when(() => mockRumPlatform.removeAttribute(any()))
+        .thenAnswer((_) => Future.value());
+    final rum = await DatadogRum.enable(
+        mockDatadogSdk,
+        DatadogRumConfiguration(
+          applicationId: 'applicationId',
+          detectLongTasks: false,
+        ));
+
+    // when
+    final exception = MissingPluginException(
+        'No implementation found for method addError on channel datadog_sdk_flutter.rum');
+    rum!.addErrorInfo(exception.toString(), RumErrorSource.source);
+
+    // Then
+    verifyNever(() => rum.addError(any(), any(),
+        stackTrace: any(), errorType: any(), attributes: any()));
   });
 }
