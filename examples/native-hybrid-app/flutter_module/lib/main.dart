@@ -14,7 +14,12 @@ void main() async {
   final config = DatadogAttachConfiguration(
     detectLongTasks: true,
     reportFlutterPerformance: true,
-  )..enableHttpTracking();
+  )..enableHttpTracking(
+      // Using ignoreUrlPatterns is needed if you want to combine HttpClient
+      ignoreUrlPatterns: [
+        RegExp('example'),
+      ],
+    );
 
   await DatadogSdk.instance.attachToExisting(config);
 
