@@ -26,18 +26,23 @@ typedef DatadogClientAttributesProvider = Map<String, Object?> Function(
 /// network requests and sending them to Datadog.
 ///
 /// If the RUM feature is enabled, the SDK will send information about RUM
-/// Resources (calling startResourceLoading, stopResourceLoading, and
-/// stopResourceLoadingWithErrorInfo) for all intercepted requests.
+/// Resources (calling [DatadogRum.startResource], [DatadogRum.stopResource], and
+/// [DatadogRum.stopResourceWithErrorInfo]) for all intercepted requests.
 ///
 /// This can additionally set tracing headers on your requests, which allows for
 /// distributed tracing. You can set which format of tracing header using the
 /// [tracingHeaderTypes] parameter. Multiple tracing formats are allowed. The
 /// percentage of resources traced in this way is determined by
-/// [RumConfiguration.tracingSamplingRate].
+/// [DatadogRumConfiguration.traceSampleRate].
 ///
 /// To specify which hosts are 1st party (and therefore should have tracing
-/// Spans sent), see [DdSdkConfiguration.firstPartyHosts]. You can also set
+/// Spans sent), see [DatadogConfiguration.firstPartyHosts]. You can also set
 /// first party hosts after initialization by setting [DatadogSdk.firstPartyHosts]
+///
+/// If you need to ignore specific endpoints, for example if you are using
+/// another tracking library like `datadog_gql_link`, you can ignore specific
+/// url patterns with the [ignoreUrlPatterns] parameter. Any URLs that are match
+/// any of the provided regular expressions will not be tracked by this client.
 ///
 /// DatadogClient only modifies calls made through itself, unlike
 /// [DatadogTrackingHttpClient], which overrides all calls made by [HttpClient]
@@ -54,11 +59,13 @@ class DatadogClient extends http.BaseClient {
   final DatadogSdk datadogSdk;
   final Uuid _uuid = const Uuid();
   final DatadogClientAttributesProvider? attributesProvider;
+  final List<RegExp> ignoreUrlPatterns;
   final http.Client _innerClient;
 
   DatadogClient({
     required this.datadogSdk,
     this.attributesProvider,
+    this.ignoreUrlPatterns = const [],
     http.Client? innerClient,
   }) : _innerClient = innerClient ?? http.Client() {
     datadogSdk.updateConfigurationInfo(
@@ -77,33 +84,35 @@ class DatadogClient extends http.BaseClient {
   }
 
   Future<http.StreamedResponse> _trackingSend(
-      http.BaseRequest request, DdRum rum) async {
+      http.BaseRequest request, DatadogRum rum) async {
     String? rumKey;
 
-    try {
-      final tracingHeaders = datadogSdk.headerTypesForHost(request.url);
-      final rumHttpMethod = rumMethodFromMethodString(request.method);
-      var attributes = <String, Object?>{};
-      // Is first party?
-      if (tracingHeaders.isNotEmpty) {
-        var shouldSample = rum.shouldSampleTrace();
-        var context = generateTracingContext(shouldSample);
+    if (_shouldTrackRequest(request)) {
+      try {
+        final tracingHeaders = datadogSdk.headerTypesForHost(request.url);
+        final rumHttpMethod = rumMethodFromMethodString(request.method);
+        var attributes = <String, Object?>{};
+        // Is first party?
+        if (tracingHeaders.isNotEmpty) {
+          var shouldSample = rum.shouldSampleTrace();
+          var context = generateTracingContext(shouldSample);
 
-        attributes = _appendRequestHeaders(request, context, tracingHeaders);
+          attributes = _appendRequestHeaders(request, context, tracingHeaders);
+        }
+
+        rumKey = _uuid.v1();
+        rum.startResource(
+            rumKey, rumHttpMethod, request.url.toString(), attributes);
+      } catch (e, st) {
+        datadogSdk.internalLogger.sendToDatadog(
+          '$DatadogClient encountered an error while attempting'
+          ' to track a send call: $e',
+          st,
+          e.runtimeType.toString(),
+        );
+        // Since there was an error, don't attempt any more tracking
+        rumKey = null;
       }
-
-      rumKey = _uuid.v1();
-      rum.startResourceLoading(
-          rumKey, rumHttpMethod, request.url.toString(), attributes);
-    } catch (e, st) {
-      datadogSdk.internalLogger.sendToDatadog(
-        '$DatadogClient encountered an error while attempting '
-        ' to track a send call: $e',
-        st,
-        e.runtimeType.toString(),
-      );
-      // Since there was an error, don't attempt any more tracking
-      rumKey = null;
     }
 
     http.StreamedResponse response;
@@ -113,7 +122,7 @@ class DatadogClient extends http.BaseClient {
       if (rumKey != null) {
         try {
           final attributes = attributesProvider?.call(request, null, e) ?? {};
-          rum.stopResourceLoadingWithErrorInfo(
+          rum.stopResourceWithErrorInfo(
               rumKey, e.toString(), e.runtimeType.toString(), attributes);
         } catch (innerE, st) {
           datadogSdk.internalLogger.sendToDatadog(
@@ -143,7 +152,7 @@ class DatadogClient extends http.BaseClient {
               firstError = e;
               final attributes =
                   attributesProvider?.call(request, response, e) ?? {};
-              rum.stopResourceLoadingWithErrorInfo(
+              rum.stopResourceWithErrorInfo(
                 rumKey!,
                 firstError.toString(),
                 firstError.runtimeType.toString(),
@@ -185,7 +194,16 @@ class DatadogClient extends http.BaseClient {
     return response;
   }
 
-  void _onFinish(DdRum rum, String rumKey, http.StreamedResponse response,
+  bool _shouldTrackRequest(http.BaseRequest request) {
+    for (final pattern in ignoreUrlPatterns) {
+      if (pattern.hasMatch(request.url.toString())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _onFinish(DatadogRum rum, String rumKey, http.StreamedResponse response,
       Map<String, Object?> attributes, Object? error) {
     try {
       // If we saw an error, this resource has already been stopped
@@ -196,7 +214,7 @@ class DatadogClient extends http.BaseClient {
             ? ContentType.parse(contentTypeHeader)
             : ContentType.text;
         var resourceType = resourceTypeFromContentType(contentType);
-        datadogSdk.rum?.stopResourceLoading(
+        datadogSdk.rum?.stopResource(
           rumKey,
           response.statusCode,
           resourceType,
@@ -223,7 +241,7 @@ class DatadogClient extends http.BaseClient {
 
     if (tracingHeaderTypes.isNotEmpty) {
       attributes = generateDatadogAttributes(
-          context, datadogSdk.rum?.tracingSamplingRate ?? 0);
+          context, datadogSdk.rum?.traceSampleRate ?? 0);
 
       for (final headerType in tracingHeaderTypes) {
         request.headers.addAll(getTracingHeaders(context, headerType));

@@ -4,7 +4,7 @@
 
 import UIKit
 import Flutter
-import Datadog
+import DatadogRUM
 
 enum InternalError: Error {
     case pluginError
@@ -46,19 +46,22 @@ enum InternalError: Error {
         case "performCallback":
             let arguments = methodCall.arguments as! [String: Any?]
             let callbackId = arguments["callbackId"] as! Int
-
-            methodChannel.invokeMethod("nativeCallback", arguments: [
+            let callArguments: [String: Any] = [
                 "callbackId": callbackId,
                 "callbackValue": "Value String"
-            ]) { callbackResult in
+            ]
+
+            methodChannel.invokeMethod("nativeCallback", arguments: callArguments) { callbackResult in
                 switch callbackResult {
                 case let error as FlutterError:
-                    Global.rum.addError(message: error.message ?? "Unknown Dart Error",
-                                        source: RUMErrorSource.source,
-                                        stack: nil,
-                                        attributes: [
-                                            "errorCode": error.code
-                                        ])
+                    RUMMonitor.shared().addError(
+                        message: error.message ?? "Unknown Dart Error",
+                        stack: nil,
+                        source: RUMErrorSource.source,
+                        attributes: [
+                            "errorCode": error.code
+                        ]
+                    )
                 default:
                     break
                 }

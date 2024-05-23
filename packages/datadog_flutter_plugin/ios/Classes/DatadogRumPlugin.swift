@@ -1,59 +1,44 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
+// swiftlint:disable file_length
 
 import Foundation
-import Datadog
+import Flutter
+import DatadogCore
+import DatadogRUM
+import DatadogInternal
 import DictionaryCoder
 
-extension FlutterError {
-    public enum DdErrorCodes {
-        static let contractViolation = "DatadogSdk:ContractViolation"
-        static let invalidOperation = "DatadogSdk:InvalidOperation"
-    }
-
-    static func missingParameter(methodName: String) -> FlutterError {
-        return FlutterError(code: DdErrorCodes.contractViolation,
-                            message: "Missing parameter in call to \(methodName)",
-                            details: nil)
-    }
-
-    static func invalidOperation(message: String) -> FlutterError {
-        return FlutterError(code: DdErrorCodes.invalidOperation,
-                            message: message,
-                            details: nil)
-    }
-}
-
-internal class PerformanceTracker {
-    private(set) var minInMs = Double.infinity
-    private(set) var maxInMs = 0.0
-    private(set) var avgInMs = 0.0
-    private(set) var samples = 0.0
-
-    private var lastStart = 0.0
-
-    func start() {
-        lastStart = CACurrentMediaTime()
-    }
-
-    func finish() {
-        // Check for bad call to finish
-        if lastStart > 0 {
-            let endTime = CACurrentMediaTime()
-            let perfInMs = (endTime - lastStart) * 1000.0
-
-            minInMs = min(perfInMs, minInMs)
-            maxInMs = max(perfInMs, maxInMs)
-            avgInMs = (perfInMs + (samples * avgInMs)) / (samples + 1.0)
-            samples += 1.0
+public extension RUM.Configuration {
+    init?(fromEncoded encoded: [String: Any?]) {
+        guard let applicationId: String = try? castUnwrap(encoded["applicationId"]) else {
+            return nil
         }
 
-        lastStart = 0.0
-    }
+        self.init(applicationID: applicationId)
 
-    func finishUnsampled() {
-        lastStart = 0.0
+        urlSessionTracking = .init()
+        sessionSampleRate = (encoded["sessionSampleRate"] as? NSNumber)?.floatValue ?? 100.0
+        longTaskThreshold = (encoded["longTaskThreshold"] as? NSNumber)?.doubleValue ?? 0.1
+        trackFrustrations = (encoded["trackFrustrations"] as? NSNumber)?.boolValue ?? true
+        if let customEndpoint = encoded["customEndpoint"] as? String {
+            self.customEndpoint = URL(string: customEndpoint)
+        }
+
+        vitalsUpdateFrequency = convertOptional(encoded["vitalsUpdateFrequency"]) {
+            .parseFromFlutter($0)
+        }
+
+        telemetrySampleRate = (encoded["telemetrySampleRate"] as? NSNumber)?.floatValue ?? 20.0
+
+        if let additionalConfig = encoded["additionalConfig"] as? [String: Any?] {
+            if let sampleRateArg = (additionalConfig["_dd.telemetry.configuration_sample_rate"] as? NSNumber) {
+                self._internal_mutation({
+                    $0.configurationTelemetrySampleRate = sampleRateArg.floatValue
+                })
+            }
+        }
     }
 }
 
@@ -67,29 +52,21 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         registrar.addMethodCallDelegate(instance, channel: methodChannel!)
     }
 
-    private var rumInstance: DDRUMMonitor?
-    public var isInitialized: Bool { return rumInstance != nil }
-
+    internal var rum: RUMMonitorProtocol?
     internal var trackMapperPerf = false
     internal var mapperPerf = PerformanceTracker()
     internal var mainThreadMapperPerf = PerformanceTracker()
     internal var mapperTimeouts = 0
 
+    private var currentConfiguration: [AnyHashable: Any]?
+
     private override init() {
         super.init()
     }
 
-    func initialize(configuration: DatadogFlutterConfiguration.RumConfiguration) {
-        rumInstance = RUMMonitor.initialize()
-        Global.rum = rumInstance!
-    }
-
-    func attachToExisting(rumInstance: DDRUMMonitor) {
-        self.rumInstance = rumInstance
-    }
-
-    public func initialize(withRum rum: DDRUMMonitor) {
-        rumInstance = rum
+    // for unit testing
+    public func inject(rum: RUMMonitorProtocol?) {
+        self.rum = rum
     }
 
     public func onDetach() {
@@ -104,20 +81,34 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             )
             return
         }
-        guard let rum = rumInstance else {
+
+        if call.method != "enable" && rum == nil {
             result(
-                FlutterError.invalidOperation(message: "RUM has not been initialized when calling \(call.method).")
+                FlutterError.invalidOperation(
+                    message: "Attempting to call RUM method (\(call.method)) when RUM has not been enabled."
+                )
             )
             return
         }
 
         switch call.method {
+        case "enable":
+            enable(arguments: arguments, call: call)
+            result(nil)
+
+        case "deinitialize":
+            deinitialize(arguments: arguments, call: call)
+            result(nil)
+
+        case "getCurrentSessionId":
+            getCurrentSessionId(result: result)
+
         case "startView":
             if let key = arguments["key"] as? String,
                let name = arguments["name"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {
                 let encodedAttributes = castFlutterAttributesToSwift(attributes)
-                rum.startView(key: key, name: name, attributes: encodedAttributes)
+                rum?.startView(key: key, name: name, attributes: encodedAttributes)
                 result(nil)
             } else {
                 result(
@@ -129,7 +120,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             if let key = arguments["key"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {
                 let encodedAttributes = castFlutterAttributesToSwift(attributes)
-                rum.stopView(key: key, attributes: encodedAttributes)
+                rum?.stopView(key: key, attributes: encodedAttributes)
                 result(nil)
             } else {
                 result(
@@ -138,29 +129,28 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             }
         case "addTiming":
             if let name = arguments["name"] as? String {
-                rum.addTiming(name: name)
+                rum?.addTiming(name: name)
                 result(nil)
             } else {
                 result(
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
-        case "startResourceLoading":
+        case "startResource":
             if let key = arguments["key"] as? String,
                let methodString = arguments["httpMethod"] as? String,
                let url = arguments["url"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {
                 let encodedAttributes = castFlutterAttributesToSwift(attributes)
                 let method = RUMMethod.parseFromFlutter(methodString)
-                rum.startResourceLoading(resourceKey: key, httpMethod: method, urlString: url,
-                                         attributes: encodedAttributes)
+                rum?.startResource(resourceKey: key, httpMethod: method, urlString: url, attributes: encodedAttributes)
                 result(nil)
             } else {
                 result(
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
-        case "stopResourceLoading":
+        case "stopResource":
             if let key = arguments["key"] as? String,
                let kindString = arguments["kind"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {
@@ -170,8 +160,8 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 let statusCode = arguments["statusCode"] as? NSNumber
                 let size = arguments["size"] as? NSNumber
 
-                rum.stopResourceLoading(resourceKey: key, statusCode: statusCode?.intValue,
-                                        kind: kind, size: size?.int64Value, attributes: encodedAttributes)
+                rum?.stopResource(resourceKey: key, statusCode: statusCode?.intValue,
+                                  kind: kind, size: size?.int64Value, attributes: encodedAttributes)
                 result(nil)
             } else {
                 result(
@@ -179,14 +169,14 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 )
             }
 
-        case "stopResourceLoadingWithError":
+        case "stopResourceWithError":
             if let key = arguments["key"] as? String,
                let message = arguments["message"] as? String,
                let errorType = arguments["type"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {
                 let encodedAttributes = castFlutterAttributesToSwift(attributes)
-                rum.stopResourceLoadingWithError(resourceKey: key, errorMessage: message, type: errorType,
-                                                 response: nil, attributes: encodedAttributes)
+                rum?.stopResourceWithError(resourceKey: key, message: message, type: errorType,
+                                           response: nil, attributes: encodedAttributes)
                 result(nil)
             } else {
                 result(
@@ -202,54 +192,47 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 let stackTrace = arguments["stackTrace"] as? String
                 let errorType = arguments["errorType"] as? String
 
-                rum.addError(
-                    message: message,
-                    type: errorType,
-                    source: source,
-                    stack: stackTrace,
-                    attributes: encodedAttributes,
-                    file: nil,
-                    line: nil
-                )
+                rum?.addError(message: message, type: errorType, stack: stackTrace, source: source,
+                              attributes: encodedAttributes, file: nil, line: nil)
                 result(nil)
             } else {
                 result(
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
-        case "addUserAction":
+        case "addAction":
             if let typeString = arguments["type"] as? String,
                let name = arguments["name"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {
-                let type = RUMUserActionType.parseFromFlutter(typeString)
+                let type = RUMActionType.parseFromFlutter(typeString)
                 let encodedAttributes = castFlutterAttributesToSwift(attributes)
-                rum.addUserAction(type: type, name: name, attributes: encodedAttributes)
+                rum?.addAction(type: type, name: name, attributes: encodedAttributes)
                 result(nil)
             } else {
                 result(
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
-        case "startUserAction":
+        case "startAction":
             if let typeString = arguments["type"] as? String,
                let name = arguments["name"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {
-                let type = RUMUserActionType.parseFromFlutter(typeString)
+                let type = RUMActionType.parseFromFlutter(typeString)
                 let encodedAttributes = castFlutterAttributesToSwift(attributes)
-                rum.startUserAction(type: type, name: name, attributes: encodedAttributes)
+                rum?.startAction(type: type, name: name, attributes: encodedAttributes)
                 result(nil)
             } else {
                 result(
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
-        case "stopUserAction":
+        case "stopAction":
             if let typeString = arguments["type"] as? String,
                let name = arguments["name"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {
-                let type = RUMUserActionType.parseFromFlutter(typeString)
+                let type = RUMActionType.parseFromFlutter(typeString)
                 let encodedAttributes = castFlutterAttributesToSwift(attributes)
-                rum.stopUserAction(type: type, name: name, attributes: encodedAttributes)
+                rum?.stopAction(type: type, name: name, attributes: encodedAttributes)
                 result(nil)
             } else {
                 result(
@@ -260,7 +243,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             if let key = arguments["key"] as? String,
                let value = arguments["value"] {
                 let encodedValue = castAnyToEncodable(value)
-                rum.addAttribute(forKey: key, value: encodedValue)
+                rum?.addAttribute(forKey: key, value: encodedValue)
                 result(nil)
             } else {
                 result(
@@ -269,7 +252,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             }
         case "removeAttribute":
             if let key = arguments["key"] as? String {
-                rum.removeAttribute(forKey: key)
+                rum?.removeAttribute(forKey: key)
                 result(nil)
             } else {
                 result(
@@ -280,7 +263,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             if let name = arguments["name"] as? String,
                let value = arguments["value"] {
                 let encodableValue = castAnyToEncodable(value)
-                rum.addFeatureFlagEvaluation(name: name, value: encodableValue)
+                rum?.addFeatureFlagEvaluation(name: name, value: encodableValue)
                 result(nil)
             } else {
                 result(
@@ -291,7 +274,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             if let atTime = arguments["at"] as? NSNumber,
                let duration = arguments["duration"] as? NSNumber {
                 let atDate = Date(timeIntervalSince1970: TimeInterval(atTime.doubleValue / 1000.0))
-                rum._internal.addLongTask(at: atDate, duration: TimeInterval(duration.doubleValue / 1000.0))
+                rum?._internal?.addLongTask(at: atDate, duration: TimeInterval(duration.doubleValue / 1000.0))
                 result(nil)
             } else {
                 result(
@@ -301,14 +284,15 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         case "updatePerformanceMetrics":
             if let buildTimes = arguments["buildTimes"] as? [Double],
                let rasterTimes = arguments["rasterTimes"] as? [Double] {
+                // swiftlint:disable:next todo
                 // TODO: Time isn't that important here, but in the future we should get it either
                 // from Flutter or from the timeProvider anyway
                 let date = Date()
                 buildTimes.forEach { val in
-                    rum._internal.updatePerformanceMetric(at: date, metric: .flutterBuildTime, value: val)
+                    rum?._internal?.updatePerformanceMetric(at: date, metric: .flutterBuildTime, value: val)
                 }
                 rasterTimes.forEach { val in
-                    rum._internal.updatePerformanceMetric(at: date, metric: .flutterRasterTime, value: val)
+                    rum?._internal?.updatePerformanceMetric(at: date, metric: .flutterRasterTime, value: val)
                 }
                 result(nil)
             } else {
@@ -317,14 +301,88 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 )
             }
         case "stopSession":
-            rum.stopSession()
+            rum?.stopSession()
             result(nil)
         default:
             result(FlutterMethodNotImplemented)
         }
     }
 
-    func callEventMapper<T>(mapperName: String, event: T, encodedEvent: [String: Any?], completion: ([String: Any?]?) -> T?) -> T? {
+    internal func attachToExisting(rumInstance: RUMMonitorProtocol) {
+        rum = rumInstance
+    }
+
+    private func enable(arguments: [String: Any?], call: FlutterMethodCall) {
+        let configArg = arguments["configuration"] as? [String: Any?]
+        if rum == nil {
+            if let configArg = configArg,
+               var config = RUM.Configuration(fromEncoded: configArg) {
+                attachEventMappers(configArg: configArg, config: &config)
+
+                RUM.enable(with: config)
+                rum = RUMMonitor.shared()
+
+                currentConfiguration = configArg as [AnyHashable: Any]
+            }
+        } else if currentConfiguration != nil,
+                    let configArg = configArg {
+            let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
+            if !dict.isEqual(to: currentConfiguration!) {
+                consolePrint(
+                    "🔥 Calling RUM `enable` with different options, even after a hot restart," +
+                    " is not supported. Cold restart your application to change your current configuation.",
+                    .error
+                )
+            }
+        }
+    }
+
+    private func deinitialize(arguments: [String: Any?], call: FlutterMethodCall) {
+        if rum != nil {
+            currentConfiguration = nil
+            rum = nil
+        }
+    }
+
+    private func getCurrentSessionId(result: @escaping FlutterResult) {
+        if let rum = rum {
+            rum.currentSessionID(completion: { sessionId in
+                DispatchQueue.main.async {
+                    result(sessionId)
+                }
+            })
+        } else {
+            result(nil)
+        }
+    }
+
+    private func attachEventMappers(configArg: [String: Any?], config: inout RUM.Configuration) {
+        func isOptionSet(_ flag: String) -> Bool {
+            return (configArg[flag] as? NSNumber)?.boolValue ?? false
+        }
+
+        if isOptionSet("attachViewEventMapper") {
+            config.viewEventMapper = viewEventMapper
+        }
+        if isOptionSet("attachActionEventMapper") {
+            config.actionEventMapper = actionEventMapper
+        }
+        if isOptionSet("attachResourceEventMapper") {
+            config.resourceEventMapper = resourceEventMapper
+        }
+        if isOptionSet("attachErrorEventMapper") {
+            config.errorEventMapper = errorEventMapper
+        }
+        if isOptionSet("attachLongTaskEventMapper") {
+            config.longTaskEventMapper = longTaskEventMapper
+        }
+    }
+
+    func callEventMapper<T>(
+        mapperName: String,
+        event: T,
+        encodedEvent: [String: Any?],
+        completion: ([String: Any?]?) -> T?) -> T? {
         guard let methodChannel = DatadogRumPlugin.methodChannel else {
             return event
         }
@@ -333,14 +391,16 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         let semaphore = DispatchSemaphore(value: 0)
 
         mainThreadMapperPerf.start()
-        methodChannel.invokeMethod(mapperName, arguments: ["event": encodedEvent]) { result in
-            if result == nil {
-                encodedResult = nil
-            } else if let result = result as? [String: Any] {
-                encodedResult = result
-            }
+        DispatchQueue.main.async {
+            methodChannel.invokeMethod(mapperName, arguments: ["event": encodedEvent]) { result in
+                if result == nil {
+                    encodedResult = nil
+                } else if let result = result as? [String: Any] {
+                    encodedResult = result
+                }
 
-            semaphore.signal()
+                semaphore.signal()
+            }
         }
 
         if semaphore.wait(timeout: .now() + DispatchTimeInterval.milliseconds(500)) == .timedOut {
@@ -397,7 +457,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        let result = callEventMapper(mapperName: "mapViewEvent", event: rumViewEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapViewEvent",
+                                     event: rumViewEvent,
+                                     encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return rumViewEvent
             }
@@ -449,7 +511,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        let result = callEventMapper(mapperName: "mapActionEvent", event: rumActionEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapActionEvent",
+                                     event: rumActionEvent,
+                                     encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return nil
             }
@@ -498,7 +562,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        let result = callEventMapper(mapperName: "mapResourceEvent", event: rumResourceEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapResourceEvent",
+                                     event: rumResourceEvent,
+                                     encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return nil
             }
@@ -525,6 +591,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         return result
     }
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     func errorEventMapper(rumErrorEvent: RUMErrorEvent) -> RUMErrorEvent? {
         if trackMapperPerf {
             mapperPerf.start()
@@ -544,7 +611,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        let result = callEventMapper(mapperName: "mapErrorEvent", event: rumErrorEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapErrorEvent",
+                                     event: rumErrorEvent,
+                                     encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return nil
             }
@@ -566,7 +635,8 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                         consolePrint(
                             "🔥 Adding or removing RumErrorCauses to 'errorEvent.error.causes'" +
                             " in the rumErrorEventMapper is not supported." +
-                            " You can modify individual causes, but do not modify the array.")
+                            " You can modify individual causes, but do not modify the array.",
+                            .error)
                     }
                 } else {
                     rumErrorEvent.error.causes = nil
@@ -577,6 +647,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 }
 
                 rumErrorEvent.error.stack = encodedError["stack"] as? String
+                rumErrorEvent.error.fingerprint = encodedError["fingerprint"] as? String
             }
 
             if let encodedView = encodedResult["view"] as? [String: Any?] {
@@ -614,7 +685,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
 
         encoded["usr"] = extractUserExtraInfo(usrMember: encoded["usr"] as? [String: Any])
 
-        let result = callEventMapper(mapperName: "mapLongTaskEvent", event: longTaskEvent, encodedEvent: encoded) { encodedResult in
+        let result = callEventMapper(mapperName: "mapLongTaskEvent",
+                                     event: longTaskEvent,
+                                     encodedEvent: encoded) { encodedResult in
             guard let encodedResult = encodedResult else {
                 return nil
             }
@@ -671,12 +744,12 @@ public extension RUMMethod {
     }
 }
 
-public extension RUMUserActionType {
-    static func parseFromFlutter(_ value: String) -> RUMUserActionType {
+public extension RUMActionType {
+    static func parseFromFlutter(_ value: String) -> RUMActionType {
         switch value {
-        case "RumUserActionType.tap": return .tap
-        case "RumUserActionType.scroll": return .scroll
-        case "RumUserActionType.swipe": return .swipe
+        case "RumActionType.tap": return .tap
+        case "RumActionType.scroll": return .scroll
+        case "RumActionType.swipe": return .swipe
         default: return .custom
         }
     }
@@ -695,14 +768,45 @@ public extension RUMErrorSource {
     }
 }
 
-public extension Datadog.Configuration.VitalsFrequency {
-    static func parseFromFlutter(_ value: String) -> Datadog.Configuration.VitalsFrequency {
+public extension RUM.Configuration.VitalsFrequency {
+    static func parseFromFlutter(_ value: String) -> RUM.Configuration.VitalsFrequency? {
         switch value {
         case "VitalsFrequency.frequent": return .frequent
         case "VitalsFrequency.average": return .average
         case "VitalsFrequency.rare": return .rare
-        case "VitalsFrequency.never": return .never
-        default: return .average
+        default: return nil
         }
+    }
+}
+
+internal class PerformanceTracker {
+    private(set) var minInMs = Double.infinity
+    private(set) var maxInMs = 0.0
+    private(set) var avgInMs = 0.0
+    private(set) var samples = 0.0
+
+    private var lastStart = 0.0
+
+    func start() {
+        lastStart = CACurrentMediaTime()
+    }
+
+    func finish() {
+        // Check for bad call to finish
+        if lastStart > 0 {
+            let endTime = CACurrentMediaTime()
+            let perfInMs = (endTime - lastStart) * 1000.0
+
+            minInMs = min(perfInMs, minInMs)
+            maxInMs = max(perfInMs, maxInMs)
+            avgInMs = (perfInMs + (samples * avgInMs)) / (samples + 1.0)
+            samples += 1.0
+        }
+
+        lastStart = 0.0
+    }
+
+    func finishUnsampled() {
+        lastStart = 0.0
     }
 }

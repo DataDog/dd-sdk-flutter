@@ -128,7 +128,7 @@ Future<Map<String, Dependency?>> _getDartDependencies() async {
 
     final packageConfigFile = File('$project/.dart_tool/package_config.json');
 
-    if (!pubspecFile.existsSync()) {
+    if (!packageConfigFile.existsSync()) {
       stderr.writeln(
           '❌ $project/.dart_tool/package_config.json file not found. You may need to run "pub get" on this tool');
       continue;

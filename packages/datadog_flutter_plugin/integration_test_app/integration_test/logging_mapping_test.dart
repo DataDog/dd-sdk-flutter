@@ -55,7 +55,7 @@ void main() {
             .where(
                 (e) => !(e).containsKey('session') && e['type'] != 'telemetry')
             .forEach((e) => logs.add(LogDecoder(e)));
-        return logs.length >= 5;
+        return logs.length >= 6;
       },
     );
 
@@ -63,7 +63,8 @@ void main() {
     //   * logger-attribute2 should always be null
     //   * 'message' is replaced by 'xxxxxxxx'
     //   * the info message from the second_logger is not sent
-    expect(logs.length, equals(5));
+    //   * all error fingerprints on the second-logger are replaced with 'mapped print'
+    expect(logs.length, equals(6));
 
     List<LogDecoder> firstLoggerLogs =
         logs.where((l) => l.loggerName != 'second_logger').toList();
@@ -112,6 +113,17 @@ void main() {
     expect(firstLoggerLogs[3].log['logger-attribute2'], isNull);
     expect(firstLoggerLogs[3].log['attribute'], 'value');
 
+    expect(firstLoggerLogs[4].status, 'error');
+    expect(firstLoggerLogs[4].message, 'Encountered an error');
+    expect(firstLoggerLogs[4].errorMessage, isNotNull);
+    if (!kIsWeb) {
+      expect(firstLoggerLogs[4].errorSourceType, 'flutter');
+      expect(firstLoggerLogs[4].tags, isNot(contains('my-tag')));
+      expect(firstLoggerLogs[4].tags, isNot(contains('tag1:tag-value')));
+    }
+    expect(firstLoggerLogs[4].log['logger-attribute1'], isNull);
+    expect(firstLoggerLogs[4].log['logger-attribute2'], isNull);
+
     List<LogDecoder> secondLoggerLogs =
         logs.where((l) => l.loggerName == 'second_logger').toList();
 
@@ -122,6 +134,7 @@ void main() {
     expect(secondLoggerLogs[0].log['logger-attribute2'], isNull);
     expect(secondLoggerLogs[0].errorMessage, 'Error Message');
     expect(secondLoggerLogs[0].errorStack, isNotNull);
+    expect(secondLoggerLogs[0].errorFingerprint, 'mapped print');
     expect(getNestedProperty<String>('logger.name', secondLoggerLogs[0].log),
         'second_logger');
 

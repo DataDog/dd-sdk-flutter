@@ -15,20 +15,34 @@ class RumUserActionsScreen extends StatefulWidget {
   State<RumUserActionsScreen> createState() => _RumUserActionsScreenState();
 }
 
-class _RumUserActionsScreenState extends State<RumUserActionsScreen>
-    with RouteAware, DatadogRouteAwareMixin {
+class _RumUserActionsScreenState extends State<RumUserActionsScreen> {
   final _dropDownValues = ['Item 1', 'Item 2', 'Item 3'];
   String? _dropDownValue = 'Item 1';
   bool _checkboxChecked = false;
   int _radioValue = 0;
   bool _switchValue = false;
 
+  void _buttonPressed(String name) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Tapped $name')),
+    );
+  }
+
   Widget _buttonsSection() {
     return Wrap(
       children: [
-        ElevatedButton(onPressed: () {}, child: const Text('Button A')),
-        TextButton(onPressed: () {}, child: const Text('Button B')),
-        OutlinedButton(onPressed: () {}, child: const Text('Button C')),
+        ElevatedButton(
+          onPressed: () => _buttonPressed('Button A'),
+          child: const Text('Button A'),
+        ),
+        TextButton(
+          onPressed: () => _buttonPressed('Button B'),
+          child: const Text('Button B'),
+        ),
+        OutlinedButton(
+          onPressed: () => _buttonPressed('Button C'),
+          child: const Text('Button C'),
+        ),
         IconButton(
           onPressed: () {},
           icon: const Icon(

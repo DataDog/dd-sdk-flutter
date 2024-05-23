@@ -4,6 +4,8 @@ This folder contains examples of using the Datadog Flutter Plugin in more compli
 
 This includes:
 
+* [Simple Example](./simple_example) - Includes examples of GoRouter integration, distributed tracing, interaction tracking, and error/crash reporting.
 * [Add-to-App / Hybrid Native + Flutter](./native-hybrid-app)
+
 
 If you have other scenarios that are not covered in this list, please reach out to Datadog.

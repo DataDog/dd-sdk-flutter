@@ -10,7 +10,7 @@ import '../helpers.dart';
 class RumLongTaskObserver with WidgetsBindingObserver {
   // The amount of elapsed time that is considered to be a "long task", in seconds.
   final double longTaskThreshold;
-  final DdRum? rumInstance;
+  final DatadogRum? rumInstance;
 
   var _detectingLongTasks = false;
   Future<void>? _longTaskDetectorFuture;
@@ -35,6 +35,9 @@ class RumLongTaskObserver with WidgetsBindingObserver {
         stopLongTaskDetection();
         break;
       case AppLifecycleState.detached:
+        stopLongTaskDetection();
+        break;
+      default:
         stopLongTaskDetection();
         break;
     }

@@ -4,8 +4,7 @@
   ~ Copyright 2016-Present Datadog, Inc.
   -->
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.datadoghq.example.flutter">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Flutter needs it to communicate with the running application
          to allow setting breakpoints, to provide hot reload, etc.
     -->

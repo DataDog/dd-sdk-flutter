@@ -89,10 +89,6 @@ void main() {
       );
     }
 
-    for (var log in rumLog) {
-      expect(log.dd.plan, 1);
-    }
-
     final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, kIsWeb ? 4 : 3);
 
@@ -166,6 +162,7 @@ void main() {
       expect(view1.errorEvents[0].source, 'network');
       expect(view1.errorEvents[0].context![contextKey], expectedContextValue);
     }
+
     expect(view1, becameInactive);
 
     final view2 = session.visits[1];
@@ -193,12 +190,11 @@ void main() {
     expect(view2.viewEvents.last.featureFlags?['mock_flag_a'], false);
     expect(view2.viewEvents.last.featureFlags?['mock_flag_b'], 'mock_value');
 
-    const errorMessage =
-        kIsWeb ? 'Provided "Simulated view error"' : 'Simulated view error';
-    expect(view2.errorEvents[0].message, errorMessage);
+    expect(view2.errorEvents[0].message, 'Simulated view error');
     expect(view2.errorEvents[0].source, kIsWeb ? 'custom' : 'source');
     expect(view2.errorEvents[0].context![contextKey], expectedContextValue);
     expect(view2.errorEvents[0].context!['custom_attribute'], 'my_attribute');
+    expect(view2.errorEvents[0].fingerprint, 'custom-fingerprint');
 
     // Check all long tasks are over 100 ms (the default) and that one is greater
     // than 200 ms (triggered by the tapping of the button)
@@ -220,7 +216,7 @@ void main() {
     }
     expect(over200, greaterThanOrEqualTo(1));
 
-    // Web doesn't support start/stopUserAction
+    // Web doesn't support start/stopAction
     RumActionEventDecoder tapAction;
     if (!kIsWeb) {
       expect(view2.actionEvents[0].actionType, 'scroll');

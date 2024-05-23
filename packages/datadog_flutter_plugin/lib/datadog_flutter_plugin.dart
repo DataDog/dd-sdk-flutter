@@ -10,20 +10,25 @@ import 'package:meta/meta.dart';
 
 import 'datadog_internal.dart';
 import 'src/datadog_configuration.dart';
+import 'src/datadog_noop_platform.dart';
 import 'src/datadog_plugin.dart';
 import 'src/logs/ddlogs.dart';
+import 'src/logs/ddlogs_noop_platform.dart';
 import 'src/logs/ddlogs_platform_interface.dart';
+import 'src/rum/ddrum_noop_platform.dart';
+import 'src/rum/ddrum_platform_interface.dart';
 import 'src/rum/rum.dart';
 import 'src/version.dart' show ddPackageVersion;
 
 export 'src/datadog_configuration.dart';
 export 'src/datadog_plugin.dart';
-export 'src/logs/ddlogs.dart';
-export 'src/rum/ddrum_events.dart';
+export 'src/logs/logs.dart';
 export 'src/rum/rum.dart';
 export 'src/tracing/tracing_headers.dart' show TracingHeaderType;
 
 typedef AppRunner = void Function();
+
+enum CoreLoggerLevel { debug, warn, error, critical }
 
 /// A singleton for the Datadog SDK.
 ///
@@ -36,21 +41,33 @@ class DatadogSdk {
     return DatadogSdkPlatform.instance;
   }
 
+  DatadogSdk._();
+
   static DatadogSdk? _singleton;
   static DatadogSdk get instance {
     _singleton ??= DatadogSdk._();
     return _singleton!;
   }
 
-  DatadogSdk._();
+  /// Set Datadog to use No Op platform implementations.
+  ///
+  /// Not that this disables Datadog, and should only be used when performing
+  /// headless integration tests where the underlying platform is not available
+  static void initializeForTesting() {
+    DatadogSdkPlatform.instance = DatadogSdkNoOpPlatform();
+    DdLogsPlatform.instance = DdNoOpLogsPlatform();
+    DdRumPlatform.instance = DdNoOpRumPlatform();
+  }
 
   bool _initialized = false;
+  DatadogConfiguration? _configuration;
+  DatadogConfiguration? get configuration => _configuration;
 
-  DdLogs? _logs;
-  DdLogs? get logs => _logs;
+  DatadogLogging? _logs;
+  DatadogLogging? get logs => _logs;
 
-  DdRum? _rum;
-  DdRum? get rum => _rum;
+  DatadogRum? _rum;
+  DatadogRum? get rum => _rum;
 
   List<FirstPartyHost> _firstPartyHosts = [];
 
@@ -73,11 +90,11 @@ class DatadogSdk {
   /// Internal extension access to the configured platform
   DatadogSdkPlatform get platform => _platform;
 
-  /// Set the verbosity of the Datadog SDK. Set to [Verbosity.info] by
+  /// Set the verbosity of the Datadog SDK. Set to [CoreLoggerLevel.warn] by
   /// default. All internal logging is enabled only when [kDebugMode] is
   /// set.
-  Verbosity get sdkVerbosity => internalLogger.sdkVerbosity;
-  set sdkVerbosity(Verbosity value) {
+  CoreLoggerLevel get sdkVerbosity => internalLogger.sdkVerbosity;
+  set sdkVerbosity(CoreLoggerLevel value) {
     internalLogger.sdkVerbosity = value;
     if (_initialized) {
       unawaited(_platform.setSdkVerbosity(value));
@@ -85,7 +102,7 @@ class DatadogSdk {
   }
 
   /// Get an instance of a DatadogPlugin that was registered with
-  /// [DdSdkConfiguration.addPlugin]
+  /// [DatadogConfiguration.addPlugin]
   T? getPlugin<T>() => _plugins[T] as T?;
 
   /// This function is not part of the public interface for Datadog, and may not
@@ -97,16 +114,23 @@ class DatadogSdk {
       plugin.shutdown();
     }
     _plugins.clear();
-    _logs = null;
+    _rum?.deinitialize();
     _rum = null;
+
+    _logs?.deinitialize();
+    _logs = null;
+
     _initialized = false;
   }
 
   /// A helper function that will initialize Datadog and setup error reporting
-  /// 
-  /// See also, [DdRum.handleFlutterError], [DatadogTrackingHttpClient]
+  ///
+  /// See also, [DatadogRum.handleFlutterError], [DatadogTrackingHttpClient]
   static Future<void> runApp(
-      DdSdkConfiguration configuration, AppRunner runner) async {
+    DatadogConfiguration configuration,
+    TrackingConsent trackingConsent,
+    AppRunner runner,
+  ) async {
     WidgetsFlutterBinding.ensureInitialized();
     final originalOnError = FlutterError.onError;
     FlutterError.onError = (details) {
@@ -123,7 +147,7 @@ class DatadogSdk {
       return platformOriginalOnError?.call(e, st) ?? false;
     };
 
-    await DatadogSdk.instance.initialize(configuration);
+    await DatadogSdk.instance.initialize(configuration, trackingConsent);
     DatadogSdk.instance
         .updateConfigurationInfo(LateConfigurationProperty.trackErrors, true);
 
@@ -131,7 +155,8 @@ class DatadogSdk {
   }
 
   /// Initialize the DatadogSdk with the provided [configuration].
-  Future<void> initialize(DdSdkConfiguration configuration) async {
+  Future<void> initialize(DatadogConfiguration configuration,
+      TrackingConsent trackingConsent) async {
     // First set our SDK verbosity. We can assume WidgetsFlutterBinding has been initialized at this point
     await _platform.setSdkVerbosity(internalLogger.sdkVerbosity);
 
@@ -140,22 +165,16 @@ class DatadogSdk {
 
     _setFirstPartyHosts(configuration.firstPartyHostsWithTracingHeaders);
 
-    await _platform.initialize(configuration,
+    await _platform.initialize(configuration, trackingConsent,
         logCallback: _platformLog, internalLogger: internalLogger);
 
     if (configuration.loggingConfiguration != null) {
-      _logs = createLogger(configuration.loggingConfiguration!);
+      _logs = await DatadogLogging.enable(
+          this, configuration.loggingConfiguration!);
     }
-    if (configuration.rumConfiguration != null) {
-      _rum = DdRum(configuration.rumConfiguration!, internalLogger);
-      await _rum!.initialize();
 
-      // Update 'late' configuration
-      updateConfigurationInfo(LateConfigurationProperty.trackFlutterPerformance,
-          configuration.rumConfiguration!.reportFlutterPerformance);
-      updateConfigurationInfo(
-          LateConfigurationProperty.trackCrossPlatformLongTasks,
-          configuration.rumConfiguration!.detectLongTasks);
+    if (configuration.rumConfiguration != null) {
+      _rum = await DatadogRum.enable(this, configuration.rumConfiguration!);
     }
 
     _initializePlugins(configuration.additionalPlugins);
@@ -165,7 +184,7 @@ class DatadogSdk {
   /// Attach the Datadog Flutter SDK to an already initialized Datadog Native
   /// (iOS or Android) SDK.  This is used for "app in app" embedding of Flutter.
   Future<void> attachToExisting(
-    DdSdkExistingConfiguration config,
+    DatadogAttachConfiguration config,
   ) async {
     // First set our SDK verbosity. We can assume WidgetsFlutterBinding has been initialized at this point
     await _platform.setSdkVerbosity(internalLogger.sdkVerbosity);
@@ -178,25 +197,11 @@ class DatadogSdk {
     if (attachResponse != null) {
       _setFirstPartyHosts(config.firstPartyHostsWithTracingHeaders);
 
-      if (config.loggingConfiguration != null) {
-        try {
-          _logs = createLogger(config.loggingConfiguration!);
-        } catch (_) {
-          // This is likely fine. Since we have no simple way of knowing if Logging is
-          // enabled, we try to create a logger anyway, which could potentially fail.
-          internalLogger.debug(
-              'A logging configuration was provided to `attachToExisting` but log creation failed, likely because logging is disabled in the native SDK. No global log was created');
-        }
+      if (attachResponse.loggingEnabled) {
+        _logs = DatadogLogging(this);
       }
       if (attachResponse.rumEnabled) {
-        _rum = DdRum(
-            RumConfiguration.existing(
-              detectLongTasks: config.detectLongTasks,
-              longTaskThreshold: config.longTaskThreshold,
-              tracingSamplingRate: config.tracingSamplingRate,
-            ),
-            internalLogger);
-        await _rum!.initialize();
+        _rum = DatadogRum.fromExisting(this, config);
       }
 
       _initializePlugins(config.additionalPlugins);
@@ -205,19 +210,6 @@ class DatadogSdk {
       internalLogger.error(
           'Failed to attach to an existing native instance of the Datadog SDK.');
     }
-  }
-
-  /// Create a new logger.
-  ///
-  /// This can be used in addition to or instead of the default logger at [logs]
-  DdLogs createLogger(LoggingConfiguration configuration) {
-    final logger =
-        DdLogs(internalLogger, configuration.datadogReportingThreshold);
-    wrap('createLogger', internalLogger, null, () {
-      return DdLogsPlatform.instance
-          .createLogger(logger.loggerHandle, configuration);
-    });
-    return logger;
   }
 
   /// Sets current user information. User information will be added traces and
@@ -246,14 +238,23 @@ class DatadogSdk {
     });
   }
 
+  /// Clears all data that has not already been sent to Datadog servers.
+  ///
+  /// This method is not supported on Flutter Web.
+  void clearAllData() {
+    wrap('clearAllData', internalLogger, null, () {
+      return _platform.clearAllData();
+    });
+  }
+
   void setTrackingConsent(TrackingConsent trackingConsent) {
     wrap('setTrackingConsent', internalLogger, null, () {
       return _platform.setTrackingConsent(trackingConsent);
     });
   }
 
-  /// Determine if the provided URI is a first party host as determined by the
-  /// value of [firstPartyHosts].
+  // Determine if the provided URI is a first party host as determined by the
+  // value of [firstPartyHosts].
   bool isFirstPartyHost(Uri uri) {
     return headerTypesForHost(uri).isNotEmpty;
   }

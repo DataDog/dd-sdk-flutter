@@ -7,22 +7,6 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import '../../datadog_flutter_plugin.dart';
 import 'ddlogs_method_channel.dart';
 
-// Private for now until we can ensure all SDKs support all levels
-enum LogLevel {
-  debug,
-  info,
-  // ignore: unused_field
-  notice,
-  warning,
-  error,
-  // ignore: unused_field
-  critical,
-  // ignore: unused_field
-  alert,
-  // ignore: unused_field
-  emergency
-}
-
 abstract class DdLogsPlatform extends PlatformInterface {
   DdLogsPlatform() : super(token: _token);
 
@@ -37,7 +21,15 @@ abstract class DdLogsPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<void> createLogger(String loggerHandle, LoggingConfiguration config);
+  Future<void> enable(DatadogSdk core, DatadogLoggingConfiguration config);
+  Future<void> deinitialize();
+
+  Future<void> addGlobalAttribute(String key, Object value);
+  Future<void> removeGlobalAttribute(String key);
+
+  Future<void> createLogger(
+      String loggerHandle, DatadogLoggerConfiguration config);
+  Future<void> destroyLogger(String loggerHandle);
 
   Future<void> log(
     String loggerHandle,

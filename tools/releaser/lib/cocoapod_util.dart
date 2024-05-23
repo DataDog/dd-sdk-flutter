@@ -13,16 +13,17 @@ final specDependencyPattern =
     RegExp(r"\s+s\.dependency\s+'(?<dependency>Datadog.+)', '.+");
 
 class RemovePodOverridesCommand extends Command {
-  final podspecLocation = 'ios/datadog_flutter_plugin.podspec';
-
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
     if (!await _removePodfileOverrides(args, logger)) {
       return false;
     }
 
-    if (!await _pinPodspecVersion(args, logger)) {
-      return false;
+    // Other packages can keep looser version constraints
+    if (args.packageName == 'datadog_flutter_plugin') {
+      if (!await _pinPodspecVersion(args, logger)) {
+        return false;
+      }
     }
 
     return true;
@@ -31,9 +32,7 @@ class RemovePodOverridesCommand extends Command {
   Future<bool> _removePodfileOverrides(
       CommandArguments args, Logger logger) async {
     logger.info('ℹ️ Removing overrides from Podfiles.');
-    // Only modify files in the package we're shipping
-    for (var filePath
-        in podfileList.where((e) => e.contains(args.packageName))) {
+    for (var filePath in podfileList) {
       final file = File(path.join(args.gitDir.path, filePath));
       if (!file.existsSync()) {
         logger.shout('❌ Could not find file $filePath');
@@ -59,6 +58,8 @@ class RemovePodOverridesCommand extends Command {
   }
 
   Future<bool> _pinPodspecVersion(CommandArguments args, Logger logger) async {
+    final podspecLocation = 'ios/${args.packageName}.podspec';
+
     final file = File(path.join(
         args.gitDir.path, 'packages/${args.packageName}', podspecLocation));
 

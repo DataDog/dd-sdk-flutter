@@ -4,7 +4,7 @@ publish_to: "none"
 version: 1.0.0
 
 environment:
-  sdk: ">=2.18.0 <3.0.0"
+  sdk: ">=2.18.0 <4.0.0"
   flutter: ">=3.3.0"
 
 dependencies:
@@ -22,7 +22,7 @@ dependencies:
     path: ../
   datadog_common_test:
     path: ../../datadog_common_test
-  http: ^0.13.4
+  http: ">=0.13.4 <2.0.0"
 
 dev_dependencies:
   flutter_test:

@@ -92,15 +92,15 @@ class RumViewVisit {
 }
 
 class Dd {
-  final Map<String, dynamic> rawData;
+  final Map<String, dynamic>? rawData;
 
   Dd(this.rawData);
 
-  String? get traceId => rawData['trace_id'];
-  String? get spanId => rawData['span_id'];
+  String? get traceId => rawData?['trace_id'];
+  String? get spanId => rawData?['span_id'];
   int? get plan {
-    final session = rawData['session'] as Map<String, dynamic>;
-    return session['plan'];
+    final session = rawData?['session'] as Map<String, dynamic>?;
+    return session?['plan'];
   }
 }
 
@@ -123,7 +123,8 @@ class RumEventDecoder {
       rumEvent['telemetry']?['configuration'];
 
   Map<String, dynamic>? get context => rumEvent['context'];
-  Map<String, dynamic>? get featureFlags => rumEvent['feature_flags'];
+  Map<String, dynamic>? get featureFlags =>
+      rumEvent['feature_flags'] ?? <String, dynamic>{};
 
   RumEventDecoder(this.rumEvent)
       : viewInfo = RumViewInfoDecoder(rumEvent['view']),
@@ -211,6 +212,7 @@ class RumErrorEventDecoder extends RumEventDecoder {
   String get stack => rumEvent['error']['stack'];
   String get source => rumEvent['error']['source'];
   String get sourceType => rumEvent['error']['source_type'];
+  String get fingerprint => rumEvent['error']['fingerprint'];
 
   String? get resourceUrl => rumEvent['error']['resource']?['url'];
   String? get resourceMethod => rumEvent['error']['resource']?['method'];

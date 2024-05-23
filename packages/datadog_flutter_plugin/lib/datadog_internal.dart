@@ -18,6 +18,11 @@ export 'src/internal_logger.dart';
 export 'src/rum/attributes.dart';
 export 'src/tracing/tracing_headers.dart';
 
+// Because resource tracking is in a separate package, but web needs resource
+// initialization during initialization, we put the configuration value in
+// additionalConfig under this key.
+const String trackResourcesConfigKey = '_dd.track_web_resources';
+
 /// A set of properties that Flutter can configure "late", meaning after the
 /// first call to [DatadogSdk.initialize].
 enum LateConfigurationProperty {
@@ -44,7 +49,7 @@ enum LateConfigurationProperty {
   /// Whether native views are being tracked. Currently unused.
   trackNativeViews,
 
-  /// Whether [DdSdkConfiguration.reportFlutterPerformance] was set to true
+  /// Whether [DatadogRumConfiguration.reportFlutterPerformance] was set to true
   trackFlutterPerformance,
 }
 
@@ -62,13 +67,13 @@ class FirstPartyHost {
   final String hostName;
   final Set<TracingHeaderType> headerTypes;
 
-  final RegExp _regExp;
+  final RegExp regExp;
 
   FirstPartyHost._(this.hostName, this.headerTypes)
-      : _regExp = RegExp('^(.*\\.)*${RegExp.escape(hostName)}\$');
+      : regExp = RegExp('^(.*\\.)*${RegExp.escape(hostName)}\$');
 
   bool matches(Uri uri) {
-    return _regExp.hasMatch(uri.host.toString());
+    return regExp.hasMatch(uri.host.toString());
   }
 
   static List<FirstPartyHost> createSanitized(

@@ -4,6 +4,7 @@
 
 import 'dart:io';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_grpc_interceptor/datadog_grpc_interceptor.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,7 +15,7 @@ import 'src/generated/helloworld.pbgrpc.dart';
 
 class DatadogSdkMock extends Mock implements DatadogSdk {}
 
-class RumMock extends Mock implements DdRum {}
+class RumMock extends Mock implements DatadogRum {}
 
 class LoggingGreeterService extends GreeterServiceBase {
   List<ServiceCall> calls = [];
@@ -47,6 +48,15 @@ void main() {
         expect(metadata['x-datadog-sampling-priority'], sampled ? '1' : '0');
         traceInt = BigInt.tryParse(metadata['x-datadog-trace-id'] ?? '');
         spanInt = BigInt.tryParse(metadata['x-datadog-parent-id'] ?? '');
+        if (sampled) {
+          final tagsHeader = metadata['x-datadog-tags'];
+          final parts = tagsHeader?.split('=');
+          expect(parts, isNotNull);
+          expect(parts?[0], '_dd.p.tid');
+          BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
+          expect(highTraceInt, isNotNull);
+          expect(highTraceInt?.bitLength, lessThanOrEqualTo(64));
+        }
         break;
       case TracingHeaderType.b3:
         var singleHeader = metadata['b3']!;
@@ -65,18 +75,29 @@ void main() {
         spanInt = BigInt.tryParse(metadata['x-b3-spanid'] ?? '', radix: 16);
         break;
       case TracingHeaderType.tracecontext:
-        var header = metadata['traceparent']!;
-        var headerParts = header.split('-');
+        var parentHeader = metadata['traceparent']!;
+        var headerParts = parentHeader.split('-');
         expect(headerParts[0], '00');
         traceInt = BigInt.tryParse(headerParts[1], radix: 16);
         spanInt = BigInt.tryParse(headerParts[2], radix: 16);
         expect(headerParts[3], sampled ? '01' : '00');
+
+        final stateHeader = metadata['tracestate']!;
+        final stateParts = getDdTraceState(stateHeader);
+        expect(stateParts['s'], sampled ? '1' : '0');
+        expect(stateParts['o'], 'rum');
+        expect(stateParts['p'], headerParts[2]);
         break;
     }
 
     if (sampled) {
-      expect(traceInt, isNotNull);
-      expect(traceInt?.bitLength, lessThanOrEqualTo(63));
+      if (type == TracingHeaderType.datadog) {
+        expect(traceInt, isNotNull);
+        expect(traceInt?.bitLength, lessThanOrEqualTo(64));
+      } else {
+        expect(traceInt, isNotNull);
+        expect(traceInt?.bitLength, lessThanOrEqualTo(128));
+      }
 
       expect(spanInt, isNotNull);
       expect(spanInt?.bitLength, lessThanOrEqualTo(63));
@@ -106,7 +127,7 @@ void main() {
       mockRum = RumMock();
       when(() => mockDatadog.rum).thenReturn(mockRum);
       when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-      when(() => mockRum.tracingSamplingRate).thenReturn(12);
+      when(() => mockRum.traceSampleRate).thenReturn(12);
     });
 
     tearDown(() async {
@@ -124,7 +145,7 @@ void main() {
 
       await stub.sayHello(HelloRequest(name: 'test'));
 
-      final captures = verify(() => mockRum.startResourceLoading(
+      final captures = verify(() => mockRum.startResource(
           captureAny(),
           RumHttpMethod.get,
           'http://localhost:$port/helloworld.Greeter/SayHello',
@@ -134,8 +155,7 @@ void main() {
 
       expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
-      verify(
-          () => mockRum.stopResourceLoading(key, 200, RumResourceType.native));
+      verify(() => mockRum.stopResource(key, 200, RumResourceType.native));
     });
 
     for (var tracingType in TracingHeaderType.values) {
@@ -153,7 +173,7 @@ void main() {
 
           await stub.sayHello(HelloRequest(name: 'test'));
 
-          final captures = verify(() => mockRum.startResourceLoading(
+          final captures = verify(() => mockRum.startResource(
               captureAny(),
               RumHttpMethod.get,
               'http://localhost:$port/helloworld.Greeter/SayHello',
@@ -161,7 +181,8 @@ void main() {
           final attributes = captures[1] as Map<String, Object?>;
           expect(attributes['_dd.trace_id'], isNotNull);
           expect(
-              BigInt.tryParse(attributes['_dd.trace_id'] as String), isNotNull);
+              BigInt.tryParse(attributes['_dd.trace_id'] as String, radix: 16),
+              isNotNull);
           expect(attributes['_dd.span_id'], isNotNull);
           expect(
               BigInt.tryParse(attributes['_dd.span_id'] as String), isNotNull);
@@ -184,7 +205,7 @@ void main() {
 
           await stub.sayHello(HelloRequest(name: 'test'));
 
-          final captures = verify(() => mockRum.startResourceLoading(
+          final captures = verify(() => mockRum.startResource(
               captureAny(),
               RumHttpMethod.get,
               'http://localhost:$port/helloworld.Greeter/SayHello',
@@ -247,7 +268,7 @@ void main() {
 
       await stub.sayHello(HelloRequest(name: 'test'));
 
-      final captures = verify(() => mockRum.startResourceLoading(
+      final captures = verify(() => mockRum.startResource(
           captureAny(),
           RumHttpMethod.get,
           'http://localhost:$port/helloworld.Greeter/SayHello',
@@ -274,7 +295,7 @@ void main() {
     mockRum = RumMock();
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-    when(() => mockRum.tracingSamplingRate).thenReturn(12);
+    when(() => mockRum.traceSampleRate).thenReturn(12);
     when(() => mockDatadog.headerTypesForHost(any()))
         .thenReturn({TracingHeaderType.datadog});
 
@@ -288,7 +309,7 @@ void main() {
       // this is fine, we can't actually connect to a secure channel
     }
 
-    final captures = verify(() => mockRum.startResourceLoading(
+    final captures = verify(() => mockRum.startResource(
         captureAny(),
         RumHttpMethod.get,
         'https://localhost:$port/helloworld.Greeter/SayHello',
@@ -298,8 +319,8 @@ void main() {
 
     expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
-    verify(() =>
-        mockRum.stopResourceLoadingWithErrorInfo(key, any(), 'GrpcError', {}));
+    verify(
+        () => mockRum.stopResourceWithErrorInfo(key, any(), 'GrpcError', {}));
 
     await channel.shutdown();
     await server.shutdown();
@@ -321,7 +342,7 @@ void main() {
     mockRum = RumMock();
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-    when(() => mockRum.tracingSamplingRate).thenReturn(12);
+    when(() => mockRum.traceSampleRate).thenReturn(12);
     when(() => mockDatadog.headerTypesForHost(any()))
         .thenReturn({TracingHeaderType.datadog});
 
@@ -331,7 +352,7 @@ void main() {
 
     await stub.sayHello(HelloRequest(name: 'test'));
 
-    final captures = verify(() => mockRum.startResourceLoading(
+    final captures = verify(() => mockRum.startResource(
         captureAny(),
         RumHttpMethod.get,
         'http://127.0.0.1:$port/helloworld.Greeter/SayHello',
@@ -341,7 +362,7 @@ void main() {
 
     expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
-    verify(() => mockRum.stopResourceLoading(key, 200, RumResourceType.native));
+    verify(() => mockRum.stopResource(key, 200, RumResourceType.native));
 
     await channel.shutdown();
     await server.shutdown();
@@ -363,7 +384,7 @@ void main() {
     mockRum = RumMock();
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-    when(() => mockRum.tracingSamplingRate).thenReturn(12);
+    when(() => mockRum.traceSampleRate).thenReturn(12);
     when(() => mockDatadog.headerTypesForHost(any()))
         .thenReturn({TracingHeaderType.datadog});
 
@@ -377,7 +398,7 @@ void main() {
       // This is okay, we can't actually connect securely
     }
 
-    final captures = verify(() => mockRum.startResourceLoading(
+    final captures = verify(() => mockRum.startResource(
         captureAny(),
         RumHttpMethod.get,
         'https://127.0.0.1:$port/helloworld.Greeter/SayHello',
@@ -387,8 +408,8 @@ void main() {
 
     expect(attributes['grpc.method'], '/helloworld.Greeter/SayHello');
 
-    verify(() =>
-        mockRum.stopResourceLoadingWithErrorInfo(key, any(), 'GrpcError', {}));
+    verify(
+        () => mockRum.stopResourceWithErrorInfo(key, any(), 'GrpcError', {}));
 
     await channel.shutdown();
     await server.shutdown();

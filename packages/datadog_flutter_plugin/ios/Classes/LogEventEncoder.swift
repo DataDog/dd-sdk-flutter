@@ -3,8 +3,8 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import Foundation
-import Datadog
 import DictionaryCoder
+import DatadogLogs
 
 // Because iOS and Android differ so much in the structure of this event,
 // we have to fixup / unfixup the positions of several members
@@ -25,6 +25,7 @@ func logEventToFlutterDictionary(event: LogEvent) -> [String: Any]? {
     nest(property: "error.kind", inDictionary: &encoded)
     nest(property: "error.message", inDictionary: &encoded)
     nest(property: "error.stack", inDictionary: &encoded)
+    nest(property: "error.fingerprint", inDictionary: &encoded)
 
     // Switch "date" to a string (normally an int)
     encoded["date"] = event.date.description

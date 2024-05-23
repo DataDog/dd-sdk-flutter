@@ -14,6 +14,7 @@ class LogDecoder {
   String get message => log['message'] as String;
   String get serviceName => log['service'] as String;
   String get tags => log['ddtags'] as String;
+  List<String> get tagValues => (log['ddtags'] as String).split(',');
   String get applicationVersion => log['version'] as String;
   String get loggerName => getNestedProperty('logger.name', log);
   String get loggerVersion => getNestedProperty('logger.version', log);
@@ -21,4 +22,12 @@ class LogDecoder {
   String get errorKind => getNestedProperty('error.kind', log);
   String get errorMessage => getNestedProperty('error.message', log);
   String get errorStack => getNestedProperty('error.stack', log);
+  String get errorSourceType => getNestedProperty('error.source_type', log);
+  String? get errorFingerprint {
+    if (!kManualIsWeb) {
+      return getNestedProperty('error.fingerprint', log);
+    } else {
+      return log['error.fingerprint'] as String?;
+    }
+  }
 }

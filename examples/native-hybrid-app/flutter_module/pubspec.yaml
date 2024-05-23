@@ -3,7 +3,7 @@ version: 1.0.0+1
 publish_to: none
 
 environment:
-  sdk: '>=2.18.2 <3.0.0'
+  sdk: '>=2.18.2 <4.0.0'
 
 dependencies:
   flutter:
@@ -17,7 +17,7 @@ dependencies:
     path: ../../../packages/datadog_flutter_plugin
   datadog_tracking_http_client:
     path: ../../../packages/datadog_tracking_http_client
-  http: ^0.13.5
+  http: ">=0.13.4 <2.0.0"
 
 dependency_overrides:
   datadog_flutter_plugin:

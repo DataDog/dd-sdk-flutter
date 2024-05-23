@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:datadog_common_test/uri_matchers.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_tracking_http_client/src/tracking_http.dart';
@@ -12,13 +13,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 
-import 'test_utils.dart';
+import 'test_helpers.dart';
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
 
 class MockDatadogSdkPlatform extends Mock implements DatadogSdkPlatform {}
 
-class MockDdRum extends Mock implements DdRum {}
+class MockDdRum extends Mock implements DatadogRum {}
 
 class MockClient extends Mock implements http.Client {}
 
@@ -66,45 +67,6 @@ void main() {
         .thenAnswer((_) => Future.value(mockResponse));
   });
 
-  void verifyHeaders(Map<String, String> headers, TracingHeaderType type) {
-    BigInt? traceInt;
-    BigInt? spanInt;
-
-    switch (type) {
-      case TracingHeaderType.datadog:
-        expect(headers['x-datadog-sampling-priority'], '1');
-        traceInt = BigInt.tryParse(headers['x-datadog-trace-id']!);
-        spanInt = BigInt.tryParse(headers['x-datadog-parent-id']!);
-        break;
-      case TracingHeaderType.b3:
-        var singleHeader = headers['b3']!;
-        var headerParts = singleHeader.split('-');
-        traceInt = BigInt.tryParse(headerParts[0], radix: 16);
-        spanInt = BigInt.tryParse(headerParts[1], radix: 16);
-        expect(headerParts[2], '1');
-        break;
-      case TracingHeaderType.b3multi:
-        expect(headers['X-B3-Sampled'], '1');
-        traceInt = BigInt.tryParse(headers['X-B3-TraceId']!, radix: 16);
-        spanInt = BigInt.tryParse(headers['X-B3-SpanId']!, radix: 16);
-        break;
-      case TracingHeaderType.tracecontext:
-        var header = headers['traceparent']!;
-        var headerParts = header.split('-');
-        expect(headerParts[0], '00');
-        traceInt = BigInt.tryParse(headerParts[1], radix: 16);
-        spanInt = BigInt.tryParse(headerParts[2], radix: 16);
-        expect(headerParts[3], '01');
-        break;
-    }
-
-    expect(traceInt, isNotNull);
-    expect(traceInt?.bitLength, lessThanOrEqualTo(63));
-
-    expect(spanInt, isNotNull);
-    expect(spanInt?.bitLength, lessThanOrEqualTo(63));
-  }
-
   group('when rum is disabled', () {
     setUp(() {
       when(() => mockDatadog.rum).thenReturn(null);
@@ -145,22 +107,22 @@ void main() {
     setUp(() {
       mockRum = MockDdRum();
       when(() => mockRum.shouldSampleTrace()).thenReturn(true);
-      when(() => mockRum.tracingSamplingRate).thenReturn(50.0);
+      when(() => mockRum.traceSampleRate).thenReturn(50.0);
 
       when(() => mockDatadog.rum).thenReturn(mockRum);
     });
 
-    test('calls startResourceLoading on initial request', () async {
+    test('calls startResource on initial request', () async {
       final client =
           DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
       final testUri = Uri.parse('https://test_url/test');
       final _ = client.get(testUri, headers: {'x-datadog-header': 'header'});
 
-      verify(() => mockRum.startResourceLoading(
+      verify(() => mockRum.startResource(
           any(), RumHttpMethod.get, testUri.toString(), any()));
     });
 
-    test('calls stopResourceLoading on completion', () async {
+    test('calls stopResource on completion', () async {
       final client =
           DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
       final testUri = Uri.parse('https://test_url/test');
@@ -169,16 +131,15 @@ void main() {
 
       await future;
 
-      final key = verify(() => mockRum.startResourceLoading(
+      final key = verify(() => mockRum.startResource(
               captureAny(), RumHttpMethod.get, testUri.toString(), any()))
           .captured[0] as String;
 
-      verify(() => mockRum.stopResourceLoading(
-          key, 200, RumResourceType.native, any(), any()));
+      verify(() =>
+          mockRum.stopResource(key, 200, RumResourceType.native, any(), any()));
     });
 
-    test('calls stopResourceLoading with size and deduced content type',
-        () async {
+    test('calls stopResource with size and deduced content type', () async {
       final client =
           DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
       final testUri = Uri.parse('https://test_url/test');
@@ -192,15 +153,15 @@ void main() {
 
       await future;
 
-      final key = verify(() => mockRum.startResourceLoading(
+      final key = verify(() => mockRum.startResource(
               captureAny(), RumHttpMethod.get, testUri.toString(), any()))
           .captured[0] as String;
 
-      verify(() => mockRum.stopResourceLoading(
-          key, 200, RumResourceType.image, 88888, any()));
+      verify(() =>
+          mockRum.stopResource(key, 200, RumResourceType.image, 88888, any()));
     });
 
-    test('calls stopResourceLoading with provided attributes', () async {
+    test('calls stopResource with provided attributes', () async {
       http.BaseRequest? providedRequest;
       http.StreamedResponse? providedResponse;
       final attributes = {'attribute_a': 'my_value', 'attribute_b': 32.1};
@@ -222,12 +183,11 @@ void main() {
 
       expect(providedRequest, isNotNull);
       expect(providedResponse, isNotNull);
-      verify(() =>
-          mockRum.stopResourceLoading(any(), any(), any(), any(), attributes));
+      verify(
+          () => mockRum.stopResource(any(), any(), any(), any(), attributes));
     });
 
-    test(
-        'send throwingError rethrows and calls stopResourceLoadingWithErrorInfo',
+    test('send throwingError rethrows and calls stopResourceWithErrorInfo',
         () async {
       final client =
           DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
@@ -243,12 +203,12 @@ void main() {
         thrownError = e;
       }
 
-      final key = verify(() => mockRum.startResourceLoading(
+      final key = verify(() => mockRum.startResource(
               captureAny(), RumHttpMethod.get, testUri.toString(), any()))
           .captured[0] as String;
 
       expect(thrownError, thrownError);
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
           key, thrownError.toString(), thrownError.runtimeType.toString()));
     });
 
@@ -288,7 +248,7 @@ void main() {
       expect(providedResponse, isNull);
       expect(providedError, thrownError);
 
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
           any(),
           thrownError.toString(),
           thrownError.runtimeType.toString(),
@@ -309,8 +269,7 @@ void main() {
       expect(response.bodyBytes.toList(), [1, 2, 3, 4, 5, 122, 121, 120]);
     });
 
-    test('error in stream and calls stopResourceLoadingWithErrorInfo',
-        () async {
+    test('error in stream and calls stopResourceWithErrorInfo', () async {
       final client =
           DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
       final testUri = Uri.parse('https://test_url/test');
@@ -333,11 +292,11 @@ void main() {
       }
 
       expect(errorToThrow, thrownError);
-      final key = verify(() => mockRum.startResourceLoading(
+      final key = verify(() => mockRum.startResource(
               captureAny(), RumHttpMethod.get, testUri.toString(), any()))
           .captured[0] as String;
 
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
           key, errorToThrow.toString(), errorToThrow.runtimeType.toString()));
     });
 
@@ -384,11 +343,51 @@ void main() {
       expect(providedResponse, isNotNull);
       expect(providedError, thrownError);
 
-      verify(() => mockRum.stopResourceLoadingWithErrorInfo(
+      verify(() => mockRum.stopResourceWithErrorInfo(
           any(),
           errorToThrow.toString(),
           errorToThrow.runtimeType.toString(),
           attributes));
+    });
+
+    test('ignorUrlPatterns does not perform tracking on matching url',
+        () async {
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+        ignoreUrlPatterns: [
+          RegExp('ignore_me.com/a/b'),
+        ],
+      );
+      final testUri = Uri.parse('https://ignore_me.com/a/b/c');
+
+      final future =
+          client.get(testUri, headers: {'x-datadog-header': 'header'});
+
+      await future;
+
+      verifyNoMoreInteractions(mockRum);
+    });
+
+    test('ignoreUrlPatterns performs tracking when urls do not match',
+        () async {
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+        ignoreUrlPatterns: [
+          RegExp('test_url/my_endpoint'),
+        ],
+      );
+      final testUri = Uri.parse('https://test_url/test');
+
+      final future =
+          client.get(testUri, headers: {'x-datadog-header': 'header'});
+
+      await future;
+
+      verify(
+          () => mockRum.startResource(any(), RumHttpMethod.get, any(), any()));
+      verify(() => mockRum.stopResource(any(), any(), any(), any(), any()));
     });
 
     for (final headerType in TracingHeaderType.values) {
@@ -416,7 +415,7 @@ void main() {
           verifyHeaders(headers, headerType);
         });
 
-        test('adds tracing attributes to startResourceLoading', () async {
+        test('adds tracing attributes to startResource', () async {
           final client = DatadogClient(
             datadogSdk: mockDatadog,
             innerClient: mockClient,
@@ -425,15 +424,16 @@ void main() {
           final _ =
               client.get(testUri, headers: {'x-datadog-header': 'header'});
 
-          final callAttributes = verify(() => mockRum.startResourceLoading(
+          final callAttributes = verify(() => mockRum.startResource(
                   any(), RumHttpMethod.get, testUri.toString(), captureAny()))
               .captured[0] as Map<String, Object?>;
 
           final traceValue = callAttributes['_dd.trace_id'] as String?;
-          final traceInt =
-              traceValue != null ? BigInt.tryParse(traceValue) : null;
+          final traceInt = traceValue != null
+              ? BigInt.tryParse(traceValue, radix: 16)
+              : null;
           expect(traceInt, isNotNull);
-          expect(traceInt?.bitLength, lessThanOrEqualTo(63));
+          expect(traceInt?.bitLength, lessThanOrEqualTo(128));
 
           final spanValue = callAttributes['_dd.span_id'] as String?;
           final spanInt = spanValue != null ? BigInt.tryParse(spanValue) : null;
@@ -466,7 +466,7 @@ void main() {
           expect(headers['X-B3-ParentSpanId'], isNull);
           expect(headers['X-B3-Sampled'], isNull);
 
-          final callAttributes = verify(() => mockRum.startResourceLoading(
+          final callAttributes = verify(() => mockRum.startResource(
                   any(), RumHttpMethod.get, testUri.toString(), captureAny()))
               .captured[0] as Map<String, Object?>;
           expect(callAttributes['_dd.trace_id'], isNull);
@@ -494,15 +494,15 @@ void main() {
       await client.get(testUriB);
 
       void verifyCall(Uri uri) {
-        final callAttributes = verify(() => mockRum.startResourceLoading(
+        final callAttributes = verify(() => mockRum.startResource(
                 any(), RumHttpMethod.get, uri.toString(), captureAny()))
             .captured[0] as Map<String, Object?>;
 
         final traceValue = callAttributes['_dd.trace_id'] as String?;
         final traceInt =
-            traceValue != null ? BigInt.tryParse(traceValue) : null;
+            traceValue != null ? BigInt.tryParse(traceValue, radix: 16) : null;
         expect(traceInt, isNotNull);
-        expect(traceInt?.bitLength, lessThanOrEqualTo(63));
+        expect(traceInt?.bitLength, lessThanOrEqualTo(128));
 
         final spanValue = callAttributes['_dd.span_id'] as String?;
         final spanInt = spanValue != null ? BigInt.tryParse(spanValue) : null;
@@ -522,6 +522,60 @@ void main() {
       final capturedB = captured[1] as http.BaseRequest;
       expect(capturedB.url, testUriB);
       verifyHeaders(capturedB.headers, TracingHeaderType.b3);
+    });
+
+    test('different tracing headers are same trace id', () async {
+      // Given
+      when(() => mockDatadog
+              .headerTypesForHost(any(that: HasHost(equals('test_url_a')))))
+          .thenReturn(
+              {TracingHeaderType.datadog, TracingHeaderType.tracecontext});
+
+      // When
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+      );
+      final testUri = Uri.parse('https://test_url_a/test');
+      await client.get(testUri);
+
+      // Then
+      final callAttributes = verify(() => mockRum.startResource(
+              any(), RumHttpMethod.get, testUri.toString(), captureAny()))
+          .captured[0] as Map<String, Object?>;
+
+      final traceValue = callAttributes['_dd.trace_id'] as String?;
+      final traceInt =
+          traceValue != null ? BigInt.tryParse(traceValue, radix: 16) : null;
+      expect(traceInt, isNotNull);
+      expect(traceInt?.bitLength, lessThanOrEqualTo(128));
+
+      final spanValue = callAttributes['_dd.span_id'] as String?;
+      final spanInt = spanValue != null ? BigInt.tryParse(spanValue) : null;
+      expect(spanInt, isNotNull);
+      expect(spanInt?.bitLength, lessThanOrEqualTo(63));
+
+      final captured = verify(() => mockClient.send(captureAny())).captured[0]
+          as http.BaseRequest;
+
+      var datadogTraceInt =
+          BigInt.tryParse(captured.headers['x-datadog-trace-id']!);
+      final parts = captured.headers['x-datadog-tags']?.split('=');
+      expect(parts?[0], '_dd.p.tid');
+      BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
+      expect(highTraceInt, isNotNull);
+      datadogTraceInt = (highTraceInt! << 64) + datadogTraceInt!;
+      expect(traceInt, datadogTraceInt);
+
+      final datadogSpanInt =
+          BigInt.tryParse(captured.headers['x-datadog-parent-id']!);
+      expect(spanInt, datadogSpanInt);
+
+      final tracecontextParts = captured.headers['traceparent']!.split('-');
+      final contextTraceInt = BigInt.tryParse(tracecontextParts[1], radix: 16);
+      expect(traceInt, contextTraceInt);
+      final contextSpanInt = BigInt.tryParse(tracecontextParts[2], radix: 16);
+      expect(spanInt, contextSpanInt);
     });
   });
 }

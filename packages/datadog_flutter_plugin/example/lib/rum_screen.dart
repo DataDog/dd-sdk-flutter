@@ -13,103 +13,127 @@ class RumScreen extends StatefulWidget {
 }
 
 class _RumScreenState extends State<RumScreen> {
-  var performingOperation = false;
-  var inView = false;
+  var viewStarted = false;
+  var resourceStarted = false;
+  final TextEditingController _viewNameController =
+      TextEditingController(text: 'RUM Test View');
+  String? _currentSessionId;
 
-  var viewKey = '';
-  var viewName = '';
-  var actionName = '';
-  var resourceName = '';
-  var sendResourceError = false;
-  var errorMessage = '';
+  @override
+  void initState() {
+    _getCurrentSessionId();
+
+    super.initState();
+  }
 
   @override
   void dispose() {
+    if (viewStarted) {
+      _stopView();
+    }
+
     super.dispose();
+  }
 
-    if (inView) {
-      DatadogSdk.instance.rum
-          ?.stopView(viewKey.isEmpty ? 'FooRumScreen' : viewKey);
-      DatadogSdk.instance.rum
-          ?.addUserAction(RumUserActionType.custom, 'Testing Action');
+  void _getCurrentSessionId() async {
+    _currentSessionId = await DatadogSdk.instance.rum?.getCurrentSessionId();
+
+    if (mounted) {
+      setState(() {});
     }
   }
 
-  Future<void> _sendViewEvent() async {
-    setState(() {
-      performingOperation = true;
-    });
-
-    var actualKey = viewKey.isEmpty ? 'FooRumScreen' : viewKey;
-    var actualViewName = viewName.isEmpty ? null : viewName;
+  void _startView() async {
     var rum = DatadogSdk.instance.rum;
     if (rum != null) {
-      rum.startView(actualKey, actualViewName);
-      await Future.delayed(const Duration(seconds: 2));
-      rum.stopView(actualKey);
+      final viewName = _viewNameController.value.text;
+      rum.startView(viewName);
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('View $viewName Started'),
+      ));
+
+      setState(() {
+        viewStarted = true;
+      });
+
+      // Because web may not start a session until after a view is started,
+      // refresh the current session id after starting a view.
+      _getCurrentSessionId();
     }
-
-    setState(() {
-      performingOperation = false;
-    });
-  }
-
-  Future<void> _startView() async {
-    var actualKey = viewKey.isEmpty ? 'FooRumScreen' : viewKey;
-    var actualViewName = viewName.isEmpty ? null : viewName;
-    var rum = DatadogSdk.instance.rum;
-    if (rum != null) {
-      rum.startView(actualKey, actualViewName);
-    }
-
-    setState(() {
-      inView = true;
-    });
   }
 
   _stopView() {
-    var actualKey = viewKey.isEmpty ? 'FooRumScreen' : viewKey;
     var rum = DatadogSdk.instance.rum;
     if (rum != null) {
-      rum.stopView(actualKey);
-    }
+      final viewName = _viewNameController.value.text;
+      rum.stopView(viewName);
 
-    setState(() {
-      inView = false;
-    });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('View $viewName Stopped'),
+      ));
+
+      setState(() {
+        viewStarted = false;
+      });
+    }
   }
 
   void _sendAction() {
-    DatadogSdk.instance.rum
-        ?.addUserAction(RumUserActionType.custom, actionName);
+    const name = 'Test Action';
+    DatadogSdk.instance.rum?.addAction(RumActionType.custom, name);
+
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Sent Action $name'),
+    ));
   }
 
-  void _sendResource() async {
-    setState(() {
-      performingOperation = true;
-    });
+  static const resourceKey = 'ResourceKey';
+  static const resource = '/testing/url';
 
-    var resourceKey = 'ResourceKey';
-    var resource = resourceName.isEmpty ? '/testing/url' : resourceName;
+  void _startResource() {
+    setState(() {
+      resourceStarted = true;
+    });
 
     var rum = DatadogSdk.instance.rum;
     if (rum != null) {
-      rum.startResourceLoading(resourceKey, RumHttpMethod.get, resource);
-      await Future.delayed(const Duration(seconds: 2));
-      if (sendResourceError) {
-        rum.stopResourceLoadingWithErrorInfo(
-          resourceKey,
-          errorMessage,
-          'networkError',
-        );
-      } else {
-        rum.stopResourceLoading(resourceKey, 200, RumResourceType.native);
-      }
+      rum.startResource(resourceKey, RumHttpMethod.get, resource);
     }
 
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Resource $resource Started'),
+    ));
+  }
+
+  void _stopResource() {
+    var rum = DatadogSdk.instance.rum;
+    if (rum != null) {
+      rum.stopResource(resourceKey, 200, RumResourceType.image);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Resource $resource Stopped'),
+    ));
+
     setState(() {
-      performingOperation = false;
+      resourceStarted = false;
     });
+  }
+
+  void _sendError() {
+    try {
+      throw Exception('We threw an exception!');
+    } catch (e, st) {
+      DatadogSdk.instance.rum?.addError(
+        e,
+        RumErrorSource.source,
+        stackTrace: st,
+      );
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Sent Exception $e')));
+    }
   }
 
   void _triggerLongTask() {
@@ -117,94 +141,91 @@ class _RumScreenState extends State<RumScreen> {
     while (DateTime.now().isBefore(done)) {
       // noop
     }
+
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Triggered Long Task')));
   }
 
   @override
   Widget build(BuildContext context) {
-    var theme = Theme.of(context);
-
-    bool canStartView = !performingOperation && !inView;
-    bool canStopView = !performingOperation && inView;
-
-    return RumUserActionDetector(
-      rum: DatadogSdk.instance.rum,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('RUM'),
-        ),
-        body: SingleChildScrollView(
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'View Info',
-                  style: theme.textTheme.headlineSmall,
-                ),
-                _defaultTextField(
-                  label: 'Key',
-                  enabled: canStartView,
-                  onChanged: (value) => viewKey = value,
-                ),
-                _defaultTextField(
-                  label: 'Name',
-                  enabled: canStartView,
-                  onChanged: (value) => viewName = value,
-                ),
-                Row(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('RUM'),
+      ),
+      body: SafeArea(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            SingleChildScrollView(
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ElevatedButton(
-                      onPressed: canStartView ? _sendViewEvent : null,
-                      child: const Text('Send View Event'),
+                    _defaultTextField(
+                      label: 'View Name',
+                      controller: _viewNameController,
+                      enabled: !viewStarted,
                     ),
-                    const SizedBox(width: 6),
                     ElevatedButton(
-                      onPressed: canStartView ? _startView : null,
+                      onPressed: viewStarted ? null : _startView,
                       child: const Text('Start View'),
                     ),
-                    const SizedBox(width: 6),
+                    Row(
+                      //mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: (viewStarted && !resourceStarted)
+                                ? _startResource
+                                : null,
+                            child: const Text('Start Resource'),
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 6,
+                        ),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: (viewStarted && resourceStarted)
+                                ? _stopResource
+                                : null,
+                            child: const Text('Stop Resource'),
+                          ),
+                        ),
+                      ],
+                    ),
                     ElevatedButton(
-                      onPressed: canStopView ? _stopView : null,
+                      onPressed: viewStarted ? _sendAction : null,
+                      child: const Text('Send Action'),
+                    ),
+                    ElevatedButton(
+                      onPressed: viewStarted ? _sendError : null,
+                      child: const Text('Send Error'),
+                    ),
+                    ElevatedButton(
+                      onPressed: viewStarted ? _triggerLongTask : null,
+                      child: const Text('Trigger Long Task'),
+                    ),
+                    ElevatedButton(
+                      onPressed: viewStarted ? _stopView : null,
                       child: const Text('Stop View'),
                     ),
                   ],
                 ),
-                _viewEventField(
-                  label: 'Action',
-                  enabled: !performingOperation,
-                  onChanged: (value) => actionName = value,
-                  onSend: _sendAction,
-                ),
-                _resourceEventField(),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Test Buttons',
-                      style: theme.textTheme.headlineSmall,
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.plumbing),
-                        ),
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.add),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => _triggerLongTask(),
-                          child: const Text('Trigger Long Task'),
-                        ),
-                      ],
-                    ),
-                  ],
-                )
-              ],
+              ),
             ),
-          ),
+            Positioned(
+                bottom: 0,
+                child: Container(
+                  width: MediaQuery.of(context).size.width,
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Current Session Id:\n$_currentSessionId',
+                    textAlign: TextAlign.center,
+                  ),
+                )),
+          ],
         ),
       ),
     );
@@ -212,7 +233,8 @@ class _RumScreenState extends State<RumScreen> {
 
   Widget _defaultTextField({
     required String label,
-    required ValueChanged<String> onChanged,
+    ValueChanged<String>? onChanged,
+    TextEditingController? controller,
     bool enabled = true,
   }) {
     return Container(
@@ -220,97 +242,12 @@ class _RumScreenState extends State<RumScreen> {
       child: TextField(
         enabled: enabled,
         onChanged: onChanged,
+        controller: controller,
         decoration: InputDecoration(
           border: const OutlineInputBorder(),
           labelText: label,
         ),
       ),
-    );
-  }
-
-  Widget _viewEventField({
-    required String label,
-    required ValueChanged<String> onChanged,
-    required VoidCallback onSend,
-    bool enabled = true,
-  }) {
-    var theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$label Event',
-          style: theme.textTheme.headlineSmall,
-        ),
-        Row(children: [
-          Expanded(
-            child: _defaultTextField(
-              label: label,
-              enabled: enabled,
-              onChanged: onChanged,
-            ),
-          ),
-          ElevatedButton(
-            onPressed: enabled ? onSend : null,
-            child: const Text('Send'),
-          )
-        ])
-      ],
-    );
-  }
-
-  Widget _resourceEventField() {
-    var theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Resource Event',
-          style: theme.textTheme.headlineSmall,
-        ),
-        Row(
-          children: [
-            Expanded(
-              child: _defaultTextField(
-                label: 'Resource',
-                onChanged: (text) => resourceName = text,
-                enabled: !performingOperation,
-              ),
-            ),
-            ElevatedButton(
-              onPressed: performingOperation ? null : _sendResource,
-              child: const Text('Send'),
-            )
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Checkbox(
-                    value: sendResourceError,
-                    onChanged: performingOperation
-                        ? null
-                        : (value) {
-                            setState(() {
-                              sendResourceError = value == true;
-                            });
-                          },
-                  ),
-                  const Text('As Error'),
-                ],
-              ),
-              _defaultTextField(
-                label: 'Error Message',
-                onChanged: (value) => errorMessage = value,
-                enabled: sendResourceError && !performingOperation,
-              ),
-            ],
-          ),
-        )
-      ],
     );
   }
 }

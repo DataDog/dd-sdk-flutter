@@ -2,7 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
-import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -101,62 +100,27 @@ class CrashReportingScreen extends StatefulWidget {
 
 class _CrashReportingScreenState extends State<CrashReportingScreen> {
   final nativeCrashPlugin = NativeCrashPlugin();
-  var _viewName = '';
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Crash Reporting')),
       body: Container(
         padding: const EdgeInsets.all(8),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Crash after starting RUM Session',
-                style: theme.textTheme.titleLarge),
-            Container(
-              padding: const EdgeInsets.all(4),
-              child: TextField(
-                onChanged: (value) => _viewName = value,
-                decoration: const InputDecoration(
-                    border: OutlineInputBorder(), labelText: 'RUM view name'),
-              ),
+            ElevatedButton(
+              onPressed: () => _crashNonAsync(),
+              child: const Text('Non async crash'),
             ),
-            Wrap(
-              children: [
-                Container(
-                  padding: const EdgeInsets.only(left: 5),
-                  child: ElevatedButton(
-                    onPressed: () => _crashNonAsync(),
-                    child: const Text('Non async crash'),
-                  ),
+            for (final t in CrashType.values)
+              Container(
+                padding: const EdgeInsets.only(left: 5),
+                child: ElevatedButton(
+                  onPressed: () => _crashAsync(t),
+                  child: Text(t.description),
                 ),
-                for (final t in CrashType.values)
-                  Container(
-                    padding: const EdgeInsets.only(left: 5),
-                    child: ElevatedButton(
-                      onPressed: () => _crashAfterRumSession(t),
-                      child: Text(t.description),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text('Crash before starting RUM Session',
-                style: theme.textTheme.titleLarge),
-            Wrap(
-              children: [
-                for (final t in CrashType.values)
-                  Container(
-                    padding: const EdgeInsets.only(left: 5),
-                    child: ElevatedButton(
-                      onPressed: () => _crashBeforeRumSession(t),
-                      child: Text(t.description),
-                    ),
-                  ),
-              ],
-            )
+              ),
           ],
         ),
       ),
@@ -164,25 +128,13 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
   }
 
   void _crashNonAsync() {
-    final viewName = _viewName.isEmpty ? 'Rum Crash View' : _viewName;
-    DatadogSdk.instance.rum?.startView(viewName, viewName);
-
     _flutterException();
   }
 
-  Future<void> _crashAfterRumSession(CrashType crashType) async {
-    final viewName = _viewName.isEmpty ? 'Rum Crash View' : _viewName;
-    DatadogSdk.instance.rum?.startView(viewName, viewName);
+  Future<void> _crashAsync(CrashType crashType) async {
     await Future.delayed(const Duration(milliseconds: 100));
 
     _crash(crashType);
-  }
-
-  Future<void> _crashBeforeRumSession(CrashType crashType) async {
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    // ignore: avoid_print
-    _crash(crashType).onError((error, stackTrace) => print(error));
   }
 
   void _flutterException() {
@@ -223,6 +175,7 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
       case CrashType.ffiCallbackException:
         if (!kIsWeb) {
           var value = nativeCrashPlugin.ffiCallbackTest(32, nativeCallback);
+          // ignore: use_build_context_synchronously
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(

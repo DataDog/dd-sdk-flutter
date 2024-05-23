@@ -5,6 +5,8 @@ First of all, thanks for contributing!
 This document provides some basic guidelines for contributing to this
 repository. To propose improvements, feel free to submit a PR or open an Issue.
 
+**Note:** Datadog requires that all commits within this repository must be signed, including those within external contribution PRs. Please ensure you have followed GitHub's [Signing Commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits) guide before proposing a contribution. PRs lacking signed commits will not be processed and may be rejected.
+
 ## Found a bug?
 For any urgent matters (such as outages) or issues concerning the Datadog
 service or UI, contact our support team via https://docs.datadoghq.com/help/ for
@@ -20,18 +22,34 @@ Make sure you have installed the [Flutter
 SDK](https://docs.flutter.dev/get-started/install), and that `flutter doctor`
 passes without issues.
 
-Next, run the `prepare.sh` script in the root of the repo. This will run
-`flutter pub get` on all of the packages in this repo, generate necessary files
-with `flutter pub run build_runner build`, and generate `.env` files for the
-various apps in order to use them with Datadog. 
+The Datadog packages use [Melos](https://github.com/invertase/melos) to manage
+the complexities of the monorepo. To start with the repo, run the following command:
 
-Running `./prepare.sh` creates `.env` files in the various example application,
+```bash
+dart pub global activate melos
+```
+
+Next, at the root of the repository, bootstrap melos:
+
+```bash
+melos bootstrap
+```
+
+Next, we need to generate some necessary files with `flutter pub run build_runner build`, 
+and generate `.env` files for the various apps in order to use them with
+Datadog. We use Melos for this as well. Run:
+
+```bash
+melos prepare
+```
+
+Running `melos prepare` creates `.env` files in the various example application,
 which should be modified with your Client Id and Application Id from the Datadog
-RUM setup. It can alternately pull this information from environment the
+RUM setup. Alternately, it can pull this information from the environment
 variables `DD_CLIENT_TOKEN` and `DD_APPLICATION_ID` for most test apps, and
 `DD_E2E_CLIENT_TOKEN` and `DD_E2E_APPLICATION_ID` for the e2e test application.
 
-If you need to switch environments frequently, you can use `./generate_env.sh` to
+If you need to switch environments frequently, you can use `melos generate_env` to
 only generate the environment files, without re-running other prepare steps.
 
 ## Code Style

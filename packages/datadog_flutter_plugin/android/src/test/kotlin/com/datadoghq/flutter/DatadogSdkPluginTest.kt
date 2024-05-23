@@ -14,14 +14,13 @@ import assertk.assertThat
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
-import assertk.assertions.isTrue
 import com.datadog.android.Datadog
-import com.datadog.android.core.configuration.Configuration
-import com.datadog.android.core.configuration.Credentials
+import com.datadog.android.DatadogSite
+import com.datadog.android.api.context.UserInfo
+import com.datadog.android.core.configuration.BatchProcessingLevel
+import com.datadog.android.core.configuration.BatchSize
+import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.privacy.TrackingConsent
-import com.datadog.android.rum.GlobalRum
-import com.datadog.android.rum.RumMonitor
-import com.datadog.android.v2.api.context.UserInfo
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
@@ -31,11 +30,9 @@ import io.flutter.plugin.common.MethodChannel
 import io.mockk.mockkStatic
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.kotlin.any
-import org.mockito.kotlin.argThat
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
@@ -74,7 +71,7 @@ class DatadogSdkPluginTest {
 
     @AfterEach
     fun afterEach() {
-        plugin.stop()
+        Datadog.stopInstance()
     }
 
     val contracts = listOf(
@@ -96,6 +93,7 @@ class DatadogSdkPluginTest {
         Contract("telemetryError", mapOf(
             "message" to ContractParameter.Type(SupportedContractType.STRING)
         )),
+        Contract("clearAllData", mapOf()),
     )
 
     @Test
@@ -104,73 +102,166 @@ class DatadogSdkPluginTest {
         @StringForgery environment: String,
         forge: Forge
     ) {
-        // GIVEN
-        val configuration = DatadogFlutterConfiguration(
-            clientToken = clientToken,
-            env = environment,
-            nativeCrashReportEnabled = false,
-            trackingConsent = TrackingConsent.GRANTED
+        val config = mapOf(
+            "clientToken" to clientToken,
+            "env" to environment
         )
-        plugin.initialize(configuration)
+
+        plugin.initialize(config, TrackingConsent.GRANTED)
 
         testContracts(contracts, forge, plugin)
     }
 
     @Test
-    fun `M not initialize features W no nested configuration`(
+    fun `M parse all batch sizes W parseBatchSize`() {
+        // WHEN
+        val small = parseBatchSize("BatchSize.small")
+        val medium = parseBatchSize("BatchSize.medium")
+        val large = parseBatchSize("BatchSize.large")
+
+        // THEN
+        assertThat(small).isEqualTo(BatchSize.SMALL)
+        assertThat(medium).isEqualTo(BatchSize.MEDIUM)
+        assertThat(large).isEqualTo(BatchSize.LARGE)
+    }
+
+    @Test
+    fun `M parse all batch processing levels W parseBatchProcessingLevel`() {
+        // WHEN
+        val low = parseBatchProcessingLevel("BatchProcessingLevel.low")
+        val medium = parseBatchProcessingLevel("BatchProcessingLevel.medium")
+        val high = parseBatchProcessingLevel("BatchProcessingLevel.high")
+
+        // THEN
+        assertThat(low).isEqualTo(BatchProcessingLevel.LOW)
+        assertThat(medium).isEqualTo(BatchProcessingLevel.MEDIUM)
+        assertThat(high).isEqualTo(BatchProcessingLevel.HIGH)
+    }
+
+    @Test
+    fun `M parse all upload frequency W parseUploadFrequency`() {
+        // WHEN
+        val frequent = parseUploadFrequency("UploadFrequency.frequent")
+        val average = parseUploadFrequency("UploadFrequency.average")
+        val rare = parseUploadFrequency("UploadFrequency.rare")
+
+        // THEN
+        assertThat(frequent).isEqualTo(UploadFrequency.FREQUENT)
+        assertThat(average).isEqualTo(UploadFrequency.AVERAGE)
+        assertThat(rare).isEqualTo(UploadFrequency.RARE)
+    }
+
+    @Test
+    fun `M parse all tracking consent W parseTrackingConsent`() {
+        // WHEN
+        val granted = parseTrackingConsent("TrackingConsent.granted")
+        val notGranted = parseTrackingConsent("TrackingConsent.notGranted")
+        val pending = parseTrackingConsent("TrackingConsent.pending")
+
+        // THEN
+        assertThat(granted).isEqualTo(TrackingConsent.GRANTED)
+        assertThat(notGranted).isEqualTo(TrackingConsent.NOT_GRANTED)
+        assertThat(pending).isEqualTo(TrackingConsent.PENDING)
+    }
+
+    @Test
+    fun `M parse all sites W parseSite`() {
+        // WHEN
+        val us1 = parseSite("DatadogSite.us1")
+        val us3 = parseSite("DatadogSite.us3")
+        val us5 = parseSite("DatadogSite.us5")
+        val eu1 = parseSite("DatadogSite.eu1")
+        val us1Fed = parseSite("DatadogSite.us1Fed")
+        val ap1 = parseSite("DatadogSite.ap1")
+
+        // THEN
+        assertThat(us1).isEqualTo(DatadogSite.US1)
+        assertThat(us3).isEqualTo(DatadogSite.US3)
+        assertThat(us5).isEqualTo(DatadogSite.US5)
+        assertThat(eu1).isEqualTo(DatadogSite.EU1)
+        assertThat(us1Fed).isEqualTo(DatadogSite.US1_FED)
+        assertThat(ap1).isEqualTo(DatadogSite.AP1)
+    }
+
+    @Test
+    fun `M parse all CoreLoggerLevel W parseCoreLoggerLevel`() {
+        // WHEN
+        val debug = parseCoreLoggerLevel("CoreLoggerLevel.debug")
+        val warn = parseCoreLoggerLevel("CoreLoggerLevel.warn")
+        val error = parseCoreLoggerLevel("CoreLoggerLevel.error")
+        val critical = parseCoreLoggerLevel("CoreLoggerLevel.critical")
+        val unknown = parseCoreLoggerLevel("unknown")
+
+        assertThat(debug).isEqualTo(Log.DEBUG)
+        assertThat(warn).isEqualTo(Log.WARN)
+        assertThat(error).isEqualTo(Log.ERROR)
+        assertThat(critical).isEqualTo(Log.ASSERT)
+        assertThat(unknown).isEqualTo(Log.INFO)
+    }
+
+    @Test
+    fun `M decode defaults W fromEncoded`(
         @StringForgery clientToken: String,
         @StringForgery environment: String
     ) {
         // GIVEN
-        val configuration = DatadogFlutterConfiguration(
-            clientToken = clientToken,
-            env = environment,
-            nativeCrashReportEnabled = false,
-            trackingConsent = TrackingConsent.GRANTED
+        val encoded = mapOf(
+            "clientToken" to clientToken,
+            "env" to environment,
+            "nativeCrashReportEnabled" to false,
+            "site" to null,
+            "batchSize" to null,
+            "uploadFrequency" to null,
+            "batchProcessingLevel" to null,
+            "firstPartyHosts" to listOf<String>(),
+            "additionalConfig" to mapOf<String, Any?>()
         )
 
         // WHEN
-        plugin.initialize(configuration)
+        val config = plugin.configurationBuilderFromEncoded(encoded)!!.build()
 
         // THEN
-        assertThat(Datadog.isInitialized()).isTrue()
-
-        // Because we have no way to reset these, we can't test
-        // that they're registered properly.
-        //assertThat(plugin.rumPlugin).isNull()
-        //assertThat(GlobalRum.isRegistered()).isFalse()
+        assertThat(config.getPrivate("clientToken")).isEqualTo(clientToken)
+        assertThat(config.getPrivate("env")).isEqualTo(environment)
     }
 
-
     @Test
-    @Disabled("There's an issue calling Choreographer in RUM vital initialization")
-    fun `M initialize RUM W DatadogFlutterConfiguration { rumConfiguration }`(
+    @Suppress("LongParameterList")
+    fun `M decode all properties W fromEncoded`(
         @StringForgery clientToken: String,
         @StringForgery environment: String,
-        @StringForgery applicationId: String
+        @StringForgery service: String,
+        @StringForgery additionalKey: String,
+        @StringForgery additionalValue: String,
     ) {
         // GIVEN
-        val configuration = DatadogFlutterConfiguration(
-            clientToken = clientToken,
-            env = environment,
-            nativeCrashReportEnabled = false,
-            trackingConsent = TrackingConsent.GRANTED,
-            rumConfiguration = DatadogFlutterConfiguration.RumConfiguration(
-                applicationId = applicationId,
-                sampleRate = 82.3f,
-                detectLongTasks = true,
-                longTaskThreshold = 0.1f,
-                customEndpoint = null
+        val encoded = mapOf(
+            "clientToken" to clientToken,
+            "env" to environment,
+            "nativeCrashReportEnabled" to true,
+            "service" to service,
+            "site" to "DatadogSite.us3",
+            "batchSize" to "BatchSize.small",
+            "uploadFrequency" to "UploadFrequency.frequent",
+            "batchProcessingLevel" to "BatchProcessingLevel.low",
+            "additionalConfig" to mapOf<String, Any?>(
+                additionalKey to additionalValue
             )
         )
 
         // WHEN
-        plugin.initialize(configuration)
+        val config = plugin.configurationBuilderFromEncoded(encoded)!!.build()
 
         // THEN
-        assertThat(plugin.rumPlugin).isNotNull()
-        // NOTE: We have no way of knowing if this was set in a previous test
-        assertThat(GlobalRum.isRegistered()).isTrue()
+        val coreConfig: Any = config.getFieldValue("coreConfig")
+        assertThat(config.getPrivate("crashReportsEnabled")).isEqualTo(true)
+        assertThat(coreConfig.getPrivate("site")).isEqualTo(DatadogSite.US3)
+        assertThat(coreConfig.getPrivate("batchSize")).isEqualTo(BatchSize.SMALL)
+        assertThat(coreConfig.getPrivate("batchProcessingLevel")).isEqualTo(BatchProcessingLevel.LOW)
+        assertThat(config.getPrivate("service")).isEqualTo(service)
+        assertThat(config.getPrivate("additionalConfig")).isEqualTo(mapOf(
+            additionalKey to additionalValue
+        ))
     }
 
     @Test
@@ -183,10 +274,10 @@ class DatadogSdkPluginTest {
         val methodCall = MethodCall(
             "initialize",
             mapOf(
+                "trackingConsent" to "TrackingConsent.granted",
                 "configuration" to mapOf(
                     "clientToken" to clientToken,
                     "env" to environment,
-                    "trackingConsent" to "TrackingConsent.granted",
                     "nativeCrashReportEnabled" to true
                 )
             )
@@ -213,10 +304,10 @@ class DatadogSdkPluginTest {
         val methodCall = MethodCall(
             "initialize",
             mapOf(
+                "trackingConsent" to "TrackingConsent.granted",
                 "configuration" to mapOf(
                     "clientToken" to clientToken,
                     "env" to environment,
-                    "trackingConsent" to "TrackingConsent.granted",
                     "nativeCrashReportEnabled" to true
                 ),
                 "dartVersion" to dartVersion
@@ -245,7 +336,6 @@ class DatadogSdkPluginTest {
             "env" to forge.anAlphabeticalString(),
             "trackingConsent" to "TrackingConsent.granted",
             "nativeCrashReportEnabled" to true,
-            "loggingConfiguration" to null
         )
         val methodCall = MethodCall(
             "initialize",
@@ -260,6 +350,7 @@ class DatadogSdkPluginTest {
         val methodCallB = MethodCall(
             "initialize",
             mapOf(
+                "trackingConsent" to "TrackingConsent.granted",
                 "configuration" to config
             )
         )
@@ -282,12 +373,12 @@ class DatadogSdkPluginTest {
         val methodCall = MethodCall(
             "initialize",
             mapOf(
+                "trackingConsent" to "TrackingConsent.granted",
                 "configuration" to mapOf(
                     "clientToken" to forge.anAlphaNumericalString(),
                     "env" to forge.anAlphabeticalString(),
                     "trackingConsent" to "TrackingConsent.granted",
                     "nativeCrashReportEnabled" to true,
-                    "loggingConfiguration" to null
                 )
             )
         )
@@ -299,12 +390,12 @@ class DatadogSdkPluginTest {
         val methodCallB = MethodCall(
             "initialize",
             mapOf(
+                "trackingConsent" to "TrackingConsent.granted",
                 "configuration" to mapOf(
                     "clientToken" to forge.anAlphaNumericalString(),
                     "env" to forge.anAlphabeticalString(),
                     "trackingConsent" to "TrackingConsent.granted",
                     "nativeCrashReportEnabled" to true,
-                    "loggingConfiguration" to null
                 )
             )
         )
@@ -315,126 +406,124 @@ class DatadogSdkPluginTest {
         io.mockk.verify(exactly = 1) { Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION) }
     }
 
-    @Test
-    fun `M issue warning W attachToExisting has no existing instance`() {
-        // GIVEN
-        val methodCall = MethodCall(
-            "attachToExisting",
-            mapOf<String, Any?>()
-        )
-        val mockResult = mock<MethodChannel.Result>()
-        mockkStatic(Log::class)
+//    @Test
+//    fun `M issue warning W attachToExisting has no existing instance`() {
+//        // GIVEN
+//        val methodCall = MethodCall(
+//            "attachToExisting",
+//            mapOf<String, Any?>()
+//        )
+//        val mockResult = mock<MethodChannel.Result>()
+//        mockkStatic(Log::class)
+//
+//        // WHEN
+//        plugin.onMethodCall(methodCall, mockResult)
+//
+//        // THEN
+//        io.mockk.verify(exactly = 1) { Log.e(DATADOG_FLUTTER_TAG, MESSAGE_NO_EXISTING_INSTANCE) }
+//        verify(mockResult).success(null)
+//    }
 
-        // WHEN
-        plugin.onMethodCall(methodCall, mockResult)
-
-        // THEN
-        io.mockk.verify(exactly = 1) { Log.e(DATADOG_FLUTTER_TAG, MESSAGE_NO_EXISTING_INSTANCE) }
-        verify(mockResult).success(null)
-    }
-
-    @Test
-    fun `M return {rumEnabled false} W attachToExisting with rum not initialized`(
-        forge: Forge
-    ) {
-        // GIVEN
-        Datadog.setVerbosity(Log.INFO)
-        val mockCredentials = Credentials(
-            clientToken = forge.anAlphaNumericalString(),
-            envName = forge.anAlphaNumericalString(),
-            variant = forge.anAlphaNumericalString(),
-            rumApplicationId = forge.anAlphaNumericalString(),
-            serviceName = null
-        )
-        val datadogConfig = Configuration.Builder(
-            logsEnabled = true,
-            tracesEnabled = false,
-            crashReportsEnabled = false,
-            rumEnabled = false,
-        ).build()
-        Datadog.initialize(mockContext, mockCredentials, datadogConfig, TrackingConsent.GRANTED)
-
-        val methodCall = MethodCall(
-            "attachToExisting",
-            mapOf<String, Any?>()
-        )
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(methodCall, mockResult)
-
-        // THEN
-        verify(mockResult).success(argThat {
-            var rumEnabled = false
-            val map = this as? Map<*, *>
-            map?.let {
-                rumEnabled = (map["rumEnabled"] as? Boolean) ?: false
-            }
-            !rumEnabled
-        })
-    }
-
-    @Test
-    @Disabled("There's an issue calling Choreographer in RUM vital initialization")
-    fun `M return {rumEnabled true} W attachToExisting with rum initialized`(
-        forge: Forge
-    ) {
-        // GIVEN
-        Datadog.setVerbosity(Log.INFO)
-        val mockCredentials = Credentials(
-            forge.anAlphaNumericalString(),
-            forge.anAlphaNumericalString(),
-            forge.anAlphaNumericalString(),
-            forge.anAlphaNumericalString(),
-            null
-        )
-        val datadogConfig = Configuration.Builder(
-            logsEnabled = true,
-            tracesEnabled = false,
-            crashReportsEnabled = false,
-            rumEnabled = true,
-        ).build()
-        Datadog.initialize(mockContext, mockCredentials, datadogConfig, TrackingConsent.GRANTED)
-
-        val monitor = RumMonitor.Builder().build()
-        GlobalRum.registerIfAbsent(monitor)
-
-        val methodCall = MethodCall(
-            "attachToExisting",
-            mapOf<String, Any?>()
-        )
-        val mockResult = mock<MethodChannel.Result>()
-
-        // WHEN
-        plugin.onMethodCall(methodCall, mockResult)
-
-        // THEN
-        verify(mockResult).success(argThat {
-            var correct = false
-            val map = this as? Map<*, *>
-            map?.let {
-                correct = (map["rumEnabled"] as? Boolean) ?: false
-            }
-            correct
-        })
-    }
+//    @Test
+//    fun `M return {rumEnabled false} W attachToExisting with rum not initialized`(
+//        forge: Forge
+//    ) {
+//        // GIVEN
+//        Datadog.setVerbosity(Log.INFO)
+//        val mockCredentials = Credentials(
+//            clientToken = forge.anAlphaNumericalString(),
+//            envName = forge.anAlphaNumericalString(),
+//            variant = forge.anAlphaNumericalString(),
+//            rumApplicationId = forge.anAlphaNumericalString(),
+//            serviceName = null
+//        )
+//        val datadogConfig = Configuration.Builder(
+//            logsEnabled = true,
+//            tracesEnabled = false,
+//            crashReportsEnabled = false,
+//            rumEnabled = false,
+//        ).build()
+//        Datadog.initialize(mockContext, mockCredentials, datadogConfig, TrackingConsent.GRANTED)
+//
+//        val methodCall = MethodCall(
+//            "attachToExisting",
+//            mapOf<String, Any?>()
+//        )
+//        val mockResult = mock<MethodChannel.Result>()
+//
+//        // WHEN
+//        plugin.onMethodCall(methodCall, mockResult)
+//
+//        // THEN
+//        verify(mockResult).success(argThat {
+//            var rumEnabled = false
+//            val map = this as? Map<*, *>
+//            map?.let {
+//                rumEnabled = (map["rumEnabled"] as? Boolean) ?: false
+//            }
+//            !rumEnabled
+//        })
+//    }
+//
+//    @Test
+//    @Disabled("There's an issue calling Choreographer in RUM vital initialization")
+//    fun `M return {rumEnabled true} W attachToExisting with rum initialized`(
+//        forge: Forge
+//    ) {
+//        // GIVEN
+//        Datadog.setVerbosity(Log.INFO)
+//        val mockCredentials = Credentials(
+//            forge.anAlphaNumericalString(),
+//            forge.anAlphaNumericalString(),
+//            forge.anAlphaNumericalString(),
+//            forge.anAlphaNumericalString(),
+//            null
+//        )
+//        val datadogConfig = Configuration.Builder(
+//            logsEnabled = true,
+//            tracesEnabled = false,
+//            crashReportsEnabled = false,
+//            rumEnabled = true,
+//        ).build()
+//        Datadog.initialize(mockContext, mockCredentials, datadogConfig, TrackingConsent.GRANTED)
+//
+//        val monitor = RumMonitor.Builder().build()
+//        GlobalRum.registerIfAbsent(monitor)
+//
+//        val methodCall = MethodCall(
+//            "attachToExisting",
+//            mapOf<String, Any?>()
+//        )
+//        val mockResult = mock<MethodChannel.Result>()
+//
+//        // WHEN
+//        plugin.onMethodCall(methodCall, mockResult)
+//
+//        // THEN
+//        verify(mockResult).success(argThat {
+//            var correct = false
+//            val map = this as? Map<*, *>
+//            map?.let {
+//                correct = (map["rumEnabled"] as? Boolean) ?: false
+//            }
+//            correct
+//        })
+//    }
 
     @Test
     fun `M set sdk verbosity W called through MethodChannel`(
         forge: Forge
     ) {
         // GIVEN
-        val configuration = DatadogFlutterConfiguration(
-            clientToken = forge.aString(),
-            env = "prod",
-            nativeCrashReportEnabled = false,
-            trackingConsent = TrackingConsent.GRANTED
+        val config = mapOf(
+            "clientToken" to forge.aString(),
+            "env" to forge.anAlphaNumericalString()
         )
-        plugin.initialize(configuration)
+        plugin.initialize(config, TrackingConsent.GRANTED)
 
         val methodCall = MethodCall(
             "setSdkVerbosity",
-            mapOf( "value" to "Verbosity.info" )
+            mapOf( "value" to "CoreLoggerLevel.debug" )
         )
         val mockResult = mock<MethodChannel.Result>()
 
@@ -442,9 +531,7 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        val sdkCore: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
-        val setVerbosity: Int = sdkCore.getFieldValue("libraryVerbosity")
-        assertThat(setVerbosity).isEqualTo(Log.INFO)
+        assertThat(Datadog.getVerbosity()).isEqualTo(Log.DEBUG)
         verify(mockResult).success(null)
     }
 
@@ -453,13 +540,11 @@ class DatadogSdkPluginTest {
         forge: Forge
     ) {
         // GIVEN
-        val configuration = DatadogFlutterConfiguration(
-            clientToken = forge.aString(),
-            env = forge.anAlphabeticalString(),
-            nativeCrashReportEnabled = false,
-            trackingConsent = TrackingConsent.GRANTED
+        val config = mapOf(
+            "clientToken" to forge.aString(),
+            "env" to forge.anAlphaNumericalString()
         )
-        plugin.initialize(configuration)
+        plugin.initialize(config, TrackingConsent.PENDING)
 
         val methodCall = MethodCall(
             "setTrackingConsent",
@@ -471,8 +556,8 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        val coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
-            .getFieldValue("coreFeature")
+        val core = Datadog.getInstance()
+        val coreFeature: Any = core.getPrivate("coreFeature")!!
         val trackingConsent: TrackingConsent? = coreFeature
             .getFieldValue<Any, Any>("trackingConsentProvider")
             .getFieldValue("consent")
@@ -488,13 +573,11 @@ class DatadogSdkPluginTest {
         forge: Forge
     ) {
         // GIVEN
-        val configuration = DatadogFlutterConfiguration(
-            clientToken = forge.aString(),
-            env = forge.anAlphabeticalString(),
-            nativeCrashReportEnabled = false,
-            trackingConsent = TrackingConsent.GRANTED
+        val config = mapOf(
+            "clientToken" to forge.aString(),
+            "env" to forge.anAlphaNumericalString()
         )
-        plugin.initialize(configuration)
+        plugin.initialize(config, TrackingConsent.GRANTED)
 
         val methodCall = MethodCall(
             "setUserInfo",
@@ -511,8 +594,8 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        val coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
-            .getFieldValue("coreFeature")
+        val core = Datadog.getInstance()
+        val coreFeature: Any = core.getPrivate("coreFeature")!!
         val userInfo: UserInfo? = coreFeature
             .getFieldValue<Any, Any>("userInfoProvider")
             .getFieldValue("internalUserInfo")
@@ -528,13 +611,11 @@ class DatadogSdkPluginTest {
         forge: Forge
     ) {
         // GIVEN
-        val configuration = DatadogFlutterConfiguration(
-            clientToken = forge.aString(),
-            env = forge.anAlphabeticalString(),
-            nativeCrashReportEnabled = false,
-            trackingConsent = TrackingConsent.GRANTED
+        val config = mapOf(
+            "clientToken" to forge.aString(),
+            "env" to forge.anAlphaNumericalString()
         )
-        plugin.initialize(configuration)
+        plugin.initialize(config, TrackingConsent.GRANTED)
 
         val id = forge.aNullable { forge.aString() }
         val name = forge.aNullable { forge.aString() }
@@ -555,8 +636,8 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        val coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
-            .getFieldValue("coreFeature")
+        val core = Datadog.getInstance()
+        val coreFeature: Any = core.getPrivate("coreFeature")!!
         val userInfo: UserInfo? = coreFeature
             .getFieldValue<Any, Any>("userInfoProvider")
             .getFieldValue("internalUserInfo")
@@ -572,13 +653,11 @@ class DatadogSdkPluginTest {
         forge: Forge
     ) {
         // GIVEN
-        val configuration = DatadogFlutterConfiguration(
-            clientToken = forge.aString(),
-            env = forge.anAlphabeticalString(),
-            nativeCrashReportEnabled = false,
-            trackingConsent = TrackingConsent.GRANTED
+        val config = mapOf(
+            "clientToken" to forge.aString(),
+            "env" to forge.anAlphaNumericalString()
         )
-        plugin.initialize(configuration)
+        plugin.initialize(config, TrackingConsent.GRANTED)
 
         val extraInfo = forge.exhaustiveAttributes()
         val methodCall = MethodCall(
@@ -593,8 +672,8 @@ class DatadogSdkPluginTest {
         plugin.onMethodCall(methodCall, mockResult)
 
         // THEN
-        val coreFeature: Any = Datadog.getFieldValue<Any, Datadog>("globalSdkCore")
-            .getFieldValue("coreFeature")
+        val core = Datadog.getInstance()
+        val coreFeature: Any = core.getPrivate("coreFeature")!!
         val userInfo: UserInfo? = coreFeature
             .getFieldValue<Any, Any>("userInfoProvider")
             .getFieldValue("internalUserInfo")
@@ -607,13 +686,11 @@ class DatadogSdkPluginTest {
         forge: Forge
     ) {
         // GIVEN
-        val configuration = DatadogFlutterConfiguration(
-            clientToken = forge.aString(),
-            env = forge.anAlphabeticalString(),
-            nativeCrashReportEnabled = false,
-            trackingConsent = TrackingConsent.GRANTED
+        val config = mapOf(
+            "clientToken" to forge.aString(),
+            "env" to forge.anAlphaNumericalString()
         )
-        plugin.initialize(configuration)
+        plugin.initialize(config, TrackingConsent.GRANTED)
 
         val trackViewsManually = forge.aBool()
         val trackInteractions = forge.aBool()
@@ -659,4 +736,18 @@ class DatadogSdkPluginTest {
             assertThat(plugin.telemetryOverrides.trackFlutterPerformance).isEqualTo(trackFlutterPerformance)
         }
     }
+}
+
+@Suppress("EmptyCatchBlock")
+fun Any.getPrivate(varName: String): Any? {
+    var value: Any? = null
+    try {
+        val field = javaClass.getDeclaredField(varName)
+        field.isAccessible = true
+        value = field.get(this)
+    } catch (_: NoSuchFieldException) {
+
+    }
+
+    return value
 }

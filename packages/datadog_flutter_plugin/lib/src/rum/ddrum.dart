@@ -7,12 +7,11 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:meta/meta.dart';
 
 import '../../datadog_flutter_plugin.dart';
-import '../attributes.dart';
-import '../helpers.dart';
-import '../internal_logger.dart';
+import '../../datadog_internal.dart';
 import 'ddrum_platform_interface.dart';
 import 'rum_long_task_observer.dart';
 
@@ -26,7 +25,7 @@ RumHttpMethod rumMethodFromMethodString(String value) {
 }
 
 /// Describes the type of a RUM Action.
-enum RumUserActionType { tap, scroll, swipe, custom }
+enum RumActionType { tap, scroll, swipe, custom }
 
 /// Describe the source of a RUM Error.
 enum RumErrorSource {
@@ -84,42 +83,97 @@ RumResourceType resourceTypeFromContentType(ContentType? type) {
   return RumResourceType.native;
 }
 
-class DdRum {
+class DatadogRum {
   static DdRumPlatform get _platform {
     return DdRumPlatform.instance;
   }
 
-  final sampleRandom = Random();
+  /// The sample rate for tracing resources.
+  ///
+  /// See [DatadogRumConfiguration.traceSampleRate]
+  final double traceSampleRate;
 
-  final RumConfiguration configuration;
+  final _sampleRandom = Random();
   final InternalLogger logger;
 
   RumLongTaskObserver? _longTaskObserver;
 
-  DdRum(this.configuration, this.logger) {
+  static Future<DatadogRum?> enable(
+      DatadogSdk core, DatadogRumConfiguration configuration) async {
+    DatadogRum? rum;
+    await wrapAsync('rum.enable', core.internalLogger, null, () {
+      DdRumPlatform.instance.enable(core, configuration);
+      rum = DatadogRum._(core, configuration);
+    });
+
+    return rum;
+  }
+
+  @internal
+  DatadogRum.fromExisting(DatadogSdk core, DatadogAttachConfiguration config)
+      : traceSampleRate = config.traceSampleRate,
+        logger = core.internalLogger {
+    _init(
+      core: core,
+      detectLongTasks: config.detectLongTasks,
+      longTaskThreshold: config.longTaskThreshold,
+      reportFlutterPerformance: config.reportFlutterPerformance,
+    );
+  }
+
+  DatadogRum._(DatadogSdk core, DatadogRumConfiguration configuration)
+      : traceSampleRate = configuration.traceSampleRate,
+        logger = core.internalLogger {
+    _init(
+      core: core,
+      detectLongTasks: configuration.detectLongTasks,
+      longTaskThreshold: configuration.longTaskThreshold,
+      reportFlutterPerformance: configuration.reportFlutterPerformance,
+    );
+  }
+
+  void _init({
+    required DatadogSdk core,
+    required bool detectLongTasks,
+    required double longTaskThreshold,
+    required bool reportFlutterPerformance,
+  }) {
     // Never use long task observer on web -- the Browser SDK should
     // capture stalls on the main thread automatically.
-    if (!kIsWeb && configuration.detectLongTasks) {
+    if (!kIsWeb && detectLongTasks) {
       _longTaskObserver = RumLongTaskObserver(
-        longTaskThreshold: configuration.longTaskThreshold,
+        longTaskThreshold: longTaskThreshold,
         rumInstance: this,
       );
       _longTaskObserver!.init();
     }
-    if (configuration.reportFlutterPerformance) {
+    if (reportFlutterPerformance) {
       ambiguate(SchedulerBinding.instance)
           ?.addTimingsCallback(_timingsCallback);
     }
+
+    core.updateConfigurationInfo(
+        LateConfigurationProperty.trackFlutterPerformance,
+        reportFlutterPerformance);
+    core.updateConfigurationInfo(
+        LateConfigurationProperty.trackCrossPlatformLongTasks, detectLongTasks);
   }
 
-  Future<void> initialize() async {
-    await _platform.initialize(configuration, logger);
+  /// FOR INTERNAL USE ONLY
+  /// Deinitialize this RUM instance. Note that this does not propertly
+  /// deregister this RUM instance from the default Core, since this should
+  /// only be called from the Core
+  @internal
+  void deinitialize() {
+    wrap('rum.deinitialize', logger, null, () => _platform.deinitialize());
   }
 
-  /// The sampling rate for tracing resources.
-  ///
-  /// See [RumConfiguration.tracingSamplingRate]
-  double get tracingSamplingRate => configuration.tracingSamplingRate;
+  /// Get the current active session ID. The session ID will be null if no
+  /// session is active or if the session has been sampled out.
+  Future<String?> getCurrentSessionId() {
+    return wrapAsync('rum.getCurrentSessionId', logger, null,
+        () => _platform.getCurrentSessionId());
+  }
 
   /// Notifies that the View identified by [key] starts being presented to the
   /// user. This view will show as [name] in the RUM explorer, and defaults to
@@ -166,6 +220,14 @@ class DdRum {
     String? errorType,
     Map<String, Object?> attributes = const {},
   }) {
+    // If the RUM method channel is somehow disconnected, it will throw a MissingPluginException. If
+    // we then proceed to call `addError`, it will throw the exception again.
+    // We do this here (instead of in Wrap) so the exception is still bubbled up to Flutter.
+    if (error is MissingPluginException) {
+      if (error.message?.contains('datadog_sdk_flutter') ?? false) {
+        return;
+      }
+    }
     wrap('rum.addError', logger, attributes, () {
       return _platform.addError(error, source, stackTrace, errorType, {
         DatadogPlatformAttributeKey.errorSourceType: 'flutter',
@@ -185,6 +247,13 @@ class DdRum {
     String? errorType,
     Map<String, Object?> attributes = const {},
   }) {
+    // If the RUM method channel is somehow disconnected, it will throw a MissingPluginException. If
+    // we then proceed to call `addErrorInfo`, it will throw the exception again.
+    // We do this here (instead of in `wrap`) so the exception is still bubbled up to Flutter.
+    if (message.contains('MissingPluginException') &&
+        message.contains('datadog_sdk_flutter')) {
+      return;
+    }
     wrap('rum.addErrorInfo', logger, attributes, () {
       return _platform.addErrorInfo(message, source, stackTrace, errorType, {
         DatadogPlatformAttributeKey.errorSourceType: 'flutter',
@@ -216,13 +285,13 @@ class DdRum {
   /// [attributes] will be attached to this Resource.
   ///
   /// Note that [key] must be unique among all Resources being currently loaded,
-  /// and should be sent to [stopResourceLoading] or
-  /// [stopResourceLoadingWithError] / [stopResourceLoadingWithErrorInfo] when
+  /// and should be sent to [stopResource] or
+  /// [stopResourceWithError] / [stopResourceWithErrorInfo] when
   /// resource loading is complete.
-  void startResourceLoading(String key, RumHttpMethod httpMethod, String url,
+  void startResource(String key, RumHttpMethod httpMethod, String url,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.startResourceLoading', logger, attributes, () {
-      return _platform.startResourceLoading(key, httpMethod, url, attributes);
+    wrap('rum.startResource', logger, attributes, () {
+      return _platform.startResource(key, httpMethod, url, attributes);
     });
   }
 
@@ -230,31 +299,30 @@ class DdRum {
   /// successfully and supplies additional information about the Resource loaded,
   /// including its [kind], the [statusCode] of the response, the [size] of the
   /// Resource, and any other custom [attributes] to attach to the resource.
-  void stopResourceLoading(String key, int? statusCode, RumResourceType kind,
+  void stopResource(String key, int? statusCode, RumResourceType kind,
       [int? size, Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopResourceLoading', logger, attributes, () {
-      return _platform.stopResourceLoading(
-          key, statusCode, kind, size, attributes);
+    wrap('rum.stopResource', logger, attributes, () {
+      return _platform.stopResource(key, statusCode, kind, size, attributes);
     });
   }
 
   /// Notifies that the Resource identified by [key] stopped being loaded with an
   /// Exception specified by [error]. You can optionally supply custom
   /// [attributes] to attach to this Resource.
-  void stopResourceLoadingWithError(String key, Exception error,
+  void stopResourceWithError(String key, Exception error,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopResourceLoadingWithError', logger, attributes, () {
-      return _platform.stopResourceLoadingWithError(key, error, attributes);
+    wrap('rum.stopResourceWithError', logger, attributes, () {
+      return _platform.stopResourceWithError(key, error, attributes);
     });
   }
 
   /// Notifies that the Resource identified by [key] stopped being loaded with
   /// the supplied [message]. You can optionally supply custom [attributes] to
   /// attach to this Resource.
-  void stopResourceLoadingWithErrorInfo(String key, String message, String type,
+  void stopResourceWithErrorInfo(String key, String message, String type,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopResourceLoadingWithErrorInfo', logger, attributes, () {
-      return _platform.stopResourceLoadingWithErrorInfo(
+    wrap('rum.stopResourceWithErrorInfo', logger, attributes, () {
+      return _platform.stopResourceWithErrorInfo(
           key, message, type, attributes);
     });
   }
@@ -264,39 +332,44 @@ class DdRum {
   /// This is used to a track discrete User Actions (e.g. "tap") specified by
   /// [type]. The [name] and [attributes] supplied will be associated with this
   /// user action.
-  void addUserAction(RumUserActionType type, String name,
+  void addAction(RumActionType type, String name,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.addUserAction', logger, attributes, () {
-      return _platform.addUserAction(type, name, attributes);
+    wrap('rum.addAction', logger, attributes, () {
+      return _platform.addAction(type, name, attributes);
     });
   }
 
   /// Notifies that a User Action of [type] has started, named [name]. This is
   /// used to track long running user actions (e.g. "scroll"). Such an User
-  /// Action must be stopped with [stopUserAction], and will be stopped
+  /// Action must be stopped with [stopAction], and will be stopped
   /// automatically if it lasts for more than 10 seconds. You can optionally
   /// provide custom [attributes].
-  void startUserAction(RumUserActionType type, String name,
+  void startAction(RumActionType type, String name,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.startUserAction', logger, attributes, () {
-      return _platform.startUserAction(type, name, attributes);
+    wrap('rum.startAction', logger, attributes, () {
+      return _platform.startAction(type, name, attributes);
     });
   }
 
   /// Notifies that the User Action of [type], named [name] has stopped.
   /// This is used to stop tracking long running user actions (e.g. "scroll"),
-  /// started with [startUserAction].
-  void stopUserAction(RumUserActionType type, String name,
+  /// started with [startAction].
+  void stopAction(RumActionType type, String name,
       [Map<String, Object?> attributes = const {}]) {
-    wrap('rum.stopUserAction', logger, attributes, () {
-      return _platform.stopUserAction(type, name, attributes);
+    wrap('rum.stopAction', logger, attributes, () {
+      return _platform.stopAction(type, name, attributes);
     });
   }
 
   /// Adds a custom attribute with [key] and [value] to all future events sent
   /// by the RUM monitor. Note that [value] must be supported by
-  /// [StandardMessageCodec].
+  /// [StandardMessageCodec]. Passing a [value] of null is the same as calling
+  /// [removeAttribute]
   void addAttribute(String key, dynamic value) {
+    if (value == null) {
+      removeAttribute(key);
+      return;
+    }
     wrap('rum.addAttributes', logger, {'value': value}, () {
       return _platform.addAttribute(key, value);
     });
@@ -320,8 +393,8 @@ class DdRum {
   }
 
   /// Stops the current session. A new session will start in response to a call
-  /// to [startView], [addUserAction], or [startUserAction]. If the session is
-  /// started because of a call to [addUserAction] or [startUserAction], the
+  /// to [startView], [addAction], or [startAction]. If the session is
+  /// started because of a call to [addAction] or [startAction], the
   /// last know view is restarted in the new session.
   void stopSession() {
     wrap('rum.stopSession', logger, null, () {
@@ -329,14 +402,13 @@ class DdRum {
     });
   }
 
-  /// Uses the configured [RumConfiguration.tracingSamplingRate] to determine if
+  /// Uses the configured [DatadogRumConfiguration.traceSampleRate] to determine if
   /// a sample should be traced.
   ///
   /// This is used by Datadog tracing plugins like `datadog_tracing_http_client`
   /// to add the proper headers to network requests.
   bool shouldSampleTrace() {
-    return (sampleRandom.nextDouble() * 100) <
-        configuration.tracingSamplingRate;
+    return (_sampleRandom.nextDouble() * 100) < traceSampleRate;
   }
 
   @internal

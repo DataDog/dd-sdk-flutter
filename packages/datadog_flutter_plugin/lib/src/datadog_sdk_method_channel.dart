@@ -7,17 +7,16 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'datadog_configuration.dart';
+import '../datadog_flutter_plugin.dart';
 import 'datadog_sdk_platform_interface.dart';
 import 'internal_logger.dart';
-import 'logs/ddlog_event.dart';
 
 class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   @visibleForTesting
   final methodChannel = const MethodChannel('datadog_sdk_flutter');
 
   @override
-  Future<void> setSdkVerbosity(Verbosity verbosity) {
+  Future<void> setSdkVerbosity(CoreLoggerLevel verbosity) {
     return methodChannel
         .invokeMethod('setSdkVerbosity', {'value': verbosity.toString()});
   }
@@ -43,15 +42,14 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   }
 
   @override
-  Future<void> initialize(
-    DdSdkConfiguration configuration, {
+  Future<PlatformInitializationResult> initialize(
+    DatadogConfiguration configuration,
+    TrackingConsent trackingConsent, {
     LogCallback? logCallback,
     required InternalLogger internalLogger,
   }) async {
     final callbackHandler = MethodCallHandler(
       logCallback: logCallback,
-      logEventMapper: configuration.logEventMapper,
-      internalLogger: internalLogger,
     );
 
     if (logCallback != null) {
@@ -60,9 +58,12 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 
     await methodChannel.invokeMethod<void>('initialize', {
       'configuration': configuration.encode(),
+      'trackingConsent': trackingConsent.toString(),
       'dartVersion': Platform.version,
       'setLogCallback': logCallback != null,
     });
+
+    return const PlatformInitializationResult(logs: true, rum: true);
   }
 
   @override
@@ -106,6 +107,11 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
     });
   }
 
+  @override
+  Future<void> clearAllData() {
+    return methodChannel.invokeMethod('clearAllData', {});
+  }
+
   Future<Object?> getInternalVar(String name) {
     return methodChannel.invokeMethod('getInternalVar', {'name': name});
   }
@@ -114,13 +120,9 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 @visibleForTesting
 class MethodCallHandler {
   final LogCallback? logCallback;
-  final LogEventMapper? logEventMapper;
-  final InternalLogger internalLogger;
 
   MethodCallHandler({
     this.logCallback,
-    this.logEventMapper,
-    required this.internalLogger,
   });
 
   Future<dynamic> handleMethodCall(MethodCall call) async {
@@ -128,72 +130,6 @@ class MethodCallHandler {
       case 'logCallback':
         logCallback?.call(call.arguments as String);
         return null;
-      case 'mapLogEvent':
-        return _mapLogEvent(call);
     }
-  }
-
-  Map<Object?, Object?>? _mapLogEvent(MethodCall call) {
-    // This is the same list as in LogEvent.kt
-    const reservedAttributes = [
-      'status',
-      'service',
-      'message',
-      'date',
-      'logger',
-      '_dd',
-      'usr',
-      'network',
-      'error',
-      'ddtags'
-    ];
-
-    try {
-      final logEventJson = call.arguments['event'] as Map;
-      if (logEventMapper == null) {
-        final st = StackTrace.current;
-        internalLogger.sendToDatadog(
-            'Log event mapper called but no logEventMapper is set,',
-            st,
-            'InternalDatadogError');
-        return logEventJson;
-      }
-      final logEvent = LogEvent.fromJson(logEventJson);
-      // Pull out any extra attributes
-      for (final item in logEventJson.entries) {
-        final key = item.key as String;
-        if (!reservedAttributes.contains(key)) {
-          logEvent.attributes[key] = item.value;
-        }
-      }
-
-      LogEvent? mappedLogEvent = logEvent;
-      try {
-        mappedLogEvent = logEventMapper?.call(logEvent);
-        if (mappedLogEvent == null) {
-          return null;
-        }
-      } catch (e) {
-        // User error, return unmapped, but report
-        internalLogger.error(
-            'logEventMapper threw an exception: ${e.toString()}.\nReturning unmapped event.');
-      }
-
-      final mappedJson = mappedLogEvent!.toJson();
-      for (final item in mappedLogEvent.attributes.entries) {
-        // Put extra attributes back
-        if (!reservedAttributes.contains(item.key)) {
-          mappedJson[item.key] = item.value;
-        }
-      }
-      return mappedJson;
-    } catch (e, st) {
-      internalLogger.sendToDatadog('Error mapping log event: ${e.toString()}',
-          st, e.runtimeType.toString());
-    }
-
-    // Return a special map which will indicate to native code something went wrong, and
-    // we should send the unmodified event.
-    return {'_dd.mapper_error': 'mapper error'};
   }
 }

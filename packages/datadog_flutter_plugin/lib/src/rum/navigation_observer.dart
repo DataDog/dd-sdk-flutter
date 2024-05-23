@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import '../../datadog_flutter_plugin.dart';
 import '../../datadog_internal.dart';
 
-/// Information about a View that will be passed to [DdRum.startView]
+/// Information about a View that will be passed to [DatadogRum.startView]
 class RumViewInfo {
   /// The name of the view
   final String name;
@@ -26,10 +26,10 @@ class RumViewInfo {
 }
 
 /// A function that can be used to supply custom information to
-/// [DdRum.startView].
+/// [DatadogRum.startView].
 ///
 /// Returning `null` from this function will prevent the call
-/// to [DdRum.startView].
+/// to [DatadogRum.startView].
 ///
 /// See [DatadogNavigationObserver.viewInfoExtractor].
 typedef ViewInfoExtractor = RumViewInfo? Function(Route<dynamic> route);
@@ -93,6 +93,7 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
+      default:
         if (_currentView != null) {
           _pendingView = _currentView;
           _stopView(_currentView);
@@ -102,8 +103,11 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
   }
 
   void _startView(RumViewInfo? viewInfo) {
-    if (ambiguate(WidgetsBinding.instance)?.lifecycleState !=
-        AppLifecycleState.resumed) {
+    // For platforms that don't support app lifecycle state (lifecycleState is null)
+    // assume that the application is foregrounded.
+    final lifecycleState = ambiguate(WidgetsBinding.instance)?.lifecycleState ??
+        AppLifecycleState.resumed;
+    if (lifecycleState != AppLifecycleState.resumed) {
       _pendingView = viewInfo;
     } else {
       _currentView = viewInfo;
@@ -208,7 +212,7 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
         if (route.settings.name == null) {
           _routeObserver?.subscribe(this, route);
         } else {
-          DatadogSdk.instance.internalLogger.info(
+          DatadogSdk.instance.internalLogger.debug(
               '$DatadogRouteAwareMixin for ${rumViewInfo.name} (on widget $T) '
               'will be ignored because it is part of a named route ${route.settings.name}');
         }
@@ -295,10 +299,10 @@ class DatadogNavigationObserverProvider extends InheritedWidget {
   final DatadogNavigationObserver navObserver;
 
   const DatadogNavigationObserverProvider({
-    Key? key,
+    super.key,
     required this.navObserver,
-    required Widget child,
-  }) : super(key: key, child: child);
+    required super.child,
+  });
 
   @override
   bool updateShouldNotify(

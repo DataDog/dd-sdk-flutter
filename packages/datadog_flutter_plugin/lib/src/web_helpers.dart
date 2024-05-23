@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'package:flutter/foundation.dart';
+import 'package:js/js.dart';
 import 'package:js/js_util.dart' as jsutil;
 
 import '../datadog_flutter_plugin.dart';
@@ -51,4 +53,38 @@ dynamic valueToJs(Object? value, String parameterName) {
 
   throw ArgumentError(
       'Could not convert ${value.runtimeType} to javascript.', parameterName);
+}
+
+// Regex specifying the format of a frame in a Dart stack trace.
+final _dartLineRegex =
+    RegExp(r'(?<file>.+) (?<location>\d+:\d+)\s*(?<function>.+)');
+
+@JS('RegExp')
+class JSRegExp {
+  external factory JSRegExp([String? pattern, String? flags]);
+}
+
+String? convertWebStackTrace(StackTrace? stackTrace) {
+  if (stackTrace == null) return null;
+
+  var stackTraceString = stackTrace.toString();
+  if (kDebugMode) {
+    // Datadog Browser SDK parses the stack trace looking for specific
+    // formats. When deployed, the Dart's StackTrace.toString will
+    // correctly output a JS compatible stack trace. When not deployed,
+    // we reformat so that it puts something in Datadog logging.
+    var sb = StringBuffer();
+    for (var line in stackTraceString.split('\n')) {
+      var match = _dartLineRegex.firstMatch(line);
+      if (match != null) {
+        final file = match.namedGroup('file');
+        final location = match.namedGroup('location');
+        final function = match.namedGroup('function');
+        sb.writeln('  at $function (file://$file:$location) ');
+      }
+    }
+    stackTraceString = sb.toString();
+  }
+
+  return stackTraceString;
 }

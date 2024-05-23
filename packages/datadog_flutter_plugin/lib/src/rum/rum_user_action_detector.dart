@@ -72,16 +72,16 @@ class RumUserActionDetector extends StatefulWidget {
   static final elementMap = <RumUserActionDetector, Element>{};
 
   /// The instance of RUM to report to.
-  final DdRum? rum;
+  final DatadogRum? rum;
 
   /// The Widget tree to detect gestures in.
   final Widget child;
 
   const RumUserActionDetector({
-    Key? key,
+    super.key,
     required this.rum,
     required this.child,
-  }) : super(key: key);
+  });
 
   @override
   StatefulElement createElement() {
@@ -159,16 +159,16 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
 
       final distanceSquared = distanceOffset.distanceSquared;
       if (distanceSquared < _tapSlopSquared) {
-        _onPerformActionAt(event.localPosition, RumUserActionType.tap);
+        _onPerformActionAt(event.localPosition, RumActionType.tap);
       }
     }
   }
 
-  void _onPerformActionAt(Offset position, RumUserActionType action) {
+  void _onPerformActionAt(Offset position, RumActionType action) {
     final elementDescription = _getDetectingElementAtPosition(position);
 
     if (elementDescription != null) {
-      widget.rum?.addUserAction(action, elementDescription.toString());
+      widget.rum?.addAction(action, elementDescription.toString());
     }
   }
 
@@ -407,10 +407,10 @@ class RumUserActionAnnotation extends StatelessWidget {
   final Widget child;
 
   const RumUserActionAnnotation({
-    Key? key,
+    super.key,
     required this.description,
     required this.child,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

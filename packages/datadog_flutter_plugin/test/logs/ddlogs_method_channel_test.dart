@@ -2,10 +2,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_flutter_plugin/src/logs/ddlogs_method_channel.dart';
-import 'package:datadog_flutter_plugin/src/logs/ddlogs_platform_interface.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -30,7 +30,7 @@ void main() {
   });
 
   test('create logger passed to method channel', () async {
-    final config = LoggingConfiguration(loggerName: 'loggerName');
+    final config = DatadogLoggerConfiguration(name: 'loggerName');
     await ddLogsPlatform.createLogger('uuid', config);
 
     expect(log, <Matcher>[
@@ -38,6 +38,26 @@ void main() {
         'loggerHandle': 'uuid',
         'configuration': config.encode(),
       })
+    ]);
+  });
+
+  test('addGlobalAttribute passed to method channel', () async {
+    final key = randomString();
+    final value = randomString();
+    await ddLogsPlatform.addGlobalAttribute(key, value);
+
+    expect(log, <Matcher>[
+      isMethodCall('addGlobalAttribute',
+          arguments: {'key': key, 'value': value})
+    ]);
+  });
+
+  test('removeGlobalAttribute passed to method channel', () async {
+    final key = randomString();
+    await ddLogsPlatform.removeGlobalAttribute(key);
+
+    expect(log, <Matcher>[
+      isMethodCall('removeGlobalAttribute', arguments: {'key': key})
     ]);
   });
 
@@ -79,6 +99,35 @@ void main() {
           'errorMessage': '$logLevel error message',
           'errorKind': 'error_type',
           'stackTrace': st.toString(),
+          'context': {
+            '_dd.error.source_type': 'flutter',
+            'attribute': 'value',
+          }
+        })
+    ]);
+  });
+
+  test('log messages without stack trace do not add source_type', () async {
+    for (final logLevel in LogLevel.values) {
+      await ddLogsPlatform.log(
+          'uuid',
+          logLevel,
+          '$logLevel message',
+          '$logLevel error message',
+          'error_type',
+          null,
+          {'attribute': 'value'});
+    }
+
+    expect(log, <Matcher>[
+      for (final logLevel in LogLevel.values)
+        isMethodCall('log', arguments: {
+          'loggerHandle': 'uuid',
+          'logLevel': logLevel.toString(),
+          'message': '$logLevel message',
+          'errorMessage': '$logLevel error message',
+          'errorKind': 'error_type',
+          'stackTrace': null,
           'context': {
             'attribute': 'value',
           }

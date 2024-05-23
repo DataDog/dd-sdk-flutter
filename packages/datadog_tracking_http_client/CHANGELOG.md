@@ -4,6 +4,30 @@
 
 
 
+## 2.2.0
+
+* Support 128-bit trace ids in distributed tracing.
+
+## 2.1.2
+
+* Constrain compatible `datadog_flutter_plugin` to <2.5.0
+
+## 2.1.1
+
+* Fix `_TypeError` when request URL is matched `ignoreUrlPatterns`. See [#590] (Thanks [@ronnnnn][])
+
+## 2.1.0
+
+* Add the ability to ignore tracking on specific url patterns with `ignoreUrlPatterns`.
+
+## 2.0.0
+
+* Update to v2.0 of Datadog SDKs
+
+## 1.4.0
+
+* Update version constraints to allow 1.x.x versions of the `http` package.
+
 ## 1.3.1
 
 * Fix not exporting `DatadogTrackingHttpClientListener` from @ClaireDavis.
@@ -64,3 +88,5 @@
 
 [#355]: https://github.com/DataDog/dd-sdk-flutter/issues/355
 [#424]: https://github.com/DataDog/dd-sdk-flutter/issues/424
+[#590]: https://github.com/DataDog/dd-sdk-flutter/pull/590
+[@ronnnnn]: https://github.com/ronnnnn

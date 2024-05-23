@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'package:meta/meta.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../datadog_flutter_plugin.dart';
@@ -11,15 +12,18 @@ import 'internal_logger.dart';
 typedef LogCallback = void Function(String line);
 
 class AttachResponse {
+  final bool loggingEnabled;
   final bool rumEnabled;
 
   AttachResponse({
+    required this.loggingEnabled,
     required this.rumEnabled,
   });
 
   static AttachResponse? decode(Map<String, Object?> json) {
     try {
       return AttachResponse(
+        loggingEnabled: json['loggingEnabled'] as bool,
         rumEnabled: json['rumEnabled'] as bool,
       );
     } catch (e, st) {
@@ -29,6 +33,17 @@ class AttachResponse {
 
     return null;
   }
+}
+
+/// Result from initializing the platform. Individual members are set to `false`
+/// If there is an error loading that feature, such as being unable to load
+/// required JavaScript modules on web.
+@immutable
+class PlatformInitializationResult {
+  final bool logs;
+  final bool rum;
+
+  const PlatformInitializationResult({required this.logs, required this.rum});
 }
 
 abstract class DatadogSdkPlatform extends PlatformInterface {
@@ -45,7 +60,7 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<void> setSdkVerbosity(Verbosity verbosity);
+  Future<void> setSdkVerbosity(CoreLoggerLevel verbosity);
   Future<void> setTrackingConsent(TrackingConsent trackingConsent);
   Future<void> setUserInfo(
       String? id, String? name, String? email, Map<String, Object?> extraInfo);
@@ -54,13 +69,15 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
   Future<void> sendTelemetryDebug(String message);
   Future<void> sendTelemetryError(String message, String? stack, String? kind);
 
-  Future<void> initialize(
-    DdSdkConfiguration configuration, {
+  Future<PlatformInitializationResult> initialize(
+    DatadogConfiguration configuration,
+    TrackingConsent trackingConsent, {
     LogCallback? logCallback,
     required InternalLogger internalLogger,
   });
   Future<AttachResponse?> attachToExisting();
   Future<void> flushAndDeinitialize();
+  Future<void> clearAllData();
 
   Future<void> updateTelemetryConfiguration(String property, bool value);
 }

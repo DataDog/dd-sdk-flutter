@@ -40,8 +40,9 @@ void main() {
   /// ```
   testWidgets('logger consent - granted', (tester) async {
     await initializeDatadog();
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
 
-    sendRandomLog(tester);
+    sendRandomLog(logger, tester);
   });
 
   /// ```global
@@ -57,11 +58,10 @@ void main() {
   /// $notify_no_data = false
   /// ```
   testWidgets('logger consent - not granted', (tester) async {
-    await initializeDatadog(
-      (config) => config.trackingConsent = TrackingConsent.notGranted,
-    );
+    await initializeDatadog(trackingConsent: TrackingConsent.notGranted);
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
 
-    sendRandomLog(tester);
+    sendRandomLog(logger, tester);
   });
 
   /// ```global
@@ -77,11 +77,10 @@ void main() {
   /// $notify_no_data = false
   /// ```
   testWidgets('logger consent - pending', (tester) async {
-    await initializeDatadog(
-      (config) => config.trackingConsent = TrackingConsent.pending,
-    );
+    await initializeDatadog(trackingConsent: TrackingConsent.pending);
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
 
-    sendRandomLog(tester);
+    sendRandomLog(logger, tester);
   });
 
   /// ```global
@@ -97,14 +96,13 @@ void main() {
   /// $notify_no_data = false
   /// ```
   testWidgets('logger consent - granted to not granted', (tester) async {
-    await initializeDatadog(
-      (config) => config.trackingConsent = TrackingConsent.granted,
-    );
+    await initializeDatadog(trackingConsent: TrackingConsent.granted);
     await measure('flutter_log_consent_set_tracking_consent', () {
       datadog.setTrackingConsent(TrackingConsent.notGranted);
     });
 
-    sendRandomLog(tester);
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+    sendRandomLog(logger, tester);
   });
 
   /// ```global
@@ -120,14 +118,13 @@ void main() {
   /// $notify_no_data = false
   /// ```
   testWidgets('logger consent - granted to pending', (tester) async {
-    await initializeDatadog(
-      (config) => config.trackingConsent = TrackingConsent.granted,
-    );
+    await initializeDatadog(trackingConsent: TrackingConsent.granted);
     await measure('flutter_log_consent_set_tracking_consent', () {
       datadog.setTrackingConsent(TrackingConsent.pending);
     });
 
-    sendRandomLog(tester);
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+    sendRandomLog(logger, tester);
   });
 
   /// ```global
@@ -141,14 +138,13 @@ void main() {
   /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\"  @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   testWidgets('logger consent - not granted to granted', (tester) async {
-    await initializeDatadog(
-      (config) => config.trackingConsent = TrackingConsent.notGranted,
-    );
+    await initializeDatadog(trackingConsent: TrackingConsent.notGranted);
     await measure('flutter_log_consent_set_tracking_consent', () {
       datadog.setTrackingConsent(TrackingConsent.granted);
     });
 
-    sendRandomLog(tester);
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+    sendRandomLog(logger, tester);
   });
 
   /// ```global
@@ -164,14 +160,13 @@ void main() {
   /// $notify_no_data = false
   /// ```
   testWidgets('logger consent - not granted to pending', (tester) async {
-    await initializeDatadog(
-      (config) => config.trackingConsent = TrackingConsent.notGranted,
-    );
+    await initializeDatadog(trackingConsent: TrackingConsent.notGranted);
     await measure('flutter_log_consent_set_tracking_consent', () {
       datadog.setTrackingConsent(TrackingConsent.pending);
     });
 
-    sendRandomLog(tester);
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+    sendRandomLog(logger, tester);
   });
 
   /// ```global
@@ -185,14 +180,13 @@ void main() {
   /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}}\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
   /// ```
   testWidgets('logger consent - pending to granted', (tester) async {
-    await initializeDatadog(
-      (config) => config.trackingConsent = TrackingConsent.pending,
-    );
+    await initializeDatadog(trackingConsent: TrackingConsent.pending);
     await measure('flutter_log_consent_set_tracking_consent', () {
       datadog.setTrackingConsent(TrackingConsent.granted);
     });
 
-    sendRandomLog(tester);
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+    sendRandomLog(logger, tester);
   });
 
   /// ```global
@@ -208,13 +202,12 @@ void main() {
   /// $notify_no_data = false
   /// ```
   testWidgets('logger consent - pending to not granted', (tester) async {
-    await initializeDatadog(
-      (config) => config.trackingConsent = TrackingConsent.pending,
-    );
+    await initializeDatadog(trackingConsent: TrackingConsent.pending);
     await measure('flutter_log_consent_set_tracking_consent', () {
       datadog.setTrackingConsent(TrackingConsent.notGranted);
     });
 
-    sendRandomLog(tester);
+    var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
+    sendRandomLog(logger, tester);
   });
 }

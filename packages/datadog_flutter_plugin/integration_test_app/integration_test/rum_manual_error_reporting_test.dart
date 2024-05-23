@@ -70,12 +70,11 @@ void main() {
     var manualError = view.errorEvents[1];
     expect(manualError.message, contains('Rum error message'));
     expect(manualError.source, kIsWeb ? 'custom' : 'network');
+    expect(manualError.fingerprint, 'custom-fingerprint');
 
     var thrownError = view.errorEvents[2];
     expect(thrownError.message, contains('This was an error!'));
     expect(thrownError.source, kIsWeb ? 'custom' : 'source');
-    if (!kIsWeb) {
-      expect(thrownError.stack, isNotNull);
-    }
+    expect(thrownError.stack, isNotNull);
   });
 }

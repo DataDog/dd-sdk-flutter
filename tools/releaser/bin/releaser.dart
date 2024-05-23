@@ -29,6 +29,12 @@ void main(List<String> arguments) async {
       help: "Don't perform checks on branch names or un-staged files",
       defaultsTo: false,
     )
+    ..addFlag(
+      'skip-changelog-check',
+      help:
+          "Don't check if there are any items in the changelog (for debuging the releaser only)",
+      defaultsTo: false,
+    )
     ..addOption(
       'ios-version',
       help: 'Explicitly set the iOS release this release will target',
@@ -103,20 +109,20 @@ void main(List<String> arguments) async {
     CreateBranchCommand(choreBranch),
     UpdateVersionsCommand(),
     CommitChangesCommand(
-        '🚀 Preparing for release of ${commandArgs.packageName} ${commandArgs.version}.'),
+        'chore: Preparing for release of ${commandArgs.packageName} ${commandArgs.version}.'),
     CreateReleaseBranchCommand(),
     RemoveDependencyOverridesCommand(),
     RemovePodOverridesCommand(),
     UpdateGradleFilesCommand(),
     CommitChangesCommand(
-      '🧹 Remove dependency overrides for release of ${commandArgs.packageName} ${commandArgs.version}.',
+      'chore: Remove dependency overrides for release of ${commandArgs.packageName} ${commandArgs.version}.',
       noChangesOkay: true,
     ),
     ValidatePublishDryRun(),
     SwitchBranchCommand(choreBranch),
     BumpVersionCommand(versionBumpType),
     CommitChangesCommand(
-        '📝 Bump version of ${commandArgs.packageName} to next potential release.'),
+        'chore: Bump version of ${commandArgs.packageName} to next potential release.'),
   ];
 
   for (final command in commands) {
@@ -136,6 +142,7 @@ Future<CommandArguments?> _validateArguments(ArgResults argResults) async {
   final version = argResults['version'];
   bool dryRun = argResults['dry-run'];
   bool skipGitChecks = argResults['skip-git-checks'];
+  bool skipChangelogCheck = argResults['skip-changelog-check'];
 
   final gitDir = await getGitDir();
   if (gitDir == null) {
@@ -147,6 +154,7 @@ Future<CommandArguments?> _validateArguments(ArgResults argResults) async {
     packageRoot: path.join(gitDir.path, 'packages', packageName),
     gitDir: gitDir,
     skipGitChecks: skipGitChecks,
+    skipChangelogCheck: skipChangelogCheck,
     version: version,
     iOSRelease: argResults['ios-version'],
     androidRelease: argResults['android-version'],

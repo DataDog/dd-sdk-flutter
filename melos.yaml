@@ -1,0 +1,225 @@
+name: datadog_flutter
+
+packages:
+  - packages/*
+  - packages/*/example
+  - packages/*/integration_test_app
+  - packages/*/e2e_test_app
+
+scripts:
+  build:
+    run: melos build:ios && melos build:android && melos build:web
+
+  build:ios:
+    exec:
+      concurrency: 1
+    run: cd example && flutter build ios --release --no-codesign
+    packageFilters:
+      dirExists: example/ios
+
+  build:android:
+    exec:
+      concurrency: 1
+    run: cd example && flutter build apk --release
+    packageFilters:
+      dirExists: example/android
+
+  build:web:
+    exec:
+      concurrency: 1
+    run: cd example && flutter build web
+    packageFilters:
+      dirExists: example/web
+
+  analyze:
+    run: melos analyze:dart && melos analyze:android && melos analyze:ios
+
+  analyze:dart:
+    exec: dart analyze .
+  description: |
+    Run `dart analyze` in all packages
+
+  analyze:android:
+    exec: |
+      cd example/android
+      ./gradlew --console=plain --quiet ktlintCheck detekt
+    packageFilters:
+      dirExists: android
+      ignore: 
+        - "*example*"
+        - "*integration_test_app*"
+        - "*e2e_test_app*"
+  
+  analyze:ios:
+    exec: cd ios && swiftlint
+    packageFilters:
+      dirExists: ios
+      ignore: 
+        - "*example*"
+        - "*integration_test_app*"
+        - "*e2e_test_app*"
+
+  unit_test:all:
+    run: melos unit_test:flutter && melos unit_test:ios && melos unit_test:android
+
+  unit_test:flutter:
+    run: 
+      mkdir -p .build/test-results &&
+      melos exec -c 1 -- "set -e -o pipefail && flutter test --machine | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml\"" 
+    packageFilters:
+      dirExists: 'test'
+
+  unit_test:ios:
+    exec:
+      concurrency: 1
+    run: xcodebuild test -workspace example/ios/Runner.xcworkspace -scheme Runner -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest'
+    packageFilters:
+      dirExists: 
+        - 'ios'
+        - 'example/ios'
+      # TODO: These packages should probably have platform unit tests
+      ignore: 
+        - 'datadog_webview_tracking'
+
+  unit_test:android:
+    exec:
+      concurrency: 1
+    run: cd example/android && ./gradlew --console=plain test
+    packageFilters:
+      dirExists: 
+        - 'android'
+        - 'example/android'
+      ignore:
+        - 'datadog_webview_tracking'
+
+  integration_test:ios:
+    run: melos integration_test:ios:main && melos integration_test:ios:other
+  
+  integration_test:ios:other:
+    exec:
+      concurrency: 1
+    run: |
+      mkdir -p $MELOS_ROOT_PATH/.build/test-results
+      cd example
+
+      bash -c 'set -euxo pipefail; \
+      flutter test integration_test --machine -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
+      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_ios_integration.xml"'
+    packageFilters:
+      dirExists:  'example/integration_test'
+      ignore: 'datadog_flutter_plugin'
+
+  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
+  # have a separate target just for it that is called by `integration_test:ios``
+  integration_test:ios:main:
+    exec: |
+      mkdir -p $MELOS_ROOT_PATH/.build/test-results
+      cd integration_test_app
+      
+      bash -c 'set -euxo pipefail; \
+      flutter test integration_test --machine -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
+      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_ios_integration.xml"'
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
+  integration_test:android:
+    run: melos integration_test:android:main && melos integration_test:android:other
+
+  integration_test:android:other:
+    exec:
+      concurrency: 1
+    run: |
+      mkdir -p $MELOS_ROOT_PATH/.build/test-results
+      cd example
+
+      bash -c 'set -euxo pipefail; \
+      flutter test integration_test --machine -d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
+      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.xml"'
+    packageFilters:
+      dirExists:  'example/integration_test'
+      ignore: 'datadog_flutter_plugin'
+
+  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
+  # have a separate target just for it that is called by `integration_test:ios``
+  integration_test:android:main:
+    exec: | 
+      mkdir -p $MELOS_ROOT_PATH/.build/test-results
+      cd integration_test_app
+      
+      bash -c 'set -euxo pipefail; \
+      flutter test integration_test --machine -d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
+      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.xml"'
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
+  integration_test:web:main:
+    exec: |
+      cd integration_test_app
+      dart ./bin/web_integration_tests.dart
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
+  prepare:
+    run: melos pub:get && melos build_runner && melos generate_env && melos generate_env:e2e
+    description: |
+      Run `flutter pub run build_runner build` on all packages and
+      generate `.env` files for all package examples
+
+  pub:get:
+    exec: flutter pub get
+
+  pod_update:
+    run: cd example/ios && pod update --repo-update
+    exec:
+      concurrency: 1
+    packageFilters:
+      dirExists: 'example/ios'
+  
+  build_runner:
+    exec:
+      concurrency: 1
+    run: flutter pub run build_runner build
+    packageFilters:
+      dependsOn: build_runner
+  
+  generate_env:
+    exec: |
+      echo "Generating .env"
+      tee .env > /dev/null << END
+      # Edit this file with your Datadog client token, environment and application id
+      DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN
+      DD_APPLICATION_ID=$DD_APPLICATION_ID
+      DD_ENV=prod
+      END
+    packageFilters:
+      scope: 
+        - "*example*"
+        - "*integration_test_app*"
+
+  generate_env:e2e:
+    exec: |
+      echo "Generating .env"
+      tee .env > /dev/null << END
+      # Edit this file with your Datadog client token, environment and application id
+      DD_CLIENT_TOKEN=$DD_E2E_CLIENT_TOKEN
+      DD_APPLICATION_ID=$DD_E2E_APPLICATION_ID
+      DD_E2E_IS_ON_CI=${IS_ON_CI:-false}
+      DD_ENV=prod
+      END
+    packageFilters:
+      scope: 
+        - "*e2e_test_app*"
+
+  pin:ios:
+    exec: 
+      concurrency: 1
+    run: dart $MELOS_ROOT_PATH/tools/releaser/bin/pinner.dart --platform ios --package \$MELOS_PACKAGE_PATH
+    packageFilters:
+      fileExists: "ios/Podfile"
+  
+  pin:android:
+    exec: 
+      concurrency: 1
+    run: dart $MELOS_ROOT_PATH/tools/releaser/bin/pinner.dart --platform android --package \$MELOS_PACKAGE_PATH
+    packageFilters:
+      fileExists: "android/build.gradle"

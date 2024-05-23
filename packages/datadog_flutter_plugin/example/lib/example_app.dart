@@ -31,9 +31,8 @@ class _ExampleAppState extends State<ExampleApp> {
   final items = <NavItem>[
     NavItem(label: 'Logging', route: '/logging'),
     NavItem(label: 'RUM', route: '/rum'),
-    NavItem(label: 'RUM Crash Reporting', route: '/rum_crash'),
     NavItem(label: 'RUM User Actions', route: '/rum_user_actions'),
-    NavItem(label: 'RUM Web View Bridging', route: '/rum_web_view'),
+    NavItem(label: 'RUM Crash Reporting', route: '/rum_crash_reporting'),
   ];
 
   @override
@@ -44,10 +43,10 @@ class _ExampleAppState extends State<ExampleApp> {
         handler: Handler(handlerFunc: (_, __) => const LoggingScreen()));
     router.define('/rum',
         handler: Handler(handlerFunc: (_, __) => const RumScreen()));
-    router.define('/rum_crash',
-        handler: Handler(handlerFunc: (_, __) => const CrashReportingScreen()));
     router.define('/rum_user_actions',
         handler: Handler(handlerFunc: (_, __) => const RumUserActionsScreen()));
+    router.define('/rum_crash_reporting',
+        handler: Handler(handlerFunc: (_, __) => const CrashReportingScreen()));
   }
 
   @override
