@@ -16,6 +16,7 @@ void main() async {
     reportFlutterPerformance: true,
   )..enableHttpTracking(
       // Using ignoreUrlPatterns is needed if you want to combine HttpClient
+      // tracking and GraphQL tracking through datadog_gql_link
       ignoreUrlPatterns: [
         RegExp('example'),
       ],
