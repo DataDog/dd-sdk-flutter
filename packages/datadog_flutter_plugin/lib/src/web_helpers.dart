@@ -2,9 +2,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
+
 import 'package:flutter/foundation.dart';
-import 'package:js/js.dart';
-import 'package:js/js_util.dart' as jsutil;
 
 import '../datadog_flutter_plugin.dart';
 
@@ -29,22 +30,34 @@ dynamic attributesToJs(Map<String, Object?> attributes, String parameterName) {
   return valueToJs(attributes, parameterName);
 }
 
-dynamic valueToJs(Object? value, String parameterName) {
-  if (value == null || value is num || value is bool || value is String) {
-    return value;
+JSAny? valueToJs(Object? value, String parameterName) {
+  if (value == null) {
+    return null;
+  }
+
+  if (value is num) {
+    return value.toJS;
+  }
+
+  if (value is bool) {
+    return value.toJS;
+  }
+
+  if (value is String) {
+    return value.toJS;
   }
 
   if (value is Map) {
-    final jsMap = jsutil.newObject<Map<String, Object?>>();
+    final jsMap = JSObject();
     for (final item in value.entries) {
-      jsutil.setProperty(
-          jsMap, item.key, valueToJs(item.value, '$parameterName.${item.key}'));
+      jsMap.setProperty(
+          item.key, valueToJs(item.value, '$parameterName.${item.key}'));
     }
     return jsMap;
   }
 
   if (value is List) {
-    final jsList = <Object?>[];
+    final jsList = JSArray();
     for (int i = 0; i < value.length; ++i) {
       jsList.add(valueToJs(value[i], '$parameterName[$i]'));
     }
@@ -60,7 +73,7 @@ final _dartLineRegex =
     RegExp(r'(?<file>.+) (?<location>\d+:\d+)\s*(?<function>.+)');
 
 @JS('RegExp')
-class JSRegExp {
+extension type JSRegExp._(JSObject _) implements JSObject {
   external factory JSRegExp([String? pattern, String? flags]);
 }
 

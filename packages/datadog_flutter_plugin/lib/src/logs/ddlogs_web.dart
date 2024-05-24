@@ -3,10 +3,9 @@
 // Copyright 2019-Present Datadog, Inc.
 // ignore_for_file: unused_element, library_private_types_in_public_api
 
-@JS('DD_LOGS')
-library ddlogs_flutter_web;
+import 'dart:js_interop';
 
-import 'package:js/js.dart';
+import 'package:meta/meta.dart';
 
 import '../../datadog_flutter_plugin.dart';
 import '../../datadog_internal.dart';
@@ -18,7 +17,7 @@ class DdLogsWeb extends DdLogsPlatform {
   final Map<String, Logger> _activeLoggers = {};
 
   static void initLogs(DatadogConfiguration configuration) {
-    init(_LogInitOptions(
+    DD_LOGS.init(_LogInitOptions(
       clientToken: configuration.clientToken,
       env: configuration.env,
       proxy: configuration.loggingConfiguration?.customEndpoint,
@@ -45,17 +44,17 @@ class DdLogsWeb extends DdLogsPlatform {
   Future<void> createLogger(
       String loggerHandle, DatadogLoggerConfiguration config) async {
     var loggerHandlers = [
-      'http',
+      'http'.toJS,
     ];
-    var logger = _createLogger(
+    var logger = DD_LOGS.createLogger(
       config.name ?? 'default',
       _JsLoggerConfiguration(),
     );
     if (logger != null) {
       if (loggerHandlers.isNotEmpty) {
-        logger.setHandler(loggerHandlers);
+        logger.setHandler(loggerHandlers.toJS);
       } else {
-        logger.setHandler(['silent']);
+        logger.setHandler(['silent'.toJS].toJS);
       }
 
       _activeLoggers[loggerHandle] = logger;
@@ -146,9 +145,8 @@ String _toWebLogLevel(LogLevel level) {
   }
 }
 
-@JS()
 @anonymous
-class _LogInitOptions {
+extension type _LogInitOptions._(JSObject _) implements JSObject {
   external String get clientToken;
   external String get site;
   external String get env;
@@ -166,37 +164,39 @@ class _LogInitOptions {
   });
 }
 
-@JS()
 @anonymous
-class _JsLoggerConfiguration {
+extension type _JsLoggerConfiguration._(JSObject _) implements JSObject {
   external String? get level;
   external String? get handler;
-  external dynamic get context;
+  external JSObject get context;
 
   external factory _JsLoggerConfiguration({
     String? level,
     String? handler,
-    dynamic context,
+    JSObject context,
   });
 }
 
-@JS('Logger')
-class Logger {
-  external void log(
-      String message, dynamic messageContext, String status, JSError? error);
+extension type _DdLogs._(JSObject _) implements JSObject {
+  external void init(_LogInitOptions options);
 
-  external void setContextProperty(String key, dynamic value);
-  external void removeContextProperty(String key);
+  external Logger? getLogger(String name);
 
-  external void setHandler(List<String> handler);
+  @internal
+  external Logger? createLogger(
+      String name, _JsLoggerConfiguration? configuration);
 }
 
 @JS()
-external void init(_LogInitOptions options);
+// ignore: non_constant_identifier_names
+external _DdLogs DD_LOGS;
 
-@JS()
-external Logger? getLogger(String name);
+extension type Logger._(JSObject _) implements JSObject {
+  external void log(
+      String message, JSAny? messageContext, String status, JSError? error);
 
-@JS('createLogger')
-external Logger? _createLogger(
-    String name, _JsLoggerConfiguration? configuration);
+  external void setContextProperty(String key, JSAny? value);
+  external void removeContextProperty(String key);
+
+  external void setHandler(JSArray handler);
+}

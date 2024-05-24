@@ -3,10 +3,7 @@
 // Copyright 2019-Present Datadog, Inc.
 // ignore_for_file: unused_element, library_private_types_in_public_api
 
-@JS('DD_RUM')
-library ddrum_flutter_web;
-
-import 'package:js/js.dart';
+import 'dart:js_interop';
 
 import '../../datadog_flutter_plugin.dart';
 import '../../datadog_internal.dart';
@@ -24,7 +21,7 @@ class DdRumWeb extends DdRumPlatform {
     final sanitizedFirstPartyHosts = FirstPartyHost.createSanitized(
         configuration.firstPartyHostsWithTracingHeaders, logger);
 
-    init(_RumInitOptions(
+    DD_RUM.init(_RumInitOptions(
       applicationId: rumConfiguration.applicationId,
       clientToken: configuration.clientToken,
       site: siteStringForSite(configuration.site),
@@ -39,14 +36,14 @@ class DdRumWeb extends DdRumPlatform {
           _TracingUrl(
             match: host.regExp.toJs(),
             propagatorTypes:
-                host.headerTypes.map(_headerTypeToPropagatorType).toList(),
+                host.headerTypes.map(_headerTypeToPropagatorType).toList().toJS,
           )
-      ],
+      ].toJS,
       trackViewsManually: true,
       trackResources: trackResources,
       trackFrustrations: rumConfiguration.trackFrustrations,
       trackLongTasks: rumConfiguration.detectLongTasks,
-      enableExperimentalFeatures: ['feature_flags'],
+      enableExperimentalFeatures: ['feature_flags'.toJS].toJS,
     ));
   }
 
@@ -59,12 +56,12 @@ class DdRumWeb extends DdRumPlatform {
 
   @override
   Future<String?> getCurrentSessionId() async {
-    return _jsGetInternalContext()?.session_id;
+    return DD_RUM.getInternalContext()?.session_id;
   }
 
   @override
   Future<void> addAttribute(String key, dynamic value) async {
-    _jsSetGlobalContextProperty(key, valueToJs(value, 'context'));
+    DD_RUM.setGlobalContextProperty(key, valueToJs(value, 'context'));
   }
 
   @override
@@ -85,7 +82,7 @@ class DdRumWeb extends DdRumPlatform {
       jsError.dd_fingerprint = fingerprint;
     }
 
-    _jsAddError(jsError, attributesToJs(attributes, 'attributes'));
+    DD_RUM.addError(jsError, attributesToJs(attributes, 'attributes'));
   }
 
   @override
@@ -106,23 +103,23 @@ class DdRumWeb extends DdRumPlatform {
       jsError.dd_fingerprint = fingerprint;
     }
 
-    _jsAddError(jsError, attributesToJs(attributes, 'attributes'));
+    DD_RUM.addError(jsError, attributesToJs(attributes, 'attributes'));
   }
 
   @override
   Future<void> addTiming(String name) async {
-    _jsAddTiming(name);
+    DD_RUM.addTiming(name);
   }
 
   @override
   Future<void> addAction(
       RumActionType type, String name, Map<String, dynamic> attributes) async {
-    _jsAddAction(name, attributesToJs(attributes, 'attributes'));
+    DD_RUM.addAction(name, attributesToJs(attributes, 'attributes'));
   }
 
   @override
   Future<void> removeAttribute(String key) async {
-    _jsRemoveGlobalContextProperty(key);
+    DD_RUM.removeGlobalContextProperty(key);
   }
 
   @override
@@ -140,7 +137,7 @@ class DdRumWeb extends DdRumPlatform {
   @override
   Future<void> startView(
       String key, String name, Map<String, dynamic> attributes) async {
-    _jsStartView(name);
+    DD_RUM.startView(name);
   }
 
   @override
@@ -173,13 +170,13 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  Future<void> addFeatureFlagEvaluation(String name, Object value) async {
-    _jsAddFeatureFlagEvaluation(name, value);
+  Future<void> addFeatureFlagEvaluation(String name, Object? value) async {
+    DD_RUM.addFeatureFlagEvaluation(name, valueToJs(value, 'value'));
   }
 
   @override
   Future<void> stopSession() async {
-    _jsStopSession();
+    DD_RUM.stopSession();
   }
 
   @override
@@ -194,34 +191,32 @@ class DdRumWeb extends DdRumPlatform {
   }
 }
 
-String _headerTypeToPropagatorType(TracingHeaderType type) {
+JSString _headerTypeToPropagatorType(TracingHeaderType type) {
   switch (type) {
     case TracingHeaderType.datadog:
-      return 'datadog';
+      return 'datadog'.toJS;
     case TracingHeaderType.b3:
-      return 'b3';
+      return 'b3'.toJS;
     case TracingHeaderType.b3multi:
-      return 'b3multi';
+      return 'b3multi'.toJS;
     case TracingHeaderType.tracecontext:
-      return 'tracecontext';
+      return 'tracecontext'.toJS;
   }
 }
 
-@JS()
 @anonymous
-class _TracingUrl {
+extension type _TracingUrl._(JSObject _) implements JSObject {
   external JSRegExp match;
-  external List<String> propagatorTypes;
+  external JSArray propagatorTypes;
 
   external factory _TracingUrl({
     JSRegExp match,
-    List<String> propagatorTypes,
+    JSArray propagatorTypes,
   });
 }
 
-@JS()
 @anonymous
-class _RumInitOptions {
+extension type _RumInitOptions._(JSObject _) implements JSObject {
   external String get applicationId;
   external String get clientToken;
   external String get site;
@@ -237,8 +232,8 @@ class _RumInitOptions {
   external num? get sessionReplaySampleRate;
   external bool? get silentMultipleInit;
   external String? get proxy;
-  external List<dynamic> get allowedTracingUrls;
-  external List<String> get enableExperimentalFeatures;
+  external JSArray get allowedTracingUrls;
+  external JSArray get enableExperimentalFeatures;
 
   external factory _RumInitOptions({
     String applicationId,
@@ -257,8 +252,8 @@ class _RumInitOptions {
     num? sessionReplaySampleRate,
     bool? silentMultipleInit,
     String? proxy,
-    List<dynamic> allowedTracingUrls,
-    List<String> enableExperimentalFeatures,
+    JSArray allowedTracingUrls,
+    JSArray enableExperimentalFeatures,
   });
 }
 
@@ -268,41 +263,26 @@ extension ToJs on RegExp {
   }
 }
 
-@JS()
-@anonymous
-class _RumInternalContext {
+extension type _RumInternalContext._(JSObject _) implements JSObject {
   // ignore: non_constant_identifier_names
   external String? application_id;
   // ignore: non_constant_identifier_names
   external String? session_id;
 }
 
+extension type _DdRum._(JSObject _) implements JSObject {
+  external void init(_RumInitOptions configuration);
+  external _RumInternalContext? getInternalContext();
+  external void startView(String name);
+  external void setGlobalContextProperty(String property, JSAny? context);
+  external void removeGlobalContextProperty(String property);
+  external void addTiming(String name);
+  external void addError(JSObject error, JSAny? context);
+  external void addAction(String action, JSAny? context);
+  external void addFeatureFlagEvaluation(String name, JSAny? value);
+  external void stopSession();
+}
+
 @JS()
-external void init(_RumInitOptions configuration);
-
-@JS('getInternalContext')
-external _RumInternalContext? _jsGetInternalContext();
-
-@JS('startView')
-external void _jsStartView(String name);
-
-@JS('setGlobalContextProperty')
-external void _jsSetGlobalContextProperty(String property, dynamic context);
-
-@JS('removeGlobalContextProperty')
-external void _jsRemoveGlobalContextProperty(String property);
-
-@JS('addTiming')
-external void _jsAddTiming(String name);
-
-@JS('addError')
-external void _jsAddError(dynamic error, dynamic context);
-
-@JS('addAction')
-external void _jsAddAction(String action, dynamic context);
-
-@JS('addFeatureFlagEvaluation')
-external void _jsAddFeatureFlagEvaluation(String name, dynamic value);
-
-@JS('stopSession')
-external void _jsStopSession();
+// ignore: non_constant_identifier_names
+external _DdRum DD_RUM;

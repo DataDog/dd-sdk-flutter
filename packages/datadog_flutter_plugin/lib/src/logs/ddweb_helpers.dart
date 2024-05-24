@@ -2,15 +2,12 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
-@JS()
-library ddweb_helpers;
-
-import 'package:js/js.dart';
+import 'dart:js_interop';
 
 @JS('Error')
 @staticInterop
-class JSError {
-  external factory JSError();
+extension type JSError._(JSObject _) implements JSObject {
+  external JSError();
 }
 
 extension JSErrorExtension on JSError {
