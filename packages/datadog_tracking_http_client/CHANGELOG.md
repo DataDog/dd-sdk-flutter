@@ -1,12 +1,10 @@
 # Changelog
 
-## Unreleased
-
 ## 2.2.1
 
 * Add the ability to ignore tracking on specific url patterns with `ignoreUrlPatterns` when using the attach configuration.
 
-## 2.2.0
+## Unreleased
 
 * Support 128-bit trace ids in distributed tracing.
 
