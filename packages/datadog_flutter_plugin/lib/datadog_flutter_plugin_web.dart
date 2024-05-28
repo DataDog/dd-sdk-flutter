@@ -5,7 +5,6 @@
 // ignore_for_file: unused_element
 
 import 'dart:async';
-import 'dart:js_interop';
 
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
@@ -36,7 +35,7 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   Future<void> setUserInfo(String? id, String? name, String? email,
       Map<String, dynamic> extraInfo) async {
     // TODO: Extra user properties
-    _jsSetUser(_JsUser(
+    DD_RUM?.setUser(JsUser(
       id: id,
       name: name,
       email: email,
@@ -115,20 +114,3 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
     // Not currently supported
   }
 }
-
-@anonymous
-extension type _JsUser._(JSObject _) implements JSObject {
-  external String? get id;
-  external String? get email;
-  external String? get name;
-
-  external factory _JsUser({
-    String? id,
-    String? email,
-    String? name,
-  });
-}
-
-// TODO: Need to fix this
-@JS()
-external void _jsSetUser(_JsUser newUser);

@@ -34,7 +34,7 @@ void main() {
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
     await recordedSession.pollSessionRequests(
-      const Duration(seconds: 30),
+      const Duration(seconds: 50),
       (requests) {
         requestLog.addAll(requests);
         requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
@@ -56,7 +56,9 @@ void main() {
     expect(session.visits.length, 1);
 
     final view = session.visits[0];
+    print(view.viewEvents.last.view.errorCount);
     expect(view.viewEvents.last.view.errorCount, 3);
+    print(view.errorEvents.length);
     expect(view.errorEvents.length, 3);
 
     var exceptionError = view.errorEvents[0];

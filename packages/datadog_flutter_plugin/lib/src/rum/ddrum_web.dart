@@ -5,6 +5,8 @@
 
 import 'dart:js_interop';
 
+import 'package:meta/meta.dart';
+
 import '../../datadog_flutter_plugin.dart';
 import '../../datadog_internal.dart';
 import '../logs/ddweb_helpers.dart';
@@ -21,7 +23,7 @@ class DdRumWeb extends DdRumPlatform {
     final sanitizedFirstPartyHosts = FirstPartyHost.createSanitized(
         configuration.firstPartyHostsWithTracingHeaders, logger);
 
-    DD_RUM.init(_RumInitOptions(
+    DD_RUM?.init(_RumInitOptions(
       applicationId: rumConfiguration.applicationId,
       clientToken: configuration.clientToken,
       site: siteStringForSite(configuration.site),
@@ -56,12 +58,12 @@ class DdRumWeb extends DdRumPlatform {
 
   @override
   Future<String?> getCurrentSessionId() async {
-    return DD_RUM.getInternalContext()?.session_id;
+    return DD_RUM?.getInternalContext()?.session_id;
   }
 
   @override
   Future<void> addAttribute(String key, dynamic value) async {
-    DD_RUM.setGlobalContextProperty(key, valueToJs(value, 'context'));
+    DD_RUM?.setGlobalContextProperty(key, valueToJs(value, 'context'));
   }
 
   @override
@@ -82,7 +84,7 @@ class DdRumWeb extends DdRumPlatform {
       jsError.dd_fingerprint = fingerprint;
     }
 
-    DD_RUM.addError(jsError, attributesToJs(attributes, 'attributes'));
+    DD_RUM?.addError(jsError, attributesToJs(attributes, 'attributes'));
   }
 
   @override
@@ -103,23 +105,23 @@ class DdRumWeb extends DdRumPlatform {
       jsError.dd_fingerprint = fingerprint;
     }
 
-    DD_RUM.addError(jsError, attributesToJs(attributes, 'attributes'));
+    DD_RUM?.addError(jsError, attributesToJs(attributes, 'attributes'));
   }
 
   @override
   Future<void> addTiming(String name) async {
-    DD_RUM.addTiming(name);
+    DD_RUM?.addTiming(name);
   }
 
   @override
   Future<void> addAction(
       RumActionType type, String name, Map<String, dynamic> attributes) async {
-    DD_RUM.addAction(name, attributesToJs(attributes, 'attributes'));
+    DD_RUM?.addAction(name, attributesToJs(attributes, 'attributes'));
   }
 
   @override
   Future<void> removeAttribute(String key) async {
-    DD_RUM.removeGlobalContextProperty(key);
+    DD_RUM?.removeGlobalContextProperty(key);
   }
 
   @override
@@ -137,7 +139,7 @@ class DdRumWeb extends DdRumPlatform {
   @override
   Future<void> startView(
       String key, String name, Map<String, dynamic> attributes) async {
-    DD_RUM.startView(name);
+    DD_RUM?.startView(name);
   }
 
   @override
@@ -171,12 +173,12 @@ class DdRumWeb extends DdRumPlatform {
 
   @override
   Future<void> addFeatureFlagEvaluation(String name, Object? value) async {
-    DD_RUM.addFeatureFlagEvaluation(name, valueToJs(value, 'value'));
+    DD_RUM?.addFeatureFlagEvaluation(name, valueToJs(value, 'value'));
   }
 
   @override
   Future<void> stopSession() async {
-    DD_RUM.stopSession();
+    DD_RUM?.stopSession();
   }
 
   @override
@@ -270,6 +272,20 @@ extension type _RumInternalContext._(JSObject _) implements JSObject {
   external String? session_id;
 }
 
+@anonymous
+@internal
+extension type JsUser._(JSObject _) implements JSObject {
+  external String? get id;
+  external String? get email;
+  external String? get name;
+
+  external factory JsUser({
+    String? id,
+    String? email,
+    String? name,
+  });
+}
+
 extension type _DdRum._(JSObject _) implements JSObject {
   external void init(_RumInitOptions configuration);
   external _RumInternalContext? getInternalContext();
@@ -281,8 +297,9 @@ extension type _DdRum._(JSObject _) implements JSObject {
   external void addAction(String action, JSAny? context);
   external void addFeatureFlagEvaluation(String name, JSAny? value);
   external void stopSession();
+  external void setUser(JsUser newUser);
 }
 
 @JS()
 // ignore: non_constant_identifier_names
-external _DdRum DD_RUM;
+external _DdRum? DD_RUM;
