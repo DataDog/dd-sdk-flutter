@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Fix an exception when attempting to `jsonEncode` unencodable variables.
 
 ## 1.1.0
 
