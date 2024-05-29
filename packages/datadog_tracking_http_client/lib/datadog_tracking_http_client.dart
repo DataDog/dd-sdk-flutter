@@ -57,8 +57,12 @@ extension TrackingExtension on DatadogConfiguration {
 
 extension TrackingExtensionExisting on DatadogAttachConfiguration {
   /// See [TrackingExtension.enableHttpTracking]
-  void enableHttpTracking({DatadogTrackingHttpClientListener? clientListener}) {
-    addPlugin(
-        DdHttpTrackingPluginConfiguration(clientListener: clientListener));
+  void enableHttpTracking(
+      {DatadogTrackingHttpClientListener? clientListener,
+      List<RegExp> ignoreUrlPatterns = const []}) {
+    addPlugin(DdHttpTrackingPluginConfiguration(
+      clientListener: clientListener,
+      ignoreUrlPatterns: ignoreUrlPatterns,
+    ));
   }
 }
