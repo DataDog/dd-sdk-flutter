@@ -24,7 +24,24 @@ class MockDatadogGqlListener extends Mock implements DatadogGqlListener {}
 
 class MockResponse extends Mock implements Response {}
 
+class MockInternalLogger extends Mock implements InternalLogger {}
+
 class FakeRequest extends Fake implements Request {}
+
+class Unencodable {
+  final String representation;
+  bool shouldThrow = false;
+
+  Unencodable(this.representation);
+
+  @override
+  String toString() {
+    if (shouldThrow) {
+      throw Exception('Throwing during toString');
+    }
+    return 'Instance of Unencodable: $representation';
+  }
+}
 
 void main() {
   late MockDatadogSdk mockDatadog;
@@ -55,7 +72,7 @@ query UserInfo($id: ID!) {
         .thenReturn({TracingHeaderType.datadog});
     when(() => mockDatadog.platform).thenReturn(mockPlatform);
     // ignore: invalid_use_of_internal_member
-    when(() => mockDatadog.internalLogger).thenReturn(InternalLogger());
+    when(() => mockDatadog.internalLogger).thenReturn(MockInternalLogger());
 
     mockRum = MockDdRum();
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
@@ -186,6 +203,55 @@ query UserInfo($id: ID!) {
               any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
           .captured[0] as Map<String, Object?>;
       expect(capturedAttributes['_dd.graphql.variables'], '{"id":"$idValue"}');
+    });
+
+    test('link stringifies unencodable variables to attributes', () {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(
+        operation: Operation(
+          document: query,
+          operationName: 'UserInfo',
+        ),
+        variables: {'file': Unencodable('fake_representation')},
+      );
+
+      // When
+      link.request(request, (request) {
+        return const Stream<Response>.empty();
+      });
+
+      // Then
+      final capturedAttributes = verify(() => mockRum.startResource(
+              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
+          .captured[0] as Map<String, Object?>;
+      expect(capturedAttributes['_dd.graphql.variables'],
+          '{"file":"Instance of Unencodable: fake_representation"}');
+    });
+
+    test('exception during json encoding does not break link', () {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final unencodable = Unencodable('fake_representation')
+        ..shouldThrow = true;
+      final request = Request(
+        operation: Operation(
+          document: query,
+          operationName: 'UserInfo',
+        ),
+        variables: {'file': unencodable},
+      );
+
+      // When
+      link.request(request, (request) {
+        return const Stream<Response>.empty();
+      });
+
+      // Then
+      final capturedAttributes = verify(() => mockRum.startResource(
+              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
+          .captured[0] as Map<String, Object?>;
+      expect(capturedAttributes['_dd.graphql.variables'], isNull);
     });
 
     test('link calls listener on start resource', () {
@@ -681,7 +747,7 @@ query UserInfo($id: ID!) {
             any(that: HasHost(equals('non_first_party'))))).thenReturn({});
         when(() => mockDatadog.platform).thenReturn(mockPlatform);
         // ignore: invalid_use_of_internal_member
-        when(() => mockDatadog.internalLogger).thenReturn(InternalLogger());
+        when(() => mockDatadog.internalLogger).thenReturn(MockInternalLogger());
 
         when(() => mockRum.shouldSampleTrace()).thenReturn(true);
         when(() => mockRum.traceSampleRate).thenReturn(50.0);

@@ -158,7 +158,22 @@ class DatadogGqlLink extends Link {
       attributes[_GraphQLAttributes.operationName] = operationName;
     }
 
-    attributes[_GraphQLAttributes.variables] = jsonEncode(request.variables);
+    try {
+      attributes[_GraphQLAttributes.variables] = jsonEncode(
+        request.variables,
+        toEncodable: (nonEncodable) {
+          // Non-encodable variables should just use their string representations
+          return nonEncodable.toString();
+        },
+      );
+    } catch (e, st) {
+      datadogSdk.internalLogger.error('Error encodeing GraphQL variables: $e.');
+      datadogSdk.internalLogger.sendToDatadog(
+        '$DatadogGqlLink encountered an error while attempting to encode variables: $e',
+        st,
+        e.runtimeType.toString(),
+      );
+    }
 
     return attributes;
   }
