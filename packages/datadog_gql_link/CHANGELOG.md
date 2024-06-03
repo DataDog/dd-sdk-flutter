@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.1
 
 * Fix an exception when attempting to `jsonEncode` unencodable variables.
 
