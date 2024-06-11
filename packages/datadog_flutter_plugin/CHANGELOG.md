@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-
+* Bump minimum Dart version to 3.3.0 (Flutter 3.19.0).
+* Add WASM support by removing references to `dart:html` and `package:js`
 
 ## 2.5.0
 
