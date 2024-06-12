@@ -20,7 +20,7 @@ scripts:
   build:android:
     exec:
       concurrency: 1
-    run: cd example && flutter build apk --release
+    run: cd example && flutter build apk --release --verbose
     packageFilters:
       dirExists: example/android
 
@@ -40,7 +40,9 @@ scripts:
     Run `dart analyze` in all packages
 
   analyze:android:
-    exec: |
+    exec:
+      concurrency: 1
+    run: |
       cd example/android
       ./gradlew --console=plain --quiet ktlintCheck detekt
     packageFilters:
@@ -72,7 +74,9 @@ scripts:
   unit_test:ios:
     exec:
       concurrency: 1
-    run: xcodebuild test -workspace example/ios/Runner.xcworkspace -scheme Runner -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest'
+    run:
+      set -euxo pipefail &&
+      xcodebuild test -workspace example/ios/Runner.xcworkspace -scheme Runner -destination "platform=iOS Simulator,name=$IOS_SIMULATOR,OS=latest" | xcbeautify
     packageFilters:
       dirExists: 
         - 'ios'
@@ -84,7 +88,7 @@ scripts:
   unit_test:android:
     exec:
       concurrency: 1
-    run: cd example/android && ./gradlew --console=plain test
+    run: cd example/android && ./gradlew --stacktrace --console=plain test
     packageFilters:
       dirExists: 
         - 'android'

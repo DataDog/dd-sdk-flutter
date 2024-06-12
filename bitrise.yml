@@ -131,6 +131,7 @@ workflows:
         - working_dir: "$BITRISE_SOURCE_DIR/tools/third_party_scanner"
   core_build:
     envs:
+    - IOS_SIMULATOR: "iPhone 14"
     - FLUTTER_VERSION: stable
     after_run:
     - _setup
@@ -166,6 +167,8 @@ workflows:
         stack: linux-docker-android-20.04
         machine_type_id: standard
   integration_ios:
+    envs:
+    - IOS_SIMULATOR: "iPhone 14"
     steps:
     - script:
         title: iOS Integration Tests
