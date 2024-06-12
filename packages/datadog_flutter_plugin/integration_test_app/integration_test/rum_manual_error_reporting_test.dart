@@ -56,9 +56,7 @@ void main() {
     expect(session.visits.length, 1);
 
     final view = session.visits[0];
-    print(view.viewEvents.last.view.errorCount);
     expect(view.viewEvents.last.view.errorCount, 3);
-    print(view.errorEvents.length);
     expect(view.errorEvents.length, 3);
 
     var exceptionError = view.errorEvents[0];
