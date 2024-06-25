@@ -6,6 +6,8 @@ import com.datadog.android.Datadog
 import com.datadog.android.log.LogsConfiguration
 import com.datadog.android.log.model.LogEvent
 import io.flutter.plugin.common.MethodChannel
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
@@ -17,7 +19,7 @@ import java.util.concurrent.TimeUnit
  * perform mapping and call the Flutter mapping methods using the last provided MethodChannel.
  */
 internal class DatadogLogEventMapper {
-    private val channels: MutableSet<MethodChannel> = mutableSetOf()
+    private val channels: MutableSet<MethodChannel> = Collections.newSetFromMap(ConcurrentHashMap())
 
     fun addChannel(channel: MethodChannel) {
         channels.add(channel)
@@ -41,9 +43,10 @@ internal class DatadogLogEventMapper {
         val latch = CountDownLatch(1)
 
         val handler = Handler(Looper.getMainLooper())
+        val channel = channels.firstOrNull() ?: return event
+
         handler.post {
             try {
-                val channel = channels.first()
                 channel.invokeMethod(
                     "mapLogEvent",
                     mapOf(

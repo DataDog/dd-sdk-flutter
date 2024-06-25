@@ -68,7 +68,7 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
 
     var rum: RumMonitor? = null
-        private set
+        internal set
 
     // Might need a better way to deal with this. There's weird shared responsibility for
     // telemetry between the core and RUM.

@@ -52,7 +52,8 @@ class DatadogRumPluginTest {
     @BeforeEach
     fun beforeEach() {
         monitorProxy = MockRumMonitor()
-        plugin = DatadogRumPlugin(monitorProxy)
+        plugin = DatadogRumPlugin()
+        plugin.rum = monitorProxy
     }
 
     @AfterEach

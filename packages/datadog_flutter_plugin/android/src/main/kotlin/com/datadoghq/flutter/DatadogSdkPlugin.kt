@@ -63,8 +63,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         SynchronousQueue()
     )
 
-    private val logsPlugin: DatadogLogsPlugin = DatadogLogsPlugin()
-    private val rumPlugin: DatadogRumPlugin = DatadogRumPlugin()
+    internal val logsPlugin: DatadogLogsPlugin = DatadogLogsPlugin()
+    internal val rumPlugin: DatadogRumPlugin = DatadogRumPlugin()
 
     override fun onAttachedToEngine(
         flutterPluginBinding: FlutterPlugin.FlutterPluginBinding

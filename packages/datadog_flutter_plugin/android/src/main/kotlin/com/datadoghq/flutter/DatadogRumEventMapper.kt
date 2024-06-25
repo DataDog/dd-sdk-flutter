@@ -10,6 +10,8 @@ import com.datadog.android.rum.model.LongTaskEvent
 import com.datadog.android.rum.model.ResourceEvent
 import com.datadog.android.rum.model.ViewEvent
 import io.flutter.plugin.common.MethodChannel
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.system.measureNanoTime
@@ -23,7 +25,7 @@ import kotlin.system.measureNanoTime
  */
 @Suppress("StringLiteralDuplication")
 internal class DatadogRumEventMapper {
-    private val channels: MutableSet<MethodChannel> = mutableSetOf()
+    private val channels: MutableSet<MethodChannel> = Collections.newSetFromMap(ConcurrentHashMap())
 
     val mapperPerf = PerformanceTracker()
     val mapperPerfMainThread = PerformanceTracker()
@@ -255,7 +257,7 @@ internal class DatadogRumEventMapper {
         // Any valid channel should do here since they should be connected to the same initialization code,
         // but calling on multiple could result in weird behavior and performance issues. While "first" may
         // not be the actual first registered channel, it should be fine for our purposes.
-        val channel = channels.first()
+        val channel = channels.firstOrNull() ?: return event
         val latch = CountDownLatch(1)
 
         val handler = Handler(Looper.getMainLooper())
