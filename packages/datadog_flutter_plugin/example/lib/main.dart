@@ -27,6 +27,12 @@ void main() async {
             applicationId: applicationId,
             detectLongTasks: true,
             reportFlutterPerformance: true,
+            actionEventMapper: (event) {
+              if (event.action.target?.name == 'Test Action') {
+                event.action.target?.name = 'Replaced';
+              }
+              return event;
+            },
           )
         : null,
   );

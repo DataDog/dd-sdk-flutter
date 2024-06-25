@@ -63,9 +63,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         SynchronousQueue()
     )
 
-    // Because Flutter recreates the plugin, we have to rely on singletons for the contained plugins
-    val logsPlugin: DatadogLogsPlugin = DatadogLogsPlugin.instance
-    val rumPlugin: DatadogRumPlugin = DatadogRumPlugin.instance
+    internal val logsPlugin: DatadogLogsPlugin = DatadogLogsPlugin()
+    internal val rumPlugin: DatadogRumPlugin = DatadogRumPlugin()
 
     override fun onAttachedToEngine(
         flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
@@ -321,16 +320,16 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             "mapperPerformance" ->
                 mapOf(
                     "total" to mapOf(
-                        "minMs" to rumPlugin.mapperPerf.minInMs,
-                        "maxMs" to rumPlugin.mapperPerf.maxInMs,
-                        "avgMs" to rumPlugin.mapperPerf.avgInMs
+                        "minMs" to DatadogRumPlugin.eventMapper.mapperPerf.minInMs,
+                        "maxMs" to DatadogRumPlugin.eventMapper.mapperPerf.maxInMs,
+                        "avgMs" to DatadogRumPlugin.eventMapper.mapperPerf.avgInMs
                     ),
                     "mainThread" to mapOf(
-                        "minMs" to rumPlugin.mapperPerfMainThread.minInMs,
-                        "maxMs" to rumPlugin.mapperPerfMainThread.maxInMs,
-                        "avgMs" to rumPlugin.mapperPerfMainThread.avgInMs
+                        "minMs" to DatadogRumPlugin.eventMapper.mapperPerfMainThread.minInMs,
+                        "maxMs" to DatadogRumPlugin.eventMapper.mapperPerfMainThread.maxInMs,
+                        "avgMs" to DatadogRumPlugin.eventMapper.mapperPerfMainThread.avgInMs
                     ),
-                    "mapperTimeouts" to rumPlugin.mapperTimeouts
+                    "mapperTimeouts" to DatadogRumPlugin.eventMapper.mapperTimeouts
                 )
             else -> null
         }
