@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Remove use of singletons for RUM / Logs plugins to fix "No Implementation Found" errors. See [#596]
 
 ## 2.5.0
 
@@ -292,3 +292,4 @@ Release 2.0 introduces breaking changes. Follow the [Migration Guide](MIGRATING.
 [#572]: https://github.com/DataDog/dd-sdk-flutter/issues/572
 [#574]: https://github.com/DataDog/dd-sdk-flutter/issues/574
 [#575]: https://github.com/DataDog/dd-sdk-flutter/issues/575
+[#596]: https://github.com/DataDog/dd-sdk-flutter/issues/596
