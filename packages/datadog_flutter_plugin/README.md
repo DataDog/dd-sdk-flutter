@@ -19,7 +19,7 @@ For complete documentation, see the [official Datadog documentation][11].
 
 ### iOS
 
-Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutter) and target iOS version >= 11.0.
+Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutter) and target iOS version >= 12.0.
 
 ### Android
 
