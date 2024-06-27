@@ -3,7 +3,16 @@
 ## 2.6.0
 
 * Remove use of singletons for RUM / Logs plugins to fix "No Implementation Found" errors. See [#596]
-
+* Upgrade iOS SDK to 2.13.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#2130--13-06-2024)
+  * Bump IPHONEOS_DEPLOYMENT_TARGET and TVOS_DEPLOYMENT_TARGET from 11 to 12.
+  * Fix compilation issues on Xcode 16 beta.
+  * Crash errors now include up-to-date global RUM attributes.
+* Update Android SDK to 2.11.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#2110--2024-06-20)
+  * Global: Fix thread safety warnings
+  * Limit total telemetry events sent per session.
+  * Add Method Call Telemetry.
+  * RUM: Flag critical events in custom persistence.
+  
 ## 2.5.0
 
 * Support 128-bit trace ids in distributed tracing.
