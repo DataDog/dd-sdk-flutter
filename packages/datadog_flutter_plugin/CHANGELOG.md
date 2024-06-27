@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.6.0
 
 * Remove use of singletons for RUM / Logs plugins to fix "No Implementation Found" errors. See [#596]
 
