@@ -107,6 +107,8 @@ void main() {
     setUp(() {
       mockRum = MockDdRum();
       when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+      when(() => mockRum.contextInjectionSetting)
+          .thenReturn(TraceContextInjection.all);
       when(() => mockRum.traceSampleRate).thenReturn(50.0);
 
       when(() => mockDatadog.rum).thenReturn(mockRum);
@@ -397,7 +399,9 @@ void main() {
               any(that: HasHost(equals('test_url'))))).thenReturn({headerType});
         });
 
-        test('adds tracing headers to request', () async {
+        test(
+            'adds tracing headers to request { sampled, TraceContextInjection.all }',
+            () async {
           final client = DatadogClient(
             datadogSdk: mockDatadog,
             innerClient: mockClient,
@@ -412,7 +416,73 @@ void main() {
 
           final headers = captured.headers;
 
-          verifyHeaders(headers, headerType);
+          verifyHeaders(headers, headerType, true, TraceContextInjection.all);
+        });
+
+        test(
+            'adds tracing headers to request { sampled, TraceContextInjection.sampled }',
+            () async {
+          final client = DatadogClient(
+            datadogSdk: mockDatadog,
+            innerClient: mockClient,
+          );
+          final testUri = Uri.parse('https://test_url/test');
+          final _ =
+              client.get(testUri, headers: {'x-datadog-header': 'header'});
+
+          final captured = verify(() => mockClient.send(captureAny()))
+              .captured[0] as http.BaseRequest;
+          expect(captured.url, testUri);
+
+          final headers = captured.headers;
+
+          verifyHeaders(
+              headers, headerType, true, TraceContextInjection.sampled);
+        });
+
+        test(
+            'adds tracing headers to request { unsampled, TraceContextInjection.all }',
+            () async {
+          when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+          final client = DatadogClient(
+            datadogSdk: mockDatadog,
+            innerClient: mockClient,
+          );
+          final testUri = Uri.parse('https://test_url/test');
+          final _ =
+              client.get(testUri, headers: {'x-datadog-header': 'header'});
+
+          final captured = verify(() => mockClient.send(captureAny()))
+              .captured[0] as http.BaseRequest;
+          expect(captured.url, testUri);
+
+          final headers = captured.headers;
+
+          verifyHeaders(headers, headerType, false, TraceContextInjection.all);
+        });
+
+        test(
+            'does not add tracing headers to request { unsampled, TraceContextInjection.sampled }',
+            () async {
+          when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+          when(() => mockRum.contextInjectionSetting)
+              .thenReturn(TraceContextInjection.sampled);
+          final client = DatadogClient(
+            datadogSdk: mockDatadog,
+            innerClient: mockClient,
+          );
+          final testUri = Uri.parse('https://test_url/test');
+          final _ =
+              client.get(testUri, headers: {'x-datadog-header': 'header'});
+
+          final captured = verify(() => mockClient.send(captureAny()))
+              .captured[0] as http.BaseRequest;
+          expect(captured.url, testUri);
+
+          final headers = captured.headers;
+
+          verifyHeaders(
+              headers, headerType, false, TraceContextInjection.sampled);
         });
 
         test('adds tracing attributes to startResource', () async {
@@ -517,11 +587,13 @@ void main() {
 
       final capturedA = captured[0] as http.BaseRequest;
       expect(capturedA.url, testUriA);
-      verifyHeaders(capturedA.headers, TracingHeaderType.datadog);
+      verifyHeaders(capturedA.headers, TracingHeaderType.datadog, true,
+          TraceContextInjection.all);
 
       final capturedB = captured[1] as http.BaseRequest;
       expect(capturedB.url, testUriB);
-      verifyHeaders(capturedB.headers, TracingHeaderType.b3);
+      verifyHeaders(capturedB.headers, TracingHeaderType.b3, true,
+          TraceContextInjection.all);
     });
 
     test('different tracing headers are same trace id', () async {

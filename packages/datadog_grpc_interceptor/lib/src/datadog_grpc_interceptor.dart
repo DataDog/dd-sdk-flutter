@@ -73,7 +73,8 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
         }
 
         for (final tracingType in headerTypes) {
-          addedHeaders.addAll(getTracingHeaders(tracingContext, tracingType));
+          addedHeaders.addAll(getTracingHeaders(tracingContext, tracingType,
+              contextInjection: rum.contextInjectionSetting));
         }
       }
 

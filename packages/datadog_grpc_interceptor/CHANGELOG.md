@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Add support for `TraceContextInjection` configuration.
 
 ## 1.1.0
 

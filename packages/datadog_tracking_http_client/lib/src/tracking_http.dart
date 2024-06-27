@@ -97,7 +97,12 @@ class DatadogClient extends http.BaseClient {
           var shouldSample = rum.shouldSampleTrace();
           var context = generateTracingContext(shouldSample);
 
-          attributes = _appendRequestHeaders(request, context, tracingHeaders);
+          attributes = _appendRequestHeaders(
+            request,
+            context,
+            tracingHeaders,
+            rum.contextInjectionSetting,
+          );
         }
 
         rumKey = _uuid.v1();
@@ -236,6 +241,7 @@ class DatadogClient extends http.BaseClient {
     http.BaseRequest request,
     TracingContext context,
     Set<TracingHeaderType> tracingHeaderTypes,
+    TraceContextInjection contextInjection,
   ) {
     var attributes = <String, Object?>{};
 
@@ -244,7 +250,11 @@ class DatadogClient extends http.BaseClient {
           context, datadogSdk.rum?.traceSampleRate ?? 0);
 
       for (final headerType in tracingHeaderTypes) {
-        request.headers.addAll(getTracingHeaders(context, headerType));
+        request.headers.addAll(getTracingHeaders(
+          context,
+          headerType,
+          contextInjection: contextInjection,
+        ));
       }
     }
 

@@ -105,3 +105,7 @@ class FirstPartyHost {
     return null;
   }
 }
+
+extension DatadogRumInternal on DatadogRum {
+  TraceContextInjection get contextInjectionSetting => traceContextInjection;
+}

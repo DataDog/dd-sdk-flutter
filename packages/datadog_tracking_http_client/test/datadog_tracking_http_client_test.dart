@@ -78,6 +78,8 @@ void main() {
 
     mockRum = MockDdRum();
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+    when(() => mockRum.contextInjectionSetting)
+        .thenReturn(TraceContextInjection.all);
     when(() => mockRum.traceSampleRate).thenReturn(50.0);
 
     mockClient = MockHttpClient();
@@ -658,7 +660,9 @@ void main() {
             capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.23);
       });
 
-      test('sets trace headers for first party urls', () async {
+      test(
+          'sets trace headers for first party urls { sampled, TraceContextInjection.all }',
+          () async {
         var url = Uri.parse('https://test_url/path');
         var completer = setupMockRequest(url);
         var mockResponse = setupMockClientResponse(200);
@@ -675,7 +679,83 @@ void main() {
         var _ = await request.done;
 
         final requestHeaders = request.headers.toMap();
-        verifyHeaders(requestHeaders, headerType);
+        verifyHeaders(
+            requestHeaders, headerType, true, TraceContextInjection.all);
+      });
+
+      test(
+          'sets trace headers for first party urls { unsampled, TraceContextInjection.all }',
+          () async {
+        when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+        var url = Uri.parse('https://test_url/path');
+        var completer = setupMockRequest(url);
+        var mockResponse = setupMockClientResponse(200);
+
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(),
+          mockClient,
+        );
+
+        var request = await client.openUrl('get', url);
+        completer.complete(mockResponse);
+
+        var _ = await request.done;
+
+        final requestHeaders = request.headers.toMap();
+        verifyHeaders(
+            requestHeaders, headerType, false, TraceContextInjection.all);
+      });
+
+      test(
+          'sets trace headers for first party urls { sampled, TraceContextInjection.sampled }',
+          () async {
+        when(() => mockRum.contextInjectionSetting)
+            .thenReturn(TraceContextInjection.sampled);
+        var url = Uri.parse('https://test_url/path');
+        var completer = setupMockRequest(url);
+        var mockResponse = setupMockClientResponse(200);
+
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(),
+          mockClient,
+        );
+
+        var request = await client.openUrl('get', url);
+        completer.complete(mockResponse);
+
+        var _ = await request.done;
+
+        final requestHeaders = request.headers.toMap();
+        verifyHeaders(
+            requestHeaders, headerType, true, TraceContextInjection.sampled);
+      });
+
+      test(
+          'sets trace headers for first party urls { unsampled, TraceContextInjection.sampled }',
+          () async {
+        when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+        when(() => mockRum.contextInjectionSetting)
+            .thenReturn(TraceContextInjection.sampled);
+        var url = Uri.parse('https://test_url/path');
+        var completer = setupMockRequest(url);
+        var mockResponse = setupMockClientResponse(200);
+
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(),
+          mockClient,
+        );
+
+        var request = await client.openUrl('get', url);
+        completer.complete(mockResponse);
+
+        var _ = await request.done;
+
+        final requestHeaders = request.headers.toMap();
+        verifyHeaders(
+            requestHeaders, headerType, false, TraceContextInjection.sampled);
       });
 
       test('does not set trace headers for third party urls', () async {
@@ -737,7 +817,8 @@ void main() {
       var _ = await request.done;
 
       final requestHeaders = request.headers.toMap();
-      verifyHeaders(requestHeaders, headerType);
+      verifyHeaders(
+          requestHeaders, headerType, true, TraceContextInjection.all);
     }
 
     await verifyCall(testUriA, TracingHeaderType.datadog);

@@ -354,7 +354,11 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
         _tracingContext ??= generateTracingContext(shouldSample);
 
         for (final headerType in tracingHeaderTypes) {
-          final newHeaders = getTracingHeaders(_tracingContext!, headerType);
+          final newHeaders = getTracingHeaders(
+            _tracingContext!,
+            headerType,
+            contextInjection: rum.contextInjectionSetting,
+          );
           for (final entry in newHeaders.entries) {
             // Don't replace exiting headers
             if (headers.value(entry.key) == null) {
@@ -364,6 +368,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
         }
       }
     } catch (e, st) {
+      print(e);
       client.datadogSdk.internalLogger.sendToDatadog(
         '$DatadogTrackingHttpClient encountered an error while attempting '
         ' to track an _openUrl call: $e',
