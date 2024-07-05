@@ -9,6 +9,7 @@ variables:
   DD_CLIENT_TOKEN: "fake-token"
   DD_APPLICATION_ID: "fake-application-id"
   IOS_SIMULATOR: "iPhone 15"
+  VAULT_ADDR: "https://vault.us1.ddbuild.io"
 
   KUBERNETES_MEMORY_REQUEST: "8Gi"
   KUBERNETES_MEMORY_LIMIT: "16Gi"
@@ -138,17 +139,28 @@ ios-integration-test:
 #   script:
 #     - melos run integration_test:web
 
-# Nightly 
+# Nightly
 
-nightly-ios:
-  stage: e2e-test
+.nightly-vars:
+  script:
+    - vault login -method=aws -no-print
+    - export DD_CLIENT_TOKEN=$(vault kv get -field=client_token kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
+    - export DD_APPLICATION_ID=$(vault kv get -field=application_id kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
+
+.nightly:
   only: [ schedules ]
+  stage: e2e-test
   tags:
     - macos:sonoma
     - specific:true
+
+nightly-ios:
+  extends: .nightly
+  stage: e2e-test
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
+    - !reference [.nightly-vars, script]
     - pod repo update
     - melos pub:get
     - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk "iOS-17" --device "iPhone 14"
@@ -161,12 +173,11 @@ nightly-ios:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 nightly-android:
+  extends: .nightly
   stage: e2e-test
-  tags:
-    - macos:sonoma
-    - specific:true
   script:
     - !reference [.pre, script]
+    - !reference [.nightly-vars, script]
     - pod repo update
     - melos pub:get
     - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.3" "platform-tools" "platforms;android-33" || true
