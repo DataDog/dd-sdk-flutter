@@ -13,6 +13,12 @@ variables:
   KUBERNETES_MEMORY_REQUEST: "8Gi"
   KUBERNETES_MEMORY_LIMIT: "16Gi"
 
+stages:
+  - ci-image
+  - build
+  - integration-test
+  - e2e-test
+
 # Prebuild - install necessary tools
 
 .pre:
@@ -32,14 +38,9 @@ variables:
     - xcodebuild -runFirstLaunch
     - xcodebuild -downloadPlatform iOS
 
-stages:
-  - ci-image
-  - build
-  - integration-test
-
 ci-image:
-  stage: ci-image
   when: manual
+  stage: ci-image
   except: [ tags, schedules ]
   tags: [ "arch:amd64" ]
   image: "$BUILDENV_REGISTRY/images/docker:24.0.4-gbi-focal"
@@ -50,6 +51,7 @@ ci-image:
 
 build-flutter:
   stage: build
+  except: [ schedules ]
   tags:
     - macos:sonoma
     - specific:true
@@ -92,7 +94,7 @@ build-ios:
 # Integration Tests
 
 android-integration-test:
-  stage: integration-test  
+  stage: integration-test
   tags: 
     - macos:sonoma
     - specific:true
@@ -135,3 +137,49 @@ ios-integration-test:
 #   stage: integration-test
 #   script:
 #     - melos run integration_test:web
+
+# Nightly 
+
+nightly-ios:
+  stage: e2e-test
+  only: [ schedules ]
+  tags:
+    - macos:sonoma
+    - specific:true
+  script:
+    - !reference [.pre, script]
+    - !reference [.pre-ios, script]
+    - pod repo update
+    - melos pub:get
+    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk "iOS-17" --device "iPhone 14"
+    - melos pod_update --no-select
+    - melos run e2e_tests:ios
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+nightly-android:
+  stage: e2e-test
+  tags:
+    - macos:sonoma
+    - specific:true
+  script:
+    - !reference [.pre, script]
+    - pod repo update
+    - melos pub:get
+    - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.3" "platform-tools" "platforms;android-33" || true
+    - yes | flutter doctor --android-licenses || true
+    - flutter doctor
+    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform android --sdk "33"
+    - melos run e2e_tests:ios
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - tools/ci/logcat.txt
+
+  
