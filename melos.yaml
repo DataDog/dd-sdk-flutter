@@ -171,6 +171,8 @@ scripts:
       bash -c 'set -euxo pipefail; \
       flutter test integration_test --machine -d "iPhone" --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
       | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_ios_e2e.xml"'
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
 
   e2e_tests:android:
     exec: |
@@ -180,6 +182,8 @@ scripts:
       bash -c 'set -euxo pipefail; \
       flutter test integration_test --machine -d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
       | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_e2e.xml"'
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
 
   prepare:
     run: melos pub:get && melos build_runner && melos generate_env && melos generate_env:e2e

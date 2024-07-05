@@ -131,7 +131,7 @@ ios-integration-test:
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
-    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk "iOS-17" --device "iPhone 14"
+    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk "iOS-17" --device "iPhone 15"
     - melos pod_update --no-select
     - melos run integration_test:ios
   artifacts:
@@ -169,7 +169,7 @@ nightly-ios:
     - !reference [.nightly-vars, script]
     - pod repo update
     - melos pub:get
-    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk "iOS-17" --device "iPhone 14"
+    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk "iOS-17" --device "iPhone 15"
     - melos pod_update --no-select
     - melos run e2e_tests:ios
   artifacts:
@@ -190,7 +190,7 @@ nightly-android:
     - yes | flutter doctor --android-licenses || true
     - flutter doctor
     - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform android --sdk "33"
-    - melos run e2e_tests:ios
+    - melos run e2e_tests:android
   artifacts:
     when: always
     expire_in: "30 days"
