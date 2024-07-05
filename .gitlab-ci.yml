@@ -69,6 +69,7 @@ build-flutter:
 
 build-android:
   stage: build
+  except: [ schedules ]
   image: $CI_IMAGE_DOCKER
   tags: [ "arch:amd64" ]
   script:
@@ -79,6 +80,7 @@ build-android:
 
 build-ios:
   stage: build
+  except: [ schedules ]
   tags:
     - macos:sonoma
     - specific:true
@@ -96,6 +98,8 @@ build-ios:
 
 android-integration-test:
   stage: integration-test
+  except: [ schedules ]
+  needs: [ build-android ]
   tags: 
     - macos:sonoma
     - specific:true
@@ -117,6 +121,8 @@ android-integration-test:
 
 ios-integration-test:
   stage: integration-test
+  except: [ schedules ]
+  needs: [ build-ios ]
   tags:
     - macos:sonoma
     - specific:true
