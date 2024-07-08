@@ -10,6 +10,7 @@ variables:
   DD_APPLICATION_ID: "fake-application-id"
   IOS_SIMULATOR: "iPhone 15"
   VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  IS_ON_CI: $CI
 
   KUBERNETES_MEMORY_REQUEST: "8Gi"
   KUBERNETES_MEMORY_LIMIT: "16Gi"
@@ -150,8 +151,8 @@ ios-integration-test:
 .nightly-vars:
   script:
     - vault login -method=aws -no-print
-    - export DD_CLIENT_TOKEN=$(vault kv get -field=client_token kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
-    - export DD_APPLICATION_ID=$(vault kv get -field=application_id kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
+    - export DD_E2E_CLIENT_TOKEN=$(vault kv get -field=client_token kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
+    - export DD_E2E_APPLICATION_ID=$(vault kv get -field=application_id kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
 
 .nightly:
   only: [ schedules ]
@@ -164,9 +165,10 @@ nightly-ios:
   extends: .nightly
   stage: e2e-test
   script:
+    - !reference [.nightly-vars, script]
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
-    - !reference [.nightly-vars, script]
+    
     - pod repo update
     - melos pub:get
     - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk "iOS-17" --device "iPhone 15"
@@ -182,8 +184,8 @@ nightly-android:
   extends: .nightly
   stage: e2e-test
   script:
-    - !reference [.pre, script]
     - !reference [.nightly-vars, script]
+    - !reference [.pre, script]
     - pod repo update
     - melos pub:get
     - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.3" "platform-tools" "platforms;android-33" || true
