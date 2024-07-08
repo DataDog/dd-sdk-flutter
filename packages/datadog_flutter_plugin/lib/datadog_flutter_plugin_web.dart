@@ -4,15 +4,9 @@
 
 // ignore_for_file: unused_element
 
-@JS('DD_RUM')
-library ddrum_flutter_web;
-
 import 'dart:async';
-// ignore: unused_import
-import 'dart:html' as html show window;
 
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
-import 'package:js/js.dart';
 
 import 'datadog_flutter_plugin.dart';
 import 'src/datadog_sdk_platform_interface.dart';
@@ -41,7 +35,7 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   Future<void> setUserInfo(String? id, String? name, String? email,
       Map<String, dynamic> extraInfo) async {
     // TODO: Extra user properties
-    _jsSetUser(_JsUser(
+    DD_RUM?.setUser(JsUser(
       id: id,
       name: name,
       email: email,
@@ -120,20 +114,3 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
     // Not currently supported
   }
 }
-
-@JS()
-@anonymous
-class _JsUser {
-  external String? get id;
-  external String? get email;
-  external String? get name;
-
-  external factory _JsUser({
-    String? id,
-    String? email,
-    String? name,
-  });
-}
-
-@JS('setUser')
-external void _jsSetUser(_JsUser newUser);

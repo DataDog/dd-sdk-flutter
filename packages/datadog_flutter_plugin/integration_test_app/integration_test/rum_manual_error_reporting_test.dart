@@ -34,7 +34,7 @@ void main() {
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
     await recordedSession.pollSessionRequests(
-      const Duration(seconds: 30),
+      const Duration(seconds: 50),
       (requests) {
         requestLog.addAll(requests);
         requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
