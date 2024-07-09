@@ -896,38 +896,6 @@ void main() {
     expect(spanInt, contextSpanInt);
   });
 
-  group('when rum is enabled with datadog tracing headers', () {
-    late DatadogTrackingHttpClient client;
-
-    setUp(() {
-      enableRum();
-
-      client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(),
-        mockClient,
-      );
-    });
-
-    test('does not set trace headers when should sample returns false',
-        () async {
-      when(() => mockRum.shouldSampleTrace()).thenReturn(false);
-      var url = Uri.parse('https://test_url/path');
-      var completer = setupMockRequest(url);
-      var mockResponse = setupMockClientResponse(200);
-
-      var request = await client.openUrl('get', url);
-      completer.complete(mockResponse);
-
-      var _ = await request.done;
-      final requestHeaders = request.headers;
-
-      verifyNever(() => requestHeaders.add('x-datadog-trace-id', any()));
-      verifyNever(() => requestHeaders.add('x-datadog-parent-id', any()));
-      verify(() => requestHeaders.add('x-datadog-sampling-priority', '0'));
-    });
-  });
-
   group('when rum is enabled with b3 tracing headers', () {
     setUp(() {
       enableRum();

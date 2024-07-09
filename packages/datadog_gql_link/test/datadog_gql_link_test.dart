@@ -947,12 +947,10 @@ void verifyHeaders(
 
   switch (type) {
     case TracingHeaderType.datadog:
-      expect(headers['x-datadog-origin'], 'rum');
-      if (traceContextInjection == TraceContextInjection.all) {
+      if (shouldInjectHeaders) {
+        expect(headers['x-datadog-origin'], 'rum');
         expect(
             headers['x-datadog-sampling-priority'], shouldSample ? '1' : '0');
-      }
-      if (shouldSample) {
         var traceValue = headers['x-datadog-trace-id']!;
         traceInt = BigInt.tryParse(traceValue);
         var spanValue = headers['x-datadog-parent-id']!;
@@ -965,6 +963,12 @@ void verifyHeaders(
         BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
         expect(highTraceInt, isNotNull);
         expect(highTraceInt?.bitLength, lessThanOrEqualTo(64));
+      } else {
+        expect(headers['x-datadog-origin'], isNull);
+        expect(headers['x-datadog-sampling-priority'], isNull);
+        expect(headers['x-datadog-trace-id'], isNull);
+        expect(headers['x-datadog-parent-id'], isNull);
+        expect(headers['x-datadog-tags'], isNull);
       }
       break;
     case TracingHeaderType.b3:

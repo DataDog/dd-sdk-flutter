@@ -53,10 +53,8 @@ void main() {
 
     switch (type) {
       case TracingHeaderType.datadog:
-        if (traceContextInjection == TraceContextInjection.all) {
+        if (shouldInjectHeaders) {
           expect(metadata['x-datadog-sampling-priority'], sampled ? '1' : '0');
-        }
-        if (sampled) {
           traceInt = BigInt.tryParse(metadata['x-datadog-trace-id'] ?? '');
           spanInt = BigInt.tryParse(metadata['x-datadog-parent-id'] ?? '');
           final tagsHeader = metadata['x-datadog-tags'];
@@ -66,6 +64,12 @@ void main() {
           BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
           expect(highTraceInt, isNotNull);
           expect(highTraceInt?.bitLength, lessThanOrEqualTo(64));
+        } else {
+          expect(metadata['x-datadog-origin'], isNull);
+          expect(metadata['x-datadog-sampling-priority'], isNull);
+          expect(metadata['x-datadog-trace-id'], isNull);
+          expect(metadata['x-datadog-parent-id'], isNull);
+          expect(metadata['x-datadog-tags'], isNull);
         }
         break;
       case TracingHeaderType.b3:
@@ -116,19 +120,21 @@ void main() {
     }
 
     if (sampled) {
+      expect(traceInt, isNotNull);
+    }
+    if (traceInt != null) {
       if (type == TracingHeaderType.datadog) {
-        expect(traceInt, isNotNull);
-        expect(traceInt?.bitLength, lessThanOrEqualTo(64));
+        expect(traceInt.bitLength, lessThanOrEqualTo(64));
       } else {
-        expect(traceInt, isNotNull);
-        expect(traceInt?.bitLength, lessThanOrEqualTo(128));
+        expect(traceInt.bitLength, lessThanOrEqualTo(128));
       }
+    }
 
+    if (sampled) {
       expect(spanInt, isNotNull);
-      expect(spanInt?.bitLength, lessThanOrEqualTo(63));
-    } else if (type != TracingHeaderType.tracecontext) {
-      expect(traceInt, isNull);
-      expect(spanInt, isNull);
+    }
+    if (spanInt != null) {
+      expect(spanInt.bitLength, lessThanOrEqualTo(63));
     }
   }
 

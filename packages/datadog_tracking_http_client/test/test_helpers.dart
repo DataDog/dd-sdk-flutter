@@ -29,10 +29,8 @@ void verifyHeaders(Map<String, String> headers, TracingHeaderType type,
 
   switch (type) {
     case TracingHeaderType.datadog:
-      if (traceContextInjection == TraceContextInjection.all) {
+      if (shouldInjectHeaders) {
         expect(headers['x-datadog-sampling-priority'], sampled ? '1' : '0');
-      }
-      if (sampled) {
         traceInt = BigInt.tryParse(headers['x-datadog-trace-id']!);
         spanInt = BigInt.tryParse(headers['x-datadog-parent-id']!);
         final tagsHeader = headers['x-datadog-tags'];
@@ -42,6 +40,12 @@ void verifyHeaders(Map<String, String> headers, TracingHeaderType type,
         BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
         expect(highTraceInt, isNotNull);
         expect(highTraceInt?.bitLength, lessThanOrEqualTo(64));
+      } else {
+        expect(headers['x-datadog-origin'], isNull);
+        expect(headers['x-datadog-sampling-priority'], isNull);
+        expect(headers['x-datadog-trace-id'], isNull);
+        expect(headers['x-datadog-parent-id'], isNull);
+        expect(headers['x-datadog-tags'], isNull);
       }
       break;
     case TracingHeaderType.b3:

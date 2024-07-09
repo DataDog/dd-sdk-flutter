@@ -225,16 +225,14 @@ Map<String, String> getTracingHeaders(
 
   switch (headersType) {
     case TracingHeaderType.datadog:
-      if (context.sampled) {
+      if (shouldInjectHeaders) {
         headers[DatadogHttpTracingHeaders.traceId] =
             context.traceId.asString(TracingIdRepresentation.lowDecimal);
         headers[DatadogHttpTracingHeaders.tags] =
             '${DatadogHttpTracingHeaders.traceIdTag}=${context.traceId.asString(TracingIdRepresentation.highHex16Chars)}';
         headers[DatadogHttpTracingHeaders.parentId] =
             context.spanId.asString(TracingIdRepresentation.decimal);
-      }
-      headers[DatadogHttpTracingHeaders.origin] = 'rum';
-      if (shouldInjectHeaders) {
+        headers[DatadogHttpTracingHeaders.origin] = 'rum';
         headers[DatadogHttpTracingHeaders.samplingPriority] = sampledString;
       }
       break;
