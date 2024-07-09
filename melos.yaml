@@ -163,6 +163,28 @@ scripts:
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
+  e2e_tests:ios:
+    exec: |
+      mkdir -p $MELOS_ROOT_PATH/.build/test-results
+      cd e2e_test_app
+      
+      bash -c 'set -euxo pipefail; \
+      flutter test integration_test --machine -d "iPhone" \
+      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_ios_e2e.xml"'
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
+  e2e_tests:android:
+    exec: |
+      mkdir -p $MELOS_ROOT_PATH/.build/test-results
+      cd e2e_test_app
+      
+      bash -c 'set -euxo pipefail; \
+      flutter test integration_test --machine -d emulator \
+      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_e2e.xml"'
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
   prepare:
     run: melos pub:get && melos build_runner && melos generate_env && melos generate_env:e2e
     description: |
