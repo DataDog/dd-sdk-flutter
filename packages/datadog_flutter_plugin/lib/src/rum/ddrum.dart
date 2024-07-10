@@ -93,6 +93,9 @@ class DatadogRum {
   /// See [DatadogRumConfiguration.traceSampleRate]
   final double traceSampleRate;
 
+  @internal
+  final TraceContextInjection traceContextInjection;
+
   final _sampleRandom = Random();
   final InternalLogger logger;
 
@@ -112,6 +115,7 @@ class DatadogRum {
   @internal
   DatadogRum.fromExisting(DatadogSdk core, DatadogAttachConfiguration config)
       : traceSampleRate = config.traceSampleRate,
+        traceContextInjection = config.traceContextInjection,
         logger = core.internalLogger {
     _init(
       core: core,
@@ -123,6 +127,7 @@ class DatadogRum {
 
   DatadogRum._(DatadogSdk core, DatadogRumConfiguration configuration)
       : traceSampleRate = configuration.traceSampleRate,
+        traceContextInjection = configuration.traceContextInjection,
         logger = core.internalLogger {
     _init(
       core: core,

@@ -79,6 +79,11 @@ class DatadogRumConfiguration {
   /// Defaults to `20.0`.
   double traceSampleRate;
 
+  /// The strategy for injecting trace context into requests. See [TraceContextInjection].
+  ///
+  /// Defaults to [TraceContextInjection.all].
+  TraceContextInjection traceContextInjection = TraceContextInjection.all;
+
   /// Enable or disable detection of "long tasks"
   ///
   /// Long task detection attempts to detect when an application is doing too
@@ -158,6 +163,7 @@ class DatadogRumConfiguration {
     required this.applicationId,
     double sessionSamplingRate = 100.0,
     double traceSampleRate = 20.0,
+    this.traceContextInjection = TraceContextInjection.all,
     this.detectLongTasks = true,
     double longTaskThreshold = 0.1,
     this.trackFrustrations = true,

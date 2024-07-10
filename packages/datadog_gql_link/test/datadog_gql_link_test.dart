@@ -838,8 +838,12 @@ query UserInfo($id: ID!) {
         }
       });
 
-      test('sets trace headers for first party urls', () {
+      test(
+          'sets trace headers for first party urls { sampled, TraceContextInjection.all }',
+          () {
         when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+        when(() => mockRum.contextInjectionSetting)
+            .thenReturn(TraceContextInjection.all);
         final link =
             DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
         final request = Request(
@@ -853,13 +857,16 @@ query UserInfo($id: ID!) {
         });
 
         final headersEntry = forwardedRequest!.context.entry<HttpLinkHeaders>();
-        verifyHeaders(headersEntry!.headers, headerType, true);
+        verifyHeaders(
+            headersEntry!.headers, headerType, true, TraceContextInjection.all);
       });
 
       test(
-          'sets trave headers for first party urls when should sample is false',
+          'sets trace headers for first party urls { sampled, TraceContextInjection.sampled }',
           () {
-        when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+        when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+        when(() => mockRum.contextInjectionSetting)
+            .thenReturn(TraceContextInjection.sampled);
         final link =
             DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
         final request = Request(
@@ -873,22 +880,77 @@ query UserInfo($id: ID!) {
         });
 
         final headersEntry = forwardedRequest!.context.entry<HttpLinkHeaders>();
-        verifyHeaders(headersEntry!.headers, headerType, false);
+        verifyHeaders(headersEntry!.headers, headerType, true,
+            TraceContextInjection.sampled);
+      });
+
+      test(
+          'sets trace headers for first party urls { unsampled, TraceContextInjection.all }, ',
+          () {
+        when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+        when(() => mockRum.contextInjectionSetting)
+            .thenReturn(TraceContextInjection.all);
+        final link =
+            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
+        final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'));
+
+        // When
+        Request? forwardedRequest;
+        link.request(request, (request) {
+          forwardedRequest = request;
+          return const Stream<Response>.empty();
+        });
+
+        final headersEntry = forwardedRequest!.context.entry<HttpLinkHeaders>();
+        verifyHeaders(headersEntry!.headers, headerType, false,
+            TraceContextInjection.all);
+      });
+
+      test(
+          'does not sets trace headers for first party urls { unsampled, TraceContextInjection.sampled }, ',
+          () {
+        when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+        when(() => mockRum.contextInjectionSetting)
+            .thenReturn(TraceContextInjection.sampled);
+        final link =
+            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
+        final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'));
+
+        // When
+        Request? forwardedRequest;
+        link.request(request, (request) {
+          forwardedRequest = request;
+          return const Stream<Response>.empty();
+        });
+
+        final headersEntry = forwardedRequest!.context.entry<HttpLinkHeaders>();
+        verifyHeaders(headersEntry!.headers, headerType, false,
+            TraceContextInjection.sampled);
       });
     });
   }
 }
 
 void verifyHeaders(
-    Map<String, String> headers, TracingHeaderType type, bool shouldSample) {
+  Map<String, String> headers,
+  TracingHeaderType type,
+  bool shouldSample,
+  TraceContextInjection traceContextInjection,
+) {
   BigInt? traceInt;
   BigInt? spanInt;
 
+  bool shouldInjectHeaders =
+      shouldSample || traceContextInjection == TraceContextInjection.all;
+
   switch (type) {
     case TracingHeaderType.datadog:
-      expect(headers['x-datadog-origin'], 'rum');
-      expect(headers['x-datadog-sampling-priority'], shouldSample ? '1' : '0');
-      if (shouldSample) {
+      if (shouldInjectHeaders) {
+        expect(headers['x-datadog-origin'], 'rum');
+        expect(
+            headers['x-datadog-sampling-priority'], shouldSample ? '1' : '0');
         var traceValue = headers['x-datadog-trace-id']!;
         traceInt = BigInt.tryParse(traceValue);
         var spanValue = headers['x-datadog-parent-id']!;
@@ -901,41 +963,59 @@ void verifyHeaders(
         BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
         expect(highTraceInt, isNotNull);
         expect(highTraceInt?.bitLength, lessThanOrEqualTo(64));
+      } else {
+        expect(headers['x-datadog-origin'], isNull);
+        expect(headers['x-datadog-sampling-priority'], isNull);
+        expect(headers['x-datadog-trace-id'], isNull);
+        expect(headers['x-datadog-parent-id'], isNull);
+        expect(headers['x-datadog-tags'], isNull);
       }
       break;
     case TracingHeaderType.b3:
-      var singleHeader = headers['b3']!;
+      var singleHeader = headers['b3'];
       if (shouldSample) {
-        var headerParts = singleHeader.split('-');
+        var headerParts = singleHeader!.split('-');
         traceInt = BigInt.tryParse(headerParts[0], radix: 16);
         spanInt = BigInt.tryParse(headerParts[1], radix: 16);
         expect(headerParts[2], shouldSample ? '1' : '0');
-      } else {
+      } else if (shouldInjectHeaders) {
         expect(singleHeader, '0');
+      } else {
+        expect(singleHeader, isNull);
       }
       break;
     case TracingHeaderType.b3multi:
-      expect(headers['X-B3-Sampled'], shouldSample ? '1' : '0');
-      if (shouldSample) {
-        var traceValue = headers['X-B3-TraceId']!;
-        traceInt = BigInt.tryParse(traceValue, radix: 16);
-        var spanValue = headers['X-B3-SpanId']!;
-        spanInt = BigInt.tryParse(spanValue, radix: 16);
+      if (shouldInjectHeaders) {
+        expect(headers['X-B3-Sampled'], shouldSample ? '1' : '0');
+        if (shouldSample) {
+          var traceValue = headers['X-B3-TraceId']!;
+          traceInt = BigInt.tryParse(traceValue, radix: 16);
+          var spanValue = headers['X-B3-SpanId']!;
+          spanInt = BigInt.tryParse(spanValue, radix: 16);
+        }
+      } else {
+        expect(headers['X-B3-Sampled'], isNull);
+        expect(headers['X-B3-TraceId'], isNull);
+        expect(headers['X-B3-SpanId'], isNull);
       }
       break;
     case TracingHeaderType.tracecontext:
-      var header = headers['traceparent']!;
-      var headerParts = header.split('-');
-      expect(headerParts[0], '00');
-      traceInt = BigInt.tryParse(headerParts[1], radix: 16);
-      spanInt = BigInt.tryParse(headerParts[2], radix: 16);
-      expect(headerParts[3], shouldSample ? '01' : '00');
-      final stateHeader = headers['tracestate']!;
+      if (shouldInjectHeaders) {
+        var header = headers['traceparent']!;
+        var headerParts = header.split('-');
+        expect(headerParts[0], '00');
+        traceInt = BigInt.tryParse(headerParts[1], radix: 16);
+        spanInt = BigInt.tryParse(headerParts[2], radix: 16);
+        expect(headerParts[3], shouldSample ? '01' : '00');
+        final stateHeader = headers['tracestate']!;
 
-      final stateParts = getDdTraceState(stateHeader);
-      expect(stateParts['s'], shouldSample ? '1' : '0');
-      expect(stateParts['o'], 'rum');
-      expect(stateParts['p'], headerParts[2]);
+        final stateParts = getDdTraceState(stateHeader);
+        expect(stateParts['s'], shouldSample ? '1' : '0');
+        expect(stateParts['o'], 'rum');
+        expect(stateParts['p'], headerParts[2]);
+      } else {
+        expect(headers['traceparent'], isNull);
+      }
       break;
   }
 

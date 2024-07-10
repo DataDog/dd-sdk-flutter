@@ -19,58 +19,96 @@ extension HttpHeadersToMap on HttpHeaders {
   }
 }
 
-void verifyHeaders(Map<String, String> headers, TracingHeaderType type) {
+void verifyHeaders(Map<String, String> headers, TracingHeaderType type,
+    bool sampled, TraceContextInjection traceContextInjection) {
   BigInt? traceInt;
   BigInt? spanInt;
 
+  bool shouldInjectHeaders =
+      sampled || traceContextInjection == TraceContextInjection.all;
+
   switch (type) {
     case TracingHeaderType.datadog:
-      expect(headers['x-datadog-sampling-priority'], '1');
-      traceInt = BigInt.tryParse(headers['x-datadog-trace-id']!);
-      spanInt = BigInt.tryParse(headers['x-datadog-parent-id']!);
-      final tagsHeader = headers['x-datadog-tags'];
-      final parts = tagsHeader?.split('=');
-      expect(parts, isNotNull);
-      expect(parts?[0], '_dd.p.tid');
-      BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
-      expect(highTraceInt, isNotNull);
-      expect(highTraceInt?.bitLength, lessThanOrEqualTo(64));
+      if (shouldInjectHeaders) {
+        expect(headers['x-datadog-sampling-priority'], sampled ? '1' : '0');
+        traceInt = BigInt.tryParse(headers['x-datadog-trace-id']!);
+        spanInt = BigInt.tryParse(headers['x-datadog-parent-id']!);
+        final tagsHeader = headers['x-datadog-tags'];
+        final parts = tagsHeader?.split('=');
+        expect(parts, isNotNull);
+        expect(parts?[0], '_dd.p.tid');
+        BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
+        expect(highTraceInt, isNotNull);
+        expect(highTraceInt?.bitLength, lessThanOrEqualTo(64));
+      } else {
+        expect(headers['x-datadog-origin'], isNull);
+        expect(headers['x-datadog-sampling-priority'], isNull);
+        expect(headers['x-datadog-trace-id'], isNull);
+        expect(headers['x-datadog-parent-id'], isNull);
+        expect(headers['x-datadog-tags'], isNull);
+      }
       break;
     case TracingHeaderType.b3:
-      var singleHeader = headers['b3']!;
-      var headerParts = singleHeader.split('-');
-      traceInt = BigInt.tryParse(headerParts[0], radix: 16);
-      spanInt = BigInt.tryParse(headerParts[1], radix: 16);
-      expect(headerParts[2], '1');
+      var singleHeader = headers['b3'];
+      if (sampled) {
+        var headerParts = singleHeader!.split('-');
+        traceInt = BigInt.tryParse(headerParts[0], radix: 16);
+        spanInt = BigInt.tryParse(headerParts[1], radix: 16);
+        expect(headerParts[2], sampled ? '1' : '0');
+      } else if (shouldInjectHeaders) {
+        expect(singleHeader, '0');
+      } else {
+        expect(singleHeader, isNull);
+      }
       break;
     case TracingHeaderType.b3multi:
-      expect(headers['X-B3-Sampled'], '1');
-      traceInt = BigInt.tryParse(headers['X-B3-TraceId']!, radix: 16);
-      spanInt = BigInt.tryParse(headers['X-B3-SpanId']!, radix: 16);
+      if (shouldInjectHeaders) {
+        expect(headers['X-B3-Sampled'], sampled ? '1' : '0');
+        if (sampled) {
+          traceInt = BigInt.tryParse(headers['X-B3-TraceId']!, radix: 16);
+          spanInt = BigInt.tryParse(headers['X-B3-SpanId']!, radix: 16);
+        }
+      } else {
+        expect(headers['X-B3-Sampled'], isNull);
+        expect(headers['X-B3-TraceId'], isNull);
+        expect(headers['X-B3-SpanId'], isNull);
+      }
       break;
     case TracingHeaderType.tracecontext:
-      var header = headers['traceparent']!;
-      var headerParts = header.split('-');
-      expect(headerParts[0], '00');
-      traceInt = BigInt.tryParse(headerParts[1], radix: 16);
-      spanInt = BigInt.tryParse(headerParts[2], radix: 16);
-      expect(headerParts[3], '01');
+      if (shouldInjectHeaders) {
+        var header = headers['traceparent']!;
+        var headerParts = header.split('-');
+        expect(headerParts[0], '00');
+        traceInt = BigInt.tryParse(headerParts[1], radix: 16);
+        spanInt = BigInt.tryParse(headerParts[2], radix: 16);
+        expect(headerParts[3], sampled ? '01' : '00');
 
-      final stateHeader = headers['tracestate']!;
-      final stateParts = getDdTraceState(stateHeader);
-      expect(stateParts['s'], '1');
-      expect(stateParts['o'], 'rum');
-      expect(stateParts['p'], headerParts[2]);
+        final stateHeader = headers['tracestate']!;
+        final stateParts = getDdTraceState(stateHeader);
+        expect(stateParts['s'], sampled ? '1' : '0');
+        expect(stateParts['o'], 'rum');
+        expect(stateParts['p'], headerParts[2]);
+      } else {
+        expect(headers['traceparent'], isNull);
+      }
       break;
   }
 
-  expect(traceInt, isNotNull);
-  if (type == TracingHeaderType.datadog) {
-    expect(traceInt?.bitLength, lessThanOrEqualTo(64));
-  } else {
-    expect(traceInt?.bitLength, lessThanOrEqualTo(128));
+  if (sampled) {
+    expect(traceInt, isNotNull);
+  }
+  if (traceInt != null) {
+    if (type == TracingHeaderType.datadog) {
+      expect(traceInt.bitLength, lessThanOrEqualTo(64));
+    } else {
+      expect(traceInt.bitLength, lessThanOrEqualTo(128));
+    }
   }
 
-  expect(spanInt, isNotNull);
-  expect(spanInt?.bitLength, lessThanOrEqualTo(63));
+  if (sampled) {
+    expect(spanInt, isNotNull);
+  }
+  if (spanInt != null) {
+    expect(spanInt.bitLength, lessThanOrEqualTo(63));
+  }
 }

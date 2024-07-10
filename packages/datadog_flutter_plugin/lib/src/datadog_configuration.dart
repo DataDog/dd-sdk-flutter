@@ -96,6 +96,16 @@ enum DatadogSite {
   ap1,
 }
 
+/// Defines whether the trace context should be injected into all requests or
+/// only into requests that are sampled in.
+enum TraceContextInjection {
+  /// Injects trace context into all requests regardless of the sampling decision.
+  all,
+
+  /// Injects trace context only into sampled requests.
+  sampled,
+}
+
 class DatadogConfiguration {
   // Either a RUM client token (generated for the RUM Application) or a regular
   // client token for Logging and APM. Obtained on the Datadog website.
@@ -356,14 +366,19 @@ class DatadogAttachConfiguration {
   /// Sets the sampling rate for tracing
   ///
   /// The sampling rate must be a value between `0.0` and `100.0`. A value of
-  /// `0.0` means no resources will include APM tracing, `100.0` resource will
-  /// include APM tracing
+  /// `0.0` means no resources will include APM tracing, while a value of `100.0`
+  /// means all resources will include APM tracing
   ///
   /// This property only affects network requests made from Flutter, and it is
   /// not shared or populated from the existing SDK.
   ///
   /// Defaults to `20.0`.
   double traceSampleRate;
+
+  /// The strategy for injecting trace context into requests. See [TraceContextInjection].
+  ///
+  /// Defaults to [TraceContextInjection.all].
+  TraceContextInjection traceContextInjection = TraceContextInjection.all;
 
   /// Configurations for additional plugins that will be created after Datadog
   /// is initialized.
@@ -376,6 +391,7 @@ class DatadogAttachConfiguration {
     this.reportFlutterPerformance = false,
     List<String>? firstPartyHosts,
     this.firstPartyHostsWithTracingHeaders = const {},
+    this.traceContextInjection = TraceContextInjection.all,
   }) {
     // Attempt a union if both configuration options are present
     if (firstPartyHosts != null) {

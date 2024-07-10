@@ -213,7 +213,8 @@ class DatadogGqlLink extends Link {
           final tracingContext = generateTracingContext(shouldSample);
 
           for (final headerType in tracingHeaderTypes) {
-            final newHeaders = getTracingHeaders(tracingContext, headerType);
+            final newHeaders = getTracingHeaders(tracingContext, headerType,
+                contextInjection: rum.contextInjectionSetting);
             for (final entry in newHeaders.entries) {
               // Don't replace exiting headers
               if (!headers.containsKey(entry.key)) {

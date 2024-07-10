@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Add the ability to ignore tracking on specific url patterns with `ignoreUrlPatterns` when using the attach configuration.
+* Add support for `TraceContextInjection` configuration.
 
 ## 2.2.0
 

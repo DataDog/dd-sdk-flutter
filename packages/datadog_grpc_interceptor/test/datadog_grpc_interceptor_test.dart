@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_grpc_interceptor/datadog_grpc_interceptor.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
@@ -39,16 +40,23 @@ void main() {
   });
 
   void verifyHeaders(
-      TracingHeaderType type, Map<String, String> metadata, bool sampled) {
+    TracingHeaderType type,
+    Map<String, String> metadata,
+    bool sampled,
+    TraceContextInjection traceContextInjection,
+  ) {
     BigInt? traceInt;
     BigInt? spanInt;
 
+    bool shouldInjectHeaders =
+        sampled || traceContextInjection == TraceContextInjection.all;
+
     switch (type) {
       case TracingHeaderType.datadog:
-        expect(metadata['x-datadog-sampling-priority'], sampled ? '1' : '0');
-        traceInt = BigInt.tryParse(metadata['x-datadog-trace-id'] ?? '');
-        spanInt = BigInt.tryParse(metadata['x-datadog-parent-id'] ?? '');
-        if (sampled) {
+        if (shouldInjectHeaders) {
+          expect(metadata['x-datadog-sampling-priority'], sampled ? '1' : '0');
+          traceInt = BigInt.tryParse(metadata['x-datadog-trace-id'] ?? '');
+          spanInt = BigInt.tryParse(metadata['x-datadog-parent-id'] ?? '');
           final tagsHeader = metadata['x-datadog-tags'];
           final parts = tagsHeader?.split('=');
           expect(parts, isNotNull);
@@ -56,54 +64,77 @@ void main() {
           BigInt? highTraceInt = BigInt.tryParse(parts?[1] ?? '', radix: 16);
           expect(highTraceInt, isNotNull);
           expect(highTraceInt?.bitLength, lessThanOrEqualTo(64));
+        } else {
+          expect(metadata['x-datadog-origin'], isNull);
+          expect(metadata['x-datadog-sampling-priority'], isNull);
+          expect(metadata['x-datadog-trace-id'], isNull);
+          expect(metadata['x-datadog-parent-id'], isNull);
+          expect(metadata['x-datadog-tags'], isNull);
         }
         break;
       case TracingHeaderType.b3:
-        var singleHeader = metadata['b3']!;
-        var headerParts = singleHeader.split('-');
+        var singleHeader = metadata['b3'];
         if (sampled) {
+          var headerParts = singleHeader!.split('-');
           traceInt = BigInt.tryParse(headerParts[0], radix: 16);
           spanInt = BigInt.tryParse(headerParts[1], radix: 16);
           expect(headerParts[2], '1');
-        } else {
+        } else if (shouldInjectHeaders) {
           expect(singleHeader, '0');
+        } else {
+          expect(singleHeader, isNull);
         }
         break;
       case TracingHeaderType.b3multi:
-        expect(metadata['x-b3-sampled'], sampled ? '1' : '0');
-        traceInt = BigInt.tryParse(metadata['x-b3-traceid'] ?? '', radix: 16);
-        spanInt = BigInt.tryParse(metadata['x-b3-spanid'] ?? '', radix: 16);
+        if (shouldInjectHeaders) {
+          expect(metadata['x-b3-sampled'], sampled ? '1' : '0');
+          if (sampled) {
+            traceInt =
+                BigInt.tryParse(metadata['x-b3-traceid'] ?? '', radix: 16);
+            spanInt = BigInt.tryParse(metadata['x-b3-spanid'] ?? '', radix: 16);
+          }
+        } else {
+          expect(metadata['X-B3-Sampled'], isNull);
+          expect(metadata['X-B3-TraceId'], isNull);
+          expect(metadata['X-B3-SpanId'], isNull);
+        }
         break;
       case TracingHeaderType.tracecontext:
-        var parentHeader = metadata['traceparent']!;
-        var headerParts = parentHeader.split('-');
-        expect(headerParts[0], '00');
-        traceInt = BigInt.tryParse(headerParts[1], radix: 16);
-        spanInt = BigInt.tryParse(headerParts[2], radix: 16);
-        expect(headerParts[3], sampled ? '01' : '00');
+        if (shouldInjectHeaders) {
+          var parentHeader = metadata['traceparent']!;
+          var headerParts = parentHeader.split('-');
+          expect(headerParts[0], '00');
+          traceInt = BigInt.tryParse(headerParts[1], radix: 16);
+          spanInt = BigInt.tryParse(headerParts[2], radix: 16);
+          expect(headerParts[3], sampled ? '01' : '00');
 
-        final stateHeader = metadata['tracestate']!;
-        final stateParts = getDdTraceState(stateHeader);
-        expect(stateParts['s'], sampled ? '1' : '0');
-        expect(stateParts['o'], 'rum');
-        expect(stateParts['p'], headerParts[2]);
+          final stateHeader = metadata['tracestate']!;
+          final stateParts = getDdTraceState(stateHeader);
+          expect(stateParts['s'], sampled ? '1' : '0');
+          expect(stateParts['o'], 'rum');
+          expect(stateParts['p'], headerParts[2]);
+        } else {
+          expect(metadata['traceparent'], isNull);
+        }
         break;
     }
 
     if (sampled) {
+      expect(traceInt, isNotNull);
+    }
+    if (traceInt != null) {
       if (type == TracingHeaderType.datadog) {
-        expect(traceInt, isNotNull);
-        expect(traceInt?.bitLength, lessThanOrEqualTo(64));
+        expect(traceInt.bitLength, lessThanOrEqualTo(64));
       } else {
-        expect(traceInt, isNotNull);
-        expect(traceInt?.bitLength, lessThanOrEqualTo(128));
+        expect(traceInt.bitLength, lessThanOrEqualTo(128));
       }
+    }
 
+    if (sampled) {
       expect(spanInt, isNotNull);
-      expect(spanInt?.bitLength, lessThanOrEqualTo(63));
-    } else if (type != TracingHeaderType.tracecontext) {
-      expect(traceInt, isNull);
-      expect(spanInt, isNull);
+    }
+    if (spanInt != null) {
+      expect(spanInt.bitLength, lessThanOrEqualTo(63));
     }
   }
 
@@ -127,6 +158,8 @@ void main() {
       mockRum = RumMock();
       when(() => mockDatadog.rum).thenReturn(mockRum);
       when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+      when(() => mockRum.contextInjectionSetting)
+          .thenReturn(TraceContextInjection.all);
       when(() => mockRum.traceSampleRate).thenReturn(12);
     });
 
@@ -216,7 +249,11 @@ void main() {
           expect(attributes['_dd.rule_psr'], 0.12);
         });
 
-        test('Interceptor passes on proper metadata', () async {
+        test(
+            'Interceptor passes on proper metadata { sampled, TraceContextInjection.all }',
+            () async {
+          when(() => mockRum.contextInjectionSetting)
+              .thenReturn(TraceContextInjection.all);
           when(() => mockDatadog.headerTypesForHost(any()))
               .thenReturn({tracingType});
 
@@ -231,14 +268,40 @@ void main() {
 
           expect(loggingService.calls.length, 1);
           final call = loggingService.calls[0];
-          verifyHeaders(tracingType, call.clientMetadata!, true);
+          verifyHeaders(tracingType, call.clientMetadata!, true,
+              TraceContextInjection.all);
         });
 
         test(
-            'Interceptor does not send traces metadata when shouldSample returns false',
+            'Interceptor passes on proper metadata { sampled, TraceContextInjection.sampled }',
+            () async {
+          when(() => mockRum.contextInjectionSetting)
+              .thenReturn(TraceContextInjection.sampled);
+          when(() => mockDatadog.headerTypesForHost(any()))
+              .thenReturn({tracingType});
+
+          final interceptor = DatadogGrpcInterceptor(
+            mockDatadog,
+            channel,
+          );
+
+          final stub = GreeterClient(channel, interceptors: [interceptor]);
+
+          await stub.sayHello(HelloRequest(name: 'test'));
+
+          expect(loggingService.calls.length, 1);
+          final call = loggingService.calls[0];
+          verifyHeaders(tracingType, call.clientMetadata!, true,
+              TraceContextInjection.sampled);
+        });
+
+        test(
+            'Interceptor does not send traces metadata returns false { unsampled, TraceContextInjection.all }',
             () async {
           when(() => mockDatadog.headerTypesForHost(any()))
               .thenReturn({tracingType});
+          when(() => mockRum.contextInjectionSetting)
+              .thenReturn(TraceContextInjection.all);
           when(() => mockRum.shouldSampleTrace()).thenReturn(false);
 
           final interceptor = DatadogGrpcInterceptor(
@@ -252,7 +315,32 @@ void main() {
 
           expect(loggingService.calls.length, 1);
           final call = loggingService.calls[0];
-          verifyHeaders(tracingType, call.clientMetadata!, false);
+          verifyHeaders(tracingType, call.clientMetadata!, false,
+              TraceContextInjection.all);
+        });
+
+        test(
+            'Interceptor does not send traces metadata returns false { unsampled, TraceContextInjection.sampled }',
+            () async {
+          when(() => mockDatadog.headerTypesForHost(any()))
+              .thenReturn({tracingType});
+          when(() => mockRum.contextInjectionSetting)
+              .thenReturn(TraceContextInjection.sampled);
+          when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+
+          final interceptor = DatadogGrpcInterceptor(
+            mockDatadog,
+            channel,
+          );
+
+          final stub = GreeterClient(channel, interceptors: [interceptor]);
+
+          await stub.sayHello(HelloRequest(name: 'test'));
+
+          expect(loggingService.calls.length, 1);
+          final call = loggingService.calls[0];
+          verifyHeaders(tracingType, call.clientMetadata!, false,
+              TraceContextInjection.sampled);
         });
       });
     }
@@ -296,6 +384,8 @@ void main() {
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
     when(() => mockRum.traceSampleRate).thenReturn(12);
+    when(() => mockRum.contextInjectionSetting)
+        .thenReturn(TraceContextInjection.all);
     when(() => mockDatadog.headerTypesForHost(any()))
         .thenReturn({TracingHeaderType.datadog});
 
@@ -343,6 +433,8 @@ void main() {
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
     when(() => mockRum.traceSampleRate).thenReturn(12);
+    when(() => mockRum.contextInjectionSetting)
+        .thenReturn(TraceContextInjection.all);
     when(() => mockDatadog.headerTypesForHost(any()))
         .thenReturn({TracingHeaderType.datadog});
 
@@ -385,6 +477,8 @@ void main() {
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockRum.shouldSampleTrace()).thenReturn(true);
     when(() => mockRum.traceSampleRate).thenReturn(12);
+    when(() => mockRum.contextInjectionSetting)
+        .thenReturn(TraceContextInjection.all);
     when(() => mockDatadog.headerTypesForHost(any()))
         .thenReturn({TracingHeaderType.datadog});
 
