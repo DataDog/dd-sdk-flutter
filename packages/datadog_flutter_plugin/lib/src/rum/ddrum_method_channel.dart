@@ -26,7 +26,9 @@ class DdRumMethodChannel extends DdRumPlatform {
       internalLogger: core.internalLogger,
     );
 
-    methodChannel.setMethodCallHandler(callbackHandler.handleMethodCall);
+    if (ServicesBinding.rootIsolateToken != null) {
+      methodChannel.setMethodCallHandler(callbackHandler.handleMethodCall);
+    }
 
     return methodChannel.invokeMethod('enable', {
       'configuration': configuration.encode(),

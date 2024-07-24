@@ -18,7 +18,9 @@ class DdLogsMethodChannel extends DdLogsPlatform {
   LogEventMapper? _logEventMapper;
 
   DdLogsMethodChannel() {
-    methodChannel.setMethodCallHandler(_handleMethodCall);
+    if (ServicesBinding.rootIsolateToken != null) {
+      methodChannel.setMethodCallHandler(_handleMethodCall);
+    }
   }
 
   @override
