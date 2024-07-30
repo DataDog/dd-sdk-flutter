@@ -143,25 +143,35 @@ class DatadogRum {
     required double longTaskThreshold,
     required bool reportFlutterPerformance,
   }) {
-    // Never use long task observer on web -- the Browser SDK should
-    // capture stalls on the main thread automatically.
-    if (!kIsWeb && detectLongTasks) {
-      _longTaskObserver = RumLongTaskObserver(
-        longTaskThreshold: longTaskThreshold,
-        rumInstance: this,
-      );
-      _longTaskObserver!.init();
-    }
-    if (reportFlutterPerformance) {
-      ambiguate(SchedulerBinding.instance)
-          ?.addTimingsCallback(_timingsCallback);
-    }
+    final isBackgroundIsolate = ServicesBinding.rootIsolateToken == null;
+    // Don't allow initialization of foreground stuff in background isolates
+    if (!isBackgroundIsolate) {
+      // Never use long task observer on web -- the Browser SDK should
+      // capture stalls on the main thread automatically.
+      if (!kIsWeb && detectLongTasks) {
+        _longTaskObserver = RumLongTaskObserver(
+          longTaskThreshold: longTaskThreshold,
+          rumInstance: this,
+        );
+        _longTaskObserver!.init();
+      }
+      if (reportFlutterPerformance) {
+        ambiguate(SchedulerBinding.instance)
+            ?.addTimingsCallback(_timingsCallback);
+      }
 
-    core.updateConfigurationInfo(
-        LateConfigurationProperty.trackFlutterPerformance,
-        reportFlutterPerformance);
-    core.updateConfigurationInfo(
-        LateConfigurationProperty.trackCrossPlatformLongTasks, detectLongTasks);
+      core.updateConfigurationInfo(
+          LateConfigurationProperty.trackFlutterPerformance,
+          reportFlutterPerformance);
+      core.updateConfigurationInfo(
+          LateConfigurationProperty.trackCrossPlatformLongTasks,
+          detectLongTasks);
+    } else {
+      if (detectLongTasks || reportFlutterPerformance) {
+        logger.warn(
+            'Attaching to the DatadogSdk from a background isolate does not support detecting long tasks or reporting Flutter performance.');
+      }
+    }
   }
 
   /// FOR INTERNAL USE ONLY

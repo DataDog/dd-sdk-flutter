@@ -2,13 +2,16 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'dart:isolate';
+
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 enum LogLevel { debug, info, notice, warn, error }
 
 class LoggingScreen extends StatefulWidget {
-  const LoggingScreen({Key? key}) : super(key: key);
+  const LoggingScreen({super.key});
 
   @override
   State<LoggingScreen> createState() => _LoggingScreenState();
@@ -62,6 +65,12 @@ class _LoggingScreenState extends State<LoggingScreen> {
         .showSnackBar(const SnackBar(content: Text('Sent $message')));
   }
 
+  void _sendFromBackgroundIsolate() {
+    final rootIsolateToken = ServicesBinding.rootIsolateToken;
+
+    Isolate.spawn(sendBackgroundLogs, rootIsolateToken!);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -97,6 +106,10 @@ class _LoggingScreenState extends State<LoggingScreen> {
               onPressed: () => _sendErrorWithExceptionLog(),
               child: const Text('Error With Exception Log'),
             ),
+            ElevatedButton(
+              onPressed: () => _sendFromBackgroundIsolate(),
+              child: const Text('Send From Background Isolate'),
+            ),
           ],
         ),
       ),
@@ -127,4 +140,18 @@ class _LoggingScreenState extends State<LoggingScreen> {
       child: Text(title),
     );
   }
+}
+
+void sendBackgroundLogs(RootIsolateToken rootIsolateToken) async {
+  BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken);
+
+  await DatadogSdk.instance.attachToExisting(DatadogAttachConfiguration(
+    detectLongTasks: true,
+  ));
+
+  final logger = DatadogSdk.instance.logs?.createLogger(
+    DatadogLoggerConfiguration(),
+  );
+
+  logger?.debug('Testing background isolate logging');
 }
