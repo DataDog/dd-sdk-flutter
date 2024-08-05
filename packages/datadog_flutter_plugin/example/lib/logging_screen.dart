@@ -5,6 +5,7 @@
 import 'dart:isolate';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -106,10 +107,11 @@ class _LoggingScreenState extends State<LoggingScreen> {
               onPressed: () => _sendErrorWithExceptionLog(),
               child: const Text('Error With Exception Log'),
             ),
-            ElevatedButton(
-              onPressed: () => _sendFromBackgroundIsolate(),
-              child: const Text('Send From Background Isolate'),
-            ),
+            if (!kIsWeb)
+              ElevatedButton(
+                onPressed: () => _sendFromBackgroundIsolate(),
+                child: const Text('Send From Background Isolate'),
+              ),
           ],
         ),
       ),

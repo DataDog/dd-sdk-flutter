@@ -143,7 +143,8 @@ class DatadogRum {
     required double longTaskThreshold,
     required bool reportFlutterPerformance,
   }) {
-    final isBackgroundIsolate = ServicesBinding.rootIsolateToken == null;
+    final isBackgroundIsolate =
+        kIsWeb ? false : ServicesBinding.rootIsolateToken == null;
     // Don't allow initialization of foreground stuff in background isolates
     if (!isBackgroundIsolate) {
       // Never use long task observer on web -- the Browser SDK should
