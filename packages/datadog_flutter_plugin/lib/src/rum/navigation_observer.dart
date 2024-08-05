@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../datadog_flutter_plugin.dart';
@@ -112,7 +113,20 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
     } else {
       _currentView = viewInfo;
       if (viewInfo != null) {
-        datadogSdk.rum?.startView(viewInfo.name, null, viewInfo.attributes);
+        if (kIsWeb) {
+          // On web, Flutter is informing us of the change in Route before the
+          // browser has had a chance to update the `location`. Wait a frame so
+          // the Browser SDK can properly capture the location
+          Future.delayed(const Duration(milliseconds: 1)).then((_) {
+            // Make sure the view wasn't overwritten in the last ~1ms
+            if (_currentView == viewInfo) {
+              datadogSdk.rum
+                  ?.startView(viewInfo.name, null, viewInfo.attributes);
+            }
+          });
+        } else {
+          datadogSdk.rum?.startView(viewInfo.name, null, viewInfo.attributes);
+        }
       } else {
         _pendingView = viewInfo;
       }
