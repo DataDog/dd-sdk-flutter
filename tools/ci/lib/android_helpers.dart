@@ -77,7 +77,7 @@ Future<bool> launchAndroidEmulator({
           ));
     }
 
-    print("Updateing system-image packages");
+    print("Updating system-image packages");
     await _run(
       sdkManager,
       ["--verbose", package],
