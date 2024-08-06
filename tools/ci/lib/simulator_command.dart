@@ -22,7 +22,6 @@ class SimulatorCommand extends Command {
 
   @override
   Future<void> run() async {
-    print('A');
     final args = argResults;
     if (args == null) {
       print('Args are null?');
