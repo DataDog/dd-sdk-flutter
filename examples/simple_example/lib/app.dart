@@ -8,6 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 
 import 'main_screen.dart';
+import 'screens/crash_screen.dart';
+import 'screens/graph_ql_screen.dart';
+import 'screens/network_screen.dart';
 
 class MyApp extends StatelessWidget {
   final GraphQLClient graphQLClient;
@@ -19,15 +22,32 @@ class MyApp extends StatelessWidget {
     routes: [
       GoRoute(
         path: '/',
-        redirect: ((context, state) {
-          return '/home';
-        }),
+        builder: (context, state) {
+          return const MainScreen();
+        },
       ),
       GoRoute(
-        path: '/:tab',
+        path: '/home',
         builder: (context, state) {
-          final tab = state.pathParameters['tab'];
-          return MainScreen(tab: tab);
+          return const MyHomePage(title: 'Home');
+        },
+      ),
+      GoRoute(
+        path: '/network',
+        builder: (context, state) {
+          return const NetworkScreen();
+        },
+      ),
+      GoRoute(
+        path: '/graphql',
+        builder: (context, state) {
+          return const GraphQlScreen();
+        },
+      ),
+      GoRoute(
+        path: '/crash',
+        builder: (context, state) {
+          return const CrashTestScreen();
         },
       ),
     ],
