@@ -165,6 +165,16 @@ class DatadogRumPluginTests: XCTestCase {
         testContracts(contracts: contracts, plugin: plugin)
     }
 
+    func testRumConfiguration_WithAppHangThreshold_IsSetCorrectly() {
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "appHangThreshold": 3.2
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertEqual(config?.appHangThreshold, 3.2)
+    }
+
     func testRepeatEnable_FromMethodChannelSameOptions_DoesNothing() {
         // Uninitialize plugin
         plugin?.inject(rum: nil)

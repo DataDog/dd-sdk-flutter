@@ -170,11 +170,13 @@ class DatadogRumPluginTest {
         forge: Forge
     ) {
         // GIVEN
+        val trackNonFatalAnrs = forge.aNullable { forge.aBool() }
         val attributes = forge.exhaustiveAttributes()
         val configArg = mapOf(
             "sessionSampleRate" to sessionSampleRate,
             "longTaskThreshold" to longTaskThreshold,
             "trackFrustrations" to trackFrustration,
+            "trackNonFatalAnrs" to trackNonFatalAnrs,
             "customEndpoint" to endpoint,
             "vitalsUpdateFrequency" to "VitalsFrequency.frequent",
             "telemetrySampleRate" to telemetrySampleRate,
@@ -190,6 +192,7 @@ class DatadogRumPluginTest {
         val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
         assertThat(featureConfiguration.getPrivate("sampleRate")).isEqualTo(sessionSampleRate)
         assertThat(featureConfiguration.getPrivate("trackFrustrations")).isEqualTo(trackFrustration)
+        assertThat(featureConfiguration.getPrivate("trackNonFatalAnrs")).isEqualTo(trackNonFatalAnrs)
         assertThat(featureConfiguration.getPrivate("customEndpointUrl")).isEqualTo(endpoint)
         assertThat(featureConfiguration.getPrivate("vitalsMonitorUpdateFrequency"))
             .isEqualTo(VitalsUpdateFrequency.FREQUENT)

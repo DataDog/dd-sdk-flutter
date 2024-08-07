@@ -466,6 +466,9 @@ fun RumConfiguration.Builder.withEncoded(encoded: Map<String, Any?>): RumConfigu
     (encoded["trackFrustrations"] as? Boolean)?.let {
         builder = builder.trackFrustrations(it)
     }
+    (encoded["trackNonFatalAnrs"] as? Boolean)?.let {
+        builder = builder.trackNonFatalAnrs(it)
+    }
     (encoded["customEndpoint"] as? String)?.let {
         builder = builder.useCustomEndpoint(it)
     }

@@ -131,6 +131,31 @@ class DatadogRumConfiguration {
   /// Defaults to false
   bool reportFlutterPerformance = false;
 
+  /// Whether to track non-fatal ANRs (Application Not Responding) errors as RUM
+  /// errors.
+  ///
+  /// This option is specific to Android.
+  ///
+  /// By default, the reporting of non-fatal ANRs on Android 30+ is disabled
+  /// because it would create too much noise over fatal ANRs. On Android 29 and
+  /// below, however, the reporting of non-fatal ANRs is enabled by default, as
+  /// fatal ANRs cannot be reported on those versions.
+  bool? trackNonFatalAnrs;
+
+  /// Set the threshold for reporting for non-fatal app hangs in seconds.
+  ///
+  /// This options is specific to iOS.
+  ///
+  /// App hangs are a type of error that occurs when the application is
+  /// unresponsive for too long. Set the parameter to the minimal duration you
+  /// want app hangs to be reported. For example, enter 0.25 to report hangs
+  /// lasting at least 250 milliseconds. See [Configure the app hang
+  /// threshold](https://docs.datadoghq.com/real_user_monitoring/error_tracking/mobile/ios/?tab=cocoapods#configure-the-app-hang-threshold)
+  /// for more guidance on what to set this value to.
+  ///
+  /// Defaults to disabled (`null`).
+  double? appHangThreshold;
+
   /// Use a custom endpoint for sending RUM data.
   String? customEndpoint;
 
@@ -169,6 +194,8 @@ class DatadogRumConfiguration {
     this.trackFrustrations = true,
     this.vitalUpdateFrequency = VitalsFrequency.average,
     this.reportFlutterPerformance = false,
+    this.trackNonFatalAnrs,
+    this.appHangThreshold,
     this.customEndpoint,
     this.telemetrySampleRate = 20.0,
     this.viewEventMapper,
@@ -190,6 +217,8 @@ class DatadogRumConfiguration {
       'trackFrustrations': trackFrustrations,
       'vitalsUpdateFrequency': vitalUpdateFrequency.toString(),
       'reportFlutterPerformance': reportFlutterPerformance,
+      'trackNonFatalAnrs': trackNonFatalAnrs,
+      'appHangThreshold': appHangThreshold,
       'customEndpoint': customEndpoint,
       'telemetrySampleRate': telemetrySampleRate,
       'attachViewEventMapper': viewEventMapper != null,
