@@ -11,7 +11,7 @@ plugins {
 
 android {
     namespace 'com.datadoghq.hybrid_flutter_example'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.datadoghq.hybrid_flutter_example"
