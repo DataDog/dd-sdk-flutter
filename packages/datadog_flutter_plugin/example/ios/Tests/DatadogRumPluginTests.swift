@@ -166,13 +166,14 @@ class DatadogRumPluginTests: XCTestCase {
     }
 
     func testRumConfiguration_WithAppHangThreshold_IsSetCorrectly() {
+        let appHangThreshold = Double.mockRandom()
         let encoded: [String: Any?] = [
             "applicationId": "fake-application-id",
-            "appHangThreshold": 3.2
+            "appHangThreshold": appHangThreshold
         ]
 
         let config = RUM.Configuration.init(fromEncoded: encoded)
-        XCTAssertEqual(config?.appHangThreshold, 3.2)
+        XCTAssertEqual(config?.appHangThreshold, appHangThreshold)
     }
 
     func testRepeatEnable_FromMethodChannelSameOptions_DoesNothing() {

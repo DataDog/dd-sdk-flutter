@@ -192,7 +192,12 @@ class DatadogRumPluginTest {
         val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
         assertThat(featureConfiguration.getPrivate("sampleRate")).isEqualTo(sessionSampleRate)
         assertThat(featureConfiguration.getPrivate("trackFrustrations")).isEqualTo(trackFrustration)
-        assertThat(featureConfiguration.getPrivate("trackNonFatalAnrs")).isEqualTo(trackNonFatalAnrs)
+        if (trackNonFatalAnrs != null) {
+            assertThat(featureConfiguration.getPrivate("trackNonFatalAnrs")).isEqualTo(trackNonFatalAnrs)
+        } else {
+            // If null, default shouldn't be changed. Tests are run on a version that enables ANR tracking by default
+            assertThat(featureConfiguration.getPrivate("trackNonFatalAnrs")).isEqualTo(true)
+        }
         assertThat(featureConfiguration.getPrivate("customEndpointUrl")).isEqualTo(endpoint)
         assertThat(featureConfiguration.getPrivate("vitalsMonitorUpdateFrequency"))
             .isEqualTo(VitalsUpdateFrequency.FREQUENT)
