@@ -4,6 +4,5 @@
   ~ Copyright 2016-Present Datadog, Inc.
   -->
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.datadoghq.flutter">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 </manifest>

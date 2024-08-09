@@ -107,7 +107,7 @@ android-integration-test:
   script:
     - !reference [.pre, script]
     - melos pub:get
-    - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.3" "platform-tools" "platforms;android-33" || true
+    - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" "platform-tools" "platforms;android-34" || true
     - yes | flutter doctor --android-licenses || true
     - flutter doctor
     - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform android --sdk "33"
@@ -188,10 +188,10 @@ nightly-android:
     - !reference [.pre, script]
     - pod repo update
     - melos pub:get
-    - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.3" "platform-tools" "platforms;android-33" || true
+    - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.3" "platform-tools" "platforms;android-34" || true
     - yes | flutter doctor --android-licenses || true
     - flutter doctor
-    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform android --sdk "33"
+    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform android --sdk "34"
     - melos run e2e_tests:android
   artifacts:
     when: always

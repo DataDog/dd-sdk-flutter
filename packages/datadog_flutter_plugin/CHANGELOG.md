@@ -6,6 +6,7 @@
 * Bump minimum Dart version to 3.3.0 (Flutter 3.19.0).
 * Add WASM support by removing references to `dart:html` and `package:js`
 * Wait to start views on Flutter Web to avoid location mismatch.
+* Upgrade Android to `compileSdkVersion` 34 to prevent issues with Flutter 3.24. See [#639].
 
 ## 2.6.0
 
@@ -309,3 +310,4 @@ Release 2.0 introduces breaking changes. Follow the [Migration Guide](MIGRATING.
 [#574]: https://github.com/DataDog/dd-sdk-flutter/issues/574
 [#575]: https://github.com/DataDog/dd-sdk-flutter/issues/575
 [#596]: https://github.com/DataDog/dd-sdk-flutter/issues/596
+[#639]: https://github.com/DataDog/dd-sdk-flutter/issues/639
