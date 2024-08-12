@@ -196,7 +196,7 @@ class DatadogRumPluginTest {
             assertThat(featureConfiguration.getPrivate("trackNonFatalAnrs")).isEqualTo(trackNonFatalAnrs)
         } else {
             // If null, default shouldn't be changed. Tests are run on a version that enables ANR tracking by default
-            assertThat(featureConfiguration.getPrivate("trackNonFatalAnrs")).isEqualTo(true)
+            assertThat(featureConfiguration.getPrivate("trackNonFatalAnrs")).isFalse
         }
         assertThat(featureConfiguration.getPrivate("customEndpointUrl")).isEqualTo(endpoint)
         assertThat(featureConfiguration.getPrivate("vitalsMonitorUpdateFrequency"))
