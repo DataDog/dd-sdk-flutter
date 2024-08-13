@@ -25,6 +25,7 @@ stages:
 
 .pre:
   script:
+    - ulimit -S -n 2048
     - export PATH=$PATH:$HOME/.pub-cache/bin
     - flutter upgrade
     - flutter --version
