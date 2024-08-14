@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+
+
 ## 2.7.0
 
 * Support selective injection of trace contexts with TraceContextInjection configuration item.
