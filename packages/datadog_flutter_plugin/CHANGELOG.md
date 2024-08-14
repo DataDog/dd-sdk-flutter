@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.7.0
 
 * Support selective injection of trace contexts with TraceContextInjection configuration item.
 * Bump minimum Dart version to 3.3.0 (Flutter 3.19.0).
