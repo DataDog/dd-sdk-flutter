@@ -16,11 +16,11 @@ A new flutter plugin project.
   s.source_files = 'Classes/**/*'
   s.static_framework = true
   s.dependency 'Flutter'
-  s.dependency 'DatadogCore', '~> 2'
-  s.dependency 'DatadogLogs', '~> 2'
-  s.dependency 'DatadogRUM', '~> 2'
-  s.dependency 'DatadogInternal', '~> 2'
-  s.dependency 'DatadogCrashReporting', '~> 2'
+  s.dependency 'DatadogCore', '2.15.0'
+  s.dependency 'DatadogLogs', '2.15.0'
+  s.dependency 'DatadogRUM', '2.15.0'
+  s.dependency 'DatadogInternal', '2.15.0'
+  s.dependency 'DatadogCrashReporting', '2.15.0'
   s.dependency 'DictionaryCoder', '1.0.8'
   s.platform = :ios, '12.0'
 
