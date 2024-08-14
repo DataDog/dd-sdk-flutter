@@ -9,6 +9,14 @@
 * Upgrade Android to `compileSdkVersion` 34 to prevent issues with Flutter 3.24. See [#639].
 * Add an option to support detection of non-fatal ANRs on Android.
 * Add an option for detecting non-fatal app hangs within a givin threshold on iOS.
+* Update iOS SDK to 2.15.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#2150--25-07-2024)
+  * Send memory warnings as RUM errors
+  * Inject backtrace reporter into Logs feature.
+  * Use `#fileID` over `#filePath` as the default argument in errors.
+* Update Android SDK to 2.12.1
+  * InternalMetrics: Add sampling rate to internal metrics.
+  * Core: Increase retry delay on DNS error.
+  * Reduce Method Call Sample Rate and limit total telemetry events sent per session
 
 ## 2.6.0
 
