@@ -7,6 +7,8 @@
 * Add WASM support by removing references to `dart:html` and `package:js`
 * Wait to start views on Flutter Web to avoid location mismatch.
 * Upgrade Android to `compileSdkVersion` 34 to prevent issues with Flutter 3.24. See [#639].
+* Add an option to support detection of non-fatal ANRs on Android.
+* Add an option for detecting non-fatal app hangs within a givin threshold on iOS.
 
 ## 2.6.0
 

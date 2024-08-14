@@ -90,6 +90,8 @@ void main() {
       longTaskThreshold: 0.3,
       trackFrustrations: trackFrustrations,
       vitalUpdateFrequency: vitalUpdateFrequency,
+      trackNonFatalAnrs: false,
+      appHangThreshold: 0.332,
       customEndpoint: customEndpoint,
     );
 
@@ -100,6 +102,8 @@ void main() {
     expect(encoded['longTaskThreshold'], 0.3);
     expect(encoded['trackFrustrations'], trackFrustrations);
     expect(encoded['vitalsUpdateFrequency'], vitalUpdateFrequency.toString());
+    expect(encoded['trackNonFatalAnrs'], false);
+    expect(encoded['appHangThreshold'], 0.332);
     expect(encoded['customEndpoint'], customEndpoint);
   });
 

@@ -17,6 +17,7 @@
 		4962A36F276D322E00507AFD /* DatadogSdkPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4962A36E276D322E00507AFD /* DatadogSdkPluginTests.swift */; };
 		4962A3AD277109C400507AFD /* FlutterSdkAttibutesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4962A3AC277109C400507AFD /* FlutterSdkAttibutesTests.swift */; };
 		496AAFBA27B4496400236887 /* ffi_crash_test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 496AAFB927B4496400236887 /* ffi_crash_test.cpp */; };
+		49939D582C65038900F1D95E /* FoundationMocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49939D572C65038900F1D95E /* FoundationMocks.swift */; };
 		49D7C98927834F7600A03589 /* DatadogRumPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49D7C98827834F7600A03589 /* DatadogRumPluginTests.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
@@ -60,6 +61,7 @@
 		4962A36E276D322E00507AFD /* DatadogSdkPluginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatadogSdkPluginTests.swift; sourceTree = "<group>"; };
 		4962A3AC277109C400507AFD /* FlutterSdkAttibutesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlutterSdkAttibutesTests.swift; sourceTree = "<group>"; };
 		496AAFB927B4496400236887 /* ffi_crash_test.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ffi_crash_test.cpp; path = ../../cpp/ffi_crash_test.cpp; sourceTree = "<group>"; };
+		49939D572C65038900F1D95E /* FoundationMocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationMocks.swift; sourceTree = "<group>"; };
 		49D7C98827834F7600A03589 /* DatadogRumPluginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatadogRumPluginTests.swift; sourceTree = "<group>"; };
 		4B3455B21F76D2056794CEF9 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		575766412339EEB139D8368A /* Pods_flutter_datadog_plugin_tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_flutter_datadog_plugin_tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -118,6 +120,7 @@
 			children = (
 				4956E9562785DA5500E0E3B3 /* EquatableInTests.swift */,
 				495118F227C7C96700F206FE /* ContractHelpers.swift */,
+				49939D572C65038900F1D95E /* FoundationMocks.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -446,6 +449,7 @@
 				4959779C279209C90022AFE6 /* DatadogConfigurationTests.swift in Sources */,
 				49D7C98927834F7600A03589 /* DatadogRumPluginTests.swift in Sources */,
 				495118EF27C596AB00F206FE /* DatadogLogsPluginTests.swift in Sources */,
+				49939D582C65038900F1D95E /* FoundationMocks.swift in Sources */,
 				4956E9572785DA5500E0E3B3 /* EquatableInTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -22,6 +22,10 @@ public extension RUM.Configuration {
         sessionSampleRate = (encoded["sessionSampleRate"] as? NSNumber)?.floatValue ?? 100.0
         longTaskThreshold = (encoded["longTaskThreshold"] as? NSNumber)?.doubleValue ?? 0.1
         trackFrustrations = (encoded["trackFrustrations"] as? NSNumber)?.boolValue ?? true
+        if let appHangThreshold = (encoded["appHangThreshold"] as? NSNumber)?.doubleValue {
+            self.appHangThreshold = appHangThreshold
+        }
+
         if let customEndpoint = encoded["customEndpoint"] as? String {
             self.customEndpoint = URL(string: customEndpoint)
         }
