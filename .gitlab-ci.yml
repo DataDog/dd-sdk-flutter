@@ -25,6 +25,7 @@ stages:
 
 .pre:
   script:
+    - ulimit -S -n 2048
     - export PATH=$PATH:$HOME/.pub-cache/bin
     - flutter upgrade
     - flutter --version
@@ -106,6 +107,8 @@ android-integration-test:
     - specific:true
   script:
     - !reference [.pre, script]
+    # Kill all active emulators
+    - pushd tools/ci && dart pub get && dart run ci_helpers stop_emu && popd
     - melos pub:get
     - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" "platform-tools" "platforms;android-34" || true
     - yes | flutter doctor --android-licenses || true
@@ -186,7 +189,8 @@ nightly-android:
   script:
     - !reference [.nightly-vars, script]
     - !reference [.pre, script]
-    - pod repo update
+    # Kill all active emulators
+    - pushd tools/ci && dart pub get && dart run ci_helpers stop_emu && popd
     - melos pub:get
     - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.3" "platform-tools" "platforms;android-34" || true
     - yes | flutter doctor --android-licenses || true

@@ -40,6 +40,19 @@ String get emulatorCmd {
   return path.join(androidHome, 'emulator', 'emulator');
 }
 
+String get adbCommand {
+  return path.join(androidHome, 'platform-tools', 'adb');
+}
+
+Future<void> killAllEmulators() async {
+  final runningDevices = await _getRunningDevices();
+
+  for (final device in runningDevices.entries) {
+    await _run(adbCommand, ['-s', device.key, 'emu', 'kill'],
+        writeStdOut: true);
+  }
+}
+
 Future<bool> launchAndroidEmulator({
   String? apiLevel,
   String? emulatorName,
@@ -118,13 +131,12 @@ Future<bool> _emulatorExists(String emulatorName) async {
 }
 
 Future<Map<String, String>> _getRunningDevices() async {
-  final deviceRegex = RegExp(r'^(?<emulator>emulator-\d*)[\s+](?<state>.*)');
+  final emulatorRegex = RegExp(r'^(?<emulator>emulator-\d*)[\s+](?<state>.*)');
 
   final result = <String, String>{};
-  final devicesLog =
-      await _run(path.join(androidHome, 'platform-tools', 'adb'), ['devices']);
+  final devicesLog = await _run(adbCommand, ['devices']);
   for (var line in devicesLog.split('\n')) {
-    final match = deviceRegex.firstMatch(line);
+    final match = emulatorRegex.firstMatch(line);
     if (match != null) {
       result[match.namedGroup('emulator')!] = match.namedGroup('state')!;
     }
