@@ -169,7 +169,7 @@ scripts:
       cd e2e_test_app
       
       bash -c 'set -euxo pipefail; \
-      flutter test integration_test --machine -d "iPhone"
+      flutter test integration_test --machine -d "iPhone"'
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
@@ -179,7 +179,7 @@ scripts:
       cd e2e_test_app
       
       bash -c 'set -euxo pipefail; \
-      flutter test integration_test --machine -d emulator      
+      flutter test integration_test --machine -d emulator'     
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
