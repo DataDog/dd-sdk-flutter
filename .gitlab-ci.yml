@@ -2,7 +2,7 @@ include:
   - 'https://gitlab-templates.ddbuild.io/slack-notifier/v1/template.yml'
 
 variables:
-  CURRENT_CI_IMAGE: "5"
+  CURRENT_CI_IMAGE: "7"
   BUILD_STABLE_REGISTRY: 486234852809.dkr.ecr.us-east-1.amazonaws.com
   CI_IMAGE_REPO: "ci/dd-sdk-flutter"
   CI_IMAGE_DOCKER: ${BUILD_STABLE_REGISTRY}/${CI_IMAGE_REPO}:$CURRENT_CI_IMAGE
@@ -94,7 +94,16 @@ build-ios:
     - melos pod_update --no-select
     - melos run analyze:ios
     - melos run build:ios
-    - melos run unit_test:ios    
+    - melos run unit_test:ios
+
+build-web:
+  stage: build
+  except: [ schedules ]
+  tags: [ "arch:amd64" ]
+  image: $CI_IMAGE_DOCKER
+  script:
+    - !reference [.pre, script]
+    - melos run build:web
 
 # Integration Tests
 
@@ -144,10 +153,24 @@ ios-integration-test:
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
-# web-integration-test:
-#   stage: integration-test
-#   script:
-#     - melos run integration_test:web
+web-integration-test:
+  stage: integration-test
+  except: [ schedules ]
+  needs: [ build-web ]
+  image: $CI_IMAGE_DOCKER
+  tags:
+    [ "arch:amd64" ]
+  script:
+    - !reference [.pre, script]
+    - pushd tools/ci && dart pub get && dart run ci_helpers chrome_driver --extract && popd
+    - ./tools/ci/.tmp/chromedriver-linux64/chromedriver --version
+    - ./tools/ci/.tmp/chrome-linux64/chrome --version
+    - ./tools/ci/.tmp/chromedriver-linux64/chromedriver --port=4444 &
+    - export CHROME_EXECUTABLE=${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/chrome
+    - export PATH="$PATH:${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/"
+    - echo $CHROME_EXECUTABLE
+    - flutter doctor
+    - melos run integration_test:web
 
 # Nightly
 

@@ -156,6 +156,9 @@ scripts:
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
+  integration_test:web:
+    run: melos integration_test:web:main
+
   integration_test:web:main:
     exec: |
       cd integration_test_app

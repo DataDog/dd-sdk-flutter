@@ -5,11 +5,13 @@
 import 'package:args/command_runner.dart';
 import 'package:ci_helpers/simulator_command.dart';
 import 'package:ci_helpers/stop_emulators_command.dart';
+import 'package:ci_helpers/web_command.dart';
 
 void main(List<String> arguments) {
   final runner = CommandRunner(
       'ci', 'Helper command line utils for CI of the Datadog Flutter SDK')
     ..addCommand(SimulatorCommand())
     ..addCommand(StopEmulatorsCommand())
+    ..addCommand(WebCommand())
     ..run(arguments);
 }

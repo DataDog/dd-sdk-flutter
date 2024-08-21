@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:ci_helpers/shell_helpers.dart';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as path;
 
@@ -48,7 +49,7 @@ Future<void> killAllEmulators() async {
   final runningDevices = await _getRunningDevices();
 
   for (final device in runningDevices.entries) {
-    await _run(adbCommand, ['-s', device.key, 'emu', 'kill'],
+    await shell_run(adbCommand, ['-s', device.key, 'emu', 'kill'],
         writeStdOut: true);
   }
 }
@@ -83,7 +84,7 @@ Future<bool> launchAndroidEmulator({
     final package = 'system-images;android-$apiLevel;$avdTag;$avdAbi';
     if (shouldUpdate) {
       print("Updating emulators with sdkmanager");
-      await _run(sdkManager, ["--verbose", "emulator"],
+      await shell_run(sdkManager, ["--verbose", "emulator"],
           writeStdOut: true,
           stdIn: Stream.fromIterable(yesList).transform(
             utf8.encoder,
@@ -91,7 +92,7 @@ Future<bool> launchAndroidEmulator({
     }
 
     print("Updating system-image packages");
-    await _run(
+    await shell_run(
       sdkManager,
       ["--verbose", package],
       writeStdOut: true,
@@ -99,7 +100,7 @@ Future<bool> launchAndroidEmulator({
     );
 
     print("Creating device");
-    await _run(
+    await shell_run(
       avdManager,
       ['create', 'avd', '-n', emulatorName, '--package', package],
       writeStdOut: true,
@@ -123,7 +124,7 @@ Future<bool> launchAndroidEmulator({
 
 Future<bool> _emulatorExists(String emulatorName) async {
   print("Checking for existing Android emulator named $emulatorName...");
-  final result = await _run(avdManager, ['list', 'avd', '--compact']);
+  final result = await shell_run(avdManager, ['list', 'avd', '--compact']);
   final emulators = result.split('\n');
   print('Found emulaors: $emulators');
 
@@ -134,7 +135,7 @@ Future<Map<String, String>> _getRunningDevices() async {
   final emulatorRegex = RegExp(r'^(?<emulator>emulator-\d*)[\s+](?<state>.*)');
 
   final result = <String, String>{};
-  final devicesLog = await _run(adbCommand, ['devices']);
+  final devicesLog = await shell_run(adbCommand, ['devices']);
   for (var line in devicesLog.split('\n')) {
     final match = emulatorRegex.firstMatch(line);
     if (match != null) {
@@ -182,41 +183,4 @@ Future<bool> _startEmulator(String emulatorName) async {
   }
 
   return launched;
-}
-
-Future<String> _run(
-  String command,
-  List<String> args, {
-  bool writeStdOut = false,
-  Stream<List<int>>? stdIn,
-}) async {
-  print("Running \$ $command ${args.join(' ')}");
-
-  var process = await Process.start(command, args);
-  var output = StringBuffer();
-  process.stdout
-      .transform(utf8.decoder)
-      .transform(const LineSplitter())
-      .listen((event) {
-    if (writeStdOut) {
-      print(event);
-    }
-    output.writeln(event);
-  });
-  process.stderr
-      .transform(utf8.decoder)
-      .transform(const LineSplitter())
-      .listen((event) {
-    print(event);
-  });
-  if (stdIn != null) {
-    process.stdin.addStream(stdIn);
-  }
-
-  var exitCode = await process.exitCode;
-  if (exitCode != 0) {
-    throw Exception('shell command exited with non-zero exit code: $exitCode.');
-  }
-
-  return output.toString();
 }
