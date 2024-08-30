@@ -42,4 +42,32 @@ void main() {
 
     sendRandomLog(logger, tester);
   });
+
+  /// - data monitor:
+  /// ```logs(ios, android)
+  /// $monitor_id = ${{feature}}_set_network_info_enabled_${{variant}}
+  /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is below expected value"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}}\" \"@network.client.reachability:*\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
+  /// ```
+  testWidgets('logger config - send network info enabled', (tester) async {
+    await initializeDatadog();
+    var logger = datadog.logs
+        ?.createLogger(DatadogLoggerConfiguration(networkInfoEnabled: true));
+
+    sendRandomLog(logger, tester);
+  });
+
+  /// - data monitor:
+  /// ```logs(ios, android)
+  /// $monitor_id = ${{feature}}_set_bundle_with_rum_enabled_${{variant}}
+  /// $monitor_name = "${{monitor_name_prefix}} - ${{test_description}}: number of logs is below expected value"
+  /// $monitor_query = "logs(\"service:${{service}} @test_method_name:\\\"${{test_description}}\\\" @operating_system:${{variant}}\" \"@application_id:*\" \"@session_id:*\").index(\"*\").rollup(\"count\").last(\"1d\") < 1"
+  /// ```
+  testWidgets('logger config - bundle with RUM enabled', (tester) async {
+    await initializeDatadog();
+    var logger = datadog.logs
+        ?.createLogger(DatadogLoggerConfiguration(bundleWithRumEnabled: true));
+
+    sendRandomLog(logger, tester);
+  });
 }
