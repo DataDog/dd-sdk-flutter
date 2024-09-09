@@ -25,6 +25,23 @@ RUN set -x \
  && apt-get -y clean \
  && rm -rf /var/lib/apt/lists/*
 
+ # Add Chrome Dependencies
+ RUN apt-get update && apt-get install -y -q --no-install-recommends \
+    libgtk-3-dev \
+    libx11-xcb1  \
+    libnss3 \
+    libxss1 \
+    libasound2 \
+    libu2f-udev \
+    libvulkan1 \
+    fonts-liberation \
+    libappindicator3-1 \
+    lsb-release \
+    xdg-utils \
+    curl \
+    ca-certificates \
+    zip
+
 ENV GRADLE_VERSION 8.1.1
 ENV ANDROID_COMPILE_SDK 34
 ENV ANDROID_BUILD_TOOLS 34.0.0

@@ -51,6 +51,10 @@ void main() async {
         '--browser-name=chrome',
         '--web-port=8080',
       ];
+      final chromeExecutable = Platform.environment['CHROME_EXECUTABLE'];
+      if (chromeExecutable != null) {
+        args.add('--chrome-binary=$chromeExecutable');        
+      }
       print('flutter ${args.join(' ')}');
       final process = await Process.start('flutter', args);
       process.stdout
