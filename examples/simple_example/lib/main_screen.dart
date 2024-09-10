@@ -86,6 +86,54 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  void _openDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Container(
+          height: 100,
+          width: 120,
+          color: Colors.white,
+          child: Column(
+            children: [
+              TextButton(
+                child: const Text('CLOSE MODAL'),
+                onPressed: () => {
+                  debugPrint('MODAL REJECTED'),
+                  context.pop(),
+                },
+              ),
+              TextButton(
+                onPressed: () => {
+                  context.pop(),
+                },
+                child: const Text('ACCEPT MODAL'),
+              ),
+              IconButton(
+                key: const Key('REJECT BY ICON'),
+                icon: const Icon(Icons.close),
+                onPressed: () async => {
+                  await Future.delayed(const Duration(seconds: 5), () {
+                    context.pop();
+                  }),
+                },
+              ),
+              IconButton(
+                key: const Key('ACCEPT BY ICON KEY'),
+                icon: const Icon(Icons.done),
+                tooltip: 'MODAL ACCEPT BY ICON',
+                onPressed: () => {
+                  context.pop(),
+                },
+              )
+            ],
+          ),
+        );
+      },
+      routeSettings: RouteSettings(name: 'Download Dialog'),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,7 +154,11 @@ class _MyHomePageState extends State<MyHomePage> {
             ElevatedButton(
               onPressed: _goToNamedScreen,
               child: const Text('Named Test'),
-            )
+            ),
+            ElevatedButton(
+              onPressed: () => _openDialog(context),
+              child: const Text('Open Dialog'),
+            ),
           ],
         ),
       ),

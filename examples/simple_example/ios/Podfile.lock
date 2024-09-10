@@ -1,7 +1,7 @@
 PODS:
   - connectivity_plus (0.0.1):
     - Flutter
-    - ReachabilitySwift
+    - FlutterMacOS
   - datadog_flutter_plugin (0.0.1):
     - DatadogCore (~> 2)
     - DatadogCrashReporting (~> 2)
@@ -14,35 +14,35 @@ PODS:
     - DatadogWebViewTracking (~> 2)
     - Flutter
     - webview_flutter_wkwebview
-  - DatadogCore (2.5.1):
-    - DatadogInternal (= 2.5.1)
-  - DatadogCrashReporting (2.5.1):
-    - DatadogInternal (= 2.5.1)
-    - PLCrashReporter (~> 1.11.1)
-  - DatadogInternal (2.5.1)
-  - DatadogLogs (2.5.1):
-    - DatadogInternal (= 2.5.1)
-  - DatadogRUM (2.5.1):
-    - DatadogInternal (= 2.5.1)
-  - DatadogWebViewTracking (2.5.1):
-    - DatadogInternal (= 2.5.1)
+  - DatadogCore (2.16.0):
+    - DatadogInternal (= 2.16.0)
+  - DatadogCrashReporting (2.16.0):
+    - DatadogInternal (= 2.16.0)
+    - PLCrashReporter (~> 1.11.2)
+  - DatadogInternal (2.16.0)
+  - DatadogLogs (2.16.0):
+    - DatadogInternal (= 2.16.0)
+  - DatadogRUM (2.16.0):
+    - DatadogInternal (= 2.16.0)
+  - DatadogWebViewTracking (2.16.0):
+    - DatadogInternal (= 2.16.0)
   - DictionaryCoder (1.0.8)
   - Flutter (1.0.0)
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - PLCrashReporter (1.11.1)
-  - ReachabilitySwift (5.0.0)
+  - PLCrashReporter (1.11.2)
   - webview_flutter_wkwebview (0.0.1):
     - Flutter
+    - FlutterMacOS
 
 DEPENDENCIES:
-  - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
+  - connectivity_plus (from `.symlinks/plugins/connectivity_plus/darwin`)
   - datadog_flutter_plugin (from `.symlinks/plugins/datadog_flutter_plugin/ios`)
   - datadog_webview_tracking (from `.symlinks/plugins/datadog_webview_tracking/ios`)
   - Flutter (from `Flutter`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
-  - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/ios`)
+  - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
 SPEC REPOS:
   trunk:
@@ -54,11 +54,10 @@ SPEC REPOS:
     - DatadogWebViewTracking
     - DictionaryCoder
     - PLCrashReporter
-    - ReachabilitySwift
 
 EXTERNAL SOURCES:
   connectivity_plus:
-    :path: ".symlinks/plugins/connectivity_plus/ios"
+    :path: ".symlinks/plugins/connectivity_plus/darwin"
   datadog_flutter_plugin:
     :path: ".symlinks/plugins/datadog_flutter_plugin/ios"
   datadog_webview_tracking:
@@ -68,25 +67,24 @@ EXTERNAL SOURCES:
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   webview_flutter_wkwebview:
-    :path: ".symlinks/plugins/webview_flutter_wkwebview/ios"
+    :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
 
 SPEC CHECKSUMS:
-  connectivity_plus: bf0076dd84a130856aa636df1c71ccaff908fa1d
-  datadog_flutter_plugin: 89d7088ec5cc78c0ff2c24dbe7b7e67e6800a10b
-  datadog_webview_tracking: d46b58a9109c0d29e4d6ffdd4223cb23e4f328a9
-  DatadogCore: 4acbe1aae7f87ed63b1fecdd6cb4264c5fff5de9
-  DatadogCrashReporting: 029e15cfbbacdd278a0d3428dacd3be78b80b3c2
-  DatadogInternal: 8c1de807515237394730e0d0721689adb8f0d7c1
-  DatadogLogs: cd1bbe531cfb56d5aa75ad839c7607ae7b83e3c9
-  DatadogRUM: b800382f479eaa501c99d2e84db8c06deb1409fb
-  DatadogWebViewTracking: 69be2e35bd2ef609853e5d0e1ce3e39a43ce867e
+  connectivity_plus: ddd7f30999e1faaef5967c23d5b6d503d10434db
+  datadog_flutter_plugin: de391eba42569ec1d8282aa1c49b4172603acc90
+  datadog_webview_tracking: 7de2f94cb36dbb00203468d941e89ec7cbc47226
+  DatadogCore: 4cf2a1fe0e60ebcb12a459328f652da6268de140
+  DatadogCrashReporting: 380f559499c2d2171c40ddfbf9d4206f772fdca1
+  DatadogInternal: 67742f9aac1b123f5bda9d6e3bb22ab1773fda0b
+  DatadogLogs: 1278623e6235c5fff7e68d0d4914cee11d828f8d
+  DatadogRUM: 4bac99a16de3c1ebebd9a1c3e6361cf1b13da83c
+  DatadogWebViewTracking: a8cac9ca5d3aa3c2ace3fbe6072dfd77425deae8
   DictionaryCoder: 5f84fff69f54cb806071538430bdafe04a89d658
-  Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
-  path_provider_foundation: 29f094ae23ebbca9d3d0cec13889cd9060c0e943
-  PLCrashReporter: 5d2d3967afe0efad61b3048d617e2199a5d1b787
-  ReachabilitySwift: 985039c6f7b23a1da463388634119492ff86c825
-  webview_flutter_wkwebview: 2e2d318f21a5e036e2c3f26171342e95908bd60a
+  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
+  PLCrashReporter: 499c53b0104f95c302d94fd723ebb03c56d9bac8
+  webview_flutter_wkwebview: 0982481e3d9c78fd5c6f62a002fcd24fc791f1e4
 
 PODFILE CHECKSUM: 4e8f8b2be68aeea4c0d5beb6ff1e79fface1d048
 
-COCOAPODS: 1.12.1
+COCOAPODS: 1.15.2

@@ -10,7 +10,7 @@ enum InternalError: Error {
     case pluginError
 }
 
-@UIApplicationMain
+@main
 @objc class AppDelegate: FlutterAppDelegate {
     var methodChannel: FlutterMethodChannel!
 

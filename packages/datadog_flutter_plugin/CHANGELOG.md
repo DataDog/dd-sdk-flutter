@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-
+* Add `DialogRoute` handling to the `defaultViewInfoExtractor`.
 
 ## 2.7.0
 
