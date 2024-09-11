@@ -192,8 +192,8 @@ class DatadogRumPluginTests: XCTestCase {
         )
         plugin.handle(methodCallA) { _ in }
 
-        var loggedConsoleLines: [String] = []
-        consolePrint = { str, _ in loggedConsoleLines.append(str) }
+        let printMock = PrintFunctionMock()
+        consolePrint = printMock.print
 
         let methodCallB = FlutterMethodCall(
             methodName: "initialize",
@@ -203,9 +203,7 @@ class DatadogRumPluginTests: XCTestCase {
         )
         plugin.handle(methodCallB) { _ in }
 
-        print(loggedConsoleLines)
-
-        XCTAssertTrue(loggedConsoleLines.isEmpty)
+        XCTAssertTrue(printMock.printedMessages.isEmpty)
     }
 
     func testRepeatEnable_FromMethodChannelDifferentOptions_PrintsError() {
@@ -222,8 +220,8 @@ class DatadogRumPluginTests: XCTestCase {
         )
         plugin.handle(methodCallA) { _ in }
 
-        var loggedConsoleLines: [String] = []
-        consolePrint = { str, _ in loggedConsoleLines.append(str) }
+        let printMock = PrintFunctionMock()
+        consolePrint = printMock.print
 
         let methodCallB = FlutterMethodCall(
             methodName: "enable",
@@ -236,8 +234,8 @@ class DatadogRumPluginTests: XCTestCase {
         )
         plugin.handle(methodCallB) { _ in }
 
-        XCTAssertFalse(loggedConsoleLines.isEmpty)
-        XCTAssertTrue(loggedConsoleLines.first?.contains("🔥") == true)
+        XCTAssertFalse(printMock.printedMessages.isEmpty)
+        XCTAssertTrue(printMock.printedMessages.first?.contains("🔥") == true)
     }
 
     func testStartViewCall_CallsRumMonitor() {

@@ -5,6 +5,7 @@
  */
 
 import Foundation
+import DatadogInternal
 
 /*
  A collection of mocks for different `Foundation` types. The convention we use is to extend
@@ -817,5 +818,23 @@ private class URLSessionTaskTransactionMetricsMock: URLSessionTaskTransactionMet
         self._responseStartDate = responseStartDate
         self._responseEndDate = responseEndDate
         self._countOfResponseBodyBytesAfterDecoding = countOfResponseBodyBytesAfterDecoding
+    }
+}
+
+public class PrintFunctionMock: @unchecked Sendable {
+    @ReadWriteLock
+    public private(set) var printedMessages: [String] = []
+
+    public var printedMessage: String? { printedMessages.last }
+
+    public init() { }
+
+    @Sendable
+    public func print(message: String, level: CoreLoggerLevel) {
+        printedMessages.append(message)
+    }
+
+    public func reset() {
+        printedMessages = []
     }
 }

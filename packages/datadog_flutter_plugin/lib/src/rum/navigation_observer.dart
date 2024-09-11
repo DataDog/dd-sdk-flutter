@@ -45,6 +45,11 @@ RumViewInfo? defaultViewInfoExtractor(Route<dynamic> route) {
     if (name != null) {
       return RumViewInfo(name: name);
     }
+  } else if (route is DialogRoute) {
+    var name = route.settings.name;
+    if (name != null) {
+      return RumViewInfo(name: name);
+    }
   }
 
   return null;

@@ -23,7 +23,7 @@ dependencies:
     path: ../../packages/datadog_gql_link
     
   go_router: ^7.0.0
-  path_provider: ^2.0.0
+  path_provider: ^2.1.0
   flutter_dotenv: ^5.1.0
   transparent_image: ^2.0.1
   graphql_flutter: ^5.1.2
