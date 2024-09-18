@@ -1,5 +1,6 @@
 package com.datadoghq.flutter
 
+import com.datadog.android.rum.ExperimentalRumApi
 import com.datadog.android.rum.RumActionType
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
@@ -60,6 +61,11 @@ class MockRumMonitor : RumMonitor {
 
     override fun addTiming(name: String) {
         mockMonitor.addTiming(name)
+    }
+
+    @ExperimentalRumApi
+    override fun addViewLoadingTime(overwrite: Boolean) {
+        mockMonitor.addViewLoadingTime(overwrite)
     }
 
     override fun clearAttributes() {

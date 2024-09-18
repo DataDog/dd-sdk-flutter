@@ -21,7 +21,7 @@ stages:
   - build
   - integration-test
   - e2e-test
-  - notify
+  - post
 
 # Prebuild - install necessary tools
 
@@ -178,7 +178,7 @@ web-integration-test:
 
 notify-publish-develop-failure:
   extends: .slack-notifier-base
-  stage: notify
+  stage: post
   when: on_failure
   only:
     - develop
@@ -188,8 +188,7 @@ notify-publish-develop-failure:
     - postmessage "#mobile-sdk-ops" "$MESSAGE_TEXT"
 
 notify-pipeline-succeeded:
-  extends: .slack-notifier-base
-  stage: notify
+  stage: post
   tags: [ "arch:amd64" ]
   image: "$BUILDENV_REGISTRY/images/docker:24.0.4-gbi-focal"
   when: on_success
