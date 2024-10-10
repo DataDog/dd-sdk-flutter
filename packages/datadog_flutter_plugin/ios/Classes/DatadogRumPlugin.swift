@@ -401,6 +401,13 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                     encodedResult = nil
                 } else if let result = result as? [String: Any] {
                     encodedResult = result
+                } else if (result as? NSObject) == FlutterMethodNotImplemented {
+                    Datadog._internal.telemetry.error(
+                        id: "event_mapper_not_implemented",
+                        message: "\(mapperName) returned notImplemented.",
+                        kind: nil,
+                        stack: nil
+                    )
                 }
 
                 semaphore.signal()

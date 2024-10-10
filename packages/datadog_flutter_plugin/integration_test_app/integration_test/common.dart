@@ -129,3 +129,11 @@ void verifyCommonTags(
     expect(request.tags['variant'], variant);
   }
 }
+
+void verifyUser(RumEventDecoder decoder) {
+  final user = decoder.user;
+  expect(user, isNotNull);
+  expect(user?.email, 'fake@datadoghq.com');
+  expect(user?.id, 'fake-id');
+  expect(user?.name, 'Johnny Silverhand');
+}
