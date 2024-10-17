@@ -131,14 +131,18 @@ void main() {
 
     final contentReadyTiming =
         view1.viewEvents.last.view.customTimings['content-ready'];
+    final viewLoadingTiming = view1.viewEvents.last.view.loadingTime;
     final firstInteractionTiming =
         view1.viewEvents.last.view.customTimings['first-interaction'];
     expect(contentReadyTiming, isNotNull);
     expect(contentReadyTiming, greaterThanOrEqualTo(50 * 1000 * 1000));
     // TODO: Figure out why occasionally these have really high values
     // expect(contentReadyTiming, lessThan(200 * 1000 * 100));
+    expect(viewLoadingTiming, isNotNull);
+    expect(
+        viewLoadingTiming, closeTo(contentReadyTiming!, 5000000)); // Within 5ms
     expect(firstInteractionTiming, isNotNull);
-    expect(firstInteractionTiming, greaterThanOrEqualTo(contentReadyTiming!));
+    expect(firstInteractionTiming, greaterThanOrEqualTo(contentReadyTiming));
     // TODO: Figure out why occasionally these have really high values
     // expect(firstInteractionTiming, lessThan(800 * 1000 * 1000));
 

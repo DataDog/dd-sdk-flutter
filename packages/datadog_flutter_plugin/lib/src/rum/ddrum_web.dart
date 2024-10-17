@@ -114,6 +114,11 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
+  Future<void> addViewLoadingTime(bool overwrite) async {
+    // NOOP - Not supported by the Browser SDK
+  }
+
+  @override
   Future<void> addAction(
       RumActionType type, String name, Map<String, dynamic> attributes) async {
     DD_RUM?.addAction(name, attributesToJs(attributes, 'attributes'));

@@ -132,6 +132,13 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
+  Future<void> addViewLoadingTime(bool overwrite) {
+    return methodChannel.invokeMethod('addViewLoadingTime', {
+      'overwrite': overwrite,
+    });
+  }
+
+  @override
   Future<void> addErrorInfo(
       String message,
       RumErrorSource source,
