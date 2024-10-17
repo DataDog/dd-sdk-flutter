@@ -95,6 +95,7 @@ class _RumManualInstrumentationScenarioState
   Future<void> _fakeLoading() async {
     await Future<void>.delayed(const Duration(milliseconds: 50));
     DatadogSdk.instance.rum?.addTiming('content-ready');
+    DatadogSdk.instance.rum?.addViewLoadingTime();
 
     DatadogSdk.instance.setUserInfo(
         id: 'fake-id', name: 'Johnny Silverhand', email: 'fake@datadoghq.com');

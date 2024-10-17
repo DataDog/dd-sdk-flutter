@@ -455,6 +455,25 @@ class DatadogRumPluginTest {
     }
 
     @Test
+    fun `M call monitor addViewLoadingTime W addViewLoadingTime is called`(
+        @BoolForgery overwrite: Boolean
+    ) {
+        // GIVEN
+        val call = MethodCall("addViewLoadingTime", mapOf(
+            "overwrite" to overwrite
+        ))
+        val mockResult = mockk<MethodChannel.Result>()
+        every { mockResult.success(any()) } returns Unit
+
+        // WHEN
+        plugin.onMethodCall(call, mockResult)
+
+        // THEN
+        verify { monitorProxy.mockMonitor.addViewLoadingTime(overwrite) }
+        verify { mockResult.success(null) }
+    }
+
+    @Test
     fun `M call monitor startResource W startResource is called`(
         @StringForgery resourceKey: String,
         @StringForgery url: String,
@@ -718,6 +737,9 @@ class DatadogRumPluginTest {
         )),
         Contract("addTiming", mapOf(
             "name" to ContractParameter.Type(SupportedContractType.STRING),
+        )),
+        Contract("addViewLoadingTime", mapOf(
+            "overwrite" to ContractParameter.Type(SupportedContractType.BOOL),
         )),
         Contract("startResource", mapOf(
             "key" to ContractParameter.Type(SupportedContractType.STRING),

@@ -225,6 +225,18 @@ class DatadogRum {
     });
   }
 
+  /// Adds view loading time to current RUM view based on the time elapsed since
+  /// the view was started. If this method is called multiple times, only the
+  /// first timing is used, unless [overwrite] is set to [true]. If [overwrite]
+  /// is [true], the new load timing overwrites any previous value.
+  ///
+  /// *Note*: This API is experimental and may change in the future.
+  void addViewLoadingTime({bool override = false}) {
+    wrap('rum.addViewLoadingTime', logger, null, () {
+      return _platform.addViewLoadingTime(override);
+    });
+  }
+
   /// Notifies that the Exception or Error [error] occurred in currently
   /// presented View, with an origin of [source]. You can optionally set
   /// additional [attributes] for this error, an [errorType] and a
