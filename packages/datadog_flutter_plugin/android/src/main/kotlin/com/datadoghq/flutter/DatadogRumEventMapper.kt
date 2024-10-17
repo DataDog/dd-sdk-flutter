@@ -30,13 +30,20 @@ internal class DatadogRumEventMapper {
     val mapperPerf = PerformanceTracker()
     val mapperPerfMainThread = PerformanceTracker()
     var mapperTimeouts = 0
+    var lastKnownGoodChannel: MethodChannel? = null
 
     fun addChannel(channel: MethodChannel) {
         channels.add(channel)
+        if (lastKnownGoodChannel == null) {
+            lastKnownGoodChannel = channel
+        }
     }
 
     fun removeChannel(channel: MethodChannel) {
         channels.remove(channel)
+        if (channel == lastKnownGoodChannel) {
+            lastKnownGoodChannel = channels.firstOrNull()
+        }
     }
 
     fun attachMappers(
@@ -247,74 +254,68 @@ internal class DatadogRumEventMapper {
     }
 
     @Suppress("TooGenericExceptionCaught")
-    internal fun <T> callEventMapper(
+    private fun callWithChannel(
+        channel: MethodChannel,
         mapperName: String,
-        event: T,
-        encodedEvent: Map<String, Any?>,
-        completion: (Map<String, Any?>?, T) -> T?
-    ): T? {
-        var modifiedJson: Map<String, Any?>? = encodedEvent
-        // Any valid channel should do here since they should be connected to the same initialization code,
-        // but calling on multiple could result in weird behavior and performance issues. While "first" may
-        // not be the actual first registered channel, it should be fine for our purposes.
-        val channel = channels.firstOrNull() ?: return event
+        encodedEvent: Map<String, Any?>
+    ): MapperCallResult<Map<String, Any?>?, String> {
         val latch = CountDownLatch(1)
-
+        var modifiedJson: Map<String, Any?>? = encodedEvent
+        var didFailNotImplemented = false
         val handler = Handler(Looper.getMainLooper())
         handler.post {
-            val perf = measureNanoTime {
-                try {
-                    channel.invokeMethod(
-                        mapperName,
-                        mapOf(
-                            "event" to encodedEvent
-                        ),
-                        object : MethodChannel.Result {
-                            @Suppress("UNCHECKED_CAST")
-                            override fun success(result: Any?) {
-                                modifiedJson = (result as? Map<String, Any?>)
-                                latch.countDown()
-                            }
-
-                            override fun error(
-                                errorCode: String,
-                                errorMessage: String?,
-                                errorDetails: Any?
-                            ) {
-                                latch.countDown()
-                            }
-
-                            override fun notImplemented() {
-                                Datadog._internalProxy()._telemetry.error(
-                                    "$mapperName returned notImplemented."
-                                )
-                                latch.countDown()
-                            }
+            try {
+                channel.invokeMethod(
+                    mapperName,
+                    mapOf(
+                        "event" to encodedEvent
+                    ),
+                    object : MethodChannel.Result {
+                        @Suppress("UNCHECKED_CAST")
+                        override fun success(result: Any?) {
+                            modifiedJson = (result as? Map<String, Any?>)
+                            latch.countDown()
                         }
-                    )
-                } catch (e: Exception) {
-                    Datadog._internalProxy()._telemetry.error(
-                        "Attempting call $mapperName failed.",
-                        e
-                    )
-                    latch.countDown()
-                }
+
+                        override fun error(
+                            errorCode: String,
+                            errorMessage: String?,
+                            errorDetails: Any?
+                        ) {
+                            latch.countDown()
+                        }
+
+                        override fun notImplemented() {
+                            didFailNotImplemented = true
+                            latch.countDown()
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                Datadog._internalProxy()._telemetry.error(
+                    "Attempting call $mapperName failed.",
+                    e
+                )
+                latch.countDown()
             }
-            mapperPerfMainThread.addSample(perf)
         }
 
         try {
             // Stalls until the method channel finishes
-            if (!latch.await(1, TimeUnit.SECONDS)) {
+            if (!latch.await(5, TimeUnit.SECONDS)) {
                 Datadog._internalProxy()._telemetry.debug("$mapperName timed out")
-                return event
+                return MapperCallResult.Error("Timeout")
             }
 
             if (modifiedJson?.containsKey("_dd.mapper_error") == true) {
-                return event
+                return MapperCallResult.Error("Error in Mapper")
             }
 
-            return completion(modifiedJson, event)
+            if (didFailNotImplemented) {
+                return MapperCallResult.ReturnedNotImplemented("Not Implemented")
+            }
+
+            return MapperCallResult.Ok(modifiedJson)
         } catch (e: InterruptedException) {
             Datadog._internalProxy()._telemetry.debug(
                 "Latch await was interrupted. Returning unmodified event."
@@ -327,6 +328,57 @@ internal class DatadogRumEventMapper {
             )
         }
 
+        return MapperCallResult.Error("unknown")
+    }
+
+    internal fun <T> callEventMapper(
+        mapperName: String,
+        event: T,
+        encodedEvent: Map<String, Any?>,
+        completion: (Map<String, Any?>?, T) -> T?
+    ): T? {
+        var currentChannel = lastKnownGoodChannel
+        // No last known good channel?
+        if (currentChannel == null) {
+            Datadog._internalProxy()._telemetry.debug(
+                "No last known good channel. Returning unmodified event."
+            )
+            return event
+        }
+
+        while (currentChannel != null) {
+            val result = callWithChannel(currentChannel, mapperName, encodedEvent)
+            when (result) {
+                is MapperCallResult.Ok -> {
+                    return completion(result.value, event)
+                }
+
+                is MapperCallResult.Error -> {
+                    // These errors are fine and occasionally expected, don't try a different channel
+                    return event
+                }
+
+                is MapperCallResult.ReturnedNotImplemented -> {
+                    Datadog._internalProxy()._telemetry.debug(
+                        "$mapperName returned notImplemented. Trying next channel."
+                    )
+                    channels.remove(currentChannel)
+                    lastKnownGoodChannel = channels.firstOrNull()
+                    currentChannel = lastKnownGoodChannel
+                }
+            }
+        }
+
+        Datadog._internalProxy()._telemetry.error(
+            "Never found good channel for mapping. Returning unmodified event."
+        )
+
         return event
+    }
+
+    sealed class MapperCallResult<out S, out F> {
+        data class Ok<out S>(val value: S) : MapperCallResult<S, Nothing>()
+        data class Error<out F>(val reason: F) : MapperCallResult<Nothing, F>()
+        data class ReturnedNotImplemented<out F>(val reason: F) : MapperCallResult<Nothing, F>()
     }
 }

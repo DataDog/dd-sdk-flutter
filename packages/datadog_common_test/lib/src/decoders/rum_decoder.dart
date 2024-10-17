@@ -6,6 +6,21 @@ import 'dart:io';
 
 import '../../datadog_common_test.dart';
 
+class RumUser {
+  String? email;
+  String? id;
+  String? name;
+
+  RumUser(this.email, this.id, this.name);
+
+  static RumUser fromJson(Map<String, dynamic> json) {
+    final email = json['email'] is String ? json['email'] as String : null;
+    final id = json['id'] is String ? json['id'] as String : null;
+    final name = json['name'] is String ? json['name'] as String : null;
+    return RumUser(email, id, name);
+  }
+}
+
 class RumSessionDecoder {
   final List<RumViewVisit> visits;
 
@@ -115,6 +130,12 @@ class RumEventDecoder {
       if (Platform.isIOS) return rumEvent['service'];
     }
     return rumEvent['service'];
+  }
+
+  RumUser? get user {
+    final usr = rumEvent['usr'];
+    if (usr == null) return null;
+    return RumUser.fromJson(usr);
   }
 
   int get date => rumEvent['date'] as int;

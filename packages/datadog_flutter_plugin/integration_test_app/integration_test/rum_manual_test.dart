@@ -163,6 +163,20 @@ void main() {
       expect(view1.errorEvents[0].context![contextKey], expectedContextValue);
     }
 
+    // Verify user in all events, except for the first view event
+    for (final viewEvent in view1.viewEvents.sublist(1)) {
+      verifyUser(viewEvent);
+    }
+    for (final actionEvent in view1.actionEvents) {
+      verifyUser(actionEvent);
+    }
+    for (final resourceEvent in view1.resourceEvents) {
+      verifyUser(resourceEvent);
+    }
+    for (final errorEvent in view1.errorEvents) {
+      verifyUser(errorEvent);
+    }
+
     expect(view1, becameInactive);
 
     final view2 = session.visits[1];
