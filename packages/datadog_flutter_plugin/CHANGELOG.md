@@ -3,6 +3,8 @@
 ## Unreleased
 
 * Add `DialogRoute` handling to the `defaultViewInfoExtractor`.
+* Increase timeout for mappers on Android. See [#652]
+* Fix an issue where incorrect method channels were called for mappers in cases where multiple channels exist on Android. See [#652]
 
 ## 2.7.0
 
@@ -325,3 +327,4 @@ Release 2.0 introduces breaking changes. Follow the [Migration Guide](MIGRATING.
 [#575]: https://github.com/DataDog/dd-sdk-flutter/issues/575
 [#596]: https://github.com/DataDog/dd-sdk-flutter/issues/596
 [#639]: https://github.com/DataDog/dd-sdk-flutter/issues/639
+[#652]: https://github.com/DataDog/dd-sdk-flutter/issues/652
