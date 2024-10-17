@@ -11,6 +11,7 @@ enum SupportedContractType {
     case string
     case int
     case int64
+    case bool
     case map
     case list
 
@@ -19,6 +20,7 @@ enum SupportedContractType {
         case .string: return "fake string"
         case .int: return 1_234
         case .int64: return 1_223_455_123
+        case .bool: return false
         case .map: return ["key to": "value"]
         case .list: return [] as [Any]
         }

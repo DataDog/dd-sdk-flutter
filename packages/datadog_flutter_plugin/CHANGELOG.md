@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Add `DialogRoute` handling to the `defaultViewInfoExtractor`.
+* Add experimental `addViewLoadingTime` API to RUM.
 
 ## 2.7.0
 

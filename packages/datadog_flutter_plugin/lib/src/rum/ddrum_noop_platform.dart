@@ -43,6 +43,11 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   }
 
   @override
+  Future<void> addViewLoadingTime(bool overwrite) {
+    return Future.value();
+  }
+
+  @override
   Future<void> addAction(
       RumActionType type, String name, Map<String, Object?> attributes) {
     return Future.value();

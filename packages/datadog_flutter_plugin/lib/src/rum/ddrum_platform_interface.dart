@@ -30,6 +30,7 @@ abstract class DdRumPlatform extends PlatformInterface {
       String key, String name, Map<String, Object?> attributes);
   Future<void> stopView(String key, Map<String, Object?> attributes);
   Future<void> addTiming(String name);
+  Future<void> addViewLoadingTime(bool overwrite);
 
   Future<void> startResource(String key, RumHttpMethod httpMethod, String url,
       Map<String, Object?> attributes);

@@ -6,7 +6,7 @@
 import Foundation
 import Flutter
 import DatadogCore
-import DatadogRUM
+@_spi(Experimental) import DatadogRUM
 import DatadogInternal
 import DictionaryCoder
 
@@ -134,6 +134,15 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         case "addTiming":
             if let name = arguments["name"] as? String {
                 rum?.addTiming(name: name)
+                result(nil)
+            } else {
+                result(
+                    FlutterError.missingParameter(methodName: call.method)
+                )
+            }
+        case "addViewLoadingTime":
+            if let overwrite = arguments["overwrite"] as? Bool {
+                rum?.addViewLoadingTime(overwrite: overwrite)
                 result(nil)
             } else {
                 result(

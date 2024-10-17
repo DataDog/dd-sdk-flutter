@@ -51,6 +51,7 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
         const val PARAM_TYPE = "type"
         const val PARAM_BUILD_TIMES = "buildTimes"
         const val PARAM_RASTER_TIMES = "rasterTimes"
+        const val PARAM_OVERWRITE = "overwrite"
 
         // See DatadogSdkPlugin's description of this same member
         private var previousConfiguration: Map<String, Any?>? = null
@@ -107,6 +108,7 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
                 "startView" -> startView(call, result)
                 "stopView" -> stopView(call, result)
                 "addTiming" -> addTiming(call, result)
+                "addViewLoadingTime" -> addViewLoadingTime(call, result)
                 "startResource" -> startResource(call, result)
                 "stopResource" -> stopResource(call, result)
                 "stopResourceWithError" -> stopResourceWithError(call, result)
@@ -245,6 +247,16 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
         val name = call.argument<String>(PARAM_NAME)
         if (name != null) {
             rum?.addTiming(name)
+            result.success(null)
+        } else {
+            result.missingParameter(call.method)
+        }
+    }
+
+    private fun addViewLoadingTime(call: MethodCall, result: Result) {
+        val overwrite = call.argument<Boolean>(PARAM_OVERWRITE)
+        if (overwrite != null) {
+            rum?.addViewLoadingTime(overwrite)
             result.success(null)
         } else {
             result.missingParameter(call.method)
