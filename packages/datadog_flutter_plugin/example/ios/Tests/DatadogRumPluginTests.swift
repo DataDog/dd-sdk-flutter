@@ -119,6 +119,9 @@ class DatadogRumPluginTests: XCTestCase {
         Contract(methodName: "addTiming", requiredParameters: [
             "name": .string
         ]),
+        Contract(methodName: "addViewLoadingTime", requiredParameters: [
+            "overwrite": .bool
+        ]),
         Contract(methodName: "startResource", requiredParameters: [
             "key": .string, "url": .string, "httpMethod": .string, "attributes": .map
         ]),
@@ -282,6 +285,20 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [ .addTiming(name: "timing name") ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testAddViewLoadingTime_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "addViewLoadingTime", arguments: [
+            "overwrite": true
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [ .addViewLoadingTime(overwrite: true) ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
@@ -576,6 +593,7 @@ class MockRUMMonitor: RUMMonitorProtocol, RUMCommandSubscriber {
         case startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue])
         case stopView(key: String, attributes: [AttributeKey: AttributeValue])
         case addTiming(name: String)
+        case addViewLoadingTime(overwrite: Bool)
 
         case startResource(key: String, httpMethod: RUMMethod, urlString: String,
                            attributes: [AttributeKey: AttributeValue])
@@ -662,6 +680,10 @@ class MockRUMMonitor: RUMMonitorProtocol, RUMCommandSubscriber {
             .addError(message: message, type: type, source: source, stack: stack,
                       attributes: attributes, file: file, line: line)
         )
+    }
+
+    func addViewLoadingTime(overwrite: Bool) {
+        callLog.append(.addViewLoadingTime(overwrite: overwrite))
     }
 
     func addAttribute(forKey key: AttributeKey, value: AttributeValue) {

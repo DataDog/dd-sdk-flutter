@@ -18,6 +18,7 @@ enum class SupportedContractType {
     LIST,
     INT,
     LONG,
+    BOOL,
     ANY,
 }
 
@@ -61,6 +62,7 @@ data class Contract(
             SupportedContractType.LIST -> emptyList<Any>()
             SupportedContractType.INT -> forge.anInt()
             SupportedContractType.LONG -> forge.aLong()
+            SupportedContractType.BOOL -> forge.aBool()
             SupportedContractType.ANY -> forge.aValueFrom(
                 listOf(
                     forge.aBool(),
