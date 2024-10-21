@@ -2,15 +2,7 @@
 format_version: '11'
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 project_type: flutter
-trigger_map:
-- push_branch: main
-  pipeline: primary
-- push_branch: develop
-  pipeline: primary
-- push_branch: release/*
-  pipeline: primary
-- pull_request_source_branch: "*"
-  pipeline: pull_request
+trigger_map: []
 pipelines:
   primary:
     stages:
