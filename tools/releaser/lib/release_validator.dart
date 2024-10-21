@@ -12,6 +12,7 @@ import 'package:path/path.dart' as path;
 import 'package:version/version.dart';
 
 import 'command.dart';
+import 'helpers.dart';
 
 final versionHeadingRegEx = RegExp(r'\s*#');
 final changeItemRegEx = RegExp(r'\s*\*');
@@ -34,14 +35,9 @@ class ValidateReleaseCommand extends Command {
     bool isValid = true;
 
     isValid &= _validateVersionNumber(args.version, logger);
-    if (!args.skipChangelogCheck) {
-      isValid &= await _validateChangeLog(packagePath, logger);
-    }
 
     if (isValid) {
-      // The only package that as a dependency on the iOS SDK version is datadog_flutter_plugin,
-      // so only check / pin if that's the package we're releasing.
-      if (_hasNativeDependency(args.packageName)) {
+      if (hasNativeDependency(args.packageName)) {
         if (!await _validateiOSRelease(packagePath, args, logger)) {
           return false;
         }
@@ -52,11 +48,6 @@ class ValidateReleaseCommand extends Command {
     }
 
     return isValid;
-  }
-
-  bool _hasNativeDependency(String packageName) {
-    return packageName == 'datadog_flutter_plugin' ||
-        packageName == 'datadog_webview_tracking';
   }
 
   bool _validateVersionNumber(String versionNumber, Logger logger) {
@@ -88,48 +79,6 @@ class ValidateReleaseCommand extends Command {
     }
 
     return true;
-  }
-
-  Future<bool> _validateChangeLog(String packagePath, Logger logger) async {
-    bool isValid = true;
-
-    // Check the changelog for changes
-    logger.fine('Checking CHANGELOG.md at $packagePath for changes...');
-    final changeLogPath = path.join(packagePath, 'CHANGELOG.md');
-    final changeLogFile = File(changeLogPath);
-    if (!await changeLogFile.exists()) {
-      logger.shout('Could not find a CHANGELOG.md at $changeLogPath');
-      isValid = false;
-    } else {
-      var unreleasedLine = -1;
-      var changes = 0;
-      var lines = await changeLogFile.readAsLines();
-      for (int i = 0; i < lines.length; ++i) {
-        final line = lines[i];
-        if (unreleasedLine < 0) {
-          if (line.startsWith('## Unreleased')) {
-            unreleasedLine = i;
-          }
-        } else if (unreleasedLine > 0) {
-          // Assume the next heading is a released version
-          if (line.startsWith(versionHeadingRegEx)) {
-            break;
-          } else if (line.startsWith(changeItemRegEx)) {
-            changes++;
-          }
-        }
-      }
-      if (unreleasedLine < 0) {
-        logger.shout('❌ No heading for an unreleased version found.');
-        isValid = false;
-      } else if (changes == 0) {
-        logger.shout(
-            '❌ No changes listed in the changelog for the unreleased version.');
-        isValid = false;
-      }
-    }
-
-    return isValid;
   }
 
   Future<bool> _validateiOSRelease(

@@ -101,10 +101,10 @@ packages:
     dependency: "direct main"
     description:
       name: git
-      sha256: "65051372cfefcc10926313a1418b04c91807b99be14935ad4cffae433dad029c"
+      sha256: daea03e7471607e7ed942bccd4814cfc7e4fa8ca5d3dd6ad4fb170e44423d1a0
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.0"
+    version: "2.3.0"
   github:
     dependency: "direct main"
     description:
@@ -418,4 +418,4 @@ packages:
     source: hosted
     version: "3.1.0"
 sdks:
-  dart: ">=2.16.1 <4.0.0"
+  dart: ">=3.5.0 <4.0.0"
