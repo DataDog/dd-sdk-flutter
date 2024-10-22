@@ -258,6 +258,7 @@ class RumViewDecoder {
   int get resourceCount => viewData['resource']['count'] as int;
   int get errorCount => viewData['error']['count'] as int;
   int get longTaskCount => viewData['long_task']['count'] as int;
+  int? get loadingTime => viewData['loading_time'] as int?;
 
   Map<String, int> get customTimings =>
       (viewData['custom_timings'] as Map<String, Object?>)

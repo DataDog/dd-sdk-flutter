@@ -85,6 +85,14 @@ void main() {
     ]);
   });
 
+  test('addViewLoadingTime calls to platform', () async {
+    await ddRumPlatform.addViewLoadingTime(true);
+
+    expect(log, [
+      isMethodCall('addViewLoadingTime', arguments: {'overwrite': true})
+    ]);
+  });
+
   test('startResource calls to platform', () async {
     await ddRumPlatform.startResource('resource_key', RumHttpMethod.get,
         'https://fakeresource.com/url', {'attribute_key': 'attribute_value'});

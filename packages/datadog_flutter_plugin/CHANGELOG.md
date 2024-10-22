@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Add `DialogRoute` handling to the `defaultViewInfoExtractor`.
+* Add experimental `addViewLoadingTime` API to RUM.
 * Increase timeout for mappers on Android. See [#652]
 * Fix an issue where incorrect method channels were called for mappers in cases where multiple channels exist on Android. See [#652]
 
