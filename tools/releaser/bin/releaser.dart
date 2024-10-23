@@ -7,10 +7,15 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
+import 'package:releaser/cocoapod_util.dart';
 import 'package:releaser/command.dart';
 import 'package:releaser/generate_changelog.dart';
+import 'package:releaser/git_actions.dart';
+import 'package:releaser/gradle_util.dart';
 import 'package:releaser/helpers.dart';
+import 'package:releaser/release_validator.dart';
 import 'package:releaser/version_updater.dart';
+import 'package:releaser/yaml_util.dart';
 
 void main(List<String> arguments) async {
   Logger.root.level = Level.INFO;
