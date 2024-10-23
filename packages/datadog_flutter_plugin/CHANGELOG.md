@@ -6,6 +6,14 @@
 * Add experimental `addViewLoadingTime` API to RUM.
 * Increase timeout for mappers on Android. See [#652]
 * Fix an issue where incorrect method channels were called for mappers in cases where multiple channels exist on Android. See [#652]
+* Update iOS SDK to 2.18.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#2180--25-09-2024).
+  * Ignore network reachability on watchOS.
+  * Send retry information with network requests.
+* Update Android SDK to 2.14.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#2140--2024-09-25).
+  * Use NO_EXPORT_FLAG for BroadcastReceiver on API above 26.
+  * Update OkHttp to 4.12.0.
+  * Update Gradle to 8.9 and AGP to 8.5.2.
+  * Make sure user properties are immutable when setUserInfo.
 
 ## 2.7.0
 
