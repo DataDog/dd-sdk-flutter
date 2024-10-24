@@ -27,7 +27,7 @@ class CommandArguments {
   // The release of the iOS SDK we want this release to refer to
   String? iOSRelease;
 
-  // The release of the iOS SDK we want this release to refer to
+  // The release of the Android SDK we want this release to refer to
   String? androidRelease;
 
   // Whether we're doing a dry run
