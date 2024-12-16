@@ -32,14 +32,6 @@ target 'Runner' do
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
-  # Datadog Pod Overrides
-  pod 'DatadogCore', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
-  pod 'DatadogInternal', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
-  pod 'DatadogLogs', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
-  pod 'DatadogRUM', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
-  pod 'DatadogWebViewTracking', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
-  pod 'DatadogCrashReporting', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
-  # End Datadog Pod Overrides
 
   target 'datadog_webview_tracking_tests' do
     inherit! :search_paths
