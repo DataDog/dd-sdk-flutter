@@ -804,18 +804,12 @@ class SREnrichedRecord {
   final String applicationID;
   final String sessionID;
   final String viewID;
-  final bool hasFullSnapshot;
-  final int earliestTimestamp;
-  final int latestTimestamp;
 
   SREnrichedRecord({
     required this.records,
     required this.applicationID,
     required this.sessionID,
     required this.viewID,
-    required this.hasFullSnapshot,
-    required this.earliestTimestamp,
-    required this.latestTimestamp,
   });
 
   factory SREnrichedRecord.fromJson(Map<String, dynamic> json) =>

@@ -10,21 +10,21 @@ PODS:
   - datadog_session_replay (0.0.1):
     - DatadogInternal (~> 2)
     - Flutter
-  - DatadogCore (2.4.0):
-    - DatadogInternal (= 2.4.0)
-  - DatadogCrashReporting (2.4.0):
-    - DatadogInternal (= 2.4.0)
-    - PLCrashReporter (~> 1.11.1)
-  - DatadogInternal (2.4.0)
-  - DatadogLogs (2.4.0):
-    - DatadogInternal (= 2.4.0)
-  - DatadogRUM (2.4.0):
-    - DatadogInternal (= 2.4.0)
+  - DatadogCore (2.23.0):
+    - DatadogInternal (= 2.23.0)
+  - DatadogCrashReporting (2.23.0):
+    - DatadogInternal (= 2.23.0)
+    - PLCrashReporter (~> 1.11.2)
+  - DatadogInternal (2.23.0)
+  - DatadogLogs (2.23.0):
+    - DatadogInternal (= 2.23.0)
+  - DatadogRUM (2.23.0):
+    - DatadogInternal (= 2.23.0)
   - DictionaryCoder (1.0.8)
   - Flutter (1.0.0)
   - integration_test (0.0.1):
     - Flutter
-  - PLCrashReporter (1.11.1)
+  - PLCrashReporter (1.11.2)
 
 DEPENDENCIES:
   - datadog_flutter_plugin (from `.symlinks/plugins/datadog_flutter_plugin/ios`)
@@ -53,18 +53,18 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/integration_test/ios"
 
 SPEC CHECKSUMS:
-  datadog_flutter_plugin: 89d7088ec5cc78c0ff2c24dbe7b7e67e6800a10b
+  datadog_flutter_plugin: de391eba42569ec1d8282aa1c49b4172603acc90
   datadog_session_replay: d7b11a41bfacc1f95e31453d90a5be3f99832d91
-  DatadogCore: 67ce2f8cd2f58cc90bdee5486d847b49e4b31b0b
-  DatadogCrashReporting: 0d4bd014714946be77a1ed2d34897036892f2b7b
-  DatadogInternal: 5789bca7a0284b20655ba2a79738ac7d0cd56e70
-  DatadogLogs: 3b8c8778c32b780f916c2894b9d2c53bbf590803
-  DatadogRUM: 4207d091be536b888719969a7ca078e2c830819a
+  DatadogCore: 689582ab49cf16bff75a19981eeb53a730801562
+  DatadogCrashReporting: d2843c991e8ca14f306bb2e69bf5bc6ca20ff133
+  DatadogInternal: 85ee3c82a24b4652de7d6340760e2dc335526e69
+  DatadogLogs: 24716212b1f594cd1c39bf45b970ab4a4fb3ac51
+  DatadogRUM: d8d1b2d21c85959bb07b05006bb6f3778dc96273
   DictionaryCoder: 5f84fff69f54cb806071538430bdafe04a89d658
-  Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
-  integration_test: 13825b8a9334a850581300559b8839134b124670
-  PLCrashReporter: 5d2d3967afe0efad61b3048d617e2199a5d1b787
+  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
+  PLCrashReporter: 499c53b0104f95c302d94fd723ebb03c56d9bac8
 
-PODFILE CHECKSUM: 70d9d25280d0dd177a5f637cdb0f0b0b12c6a189
+PODFILE CHECKSUM: 819463e6a0290f5a72f145ba7cde16e8b6ef0796
 
-COCOAPODS: 1.12.1
+COCOAPODS: 1.15.2

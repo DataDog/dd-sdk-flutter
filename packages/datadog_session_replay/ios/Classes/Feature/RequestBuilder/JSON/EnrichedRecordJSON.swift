@@ -43,10 +43,7 @@ internal struct EnrichedRecordJSON {
         case records
         case applicationID
         case sessionID
-        case viewID
-        case hasFullSnapshot
-        case earliestTimestamp
-        case latestTimestamp
+        case viewID        
     }
 
     /// Records enriched with further information.
@@ -59,11 +56,6 @@ internal struct EnrichedRecordJSON {
     /// The RUM view ID common to all records.
     let viewID: String
     /// If there is a Full Snapshot among records.
-    let hasFullSnapshot: Bool
-    /// The timestamp of the earliest record.
-    let earliestTimestamp: Int64
-    /// The timestamp of the latest record.
-    let latestTimestamp: Int64
 
     init(jsonObjectData: Data) throws {
         let jsonObject: JSONObject = try decode(jsonObjectData)
@@ -72,9 +64,6 @@ internal struct EnrichedRecordJSON {
         self.applicationID = try read(codingKey: .applicationID, from: jsonObject)
         self.sessionID = try read(codingKey: .sessionID, from: jsonObject)
         self.viewID = try read(codingKey: .viewID, from: jsonObject)
-        self.hasFullSnapshot = try read(codingKey: .hasFullSnapshot, from: jsonObject)
-        self.earliestTimestamp = try read(codingKey: .earliestTimestamp, from: jsonObject)
-        self.latestTimestamp = try read(codingKey: .latestTimestamp, from: jsonObject)
     }
 }
 

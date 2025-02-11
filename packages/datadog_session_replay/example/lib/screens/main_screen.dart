@@ -9,9 +9,9 @@ import '../widgets/custom_card.dart';
 
 class MainScreen extends StatelessWidget {
   static const images = [
-    'https://placekitten.com/300/300?image=1',
-    'https://placekitten.com/300/300?image=2',
-    'https://placekitten.com/300/300?image=3',
+    'https://placekittens.com/300/300?image=1',
+    'https://placekittens.com/300/300?image=2',
+    'https://placekittens.com/300/300?image=3',
     'https://imgix.datadoghq.com/img/about/presskit/kit/press_kit.png'
   ];
 

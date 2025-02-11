@@ -30,19 +30,25 @@ class Entry {
 
 /// Computes a diff between two arrays.
 ///
-/// This implementation is based on Paul Heckel's algorithm for finding differences between files. It isolates differences in a way that corresponds
-/// closely to our intuitive notion of difference (it finds the longest common subsequence). It is computationally efficient: `O(n)` in time and memory.
+/// This implementation is based on Paul Heckel's algorithm for finding
+/// differences between files. It isolates differences in a way that corresponds
+/// closely to our intuitive notion of difference (it finds the longest common
+/// subsequence). It is computationally efficient: `O(n)` in time and memory.
 ///
-/// Unlike original Heckel's algorithm, our implementation assumes that elements are unique within each of two arrays. It means that all elements in
-/// `oldArray` are guaranteed to have different `id` (same for `newArray`). Elements with the same `id` can appear in both arrays, which
-/// indicates one of two things determined by `newElement.isDifferent(than: oldElement)`:
+/// Unlike original Heckel's algorithm, our implementation assumes that elements
+/// are unique within each of two arrays. It means that all elements in
+/// `oldArray` are guaranteed to have different `id` (same for `newArray`).
+/// Elements with the same `id` can appear in both arrays, which indicates one
+/// of two things determined by `newElement.isDifferent(than: oldElement)`:
 /// - either the element was not altered and can be skipped in diff,
 /// - or the element was changed and it should be reflected in `Diff.Update`.
 ///
-/// Like original algorithm, our implementation uses 6 passes over both arrays to determine diff
+/// Like original algorithm, our implementation uses 6 passes over both arrays
+/// to determine diff
 ///
 /// Ref.:
-/// - _"A technique for isolating differences between files"_ Paul Heckel (1978) - https://dl.acm.org/citation.cfm?id=359467
+/// - _"A technique for isolating differences between files"_ Paul Heckel (1978)
+///   - https://dl.acm.org/citation.cfm?id=359467
 ///
 /// - Parameters:
 ///   - oldArray: original array

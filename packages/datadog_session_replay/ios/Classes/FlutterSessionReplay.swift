@@ -33,7 +33,7 @@ internal class FlutterSessionReplay {
             let feature = try enableOrThrow(with: configuration, in: core)
             return feature
         } catch let error {
-            consolePrint("\(error)")
+            consolePrint("\(error)", .error)
         }
         return nil
     }

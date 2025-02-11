@@ -99,9 +99,6 @@ class _InternalProcessor {
         applicationID: snapshot.context.applicationId,
         sessionID: snapshot.context.sessionId,
         viewID: viewId,
-        hasFullSnapshot: true,
-        earliestTimestamp: timestamp,
-        latestTimestamp: timestamp,
       );
 
       var totalRecordCount = _recordCountByViewId[viewId] ?? 0;

@@ -13,11 +13,10 @@ internal struct RequestBuilder: FeatureRequestBuilder {
     /// Sends telemetry through sdk core.
     let telemetry: Telemetry
     /// Builds multipart form for request's body.
-    var multipartBuilder: MultipartFormDataBuilder = MultipartFormData(boundary: UUID())
+    var multipartBuilder: MultipartFormDataBuilder = MultipartFormData()
 
-    func request(for events: [Event], with context: DatadogContext) throws -> URLRequest {
+    func request(for events: [Event], with context: DatadogContext, execution: DatadogInternal.ExecutionContext) throws -> URLRequest {
         let source = context.source
-        let segmentBuilder = SegmentJSONBuilder(source: source)
 
         // If we can't decode `events: [Data]` there is no way to recover, so we throw an
         // error to let the core delete the batch:
@@ -26,24 +25,26 @@ internal struct RequestBuilder: FeatureRequestBuilder {
             let wrappers: [RecordWrapper] = try events.compactMap {
                 try decoder.decode(RecordWrapper.self, from: $0.data)
             }
-            let records = try wrappers.map { try $0.extractEnrichedRecord() }
-            let segment = try segmentBuilder.createSegmentJSON(from: records)
+            let segments = try wrappers.map { try $0.extractEnrichedRecord() }
+                .map { try SegmentJSON($0, source: source) }
+                .merge()
+            //let segment = try segmentBuilder.createSegmentJSON(from: records)
 
-            return try createRequest(segment: segment, context: context)
+            return try createRequest(segments: segments, context: context)
         } catch let error {
             print("Error \(error)")
             throw error
         }
     }
 
-    private func createRequest(segment: SegmentJSON, context: DatadogContext) throws -> URLRequest {
+    private func createRequest(segments: [SegmentJSON], context: DatadogContext) throws -> URLRequest {
         var multipart = multipartBuilder
 
         let builder = URLRequestBuilder(
             url: url(with: context),
             queryItems: [],
             headers: [
-                .contentTypeHeader(contentType: .multipartFormData(boundary: multipart.boundary.uuidString)),
+                .contentTypeHeader(contentType: .multipartFormData(boundary: multipart.boundary)),
                 .userAgentHeader(appName: context.applicationName, appVersion: context.version, device: context.device),
                 .ddAPIKeyHeader(clientToken: context.clientToken),
                 .ddEVPOriginHeader(source: context.source),
@@ -53,32 +54,36 @@ internal struct RequestBuilder: FeatureRequestBuilder {
             telemetry: telemetry
         )
 
-        // Session Replay BE accepts compressed segment data followed by newline character (before compression):
-        var segmentData = try JSONSerialization.data(withJSONObject: segment.toJSONObject())
-        segmentData.append(RequestBuilder.newlineByte)
-        let compressedSegmentData = try SRCompression.compress(data: segmentData)
+        let metadata = try segments.enumerated().map { index, segment in
+            var json = segment.toJSONObject()
+            // Session Replay BE accepts compressed segment data followed by newline character (before compression):
+            let data = try JSONSerialization.data(withJSONObject: json) + RequestBuilder.newlineByte
+            let compressedData = try SRCompression.compress(data: data)
+            // Compressed segment is sent within multipart form data - with some of segment (metadata)
+            // attributes listed as form fields:
+            multipart.addFormData(
+                name: "segment",
+                filename: "file\(index)",
+                data: compressedData,
+                mimeType: "application/octet-stream"
+            )
+            // Remove the 'records' for the metadata
+            json["records"] = nil
+            json["raw_segment_size"] = data.count
+            json["compressed_segment_size"] = compressedData.count
+            return json
+        }
 
-        // Compressed segment is sent within multipart form data - with some of segment (metadata)
-        // attributes listed as form fields:
+        let data = try JSONSerialization.data(withJSONObject: metadata)
         multipart.addFormData(
-            name: "segment",
-            filename: segment.sessionID,
-            data: compressedSegmentData,
-            mimeType: "application/octet-stream"
+            name: "event",
+            filename: "blob",
+            data: data,
+            mimeType: "application/json"
         )
-        multipart.addFormField(name: "segment", value: segment.sessionID)
-        multipart.addFormField(name: "application.id", value: segment.applicationID)
-        multipart.addFormField(name: "session.id", value: segment.sessionID)
-        multipart.addFormField(name: "view.id", value: segment.viewID)
-        multipart.addFormField(name: "has_full_snapshot", value: segment.hasFullSnapshot ? "true" : "false")
-        multipart.addFormField(name: "records_count", value: "\(segment.recordsCount)")
-        multipart.addFormField(name: "raw_segment_size", value: "\(compressedSegmentData.count)")
-        multipart.addFormField(name: "start", value: "\(segment.start)")
-        multipart.addFormField(name: "end", value: "\(segment.end)")
-        multipart.addFormField(name: "source", value: "\(context.source)")
 
         // Data is already compressed, so request building request w/o compression:
-        return builder.uploadRequest(with: multipart.data, compress: false)
+        return builder.uploadRequest(with: multipart.build(), compress: false)
     }
 
     private func url(with context: DatadogContext) -> URL {

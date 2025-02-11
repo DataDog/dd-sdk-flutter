@@ -12,9 +12,11 @@ import 'app.dart';
 void main() async {
   await dotenv.load();
 
-  const customEndpoint = 'http://192.168.7.51:8000';
+  const customEndpoint = 'http://192.168.50.120:8000';
 
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
+
+  DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
 
   final configuration = DatadogConfiguration(
     clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
@@ -37,7 +39,7 @@ void main() async {
   )..enableSessionReplay(
       DatadogSessionReplayConfiguration(
         replaySampleRate: 1.0,
-        //customEndpoint: '$customEndpoint/replay',
+        customEndpoint: '$customEndpoint/replay',
       ),
     );
 

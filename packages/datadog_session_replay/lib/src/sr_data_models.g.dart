@@ -7,9 +7,9 @@ part of 'sr_data_models.dart';
 // **************************************************************************
 
 SRMetaRecord _$SRMetaRecordFromJson(Map<String, dynamic> json) => SRMetaRecord(
-      type: json['type'] as int? ?? SRRecord.metaRecordType,
+      type: (json['type'] as num?)?.toInt() ?? SRRecord.metaRecordType,
       data: SRMetaRecordData.fromJson(json['data'] as Map<String, dynamic>),
-      timestamp: json['timestamp'] as int,
+      timestamp: (json['timestamp'] as num).toInt(),
     );
 
 Map<String, dynamic> _$SRMetaRecordToJson(SRMetaRecord instance) =>
@@ -21,8 +21,8 @@ Map<String, dynamic> _$SRMetaRecordToJson(SRMetaRecord instance) =>
 
 SRMetaRecordData _$SRMetaRecordDataFromJson(Map<String, dynamic> json) =>
     SRMetaRecordData(
-      width: json['width'] as int,
-      height: json['height'] as int,
+      width: (json['width'] as num).toInt(),
+      height: (json['height'] as num).toInt(),
     );
 
 Map<String, dynamic> _$SRMetaRecordDataToJson(SRMetaRecordData instance) =>
@@ -43,9 +43,9 @@ Map<String, dynamic> _$SRFocusRecordDataToJson(SRFocusRecordData instance) =>
 
 SRFocusRecord _$SRFocusRecordFromJson(Map<String, dynamic> json) =>
     SRFocusRecord(
-      type: json['type'] as int? ?? SRRecord.focusRecordType,
+      type: (json['type'] as num?)?.toInt() ?? SRRecord.focusRecordType,
       data: SRFocusRecordData.fromJson(json['data'] as Map<String, dynamic>),
-      timestamp: json['timestamp'] as int,
+      timestamp: (json['timestamp'] as num).toInt(),
     );
 
 Map<String, dynamic> _$SRFocusRecordToJson(SRFocusRecord instance) =>
@@ -72,10 +72,10 @@ Map<String, dynamic> _$SRFullSnapshotRecordDataToJson(
 SRFullSnapshotRecord _$SRFullSnapshotRecordFromJson(
         Map<String, dynamic> json) =>
     SRFullSnapshotRecord(
-      type: json['type'] as int? ?? SRRecord.fullSnapshotRecordType,
+      type: (json['type'] as num?)?.toInt() ?? SRRecord.fullSnapshotRecordType,
       data: SRFullSnapshotRecordData.fromJson(
           json['data'] as Map<String, dynamic>),
-      timestamp: json['timestamp'] as int,
+      timestamp: (json['timestamp'] as num).toInt(),
     );
 
 Map<String, dynamic> _$SRFullSnapshotRecordToJson(
@@ -89,7 +89,7 @@ Map<String, dynamic> _$SRFullSnapshotRecordToJson(
 SRShapeBorder _$SRShapeBorderFromJson(Map<String, dynamic> json) =>
     SRShapeBorder(
       color: json['color'] as String,
-      width: json['width'] as int,
+      width: (json['width'] as num).toInt(),
     );
 
 Map<String, dynamic> _$SRShapeBorderToJson(SRShapeBorder instance) =>
@@ -100,10 +100,10 @@ Map<String, dynamic> _$SRShapeBorderToJson(SRShapeBorder instance) =>
 
 SRContentClip _$SRContentClipFromJson(Map<String, dynamic> json) =>
     SRContentClip(
-      bottom: json['bottom'] as int,
-      left: json['left'] as int,
-      right: json['right'] as int,
-      top: json['top'] as int,
+      bottom: (json['bottom'] as num).toInt(),
+      left: (json['left'] as num).toInt(),
+      right: (json['right'] as num).toInt(),
+      top: (json['top'] as num).toInt(),
     );
 
 Map<String, dynamic> _$SRContentClipToJson(SRContentClip instance) =>
@@ -117,7 +117,7 @@ Map<String, dynamic> _$SRContentClipToJson(SRContentClip instance) =>
 SRTextStyle _$SRTextStyleFromJson(Map<String, dynamic> json) => SRTextStyle(
       color: json['color'] as String,
       family: json['family'] as String,
-      size: json['size'] as int,
+      size: (json['size'] as num).toInt(),
     );
 
 Map<String, dynamic> _$SRTextStyleToJson(SRTextStyle instance) =>
@@ -143,11 +143,11 @@ Map<String, dynamic> _$SRShapeStyleToJson(SRShapeStyle instance) =>
 SRShapeWireframe _$SRShapeWireframeFromJson(Map<String, dynamic> json) =>
     SRShapeWireframe(
       type: json['type'] as String? ?? 'shape',
-      id: json['id'] as int,
-      x: json['x'] as int,
-      y: json['y'] as int,
-      width: json['width'] as int,
-      height: json['height'] as int,
+      id: (json['id'] as num).toInt(),
+      x: (json['x'] as num).toInt(),
+      y: (json['y'] as num).toInt(),
+      width: (json['width'] as num).toInt(),
+      height: (json['height'] as num).toInt(),
       border: json['border'] == null
           ? null
           : SRShapeBorder.fromJson(json['border'] as Map<String, dynamic>),
@@ -159,50 +159,32 @@ SRShapeWireframe _$SRShapeWireframeFromJson(Map<String, dynamic> json) =>
           : SRShapeStyle.fromJson(json['shapeStyle'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$SRShapeWireframeToJson(SRShapeWireframe instance) {
-  final val = <String, dynamic>{
-    'id': instance.id,
-    'type': instance.type,
-    'x': instance.x,
-    'y': instance.y,
-    'width': instance.width,
-    'height': instance.height,
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('border', instance.border?.toJson());
-  writeNotNull('clip', instance.clip?.toJson());
-  writeNotNull('shapeStyle', instance.shapeStyle?.toJson());
-  return val;
-}
+Map<String, dynamic> _$SRShapeWireframeToJson(SRShapeWireframe instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'type': instance.type,
+      'x': instance.x,
+      'y': instance.y,
+      'width': instance.width,
+      'height': instance.height,
+      if (instance.border?.toJson() case final value?) 'border': value,
+      if (instance.clip?.toJson() case final value?) 'clip': value,
+      if (instance.shapeStyle?.toJson() case final value?) 'shapeStyle': value,
+    };
 
 SRPadding _$SRPaddingFromJson(Map<String, dynamic> json) => SRPadding(
-      top: json['top'] as int?,
-      left: json['left'] as int?,
-      bottom: json['bottom'] as int?,
-      right: json['right'] as int?,
+      top: (json['top'] as num?)?.toInt(),
+      left: (json['left'] as num?)?.toInt(),
+      bottom: (json['bottom'] as num?)?.toInt(),
+      right: (json['right'] as num?)?.toInt(),
     );
 
-Map<String, dynamic> _$SRPaddingToJson(SRPadding instance) {
-  final val = <String, dynamic>{};
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('top', instance.top);
-  writeNotNull('left', instance.left);
-  writeNotNull('bottom', instance.bottom);
-  writeNotNull('right', instance.right);
-  return val;
-}
+Map<String, dynamic> _$SRPaddingToJson(SRPadding instance) => <String, dynamic>{
+      if (instance.top case final value?) 'top': value,
+      if (instance.left case final value?) 'left': value,
+      if (instance.bottom case final value?) 'bottom': value,
+      if (instance.right case final value?) 'right': value,
+    };
 
 SRAlignment _$SRAlignmentFromJson(Map<String, dynamic> json) => SRAlignment(
       horizontal: $enumDecodeNullable(
@@ -211,20 +193,13 @@ SRAlignment _$SRAlignmentFromJson(Map<String, dynamic> json) => SRAlignment(
           $enumDecodeNullable(_$SRVerticalAlignmentEnumMap, json['vertical']),
     );
 
-Map<String, dynamic> _$SRAlignmentToJson(SRAlignment instance) {
-  final val = <String, dynamic>{};
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull(
-      'horizontal', _$SRHorizontalAlignmentEnumMap[instance.horizontal]);
-  writeNotNull('vertical', _$SRVerticalAlignmentEnumMap[instance.vertical]);
-  return val;
-}
+Map<String, dynamic> _$SRAlignmentToJson(SRAlignment instance) =>
+    <String, dynamic>{
+      if (_$SRHorizontalAlignmentEnumMap[instance.horizontal] case final value?)
+        'horizontal': value,
+      if (_$SRVerticalAlignmentEnumMap[instance.vertical] case final value?)
+        'vertical': value,
+    };
 
 const _$SRHorizontalAlignmentEnumMap = {
   SRHorizontalAlignment.left: 'left',
@@ -248,28 +223,20 @@ SRTextPosition _$SRTextPositionFromJson(Map<String, dynamic> json) =>
           : SRPadding.fromJson(json['padding'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$SRTextPositionToJson(SRTextPosition instance) {
-  final val = <String, dynamic>{};
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('alignment', instance.alignment?.toJson());
-  writeNotNull('padding', instance.padding?.toJson());
-  return val;
-}
+Map<String, dynamic> _$SRTextPositionToJson(SRTextPosition instance) =>
+    <String, dynamic>{
+      if (instance.alignment?.toJson() case final value?) 'alignment': value,
+      if (instance.padding?.toJson() case final value?) 'padding': value,
+    };
 
 SRTextWireframe _$SRTextWireframeFromJson(Map<String, dynamic> json) =>
     SRTextWireframe(
       type: json['type'] as String? ?? 'text',
-      id: json['id'] as int,
-      x: json['x'] as int,
-      y: json['y'] as int,
-      width: json['width'] as int,
-      height: json['height'] as int,
+      id: (json['id'] as num).toInt(),
+      x: (json['x'] as num).toInt(),
+      y: (json['y'] as num).toInt(),
+      width: (json['width'] as num).toInt(),
+      height: (json['height'] as num).toInt(),
       text: json['text'] as String,
       textStyle:
           SRTextStyle.fromJson(json['textStyle'] as Map<String, dynamic>),
@@ -288,40 +255,32 @@ SRTextWireframe _$SRTextWireframeFromJson(Map<String, dynamic> json) =>
               json['textPosition'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$SRTextWireframeToJson(SRTextWireframe instance) {
-  final val = <String, dynamic>{
-    'id': instance.id,
-    'type': instance.type,
-    'x': instance.x,
-    'y': instance.y,
-    'width': instance.width,
-    'height': instance.height,
-    'text': instance.text,
-    'textStyle': instance.textStyle.toJson(),
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('border', instance.border?.toJson());
-  writeNotNull('clip', instance.clip?.toJson());
-  writeNotNull('shapeStyle', instance.shapeStyle?.toJson());
-  writeNotNull('textPosition', instance.textPosition?.toJson());
-  return val;
-}
+Map<String, dynamic> _$SRTextWireframeToJson(SRTextWireframe instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'type': instance.type,
+      'x': instance.x,
+      'y': instance.y,
+      'width': instance.width,
+      'height': instance.height,
+      'text': instance.text,
+      'textStyle': instance.textStyle.toJson(),
+      if (instance.border?.toJson() case final value?) 'border': value,
+      if (instance.clip?.toJson() case final value?) 'clip': value,
+      if (instance.shapeStyle?.toJson() case final value?) 'shapeStyle': value,
+      if (instance.textPosition?.toJson() case final value?)
+        'textPosition': value,
+    };
 
 SRPlaceholderWireframe _$SRPlaceholderWireframeFromJson(
         Map<String, dynamic> json) =>
     SRPlaceholderWireframe(
       type: json['type'] as String? ?? 'placeholder',
-      id: json['id'] as int,
-      x: json['x'] as int,
-      y: json['y'] as int,
-      width: json['width'] as int,
-      height: json['height'] as int,
+      id: (json['id'] as num).toInt(),
+      x: (json['x'] as num).toInt(),
+      y: (json['y'] as num).toInt(),
+      width: (json['width'] as num).toInt(),
+      height: (json['height'] as num).toInt(),
       label: json['label'] as String?,
       clip: json['clip'] == null
           ? null
@@ -329,26 +288,17 @@ SRPlaceholderWireframe _$SRPlaceholderWireframeFromJson(
     );
 
 Map<String, dynamic> _$SRPlaceholderWireframeToJson(
-    SRPlaceholderWireframe instance) {
-  final val = <String, dynamic>{
-    'id': instance.id,
-    'type': instance.type,
-    'x': instance.x,
-    'y': instance.y,
-    'width': instance.width,
-    'height': instance.height,
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('label', instance.label);
-  writeNotNull('clip', instance.clip?.toJson());
-  return val;
-}
+        SRPlaceholderWireframe instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'type': instance.type,
+      'x': instance.x,
+      'y': instance.y,
+      'width': instance.width,
+      'height': instance.height,
+      if (instance.label case final value?) 'label': value,
+      if (instance.clip?.toJson() case final value?) 'clip': value,
+    };
 
 SRIdHolder _$SRIdHolderFromJson(Map<String, dynamic> json) => SRIdHolder(
       id: json['id'] as String,
@@ -364,64 +314,46 @@ SRSegment _$SRSegmentFromJson(Map<String, dynamic> json) => SRSegment(
           SRIdHolder.fromJson(json['application'] as Map<String, dynamic>),
       session: SRIdHolder.fromJson(json['session'] as Map<String, dynamic>),
       view: SRIdHolder.fromJson(json['view'] as Map<String, dynamic>),
-      start: json['start'] as int,
-      end: json['end'] as int,
+      start: (json['start'] as num).toInt(),
+      end: (json['end'] as num).toInt(),
       hasFullSnapshot: json['hasFullSnapshot'] as bool?,
-      indexInView: json['indexInView'] as int,
+      indexInView: (json['indexInView'] as num).toInt(),
       records: (json['records'] as List<dynamic>)
           .map((e) => SRRecord.fromJson(e as Map<String, dynamic>))
           .toList(),
-      recordsCount: json['recordsCount'] as int,
+      recordsCount: (json['recordsCount'] as num).toInt(),
       source: json['source'] as String? ?? 'flutter',
     );
 
-Map<String, dynamic> _$SRSegmentToJson(SRSegment instance) {
-  final val = <String, dynamic>{
-    'application': instance.application.toJson(),
-    'session': instance.session.toJson(),
-    'view': instance.view.toJson(),
-    'start': instance.start,
-    'end': instance.end,
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('hasFullSnapshot', instance.hasFullSnapshot);
-  val['indexInView'] = instance.indexInView;
-  val['records'] = instance.records.map((e) => e.toJson()).toList();
-  val['recordsCount'] = instance.recordsCount;
-  val['source'] = instance.source;
-  return val;
-}
+Map<String, dynamic> _$SRSegmentToJson(SRSegment instance) => <String, dynamic>{
+      'application': instance.application.toJson(),
+      'session': instance.session.toJson(),
+      'view': instance.view.toJson(),
+      'start': instance.start,
+      'end': instance.end,
+      if (instance.hasFullSnapshot case final value?) 'hasFullSnapshot': value,
+      'indexInView': instance.indexInView,
+      'records': instance.records.map((e) => e.toJson()).toList(),
+      'recordsCount': instance.recordsCount,
+      'source': instance.source,
+    };
 
 SRIntrementalAdd _$SRIntrementalAddFromJson(Map<String, dynamic> json) =>
     SRIntrementalAdd(
-      previousId: json['previousId'] as int?,
+      previousId: (json['previousId'] as num?)?.toInt(),
       wireframe:
           SRWireframe.fromJson(json['wireframe'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$SRIntrementalAddToJson(SRIntrementalAdd instance) {
-  final val = <String, dynamic>{};
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('previousId', instance.previousId);
-  val['wireframe'] = instance.wireframe.toJson();
-  return val;
-}
+Map<String, dynamic> _$SRIntrementalAddToJson(SRIntrementalAdd instance) =>
+    <String, dynamic>{
+      if (instance.previousId case final value?) 'previousId': value,
+      'wireframe': instance.wireframe.toJson(),
+    };
 
 SRIncrementalRemove _$SRIncrementalRemoveFromJson(Map<String, dynamic> json) =>
     SRIncrementalRemove(
-      id: json['id'] as int,
+      id: (json['id'] as num).toInt(),
     );
 
 Map<String, dynamic> _$SRIncrementalRemoveToJson(
@@ -434,11 +366,11 @@ SRShapeWireframeUpdate _$SRShapeWireframeUpdateFromJson(
         Map<String, dynamic> json) =>
     SRShapeWireframeUpdate(
       type: json['type'] as String? ?? 'shape',
-      id: json['id'] as int,
-      x: json['x'] as int?,
-      y: json['y'] as int?,
-      width: json['width'] as int?,
-      height: json['height'] as int?,
+      id: (json['id'] as num).toInt(),
+      x: (json['x'] as num?)?.toInt(),
+      y: (json['y'] as num?)?.toInt(),
+      width: (json['width'] as num?)?.toInt(),
+      height: (json['height'] as num?)?.toInt(),
       border: json['border'] == null
           ? null
           : SRShapeBorder.fromJson(json['border'] as Map<String, dynamic>),
@@ -451,37 +383,28 @@ SRShapeWireframeUpdate _$SRShapeWireframeUpdateFromJson(
     );
 
 Map<String, dynamic> _$SRShapeWireframeUpdateToJson(
-    SRShapeWireframeUpdate instance) {
-  final val = <String, dynamic>{
-    'type': instance.type,
-    'id': instance.id,
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('x', instance.x);
-  writeNotNull('y', instance.y);
-  writeNotNull('width', instance.width);
-  writeNotNull('height', instance.height);
-  writeNotNull('border', instance.border?.toJson());
-  writeNotNull('clip', instance.clip?.toJson());
-  writeNotNull('shapeStyle', instance.shapeStyle?.toJson());
-  return val;
-}
+        SRShapeWireframeUpdate instance) =>
+    <String, dynamic>{
+      'type': instance.type,
+      'id': instance.id,
+      if (instance.x case final value?) 'x': value,
+      if (instance.y case final value?) 'y': value,
+      if (instance.width case final value?) 'width': value,
+      if (instance.height case final value?) 'height': value,
+      if (instance.border?.toJson() case final value?) 'border': value,
+      if (instance.clip?.toJson() case final value?) 'clip': value,
+      if (instance.shapeStyle?.toJson() case final value?) 'shapeStyle': value,
+    };
 
 SRTextWireframeUpdate _$SRTextWireframeUpdateFromJson(
         Map<String, dynamic> json) =>
     SRTextWireframeUpdate(
       type: json['type'] as String? ?? 'text',
-      id: json['id'] as int,
-      x: json['x'] as int?,
-      y: json['y'] as int?,
-      width: json['width'] as int?,
-      height: json['height'] as int?,
+      id: (json['id'] as num).toInt(),
+      x: (json['x'] as num?)?.toInt(),
+      y: (json['y'] as num?)?.toInt(),
+      width: (json['width'] as num?)?.toInt(),
+      height: (json['height'] as num?)?.toInt(),
       text: json['text'] as String?,
       textStyle: json['textStyle'] == null
           ? null
@@ -502,40 +425,32 @@ SRTextWireframeUpdate _$SRTextWireframeUpdateFromJson(
     );
 
 Map<String, dynamic> _$SRTextWireframeUpdateToJson(
-    SRTextWireframeUpdate instance) {
-  final val = <String, dynamic>{
-    'type': instance.type,
-    'id': instance.id,
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('x', instance.x);
-  writeNotNull('y', instance.y);
-  writeNotNull('width', instance.width);
-  writeNotNull('height', instance.height);
-  writeNotNull('text', instance.text);
-  writeNotNull('textStyle', instance.textStyle?.toJson());
-  writeNotNull('border', instance.border?.toJson());
-  writeNotNull('clip', instance.clip?.toJson());
-  writeNotNull('shapeStyle', instance.shapeStyle?.toJson());
-  writeNotNull('textPosition', instance.textPosition?.toJson());
-  return val;
-}
+        SRTextWireframeUpdate instance) =>
+    <String, dynamic>{
+      'type': instance.type,
+      'id': instance.id,
+      if (instance.x case final value?) 'x': value,
+      if (instance.y case final value?) 'y': value,
+      if (instance.width case final value?) 'width': value,
+      if (instance.height case final value?) 'height': value,
+      if (instance.text case final value?) 'text': value,
+      if (instance.textStyle?.toJson() case final value?) 'textStyle': value,
+      if (instance.border?.toJson() case final value?) 'border': value,
+      if (instance.clip?.toJson() case final value?) 'clip': value,
+      if (instance.shapeStyle?.toJson() case final value?) 'shapeStyle': value,
+      if (instance.textPosition?.toJson() case final value?)
+        'textPosition': value,
+    };
 
 SRImageWireframeUpdate _$SRImageWireframeUpdateFromJson(
         Map<String, dynamic> json) =>
     SRImageWireframeUpdate(
       type: json['type'] as String? ?? 'shape',
-      id: json['id'] as int,
-      x: json['x'] as int?,
-      y: json['y'] as int?,
-      width: json['width'] as int?,
-      height: json['height'] as int?,
+      id: (json['id'] as num).toInt(),
+      x: (json['x'] as num?)?.toInt(),
+      y: (json['y'] as num?)?.toInt(),
+      width: (json['width'] as num?)?.toInt(),
+      height: (json['height'] as num?)?.toInt(),
       border: json['border'] == null
           ? null
           : SRShapeBorder.fromJson(json['border'] as Map<String, dynamic>),
@@ -548,37 +463,28 @@ SRImageWireframeUpdate _$SRImageWireframeUpdateFromJson(
     );
 
 Map<String, dynamic> _$SRImageWireframeUpdateToJson(
-    SRImageWireframeUpdate instance) {
-  final val = <String, dynamic>{
-    'type': instance.type,
-    'id': instance.id,
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('x', instance.x);
-  writeNotNull('y', instance.y);
-  writeNotNull('width', instance.width);
-  writeNotNull('height', instance.height);
-  writeNotNull('border', instance.border?.toJson());
-  writeNotNull('clip', instance.clip?.toJson());
-  writeNotNull('shapeStyle', instance.shapeStyle?.toJson());
-  return val;
-}
+        SRImageWireframeUpdate instance) =>
+    <String, dynamic>{
+      'type': instance.type,
+      'id': instance.id,
+      if (instance.x case final value?) 'x': value,
+      if (instance.y case final value?) 'y': value,
+      if (instance.width case final value?) 'width': value,
+      if (instance.height case final value?) 'height': value,
+      if (instance.border?.toJson() case final value?) 'border': value,
+      if (instance.clip?.toJson() case final value?) 'clip': value,
+      if (instance.shapeStyle?.toJson() case final value?) 'shapeStyle': value,
+    };
 
 SRPlaceholderWireframeUpdate _$SRPlaceholderWireframeUpdateFromJson(
         Map<String, dynamic> json) =>
     SRPlaceholderWireframeUpdate(
       type: json['type'] as String? ?? 'placeholder',
-      id: json['id'] as int,
-      x: json['x'] as int?,
-      y: json['y'] as int?,
-      width: json['width'] as int?,
-      height: json['height'] as int?,
+      id: (json['id'] as num).toInt(),
+      x: (json['x'] as num?)?.toInt(),
+      y: (json['y'] as num?)?.toInt(),
+      width: (json['width'] as num?)?.toInt(),
+      height: (json['height'] as num?)?.toInt(),
       label: json['label'] as String?,
       clip: json['clip'] == null
           ? null
@@ -586,31 +492,22 @@ SRPlaceholderWireframeUpdate _$SRPlaceholderWireframeUpdateFromJson(
     );
 
 Map<String, dynamic> _$SRPlaceholderWireframeUpdateToJson(
-    SRPlaceholderWireframeUpdate instance) {
-  final val = <String, dynamic>{
-    'type': instance.type,
-    'id': instance.id,
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('x', instance.x);
-  writeNotNull('y', instance.y);
-  writeNotNull('width', instance.width);
-  writeNotNull('height', instance.height);
-  writeNotNull('label', instance.label);
-  writeNotNull('clip', instance.clip?.toJson());
-  return val;
-}
+        SRPlaceholderWireframeUpdate instance) =>
+    <String, dynamic>{
+      'type': instance.type,
+      'id': instance.id,
+      if (instance.x case final value?) 'x': value,
+      if (instance.y case final value?) 'y': value,
+      if (instance.width case final value?) 'width': value,
+      if (instance.height case final value?) 'height': value,
+      if (instance.label case final value?) 'label': value,
+      if (instance.clip?.toJson() case final value?) 'clip': value,
+    };
 
 SRIncrementalMutationData _$SRIncrementalMutationDataFromJson(
         Map<String, dynamic> json) =>
     SRIncrementalMutationData(
-      source: json['source'] as int? ?? 0,
+      source: (json['source'] as num?)?.toInt() ?? 0,
       adds: (json['adds'] as List<dynamic>)
           .map((e) => SRIntrementalAdd.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -634,10 +531,10 @@ Map<String, dynamic> _$SRIncrementalMutationDataToJson(
 SRIncrementalSnapshotRecord _$SRIncrementalSnapshotRecordFromJson(
         Map<String, dynamic> json) =>
     SRIncrementalSnapshotRecord(
-      type: json['type'] as int? ?? 11,
+      type: (json['type'] as num?)?.toInt() ?? 11,
       data: SRIncrementalSnapshotData.fromJson(
           json['data'] as Map<String, dynamic>),
-      timestamp: json['timestamp'] as int,
+      timestamp: (json['timestamp'] as num).toInt(),
     );
 
 Map<String, dynamic> _$SRIncrementalSnapshotRecordToJson(
@@ -656,9 +553,6 @@ SREnrichedRecord _$SREnrichedRecordFromJson(Map<String, dynamic> json) =>
       applicationID: json['applicationID'] as String,
       sessionID: json['sessionID'] as String,
       viewID: json['viewID'] as String,
-      hasFullSnapshot: json['hasFullSnapshot'] as bool,
-      earliestTimestamp: json['earliestTimestamp'] as int,
-      latestTimestamp: json['latestTimestamp'] as int,
     );
 
 Map<String, dynamic> _$SREnrichedRecordToJson(SREnrichedRecord instance) =>
@@ -667,7 +561,4 @@ Map<String, dynamic> _$SREnrichedRecordToJson(SREnrichedRecord instance) =>
       'applicationID': instance.applicationID,
       'sessionID': instance.sessionID,
       'viewID': instance.viewID,
-      'hasFullSnapshot': instance.hasFullSnapshot,
-      'earliestTimestamp': instance.earliestTimestamp,
-      'latestTimestamp': instance.latestTimestamp,
     };

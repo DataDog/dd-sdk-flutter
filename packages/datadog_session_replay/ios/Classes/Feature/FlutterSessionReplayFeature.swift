@@ -43,17 +43,12 @@ class FlutterSessionReplayFeature: DatadogRemoteFeature {
 
 class Writer {
     private weak var core: DatadogCoreProtocol?
-    private var lastViewId: String?
-
     func startWriting(to core: DatadogCoreProtocol) {
         self.core = core
     }
 
     func write(record: String, viewId: String) {
-        let forceNewBatch = lastViewId != viewId
-        lastViewId = viewId
-
-        guard let scope = core?.scope(for: FlutterSessionReplayFeature.name) else {
+        guard let scope = core?.scope(for: FlutterSessionReplayFeature.self) else {
             return
         }
         
@@ -61,7 +56,7 @@ class Writer {
         // May want to add a "writeRaw" to writer
         let wrapper = RecordWrapper(recordJson: record)
 
-        scope.eventWriteContext(bypassConsent: false, forceNewBatch: forceNewBatch) { _, writer in
+        scope.eventWriteContext(bypassConsent: false) { _, writer in
             writer.write(value: wrapper)
         }
     }
