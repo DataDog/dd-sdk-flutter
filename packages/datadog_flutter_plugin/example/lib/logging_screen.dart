@@ -117,31 +117,6 @@ class _LoggingScreenState extends State<LoggingScreen> {
       ),
     );
   }
-
-  Widget _buildField({String? text, required Widget child}) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.only(top: 6, bottom: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (text != null)
-            Text(
-              text,
-              style: theme.textTheme.titleSmall,
-            ),
-          Container(padding: const EdgeInsets.all(4), child: child),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSegment(String title) {
-    return Container(
-      padding: const EdgeInsets.all(5),
-      child: Text(title),
-    );
-  }
 }
 
 void sendBackgroundLogs(RootIsolateToken rootIsolateToken) async {

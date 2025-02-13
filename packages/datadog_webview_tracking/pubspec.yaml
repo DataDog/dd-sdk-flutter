@@ -14,7 +14,7 @@ dependencies:
   datadog_flutter_plugin: ^2.9.0
   webview_flutter: ^4.0.4
   webview_flutter_android: ^3.8.2
-  webview_flutter_wkwebview: ^3.2.3
+  webview_flutter_wkwebview: '>=3.2.3 <3.18.0'
 
 dev_dependencies:
   flutter_test:

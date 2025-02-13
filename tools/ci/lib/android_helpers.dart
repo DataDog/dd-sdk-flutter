@@ -149,7 +149,7 @@ Future<Map<String, String>> _getRunningDevices() async {
 Future<bool> _startEmulator(String emulatorName) async {
   print("Starting device");
 
-  var process = await Process.start(
+  var _ = await Process.start(
       emulatorCmd,
       [
         "@$emulatorName",
