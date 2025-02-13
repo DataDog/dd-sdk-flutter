@@ -266,12 +266,15 @@ extension type _RumInitOptions._(JSObject _) implements JSObject {
     String? version,
     bool? trackResources,
     bool? trackViewsManually,
+    // ignore: unused_element_parameter
     bool? trackUserInteractions,
     bool? trackFrustrations,
     bool? trackLongTasks,
+    // ignore: unused_element_parameter
     String? defaultPrivacyLevel,
     num? sessionSampleRate,
     num? sessionReplaySampleRate,
+    // ignore: unused_element_parameter
     bool? silentMultipleInit,
     String? proxy,
     JSArray allowedTracingUrls,

@@ -342,11 +342,9 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin {
             // Second, check that the engine hasn't been destroyed, this is the
             // other work around for https://github.com/flutter/flutter/issues/126671
             if let flutterViewController =
-                UIApplication.shared.keyWindow?.rootViewController as? FlutterViewController {
-                let engine = flutterViewController.engine
-                if engine?.isolateId == nil {
-                    return
-                }
+                UIApplication.shared.keyWindow?.rootViewController as? FlutterViewController,
+                let engine = flutterViewController.engine as FlutterEngine?, engine.isolateId == nil {
+                return
             }
 
             self.channel.invokeMethod("logCallback", arguments: value)
