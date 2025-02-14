@@ -15,7 +15,7 @@ A new Flutter plugin project.
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
-  s.dependency 'DatadogCore',  '~> 2.19.0'
+  s.dependency 'DatadogCore',  '~> 2.19'
   s.platform = :ios, '12.0'
 
   # Flutter.framework does not contain a i386 slice.

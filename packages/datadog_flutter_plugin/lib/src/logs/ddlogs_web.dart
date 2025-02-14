@@ -171,8 +171,11 @@ extension type _JsLoggerConfiguration._(JSObject _) implements JSObject {
   external JSObject get context;
 
   external factory _JsLoggerConfiguration({
+    // ignore: unused_element_parameter
     String? level,
+    // ignore: unused_element_parameter
     String? handler,
+    // ignore: unused_element_parameter
     JSObject context,
   });
 }
