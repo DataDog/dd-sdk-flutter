@@ -13,6 +13,11 @@ abstract class WireframeBuilder {
 class CapturedViewAttributes {
   final Rect paintBounds;
 
+  int get x => paintBounds.left.round();
+  int get y => paintBounds.right.round();
+  int get width => paintBounds.width.round();
+  int get height => paintBounds.height.round();
+
   CapturedViewAttributes({required this.paintBounds});
 }
 

@@ -19,8 +19,10 @@ class ContainerRecorder implements ElementRecorder {
     Color? backgroundColor;
     if (widget is Material) {
       backgroundColor = widget.color;
-      if (widget.surfaceTintColor != null) {
-        backgroundColor = widget.surfaceTintColor;
+      if (widget.surfaceTintColor case final surfaceTintColor?) {
+        if (surfaceTintColor.a > 0) {
+          backgroundColor = widget.surfaceTintColor;
+        }
       }
     } else if (widget is Container) {
       backgroundColor = widget.color;
@@ -52,7 +54,7 @@ class ContainerWireframeBuilder implements WireframeBuilder {
 
   @override
   List<SRWireframe> buildWireframes(CaptureNode node) {
-    final bounds = node.attributes.paintBounds;
+    final attrs = node.attributes;
     SRShapeStyle? style;
     if (backgroundColor != null) {
       style = SRShapeStyle(
@@ -62,10 +64,10 @@ class ContainerWireframeBuilder implements WireframeBuilder {
     return [
       SRShapeWireframe(
         id: wireframeId,
-        x: bounds.left.toInt(),
-        y: bounds.top.toInt(),
-        width: bounds.width.toInt(),
-        height: bounds.height.toInt(),
+        x: attrs.x,
+        y: attrs.y,
+        width: attrs.width,
+        height: attrs.height,
         shapeStyle: style,
       ),
     ];

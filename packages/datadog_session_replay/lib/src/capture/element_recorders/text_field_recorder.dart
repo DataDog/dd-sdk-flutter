@@ -27,11 +27,19 @@ class TextFieldRecorder implements ElementRecorder {
     var textStyle = widget.style;
     final key =
         DatadogSessionReplay.instance?.keyGenerator.keyForElement(element) ?? 0;
+    String? font;
+    if (textStyle.fontFamily case final fontFamily?) {
+      font = fontFamily;
+      if (textStyle.fontFamilyFallback case final familyFallback?) {
+        font += familyFallback.join(',');
+      }
+    }
+
     final builder = TextFieldWireframeBuilder(
       wireframeId: key,
       text: textValue,
       color: textStyle.color?.toHexString() ?? '#FF0000FF',
-      family: textStyle.fontFamily ?? '',
+      family: font ?? '',
       size: textStyle.fontSize?.toInt() ?? 10,
     );
     final node = CaptureNode(attributes, builder);
@@ -63,10 +71,10 @@ class TextFieldWireframeBuilder implements WireframeBuilder {
     return [
       SRTextWireframe(
         id: wireframeId,
-        x: node.attributes.paintBounds.left.toInt(),
-        y: node.attributes.paintBounds.top.toInt(),
-        width: node.attributes.paintBounds.width.toInt(),
-        height: node.attributes.paintBounds.height.toInt(),
+        x: node.attributes.y,
+        y: node.attributes.x,
+        width: node.attributes.width,
+        height: node.attributes.height,
         text: text,
         textStyle: SRTextStyle(
           color: color,

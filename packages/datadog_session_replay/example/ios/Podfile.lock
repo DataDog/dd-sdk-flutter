@@ -10,21 +10,21 @@ PODS:
   - datadog_session_replay (0.0.1):
     - DatadogInternal (~> 2)
     - Flutter
-  - DatadogCore (2.23.0):
-    - DatadogInternal (= 2.23.0)
-  - DatadogCrashReporting (2.23.0):
-    - DatadogInternal (= 2.23.0)
-    - PLCrashReporter (~> 1.11.2)
-  - DatadogInternal (2.23.0)
-  - DatadogLogs (2.23.0):
-    - DatadogInternal (= 2.23.0)
-  - DatadogRUM (2.23.0):
-    - DatadogInternal (= 2.23.0)
+  - DatadogCore (2.24.0):
+    - DatadogInternal (= 2.24.0)
+  - DatadogCrashReporting (2.24.0):
+    - DatadogInternal (= 2.24.0)
+    - PLCrashReporter (~> 1.12.0)
+  - DatadogInternal (2.24.0)
+  - DatadogLogs (2.24.0):
+    - DatadogInternal (= 2.24.0)
+  - DatadogRUM (2.24.0):
+    - DatadogInternal (= 2.24.0)
   - DictionaryCoder (1.0.8)
   - Flutter (1.0.0)
   - integration_test (0.0.1):
     - Flutter
-  - PLCrashReporter (1.11.2)
+  - PLCrashReporter (1.12.0)
 
 DEPENDENCIES:
   - datadog_flutter_plugin (from `.symlinks/plugins/datadog_flutter_plugin/ios`)
@@ -55,16 +55,16 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   datadog_flutter_plugin: de391eba42569ec1d8282aa1c49b4172603acc90
   datadog_session_replay: d7b11a41bfacc1f95e31453d90a5be3f99832d91
-  DatadogCore: 689582ab49cf16bff75a19981eeb53a730801562
-  DatadogCrashReporting: d2843c991e8ca14f306bb2e69bf5bc6ca20ff133
-  DatadogInternal: 85ee3c82a24b4652de7d6340760e2dc335526e69
-  DatadogLogs: 24716212b1f594cd1c39bf45b970ab4a4fb3ac51
-  DatadogRUM: d8d1b2d21c85959bb07b05006bb6f3778dc96273
+  DatadogCore: b44f9c6a36b524eda9981e38f4e060c030e6ac3d
+  DatadogCrashReporting: dd3c1949b1c6cf5d8d9aebd56841b3a117a8d7ee
+  DatadogInternal: 7dcc19ce0a40fa9d95bcb3a47dc27d1b96b7fa9d
+  DatadogLogs: 8c96c96b05db866d261ff672cd1fc3bd44b15afb
+  DatadogRUM: 49c494a3f583bbe31f650ad930d7a702e29c270d
   DictionaryCoder: 5f84fff69f54cb806071538430bdafe04a89d658
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
-  PLCrashReporter: 499c53b0104f95c302d94fd723ebb03c56d9bac8
+  PLCrashReporter: db59ef96fa3d25f3650040d02ec2798cffee75f2
 
 PODFILE CHECKSUM: 819463e6a0290f5a72f145ba7cde16e8b6ef0796
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2

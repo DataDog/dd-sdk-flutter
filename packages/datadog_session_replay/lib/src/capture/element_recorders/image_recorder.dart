@@ -42,15 +42,15 @@ class PlaceholderWireframeBuilder implements WireframeBuilder {
 
   @override
   List<SRWireframe> buildWireframes(CaptureNode node) {
-    final bounds = node.attributes.paintBounds;
+    final attrs = node.attributes;
 
     return [
       SRPlaceholderWireframe(
         id: wireframeId,
-        x: bounds.left.toInt(),
-        y: bounds.top.toInt(),
-        width: bounds.width.toInt(),
-        height: bounds.height.toInt(),
+        x: attrs.x,
+        y: attrs.y,
+        width: attrs.width,
+        height: attrs.height,
         label: 'Content Image',
       ),
     ];

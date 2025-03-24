@@ -39,12 +39,10 @@ void main() async {
   )..enableSessionReplay(
       DatadogSessionReplayConfiguration(
         replaySampleRate: 1.0,
-        customEndpoint: '$customEndpoint/replay',
+        // customEndpoint: '$customEndpoint/replay',
       ),
     );
 
-  final ddsdk = DatadogSdk.instance;
-  ddsdk.sdkVerbosity = CoreLoggerLevel.warn;
   await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
     return runApp(const MyApp());
   });

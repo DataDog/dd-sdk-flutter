@@ -26,12 +26,14 @@ class TextElementRecorder implements ElementRecorder {
           DatadogSessionReplay.instance?.keyGenerator.keyForElement(element) ??
               0;
       final style = textSpan.style;
+      final alignment = _getDatadogHorizontalAlignment(widget);
       final builder = TextElementWireframeBuilder(
         wireframeId: key,
         text: textSpan.text ?? '',
         color: style?.color?.toHexString() ?? '#FF0000FF',
         family: style?.fontFamily ?? '',
         size: style?.fontSize?.toInt() ?? 10,
+        alignment: alignment,
       );
 
       final node = CaptureNode(attributes, builder);
@@ -39,6 +41,27 @@ class TextElementRecorder implements ElementRecorder {
           subtreeStrategy: CaptureNodeSubtreeStrategy.ignore, nodes: [node]);
     }
     return null;
+  }
+
+  SRHorizontalAlignment _getDatadogHorizontalAlignment(RichText widget) {
+    final textDirection = widget.textDirection;
+    switch (widget.textAlign) {
+      case TextAlign.left:
+      case TextAlign.justify:
+        return SRHorizontalAlignment.left;
+      case TextAlign.start:
+        return textDirection == TextDirection.rtl
+            ? SRHorizontalAlignment.right
+            : SRHorizontalAlignment.left;
+      case TextAlign.right:
+        return SRHorizontalAlignment.right;
+      case TextAlign.end:
+        return textDirection == TextDirection.rtl
+            ? SRHorizontalAlignment.left
+            : SRHorizontalAlignment.right;
+      case TextAlign.center:
+        return SRHorizontalAlignment.center;
+    }
   }
 }
 
@@ -49,6 +72,7 @@ class TextElementWireframeBuilder implements WireframeBuilder {
   final String color;
   final String family;
   final int size;
+  final SRHorizontalAlignment alignment;
 
   const TextElementWireframeBuilder({
     required this.wireframeId,
@@ -56,6 +80,7 @@ class TextElementWireframeBuilder implements WireframeBuilder {
     required this.color,
     required this.family,
     required this.size,
+    required this.alignment,
   });
 
   @override
@@ -63,15 +88,20 @@ class TextElementWireframeBuilder implements WireframeBuilder {
     return [
       SRTextWireframe(
         id: wireframeId,
-        x: node.attributes.paintBounds.left.toInt(),
-        y: node.attributes.paintBounds.top.toInt(),
-        width: node.attributes.paintBounds.width.toInt(),
-        height: node.attributes.paintBounds.height.toInt(),
+        x: node.attributes.y,
+        y: node.attributes.x,
+        width: node.attributes.width,
+        height: node.attributes.height,
         text: text,
         textStyle: SRTextStyle(
           color: color,
           family: family,
           size: size,
+        ),
+        textPosition: SRTextPosition(
+          alignment: SRAlignment(
+            horizontal: alignment,
+          ),
         ),
       ),
     ];
