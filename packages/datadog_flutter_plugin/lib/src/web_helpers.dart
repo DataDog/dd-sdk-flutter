@@ -21,6 +21,8 @@ String siteStringForSite(DatadogSite? site) {
       return 'datadoghq.eu';
     case DatadogSite.us1Fed:
       return 'ddog-gov.com';
+    case DatadogSite.ap1:
+      return 'ap1.datadoghq.com';
     default:
       return 'datadoghq.com';
   }
