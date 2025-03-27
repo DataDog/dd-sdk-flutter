@@ -11,17 +11,17 @@
 * Ignore warnings for stricter Dart analyzer.
 * Support configuration of Time to Network Settled.
 * Use Flutter timestamps for RUM actions.
-* Support InAppWebView. See [#624](https://github.com/DataDog/dd-sdk-flutter/issues/624).
-* Allow RumUserActionAnnotation in subtrees.
+* Support `InAppWebView`. See [#624](https://github.com/DataDog/dd-sdk-flutter/issues/624).
+* Allow `RumUserActionAnnotation` in subtrees.
 * Update iOS SDK to 2.24.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#2240--06-03-2025).
   * Fix sporadic file overwrite during consent change, ensuring event data integrity.
   * Add Time To Network Settled metric in RUM.
   * Add Interaction To Next View metric in RUM.
 * Update Android SDK to 2.19.2. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#2192--2025-03-20).
-  * Implement the basic logic for time-to-network-settle view metric.
-  * Implement the basic logic for interaction-to-next-view-metric.
+  * Implement the basic logic for `time-to-network-settle` view metric.
+  * Implement the basic logic for `interaction-to-next-view` metric.
   * Improve the log message when exception happen during upload
-  * Don't warn about missing views on PerformanceMetric events.
+  * Don't warn about missing views on `PerformanceMetric` events.
   * Improve the view duration accuracy.
   * Allow disabling 404 span redaction
   * Introduce anonymous RUM Identifier.
