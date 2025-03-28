@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.10.2
+
+* Add missing `AP1` support to Flutter Web.
+
 ## 2.10.1
 
 * Fix iOS compilation for Flutter 3.29
