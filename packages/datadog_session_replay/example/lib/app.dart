@@ -43,6 +43,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return SessionReplayCapture(
+      sessionReplay: DatadogSessionReplay.instance!,
       rum: DatadogSdk.instance.rum,
       key: captureKey,
       child: MaterialApp.router(

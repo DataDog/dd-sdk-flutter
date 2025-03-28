@@ -545,6 +545,42 @@ Map<String, dynamic> _$SRIncrementalSnapshotRecordToJson(
       'timestamp': instance.timestamp,
     };
 
+SRPointerInteractionData _$SRPointerInteractionDataFromJson(
+        Map<String, dynamic> json) =>
+    SRPointerInteractionData(
+      source: (json['source'] as num?)?.toInt() ?? 9,
+      pointerEventType:
+          $enumDecode(_$SRPointerEventTypeEnumMap, json['pointerEventType']),
+      pointerId: (json['pointerId'] as num).toInt(),
+      pointerType: $enumDecode(_$SRPointerTypeEnumMap, json['pointerType']),
+      x: (json['x'] as num).toDouble(),
+      y: (json['y'] as num).toDouble(),
+    );
+
+Map<String, dynamic> _$SRPointerInteractionDataToJson(
+        SRPointerInteractionData instance) =>
+    <String, dynamic>{
+      'source': instance.source,
+      'pointerEventType':
+          _$SRPointerEventTypeEnumMap[instance.pointerEventType]!,
+      'pointerId': instance.pointerId,
+      'pointerType': _$SRPointerTypeEnumMap[instance.pointerType]!,
+      'x': instance.x,
+      'y': instance.y,
+    };
+
+const _$SRPointerEventTypeEnumMap = {
+  SRPointerEventType.down: 'down',
+  SRPointerEventType.up: 'up',
+  SRPointerEventType.move: 'move',
+};
+
+const _$SRPointerTypeEnumMap = {
+  SRPointerType.mouse: 'mouse',
+  SRPointerType.touch: 'touch',
+  SRPointerType.pen: 'pen',
+};
+
 SREnrichedRecord _$SREnrichedRecordFromJson(Map<String, dynamic> json) =>
     SREnrichedRecord(
       records: (json['records'] as List<dynamic>)

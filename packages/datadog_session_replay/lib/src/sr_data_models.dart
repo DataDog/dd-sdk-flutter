@@ -32,6 +32,28 @@ enum SRRecordType {
   visualViewport
 }
 
+enum SRPointerEventType {
+  @JsonValue('down')
+  down,
+
+  @JsonValue('up')
+  up,
+
+  @JsonValue('move')
+  move
+}
+
+enum SRPointerType {
+  @JsonValue('mouse')
+  mouse,
+
+  @JsonValue('touch')
+  touch,
+
+  @JsonValue('pen')
+  pen,
+}
+
 abstract class SRRecord {
   static const int metaRecordType = 4;
   static const int focusRecordType = 6;
@@ -793,6 +815,29 @@ class SRIncrementalSnapshotRecord extends SRRecord {
       _$SRIncrementalSnapshotRecordFromJson(json);
   @override
   Map<String, dynamic> toJson() => _$SRIncrementalSnapshotRecordToJson(this);
+}
+
+@JsonSerializable()
+class SRPointerInteractionData extends SRIncrementalSnapshotData {
+  final SRPointerEventType pointerEventType;
+  final int pointerId;
+  final SRPointerType pointerType;
+  final double x;
+  final double y;
+
+  SRPointerInteractionData({
+    super.source = 9,
+    required this.pointerEventType,
+    required this.pointerId,
+    required this.pointerType,
+    required this.x,
+    required this.y,
+  });
+
+  factory SRPointerInteractionData.fromJson(Map<String, dynamic> json) =>
+      _$SRPointerInteractionDataFromJson(json);
+  @override
+  Map<String, dynamic> toJson() => _$SRPointerInteractionDataToJson(this);
 }
 
 // Don't rename these as they are not used by the SR endpoint, only

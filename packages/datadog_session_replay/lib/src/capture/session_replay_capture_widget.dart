@@ -3,17 +3,21 @@
 // Copyright 2023-Present Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/widgets.dart';
 
 import '../datadog_session_replay.dart';
+import 'pointer_recorder.dart';
 
 class SessionReplayCapture extends StatefulWidget {
   final DatadogRum? rum;
+  final DatadogSessionReplay sessionReplay;
   final Widget child;
 
   const SessionReplayCapture({
     super.key,
     required this.rum,
+    required this.sessionReplay,
     required this.child,
   });
 
@@ -21,7 +25,7 @@ class SessionReplayCapture extends StatefulWidget {
   StatefulElement createElement() {
     final e = super.createElement();
     if (key != null) {
-      DatadogSessionReplay.instance?.addElement(key!, e);
+      sessionReplay.addElement(key!, e);
     }
 
     return e;
@@ -36,17 +40,20 @@ class SessionReplayCaptureState extends State<SessionReplayCapture> {
 
   @override
   void dispose() {
-    DatadogSessionReplay.instance?.removeElement(widget.key);
+    widget.sessionReplay.removeElement(widget.key);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return RumUserActionDetector(
-      rum: widget.rum,
-      child: RepaintBoundary(
-        key: repaintKey,
-        child: widget.child,
+    return RepaintBoundary(
+      key: repaintKey,
+      child: PointerRecorderWidget(
+        snapshotRecorder: PointerSnapshotRecorder(DefaultTimeProvider()),
+        child: RumUserActionDetector(
+          rum: widget.rum,
+          child: widget.child,
+        ),
       ),
     );
   }

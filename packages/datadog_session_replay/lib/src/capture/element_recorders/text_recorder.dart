@@ -88,8 +88,8 @@ class TextElementWireframeBuilder implements WireframeBuilder {
     return [
       SRTextWireframe(
         id: wireframeId,
-        x: node.attributes.y,
-        y: node.attributes.x,
+        x: node.attributes.x,
+        y: node.attributes.y,
         width: node.attributes.width,
         height: node.attributes.height,
         text: text,

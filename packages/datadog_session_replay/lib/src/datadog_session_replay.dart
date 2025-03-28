@@ -13,6 +13,7 @@ import 'capture/element_recorders/container_recorder.dart';
 import 'capture/element_recorders/image_recorder.dart';
 import 'capture/element_recorders/text_field_recorder.dart';
 import 'capture/element_recorders/text_recorder.dart';
+import 'capture/pointer_recorder.dart';
 import 'capture/view_tree_snapshot.dart';
 import 'datadog_session_replay_platform_interface.dart';
 import 'processor/session_replay_processor.dart';
@@ -95,6 +96,7 @@ class DatadogSessionReplay {
 
     DateTime now = DateTime.now();
     List<CaptureNode> nodes = [];
+    List<PointerSnapshot> pointerSnapshots = [];
     var size = Size.zero;
     for (final e in _elements.values) {
       final elementSize = e.size;
@@ -103,7 +105,7 @@ class DatadogSessionReplay {
         // returned by the element is not serializable over the isolate
         size = Size(elementSize.width, elementSize.height);
       }
-      _captureElement(e, nodes);
+      _captureElement(e, nodes, pointerSnapshots);
     }
 
     if (nodes.isNotEmpty) {
@@ -114,7 +116,11 @@ class DatadogSessionReplay {
         nodes: nodes,
       );
 
-      _processor.process(viewTreeSnapshot);
+      // TODO: We dhouldn't have multiple pointer snapshots, but even if we
+      // to, for now just take the first one.
+      PointerSnapshot? pointerSnapshot = pointerSnapshots.firstOrNull;
+
+      _processor.process(viewTreeSnapshot, pointerSnapshot);
     }
   }
 
@@ -124,11 +130,18 @@ class DatadogSessionReplay {
     DatadogSessionReplayPlatform.instance.setHasReplay(context.viewId != null);
   }
 
-  void _captureElement(Element topElement, List<CaptureNode> nodes) {
+  void _captureElement(Element topElement, List<CaptureNode> nodes,
+      List<PointerSnapshot> pointerSnapshots) {
     final stopwatch = Stopwatch();
     stopwatch.start();
 
     void visit(Element e, int depth) {
+      if (e.widget case final PointerRecorderWidget snapshotWidget) {
+        if (snapshotWidget.snapshotRecorder.takeSnapshot() case final snapshot?) {
+          pointerSnapshots.add(snapshot);
+        }
+      }
+
       final renderObject = e.renderObject;
       if (renderObject == null) return;
 
