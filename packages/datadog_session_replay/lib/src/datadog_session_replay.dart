@@ -117,7 +117,7 @@ class DatadogSessionReplay {
       );
 
       // TODO: We dhouldn't have multiple pointer snapshots, but even if we
-      // to, for now just take the first one.
+      // do, for now just take the first one.
       PointerSnapshot? pointerSnapshot = pointerSnapshots.firstOrNull;
 
       _processor.process(viewTreeSnapshot, pointerSnapshot);
@@ -137,7 +137,8 @@ class DatadogSessionReplay {
 
     void visit(Element e, int depth) {
       if (e.widget case final PointerRecorderWidget snapshotWidget) {
-        if (snapshotWidget.snapshotRecorder.takeSnapshot() case final snapshot?) {
+        if (snapshotWidget.snapshotRecorder.takeSnapshot()
+            case final snapshot?) {
           pointerSnapshots.add(snapshot);
         }
       }
@@ -149,7 +150,11 @@ class DatadogSessionReplay {
           renderObject.getTransformTo(topElement.renderObject);
       final paintBounds =
           MatrixUtils.transformRect(transformMatrix, renderObject.paintBounds);
-      final viewAttributes = CapturedViewAttributes(paintBounds: paintBounds);
+      final viewAttributes = CapturedViewAttributes(
+        paintBounds: paintBounds,
+        scaleX: 1.0,
+        scaleY: 1,
+      );
 
       final elementSemantics = _elementSemantics(e, viewAttributes);
 

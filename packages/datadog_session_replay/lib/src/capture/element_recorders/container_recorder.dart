@@ -17,12 +17,27 @@ class ContainerRecorder implements ElementRecorder {
     final widget = element.widget;
 
     Color? backgroundColor;
+    double cornerRadius = 0.0;
     if (widget is Material) {
       backgroundColor = widget.color;
       if (widget.surfaceTintColor case final surfaceTintColor?) {
         if (surfaceTintColor.a > 0) {
           backgroundColor = widget.surfaceTintColor;
         }
+      }
+      final shape = widget.shape;
+      switch (shape) {
+        case final StadiumBorder _:
+        case final CircleBorder _:
+          // TODO: For circles, we may need to change the view attributes to have width
+          // and height match,
+          final shortSide = attributes.paintBounds.shortestSide;
+          cornerRadius = shortSide / 2;
+          break;
+        case final RoundedRectangleBorder shape:
+          // TODO: TextDirection
+          cornerRadius = shape.borderRadius.resolve(null).topLeft.x;
+          break;
       }
     } else if (widget is Container) {
       backgroundColor = widget.color;
@@ -37,6 +52,7 @@ class ContainerRecorder implements ElementRecorder {
       ContainerWireframeBuilder(
         wireframeId: key,
         backgroundColor: backgroundColor,
+        cornerRadius: cornerRadius,
       ),
     );
     return AmbiguousElement(nodes: [node]);
@@ -46,10 +62,12 @@ class ContainerRecorder implements ElementRecorder {
 class ContainerWireframeBuilder implements WireframeBuilder {
   final int wireframeId;
   final Color? backgroundColor;
+  final double cornerRadius;
 
   ContainerWireframeBuilder({
     required this.wireframeId,
     this.backgroundColor,
+    this.cornerRadius = 0.0,
   });
 
   @override
@@ -58,8 +76,8 @@ class ContainerWireframeBuilder implements WireframeBuilder {
     SRShapeStyle? style;
     if (backgroundColor != null) {
       style = SRShapeStyle(
-        backgroundColor: backgroundColor!.toHexString(),
-      );
+          backgroundColor: backgroundColor!.toHexString(),
+          cornerRadius: cornerRadius);
     }
     return [
       SRShapeWireframe(

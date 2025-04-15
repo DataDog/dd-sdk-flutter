@@ -12,13 +12,19 @@ abstract class WireframeBuilder {
 
 class CapturedViewAttributes {
   final Rect paintBounds;
+  final double scaleX;
+  final double scaleY;
 
   int get x => paintBounds.left.round();
   int get y => paintBounds.top.round();
   int get width => paintBounds.width.round();
   int get height => paintBounds.height.round();
 
-  CapturedViewAttributes({required this.paintBounds});
+  CapturedViewAttributes({
+    required this.paintBounds,
+    required this.scaleX,
+    required this.scaleY,
+  });
 }
 
 class CaptureNode {
