@@ -1,3 +1,8 @@
+## 1.2.0
+
+* Support spm in all packages. See [#776](https://github.com/DataDog/dd-sdk-flutter/issues/776)
+* Specify android SDK version in datadog_inappwebview_tracking.
+
 ## 1.1.0-beta.1
 
 * Update flutter_inappwebview support to 6.2.0-beta.2
