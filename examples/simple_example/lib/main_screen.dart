@@ -1,9 +1,13 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
+import 'dart:async';
+
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:get/get.dart';
+
+//import 'package:go_router/go_router.dart';
 
 import 'screens/named_screen.dart';
 
@@ -18,7 +22,8 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   void _goToPage(String page) {
-    context.push(page);
+    unawaited(Get.to(page));
+    //context.push(page);
   }
 
   Widget _paddedNavButton(String text, String page) {
@@ -98,14 +103,14 @@ class _MyHomePageState extends State<MyHomePage> {
             children: [
               TextButton(
                 child: const Text('CLOSE MODAL'),
-                onPressed: () => {
-                  debugPrint('MODAL REJECTED'),
-                  context.pop(),
+                onPressed: () {
+                  debugPrint('MODAL REJECTED');
+                  Get.back();
                 },
               ),
               TextButton(
-                onPressed: () => {
-                  context.pop(),
+                onPressed: () {
+                  Get.back();
                 },
                 child: const Text('ACCEPT MODAL'),
               ),
@@ -115,7 +120,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () async => {
                   await Future.delayed(const Duration(seconds: 5), () {
                     if (context.mounted) {
-                      context.pop();
+                      Get.back();
                     }
                   }),
                 },
@@ -124,8 +129,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 key: const Key('ACCEPT BY ICON KEY'),
                 icon: const Icon(Icons.done),
                 tooltip: 'MODAL ACCEPT BY ICON',
-                onPressed: () => {
-                  context.pop(),
+                onPressed: () {
+                  Get.back();
                 },
               )
             ],
@@ -152,8 +157,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 key: const Key('ACCEPT BY ICON KEY'),
                 icon: const Icon(Icons.done),
                 tooltip: 'MODAL ACCEPT BY ICON',
-                onPressed: () => {
-                  context.pop(),
+                onPressed: () {
+                  Get.back();
                 },
               )
             ],

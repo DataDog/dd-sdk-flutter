@@ -8,30 +8,30 @@ PODS:
     - DatadogInternal (~> 2)
     - DatadogLogs (~> 2)
     - DatadogRUM (~> 2)
-    - DictionaryCoder (= 1.0.8)
+    - DictionaryCoder (= 1.2.0)
     - Flutter
   - datadog_webview_tracking (0.0.1):
     - DatadogWebViewTracking (~> 2)
     - Flutter
     - webview_flutter_wkwebview
-  - DatadogCore (2.22.0):
-    - DatadogInternal (= 2.22.0)
-  - DatadogCrashReporting (2.22.0):
-    - DatadogInternal (= 2.22.0)
-    - PLCrashReporter (~> 1.11.2)
-  - DatadogInternal (2.22.0)
-  - DatadogLogs (2.22.0):
-    - DatadogInternal (= 2.22.0)
-  - DatadogRUM (2.22.0):
-    - DatadogInternal (= 2.22.0)
-  - DatadogWebViewTracking (2.22.0):
-    - DatadogInternal (= 2.22.0)
-  - DictionaryCoder (1.0.8)
+  - DatadogCore (2.30.0):
+    - DatadogInternal (= 2.30.0)
+  - DatadogCrashReporting (2.30.0):
+    - DatadogInternal (= 2.30.0)
+    - PLCrashReporter (~> 1.12.0)
+  - DatadogInternal (2.30.0)
+  - DatadogLogs (2.30.0):
+    - DatadogInternal (= 2.30.0)
+  - DatadogRUM (2.30.0):
+    - DatadogInternal (= 2.30.0)
+  - DatadogWebViewTracking (2.30.0):
+    - DatadogInternal (= 2.30.0)
+  - DictionaryCoder (1.2.0)
   - Flutter (1.0.0)
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - PLCrashReporter (1.11.2)
+  - PLCrashReporter (1.12.0)
   - webview_flutter_wkwebview (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -71,20 +71,20 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   connectivity_plus: 18382e7311ba19efcaee94442b23b32507b20695
-  datadog_flutter_plugin: d7c707cfa57f67bc7bd71d275cf38d94eef1aa48
-  datadog_webview_tracking: 7de2f94cb36dbb00203468d941e89ec7cbc47226
-  DatadogCore: ac232fee1427f4082895d73479aadc39bf143789
-  DatadogCrashReporting: f6f56f405f8f2ab9478be290a1e561861a18578f
-  DatadogInternal: 2c9770cd4bb66636f2c1578f4cfbc5984e032e2d
-  DatadogLogs: 397a79884d4dff82cf3d1a35b3e61e9ab4b03cf4
-  DatadogRUM: 9f23460eb44e2bd2f2fe5e4db9d205dcdd0ef865
-  DatadogWebViewTracking: 2191682c6af12d86c093ceb3a20a886708bfeb4f
-  DictionaryCoder: 5f84fff69f54cb806071538430bdafe04a89d658
-  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  datadog_flutter_plugin: dae31b2f0e5755d091601d8c8108fe86528085fd
+  datadog_webview_tracking: c67749cb40aa011d064038dfa66fb838f8e34e8e
+  DatadogCore: 5c01290a3b60b27bf49aa958f2e339c738364d9e
+  DatadogCrashReporting: 11286d48ab61baeb2b41b945c7c0d4ef23db317d
+  DatadogInternal: 7aeb48e254178a0c462c3953dc0a8a8d64499a93
+  DatadogLogs: 4324739de62a6059e07d70bf6ceceed78764edeb
+  DatadogRUM: f36949a38285f3b240a7be577d425f8518e087d4
+  DatadogWebViewTracking: 78c20d8e5f1ade506f4aadaec5690c1a63283fe2
+  DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
-  PLCrashReporter: 499c53b0104f95c302d94fd723ebb03c56d9bac8
+  PLCrashReporter: db59ef96fa3d25f3650040d02ec2798cffee75f2
   webview_flutter_wkwebview: a4af96a051138e28e29f60101d094683b9f82188
 
-PODFILE CHECKSUM: 4e8f8b2be68aeea4c0d5beb6ff1e79fface1d048
+PODFILE CHECKSUM: cc1f88378b4bfcf93a6ce00d2c587857c6008d3b
 
 COCOAPODS: 1.16.2
