@@ -35,13 +35,6 @@ target 'Runner' do
     inherit! :search_paths
   end
 
-  # Datadog Pod Overrides
-  pod 'DatadogCore', :git => 'https://github.com/DataDog/dd-sdk-ios', :tag => '2.30.0'
-  pod 'DatadogLogs', :git => 'https://github.com/DataDog/dd-sdk-ios', :tag => '2.30.0'
-  pod 'DatadogRUM', :git => 'https://github.com/DataDog/dd-sdk-ios', :tag => '2.30.0'
-  pod 'DatadogInternal', :git => 'https://github.com/DataDog/dd-sdk-ios', :tag => '2.30.0'
-  pod 'DatadogCrashReporting', :git => 'https://github.com/DataDog/dd-sdk-ios', :tag => '2.30.0'
-  # End Datadog Pod Overrides
 end
 
 post_install do |installer|
