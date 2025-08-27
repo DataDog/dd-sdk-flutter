@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.13.1
+
+* Add back in import of meta package. See [#815](https://github.com/DataDog/dd-sdk-flutter/issues/815)
+
 ## 2.13.0
 
 * Don't attempt to get size of `RenderBox`es that don't have size. See [#809](https://github.com/DataDog/dd-sdk-flutter/issues/809)
