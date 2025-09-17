@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.13.2
+
+* Fix compileSdk to be 35 on main package. See [#834](https://github.com/DataDog/dd-sdk-flutter/issues/834)
+
 ## 2.13.1
 
 * Add back in import of meta package. See [#815](https://github.com/DataDog/dd-sdk-flutter/issues/815)
