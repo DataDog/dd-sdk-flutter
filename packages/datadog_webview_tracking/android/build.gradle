@@ -28,7 +28,7 @@ apply plugin: 'kotlin-android'
 
 android {
     namespace "com.datadoghq.flutter.webview"
-    compileSdkVersion 34
+    compileSdk 35
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8

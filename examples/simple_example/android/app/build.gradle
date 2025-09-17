@@ -24,7 +24,7 @@ if (flutterVersionName == null) {
 
 
 android {
-    compileSdkVersion flutter.compileSdkVersion
+    compileSdk flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
     namespace 'com.example.test_app'
 
