@@ -21,7 +21,6 @@ Clients using Flutter Web should update to using the Datadog Browser SDK v6.  Ch
 
 An ID is no longer optional in `setUserInfo`. If you need to clear user info, use `clearUserInfo` instead.
 
-
 # Migration from 1.x to 2.0
 
 This document describes the main changes introduced in SDK `2.0` compared to `1.x`.

@@ -42,6 +42,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 @ExtendWith(ForgeExtension::class)
+@Suppress("LargeClass")
 class DatadogSdkPluginTest {
     lateinit var plugin: DatadogSdkPlugin
 

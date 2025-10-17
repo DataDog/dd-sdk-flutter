@@ -25,11 +25,13 @@ import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
+@Suppress("LargeClass")
 class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     companion object {
         const val CONTRACT_VIOLATION = "DatadogSdk:ContractViolation"
         const val INVALID_OPERATION = "DatadogSdk:InvalidOperation"
         const val ARG_VALUE = "value"
+        const val ARG_EXTRA_INFO = "extraInfo"
 
         // Flutter can destroy / recreate the plugin object if the engine detaches. If you use the
         // back button on the first screen, for example, this will detach the Flutter engine
@@ -136,7 +138,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 val id = call.argument<String>("id")
                 val name = call.argument<String>("name")
                 val email = call.argument<String>("email")
-                val extraInfo = call.argument<Map<String, Any?>>("extraInfo")
+                val extraInfo = call.argument<Map<String, Any?>>(ARG_EXTRA_INFO)
                 if (id != null && extraInfo != null) {
                     Datadog.setUserInfo(id, name, email, extraInfo)
                     result.success(null)
@@ -145,7 +147,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 }
             }
             "addUserExtraInfo" -> {
-                val extraInfo = call.argument<Map<String, Any?>>("extraInfo")
+                val extraInfo = call.argument<Map<String, Any?>>(ARG_EXTRA_INFO)
                 if (extraInfo != null) {
                     Datadog.addUserProperties(extraInfo)
                     result.success(null)
@@ -160,7 +162,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             "setAccountInfo" -> {
                 val id = call.argument<String>("id")
                 val name = call.argument<String>("name")
-                val extraInfo = call.argument<Map<String, Any?>>("extraInfo")
+                val extraInfo = call.argument<Map<String, Any?>>(ARG_EXTRA_INFO)
                 if (id != null && extraInfo != null) {
                     Datadog.setAccountInfo(id, name, extraInfo)
                     result.success(null)
@@ -169,7 +171,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 }
             }
             "addAccountExtraInfo" -> {
-                val extraInfo = call.argument<Map<String, Any?>>("extraInfo")
+                val extraInfo = call.argument<Map<String, Any?>>(ARG_EXTRA_INFO)
                 if (extraInfo != null) {
                     Datadog.addAccountExtraInfo(extraInfo)
                     result.success(null)

@@ -151,15 +151,19 @@ class DatadogSdk {
     };
 
     await DatadogSdk.instance.initialize(configuration, trackingConsent);
-    DatadogSdk.instance
-        .updateConfigurationInfo(LateConfigurationProperty.trackErrors, true);
+    DatadogSdk.instance.updateConfigurationInfo(
+      LateConfigurationProperty.trackErrors,
+      true,
+    );
 
     runner();
   }
 
   /// Initialize the DatadogSdk with the provided [configuration].
-  Future<void> initialize(DatadogConfiguration configuration,
-      TrackingConsent trackingConsent) async {
+  Future<void> initialize(
+    DatadogConfiguration configuration,
+    TrackingConsent trackingConsent,
+  ) async {
     // First set our SDK verbosity. We can assume WidgetsFlutterBinding has been initialized at this point
     await _platform.setSdkVerbosity(internalLogger.sdkVerbosity);
 
@@ -168,12 +172,18 @@ class DatadogSdk {
 
     _setFirstPartyHosts(configuration.firstPartyHostsWithTracingHeaders);
 
-    await _platform.initialize(configuration, trackingConsent,
-        logCallback: _platformLog, internalLogger: internalLogger);
+    await _platform.initialize(
+      configuration,
+      trackingConsent,
+      logCallback: _platformLog,
+      internalLogger: internalLogger,
+    );
 
     if (configuration.loggingConfiguration != null) {
       _logs = await DatadogLogging.enable(
-          this, configuration.loggingConfiguration!);
+        this,
+        configuration.loggingConfiguration!,
+      );
     }
 
     if (configuration.rumConfiguration != null) {
@@ -186,16 +196,18 @@ class DatadogSdk {
 
   /// Attach the Datadog Flutter SDK to an already initialized Datadog Native
   /// (iOS or Android) SDK.  This is used for "app in app" embedding of Flutter.
-  Future<void> attachToExisting(
-    DatadogAttachConfiguration config,
-  ) async {
+  Future<void> attachToExisting(DatadogAttachConfiguration config) async {
     // First set our SDK verbosity. We can assume WidgetsFlutterBinding has been initialized at this point
     await _platform.setSdkVerbosity(internalLogger.sdkVerbosity);
 
     final attachResponse = await wrapAsync<AttachResponse>(
-        'attachToExisting', internalLogger, null, () async {
-      return await _platform.attachToExisting();
-    });
+      'attachToExisting',
+      internalLogger,
+      null,
+      () async {
+        return await _platform.attachToExisting();
+      },
+    );
 
     if (attachResponse != null) {
       _setFirstPartyHosts(config.firstPartyHostsWithTracingHeaders);
@@ -211,7 +223,8 @@ class DatadogSdk {
       _initialized = true;
     } else {
       internalLogger.error(
-          'Failed to attach to an existing native instance of the Datadog SDK.');
+        'Failed to attach to an existing native instance of the Datadog SDK.',
+      );
     }
   }
 
@@ -292,13 +305,13 @@ class DatadogSdk {
     });
   }
 
-  /// Add custom attributes to the current user information
+  /// Add custom attributes to the current account information
   ///
   /// This extra info will be added to already existing extra info that is added
   /// to logs, traces, and RUM events automatically.
   ///
   /// Setting an existing attribute to `null` will remove that attribute from
-  /// the user's extra info
+  /// the account's extra info
   void addAccountExtraInfo(Map<String, Object?> extraInfo) {
     wrap('addAccountExtraInfo', internalLogger, extraInfo, () {
       return _platform.addAccountExtraInfo(extraInfo);
@@ -347,7 +360,8 @@ class DatadogSdk {
       var plugin = pluginConfig.create(this);
       if (_plugins.containsKey(plugin.runtimeType)) {
         internalLogger.error(
-            'Attempting to setup two plugins of the same type: ${plugin.runtimeType}. The second plugin will be ignored.');
+          'Attempting to setup two plugins of the same type: ${plugin.runtimeType}. The second plugin will be ignored.',
+        );
       } else {
         plugin.initialize();
         _plugins[plugin.runtimeType] = plugin;
