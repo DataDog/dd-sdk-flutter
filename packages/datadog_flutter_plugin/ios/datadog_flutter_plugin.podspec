@@ -16,11 +16,11 @@ Instrument your application with Datadog.
   s.source_files = 'datadog_flutter_plugin/Sources/**/*'
   s.static_framework = true
   s.dependency 'Flutter'
-  s.dependency 'DatadogCore', '~> 2'
-  s.dependency 'DatadogLogs', '~> 2'
-  s.dependency 'DatadogRUM', '~> 2'
-  s.dependency 'DatadogInternal', '~> 2'
-  s.dependency 'DatadogCrashReporting', '~> 2'
+  s.dependency 'DatadogCore', '2.30.1'
+  s.dependency 'DatadogLogs', '2.30.1'
+  s.dependency 'DatadogRUM', '2.30.1'
+  s.dependency 'DatadogInternal', '2.30.1'
+  s.dependency 'DatadogCrashReporting', '2.30.1'
   s.dependency 'DictionaryCoder', '1.2.0'
   s.platform = :ios, '12.0'
 
