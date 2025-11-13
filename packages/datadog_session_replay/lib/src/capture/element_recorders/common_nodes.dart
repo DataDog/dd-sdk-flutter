@@ -248,6 +248,10 @@ class TextElementCaptureNode extends CaptureNode {
         width: attributes.width,
         height: attributes.height,
         text: text,
+        // At the moment, the SR player allows text to overflow its paint bounds,
+        // and it doesn't accept a fully zero clip, so we always supply a clip
+        // with one of the values set as low as possible.
+        clip: SRContentClip(bottom: 0, left: 0, right: 0, top: 1),
         textStyle: SRTextStyle(color: color, family: family, size: size),
         textPosition: SRTextPosition(
           alignment: SRAlignment(horizontal: alignment),

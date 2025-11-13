@@ -227,6 +227,42 @@ void main() {
     );
   });
 
+  // This is to workaround an issue in the player where text
+  // is allowed to overflow the bounds of its container, even
+  // when those bounds are specifically requested.
+  testWidgets('text always supplies masking', (tester) async {
+    // Given
+    final textData = randomString();
+
+    final tree = SimpleTestCapture(
+      key: Key('key'),
+      recorder: recorder,
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Column(
+          children: [
+            Text(textData),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpWidget(tree);
+
+    // When
+    final capture = await recorder.performCapture();
+
+    // Then
+    expect(capture, isNotNull);
+    final treeCapture = capture!.viewTreeSnapshot;
+    final textNode = treeCapture.nodes[0];
+
+    final firstWireframe = textNode.buildWireframes().first as SRTextWireframe;
+    expect(firstWireframe.clip!.top, 1);
+    expect(firstWireframe.clip!.bottom, 0);
+    expect(firstWireframe.clip!.left, 0);
+    expect(firstWireframe.clip!.right, 0);
+  });
+
   group('rich text', () {
     testWidgets('text span tree is concatenated to single record', (
       tester,

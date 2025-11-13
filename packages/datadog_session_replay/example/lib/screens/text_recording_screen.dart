@@ -4,6 +4,11 @@
 
 import 'package:flutter/material.dart';
 
+const String veryLongText =
+    '''This is a very long, multi-line blob of text to check that 
+clipping works for very long text widgets.
+If you can see this line in the player, it's probably not working.''';
+
 class TextRecordingScreen extends StatelessWidget {
   const TextRecordingScreen({super.key});
 
@@ -50,6 +55,13 @@ class TextRecordingScreen extends StatelessWidget {
                     TextSpan(text: 'in the middle.'),
                   ],
                 ),
+              ),
+              Divider(),
+              Container(
+                decoration: BoxDecoration(color: Colors.grey),
+                height: 20,
+                clipBehavior: Clip.hardEdge,
+                child: Text(veryLongText, style: theme.textTheme.bodyLarge),
               ),
             ],
           ),
