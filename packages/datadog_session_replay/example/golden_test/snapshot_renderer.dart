@@ -75,18 +75,20 @@ void _renderShape(
 extension ShapeWireframeRendering on SRShapeWireframe {
   void render(Canvas canvas) {
     canvas.save();
+    final rect = toRect();
     if (clip case final clip?) {
+      // clip is actually insets, not a clip rectangle
       canvas.clipRect(
         Rect.fromLTRB(
-          clip.left.toDouble(),
-          clip.top.toDouble(),
-          clip.right.toDouble(),
-          clip.bottom.toDouble(),
+          rect.left + clip.left.toDouble(),
+          rect.top + clip.top.toDouble(),
+          rect.right - clip.right.toDouble(),
+          rect.bottom - clip.bottom.toDouble(),
         ),
       );
     }
 
-    _renderShape(canvas, toRect(), border, shapeStyle);
+    _renderShape(canvas, rect, border, shapeStyle);
 
     canvas.restore();
   }
@@ -95,18 +97,20 @@ extension ShapeWireframeRendering on SRShapeWireframe {
 extension TextWireframeRendering on SRTextWireframe {
   void render(Canvas canvas) {
     canvas.save();
+    final rect = toRect();
     if (clip case final clip?) {
+      // clip is actually insets, not a clip rectangle
       canvas.clipRect(
         Rect.fromLTRB(
-          clip.left.toDouble(),
-          clip.top.toDouble(),
-          clip.right.toDouble(),
-          clip.bottom.toDouble(),
+          rect.left + clip.left.toDouble(),
+          rect.top + clip.top.toDouble(),
+          rect.right - clip.right.toDouble(),
+          rect.bottom - clip.bottom.toDouble(),
         ),
       );
     }
 
-    _renderShape(canvas, toRect(), border, shapeStyle);
+    _renderShape(canvas, rect, border, shapeStyle);
 
     // Note if you're looking at the Goldens and seeing only boxes: golden
     // tests in Flutter do this on purpose to produce consistent results on all
