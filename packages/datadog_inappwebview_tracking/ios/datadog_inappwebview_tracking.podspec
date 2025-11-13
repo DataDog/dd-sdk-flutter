@@ -15,7 +15,7 @@ Track `flutter_inappwebview` with Datadog.
   s.source           = { :path => '.' }
   s.source_files = 'datadog_inappwebview_tracking/Sources/**/*'
   s.dependency 'Flutter'
-  s.dependency 'DatadogCore',  '~> 2.20'
+  s.dependency 'DatadogCore',  '~> 3.0'
   s.platform = :ios, '12.0'
 
   # Flutter.framework does not contain a i386 slice.

@@ -63,8 +63,14 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
   Future<void> setSdkVerbosity(CoreLoggerLevel verbosity);
   Future<void> setTrackingConsent(TrackingConsent trackingConsent);
   Future<void> setUserInfo(
-      String? id, String? name, String? email, Map<String, Object?> extraInfo);
+      String id, String? name, String? email, Map<String, Object?> extraInfo);
+  Future<void> clearUserInfo();
   Future<void> addUserExtraInfo(Map<String, Object?> extraInfo);
+
+  Future<void> setAccountInfo(
+      String id, String? name, Map<String, Object?> extraInfo);
+  Future<void> clearAccountInfo();
+  Future<void> addAccountExtraInfo(Map<String, Object?> extraInfo);
 
   Future<void> sendTelemetryDebug(String message);
   Future<void> sendTelemetryError(String message, String? stack, String? kind);

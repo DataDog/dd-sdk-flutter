@@ -61,20 +61,21 @@ void main() {
 
     var exceptionError = view.errorEvents[0];
     expect(exceptionError.message, contains(TypeError().toString()));
-    expect(exceptionError.source, kIsWeb ? 'custom' : 'source');
+    expect(exceptionError.source, 'source');
     expect(exceptionError.errorType, 'NullThrown');
     if (!kIsWeb) {
+      // source_type is not supported on web, but type should be browser anyway.
       expect(exceptionError.sourceType, 'flutter');
     }
 
     var manualError = view.errorEvents[1];
     expect(manualError.message, contains('Rum error message'));
-    expect(manualError.source, kIsWeb ? 'custom' : 'network');
+    expect(manualError.source, 'network');
     expect(manualError.fingerprint, 'custom-fingerprint');
 
     var thrownError = view.errorEvents[2];
     expect(thrownError.message, contains('This was an error!'));
-    expect(thrownError.source, kIsWeb ? 'custom' : 'source');
+    expect(thrownError.source, 'source');
     expect(thrownError.stack, isNotNull);
   });
 }

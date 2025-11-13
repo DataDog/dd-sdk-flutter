@@ -34,7 +34,6 @@ Future<void> performRumUserFlow(WidgetTester tester) async {
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  // TODO: Figure out why
   testWidgets('test auto instrumentation', (WidgetTester tester) async {
     final sessionRecorder = await startMockServer();
 

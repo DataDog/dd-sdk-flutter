@@ -637,9 +637,10 @@ class DatadogRumPluginTests: XCTestCase {
         let commands = mock.commands
         XCTAssertEqual(commands.count, 1)
         if commands.count == 1 {
-            let command = commands[0] as! RUMSetInternalViewAttributeCommand
-            XCTAssertEqual(command.key, key)
-            XCTAssertEqual(command.value.dd.decode(), value)
+            let command = commands[0] as! RUMAddViewAttributesCommand
+            if let attrValue = try? XCTUnwrap(command.attributes[key]) {
+                XCTAssertEqual(attrValue.dd.decode(), value)
+            }
         }
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
@@ -674,6 +675,10 @@ class MockRUMMonitor: RUMMonitorProtocol, RUMCommandSubscriber {
         case removeAttribute(forKey: AttributeKey)
         case addAttributes(attributes: [AttributeKey: any AttributeValue])
         case removeAttributes(forKeys: [AttributeKey])
+        case addViewAttribute(key: DatadogInternal.AttributeKey, value: any DatadogInternal.AttributeValue)
+        case addViewAttributes(attributes: [DatadogInternal.AttributeKey: any DatadogInternal.AttributeValue])
+        case removeViewAttribute(key: DatadogInternal.AttributeKey)
+        case removeViewAttributes(keys: [DatadogInternal.AttributeKey])
     }
 
     var callLog: [MethodCall] = []
@@ -786,6 +791,22 @@ class MockRUMMonitor: RUMMonitorProtocol, RUMCommandSubscriber {
 
     func addFeatureFlagEvaluation(name: String, value: Encodable) {
 
+    }
+
+    func addViewAttribute(forKey key: DatadogInternal.AttributeKey, value: any DatadogInternal.AttributeValue) {
+        callLog.append(.addViewAttribute(key: key, value: value))
+    }
+
+    func addViewAttributes(_ attributes: [DatadogInternal.AttributeKey: any DatadogInternal.AttributeValue]) {
+        callLog.append(.addViewAttributes(attributes: attributes))
+    }
+
+    func removeViewAttribute(forKey key: DatadogInternal.AttributeKey) {
+        callLog.append(.removeViewAttribute(key: key))
+    }
+
+    func removeViewAttributes(forKeys keys: [DatadogInternal.AttributeKey]) {
+        callLog.append(.removeViewAttributes(keys: keys))
     }
 
     /// Processes the given RUM Command.

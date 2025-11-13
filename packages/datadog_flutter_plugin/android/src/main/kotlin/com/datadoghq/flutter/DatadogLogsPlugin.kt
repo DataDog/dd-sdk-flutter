@@ -18,7 +18,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class DatadogLogsPlugin internal constructor() : MethodChannel.MethodCallHandler {
-    companion object LogParameterNames {
+    companion object {
         const val LOG_LEVEL = "logLevel"
         const val LOG_MESSAGE = "message"
         const val LOG_CONTEXT = "context"
@@ -35,6 +35,11 @@ class DatadogLogsPlugin internal constructor() : MethodChannel.MethodCallHandler
         // Static instance of the event mapper
         private val eventMapper: DatadogLogEventMapper = DatadogLogEventMapper()
 
+        @JvmStatic
+        fun setLogsEventMapper(mapper: DatadogLogEventMapper.EventMapper) {
+            eventMapper.eventMapper = mapper
+        }
+
         // For testing purposes only
         internal fun resetConfig() {
             previousConfiguration = null
@@ -49,13 +54,11 @@ class DatadogLogsPlugin internal constructor() : MethodChannel.MethodCallHandler
     fun attachToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter.logs")
         channel.setMethodCallHandler(this)
-        eventMapper.addChannel(channel)
 
         binding = flutterPluginBinding
     }
 
     fun detachFromEngine() {
-        eventMapper.removeChannel(channel)
         channel.setMethodCallHandler(null)
     }
 

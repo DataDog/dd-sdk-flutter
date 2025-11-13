@@ -11,9 +11,10 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
-import 'request_log.dart';
+import '../datadog_common_test.dart';
 
 typedef RequestHandler = bool Function(List<RequestLog> requests);
+typedef LogHandler = bool Function(List<LogDecoder> logs);
 
 const uuid = Uuid();
 
@@ -146,6 +147,20 @@ abstract class RecordingServerClient {
         await Future<void>.delayed(const Duration(milliseconds: 1000));
       }
     } while (!stopPolling && timeoutTime.isAfter(DateTime.now()));
+  }
+
+  /// Call [pollForSession] specifically pulling out requets for Logs only.
+  Future<void> pollForLogs(Duration timeout, LogHandler handler) async {
+    final logs = <LogDecoder>[];
+    await pollSessionRequests(timeout, (requests) {
+      final newLogs = requests
+          .map((e) => e.asLogs())
+          .whereType<List<LogDecoder>>()
+          .expand((e) => e)
+          .toList();
+      logs.addAll(newLogs);
+      return handler(logs);
+    });
   }
 }
 

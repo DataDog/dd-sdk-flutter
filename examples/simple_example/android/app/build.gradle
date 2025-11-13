@@ -24,7 +24,7 @@ if (flutterVersionName == null) {
 
 
 android {
-    compileSdk flutter.compileSdkVersion
+    compileSdk 36
     ndkVersion flutter.ndkVersion
     namespace 'com.example.test_app'
 
@@ -44,7 +44,7 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId "com.example.test_app"
-        minSdkVersion 21
+        minSdkVersion 23
         multiDexEnabled true
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()

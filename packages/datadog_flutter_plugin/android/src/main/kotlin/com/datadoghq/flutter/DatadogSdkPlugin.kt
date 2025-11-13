@@ -25,11 +25,13 @@ import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
+@Suppress("LargeClass")
 class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
     companion object {
         const val CONTRACT_VIOLATION = "DatadogSdk:ContractViolation"
         const val INVALID_OPERATION = "DatadogSdk:InvalidOperation"
         const val ARG_VALUE = "value"
+        const val ARG_EXTRA_INFO = "extraInfo"
 
         // Flutter can destroy / recreate the plugin object if the engine detaches. If you use the
         // back button on the first screen, for example, this will detach the Flutter engine
@@ -123,6 +125,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 val value = call.argument<String>(ARG_VALUE)
                 if (value != null) {
                     val trackingConsent = parseTrackingConsent(value)
+                    if (trackingConsent != TrackingConsent.NOT_GRANTED) {
+                        println("Stop")
+                    }
                     Datadog.setTrackingConsent(trackingConsent)
                     result.success(null)
                 } else {
@@ -133,8 +138,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 val id = call.argument<String>("id")
                 val name = call.argument<String>("name")
                 val email = call.argument<String>("email")
-                val extraInfo = call.argument<Map<String, Any?>>("extraInfo")
-                if (extraInfo != null) {
+                val extraInfo = call.argument<Map<String, Any?>>(ARG_EXTRA_INFO)
+                if (id != null && extraInfo != null) {
                     Datadog.setUserInfo(id, name, email, extraInfo)
                     result.success(null)
                 } else {
@@ -142,13 +147,41 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 }
             }
             "addUserExtraInfo" -> {
-                val extraInfo = call.argument<Map<String, Any?>>("extraInfo")
+                val extraInfo = call.argument<Map<String, Any?>>(ARG_EXTRA_INFO)
                 if (extraInfo != null) {
                     Datadog.addUserProperties(extraInfo)
                     result.success(null)
                 } else {
                     result.missingParameter(call.method)
                 }
+            }
+            "clearUserInfo" -> {
+                Datadog.clearUserInfo()
+                result.success(null)
+            }
+            "setAccountInfo" -> {
+                val id = call.argument<String>("id")
+                val name = call.argument<String>("name")
+                val extraInfo = call.argument<Map<String, Any?>>(ARG_EXTRA_INFO)
+                if (id != null && extraInfo != null) {
+                    Datadog.setAccountInfo(id, name, extraInfo)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
+                }
+            }
+            "addAccountExtraInfo" -> {
+                val extraInfo = call.argument<Map<String, Any?>>(ARG_EXTRA_INFO)
+                if (extraInfo != null) {
+                    Datadog.addAccountExtraInfo(extraInfo)
+                    result.success(null)
+                } else {
+                    result.missingParameter(call.method)
+                }
+            }
+            "clearAccountInfo" -> {
+                Datadog.clearAccountInfo()
+                result.success(null)
             }
             "telemetryDebug" -> {
                 val message = call.argument<String>("message")
@@ -173,15 +206,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             "updateTelemetryConfiguration" -> {
                 updateTelemetryConfiguration(call)
                 result.success(null)
-            }
-            "getInternalVar" -> {
-                val name = call.argument<String>("name")
-                if (name != null) {
-                    val value = getInternalVar(name)
-                    result.success(value)
-                } else {
-                    result.success(null)
-                }
             }
             "clearAllData" -> {
                 Datadog.clearAllData()
@@ -312,26 +336,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         method?.let {
             it.isAccessible = true
             it.invoke(target)
-        }
-    }
-
-    private fun getInternalVar(name: String): Any? {
-        return when (name) {
-            "mapperPerformance" ->
-                mapOf(
-                    "total" to mapOf(
-                        "minMs" to DatadogRumPlugin.eventMapper.mapperPerf.minInMs,
-                        "maxMs" to DatadogRumPlugin.eventMapper.mapperPerf.maxInMs,
-                        "avgMs" to DatadogRumPlugin.eventMapper.mapperPerf.avgInMs
-                    ),
-                    "mainThread" to mapOf(
-                        "minMs" to DatadogRumPlugin.eventMapper.mapperPerfMainThread.minInMs,
-                        "maxMs" to DatadogRumPlugin.eventMapper.mapperPerfMainThread.maxInMs,
-                        "avgMs" to DatadogRumPlugin.eventMapper.mapperPerfMainThread.avgInMs
-                    ),
-                    "mapperTimeouts" to DatadogRumPlugin.eventMapper.mapperTimeouts
-                )
-            else -> null
         }
     }
 

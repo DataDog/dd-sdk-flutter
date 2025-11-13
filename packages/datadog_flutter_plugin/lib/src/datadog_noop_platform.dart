@@ -66,4 +66,25 @@ class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
   Future<void> clearAllData() {
     return Future.value();
   }
+
+  @override
+  Future<void> addAccountExtraInfo(Map<String, Object?> extraInfo) {
+    return Future.value();
+  }
+
+  @override
+  Future<void> clearAccountInfo() {
+    return Future.value();
+  }
+
+  @override
+  Future<void> clearUserInfo() {
+    return Future.value();
+  }
+
+  @override
+  Future<void> setAccountInfo(
+      String id, String? name, Map<String, Object?> extraInfo) {
+    return Future.value();
+  }
 }

@@ -6,6 +6,8 @@
 package com.datadoghq.flutter
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.datadog.android.api.SdkCore
 import com.datadog.android.core.configuration.BatchSize
@@ -20,6 +22,8 @@ import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
+import com.datadog.android.rum.RumResourceMethod
+import com.datadog.android.rum.RumSessionListener
 import com.datadog.android.rum._RumInternalProxy
 import com.datadog.android.rum.configuration.VitalsUpdateFrequency
 import com.datadog.android.rum.metric.networksettled.TimeBasedInitialResourceIdentifier
@@ -33,8 +37,8 @@ import java.lang.ClassCastException
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 
-class DatadogRumPlugin : MethodChannel.MethodCallHandler {
-    companion object RumParameterNames {
+class DatadogRumPlugin : MethodChannel.MethodCallHandler, RumSessionListener {
+    companion object {
         const val PARAM_AT = "at"
         const val PARAM_DURATION = "duration"
         const val PARAM_KEY = "key"
@@ -65,6 +69,11 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
         internal fun resetConfig() {
             previousConfiguration = null
         }
+
+        @JvmStatic
+        fun setRumEventMapper(mapper: DatadogRumEventMapper.EventMapper) {
+            eventMapper.eventMapper = mapper
+        }
     }
 
     private lateinit var channel: MethodChannel
@@ -80,7 +89,6 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
     fun attachToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "datadog_sdk_flutter.rum")
         channel.setMethodCallHandler(this)
-        eventMapper.addChannel(channel)
 
         binding = flutterPluginBinding
 
@@ -90,7 +98,6 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
     }
 
     fun detachFromEngine() {
-        eventMapper.removeChannel(channel)
         channel.setMethodCallHandler(null)
     }
 
@@ -140,6 +147,19 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
         }
     }
 
+    override fun onSessionStarted(sessionId: String, isDiscarded: Boolean) {
+        val handler = Handler(Looper.getMainLooper())
+        handler.post {
+            channel.invokeMethod(
+                "onSessionChanged",
+                mapOf(
+                    "sessionId" to sessionId,
+                    "discarded" to isDiscarded
+                )
+            )
+        }
+    }
+
     private fun enable(call: MethodCall, result: Result) {
         val encodedConfig = call.argument<Map<String, Any?>>("configuration")
         val applicationId = encodedConfig?.get("applicationId") as? String
@@ -163,6 +183,7 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
                     .disableUserInteractionTracking()
                     .useViewTrackingStrategy(NoOpViewTrackingStrategy)
                     .setLastInteractionIdentifier(null)
+                    .setSessionListener(this)
 
                 // Mapper initialization
                 configBuilder = attachEventMappers(encodedConfig, configBuilder)
@@ -533,15 +554,15 @@ fun RumConfiguration.Builder.withEncoded(encoded: Map<String, Any?>): RumConfigu
     return builder
 }
 
-fun parseRumHttpMethod(value: String): String {
+fun parseRumHttpMethod(value: String): RumResourceMethod {
     return when (value) {
-        "RumHttpMethod.get" -> "GET"
-        "RumHttpMethod.post" -> "POST"
-        "RumHttpMethod.head" -> "HEAD"
-        "RumHttpMethod.put" -> "PUT"
-        "RumHttpMethod.delete" -> "DELETE"
-        "RumHttpMethod.patch" -> "PATCH"
-        else -> "GET"
+        "RumHttpMethod.get" -> RumResourceMethod.GET
+        "RumHttpMethod.post" -> RumResourceMethod.POST
+        "RumHttpMethod.head" -> RumResourceMethod.HEAD
+        "RumHttpMethod.put" -> RumResourceMethod.PUT
+        "RumHttpMethod.delete" -> RumResourceMethod.DELETE
+        "RumHttpMethod.patch" -> RumResourceMethod.PATCH
+        else -> RumResourceMethod.GET
     }
 }
 

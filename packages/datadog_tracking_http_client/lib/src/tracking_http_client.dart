@@ -348,10 +348,8 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
           client.datadogSdk.headerTypesForHost(innerContext.uri);
 
       if (rum != null && tracingHeaderTypes.isNotEmpty) {
-        bool shouldSample = rum.shouldSampleTrace();
-
         // No tracing context, generate one ourselves
-        _tracingContext ??= generateTracingContext(shouldSample);
+        _tracingContext ??= generateTracingContext(rum);
 
         for (final headerType in tracingHeaderTypes) {
           final newHeaders = getTracingHeaders(

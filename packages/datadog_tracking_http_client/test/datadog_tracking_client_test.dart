@@ -37,6 +37,7 @@ void main() {
     registerFallbackValue(Uri());
     registerFallbackValue(FakeBaseRequest());
     registerFallbackValue(RumResourceType.image);
+    registerFallbackValue(TracingId.zero());
   });
 
   setUp(() {
@@ -106,7 +107,7 @@ void main() {
 
     setUp(() {
       mockRum = MockDdRum();
-      when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+      when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
       when(() => mockRum.contextInjectionSetting)
           .thenReturn(TraceContextInjection.all);
       when(() => mockRum.traceSampleRate).thenReturn(50.0);
@@ -443,7 +444,7 @@ void main() {
         test(
             'adds tracing headers to request { unsampled, TraceContextInjection.all }',
             () async {
-          when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
           final client = DatadogClient(
             datadogSdk: mockDatadog,
             innerClient: mockClient,
@@ -464,7 +465,7 @@ void main() {
         test(
             'does not add tracing headers to request { unsampled, TraceContextInjection.sampled }',
             () async {
-          when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
           when(() => mockRum.contextInjectionSetting)
               .thenReturn(TraceContextInjection.sampled);
           final client = DatadogClient(

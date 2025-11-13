@@ -21,26 +21,55 @@ abstract class DdRumPlatform extends PlatformInterface {
     _instance = instance;
   }
 
+  String? get cachedSessionId;
+
   Future<void> enable(DatadogSdk core, DatadogRumConfiguration configuration);
   Future<void> deinitialize();
 
   Future<String?> getCurrentSessionId();
 
-  Future<void> startView(DateTime timestamp, String key, String name,
-      Map<String, Object?> attributes);
+  Future<void> startView(
+    DateTime timestamp,
+    String key,
+    String name,
+    Map<String, Object?> attributes,
+  );
   Future<void> stopView(
-      DateTime timestamp, String key, Map<String, Object?> attributes);
+    DateTime timestamp,
+    String key,
+    Map<String, Object?> attributes,
+  );
   Future<void> addTiming(DateTime timestamp, String name);
   Future<void> addViewLoadingTime(bool overwrite);
 
-  Future<void> startResource(DateTime timestamp, String key,
-      RumHttpMethod httpMethod, String url, Map<String, Object?> attributes);
-  Future<void> stopResource(DateTime timestamp, String key, int? statusCode,
-      RumResourceType kind, int? size, Map<String, Object?> attributes);
-  Future<void> stopResourceWithError(DateTime timestamp, String key,
-      Exception error, Map<String, Object?> attributes);
-  Future<void> stopResourceWithErrorInfo(DateTime timestamp, String key,
-      String message, String type, Map<String, Object?> attributes);
+  Future<void> startResource(
+    DateTime timestamp,
+    String key,
+    RumHttpMethod httpMethod,
+    String url,
+    Map<String, Object?> attributes,
+  );
+  Future<void> stopResource(
+    DateTime timestamp,
+    String key,
+    int? statusCode,
+    RumResourceType kind,
+    int? size,
+    Map<String, Object?> attributes,
+  );
+  Future<void> stopResourceWithError(
+    DateTime timestamp,
+    String key,
+    Exception error,
+    Map<String, Object?> attributes,
+  );
+  Future<void> stopResourceWithErrorInfo(
+    DateTime timestamp,
+    String key,
+    String message,
+    String type,
+    Map<String, Object?> attributes,
+  );
 
   Future<void> addError(
     DateTime timestamp,
@@ -59,12 +88,24 @@ abstract class DdRumPlatform extends PlatformInterface {
     Map<String, Object?> attributes,
   );
 
-  Future<void> addAction(DateTime timestamp, RumActionType type, String name,
-      Map<String, Object?> attributes);
-  Future<void> startAction(DateTime timestamp, RumActionType type, String name,
-      Map<String, Object?> attributes);
-  Future<void> stopAction(DateTime timestamp, RumActionType type, String name,
-      Map<String, Object?> attributes);
+  Future<void> addAction(
+    DateTime timestamp,
+    RumActionType type,
+    String name,
+    Map<String, Object?> attributes,
+  );
+  Future<void> startAction(
+    DateTime timestamp,
+    RumActionType type,
+    String name,
+    Map<String, Object?> attributes,
+  );
+  Future<void> stopAction(
+    DateTime timestamp,
+    RumActionType type,
+    String name,
+    Map<String, Object?> attributes,
+  );
 
   Future<void> addAttribute(String key, dynamic value);
   Future<void> removeAttribute(String key);
@@ -75,5 +116,7 @@ abstract class DdRumPlatform extends PlatformInterface {
 
   Future<void> reportLongTask(DateTime at, int durationMs);
   Future<void> updatePerformanceMetrics(
-      List<double> buildTimes, List<double> rasterTimes);
+    List<double> buildTimes,
+    List<double> rasterTimes,
+  );
 }

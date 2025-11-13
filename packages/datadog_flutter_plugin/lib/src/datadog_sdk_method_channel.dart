@@ -17,21 +17,31 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 
   @override
   Future<void> setSdkVerbosity(CoreLoggerLevel verbosity) {
-    return methodChannel
-        .invokeMethod('setSdkVerbosity', {'value': verbosity.toString()});
+    return methodChannel.invokeMethod('setSdkVerbosity', {
+      'value': verbosity.toString(),
+    });
   }
 
   @override
   Future<void> setTrackingConsent(TrackingConsent trackingConsent) {
-    return methodChannel.invokeMethod(
-        'setTrackingConsent', {'value': trackingConsent.toString()});
+    return methodChannel.invokeMethod('setTrackingConsent', {
+      'value': trackingConsent.toString(),
+    });
   }
 
   @override
   Future<void> setUserInfo(
-      String? id, String? name, String? email, Map<String, Object?> extraInfo) {
-    return methodChannel.invokeMethod('setUserInfo',
-        {'id': id, 'name': name, 'email': email, 'extraInfo': extraInfo});
+    String id,
+    String? name,
+    String? email,
+    Map<String, Object?> extraInfo,
+  ) {
+    return methodChannel.invokeMethod('setUserInfo', {
+      'id': id,
+      'name': name,
+      'email': email,
+      'extraInfo': extraInfo,
+    });
   }
 
   @override
@@ -42,15 +52,43 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   }
 
   @override
+  Future<void> clearUserInfo() {
+    return methodChannel.invokeMethod('clearUserInfo', {});
+  }
+
+  @override
+  Future<void> setAccountInfo(
+    String id,
+    String? name,
+    Map<String, Object?> extraInfo,
+  ) {
+    return methodChannel.invokeMethod('setAccountInfo', {
+      'id': id,
+      'name': name,
+      'extraInfo': extraInfo,
+    });
+  }
+
+  @override
+  Future<void> addAccountExtraInfo(Map<String, Object?> extraInfo) {
+    return methodChannel.invokeMethod('addAccountExtraInfo', {
+      'extraInfo': extraInfo,
+    });
+  }
+
+  @override
+  Future<void> clearAccountInfo() {
+    return methodChannel.invokeMethod('clearAccountInfo', {});
+  }
+
+  @override
   Future<PlatformInitializationResult> initialize(
     DatadogConfiguration configuration,
     TrackingConsent trackingConsent, {
     LogCallback? logCallback,
     required InternalLogger internalLogger,
   }) async {
-    final callbackHandler = MethodCallHandler(
-      logCallback: logCallback,
-    );
+    final callbackHandler = MethodCallHandler(logCallback: logCallback);
 
     if (logCallback != null) {
       methodChannel.setMethodCallHandler(callbackHandler.handleMethodCall);
@@ -70,7 +108,9 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   Future<AttachResponse?> attachToExisting() async {
     final channelResponse = await methodChannel
         .invokeMapMethod<String, Object?>(
-            'attachToExisting', <String, Object?>{});
+          'attachToExisting',
+          <String, Object?>{},
+        );
 
     AttachResponse? response;
     if (channelResponse != null) {
@@ -81,8 +121,10 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 
   @override
   Future<void> flushAndDeinitialize() {
-    return methodChannel
-        .invokeMethod('flushAndDeinitialize', <String, Object?>{});
+    return methodChannel.invokeMethod(
+      'flushAndDeinitialize',
+      <String, Object?>{},
+    );
   }
 
   @override
@@ -121,9 +163,7 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
 class MethodCallHandler {
   final LogCallback? logCallback;
 
-  MethodCallHandler({
-    this.logCallback,
-  });
+  MethodCallHandler({this.logCallback});
 
   Future<dynamic> handleMethodCall(MethodCall call) async {
     switch (call.method) {

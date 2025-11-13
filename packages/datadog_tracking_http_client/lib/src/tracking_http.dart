@@ -94,8 +94,7 @@ class DatadogClient extends http.BaseClient {
         var attributes = <String, Object?>{};
         // Is first party?
         if (tracingHeaders.isNotEmpty) {
-          var shouldSample = rum.shouldSampleTrace();
-          var context = generateTracingContext(shouldSample);
+          var context = generateTracingContext(rum);
 
           attributes = _appendRequestHeaders(
             request,

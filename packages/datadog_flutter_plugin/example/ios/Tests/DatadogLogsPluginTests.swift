@@ -10,7 +10,7 @@ import DatadogInternal
 @testable import DatadogLogs
 @testable import datadog_flutter_plugin
 
-class MockV2Logger: LoggerProtocol, InternalLoggerProtocol {
+class MockLogger: LoggerProtocol, InternalLoggerProtocol {
     enum Method: EquatableInTests {
         case log(level: LogLevel, message: String, error: Error?, attributes: [String: Encodable]?)
         case logError(
@@ -19,6 +19,11 @@ class MockV2Logger: LoggerProtocol, InternalLoggerProtocol {
             errorKind: String?,
             errorMessage: String?,
             stackTrace: String?,
+            attributes: [String: Encodable]?
+        )
+        case critical(
+            messsage: String,
+            error: Error?,
             attributes: [String: Encodable]?
         )
         case addAttribute(key: AttributeKey, value: AttributeValue)
@@ -56,6 +61,16 @@ class MockV2Logger: LoggerProtocol, InternalLoggerProtocol {
         )
     }
 
+    func critical(
+        message: String,
+        error: (any Error)?,
+        attributes: [String: any Encodable]?,
+        completionHandler: @escaping DatadogInternal.CompletionHandler
+    ) {
+        calls.append(.critical(messsage: message, error: error, attributes: attributes))
+        completionHandler()
+    }
+
     func addAttribute(forKey key: AttributeKey, value: AttributeValue) {
         calls.append(.addAttribute(key: key, value: value))
     }
@@ -84,11 +99,11 @@ class MockV2Logger: LoggerProtocol, InternalLoggerProtocol {
 // swiftlint:disable:next type_body_length
 class DatadogLogsPluginTests: XCTestCase {
     var plugin: DatadogLogsPlugin!
-    var mockV2Logger: MockV2Logger?
+    var mockV2Logger: MockLogger?
 
     override func setUp() {
         plugin = DatadogLogsPlugin.instance
-        mockV2Logger = MockV2Logger()
+        mockV2Logger = MockLogger()
         // "fake string" is the string that the contract tests will send
         plugin.addLogger(logger: mockV2Logger!, withHandle: "fake string")
         // Non-contract tests get the same logger with a different it

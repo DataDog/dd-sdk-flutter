@@ -29,6 +29,9 @@ class DdLogsWeb extends DdLogsPlatform {
         site: siteStringForSite(configuration.site),
         service: configuration.service,
         version: configuration.versionTag,
+        variant: configuration.flavor,
+        sdkVersion: DatadogSdk.sdkVersion,
+        source: 'flutter',
         trackingConsent: trackingConsent.webValue(),
       ),
     );
@@ -41,10 +44,14 @@ class DdLogsWeb extends DdLogsPlatform {
   ) async {}
 
   @override
-  Future<void> addGlobalAttribute(String key, Object value) async {}
+  Future<void> addGlobalAttribute(String key, Object value) async {
+    DD_LOGS?.setGlobalContextProperty(key, valueToJs(value, 'value'));
+  }
 
   @override
-  Future<void> removeGlobalAttribute(String key) async {}
+  Future<void> removeGlobalAttribute(String key) async {
+    DD_LOGS?.removeGlobalContextProperty(key);
+  }
 
   @override
   Future<void> deinitialize() async {}
@@ -86,7 +93,10 @@ class DdLogsWeb extends DdLogsPlatform {
   }
 
   @override
-  Future<void> addTag(String loggerHandle, String tag, [String? value]) async {}
+  Future<void> addTag(String loggerHandle, String tag, [String? value]) async {
+    final logger = _activeLoggers[loggerHandle];
+    logger?.addTag(tag, value);
+  }
 
   @override
   Future<void> removeAttribute(String loggerHandle, String key) async {
@@ -95,10 +105,15 @@ class DdLogsWeb extends DdLogsPlatform {
   }
 
   @override
-  Future<void> removeTag(String loggerHandle, String tag) async {}
+  Future<void> removeTag(String loggerHandle, String tag) {
+    return removeTagWithKey(loggerHandle, tag);
+  }
 
   @override
-  Future<void> removeTagWithKey(String loggerHandle, String key) async {}
+  Future<void> removeTagWithKey(String loggerHandle, String key) async {
+    final logger = _activeLoggers[loggerHandle];
+    logger?.removeTagsWithKey(key);
+  }
 
   @override
   Future<void> log(
@@ -165,6 +180,9 @@ extension type _LogInitOptions._(JSObject _) implements JSObject {
   external String? get proxy;
   external String? get service;
   external String? get version;
+  external String? get source;
+  external String? get sdkVersion;
+  external String? get variant;
   external String? get trackingConsent;
 
   external factory _LogInitOptions({
@@ -174,6 +192,9 @@ extension type _LogInitOptions._(JSObject _) implements JSObject {
     String? service,
     String? proxy,
     String? version,
+    String? source,
+    String? sdkVersion,
+    String? variant,
     String? trackingConsent,
   });
 }
@@ -201,6 +222,11 @@ extension type _DdLogs._(JSObject _) implements JSObject {
 
   external void setUser(JsUser userInfo);
   external void setUserProperty(String key, JSAny? value);
+  external void clearUser();
+
+  external void setAccount(JsAccount userInfo);
+  external void setAccountProperty(String key, JSAny? value);
+  external void clearAccount();
 
   @internal
   external Logger? createLogger(
@@ -208,6 +234,8 @@ extension type _DdLogs._(JSObject _) implements JSObject {
     _JsLoggerConfiguration? configuration,
   );
 
+  external void setGlobalContextProperty(String key, JSAny? property);
+  external void removeGlobalContextProperty(String key);
   external void setTrackingConsent(String consent);
 }
 
@@ -222,6 +250,9 @@ extension type Logger._(JSObject _) implements JSObject {
     String status,
     JSError? error,
   );
+
+  external void addTag(String key, String? value);
+  external void removeTagsWithKey(String key);
 
   external void setContextProperty(String key, JSAny? value);
   external void removeContextProperty(String key);

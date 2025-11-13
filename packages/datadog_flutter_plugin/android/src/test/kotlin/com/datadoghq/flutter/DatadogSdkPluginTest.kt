@@ -14,8 +14,11 @@ import assertk.assertThat
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import assertk.assertions.isNullOrEmpty
 import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
+import com.datadog.android.api.context.AccountInfo
 import com.datadog.android.api.context.UserInfo
 import com.datadog.android.core.configuration.BatchProcessingLevel
 import com.datadog.android.core.configuration.BatchSize
@@ -39,6 +42,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 @ExtendWith(ForgeExtension::class)
+@Suppress("LargeClass")
 class DatadogSdkPluginTest {
     lateinit var plugin: DatadogSdkPlugin
 
@@ -79,11 +83,21 @@ class DatadogSdkPluginTest {
             "value" to ContractParameter.Type(SupportedContractType.STRING)
         )),
         Contract("setUserInfo", mapOf(
+            "id" to ContractParameter.Type(SupportedContractType.STRING),
             "extraInfo" to ContractParameter.Type(SupportedContractType.MAP)
         )),
         Contract("addUserExtraInfo", mapOf(
             "extraInfo" to ContractParameter.Type(SupportedContractType.MAP)
         )),
+        Contract("clearUserInfo", mapOf()),
+        Contract("setAccountInfo", mapOf(
+            "id" to ContractParameter.Type(SupportedContractType.STRING),
+            "extraInfo" to ContractParameter.Type(SupportedContractType.MAP)
+        )),
+        Contract("addAccountExtraInfo", mapOf(
+            "extraInfo" to ContractParameter.Type(SupportedContractType.MAP)
+        )),
+        Contract("clearAccountInfo", mapOf()),
         Contract("setTrackingConsent", mapOf(
             "value" to ContractParameter.Type(SupportedContractType.STRING)
         )),
@@ -560,6 +574,8 @@ class DatadogSdkPluginTest {
         // THEN
         val core = Datadog.getInstance()
         val coreFeature: Any = core.getPrivate("coreFeature")!!
+        // Ensure safe execution of setting tracking consent before trying to read it
+        Thread.sleep(10)
         val trackingConsent: TrackingConsent? = coreFeature
             .getFieldValue<Any, Any>("trackingConsentProvider")
             .getFieldValue("consent")
@@ -598,6 +614,8 @@ class DatadogSdkPluginTest {
         // THEN
         val core = Datadog.getInstance()
         val coreFeature: Any = core.getPrivate("coreFeature")!!
+        // Ensure safe execution of setting tracking consent before trying to read it
+        Thread.sleep(10)
         val userInfo: UserInfo? = coreFeature
             .getFieldValue<Any, Any>("userInfoProvider")
             .getFieldValue("internalUserInfo")
@@ -619,7 +637,7 @@ class DatadogSdkPluginTest {
         )
         plugin.initialize(config, TrackingConsent.GRANTED)
 
-        val id = forge.aNullable { forge.aString() }
+        val id = forge.aString()
         val name = forge.aNullable { forge.aString() }
         val email = forge.aNullable { forge.aString() }
         val extraInfo = forge.exhaustiveAttributes()
@@ -640,6 +658,8 @@ class DatadogSdkPluginTest {
         // THEN
         val core = Datadog.getInstance()
         val coreFeature: Any = core.getPrivate("coreFeature")!!
+        // Ensure safe write before attempting to read
+        Thread.sleep(10)
         val userInfo: UserInfo? = coreFeature
             .getFieldValue<Any, Any>("userInfoProvider")
             .getFieldValue("internalUserInfo")
@@ -661,10 +681,12 @@ class DatadogSdkPluginTest {
         )
         plugin.initialize(config, TrackingConsent.GRANTED)
 
+        val id = forge.aString()
         val extraInfo = forge.exhaustiveAttributes()
         val methodCall = MethodCall(
             "addUserExtraInfo",
             mapOf(
+                "id" to id,
                 "extraInfo" to extraInfo
             )
         )
@@ -676,10 +698,219 @@ class DatadogSdkPluginTest {
         // THEN
         val core = Datadog.getInstance()
         val coreFeature: Any = core.getPrivate("coreFeature")!!
+        // Ensure safe write before attempting to read
+        Thread.sleep(10)
         val userInfo: UserInfo? = coreFeature
             .getFieldValue<Any, Any>("userInfoProvider")
             .getFieldValue("internalUserInfo")
         assertThat(userInfo?.additionalProperties).isEqualTo(extraInfo)
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M clear user info W called through MethodChannel`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val config = mapOf(
+            "clientToken" to forge.aString(),
+            "env" to forge.anAlphaNumericalString()
+        )
+        plugin.initialize(config, TrackingConsent.GRANTED)
+
+        val id = forge.aString()
+        val name = forge.aNullable { forge.aString() }
+        val email = forge.aNullable { forge.aString() }
+        val extraInfo = forge.exhaustiveAttributes()
+        val firstMockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(MethodCall(
+            "setUserInfo",
+            mapOf(
+                "id" to id,
+                "name" to name,
+                "email" to email,
+                "extraInfo" to extraInfo
+            )
+        ), firstMockResult)
+
+        // WHEN
+        val methodCall = MethodCall(
+            "clearUserInfo",
+            mapOf<String, Any?>()
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        val core = Datadog.getInstance()
+        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        // Ensure safe write before attempting to read
+        Thread.sleep(10)
+        val userInfo: UserInfo? = coreFeature
+            .getFieldValue<Any, Any>("userInfoProvider")
+            .getFieldValue("internalUserInfo")
+        assertThat(userInfo?.id).isNull()
+        assertThat(userInfo?.name).isNull()
+        assertThat(userInfo?.email).isNull()
+        assertThat(userInfo?.additionalProperties).isNullOrEmpty()
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M set account info W called through MethodChannel`(
+        @StringForgery id: String,
+        @StringForgery name: String,
+        forge: Forge
+    ) {
+        // GIVEN
+        val config = mapOf(
+            "clientToken" to forge.aString(),
+            "env" to forge.anAlphaNumericalString()
+        )
+        plugin.initialize(config, TrackingConsent.GRANTED)
+
+        val methodCall = MethodCall(
+            "setAccountInfo",
+            mapOf(
+                "id" to id,
+                "name" to name,
+                "extraInfo" to mapOf<String, Any?>()
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        val core = Datadog.getInstance()
+        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        // Ensure safe execution of setting tracking consent before trying to read it
+        Thread.sleep(10)
+        val accountInfo: AccountInfo? = coreFeature
+            .getFieldValue<Any, Any>("accountInfoProvider")
+            .getFieldValue("internalAccountInfo")
+        assertThat(accountInfo?.id).isEqualTo(id)
+        assertThat(accountInfo?.name).isEqualTo(name)
+        assertThat(accountInfo?.extraInfo).isNotNull().isEmpty()
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M set account info W called through MethodChannel(null values, exhaustive attributes)`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val config = mapOf(
+            "clientToken" to forge.aString(),
+            "env" to forge.anAlphaNumericalString()
+        )
+        plugin.initialize(config, TrackingConsent.GRANTED)
+
+        val id = forge.aString()
+        val name = forge.aNullable { forge.aString() }
+        val extraInfo = forge.exhaustiveAttributes()
+        val methodCall = MethodCall(
+            "setAccountInfo",
+            mapOf(
+                "id" to id,
+                "name" to name,
+                "extraInfo" to extraInfo
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        val core = Datadog.getInstance()
+        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        // Ensure safe write before attempting to read
+        Thread.sleep(10)
+        val accountInfo: AccountInfo? = coreFeature
+            .getFieldValue<Any, Any>("accountInfoProvider")
+            .getFieldValue("internalAccountInfo")
+        assertThat(accountInfo?.id).isEqualTo(id)
+        assertThat(accountInfo?.name).isEqualTo(name)
+        assertThat(accountInfo?.extraInfo).isEqualTo(extraInfo)
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M set account extra info W called through MethodChannel(exhaustive attributes)`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val config = mapOf(
+            "clientToken" to forge.aString(),
+            "env" to forge.anAlphaNumericalString()
+        )
+        plugin.initialize(config, TrackingConsent.GRANTED)
+        val mockFirstResult = mock<MethodChannel.Result>()
+        val id = forge.aString()
+        plugin.onMethodCall(MethodCall(
+            "setAccountInfo",
+            mapOf(
+                "id" to id,
+                "extraInfo" to mapOf<String, Any?>()
+            )
+        ), mockFirstResult)
+
+        // WHEN
+        val extraInfo = forge.exhaustiveAttributes()
+        val methodCall = MethodCall(
+            "addAccountExtraInfo",
+            mapOf(
+                "extraInfo" to extraInfo
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        val core = Datadog.getInstance()
+        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        // Ensure safe write before attempting to read
+        Thread.sleep(10)
+        val accountInfo: AccountInfo? = coreFeature
+            .getFieldValue<Any, Any>("accountInfoProvider")
+            .getFieldValue("internalAccountInfo")
+        assertThat(accountInfo?.extraInfo).isEqualTo(extraInfo)
+        verify(mockResult).success(null)
+    }
+
+    @Test
+    fun `M clear account info W called through MethodChannel`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val config = mapOf(
+            "clientToken" to forge.aString(),
+            "env" to forge.anAlphaNumericalString()
+        )
+        plugin.initialize(config, TrackingConsent.GRANTED)
+
+        val id = forge.aString()
+        val extraInfo = forge.exhaustiveAttributes()
+        val methodCall = MethodCall(
+            "clearAccountInfo",
+            mapOf<String, Any?>()
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        val core = Datadog.getInstance()
+        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        // Ensure safe write before attempting to read
+        Thread.sleep(10)
+        val accountInfo: UserInfo? = coreFeature
+            .getFieldValue<Any, Any>("accountInfoProvider")
+            .getFieldValue("internalAccountInfo")
+        assertThat(accountInfo).isNull()
         verify(mockResult).success(null)
     }
 

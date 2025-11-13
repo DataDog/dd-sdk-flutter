@@ -15,6 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:uuid/v4.dart';
 
 class MockInternalLogger extends Mock implements InternalLogger {}
 
@@ -46,13 +47,15 @@ void main() {
     when(() => mockDatadogSdk.internalLogger).thenReturn(mockInternalLogger);
 
     mockDatadogPlatform = MockDatadogPlatform();
-    when(() => mockDatadogPlatform.updateTelemetryConfiguration(any(), any()))
-        .thenAnswer((_) => Future.value());
+    when(
+      () => mockDatadogPlatform.updateTelemetryConfiguration(any(), any()),
+    ).thenAnswer((_) => Future.value());
     when(() => mockDatadogSdk.platform).thenReturn(mockDatadogPlatform);
 
     mockRumPlatform = MockRumPlatform();
-    when(() => mockRumPlatform.setInternalViewAttribute(any(), any()))
-        .thenAnswer((_) => Future.value());
+    when(
+      () => mockRumPlatform.setInternalViewAttribute(any(), any()),
+    ).thenAnswer((_) => Future.value());
   });
 
   test('RumResourceType parses simple mimeTypes from ContentType', () {
@@ -79,6 +82,22 @@ void main() {
 
     final other = ContentType.parse('application/octet-stream');
     expect(resourceTypeFromContentType(other), RumResourceType.native);
+  });
+
+  test('configuration has correct defaults', () {
+    final configuration = DatadogRumConfiguration(applicationId: 'fake-app-id');
+
+    expect(configuration.sessionSamplingRate, 100.0);
+    expect(configuration.traceSampleRate, 20.0);
+    expect(configuration.traceContextInjection, TraceContextInjection.sampled);
+    expect(configuration.detectLongTasks, true);
+    expect(configuration.longTaskThreshold, 0.1);
+    expect(configuration.vitalUpdateFrequency, VitalsFrequency.average);
+    expect(configuration.reportFlutterPerformance, false);
+    expect(configuration.trackNonFatalAnrs, isNull);
+    expect(configuration.appHangThreshold, isNull);
+    expect(configuration.trackAnonymousUser, true);
+    expect(configuration.initialResourceThreshold, 0.1);
   });
 
   test('configuration is encoded correctly', () {
@@ -175,7 +194,9 @@ void main() {
     final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
 
     for (int i = 0; i < 10; ++i) {
-      expect(rum!.shouldSampleTrace(), isTrue);
+      final trace = TracingId.traceId();
+      final sessionId = UuidV4().toString();
+      expect(rum!.shouldSampleTrace(sessionId, trace), isTrue);
     }
   });
 
@@ -188,7 +209,9 @@ void main() {
     final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
 
     for (int i = 0; i < 10; ++i) {
-      expect(rum!.shouldSampleTrace(), isFalse);
+      final trace = TracingId.traceId();
+      final sessionId = UuidV4().toString();
+      expect(rum!.shouldSampleTrace(sessionId, trace), isFalse);
     }
   });
 
@@ -203,7 +226,9 @@ void main() {
     var sampleCount = 0;
     var noSampleCount = 0;
     for (int i = 0; i < numSamples; ++i) {
-      if (rum!.shouldSampleTrace()) {
+      final trace = TracingId.traceId();
+      final sessionId = UuidV4().toString();
+      if (rum!.shouldSampleTrace(sessionId, trace)) {
         sampleCount++;
       } else {
         noSampleCount++;
@@ -225,7 +250,9 @@ void main() {
     var sampleCount = 0;
     var noSampleCount = 0;
     for (int i = 0; i < numSamples; ++i) {
-      if (rum!.shouldSampleTrace()) {
+      final trace = TracingId.traceId();
+      final sessionId = UuidV4().toString();
+      if (rum!.shouldSampleTrace(sessionId, trace)) {
         sampleCount++;
       } else {
         noSampleCount++;
@@ -236,20 +263,131 @@ void main() {
     expect(noSampleCount, greaterThanOrEqualTo(1));
   });
 
+  test('Sampling decisions are deterministic for traceId', () async {
+    // Generated using the dd-trace-go implementation with the following program: https://go.dev/play/p/CUrDJtze8E_e
+    final inputs = <(BigInt, double, bool)>[
+      (BigInt.parse('5577006791947779410'), 94.0509, true),
+      (BigInt.parse('15352856648520921629'), 43.7714, true),
+      (BigInt.parse('3916589616287113937'), 68.6823, true),
+      (BigInt.parse('894385949183117216'), 30.0912, true),
+      (BigInt.parse('12156940908066221323'), 46.889, true),
+      (BigInt.parse('9828766684487745566'), 15.6519, false),
+      (BigInt.parse('4751997750760398084'), 81.364, false),
+      (BigInt.parse('11199607447739267382'), 38.0657, false),
+      (BigInt.parse('6263450610539110790'), 21.8553, false),
+      (BigInt.parse('1874068156324778273'), 36.0871, false),
+    ];
+
+    for (final (identifier, sampleRate, expected) in inputs) {
+      final rumConfiguration = DatadogRumConfiguration(
+        applicationId: 'applicationId',
+        traceSampleRate: sampleRate,
+        detectLongTasks: false,
+      );
+      final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
+      final tracingId = TracingId(identifier);
+      bool shouldSample = rum!.shouldSampleTrace(null, tracingId);
+      expect(shouldSample, expected);
+    }
+  });
+
+  test('Sampling decisions are deterministic for sessionId', () async {
+    // The numbers used in the session UUID are the same numbers truncated to 48 bits,
+    // which sometimes results in a different sampling decision. Created using this program:
+    // https://go.dev/play/p/lUl2SiOHxfZ
+    final inputs = <(String, BigInt, double, bool)>[
+      (
+        '11111111-2222-3333-4444-822107fcfd52',
+        BigInt.parse('5577006791947779410'),
+        94.050909,
+        true,
+      ),
+      (
+        '11111111-2222-3333-4444-4dc76695721d',
+        BigInt.parse('15352856648520921629'),
+        43.771419,
+        true,
+      ),
+      (
+        '11111111-2222-3333-4444-858149c6e2d1',
+        BigInt.parse('3916589616287113937'),
+        68.682307,
+        true,
+      ),
+      (
+        '11111111-2222-3333-4444-cb397916001e',
+        BigInt.parse('9828766684487745566'),
+        15.651925,
+        false,
+      ),
+      (
+        '11111111-2222-3333-4444-7f48392907a0',
+        BigInt.parse('894385949183117216'),
+        30.091186,
+        true,
+      ),
+      (
+        '11111111-2222-3333-4444-7cc6f3875d04',
+        BigInt.parse('4751997750760398084'),
+        81.363996,
+        true,
+      ),
+      (
+        '11111111-2222-3333-4444-ffa2ba517936',
+        BigInt.parse('11199607447739267382'),
+        38.065719,
+        true,
+      ),
+      (
+        '11111111-2222-3333-4444-21587cb3ad0b',
+        BigInt.parse('12156940908066221323'),
+        46.888984,
+        false,
+      ),
+      (
+        '11111111-2222-3333-4444-768b7c4e0b68',
+        BigInt.parse('11833901312327420776'),
+        29.310186,
+        false,
+      ),
+      (
+        '11111111-2222-3333-4444-3f2525632186',
+        BigInt.parse('6263450610539110790'),
+        21.855305,
+        false,
+      ),
+    ];
+
+    for (final (sessionId, identifier, sampleRate, expected) in inputs) {
+      final rumConfiguration = DatadogRumConfiguration(
+        applicationId: 'applicationId',
+        traceSampleRate: sampleRate,
+        detectLongTasks: false,
+      );
+      final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
+      final tracingId = TracingId(identifier);
+      bool shouldSample = rum!.shouldSampleTrace(sessionId, tracingId);
+      expect(shouldSample, expected);
+    }
+  });
+
   test('getCurrentSessionId returns id from platform', () async {
     // Given
     final fakeSessionId = randomString(length: 12);
     DdRumPlatform.instance = mockRumPlatform;
-    when(() => mockRumPlatform.enable(any(), any()))
-        .thenAnswer((_) => Future.value());
-    when(() => mockRumPlatform.getCurrentSessionId())
-        .thenAnswer((_) => Future.value(fakeSessionId));
+    when(
+      () => mockRumPlatform.enable(any(), any()),
+    ).thenAnswer((_) => Future.value());
+    when(
+      () => mockRumPlatform.getCurrentSessionId(),
+    ).thenAnswer((_) => Future.value(fakeSessionId));
     final rum = await DatadogRum.enable(
-        mockDatadogSdk,
-        DatadogRumConfiguration(
-          applicationId: 'applicationId',
-          detectLongTasks: false,
-        ));
+      mockDatadogSdk,
+      DatadogRumConfiguration(
+        applicationId: 'applicationId',
+        detectLongTasks: false,
+      ),
+    );
 
     // When
     var sessionId = await rum!.getCurrentSessionId();
@@ -261,16 +399,19 @@ void main() {
   test('addAttribute with null calls remove attribute instead', () async {
     // Given
     DdRumPlatform.instance = mockRumPlatform;
-    when(() => mockRumPlatform.enable(any(), any()))
-        .thenAnswer((_) => Future.value());
-    when(() => mockRumPlatform.removeAttribute(any()))
-        .thenAnswer((_) => Future.value());
+    when(
+      () => mockRumPlatform.enable(any(), any()),
+    ).thenAnswer((_) => Future.value());
+    when(
+      () => mockRumPlatform.removeAttribute(any()),
+    ).thenAnswer((_) => Future.value());
     final rum = await DatadogRum.enable(
-        mockDatadogSdk,
-        DatadogRumConfiguration(
-          applicationId: 'applicationId',
-          detectLongTasks: false,
-        ));
+      mockDatadogSdk,
+      DatadogRumConfiguration(
+        applicationId: 'applicationId',
+        detectLongTasks: false,
+      ),
+    );
 
     // when
     rum!.addAttribute('attribute-key', null);
@@ -280,55 +421,81 @@ void main() {
     verifyNever(() => mockRumPlatform.addAttribute(any(), any()));
   });
 
-  test('addError does not forward to platform on MissingPluginException',
-      () async {
-    // Given
-    DdRumPlatform.instance = mockRumPlatform;
-    when(() => mockRumPlatform.enable(any(), any()))
-        .thenAnswer((_) => Future.value());
-    when(() => mockRumPlatform.removeAttribute(any()))
-        .thenAnswer((_) => Future.value());
-    final rum = await DatadogRum.enable(
+  test(
+    'addError does not forward to platform on MissingPluginException',
+    () async {
+      // Given
+      DdRumPlatform.instance = mockRumPlatform;
+      when(
+        () => mockRumPlatform.enable(any(), any()),
+      ).thenAnswer((_) => Future.value());
+      when(
+        () => mockRumPlatform.removeAttribute(any()),
+      ).thenAnswer((_) => Future.value());
+      final rum = await DatadogRum.enable(
         mockDatadogSdk,
         DatadogRumConfiguration(
           applicationId: 'applicationId',
           detectLongTasks: false,
-        ));
+        ),
+      );
 
-    // when
-    final exception = MissingPluginException(
-        'No implementation found for method addError on channel datadog_sdk_flutter.rum');
-    rum!.addError(exception, RumErrorSource.source);
+      // when
+      final exception = MissingPluginException(
+        'No implementation found for method addError on channel datadog_sdk_flutter.rum',
+      );
+      rum!.addError(exception, RumErrorSource.source);
 
-    // Then
-    verifyNever(() => rum.addError(any(), any(),
-        stackTrace: any(), errorType: any(), attributes: any()));
-  });
+      // Then
+      verifyNever(
+        () => rum.addError(
+          any(),
+          any(),
+          stackTrace: any(),
+          errorType: any(),
+          attributes: any(),
+        ),
+      );
+    },
+  );
 
-  test('addErrorInfo does not forward to platform on MissingPluginException',
-      () async {
-    // Given
-    DdRumPlatform.instance = mockRumPlatform;
-    when(() => mockRumPlatform.enable(any(), any()))
-        .thenAnswer((_) => Future.value());
-    when(() => mockRumPlatform.removeAttribute(any()))
-        .thenAnswer((_) => Future.value());
-    final rum = await DatadogRum.enable(
+  test(
+    'addErrorInfo does not forward to platform on MissingPluginException',
+    () async {
+      // Given
+      DdRumPlatform.instance = mockRumPlatform;
+      when(
+        () => mockRumPlatform.enable(any(), any()),
+      ).thenAnswer((_) => Future.value());
+      when(
+        () => mockRumPlatform.removeAttribute(any()),
+      ).thenAnswer((_) => Future.value());
+      final rum = await DatadogRum.enable(
         mockDatadogSdk,
         DatadogRumConfiguration(
           applicationId: 'applicationId',
           detectLongTasks: false,
-        ));
+        ),
+      );
 
-    // when
-    final exception = MissingPluginException(
-        'No implementation found for method addError on channel datadog_sdk_flutter.rum');
-    rum!.addErrorInfo(exception.toString(), RumErrorSource.source);
+      // when
+      final exception = MissingPluginException(
+        'No implementation found for method addError on channel datadog_sdk_flutter.rum',
+      );
+      rum!.addErrorInfo(exception.toString(), RumErrorSource.source);
 
-    // Then
-    verifyNever(() => rum.addError(any(), any(),
-        stackTrace: any(), errorType: any(), attributes: any()));
-  });
+      // Then
+      verifyNever(
+        () => rum.addError(
+          any(),
+          any(),
+          stackTrace: any(),
+          errorType: any(),
+          attributes: any(),
+        ),
+      );
+    },
+  );
 
   group('markViewFirstBuildComplete', () {
     late DatadogRum rum;
@@ -343,54 +510,77 @@ void main() {
         detectLongTasks: false,
       );
 
-      when(() => mockRumPlatform.enable(any(), any()))
-          .thenAnswer((_) => Future.value());
-      when(() => mockRumPlatform.startView(any(), any(), any(), any()))
-          .thenAnswer((_) => Future.value());
-      when(() => mockRumPlatform.stopView(any(), any(), any()))
-          .thenAnswer((_) => Future.value());
-      when(() => mockRumPlatform.addAttribute(any(), any()))
-          .thenAnswer((_) => Future.value());
+      when(
+        () => mockRumPlatform.enable(any(), any()),
+      ).thenAnswer((_) => Future.value());
+      when(
+        () => mockRumPlatform.startView(any(), any(), any(), any()),
+      ).thenAnswer((_) => Future.value());
+      when(
+        () => mockRumPlatform.stopView(any(), any(), any()),
+      ).thenAnswer((_) => Future.value());
+      when(
+        () => mockRumPlatform.addAttribute(any(), any()),
+      ).thenAnswer((_) => Future.value());
 
       rum = (await DatadogRum.enable(mockDatadogSdk, rumConfiguration))!;
       rum.timeProvider = mockTimeProvider;
     });
 
-    test('markViewFirstBuildComplete adds ns timestamp as view attribute',
-        testOn: 'vm', () {
-      final startTime = DateTime.now();
-      final duration = random.nextInt(1 << 32);
-      final timeAnswers = [
-        startTime,
-        startTime.add(Duration(microseconds: duration)),
-      ];
-      when(() => mockTimeProvider.now())
-          .thenAnswer((_) => timeAnswers.removeAt(0));
-      rum.startView('test_view');
-      rum.markViewFirstBuildComplete('test_view');
+    test(
+      'markViewFirstBuildComplete adds ns timestamp as view attribute',
+      testOn: 'vm',
+      () {
+        final startTime = DateTime.now();
+        final duration = random.nextInt(1 << 32);
+        final timeAnswers = [
+          startTime,
+          startTime.add(Duration(microseconds: duration)),
+        ];
+        when(
+          () => mockTimeProvider.now(),
+        ).thenAnswer((_) => timeAnswers.removeAt(0));
+        rum.startView('test_view');
+        rum.markViewFirstBuildComplete('test_view');
 
-      verify(() => mockRumPlatform.setInternalViewAttribute(
-          '_dd.performance.first_build_complete', duration * 1000));
-    });
-
-    test('markViewFirstBuildComplete adds no attribute if view not started',
-        () {
-      rum.markViewFirstBuildComplete('test_view');
-
-      verifyNever(() => mockRumPlatform.setInternalViewAttribute(
-          '_dd.performance.first_build_complete', any()));
-    });
+        verify(
+          () => mockRumPlatform.setInternalViewAttribute(
+            '_dd.performance.first_build_complete',
+            duration * 1000,
+          ),
+        );
+      },
+    );
 
     test(
-        'markViewFirstBuildComplete adds no attribute if different view started',
-        () {
-      when(() => mockTimeProvider.now()).thenAnswer((_) => DateTime.now());
-      rum.startView('test_view');
-      rum.markViewFirstBuildComplete('second_view');
+      'markViewFirstBuildComplete adds no attribute if view not started',
+      () {
+        rum.markViewFirstBuildComplete('test_view');
 
-      verifyNever(() => mockRumPlatform.setInternalViewAttribute(
-          '_dd.performance.first_build_complete', any()));
-    });
+        verifyNever(
+          () => mockRumPlatform.setInternalViewAttribute(
+            '_dd.performance.first_build_complete',
+            any(),
+          ),
+        );
+      },
+    );
+
+    test(
+      'markViewFirstBuildComplete adds no attribute if different view started',
+      () {
+        when(() => mockTimeProvider.now()).thenAnswer((_) => DateTime.now());
+        rum.startView('test_view');
+        rum.markViewFirstBuildComplete('second_view');
+
+        verifyNever(
+          () => mockRumPlatform.setInternalViewAttribute(
+            '_dd.performance.first_build_complete',
+            any(),
+          ),
+        );
+      },
+    );
 
     test('markViewFirstBuildComplete adds no attribute if view stopped', () {
       when(() => mockTimeProvider.now()).thenAnswer((_) => DateTime.now());
@@ -398,8 +588,12 @@ void main() {
       rum.stopView('test_view');
       rum.markViewFirstBuildComplete('test_view');
 
-      verifyNever(() => mockRumPlatform.setInternalViewAttribute(
-          '_dd.performance.first_build_complete', any()));
+      verifyNever(
+        () => mockRumPlatform.setInternalViewAttribute(
+          '_dd.performance.first_build_complete',
+          any(),
+        ),
+      );
     });
   });
 
@@ -418,16 +612,21 @@ void main() {
 
       registerFallbackValue(RumActionType.custom);
 
-      when(() => mockRumPlatform.enable(any(), any()))
-          .thenAnswer((_) => Future.value());
-      when(() => mockRumPlatform.startView(any(), any(), any(), any()))
-          .thenAnswer((_) => Future.value());
-      when(() => mockRumPlatform.stopView(any(), any(), any()))
-          .thenAnswer((_) => Future.value());
-      when(() => mockRumPlatform.addAction(any(), any(), any(), any()))
-          .thenAnswer((_) => Future.value());
-      when(() => mockRumPlatform.addAttribute(any(), any()))
-          .thenAnswer((_) => Future.value());
+      when(
+        () => mockRumPlatform.enable(any(), any()),
+      ).thenAnswer((_) => Future.value());
+      when(
+        () => mockRumPlatform.startView(any(), any(), any(), any()),
+      ).thenAnswer((_) => Future.value());
+      when(
+        () => mockRumPlatform.stopView(any(), any(), any()),
+      ).thenAnswer((_) => Future.value());
+      when(
+        () => mockRumPlatform.addAction(any(), any(), any(), any()),
+      ).thenAnswer((_) => Future.value());
+      when(
+        () => mockRumPlatform.addAttribute(any(), any()),
+      ).thenAnswer((_) => Future.value());
 
       rum = (await DatadogRum.enable(mockDatadogSdk, rumConfiguration))!;
       rum.timeProvider = mockTimeProvider;
@@ -438,16 +637,13 @@ void main() {
       final startTime = DateTime.now();
       final actionTime = startTime.add(Duration(seconds: 1));
       final startTime2 = actionTime.add(Duration(milliseconds: 10));
-      final fbcTime =
-          startTime2.add(Duration(microseconds: random.nextInt(1 << 8)));
-      final timeAnswers = [
-        startTime,
-        actionTime,
-        startTime2,
-        fbcTime,
-      ];
-      when(() => mockTimeProvider.now())
-          .thenAnswer((_) => timeAnswers.removeAt(0));
+      final fbcTime = startTime2.add(
+        Duration(microseconds: random.nextInt(1 << 8)),
+      );
+      final timeAnswers = [startTime, actionTime, startTime2, fbcTime];
+      when(
+        () => mockTimeProvider.now(),
+      ).thenAnswer((_) => timeAnswers.removeAt(0));
 
       // When
       rum.startView('test_view');
@@ -455,33 +651,40 @@ void main() {
       rum.startView('test_view_2');
       rum.markViewFirstBuildComplete('test_view_2');
 
-      verify(() => mockRumPlatform.setInternalViewAttribute(
+      verify(
+        () => mockRumPlatform.setInternalViewAttribute(
           '_dd.view.custom_inv_value',
-          (fbcTime.difference(actionTime)).inNanoseconds));
+          (fbcTime.difference(actionTime)).inNanoseconds,
+        ),
+      );
     });
 
-    test('markViewFirstBuildComplete does not set inv attribute if missing',
-        () {
-      // Given
-      final startTime = DateTime.now();
-      final startTime2 = startTime.add(Duration(seconds: 10));
-      final fbcTime =
-          startTime2.add(Duration(microseconds: random.nextInt(1 << 8)));
-      final timeAnswers = [
-        startTime,
-        startTime2,
-        fbcTime,
-      ];
-      when(() => mockTimeProvider.now())
-          .thenAnswer((_) => timeAnswers.removeAt(0));
+    test(
+      'markViewFirstBuildComplete does not set inv attribute if missing',
+      () {
+        // Given
+        final startTime = DateTime.now();
+        final startTime2 = startTime.add(Duration(seconds: 10));
+        final fbcTime = startTime2.add(
+          Duration(microseconds: random.nextInt(1 << 8)),
+        );
+        final timeAnswers = [startTime, startTime2, fbcTime];
+        when(
+          () => mockTimeProvider.now(),
+        ).thenAnswer((_) => timeAnswers.removeAt(0));
 
-      // When
-      rum.startView('test_view');
-      rum.startView('test_view_2');
-      rum.markViewFirstBuildComplete('test_view_2');
+        // When
+        rum.startView('test_view');
+        rum.startView('test_view_2');
+        rum.markViewFirstBuildComplete('test_view_2');
 
-      verifyNever(() => mockRumPlatform.setInternalViewAttribute(
-          '_dd.view.custom_inv_value', any()));
-    });
+        verifyNever(
+          () => mockRumPlatform.setInternalViewAttribute(
+            '_dd.view.custom_inv_value',
+            any(),
+          ),
+        );
+      },
+    );
   });
 }

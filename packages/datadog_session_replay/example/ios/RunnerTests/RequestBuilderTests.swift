@@ -69,7 +69,7 @@ func requestBuildsURLRequest_WithCorrectHeaders() throws {
     #expect(request.url?.absoluteString.hasSuffix("api/v2/replay") ?? false)
     #expect(request.httpMethod == "POST")
     #expect(request.value(forHTTPHeaderField: "Content-Type") == "multipart/form-data; boundary=\(requestBuilder.multipartBuilder.boundary)")
-    let expectedUserAgent = "\(context.applicationName)/\(context.version) CFNetwork (\(context.device.name); \(context.device.osName)/\(context.device.osVersion))"
+    let expectedUserAgent = "\(context.applicationName)/\(context.version) CFNetwork (\(context.device.name); \(context.os.name)/\(context.os.version))"
     #expect(request.value(forHTTPHeaderField: "User-Agent") == expectedUserAgent)
     #expect(request.value(forHTTPHeaderField: "DD-API-KEY") == context.clientToken)
     #expect(request.value(forHTTPHeaderField: "DD-EVP-ORIGIN") == context.source)

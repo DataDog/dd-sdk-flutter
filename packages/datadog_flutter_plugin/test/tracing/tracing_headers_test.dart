@@ -5,8 +5,20 @@
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/src/tracing/tracing_headers.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockDdRum extends Mock implements DatadogRum {}
 
 void main() {
+  late MockDdRum mockRum;
+
+  setUp(() {
+    registerFallbackValue(TracingId(BigInt.one));
+
+    mockRum = MockDdRum();
+    when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
+  });
+
   test('TracingIdRepresentation generates proper values', () {
     // Create a value in 128-bit hex that has leading zeros on both
     // the low and high 64-bits, and ensure we get the proper values
@@ -22,18 +34,30 @@ void main() {
 
     final tracingId = TracingId(combined);
 
-    expect(tracingId.asString(TracingIdRepresentation.hex),
-        '1222f00d89934ba01445feed89934bb');
-    expect(tracingId.asString(TracingIdRepresentation.hex32Chars),
-        '01222f00d89934ba01445feed89934bb');
-    expect(tracingId.asString(TracingIdRepresentation.hex16Chars),
-        '01445feed89934bb');
-    expect(tracingId.asString(TracingIdRepresentation.highHex16Chars),
-        '01222f00d89934ba');
-    expect(tracingId.asString(TracingIdRepresentation.decimal),
-        '1506719429260448406838152867989763259');
-    expect(tracingId.asString(TracingIdRepresentation.lowDecimal),
-        '91303371895026875');
+    expect(
+      tracingId.asString(TracingIdRepresentation.hex),
+      '1222f00d89934ba01445feed89934bb',
+    );
+    expect(
+      tracingId.asString(TracingIdRepresentation.hex32Chars),
+      '01222f00d89934ba01445feed89934bb',
+    );
+    expect(
+      tracingId.asString(TracingIdRepresentation.hex16Chars),
+      '01445feed89934bb',
+    );
+    expect(
+      tracingId.asString(TracingIdRepresentation.highHex16Chars),
+      '01222f00d89934ba',
+    );
+    expect(
+      tracingId.asString(TracingIdRepresentation.decimal),
+      '1506719429260448406838152867989763259',
+    );
+    expect(
+      tracingId.asString(TracingIdRepresentation.lowDecimal),
+      '91303371895026875',
+    );
   });
 
   test('traceId generates proper values', () {
@@ -48,7 +72,7 @@ void main() {
   });
 
   test('generateTracingContext generates proper bit values', () {
-    final context = generateTracingContext(true);
+    final context = generateTracingContext(mockRum);
 
     expect(context.traceId.value.bitLength, lessThanOrEqualTo(128));
     expect(context.spanId.value.bitLength, lessThanOrEqualTo(63));
@@ -56,19 +80,24 @@ void main() {
   });
 
   test('Datadog attributes generated correctly', () {
-    final context = generateTracingContext(true);
+    final context = generateTracingContext(mockRum);
 
     final attributes = generateDatadogAttributes(context, 30.0);
 
-    expect(attributes['_dd.trace_id'],
-        context.traceId.asString(TracingIdRepresentation.hex32Chars));
-    expect(attributes['_dd.span_id'],
-        context.spanId.asString(TracingIdRepresentation.decimal));
+    expect(
+      attributes['_dd.trace_id'],
+      context.traceId.asString(TracingIdRepresentation.hex32Chars),
+    );
+    expect(
+      attributes['_dd.span_id'],
+      context.spanId.asString(TracingIdRepresentation.decimal),
+    );
     expect(attributes['_dd.rule_psr'], 0.3);
   });
 
   test('Unsampled context does not generate datadog attributes', () {
-    final context = generateTracingContext(false);
+    when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+    final context = generateTracingContext(mockRum);
 
     final attributes = generateDatadogAttributes(context, 30.0);
 
@@ -81,122 +110,160 @@ void main() {
   // make sure all tests work the same way for all TraceContextInjection options
   for (final contextInjection in TraceContextInjection.values) {
     test(
-        'Datadog tracing headers are generated correctly { $contextInjection, sampled }',
-        () {
-      final context = generateTracingContext(true);
+      'Datadog tracing headers are generated correctly { $contextInjection, sampled }',
+      () {
+        final context = generateTracingContext(mockRum);
+
+        final headers = getTracingHeaders(
+          context,
+          TracingHeaderType.datadog,
+          contextInjection: contextInjection,
+        );
+
+        expect(
+          headers['x-datadog-trace-id'],
+          context.traceId.asString(TracingIdRepresentation.lowDecimal),
+        );
+        expect(
+          headers['x-datadog-tags'],
+          '_dd.p.tid=${context.traceId.asString(TracingIdRepresentation.highHex16Chars)}',
+        );
+        expect(
+          headers['x-datadog-parent-id'],
+          context.spanId.asString(TracingIdRepresentation.decimal),
+        );
+        expect(headers['x-datadog-sampling-priority'], '1');
+        expect(headers['x-datadog-origin'], 'rum');
+      },
+    );
+
+    test(
+      'b3 tracing headers are generated correctly { $contextInjection, sampled }',
+      () {
+        final context = generateTracingContext(mockRum);
+
+        final headers = getTracingHeaders(
+          context,
+          TracingHeaderType.b3,
+          contextInjection: contextInjection,
+        );
+
+        final traceString = context.traceId.asString(
+          TracingIdRepresentation.hex32Chars,
+        );
+        final spanString = context.spanId.asString(
+          TracingIdRepresentation.hex16Chars,
+        );
+        final expectedHeader = '$traceString-$spanString-1'.toLowerCase();
+
+        expect(headers['b3'], expectedHeader);
+      },
+    );
+
+    test(
+      'b3multi tracing headers are generated correctly { $contextInjection, sampled }',
+      () {
+        final context = generateTracingContext(mockRum);
+
+        final headers = getTracingHeaders(
+          context,
+          TracingHeaderType.b3multi,
+          contextInjection: contextInjection,
+        );
+
+        final traceString = context.traceId.asString(
+          TracingIdRepresentation.hex32Chars,
+        );
+        final spanString = context.spanId.asString(
+          TracingIdRepresentation.hex16Chars,
+        );
+
+        expect(headers['X-B3-TraceId'], traceString.toLowerCase());
+        expect(headers['X-B3-SpanId'], spanString.toLowerCase());
+        expect(headers['X-B3-ParentSpanId'], isNull);
+        expect(headers['X-B3-Sampled'], '1');
+      },
+    );
+
+    test(
+      'tracecontext tracing headers are generated correctly { $contextInjection, sampled }',
+      () {
+        final context = generateTracingContext(mockRum);
+
+        final headers = getTracingHeaders(
+          context,
+          TracingHeaderType.tracecontext,
+          contextInjection: contextInjection,
+        );
+
+        final traceString = context.traceId.asString(
+          TracingIdRepresentation.hex32Chars,
+        );
+        final spanString = context.spanId.asString(
+          TracingIdRepresentation.hex16Chars,
+        );
+        final expectedParentHeader = '00-$traceString-$spanString-01';
+        final expectedStateHeader = 'dd=s:1;o:rum;p:$spanString';
+
+        expect(headers['traceparent'], expectedParentHeader.toLowerCase());
+        expect(headers['tracestate'], expectedStateHeader.toLowerCase());
+      },
+    );
+  }
+
+  test(
+    'Datadog tracing headers are generated correctly { TraceContextInjection.all, unsampled }',
+    () {
+      when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+      final context = generateTracingContext(mockRum);
 
       final headers = getTracingHeaders(
         context,
         TracingHeaderType.datadog,
-        contextInjection: contextInjection,
+        contextInjection: TraceContextInjection.all,
       );
 
-      expect(headers['x-datadog-trace-id'],
-          context.traceId.asString(TracingIdRepresentation.lowDecimal));
-      expect(headers['x-datadog-tags'],
-          '_dd.p.tid=${context.traceId.asString(TracingIdRepresentation.highHex16Chars)}');
-      expect(headers['x-datadog-parent-id'],
-          context.spanId.asString(TracingIdRepresentation.decimal));
-      expect(headers['x-datadog-sampling-priority'], '1');
+      expect(
+        headers['x-datadog-trace-id'],
+        context.traceId.asString(TracingIdRepresentation.lowDecimal),
+      );
+      expect(
+        headers['x-datadog-tags'],
+        '_dd.p.tid=${context.traceId.asString(TracingIdRepresentation.highHex16Chars)}',
+      );
+      expect(
+        headers['x-datadog-parent-id'],
+        context.spanId.asString(TracingIdRepresentation.decimal),
+      );
+      expect(headers['x-datadog-sampling-priority'], '0');
       expect(headers['x-datadog-origin'], 'rum');
-    });
-
-    test(
-        'b3 tracing headers are generated correctly { $contextInjection, sampled }',
-        () {
-      final context = generateTracingContext(true);
-
-      final headers = getTracingHeaders(
-        context,
-        TracingHeaderType.b3,
-        contextInjection: contextInjection,
-      );
-
-      final traceString =
-          context.traceId.asString(TracingIdRepresentation.hex32Chars);
-      final spanString =
-          context.spanId.asString(TracingIdRepresentation.hex16Chars);
-      final expectedHeader = '$traceString-$spanString-1'.toLowerCase();
-
-      expect(headers['b3'], expectedHeader);
-    });
-
-    test(
-        'b3multi tracing headers are generated correctly { $contextInjection, sampled }',
-        () {
-      final context = generateTracingContext(true);
-
-      final headers = getTracingHeaders(
-        context,
-        TracingHeaderType.b3multi,
-        contextInjection: contextInjection,
-      );
-
-      final traceString =
-          context.traceId.asString(TracingIdRepresentation.hex32Chars);
-      final spanString =
-          context.spanId.asString(TracingIdRepresentation.hex16Chars);
-
-      expect(headers['X-B3-TraceId'], traceString.toLowerCase());
-      expect(headers['X-B3-SpanId'], spanString.toLowerCase());
-      expect(headers['X-B3-ParentSpanId'], isNull);
-      expect(headers['X-B3-Sampled'], '1');
-    });
-
-    test(
-        'tracecontext tracing headers are generated correctly { $contextInjection, sampled }',
-        () {
-      final context = generateTracingContext(true);
-
-      final headers = getTracingHeaders(
-        context,
-        TracingHeaderType.tracecontext,
-        contextInjection: contextInjection,
-      );
-
-      final traceString =
-          context.traceId.asString(TracingIdRepresentation.hex32Chars);
-      final spanString =
-          context.spanId.asString(TracingIdRepresentation.hex16Chars);
-      final expectedParentHeader = '00-$traceString-$spanString-01';
-      final expectedStateHeader = 'dd=s:1;o:rum;p:$spanString';
-
-      expect(headers['traceparent'], expectedParentHeader.toLowerCase());
-      expect(headers['tracestate'], expectedStateHeader.toLowerCase());
-    });
-  }
+    },
+  );
 
   test(
-      'Datadog tracing headers are generated correctly { TraceContextInjection.all, unsampled }',
-      () {
-    final context = generateTracingContext(false);
+    'Datadog tracing headers are generated correctly { TraceContextInjection.sampled, unsampled }',
+    () {
+      when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+      final context = generateTracingContext(mockRum);
 
-    final headers = getTracingHeaders(
-      context,
-      TracingHeaderType.datadog,
-      contextInjection: TraceContextInjection.all,
-    );
+      final headers = getTracingHeaders(
+        context,
+        TracingHeaderType.datadog,
+        contextInjection: TraceContextInjection.sampled,
+      );
 
-    expect(headers['x-datadog-trace-id'],
-        context.traceId.asString(TracingIdRepresentation.lowDecimal));
-    expect(headers['x-datadog-tags'],
-        '_dd.p.tid=${context.traceId.asString(TracingIdRepresentation.highHex16Chars)}');
-    expect(headers['x-datadog-parent-id'],
-        context.spanId.asString(TracingIdRepresentation.decimal));
-    expect(headers['x-datadog-sampling-priority'], '0');
-    expect(headers['x-datadog-origin'], 'rum');
-  });
+      expect(headers['x-datadog-trace-id'], isNull);
+      expect(headers['x-datadog-parent-id'], isNull);
+      expect(headers['x-datadog-sampling-priority'], isNull);
+      expect(headers['x-datadog-origin'], isNull);
+    },
+  );
 
-  test(
-      'Datadog tracing headers are generated correctly { TraceContextInjection.sampled, unsampled }',
-      () {
-    final context = generateTracingContext(false);
+  test('Default for tracing headers is TraceContextInjection.sampled', () {
+    when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+    final context = generateTracingContext(mockRum);
 
-    final headers = getTracingHeaders(
-      context,
-      TracingHeaderType.datadog,
-      contextInjection: TraceContextInjection.sampled,
-    );
+    final headers = getTracingHeaders(context, TracingHeaderType.datadog);
 
     expect(headers['x-datadog-trace-id'], isNull);
     expect(headers['x-datadog-parent-id'], isNull);
@@ -205,101 +272,115 @@ void main() {
   });
 
   test(
-      'b3 tracing headers are generated correctly { TraceContextInjection.all, unsampled }',
-      () {
-    final context = generateTracingContext(false);
+    'b3 tracing headers are generated correctly { TraceContextInjection.all, unsampled }',
+    () {
+      when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+      final context = generateTracingContext(mockRum);
 
-    final headers = getTracingHeaders(
-      context,
-      TracingHeaderType.b3,
-      contextInjection: TraceContextInjection.all,
-    );
+      final headers = getTracingHeaders(
+        context,
+        TracingHeaderType.b3,
+        contextInjection: TraceContextInjection.all,
+      );
 
-    expect(headers['b3'], '0');
-  });
-
-  test(
-      'b3 tracing headers are generated correctly { TraceContextInjection.sampled, unsampled }',
-      () {
-    final context = generateTracingContext(false);
-
-    final headers = getTracingHeaders(
-      context,
-      TracingHeaderType.b3,
-      contextInjection: TraceContextInjection.sampled,
-    );
-
-    expect(headers['b3'], isNull);
-  });
+      expect(headers['b3'], '0');
+    },
+  );
 
   test(
-      'b3multi tracing headers are generated correctly { TraceContextInjection.all, unsampled }',
-      () {
-    final context = generateTracingContext(false);
+    'b3 tracing headers are generated correctly { TraceContextInjection.sampled, unsampled }',
+    () {
+      when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+      final context = generateTracingContext(mockRum);
 
-    final headers = getTracingHeaders(
-      context,
-      TracingHeaderType.b3multi,
-      contextInjection: TraceContextInjection.all,
-    );
+      final headers = getTracingHeaders(
+        context,
+        TracingHeaderType.b3,
+        contextInjection: TraceContextInjection.sampled,
+      );
 
-    expect(headers['X-B3-TraceId'], isNull);
-    expect(headers['X-B3-SpanId'], isNull);
-    expect(headers['X-B3-ParentSpanId'], isNull);
-    expect(headers['X-B3-Sampled'], '0');
-  });
-
-  test(
-      'b3multi tracing headers are generated correctly { TraceContextInjection.sampled, unsampled }',
-      () {
-    final context = generateTracingContext(false);
-
-    final headers = getTracingHeaders(
-      context,
-      TracingHeaderType.b3multi,
-      contextInjection: TraceContextInjection.sampled,
-    );
-
-    expect(headers['X-B3-TraceId'], isNull);
-    expect(headers['X-B3-SpanId'], isNull);
-    expect(headers['X-B3-ParentSpanId'], isNull);
-    expect(headers['X-B3-Sampled'], isNull);
-  });
+      expect(headers['b3'], isNull);
+    },
+  );
 
   test(
-      'traceparent tracing headers are generated correctly { TraceContextInjection.all, unsampled }',
-      () {
-    final context = generateTracingContext(false);
+    'b3multi tracing headers are generated correctly { TraceContextInjection.all, unsampled }',
+    () {
+      when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+      final context = generateTracingContext(mockRum);
 
-    final headers = getTracingHeaders(
-      context,
-      TracingHeaderType.tracecontext,
-      contextInjection: TraceContextInjection.all,
-    );
+      final headers = getTracingHeaders(
+        context,
+        TracingHeaderType.b3multi,
+        contextInjection: TraceContextInjection.all,
+      );
 
-    final traceString =
-        context.traceId.asString(TracingIdRepresentation.hex32Chars);
-    final spanString =
-        context.spanId.asString(TracingIdRepresentation.hex16Chars);
-    final expectedParentHeader = '00-$traceString-$spanString-00';
-    final expectedStateHeader = 'dd=s:0;o:rum;p:$spanString';
-
-    expect(headers['traceparent'], expectedParentHeader.toLowerCase());
-    expect(headers['tracestate'], expectedStateHeader.toLowerCase());
-  });
+      expect(headers['X-B3-TraceId'], isNull);
+      expect(headers['X-B3-SpanId'], isNull);
+      expect(headers['X-B3-ParentSpanId'], isNull);
+      expect(headers['X-B3-Sampled'], '0');
+    },
+  );
 
   test(
-      'traceparent tracing headers are generated correctly { TraceContextInjection.all, unsampled }',
-      () {
-    final context = generateTracingContext(false);
+    'b3multi tracing headers are generated correctly { TraceContextInjection.sampled, unsampled }',
+    () {
+      when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+      final context = generateTracingContext(mockRum);
 
-    final headers = getTracingHeaders(
-      context,
-      TracingHeaderType.tracecontext,
-      contextInjection: TraceContextInjection.sampled,
-    );
+      final headers = getTracingHeaders(
+        context,
+        TracingHeaderType.b3multi,
+        contextInjection: TraceContextInjection.sampled,
+      );
 
-    expect(headers['traceparent'], isNull);
-    expect(headers['tracestate'], isNull);
-  });
+      expect(headers['X-B3-TraceId'], isNull);
+      expect(headers['X-B3-SpanId'], isNull);
+      expect(headers['X-B3-ParentSpanId'], isNull);
+      expect(headers['X-B3-Sampled'], isNull);
+    },
+  );
+
+  test(
+    'traceparent tracing headers are generated correctly { TraceContextInjection.all, unsampled }',
+    () {
+      when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+      final context = generateTracingContext(mockRum);
+
+      final headers = getTracingHeaders(
+        context,
+        TracingHeaderType.tracecontext,
+        contextInjection: TraceContextInjection.all,
+      );
+
+      final traceString = context.traceId.asString(
+        TracingIdRepresentation.hex32Chars,
+      );
+      final spanString = context.spanId.asString(
+        TracingIdRepresentation.hex16Chars,
+      );
+      final expectedParentHeader = '00-$traceString-$spanString-00';
+      final expectedStateHeader = 'dd=s:0;o:rum;p:$spanString';
+
+      expect(headers['traceparent'], expectedParentHeader.toLowerCase());
+      expect(headers['tracestate'], expectedStateHeader.toLowerCase());
+    },
+  );
+
+  test(
+    'traceparent tracing headers are generated correctly { TraceContextInjection.all, unsampled }',
+    () {
+      when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+      final context = generateTracingContext(mockRum);
+
+      final headers = getTracingHeaders(
+        context,
+        TracingHeaderType.tracecontext,
+        contextInjection: TraceContextInjection.sampled,
+      );
+
+      expect(headers['traceparent'], isNull);
+      expect(headers['tracestate'], isNull);
+    },
+  );
 }

@@ -22,21 +22,24 @@ internal class DefaultResourceWriter(
 ) : ResourceWriter {
     override fun write(identifier: String, resourceData: ByteArray) {
         sdkCore.getFeature(ResourceFeature.SESSION_REPLAY_RESOURCES_FEATURE_NAME)
-            ?.withWriteContext { datadogContext, eventBatchWriter ->
+            ?.withWriteContext { datadogContext, writeScope ->
                 synchronized(this) {
                     val resourceEvent = ResourceEvent(
                         identifier = identifier,
                         resourceData = resourceData,
                         applicationId = datadogContext.rumApplicationId
                     )
-                    eventBatchWriter.write(
-                        event = RawBatchEvent(
-                            data = resourceEvent.resourceData,
-                            metadata = resourceEvent.createBinaryMetadata()
-                        ),
-                        batchMetadata = null,
-                        eventType = EventType.DEFAULT
-                    )
+
+                    writeScope {
+                        it.write(
+                            event = RawBatchEvent(
+                                data = resourceEvent.resourceData,
+                                metadata = resourceEvent.createBinaryMetadata()
+                            ),
+                            batchMetadata = null,
+                            eventType = EventType.DEFAULT
+                        )
+                    }
                 }
             }
     }

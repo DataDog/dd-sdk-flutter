@@ -59,9 +59,8 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
         'grpc.method': method.path,
       };
       TracingContext? tracingContext;
-      bool shouldSample = rum.shouldSampleTrace();
       if (headerTypes.isNotEmpty) {
-        tracingContext = generateTracingContext(shouldSample);
+        tracingContext = generateTracingContext(rum);
 
         attributes[DatadogRumPlatformAttributeKey.rulePsr] =
             rum.traceSampleRate / 100.0;

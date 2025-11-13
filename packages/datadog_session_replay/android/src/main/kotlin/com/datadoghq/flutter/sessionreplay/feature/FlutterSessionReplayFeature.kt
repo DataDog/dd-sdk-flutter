@@ -68,7 +68,6 @@ internal class DefaultFlutterSessionReplayFeature(
 
     override fun onInitialize(appContext: Context) {
         sdkCore.setContextUpdateReceiver(
-            Feature.SESSION_REPLAY_FEATURE_NAME,
             this
         )
         sdkCore.setEventReceiver(
@@ -119,15 +118,17 @@ internal class DefaultFlutterSessionReplayFeature(
 
     override fun writeSegment(segment: String) {
         sdkCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME)
-            ?.withWriteContext { _, eventBatchWriter ->
+            ?.withWriteContext { _, writeScope ->
                 synchronized(this) {
                     val serializedSegment = segment.toByteArray(Charsets.UTF_8)
                     val rawBatchEvent = RawBatchEvent(data = serializedSegment)
-                    eventBatchWriter.write(
-                        event = rawBatchEvent,
-                        batchMetadata = null,
-                        eventType = EventType.DEFAULT
-                    )
+                    writeScope {
+                        it.write(
+                            event = rawBatchEvent,
+                            batchMetadata = null,
+                            eventType = EventType.DEFAULT
+                        )
+                    }
                 }
             }
     }

@@ -44,15 +44,27 @@ stages:
     - mkdir -p $CI_PROJECT_DIR/.build/test-results/
     - melos prepare
 
+.pre-web:
+  script:
+    - pushd tools/ci && dart pub get && dart run ci_helpers chrome_driver --extract && popd
+    - ./tools/ci/.tmp/chromedriver-linux64/chromedriver --version
+    - ./tools/ci/.tmp/chrome-linux64/chrome --version
+    - ./tools/ci/.tmp/chromedriver-linux64/chromedriver --port=4444 &
+    - export CHROME_EXECUTABLE=${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/chrome
+    - export PATH="$PATH:${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/"
+    - echo $CHROME_EXECUTABLE
+    - flutter doctor
+
 .pre-ios:
   script:
     - xcode-select -p
     - xcodebuild -runFirstLaunch
     - xcodebuild -downloadPlatform iOS
+    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR
 
 .pre-android:
   script:
-    - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" "platform-tools" "platforms;android-34" || true
+    - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;34.0.0" "platform-tools" "platforms;android-35" || true
     - yes | flutter doctor --android-licenses || true
     # Kill all active emulators
     - pushd tools/ci 
@@ -207,7 +219,6 @@ ios-integration-test:
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
-    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR
     - melos pod_update --no-select
     - melos run integration_test:ios
   artifacts:
@@ -347,7 +358,6 @@ nightly-ios:
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
-    - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR
     - melos pod_update --no-select
     - melos run e2e_tests:ios
   artifacts:

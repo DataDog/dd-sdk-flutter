@@ -1,50 +1,33 @@
 package com.datadoghq.flutter
 
-import android.os.Handler
-import android.os.Looper
-import com.datadog.android.Datadog
 import com.datadog.android.rum.RumConfiguration
 import com.datadog.android.rum.model.ActionEvent
 import com.datadog.android.rum.model.ErrorEvent
 import com.datadog.android.rum.model.LongTaskEvent
 import com.datadog.android.rum.model.ResourceEvent
 import com.datadog.android.rum.model.ViewEvent
-import io.flutter.plugin.common.MethodChannel
-import java.util.Collections
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import kotlin.system.measureNanoTime
+import com.google.gson.JsonParser
 
 /**
  * This is a helper class that that simplifies event mapping / scrubbing for RUM events.
  *
- * Since it is possible for Flutter engines to shut down and be recreated, it is possible that the
- * object used as the event mapper to be lost. This class is used as a static instance that will
- * perform mapping and call the Flutter mapping methods using the last provided MethodChannel.
+ * This class is used as a static instance that can be assigned a Dart callback object through
+ * a jnigen interface.
  */
 @Suppress("StringLiteralDuplication")
-internal class DatadogRumEventMapper {
-    private val channels: MutableSet<MethodChannel> = Collections.newSetFromMap(ConcurrentHashMap())
-
-    val mapperPerf = PerformanceTracker()
-    val mapperPerfMainThread = PerformanceTracker()
-    var mapperTimeouts = 0
-    var lastKnownGoodChannel: MethodChannel? = null
-
-    fun addChannel(channel: MethodChannel) {
-        channels.add(channel)
-        if (lastKnownGoodChannel == null) {
-            lastKnownGoodChannel = channel
-        }
+class DatadogRumEventMapper {
+    // Even though mappers use "jnigen" and could bind / modify the RUM events
+    // directly, this would require users use separate iOS / Android callbacks. by sending
+    // encoded versions, we can hide some platform specifics.
+    interface EventMapper {
+        fun mapViewEvent(encodedEvent: String): String?
+        fun mapActionEvent(encodedEvent: String): String?
+        fun mapResourceEvent(encodedEvent: String): String?
+        fun mapErrorEvent(encodedEvent: String): String?
+        fun mapLongTaskEvent(encodedEvent: String): String?
     }
 
-    fun removeChannel(channel: MethodChannel) {
-        channels.remove(channel)
-        if (channel == lastKnownGoodChannel) {
-            lastKnownGoodChannel = channels.firstOrNull()
-        }
-    }
+    var eventMapper: EventMapper? = null
 
     fun attachMappers(
         config: Map<String, Any?>,
@@ -73,163 +56,137 @@ internal class DatadogRumEventMapper {
         return configBuilder
     }
 
-    @Suppress("UNCHECKED_CAST")
     internal fun mapViewEvent(event: ViewEvent): ViewEvent {
-        var result: ViewEvent
-        val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asFlutterMap()
-            jsonEvent = normalizeExtraUserInfo(jsonEvent)
+        var result: ViewEvent = event
 
-            result = callEventMapper("mapViewEvent", event, jsonEvent) { encodedResult, event ->
-                (encodedResult?.get("view") as? Map<String, Any?>)?.let {
-                    event.view.name = it["name"] as? String
-                    event.view.referrer = it["referrer"] as? String
-                    event.view.url = it["url"] as String
-                }
+        eventMapper?.let { mapper ->
+            val encodedEvent = event.toJson().toString()
 
-                event
-            } ?: event
+            val encodedResult = mapper.mapViewEvent(encodedEvent)
+            if (encodedResult != null) {
+                val jsonObject = JsonParser.parseString(encodedResult).asJsonObject
+                val jsonView = jsonObject.get("view").asJsonObject
+                result.view.name = jsonView.get("name")?.asString
+                result.view.referrer = jsonView.get("referrer")?.asString
+                result.view.url = jsonView.get("url").asString
+            }
+            // TODO: Telemetry -- view mappers can't return null
         }
-        mapperPerf.addSample(perf)
 
         return result
     }
 
-    @Suppress("UNCHECKED_CAST")
+    @Suppress("NestedBlockDepth")
     internal fun mapActionEvent(event: ActionEvent): ActionEvent? {
-        val result: ActionEvent?
-        val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asFlutterMap()
-            jsonEvent = normalizeExtraUserInfo(jsonEvent)
+        var result: ActionEvent? = event
 
-            result = callEventMapper("mapActionEvent", event, jsonEvent) { encodedResult, event ->
-                if (encodedResult == null) {
-                    null
-                } else {
-                    (encodedResult["action"] as? Map<String, Any?>)?.let {
-                        val encodedTarget = it["target"] as? Map<String, Any?>
-                        if (encodedTarget != null) {
-                            event.action.target?.name = encodedTarget["name"] as String
-                        }
+        eventMapper?.let { mapper ->
+            val encodedEvent = event.toJson().toString()
+
+            val encodedResult = mapper.mapActionEvent(encodedEvent)
+            if (encodedResult != null) {
+                val jsonObject = JsonParser.parseString(encodedResult).asJsonObject
+                val jsonView = jsonObject.get("view").asJsonObject
+                result!!.view.name = jsonView.get("name")?.asString
+                result.view.referrer = jsonView.get("referrer")?.asString
+                result.view.url = jsonView.get("url").asString
+
+                result.action.target?.let { resultTarget ->
+                    jsonObject.get("action")?.asJsonObject?.get("target")?.asJsonObject?.let {
+                        resultTarget.name = it.get("name").asString
                     }
-
-                    (encodedResult["view"] as? Map<String, Any?>)?.let {
-                        event.view.name = it["name"] as? String
-                        event.view.referrer = it["referrer"] as? String
-                        event.view.url = it["url"] as String
-                    }
-
-                    event
                 }
+            } else {
+                result = null
             }
         }
-        mapperPerf.addSample(perf)
 
         return result
     }
 
-    @Suppress("UNCHECKED_CAST")
     internal fun mapResourceEvent(event: ResourceEvent): ResourceEvent? {
-        var result: ResourceEvent?
-        val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asFlutterMap()
-            jsonEvent = normalizeExtraUserInfo(jsonEvent)
+        var result: ResourceEvent? = event
 
-            result = callEventMapper("mapResourceEvent", event, jsonEvent) { encodedResult, event ->
-                if (encodedResult == null) {
-                    null
-                } else {
-                    (encodedResult["resource"] as? Map<String, Any?>)?.let {
-                        event.resource.url = it["url"] as String
-                    }
+        eventMapper?.let { mapper ->
+            val encodedEvent = event.toJson().toString()
 
-                    (encodedResult["view"] as? Map<String, Any?>)?.let {
-                        event.view.name = it["name"] as? String
-                        event.view.referrer = it["referrer"] as? String
-                        event.view.url = it["url"] as String
-                    }
+            val encodedResult = mapper.mapResourceEvent(encodedEvent)
+            if (encodedResult != null) {
+                val jsonObject = JsonParser.parseString(encodedResult).asJsonObject
+                val jsonView = jsonObject.get("view").asJsonObject
+                result!!.view.name = jsonView.get("name")?.asString
+                result.view.referrer = jsonView.get("referrer")?.asString
+                result.view.url = jsonView.get("url").asString
 
-                    event
-                }
+                result.resource.url = jsonObject.get("resource").asJsonObject.get("url").asString
+            } else {
+                result = null
             }
         }
-        mapperPerf.addSample(perf)
 
         return result
     }
 
-    @Suppress("ComplexMethod", "UNCHECKED_CAST")
+    @Suppress("NestedBlockDepth")
     internal fun mapErrorEvent(event: ErrorEvent): ErrorEvent? {
-        var result: ErrorEvent?
-        val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asFlutterMap()
-            jsonEvent = normalizeExtraUserInfo(jsonEvent)
+        var result: ErrorEvent? = event
 
-            result = callEventMapper("mapErrorEvent", event, jsonEvent) { encodedResult, event ->
-                if (encodedResult == null) {
-                    null
-                } else {
-                    (encodedResult["error"] as? Map<String, Any?>)?.let { encodedError ->
-                        val encodedCauses = encodedError["causes"] as? List<Map<String, Any?>>
-                        if (encodedCauses != null) {
-                            event.error.causes?.let { causes ->
-                                if (causes.count() == encodedCauses.count()) {
-                                    causes.forEachIndexed { i, cause ->
-                                        cause.message = encodedCauses[i]["message"] as? String ?: ""
-                                        cause.stack = encodedCauses[i]["stack"] as? String
-                                    }
-                                }
-                            }
-                        } else {
-                            event.error.causes = null
+        eventMapper?.let { mapper ->
+            val encodedEvent = event.toJson().toString()
+
+            val encodedResult = mapper.mapErrorEvent(encodedEvent)
+            if (encodedResult != null) {
+                val jsonObject = JsonParser.parseString(encodedResult).asJsonObject
+                val jsonView = jsonObject.get("view").asJsonObject
+                result!!.view.name = jsonView.get("name")?.asString
+                result.view.referrer = jsonView.get("referrer")?.asString
+                result.view.url = jsonView.get("url").asString
+
+                val jsonError = jsonObject.get("error").asJsonObject
+                event.error.causes?.let { causes ->
+                    val jsonCauses = jsonError.get("causes").asJsonArray
+                    if (causes.count() == jsonCauses.count()) {
+                        causes.forEachIndexed { i, cause ->
+                            val jsonCause = jsonCauses.get(i).asJsonObject
+                            cause.message = jsonCause.get("message")?.asString ?: ""
+                            cause.stack = jsonCause.get("stack")?.asString ?: ""
                         }
-
-                        val encodedResource = encodedError["resource"] as? Map<String, Any?>
-                        if (encodedResource != null) {
-                            event.error.resource?.url = encodedResource["url"] as? String ?: ""
-                        }
-
-                        event.error.stack = encodedError["stack"] as? String
-                        event.error.fingerprint = encodedError["fingerprint"] as? String
                     }
-
-                    (encodedResult["view"] as? Map<String, Any?>)?.let {
-                        event.view.name = it["name"] as? String
-                        event.view.referrer = it["referrer"] as? String
-                        event.view.url = it["url"] as String
-                    }
-
-                    event
                 }
+                result.error.resource?.let { resultResource ->
+                    jsonError.get("resource")?.asJsonObject?.let {
+                        resultResource.url = it.get("url").asString
+                    }
+                }
+
+                result.error.stack = jsonError.get("stack")?.asString
+                result.error.fingerprint = jsonError.get("fingerprint")?.asString
+            } else {
+                result = null
             }
         }
-        mapperPerf.addSample(perf)
 
         return result
     }
 
-    @Suppress("UNCHECKED_CAST")
     internal fun mapLongTaskEvent(event: LongTaskEvent): LongTaskEvent? {
-        var result: LongTaskEvent?
-        val perf = measureNanoTime {
-            var jsonEvent = event.toJson().asFlutterMap()
-            jsonEvent = normalizeExtraUserInfo(jsonEvent)
+        var result: LongTaskEvent? = event
 
-            result = callEventMapper("mapLongTaskEvent", event, jsonEvent) { encodedResult, event ->
-                if (encodedResult == null) {
-                    null
-                } else {
-                    (encodedResult["view"] as? Map<String, Any?>)?.let {
-                        event.view.name = it["name"] as? String
-                        event.view.referrer = it["referrer"] as? String
-                        event.view.url = it["url"] as String
-                    }
+        eventMapper?.let { mapper ->
+            val encodedEvent = event.toJson().toString()
 
-                    event
-                }
+            val encodedResult = mapper.mapLongTaskEvent(encodedEvent)
+            if (encodedResult != null) {
+                val jsonObject = JsonParser.parseString(encodedResult).asJsonObject
+                val jsonView = jsonObject.get("view").asJsonObject
+
+                result!!.view.name = jsonView.get("name")?.asString
+                result.view.referrer = jsonView.get("referrer")?.asString
+                result.view.url = jsonView.get("url").asString
+            } else {
+                result = null
             }
         }
-        mapperPerf.addSample(perf)
 
         return result
     }
@@ -251,134 +208,5 @@ internal class DatadogRumEventMapper {
         }
 
         return mutableEvent
-    }
-
-    @Suppress("TooGenericExceptionCaught")
-    private fun callWithChannel(
-        channel: MethodChannel,
-        mapperName: String,
-        encodedEvent: Map<String, Any?>
-    ): MapperCallResult<Map<String, Any?>?, String> {
-        val latch = CountDownLatch(1)
-        var modifiedJson: Map<String, Any?>? = encodedEvent
-        var didFailNotImplemented = false
-        val handler = Handler(Looper.getMainLooper())
-        handler.post {
-            try {
-                channel.invokeMethod(
-                    mapperName,
-                    mapOf(
-                        "event" to encodedEvent
-                    ),
-                    object : MethodChannel.Result {
-                        @Suppress("UNCHECKED_CAST")
-                        override fun success(result: Any?) {
-                            modifiedJson = (result as? Map<String, Any?>)
-                            latch.countDown()
-                        }
-
-                        override fun error(
-                            errorCode: String,
-                            errorMessage: String?,
-                            errorDetails: Any?
-                        ) {
-                            latch.countDown()
-                        }
-
-                        override fun notImplemented() {
-                            didFailNotImplemented = true
-                            latch.countDown()
-                        }
-                    }
-                )
-            } catch (e: Exception) {
-                Datadog._internalProxy()._telemetry.error(
-                    "Attempting call $mapperName failed.",
-                    e
-                )
-                latch.countDown()
-            }
-        }
-
-        try {
-            // Stalls until the method channel finishes
-            if (!latch.await(5, TimeUnit.SECONDS)) {
-                Datadog._internalProxy()._telemetry.debug("$mapperName timed out")
-                return MapperCallResult.Error("Timeout")
-            }
-
-            if (modifiedJson?.containsKey("_dd.mapper_error") == true) {
-                return MapperCallResult.Error("Error in Mapper")
-            }
-
-            if (didFailNotImplemented) {
-                return MapperCallResult.ReturnedNotImplemented("Not Implemented")
-            }
-
-            return MapperCallResult.Ok(modifiedJson)
-        } catch (e: InterruptedException) {
-            Datadog._internalProxy()._telemetry.debug(
-                "Latch await was interrupted. Returning unmodified event."
-            )
-        } catch (e: Exception) {
-            Datadog._internalProxy()._telemetry.error(
-                "Unknown exception attempting to deserialize mapped log event." +
-                    " Returning unmodified event.",
-                e
-            )
-        }
-
-        return MapperCallResult.Error("unknown")
-    }
-
-    internal fun <T> callEventMapper(
-        mapperName: String,
-        event: T,
-        encodedEvent: Map<String, Any?>,
-        completion: (Map<String, Any?>?, T) -> T?
-    ): T? {
-        var currentChannel = lastKnownGoodChannel
-        // No last known good channel?
-        if (currentChannel == null) {
-            Datadog._internalProxy()._telemetry.debug(
-                "No last known good channel. Returning unmodified event."
-            )
-            return event
-        }
-
-        while (currentChannel != null) {
-            val result = callWithChannel(currentChannel, mapperName, encodedEvent)
-            when (result) {
-                is MapperCallResult.Ok -> {
-                    return completion(result.value, event)
-                }
-
-                is MapperCallResult.Error -> {
-                    // These errors are fine and occasionally expected, don't try a different channel
-                    return event
-                }
-
-                is MapperCallResult.ReturnedNotImplemented -> {
-                    Datadog._internalProxy()._telemetry.debug(
-                        "$mapperName returned notImplemented. Trying next channel."
-                    )
-                    channels.remove(currentChannel)
-                    lastKnownGoodChannel = channels.firstOrNull()
-                    currentChannel = lastKnownGoodChannel
-                }
-            }
-        }
-
-        Datadog._internalProxy()._telemetry.error(
-            "Never found good channel for mapping. Returning unmodified event."
-        )
-
-        return event
-    }
-
-    sealed class MapperCallResult<out S, out F> {
-        data class Ok<out S>(val value: S) : MapperCallResult<S, Nothing>()
-        data class Error<out F>(val reason: F) : MapperCallResult<Nothing, F>()
-        data class ReturnedNotImplemented<out F>(val reason: F) : MapperCallResult<Nothing, F>()
     }
 }

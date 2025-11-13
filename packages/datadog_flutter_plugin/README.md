@@ -5,6 +5,7 @@ Datadog Real User Monitoring (RUM) enables you to visualize and analyze the real
 Datadog RUM SDK versions < 1.4 support monitoring for Flutter 2.8+.
 Datadog RUM SDK versions >= 1.4 support monitoring for Flutter 3.0+.
 Datadog RUM SDK versions >= 2.6 support monitoring for Flutter 3.19+.
+Datadog RUM SDK versions >= 3.0 support monitoring for Flutter 3.27+.
 
 For complete documentation, see the [official Datadog documentation][11].
 
@@ -14,25 +15,25 @@ For complete documentation, see the [official Datadog documentation][11].
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 2.30.1 | 2.26.1 | 5.x.x |
+| 2.30.1 | 2.26.1 | 6.x.x |
 
 [//]: # (End SDK Table)
 
 ### iOS
 
-Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutter) and target iOS version >= 12.0.
+Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutter) and target iOS version >= 13.0.
 
 ### Android
 
-On Android, your `minSdkVersion` must be >= 21, and if you are using Kotlin, it should be version >= 1.8.0.
+On Android, your `minSdkVersion` must be >= 23, and if you are using Kotlin, it should be version >= 2.1.0.
 
 ### Web
 
 On Web, add the following to your `index.html` under your `head` tag:
 
 ```html
-<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v5/datadog-logs.js"></script> 
-<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v5/datadog-rum-slim.js"></script> 
+<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-logs.js"></script> 
+<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum-slim.js"></script> 
 ```
 
 This loads the CDN-delivered Datadog Browser SDKs for Logs and RUM. The synchronous CDN-delivered version of the Datadog Browser SDK is the only version currently supported by the Flutter plugin.

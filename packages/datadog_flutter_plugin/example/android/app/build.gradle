@@ -4,7 +4,7 @@
  * Copyright 2016-Present Datadog, Inc.
  */
 buildscript {
-    ext.datadog_version = "2.26.1"
+    ext.datadog_version = "3+"
 }
 
 plugins {
@@ -32,7 +32,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    compileSdk flutter.compileSdkVersion
+    compileSdk 36
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8

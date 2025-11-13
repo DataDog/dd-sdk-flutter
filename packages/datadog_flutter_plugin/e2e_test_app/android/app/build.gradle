@@ -30,7 +30,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.example.e2e_test_app"
-    compileSdk flutter.compileSdkVersion
+    compileSdk 36
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -47,7 +47,7 @@ android {
 
     defaultConfig {
         applicationId "com.datadog.flutter.nightly"
-        minSdkVersion 21
+        minSdkVersion 23
         targetSdkVersion flutter.targetSdkVersion
         multiDexEnabled true
         versionCode flutterVersionCode.toInteger()

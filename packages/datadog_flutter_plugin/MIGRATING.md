@@ -1,3 +1,28 @@
+# Migration from 2.x to 3.0
+
+## Android Changes
+
+Clients using Kotlin should update their Kotlin version to 2.1.0+. Flutter versions above 3.27 warn that older versions of Kotlin will not be supported, and provide instructions for updating.
+
+Clients using Flutter before 3.27 will need to manually update their Android `compileSdkVersion` to be 35+ and their `minSdkVersion` to 23+.
+
+Flutter updated the `flutter.compileSdkVersion` variable to 35 in 3.27, so this change is unnecessary for clients using Flutter versions greater than that.
+
+## Flutter Web Changes
+
+Clients using Flutter Web should update to using the Datadog Browser SDK v6.  Change the following import in your `index.html`:
+
+```diff
+-  <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v5/datadog-logs.js"></script> 
+-  <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v5/datadog-rum-slim.js"></script> 
++  <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-logs.js"></script> 
++  <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum-slim.js"></script> 
+```
+
+# RUM Changes
+
+An ID is no longer optional in `setUserInfo`. If you need to clear user info, use `clearUserInfo` instead.
+
 # Migration from 1.x to 2.0
 
 This document describes the main changes introduced in SDK `2.0` compared to `1.x`.

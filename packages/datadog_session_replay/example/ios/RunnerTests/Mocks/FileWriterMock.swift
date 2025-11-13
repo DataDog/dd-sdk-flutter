@@ -6,23 +6,21 @@ import Foundation
 import DatadogInternal
 
 public class FileWriterMock: Writer {
-    public init() { }
-
     /// Recorded events.
     public private(set) var events: [Encodable] = []
 
-    /// Adds an `Encodable` event to the events stack.
-    ///
-    /// - Parameter value: The event value to record.
-    public func write<T: Encodable, M: Encodable>(value: T, metadata: M) {
-        events.append(value)
-    }
+    public init() { }
 
-    /// Returns all events of the given type.
+/// Returns all events of the given type.
     ///
     /// - Parameter type: The event type to retrieve.
     /// - Returns: A list of event of the give type.
     public func events<T>(ofType type: T.Type = T.self) -> [T] where T: Encodable {
         events.compactMap { $0 as? T }
+    }
+
+    public func write<T: Encodable, M: Encodable>(value: T, metadata: M?, completion: @escaping CompletionHandler) {
+        events.append(value)
+        completion()
     }
 }

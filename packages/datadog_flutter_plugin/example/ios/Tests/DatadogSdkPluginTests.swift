@@ -9,10 +9,14 @@ import Flutter
 @testable import DatadogInternal
 @testable import datadog_flutter_plugin
 
+extension UserInfo: @retroactive Equatable {}
 extension UserInfo: EquatableInTests { }
+extension AccountInfo: @retroactive Equatable {}
+extension AccountInfo: EquatableInTests { }
 
 // Note: These tests are in the example app because Flutter does not provide a simple
 // way to to include tests in the Podspec.
+// swiftlint:disable:next type_body_length
 class FlutterSdkTests: XCTestCase {
 
     override func setUp() {
@@ -33,9 +37,18 @@ class FlutterSdkTests: XCTestCase {
             "value": .string
         ]),
         Contract(methodName: "setUserInfo", requiredParameters: [
+            "id": .string,
             "extraInfo": .map
         ]),
+        Contract(methodName: "clearUserInfo", requiredParameters: [:]),
         Contract(methodName: "addUserExtraInfo", requiredParameters: [
+            "extraInfo": .map
+        ]),
+        Contract(methodName: "setAccountInfo", requiredParameters: [
+            "id": .string,
+            "extraInfo": .map
+        ]),
+        Contract(methodName: "addAccountExtraInfo", requiredParameters: [
             "extraInfo": .map
         ]),
         Contract(methodName: "setTrackingConsent", requiredParameters: [
@@ -359,6 +372,144 @@ class FlutterSdkTests: XCTestCase {
 
         let core = plugin.core as? DatadogCore
         XCTAssertEqual(core?.userInfoPublisher.current, expectedUserInfo)
+        XCTAssertEqual(callResult, .called(value: nil))
+    }
+
+    func testClearUserInfo_FromMethodChannel_ClearsUserInfo() {
+        // Given
+        let flutterConfig = Datadog.Configuration(
+            clientToken: "fakeClientToken",
+            env: "prod",
+            service: "serviceName"
+        )
+
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
+        plugin.handle(FlutterMethodCall(
+            methodName: "setUserInfo", arguments: [
+                "id": "fakeUserId",
+                "extraInfo": [
+                    "attribute": NSNumber(23.3)
+                ]
+            ])) { _ in }
+
+        // When
+        let methodCall = FlutterMethodCall(methodName: "clearUserInfo", arguments: [:])
+        var callResult = ResultStatus.notCalled
+        plugin.handle(methodCall) { result in
+            callResult = ResultStatus.called(value: result)
+        }
+
+        // Then
+        let expectedUserInfo = UserInfo()
+
+        let core = plugin.core as? DatadogCore
+        XCTAssertEqual(core?.userInfoPublisher.current, expectedUserInfo)
+        XCTAssertEqual(callResult, .called(value: nil))
+    }
+
+    func testSetAccountInfo_FromMethodChannel_SetsAccountInfo() {
+        let flutterConfig = Datadog.Configuration(
+            clientToken: "fakeClientToken",
+            env: "prod",
+            service: "serviceName"
+        )
+
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
+        let methodCall = FlutterMethodCall(
+            methodName: "setAccountInfo", arguments: [
+                "id": "fakeAccountId",
+                "name": "fakeAccountName",
+                "extraInfo": [
+                    "attribute": NSNumber(14141.3)
+                ]
+            ] as [String: Any?])
+
+        var callResult = ResultStatus.notCalled
+        plugin.handle(methodCall) { result in
+            callResult = ResultStatus.called(value: result)
+        }
+
+        let expectedAccountInfo = AccountInfo(id: "fakeAccountId", name: "fakeAccountName", extraInfo: [
+            "attribute": 14141.3
+        ])
+
+        let core = plugin.core as? DatadogCore
+        XCTAssertEqual(core?.accountInfoPublisher.current, expectedAccountInfo)
+        XCTAssertEqual(callResult, .called(value: nil))
+    }
+
+    func testAddAccountExtraInfo_FromMethodChannel_AddsAccountInfo() {
+        let flutterConfig = Datadog.Configuration(
+            clientToken: "fakeClientToken",
+            env: "prod",
+            service: "serviceName"
+        )
+
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
+
+        plugin.handle(FlutterMethodCall(
+            methodName: "setAccountInfo", arguments: [
+                "id": "fakeAccountId",
+                "extraInfo": [:]
+            ])) { _ in
+
+            }
+
+        let methodCall = FlutterMethodCall(
+            methodName: "addAccountExtraInfo", arguments: [
+                "extraInfo": [
+                    "attribute_1": NSNumber(23.3),
+                    "attribute_2": "attribute_value"
+                ] as [String: Any?]
+            ] as [String: Any?])
+
+        var callResult = ResultStatus.notCalled
+        plugin.handle(methodCall) { result in
+            callResult = ResultStatus.called(value: result)
+        }
+
+        let expectedAccountInfo = AccountInfo(id: "fakeAccountId", extraInfo: [
+            "attribute_1": 23.3,
+            "attribute_2": "attribute_value"
+        ])
+
+        let core = plugin.core as? DatadogCore
+        XCTAssertEqual(core?.accountInfoPublisher.current, expectedAccountInfo)
+        XCTAssertEqual(callResult, .called(value: nil))
+    }
+
+    func testClearAccountInfo_FromMethodChannel_ClearsAccountInfo() {
+        // Given
+        let flutterConfig = Datadog.Configuration(
+            clientToken: "fakeClientToken",
+            env: "prod",
+            service: "serviceName"
+        )
+
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
+        plugin.handle(FlutterMethodCall(
+            methodName: "setAccountInfo", arguments: [
+                "id": "fakeAccountId",
+                "extraInfo": [
+                    "attribute": NSNumber(23.3)
+                ]
+            ])) { _ in }
+
+        // When
+        let methodCall = FlutterMethodCall(methodName: "clearAccountInfo", arguments: [:])
+        var callResult = ResultStatus.notCalled
+        plugin.handle(methodCall) { result in
+            callResult = ResultStatus.called(value: result)
+        }
+
+        // Then
+        let core = plugin.core as? DatadogCore
+        XCTAssertNil(core?.accountInfoPublisher.current?.name)
+        XCTAssert(core?.accountInfoPublisher.current?.extraInfo.isEmpty ?? true)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 

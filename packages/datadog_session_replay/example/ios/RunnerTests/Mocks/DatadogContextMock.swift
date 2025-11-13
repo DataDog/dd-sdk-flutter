@@ -29,10 +29,11 @@ extension DatadogContext: AnyMockable, RandomMockable {
         sdkInitDate: Date = Date(),
         nativeSourceOverride: String? = nil,
         device: DeviceInfo = .mockAny(),
+        os: OperatingSystem = .mockAny(),
         localeInfo: LocaleInfo = .mockAny(),
         userInfo: UserInfo = .mockAny(),
         trackingConsent: TrackingConsent = .pending,
-        launchTime: LaunchTime = .mockAny(),
+        launchInfo: LaunchInfo = .mockAny(),
         applicationStateHistory: AppStateHistory = .mockAny(),
         networkConnectionInfo: NetworkConnectionInfo? = .mockWith(reachability: .yes),
         carrierInfo: CarrierInfo? = .mockAny(),
@@ -57,11 +58,12 @@ extension DatadogContext: AnyMockable, RandomMockable {
             applicationBundleType: applicationBundleType,
             sdkInitDate: sdkInitDate,
             device: device,
+            os: os,
             localeInfo: localeInfo,
             nativeSourceOverride: nativeSourceOverride,
             userInfo: userInfo,
             trackingConsent: trackingConsent,
-            launchTime: launchTime,
+            launchInfo: launchInfo,
             applicationStateHistory: applicationStateHistory,
             networkConnectionInfo: networkConnectionInfo,
             carrierInfo: carrierInfo,
@@ -89,10 +91,11 @@ extension DatadogContext: AnyMockable, RandomMockable {
             applicationBundleType: .mockRandom(),
             sdkInitDate: .mockRandomInThePast(),
             device: .mockRandom(),
+            os: .mockRandom(),
             localeInfo: .mockRandom(),
             userInfo: .mockRandom(),
             trackingConsent: .mockRandom(),
-            launchTime: .mockRandom(),
+            launchInfo: .mockRandom(),
             applicationStateHistory: .mockRandom(),
             networkConnectionInfo: .mockRandom(),
             carrierInfo: .mockRandom(),
@@ -193,9 +196,7 @@ extension DeviceInfo: AnyMockable, RandomMockable {
         return .init(
             name: name,
             model: model,
-            osName: osName,
-            osVersion: osVersion,
-            osBuildNumber: osBuildNumber,
+            osName: osBuildNumber,
             architecture: architecture,
             isSimulator: isSimulator,
             vendorId: vendorId,
@@ -209,8 +210,6 @@ extension DeviceInfo: AnyMockable, RandomMockable {
             name: .mockRandom(),
             model: .mockRandom(),
             osName: .mockRandom(),
-            osVersion: .mockRandom(),
-            osBuildNumber: .mockRandom(),
             architecture: .mockRandom(),
             isSimulator: .mockRandom(),
             vendorId: .mockRandom(),
@@ -239,32 +238,76 @@ extension UserInfo: AnyMockable, RandomMockable {
     }
 }
 
-extension LaunchTime: AnyMockable, RandomMockable {
-    public static func mockAny() -> LaunchTime {
-        .init(
-            launchTime: .mockAny(),
-            launchDate: .mockAny(),
-            isActivePrewarm: .mockAny()
+extension OperatingSystem: AnyMockable, RandomMockable {
+    public static func mockAny() -> OperatingSystem {
+        return .mockWith()
+    }
+
+    public static func mockWith(
+        name: String = "iOS",
+        version: String = "18.2.1",
+        build: String = "4SDM23"
+    ) -> OperatingSystem {
+        return .init(name: name, version: version, build: build)
+    }
+
+    public static func mockRandom() -> OperatingSystem {
+        return .init(
+            name: .mockRandom(length: 5),
+            version: .mockRandom(among: .decimalDigits, length: 2),
+            build: .mockRandom()
+        )
+    }
+}
+
+extension LaunchInfo.Raw: AnyMockable, RandomMockable {
+    public static func mockAny() -> LaunchInfo.Raw {
+        return .init(taskPolicyRole: .mockAny(), isPrewarmed: false)
+    }
+
+    public static func mockRandom() -> LaunchInfo.Raw {
+        return .init(taskPolicyRole: .mockRandom(), isPrewarmed: .mockRandom())
+    }
+}
+
+extension LaunchReason: AnyMockable, RandomMockable {
+    public static func mockAny() -> LaunchReason { .userLaunch }
+
+    public static func mockRandom() -> LaunchReason {
+        return [.userLaunch, .backgroundLaunch, .prewarming, .uncertain].randomElement()!
+    }
+}
+
+extension LaunchInfo: AnyMockable, RandomMockable {
+    public static func mockAny() -> LaunchInfo {
+        return .init(
+            launchReason: .mockAny(),
+            processLaunchDate: .mockAny(),
+            timeToDidBecomeActive: .mockAny(),
+            raw: .mockAny()
         )
     }
 
     public static func mockWith(
-        launchTime: TimeInterval? = 1,
-        launchDate: Date = Date(),
-        isActivePrewarm: Bool = false
-    ) -> LaunchTime {
-        .init(
-            launchTime: launchTime,
-            launchDate: launchDate,
-            isActivePrewarm: isActivePrewarm
+        launchReason: LaunchReason = .mockAny(),
+        processLaunchDate: Date = Date(),
+        timeToDidBecomeActive: TimeInterval? = 1,
+        raw: LaunchInfo.Raw = .mockAny()
+    ) -> LaunchInfo {
+        return .init(
+            launchReason: launchReason,
+            processLaunchDate: processLaunchDate,
+            timeToDidBecomeActive: timeToDidBecomeActive,
+            raw: raw
         )
     }
 
-    public static func mockRandom() -> LaunchTime {
+    public static func mockRandom() -> LaunchInfo {
         return .init(
-            launchTime: .mockRandom(),
-            launchDate: .mockRandom(),
-            isActivePrewarm: .mockRandom()
+            launchReason: .mockRandom(),
+            processLaunchDate: .mockRandom(),
+            timeToDidBecomeActive: .mockRandom(),
+            raw: .mockRandom()
         )
     }
 }
@@ -289,11 +332,11 @@ extension AppStateHistory: AnyMockable {
     }
 
     public static func mockAppInForeground(since date: Date = Date()) -> Self {
-        return .init(initialSnapshot: .init(state: .active, date: date), recentDate: date)
+        return .init(initialState: .active, date: date)
     }
 
     public static func mockAppInBackground(since date: Date = Date()) -> Self {
-        return .init(initialSnapshot: .init(state: .background, date: date), recentDate: date)
+        return .init(initialState: .background, date: date)
     }
 
     public static func mockRandom(since date: Date = Date()) -> Self {

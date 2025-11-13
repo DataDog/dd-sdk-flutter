@@ -89,36 +89,19 @@ Future<RecordingServerClient> openTestScenario(
 
 void verifyCommonEventTags(
     RumEventDecoder log, String service, String version, String? variant) {
-  // Tags moved to events in v6. We should be able to remove this check
-  // for dd-sdk-flutter-v3
-  if (!kIsWeb) {
-    final tags = log.ddtags;
-    // Likely telemetry
-    if (tags.isEmpty) return;
+  final tags = log.ddtags;
+  // Likely telemetry
+  if (tags.isEmpty) return;
 
-    final sdkVersion = tags['sdk_version'];
-    if (kIsWeb) {
-      // Returning the browser version of the SDK.
-      expect(sdkVersion?.startsWith('5.'), true);
-    } else {
-      expect(sdkVersion, DatadogSdk.sdkVersion);
-    }
-
-    expect(tags['service'], service);
-
-    if (!kIsWeb) {
-      // Not sent as a tag on web
-      expect(tags['version'], version);
-      expect(tags['variant'], variant);
-    }
-  }
+  final sdkVersion = tags['sdk_version'];
+  expect(sdkVersion, DatadogSdk.sdkVersion);
+  expect(tags['service'], service);
+  expect(tags['version'], version);
+  expect(tags['variant'], variant);
 }
 
 void verifyCommonRequestTags(RequestLog log) {
-  if (!kIsWeb) {
-    // Currently coming back as 'browser' on web
-    expect(log.queryParameters['ddsource'], 'flutter');
-  }
+  expect(log.queryParameters['ddsource'], 'flutter');
 }
 
 void verifyUser(RumEventDecoder decoder) {

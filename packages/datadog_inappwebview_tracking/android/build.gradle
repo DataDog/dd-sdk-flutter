@@ -2,8 +2,8 @@ group = "com.datadoghq.flutter.inappwebviewtracking"
 version = "1.0-SNAPSHOT"
 
 buildscript {
-    ext.kotlin_version = "1.8.22"
-    ext.datadog_version = "2.16.0"
+    ext.kotlin_version = "2.1.0"
+    ext.datadog_version = "3.0.0"
 
     repositories {
         google()
@@ -31,7 +31,7 @@ android {
         namespace = "com.datadoghq.flutter.inappwebviewtracking"
     }
 
-    compileSdk = 34
+    compileSdk = 36
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8

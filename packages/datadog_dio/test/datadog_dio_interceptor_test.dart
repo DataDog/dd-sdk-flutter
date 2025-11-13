@@ -140,6 +140,7 @@ void main() {
     registerFallbackValue(RequestOptions());
     registerFallbackValue(Response(requestOptions: RequestOptions()));
     registerFallbackValue(DioException(requestOptions: RequestOptions()));
+    registerFallbackValue(TracingId.zero());
   });
 
   setUp(() {
@@ -152,7 +153,7 @@ void main() {
     when(() => mockDatadog.internalLogger).thenReturn(InternalLoggerMock());
 
     mockRum = RumMock();
-    when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+    when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
     when(() => mockRum.traceSampleRate).thenReturn(50.0);
   });
 
@@ -505,7 +506,7 @@ void main() {
         // ignore: invalid_use_of_internal_member
         when(() => mockDatadog.internalLogger).thenReturn(InternalLoggerMock());
 
-        when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
         when(() => mockRum.traceSampleRate).thenReturn(50.0);
         when(() => mockDatadog.rum).thenReturn(mockRum);
       });
@@ -513,7 +514,7 @@ void main() {
       test('does not set trace attributes when should sample returns false',
           () {
         // Given
-        when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
         final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
         final request =
             RequestOptions(path: "https://test_url/post", method: 'POST');
@@ -532,7 +533,7 @@ void main() {
 
       test('onRequest sets tracing attributes', () {
         // Given
-        when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
         final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
         final request =
             RequestOptions(path: "https://test_url/post", method: 'POST');
@@ -558,7 +559,7 @@ void main() {
       });
 
       test('does not set trace headers for third party urls', () async {
-        when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
         final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
         final request = RequestOptions(
             path: "https://non_first_party/post", method: 'POST');
@@ -586,7 +587,7 @@ void main() {
       test(
           'sets trace headers for first party urls { sampled, TraceContextInjection.all }',
           () {
-        when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
         when(() => mockRum.contextInjectionSetting)
             .thenReturn(TraceContextInjection.all);
         final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
@@ -604,7 +605,7 @@ void main() {
       test(
           'sets trace headers for first party urls { sampled, TraceContextInjection.sampled }',
           () {
-        when(() => mockRum.shouldSampleTrace()).thenReturn(true);
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
         when(() => mockRum.contextInjectionSetting)
             .thenReturn(TraceContextInjection.sampled);
         final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
@@ -622,7 +623,7 @@ void main() {
       test(
           'sets trace headers for first party urls { unsampled, TraceContextInjection.all }',
           () {
-        when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
         when(() => mockRum.contextInjectionSetting)
             .thenReturn(TraceContextInjection.all);
         final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
@@ -640,7 +641,7 @@ void main() {
       test(
           'sets trace headers for first party urls { unsampled, TraceContextInjection.sampled }',
           () {
-        when(() => mockRum.shouldSampleTrace()).thenReturn(false);
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
         when(() => mockRum.contextInjectionSetting)
             .thenReturn(TraceContextInjection.sampled);
         final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);

@@ -36,12 +36,12 @@ target 'Runner' do
   end
 
   # Datadog Pod Overrides
-  pod 'DatadogCore', :git => 'https://github.com/DataDog/dd-sdk-ios', :tag => '2.30.1'
-  pod 'DatadogLogs', :git => 'https://github.com/DataDog/dd-sdk-ios', :tag => '2.30.1'
-  pod 'DatadogRUM', :git => 'https://github.com/DataDog/dd-sdk-ios', :tag => '2.30.1'
-  pod 'DatadogInternal', :git => 'https://github.com/DataDog/dd-sdk-ios', :tag => '2.30.1'
-  pod 'DatadogWebViewTracking', :git => 'https://github.com/DataDog/dd-sdk-ios', :tag => '2.30.1'
-  pod 'DatadogCrashReporting', :git => 'https://github.com/DataDog/dd-sdk-ios', :tag => '2.30.1'
+  pod 'DatadogCore', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
+  pod 'DatadogLogs', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
+  pod 'DatadogRUM', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
+  pod 'DatadogInternal', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
+  pod 'DatadogWebViewTracking', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
+  pod 'DatadogCrashReporting', :git => 'https://github.com/DataDog/dd-sdk-ios', :branch => 'develop'
   # End Datadog Pod Overrides
 end
 

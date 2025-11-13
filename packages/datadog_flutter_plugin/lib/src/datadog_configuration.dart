@@ -381,8 +381,8 @@ class DatadogAttachConfiguration {
 
   /// The strategy for injecting trace context into requests. See [TraceContextInjection].
   ///
-  /// Defaults to [TraceContextInjection.all].
-  TraceContextInjection traceContextInjection = TraceContextInjection.all;
+  /// Defaults to [TraceContextInjection.sampled].
+  TraceContextInjection traceContextInjection = TraceContextInjection.sampled;
 
   /// Configurations for additional plugins that will be created after Datadog
   /// is initialized.
@@ -395,7 +395,7 @@ class DatadogAttachConfiguration {
     this.reportFlutterPerformance = false,
     List<String>? firstPartyHosts,
     this.firstPartyHostsWithTracingHeaders = const {},
-    this.traceContextInjection = TraceContextInjection.all,
+    this.traceContextInjection = TraceContextInjection.sampled,
   }) {
     // Attempt a union if both configuration options are present
     if (firstPartyHosts != null) {

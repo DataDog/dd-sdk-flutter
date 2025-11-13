@@ -9,8 +9,8 @@ group "com.datadoghq.flutter"
 version "1.0-SNAPSHOT"
 
 buildscript {
-    ext.kotlin_version = "1.8.22"
-    ext.datadog_version = "2.26.1"
+    ext.kotlin_version = "2.1.0"
+    ext.datadog_version = "3+"
 
     repositories {
         google()
@@ -44,7 +44,7 @@ apply plugin: "kotlin-android"
 
 android {
     namespace "com.datadoghq.flutter"
-    compileSdk 35
+    compileSdk 36
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -64,7 +64,7 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 21
+        minSdkVersion 23
         multiDexEnabled true
     }
 }

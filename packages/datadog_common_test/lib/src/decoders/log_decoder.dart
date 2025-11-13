@@ -19,6 +19,8 @@ class LogDecoder {
   String? get userId => getNestedProperty('usr.id', log);
   String? get userName => getNestedProperty('usr.name', log);
   String? get userEmail => getNestedProperty('usr.email', log);
+  String? get accountId => getNestedProperty('account.id', log);
+  String? get accountName => getNestedProperty('account.name', log);
 
   List<String> get tagValues => (log['ddtags'] as String).split(',');
   String get applicationVersion => log['version'] as String;
@@ -39,5 +41,9 @@ class LogDecoder {
 
   Object? getUserProperty(String name) {
     return getNestedProperty('usr.$name', log);
+  }
+
+  Object? getAccountProperty(String name) {
+    return getNestedProperty('account.$name', log);
   }
 }

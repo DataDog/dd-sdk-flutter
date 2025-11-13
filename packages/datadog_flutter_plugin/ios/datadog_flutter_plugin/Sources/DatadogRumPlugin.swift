@@ -354,6 +354,18 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 attachEventMappers(configArg: configArg, config: &config)
                 // Disable INV as the Flutter calculations for it are different
                 config.nextViewActionPredicate = nil
+                config.onSessionStart = { sessionId, discarded in
+                    DispatchQueue.main.async {
+                        guard let methodChannel = DatadogRumPlugin.methodChannel else { return }
+                        methodChannel.invokeMethod(
+                            "onSessionChanged",
+                            arguments: [
+                                "sessionId": sessionId,
+                                "discarded": discarded
+                            ],
+                            result: nil)
+                    }
+                }
 
                 RUM.enable(with: config)
                 rum = RUMMonitor.shared()

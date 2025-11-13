@@ -115,21 +115,17 @@ void main() {
     }
     expect(view1.viewEvents.last.view.actionCount, actionCount);
 
-    if (!kIsWeb) {
-      // Manual resources on web don't work (the error is a resource loading error)
-      expect(view1.viewEvents.last.view.resourceCount, 1);
-      expect(view1.viewEvents.last.view.errorCount, 1);
-    }
+    expect(
+        view1.viewEvents.last.view.resourceCount, view1.resourceEvents.length);
+    expect(view1.viewEvents.last.view.errorCount, 1);
     expect(view1.viewEvents.last.context![contextKey], expectedContextValue);
     expect(view1.viewEvents.last.featureFlags?.isEmpty, isTrue);
 
-    expect(view1.actionEvents[baseAction + 0].actionType,
-        kIsWeb ? 'custom' : 'tap');
+    expect(view1.actionEvents[baseAction + 0].actionType, 'tap');
     expect(view1.actionEvents[baseAction + 0].actionName, 'Tapped Download');
     expect(view1.actionEvents[baseAction + 0].context![contextKey],
         expectedContextValue);
-    expect(view1.actionEvents[baseAction + 1].actionType,
-        kIsWeb ? 'custom' : 'tap');
+    expect(view1.actionEvents[baseAction + 1].actionType, 'tap');
     expect(view1.actionEvents[baseAction + 1].actionName, 'Next Screen');
     expect(view1.actionEvents[baseAction + 1].context![contextKey],
         expectedContextValue);
@@ -153,24 +149,26 @@ void main() {
     // TODO: Figure out why occasionally these have really high values
     // expect(firstInteractionTiming, lessThan(800 * 1000 * 1000));
 
-    // Manual resource loading calls are ignored on Web.
-    if (!kIsWeb) {
-      expect(view1.resourceEvents[0].url, 'https://fake_url/resource/1');
-      expect(view1.resourceEvents[0].statusCode, 200);
-      expect(view1.resourceEvents[0].resourceType, 'image');
-      final resourceDuration = view1.resourceEvents[0].duration;
+    {
+      final manualResourceEvents = view1.resourceEvents
+          .where((e) => e.url == 'https://fake_url/resource/1')
+          .toList();
+      expect(manualResourceEvents.length, 1);
+      expect(manualResourceEvents[0].statusCode, 200);
+      expect(manualResourceEvents[0].resourceType, 'image');
+      final resourceDuration = manualResourceEvents[0].duration;
       expect(resourceDuration,
           greaterThan(const Duration(milliseconds: 90).inNanoseconds - 1));
       expect(resourceDuration,
           lessThan(const Duration(seconds: 10).inNanoseconds));
-
-      expect(view1.errorEvents.length, 1);
-      expect(view1.errorEvents[0].resourceUrl, 'https://fake_url/resource/2');
-      expect(view1.errorEvents[0].message, 'Status code 400');
-      expect(view1.errorEvents[0].errorType, 'ErrorLoading');
-      expect(view1.errorEvents[0].source, 'network');
-      expect(view1.errorEvents[0].context![contextKey], expectedContextValue);
     }
+
+    expect(view1.errorEvents.length, 1);
+    expect(view1.errorEvents[0].resourceUrl, 'https://fake_url/resource/2');
+    expect(view1.errorEvents[0].message, 'Status code 400');
+    expect(view1.errorEvents[0].errorType, 'ErrorLoading');
+    expect(view1.errorEvents[0].source, 'network');
+    expect(view1.errorEvents[0].context![contextKey], expectedContextValue);
 
     // Verify user in all events, except for the first view event
     for (final viewEvent in view1.viewEvents.sublist(1)) {
@@ -201,10 +199,9 @@ void main() {
     expect(view2.viewEvents.last.view.actionCount, kIsWeb ? 1 : 2);
     // We can have multiple long tasks
     expect(view2.viewEvents.last.view.longTaskCount, greaterThanOrEqualTo(1));
-    if (!kIsWeb) {
-      // Web can download extra resources
-      expect(view2.viewEvents.last.view.resourceCount, 1);
-    }
+    expect(
+        view2.viewEvents.last.view.resourceCount, view2.resourceEvents.length);
+
     if (!kIsWeb) {
       // The removal of this key happens at a weird point for web, so
       // let's not check it for now.
@@ -213,29 +210,35 @@ void main() {
     expect(view2.viewEvents.last.featureFlags?['mock_flag_a'], false);
     expect(view2.viewEvents.last.featureFlags?['mock_flag_b'], 'mock_value');
 
-    // Manual resource loading calls are ignored on Web.
-    if (!kIsWeb) {
+    {
       final viewStart = view2.viewEvents.first.date;
-      final resourceStart = view2.resourceEvents[0].date;
+      final manualResourceEvents = view2.resourceEvents
+          .where((e) => e.url == 'https://fake_url/tns-resource/1')
+          .toList();
+      expect(manualResourceEvents.length, 1);
 
-      expect(view2.resourceEvents[0].url, 'https://fake_url/tns-resource/1');
-      expect(view2.resourceEvents[0].statusCode, 200);
-      expect(view2.resourceEvents[0].resourceType, 'image');
-      final resourceDuration = view1.resourceEvents[0].duration;
+      final resourceStart = manualResourceEvents[0].date;
+      expect(manualResourceEvents[0].url, 'https://fake_url/tns-resource/1');
+      expect(manualResourceEvents[0].statusCode, 200);
+      expect(manualResourceEvents[0].resourceType, 'image');
+      final resourceDuration = manualResourceEvents[0].duration;
       expect(resourceDuration,
           greaterThan(const Duration(milliseconds: 90).inNanoseconds - 1));
       expect(resourceDuration,
           lessThan(const Duration(seconds: 10).inNanoseconds));
 
-      final tns =
-          Duration(milliseconds: resourceStart - viewStart).inNanoseconds +
-              resourceDuration!;
-      expect(view2.viewEvents.last.view.networkSettledTime,
-          closeTo(tns, const Duration(milliseconds: 100).inNanoseconds));
+      // TNS is not calculated on web
+      if (!kIsWeb) {
+        final tns =
+            Duration(milliseconds: resourceStart - viewStart).inNanoseconds +
+                resourceDuration!;
+        expect(view2.viewEvents.last.view.networkSettledTime,
+            closeTo(tns, const Duration(milliseconds: 100).inNanoseconds));
+      }
     }
 
     expect(view2.errorEvents[0].message, 'Simulated view error');
-    expect(view2.errorEvents[0].source, kIsWeb ? 'custom' : 'source');
+    expect(view2.errorEvents[0].source, 'source');
     expect(view2.errorEvents[0].context![contextKey], expectedContextValue);
     expect(view2.errorEvents[0].context!['custom_attribute'], 'my_attribute');
     expect(view2.errorEvents[0].fingerprint, 'custom-fingerprint');

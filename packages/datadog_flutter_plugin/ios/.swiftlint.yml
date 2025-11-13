@@ -1,0 +1,3 @@
+excluded:
+  - datadog_flutter_plugin/.build
+  - datadog_flutter_plugin/.swiftpm

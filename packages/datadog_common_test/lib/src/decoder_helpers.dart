@@ -11,18 +11,22 @@ import 'package:collection/collection.dart';
 // in all tests
 bool kManualIsWeb = false;
 
-T getNestedProperty<T>(String key, Map<String, Object?> from) {
+T? getNestedProperty<T>(String key, Map<String, Object?> from) {
   if (kManualIsWeb || Platform.isAndroid) {
-    var lookupMap = from;
+    Map<String, dynamic>? lookupMap = from;
     var parts = key.split('.');
     parts.forEachIndexedWhile((index, element) {
-      lookupMap = lookupMap[element] as Map<String, dynamic>;
+      if (lookupMap![element] case final Map<String, dynamic> next) {
+        lookupMap = next;
+      } else {
+        lookupMap = null;
+      }
       // Continue until we're the second to last index
-      return (index + 1) < (parts.length - 1);
+      return lookupMap != null && (index + 1) < (parts.length - 1);
     });
 
-    return lookupMap[parts.last] as T;
+    return lookupMap?[parts.last] as T?;
   }
 
-  return from[key] as T;
+  return from[key] as T?;
 }

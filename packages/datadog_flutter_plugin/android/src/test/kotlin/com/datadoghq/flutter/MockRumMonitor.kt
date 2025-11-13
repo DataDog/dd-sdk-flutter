@@ -7,6 +7,7 @@ import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumResourceKind
 import com.datadog.android.rum.RumResourceMethod
 import com.datadog.android.rum._RumInternalProxy
+import com.datadog.android.rum.featureoperations.FailureReason
 import io.mockk.mockk
 
 class MockRumMonitor : RumMonitor {
@@ -63,6 +64,10 @@ class MockRumMonitor : RumMonitor {
         mockMonitor.addTiming(name)
     }
 
+    override fun addViewAttributes(attributes: Map<String, Any?>) {
+        mockMonitor.addViewAttributes(attributes)
+    }
+
     @ExperimentalRumApi
     override fun addViewLoadingTime(overwrite: Boolean) {
         mockMonitor.addViewLoadingTime(overwrite)
@@ -70,6 +75,16 @@ class MockRumMonitor : RumMonitor {
 
     override fun clearAttributes() {
         mockMonitor.clearAttributes()
+    }
+
+    @ExperimentalRumApi
+    override fun failFeatureOperation(
+        name: String,
+        operationKey: String?,
+        failureReason: FailureReason,
+        attributes: Map<String, Any?>
+    ) {
+        mockMonitor.failFeatureOperation(name, operationKey, failureReason, attributes)
     }
 
     override fun getAttributes(): Map<String, Any?> {
@@ -80,23 +95,26 @@ class MockRumMonitor : RumMonitor {
         mockMonitor.removeAttribute(key)
     }
 
+    override fun removeViewAttributes(attributes: Collection<String>) {
+        mockMonitor.removeViewAttributes(attributes)
+    }
+
     override fun startAction(type: RumActionType, name: String, attributes: Map<String, Any?>) {
         mockMonitor.startAction(type, name, attributes)
+    }
+
+    @ExperimentalRumApi
+    override fun startFeatureOperation(
+        name: String,
+        operationKey: String?,
+        attributes: Map<String, Any?>
+    ) {
+        mockMonitor.startFeatureOperation(name, operationKey, attributes)
     }
 
     override fun startResource(
         key: String,
         method: RumResourceMethod,
-        url: String,
-        attributes: Map<String, Any?>
-    ) {
-        mockMonitor.startResource(key, method, url, attributes)
-    }
-
-    @Deprecated("Deprecated")
-    override fun startResource(
-        key: String,
-        method: String,
         url: String,
         attributes: Map<String, Any?>
     ) {
@@ -150,5 +168,14 @@ class MockRumMonitor : RumMonitor {
 
     override fun stopView(key: Any, attributes: Map<String, Any?>) {
         mockMonitor.stopView(key, attributes)
+    }
+
+    @ExperimentalRumApi
+    override fun succeedFeatureOperation(
+        name: String,
+        operationKey: String?,
+        attributes: Map<String, Any?>
+    ) {
+        mockMonitor.succeedFeatureOperation(name, operationKey, attributes)
     }
 }

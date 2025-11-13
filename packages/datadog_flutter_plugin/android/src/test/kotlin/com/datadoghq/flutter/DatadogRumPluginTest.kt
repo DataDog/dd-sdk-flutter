@@ -16,6 +16,7 @@ import com.datadog.android.rum.RumConfiguration
 import com.datadog.android.rum.RumErrorSource
 import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
+import com.datadog.android.rum.RumResourceMethod
 import com.datadog.android.rum.configuration.VitalsUpdateFrequency
 import com.datadog.android.rum.metric.networksettled.TimeBasedInitialResourceIdentifier
 import fr.xgouchet.elmyr.Forge
@@ -88,13 +89,13 @@ class DatadogRumPluginTest {
         val patch = parseRumHttpMethod("RumHttpMethod.patch")
         val unknown = parseRumHttpMethod("unknown")
 
-        assertThat(get).isEqualTo("GET")
-        assertThat(post).isEqualTo("POST")
-        assertThat(head).isEqualTo("HEAD")
-        assertThat(put).isEqualTo("PUT")
-        assertThat(delete).isEqualTo("DELETE")
-        assertThat(patch).isEqualTo("PATCH")
-        assertThat(unknown).isEqualTo("GET")
+        assertThat(get).isEqualTo(RumResourceMethod.GET)
+        assertThat(post).isEqualTo(RumResourceMethod.POST)
+        assertThat(head).isEqualTo(RumResourceMethod.HEAD)
+        assertThat(put).isEqualTo(RumResourceMethod.PUT)
+        assertThat(delete).isEqualTo(RumResourceMethod.DELETE)
+        assertThat(patch).isEqualTo(RumResourceMethod.PATCH)
+        assertThat(unknown).isEqualTo(RumResourceMethod.GET)
     }
 
     @Test
@@ -509,7 +510,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.startResource(resourceKey, "GET",  url,
+        verify { monitorProxy.mockMonitor.startResource(resourceKey, RumResourceMethod.GET,  url,
             mapOf(attributeKey to attributeValue)
         ) }
         verify { mockResult.success(null) }

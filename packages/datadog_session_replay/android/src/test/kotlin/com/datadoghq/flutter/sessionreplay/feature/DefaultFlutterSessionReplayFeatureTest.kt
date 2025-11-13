@@ -80,7 +80,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
             customEndpoint
         )
         var context = mutableMapOf<String, Any?>()
-        every { mockCore.updateFeatureContext(any(), captureLambda()) } answers {
+        every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
             lambda<(MutableMap<String, Any?>) -> Unit>().invoke(context)
         }
 
@@ -91,6 +91,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
         verify {
             mockCore.updateFeatureContext(
                 Feature.SESSION_REPLAY_FEATURE_NAME,
+                true,
                 any()
             )
         }
@@ -115,7 +116,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
             customEndpoint
         )
         var context = mutableMapOf<String, Any?>()
-        every { mockCore.updateFeatureContext(any(), captureLambda()) } answers {
+        every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
             lambda<(MutableMap<String, Any?>) -> Unit>().invoke(context)
         }
 
@@ -126,6 +127,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
         verify {
             mockCore.updateFeatureContext(
                 Feature.SESSION_REPLAY_FEATURE_NAME,
+                true,
                 any()
             )
         }

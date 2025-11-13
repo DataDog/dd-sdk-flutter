@@ -1,0 +1,2 @@
+-keep class com.datadoghq.flutter.DatadogLogEventMapper.** { *; }
+-keep class com.datadoghq.flutter.DatadogRumEventMapper** { *; }

@@ -75,12 +75,11 @@ void main() {
       expect(view1.viewEvents.last.performance?.fbc, isNotNull);
       // Should not have INV as no interaction led here
       expect(view1.viewEvents.last.inv, isNull);
-
-      // Web doesn't support action tracking from Flutter
-      var actionEvent = view1.actionEvents.last;
-      expect(actionEvent.actionType, 'tap');
-      expect(actionEvent.actionName, 'InkWell(Item 0)');
     }
+
+    var actionEvent = view1.actionEvents.last;
+    expect(actionEvent.actionType, 'tap');
+    expect(actionEvent.actionName, 'InkWell(Item 0)');
 
     final view2 = session.visits[1];
     expect(view2.name, 'rum_second_screen');
@@ -100,12 +99,11 @@ void main() {
       // INV should be at least 10 milliseconds later, as the tap action also takes up 10 ms
       expect(view2.viewEvents.last.inv,
           greaterThan(firstBuildComplete! + tenMsInNs));
-
-      // Web doesn't support action tracking from Flutter
-      var actionEvent = view2.actionEvents[0];
-      expect(actionEvent.actionType, 'tap');
-      expect(actionEvent.actionName, 'Button(Next Page)');
     }
+
+    var actionEvent2 = view2.actionEvents[0];
+    expect(actionEvent2.actionType, 'tap');
+    expect(actionEvent2.actionName, 'Button(Next Page)');
 
     // Check last view name
     final view3 = session.visits[2];

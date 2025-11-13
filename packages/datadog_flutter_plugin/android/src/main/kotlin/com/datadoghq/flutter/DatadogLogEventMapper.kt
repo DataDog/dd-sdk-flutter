@@ -1,15 +1,8 @@
 package com.datadoghq.flutter
 
-import android.os.Handler
-import android.os.Looper
-import com.datadog.android.Datadog
 import com.datadog.android.log.LogsConfiguration
 import com.datadog.android.log.model.LogEvent
-import io.flutter.plugin.common.MethodChannel
-import java.util.Collections
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
+import com.google.gson.JsonParser
 
 /**
  * This is a helper class that that simplifies event mapping / scrubbing for Log events.
@@ -18,16 +11,15 @@ import java.util.concurrent.TimeUnit
  * object used as the event mapper to be lost. This class is used as a static instance that will
  * perform mapping and call the Flutter mapping methods using the last provided MethodChannel.
  */
-internal class DatadogLogEventMapper {
-    private val channels: MutableSet<MethodChannel> = Collections.newSetFromMap(ConcurrentHashMap())
-
-    fun addChannel(channel: MethodChannel) {
-        channels.add(channel)
+class DatadogLogEventMapper {
+    // Even though mappers use "jnigen" and could bind / modify the Log events
+    // directly, this would require users use separate iOS / Android callbacks. by sending
+    // encoded versions, we can hide some platform specifics.
+    interface EventMapper {
+        fun mapLogEvent(encodedEvent: String): String?
     }
 
-    fun removeChannel(channel: MethodChannel) {
-        channels.remove(channel)
-    }
+    var eventMapper: EventMapper? = null
 
     fun attachMapper(config: LogsConfiguration.Builder): LogsConfiguration.Builder {
         config.setEventMapper { event -> mapLogEvent(event) }
@@ -37,80 +29,29 @@ internal class DatadogLogEventMapper {
 
     @Suppress("TooGenericExceptionCaught")
     internal fun mapLogEvent(event: LogEvent): LogEvent? {
-        val jsonEvent = event.toJson().asFlutterMap()
-        var modifiedJson: Map<String, Any?>? = null
+        var result: LogEvent? = event
 
-        val latch = CountDownLatch(1)
+        eventMapper?.let { mapper ->
+            val encodedEvent = event.toJson().toString()
 
-        val handler = Handler(Looper.getMainLooper())
-        val channel = channels.firstOrNull() ?: return event
+            val encodedResult = mapper.mapLogEvent(encodedEvent)
+            if (encodedResult != null) {
+                val jsonObject = JsonParser.parseString(encodedResult).asJsonObject
+                val modifiedEvent = LogEvent.fromJsonObject(jsonObject)
 
-        handler.post {
-            try {
-                channel.invokeMethod(
-                    "mapLogEvent",
-                    mapOf(
-                        "event" to jsonEvent
-                    ),
-                    object : MethodChannel.Result {
-                        override fun success(result: Any?) {
-                            @Suppress("UNCHECKED_CAST")
-                            modifiedJson = result as? Map<String, Any?>
-                            latch.countDown()
-                        }
+                event.status = modifiedEvent.status
+                event.message = modifiedEvent.message
+                event.ddtags = modifiedEvent.ddtags
+                event.logger.name = modifiedEvent.logger.name
+                event.error?.fingerprint = modifiedEvent.error?.fingerprint
 
-                        override fun error(
-                            errorCode: String,
-                            errorMessage: String?,
-                            errorDetails: Any?
-                        ) {
-                            // No telemetry needed, this is likely an issue in user code
-                            latch.countDown()
-                        }
-
-                        override fun notImplemented() {
-                            Datadog._internalProxy()._telemetry.error(
-                                "mapLogEvent returned notImplemented."
-                            )
-                            latch.countDown()
-                        }
-                    }
-                )
-            } catch (e: Exception) {
-                Datadog._internalProxy()._telemetry.error("Attempting call mapLogEvent failed.", e)
-                latch.countDown()
+                event.additionalProperties.clear()
+                event.additionalProperties.putAll(modifiedEvent.additionalProperties)
+            } else {
+                result = null
             }
         }
 
-        try {
-            // Stalls until the method channel finishes
-            if (!latch.await(1, TimeUnit.SECONDS)) {
-                Datadog._internalProxy()._telemetry.debug("logMapper timed out")
-                return event
-            }
-
-            return modifiedJson?.let {
-                if (!it.containsKey("_dd.mapper_error")) {
-                    val modifiedEvent = LogEvent.fromJsonObject(modifiedJson!!.toJsonObject())
-
-                    event.status = modifiedEvent.status
-                    event.message = modifiedEvent.message
-                    event.ddtags = modifiedEvent.ddtags
-                    event.logger.name = modifiedEvent.logger.name
-                    event.error?.fingerprint = modifiedEvent.error?.fingerprint
-
-                    event.additionalProperties.clear()
-                    event.additionalProperties.putAll(modifiedEvent.additionalProperties)
-                }
-                event
-            }
-        } catch (e: Exception) {
-            Datadog._internalProxy()._telemetry.error(
-                "Attempt to deserialize mapped log event failed, or latch await was interrupted." +
-                    " Returning unmodified event.",
-                e
-            )
-            return event
-        }
+        return result
     }
 }

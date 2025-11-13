@@ -7,6 +7,8 @@ import 'dart:io';
 
 import 'package:json_annotation/json_annotation.dart';
 
+import '../datadog_common_test.dart';
+
 part 'request_log.g.dart';
 
 @JsonSerializable()
@@ -80,5 +82,27 @@ class RequestLog {
       requestHeaders: headers,
       data: decoded,
     );
+  }
+
+  List<LogDecoder>? asLogs() {
+    List<dynamic>? logJson;
+    try {
+      if (jsonData is List) {
+        logJson = jsonData as List;
+      } else if (jsonData is Map) {
+        logJson = [jsonData];
+      } else {
+        throw const FormatException();
+      }
+    } on FormatException {
+      // Web sends as newline separated
+      logJson = data.split('\n').map((e) => json.decode(e)).toList();
+      // ignore: empty_catches
+    } on TypeError {}
+    return logJson
+        ?.whereType<Map<String, Object?>>()
+        .where((e) => e.containsKey('message') && e['type'] != 'telemetry')
+        .map((e) => LogDecoder(e))
+        .toList();
   }
 }

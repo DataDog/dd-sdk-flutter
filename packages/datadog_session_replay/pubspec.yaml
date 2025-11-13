@@ -18,8 +18,8 @@ dependencies:
   objective_c: ^8.0.0
   web: ^1.0.0
   meta: ^1.15.0  
-  plugin_platform_interface: ^2.1.8
-  datadog_flutter_plugin: ^2.13.1
+  plugin_platform_interface: ^2.0.2
+  datadog_flutter_plugin: ^3.0.0
   json_annotation: ^4.9.0
 
 dev_dependencies:

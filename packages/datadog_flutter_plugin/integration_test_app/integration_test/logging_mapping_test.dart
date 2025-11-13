@@ -2,7 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2022-Present Datadog, Inc.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
@@ -30,31 +29,10 @@ void main() {
     );
     var logs = <LogDecoder>[];
 
-    await recordedSession.pollSessionRequests(
+    await recordedSession.pollForLogs(
       const Duration(seconds: 30),
-      (requests) {
-        requests
-            .map((e) {
-              try {
-                return e.jsonData as List;
-              } on FormatException {
-                // Web sends as newline separated
-                return e.data
-                    .split('\n')
-                    .map<dynamic>((e) => json.decode(e))
-                    .toList();
-              } on TypeError {
-                // This is likely from RUM Telemetry
-                return null;
-              }
-            })
-            .whereType<List<dynamic>>()
-            .expand<dynamic>((e) => e)
-            .whereType<Map<String, Object?>>()
-            // Ignore RUM sessions
-            .where(
-                (e) => !(e).containsKey('session') && e['type'] != 'telemetry')
-            .forEach((e) => logs.add(LogDecoder(e)));
+      (logRequests) {
+        logs = logRequests;
         return logs.length >= 6;
       },
     );

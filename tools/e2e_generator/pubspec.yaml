@@ -3,7 +3,7 @@ description: A simple command-line application.
 version: 1.0.0
 
 environment:
-  sdk: '>=2.16.1 <4.0.0'
+  sdk: ^3.7.0
 
 dependencies:
   args: ^2.3.0
