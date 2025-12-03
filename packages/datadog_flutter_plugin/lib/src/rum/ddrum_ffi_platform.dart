@@ -2,10 +2,20 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025-Present Datadog, Inc.
 
+import 'dart:ffi';
+
+import 'package:ffi/ffi.dart';
+
 import '../../datadog_flutter_plugin.dart';
+import '../ffi/datadog_sdk_ffi_platform.dart';
+import '../ffi/dd_sdk_cpp.dart';
+import '../ffi/ffi_helpers.dart';
 import 'ddrum_platform_interface.dart';
 
 class DdRumFfiPlatform extends DdRumPlatform {
+  DatadogSdkFfiPlatform? _corePlatform;
+  Pointer<dd_rum>? _rum;
+
   @override
   String? get cachedSessionId => null;
 
@@ -13,7 +23,18 @@ class DdRumFfiPlatform extends DdRumPlatform {
   Future<String?> getCurrentSessionId() => Future.value(null);
 
   @override
-  Future<void> addAttribute(String key, value) => Future.value();
+  Future<void> addAttribute(String key, dynamic value) async {
+    final platform = _corePlatform;
+    final rum = _rum;
+    if (platform == null || rum == null) return;
+
+    using((arena) {
+      final cKey = key.toNativeUtf8(allocator: arena);
+      final cValue = valueToFfiAttribute(value, platform.dd, arena, 'value');
+
+      platform.dd.dd_rum_add_attribute(rum, cKey.cast<Char>(), cValue);
+    });
+  }
 
   @override
   Future<void> setInternalViewAttribute(String key, value) => Future.value();
@@ -68,17 +89,47 @@ class DdRumFfiPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> enable(DatadogSdk core, DatadogRumConfiguration configuration) {
-    return Future.value();
+  Future<void> enable(
+      DatadogSdk sdkCore, DatadogRumConfiguration configuration) async {
+    _corePlatform = sdkCore.platform as DatadogSdkFfiPlatform;
+    final dd = _corePlatform?.dd;
+    final core = _corePlatform?.core;
+
+    if (dd != null && core != null) {
+      using((arena) {
+        final rumConfig = arena<dd_rum_config>();
+        final cApplicationId =
+            configuration.applicationId.toNativeUtf8(allocator: arena);
+        dd.dd_rum_config_init(rumConfig, cApplicationId.cast());
+
+        dd.dd_rum_config_set_session_sample_rate(
+            rumConfig, configuration.sessionSamplingRate);
+
+        _rum = dd.dd_rum_init(core, rumConfig);
+      });
+    }
   }
 
   @override
-  Future<void> deinitialize() {
-    return Future.value();
+  Future<void> deinitialize() async {
+    if (_rum case final rum?) {
+      _corePlatform?.dd.dd_rum_destroy(rum);
+      _rum = null;
+    }
   }
 
   @override
-  Future<void> removeAttribute(String key) => Future.value();
+  Future<void> removeAttribute(String key) async {
+    final platform = _corePlatform;
+    final rum = _rum;
+    if (platform == null || rum == null) return;
+
+    using((arena) {
+      final cKey = key.toNativeUtf8(allocator: arena);
+
+      platform.dd.dd_rum_remove_attribute(rum, cKey.cast<Char>());
+    });
+  }
 
   @override
   Future<void> reportLongTask(DateTime at, int durationMs) {
@@ -112,8 +163,19 @@ class DdRumFfiPlatform extends DdRumPlatform {
     String key,
     String name,
     Map<String, Object?> attributes,
-  ) {
-    return Future.value();
+  ) async {
+    final platform = _corePlatform;
+    final rum = _rum;
+    if (platform == null || rum == null) return;
+
+    using((arena) {
+      final cKey = key.toNativeUtf8(allocator: arena);
+      final cName = name.toNativeUtf8(allocator: arena);
+      final cAttributes = attributesToFfiAttribute(
+          attributes, platform.dd, arena, 'attributes');
+      platform.dd.dd_rum_start_view_obj(
+          rum, cKey.cast<Char>(), cName.cast<Char>(), cAttributes);
+    });
   }
 
   @override
@@ -150,7 +212,13 @@ class DdRumFfiPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> stopSession() => Future.value();
+  Future<void> stopSession() async {
+    final platform = _corePlatform;
+    final rum = _rum;
+    if (platform == null || rum == null) return;
+
+    platform.dd.dd_rum_stop_session(rum);
+  }
 
   @override
   Future<void> stopAction(
@@ -167,8 +235,17 @@ class DdRumFfiPlatform extends DdRumPlatform {
     DateTime timestamp,
     String key,
     Map<String, Object?> attributes,
-  ) {
-    return Future.value();
+  ) async {
+    final platform = _corePlatform;
+    final rum = _rum;
+    if (platform == null || rum == null) return;
+
+    using((arena) {
+      final cKey = key.toNativeUtf8(allocator: arena);
+      final cAttributes = attributesToFfiAttribute(
+          attributes, platform.dd, arena, 'attributes');
+      platform.dd.dd_rum_stop_view_obj(rum, cKey.cast<Char>(), cAttributes);
+    });
   }
 
   @override

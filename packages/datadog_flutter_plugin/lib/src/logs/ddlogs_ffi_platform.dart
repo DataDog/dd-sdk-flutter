@@ -172,14 +172,3 @@ extension on LogLevel {
     }
   }
 }
-
-// @Native<
-//     Void Function(Pointer<dd_logger_t>, UnsignedInt, Pointer<Char>,
-//         Pointer<dd_attribute_t>)>(symbol: 'dd_logger_log_obj', isLeaf: true)
-// // ignore: non_constant_identifier_names
-// external void _dd_logger_log_obj(
-//   Pointer<dd_logger_t> logger,
-//   int level,
-//   Pointer<Char> message,
-//   Pointer<dd_attribute_t> attributes,
-// );
