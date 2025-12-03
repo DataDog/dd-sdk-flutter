@@ -191,6 +191,8 @@ class DatadogSdk {
     }
 
     _initializePlugins(configuration.additionalPlugins);
+    await _platform.start();
+
     _initialized = true;
   }
 

@@ -2,9 +2,13 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import 'ddrum_ffi_platform.dart';
 import 'ddrum_method_channel.dart';
 
 abstract class DdRumPlatform extends PlatformInterface {
@@ -12,13 +16,22 @@ abstract class DdRumPlatform extends PlatformInterface {
 
   static final Object _token = Object();
 
-  static DdRumPlatform _instance = DdRumMethodChannel();
+  static DdRumPlatform _instance = _createDefaultInstance();
 
   static DdRumPlatform get instance => _instance;
 
   static set instance(DdRumPlatform instance) {
     PlatformInterface.verifyToken(instance, _token);
     _instance = instance;
+  }
+
+  static DdRumPlatform _createDefaultInstance() {
+    if (!kIsWeb) {
+      if (Platform.isLinux) {
+        return DdRumFfiPlatform();
+      }
+    }
+    return DdRumMethodChannel();
   }
 
   String? get cachedSessionId;

@@ -165,6 +165,11 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   }
 
   @override
+  Future<void> start() {
+    return Future.value();
+  }
+
+  @override
   Future<AttachResponse?> attachToExisting(
     DatadogAttachConfiguration attachConfig,
   ) async {

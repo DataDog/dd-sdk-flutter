@@ -37,6 +37,11 @@ class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
   }
 
   @override
+  Future<void> start() {
+    return Future.value();
+  }
+
+  @override
   Future<void> sendTelemetryDebug(String message) {
     return Future.value();
   }

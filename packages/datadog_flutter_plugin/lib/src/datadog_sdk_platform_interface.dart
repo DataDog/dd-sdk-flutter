@@ -2,14 +2,18 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'dart:io';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:meta/meta.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../datadog_flutter_plugin.dart';
 import '../datadog_internal.dart';
+import 'datadog_noop_platform.dart';
 import 'datadog_sdk_method_channel.dart';
+import 'ffi/datadog_sdk_ffi_platform.dart';
 
 typedef LogCallback = void Function(String line);
 
@@ -93,13 +97,22 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
 
   static final Object _token = Object();
 
-  static DatadogSdkPlatform _instance = DatadogSdkMethodChannel();
+  static DatadogSdkPlatform _instance = _constructDefaultPlatform();
 
   static DatadogSdkPlatform get instance => _instance;
 
   static set instance(DatadogSdkPlatform instance) {
     PlatformInterface.verifyToken(instance, _token);
     _instance = instance;
+  }
+
+  static DatadogSdkPlatform _constructDefaultPlatform() {
+    if (!kIsWeb) {
+      if (Platform.isLinux) {
+        return DatadogSdkFfiPlatform();
+      }
+    }
+    return DatadogSdkMethodChannel();
   }
 
   DatadogContext? get cachedContext;
@@ -133,6 +146,8 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
     LogCallback? logCallback,
     required InternalLogger internalLogger,
   });
+  // Start is only used for the C++ SDK
+  Future<void> start();
   Future<AttachResponse?> attachToExisting(
     DatadogAttachConfiguration attachConfig,
   );

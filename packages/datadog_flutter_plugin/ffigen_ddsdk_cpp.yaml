@@ -1,0 +1,13 @@
+name: 'dd_sdk_cpp'
+functions:
+  leaf:
+    include:
+      - '.*'
+output: lib/src/ffi/dd_sdk_cpp.dart
+headers:
+  entry-points:
+    # This header is pulled by CMake, so you need to build the application
+    # first before it will be available.
+    - 'example/build/linux/x64/debug/_deps/datadog-src/include-c/datadog.h'
+compiler-opts:
+  - '-Iexample/build/linux/x64/debug/_deps/datadog-src/include-c'

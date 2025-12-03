@@ -2,9 +2,13 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import 'ddlogs_ffi_platform.dart';
 import 'ddlogs_method_channel.dart';
 
 abstract class DdLogsPlatform extends PlatformInterface {
@@ -12,13 +16,22 @@ abstract class DdLogsPlatform extends PlatformInterface {
 
   static final Object _token = Object();
 
-  static DdLogsPlatform _instance = DdLogsMethodChannel();
+  static DdLogsPlatform _instance = _createDefaultInstance();
 
   static DdLogsPlatform get instance => _instance;
 
   static set instance(DdLogsPlatform instance) {
     PlatformInterface.verifyToken(instance, _token);
     _instance = instance;
+  }
+
+  static DdLogsPlatform _createDefaultInstance() {
+    if (!kIsWeb) {
+      if (Platform.isLinux) {
+        return DdFfiLogsPlatform();
+      }
+    }
+    return DdLogsMethodChannel();
   }
 
   Future<void> enable(DatadogSdk core, DatadogLoggingConfiguration config);
