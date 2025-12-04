@@ -4,6 +4,8 @@
 # customers of the plugin.
 cmake_minimum_required(VERSION 3.14)
 
+include(FetchContent)
+
 # Project-level configuration.
 set(PROJECT_NAME "datadog_flutter_plugin")
 project(${PROJECT_NAME} LANGUAGES CXX)
@@ -16,17 +18,15 @@ cmake_policy(VERSION 3.14...3.25)
 # not be changed
 set(PLUGIN_NAME "datadog_flutter_plugin_plugin")
 
-# Any new source files that you add to the plugin should be added here.
+# For now, this plugin has no source and uses only FFI calls in to the dd_native library
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/dummy.cpp" "")
 list(APPEND PLUGIN_SOURCES
-  "datadog_flutter_plugin.cpp"
-  "datadog_flutter_plugin.h"
+  "${CMAKE_CURRENT_BINARY_DIR}/dummy.cpp"
 )
 
 # Define the plugin library target. Its name must not be changed (see comment
 # on PLUGIN_NAME above).
-add_library(${PLUGIN_NAME} SHARED
-  "include/datadog_flutter_plugin/datadog_flutter_plugin_c_api.h"
-  "datadog_flutter_plugin_c_api.cpp"
+add_library(${PLUGIN_NAME} SHARED 
   ${PLUGIN_SOURCES}
 )
 
@@ -48,53 +48,27 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 
+set(DD_BUILD_SHARED ON)
+set(DD_HTTP_USE_SYSTEM_LIBCURL OFF)
+set(CURL_DISABLE_INSTALL ON)
+set(CURL_ENABLE_EXPORT_TARGET OFF)
+set(BUILD_EXAMPLES OFF)
+set(ENABLE_CURL_MANUAL OFF)
+set(CURL_USE_SCHANNEL ON)
+
+FetchContent_Declare(
+  Datadog
+  GIT_REPOSITORY git@github.com:DataDog/dd-sdk-cpp.git
+  GIT_TAG origin/main
+)
+FetchContent_MakeAvailable(Datadog)
+target_link_libraries(${PLUGIN_NAME} PUBLIC Datadog::dd_native)
+
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
 # external build triggered from this build file.
 set(datadog_flutter_plugin_bundled_libraries
   ""
+  $<TARGET_FILE:Datadog::dd_native>
   PARENT_SCOPE
 )
-
-# === Tests ===
-# These unit tests can be run from a terminal after building the example, or
-# from Visual Studio after opening the generated solution file.
-
-# Only enable test builds when building the example (which sets this variable)
-# so that plugin clients aren't building the tests.
-if (${include_${PROJECT_NAME}_tests})
-set(TEST_RUNNER "${PROJECT_NAME}_test")
-enable_testing()
-
-# Add the Google Test dependency.
-include(FetchContent)
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/release-1.11.0.zip
-)
-# Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-# Disable install commands for gtest so it doesn't end up in the bundle.
-set(INSTALL_GTEST OFF CACHE BOOL "Disable installation of googletest" FORCE)
-FetchContent_MakeAvailable(googletest)
-
-# The plugin's C API is not very useful for unit testing, so build the sources
-# directly into the test binary rather than using the DLL.
-add_executable(${TEST_RUNNER}
-  test/datadog_flutter_plugin_test.cpp
-  ${PLUGIN_SOURCES}
-)
-apply_standard_settings(${TEST_RUNNER})
-target_include_directories(${TEST_RUNNER} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(${TEST_RUNNER} PRIVATE flutter_wrapper_plugin)
-target_link_libraries(${TEST_RUNNER} PRIVATE gtest_main gmock)
-# flutter_wrapper_plugin has link dependencies on the Flutter DLL.
-add_custom_command(TARGET ${TEST_RUNNER} POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-  "${FLUTTER_LIBRARY}" $<TARGET_FILE_DIR:${TEST_RUNNER}>
-)
-
-# Enable automatic test discovery.
-include(GoogleTest)
-gtest_discover_tests(${TEST_RUNNER})
-endif()

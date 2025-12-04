@@ -46,3 +46,5 @@ flutter:
         fileName: datadog_flutter_plugin_web.dart
       linux:
         ffiPlugin: true
+      windows:
+        ffiPlugin: true

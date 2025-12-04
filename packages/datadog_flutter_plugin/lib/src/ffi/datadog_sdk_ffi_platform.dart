@@ -3,6 +3,8 @@
 // Copyright 2025-Present Datadog, Inc.
 
 import 'dart:ffi';
+import 'dart:io';
+
 import 'package:ffi/ffi.dart';
 import 'package:meta/meta.dart';
 
@@ -13,7 +15,17 @@ import 'dd_sdk_cpp.dart';
 /// This platform is used with any platform that utilizes the Datadog
 /// C / C++ Client SDK. This includes Windows and Linux.
 class DatadogSdkFfiPlatform extends DatadogSdkPlatform {
-  final dd = dd_sdk_cpp(DynamicLibrary.open('libdd_native.so'));
+  final dd = _openLibrary();
+
+  static dd_sdk_cpp _openLibrary() {
+    DynamicLibrary? library;
+    if (Platform.isLinux) {
+      library = DynamicLibrary.open('libdd_native.so');
+    } else if (Platform.isWindows) {
+      library = DynamicLibrary.open('dd_native.dll');
+    }
+    return dd_sdk_cpp(library!);
+  }
 
   @internal
   Pointer<dd_core_t>? core;

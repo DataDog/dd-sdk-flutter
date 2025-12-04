@@ -10,6 +10,7 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import '../../datadog_flutter_plugin.dart';
 import 'ddlogs_ffi_platform.dart';
 import 'ddlogs_method_channel.dart';
+import 'ddlogs_noop_platform.dart';
 
 abstract class DdLogsPlatform extends PlatformInterface {
   DdLogsPlatform() : super(token: _token);
@@ -27,11 +28,14 @@ abstract class DdLogsPlatform extends PlatformInterface {
 
   static DdLogsPlatform _createDefaultInstance() {
     if (!kIsWeb) {
-      if (Platform.isLinux) {
+      if (Platform.isLinux || Platform.isWindows) {
         return DdFfiLogsPlatform();
       }
+      if (Platform.isAndroid || Platform.isIOS) {
+        return DdLogsMethodChannel();
+      }
     }
-    return DdLogsMethodChannel();
+    return DdNoOpLogsPlatform();
   }
 
   Future<void> enable(DatadogSdk core, DatadogLoggingConfiguration config);

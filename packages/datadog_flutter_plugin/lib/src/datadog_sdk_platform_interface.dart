@@ -6,7 +6,6 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
-import 'package:meta/meta.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../datadog_flutter_plugin.dart';
@@ -108,11 +107,14 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
 
   static DatadogSdkPlatform _constructDefaultPlatform() {
     if (!kIsWeb) {
-      if (Platform.isLinux) {
+      if (Platform.isLinux || Platform.isWindows) {
         return DatadogSdkFfiPlatform();
       }
+      if (Platform.isAndroid || Platform.isIOS) {
+        return DatadogSdkMethodChannel();
+      }
     }
-    return DatadogSdkMethodChannel();
+    return DatadogSdkNoOpPlatform();
   }
 
   DatadogContext? get cachedContext;

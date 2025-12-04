@@ -10,6 +10,7 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import '../../datadog_flutter_plugin.dart';
 import 'ddrum_ffi_platform.dart';
 import 'ddrum_method_channel.dart';
+import 'ddrum_noop_platform.dart';
 
 abstract class DdRumPlatform extends PlatformInterface {
   DdRumPlatform() : super(token: _token);
@@ -27,11 +28,14 @@ abstract class DdRumPlatform extends PlatformInterface {
 
   static DdRumPlatform _createDefaultInstance() {
     if (!kIsWeb) {
-      if (Platform.isLinux) {
+      if (Platform.isLinux || Platform.isWindows) {
         return DdRumFfiPlatform();
       }
+      if (Platform.isAndroid || Platform.isIOS) {
+        return DdRumMethodChannel();
+      }
     }
-    return DdRumMethodChannel();
+    return DdNoOpRumPlatform();
   }
 
   String? get cachedSessionId;
