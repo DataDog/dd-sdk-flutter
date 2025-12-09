@@ -6,6 +6,8 @@ import 'package:datadog_dio/src/datadog_dio_interceptor.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:dio/dio.dart';
 
+export 'src/datadog_dio_interceptor.dart' show DatadogDioInterceptor;
+
 /// A set of callbacks that allow you to provide attributes that should be
 /// attached to a Datadog RUM resource created from a [DatadogDioInterceptor]. This
 /// callback is called as part of the [Interceptor.onResponse] and [Interceptor.onError]
