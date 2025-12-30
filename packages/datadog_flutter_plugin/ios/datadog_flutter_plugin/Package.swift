@@ -13,7 +13,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/Datadog/dd-sdk-ios.git", exact: "2.30.1"),
-        .package(url: "https://github.com/almazrafi/DictionaryCoder.git", from: "1.2.0")
+        .package(url: "https://github.com/almazrafi/DictionaryCoder.git", exact: "1.2.0")
     ],
     targets: [
         .target(
