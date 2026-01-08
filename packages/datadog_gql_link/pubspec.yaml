@@ -2,7 +2,7 @@ name: datadog_gql_link
 description: A package for tracking GraphQL calls in Datadog compatible with gql_link 
 homepage: https://datadoghq.com
 repository: https://github.com/DataDog/dd-sdk-flutter
-version: 2.0.0
+version: 2.1.0
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
