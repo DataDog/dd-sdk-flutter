@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0-preview.8
+
+* Support getting context from background isolates.
+* Prevent a deadlock when fetching context.
+* Update Kotlin version to 2.1.0.
+* Upgrade Android min versions for v3.
+* Update plugin APIs to v3 to avoid compiler errors.
+
 ## 1.0.0-preview.7
 
 * [Session Replay] Fix using `BoxShape.circle` in `BoxDecoration`.

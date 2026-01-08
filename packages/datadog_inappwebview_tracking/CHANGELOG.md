@@ -1,3 +1,8 @@
+## 2.0.0
+
+* Update Kotlin version to 2.1.0.
+* Upgrade Android min versions for v3.
+
 ## 1.2.0
 
 * Revert changes specific to flutter_inappwebview 6.2 beta.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0
+
+* Support RUM context in trace headers.
+* Support consistent sampling based on session id.
+* [Web] Fix conversion of List to JSArray for Flutter Web.
+* Support deterministic sampling decisions on distributed traces.
+
 ## 1.2.0
 
 * Support grpc 4.x. See [#704](https://github.com/DataDog/dd-sdk-flutter/issues/704).

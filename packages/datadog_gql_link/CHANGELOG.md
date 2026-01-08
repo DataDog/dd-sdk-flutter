@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0
+
+* Support RUM context in trace headers.
+* Support consistent sampling based on session id.
+* Support deterministic sampling decisions on distributed traces.
+
 ## 1.2.0
 
 * Fix `GqlErrors` causing an `ArgumentError` on `stopResource`. See [#850](https://github.com/DataDog/dd-sdk-flutter/issues/850)

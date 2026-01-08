@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.0.0
+
+* Support automatic dart:io network tracking from background isolates.
+* Support RUM context in trace headers.
+* Support consistent sampling based on session id.
+* Update kotlin version to 2.1.0.
+* [Android] Fix compileSdk to be 35 on main package.
+* Upgrade android min versions for v3.
+* [Web] Fix conversion of List to JSArray for Flutter Web.
+* Support manual resource tracking on web.
+* Support deterministic sampling decisions on distributed traces.
+* Upgrade Android projects to AGP 8.6.0.
+
 ## 2.3.0
 
 * Fix ignored URLs throwing an exception with a `clientListener`. See [#716](https://github.com/DataDog/dd-sdk-flutter/issues/716)

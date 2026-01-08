@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.0
+
+* Update Kotlin version to 2.1.0.
+* [Android] Fix compileSdk to be 35 on main package.
+* Upgrade Android min versions for v3.
+
 ## 2.4.0
 
 * Support spm in all packages. See [#776](https://github.com/DataDog/dd-sdk-flutter/issues/776)

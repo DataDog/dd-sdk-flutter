@@ -1,5 +1,66 @@
 # Changelog
 
+## 3.0.0
+
+* Set trace sampling rate to default to 100%.
+* Support automatic dart:io network tracking from background isolates.
+* Support getting context from background isolates.
+* Support view attributes.
+* Fix issue re-initializing platform channel platform.
+* Add support for Feature Operations.
+* [Web] Support additional web only configuration options. See [#866](https://github.com/DataDog/dd-sdk-flutter/issues/866)
+* Support background isolate tracking. See [#869](https://github.com/DataDog/dd-sdk-flutter/issues/869) [#828](https://github.com/DataDog/dd-sdk-flutter/issues/828) [#580](https://github.com/DataDog/dd-sdk-flutter/issues/580)
+* Support RUM context in trace headers.
+* Support consistent sampling based on session id.
+* Support event mappers through JNI on Android.
+* Update kotlin version to 2.1.0.
+* Support mandatory user and account info.
+* [Web] Support source, variant, and sdkVersion.
+* [Web] Use UUID for resource key over id.
+* Upgrade android min versions for v3.
+* Update plugin APIs to v3 to avoid compiler errors.
+* Support manual resource tracking on web.
+* Support deterministic sampling decisions on distributed traces.
+* Change TraceContextInjection default to sampled.
+* Update iOS SDK to 3.4.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md).
+  * Improve Memory vital collected using phys_footprint.
+  * Align attribute propagation mechanism.
+  * Stop reporting App hangs and Watchdog terminations for iOS widgets.
+  * Align os and device attributes across all product features.
+  * Remove fatal errors from Logs.
+  * Introduce new category for network errors.
+  * Add opt-out API to disable tracking memory warnings as RUM Errors.
+  * Adds start and end Feature Operations APIs.
+  * Sends accessibility attributes in View Updates.
+  * Adds ddtags to RUM events.
+  * Fixes `LogEvent` device types.
+  * Adds missing `versionMajor` property.
+  * Fix Logger race condition.
+  * Fix typos in internal accessibility implementation.
+  * Add `service` and `sdk_version` tags to log requests.
+* Update Android SDK to 3.5.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md).
+  * RUM: Create view attributes update methods.
+  * Core: Resolve batch file only during the actual write call.
+  * Introduce event processing thread.
+  * RUM: Update RUM feature context only after event processing completion.
+  * RUM: Align attribute propagation mechanism.
+  * Custom endpoint URL are taken as is
+  * Logs: Don't send fatal errors to Logs, only send them to RUM.
+  * Core: Monitor backpressure of context executor.
+  * Core: Remove default value for the `addAccountExtraInfo` call.
+  * Move session properties to `ddtags` over query parameters.
+  * Bump minSdk version to 23.
+  * RUM: Feature Operations public API.
+  * Bump language and API versions to 1.8.
+  * Move session properties to `ddtags` over query parameters.
+  * Support sending anonymous user ids in logs.
+  * Add internal `disableJankStats` config option.
+  * Fix crash in `KronosTimeProvider`.
+  * Handle potential `StackOverflowError`.
+  * Add service name to `ddtags` of `LogEvent`.
+  * Enable UI slow frames by default.
+  * Fix service handling in `ddtags` of `LogEvent`.
+
 ## 2.16.1
 
 * Pin `DictionaryCoder` to exact version 1.2.0 for iOS 12 compatibility.
