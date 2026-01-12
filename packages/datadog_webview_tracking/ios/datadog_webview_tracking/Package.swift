@@ -18,6 +18,7 @@ let package = Package(
         .target(
             name: "datadog_webview_tracking",
             dependencies: [
+                .product(name: "DatadogCore", package: "dd-sdk-ios"),
                 .product(name: "DatadogWebViewTracking", package: "dd-sdk-ios")
             ],
             resources: []
