@@ -4,6 +4,8 @@
 
 import Flutter
 import UIKit
+import DatadogCore
+import DatadogInternal
 import DatadogWebViewTracking
 import webview_flutter_wkwebview
 
@@ -44,9 +46,20 @@ public class DatadogWebViewTrackingPlugin: NSObject, FlutterPlugin {
                         forIdentifier: webViewIdentifier,
                         withPluginRegistry: registry) {
                     WebViewTracking.enable(webView: webview, hosts: Set(allowedHosts))
+                } else {
+                    Datadog._internal.telemetry.error(
+                        id: "webview_tracking_init_failed",
+                        message: "Failed to initialie WebViewTracking because a WebViewFlutterPlugin instance was not found",
+                        kind: "DependencyFailure",
+                        stack: nil
+                    )
                 }
                 result(nil)
             } else {
+                consolePrint(
+                    "⚠️ Could not find WebViewFlutterPlugin to enable Datadog tracking. This may be because of a change in Flutter." +
+                    "Please report this issue to Datadog along with the version of flutter_webview and Flutter you are using.",
+                    .warn)
                 result(
                     FlutterError(code: "DatadogSdk:ContractViolation",
                                  message: "Missing parameter in call to \(call.method)",
