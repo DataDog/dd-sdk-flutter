@@ -36,13 +36,13 @@ public class DatadogWebViewTrackingPlugin: NSObject, FlutterPlugin {
                let allowedHosts = arguments["allowedHosts"] as? [String] {
                 let webViewIdentifier = number.int64Value
 
-                // swiftlint:disable:next todo
-                // TODO: Add to app scenario, search for a FlutterViewController to get the
-                // registry
-                if let pluginRegistry = UIApplication.shared.delegate as? FlutterPluginRegistry,
+                if let registry = getPluginRegistry(),
+                   // FWFWebviewFlutterWKWebViewExternalAPI does a force cast, which can crash,
+                   // so to try to avoid that, we're going to check to make sure the plugin is there first.
+                   let _ = registry.valuePublished(byPlugin: "WebViewFlutterPlugin") as? WebViewFlutterPlugin,
                    let webview = FWFWebViewFlutterWKWebViewExternalAPI.webView(
                         forIdentifier: webViewIdentifier,
-                        withPluginRegistry: pluginRegistry) {
+                        withPluginRegistry: registry) {
                     WebViewTracking.enable(webView: webview, hosts: Set(allowedHosts))
                 }
                 result(nil)
@@ -56,5 +56,23 @@ public class DatadogWebViewTrackingPlugin: NSObject, FlutterPlugin {
         } else {
             result(FlutterMethodNotImplemented)
         }
+    }
+
+    private func getPluginRegistry() -> FlutterPluginRegistry? {
+        // swiftlint:disable:next todo
+        // TODO: Add to app scenario, search for a FlutterViewController to get the
+        // registry
+        // Note, in Flutter 3.38, registrars expose `viewController` which will be the
+        // correct way to get the plugin registry. To be compatibile with <= 3.37 and 3.38+,
+        // we're going to first try to se if the RootViewController is a plugin registry (3.38+),
+        // and if not, fall back to the delegate (<= 3.37).
+        let delegate = UIApplication.shared.delegate as? FlutterAppDelegate
+        if let rootViewController = delegate?.window?.rootViewController,
+           let pluginRegistry = rootViewController as? FlutterPluginRegistry {
+            return pluginRegistry
+        } else if let delegate = UIApplication.shared.delegate as? FlutterPluginRegistry {
+            return delegate
+        }
+        return nil
     }
 }
