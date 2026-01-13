@@ -57,7 +57,7 @@ public class DatadogWebViewTrackingPlugin: NSObject, FlutterPlugin {
                 result(nil)
             } else {
                 consolePrint(
-                    "⚠️ Could not find WebViewFlutterPlugin to enable Datadog tracking. This may be because of a change in Flutter." +
+                    "⚠️ Could not find WebViewFlutterPlugin to enable Datadog tracking. This may be because of a change in Flutter. " +
                     "Please report this issue to Datadog along with the version of flutter_webview and Flutter you are using.",
                     .warn)
                 result(
