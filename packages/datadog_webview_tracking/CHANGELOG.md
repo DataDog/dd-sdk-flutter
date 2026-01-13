@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.1
+
+* Fix crash with ios webview tracking in Flutter 3.38+.
+
 ## 2.4.0
 
 * Support spm in all packages. See [#776](https://github.com/DataDog/dd-sdk-flutter/issues/776)
