@@ -106,6 +106,12 @@ class DatadogDioInterceptor extends Interceptor {
     if (contentLengthHeader != null) {
       contentLength = int.tryParse(contentLengthHeader);
     }
+    if (contentLength == null) {
+      final data = response.data;
+      if (data is List<int>) { // Only treat ResponseType.bytes. JSON will already have been parse to Dart Objects.
+        contentLength = data.length;
+      }
+    }
     final attributes = attributesProvider?.onResponse(response) ?? {};
     rum.stopResource(
       rumKey,

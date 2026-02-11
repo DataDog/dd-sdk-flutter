@@ -148,9 +148,13 @@ class DatadogClient extends http.BaseClient {
         final spyStream = StreamController<List<int>>();
 
         Object? firstError;
+        int byteCount = 0;
 
         response.stream.listen(
-          spyStream.sink.add,
+          (data) {
+            byteCount += data.length;
+            spyStream.sink.add(data);
+          },
           onError: (Object e, StackTrace? st) {
             if (firstError == null) {
               firstError = e;
@@ -169,7 +173,8 @@ class DatadogClient extends http.BaseClient {
             if (rumKey != null) {
               final attributes =
                   attributesProvider?.call(request, response, null) ?? {};
-              _onFinish(rum, rumKey, response, attributes, firstError);
+              _onFinish(
+                  rum, rumKey, response, attributes, firstError, byteCount);
             }
             spyStream.close();
           },
@@ -208,7 +213,7 @@ class DatadogClient extends http.BaseClient {
   }
 
   void _onFinish(DatadogRum rum, String rumKey, http.StreamedResponse response,
-      Map<String, Object?> attributes, Object? error) {
+      Map<String, Object?> attributes, Object? error, int byteCount) {
     try {
       // If we saw an error, this resource has already been stopped
       if (error == null) {
@@ -218,11 +223,15 @@ class DatadogClient extends http.BaseClient {
             ? ContentType.parse(contentTypeHeader)
             : ContentType.text;
         var resourceType = resourceTypeFromContentType(contentType);
+        var size = response.contentLength;
+        if (size == null || size <= 0) {
+          size = byteCount > 0 ? byteCount : null;
+        }
         datadogSdk.rum?.stopResource(
           rumKey,
           response.statusCode,
           resourceType,
-          response.contentLength,
+          size,
           attributes,
         );
       }

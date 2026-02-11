@@ -594,6 +594,55 @@ void main() {
             any(),
           ));
     });
+
+    test(
+        'reports counted byte size when contentLength is unavailable (chunked response)',
+        () async {
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
+
+      var request = await client.openUrl('get', url);
+      var capturedKey = verify(
+        () => mockRum.startResource(
+            captureAny(), RumHttpMethod.get, url.toString(), any()),
+      ).captured[0] as String;
+
+      final mockResponse = setupMockClientResponse(200, size: -1);
+      completer.complete(mockResponse);
+      var response = await request.done;
+
+      response.listen((event) {});
+      mockResponse.streamController.sink.add([1, 2, 3]);
+      mockResponse.streamController.sink.add([4, 5]);
+      await mockResponse.streamController.close();
+
+      verify(() => mockRum.stopResource(
+          capturedKey, 200, RumResourceType.image, 5, any()));
+    });
+
+    test(
+        'reports contentLength when available even if bytes are also counted',
+        () async {
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
+
+      var request = await client.openUrl('get', url);
+      var capturedKey = verify(
+        () => mockRum.startResource(
+            captureAny(), RumHttpMethod.get, url.toString(), any()),
+      ).captured[0] as String;
+
+      final mockResponse = setupMockClientResponse(200, size: 88888);
+      completer.complete(mockResponse);
+      var response = await request.done;
+
+      response.listen((event) {});
+      mockResponse.streamController.sink.add([1, 2, 3]);
+      await mockResponse.streamController.close();
+
+      verify(() => mockRum.stopResource(
+          capturedKey, 200, RumResourceType.image, 88888, any()));
+    });
   });
 
   for (final headerType in TracingHeaderType.values) {

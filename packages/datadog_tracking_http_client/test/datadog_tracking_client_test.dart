@@ -393,6 +393,54 @@ void main() {
       verify(() => mockRum.stopResource(any(), any(), any(), any(), any()));
     });
 
+    test(
+        'reports counted byte size when contentLength is null (chunked response)',
+        () async {
+      final client =
+          DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
+      final testUri = Uri.parse('https://test_url/test');
+
+      when(() => mockResponse.contentLength).thenReturn(null);
+      when(() => mockResponse.stream).thenAnswer(
+          (_) => http.ByteStream.fromBytes([1, 2, 3, 4, 5]));
+
+      final future =
+          client.get(testUri, headers: {'x-datadog-header': 'header'});
+
+      await future;
+
+      final key = verify(() => mockRum.startResource(
+              captureAny(), RumHttpMethod.get, testUri.toString(), any()))
+          .captured[0] as String;
+
+      verify(() =>
+          mockRum.stopResource(key, 200, RumResourceType.native, 5, any()));
+    });
+
+    test(
+        'reports contentLength when available even if bytes are also counted',
+        () async {
+      final client =
+          DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
+      final testUri = Uri.parse('https://test_url/test');
+
+      when(() => mockResponse.contentLength).thenReturn(88888);
+      when(() => mockResponse.stream).thenAnswer(
+          (_) => http.ByteStream.fromBytes([1, 2, 3]));
+
+      final future =
+          client.get(testUri, headers: {'x-datadog-header': 'header'});
+
+      await future;
+
+      final key = verify(() => mockRum.startResource(
+              captureAny(), RumHttpMethod.get, testUri.toString(), any()))
+          .captured[0] as String;
+
+      verify(() =>
+          mockRum.stopResource(key, 200, RumResourceType.native, 88888, any()));
+    });
+
     for (final headerType in TracingHeaderType.values) {
       group('when rum is enabled with $headerType tracing headers', () {
         setUp(() {

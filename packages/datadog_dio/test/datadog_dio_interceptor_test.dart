@@ -466,6 +466,33 @@ void main() {
       verify(() => handler.next(dioException));
     });
 
+    test(
+        'the interceptor reports data length when content-length header is absent and data is bytes',
+        () {
+      // Given
+      final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
+      final requestOptions = RequestOptions(
+          path: 'https://test_uri',
+          method: 'GET',
+          headers: {},
+          responseType: ResponseType.bytes);
+      final rumKey = randomString();
+      requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
+      final response = Response(
+        requestOptions: requestOptions,
+        statusCode: 200,
+        data: [1, 2, 3, 4, 5],
+      );
+
+      // When
+      final handler = ResponseInterceptionHandlerMock();
+      interceptor.onResponse(response, handler);
+
+      // Then
+      verify(() =>
+          mockRum.stopResource(rumKey, 200, RumResourceType.native, 5, any()));
+    });
+ 
     test('the interceptor ignores requests that match a regex', () {
       // Given
       final interceptor = DatadogDioInterceptor(
