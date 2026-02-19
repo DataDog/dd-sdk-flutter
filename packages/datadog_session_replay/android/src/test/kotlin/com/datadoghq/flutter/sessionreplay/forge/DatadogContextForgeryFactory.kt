@@ -69,10 +69,7 @@ class DatadogContextForgeryFactory : ForgeryFactory<DatadogContext> {
                     locales = forge.aList { forge.aString() },
                     currentLocale = forge.aString(),
                     timeZone = forge.aString()
-                ),
-                logicalCpuCount = forge.anInt(),
-                totalRam = forge.anInt(),
-                isLowRam = forge.aBool()
+                )
             ),
             userInfo = UserInfo(
                 id = forge.aNullable { anHexadecimalString() },
