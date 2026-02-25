@@ -377,6 +377,123 @@ void main() {
     expect(wireframe.label, isNull);
   });
 
+  group('Caching tests', () {
+    testWidgets(
+      'same-content images skip duplicate saveImageForProcessing',
+      (tester) async {
+        // Given - two different ui.Image instances with identical pixel content
+        ui.Image? image1 = await tester.runAsync(() {
+          return createTestImage(width: 20, height: 20);
+        });
+        ui.Image? image2 = await tester.runAsync(() {
+          return createTestImage(width: 20, height: 20);
+        });
+        when(
+          () => platform.saveImageForProcessing(any(), any(), any(), any()),
+        ).thenAnswer((_) async {});
+
+        final provider1 = TestImageProvider(image1!);
+        final provider2 = TestImageProvider(image2!);
+
+        final tree = MaterialApp(
+          home: SimpleTestCapture(
+            key: Key('key'),
+            recorder: recorder,
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 10.0,
+                  left: 10.0,
+                  width: 20.0,
+                  height: 20.0,
+                  child: Image(image: provider1),
+                ),
+                Positioned(
+                  top: 40.0,
+                  left: 10.0,
+                  width: 20.0,
+                  height: 20.0,
+                  child: Image(image: provider2),
+                ),
+              ],
+            ),
+          ),
+        );
+        await tester.pumpWidget(tree);
+
+        // Load image1 first and capture — saveImageForProcessing called once
+        provider1.complete();
+        await tester.pump();
+        await tester.runAsync(() async {
+          await recorder.performCapture();
+        });
+
+        // Load image2 (same content, different instance) and capture again
+        provider2.complete();
+        await tester.pump();
+        await tester.runAsync(() async {
+          await recorder.performCapture();
+        });
+
+        // Then saveImageForProcessing was only called once total
+        verify(
+          () => platform.saveImageForProcessing(any(), any(), any(), any()),
+        ).called(1);
+
+        image1.dispose();
+        image2.dispose();
+      },
+    );
+
+    testWidgets(
+      'resourceId native call is cached after first resolution',
+      (tester) async {
+        // Given
+        when(
+          () => platform.saveImageForProcessing(any(), any(), any(), any()),
+        ).thenAnswer((_) async {});
+        final resourceIdValue = randomString();
+        when(() => platform.resourceIdForKey(any())).thenReturn(resourceIdValue);
+
+        final provider = TestImageProvider(testImage);
+        final tree = MaterialApp(
+          home: SimpleTestCapture(
+            key: Key('key'),
+            recorder: recorder,
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 10.0,
+                  left: 10.0,
+                  width: testImage.width.toDouble(),
+                  height: testImage.height.toDouble(),
+                  child: Image(image: provider),
+                ),
+              ],
+            ),
+          ),
+        );
+        await tester.pumpWidget(tree);
+        provider.complete();
+        await tester.pump();
+
+        CaptureResult? capture;
+        await tester.runAsync(() async {
+          capture = await recorder.performCapture();
+        });
+
+        // When - call buildWireframes multiple times
+        final node = capture!.viewTreeSnapshot.nodes.last as ResourceImageNode;
+        node.buildWireframes(); // First call — queries native and caches
+        node.buildWireframes(); // Second call — should use Dart cache
+        node.buildWireframes(); // Third call — should still use Dart cache
+
+        // Then resourceIdForKey was only called once despite three invocations
+        verify(() => platform.resourceIdForKey(any())).called(1);
+      },
+    );
+  });
+
   /// Masking tests can avoid using the full recorder because we don't
   /// need to test widget positioning
   group('Masking tests', () {

@@ -140,6 +140,34 @@ class KeyGenerator {
     return value;
   }
 
+  // Maps resourceKey → resolved resourceId string.
+  // Populated once native returns a non-null value; eliminates repeated
+  // resourceIdForKey() calls on every capture cycle.
+  final Map<int, String> _resourceIdStringCache = {};
+
+  // Maps a fast content hash of image bytes → resourceKey.
+  // Deduplicates same-content images that arrive as different ui.Image instances
+  // (e.g. network images re-fetched, widgets rebuilt).
+  final Map<int, int> _contentHashCache = {};
+
+  /// Returns the cached resourceId string for [resourceKey], or null if native
+  /// has not yet resolved it.
+  String? cachedResourceId(int resourceKey) =>
+      _resourceIdStringCache[resourceKey];
+
+  /// Stores [resourceId] for [resourceKey] once native has resolved it.
+  void cacheResourceId(int resourceKey, String resourceId) {
+    _resourceIdStringCache[resourceKey] = resourceId;
+  }
+
+  /// Returns the existing resourceKey for [contentHash], or null if this image
+  /// content has not been seen this session.
+  int? resourceKeyForHash(int contentHash) => _contentHashCache[contentHash];
+
+  /// Associates [contentHash] with [resourceKey] after first processing.
+  void cacheContentHash(int contentHash, int resourceKey) {
+    _contentHashCache[contentHash] = resourceKey;
+  }
 }
 
 @immutable
