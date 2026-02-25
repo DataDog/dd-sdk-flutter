@@ -31,8 +31,8 @@ void main() {
       defaultCapturePrivacy: TreeCapturePrivacy(
         textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskSensitiveInputs,
         imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
-      ),
-      touchPrivacyLevel: TouchPrivacyLevel.show,
+        touchPrivacyLevel: TouchPrivacyLevel.show,
+      )
     );
 
     registerFallbackValue(
@@ -318,8 +318,8 @@ void main() {
           textAndInputPrivacyLevel:
               TextAndInputPrivacyLevel.maskSensitiveInputs,
           imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
-        ),
-        touchPrivacyLevel: TouchPrivacyLevel.show,
+          touchPrivacyLevel: TouchPrivacyLevel.show,
+        )
       );
       recorder.updateContext(context);
 
@@ -383,8 +383,8 @@ void main() {
         defaultCapturePrivacy: TreeCapturePrivacy(
           textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskAll,
           imagePrivacyLevel: ImagePrivacyLevel.maskAll,
-        ),
-        touchPrivacyLevel: TouchPrivacyLevel.show,
+          touchPrivacyLevel: TouchPrivacyLevel.show,
+        )
       );
       recorder.updateContext(context);
 
