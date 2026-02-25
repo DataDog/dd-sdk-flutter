@@ -34,8 +34,8 @@ void main() {
       defaultCapturePrivacy: TreeCapturePrivacy(
         textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskSensitiveInputs,
         imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
-      ),
-      touchPrivacyLevel: TouchPrivacyLevel.show,
+        touchPrivacyLevel: TouchPrivacyLevel.show,
+      )
     );
 
     registerFallbackValue(

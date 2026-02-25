@@ -28,10 +28,12 @@ import 'view_tree_snapshot.dart';
 class TreeCapturePrivacy {
   final TextAndInputPrivacyLevel textAndInputPrivacyLevel;
   final ImagePrivacyLevel imagePrivacyLevel;
+  final TouchPrivacyLevel touchPrivacyLevel;
 
   const TreeCapturePrivacy({
     required this.textAndInputPrivacyLevel,
     required this.imagePrivacyLevel,
+    this.touchPrivacyLevel = TouchPrivacyLevel.hide,
   });
 
   @override
@@ -39,17 +41,30 @@ class TreeCapturePrivacy {
     if (other is! TreeCapturePrivacy) return false;
 
     return other.textAndInputPrivacyLevel == textAndInputPrivacyLevel &&
-        other.imagePrivacyLevel == imagePrivacyLevel;
+        other.imagePrivacyLevel == imagePrivacyLevel &&
+        other.touchPrivacyLevel == touchPrivacyLevel;
   }
 
   @override
   int get hashCode {
-    return textAndInputPrivacyLevel.hashCode;
+    return Object.hash(
+      textAndInputPrivacyLevel,
+      imagePrivacyLevel,
+      touchPrivacyLevel,
+    );
   }
 }
 
 abstract interface class ElementRecorder {
+  /// The exact widget types this recorder handles (used for O(1) lookup).
+  /// Leave empty and override [canHandle] for generic widget types (e.g. Radio<T>).
   List<Type> get handlesTypes;
+
+  /// Override for generic types whose [Widget.runtimeType] varies with the
+  /// type parameter (e.g. `Radio<String>` vs `Radio<int>`). The default
+  /// implementation returns `false`; non-generic recorders rely solely on
+  /// [handlesTypes] and never need to override this.
+  bool canHandle(Widget widget) => false;
 
   CaptureNodeSemantics? captureSemantics(
     Element element,
@@ -70,6 +85,11 @@ class KeyGenerator {
   final Expando<int> _nodeIdExpando = Expando('sr-key');
   final Expando<int> _resourceIdExpando = Expando('sr-resource-key');
 
+  /// Sub-key expandos indexed by sub-element index.
+  /// Used by compound widgets (e.g. Switch, Slider) that produce multiple
+  /// wireframes from a single [Element] and need extra stable IDs.
+  final Map<int, Expando<int>> _subKeyExpandos = {};
+
   int keyForElement(Element e) {
     var value = _nodeIdExpando[e];
     if (value != null) return value;
@@ -80,6 +100,25 @@ class KeyGenerator {
 
     _nodeIdExpando[e] = value;
 
+    return value;
+  }
+
+  /// Returns a stable sub-element key for [e] at position [subIndex].
+  /// Each unique [subIndex] gets its own stable ID that persists across
+  /// frames, just like [keyForElement].
+  int subKeyForElement(Element e, int subIndex) {
+    final expando = _subKeyExpandos.putIfAbsent(
+      subIndex,
+      () => Expando('sr-sub-key-$subIndex'),
+    );
+    var value = expando[e];
+    if (value != null) return value;
+
+    value = _nextElementKey;
+    _nextElementKey = _nextElementKey + 1;
+    if (_nextElementKey >= maxKey) _nextElementKey = 0;
+
+    expando[e] = value;
     return value;
   }
 
@@ -96,6 +135,7 @@ class KeyGenerator {
     _resourceIdExpando[e] = value;
     return value;
   }
+
 }
 
 @immutable
@@ -110,13 +150,15 @@ class SessionReplayRecorder {
   final DatadogTimeProvider _timeProvider;
   final Map<Type, ElementRecorder> _elementRecordersByType = {};
 
+  /// Fallback recorders for generic widget types (e.g. [Radio]<T>) whose
+  /// [runtimeType] includes a type parameter and won't match the exact type
+  /// registered in [_elementRecordersByType].
+  final List<ElementRecorder> _fallbackRecorders = [];
+
   final Map<Key, Element> _elements = {};
   RUMContext? _currentContext;
   bool _captureInProgress = false;
   TreeCapturePrivacy _defaultTreeCapturePrivacy;
-  // TODO(RUM-11681): Support touch privacy
-  // ignore: unused_field
-  TouchPrivacyLevel _touchPrivacyLevel;
 
   @visibleForTesting
   set defaultTreeCapturePrivacy(TreeCapturePrivacy value) =>
@@ -127,19 +169,16 @@ class SessionReplayRecorder {
   SessionReplayRecorder({
     DatadogTimeProvider timeProvider = const DefaultTimeProvider(),
     required TreeCapturePrivacy defaultCapturePrivacy,
-    required TouchPrivacyLevel touchPrivacyLevel,
   }) : this._(
           KeyGenerator(),
           timeProvider,
           defaultCapturePrivacy,
-          touchPrivacyLevel,
         );
 
   SessionReplayRecorder._(
     KeyGenerator keyGenerator,
     this._timeProvider,
     this._defaultTreeCapturePrivacy,
-    this._touchPrivacyLevel,
   ) {
     _populateElementRecorderMap([
       ContainerRecorder(keyGenerator),
@@ -157,10 +196,8 @@ class SessionReplayRecorder {
     List<ElementRecorder> elementRecorders, {
     DatadogTimeProvider timeProvider = const DefaultTimeProvider(),
     required TreeCapturePrivacy defaultCapturePrivacy,
-    required TouchPrivacyLevel touchPrivacyLevel,
   })  : _timeProvider = timeProvider,
-        _defaultTreeCapturePrivacy = defaultCapturePrivacy,
-        _touchPrivacyLevel = touchPrivacyLevel {
+        _defaultTreeCapturePrivacy = defaultCapturePrivacy {
     _populateElementRecorderMap(elementRecorders);
   }
 
@@ -257,9 +294,12 @@ class SessionReplayRecorder {
       nodes: nodes,
     );
 
-    // We shouldn't have multiple pointer snapshots, but even if we
-    // do, for now just take the first one.
-    final pointerSnapshot = pointerSnapshots.firstOrNull;
+    // Respect global touch privacy: if the default level is hide, discard
+    // all captured pointer events before sending to the processor.
+    final pointerSnapshot =
+        _defaultTreeCapturePrivacy.touchPrivacyLevel == TouchPrivacyLevel.show
+            ? pointerSnapshots.firstOrNull
+            : null;
 
     return CaptureResult(viewTreeSnapshot, pointerSnapshot);
   }
@@ -277,7 +317,22 @@ class SessionReplayRecorder {
       for (final type in recorder.handlesTypes) {
         _elementRecordersByType[type] = recorder;
       }
+      // All recorders are kept in the fallback list so that generic widget
+      // types (e.g. Radio<T>) can be matched via canHandle() when the
+      // exact-type map misses.
+      _fallbackRecorders.add(recorder);
     }
+  }
+
+  /// Finds an [ElementRecorder] for [widget], first via the O(1) type map and
+  /// then falling back to the ordered fallback list for generic types.
+  ElementRecorder? _recorderFor(Widget widget) {
+    final exact = _elementRecordersByType[widget.runtimeType];
+    if (exact != null) return exact;
+    for (final fb in _fallbackRecorders) {
+      if (fb.canHandle(widget)) return fb;
+    }
+    return null;
   }
 
   // Certain elements will cause everything under the element to be invisible, such
@@ -335,7 +390,7 @@ class SessionReplayRecorder {
       }
 
       final widget = e.widget;
-      final recorder = _elementRecordersByType[widget.runtimeType];
+      final recorder = _recorderFor(widget);
       var subtreeStrategy = CaptureNodeSubtreeStrategy.record;
       if (recorder != null) {
         final transformMatrix = renderObject.getTransformTo(

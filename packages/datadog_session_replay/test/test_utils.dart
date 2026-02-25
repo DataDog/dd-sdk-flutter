@@ -81,3 +81,22 @@ class TestImageProvider extends ImageProvider<TestImageProvider> {
   @override
   String toString() => '${describeIdentity(this)}()';
 }
+
+/// Creates a solid-color [ui.Image] of the given [width] × [height] for use
+/// in tests that need a real pixel buffer (e.g. image capture / hashing).
+Future<ui.Image> createTestImage({
+  required int width,
+  required int height,
+}) async {
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(recorder);
+  final paint = ui.Paint()..color = const Color(0xFF4286F4);
+  canvas.drawRect(
+    Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+    paint,
+  );
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(width, height);
+  picture.dispose();
+  return image;
+}
