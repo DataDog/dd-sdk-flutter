@@ -76,4 +76,38 @@ void main() {
     final sendIndex = lines.indexOf('getAllowedWebViewHosts() {');
     expect(lines[sendIndex + 1], contains('return \'["shopist.io"]\''));
   });
+
+  test('getCapabilities returns records capability', () {
+    final userScript = DatadogInAppWebViewUserScript(
+      datadog: DatadogSdk.instance,
+      allowedHosts: {},
+    );
+
+    final lines = userScript.source.split('\n').map((e) => e.trim()).toList();
+    final idx = lines.indexOf('getCapabilities() {');
+    expect(lines[idx + 1], contains('"records"'));
+  });
+
+  test('getPrivacyLevel returns the provided privacyLevel', () {
+    final userScript = DatadogInAppWebViewUserScript(
+      datadog: DatadogSdk.instance,
+      allowedHosts: {},
+      privacyLevel: 'allow',
+    );
+
+    final lines = userScript.source.split('\n').map((e) => e.trim()).toList();
+    final idx = lines.indexOf('getPrivacyLevel() {');
+    expect(lines[idx + 1], contains("'allow'"));
+  });
+
+  test('getPrivacyLevel defaults to mask', () {
+    final userScript = DatadogInAppWebViewUserScript(
+      datadog: DatadogSdk.instance,
+      allowedHosts: {},
+    );
+
+    final lines = userScript.source.split('\n').map((e) => e.trim()).toList();
+    final idx = lines.indexOf('getPrivacyLevel() {');
+    expect(lines[idx + 1], contains("'mask'"));
+  });
 }

@@ -11,7 +11,7 @@ import 'datadog_inappwebview_tracking_platform_interface.dart';
 const handlerName = 'datadog_inappwebivew_handler';
 
 String _createBridgeSource(
-    DatadogSdk datadog, String bridgeName, Set<String> hosts) {
+    DatadogSdk datadog, String bridgeName, Set<String> hosts, String privacyLevel) {
   final sanitizedHosts = hosts
       // ignore: invalid_use_of_internal_member
       .map((e) => sanitizeHost(e, datadog.internalLogger))
@@ -37,10 +37,10 @@ window.DatadogEventBridge = {
       return '[$allowedWebViewHostsString]'
   },
   getCapabilities() {
-      return '[]'
+      return '["records"]'
   },
   getPrivacyLevel() {
-      return 'mask'
+      return '$privacyLevel'
   }
 }
 ''';
@@ -60,12 +60,19 @@ window.DatadogEventBridge = {
 /// allowedHosts: { 'shopist.io', 'datadoghq.com' }
 /// ```
 class DatadogInAppWebViewUserScript extends UserScript {
+  /// Creates the Datadog bridge user script.
+  ///
+  /// [privacyLevel] controls how the Browser SDK masks WebView content in
+  /// Session Replay records. Valid values: `'allow'`, `'mask'`,
+  /// `'mask_user_input'`. Must match the [TextAndInputPrivacyLevel] configured
+  /// in [DatadogSessionReplayConfiguration]. Defaults to `'mask'`.
   DatadogInAppWebViewUserScript({
     required DatadogSdk datadog,
     required Set<String> allowedHosts,
     String bridgeName = 'flutter_inappwebview',
+    String privacyLevel = 'mask',
   }) : super(
-          source: _createBridgeSource(datadog, bridgeName, allowedHosts),
+          source: _createBridgeSource(datadog, bridgeName, allowedHosts, privacyLevel),
           injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
         );
 }
