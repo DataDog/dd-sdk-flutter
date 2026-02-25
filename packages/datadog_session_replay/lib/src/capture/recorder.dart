@@ -17,7 +17,11 @@ import 'element_recorders/container_recorder.dart';
 import 'element_recorders/custom_paint_recorder.dart';
 import 'element_recorders/editable_text_recorder.dart';
 import 'element_recorders/image_recorder.dart';
+import 'element_recorders/navigation_recorder.dart';
 import 'element_recorders/privacy_recorder.dart';
+import 'element_recorders/progress_recorder.dart';
+import 'element_recorders/selection_recorder.dart';
+import 'element_recorders/slider_recorder.dart';
 import 'element_recorders/text_recorder.dart';
 import 'pointer_capture.dart';
 import 'view_tree_snapshot.dart';
@@ -188,6 +192,10 @@ class SessionReplayRecorder {
       ImageRecorder(keyGenerator),
       CustomPaintRecorder(keyGenerator),
       PrivacyRecorder(keyGenerator),
+      SelectionControlRecorder(keyGenerator),
+      SliderRecorder(keyGenerator),
+      ProgressRecorder(keyGenerator),
+      NavigationRecorder(keyGenerator),
     ]);
   }
 
