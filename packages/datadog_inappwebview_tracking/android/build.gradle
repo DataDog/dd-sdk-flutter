@@ -2,8 +2,8 @@ group = "com.datadoghq.flutter.inappwebviewtracking"
 version = "1.0-SNAPSHOT"
 
 buildscript {
-    ext.kotlin_version = "2.1.0"
-    ext.datadog_version = "3.0.0"
+    ext.kotlin_version = "2.3.10"
+    ext.datadog_version = "3.7.0"
 
     repositories {
         google()
@@ -11,7 +11,7 @@ buildscript {
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:8.6.0")
+        classpath("com.android.tools.build:gradle:8.13.2")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
     }
 }
@@ -53,10 +53,10 @@ android {
 
     dependencies {
         implementation "com.datadoghq:dd-sdk-android-webview:$datadog_version"
-        implementation "com.google.code.gson:gson:2.12.1"
+        implementation "com.google.code.gson:gson:2.13.2"
 
         testImplementation("org.jetbrains.kotlin:kotlin-test")
-        testImplementation("org.mockito:mockito-core:5.0.0")
+        testImplementation("org.mockito:mockito-core:5.22.0")
     }
 
     testOptions {
