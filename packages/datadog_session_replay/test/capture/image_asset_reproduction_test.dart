@@ -24,6 +24,7 @@
 //    Image.asset with explicit scale). With maskNonAssetsOnly, these images
 //    are incorrectly treated as non-asset images and masked.
 
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -36,6 +37,7 @@ import 'package:datadog_session_replay/src/datadog_session_replay_platform_inter
 import 'package:datadog_session_replay/src/rum_context.dart';
 import 'package:datadog_session_replay/src/sr_data_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -46,6 +48,69 @@ import 'simple_test_capture.dart';
 class MockDatadogSessionReplayPlatform extends Mock
     with MockPlatformInterfaceMixin
     implements DatadogSessionReplayPlatform {}
+
+/// A test-friendly subclass of [ExactAssetImage] that provides a test image
+/// instead of loading from an asset bundle.
+///
+/// This preserves the real type hierarchy:
+///   TestExactAssetImage → ExactAssetImage → AssetBundleImageProvider → ImageProvider
+///
+/// Critically, `TestExactAssetImage is AssetImage` evaluates to `false`,
+/// because [ExactAssetImage] extends [AssetBundleImageProvider], NOT [AssetImage].
+/// This is the exact type-check that `_extractAssetImage` performs (line 176 of
+/// image_recorder.dart), and the reason ExactAssetImage-backed images are not
+/// recognized as asset images under `maskNonAssetsOnly`.
+class TestExactAssetImage extends ExactAssetImage {
+  final ui.Image _testImage;
+  final Completer<ImageInfo> _completer = Completer<ImageInfo>.sync();
+
+  TestExactAssetImage(this._testImage)
+      : super('test_asset.png', scale: 2.0);
+
+  @override
+  Future<AssetBundleImageKey> obtainKey(ImageConfiguration configuration) {
+    return SynchronousFuture<AssetBundleImageKey>(
+      AssetBundleImageKey(
+        bundle: _DummyAssetBundle(),
+        name: 'test_asset.png',
+        scale: 2.0,
+      ),
+    );
+  }
+
+  @override
+  // ignore: deprecated_member_use
+  ImageStreamCompleter loadBuffer(
+    AssetBundleImageKey key,
+    // ignore: deprecated_member_use
+    DecoderBufferCallback decode,
+  ) {
+    return OneFrameImageStreamCompleter(_completer.future);
+  }
+
+  @override
+  ImageStreamCompleter loadImage(
+    AssetBundleImageKey key,
+    ImageDecoderCallback decode,
+  ) {
+    return OneFrameImageStreamCompleter(_completer.future);
+  }
+
+  ImageInfo complete() {
+    final info = ImageInfo(image: _testImage);
+    _completer.complete(info);
+    return info;
+  }
+}
+
+/// Minimal asset bundle that never loads — only used to satisfy
+/// [AssetBundleImageKey]'s required `bundle` parameter.
+class _DummyAssetBundle extends CachingAssetBundle {
+  @override
+  Future<ByteData> load(String key) async {
+    throw UnsupportedError('DummyAssetBundle.load should not be called');
+  }
+}
 
 void main() {
   late MockDatadogSessionReplayPlatform platform;
@@ -282,20 +347,22 @@ void main() {
   // _extractAssetImage in ImageRecorder only checks for AssetImage and
   // ResizeImage(AssetImage), missing ExactAssetImage.
   //
+  // The Flutter type hierarchy is:
+  //   AssetImage            → AssetBundleImageProvider → ImageProvider
+  //   ExactAssetImage       → AssetBundleImageProvider → ImageProvider
+  //
+  // Both are sibling classes under AssetBundleImageProvider.
+  // `ExactAssetImage is AssetImage` evaluates to FALSE.
+  //
   // With maskNonAssetsOnly, this means ExactAssetImage-backed images are
   // incorrectly treated as non-asset images and masked with a placeholder.
-  //
-  // Note: With maskNone this path is skipped, but if a customer uses
-  // SessionReplayPrivacy widget to set maskNonAssetsOnly on a subtree,
-  // or if the default privacy is maskNonAssetsOnly, asset images with
-  // explicit scale will be incorrectly masked.
   // ---------------------------------------------------------------------------
 
   group('RUMS-5633: ExactAssetImage not handled by _extractAssetImage', () {
     testWidgets(
         'Image with ExactAssetImage should be recognized as asset '
         'with maskNonAssetsOnly', (tester) async {
-      // Given - maskNonAssetsOnly should allow asset images
+      // Given - maskNonAssetsOnly should allow asset images through
       final KeyGenerator keyGenerator = KeyGenerator();
       final recorder = SessionReplayRecorder.withCustomRecorders(
         [ImageRecorder(keyGenerator)],
@@ -314,21 +381,21 @@ void main() {
       when(() => platform.resourceIdForKey(any()))
           .thenReturn(randomString());
 
-      // Image.asset('path', scale: 2.0) creates an ExactAssetImage internally.
-      // ExactAssetImage extends AssetBundleImageProvider, NOT AssetImage.
-      // We cannot use Image.asset() directly in tests without bundled assets,
-      // so we test the _extractAssetImage logic indirectly by using
-      // ExactAssetImage as the image provider.
-      //
-      // Note: This will fail to load in test (no actual asset), but we can
-      // verify the recorder's behavior by checking what it produces for the
-      // Image widget before the image loads.
+      // TestExactAssetImage is a real ExactAssetImage subclass that can load
+      // in tests. Image.asset('path', scale: 2.0) creates ExactAssetImage
+      // internally. The recorder checks `widget.image is AssetImage` on
+      // line 176 of image_recorder.dart — this is false for ExactAssetImage.
+      final imageProvider = TestExactAssetImage(testImage);
 
-      // Use a TestImageProvider that wraps the testImage (simulating loaded state)
-      // but the key insight is: with maskNonAssetsOnly, the recorder checks
-      // if the Image's provider is AssetImage. If not, it doesn't loosen
-      // the privacy, and the RawImage child gets masked.
-      final imageProvider = TestImageProvider(testImage);
+      // Verify the type hierarchy that causes the bug:
+      // ExactAssetImage IS an AssetBundleImageProvider (same base as AssetImage)
+      // but is NOT an AssetImage — they are sibling classes.
+      expect(imageProvider is ExactAssetImage, isTrue);
+      expect(imageProvider is AssetBundleImageProvider, isTrue);
+      expect(imageProvider is AssetImage, isFalse,
+          reason: 'ExactAssetImage extends AssetBundleImageProvider, not '
+              'AssetImage. This is why _extractAssetImage fails to detect it.');
+
       final tree = MaterialApp(
         home: SimpleTestCapture(
           key: Key('key'),
@@ -338,8 +405,8 @@ void main() {
               Positioned(
                 top: 10,
                 left: 10,
-                width: 250.0,
-                height: 40.0,
+                width: testImage.width.toDouble(),
+                height: testImage.height.toDouble(),
                 child: Image(image: imageProvider),
               ),
             ],
@@ -367,22 +434,25 @@ void main() {
       final placeholderWireframes =
           allWireframes.whereType<SRPlaceholderWireframe>().toList();
 
-      // RUMS-5633: With maskNonAssetsOnly, asset images should be captured,
-      // but TestImageProvider (like ExactAssetImage) is not recognized as
-      // AssetImage by _extractAssetImage. The RawImage child therefore
-      // gets maskNonAssetsOnly privacy (not loosened to maskNone), and
-      // shouldCaptureImage evaluates to false, producing a placeholder.
+      // RUMS-5633: With maskNonAssetsOnly, ExactAssetImage should be
+      // recognized as an asset and captured (privacy loosened to maskNone).
+      // Instead, _extractAssetImage returns null because it only checks
+      // `widget.image is AssetImage`, the privacy stays maskNonAssetsOnly,
+      // and the RawImage child produces a placeholder.
       //
       // This test FAILS because _extractAssetImage doesn't recognize
-      // non-AssetImage providers that are still bundled assets.
+      // ExactAssetImage as an asset image.
       expect(placeholderWireframes, isEmpty,
           reason:
-              'RUMS-5633: Asset images (including ExactAssetImage) should '
-              'NOT be masked with maskNonAssetsOnly, but _extractAssetImage '
-              'fails to recognize providers that are not exactly AssetImage');
+              'RUMS-5633: ExactAssetImage IS an asset image (loaded from '
+              'asset bundle via AssetBundleImageProvider) and should NOT be '
+              'masked with maskNonAssetsOnly. _extractAssetImage fails '
+              'because it only checks `is AssetImage`, missing '
+              'ExactAssetImage which is a sibling class under '
+              'AssetBundleImageProvider.');
       expect(imageWireframes, isNotEmpty,
           reason:
-              'RUMS-5633: Asset images should produce SRImageWireframe, '
+              'RUMS-5633: ExactAssetImage should produce SRImageWireframe, '
               'not SRPlaceholderWireframe, with maskNonAssetsOnly');
     });
   });
