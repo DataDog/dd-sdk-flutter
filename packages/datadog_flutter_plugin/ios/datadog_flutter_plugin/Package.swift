@@ -12,7 +12,7 @@ let package = Package(
         .library(name: "datadog-flutter-plugin", targets: ["datadog_flutter_plugin"])
     ],
     dependencies: [
-        .package(url: "https://github.com/Datadog/dd-sdk-ios.git", branch: "develop"),
+        .package(url: "https://github.com/Datadog/dd-sdk-ios.git", exact: "3.8.3"),
         .package(url: "https://github.com/almazrafi/DictionaryCoder.git", exact: "1.2.0")
     ],
     targets: [
