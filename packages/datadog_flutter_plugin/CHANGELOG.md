@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.1
+
+* [iOS] Fix stripped C symbol for getting context. See [#979](https://github.com/DataDog/dd-sdk-flutter/issues/979)
+
 ## 3.1.0
 
 * Improve precedence handling for nested `GestureDetector` and `InkWell`.
