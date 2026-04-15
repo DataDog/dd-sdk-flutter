@@ -120,7 +120,7 @@ Map<String, String> _deconstructBaggageHeader(
 }
 
 /// This assumes validation of the baggage properties and values has already
-/// occured through [_deconstructBaggageHeader] and new members have been
+/// occurred through [_deconstructBaggageHeader] and new members have been
 /// properly encoded with [_encodeBaggageValue].
 String _constructBaggageHeader(
   Map<String, String> entries,
