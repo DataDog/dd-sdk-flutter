@@ -14,7 +14,6 @@ Instrument your application with Datadog.
   s.author           = { 'Datadog' => 'info@datadoghq.com' }
   s.source           = { :path => '.' }
   s.source_files = 'datadog_flutter_plugin/Sources/**/*'
-  s.public_header_files = 'datadog_flutter_plugin/Sources/**/*.h'
   s.static_framework = true
   s.dependency 'Flutter'
   s.dependency 'DatadogCore', '3.7.0'
