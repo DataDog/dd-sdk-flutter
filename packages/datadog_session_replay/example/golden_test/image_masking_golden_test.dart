@@ -38,8 +38,8 @@ void main() {
       defaultCapturePrivacy: TreeCapturePrivacy(
         textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskSensitiveInputs,
         imagePrivacyLevel: ImagePrivacyLevel.maskNone,
-      ),
-      touchPrivacyLevel: TouchPrivacyLevel.show,
+          touchPrivacyLevel: TouchPrivacyLevel.show,
+        ),
     );
     platform = MockDatadogSessionReplayPlatform();
     DatadogSessionReplayPlatform.instance = platform;

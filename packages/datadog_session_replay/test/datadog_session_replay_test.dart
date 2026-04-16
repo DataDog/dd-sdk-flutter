@@ -6,6 +6,7 @@ import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_interface.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_noop.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -29,19 +30,29 @@ void main() {
     final mockInternalLogger = MockInternalLogger();
 
     setUp(() {
+      WidgetsFlutterBinding.ensureInitialized();
       // Replace the default platform with the mock one
       DatadogSessionReplayPlatform.instance = mockPlatform;
 
       registerFallbackValue(
         DatadogSessionReplayConfiguration(replaySampleRate: 100),
       );
+
+      when(() => mockPlatform.enable(any(), any()))
+          .thenAnswer((_) => Future.value(false));
+      when(() => mockPlatform.startRecording()).thenAnswer((_) async {});
+      when(() => mockPlatform.stopRecording()).thenAnswer((_) async {});
+      when(() => mockPlatform.setHasReplay(any(), any()))
+          .thenAnswer((_) async {});
+    });
+
+    tearDown(() {
+      // Cancel any timer started by startRecording().
+      DatadogSessionReplay.stopRecording();
     });
 
     test('.init() calls enable on platform', () {
-      // Given
-      when(
-        () => mockPlatform.enable(any(), any()),
-      ).thenAnswer((_) => Future.value(false));
+      // Given — enable returns false (already stubbed in setUp)
 
       // When
       final config = DatadogSessionReplayConfiguration(replaySampleRate: 100.0);
@@ -49,6 +60,102 @@ void main() {
 
       // Then
       verify(() => mockPlatform.enable(config, any()));
+    });
+
+    group('start/stop recording', () {
+      test(
+          'startRecordingImmediately: false does not call platform.startRecording()',
+          () async {
+        await DatadogSessionReplay.init(
+          DatadogSessionReplayConfiguration(
+            replaySampleRate: 100.0,
+            startRecordingImmediately: false,
+          ),
+          mockInternalLogger,
+        );
+
+        verifyNever(() => mockPlatform.startRecording());
+      });
+
+      test(
+          'DatadogSessionReplay.startRecording() calls platform.startRecording()',
+          () async {
+        await DatadogSessionReplay.init(
+          DatadogSessionReplayConfiguration(
+            replaySampleRate: 100.0,
+            startRecordingImmediately: false,
+          ),
+          mockInternalLogger,
+        );
+
+        DatadogSessionReplay.startRecording();
+
+        verify(() => mockPlatform.startRecording()).called(1);
+      });
+
+      test('DatadogSessionReplay.stopRecording() calls platform.stopRecording()',
+          () async {
+        await DatadogSessionReplay.init(
+          DatadogSessionReplayConfiguration(
+            replaySampleRate: 100.0,
+            startRecordingImmediately: false,
+          ),
+          mockInternalLogger,
+        );
+        DatadogSessionReplay.startRecording();
+
+        DatadogSessionReplay.stopRecording();
+
+        verify(() => mockPlatform.stopRecording()).called(1);
+      });
+
+      test('calling startRecording() twice is a no-op on the second call',
+          () async {
+        await DatadogSessionReplay.init(
+          DatadogSessionReplayConfiguration(
+            replaySampleRate: 100.0,
+            startRecordingImmediately: false,
+          ),
+          mockInternalLogger,
+        );
+
+        DatadogSessionReplay.startRecording();
+        DatadogSessionReplay.startRecording();
+
+        verify(() => mockPlatform.startRecording()).called(1);
+      });
+
+      test('calling stopRecording() when not recording is a no-op', () async {
+        await DatadogSessionReplay.init(
+          DatadogSessionReplayConfiguration(
+            replaySampleRate: 100.0,
+            startRecordingImmediately: false,
+          ),
+          mockInternalLogger,
+        );
+
+        DatadogSessionReplay.stopRecording();
+
+        verifyNever(() => mockPlatform.stopRecording());
+      });
+
+      test('startRecording() after stopRecording() resumes recording',
+          () async {
+        await DatadogSessionReplay.init(
+          DatadogSessionReplayConfiguration(
+            replaySampleRate: 100.0,
+            startRecordingImmediately: false,
+          ),
+          mockInternalLogger,
+        );
+
+        DatadogSessionReplay.startRecording();
+        DatadogSessionReplay.stopRecording();
+        DatadogSessionReplay.startRecording();
+
+        verify(() => mockPlatform.startRecording()).called(2);
+        verify(() => mockPlatform.stopRecording()).called(1);
+      });
     });
 
     // TODO: Test setup of Recorder / Processor?

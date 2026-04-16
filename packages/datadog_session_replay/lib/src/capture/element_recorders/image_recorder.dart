@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025-Present Datadog, Inc.
 
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -22,6 +23,20 @@ const int _labelMinWidth = 125;
 // start to hit concerns around memory usage and processing time.
 // This is essentially an 800x800 image, with a raw size of 2meg
 const int maxImageSize = 640000;
+
+/// Computes a fast non-cryptographic hash of [byteData] by sampling every
+/// [stride]-th byte (capped at ~1 KB of input). Size is folded in to reduce
+/// collisions between images that share the same pixel pattern but differ in
+/// dimensions.
+int hashImageBytes(ByteData byteData) {
+  final bytes = byteData.buffer.asUint8List();
+  final stride = max(1, bytes.length ~/ 1024);
+  var hash = 0;
+  for (var i = 0; i < bytes.length; i += stride) {
+    hash = (hash * 31 + bytes[i]) & 0x1FFFFFFFFFFFFFFF;
+  }
+  return hash ^ bytes.length;
+}
 
 class ImageRecorder implements ElementRecorder {
   final KeyGenerator keyGenerator;
@@ -112,6 +127,7 @@ class ImageRecorder implements ElementRecorder {
             attributes,
             wireframeId: elementId,
             resourceKey: resourceKey,
+            keyGenerator: keyGenerator,
           ),
         ],
       );
@@ -137,18 +153,29 @@ class ImageRecorder implements ElementRecorder {
         format: ImageByteFormat.rawRgba,
       );
       if (byteData != null) {
-        final resourceKey = keyGenerator.keyForImage(image);
-        await DatadogSessionReplayPlatform.instance.saveImageForProcessing(
-          resourceKey,
-          image.width,
-          image.height,
-          byteData,
-        );
+        final contentHash = hashImageBytes(byteData);
+        // Re-use an existing resourceKey if we've seen this content before,
+        // even if it arrived as a different ui.Image instance.
+        final existingKey = keyGenerator.resourceKeyForHash(contentHash);
+        final resourceKey = existingKey ?? keyGenerator.keyForImage(image);
+
+        if (existingKey == null) {
+          // First time seeing this content — send bytes to native and cache.
+          await DatadogSessionReplayPlatform.instance.saveImageForProcessing(
+            resourceKey,
+            image.width,
+            image.height,
+            byteData,
+          );
+          keyGenerator.cacheContentHash(contentHash, resourceKey);
+        }
+
         nodes.add(
           ResourceImageNode(
             attributes,
             wireframeId: elementId,
             resourceKey: resourceKey,
+            keyGenerator: keyGenerator,
           ),
         );
       }
@@ -190,18 +217,27 @@ class ImageRecorder implements ElementRecorder {
 class ResourceImageNode extends CaptureNode {
   final int wireframeId;
   final int resourceKey;
+  final KeyGenerator keyGenerator;
 
   const ResourceImageNode(
     super.attributes, {
     required this.wireframeId,
     required this.resourceKey,
+    required this.keyGenerator,
   });
 
   @override
   List<SRWireframe> buildWireframes() {
-    final resourceId = DatadogSessionReplayPlatform.instance.resourceIdForKey(
-      resourceKey,
-    );
+    // Check Dart-side cache first to avoid a native call every capture cycle.
+    var resourceId = keyGenerator.cachedResourceId(resourceKey);
+    if (resourceId == null) {
+      resourceId = DatadogSessionReplayPlatform.instance.resourceIdForKey(
+        resourceKey,
+      );
+      if (resourceId != null) {
+        keyGenerator.cacheResourceId(resourceKey, resourceId);
+      }
+    }
 
     return [
       SRImageWireframe(
