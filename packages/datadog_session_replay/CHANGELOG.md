@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Add `DatadogSessionReplayConfiguration.startRecordingImmediately` (default `true`), `DatadogSessionReplay.startRecording()`, and `DatadogSessionReplay.stopRecording()` to control Dart-side tree capture.
+
 ## 1.0.0-preview.11
 
 * Fix lifecycle issue with Android calling a dead callback on activity destruction.

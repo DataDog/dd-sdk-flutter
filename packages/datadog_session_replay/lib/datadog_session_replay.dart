@@ -78,12 +78,18 @@ class DatadogSessionReplayConfiguration {
 
   String? customEndpoint;
 
+  /// When `true` (default), tree capture begins as soon as Session Replay is
+  /// initialized. When `false`, call [DatadogSessionReplay.startRecording] to
+  /// begin capture.
+  bool startRecordingImmediately;
+
   DatadogSessionReplayConfiguration({
     required this.replaySampleRate,
     this.textAndInputPrivacyLevel = TextAndInputPrivacyLevel.maskAll,
     this.imagePrivacyLevel = ImagePrivacyLevel.maskAll,
     this.touchPrivacyLevel = TouchPrivacyLevel.hide,
     this.customEndpoint,
+    this.startRecordingImmediately = true,
   });
 }
 

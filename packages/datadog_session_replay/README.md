@@ -43,6 +43,10 @@ final configuration = DatadogConfiguration(
 );
 ```
 
+### Manual start and stop
+
+By default, tree capture begins as soon as Session Replay initializes. To defer capture until you are ready, set `startRecordingImmediately: false` on `DatadogSessionReplayConfiguration`, then call `DatadogSessionReplay.instance!.startRecording()` and `DatadogSessionReplay.instance!.stopRecording()` to toggle the Dart-side capture timer. The background processor isolate stays running while capture is stopped.
+
 Last, add a SessionReplayCapture widget to the root of your Widget tree, above your MaterialApp or similar application widget:
 
 ```dart
