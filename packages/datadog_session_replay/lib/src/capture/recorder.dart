@@ -16,6 +16,7 @@ import 'capture_node.dart';
 import 'element_recorders/container_recorder.dart';
 import 'element_recorders/custom_paint_recorder.dart';
 import 'element_recorders/editable_text_recorder.dart';
+import 'element_recorders/icon_recorder.dart';
 import 'element_recorders/image_recorder.dart';
 import 'element_recorders/privacy_recorder.dart';
 import 'element_recorders/text_recorder.dart';
@@ -144,6 +145,7 @@ class SessionReplayRecorder {
     _populateElementRecorderMap([
       ContainerRecorder(keyGenerator),
       TextElementRecorder(keyGenerator),
+      IconRecorder(keyGenerator, internalLogger: internalLogger),
       EditableTextRecorder(keyGenerator),
       InputDecoratorRecorder(keyGenerator),
       ImageRecorder(keyGenerator),

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Capture `Icon` widgets as rasterized images with a transparent background and upload them through the same image resource pipeline as `Image`/`RawImage`. Identical icons (same glyph, font, color, and device-pixel size) are rasterized once per recorder instance and reused. `ImagePrivacyLevel.maskAll` shows a placeholder (no upload); `maskNone` and `maskNonAssetsOnly` record icons; the inner `RichText` of `Icon` is not captured as text.
+
 ## 1.0.0-preview.11
 
 * Fix lifecycle issue with Android calling a dead callback on activity destruction.
