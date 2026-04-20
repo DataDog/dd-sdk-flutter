@@ -55,13 +55,35 @@ int _colorSignature(Color color) {
   return Object.hash(color.a, color.r, color.g, color.b);
 }
 
+@immutable
+class _IconRasterOutcome {
+  const _IconRasterOutcome({
+    required this.success,
+    required this.outcome,
+    this.resourceKey,
+    this.msToImage = 0,
+    this.msToByteData = 0,
+    this.msSave = 0,
+  });
+
+  final bool success;
+  /// `rasterized`, `toImageFailed`, or `toByteDataNull` from [_performRaster].
+  final String outcome;
+  final int? resourceKey;
+  final int msToImage;
+  final int msToByteData;
+  final int msSave;
+
+  int get totalMs => msToImage + msToByteData + msSave;
+}
+
 class IconRecorder implements ElementRecorder {
   final KeyGenerator keyGenerator;
   final InternalLogger? internalLogger;
   final double iconRasterLogicalSize;
 
   final Map<_IconCacheKey, int> _resourceKeyCache = {};
-  final Map<_IconCacheKey, Future<int?>> _inFlight = {};
+  final Map<_IconCacheKey, Future<_IconRasterOutcome>> _inFlight = {};
 
   IconRecorder(
     this.keyGenerator, {
@@ -194,7 +216,6 @@ class IconRecorder implements ElementRecorder {
       _logIconRaster(
         outcome: 'cacheHitAfterAwait',
         success: true,
-        elapsedMs: 0,
         elementId: elementId,
         attributes: attributes,
         displayLogicalSize: displayLogicalSize,
@@ -202,6 +223,9 @@ class IconRecorder implements ElementRecorder {
         heightPx: heightPx,
         iconData: iconData,
         resourceKey: cached,
+        msToImage: 0,
+        msToByteData: 0,
+        msSave: 0,
       );
       return SpecificElement(
         subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
@@ -224,16 +248,28 @@ class IconRecorder implements ElementRecorder {
         widthPx: widthPx,
         heightPx: heightPx,
         textDirection: textDirection,
-        displayLogicalSize: displayLogicalSize,
-        attributes: attributes,
-        elementId: elementId,
       ).whenComplete(() {
         _inFlight.remove(cacheKey);
       }),
     );
 
-    final resourceKey = await future;
-    if (resourceKey == null) {
+    final outcome = await future;
+    final resourceKey = outcome.resourceKey;
+    _logIconRaster(
+      outcome: outcome.outcome,
+      success: outcome.success,
+      elementId: elementId,
+      attributes: attributes,
+      displayLogicalSize: displayLogicalSize,
+      widthPx: widthPx,
+      heightPx: heightPx,
+      iconData: iconData,
+      resourceKey: resourceKey,
+      msToImage: outcome.msToImage,
+      msToByteData: outcome.msToByteData,
+      msSave: outcome.msSave,
+    );
+    if (!outcome.success || resourceKey == null) {
       return _iconPlaceholder(elementId, attributes);
     }
     return SpecificElement(
@@ -248,18 +284,15 @@ class IconRecorder implements ElementRecorder {
     );
   }
 
-  Future<int?> _performRaster({
+  Future<_IconRasterOutcome> _performRaster({
     required _IconCacheKey cacheKey,
     required IconData iconData,
     required Color color,
     required int widthPx,
     required int heightPx,
     required TextDirection textDirection,
-    required double displayLogicalSize,
-    required CapturedViewAttributes attributes,
-    required int elementId,
   }) async {
-    final stopwatch = Stopwatch()..start();
+    final phaseSw = Stopwatch();
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
@@ -290,71 +323,58 @@ class IconRecorder implements ElementRecorder {
 
     final picture = recorder.endRecording();
     late final ui.Image raster;
+    var msToImage = 0;
+    var msToByteData = 0;
+    var msSave = 0;
     try {
+      phaseSw.start();
       raster = await picture.toImage(widthPx, heightPx);
+      msToImage = phaseSw.elapsedMilliseconds;
     } catch (_) {
       picture.dispose();
-      stopwatch.stop();
-      _logIconRaster(
-        outcome: 'toImageFailed',
+      return _IconRasterOutcome(
         success: false,
-        elapsedMs: stopwatch.elapsedMilliseconds,
-        elementId: elementId,
-        attributes: attributes,
-        displayLogicalSize: displayLogicalSize,
-        widthPx: widthPx,
-        heightPx: heightPx,
-        iconData: iconData,
-        resourceKey: null,
+        outcome: 'toImageFailed',
+        msToImage: phaseSw.elapsedMilliseconds,
       );
-      return null;
     }
     picture.dispose();
 
     try {
+      phaseSw.reset();
+      phaseSw.start();
       final byteData =
           await raster.toByteData(format: ui.ImageByteFormat.rawRgba);
+      msToByteData = phaseSw.elapsedMilliseconds;
       if (byteData == null) {
-        stopwatch.stop();
-        _logIconRaster(
-          outcome: 'toByteDataNull',
+        return _IconRasterOutcome(
           success: false,
-          elapsedMs: stopwatch.elapsedMilliseconds,
-          elementId: elementId,
-          attributes: attributes,
-          displayLogicalSize: displayLogicalSize,
-          widthPx: widthPx,
-          heightPx: heightPx,
-          iconData: iconData,
-          resourceKey: null,
+          outcome: 'toByteDataNull',
+          msToImage: msToImage,
+          msToByteData: msToByteData,
         );
-        return null;
       }
 
       final resourceKey = keyGenerator.keyForImage(raster);
+      phaseSw.reset();
+      phaseSw.start();
       await DatadogSessionReplayPlatform.instance.saveImageForProcessing(
         resourceKey,
         raster.width,
         raster.height,
         byteData,
       );
+      msSave = phaseSw.elapsedMilliseconds;
       _resourceKeyCache[cacheKey] = resourceKey;
 
-      stopwatch.stop();
-      _logIconRaster(
-        outcome: 'rasterized',
+      return _IconRasterOutcome(
         success: true,
-        elapsedMs: stopwatch.elapsedMilliseconds,
-        elementId: elementId,
-        attributes: attributes,
-        displayLogicalSize: displayLogicalSize,
-        widthPx: widthPx,
-        heightPx: heightPx,
-        iconData: iconData,
+        outcome: 'rasterized',
         resourceKey: resourceKey,
+        msToImage: msToImage,
+        msToByteData: msToByteData,
+        msSave: msSave,
       );
-
-      return resourceKey;
     } finally {
       raster.dispose();
     }
@@ -363,7 +383,6 @@ class IconRecorder implements ElementRecorder {
   void _logIconRaster({
     required String outcome,
     required bool success,
-    required int elapsedMs,
     required int elementId,
     required CapturedViewAttributes attributes,
     required double displayLogicalSize,
@@ -371,7 +390,11 @@ class IconRecorder implements ElementRecorder {
     required int heightPx,
     required IconData iconData,
     required int? resourceKey,
+    required int msToImage,
+    required int msToByteData,
+    required int msSave,
   }) {
+    final totalMs = msToImage + msToByteData + msSave;
     internalLogger?.log(
       CoreLoggerLevel.debug,
       'Session Replay icon raster: '
@@ -386,7 +409,10 @@ class IconRecorder implements ElementRecorder {
       '${attributes.height.toStringAsFixed(1)}, '
       'wireframeId=$elementId, '
       'resourceKey=$resourceKey, '
-      'took ${elapsedMs}ms',
+      'toImageMs=$msToImage, '
+      'toByteDataMs=$msToByteData, '
+      'saveMs=$msSave, '
+      'totalMs=$totalMs',
     );
   }
 
