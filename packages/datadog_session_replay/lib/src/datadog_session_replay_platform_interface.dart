@@ -57,4 +57,12 @@ abstract class DatadogSessionReplayPlatform extends PlatformInterface {
   );
 
   String? resourceIdForKey(int resourceKey);
+
+  /// Called when the user starts recording manually.
+  /// Platforms that have a native start/stop mechanism may override this.
+  FutureOr<void> startRecording() async {}
+
+  /// Called when the user stops recording manually.
+  /// Platforms that have a native start/stop mechanism may override this.
+  FutureOr<void> stopRecording() async {}
 }

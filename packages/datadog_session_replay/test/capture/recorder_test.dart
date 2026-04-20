@@ -52,8 +52,8 @@ void main() {
           textAndInputPrivacyLevel:
               TextAndInputPrivacyLevel.maskSensitiveInputs,
           imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
+          touchPrivacyLevel: TouchPrivacyLevel.show,
         ),
-        touchPrivacyLevel: TouchPrivacyLevel.show,
       );
     });
 
@@ -92,8 +92,8 @@ void main() {
           textAndInputPrivacyLevel:
               TextAndInputPrivacyLevel.maskSensitiveInputs,
           imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
+          touchPrivacyLevel: TouchPrivacyLevel.show,
         ),
-        touchPrivacyLevel: TouchPrivacyLevel.show,
       );
 
       registerFallbackValue(
@@ -441,8 +441,8 @@ void main() {
           textAndInputPrivacyLevel:
               TextAndInputPrivacyLevel.maskSensitiveInputs,
           imagePrivacyLevel: ImagePrivacyLevel.maskNone,
+          touchPrivacyLevel: TouchPrivacyLevel.show,
         ),
-        touchPrivacyLevel: TouchPrivacyLevel.show,
       );
     });
 

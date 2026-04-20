@@ -347,8 +347,8 @@ void main() {
           textAndInputPrivacyLevel:
               TextAndInputPrivacyLevel.maskSensitiveInputs,
           imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
-        ),
-        touchPrivacyLevel: TouchPrivacyLevel.show,
+          touchPrivacyLevel: TouchPrivacyLevel.show,
+        )
       );
 
       registerFallbackValue(

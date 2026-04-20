@@ -57,6 +57,8 @@ class PrivacyRecorder implements ElementRecorder {
             capturePrivacy.textAndInputPrivacyLevel,
         imagePrivacyLevel:
             widget.imagePrivacyLevel ?? capturePrivacy.imagePrivacyLevel,
+        touchPrivacyLevel:
+            widget.touchPrivacyLevel ?? capturePrivacy.touchPrivacyLevel,
       ),
       nodes: nodes,
     );
