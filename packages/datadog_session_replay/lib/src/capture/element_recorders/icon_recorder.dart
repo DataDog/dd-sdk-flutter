@@ -25,16 +25,12 @@ class _IconCacheKey {
   final String fontFamily;
   final String? fontPackage;
   final int colorSignature;
-  final int widthPx;
-  final int heightPx;
 
   const _IconCacheKey({
     required this.codePoint,
     required this.fontFamily,
     required this.fontPackage,
     required this.colorSignature,
-    required this.widthPx,
-    required this.heightPx,
   });
 
   @override
@@ -43,20 +39,16 @@ class _IconCacheKey {
         other.codePoint == codePoint &&
         other.fontFamily == fontFamily &&
         other.fontPackage == fontPackage &&
-        other.colorSignature == colorSignature &&
-        other.widthPx == widthPx &&
-        other.heightPx == heightPx;
+        other.colorSignature == colorSignature;
   }
 
   @override
   int get hashCode => Object.hash(
-    codePoint,
-    fontFamily,
-    fontPackage,
-    colorSignature,
-    widthPx,
-    heightPx,
-  );
+        codePoint,
+        fontFamily,
+        fontPackage,
+        colorSignature,
+      );
 }
 
 int _colorSignature(Color color) {
@@ -66,10 +58,16 @@ int _colorSignature(Color color) {
 class IconRecorder implements ElementRecorder {
   final KeyGenerator keyGenerator;
   final InternalLogger? internalLogger;
+  final double iconRasterLogicalSize;
 
-  final Map<_IconCacheKey, int> _rasterCache = {};
+  final Map<_IconCacheKey, int> _resourceKeyCache = {};
+  final Map<_IconCacheKey, Future<int?>> _inFlight = {};
 
-  IconRecorder(this.keyGenerator, {this.internalLogger});
+  IconRecorder(
+    this.keyGenerator, {
+    this.internalLogger,
+    this.iconRasterLogicalSize = 20.0,
+  });
 
   @override
   List<Type> get handlesTypes => [Icon];
@@ -115,7 +113,8 @@ class IconRecorder implements ElementRecorder {
       );
     }
     final theme = IconTheme.of(context);
-    final logicalSize = widget.size ?? theme.size ?? kDefaultFontSize;
+    final displayLogicalSize =
+        widget.size ?? theme.size ?? kDefaultFontSize;
     final color = widget.color ?? theme.color ?? const Color(0xFF000000);
     final fontFamily = iconData.fontFamily;
     if (fontFamily == null || fontFamily.isEmpty) {
@@ -133,19 +132,19 @@ class IconRecorder implements ElementRecorder {
     }
 
     final dpr = _devicePixelRatio(element);
-    final widthPx = math.max(1, (logicalSize * dpr).ceil());
-    final heightPx = math.max(1, (logicalSize * dpr).ceil());
+    final rasterLogicalSize = iconRasterLogicalSize;
+    final widthPx =
+        math.max(1, (rasterLogicalSize * dpr).ceil());
+    final heightPx = widthPx;
 
     final cacheKey = _IconCacheKey(
       codePoint: iconData.codePoint,
       fontFamily: fontFamily,
       fontPackage: iconData.fontPackage,
       colorSignature: _colorSignature(color),
-      widthPx: widthPx,
-      heightPx: heightPx,
     );
 
-    final cachedKey = _rasterCache[cacheKey];
+    final cachedKey = _resourceKeyCache[cacheKey];
     if (cachedKey != null) {
       return SpecificElement(
         subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
@@ -159,51 +158,50 @@ class IconRecorder implements ElementRecorder {
       );
     }
 
+    final textDirection = widget.textDirection ??
+        Directionality.maybeOf(context) ??
+        TextDirection.ltr;
+
     return AdditionalProcessingElement(
       subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
-      process: () => _rasterizeIcon(
+      process: () => _ensureRasterized(
         elementId: elementId,
         attributes: attributes,
         cacheKey: cacheKey,
         iconData: iconData,
         color: color,
-        logicalSize: logicalSize,
+        displayLogicalSize: displayLogicalSize,
         widthPx: widthPx,
         heightPx: heightPx,
-        textDirection: widget.textDirection ??
-            Directionality.maybeOf(context) ??
-            TextDirection.ltr,
+        textDirection: textDirection,
       ),
     );
   }
 
-  Future<CaptureNodeSemantics> _rasterizeIcon({
+  Future<CaptureNodeSemantics> _ensureRasterized({
     required int elementId,
     required CapturedViewAttributes attributes,
     required _IconCacheKey cacheKey,
     required IconData iconData,
     required Color color,
-    required double logicalSize,
+    required double displayLogicalSize,
     required int widthPx,
     required int heightPx,
     required TextDirection textDirection,
   }) async {
-    final stopwatch = Stopwatch()..start();
-
-    final cachedAfterAwait = _rasterCache[cacheKey];
-    if (cachedAfterAwait != null) {
-      stopwatch.stop();
+    final cached = _resourceKeyCache[cacheKey];
+    if (cached != null) {
       _logIconRaster(
         outcome: 'cacheHitAfterAwait',
         success: true,
-        elapsedMs: stopwatch.elapsedMilliseconds,
+        elapsedMs: 0,
         elementId: elementId,
         attributes: attributes,
-        logicalSize: logicalSize,
+        displayLogicalSize: displayLogicalSize,
         widthPx: widthPx,
         heightPx: heightPx,
         iconData: iconData,
-        resourceKey: cachedAfterAwait,
+        resourceKey: cached,
       );
       return SpecificElement(
         subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
@@ -211,24 +209,73 @@ class IconRecorder implements ElementRecorder {
           ResourceImageNode(
             attributes,
             wireframeId: elementId,
-            resourceKey: cachedAfterAwait,
+            resourceKey: cached,
           ),
         ],
       );
     }
 
+    final future = _inFlight.putIfAbsent(
+      cacheKey,
+      () => _performRaster(
+        cacheKey: cacheKey,
+        iconData: iconData,
+        color: color,
+        widthPx: widthPx,
+        heightPx: heightPx,
+        textDirection: textDirection,
+        displayLogicalSize: displayLogicalSize,
+        attributes: attributes,
+        elementId: elementId,
+      ).whenComplete(() {
+        _inFlight.remove(cacheKey);
+      }),
+    );
+
+    final resourceKey = await future;
+    if (resourceKey == null) {
+      return _iconPlaceholder(elementId, attributes);
+    }
+    return SpecificElement(
+      subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
+      nodes: [
+        ResourceImageNode(
+          attributes,
+          wireframeId: elementId,
+          resourceKey: resourceKey,
+        ),
+      ],
+    );
+  }
+
+  Future<int?> _performRaster({
+    required _IconCacheKey cacheKey,
+    required IconData iconData,
+    required Color color,
+    required int widthPx,
+    required int heightPx,
+    required TextDirection textDirection,
+    required double displayLogicalSize,
+    required CapturedViewAttributes attributes,
+    required int elementId,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
 
-    // [widthPx] is ceil(logicalSize * DPR); scale font to physical pixels for the bitmap.
-    final dprForRaster = widthPx / math.max(1e-6, logicalSize);
+    final rasterLogicalSize = iconRasterLogicalSize;
+    final dprForRaster = widthPx / math.max(1e-6, rasterLogicalSize);
+    final fontSize = rasterLogicalSize * dprForRaster;
+
     final textPainter = TextPainter(
       text: TextSpan(
         text: String.fromCharCode(iconData.codePoint),
         style: TextStyle(
           fontFamily: iconData.fontFamily,
           package: iconData.fontPackage,
-          fontSize: logicalSize * dprForRaster,
+          fontSize: fontSize,
+          height: 1.0,
           color: color,
           inherit: false,
         ),
@@ -237,7 +284,9 @@ class IconRecorder implements ElementRecorder {
       textScaler: TextScaler.noScaling,
     )..layout();
 
-    textPainter.paint(canvas, Offset.zero);
+    final dx = (widthPx - textPainter.width) / 2.0;
+    final dy = (heightPx - textPainter.height) / 2.0;
+    textPainter.paint(canvas, Offset(dx, dy));
 
     final picture = recorder.endRecording();
     late final ui.Image raster;
@@ -252,18 +301,19 @@ class IconRecorder implements ElementRecorder {
         elapsedMs: stopwatch.elapsedMilliseconds,
         elementId: elementId,
         attributes: attributes,
-        logicalSize: logicalSize,
+        displayLogicalSize: displayLogicalSize,
         widthPx: widthPx,
         heightPx: heightPx,
         iconData: iconData,
         resourceKey: null,
       );
-      return _iconPlaceholder(elementId, attributes);
+      return null;
     }
     picture.dispose();
 
     try {
-      final byteData = await raster.toByteData(format: ui.ImageByteFormat.rawRgba);
+      final byteData =
+          await raster.toByteData(format: ui.ImageByteFormat.rawRgba);
       if (byteData == null) {
         stopwatch.stop();
         _logIconRaster(
@@ -272,40 +322,13 @@ class IconRecorder implements ElementRecorder {
           elapsedMs: stopwatch.elapsedMilliseconds,
           elementId: elementId,
           attributes: attributes,
-          logicalSize: logicalSize,
+          displayLogicalSize: displayLogicalSize,
           widthPx: widthPx,
           heightPx: heightPx,
           iconData: iconData,
           resourceKey: null,
         );
-        return _iconPlaceholder(elementId, attributes);
-      }
-
-      final raced = _rasterCache[cacheKey];
-      if (raced != null) {
-        stopwatch.stop();
-        _logIconRaster(
-          outcome: 'cacheRaceWinner',
-          success: true,
-          elapsedMs: stopwatch.elapsedMilliseconds,
-          elementId: elementId,
-          attributes: attributes,
-          logicalSize: logicalSize,
-          widthPx: widthPx,
-          heightPx: heightPx,
-          iconData: iconData,
-          resourceKey: raced,
-        );
-        return SpecificElement(
-          subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
-          nodes: [
-            ResourceImageNode(
-              attributes,
-              wireframeId: elementId,
-              resourceKey: raced,
-            ),
-          ],
-        );
+        return null;
       }
 
       final resourceKey = keyGenerator.keyForImage(raster);
@@ -315,7 +338,7 @@ class IconRecorder implements ElementRecorder {
         raster.height,
         byteData,
       );
-      _rasterCache[cacheKey] = resourceKey;
+      _resourceKeyCache[cacheKey] = resourceKey;
 
       stopwatch.stop();
       _logIconRaster(
@@ -324,23 +347,14 @@ class IconRecorder implements ElementRecorder {
         elapsedMs: stopwatch.elapsedMilliseconds,
         elementId: elementId,
         attributes: attributes,
-        logicalSize: logicalSize,
+        displayLogicalSize: displayLogicalSize,
         widthPx: widthPx,
         heightPx: heightPx,
         iconData: iconData,
         resourceKey: resourceKey,
       );
 
-      return SpecificElement(
-        subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
-        nodes: [
-          ResourceImageNode(
-            attributes,
-            wireframeId: elementId,
-            resourceKey: resourceKey,
-          ),
-        ],
-      );
+      return resourceKey;
     } finally {
       raster.dispose();
     }
@@ -352,7 +366,7 @@ class IconRecorder implements ElementRecorder {
     required int elapsedMs,
     required int elementId,
     required CapturedViewAttributes attributes,
-    required double logicalSize,
+    required double displayLogicalSize,
     required int widthPx,
     required int heightPx,
     required IconData iconData,
@@ -366,7 +380,7 @@ class IconRecorder implements ElementRecorder {
       'codePoint=U+${iconData.codePoint.toRadixString(16).toUpperCase()}, '
       'fontFamily=${iconData.fontFamily}, '
       'fontPackage=${iconData.fontPackage}, '
-      'logicalSize=${logicalSize.toStringAsFixed(1)}, '
+      'displayLogicalSize=${displayLogicalSize.toStringAsFixed(1)}, '
       'bitmap=${widthPx}x$heightPx, '
       'viewBounds=${attributes.width.toStringAsFixed(1)}x'
       '${attributes.height.toStringAsFixed(1)}, '
@@ -398,6 +412,7 @@ class IconRecorder implements ElementRecorder {
     if (view != null) {
       return view.devicePixelRatio;
     }
-    return WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+    return WidgetsBinding
+        .instance.platformDispatcher.views.first.devicePixelRatio;
   }
 }

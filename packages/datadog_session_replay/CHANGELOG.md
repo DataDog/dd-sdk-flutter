@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-* Capture `Icon` widgets as rasterized images with a transparent background and upload them through the same image resource pipeline as `Image`/`RawImage`. Identical icons (same glyph, font, color, and device-pixel size) are rasterized once per recorder instance and reused. `ImagePrivacyLevel.maskAll` shows a placeholder (no upload); `maskNone` and `maskNonAssetsOnly` record icons; the inner `RichText` of `Icon` is not captured as text.
+* Capture `Icon` widgets as rasterized images with a transparent background and upload them through the same image resource pipeline as `Image`/`RawImage`. Icons are rasterized at a configurable logical size (`DatadogSessionReplayConfiguration.iconRasterLogicalSize`, default `20`) × device pixel ratio, cached by glyph + font + color so the same icon is rasterized once per recorder instance regardless of on-screen `Icon` size. Concurrent raster work for the same icon is deduplicated; additional per-frame capture processing runs in parallel. `ImagePrivacyLevel.maskAll` shows a placeholder (no upload); `maskNone` and `maskNonAssetsOnly` record icons; the inner `RichText` of `Icon` is not captured as text. Glyph layout matches Flutter's `Icon` (`height: 1.0` and centered paint) for correct replay alignment.
 
 ## 1.0.0-preview.11
 

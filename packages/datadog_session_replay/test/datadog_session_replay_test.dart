@@ -24,6 +24,12 @@ void main() {
     expect(initialPlatform, isInstanceOf<DatadogSessionReplayPlatformNoop>());
   });
 
+  test('DatadogSessionReplayConfiguration default iconRasterLogicalSize is 20',
+      () {
+    final c = DatadogSessionReplayConfiguration(replaySampleRate: 100.0);
+    expect(c.iconRasterLogicalSize, 20.0);
+  });
+
   group('DatadogSessionReplay', () {
     final mockPlatform = MockDatadogSessionReplayPlatform();
     final mockInternalLogger = MockInternalLogger();

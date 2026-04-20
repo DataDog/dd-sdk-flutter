@@ -110,7 +110,10 @@ void main() {
     final key2 = (capture1!.viewTreeSnapshot.nodes[1] as ResourceImageNode).resourceKey;
     expect(key1, key2);
 
-    final expectedPx = math.max(1, (iconSize * tester.view.devicePixelRatio).ceil());
+    final expectedPx = math.max(
+      1,
+      (20.0 * tester.view.devicePixelRatio).ceil(),
+    );
 
     CaptureResult? capture2;
     await tester.runAsync(() async {
@@ -167,6 +170,62 @@ void main() {
     verify(
       () => platform.saveImageForProcessing(any(), any(), any(), any()),
     ).called(2);
+  });
+
+  testWidgets(
+      'same icon at two display sizes saves image once (canonical raster cache)',
+      (tester) async {
+    const smallSize = 20.0;
+    const largeSize = 32.0;
+    final tree = MaterialApp(
+      home: SimpleTestCapture(
+        key: const Key('key'),
+        recorder: recorder,
+        child: Stack(
+          children: [
+            Positioned(
+              top: 10,
+              left: 10,
+              width: largeSize,
+              height: largeSize,
+              child: const Icon(Icons.favorite, color: Colors.red, size: largeSize),
+            ),
+            Positioned(
+              top: 10,
+              left: 60,
+              width: smallSize,
+              height: smallSize,
+              child: const Icon(Icons.favorite, color: Colors.red, size: smallSize),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpWidget(tree);
+
+    CaptureResult? capture;
+    await tester.runAsync(() async {
+      capture = await recorder.performCapture();
+    });
+    expect(capture, isNotNull);
+    expect(capture!.viewTreeSnapshot.nodes.length, 2);
+    expect(capture!.viewTreeSnapshot.nodes.every((n) => n is ResourceImageNode), isTrue);
+    final key1 = (capture!.viewTreeSnapshot.nodes[0] as ResourceImageNode).resourceKey;
+    final key2 = (capture!.viewTreeSnapshot.nodes[1] as ResourceImageNode).resourceKey;
+    expect(key1, key2);
+
+    final expectedPx = math.max(
+      1,
+      (20.0 * tester.view.devicePixelRatio).ceil(),
+    );
+    verify(
+      () => platform.saveImageForProcessing(
+        key1,
+        expectedPx,
+        expectedPx,
+        any(),
+      ),
+    ).called(1);
   });
 
   testWidgets('maskAll shows Icon placeholder and does not save image', (tester) async {
