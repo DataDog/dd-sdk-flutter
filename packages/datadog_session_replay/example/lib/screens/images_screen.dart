@@ -19,6 +19,17 @@ class _ImagesScreenState extends State<ImagesScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: const [
+                  Icon(Icons.favorite, color: Colors.red, size: 32),
+                  Icon(Icons.home, color: Colors.blue, size: 32),
+                  Icon(Icons.settings, size: 32),
+                ],
+              ),
+            ),
             Image.asset('assets/dd_logo_v_rgb.png'),
             Image.network(
               'https://placehold.co/200x200.png',
