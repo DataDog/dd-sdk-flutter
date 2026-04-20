@@ -67,6 +67,7 @@ class _IconRasterOutcome {
   });
 
   final bool success;
+
   /// `rasterized`, `toImageFailed`, or `toByteDataNull` from [_performRaster].
   final String outcome;
   final int? resourceKey;
@@ -135,8 +136,7 @@ class IconRecorder implements ElementRecorder {
       );
     }
     final theme = IconTheme.of(context);
-    final displayLogicalSize =
-        widget.size ?? theme.size ?? kDefaultFontSize;
+    final displayLogicalSize = widget.size ?? theme.size ?? kDefaultFontSize;
     final color = widget.color ?? theme.color ?? const Color(0xFF000000);
     final fontFamily = iconData.fontFamily;
     if (fontFamily == null || fontFamily.isEmpty) {
@@ -155,8 +155,7 @@ class IconRecorder implements ElementRecorder {
 
     final dpr = _devicePixelRatio(element);
     final rasterLogicalSize = iconRasterLogicalSize;
-    final widthPx =
-        math.max(1, (rasterLogicalSize * dpr).ceil());
+    final widthPx = math.max(1, (rasterLogicalSize * dpr).ceil());
     final heightPx = widthPx;
 
     final cacheKey = _IconCacheKey(
@@ -308,7 +307,6 @@ class IconRecorder implements ElementRecorder {
           fontFamily: iconData.fontFamily,
           package: iconData.fontPackage,
           fontSize: fontSize,
-          height: 1.0,
           color: color,
           inherit: false,
         ),
@@ -317,9 +315,7 @@ class IconRecorder implements ElementRecorder {
       textScaler: TextScaler.noScaling,
     )..layout();
 
-    final dx = (widthPx - textPainter.width) / 2.0;
-    final dy = (heightPx - textPainter.height) / 2.0;
-    textPainter.paint(canvas, Offset(dx, dy));
+    textPainter.paint(canvas, Offset.zero);
 
     final picture = recorder.endRecording();
     late final ui.Image raster;
