@@ -316,6 +316,7 @@ class IconRecorder implements ElementRecorder {
     )..layout();
 
     textPainter.paint(canvas, Offset.zero);
+    textPainter.dispose();
 
     final picture = recorder.endRecording();
     late final ui.Image raster;
