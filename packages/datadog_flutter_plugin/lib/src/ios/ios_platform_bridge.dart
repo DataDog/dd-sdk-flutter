@@ -8,46 +8,67 @@ import 'package:ffi/ffi.dart';
 
 import '../../datadog_internal.dart';
 
-final class _DatadogCContext extends ffi.Struct {
-  external ffi.Pointer<Utf8> sessionId;
-  external ffi.Pointer<Utf8> accountId;
-  external ffi.Pointer<Utf8> userId;
-}
+// We call the ObjC runtime directly rather than using package:objective_c to
+// avoid adding that dependency to Core. The ObjC runtime functions
+// (objc_getClass, sel_registerName, objc_msgSend) are stable C symbols in
+// libobjc.A.dylib, which is always loaded into every iOS process. @Native
+// resolves from DynamicLibrary.process() by default, so no explicit library
+// handle is needed.
+
+@ffi.Native<ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Char>)>(
+    symbol: 'objc_getClass', isLeaf: true)
+external ffi.Pointer<ffi.Void> _objcGetClass(ffi.Pointer<ffi.Char> name);
+
+@ffi.Native<ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Char>)>(
+    symbol: 'sel_registerName', isLeaf: true)
+external ffi.Pointer<ffi.Void> _selRegisterName(ffi.Pointer<ffi.Char> name);
+
+@ffi.Native<
+    ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Void>,
+        ffi.Pointer<ffi.Void>)>(symbol: 'objc_msgSend', isLeaf: true)
+external ffi.Pointer<ffi.Void> _objcMsgSend(
+    ffi.Pointer<ffi.Void> receiver, ffi.Pointer<ffi.Void> sel);
 
 class IosPlatformBridge {
   static DatadogContext? getContext() {
-    // Instead of using Objective-C interop, we're going to use straight C / Swift interop
-    // to avoid pulling in the Objective-C package as part of Core.
-    final cContext = _getDatadogContext();
+    // A single arena frees all toNativeUtf8() allocations when the block exits.
+    return using((arena) {
+      final cls = _objcGetClass(
+          'DatadogContextBridge'.toNativeUtf8(allocator: arena).cast());
+      if (cls == ffi.nullptr) return null;
 
-    // If all three are null, just return null
-    if (cContext.sessionId == ffi.nullptr &&
-        cContext.accountId == ffi.nullptr &&
-        cContext.userId == ffi.nullptr) {
-      return null;
-    }
+      final obj = _objcMsgSend(cls,
+          _selRegisterName('current'.toNativeUtf8(allocator: arena).cast()));
+      if (obj == ffi.nullptr) return null;
 
-    String? sessionId;
-    if (cContext.sessionId != ffi.nullptr) {
-      sessionId = cContext.sessionId.toDartString();
-      malloc.free(cContext.sessionId);
-    }
-    String? accountId;
-    if (cContext.accountId != ffi.nullptr) {
-      accountId = cContext.accountId.toDartString();
-      malloc.free(cContext.accountId);
-    }
-    String? userId;
-    if (cContext.userId != ffi.nullptr) {
-      userId = cContext.userId.toDartString();
-      malloc.free(cContext.userId);
-    }
+      final sessionId = _readNSString(obj, 'sessionId', arena);
+      final accountId = _readNSString(obj, 'accountId', arena);
+      final userId = _readNSString(obj, 'userId', arena);
 
-    return DatadogContext(
-        sessionId: sessionId, userId: userId, accountId: accountId);
+      if (sessionId == null && accountId == null && userId == null) return null;
+      return DatadogContext(
+          sessionId: sessionId, userId: userId, accountId: accountId);
+    });
+  }
+
+  static String? _readNSString(
+      ffi.Pointer<ffi.Void> obj, String property, Arena arena) {
+    final nsStr = _objcMsgSend(
+        obj, _selRegisterName(property.toNativeUtf8(allocator: arena).cast()));
+    if (nsStr == ffi.nullptr) return null;
+
+    ffi.Pointer<ffi.Char> chars = _objcMsgSend(
+            nsStr,
+            _selRegisterName(
+                'UTF8String'.toNativeUtf8(allocator: arena).cast()))
+        .cast();
+    if (chars == ffi.nullptr) return null;
+
+    // toDartString() copies the bytes into Dart. The NSString (and the chars
+    // pointer it owns) is kept alive by the autorelease pool for the duration
+    // of this synchronous call — the pool won't drain until the current run
+    // loop iteration completes. Do not free chars; it is not a separate
+    // allocation.
+    return chars.cast<Utf8>().toDartString();
   }
 }
-
-@ffi.Native<_DatadogCContext Function()>(
-    isLeaf: true, symbol: 'flutterGetDatadogContext')
-external _DatadogCContext _getDatadogContext();

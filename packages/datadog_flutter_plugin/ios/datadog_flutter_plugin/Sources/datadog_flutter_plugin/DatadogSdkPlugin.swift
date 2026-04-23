@@ -9,30 +9,25 @@ import DatadogCrashReporting
 import DatadogInternal
 import DatadogRUM
 import DatadogLogs
-// This is a bit of a hack required for both SPM and Cocoapods to play nice
-// with the C header (SPM requires it in a separate module, while Cocoapods does not.)
-#if canImport(datadog_flutter_plugin_c)
-    import datadog_flutter_plugin_c
-#endif
 
-// Get the cached Datadog Context in a C structure. The members of `DatadogCContext` are
-// owned by the caller, and must be freed to prevent a memory leak.
-@_cdecl("flutterGetDatadogContext")
-public func flutterGetDatadogContext() -> DatadogCContext {
-    let context = ContextMessageReceiver.shared.cachedContext
-    guard let context = context else {
-        return DatadogCContext(sessionId: nil, accountId: nil, userId: nil)
+// Exposes the cached Datadog context to Dart via ObjC runtime dispatch.
+// Using an @objc class rather than a @_cdecl C function ensures the symbol
+// survives Xcode archive builds.
+@objc(DatadogContextBridge)
+public class DatadogContextBridge: NSObject {
+    @objc public var sessionId: String?
+    @objc public var accountId: String?
+    @objc public var userId: String?
+
+    @objc public class func current() -> DatadogContextBridge {
+        let bridge = DatadogContextBridge()
+        if let ctx = ContextMessageReceiver.shared.cachedContext {
+            bridge.sessionId = ctx.sessionId
+            bridge.accountId = ctx.accountId
+            bridge.userId = ctx.userId
+        }
+        return bridge
     }
-
-    let cSessionID = context.sessionId?.withCString { strdup($0) }
-    let cAccountId = context.accountId?.withCString { strdup($0) }
-    let cUserId = context.userId?.withCString { strdup($0) }
-
-    return DatadogCContext(
-        sessionId: cSessionID,
-        accountId: cAccountId,
-        userId: cUserId
-    )
 }
 
 extension Datadog.Configuration {
@@ -176,6 +171,7 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
                     }
                     // swiftlint:disable:next force_try
                     try! core?.register(feature: self)
+
 
                 } else if let currentConfiguration = currentConfiguration {
                     let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])

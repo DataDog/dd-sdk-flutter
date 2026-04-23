@@ -16,7 +16,6 @@ let package = Package(
         .package(url: "https://github.com/almazrafi/DictionaryCoder.git", exact: "1.2.0")
     ],
     targets: [
-        .systemLibrary(name: "datadog_flutter_plugin_c"),
         .target(
             name: "datadog_flutter_plugin",
             dependencies: [
@@ -24,7 +23,6 @@ let package = Package(
                 .product(name: "DatadogLogs", package: "dd-sdk-ios"),
                 .product(name: "DatadogCrashReporting", package: "dd-sdk-ios"),
                 .product(name: "DatadogRUM", package: "dd-sdk-ios"),
-                "datadog_flutter_plugin_c",
                 "DictionaryCoder"
             ],
             resources: []
