@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.2
+
+* [iOS] Prevent stripping of iOS context methods. See [#990](https://github.com/DataDog/dd-sdk-flutter/issues/990)
+
 ## 3.1.1
 
 * [iOS] Fix stripped C symbol for getting context. See [#979](https://github.com/DataDog/dd-sdk-flutter/issues/979)
