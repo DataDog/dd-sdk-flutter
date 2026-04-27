@@ -122,7 +122,6 @@ extension RUMCoreContext: RandomMockable {
         return RUMCoreContext.init(
             applicationID: .mockRandom(),
             sessionID: .mockRandom(),
-            sessionSampler: .mockKeepAll(),
             viewID: .mockRandom(),
             viewServerTimeOffset: nil
         )
@@ -131,14 +130,12 @@ extension RUMCoreContext: RandomMockable {
     public static func mockWith(
         applicationID: String = .mockAny(),
         sessionID: String = .mockAny(),
-        sessionSampler: DeterministicSampler = .mockKeepAll(),
         viewID: String? = .mockAny(),
         viewServerTimeOffset: TimeInterval? = nil
     ) -> Self {
         return RUMCoreContext(
             applicationID: applicationID,
-            sessionID: sessionID,
-            sessionSampler: sessionSampler,
+            sessionID: sessionID,            
             viewID: viewID,
             viewServerTimeOffset: viewServerTimeOffset
         )
