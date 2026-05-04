@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0-preview.12
+
+* Recognize `ExactAssetImage` as an asset when masking non-assets.
+* Include RUM context when writing Session Replay resources on Android.
+* Shutdown the Session Replay processing isolate on lifecycle detach.
+
 ## 1.0.0-preview.11
 
 * Fix lifecycle issue with Android calling a dead callback on activity destruction.
