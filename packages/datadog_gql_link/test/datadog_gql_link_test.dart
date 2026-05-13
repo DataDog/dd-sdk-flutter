@@ -684,6 +684,116 @@ query UserInfo($id: ID!) {
       expect(capturedAttrs['_dd.graphql.errors'], expectedErrorString);
     });
 
+    test('link includes error code from extensions in serialized errors',
+        () async {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      when(() => response.context).thenReturn(const Context());
+      when(() => response.errors).thenReturn([
+        const GraphQLError(
+          message: 'Not Found',
+          path: ['user'],
+          extensions: {'code': 'USER_NOT_FOUND'},
+        ),
+      ]);
+
+      // When
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+
+      responseController.sink.add(response);
+      unawaited(responseController.sink.close());
+      await stream.drain();
+
+      // Then
+      final captured = verify(() => mockRum.stopResource(
+          any(), any(), RumResourceType.native, any(), captureAny()));
+      final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
+      final errors =
+          json.decode(capturedAttrs['_dd.graphql.errors']) as List<dynamic>;
+      expect(errors.length, 1);
+      expect(errors[0]['message'], 'Not Found');
+      expect(errors[0]['code'], 'USER_NOT_FOUND');
+    });
+
+    test('link omits error code when extensions has no code field', () async {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      when(() => response.context).thenReturn(const Context());
+      when(() => response.errors).thenReturn([
+        const GraphQLError(message: 'Server Error'),
+      ]);
+
+      // When
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+
+      responseController.sink.add(response);
+      unawaited(responseController.sink.close());
+      await stream.drain();
+
+      // Then
+      final captured = verify(() => mockRum.stopResource(
+          any(), any(), RumResourceType.native, any(), captureAny()));
+      final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
+      final errors =
+          json.decode(capturedAttrs['_dd.graphql.errors']) as List<dynamic>;
+      expect(errors[0].containsKey('code'), isFalse);
+    });
+
+    test('link does not add payload attribute by default', () {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+
+      // When
+      link.request(request, (request) {
+        return const Stream<Response>.empty();
+      });
+
+      // Then
+      final capturedAttributes = verify(() => mockRum.startResource(
+              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
+          .captured[0] as Map<String, Object?>;
+      expect(capturedAttributes['_dd.graphql.payload'], isNull);
+    });
+
+    test('link adds payload attribute when trackPayload is true', () {
+      // Given
+      final link = DatadogGqlLink(
+        mockDatadog,
+        Uri.parse('https://test_uri'),
+        trackPayload: true,
+      );
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+
+      // When
+      link.request(request, (request) {
+        return const Stream<Response>.empty();
+      });
+
+      // Then
+      final capturedAttributes = verify(() => mockRum.startResource(
+              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
+          .captured[0] as Map<String, Object?>;
+      final payload = capturedAttributes['_dd.graphql.payload'] as String?;
+      expect(payload, isNotNull);
+      expect(payload, contains('UserInfo'));
+      expect(payload, contains('query'));
+    });
+
     test('link supports mutation operations in attributes', () async {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));

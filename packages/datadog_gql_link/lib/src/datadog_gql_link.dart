@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:gql/ast.dart';
+import 'package:gql/language.dart' show printNode;
 import 'package:gql_exec/gql_exec.dart';
 import 'package:gql_link/gql_link.dart';
 import 'package:uuid/uuid.dart';
@@ -20,6 +21,7 @@ class _GraphQLAttributes {
   static const operationType = '_dd.graphql.operation_type';
   static const operationName = '_dd.graphql.operation_name';
   static const variables = '_dd.graphql.variables';
+  static const payload = '_dd.graphql.payload';
   static const errors = '_dd.graphql.errors';
 }
 
@@ -44,10 +46,17 @@ class DatadogGqlLink extends Link {
 
   final _uuid = const Uuid();
 
+  /// When `true`, the full GraphQL document (query or mutation string) is
+  /// captured in the RUM resource event
+  ///
+  /// Defaults to `false`.
+  final bool trackPayload;
+
   DatadogGqlLink(
     this.datadogSdk,
     this.uri, {
     this.listener,
+    this.trackPayload = false,
   });
 
   @override
@@ -183,6 +192,19 @@ class DatadogGqlLink extends Link {
       );
     }
 
+    if (trackPayload) {
+      try {
+        attributes[_GraphQLAttributes.payload] =
+            printNode(request.operation.document);
+      } catch (e, st) {
+        datadogSdk.internalLogger.sendToDatadog(
+          '$DatadogGqlLink encountered an error while attempting to serialize payload: $e',
+          st,
+          e.runtimeType.toString(),
+        );
+      }
+    }
+
     return attributes;
   }
 
@@ -250,7 +272,8 @@ class DatadogGqlLink extends Link {
                   'column': l.column,
                 })
             .toList(),
-        'path': e.path
+        'path': e.path,
+        if (e.extensions?['code'] != null) 'code': e.extensions!['code'],
       };
     }).toList();
     return {
