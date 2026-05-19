@@ -219,6 +219,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                 Datadog.clearAllData()
                 result.success(null)
             }
+            "flush" -> {
+                invokePrivateFlush(result)
+            }
             "flushAndDeinitialize" -> {
                 invokePrivateShutdown(result)
             }
@@ -342,6 +345,17 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             it.isAccessible = true
             it.invoke(target)
         }
+    }
+
+    private fun invokePrivateFlush(result: Result) {
+        // This drains pending data and shuts down the SDK's executors, which
+        // closes any open RUM action scopes so their events get written before
+        // the upload runs.
+        executor.submit {
+            Datadog._internalProxy().flushAndShutdownExecutors()
+        }.get()
+
+        result.success(null)
     }
 
     private fun invokePrivateShutdown(result: Result) {

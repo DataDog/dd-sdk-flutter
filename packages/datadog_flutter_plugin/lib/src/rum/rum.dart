@@ -5,5 +5,6 @@
 export 'ddrum.dart';
 export 'ddrum_events.dart';
 export 'navigation_observer.dart';
+export 'resource_headers_extractor.dart';
 export 'rum_configuration.dart';
 export 'rum_user_action_detector.dart';

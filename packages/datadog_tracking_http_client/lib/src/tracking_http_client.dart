@@ -300,40 +300,48 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
   }
 
   @override
-  Future<HttpClientResponse> get done {
-    _injectHeaders();
-
-    final innerFuture = innerContext.done;
-    return innerFuture.then((value) {
-      return _DatadogTrackingHttpResponse(
-        client,
-        value,
-        rumKey,
-        _tracingContext,
-        userAttributes,
-      );
-    }, onError: (Object e, StackTrace? st) {
-      _onStreamError(e, st);
-      throw e;
-    });
-  }
+  Future<HttpClientResponse> get done => _wrapResponse(() => innerContext.done);
 
   @override
-  Future<HttpClientResponse> close() {
-    _injectHeaders();
+  Future<HttpClientResponse> close() =>
+      _wrapResponse(() => innerContext.close());
 
-    return innerContext.close().then((value) {
-      return _DatadogTrackingHttpResponse(
+  /// Injects tracing headers and captures request headers (when configured),
+  /// then starts the inner future via [startInner]. The inner future must be
+  /// passed as a thunk so [HttpClientRequest.close] / `.done` are not invoked
+  /// before headers are injected — calling `close()` finalises the request
+  /// and sends it, so any header injection after that would be lost.
+  Future<HttpClientResponse> _wrapResponse(
+    Future<HttpClientResponse> Function() startInner,
+  ) {
+    _injectHeaders();
+    final capturedRequestHeaders =
+        rumKey != null ? _captureRequestHeaders() : null;
+
+    return startInner().then(
+      (value) => _DatadogTrackingHttpResponse(
         client,
         value,
         rumKey,
         _tracingContext,
         userAttributes,
-      );
-    }, onError: (Object e, StackTrace? st) {
-      _onStreamError(e, st);
-      throw e;
+        capturedRequestHeaders,
+      ),
+      onError: (Object e, StackTrace? st) {
+        _onStreamError(e, st);
+        throw e;
+      },
+    );
+  }
+
+  Map<String, List<String>>? _captureRequestHeaders() {
+    final extractor = client.datadogSdk.rum?.resourceHeadersExtractor;
+    if (extractor == null) return null;
+    final map = <String, List<String>>{};
+    innerContext.headers.forEach((name, values) {
+      map[name] = values;
     });
+    return map;
   }
 
   void _injectHeaders() {
@@ -508,6 +516,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
   final String? rumKey;
   final TracingContext? tracingContext;
   final Map<String, Object?> userAttributes;
+  final Map<String, List<String>>? capturedRequestHeaders;
   Object? lastError;
   int? bytesReceived;
 
@@ -517,6 +526,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
     this.rumKey,
     this.tracingContext,
     this.userAttributes,
+    this.capturedRequestHeaders,
   );
 
   @override
@@ -597,6 +607,18 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
             userAttributes: userAttributes,
           );
           attributes = _mergeAttributes(attributes, userAttributes);
+          final extractor = rum.resourceHeadersExtractor;
+          if (extractor != null) {
+            final responseHeaderMap = <String, List<String>>{};
+            innerResponse.headers.forEach((name, values) {
+              responseHeaderMap[name] = values;
+            });
+            final headerAttrs = extractor.toResourceAttributes(
+              capturedRequestHeaders ?? const {},
+              responseHeaderMap,
+            );
+            attributes = _mergeAttributes(attributes, headerAttrs);
+          }
           rum.stopResource(rumKey!, statusCode, resourceType, size, attributes);
         }
       }

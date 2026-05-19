@@ -4,7 +4,7 @@
 
 import Flutter
 import UIKit
-import DatadogCore
+@_spi(Internal) import DatadogCore
 import DatadogCrashReporting
 import DatadogInternal
 import DatadogRUM
@@ -296,6 +296,17 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
 
             let value = getInternalVar(named: varName)
             result(value)
+        case "flush":
+            // Send a no-op command through the RUM pipeline so any discrete action
+            // scopes that have already exceeded their 100ms timeout get written
+            // before we upload. stopSession() was previously used here but it set
+            // isActiveView=false on the current view, which stripped global attributes
+            // from the final view event.
+            if RUM._internal.isEnabled() {
+                RUMMonitor.shared().addViewAttributes([:])
+            }
+            Datadog.flush()
+            result(nil)
 #if DD_SDK_COMPILED_FOR_TESTING
         case "flushAndDeinitialize":
             Datadog.flushAndDeinitialize()

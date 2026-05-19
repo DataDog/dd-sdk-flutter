@@ -175,7 +175,18 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
             if let key = arguments["key"] as? String,
                let kindString = arguments["kind"] as? String,
                let attributes = arguments["attributes"] as? [String: Any?] {
-                let encodedAttributes = castFlutterAttributesToSwift(attributes)
+                var encodedAttributes = castFlutterAttributesToSwift(attributes)
+
+                // Cross-platform header attributes must be passed as typed
+                // [String: String] so the native SDK's .dd.decode() can read
+                // them — it does not unwrap DdFlutterEncodable.
+                if let requestHeaders = attributes["_dd.request_headers"] as? [String: String] {
+                    encodedAttributes["_dd.request_headers"] = requestHeaders
+                }
+                if let responseHeaders = attributes["_dd.response_headers"] as? [String: String] {
+                    encodedAttributes["_dd.response_headers"] = responseHeaders
+                }
+
                 let kind = RUMResourceType.parseFromFlutter(kindString)
 
                 let statusCode = arguments["statusCode"] as? NSNumber

@@ -47,6 +47,7 @@ class CapturedConfiguration {
   final bool rumEnabled;
   final double? traceSampleRate;
   final TraceContextInjection? traceContextInjection;
+  final ResourceHeadersExtractor? resourceHeadersExtractor;
   final Map<String, Set<TracingHeaderType>> firstPartyHosts;
   final List<DatadogPluginConfiguration> configuredPlugins;
 
@@ -55,6 +56,7 @@ class CapturedConfiguration {
     required this.rumEnabled,
     required this.traceSampleRate,
     required this.traceContextInjection,
+    required this.resourceHeadersExtractor,
     required this.firstPartyHosts,
     required this.configuredPlugins,
   });
@@ -141,6 +143,7 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
   Future<AttachResponse?> attachToExisting(
     DatadogAttachConfiguration attachConfig,
   );
+  Future<void> flush();
   Future<void> flushAndDeinitialize();
   Future<void> clearAllData();
 

@@ -125,7 +125,22 @@ class DatadogDioInterceptor extends Interceptor {
     if (contentLength == null && response.data != null) {
       contentLength = _responseDataByteLength(response.data);
     }
-    final attributes = attributesProvider?.onResponse(response) ?? {};
+    var attributes =
+        attributesProvider?.onResponse(response) ?? <String, Object?>{};
+    final extractor = rum.resourceHeadersExtractor;
+    if (extractor != null) {
+      final requestHeaders = response.requestOptions.headers.map((k, v) {
+        if (v is Iterable) {
+          return MapEntry(k, v.map((e) => e.toString()).toList());
+        }
+        return MapEntry(k, [v.toString()]);
+      });
+      final headerAttrs = extractor.toResourceAttributes(
+        requestHeaders,
+        response.headers.map,
+      );
+      attributes = {...attributes, ...headerAttrs};
+    }
     rum.stopResource(
       rumKey,
       response.statusCode,

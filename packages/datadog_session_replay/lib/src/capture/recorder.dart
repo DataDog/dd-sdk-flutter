@@ -16,6 +16,7 @@ import 'capture_node.dart';
 import 'element_recorders/container_recorder.dart';
 import 'element_recorders/cupertino_widgets/cupertino_checkbox_recorder.dart';
 import 'element_recorders/cupertino_widgets/cupertino_radio_recorder.dart';
+import 'element_recorders/cupertino_widgets/cupertino_slider_recorder.dart';
 import 'element_recorders/cupertino_widgets/cupertino_switch_recorder.dart';
 import 'element_recorders/custom_paint_recorder.dart';
 import 'element_recorders/editable_text_recorder.dart';
@@ -23,6 +24,7 @@ import 'element_recorders/icon_recorder.dart';
 import 'element_recorders/image_recorder.dart';
 import 'element_recorders/material_widgets/checkbox_recorder.dart';
 import 'element_recorders/material_widgets/radio_recorder.dart';
+import 'element_recorders/material_widgets/slider_recorder.dart';
 import 'element_recorders/material_widgets/switch_recorder.dart';
 import 'element_recorders/privacy_recorder.dart';
 import 'element_recorders/text_recorder.dart';
@@ -152,12 +154,16 @@ class SessionReplayRecorder {
     DatadogTimeProvider timeProvider = const DefaultTimeProvider(),
     required TreeCapturePrivacy defaultCapturePrivacy,
     required TouchPrivacyLevel touchPrivacyLevel,
+    ImageDownscaling imageDownscaling = ImageDownscaling.disabled,
+    int maxImagePixelBudget = defaultMaxImagePixelBudget,
     double iconRasterLogicalSize = 20.0,
   }) : this._(
           KeyGenerator(),
           timeProvider,
           defaultCapturePrivacy,
           touchPrivacyLevel,
+          imageDownscaling,
+          maxImagePixelBudget,
           iconRasterLogicalSize,
         );
 
@@ -166,6 +172,8 @@ class SessionReplayRecorder {
     this._timeProvider,
     this._defaultTreeCapturePrivacy,
     this._touchPrivacyLevel,
+    ImageDownscaling imageDownscaling,
+    int maxImagePixelBudget,
     double iconRasterLogicalSize,
   ) {
     _elementRecorders.addAll([
@@ -177,7 +185,11 @@ class SessionReplayRecorder {
       ),
       EditableTextRecorder(keyGenerator),
       InputDecoratorRecorder(keyGenerator),
-      ImageRecorder(keyGenerator),
+      ImageRecorder(
+        keyGenerator,
+        imageDownscaling: imageDownscaling,
+        maxImagePixelBudget: maxImagePixelBudget,
+      ),
       CustomPaintRecorder(keyGenerator),
       PrivacyRecorder(keyGenerator),
       CheckboxRecorder(keyGenerator),
@@ -186,6 +198,8 @@ class SessionReplayRecorder {
       CupertinoRadioRecorder(keyGenerator),
       SwitchRecorder(keyGenerator),
       CupertinoSwitchRecorder(keyGenerator),
+      SliderRecorder(keyGenerator),
+      CupertinoSliderRecorder(keyGenerator),
     ]);
   }
 

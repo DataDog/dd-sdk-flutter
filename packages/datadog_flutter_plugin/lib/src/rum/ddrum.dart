@@ -130,6 +130,11 @@ class DatadogRum {
   @internal
   final TraceContextInjection traceContextInjection;
 
+  /// The extractor for capturing HTTP request/response headers in RUM
+  /// resource events, or `null` if header capture is disabled.
+  @internal
+  final ResourceHeadersExtractor? resourceHeadersExtractor;
+
   @internal
   DatadogTimeProvider timeProvider = DefaultTimeProvider();
 
@@ -159,6 +164,7 @@ class DatadogRum {
       : traceSampleRate = config.traceSampleRate,
         _maxSampledTraceId = _getMaxTraceId(config.traceSampleRate),
         traceContextInjection = config.traceContextInjection,
+        resourceHeadersExtractor = config.trackResourceHeaders,
         logger = core.internalLogger {
     _init(
       core: core,
@@ -173,6 +179,7 @@ class DatadogRum {
     DatadogSdk core,
     this.traceSampleRate,
     this.traceContextInjection,
+    this.resourceHeadersExtractor,
   )   : _maxSampledTraceId = _getMaxTraceId(traceSampleRate),
         logger = core.internalLogger {
     _init(
@@ -187,6 +194,7 @@ class DatadogRum {
       : traceSampleRate = configuration.traceSampleRate,
         _maxSampledTraceId = _getMaxTraceId(configuration.traceSampleRate),
         traceContextInjection = configuration.traceContextInjection,
+        resourceHeadersExtractor = configuration.trackResourceHeaders,
         logger = core.internalLogger {
     _init(
       core: core,

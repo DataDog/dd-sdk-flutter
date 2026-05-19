@@ -687,4 +687,102 @@ void main() {
       });
     });
   }
+
+  group('with trackResourceHeaders', () {
+    setUp(() {
+      when(() => mockDatadog.rum).thenReturn(mockRum);
+      when(() => mockDatadog.headerTypesForHost(any())).thenReturn({});
+    });
+
+    test('passes captured headers as internal attributes to stopResource', () {
+      // ignore: invalid_use_of_internal_member
+      when(() => mockRum.resourceHeadersExtractor)
+          .thenReturn(ResourceHeadersExtractor());
+
+      final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
+      final requestOptions = RequestOptions(
+          path: 'https://test_uri',
+          method: 'GET',
+          headers: {'content-type': 'application/json'});
+      final rumKey = randomString();
+      requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
+
+      final response = Response(
+        requestOptions: requestOptions,
+        statusCode: 200,
+        headers: Headers.fromMap({
+          'content-type': ['image/png'],
+          'etag': ['"abc123"'],
+          'cookie': ['session=secret'], // forbidden, must be filtered
+        }),
+      );
+
+      interceptor.onResponse(response, ResponseInterceptionHandlerMock());
+
+      final captured = verify(() =>
+              mockRum.stopResource(rumKey, 200, any(), any(), captureAny()))
+          .captured[0] as Map<String, Object?>;
+
+      final responseHeaders =
+          captured['_dd.response_headers'] as Map<String, String>;
+      expect(responseHeaders['content-type'], 'image/png');
+      expect(responseHeaders['etag'], '"abc123"');
+      expect(responseHeaders.containsKey('cookie'), isFalse);
+
+      final requestHeaders =
+          captured['_dd.request_headers'] as Map<String, String>;
+      expect(requestHeaders['content-type'], 'application/json');
+    });
+
+    test('preserves multi-value request headers passed as a List', () {
+      // ignore: invalid_use_of_internal_member
+      when(() => mockRum.resourceHeadersExtractor)
+          .thenReturn(ResourceHeadersExtractor());
+
+      final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        method: 'GET',
+        headers: {
+          // Dio allows List values for multi-value headers — must be joined
+          // with ", ", not stringified as "[no-cache, no-store]".
+          'cache-control': ['no-cache', 'no-store'],
+        },
+      );
+      final rumKey = randomString();
+      requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
+      final response =
+          Response(requestOptions: requestOptions, statusCode: 200);
+
+      interceptor.onResponse(response, ResponseInterceptionHandlerMock());
+
+      final captured = verify(() =>
+              mockRum.stopResource(rumKey, 200, any(), any(), captureAny()))
+          .captured[0] as Map<String, Object?>;
+      final requestHeaders =
+          captured['_dd.request_headers'] as Map<String, String>;
+      expect(requestHeaders['cache-control'], 'no-cache, no-store');
+    });
+
+    test('does not add header attributes when extractor is null', () {
+      // ignore: invalid_use_of_internal_member
+      when(() => mockRum.resourceHeadersExtractor).thenReturn(null);
+
+      final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
+      final requestOptions =
+          RequestOptions(path: 'https://test_uri', method: 'GET', headers: {});
+      final rumKey = randomString();
+      requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
+      final response =
+          Response(requestOptions: requestOptions, statusCode: 200);
+
+      interceptor.onResponse(response, ResponseInterceptionHandlerMock());
+
+      final captured = verify(() =>
+              mockRum.stopResource(rumKey, 200, any(), any(), captureAny()))
+          .captured[0] as Map<String, Object?>;
+      expect(captured.containsKey('_dd.request_headers'), isFalse);
+      expect(captured.containsKey('_dd.response_headers'), isFalse);
+    });
+  });
 }

@@ -22,4 +22,12 @@ class DatadogRumPlatformAttributeKey {
 
   /// Internal view attribute that specifies the "Interaction To Next View" timing.
   static const customInvValue = '_dd.view.custom_inv_value';
+
+  /// Captured HTTP request headers. Used in RUM resources created by automatic
+  /// resource tracking. Expects `Map<String, String>` value.
+  static const requestHeaders = '_dd.request_headers';
+
+  /// Captured HTTP response headers. Used in RUM resources created by automatic
+  /// resource tracking. Expects `Map<String, String>` value.
+  static const responseHeaders = '_dd.response_headers';
 }

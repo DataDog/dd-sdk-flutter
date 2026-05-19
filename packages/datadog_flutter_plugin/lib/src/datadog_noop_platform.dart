@@ -22,6 +22,11 @@ class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
   }
 
   @override
+  Future<void> flush() {
+    return Future.value();
+  }
+
+  @override
   Future<void> flushAndDeinitialize() {
     return Future.value();
   }

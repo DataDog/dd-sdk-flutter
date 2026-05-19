@@ -2,8 +2,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025-Present Datadog, Inc.
 
-import 'dart:typed_data';
-import 'dart:ui';
+import 'dart:async' show TimeoutException;
+
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
 
@@ -18,15 +20,65 @@ import '../view_tree_snapshot.dart';
 // overlapping other content in the replay.
 const int _labelMinWidth = 125;
 
-// Largest size of image we can process - larger than this and we
-// start to hit concerns around memory usage and processing time.
-// This is essentially an 800x800 image, with a raw size of 2meg
-const int maxImageSize = 640000;
+// ~800x800 decoded pixels; raw RGBA ~2 MB.
+const int defaultMaxImagePixelBudget = 640000;
+
+@visibleForTesting
+enum DownscalingNeed {
+  none,
+  fitToBounds,
+  downscaling,
+}
+
+const Duration _defaultDownscaleTimeout = Duration(milliseconds: 500);
+
+typedef DownscaleFunction = Future<ui.Image> Function(
+  ui.Image source,
+  int destWidth,
+  int destHeight,
+);
+
+/// Trips after consecutive downscale failures; no automatic recovery.
+@visibleForTesting
+class DownscaleCircuitBreaker {
+  static const int maxConsecutiveFailures = 3;
+
+  int _consecutiveFailures = 0;
+  bool _tripped = false;
+
+  bool get isTripped => _tripped;
+
+  void recordSuccess() {
+    _consecutiveFailures = 0;
+  }
+
+  void recordFailure() {
+    _consecutiveFailures++;
+    if (_consecutiveFailures >= maxConsecutiveFailures) {
+      _tripped = true;
+    }
+  }
+}
 
 class ImageRecorder implements ElementRecorder {
   final KeyGenerator keyGenerator;
+  final ImageDownscaling imageDownscaling;
+  final int maxImagePixelBudget;
+  final DownscaleCircuitBreaker _downscalingCircuitBreaker;
+  final DownscaleFunction _downscale;
+  final Duration _downscaleTimeout;
 
-  const ImageRecorder(this.keyGenerator);
+  ImageRecorder(
+    this.keyGenerator, {
+    this.imageDownscaling = ImageDownscaling.disabled,
+    this.maxImagePixelBudget = defaultMaxImagePixelBudget,
+    @visibleForTesting DownscaleCircuitBreaker? circuitBreaker,
+    @visibleForTesting DownscaleFunction? downscaleOverride,
+    @visibleForTesting Duration downscaleTimeout = _defaultDownscaleTimeout,
+  })  : _downscalingCircuitBreaker =
+            circuitBreaker ?? DownscaleCircuitBreaker(),
+        _downscale = downscaleOverride ?? _downscaleImageDefault,
+        _downscaleTimeout = downscaleTimeout;
 
   @override
   bool accepts(Widget widget) => widget is RawImage || widget is Image;
@@ -88,7 +140,8 @@ class ImageRecorder implements ElementRecorder {
     }
 
     final totalPixelSize = uiImage.width * uiImage.height;
-    if (totalPixelSize > maxImageSize) {
+    if (totalPixelSize > maxImagePixelBudget &&
+        imageDownscaling == ImageDownscaling.disabled) {
       return SpecificElement(
         subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
         nodes: [
@@ -129,46 +182,193 @@ class ImageRecorder implements ElementRecorder {
     CapturedViewAttributes attributes,
     RawImage widget,
   ) async {
-    final List<CaptureNode> nodes = [];
-    if (widget.image case final image?) {
-      // Prevent conversion of the image data to speed things up, we're going to
-      // be hashing / compressing in the processor anyway
-      ByteData? byteData = await image.toByteData(
-        format: ImageByteFormat.rawRgba,
-      );
-      if (byteData != null) {
-        final resourceKey = keyGenerator.keyForImage(image);
-        await DatadogSessionReplayPlatform.instance.saveImageForProcessing(
-          resourceKey,
-          image.width,
-          image.height,
-          byteData,
-        );
-        nodes.add(
-          ResourceImageNode(
-            attributes,
-            wireframeId: elementId,
-            resourceKey: resourceKey,
-          ),
-        );
-      }
+    final image = widget.image;
+    if (image == null) {
+      return _placeholder(elementId, attributes, 'Empty Image');
     }
 
-    if (nodes.isEmpty) {
-      nodes.add(
+    final (need, scaledWidth, scaledHeight) = downscaleSizeTarget(
+      image.width,
+      image.height,
+      attributes,
+      _devicePixelRatio(element),
+      maxImagePixelBudget,
+    );
+
+    if (need == DownscalingNeed.none) {
+      return _persistImageAsResourceNode(
+        elementId,
+        attributes,
+        sourceImageForKeyGen: image,
+        encodingImageForByteData: image,
+      );
+    }
+
+    if (imageDownscaling == ImageDownscaling.disabled) {
+      return _persistImageAsResourceNode(
+        elementId,
+        attributes,
+        sourceImageForKeyGen: image,
+        encodingImageForByteData: image,
+      );
+    }
+
+    if (_downscalingCircuitBreaker.isTripped) {
+      return _placeholder(elementId, attributes, 'Slow Device');
+    }
+
+    ui.Image? scaled;
+    try {
+      scaled = await _downscale(image, scaledWidth, scaledHeight)
+          .timeout(_downscaleTimeout);
+      _downscalingCircuitBreaker.recordSuccess();
+      return _persistImageAsResourceNode(
+        elementId,
+        attributes,
+        sourceImageForKeyGen: image,
+        encodingImageForByteData: scaled,
+      );
+    } on TimeoutException {
+      _downscalingCircuitBreaker.recordFailure();
+      return _placeholder(elementId, attributes, 'Slow Device');
+    } catch (_) {
+      _downscalingCircuitBreaker.recordFailure();
+      return _placeholder(elementId, attributes, 'Failed Downscale');
+    } finally {
+      scaled?.dispose();
+    }
+  }
+
+  Future<CaptureNodeSemantics> _persistImageAsResourceNode(
+    int elementId,
+    CapturedViewAttributes attributes, {
+    required ui.Image sourceImageForKeyGen,
+    required ui.Image encodingImageForByteData,
+  }) async {
+    try {
+      // Prevent conversion of the image data to speed things up, we're going to
+      // be hashing / compressing in the processor anyway
+      final byteData = await encodingImageForByteData.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      );
+      if (byteData != null) {
+        final resourceKey = keyGenerator.keyForImage(sourceImageForKeyGen);
+        await DatadogSessionReplayPlatform.instance.saveImageForProcessing(
+          resourceKey,
+          encodingImageForByteData.width,
+          encodingImageForByteData.height,
+          byteData,
+        );
+        return SpecificElement(
+          subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
+          nodes: [
+            ResourceImageNode(
+              attributes,
+              wireframeId: elementId,
+              resourceKey: resourceKey,
+            ),
+          ],
+        );
+      } else {
+        return _placeholder(elementId, attributes, 'Empty Image');
+      }
+    } catch (_) {
+      return _placeholder(elementId, attributes, 'Error Image');
+    }
+  }
+
+  static SpecificElement _placeholder(
+    int elementId,
+    CapturedViewAttributes attributes,
+    String caption,
+  ) {
+    return SpecificElement(
+      subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
+      nodes: [
         PlaceholderNode(
           attributes,
           wireframeId: elementId,
-          caption: 'Empty Image',
+          caption: caption,
           minWidth: _labelMinWidth,
         ),
-      );
+      ],
+    );
+  }
+
+  static (DownscalingNeed, int, int) downscaleSizeTarget(
+    int sourceWidth,
+    int sourceHeight,
+    CapturedViewAttributes attributes,
+    double devicePixelRatio,
+    int pixelBudget,
+  ) {
+    final renderedPhysicalWidth =
+        math.max(1, (attributes.width * devicePixelRatio).ceil());
+    final renderedPhysicalHeight =
+        math.max(1, (attributes.height * devicePixelRatio).ceil());
+
+    if (renderedPhysicalWidth >= sourceWidth &&
+        renderedPhysicalHeight >= sourceHeight &&
+        sourceWidth * sourceHeight <= pixelBudget) {
+      // below budget, no downscaling needed
+      return (DownscalingNeed.none, sourceWidth, sourceHeight);
     }
 
-    return SpecificElement(
-      subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
-      nodes: nodes,
+    // Shrink to rendered physical size; cap at 1.0 (no upscale beyond native).
+    final fitToBoundsScale = math.min(
+      math.min(renderedPhysicalWidth / sourceWidth,
+          renderedPhysicalHeight / sourceHeight),
+      1.0,
     );
+    final fitToBoundsWidth =
+        math.max(1, (sourceWidth * fitToBoundsScale).round());
+    final fitToBoundsHeight =
+        math.max(1, (sourceHeight * fitToBoundsScale).round());
+    final fitToBoundsPixels = fitToBoundsWidth * fitToBoundsHeight;
+    if (fitToBoundsPixels <= pixelBudget) {
+      return (DownscalingNeed.fitToBounds, fitToBoundsWidth, fitToBoundsHeight);
+    }
+
+    final downscaling = math.sqrt(pixelBudget / fitToBoundsPixels);
+    final downscaledWidth =
+        math.max(1, (fitToBoundsWidth * downscaling).floor());
+    final downscaledHeight =
+        math.max(1, (fitToBoundsHeight * downscaling).floor());
+    return (DownscalingNeed.downscaling, downscaledWidth, downscaledHeight);
+  }
+
+  static double _devicePixelRatio(Element element) {
+    final view = View.maybeOf(element);
+    if (view != null) {
+      return view.devicePixelRatio;
+    }
+    final views = WidgetsBinding.instance.platformDispatcher.views;
+    if (views.isNotEmpty) {
+      return views.first.devicePixelRatio;
+    }
+    return 1.0;
+  }
+
+  static Future<ui.Image> _downscaleImageDefault(
+    ui.Image source,
+    int destWidth,
+    int destHeight,
+  ) async {
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    final paint = ui.Paint()..filterQuality = ui.FilterQuality.medium;
+    canvas.drawImageRect(
+      source,
+      ui.Rect.fromLTWH(0, 0, source.width.toDouble(), source.height.toDouble()),
+      ui.Rect.fromLTWH(0, 0, destWidth.toDouble(), destHeight.toDouble()),
+      paint,
+    );
+    final picture = recorder.endRecording();
+    try {
+      return await picture.toImage(destWidth, destHeight);
+    } finally {
+      picture.dispose();
+    }
   }
 
   AssetBundleImageProvider? _extractAssetImage(Image widget) {

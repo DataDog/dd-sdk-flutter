@@ -174,7 +174,8 @@ class DatadogClient extends http.BaseClient {
               final attributes =
                   attributesProvider?.call(request, response, null) ?? {};
               final size = response.contentLength ?? bytesReceived;
-              _onFinish(rum, rumKey, response, attributes, firstError, size);
+              _onFinish(
+                  rum, rumKey, request, response, attributes, firstError, size);
             }
             spyStream.close();
           },
@@ -212,8 +213,14 @@ class DatadogClient extends http.BaseClient {
     return true;
   }
 
-  void _onFinish(DatadogRum rum, String rumKey, http.StreamedResponse response,
-      Map<String, Object?> attributes, Object? error, int? size) {
+  void _onFinish(
+      DatadogRum rum,
+      String rumKey,
+      http.BaseRequest request,
+      http.StreamedResponse response,
+      Map<String, Object?> attributes,
+      Object? error,
+      int? size) {
     try {
       // If we saw an error, this resource has already been stopped
       if (error == null) {
@@ -223,6 +230,14 @@ class DatadogClient extends http.BaseClient {
             ? ContentType.parse(contentTypeHeader)
             : ContentType.text;
         var resourceType = resourceTypeFromContentType(contentType);
+        final extractor = rum.resourceHeadersExtractor;
+        if (extractor != null) {
+          final headerAttrs = extractor.toResourceAttributes(
+            request.headers.map((k, v) => MapEntry(k, [v])),
+            response.headers.map((k, v) => MapEntry(k, [v])),
+          );
+          attributes = {...attributes, ...headerAttrs};
+        }
         datadogSdk.rum?.stopResource(
           rumKey,
           response.statusCode,

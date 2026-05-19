@@ -172,6 +172,14 @@ class DatadogSdkWeb extends DatadogSdkPlatform {
   }
 
   @override
+  Future<void> flush() async {
+    // The Browser RUM SDK auto-flushes pending data via beforeunload; there is
+    // no synchronous flush API exposed through the JS bridge. Tests that need
+    // deterministic flushing should rely on UploadFrequency.frequent + a
+    // post-flush wait_for poll on the intake.
+  }
+
+  @override
   Future<void> flushAndDeinitialize() async {}
 
   @override

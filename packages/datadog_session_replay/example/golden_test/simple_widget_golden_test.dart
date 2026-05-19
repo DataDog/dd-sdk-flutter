@@ -471,4 +471,196 @@ void main() {
     );
     await snapshotTest(tester, recorder, fixture);
   });
+
+  testWidgets('unmasked material sliders', (tester) async {
+    final fixture = MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Unmasked Material Sliders')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // year2023 = true (default M3 round thumb) — min, mid, max.
+                Slider(value: 0.0, onChanged: (_) {}),
+                Slider(value: 0.5, onChanged: (_) {}),
+                Slider(value: 1.0, onChanged: (_) {}),
+                // Custom colors.
+                Slider(
+                  value: 0.5,
+                  onChanged: (_) {},
+                  activeColor: Colors.green,
+                  inactiveColor: Colors.yellow,
+                  thumbColor: Colors.red,
+                ),
+                // With secondary track value.
+                Slider(
+                  value: 0.3,
+                  secondaryTrackValue: 0.7,
+                  onChanged: (_) {},
+                ),
+                // Discrete slider with tick marks.
+                Slider(value: 0.4, divisions: 5, onChanged: (_) {}),
+                // M3-2024 (year2023 = false) — handle thumb + gap + stop indicator.
+                Slider(
+                  // ignore: deprecated_member_use
+                  year2023: false,
+                  value: 0.4,
+                  onChanged: (_) {},
+                ),
+                Slider(
+                  // ignore: deprecated_member_use
+                  year2023: false,
+                  value: 0.4,
+                  divisions: 5,
+                  onChanged: (_) {},
+                ),
+                // Disabled.
+                Slider(value: 0.5, onChanged: null),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await snapshotTest(tester, recorder, fixture);
+  });
+
+  testWidgets('unmasked cupertino sliders', (tester) async {
+    final fixture = MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Unmasked Cupertino Sliders')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CupertinoSlider(value: 0.0, onChanged: (_) {}),
+                CupertinoSlider(value: 0.5, onChanged: (_) {}),
+                CupertinoSlider(value: 1.0, onChanged: (_) {}),
+                CupertinoSlider(
+                  value: 0.5,
+                  onChanged: (_) {},
+                  activeColor: CupertinoColors.systemPurple,
+                  thumbColor: CupertinoColors.systemPurple,
+                ),
+                CupertinoSlider(value: 0.5, onChanged: null),
+                CupertinoSlider(value: 0.5, divisions: 5, onChanged: (_) {}),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await snapshotTest(tester, recorder, fixture);
+  });
+
+  testWidgets('masked material sliders', (tester) async {
+    recorder = SessionReplayRecorder(
+      defaultCapturePrivacy: TreeCapturePrivacy(
+        textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskAllInputs,
+        imagePrivacyLevel: ImagePrivacyLevel.maskNone,
+      ),
+      touchPrivacyLevel: TouchPrivacyLevel.show,
+    );
+    recorder.updateContext(context);
+
+    // With maskAllInputs every thumb should be anchored at the track midpoint
+    // regardless of the supplied value (0.0, 0.5, 1.0 should all look the same).
+    final fixture = MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Masked Material Sliders')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // year2023 = true (default M3 round thumb) — min, mid, max.
+                Slider(value: 0.0, onChanged: (_) {}),
+                Slider(value: 0.5, onChanged: (_) {}),
+                Slider(value: 1.0, onChanged: (_) {}),
+                // Custom colors.
+                Slider(
+                  value: 0.5,
+                  onChanged: (_) {},
+                  activeColor: Colors.green,
+                  inactiveColor: Colors.yellow,
+                  thumbColor: Colors.red,
+                ),
+                // With secondary track value.
+                Slider(
+                  value: 0.3,
+                  secondaryTrackValue: 0.7,
+                  onChanged: (_) {},
+                ),
+                // Discrete slider with tick marks.
+                Slider(value: 0.4, divisions: 5, onChanged: (_) {}),
+                // M3-2024 (year2023 = false) — handle thumb + gap + stop indicator.
+                Slider(
+                  // ignore: deprecated_member_use
+                  year2023: false,
+                  value: 0.4,
+                  onChanged: (_) {},
+                ),
+                Slider(
+                  // ignore: deprecated_member_use
+                  year2023: false,
+                  value: 0.4,
+                  divisions: 5,
+                  onChanged: (_) {},
+                ),
+                // Disabled.
+                Slider(value: 0.5, onChanged: null),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await snapshotTest(tester, recorder, fixture);
+  });
+
+  testWidgets('masked cupertino sliders', (tester) async {
+    recorder = SessionReplayRecorder(
+      defaultCapturePrivacy: TreeCapturePrivacy(
+        textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskAllInputs,
+        imagePrivacyLevel: ImagePrivacyLevel.maskNone,
+      ),
+      touchPrivacyLevel: TouchPrivacyLevel.show,
+    );
+    recorder.updateContext(context);
+
+    // With maskAllInputs every thumb should be anchored at the track midpoint
+    // regardless of the supplied value (0.0, 0.5, 1.0 should all look the same).
+    final fixture = MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Masked Cupertino Sliders')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CupertinoSlider(value: 0.0, onChanged: (_) {}),
+                CupertinoSlider(value: 0.5, onChanged: (_) {}),
+                CupertinoSlider(value: 1.0, onChanged: (_) {}),
+                CupertinoSlider(
+                  value: 0.5,
+                  onChanged: (_) {},
+                  activeColor: CupertinoColors.systemPurple,
+                  thumbColor: CupertinoColors.systemPurple,
+                ),
+                CupertinoSlider(value: 0.5, onChanged: null),
+                CupertinoSlider(value: 0.5, divisions: 5, onChanged: (_) {}),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await snapshotTest(tester, recorder, fixture);
+  });
 }

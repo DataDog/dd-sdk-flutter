@@ -379,7 +379,7 @@ void main() {
           attributes));
     });
 
-    test('ignorUrlPatterns does not perform tracking on matching url',
+    test('ignoreUrlPatterns does not perform tracking on matching url',
         () async {
       final client = DatadogClient(
         datadogSdk: mockDatadog,
@@ -675,6 +675,54 @@ void main() {
       expect(traceInt, contextTraceInt);
       final contextSpanInt = BigInt.tryParse(tracecontextParts[2], radix: 16);
       expect(spanInt, contextSpanInt);
+    });
+
+    group('with trackResourceHeaders', () {
+      test('passes captured headers as internal attributes to stopResource',
+          () async {
+        // ignore: invalid_use_of_internal_member
+        when(() => mockRum.resourceHeadersExtractor)
+            .thenReturn(ResourceHeadersExtractor());
+        when(() => mockResponse.headers).thenReturn({
+          HttpHeaders.contentTypeHeader: 'application/json',
+          'etag': '"abc123"',
+          'set-cookie': 'session=secret', // forbidden, must be filtered
+        });
+
+        final client =
+            DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
+        await client.get(Uri.parse('https://test_url/test'),
+            headers: {'content-type': 'application/json'});
+
+        final captured = verify(() =>
+                mockRum.stopResource(any(), any(), any(), any(), captureAny()))
+            .captured[0] as Map<String, Object?>;
+
+        final responseHeaders =
+            captured['_dd.response_headers'] as Map<String, String>;
+        expect(responseHeaders['content-type'], 'application/json');
+        expect(responseHeaders['etag'], '"abc123"');
+        expect(responseHeaders.containsKey('set-cookie'), isFalse);
+
+        final requestHeaders =
+            captured['_dd.request_headers'] as Map<String, String>;
+        expect(requestHeaders['content-type'], 'application/json');
+      });
+
+      test('does not add header attributes when extractor is null', () async {
+        // ignore: invalid_use_of_internal_member
+        when(() => mockRum.resourceHeadersExtractor).thenReturn(null);
+
+        final client =
+            DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
+        await client.get(Uri.parse('https://test_url/test'));
+
+        final captured = verify(() =>
+                mockRum.stopResource(any(), any(), any(), any(), captureAny()))
+            .captured[0] as Map<String, Object?>;
+        expect(captured.containsKey('_dd.request_headers'), isFalse);
+        expect(captured.containsKey('_dd.response_headers'), isFalse);
+      });
     });
   });
 }

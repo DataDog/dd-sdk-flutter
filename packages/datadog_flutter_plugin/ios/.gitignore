@@ -34,6 +34,7 @@ Icon?
 .tags*
 .swiftpm/
 .build/
+Package.resolved
 
 /Flutter/Generated.xcconfig
 /Flutter/ephemeral/

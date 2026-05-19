@@ -66,6 +66,21 @@ Future<void> main() async {
             applicationId: applicationId,
             traceSampleRate: 100,
             customEndpoint: customEndpoint,
+            trackResourceHeaders: ResourceHeadersExtractor(
+              captureHeaders: [
+                'accept-ranges',
+                'content-disposition',
+                'server',
+                'user-agent',
+                'via',
+                'x-cache-hits',
+                'x-served-by',
+                'x-datadog-trace-id',
+                'x-datadog-parent-id',
+                'x-datadog-origin',
+                'traceparent',
+              ],
+            ),
           )
         : null,
   );

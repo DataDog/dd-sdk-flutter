@@ -108,6 +108,17 @@ class DatadogSdk {
   /// [DatadogConfiguration.addPlugin]
   T? getPlugin<T>() => _plugins[T] as T?;
 
+  /// INTERNAL USE ONLY
+  /// Force any pending data to upload to Datadog now. Blocks until the upload
+  /// completes (or fails).
+  ///
+  /// This function is not part of the public interface for Datadog and is used
+  /// for integration testing purposes. It is not guaranteed to be available on
+  /// all platforms and may leave the SDK in an unreliable state.
+  Future<void> flush() async {
+    await _platform.flush();
+  }
+
   /// This function is not part of the public interface for Datadog, and may not
   /// be available in all targets. Used for integration and E2E testing purposes only.
   @visibleForTesting
@@ -220,6 +231,7 @@ class DatadogSdk {
             attachResponse.capturedConfiguration.traceSampleRate ?? 100.0,
             attachResponse.capturedConfiguration.traceContextInjection ??
                 TraceContextInjection.sampled,
+            attachResponse.capturedConfiguration.resourceHeadersExtractor,
           );
         }
 

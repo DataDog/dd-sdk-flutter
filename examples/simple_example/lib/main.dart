@@ -31,9 +31,23 @@ void main() async {
     loggingConfiguration: DatadogLoggingConfiguration(),
     firstPartyHosts: ['localhost'],
     rumConfiguration: DatadogRumConfiguration(
-      applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
-      traceSampleRate: 100.0,
-    ),
+        applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
+        traceSampleRate: 100.0,
+        trackResourceHeaders: ResourceHeadersExtractor(
+          captureHeaders: [
+            'accept-ranges',
+            'content-disposition',
+            'server',
+            'user-agent',
+            'via',
+            'x-cache-hits',
+            'x-served-by',
+            'x-datadog-trace-id',
+            'x-datadog-parent-id',
+            'x-datadog-origin',
+            'traceparent',
+          ],
+        )),
   )
     ..enableHttpTracking(
       // Using ignoreUrlPatterns is needed if you want to combine HttpClient

@@ -427,6 +427,12 @@ class DatadogAttachConfiguration {
   /// Defaults to [TraceContextInjection.sampled].
   TraceContextInjection traceContextInjection = TraceContextInjection.sampled;
 
+  /// Configuration for capturing HTTP request and response headers in RUM
+  /// resource events.
+  ///
+  /// See [DatadogRumConfiguration.trackResourceHeaders].
+  ResourceHeadersExtractor? trackResourceHeaders;
+
   /// Configurations for additional plugins that will be created after Datadog
   /// is initialized.
   final List<DatadogPluginConfiguration> additionalPlugins = [];
@@ -439,6 +445,7 @@ class DatadogAttachConfiguration {
     List<String>? firstPartyHosts,
     this.firstPartyHostsWithTracingHeaders = const {},
     this.traceContextInjection = TraceContextInjection.sampled,
+    this.trackResourceHeaders,
   }) {
     // Attempt a union if both configuration options are present
     if (firstPartyHosts != null) {

@@ -1371,6 +1371,86 @@ void main() {
     });
   });
 
+  group('with trackResourceHeaders', () {
+    setUp(() {
+      enableRum();
+    });
+
+    test('passes captured headers as internal attributes to stopResource',
+        () async {
+      // ignore: invalid_use_of_internal_member
+      when(() => mockRum.resourceHeadersExtractor)
+          .thenReturn(ResourceHeadersExtractor());
+
+      final url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
+      // Pre-populate request headers via the mock's add()
+      mockRequest.headers.add('content-type', 'application/json');
+
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(),
+        mockClient,
+      );
+      final request = await client.openUrl('get', url);
+
+      final mockResponse = setupMockClientResponse(200);
+      final responseHeadersMock = mockResponse.headers;
+      // Stub response headers iteration with forEach
+      when(() => responseHeadersMock.forEach(any())).thenAnswer((invocation) {
+        final fn = invocation.positionalArguments[0] as void Function(
+            String, List<String>);
+        fn('content-type', ['image/png']);
+        fn('etag', ['"abc123"']);
+        fn('cookie', ['session=secret']); // forbidden, must be filtered
+      });
+      completer.complete(mockResponse);
+      final response = await request.done;
+      response.listen((_) {});
+      await mockResponse.streamController.close();
+
+      final captured = verify(() =>
+              mockRum.stopResource(any(), any(), any(), any(), captureAny()))
+          .captured[0] as Map<String, Object?>;
+
+      final responseHeaders =
+          captured['_dd.response_headers'] as Map<String, String>;
+      expect(responseHeaders['content-type'], 'image/png');
+      expect(responseHeaders['etag'], '"abc123"');
+      expect(responseHeaders.containsKey('cookie'), isFalse);
+
+      final requestHeaders =
+          captured['_dd.request_headers'] as Map<String, String>;
+      expect(requestHeaders['content-type'], 'application/json');
+    });
+
+    test('does not add header attributes when extractor is null', () async {
+      // ignore: invalid_use_of_internal_member
+      when(() => mockRum.resourceHeadersExtractor).thenReturn(null);
+
+      final url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
+
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(),
+        mockClient,
+      );
+      final request = await client.openUrl('get', url);
+      final mockResponse = setupMockClientResponse(200);
+      completer.complete(mockResponse);
+      final response = await request.done;
+      response.listen((_) {});
+      await mockResponse.streamController.close();
+
+      final captured = verify(() =>
+              mockRum.stopResource(any(), any(), any(), any(), captureAny()))
+          .captured[0] as Map<String, Object?>;
+      expect(captured.containsKey('_dd.request_headers'), isFalse);
+      expect(captured.containsKey('_dd.response_headers'), isFalse);
+    });
+  });
+
   group(
     'when is an attach configuration',
     () {

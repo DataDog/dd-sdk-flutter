@@ -277,6 +277,22 @@ class RumResourceEventDecoder extends RumEventDecoder {
   int? get duration => rumEvent['resource']['duration'];
   String? get method => rumEvent['resource']['method'];
   int? get size => rumEvent['resource']['size'];
+
+  Map<String, String>? get requestHeaders {
+    final raw = rumEvent['resource']?['request']?['headers'];
+    if (raw is Map) {
+      return raw.map((k, v) => MapEntry(k.toString(), v.toString()));
+    }
+    return null;
+  }
+
+  Map<String, String>? get responseHeaders {
+    final raw = rumEvent['resource']?['response']?['headers'];
+    if (raw is Map) {
+      return raw.map((k, v) => MapEntry(k.toString(), v.toString()));
+    }
+    return null;
+  }
 }
 
 class RumErrorEventDecoder extends RumEventDecoder {
