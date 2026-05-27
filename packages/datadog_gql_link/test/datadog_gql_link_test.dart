@@ -933,7 +933,89 @@ query UserInfo($id: ID!) {
         verifyHeaders(headersEntry!.headers, headerType, false,
             TraceContextInjection.sampled);
       });
+
+      test('RUM resource trace and span ids match injected wire headers', () {
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
+        when(() => mockRum.contextInjectionSetting)
+            .thenReturn(TraceContextInjection.sampled);
+        final link =
+            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
+        final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'));
+
+        // When
+        Request? forwardedRequest;
+        link.request(request, (request) {
+          forwardedRequest = request;
+          return const Stream<Response>.empty();
+        });
+
+        // Then
+        final headers =
+            forwardedRequest!.context.entry<HttpLinkHeaders>()!.headers;
+        final capturedAttrs = verify(
+                () => mockRum.startResource(any(), any(), any(), captureAny()))
+            .captured[0] as Map<String, dynamic>;
+        final headerIds = extractTraceAndSpanFromHeaders(headers, headerType);
+        final rumTraceId = TracingId.fromString(
+                capturedAttrs[DatadogRumPlatformAttributeKey.traceID] as String,
+                TracingIdRepresentation.hex)
+            .value;
+        final rumSpanId = TracingId.fromString(
+                capturedAttrs[DatadogRumPlatformAttributeKey.spanID] as String,
+                TracingIdRepresentation.decimal)
+            .value;
+        expect(rumTraceId, headerIds.traceId);
+        expect(rumSpanId, headerIds.spanId);
+      });
     });
+  }
+}
+
+({BigInt traceId, BigInt spanId}) extractTraceAndSpanFromHeaders(
+  Map<String, String> headers,
+  TracingHeaderType type,
+) {
+  switch (type) {
+    case TracingHeaderType.datadog:
+      final low = TracingId.fromString(
+              headers['x-datadog-trace-id'], TracingIdRepresentation.decimal)
+          .value;
+      final high = TracingId.fromString(
+              headers['x-datadog-tags']!.split('=')[1],
+              TracingIdRepresentation.hex)
+          .value;
+      return (
+        traceId: (high << 64) | low,
+        spanId: TracingId.fromString(
+                headers['x-datadog-parent-id'], TracingIdRepresentation.decimal)
+            .value,
+      );
+    case TracingHeaderType.b3:
+      final parts = headers['b3']!.split('-');
+      return (
+        traceId:
+            TracingId.fromString(parts[0], TracingIdRepresentation.hex).value,
+        spanId:
+            TracingId.fromString(parts[1], TracingIdRepresentation.hex).value,
+      );
+    case TracingHeaderType.b3multi:
+      return (
+        traceId: TracingId.fromString(
+                headers['X-B3-TraceId'], TracingIdRepresentation.hex)
+            .value,
+        spanId: TracingId.fromString(
+                headers['X-B3-SpanId'], TracingIdRepresentation.hex)
+            .value,
+      );
+    case TracingHeaderType.tracecontext:
+      final parts = headers['traceparent']!.split('-');
+      return (
+        traceId:
+            TracingId.fromString(parts[1], TracingIdRepresentation.hex).value,
+        spanId:
+            TracingId.fromString(parts[2], TracingIdRepresentation.hex).value,
+      );
   }
 }
 
