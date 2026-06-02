@@ -1,0 +1,94 @@
+{
+  "name": "defaults-and-emission-gates",
+  "description": "Precomputed assignments that validate exposure gates, unknown variation isolation, and default/error flagevaluation payloads.",
+  "context": {
+    "targetingKey": "precomputed-user",
+    "attributes": {
+      "plan": "free",
+      "platform": "flutter"
+    }
+  },
+  "response": {
+    "data": {
+      "attributes": {
+        "flags": {
+          "flutter.fixture.silent": {
+            "allocationKey": "allocation-silent",
+            "variationKey": "silent-on",
+            "variationType": "boolean",
+            "variationValue": true,
+            "reason": "TARGETING_MATCH",
+            "doLog": false
+          },
+          "flutter.fixture.string": {
+            "allocationKey": "allocation-string",
+            "variationKey": "copy-b",
+            "variationType": "string",
+            "variationValue": "Actual string",
+            "reason": "TARGETING_MATCH",
+            "doLog": true
+          },
+          "flutter.fixture.unknown": {
+            "allocationKey": "allocation-unknown",
+            "variationKey": "unknown-a",
+            "variationType": "unsupported",
+            "variationValue": "Ignored",
+            "reason": "TARGETING_MATCH",
+            "doLog": true
+          }
+        }
+      }
+    }
+  },
+  "evaluations": [
+    {
+      "flag": "flutter.fixture.silent",
+      "variationType": "boolean",
+      "defaultValue": false,
+      "result": {
+        "value": true,
+        "variant": "silent-on",
+        "reason": "TARGETING_MATCH",
+        "error": null
+      }
+    },
+    {
+      "flag": "flutter.fixture.string",
+      "variationType": "boolean",
+      "defaultValue": false,
+      "result": {
+        "value": false,
+        "variant": null,
+        "reason": null,
+        "error": "typeMismatch"
+      }
+    },
+    {
+      "flag": "flutter.fixture.unknown",
+      "variationType": "boolean",
+      "defaultValue": false,
+      "result": {
+        "value": false,
+        "variant": null,
+        "reason": null,
+        "error": "flagNotFound"
+      }
+    },
+    {
+      "flag": "flutter.fixture.missing",
+      "variationType": "string",
+      "defaultValue": "fallback",
+      "result": {
+        "value": "fallback",
+        "variant": null,
+        "reason": null,
+        "error": "flagNotFound"
+      }
+    }
+  ],
+  "expectedEmissions": {
+    "exposures": 0,
+    "flagevaluationRequests": 1,
+    "flagevaluationEvents": 4
+  }
+}

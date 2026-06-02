@@ -148,6 +148,18 @@ void main() {
     );
   });
 
+  test('initialize stores configuration', () async {
+    final configuration = DatadogConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+    );
+
+    await datadogSdk.initialize(configuration, TrackingConsent.granted);
+
+    expect(datadogSdk.configuration, same(configuration));
+  });
+
   test('encode base configuration', () {
     final configuration = DatadogConfiguration(
       clientToken: 'fake-client-token',

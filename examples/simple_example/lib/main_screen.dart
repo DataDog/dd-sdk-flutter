@@ -43,6 +43,7 @@ class _MainScreenState extends State<MainScreen> {
               _paddedNavButton('Home', '/home'),
               _paddedNavButton('Network', '/network'),
               _paddedNavButton('GraphQl', '/graphql'),
+              _paddedNavButton('Flags', '/flags'),
               _paddedNavButton('Crash', '/crash'),
             ],
           ),

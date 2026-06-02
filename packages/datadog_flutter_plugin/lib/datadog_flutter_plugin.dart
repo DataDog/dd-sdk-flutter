@@ -175,6 +175,8 @@ class DatadogSdk {
     DatadogConfiguration configuration,
     TrackingConsent trackingConsent,
   ) async {
+    _configuration = configuration;
+
     // First set our SDK verbosity. We can assume WidgetsFlutterBinding has been initialized at this point
     await _platform.setSdkVerbosity(internalLogger.sdkVerbosity);
 

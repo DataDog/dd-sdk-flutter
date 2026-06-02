@@ -3,6 +3,7 @@
 // Copyright 2023-Present Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_gql_link/datadog_gql_link.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
@@ -12,11 +13,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 
 import 'app.dart';
+import 'flags/flags_demo_runtime.dart';
 import 'url_strategy_stub.dart' if (dart.library.html) 'url_strategy_web.dart';
 
 const graphQlUrl = 'http://localhost:3000/graphql';
+const flagsMode = String.fromEnvironment('FLAGS_MODE', defaultValue: 'local');
 
-void main() async {
+Future<void> main() async {
   await dotenv.load();
 
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,13 +28,19 @@ void main() async {
   DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
 
   final datadogConfig = DatadogConfiguration(
-    clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
-    env: dotenv.get('DD_ENV', fallback: ''),
+    clientToken: _dotenvValue(
+      'DD_CLIENT_TOKEN',
+      localFallback: 'local-client-token',
+    ),
+    env: _dotenvValue('DD_ENV', localFallback: 'local'),
     site: DatadogSite.us1,
     loggingConfiguration: DatadogLoggingConfiguration(),
     firstPartyHosts: ['localhost'],
     rumConfiguration: DatadogRumConfiguration(
-        applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
+        applicationId: _dotenvValue(
+          'DD_APPLICATION_ID',
+          localFallback: 'local-application-id',
+        ),
         traceSampleRate: 100.0,
         trackResourceHeaders: ResourceHeadersExtractor(
           captureHeaders: [
@@ -65,6 +74,14 @@ void main() async {
   );
 }
 
+String _dotenvValue(String name, {required String localFallback}) {
+  final value = dotenv.maybeGet(name);
+  if (value != null && value.isNotEmpty) {
+    return value;
+  }
+  return flagsMode == 'local' ? localFallback : '';
+}
+
 Future<void> runUsingAlternativeInit(DatadogConfiguration datadogConfig) async {
   final originalOnError = FlutterError.onError;
   FlutterError.onError = (details) {
@@ -84,6 +101,8 @@ Future<void> runUsingAlternativeInit(DatadogConfiguration datadogConfig) async {
   };
 
   await DatadogSdk.instance.initialize(datadogConfig, TrackingConsent.granted);
+  final flagsRuntime = await FlagsDemoRuntime.create();
+  await DatadogFlags.enable(configuration: flagsRuntime.configuration);
   final link = Link.from([
     DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
     HttpLink(graphQlUrl),
@@ -92,19 +111,26 @@ Future<void> runUsingAlternativeInit(DatadogConfiguration datadogConfig) async {
   final graphQlClient = GraphQLClient(link: link, cache: GraphQLCache());
   runApp(MyApp(
     graphQLClient: graphQlClient,
+    flagsRuntime: flagsRuntime,
   ));
 }
 
 Future<void> runUsingRunApp(DatadogConfiguration datadogConfig) async {
   await DatadogSdk.runApp(datadogConfig, TrackingConsent.granted, () {
-    final link = Link.from([
-      DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
-      HttpLink(graphQlUrl),
-    ]);
-    final graphQlClient = GraphQLClient(link: link, cache: GraphQLCache());
+    // This path is not used by default, but keep flags configured for parity
+    // if the example is switched back to DatadogSdk.runApp.
+    FlagsDemoRuntime.create().then((flagsRuntime) async {
+      await DatadogFlags.enable(configuration: flagsRuntime.configuration);
+      final link = Link.from([
+        DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
+        HttpLink(graphQlUrl),
+      ]);
+      final graphQlClient = GraphQLClient(link: link, cache: GraphQLCache());
 
-    runApp(MyApp(
-      graphQLClient: graphQlClient,
-    ));
+      runApp(MyApp(
+        graphQLClient: graphQlClient,
+        flagsRuntime: flagsRuntime,
+      ));
+    });
   });
 }
