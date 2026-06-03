@@ -20,14 +20,15 @@ class FlagsScreen extends StatefulWidget {
 class _FlagsScreenState extends State<FlagsScreen> {
   static const _targetingKey = String.fromEnvironment('FLAGS_TARGETING_KEY',
       defaultValue: 'flutter-user');
+  static const _booleanKeys = String.fromEnvironment('FLAGS_BOOLEAN_KEYS');
+  static const _stringKeys = String.fromEnvironment('FLAGS_STRING_KEYS');
+  static const _integerKeys = String.fromEnvironment('FLAGS_INTEGER_KEYS');
+  static const _doubleKeys = String.fromEnvironment('FLAGS_DOUBLE_KEYS');
+  static const _objectKeys = String.fromEnvironment('FLAGS_OBJECT_KEYS');
 
   late final DatadogFlagsClient _client;
   String _status = 'idle';
-  FlagDetails<bool>? _enabled;
-  FlagDetails<String>? _title;
-  FlagDetails<int>? _limit;
-  FlagDetails<double>? _ratio;
-  FlagDetails<Object?>? _config;
+  List<_EvaluatedFlag> _flags = [];
 
   @override
   void initState() {
@@ -40,52 +41,97 @@ class _FlagsScreenState extends State<FlagsScreen> {
     setState(() {
       _status = 'fetching';
     });
-    await _client.setEvaluationContext(const DatadogFlagsEvaluationContext(
-      targetingKey: _targetingKey,
-      attributes: {
-        'plan': 'dogfood',
-        'platform': 'flutter',
-      },
-    ));
-    _evaluate();
+    try {
+      await _client.setEvaluationContext(const DatadogFlagsEvaluationContext(
+        targetingKey: _targetingKey,
+        attributes: {
+          'plan': 'dogfood',
+          'platform': 'flutter',
+        },
+      ));
+      _evaluate();
+    } catch (error) {
+      setState(() {
+        _status = 'fetch failed: $error';
+        _flags = [];
+      });
+    }
   }
 
   void _evaluate() {
+    final flags = <_EvaluatedFlag>[];
+    for (final key in _keys(_booleanKeys, const ['flutter.demo.enabled'])) {
+      flags.add(_EvaluatedFlag(
+        label: 'Boolean',
+        key: key,
+        details: _client.getBooleanDetails(
+          key: key,
+          defaultValue: false,
+        ),
+      ));
+    }
+    for (final key in _keys(_stringKeys, const ['flutter.demo.title'])) {
+      flags.add(_EvaluatedFlag(
+        label: 'String',
+        key: key,
+        details: _client.getStringDetails(
+          key: key,
+          defaultValue: 'Fallback title',
+        ),
+      ));
+    }
+    for (final key in _keys(_integerKeys, const ['flutter.demo.limit'])) {
+      flags.add(_EvaluatedFlag(
+        label: 'Integer',
+        key: key,
+        details: _client.getIntegerDetails(
+          key: key,
+          defaultValue: 0,
+        ),
+      ));
+    }
+    for (final key in _keys(_doubleKeys, const ['flutter.demo.ratio'])) {
+      flags.add(_EvaluatedFlag(
+        label: 'Double',
+        key: key,
+        details: _client.getDoubleDetails(
+          key: key,
+          defaultValue: 0,
+        ),
+      ));
+    }
+    for (final key in _keys(_objectKeys, const ['flutter.demo.config'])) {
+      flags.add(_EvaluatedFlag(
+        label: 'Object',
+        key: key,
+        details: _client.getObjectDetails(
+          key: key,
+          defaultValue: const {},
+        ),
+      ));
+    }
     setState(() {
-      _enabled = _client.getBooleanDetails(
-        key: 'flutter.demo.enabled',
-        defaultValue: false,
-      );
-      _title = _client.getStringDetails(
-        key: 'flutter.demo.title',
-        defaultValue: 'Fallback title',
-      );
-      _limit = _client.getIntegerDetails(
-        key: 'flutter.demo.limit',
-        defaultValue: 0,
-      );
-      _ratio = _client.getDoubleDetails(
-        key: 'flutter.demo.ratio',
-        defaultValue: 0,
-      );
-      _config = _client.getObjectDetails(
-        key: 'flutter.demo.config',
-        defaultValue: const {},
-      );
+      _flags = flags;
       _status = 'evaluated';
     });
   }
 
   Future<void> _flush() async {
-    await _client.flush();
-    setState(() {
-      _status = 'flushed';
-    });
+    try {
+      await _client.flush();
+      setState(() {
+        _status = 'flushed';
+      });
+    } catch (error) {
+      setState(() {
+        _status = 'flush failed: $error';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final collector = widget.runtime.collector;
+    final counter = widget.runtime.counter;
     return Scaffold(
       appBar: AppBar(title: const Text('Flags')),
       body: ListView(
@@ -94,29 +140,34 @@ class _FlagsScreenState extends State<FlagsScreen> {
           _Row(label: 'Mode', value: widget.runtime.mode),
           _Row(label: 'Status', value: _status),
           const _Row(label: 'Targeting key', value: _targetingKey),
-          if (collector != null) ...[
+          if (counter != null) ...[
+            _Row(
+              label: 'Precompute requests',
+              value: '${counter.precomputeRequestCount}',
+              valueKey: const Key('flags-precompute-request-count'),
+            ),
             _Row(
               label: 'Exposures',
-              value: '${collector.exposureCount}',
+              value: '${counter.exposureCount}',
               valueKey: const Key('flags-exposure-count'),
             ),
             _Row(
               label: 'Evaluation requests',
-              value: '${collector.evaluationRequestCount}',
+              value: '${counter.evaluationRequestCount}',
               valueKey: const Key('flags-evaluation-request-count'),
             ),
             _Row(
               label: 'Evaluation events',
-              value: '${collector.evaluationEventCount}',
+              value: '${counter.evaluationEventCount}',
               valueKey: const Key('flags-evaluation-event-count'),
             ),
           ],
           const SizedBox(height: 16),
-          _DetailsRow(label: 'Boolean', details: _enabled),
-          _DetailsRow(label: 'String', details: _title),
-          _DetailsRow(label: 'Integer', details: _limit),
-          _DetailsRow(label: 'Double', details: _ratio),
-          _DetailsRow(label: 'Object', details: _config),
+          for (final flag in _flags)
+            _DetailsRow(
+              label: '${flag.label}\n${flag.key}',
+              details: flag.details,
+            ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 12,
@@ -139,6 +190,29 @@ class _FlagsScreenState extends State<FlagsScreen> {
       ),
     );
   }
+
+  List<String> _keys(String configured, List<String> fixtureDefaults) {
+    if (configured.trim().isNotEmpty) {
+      return configured
+          .split(',')
+          .map((key) => key.trim())
+          .where((key) => key.isNotEmpty)
+          .toList(growable: false);
+    }
+    return widget.runtime.usesFixtureFlags ? fixtureDefaults : const [];
+  }
+}
+
+class _EvaluatedFlag {
+  final String label;
+  final String key;
+  final FlagDetails<dynamic> details;
+
+  const _EvaluatedFlag({
+    required this.label,
+    required this.key,
+    required this.details,
+  });
 }
 
 class _DetailsRow extends StatelessWidget {

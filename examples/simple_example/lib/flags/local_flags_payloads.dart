@@ -68,3 +68,11 @@ int countEvaluationEvents(String body) {
   final evaluations = decoded['flagEvaluations'] as List<Object?>;
   return evaluations.length;
 }
+
+int tryCountEvaluationEvents(String body) {
+  try {
+    return countEvaluationEvents(body);
+  } catch (_) {
+    return 0;
+  }
+}

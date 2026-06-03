@@ -8,12 +8,18 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import 'flags_request_counter.dart';
 import 'local_flags_payloads.dart';
 
-class LocalFlagsCollector {
+class LocalFlagsCollector implements FlagsRequestCounter {
   final HttpServer _server;
+  @override
+  int precomputeRequestCount = 0;
+  @override
   int exposureCount = 0;
+  @override
   int evaluationRequestCount = 0;
+  @override
   int evaluationEventCount = 0;
 
   LocalFlagsCollector._(this._server) {
@@ -38,6 +44,7 @@ class LocalFlagsCollector {
     return LocalFlagsCollector._(server);
   }
 
+  @override
   Future<void> stop() {
     return _server.close(force: true);
   }
@@ -45,6 +52,7 @@ class LocalFlagsCollector {
   Future<void> _handleRequest(HttpRequest request) async {
     final path = request.uri.path;
     if (path == '/precompute-assignments') {
+      precomputeRequestCount += 1;
       await utf8.decoder.bind(request).join();
       _writeJson(request.response, localPrecomputeResponse());
     } else if (path == '/api/v2/exposures') {
@@ -54,7 +62,7 @@ class LocalFlagsCollector {
     } else if (path == '/api/v2/flagevaluation') {
       final body = await utf8.decoder.bind(request).join();
       evaluationRequestCount += 1;
-      evaluationEventCount += countEvaluationEvents(body);
+      evaluationEventCount += tryCountEvaluationEvents(body);
       _writeJson(request.response, {'ok': true});
     } else {
       request.response.statusCode = HttpStatus.notFound;
