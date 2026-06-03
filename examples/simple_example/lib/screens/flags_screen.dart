@@ -5,6 +5,7 @@
 
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../flags/flags_demo_runtime.dart';
 
@@ -134,7 +135,17 @@ class _FlagsScreenState extends State<FlagsScreen> {
   Widget build(BuildContext context) {
     final counter = widget.runtime.counter;
     return Scaffold(
-      appBar: AppBar(title: const Text('Flags')),
+      appBar: AppBar(
+        title: const Text('Flags'),
+        actions: [
+          IconButton(
+            key: const Key('flags-home-button'),
+            tooltip: 'Home',
+            icon: const Icon(Icons.home),
+            onPressed: () => context.go('/home'),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
