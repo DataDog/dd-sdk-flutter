@@ -8,3 +8,10 @@ doc/ @DataDog/documentation @DataDog/rum-mobile
 docs/ @DataDog/documentation @DataDog/rum-mobile
 *README.md @DataDog/documentation @DataDog/rum-mobile
 *CONTRIBUTING.md @DataDog/documentation @DataDog/rum-mobile
+
+## Feature Flagging
+
+packages/datadog_flags/ @DataDog/rum-mobile @DataDog/feature-flagging-and-experimentation-sdk
+packages/datadog_flags/README.md @DataDog/documentation @DataDog/rum-mobile @DataDog/feature-flagging-and-experimentation-sdk
+examples/simple_example/lib/flags/ @DataDog/rum-mobile @DataDog/feature-flagging-and-experimentation-sdk
+examples/simple_example/lib/screens/flags_screen.dart @DataDog/rum-mobile @DataDog/feature-flagging-and-experimentation-sdk
