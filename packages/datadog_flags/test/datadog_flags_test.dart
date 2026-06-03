@@ -197,16 +197,14 @@ void main() {
     );
     expect(requests.single.headers['Content-Type'], 'application/vnd.api+json');
     expect(requests.single.headers['dd-client-token'], 'client-token');
+    expect(requests.single.headers.containsKey('Accept-Encoding'), isFalse);
     expect(requests.single.headers['dd-application-id'], 'rum-app-id');
 
     final body = jsonDecode(requests.single.body) as Map<String, Object?>;
     final attributes = ((body['data'] as Map<String, Object?>)['attributes']
         as Map<String, Object?>);
-    expect(attributes['env'], {'name': 'staging', 'dd_env': 'staging'});
-    expect(attributes['source'], {
-      'sdk_name': 'dd-sdk-flutter',
-      'sdk_version': '9.8.7',
-    });
+    expect(attributes['env'], {'dd_env': 'staging'});
+    expect(attributes.containsKey('source'), isFalse);
     expect(attributes['subject'], {
       'targeting_key': 'user-123',
       'targeting_attributes': {'plan': 'pro', 'seat_count': 3},

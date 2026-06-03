@@ -57,7 +57,6 @@ class FlagsDemoRuntime {
                 ? Uri.https(
                     'preview.ff-cdn.datad0g.com',
                     '/precompute-assignments',
-                    {'dd_env': env ?? 'dev'},
                   )
                 : null),
         customExposureEndpoint: externalExposureEndpoint ??

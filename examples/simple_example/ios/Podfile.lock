@@ -33,8 +33,6 @@ PODS:
     - DatadogInternal (= 3.11.1)
   - DictionaryCoder (1.2.0)
   - Flutter (1.0.0)
-  - integration_test (0.0.1):
-    - Flutter
   - KSCrash/Core (2.5.0)
   - KSCrash/Filters (2.5.0):
     - KSCrash/Recording
@@ -64,7 +62,6 @@ DEPENDENCIES:
   - datadog_session_replay (from `.symlinks/plugins/datadog_session_replay/ios`)
   - datadog_webview_tracking (from `.symlinks/plugins/datadog_webview_tracking/ios`)
   - Flutter (from `Flutter`)
-  - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - objective_c (from `.symlinks/plugins/objective_c/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
@@ -92,8 +89,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/datadog_webview_tracking/ios"
   Flutter:
     :path: Flutter
-  integration_test:
-    :path: ".symlinks/plugins/integration_test/ios"
   objective_c:
     :path: ".symlinks/plugins/objective_c/ios"
   path_provider_foundation:
@@ -116,7 +111,6 @@ SPEC CHECKSUMS:
   DatadogWebViewTracking: 99631d80d34cb30cf6be9b620dc6659f7f5bd15f
   DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
   objective_c: 89e720c30d716b036faf9c9684022048eee1eee2
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564

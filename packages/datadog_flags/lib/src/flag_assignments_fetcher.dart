@@ -82,7 +82,6 @@ class FlagAssignmentsFetcher {
   Map<String, String> _headers() {
     return {
       'Content-Type': 'application/vnd.api+json',
-      'Accept-Encoding': 'gzip, deflate, br',
       'dd-client-token': datadogContext.clientToken,
       if (datadogContext.applicationId != null)
         'dd-application-id': datadogContext.applicationId!,
@@ -98,12 +97,7 @@ class FlagAssignmentsFetcher {
         'type': 'precompute-assignments-request',
         'attributes': {
           'env': {
-            'name': datadogContext.env,
             'dd_env': datadogContext.env,
-          },
-          'source': {
-            'sdk_name': 'dd-sdk-flutter',
-            'sdk_version': datadogContext.sdkVersion,
           },
           'subject': {
             'targeting_key': evaluationContext.targetingKey,

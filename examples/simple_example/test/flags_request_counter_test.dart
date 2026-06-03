@@ -23,7 +23,6 @@ void main() {
       Uri.https(
         'preview.ff-cdn.datad0g.com',
         '/precompute-assignments',
-        {'dd_env': 'dev'},
       ),
       body: '{}',
     );

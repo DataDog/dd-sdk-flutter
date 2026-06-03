@@ -4,6 +4,7 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:flutter/material.dart';
@@ -22,7 +23,11 @@ class FlagsScreen extends StatefulWidget {
 
 class _FlagsScreenState extends State<FlagsScreen> {
   static const _targetingKey = String.fromEnvironment('FLAGS_TARGETING_KEY',
-      defaultValue: 'flutter-user');
+      defaultValue: 'test_subject4');
+  static const _targetingAttributesJson = String.fromEnvironment(
+    'FLAGS_TARGETING_ATTRIBUTES_JSON',
+    defaultValue: '{"attr1":"value1","companyId":"1"}',
+  );
   static const _booleanKeys = String.fromEnvironment('FLAGS_BOOLEAN_KEYS');
   static const _stringKeys = String.fromEnvironment('FLAGS_STRING_KEYS');
   static const _integerKeys = String.fromEnvironment('FLAGS_INTEGER_KEYS');
@@ -63,12 +68,9 @@ class _FlagsScreenState extends State<FlagsScreen> {
       _assignmentState = 'fetching';
     });
     try {
-      await _client.setEvaluationContext(const DatadogFlagsEvaluationContext(
+      await _client.setEvaluationContext(DatadogFlagsEvaluationContext(
         targetingKey: _targetingKey,
-        attributes: {
-          'plan': 'dogfood',
-          'platform': 'flutter',
-        },
+        attributes: _targetingAttributes(),
       ));
       _evaluate();
       setState(() {
@@ -223,6 +225,21 @@ class _FlagsScreenState extends State<FlagsScreen> {
           .toList(growable: false);
     }
     return defaultKeys;
+  }
+
+  static Map<String, Object?> _targetingAttributes() {
+    try {
+      final decoded = jsonDecode(_targetingAttributesJson);
+      if (decoded is Map<String, Object?>) {
+        return decoded;
+      }
+      if (decoded is Map) {
+        return Map<String, Object?>.from(decoded);
+      }
+    } catch (_) {
+      return const {};
+    }
+    return const {};
   }
 }
 
