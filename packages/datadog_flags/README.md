@@ -66,11 +66,15 @@ flutter test test
 flutter test --platform chrome test
 ```
 
-The example app includes a local fixture mode for iOS, Android, and web:
+The example app includes a live dogfood screen with optional forwarding
+request counters:
 
 ```bash
 cd ../../examples/simple_example
-flutter test integration_test/flags_dogfood_test.dart -d <ios-simulator> --dart-define FLAGS_MODE=local
-flutter test integration_test/flags_dogfood_test.dart -d <android-emulator> --dart-define FLAGS_MODE=local
-flutter test --platform chrome test/flags_dogfood_web_test.dart --dart-define FLAGS_MODE=local
+flutter run -d <ios-simulator> \
+  --dart-define DD_SITE=datad0g.com \
+  --dart-define DD_ENV=dev \
+  --dart-define DD_CLIENT_TOKEN=<client-token> \
+  --dart-define FLAGS_COUNT_REQUESTS=true \
+  --dart-define FLAGS_STRING_KEYS=ffe-dogfooding-string-flag
 ```

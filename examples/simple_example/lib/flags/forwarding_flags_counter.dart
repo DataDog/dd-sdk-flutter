@@ -3,10 +3,11 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 import 'flags_request_counter.dart';
-import 'local_flags_payloads.dart';
 
 class ForwardingFlagsCounter implements FlagsRequestCounter {
   final CountingFlagsHttpClient httpClient;
@@ -52,10 +53,10 @@ class CountingFlagsHttpClient extends http.BaseClient {
     if (path == '/precompute-assignments') {
       precomputeRequestCount += 1;
     } else if (path == '/api/v2/exposures') {
-      exposureCount += countExposureBody(body);
+      exposureCount += _countExposureBody(body);
     } else if (path == '/api/v2/flagevaluation') {
       evaluationRequestCount += 1;
-      evaluationEventCount += tryCountEvaluationEvents(body);
+      evaluationEventCount += _tryCountEvaluationEvents(body);
     }
     return _inner.send(request);
   }
@@ -64,5 +65,19 @@ class CountingFlagsHttpClient extends http.BaseClient {
   void close() {
     _inner.close();
     super.close();
+  }
+}
+
+int _countExposureBody(String body) {
+  return body.split('\n').where((line) => line.trim().isNotEmpty).length;
+}
+
+int _tryCountEvaluationEvents(String body) {
+  try {
+    final decoded = jsonDecode(body) as Map<String, Object?>;
+    final evaluations = decoded['flagEvaluations'] as List<Object?>;
+    return evaluations.length;
+  } catch (_) {
+    return 0;
   }
 }

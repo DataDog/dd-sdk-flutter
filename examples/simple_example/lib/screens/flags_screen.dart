@@ -60,7 +60,7 @@ class _FlagsScreenState extends State<FlagsScreen> {
 
   void _evaluate() {
     final flags = <_EvaluatedFlag>[];
-    for (final key in _keys(_booleanKeys, const ['flutter.demo.enabled'])) {
+    for (final key in _keys(_booleanKeys, const [])) {
       flags.add(_EvaluatedFlag(
         label: 'Boolean',
         key: key,
@@ -70,7 +70,8 @@ class _FlagsScreenState extends State<FlagsScreen> {
         ),
       ));
     }
-    for (final key in _keys(_stringKeys, const ['flutter.demo.title'])) {
+    for (final key
+        in _keys(_stringKeys, const ['ffe-dogfooding-string-flag'])) {
       flags.add(_EvaluatedFlag(
         label: 'String',
         key: key,
@@ -80,7 +81,7 @@ class _FlagsScreenState extends State<FlagsScreen> {
         ),
       ));
     }
-    for (final key in _keys(_integerKeys, const ['flutter.demo.limit'])) {
+    for (final key in _keys(_integerKeys, const [])) {
       flags.add(_EvaluatedFlag(
         label: 'Integer',
         key: key,
@@ -90,7 +91,7 @@ class _FlagsScreenState extends State<FlagsScreen> {
         ),
       ));
     }
-    for (final key in _keys(_doubleKeys, const ['flutter.demo.ratio'])) {
+    for (final key in _keys(_doubleKeys, const [])) {
       flags.add(_EvaluatedFlag(
         label: 'Double',
         key: key,
@@ -100,7 +101,7 @@ class _FlagsScreenState extends State<FlagsScreen> {
         ),
       ));
     }
-    for (final key in _keys(_objectKeys, const ['flutter.demo.config'])) {
+    for (final key in _keys(_objectKeys, const [])) {
       flags.add(_EvaluatedFlag(
         label: 'Object',
         key: key,
@@ -191,7 +192,7 @@ class _FlagsScreenState extends State<FlagsScreen> {
     );
   }
 
-  List<String> _keys(String configured, List<String> fixtureDefaults) {
+  List<String> _keys(String configured, List<String> defaultKeys) {
     if (configured.trim().isNotEmpty) {
       return configured
           .split(',')
@@ -199,7 +200,7 @@ class _FlagsScreenState extends State<FlagsScreen> {
           .where((key) => key.isNotEmpty)
           .toList(growable: false);
     }
-    return widget.runtime.usesFixtureFlags ? fixtureDefaults : const [];
+    return defaultKeys;
   }
 }
 

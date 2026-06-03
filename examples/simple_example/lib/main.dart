@@ -17,7 +17,7 @@ import 'flags/flags_demo_runtime.dart';
 import 'url_strategy_stub.dart' if (dart.library.html) 'url_strategy_web.dart';
 
 const graphQlUrl = 'http://localhost:3000/graphql';
-const flagsMode = String.fromEnvironment('FLAGS_MODE', defaultValue: 'local');
+const flagsMode = String.fromEnvironment('FLAGS_MODE', defaultValue: 'live');
 const ddClientToken = String.fromEnvironment('DD_CLIENT_TOKEN');
 const ddApplicationId = String.fromEnvironment('DD_APPLICATION_ID');
 const ddEnv = String.fromEnvironment('DD_ENV');
@@ -34,21 +34,21 @@ Future<void> main() async {
   final siteName = _configValue(
     'DD_SITE',
     defineValue: ddSite,
-    localFallback: 'us1',
+    defaultValue: 'us1',
   );
   final intakeEndpoint = _intakeEndpointForSite(siteName);
   final applicationId = _configValue(
     'DD_APPLICATION_ID',
     defineValue: ddApplicationId,
-    localFallback: 'local-application-id',
+    defaultValue: '',
   );
   final datadogConfig = DatadogConfiguration(
     clientToken: _configValue(
       'DD_CLIENT_TOKEN',
       defineValue: ddClientToken,
-      localFallback: 'local-client-token',
+      defaultValue: '',
     ),
-    env: _configValue('DD_ENV', defineValue: ddEnv, localFallback: 'local'),
+    env: _configValue('DD_ENV', defineValue: ddEnv, defaultValue: 'dev'),
     site: _siteForName(siteName),
     loggingConfiguration:
         DatadogLoggingConfiguration(customEndpoint: intakeEndpoint),
@@ -93,7 +93,7 @@ Future<void> main() async {
 String _configValue(
   String name, {
   required String defineValue,
-  required String localFallback,
+  required String defaultValue,
 }) {
   if (defineValue.isNotEmpty) {
     return defineValue;
@@ -102,7 +102,7 @@ String _configValue(
   if (value != null && value.isNotEmpty) {
     return value;
   }
-  return flagsMode == 'local' ? localFallback : '';
+  return defaultValue;
 }
 
 DatadogSite _siteForName(String siteName) {
@@ -175,7 +175,7 @@ Future<void> runUsingRunApp(DatadogConfiguration datadogConfig) async {
     final siteName = _configValue(
       'DD_SITE',
       defineValue: ddSite,
-      localFallback: 'us1',
+      defaultValue: 'us1',
     );
     FlagsDemoRuntime.create(
       clientToken: datadogConfig.clientToken,
