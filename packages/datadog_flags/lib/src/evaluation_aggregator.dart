@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 
 import 'assignment.dart';
 import 'datadog_context.dart';
+import 'datadog_event_context.dart';
 import 'flags_configuration.dart';
 import 'flags_context.dart';
 import 'json_value.dart';
@@ -46,10 +47,12 @@ class EvaluationAggregator {
     }
 
     final now = configuration.dateProvider().millisecondsSinceEpoch;
+    final ddContext = ddContextFor(datadogContext);
     final key = _aggregationKey(
       flagKey: flagKey,
       assignment: assignment,
       evaluationContext: evaluationContext,
+      ddContext: ddContext,
       error: error,
     );
     final existing = _aggregations[key];
@@ -67,6 +70,7 @@ class EvaluationAggregator {
       targetingKey: evaluationContext.targetingKey,
       error: error,
       attributes: evaluationContext.attributes,
+      ddContext: ddContext,
       firstEvaluation: now,
       lastEvaluation: now,
       evaluationCount: 1,
@@ -137,6 +141,7 @@ class EvaluationAggregator {
           targetingKey: evaluation.targetingKey,
           attributes: evaluation.attributes,
         ),
+        ddContext: evaluation.ddContext,
         error: evaluation.error,
       )] = evaluation;
     }
@@ -147,6 +152,7 @@ String _aggregationKey({
   required String flagKey,
   required FlagAssignment assignment,
   required DatadogFlagsEvaluationContext evaluationContext,
+  required Map<String, Object?>? ddContext,
   required String? error,
 }) {
   return jsonEncode({
@@ -156,6 +162,7 @@ String _aggregationKey({
     'targetingKey': evaluationContext.targetingKey,
     'error': error,
     'context': sortedJson(evaluationContext.attributes),
+    'dd': sortedJson(ddContext),
   });
 }
 
@@ -166,6 +173,7 @@ class _AggregatedEvaluation {
   final String targetingKey;
   final String? error;
   final Map<String, Object?> attributes;
+  final Map<String, Object?>? ddContext;
   final int firstEvaluation;
   int lastEvaluation;
   int evaluationCount;
@@ -178,6 +186,7 @@ class _AggregatedEvaluation {
     required this.targetingKey,
     required this.error,
     required this.attributes,
+    required this.ddContext,
     required this.firstEvaluation,
     required this.lastEvaluation,
     required this.evaluationCount,
@@ -185,6 +194,11 @@ class _AggregatedEvaluation {
   });
 
   Map<String, Object?> toJson() {
+    final eventContext = removeNullValues({
+      'evaluation': attributes.isEmpty ? null : sanitizeJsonValue(attributes),
+      'dd': ddContext,
+    });
+
     return removeNullValues({
       'timestamp': firstEvaluation,
       'flag': {'key': flagKey},
@@ -197,12 +211,7 @@ class _AggregatedEvaluation {
       'targeting_key': targetingKey,
       'runtime_default_used': runtimeDefaultUsed ? true : null,
       'error': error == null ? null : {'message': error},
-      'context': attributes.isEmpty
-          ? null
-          : {
-              'evaluation': sanitizeJsonValue(attributes),
-              'dd': null,
-            },
+      'context': eventContext.isEmpty ? null : eventContext,
     });
   }
 }

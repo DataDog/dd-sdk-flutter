@@ -489,6 +489,11 @@ void main() {
     expect(request.headers['DD-EVP-ORIGIN-VERSION'], '9.8.7');
 
     final exposure = jsonDecode(request.body);
+    expect(exposure['service'], 'flutter-example');
+    expect(exposure['rum'], {
+      'application': {'id': 'rum-app-id'},
+      'view': null,
+    });
     expect(exposure['flag'], {'key': 'show-paywall'});
     expect(exposure['allocation'], {'key': 'allocation-a'});
     expect(exposure['variant'], {'key': 'enabled'});
@@ -564,7 +569,13 @@ void main() {
     expect(success['runtime_default_used'], isNull);
     expect(success['context'], {
       'evaluation': {'plan': 'pro'},
-      'dd': null,
+      'dd': {
+        'service': 'flutter-example',
+        'rum': {
+          'application': {'id': 'rum-app-id'},
+          'view': null,
+        },
+      },
     });
 
     final providerNotReady = evaluations.singleWhere((evaluation) {
@@ -574,6 +585,15 @@ void main() {
     expect(providerNotReady['runtime_default_used'], isTrue);
     expect(providerNotReady['variant'], isNull);
     expect(providerNotReady['allocation'], isNull);
+    expect(providerNotReady['context'], {
+      'dd': {
+        'service': 'flutter-example',
+        'rum': {
+          'application': {'id': 'rum-app-id'},
+          'view': null,
+        },
+      },
+    });
 
     final typeMismatch = evaluations.singleWhere((evaluation) {
       return ((evaluation['error'] as Map<String, Object?>?)?['message']) ==

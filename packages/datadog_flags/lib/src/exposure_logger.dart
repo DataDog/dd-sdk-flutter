@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 
 import 'assignment.dart';
 import 'datadog_context.dart';
+import 'datadog_event_context.dart';
 import 'flags_configuration.dart';
 import 'flags_context.dart';
 import 'json_value.dart';
@@ -50,8 +51,10 @@ class ExposureLogger {
           path: '/api/v2/exposures',
           queryParameters: {'ddsource': datadogContext.source},
         );
-    final event = {
+    final event = removeNullValues({
       'timestamp': configuration.dateProvider().millisecondsSinceEpoch,
+      'service': datadogContext.service,
+      'rum': rumContextFor(datadogContext),
       'allocation': {'key': assignment.allocationKey},
       'flag': {'key': flagKey},
       'variant': {'key': assignment.variationKey},
@@ -59,7 +62,7 @@ class ExposureLogger {
         'id': evaluationContext.targetingKey,
         'attributes': sanitizeJsonValue(evaluationContext.attributes),
       },
-    };
+    });
 
     try {
       final response = await httpClient.post(

@@ -71,13 +71,6 @@ class DatadogFlagsContext {
   }
 
   Map<String, Object?> evaluationBatchContext() {
-    final rumContext = applicationId == null
-        ? null
-        : {
-            'application': {'id': applicationId},
-            'view': null,
-          };
-
     return removeNullValues({
       'geo': null,
       'device': {
@@ -93,9 +86,20 @@ class DatadogFlagsContext {
       'service': service ?? '',
       'version': version ?? '',
       'env': env,
-      'rum': rumContext,
+      'rum': _rumContext(applicationId),
     });
   }
+}
+
+Map<String, Object?>? _rumContext(String? applicationId) {
+  if (applicationId == null) {
+    return null;
+  }
+
+  return {
+    'application': {'id': applicationId},
+    'view': null,
+  };
 }
 
 String _deviceTypeForTargetPlatform(TargetPlatform platform) {
