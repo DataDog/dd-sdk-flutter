@@ -86,7 +86,8 @@ class _FlagsScreenState extends State<FlagsScreen> {
 
   void _evaluate() {
     final flags = <_EvaluatedFlag>[];
-    for (final key in _keys(_booleanKeys, const [])) {
+    for (final key
+        in _keys(_booleanKeys, const ['ffe-dogfooding-boolean-flag'])) {
       flags.add(_EvaluatedFlag(
         label: 'Boolean',
         key: key,
@@ -107,7 +108,8 @@ class _FlagsScreenState extends State<FlagsScreen> {
         ),
       ));
     }
-    for (final key in _keys(_integerKeys, const [])) {
+    for (final key
+        in _keys(_integerKeys, const ['ffe-dogfooding-integer-flag'])) {
       flags.add(_EvaluatedFlag(
         label: 'Integer',
         key: key,
@@ -117,9 +119,9 @@ class _FlagsScreenState extends State<FlagsScreen> {
         ),
       ));
     }
-    for (final key in _keys(_doubleKeys, const [])) {
+    for (final key in _keys(_doubleKeys, const ['ffe-dogfooding-float-flag'])) {
       flags.add(_EvaluatedFlag(
-        label: 'Double',
+        label: 'Float',
         key: key,
         details: _client.getDoubleDetails(
           key: key,
@@ -127,9 +129,9 @@ class _FlagsScreenState extends State<FlagsScreen> {
         ),
       ));
     }
-    for (final key in _keys(_objectKeys, const [])) {
+    for (final key in _keys(_objectKeys, const ['ffe-dogfooding-json-flag'])) {
       flags.add(_EvaluatedFlag(
-        label: 'Object',
+        label: 'JSON',
         key: key,
         details: _client.getObjectDetails(
           key: key,
@@ -193,7 +195,8 @@ class _FlagsScreenState extends State<FlagsScreen> {
           const SizedBox(height: 16),
           for (final flag in _flags)
             _DetailsRow(
-              label: '${flag.label}\n${flag.key}',
+              label: flag.label,
+              keyName: flag.key,
               details: flag.details,
             ),
           const SizedBox(height: 16),
@@ -256,19 +259,64 @@ class _EvaluatedFlag {
 
 class _DetailsRow extends StatelessWidget {
   final String label;
+  final String keyName;
   final FlagDetails<dynamic>? details;
 
-  const _DetailsRow({required this.label, required this.details});
+  const _DetailsRow({
+    required this.label,
+    required this.keyName,
+    required this.details,
+  });
 
   @override
   Widget build(BuildContext context) {
     final value = details;
-    return _Row(
-      label: label,
-      value: value == null
-          ? '-'
-          : '${value.value} | variant=${value.variant ?? '-'} | error=${value.error?.name ?? '-'}',
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  keyName,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value == null ? '-' : _formatValue(value.value),
+                  softWrap: true,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value == null
+                      ? 'variant=- | error=-'
+                      : 'variant=${value.variant ?? '-'} | error=${value.error?.name ?? '-'}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                  softWrap: true,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  String _formatValue(Object? value) {
+    if (value is Map || value is List) {
+      return jsonEncode(value);
+    }
+    return '$value';
   }
 }
 
@@ -287,7 +335,7 @@ class _Row extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 150,
+            width: 190,
             child: Text(
               label,
               style: const TextStyle(fontWeight: FontWeight.w600),

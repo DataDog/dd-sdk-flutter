@@ -75,6 +75,5 @@ flutter run -d <ios-simulator> \
   --dart-define DD_SITE=datad0g.com \
   --dart-define DD_ENV=staging \
   --dart-define DD_CLIENT_TOKEN=<client-token> \
-  --dart-define FLAGS_COUNT_REQUESTS=true \
-  --dart-define FLAGS_STRING_KEYS=ffe-dogfooding-string-flag
+  --dart-define FLAGS_COUNT_REQUESTS=true
 ```
