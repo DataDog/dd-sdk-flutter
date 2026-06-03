@@ -478,7 +478,17 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(exposureRequests(), hasLength(1));
-    final exposure = jsonDecode(exposureRequests().single.body);
+    final request = exposureRequests().single;
+    expect(
+      request.url.toString(),
+      'https://browser-intake-datadoghq.com/api/v2/exposures?ddsource=flutter',
+    );
+    expect(request.headers['Content-Type'], 'text/plain;charset=UTF-8');
+    expect(request.headers['DD-API-KEY'], 'client-token');
+    expect(request.headers['DD-EVP-ORIGIN'], 'flutter');
+    expect(request.headers['DD-EVP-ORIGIN-VERSION'], '9.8.7');
+
+    final exposure = jsonDecode(request.body);
     expect(exposure['flag'], {'key': 'show-paywall'});
     expect(exposure['allocation'], {'key': 'allocation-a'});
     expect(exposure['variant'], {'key': 'enabled'});
@@ -523,6 +533,16 @@ void main() {
     await client.flush();
 
     expect(evaluationRequests(), hasLength(1));
+    final request = evaluationRequests().single;
+    expect(
+      request.url.toString(),
+      'https://browser-intake-datadoghq.com/api/v2/flagevaluation?ddsource=flutter',
+    );
+    expect(request.headers['Content-Type'], 'application/json');
+    expect(request.headers['DD-API-KEY'], 'client-token');
+    expect(request.headers['DD-EVP-ORIGIN'], 'flutter');
+    expect(request.headers['DD-EVP-ORIGIN-VERSION'], '9.8.7');
+
     final batches = evaluationRequests().map((request) {
       return jsonDecode(request.body) as Map<String, Object?>;
     }).toList();
