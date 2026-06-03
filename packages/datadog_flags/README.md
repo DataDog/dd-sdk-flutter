@@ -1,9 +1,8 @@
 # Datadog Flags for Flutter
 
 `datadog_flags` is a Dart-native package for Datadog feature flag assignments.
-This package is unpublished while the stacked MVP is being assembled. It
-currently contains precompute transport, typed local evaluation, and RUM feature
-flag reporting.
+It fetches precomputed assignments, resolves typed values locally, and reports
+RUM feature flag evaluations, exposures, and evaluation metrics.
 
 This package does not bridge to native iOS or Android flagging SDKs.
 
