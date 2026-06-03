@@ -18,19 +18,19 @@ PODS:
     - DatadogWebViewTracking (~> 3)
     - Flutter
     - webview_flutter_wkwebview
-  - DatadogCore (3.9.1):
-    - DatadogInternal (= 3.9.1)
-  - DatadogCrashReporting (3.9.1):
-    - DatadogInternal (= 3.9.1)
+  - DatadogCore (3.11.1):
+    - DatadogInternal (= 3.11.1)
+  - DatadogCrashReporting (3.11.1):
+    - DatadogInternal (= 3.11.1)
     - KSCrash/Filters (= 2.5.0)
     - KSCrash/Recording (= 2.5.0)
-  - DatadogInternal (3.9.1)
-  - DatadogLogs (3.9.1):
-    - DatadogInternal (= 3.9.1)
-  - DatadogRUM (3.9.1):
-    - DatadogInternal (= 3.9.1)
-  - DatadogWebViewTracking (3.9.1):
-    - DatadogInternal (= 3.9.1)
+  - DatadogInternal (3.11.1)
+  - DatadogLogs (3.11.1):
+    - DatadogInternal (= 3.11.1)
+  - DatadogRUM (3.11.1):
+    - DatadogInternal (= 3.11.1)
+  - DatadogWebViewTracking (3.11.1):
+    - DatadogInternal (= 3.11.1)
   - DictionaryCoder (1.2.0)
   - Flutter (1.0.0)
   - KSCrash/Core (2.5.0)
@@ -49,6 +49,9 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - shared_preferences_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
   - webview_flutter_wkwebview (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -61,6 +64,7 @@ DEPENDENCIES:
   - Flutter (from `Flutter`)
   - objective_c (from `.symlinks/plugins/objective_c/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
+  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
 SPEC REPOS:
@@ -89,26 +93,29 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/objective_c/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
+  shared_preferences_foundation:
+    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   webview_flutter_wkwebview:
     :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
 
 SPEC CHECKSUMS:
-  connectivity_plus: 18382e7311ba19efcaee94442b23b32507b20695
-  datadog_flutter_plugin: 64adc7ef089a1328c78fd4fab24e49afa09d95a5
-  datadog_session_replay: 8e4f4a520f20feb2916c623c011a53ba63f8d77f
-  datadog_webview_tracking: 58ffca1b06ba88e0bd6dc0d0d1dada0e60e6d3d5
-  DatadogCore: e27bba3c2f490ae41ac17d41aecadee85475fe6d
-  DatadogCrashReporting: 23da244e20c2af0d159097dd10cc9ce8ef954bcc
-  DatadogInternal: e9ff671207d5a14354364101d32d60897c48d13a
-  DatadogLogs: 664dbb3598f95817429db0025575289c1f63efbf
-  DatadogRUM: dd30158552e5b48898cc2e6084eda1754c03ad6e
-  DatadogWebViewTracking: b8c35c23ac90ee4ba2b3879577451e27ec86ebcd
+  connectivity_plus: 2256d3e20624a7749ed21653aafe291a46446fee
+  datadog_flutter_plugin: ece4fa34fdd699f4c36547df450da4417f904580
+  datadog_session_replay: 29f1e456d30632bb22ad1dd0eceb15811d2fbc6c
+  datadog_webview_tracking: d92b870c96d7e646ac838f9c4a79d5fd70468139
+  DatadogCore: ac5ffe0cb500e4c826fa08e63767ab3b4434c380
+  DatadogCrashReporting: 699c20e4af5798a39b14c81e26c0e92293d86a36
+  DatadogInternal: 4ee2f5bab0371f161c8010637fff5331f49542d7
+  DatadogLogs: 9f7f10c34ea9cc4c6699f98ab2420da843f78f4b
+  DatadogRUM: 14a5f96c465e85d56ec501508d728b7aea9c2980
+  DatadogWebViewTracking: 99631d80d34cb30cf6be9b620dc6659f7f5bd15f
   DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
-  objective_c: 77e887b5ba1827970907e10e832eec1683f3431d
-  path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
-  webview_flutter_wkwebview: a4af96a051138e28e29f60101d094683b9f82188
+  objective_c: 89e720c30d716b036faf9c9684022048eee1eee2
+  path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
+  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
+  webview_flutter_wkwebview: 1821ceac936eba6f7984d89a9f3bcb4dea99ebb2
 
 PODFILE CHECKSUM: cc1f88378b4bfcf93a6ce00d2c587857c6008d3b
 
