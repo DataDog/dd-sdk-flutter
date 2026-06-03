@@ -172,24 +172,9 @@ class _FlagsScreenState extends State<FlagsScreen> {
           ),
           if (counter != null) ...[
             _Row(
-              label: 'Precompute requests',
-              value: '${counter.precomputeRequestCount}',
-              valueKey: const Key('flags-precompute-request-count'),
-            ),
-            _Row(
               label: 'Exposures',
               value: '${counter.exposureCount}',
               valueKey: const Key('flags-exposure-count'),
-            ),
-            _Row(
-              label: 'Flageval batches sent',
-              value: '${counter.evaluationRequestCount}',
-              valueKey: const Key('flags-evaluation-request-count'),
-            ),
-            _Row(
-              label: 'Flageval events sent',
-              value: '${counter.evaluationEventCount}',
-              valueKey: const Key('flags-evaluation-event-count'),
             ),
           ],
           const SizedBox(height: 16),
@@ -296,14 +281,14 @@ class _DetailsRow extends StatelessWidget {
                   value == null ? '-' : _formatValue(value.value),
                   softWrap: true,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  value == null
-                      ? 'variant=- | error=-'
-                      : 'variant=${value.variant ?? '-'} | error=${value.error?.name ?? '-'}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                  softWrap: true,
-                ),
+                if (value?.error != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'error=${value?.error?.name}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    softWrap: true,
+                  ),
+                ],
               ],
             ),
           ),
