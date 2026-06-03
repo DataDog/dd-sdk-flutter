@@ -18,12 +18,10 @@ const _countRequests =
     bool.fromEnvironment('FLAGS_COUNT_REQUESTS', defaultValue: true);
 
 class FlagsDemoRuntime {
-  final String mode;
   final FlagsRequestCounter? counter;
   final DatadogFlagsConfiguration configuration;
 
   const FlagsDemoRuntime._({
-    required this.mode,
     required this.counter,
     required this.configuration,
   });
@@ -38,7 +36,6 @@ class FlagsDemoRuntime {
     String? siteName,
     String? applicationId,
   }) async {
-    const mode = String.fromEnvironment('FLAGS_MODE', defaultValue: 'live');
     final externalFlagsEndpoint = _uriFromEnvironment(_externalFlagsEndpoint);
     final externalExposureEndpoint =
         _uriFromEnvironment(_externalExposureEndpoint);
@@ -49,7 +46,6 @@ class FlagsDemoRuntime {
     final counter = _countRequests ? ForwardingFlagsCounter.create() : null;
 
     return FlagsDemoRuntime._(
-      mode: mode,
       counter: counter,
       configuration: DatadogFlagsConfiguration(
         customFlagsEndpoint: externalFlagsEndpoint ??

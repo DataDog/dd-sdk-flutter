@@ -17,7 +17,6 @@ import 'flags/flags_demo_runtime.dart';
 import 'url_strategy_stub.dart' if (dart.library.html) 'url_strategy_web.dart';
 
 const graphQlUrl = 'http://localhost:3000/graphql';
-const flagsMode = String.fromEnvironment('FLAGS_MODE', defaultValue: 'live');
 const ddClientToken = String.fromEnvironment('DD_CLIENT_TOKEN');
 const ddApplicationId = String.fromEnvironment('DD_APPLICATION_ID');
 const ddEnv = String.fromEnvironment('DD_ENV');

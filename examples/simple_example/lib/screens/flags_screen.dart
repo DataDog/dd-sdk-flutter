@@ -161,7 +161,6 @@ class _FlagsScreenState extends State<FlagsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _Row(label: 'Mode', value: widget.runtime.mode),
           _Row(label: 'Assignments', value: _assignmentState),
           const _Row(label: 'Targeting key', value: _targetingKey),
           _Row(
