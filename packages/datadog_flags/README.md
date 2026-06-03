@@ -62,8 +62,8 @@ From this package:
 
 ```bash
 dart analyze .
-flutter test test
-flutter test --platform chrome test
+flutter test --no-pub test
+flutter test --no-pub --platform chrome test
 ```
 
 The example app includes a live dogfood screen with optional forwarding

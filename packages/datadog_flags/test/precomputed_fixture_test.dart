@@ -7,20 +7,13 @@ import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'fixtures/precomputed_cases.dart';
+
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
-  const fixtureAssets = [
-    'test/fixtures/precomputed/cases/all-types-success.json',
-    'test/fixtures/precomputed/cases/defaults-and-emission-gates.json',
-  ];
-
   setUp(() async {
     await DatadogFlags.disable();
   });
@@ -29,12 +22,11 @@ void main() {
     await DatadogFlags.disable();
   });
 
-  for (final fixtureAsset in fixtureAssets) {
+  for (final fixtureCase in precomputedFixtureCases) {
     test(
-      'precomputed fixture ${fixtureAsset.split('/').last}',
+      'precomputed fixture ${fixtureCase.name}',
       () async {
-        final fixture = jsonDecode(await rootBundle.loadString(fixtureAsset))
-            as Map<String, Object?>;
+        final fixture = jsonDecode(fixtureCase.json) as Map<String, Object?>;
         final requests = <http.Request>[];
         final httpClient = MockClient((request) async {
           requests.add(request);
@@ -121,7 +113,6 @@ void main() {
           await DatadogFlags.disable();
         }
       },
-      skip: kIsWeb ? 'Fixture asset-file loading is validated on VM.' : false,
     );
   }
 }

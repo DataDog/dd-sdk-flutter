@@ -14,7 +14,7 @@ Object? sanitizeJsonValue(Object? value) {
   if (value is num) {
     return value.toDouble();
   }
-  if (value is Map) {
+  if (value is Map<Object?, Object?>) {
     return value.map((key, value) {
       if (key is! String) {
         throw ArgumentError.value(
@@ -23,7 +23,7 @@ Object? sanitizeJsonValue(Object? value) {
       return MapEntry(key, sanitizeJsonValue(value));
     });
   }
-  if (value is Iterable) {
+  if (value is Iterable<Object?>) {
     return value.map(sanitizeJsonValue).toList();
   }
   throw ArgumentError.value(value, 'value', 'Unsupported JSON value');
@@ -36,7 +36,7 @@ Object? sortedJson(Object? value) {
       for (final key in sortedKeys) key: sortedJson(value[key]),
     };
   }
-  if (value is List) {
+  if (value is List<Object?>) {
     return value.map(sortedJson).toList();
   }
   return value;

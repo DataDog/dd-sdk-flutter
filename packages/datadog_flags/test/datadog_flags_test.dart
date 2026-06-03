@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flags/src/default_flags_client.dart';
 import 'package:datadog_flags/src/evaluation_aggregator.dart';
 import 'package:datadog_flags/src/exposure_logger.dart';
 import 'package:datadog_flags/src/flag_assignments_fetcher.dart';
@@ -402,7 +403,7 @@ void main() {
     );
     await repository.restore();
     final fakeRum = FakeRumFlagEvaluationReporter();
-    final client = DatadogFlagsClient(
+    final client = DefaultDatadogFlagsClient(
       name: 'rum-test',
       repository: repository,
       exposureLogger: ExposureLogger(
