@@ -185,16 +185,20 @@ class _FlagsScreenState extends State<FlagsScreen> {
               details: flag.details,
             ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
+          Row(
             children: [
-              ElevatedButton(
-                onPressed: _refreshFlags,
-                child: const Text('Refresh assignments'),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _refreshFlags,
+                  child: const Text('Refresh assignments'),
+                ),
               ),
-              ElevatedButton(
-                onPressed: _evaluate,
-                child: const Text('Evaluate flags'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _evaluate,
+                  child: const Text('Evaluate flags'),
+                ),
               ),
             ],
           ),
