@@ -3,6 +3,8 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
+
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -28,19 +30,37 @@ class _FlagsScreenState extends State<FlagsScreen> {
   static const _objectKeys = String.fromEnvironment('FLAGS_OBJECT_KEYS');
 
   late final DatadogFlagsClient _client;
-  String _status = 'idle';
+  Timer? _counterRefreshTimer;
+  String _assignmentState = 'idle';
+  int _recordedEvaluationCount = 0;
   List<_EvaluatedFlag> _flags = [];
 
   @override
   void initState() {
     super.initState();
     _client = DatadogFlagsClient.shared();
+    if (widget.runtime.counter != null) {
+      _counterRefreshTimer = Timer.periodic(
+        const Duration(milliseconds: 500),
+        (_) {
+          if (mounted) {
+            setState(() {});
+          }
+        },
+      );
+    }
     _refreshFlags();
+  }
+
+  @override
+  void dispose() {
+    _counterRefreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _refreshFlags() async {
     setState(() {
-      _status = 'fetching';
+      _assignmentState = 'fetching';
     });
     try {
       await _client.setEvaluationContext(const DatadogFlagsEvaluationContext(
@@ -51,9 +71,12 @@ class _FlagsScreenState extends State<FlagsScreen> {
         },
       ));
       _evaluate();
+      setState(() {
+        _assignmentState = 'ready';
+      });
     } catch (error) {
       setState(() {
-        _status = 'fetch failed: $error';
+        _assignmentState = 'fetch failed: $error';
         _flags = [];
       });
     }
@@ -114,21 +137,8 @@ class _FlagsScreenState extends State<FlagsScreen> {
     }
     setState(() {
       _flags = flags;
-      _status = 'evaluated';
+      _recordedEvaluationCount += flags.length;
     });
-  }
-
-  Future<void> _flush() async {
-    try {
-      await _client.flush();
-      setState(() {
-        _status = 'flushed';
-      });
-    } catch (error) {
-      setState(() {
-        _status = 'flush failed: $error';
-      });
-    }
   }
 
   @override
@@ -150,8 +160,13 @@ class _FlagsScreenState extends State<FlagsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           _Row(label: 'Mode', value: widget.runtime.mode),
-          _Row(label: 'Status', value: _status),
+          _Row(label: 'Assignments', value: _assignmentState),
           const _Row(label: 'Targeting key', value: _targetingKey),
+          _Row(
+            label: 'Evaluations recorded',
+            value: '$_recordedEvaluationCount',
+            valueKey: const Key('flags-recorded-evaluation-count'),
+          ),
           if (counter != null) ...[
             _Row(
               label: 'Precompute requests',
@@ -164,12 +179,12 @@ class _FlagsScreenState extends State<FlagsScreen> {
               valueKey: const Key('flags-exposure-count'),
             ),
             _Row(
-              label: 'Evaluation requests',
+              label: 'Flageval batches sent',
               value: '${counter.evaluationRequestCount}',
               valueKey: const Key('flags-evaluation-request-count'),
             ),
             _Row(
-              label: 'Evaluation events',
+              label: 'Flageval events sent',
               value: '${counter.evaluationEventCount}',
               valueKey: const Key('flags-evaluation-event-count'),
             ),
@@ -186,15 +201,11 @@ class _FlagsScreenState extends State<FlagsScreen> {
             children: [
               ElevatedButton(
                 onPressed: _refreshFlags,
-                child: const Text('Set context'),
+                child: const Text('Refresh assignments'),
               ),
               ElevatedButton(
                 onPressed: _evaluate,
-                child: const Text('Evaluate'),
-              ),
-              ElevatedButton(
-                onPressed: _flush,
-                child: const Text('Flush'),
+                child: const Text('Evaluate flags'),
               ),
             ],
           ),

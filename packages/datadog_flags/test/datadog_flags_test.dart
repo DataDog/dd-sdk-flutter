@@ -149,6 +149,19 @@ void main() {
         .toList();
   }
 
+  Future<void> waitUntil(
+    bool Function() predicate, {
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (!predicate()) {
+      if (DateTime.now().isAfter(deadline)) {
+        fail('Timed out waiting for condition');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
   test('enable creates the default shared client', () async {
     await DatadogFlags.enable(
       configuration: DatadogFlagsConfiguration(
@@ -554,6 +567,29 @@ void main() {
           'FLAG_NOT_FOUND';
     });
     expect(flagNotFound['runtime_default_used'], isTrue);
+  });
+
+  test('sends aggregated evaluation metrics on the configured timer', () async {
+    final client = await createClient(
+      httpClient: clientWithResponse(assignmentsResponse()),
+      trackExposures: false,
+    );
+    await client.setEvaluationContext(
+      const DatadogFlagsEvaluationContext(targetingKey: 'user-123'),
+    );
+
+    client.getBooleanValue(key: 'show-paywall', defaultValue: false);
+
+    expect(evaluationRequests(), isEmpty);
+    await waitUntil(() => evaluationRequests().isNotEmpty);
+
+    final batch =
+        jsonDecode(evaluationRequests().single.body) as Map<String, Object?>;
+    final evaluations = batch['flagEvaluations'] as List<Object?>;
+    expect(evaluations, hasLength(1));
+    final evaluation = evaluations.single as Map<String, Object?>;
+    expect(evaluation['flag'], {'key': 'show-paywall'});
+    expect(evaluation['evaluation_count'], 1);
   });
 }
 
