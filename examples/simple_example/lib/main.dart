@@ -148,13 +148,12 @@ Future<void> runUsingAlternativeInit(
   };
 
   await DatadogSdk.instance.initialize(datadogConfig, TrackingConsent.granted);
-  final flagsRuntime = await FlagsDemoRuntime.create(
+  final flagsRuntime = await _createAndEnableFlagsRuntime(
     clientToken: datadogConfig.clientToken,
     env: datadogConfig.env,
     siteName: siteName,
     applicationId: datadogConfig.rumConfiguration?.applicationId,
   );
-  await DatadogFlags.enable(configuration: flagsRuntime.configuration);
   final link = Link.from([
     DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
     HttpLink(graphQlUrl),
@@ -176,13 +175,12 @@ Future<void> runUsingRunApp(DatadogConfiguration datadogConfig) async {
       defineValue: ddSite,
       defaultValue: 'us1',
     );
-    FlagsDemoRuntime.create(
+    _createAndEnableFlagsRuntime(
       clientToken: datadogConfig.clientToken,
       env: datadogConfig.env,
       siteName: siteName,
       applicationId: datadogConfig.rumConfiguration?.applicationId,
-    ).then((flagsRuntime) async {
-      await DatadogFlags.enable(configuration: flagsRuntime.configuration);
+    ).then((flagsRuntime) {
       final link = Link.from([
         DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
         HttpLink(graphQlUrl),
@@ -195,4 +193,24 @@ Future<void> runUsingRunApp(DatadogConfiguration datadogConfig) async {
       ));
     });
   });
+}
+
+Future<FlagsDemoRuntime> _createAndEnableFlagsRuntime({
+  required String clientToken,
+  required String env,
+  required String siteName,
+  required String? applicationId,
+}) async {
+  final flagsRuntime = await FlagsDemoRuntime.create(
+    clientToken: clientToken,
+    env: env,
+    siteName: siteName,
+    applicationId: applicationId,
+  );
+  final providerInitializationStopwatch = Stopwatch()..start();
+  await DatadogFlags.enable(configuration: flagsRuntime.configuration);
+  providerInitializationStopwatch.stop();
+  return flagsRuntime.withProviderInitializationDuration(
+    providerInitializationStopwatch.elapsed,
+  );
 }

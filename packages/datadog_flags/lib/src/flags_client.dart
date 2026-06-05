@@ -80,6 +80,8 @@ abstract interface class DatadogFlagsClient {
 
   Future<void> flush();
 
+  void clearExposureCache();
+
   Future<void> reset();
 
   Future<void> dispose();

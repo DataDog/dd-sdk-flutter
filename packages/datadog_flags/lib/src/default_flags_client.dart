@@ -148,6 +148,11 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
   }
 
   @override
+  void clearExposureCache() {
+    _exposureLogger.clearCache();
+  }
+
+  @override
   Future<void> reset() async {
     _evaluationAggregator.dispose();
     await _repository.reset();

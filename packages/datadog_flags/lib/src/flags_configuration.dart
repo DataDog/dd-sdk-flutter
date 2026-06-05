@@ -8,6 +8,30 @@ import 'package:http/http.dart' as http;
 import 'datadog_context.dart';
 import 'flags_store.dart';
 
+typedef DatadogFlagsAssignmentsFetchObserver = void Function(
+  DatadogFlagsAssignmentsFetchDiagnostics diagnostics,
+);
+
+class DatadogFlagsAssignmentsFetchDiagnostics {
+  final Uri endpoint;
+  final int? statusCode;
+  final Duration httpDuration;
+  final Duration? deserializationDuration;
+  final int responseBodyBytes;
+  final int? receivedFlagCount;
+  final int? assignmentCount;
+
+  const DatadogFlagsAssignmentsFetchDiagnostics({
+    required this.endpoint,
+    required this.statusCode,
+    required this.httpDuration,
+    required this.deserializationDuration,
+    required this.responseBodyBytes,
+    required this.receivedFlagCount,
+    required this.assignmentCount,
+  });
+}
+
 class DatadogFlagsConfiguration {
   final Uri? customFlagsEndpoint;
   final Map<String, String>? customFlagsHeaders;
@@ -22,6 +46,7 @@ class DatadogFlagsConfiguration {
   final DatadogFlagsContext? datadogContext;
   final DateTime Function() dateProvider;
   final int evaluationMaxBatchSize;
+  final DatadogFlagsAssignmentsFetchObserver? assignmentsFetchObserver;
 
   const DatadogFlagsConfiguration({
     this.customFlagsEndpoint,
@@ -37,6 +62,7 @@ class DatadogFlagsConfiguration {
     this.datadogContext,
     this.dateProvider = DateTime.now,
     this.evaluationMaxBatchSize = 1000,
+    this.assignmentsFetchObserver,
   });
 
   DatadogFlagsConfiguration normalized() {
@@ -54,6 +80,7 @@ class DatadogFlagsConfiguration {
       datadogContext: datadogContext,
       dateProvider: dateProvider,
       evaluationMaxBatchSize: evaluationMaxBatchSize,
+      assignmentsFetchObserver: assignmentsFetchObserver,
     );
   }
 }

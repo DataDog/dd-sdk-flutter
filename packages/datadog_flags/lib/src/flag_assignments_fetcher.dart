@@ -32,18 +32,47 @@ class FlagAssignmentsFetcher {
         datadogContext.flagsEndpoint().replace(
               path: '/precompute-assignments',
             );
-    final response = await httpClient.post(
-      endpoint,
-      headers: _headers(),
-      body: jsonEncode(_requestBody(evaluationContext)),
-    );
+    final httpStopwatch = Stopwatch()..start();
+    late http.Response response;
+    try {
+      response = await httpClient.post(
+        endpoint,
+        headers: _headers(),
+        body: jsonEncode(_requestBody(evaluationContext)),
+      );
+      httpStopwatch.stop();
+    } catch (_) {
+      httpStopwatch.stop();
+      _reportDiagnostics(DatadogFlagsAssignmentsFetchDiagnostics(
+        endpoint: endpoint,
+        statusCode: null,
+        httpDuration: httpStopwatch.elapsed,
+        deserializationDuration: null,
+        responseBodyBytes: 0,
+        receivedFlagCount: null,
+        assignmentCount: null,
+      ));
+      rethrow;
+    }
+
+    final responseBodyBytes = response.bodyBytes.length;
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      _reportDiagnostics(DatadogFlagsAssignmentsFetchDiagnostics(
+        endpoint: endpoint,
+        statusCode: response.statusCode,
+        httpDuration: httpStopwatch.elapsed,
+        deserializationDuration: null,
+        responseBodyBytes: responseBodyBytes,
+        receivedFlagCount: null,
+        assignmentCount: null,
+      ));
       throw FlagsException.networkError(
         'Unexpected flag assignments response status ${response.statusCode}.',
       );
     }
 
+    final deserializationStopwatch = Stopwatch()..start();
     try {
       final decoded = jsonDecode(response.body) as Map<String, Object?>;
       final data = decoded['data'] as Map<String, Object?>;
@@ -71,8 +100,28 @@ class FlagAssignmentsFetcher {
           doLog: assignmentJson['doLog'] as bool,
         );
       }
+      deserializationStopwatch.stop();
+      _reportDiagnostics(DatadogFlagsAssignmentsFetchDiagnostics(
+        endpoint: endpoint,
+        statusCode: response.statusCode,
+        httpDuration: httpStopwatch.elapsed,
+        deserializationDuration: deserializationStopwatch.elapsed,
+        responseBodyBytes: responseBodyBytes,
+        receivedFlagCount: flags.length,
+        assignmentCount: assignments.length,
+      ));
       return assignments;
     } catch (error) {
+      deserializationStopwatch.stop();
+      _reportDiagnostics(DatadogFlagsAssignmentsFetchDiagnostics(
+        endpoint: endpoint,
+        statusCode: response.statusCode,
+        httpDuration: httpStopwatch.elapsed,
+        deserializationDuration: deserializationStopwatch.elapsed,
+        responseBodyBytes: responseBodyBytes,
+        receivedFlagCount: null,
+        assignmentCount: null,
+      ));
       throw FlagsException.invalidResponse(
         'Failed to decode flag assignments response: $error',
       );
@@ -108,6 +157,16 @@ class FlagAssignmentsFetcher {
         },
       },
     };
+  }
+
+  void _reportDiagnostics(
+    DatadogFlagsAssignmentsFetchDiagnostics diagnostics,
+  ) {
+    try {
+      configuration.assignmentsFetchObserver?.call(diagnostics);
+    } catch (_) {
+      // Diagnostics callbacks must not affect flag assignment fetching.
+    }
   }
 }
 

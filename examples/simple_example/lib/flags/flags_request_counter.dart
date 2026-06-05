@@ -8,6 +8,10 @@ abstract interface class FlagsRequestCounter {
   int get exposureCount;
   int get evaluationRequestCount;
   int get evaluationEventCount;
+  int? get lastPrecomputeFlagCount;
+  int? get lastPrecomputePayloadBytes;
+  Duration? get lastPrecomputeHttpDuration;
+  Duration? get lastPrecomputeDeserializationDuration;
 
   Future<void> stop();
 }

@@ -83,4 +83,8 @@ class ExposureLogger {
       _loggedExposures.remove(exposureKey);
     }
   }
+
+  void clearCache() {
+    _loggedExposures.clear();
+  }
 }

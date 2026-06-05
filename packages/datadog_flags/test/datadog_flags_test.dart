@@ -123,6 +123,7 @@ void main() {
     DatadogSite site = DatadogSite.us1,
     bool trackExposures = true,
     bool trackEvaluations = true,
+    DatadogFlagsAssignmentsFetchObserver? assignmentsFetchObserver,
   }) async {
     await DatadogFlags.enable(
       configuration: DatadogFlagsConfiguration(
@@ -133,6 +134,7 @@ void main() {
         evaluationFlushInterval: const Duration(seconds: 1),
         trackExposures: trackExposures,
         trackEvaluations: trackEvaluations,
+        assignmentsFetchObserver: assignmentsFetchObserver,
       ),
     );
     return DatadogFlagsClient.create();
@@ -178,6 +180,30 @@ void main() {
     expect(shared.name, DatadogFlagsClient.defaultName);
   });
 
+  test('does not close custom HTTP clients when re-enabling', () async {
+    final first = CloseTrackingClient();
+    final second = CloseTrackingClient();
+
+    await DatadogFlags.enable(
+      configuration: DatadogFlagsConfiguration(
+        datadogContext: datadogContext(),
+        store: InMemoryDatadogFlagsStore(),
+        httpClient: first,
+      ),
+    );
+    await DatadogFlags.enable(
+      configuration: DatadogFlagsConfiguration(
+        datadogContext: datadogContext(),
+        store: InMemoryDatadogFlagsStore(),
+        httpClient: second,
+      ),
+    );
+
+    expect(first.closed, isFalse);
+    await DatadogFlags.disable();
+    expect(second.closed, isFalse);
+  });
+
   test('fetches precomputed assignments using the iOS request shape', () async {
     final client = await createClient(
       httpClient: clientWithResponse(assignmentsResponse()),
@@ -210,6 +236,38 @@ void main() {
       'targeting_key': 'user-123',
       'targeting_attributes': {'plan': 'pro', 'seat_count': 3},
     });
+  });
+
+  test('reports assignment fetch HTTP and deserialization diagnostics',
+      () async {
+    final response = assignmentsResponse();
+    final diagnostics = <DatadogFlagsAssignmentsFetchDiagnostics>[];
+    final client = await createClient(
+      httpClient: clientWithResponse(response),
+      assignmentsFetchObserver: diagnostics.add,
+    );
+
+    await client.setEvaluationContext(const DatadogFlagsEvaluationContext(
+      targetingKey: 'user-123',
+    ));
+
+    expect(diagnostics, hasLength(1));
+    final diagnostic = diagnostics.single;
+    expect(
+      diagnostic.endpoint.toString(),
+      'https://preview.ff-cdn.datadoghq.com/precompute-assignments',
+    );
+    expect(diagnostic.statusCode, 200);
+    expect(diagnostic.httpDuration.inMicroseconds, greaterThanOrEqualTo(0));
+    expect(diagnostic.deserializationDuration, isNotNull);
+    expect(
+      diagnostic.deserializationDuration!.inMicroseconds,
+      greaterThanOrEqualTo(0),
+    );
+    expect(
+        diagnostic.responseBodyBytes, utf8.encode(jsonEncode(response)).length);
+    expect(diagnostic.receivedFlagCount, 6);
+    expect(diagnostic.assignmentCount, 5);
   });
 
   test('uses Datadog site endpoints and falls back to US1 for gov flags', () {
@@ -503,6 +561,28 @@ void main() {
     });
   });
 
+  test('clears the exposure cache for repeated assignment emissions', () async {
+    final client = await createClient(
+      httpClient: clientWithResponse(assignmentsResponse()),
+    );
+    await client.setEvaluationContext(
+      const DatadogFlagsEvaluationContext(targetingKey: 'user-123'),
+    );
+
+    client.getBooleanValue(key: 'show-paywall', defaultValue: false);
+    await waitUntil(() => exposureRequests().length == 1);
+    client.getBooleanValue(key: 'show-paywall', defaultValue: false);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(exposureRequests(), hasLength(1));
+
+    client.clearExposureCache();
+    client.getBooleanValue(key: 'show-paywall', defaultValue: false);
+    await waitUntil(() => exposureRequests().length == 2);
+
+    expect(exposureRequests(), hasLength(2));
+  });
+
   test('does not emit exposures when doLog is false', () async {
     final client = await createClient(
       httpClient: clientWithResponse(assignmentsResponse(doLog: false)),
@@ -638,6 +718,21 @@ class FakeRumFlagEvaluationReporter implements RumFlagEvaluationReporter {
   @override
   void report(String flagKey, Object value) {
     calls.add(RumCall(flagKey, value));
+  }
+}
+
+class CloseTrackingClient extends http.BaseClient {
+  bool closed = false;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    return http.StreamedResponse(Stream.value(utf8.encode('{}')), 200);
+  }
+
+  @override
+  void close() {
+    closed = true;
+    super.close();
   }
 }
 

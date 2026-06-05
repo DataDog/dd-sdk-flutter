@@ -24,6 +24,7 @@ class DatadogFlags {
       const DatadogFlagsConfiguration();
   static DatadogFlagsContext? _datadogContext;
   static http.Client? _httpClient;
+  static bool _ownsHttpClient = false;
   static DatadogFlagsStore? _store;
   static final Map<String, DatadogFlagsClient> _clients = {};
   static bool _enabled = false;
@@ -37,7 +38,9 @@ class DatadogFlags {
     DatadogSdk? sdk,
   }) async {
     await _disposeClients();
-    _httpClient?.close();
+    if (_ownsHttpClient) {
+      _httpClient?.close();
+    }
 
     final datadogSdk = sdk ?? DatadogSdk.instance;
     final datadogContext =
@@ -48,7 +51,9 @@ class DatadogFlags {
 
     _configuration = configuration.normalized();
     _datadogContext = datadogContext;
-    _httpClient = configuration.httpClient ?? http.Client();
+    final httpClient = configuration.httpClient;
+    _httpClient = httpClient ?? http.Client();
+    _ownsHttpClient = httpClient == null;
     _store = configuration.store ??
         SharedPreferencesDatadogFlagsStore(sharedPreferences: prefs!);
     _enabled = true;
@@ -124,8 +129,11 @@ class DatadogFlags {
 
   static Future<void> disable() async {
     await _disposeClients();
-    _httpClient?.close();
+    if (_ownsHttpClient) {
+      _httpClient?.close();
+    }
     _httpClient = null;
+    _ownsHttpClient = false;
     _store = null;
     _datadogContext = null;
     _enabled = false;
