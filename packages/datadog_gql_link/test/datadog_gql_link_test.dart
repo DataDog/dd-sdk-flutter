@@ -753,6 +753,39 @@ query UserInfo($id: ID!) {
       expect(errors[0].containsKey('code'), isFalse);
     });
 
+    test('link omits locations and path when null in serialized errors',
+        () async {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      when(() => response.context).thenReturn(const Context());
+      when(() => response.errors).thenReturn([
+        const GraphQLError(message: 'Server Error'),
+      ]);
+
+      // When
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+
+      responseController.sink.add(response);
+      unawaited(responseController.sink.close());
+      await stream.drain();
+
+      // Then
+      final captured = verify(() => mockRum.stopResource(
+          any(), any(), RumResourceType.native, any(), captureAny()));
+      final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
+      final errors =
+          json.decode(capturedAttrs['_dd.graphql.errors']) as List<dynamic>;
+      expect(errors.length, 1);
+      expect(errors[0].containsKey('locations'), isFalse);
+      expect(errors[0].containsKey('path'), isFalse);
+    });
+
     test('link does not add payload attribute by default', () {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));

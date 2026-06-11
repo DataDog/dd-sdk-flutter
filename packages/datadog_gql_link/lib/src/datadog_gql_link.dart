@@ -288,13 +288,14 @@ class DatadogGqlLink extends Link {
     final serializedErrors = response.errors!.map((e) {
       return {
         'message': e.message,
-        'locations': e.locations
-            ?.map((l) => {
-                  'line': l.line,
-                  'column': l.column,
-                })
-            .toList(),
-        'path': e.path,
+        if (e.locations != null)
+          'locations': e.locations!
+              .map((l) => {
+                    'line': l.line,
+                    'column': l.column,
+                  })
+              .toList(),
+        if (e.path != null) 'path': e.path,
         if (e.extensions?['code'] != null) 'code': e.extensions!['code'],
       };
     }).toList();
