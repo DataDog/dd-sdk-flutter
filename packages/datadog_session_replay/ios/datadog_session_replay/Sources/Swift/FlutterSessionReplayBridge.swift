@@ -141,8 +141,42 @@ public func __datadog_session_replay_keep_symbols() {
         FlutterSessionReplay.feature?.setRecordCount(for: viewId, count: Int64(count))
     }
 
+    /// The slotId (`FlutterView.hash`) of the embedded Flutter view this engine renders
+    /// into, or nil when Flutter is the host (not embedded). Set from Dart via `setSlotId`
+    /// once resolved.
+    private var slotId: String?
+
+    @objc public func setSlotId(_ slotId: String?) {
+        self.slotId = slotId
+        NSLog("[DD-SR-F] Flutter SDK resolved slotId=\(slotId ?? "nil")")
+    }
+
     @objc public func writeSegment(segment segmentJson: String) {
-        FlutterSessionReplay.feature?.writeSegment(segment: segmentJson)
+        let json = FlutterSessionReplay.injectSlotId(slotId, into: segmentJson)
+        FlutterSessionReplay.feature?.writeSegment(segment: json)
+    }
+
+    /// Injects the resolved slotId into each record inside the segment JSON.
+    /// No-op — returns the original string — when slotId is nil (Flutter is the host, not
+    /// embedded), so non-hybrid behavior is unchanged.
+    static func injectSlotId(_ slotId: String?, into segmentJson: String) -> String {
+        guard let slotId = slotId,
+              let data = segmentJson.data(using: .utf8),
+              var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              var records = object["records"] as? [[String: Any]] else {
+            return segmentJson
+        }
+        records = records.map { record in
+            var r = record
+            r["slotId"] = slotId
+            return r
+        }
+        object["records"] = records
+        guard let newData = try? JSONSerialization.data(withJSONObject: object),
+              let newString = String(data: newData, encoding: .utf8) else {
+            return segmentJson
+        }
+        return newString
     }
 
     @objc public func postTelemetryDebug(id: String, message: String) {

@@ -6,7 +6,9 @@ import 'dart:async';
 import 'dart:ffi' as ffi;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:objective_c/objective_c.dart';
 
 import '../../datadog_session_replay.dart';
@@ -76,7 +78,29 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
     // Non-awaited: routes through the method channel to the correct engine's plugin
     // instance, which calls claimOwnership(messenger:) with that engine's messenger.
     // ignore: unawaited_futures
-    _engineChannel.invokeMethod<void>('claimOwnership');
+    _engineChannel.invokeMethod<void>(
+      'claimOwnership',
+      {'isEmbedded': configuration.isEmbedded},
+    );
+
+    if (configuration.isEmbedded) {
+      // For standard add-to-app, the FlutterView is attached by the first frame
+      // and resolves immediately. For pre-warmed engines the FlutterViewController
+      // is not yet presented, so resolution returns nil. In that case we register
+      // a lifecycle observer: Flutter fires AppLifecycleState.resumed when the
+      // native host presents the FlutterViewController, which is exactly when the
+      // FlutterView enters the UIKit hierarchy and resolution will succeed.
+      SchedulerBinding.instance.addPostFrameCallback((_) async {
+        final slotId =
+            await _engineChannel.invokeMethod<String>('resolveSlotId');
+        if (slotId != null) {
+          _iosBridge.setSlotId(NSString(slotId));
+        } else {
+          final observer = _EmbeddedSlotIdObserver(_engineChannel, _iosBridge);
+          WidgetsBinding.instance.addObserver(observer);
+        }
+      });
+    }
 
     return true;
   }
@@ -152,6 +176,28 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
       byteData.lengthInBytes,
     );
     return NSData.castFromPointer(ret, retain: true, release: true);
+  }
+}
+
+// Resolves the embedded Flutter view's slotId when the native host presents
+// the FlutterViewController (AppLifecycleState.resumed). Used for pre-warmed
+// engines where the FlutterView is not yet attached at enable() time.
+class _EmbeddedSlotIdObserver extends WidgetsBindingObserver {
+  final MethodChannel _engineChannel;
+  final FlutterSessionReplay _iosBridge;
+
+  _EmbeddedSlotIdObserver(this._engineChannel, this._iosBridge);
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.resumed) {
+      final slotId =
+          await _engineChannel.invokeMethod<String>('resolveSlotId');
+      if (slotId != null) {
+        _iosBridge.setSlotId(NSString(slotId));
+        WidgetsBinding.instance.removeObserver(this);
+      }
+    }
   }
 }
 

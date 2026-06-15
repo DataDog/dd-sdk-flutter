@@ -20,7 +20,9 @@ internal struct RequestBuilder: FeatureRequestBuilder {
         with context: DatadogContext,
         execution: DatadogInternal.ExecutionContext
     ) throws -> URLRequest {
-        let source = context.source
+        // Flutter SR ships Flutter wireframes; tag as "flutter" even when the
+        // host SDK initialized the core with a different source (e.g. hybrid iOS).
+        let source = "flutter"
 
         // If we can't decode `events: [Data]` there is no way to recover, so we throw an
         // error to let the core delete the batch:
@@ -50,7 +52,7 @@ internal struct RequestBuilder: FeatureRequestBuilder {
                     os: context.os
                 ),
                 .ddAPIKeyHeader(clientToken: context.clientToken),
-                .ddEVPOriginHeader(source: context.source),
+                .ddEVPOriginHeader(source: "flutter"),
                 .ddEVPOriginVersionHeader(sdkVersion: context.sdkVersion),
                 .ddRequestIDHeader()
             ],

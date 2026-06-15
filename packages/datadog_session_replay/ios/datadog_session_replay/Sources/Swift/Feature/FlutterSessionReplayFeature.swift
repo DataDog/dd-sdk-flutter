@@ -16,7 +16,7 @@ protocol FlutterSessionReplayFeature {
 }
 
 class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRemoteFeature {
-    static var name: String = "session-replay"
+    static var name: String = "flutter-session-replay"
 
     public struct Configuration {
         public var customEndpoint: URL?

@@ -3,6 +3,7 @@
 // Copyright 2025-Present Datadog, Inc.
 import Foundation
 import Flutter
+import UIKit
 
 public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
     private let messenger: AnyObject
@@ -32,9 +33,56 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
         if call.method == "claimOwnership" {
             FlutterSessionReplay.claimOwnership(messenger: messenger)
             result(nil)
+        } else if call.method == "resolveSlotId" {
+            // Called once from Dart after the first frame when isEmbedded = true.
+            // Returns the FlutterView.hash used as slotId, or nil if the view is not
+            // yet attached (should not happen after the first frame).
+            result(Self.resolveSlotId(from: messenger))
         } else {
             result(FlutterMethodNotImplemented)
         }
+    }
+
+    /// Unwraps `FlutterBinaryMessengerRelay` to reach the real `FlutterEngine` or
+    /// `FlutterViewController` underneath. The relay class is private in Flutter so
+    /// KVC is the only way to access its `parent` property without linking internals.
+    private static func unwrapRelay(_ messenger: AnyObject) -> AnyObject {
+        guard let relay = messenger as? NSObject,
+              relay.responds(to: NSSelectorFromString("parent")),
+              let parent = relay.value(forKey: "parent") as AnyObject? else {
+            return messenger
+        }
+        return parent
+    }
+
+    /// Resolves the slotId for an embedded Flutter view from its engine's messenger.
+    ///
+    /// The slotId is the `FlutterView.hash` — the same value the native iOS Session Replay
+    /// recorder stamps on the placeholder wireframe for this view, so both sides agree
+    /// without exchanging it. Returns `nil` when Flutter is the host (full-screen, not
+    /// embedded in a native view) or when the view can't be reached.
+    private static func resolveSlotId(from messenger: AnyObject) -> String? {
+        let underlying = unwrapRelay(messenger)
+
+        // The parent is normally the FlutterEngine; in some embeddings it can be the
+        // FlutterViewController directly. Reach the FlutterView either way.
+        let view: UIView?
+        if let engine = underlying as? FlutterEngine {
+            view = engine.viewController?.view
+        } else if let viewController = underlying as? FlutterViewController {
+            view = viewController.view
+        } else {
+            NSLog("[DD-SR-F] resolveSlotId: underlying is neither FlutterEngine nor FlutterViewController (type=\(type(of: underlying)))")
+            return nil
+        }
+
+        guard let flutterView = view else {
+            NSLog("[DD-SR-F] resolveSlotId: engine/VC reached but view is nil (not attached yet)")
+            return nil
+        }
+        let slotId = String(flutterView.hash)
+        NSLog("[DD-SR-F] resolveSlotId: resolved slotId=\(slotId) from \(type(of: underlying))")
+        return slotId
     }
 
     public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
