@@ -43,18 +43,6 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
         }
     }
 
-    /// Unwraps `FlutterBinaryMessengerRelay` to reach the real `FlutterEngine` or
-    /// `FlutterViewController` underneath. The relay class is private in Flutter so
-    /// KVC is the only way to access its `parent` property without linking internals.
-    private static func unwrapRelay(_ messenger: AnyObject) -> AnyObject {
-        guard let relay = messenger as? NSObject,
-              relay.responds(to: NSSelectorFromString("parent")),
-              let parent = relay.value(forKey: "parent") as AnyObject? else {
-            return messenger
-        }
-        return parent
-    }
-
     /// Resolves the slotId for an embedded Flutter view from its engine's messenger.
     ///
     /// The slotId is the `FlutterView.hash` — the same value the native iOS Session Replay
@@ -62,7 +50,7 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
     /// without exchanging it. Returns `nil` when Flutter is the host (full-screen, not
     /// embedded in a native view) or when the view can't be reached.
     private static func resolveSlotId(from messenger: AnyObject) -> String? {
-        let underlying = unwrapRelay(messenger)
+        let underlying = (messenger as? FlutterBinaryMessengerRelay)?.parent ?? messenger
 
         // The parent is normally the FlutterEngine; in some embeddings it can be the
         // FlutterViewController directly. Reach the FlutterView either way.
