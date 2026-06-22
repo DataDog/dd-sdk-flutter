@@ -7,6 +7,7 @@ import 'dart:math';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 
@@ -82,6 +83,14 @@ class DatadogSessionReplay {
 
   void _onContextChanged(RUMContext context) {
     _recorder.onContextChanged(context);
+    // In embedded (add-to-app) scenarios Flutter can go idle when nothing drives
+    // vsync callbacks. If the RUM view changes while idle, addPostFrameCallback
+    // never fires and _newFrameBuilt stays false — so the timer never captures
+    // for the new view. Poking the scheduler ensures exactly one frame is
+    // produced. Pure Flutter apps are never truly idle so this is not needed.
+    if (_configuration.isEmbedded) {
+      SchedulerBinding.instance.ensureVisualUpdate();
+    }
   }
 
   /// Begins periodic Session Replay tree capture. Has no effect if recording

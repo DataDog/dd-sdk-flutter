@@ -48,6 +48,8 @@ public func __datadog_session_replay_keep_symbols() {
     // mirroring the Android FlutterSessionReplayBridge singleton pattern.
     internal static var contextCallback: ((FlutterRUMCoreContext?) -> Void)?
     internal static var feature: FlutterSessionReplayFeature?
+    // Retained so embedded Flutter engines can post records to the native SR message bus.
+    internal static var core: DatadogCoreProtocol?
 
     // Ownership token for multi-engine support: only the engine that called enable()
     // is allowed to null out the callback on detach. Set by claimOwnership(messenger:)
@@ -86,8 +88,16 @@ public func __datadog_session_replay_keep_symbols() {
         // in DatadogSessionReplayPlugin.register(with:) for the full explanation.
         FlutterSessionReplay.listenerOwner = nil
 
-        // If already initialized, reuse the existing feature (don't re-register with core).
-        if FlutterSessionReplay.feature != nil {
+        FlutterSessionReplay.core = core
+
+        // If already initialized, reuse the existing feature (don't re-register with core),
+        // but re-prime the new Dart callback with the current RUM context so the new
+        // DatadogSessionReplay instance (created on Hot Restart or engine re-attach) has
+        // a valid context immediately.
+        if let existingFeature = FlutterSessionReplay.feature as? DefaultFlutterSessionReplayFeature {
+            existingFeature.deliverCurrentContext()
+            return
+        } else if FlutterSessionReplay.feature != nil {
             return
         }
 
@@ -115,6 +125,12 @@ public func __datadog_session_replay_keep_symbols() {
         )
         try core.register(feature: sessionReplay)
         FlutterSessionReplay.feature = sessionReplay
+
+        // In hybrid apps the native RUM view is active before this feature registers,
+        // so RUMContextReceiver won't fire until the next context change. Prime Dart
+        // with the current context now so recording starts without waiting for a new
+        // context change.
+        sessionReplay.deliverCurrentContext()
     }
 
     /// Nullifies the context callback if the detaching engine is the one that registered it.
@@ -131,6 +147,7 @@ public func __datadog_session_replay_keep_symbols() {
         feature = nil
         contextCallback = nil
         listenerOwner = nil
+        core = nil
     }
 
     @objc public func setHasReplay(hasReplay: Bool) {
@@ -141,42 +158,81 @@ public func __datadog_session_replay_keep_symbols() {
         FlutterSessionReplay.feature?.setRecordCount(for: viewId, count: Int64(count))
     }
 
-    /// The slotId (`FlutterView.hash`) of the embedded Flutter view this engine renders
-    /// into, or nil when Flutter is the host (not embedded). Set from Dart via `setSlotId`
-    /// once resolved.
-    private var slotId: String?
+    /// Tracks whether the Dart side has determined the embedding context.
+    ///
+    /// Records that arrive before `setSlotId` is called are buffered here and
+    /// flushed through the correct path once the embedding state is known.
+    private enum EmbeddingState: CustomStringConvertible {
+        case unknown    // `setSlotId` not yet called
+        case embedded(String)   // Flutter is embedded — slotId is known
+        case standalone         // Flutter is the host app — no slotId
+
+        var description: String {
+            switch self {
+            case .unknown: return "unknown"
+            case .embedded(let s): return "embedded(\(s))"
+            case .standalone: return "standalone"
+            }
+        }
+    }
+
+    private var embeddingState: EmbeddingState = .unknown
+    /// Segments buffered while `embeddingState == .unknown`.
+    private var pendingSegments: [String] = []
 
     @objc public func setSlotId(_ slotId: String?) {
-        self.slotId = slotId
-        NSLog("[DD-SR-F] Flutter SDK resolved slotId=\(slotId ?? "nil")")
+        NSLog("[DD-SR-F] Flutter SDK resolved slotId=\(slotId ?? "nil") pendingSegments=\(pendingSegments.count)")
+        let pending = pendingSegments
+        pendingSegments = []
+
+        if let slotId = slotId {
+            embeddingState = .embedded(slotId)
+            for segment in pending {
+                FlutterSessionReplay.sendViaMessageBus(segmentJson: segment, slotId: slotId)
+            }
+        } else {
+            embeddingState = .standalone
+            for segment in pending {
+                FlutterSessionReplay.feature?.writeSegment(segment: segment)
+            }
+        }
     }
 
     @objc public func writeSegment(segment segmentJson: String) {
-        let json = FlutterSessionReplay.injectSlotId(slotId, into: segmentJson)
-        FlutterSessionReplay.feature?.writeSegment(segment: json)
+        switch embeddingState {
+        case .unknown:
+            // Embedding not yet determined — buffer until `setSlotId` is called.
+            pendingSegments.append(segmentJson)
+        case .embedded(let slotId):
+            // Route Flutter records through the native SR message bus so they are
+            // processed by `FlutterRecordReceiver` inside `SessionReplayFeature`,
+            // following the same pattern used for web-view records.
+            FlutterSessionReplay.sendViaMessageBus(segmentJson: segmentJson, slotId: slotId)
+        case .standalone:
+            // Flutter is the host app — write directly to the Flutter SR feature scope.
+            FlutterSessionReplay.feature?.writeSegment(segment: segmentJson)
+        }
     }
 
-    /// Injects the resolved slotId into each record inside the segment JSON.
-    /// No-op — returns the original string — when slotId is nil (Flutter is the host, not
-    /// embedded), so non-hybrid behavior is unchanged.
-    static func injectSlotId(_ slotId: String?, into segmentJson: String) -> String {
-        guard let slotId = slotId,
-              let data = segmentJson.data(using: .utf8),
-              var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              var records = object["records"] as? [[String: Any]] else {
-            return segmentJson
+    /// Parses `segmentJson`, injects `slotId` into each record, and posts the records
+    /// to the native SDK message bus as `FeatureMessage.flutterView(.record(…))`.
+    private static func sendViaMessageBus(segmentJson: String, slotId: String) {
+        guard
+            let data = segmentJson.data(using: .utf8),
+            var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+            var records = object["records"] as? [[String: Any]],
+            let viewID = object["viewID"] as? String
+        else {
+            return
         }
+
         records = records.map { record in
             var r = record
             r["slotId"] = slotId
             return r
         }
-        object["records"] = records
-        guard let newData = try? JSONSerialization.data(withJSONObject: object),
-              let newString = String(data: newData, encoding: .utf8) else {
-            return segmentJson
-        }
-        return newString
+
+        FlutterSessionReplay.core?.send(message: .flutterView(.record(records, viewID)))
     }
 
     @objc public func postTelemetryDebug(id: String, message: String) {

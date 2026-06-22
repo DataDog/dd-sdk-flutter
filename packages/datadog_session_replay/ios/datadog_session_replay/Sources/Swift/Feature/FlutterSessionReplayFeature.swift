@@ -53,6 +53,10 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
 
     private var recordCountByViewId: [String: Int64] = [:]
 
+    // Stored so `deliverCurrentContext()` can prime Dart with the initial RUM
+    // context without going through RUMContextReceiver (which only fires on changes).
+    private let onContextChanged: ((RUMCoreContext?) -> Void)?
+
     init(
         core: DatadogCoreProtocol,
         configuration: Configuration,
@@ -61,6 +65,7 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
     ) throws {
         self.core = core
         self.featureScope = core.scope(for: DefaultFlutterSessionReplayFeature.self)
+        self.onContextChanged = configuration.onContextChanged
 
         self.requestBuilder = RequestBuilder(
             customUploadURL: configuration.customEndpoint,
@@ -83,6 +88,22 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
         )
 
         self.performanceOverride = performanceOverride
+    }
+
+    /// Delivers the current RUM context to Dart immediately after feature registration.
+    ///
+    /// `RUMContextReceiver` only fires `onContextChanged` when the native RUM context
+    /// *changes*. In hybrid apps the native RUM view is already active before this
+    /// feature registers, so Dart never receives the initial context and `viewId` stays
+    /// nil — deferring the first full snapshot until the next user interaction.
+    ///
+    /// Call this once right after `core.register(feature:)` to prime Dart immediately.
+    func deliverCurrentContext() {
+        guard let onContextChanged = onContextChanged else { return }
+        featureScope?.eventWriteContext(bypassConsent: true) { context, _ in
+            let rumContext = context.additionalContext(ofType: RUMCoreContext.self)
+            onContextChanged(rumContext)
+        }
     }
 
     func setHasReplay(_ hasReplay: Bool) {
