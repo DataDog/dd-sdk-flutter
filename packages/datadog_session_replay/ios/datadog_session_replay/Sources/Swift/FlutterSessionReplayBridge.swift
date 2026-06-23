@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025-Present Datadog, Inc.
 import Foundation
+import Flutter
 import DatadogCore
 import DatadogInternal
 
@@ -55,6 +56,35 @@ public func __datadog_session_replay_keep_symbols() {
     // is allowed to null out the callback on detach. Set by claimOwnership(messenger:)
     // after the Dart-side method channel message is delivered.
     internal static var listenerOwner: AnyObject?
+    
+    // Maps each engine's canonical messenger → the slotId (FlutterView.hash) of its
+    // associated FlutterViewController. Populated by enableDatadogSessionReplay().
+    // Weak key so the entry is cleared automatically when the engine is released.
+    private static let slotIdByMessenger: NSMapTable<AnyObject, NSString> =
+        NSMapTable(keyOptions: .weakMemory, valueOptions: .strongMemory)
+
+    /// Returns the canonical underlying messenger used as a stable registry key.
+    ///
+    /// Flutter wraps the real engine messenger in `FlutterBinaryMessengerRelay` objects —
+    /// `registrar.messenger()` and `engine.binaryMessenger` return different relay
+    /// instances even for the same engine. KVC unwraps any relay to its `parent` without
+    /// naming the private concrete type, so the key is always the same stable engine object.
+    private static func canonical(_ messenger: AnyObject) -> AnyObject {
+        let parentSel = NSSelectorFromString("parent")
+        if messenger.responds(to: parentSel),
+           let parent = messenger.value(forKey: "parent") as? NSObject {
+            return parent
+        }
+        return messenger
+    }
+
+    static func registerSlotId(_ slotId: String, for messenger: FlutterBinaryMessenger) {
+        slotIdByMessenger.setObject(slotId as NSString, forKey: canonical(messenger as AnyObject))
+    }
+
+    static func resolveSlotId(for messenger: AnyObject) -> String? {
+        return slotIdByMessenger.object(forKey: canonical(messenger)) as String?
+    }
 
     static func claimOwnership(messenger: AnyObject) {
         listenerOwner = messenger

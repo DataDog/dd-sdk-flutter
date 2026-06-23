@@ -43,34 +43,12 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
         }
     }
 
-    /// Resolves the slotId for an embedded Flutter view from its engine's messenger.
-    ///
-    /// The slotId is the `FlutterView.hash` — the same value the native iOS Session Replay
-    /// recorder stamps on the placeholder wireframe for this view, so both sides agree
-    /// without exchanging it. Returns `nil` when Flutter is the host (full-screen, not
-    /// embedded in a native view) or when the view can't be reached.
+    /// Returns the slot ID associated with a Flutter view's messenger.
+    /// Returns the slotId registered for this engine's messenger via
+    /// `FlutterViewController.enableDatadogSessionReplay()`, or `nil` if the
+    /// host app has not called it (i.e. Flutter is full-screen, not embedded).
     private static func resolveSlotId(from messenger: AnyObject) -> String? {
-        let underlying = (messenger as? FlutterBinaryMessengerRelay)?.parent ?? messenger
-
-        // The parent is normally the FlutterEngine; in some embeddings it can be the
-        // FlutterViewController directly. Reach the FlutterView either way.
-        let view: UIView?
-        if let engine = underlying as? FlutterEngine {
-            view = engine.viewController?.view
-        } else if let viewController = underlying as? FlutterViewController {
-            view = viewController.view
-        } else {
-            NSLog("[DD-SR-F] resolveSlotId: underlying is neither FlutterEngine nor FlutterViewController (type=\(type(of: underlying)))")
-            return nil
-        }
-
-        guard let flutterView = view else {
-            NSLog("[DD-SR-F] resolveSlotId: engine/VC reached but view is nil (not attached yet)")
-            return nil
-        }
-        let slotId = String(flutterView.hash)
-        NSLog("[DD-SR-F] resolveSlotId: resolved slotId=\(slotId) from \(type(of: underlying))")
-        return slotId
+        return FlutterSessionReplay.resolveSlotId(for: messenger)
     }
 
     public func detachFromEngine(for registrar: FlutterPluginRegistrar) {

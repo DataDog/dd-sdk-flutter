@@ -21,11 +21,14 @@ class SessionReplayProcessor with WidgetsBindingObserver {
   final ReceivePort _mainReceivePort = ReceivePort('sr-replay-port');
   SendPort? _mainSendPort;
   Isolate? _processorIsolate;
+  FontFamilyTransformConfig _fontFamilyTransform =
+      const FontFamilyTransformConfig();
 
   Future<void> start({
     FontFamilyTransformConfig fontFamilyTransform =
         const FontFamilyTransformConfig(),
   }) async {
+    _fontFamilyTransform = fontFamilyTransform;
     WidgetsBinding.instance.addObserver(this);
     _processorIsolate = await Isolate.spawn(
       _captureProcessor,
@@ -49,7 +52,35 @@ class SessionReplayProcessor with WidgetsBindingObserver {
     if (state == AppLifecycleState.detached) {
       _mainSendPort?.send(null);
       _processorIsolate?.kill(priority: Isolate.immediate);
+      _mainSendPort = null;
+      _processorIsolate = null;
+    } else if (state == AppLifecycleState.resumed) {
+      if (_processorIsolate == null) {
+        // ignore: unawaited_futures
+        _spawnIsolate();
+      }
     }
+  }
+
+  // Called on resume to restart the isolate after detach. A new ReceivePort is
+  // required because ReceivePort is single-subscription and cannot be reused
+  // after the initial handshake listener is consumed.
+  //
+  // A new ReceivePort is required because ReceivePort is single-subscription
+  // and cannot be reused after the initial handshake listener is consumed.
+  Future<void> _spawnIsolate() async {
+    final port = ReceivePort('sr-replay-port');
+    _processorIsolate = await Isolate.spawn(
+      _captureProcessor,
+      _ProcessorArgs(
+        RootIsolateToken.instance!,
+        DatadogSessionReplayPlatform.instance.isolateToken,
+        port.sendPort,
+        _fontFamilyTransform,
+      ),
+    );
+    _mainSendPort = await port.first;
+    port.close();
   }
 
   static Future<void> _captureProcessor(_ProcessorArgs args) async {
