@@ -45,18 +45,46 @@ public func __datadog_session_replay_keep_symbols() {
 }
 
 @objc(FlutterSessionReplay) public class FlutterSessionReplay: NSObject {
-    // Static properties so the callback and feature survive engine detach/re-attach cycles,
-    // mirroring the Android FlutterSessionReplayBridge singleton pattern.
-    internal static var contextCallback: ((FlutterRUMCoreContext?) -> Void)?
+    // Box so a Swift closure can be stored as an NSMapTable value (requires NSObject).
+    private class ContextCallbackBox: NSObject {
+        let callback: (FlutterRUMCoreContext?) -> Void
+        init(_ callback: @escaping (FlutterRUMCoreContext?) -> Void) {
+            self.callback = callback
+        }
+    }
+
+    // Static properties so the feature and core survive engine detach/re-attach cycles.
     internal static var feature: FlutterSessionReplayFeature?
     // Retained so embedded Flutter engines can post records to the native SR message bus.
     internal static var core: DatadogCoreProtocol?
 
-    // Ownership token for multi-engine support: only the engine that called enable()
-    // is allowed to null out the callback on detach. Set by claimOwnership(messenger:)
-    // after the Dart-side method channel message is delivered.
-    internal static var listenerOwner: AnyObject?
-    
+    // Per-engine RUM context callbacks, keyed by canonical messenger.
+    // Weak key so entries are cleared automatically when an engine is released.
+    private static let engineCallbacks: NSMapTable<AnyObject, ContextCallbackBox> =
+        NSMapTable(keyOptions: .weakMemory, valueOptions: .strongMemory)
+
+    // FIFO queue of callbacks set in enable() before claimOwnership() has associated
+    // the messenger. Each enable() appends; each claimOwnership() pops from the front.
+    // Using a queue instead of a single slot prevents the race where two engines call
+    // enable() concurrently — the second enable() would overwrite the single slot and
+    // the first engine's claimOwnership() would commit the wrong callback.
+    private static var stagedCallbacks: [(FlutterRUMCoreContext?) -> Void] = []
+
+    // Delivers the RUM context to every registered engine and to any newly staged engine
+    // that has not yet called claimOwnership().
+    private static func deliverContextToAll(_ context: FlutterRUMCoreContext?) {
+        let viewID = context?.viewID ?? "nil"
+        let cbCount = engineCallbacks.count
+        NSLog("[DD-SR-F] deliverContextToAll viewID=\(viewID) engineCallbacks=\(cbCount) staged=\(stagedCallbacks.count)")
+        let enumerator = engineCallbacks.objectEnumerator()
+        while let box = enumerator?.nextObject() as? ContextCallbackBox {
+            box.callback(context)
+        }
+        for cb in stagedCallbacks {
+            cb(context)
+        }
+    }
+
     // Maps each engine's canonical messenger → the slotId (FlutterView.hash) of its
     // associated FlutterViewController. Populated by enableDatadogSessionReplay().
     // Weak key so the entry is cleared automatically when the engine is released.
@@ -87,7 +115,13 @@ public func __datadog_session_replay_keep_symbols() {
     }
 
     static func claimOwnership(messenger: AnyObject) {
-        listenerOwner = messenger
+        guard !stagedCallbacks.isEmpty else {
+            NSLog("[DD-SR-F] claimOwnership: NO staged callbacks (queue empty), engineCallbacks=\(engineCallbacks.count)")
+            return
+        }
+        let cb = stagedCallbacks.removeFirst()
+        engineCallbacks.setObject(ContextCallbackBox(cb), forKey: canonical(messenger))
+        NSLog("[DD-SR-F] claimOwnership: FIFO pop→map, engineCallbacks now=\(engineCallbacks.count) staged remaining=\(stagedCallbacks.count)")
     }
 
     @objc public func enable(with configuration: FlutterSessionReplayConfiguration) {
@@ -108,15 +142,13 @@ public func __datadog_session_replay_keep_symbols() {
             )
         }
 
-        // Always replace the context callback to prevent a crash on Hot Restart / engine
-        // re-attach, where the previously created FFI callback has been destroyed.
-        FlutterSessionReplay.contextCallback = configuration.onContextChanged
-        // Clear any stale ownership. claimOwnership(messenger:) will re-establish it for
-        // the correct engine once the Dart-side 'claimOwnership' method channel message
-        // is delivered. There is a brief gap between enable() and claimOwnership() during
-        // which listenerOwner is nil; this is intentional and acceptable — see the comment
-        // in DatadogSessionReplayPlugin.register(with:) for the full explanation.
-        FlutterSessionReplay.listenerOwner = nil
+        // Enqueue this engine's callback. claimOwnership(messenger:) pops FIFO from the
+        // queue and stores the callback keyed by that engine's messenger. Using a queue
+        // rather than a single slot means two engines initializing concurrently no longer
+        // race: both callbacks are preserved and each claimOwnership() pops its own entry.
+        if let cb = configuration.onContextChanged {
+            FlutterSessionReplay.stagedCallbacks.append(cb)
+        }
 
         FlutterSessionReplay.core = core
 
@@ -134,16 +166,14 @@ public func __datadog_session_replay_keep_symbols() {
         let mappedConfiguration = DefaultFlutterSessionReplayFeature.Configuration(
             customEndpoint: configuration.customEndpoint,
             onContextChanged: { context in
-                // Read contextCallback at call time so that nullifying it on engine detach
-                // makes this a no-op, preventing calls into a destroyed Dart isolate.
                 if let context = context {
-                    FlutterSessionReplay.contextCallback?(FlutterRUMCoreContext(
+                    FlutterSessionReplay.deliverContextToAll(FlutterRUMCoreContext(
                         sessionID: context.sessionID,
                         viewID: context.viewID,
                         applicationID: context.applicationID
                     ))
                 } else {
-                    FlutterSessionReplay.contextCallback?(nil)
+                    FlutterSessionReplay.deliverContextToAll(nil)
                 }
             }
         )
@@ -163,20 +193,18 @@ public func __datadog_session_replay_keep_symbols() {
         sessionReplay.deliverCurrentContext()
     }
 
-    /// Nullifies the context callback if the detaching engine is the one that registered it.
-    /// This prevents a secondary engine's detach from clearing a live engine's callback.
+    /// Removes this engine's RUM context callback. Each engine only removes its own entry,
+    /// so a detaching secondary engine cannot clear a live engine's callback.
     static func detachFromEngine(messenger: AnyObject) {
-        if listenerOwner === messenger {
-            contextCallback = nil
-            listenerOwner = nil
-        }
+        engineCallbacks.removeObject(forKey: canonical(messenger))
+        NSLog("[DD-SR-F] detachFromEngine: engineCallbacks now=\(engineCallbacks.count)")
     }
 
     // Only used in testing
     internal static func shutdown() {
         feature = nil
-        contextCallback = nil
-        listenerOwner = nil
+        engineCallbacks.removeAllObjects()
+        stagedCallbacks.removeAll()
         core = nil
     }
 
