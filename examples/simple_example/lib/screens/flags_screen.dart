@@ -39,7 +39,6 @@ class _FlagsScreenState extends State<FlagsScreen> {
   Timer? _counterRefreshTimer;
   late FlagsDemoProviderMode _mode;
   String _assignmentState = 'idle';
-  late Duration? _providerInitializationDuration;
   Duration? _lastAssignmentsRefreshDuration;
   late String _configuredEnv;
   late String _obfuscatedClientToken;
@@ -52,8 +51,6 @@ class _FlagsScreenState extends State<FlagsScreen> {
     super.initState();
     _mode = _initialMode();
     _client = DatadogFlagsClient.shared();
-    _providerInitializationDuration =
-        widget.runtime.providerInitializationDuration;
     _configuredEnv = widget.runtime.configuredEnv;
     _obfuscatedClientToken = widget.runtime.obfuscatedClientToken;
     if (widget.runtime.counter != null) {
@@ -178,8 +175,6 @@ class _FlagsScreenState extends State<FlagsScreen> {
       }
       _client = DatadogFlagsClient.shared();
       setState(() {
-        _providerInitializationDuration =
-            diagnostics.providerInitializationDuration;
         _configuredEnv = diagnostics.configuredEnv;
         _obfuscatedClientToken = diagnostics.obfuscatedClientToken;
       });
@@ -245,9 +240,9 @@ class _FlagsScreenState extends State<FlagsScreen> {
               valueKey: const Key('flags-exposure-count'),
             ),
           ],
-          _DiagnosticsLine(
-            text: _diagnosticsText(),
-            textKey: const Key('flags-diagnostics'),
+          _DiagnosticsGrid(
+            rows: _diagnosticRows(),
+            gridKey: const Key('flags-diagnostics'),
           ),
           const SizedBox(height: 8),
           for (final flag in _flags)
@@ -415,26 +410,39 @@ class _FlagsScreenState extends State<FlagsScreen> {
     return const {};
   }
 
-  String _diagnosticsText() {
+  List<List<_DiagnosticMetric>> _diagnosticRows() {
     final counter = widget.runtime.counter;
-    final parts = [
-      'refresh ${_formatDuration(_lastAssignmentsRefreshDuration)}',
-      'provider ${_formatDuration(_providerInitializationDuration)}',
+    return [
+      [
+        _DiagnosticMetric(
+          label: 'Refresh',
+          value: _formatDuration(_lastAssignmentsRefreshDuration),
+        ),
+        _DiagnosticMetric(
+          label: 'HTTP',
+          value: _formatDuration(counter?.lastPrecomputeHttpDuration),
+        ),
+        _DiagnosticMetric(
+          label: 'Parse JSON',
+          value:
+              _formatDuration(counter?.lastPrecomputeDeserializationDuration),
+        ),
+      ],
+      [
+        _DiagnosticMetric(
+          label: 'Payload',
+          value: _formatBytes(counter?.lastPrecomputePayloadBytes),
+        ),
+        _DiagnosticMetric(
+          label: 'Flag keys',
+          value: _formatNullableCount(counter?.lastPrecomputeFlagCount),
+        ),
+        _DiagnosticMetric(
+          label: 'Env / token',
+          value: '$_configuredEnv / $_obfuscatedClientToken',
+        ),
+      ],
     ];
-    if (counter != null) {
-      parts.add('http ${_formatDuration(counter.lastPrecomputeHttpDuration)}');
-      parts.add(
-        'decode ${_formatDuration(
-          counter.lastPrecomputeDeserializationDuration,
-        )}',
-      );
-      parts
-          .add('${_formatNullableCount(counter.lastPrecomputeFlagCount)} keys');
-      parts.add('${_formatBytes(counter.lastPrecomputePayloadBytes)} JSON');
-    }
-    parts.add('env $_configuredEnv');
-    parts.add('token $_obfuscatedClientToken');
-    return parts.join(' · ');
   }
 
   String _formatDuration(Duration? duration) {
@@ -655,23 +663,73 @@ class _Row extends StatelessWidget {
   }
 }
 
-class _DiagnosticsLine extends StatelessWidget {
-  final String text;
-  final Key? textKey;
+class _DiagnosticMetric {
+  final String label;
+  final String value;
 
-  const _DiagnosticsLine({required this.text, this.textKey});
+  const _DiagnosticMetric({required this.label, required this.value});
+}
+
+class _DiagnosticsGrid extends StatelessWidget {
+  final List<List<_DiagnosticMetric>> rows;
+  final Key? gridKey;
+
+  const _DiagnosticsGrid({required this.rows, this.gridKey});
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
+    final labelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
           color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 11,
+          height: 1,
+        );
+    final valueStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          height: 1.1,
         );
     return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Text(
-        text,
-        key: textKey,
-        style: style,
+      key: gridKey,
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(
+        children: [
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Row(
+                children: [
+                  for (final item in row)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            item.label,
+                            style: labelStyle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                item.value,
+                                style: valueStyle,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
