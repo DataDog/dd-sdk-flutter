@@ -49,42 +49,11 @@ public func __datadog_session_replay_keep_symbols() {
     // mirroring the Android FlutterSessionReplayBridge singleton pattern.
     internal static var contextCallback: ((FlutterRUMCoreContext?) -> Void)?
     internal static var feature: FlutterSessionReplayFeature?
-    // Retained so embedded Flutter engines can post records to the native SR message bus.
-    internal static var core: DatadogCoreProtocol?
 
     // Ownership token for multi-engine support: only the engine that called enable()
     // is allowed to null out the callback on detach. Set by claimOwnership(messenger:)
     // after the Dart-side method channel message is delivered.
     internal static var listenerOwner: AnyObject?
-
-    // Maps each engine's canonical messenger → the slotId (FlutterView.hash) of its
-    // associated FlutterViewController. Populated by enableDatadogSessionReplay().
-    // Weak key so the entry is cleared automatically when the engine is released.
-    private static let slotIdByMessenger: NSMapTable<AnyObject, NSString> =
-        NSMapTable(keyOptions: .weakMemory, valueOptions: .strongMemory)
-
-    /// Returns the canonical underlying messenger used as a stable registry key.
-    ///
-    /// Flutter wraps the real engine messenger in `FlutterBinaryMessengerRelay` objects —
-    /// `registrar.messenger()` and `engine.binaryMessenger` return different relay
-    /// instances even for the same engine. KVC unwraps any relay to its `parent` without
-    /// naming the private concrete type, so the key is always the same stable engine object.
-    private static func canonical(_ messenger: AnyObject) -> AnyObject {
-        let parentSel = NSSelectorFromString("parent")
-        if messenger.responds(to: parentSel),
-           let parent = messenger.value(forKey: "parent") as? NSObject {
-            return parent
-        }
-        return messenger
-    }
-
-    static func registerSlotId(_ slotId: String, for messenger: FlutterBinaryMessenger) {
-        slotIdByMessenger.setObject(slotId as NSString, forKey: canonical(messenger as AnyObject))
-    }
-
-    static func resolveSlotId(for messenger: AnyObject) -> String? {
-        return slotIdByMessenger.object(forKey: canonical(messenger)) as String?
-    }
 
     static func claimOwnership(messenger: AnyObject) {
         listenerOwner = messenger
@@ -113,19 +82,13 @@ public func __datadog_session_replay_keep_symbols() {
         FlutterSessionReplay.contextCallback = configuration.onContextChanged
         // Clear any stale ownership. claimOwnership(messenger:) will re-establish it for
         // the correct engine once the Dart-side 'claimOwnership' method channel message
-        // is delivered.
+        // is delivered. There is a brief gap between enable() and claimOwnership() during
+        // which listenerOwner is nil; this is intentional and acceptable — see the comment
+        // in DatadogSessionReplayPlugin.register(with:) for the full explanation.
         FlutterSessionReplay.listenerOwner = nil
 
-        FlutterSessionReplay.core = core
-
-        // If already initialized, reuse the existing feature (don't re-register with core),
-        // but re-prime the new Dart callback with the current RUM context so the new
-        // DatadogSessionReplay instance (created on Hot Restart or engine re-attach) has
-        // a valid context immediately.
-        if let existingFeature = FlutterSessionReplay.feature as? DefaultFlutterSessionReplayFeature {
-            existingFeature.deliverCurrentContext()
-            return
-        } else if FlutterSessionReplay.feature != nil {
+        // If already initialized, reuse the existing feature (don't re-register with core).
+        if FlutterSessionReplay.feature != nil {
             return
         }
 
@@ -153,12 +116,6 @@ public func __datadog_session_replay_keep_symbols() {
         )
         try core.register(feature: sessionReplay)
         FlutterSessionReplay.feature = sessionReplay
-
-        // In hybrid apps the native RUM view is active before this feature registers,
-        // so RUMContextReceiver won't fire until the next context change. Prime Dart
-        // with the current context now so recording starts without waiting for a new
-        // context change.
-        sessionReplay.deliverCurrentContext()
     }
 
     /// Nullifies the context callback if the detaching engine is the one that registered it.
@@ -175,7 +132,6 @@ public func __datadog_session_replay_keep_symbols() {
         feature = nil
         contextCallback = nil
         listenerOwner = nil
-        core = nil
     }
 
     @objc public func setHasReplay(hasReplay: Bool) {
