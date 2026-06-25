@@ -1,0 +1,100 @@
+PODS:
+  - datadog_flutter_plugin (0.0.1):
+    - DatadogCore (~> 3)
+    - DatadogCrashReporting (~> 3)
+    - DatadogInternal (~> 3)
+    - DatadogLogs (~> 3)
+    - DatadogRUM (~> 3)
+    - DictionaryCoder (= 1.2.0)
+    - Flutter
+  - DatadogCore (3.12.0):
+    - DatadogInternal (= 3.12.0)
+  - DatadogCrashReporting (3.12.0):
+    - DatadogInternal (= 3.12.0)
+    - KSCrash/Filters (= 2.5.0)
+    - KSCrash/Recording (= 2.5.0)
+  - DatadogInternal (3.12.0)
+  - DatadogLogs (3.12.0):
+    - DatadogInternal (= 3.12.0)
+  - DatadogRUM (3.12.0):
+    - DatadogInternal (= 3.12.0)
+  - DictionaryCoder (1.2.0)
+  - Flutter (1.0.0)
+  - KSCrash/Core (2.5.0)
+  - KSCrash/Filters (2.5.0):
+    - KSCrash/Recording
+    - KSCrash/RecordingCore
+    - KSCrash/ReportingCore
+  - KSCrash/Recording (2.5.0):
+    - KSCrash/RecordingCore
+  - KSCrash/RecordingCore (2.5.0):
+    - KSCrash/Core
+  - KSCrash/ReportingCore (2.5.0):
+    - KSCrash/Core
+
+DEPENDENCIES:
+  - datadog_flutter_plugin (from `.symlinks/plugins/datadog_flutter_plugin/ios`)
+  - DatadogCore (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
+  - DatadogCrashReporting (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
+  - DatadogInternal (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
+  - DatadogLogs (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
+  - DatadogRUM (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
+  - Flutter (from `Flutter`)
+
+SPEC REPOS:
+  trunk:
+    - DictionaryCoder
+    - KSCrash
+
+EXTERNAL SOURCES:
+  datadog_flutter_plugin:
+    :path: ".symlinks/plugins/datadog_flutter_plugin/ios"
+  DatadogCore:
+    :branch: develop
+    :git: https://github.com/DataDog/dd-sdk-ios
+  DatadogCrashReporting:
+    :branch: develop
+    :git: https://github.com/DataDog/dd-sdk-ios
+  DatadogInternal:
+    :branch: develop
+    :git: https://github.com/DataDog/dd-sdk-ios
+  DatadogLogs:
+    :branch: develop
+    :git: https://github.com/DataDog/dd-sdk-ios
+  DatadogRUM:
+    :branch: develop
+    :git: https://github.com/DataDog/dd-sdk-ios
+  Flutter:
+    :path: Flutter
+
+CHECKOUT OPTIONS:
+  DatadogCore:
+    :commit: e9c127d46e582919b0c03b590a4183e1d64a3092
+    :git: https://github.com/DataDog/dd-sdk-ios
+  DatadogCrashReporting:
+    :commit: e9c127d46e582919b0c03b590a4183e1d64a3092
+    :git: https://github.com/DataDog/dd-sdk-ios
+  DatadogInternal:
+    :commit: e9c127d46e582919b0c03b590a4183e1d64a3092
+    :git: https://github.com/DataDog/dd-sdk-ios
+  DatadogLogs:
+    :commit: e9c127d46e582919b0c03b590a4183e1d64a3092
+    :git: https://github.com/DataDog/dd-sdk-ios
+  DatadogRUM:
+    :commit: e9c127d46e582919b0c03b590a4183e1d64a3092
+    :git: https://github.com/DataDog/dd-sdk-ios
+
+SPEC CHECKSUMS:
+  datadog_flutter_plugin: 64adc7ef089a1328c78fd4fab24e49afa09d95a5
+  DatadogCore: 21027a92b720b7860c0b450cde4dec2e7d06c42a
+  DatadogCrashReporting: 34fccdac1b5df7b2173d10017270c25d050e3a19
+  DatadogInternal: acde40825dbe79faac53ba54d8ca742e07b88cdd
+  DatadogLogs: 804ccdfdc7e854645fd7b5997b7c961bbd6f5916
+  DatadogRUM: 2aaf4f410dde48d28d9150deff807fa6339b197d
+  DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
+  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
+
+PODFILE CHECKSUM: 357bc2de26f249c9e5dd52e99a556d5704fbd68b
+
+COCOAPODS: 1.16.2

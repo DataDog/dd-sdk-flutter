@@ -1,0 +1,31 @@
+name: datadog_flutter_plugin_web
+description: Web implementation of the datadog_flutter_plugin package.
+version: 1.0.0
+repository: https://github.com/DataDog/dd-sdk-flutter
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  web: ^1.1.1
+  uuid: ^4.0.0
+  meta: ^1.9.1
+  datadog_flutter_plugin_platform_interface: ^1.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ">=1.0.0"
+
+flutter:
+  plugin:
+    implements: datadog_flutter_plugin
+    platforms:
+      web:
+        pluginClass: DatadogSdkWeb
+        fileName: datadog_flutter_plugin_web.dart

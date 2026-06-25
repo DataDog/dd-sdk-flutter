@@ -2,9 +2,16 @@ name: datadog_flutter
 
 packages:
   - packages/*
+  - packages/datadog_flutter_plugin/*
   - packages/*/example
   - packages/*/integration_test_app
   - packages/*/e2e_test_app
+  - packages/datadog_flutter_plugin/*/example
+  - packages/datadog_flutter_plugin/*/integration_test_app
+  - packages/datadog_flutter_plugin/*/e2e_test_app
+  - examples/*
+  - examples/native-hybrid-app/flutter_module
+  - test_apps/*
 
 scripts:
   build:

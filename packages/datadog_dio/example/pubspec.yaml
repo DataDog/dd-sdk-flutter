@@ -14,7 +14,7 @@ dependencies:
   flutter_dotenv: ^6.0.0
   transparent_image: ^2.0.1
   datadog_flutter_plugin:
-    path: ../../datadog_flutter_plugin
+    path: ../../datadog_flutter_plugin/datadog_flutter_plugin
   datadog_dio:
     path: ../
   datadog_common_test:
@@ -36,4 +36,4 @@ flutter:
 
 dependency_overrides:
   datadog_flutter_plugin:
-    path: ../../datadog_flutter_plugin
+    path: ../../datadog_flutter_plugin/datadog_flutter_plugin
