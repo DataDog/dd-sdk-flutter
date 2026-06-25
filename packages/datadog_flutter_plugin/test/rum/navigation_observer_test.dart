@@ -244,6 +244,65 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
+  testWidgets('pushing route with query string sends url and url_query',
+      (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await buildAndNavigateTo(
+      tester: tester,
+      routeName: '/products?category=shoes&id=123',
+      builder: (_) => Container(),
+    );
+
+    // view.url (the RUM key) carries the full path + query string so Datadog
+    // can derive the standard @view.url_query.* facets server-side, while
+    // view.name stays clean. Each query parameter is also sent as a
+    // url_query.* attribute (the @context.url_query.* fallback).
+    verify(() => mockRum.startView(
+          '/products?category=shoes&id=123',
+          '/products',
+          {'url_query.category': 'shoes', 'url_query.id': '123'},
+        ));
+    verify(() =>
+        mockRum.markViewFirstBuildComplete('/products?category=shoes&id=123'));
+  });
+
+  group('rumViewInfoFromRouteName', () {
+    test('route without a query string keeps the previous behavior', () {
+      final info = rumViewInfoFromRouteName('/home');
+      expect(info.name, '/home');
+      expect(info.path, isNull);
+      expect(info.viewKey, '/home');
+      expect(info.viewName, isNull);
+      expect(info.attributes, isEmpty);
+    });
+
+    test('route with a query string populates url and url_query attributes',
+        () {
+      final info = rumViewInfoFromRouteName('/products?category=shoes&id=123');
+      expect(info.name, '/products');
+      expect(info.path, '/products?category=shoes&id=123');
+      // view.url includes the query; view.name is the clean path.
+      expect(info.viewKey, '/products?category=shoes&id=123');
+      expect(info.viewName, '/products');
+      expect(info.attributes, {
+        'url_query.category': 'shoes',
+        'url_query.id': '123',
+      });
+    });
+
+    test('multi-valued query parameter is reported as a list', () {
+      final info = rumViewInfoFromRouteName('/search?tag=a&tag=b');
+      expect(info.attributes['url_query.tag'], ['a', 'b']);
+    });
+
+    test('empty query string falls back to the plain name', () {
+      final info = rumViewInfoFromRouteName('/foo?');
+      expect(info.path, isNull);
+      expect(info.viewKey, '/foo?');
+      expect(info.attributes, isEmpty);
+    });
+  });
+
   testWidgets('pushing to route using mixin calls startView',
       (WidgetTester tester) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);

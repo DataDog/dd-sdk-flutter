@@ -10,10 +10,14 @@ import '../../datadog_internal.dart';
 
 /// Information about a View that will be passed to [DatadogRum.startView]
 class RumViewInfo {
-  /// The name of the view
+  /// The name of the view, reported as `view.name` in the RUM explorer.
   final String name;
 
-  /// A path to the view
+  /// An optional path or URL for the view, reported as `view.url`. When this
+  /// contains a query string (for example `/products?category=shoes`), Datadog
+  /// parses it server-side into the standard `@view.url_query.*` facets, the
+  /// same way it does for the browser SDK. When `null`, [name] is used as the
+  /// key and the previous behavior is preserved.
   final String? path;
 
   /// Any attributes to be associated with this view
@@ -24,6 +28,16 @@ class RumViewInfo {
     this.path,
     this.attributes = const {},
   });
+
+  /// The key that identifies this view to RUM, reported as `view.url`. Prefers
+  /// [path] (which may include a query string, so the backend can derive
+  /// `@view.url_query.*`) and falls back to [name].
+  String get viewKey => path ?? name;
+
+  /// The display name passed to [DatadogRum.startView]. Returns `null` when no
+  /// distinct [path] is provided, preserving the original behavior where the
+  /// view key and name were identical.
+  String? get viewName => path != null ? name : null;
 }
 
 /// A function that can be used to supply custom information to
@@ -36,16 +50,62 @@ class RumViewInfo {
 typedef ViewInfoExtractor = RumViewInfo? Function(Route<dynamic> route);
 
 /// The function that provides the default route naming behavior for
-/// [DatadogNavigationObserver]. If the supplied route is a PageRoute and contains
-/// a name, it returns a [RumViewInfo] with the supplied name. Otherwise it returns
-/// `null`.
+/// [DatadogNavigationObserver]. If the supplied route contains a name, it
+/// returns a [RumViewInfo] built from that name via [rumViewInfoFromRouteName].
+/// Otherwise it returns `null`.
 RumViewInfo? defaultViewInfoExtractor(Route<dynamic> route) {
-  var name = route.settings.name;
-  if (name != null) {
-    return RumViewInfo(name: name);
+  final name = route.settings.name;
+  if (name == null) {
+    return null;
   }
 
-  return null;
+  return rumViewInfoFromRouteName(name);
+}
+
+/// Builds a [RumViewInfo] from a raw route name, parsing any URL query string
+/// it contains.
+///
+/// When [routeName] includes a query string (for example
+/// `/products?category=shoes&id=123`):
+///   * `view.url` carries the full path + query string, letting Datadog derive
+///     the standard `@view.url_query.*` facets server-side (as it does on web);
+///   * each query parameter is additionally reported as a `url_query.<key>`
+///     view attribute (surfaced as `@context.url_query.<key>`), a guaranteed
+///     fallback that does not depend on backend URL parsing.
+///
+/// Routes without a query string keep the previous behavior exactly: the name
+/// is used as-is and no extra attributes are added.
+RumViewInfo rumViewInfoFromRouteName(String routeName) {
+  if (!routeName.contains('?')) {
+    return RumViewInfo(name: routeName);
+  }
+
+  final Uri uri;
+  try {
+    uri = Uri.parse(routeName);
+  } on FormatException {
+    return RumViewInfo(name: routeName);
+  }
+
+  if (uri.queryParameters.isEmpty) {
+    return RumViewInfo(name: routeName);
+  }
+
+  // The path without the query string, used as the human-readable view name.
+  final viewName = uri.path.isNotEmpty ? uri.path : routeName.split('?').first;
+
+  // Decompose the query string into per-parameter attributes. Multi-valued
+  // parameters (for example `?id=1&id=2`) are reported as a list.
+  final attributes = <String, Object?>{};
+  uri.queryParametersAll.forEach((key, values) {
+    attributes['url_query.$key'] = values.length == 1 ? values.first : values;
+  });
+
+  return RumViewInfo(
+    name: viewName.isNotEmpty ? viewName : routeName,
+    path: routeName,
+    attributes: attributes,
+  );
 }
 
 /// This class can be added to a MaterialApp to automatically start and stop RUM
@@ -125,9 +185,10 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
             }
           });
         } else {
-          datadogSdk.rum?.startView(viewInfo.name, null, viewInfo.attributes);
+          datadogSdk.rum?.startView(
+              viewInfo.viewKey, viewInfo.viewName, viewInfo.attributes);
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            datadogSdk.rum?.markViewFirstBuildComplete(viewInfo.name);
+            datadogSdk.rum?.markViewFirstBuildComplete(viewInfo.viewKey);
           });
         }
       } else {
@@ -138,7 +199,7 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
 
   void _stopView(RumViewInfo? viewInfo) {
     if (viewInfo != null) {
-      datadogSdk.rum?.stopView(viewInfo.name);
+      datadogSdk.rum?.stopView(viewInfo.viewKey);
     }
     _currentView = null;
   }
@@ -280,9 +341,9 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
       final info = rumViewInfo;
       final rum = _routeObserver?.datadogSdk.rum;
       if (rum != null) {
-        rum.startView(info.name, null, info.attributes);
+        rum.startView(info.viewKey, info.viewName, info.attributes);
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          rum.markViewFirstBuildComplete(info.name);
+          rum.markViewFirstBuildComplete(info.viewKey);
         });
       }
     }
@@ -291,7 +352,7 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
   void _stopView() {
     if (_routeObserver != null) {
       final info = rumViewInfo;
-      _routeObserver?.datadogSdk.rum?.stopView(info.name);
+      _routeObserver?.datadogSdk.rum?.stopView(info.viewKey);
     }
   }
 }
