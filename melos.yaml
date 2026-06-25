@@ -89,8 +89,8 @@ scripts:
       cd example/android
       ./gradlew --console=plain ktlintCheck detekt
     packageFilters:
-      dirExists: android
-      ignore: 
+      dirExists: 'example/android/buildscripts'
+      ignore:
         - "*example*"
         - "*integration_test_app*"
         - "*e2e_test_app*"
@@ -140,11 +140,9 @@ scripts:
       set -euxo pipefail &&
       xcodebuild test -workspace example/ios/Runner.xcworkspace -scheme Runner -destination "platform=iOS Simulator,name=$IOS_SIMULATOR,OS=latest" | xcbeautify
     packageFilters:
-      dirExists: 
-        - 'ios'
-        - 'example/ios'
+      dirExists: 'example/ios'
       # TODO: These packages should probably have platform unit tests
-      ignore:         
+      ignore:
         - 'datadog_inappwebview_tracking'
 
   unit_test:android:
