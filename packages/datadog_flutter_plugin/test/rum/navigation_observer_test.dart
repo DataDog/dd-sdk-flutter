@@ -267,7 +267,8 @@ void main() {
   });
 
   group('rumViewInfoFromRouteName', () {
-    test('route without a query string keeps the previous behavior', () {
+    test('route without a query string uses the name as-is with no attributes',
+        () {
       final info = rumViewInfoFromRouteName('/home');
       expect(info.name, '/home');
       expect(info.path, isNull);

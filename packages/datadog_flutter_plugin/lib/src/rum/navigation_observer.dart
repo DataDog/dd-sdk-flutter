@@ -15,9 +15,8 @@ class RumViewInfo {
 
   /// An optional path or URL for the view, reported as `view.url`. When this
   /// contains a query string (for example `/products?category=shoes`), Datadog
-  /// parses it server-side into the standard `@view.url_query.*` facets, the
-  /// same way it does for the browser SDK. When `null`, [name] is used as the
-  /// key and the previous behavior is preserved.
+  /// derives the standard `@view.url_query.*` facets from it server-side. When
+  /// `null`, [name] is used as the view key.
   final String? path;
 
   /// Any attributes to be associated with this view
@@ -35,8 +34,7 @@ class RumViewInfo {
   String get viewKey => path ?? name;
 
   /// The display name passed to [DatadogRum.startView]. Returns `null` when no
-  /// distinct [path] is provided, preserving the original behavior where the
-  /// view key and name were identical.
+  /// distinct [path] is provided, so the view key is used as the name.
   String? get viewName => path != null ? name : null;
 }
 
@@ -66,15 +64,12 @@ RumViewInfo? defaultViewInfoExtractor(Route<dynamic> route) {
 /// it contains.
 ///
 /// When [routeName] includes a query string (for example
-/// `/products?category=shoes&id=123`):
-///   * `view.url` carries the full path + query string, letting Datadog derive
-///     the standard `@view.url_query.*` facets server-side (as it does on web);
-///   * each query parameter is additionally reported as a `url_query.<key>`
-///     view attribute (surfaced as `@context.url_query.<key>`), a guaranteed
-///     fallback that does not depend on backend URL parsing.
+/// `/products?category=shoes&id=123`) the `view.url` will carry the full path +
+/// query string, which Datadog will add to its standard `@view.url_query.*` facets.
+/// Additionally, each parameter will be reported as a `url_query.<key>` view
+/// attribute, accessible through `@context.url_query.<key>`.
 ///
-/// Routes without a query string keep the previous behavior exactly: the name
-/// is used as-is and no extra attributes are added.
+/// Routes without a query string use the name as-is and add no extra attributes.
 RumViewInfo rumViewInfoFromRouteName(String routeName) {
   if (!routeName.contains('?')) {
     return RumViewInfo(name: routeName);
