@@ -7,7 +7,7 @@ import XCTest
 import Flutter
 @testable import DatadogCore
 @testable import DatadogInternal
-@testable import datadog_flutter_plugin
+@testable import datadog_flutter_plugin_ios
 
 extension UserInfo: @retroactive Equatable {}
 extension UserInfo: EquatableInTests { }

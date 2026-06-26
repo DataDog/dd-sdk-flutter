@@ -8,7 +8,7 @@ import Flutter
 import DatadogInternal
 @testable import DatadogCore
 @testable import DatadogLogs
-@testable import datadog_flutter_plugin
+@testable import datadog_flutter_plugin_ios
 
 class MockLogger: LoggerProtocol, InternalLoggerProtocol {
     enum Method: EquatableInTests {

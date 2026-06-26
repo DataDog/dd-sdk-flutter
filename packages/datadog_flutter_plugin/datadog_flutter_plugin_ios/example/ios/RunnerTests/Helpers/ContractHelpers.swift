@@ -5,7 +5,7 @@
 import Foundation
 import XCTest
 import Flutter
-@testable import datadog_flutter_plugin
+@testable import datadog_flutter_plugin_ios
 
 enum SupportedContractType {
     case string

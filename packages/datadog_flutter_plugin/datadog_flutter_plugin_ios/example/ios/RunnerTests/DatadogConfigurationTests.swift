@@ -8,7 +8,7 @@ import XCTest
 @testable import DatadogInternal
 @testable import DatadogLogs
 @testable import DatadogRUM
-@testable import datadog_flutter_plugin
+@testable import datadog_flutter_plugin_ios
 
 class DatadogConfigurationTests: XCTestCase {
 

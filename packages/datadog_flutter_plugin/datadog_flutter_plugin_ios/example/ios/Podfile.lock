@@ -69,19 +69,19 @@ EXTERNAL SOURCES:
 
 CHECKOUT OPTIONS:
   DatadogCore:
-    :commit: e9c127d46e582919b0c03b590a4183e1d64a3092
+    :commit: 32ee81d31c8f6856fee64e51a88f0c1eb46a550f
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogCrashReporting:
-    :commit: e9c127d46e582919b0c03b590a4183e1d64a3092
+    :commit: 32ee81d31c8f6856fee64e51a88f0c1eb46a550f
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogInternal:
-    :commit: e9c127d46e582919b0c03b590a4183e1d64a3092
+    :commit: 32ee81d31c8f6856fee64e51a88f0c1eb46a550f
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogLogs:
-    :commit: e9c127d46e582919b0c03b590a4183e1d64a3092
+    :commit: 32ee81d31c8f6856fee64e51a88f0c1eb46a550f
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogRUM:
-    :commit: e9c127d46e582919b0c03b590a4183e1d64a3092
+    :commit: 32ee81d31c8f6856fee64e51a88f0c1eb46a550f
     :git: https://github.com/DataDog/dd-sdk-ios
 
 SPEC CHECKSUMS:
@@ -95,6 +95,6 @@ SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
 
-PODFILE CHECKSUM: 357bc2de26f249c9e5dd52e99a556d5704fbd68b
+PODFILE CHECKSUM: 995a90128714f25ea03419e1dc4a5a6847c8fa7d
 
 COCOAPODS: 1.16.2
