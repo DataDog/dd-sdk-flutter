@@ -6,54 +6,16 @@
 // extension packages, and is not meant for public use. Anything exposed by this
 // file has the potential to change without notice.
 
-import 'datadog_flutter_plugin.dart';
-import 'src/tracing/tracing_headers.dart';
+import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart';
+import 'src/rum/ddrum.dart';
 
 export 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
+export 'src/datadog_sdk.dart';
 export 'src/helpers.dart';
 export 'src/sampler.dart';
-export 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart'
-    show DatadogTimeProvider, DefaultTimeProvider;
 export 'src/tracing/baggage_helpers.dart';
 export 'src/tracing/tracing_headers.dart';
 export 'src/version.dart';
-
-/// A set of properties that Flutter can configure "late", meaning after the
-/// first call to [DatadogSdk.initialize].
-enum LateConfigurationProperty {
-  /// Whether the user is tracking views manually. This is set to false if a
-  /// DatadogNavigationObserver is constructed.
-  trackViewsManually,
-
-  /// Whether the user is using [RumUserActionDetector]. Set when the first
-  /// [RumUserActionDetector] is constructed.
-  trackInteractions,
-
-  /// Whether Datadog is automatically tracking errors, set if
-  /// [DatadogSdk.runApp] is used.
-  trackErrors,
-
-  /// Whether or not network requests are being tracked. Set during initialization
-  /// of the datadog_tracking_http_client HttpClient or http.Client classes.
-  trackNetworkRequests,
-
-  /// Whether we are tracking cross platform long tasks. This is currently
-  /// always the same as trackLongTasks
-  trackCrossPlatformLongTasks,
-
-  /// Whether native views are being tracked. Currently unused.
-  trackNativeViews,
-
-  /// Whether [DatadogRumConfiguration.reportFlutterPerformance] was set to true
-  trackFlutterPerformance,
-}
-
-extension DatadogInternal on DatadogSdk {
-  /// Update a late configuration property
-  void updateConfigurationInfo(LateConfigurationProperty property, bool value) {
-    platform.updateTelemetryConfiguration(property.name, value);
-  }
-}
 
 extension DatadogRumInternal on DatadogRum {
   TraceContextInjection get contextInjectionSetting => traceContextInjection;

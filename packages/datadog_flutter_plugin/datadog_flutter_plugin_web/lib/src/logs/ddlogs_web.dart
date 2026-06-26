@@ -25,7 +25,8 @@ class DdLogsWeb extends DdLogsPlatform {
         clientToken: configuration.clientToken,
         env: configuration.env,
         proxy: configuration.loggingConfiguration?.customEndpoint,
-        sdkVersion: configuration.additionalConfig[DatadogConfigKey.sdkVersion] as String?,
+        sdkVersion: configuration.additionalConfig[DatadogConfigKey.sdkVersion]
+            as String?,
         service: configuration.service,
         sessionPersistence:
             configuration.sessionPersistence?.webValue() ?? 'cookie',

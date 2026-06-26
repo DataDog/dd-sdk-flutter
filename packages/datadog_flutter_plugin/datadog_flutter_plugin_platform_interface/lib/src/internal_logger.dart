@@ -77,7 +77,8 @@ bool _isValidAttributeType(Object? value) {
   return false;
 }
 
-InvalidAttributeInfo? _checkInvalidValue(Object? value, String fullPropertyName) {
+InvalidAttributeInfo? _checkInvalidValue(
+    Object? value, String fullPropertyName) {
   if (!_isValidAttributeType(value)) {
     return InvalidAttributeInfo(fullPropertyName, value.runtimeType.toString());
   } else if (value is Map<Object, Object?>) {

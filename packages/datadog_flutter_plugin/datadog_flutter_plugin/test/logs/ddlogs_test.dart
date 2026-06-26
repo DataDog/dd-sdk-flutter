@@ -40,6 +40,7 @@ void main() {
     registerFallbackValue(DatadogLoggingConfiguration());
     registerFallbackValue(DatadogLoggerConfiguration());
     registerFallbackValue(DatadogSdk.instance);
+    registerFallbackValue(InternalLogger());
 
     mockPlatform = MockDdLogsPlatform();
     DdLogsPlatform.instance = mockPlatform;

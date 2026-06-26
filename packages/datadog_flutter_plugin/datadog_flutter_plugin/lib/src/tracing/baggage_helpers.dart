@@ -4,10 +4,9 @@
 
 import 'dart:convert';
 
-import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart'
-    show InternalLogger;
+import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
 
-import '../../datadog_flutter_plugin.dart' show DatadogSdk;
+import '../datadog_sdk.dart';
 import 'tracing_headers.dart';
 
 // The resulting baggage-string should contain 64 list-members or less (https://www.w3.org/TR/baggage/#limits)

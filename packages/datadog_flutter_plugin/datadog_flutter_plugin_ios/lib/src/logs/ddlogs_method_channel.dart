@@ -21,7 +21,8 @@ class DdLogsMethodChannel extends DdLogsPlatform {
   DdLogsMethodChannel();
 
   @override
-  Future<void> enable(InternalLogger logger, DatadogLoggingConfiguration config) {
+  Future<void> enable(
+      InternalLogger logger, DatadogLoggingConfiguration config) {
     _mapperProxy = IosLogEventMapper(config, logger);
 
     return methodChannel.invokeMethod('enable', {

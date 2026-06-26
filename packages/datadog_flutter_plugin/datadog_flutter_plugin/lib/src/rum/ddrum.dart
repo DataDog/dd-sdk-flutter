@@ -20,7 +20,8 @@ import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart'
         DatadogRumPlatformAttributeKey,
         DatadogTimeProvider,
         DefaultTimeProvider,
-        DdRumPlatform;
+        DdRumPlatform,
+        LateConfigurationProperty;
 import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart'
     show
         DatadogAttachConfiguration,
@@ -33,8 +34,7 @@ import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin
         RumResourceType,
         TraceContextInjection;
 
-import '../../datadog_flutter_plugin.dart' show DatadogSdk;
-import '../../datadog_internal.dart' show LateConfigurationProperty, DatadogInternal;
+import '../datadog_sdk.dart';
 
 export 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart'
     show
@@ -45,8 +45,6 @@ export 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin
         RumResourceType;
 
 import '../helpers.dart';
-import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart'
-    show DatadogTimeProvider, DefaultTimeProvider;
 import '../tracing/tracing_headers.dart';
 import 'inv_metric_provider.dart';
 import 'rum_long_task_observer.dart';

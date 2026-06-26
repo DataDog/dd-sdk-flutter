@@ -25,7 +25,8 @@ abstract class DdRumPlatform extends PlatformInterface {
 
   String? get cachedSessionId;
 
-  Future<void> enable(InternalLogger logger, DatadogRumConfiguration configuration);
+  Future<void> enable(
+      InternalLogger logger, DatadogRumConfiguration configuration);
   Future<void> deinitialize();
 
   Future<String?> getCurrentSessionId();

@@ -7,8 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:meta/meta.dart';
 
-import '../../datadog_flutter_plugin.dart' show DatadogSdk;
-import '../../datadog_internal.dart' show LateConfigurationProperty, DatadogInternal;
+import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
+import '../datadog_sdk.dart';
 import 'ddrum.dart';
 
 // The distance a 'pointer' can move and still be considered a tap, in logical

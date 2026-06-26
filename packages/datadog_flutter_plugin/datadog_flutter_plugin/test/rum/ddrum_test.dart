@@ -44,6 +44,7 @@ void main() {
     registerFallbackValue(DatadogSdk.instance);
     registerFallbackValue(DatadogRumConfiguration(applicationId: ''));
     registerFallbackValue(RumErrorSource.source);
+    registerFallbackValue(InternalLogger());
     when(() => mockDatadogSdk.internalLogger).thenReturn(mockInternalLogger);
 
     mockDatadogPlatform = MockDatadogPlatform();

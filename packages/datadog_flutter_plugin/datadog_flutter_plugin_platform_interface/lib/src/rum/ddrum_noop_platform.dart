@@ -70,7 +70,8 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> enable(InternalLogger logger, DatadogRumConfiguration configuration) {
+  Future<void> enable(
+      InternalLogger logger, DatadogRumConfiguration configuration) {
     return Future.value();
   }
 

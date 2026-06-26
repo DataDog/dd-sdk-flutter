@@ -6,7 +6,7 @@ import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin
     as pi show DatadogPluginConfiguration;
 import 'package:flutter/material.dart';
 
-import '../datadog_flutter_plugin.dart';
+import 'datadog_sdk.dart';
 
 abstract class DatadogPluginConfiguration extends pi.DatadogPluginConfiguration {
   DatadogPlugin create(DatadogSdk datadogInstance);

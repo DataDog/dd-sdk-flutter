@@ -5,7 +5,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:datadog_flutter_plugin_ios/datadog_flutter_plugin_ios.dart';
+import 'package:datadog_flutter_plugin_ios/src/datadog_sdk_method_channel.dart';
 import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart';
 import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
 import 'package:flutter/services.dart';

@@ -9,7 +9,8 @@ import 'log_level.dart';
 
 class DdNoOpLogsPlatform extends DdLogsPlatform {
   @override
-  Future<void> enable(InternalLogger logger, DatadogLoggingConfiguration config) {
+  Future<void> enable(
+      InternalLogger logger, DatadogLoggingConfiguration config) {
     return Future.value();
   }
 

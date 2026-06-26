@@ -23,7 +23,8 @@ abstract class DdLogsPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<void> enable(InternalLogger logger, DatadogLoggingConfiguration config);
+  Future<void> enable(
+      InternalLogger logger, DatadogLoggingConfiguration config);
   Future<void> deinitialize();
 
   Future<void> addGlobalAttribute(String key, Object value);

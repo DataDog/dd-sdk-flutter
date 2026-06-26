@@ -6,13 +6,11 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
-import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart'
-    show TracingHeaderType, TraceContextInjection;
-import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart'
-    show DatadogRumPlatformAttributeKey;
+import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart';
+import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
 
-import '../../datadog_flutter_plugin.dart' show DatadogSdk;
-import '../rum/ddrum.dart' show DatadogRum;
+import '../datadog_sdk.dart';
+import '../rum/ddrum.dart';
 import 'baggage_helpers.dart';
 
 class DatadogHttpTracingHeaders {

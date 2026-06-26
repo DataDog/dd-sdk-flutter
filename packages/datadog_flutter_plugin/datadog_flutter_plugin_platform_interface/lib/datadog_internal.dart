@@ -8,8 +8,9 @@
 
 export 'src/attributes.dart';
 export 'src/datadog_noop_platform.dart';
+export 'src/late_configuration_property.dart';
 export 'src/datadog_sdk_platform_interface.dart';
-export 'src/first_party_host.dart';
+
 export 'src/helpers.dart';
 export 'src/logs/ddlogs_noop_platform.dart';
 export 'src/logs/ddlogs_platform_interface.dart';

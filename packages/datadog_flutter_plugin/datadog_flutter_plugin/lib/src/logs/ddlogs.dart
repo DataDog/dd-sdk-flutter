@@ -7,7 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../helpers.dart';
 import '../sampler.dart';
-import '../../datadog_flutter_plugin.dart' show DatadogSdk;
+import '../datadog_sdk.dart';
 import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart'
     show InternalLogger, DdLogsPlatform;
 import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart'

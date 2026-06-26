@@ -133,7 +133,7 @@ class _LargePayloadTestState extends State<LargePayloadTest>
 
   Future<void> _updateMapperPerf() async {
     var perfMap = await const MethodChannel('datadog_sdk_flutter')
-        .invokeMethod('getInternalVar', {'name': 'mapperPerformance'})
+            .invokeMethod('getInternalVar', {'name': 'mapperPerformance'})
         as Map<Object?, Object?>?;
     if (perfMap != null && mounted) {
       final totalPerf = PerformanceMeasure.fromEncoded(

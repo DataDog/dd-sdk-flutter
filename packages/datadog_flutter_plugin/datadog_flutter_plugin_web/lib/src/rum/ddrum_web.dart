@@ -98,7 +98,8 @@ class DdRumWeb extends DdRumPlatform {
         source: 'flutter',
         sessionPersistence:
             configuration.sessionPersistence?.webValue() ?? 'cookie',
-        sdkVersion: configuration.additionalConfig[DatadogConfigKey.sdkVersion] as String?,
+        sdkVersion: configuration.additionalConfig[DatadogConfigKey.sdkVersion]
+            as String?,
         usePartitionedCrossSiteSessionCookie:
             configuration.usePartitionedCrossSiteSessionCookie,
         useSecureSessionCookie: configuration.useSecureSessionCookie,

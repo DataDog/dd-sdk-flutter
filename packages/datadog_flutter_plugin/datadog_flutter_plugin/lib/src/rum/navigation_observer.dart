@@ -5,8 +5,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../datadog_flutter_plugin.dart';
-import '../../datadog_internal.dart';
+import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
+import '../datadog_sdk.dart';
+import 'ddrum.dart';
 
 /// Information about a View that will be passed to [DatadogRum.startView]
 class RumViewInfo {
