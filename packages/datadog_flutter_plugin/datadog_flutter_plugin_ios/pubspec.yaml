@@ -28,3 +28,4 @@ flutter:
     platforms:
       ios:
         pluginClass: DatadogSdkPlugin
+        dartPluginClass: DatadogFlutterPluginIos

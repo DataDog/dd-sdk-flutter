@@ -81,11 +81,9 @@ class DatadogSdk {
   final InternalLogger internalLogger = InternalLogger();
 
   /// Internal extension access to the configured platform
-  @internal
   DatadogSdkPlatform get platform => _platform;
 
   /// Update a late configuration property. For internal use only.
-  @internal
   void updateConfigurationInfo(LateConfigurationProperty property, bool value) {
     _platform.updateTelemetryConfiguration(property.name, value);
   }
@@ -418,7 +416,8 @@ class DatadogSdk {
   }
 
   void _initializePlugins(List<Object> plugins) {
-    for (final pluginConfig in plugins.whereType<DatadogPluginConfiguration>()) {
+    for (final pluginConfig
+        in plugins.whereType<DatadogPluginConfiguration>()) {
       var plugin = pluginConfig.create(this);
       if (_plugins.containsKey(plugin.runtimeType)) {
         internalLogger.error(

@@ -30,3 +30,4 @@ flutter:
       android:
         package: com.datadoghq.flutter
         pluginClass: DatadogSdkPlugin
+        dartPluginClass: DatadogFlutterPluginAndroid

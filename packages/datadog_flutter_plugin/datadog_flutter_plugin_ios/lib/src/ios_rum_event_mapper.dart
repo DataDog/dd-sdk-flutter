@@ -6,7 +6,6 @@ import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin
 import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
 import 'package:flutter/services.dart';
 
-
 /// iOS Still uses Method Channel communication over FFI. This is because iOS
 /// does not allow callback blocks to return values, and instead requires you
 /// use completion blocks, even with "blocking" implementations. That means that

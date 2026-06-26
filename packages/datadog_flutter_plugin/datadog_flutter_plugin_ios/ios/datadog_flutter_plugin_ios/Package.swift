@@ -4,12 +4,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "datadog_flutter_plugin",
+    name: "datadog_flutter_plugin_ios",
     platforms: [
         .iOS("12.0")
     ],
     products: [
-        .library(name: "datadog-flutter-plugin", targets: ["datadog_flutter_plugin"])
+        .library(name: "datadog-flutter-plugin-ios", targets: ["datadog_flutter_plugin_ios"])
     ],
     dependencies: [
         .package(url: "https://github.com/Datadog/dd-sdk-ios.git", branch: "develop"),
@@ -17,7 +17,7 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "datadog_flutter_plugin",
+            name: "datadog_flutter_plugin_ios",
             dependencies: [
                 .product(name: "DatadogCore", package: "dd-sdk-ios"),
                 .product(name: "DatadogLogs", package: "dd-sdk-ios"),

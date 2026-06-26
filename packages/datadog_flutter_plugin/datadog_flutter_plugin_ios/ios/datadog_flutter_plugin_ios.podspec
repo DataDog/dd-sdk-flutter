@@ -13,7 +13,7 @@ Instrument your application with Datadog.
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'Datadog' => 'info@datadoghq.com' }
   s.source           = { :path => '.' }
-  s.source_files = 'datadog_flutter_plugin/Sources/**/*'
+  s.source_files = 'datadog_flutter_plugin_ios/Sources/**/*'
   s.static_framework = true
   s.dependency 'Flutter'
   s.dependency 'DatadogCore', '~> 3'
