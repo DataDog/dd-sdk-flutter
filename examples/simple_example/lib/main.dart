@@ -3,7 +3,6 @@
 // Copyright 2023-Present Datadog, Inc.
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_gql_link/datadog_gql_link.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
@@ -67,6 +66,11 @@ void main() async {
     siteName: dotenv.maybeGet('DD_SITE'),
     applicationId: datadogConfig.rumConfiguration?.applicationId,
   );
+  datadogConfig.addPlugin(
+    DatadogFlagsPluginConfiguration(
+      flagsConfiguration: flagsConfig.configuration,
+    ),
+  );
 
   // runUsingRunApp(datadogConfig, flagsConfig);
   runUsingAlternativeInit(datadogConfig, flagsConfig);
@@ -94,7 +98,6 @@ Future<void> runUsingAlternativeInit(
   };
 
   await DatadogSdk.instance.initialize(datadogConfig, TrackingConsent.granted);
-  await DatadogFlags.instance.enable(configuration: flagsConfig.configuration);
   final link = Link.from([
     DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
     HttpLink(graphQlUrl),
@@ -112,19 +115,15 @@ Future<void> runUsingRunApp(
   FlagsExampleConfig flagsConfig,
 ) async {
   await DatadogSdk.runApp(datadogConfig, TrackingConsent.granted, () {
-    DatadogFlags.instance
-        .enable(configuration: flagsConfig.configuration)
-        .then((_) {
-      final link = Link.from([
-        DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
-        HttpLink(graphQlUrl),
-      ]);
-      final graphQlClient = GraphQLClient(link: link, cache: GraphQLCache());
+    final link = Link.from([
+      DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
+      HttpLink(graphQlUrl),
+    ]);
+    final graphQlClient = GraphQLClient(link: link, cache: GraphQLCache());
 
-      runApp(MyApp(
-        graphQLClient: graphQlClient,
-        flagsConfig: flagsConfig,
-      ));
-    });
+    runApp(MyApp(
+      graphQLClient: graphQlClient,
+      flagsConfig: flagsConfig,
+    ));
   });
 }

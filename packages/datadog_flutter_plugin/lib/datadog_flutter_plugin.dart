@@ -25,6 +25,7 @@ import 'src/version.dart' show ddPackageVersion;
 
 export 'src/datadog_configuration.dart';
 export 'src/datadog_plugin.dart';
+export 'src/flags/flags.dart';
 export 'src/logs/logs.dart';
 export 'src/rum/rum.dart';
 export 'src/tracing/tracing_headers.dart' show TracingHeaderType;
@@ -134,6 +135,7 @@ class DatadogSdk {
     _logs?.deinitialize();
     _logs = null;
 
+    _configuration = null;
     _initialized = false;
   }
 
@@ -189,6 +191,7 @@ class DatadogSdk {
       logCallback: _platformLog,
       internalLogger: internalLogger,
     );
+    _configuration = configuration;
 
     if (configuration.loggingConfiguration != null) {
       _logs = await DatadogLogging.enable(

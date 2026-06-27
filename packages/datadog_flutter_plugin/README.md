@@ -106,6 +106,47 @@ You can initialize RUM using one of two methods in the `main.dart` file.
   runApp(const MyApp());
   ```
 
+### Evaluate Feature Flags
+
+The Flutter plugin can initialize the standalone Datadog Flags SDK from your
+existing `DatadogConfiguration`. Add `DatadogFlagsPluginConfiguration` before
+initializing the SDK, then create and initialize a flags client for the current
+evaluation context.
+
+```dart
+final configuration = DatadogConfiguration(
+  clientToken: '<CLIENT_TOKEN>',
+  env: '<ENV_NAME>',
+  site: DatadogSite.us1,
+  rumConfiguration: DatadogRumConfiguration(
+    applicationId: '<RUM_APPLICATION_ID>',
+  ),
+)..addPlugin(const DatadogFlagsPluginConfiguration());
+
+await DatadogSdk.instance.initialize(configuration, TrackingConsent.granted);
+
+final flags = DatadogSdk.instance.flags;
+if (flags == null) {
+  return;
+}
+
+final flagsClient = flags.sharedClient();
+await flagsClient.initialize(
+  const FlagsEvaluationContext(targetingKey: 'user-123'),
+);
+
+final details = flagsClient.getBooleanDetails(
+  key: 'checkout.enabled',
+  defaultValue: false,
+);
+```
+
+Successful evaluations are sent through the Datadog Flags telemetry pipeline and
+added to the active RUM view as feature flag evaluations. For pure Dart
+applications or custom lifecycle management, import
+`package:datadog_flags/datadog_flags.dart` directly and initialize
+`DatadogFlags` without the Flutter plugin.
+
 ### Send Logs
 
 After initializing Datadog with a `DatadogLoggingConfiguration`, you can create an instance of a `DatadogLogger` to send logs to Datadog.

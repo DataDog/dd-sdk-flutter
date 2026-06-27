@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.4.0
+
+* Add Flutter plugin integration for Datadog feature flags, including Datadog SDK configuration derivation and RUM feature flag evaluations.
+
 ## 3.3.0
 
 * Capture HTTP request and response headers for RUM resources, including Flutter Web.

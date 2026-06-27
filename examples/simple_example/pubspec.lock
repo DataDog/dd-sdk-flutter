@@ -82,7 +82,7 @@ packages:
     source: hosted
     version: "1.0.8"
   datadog_flags:
-    dependency: "direct main"
+    dependency: "direct overridden"
     description:
       path: "../../packages/datadog_flags"
       relative: true
