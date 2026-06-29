@@ -12,6 +12,8 @@ import 'package:pana/src/license.dart';
 final root = '../..';
 final projectList = [
   '$root/packages/datadog_common_test',
+  '$root/packages/datadog_flags',
+  '$root/packages/datadog_flags_flutter',
   '$root/packages/datadog_flutter_plugin',
   '$root/packages/datadog_flutter_plugin/example',
   '$root/packages/datadog_flutter_plugin/e2e_test_app',
@@ -27,6 +29,8 @@ final projectList = [
 // Packages that are safe to ignore and not write to the 3rd party csv
 // Usually, only packages that are contained within this repo
 final ignorePackages = [
+  "datadog_flags",
+  "datadog_flags_flutter",
   "datadog_flutter_plugin",
 ];
 

@@ -13,5 +13,8 @@ docs/ @DataDog/documentation @DataDog/rum-mobile
 
 packages/datadog_flags/ @DataDog/rum-mobile @DataDog/feature-flagging-and-experimentation-sdk
 packages/datadog_flags/README.md @DataDog/documentation @DataDog/rum-mobile @DataDog/feature-flagging-and-experimentation-sdk
+packages/datadog_flags_flutter/ @DataDog/rum-mobile @DataDog/feature-flagging-and-experimentation-sdk
+packages/datadog_flags_flutter/README.md @DataDog/documentation @DataDog/rum-mobile @DataDog/feature-flagging-and-experimentation-sdk
+examples/simple_example/README.md @DataDog/documentation @DataDog/rum-mobile @DataDog/feature-flagging-and-experimentation-sdk
 examples/simple_example/lib/flags/ @DataDog/rum-mobile @DataDog/feature-flagging-and-experimentation-sdk
 examples/simple_example/lib/screens/flags_screen.dart @DataDog/rum-mobile @DataDog/feature-flagging-and-experimentation-sdk

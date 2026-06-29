@@ -55,6 +55,21 @@ Successful evaluations emit feature flag telemetry through `datadog_flags`.
 When RUM is enabled, successful evaluations are also added to the active RUM
 view with `DatadogRum.addFeatureFlagEvaluation`.
 
+To evaluate flags without adding successful evaluations to the active RUM view,
+disable RUM integration when registering the plugin:
+
+```dart
+final configuration = DatadogConfiguration(
+  clientToken: '<CLIENT_TOKEN>',
+  env: '<ENV_NAME>',
+  site: DatadogSite.us1,
+)..addPlugin(
+    const DatadogFlagsPluginConfiguration(
+      rumIntegrationEnabled: false,
+    ),
+  );
+```
+
 ## Custom Flags Configuration
 
 By default, `datadog_flags_flutter` derives the client token, environment, site,
