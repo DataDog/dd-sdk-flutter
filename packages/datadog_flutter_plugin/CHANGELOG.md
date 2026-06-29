@@ -2,7 +2,7 @@
 
 ## 3.4.0
 
-* Add Flutter plugin integration for Datadog feature flags, including Datadog SDK configuration derivation and RUM feature flag evaluations.
+* Expose the active SDK configuration to Flutter plugin integrations.
 
 ## 3.3.0
 

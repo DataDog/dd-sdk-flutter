@@ -5,9 +5,8 @@
 import 'dart:async';
 
 import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/foundation.dart';
-
-import '../../datadog_flutter_plugin.dart';
 
 /// Convenience access to the Flutter-integrated Datadog Flags plugin.
 extension DatadogSdkFlagsExtension on DatadogSdk {
@@ -120,9 +119,6 @@ class DatadogFlagsPlugin extends DatadogPlugin {
 
     final flagsSite = _flagsSiteFor(datadogConfiguration.site);
     if (flagsSite == null && _flagsConfiguration.datadogConfig == null) {
-      instance.internalLogger.warn(
-        'Datadog Flags does not support ${datadogConfiguration.site}.',
-      );
       return;
     }
 

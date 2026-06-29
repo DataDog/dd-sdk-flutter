@@ -5,7 +5,7 @@
 
 import 'dart:convert';
 
-import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 final class FlagsExampleConfig {

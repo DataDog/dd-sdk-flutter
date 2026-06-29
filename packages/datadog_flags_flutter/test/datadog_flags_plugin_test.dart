@@ -3,14 +3,12 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
-
-class MockInternalLogger extends Mock implements InternalLogger {}
 
 class CapturingDatadogFlags extends DatadogFlags {
   DatadogFlagsConfiguration? configuration;
@@ -123,12 +121,9 @@ class FakeDatadogFlagsClient implements DatadogFlagsClient {
 
 void main() {
   late MockDatadogSdk mockSdk;
-  late MockInternalLogger mockLogger;
 
   setUp(() {
     mockSdk = MockDatadogSdk();
-    mockLogger = MockInternalLogger();
-    when(() => mockSdk.internalLogger).thenReturn(mockLogger);
   });
 
   test('creates flags configuration from Datadog SDK configuration', () async {
@@ -227,7 +222,6 @@ void main() {
       site: DatadogSite.us1Fed,
     );
     when(() => mockSdk.configuration).thenReturn(configuration);
-    when(() => mockLogger.warn(any())).thenReturn(null);
 
     final plugin = DatadogFlagsPlugin(mockSdk, flags: flags);
 
@@ -235,10 +229,6 @@ void main() {
     await plugin.ready;
 
     expect(flags.configuration, isNull);
-    verify(
-      () =>
-          mockLogger.warn('Datadog Flags does not support DatadogSite.us1Fed.'),
-    );
   });
 
   test('waits for plugin readiness before initializing client', () async {

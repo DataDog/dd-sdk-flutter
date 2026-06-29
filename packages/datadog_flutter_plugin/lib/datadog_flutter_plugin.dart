@@ -25,7 +25,6 @@ import 'src/version.dart' show ddPackageVersion;
 
 export 'src/datadog_configuration.dart';
 export 'src/datadog_plugin.dart';
-export 'src/flags/flags.dart';
 export 'src/logs/logs.dart';
 export 'src/rum/rum.dart';
 export 'src/tracing/tracing_headers.dart' show TracingHeaderType;
