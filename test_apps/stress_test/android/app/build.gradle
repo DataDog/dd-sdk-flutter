@@ -8,11 +8,6 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
-def agpMajor = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0] as int
-if (agpMajor < 9) {
-    apply plugin: 'kotlin-android'
-}
-
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 if (localPropertiesFile.exists()) {
@@ -37,6 +32,7 @@ if (flutterVersionName == null) {
 }
 
 android {
+    namespace 'com.example.stress_test'
     compileSdk 36
     ndkVersion flutter.ndkVersion
 
@@ -54,7 +50,7 @@ android {
         applicationId "com.example.stress_test"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-build-configuration.
-        minSdkVersion 23
+        minSdkVersion flutter.minSdkVersion
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
