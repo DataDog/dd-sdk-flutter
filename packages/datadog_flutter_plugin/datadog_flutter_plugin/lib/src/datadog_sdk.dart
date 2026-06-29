@@ -3,6 +3,7 @@
 // Copyright 2016-Present Datadog, Inc.
 
 import 'dart:async';
+import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -203,6 +204,7 @@ class DatadogSdk {
   /// Datadog must already be initialized in the root isolate for [attachToBackgroundIsolate]
   /// to work properly.
   Future<void> attachToBackgroundIsolate() async {
+    DartPluginRegistrant.ensureInitialized();
     try {
       final attachResponse = await platform.attachToIsolate();
       if (attachResponse == null) {
