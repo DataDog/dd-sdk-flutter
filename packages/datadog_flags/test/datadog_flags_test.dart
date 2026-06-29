@@ -10,6 +10,7 @@ import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/evaluation_aggregator.dart';
 import 'package:datadog_flags/src/exposure_logger.dart';
 import 'package:datadog_flags/src/flags_store.dart';
+import 'package:datadog_flags/src/sdk_metadata.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
@@ -344,7 +345,7 @@ void main() {
       expect(request.headers['Content-Type'], 'text/plain;charset=UTF-8');
       expect(request.headers['DD-API-KEY'], 'client-token');
       expect(request.headers['DD-EVP-ORIGIN'], 'dart-client');
-      expect(request.headers['DD-EVP-ORIGIN-VERSION'], '1.0.0');
+      expect(request.headers['DD-EVP-ORIGIN-VERSION'], datadogFlagsSdkVersion);
       expect(request.headers['DD-REQUEST-ID'], isNotEmpty);
 
       final exposure = _exposureEvents(request).single;
@@ -755,7 +756,7 @@ void main() {
       expect(request.headers['Content-Type'], 'application/json');
       expect(request.headers['DD-API-KEY'], 'client-token');
       expect(request.headers['DD-EVP-ORIGIN'], 'dart-client');
-      expect(request.headers['DD-EVP-ORIGIN-VERSION'], '1.0.0');
+      expect(request.headers['DD-EVP-ORIGIN-VERSION'], datadogFlagsSdkVersion);
       expect(request.headers['DD-REQUEST-ID'], isNotEmpty);
 
       final body = jsonDecode(request.body) as Map<String, Object?>;

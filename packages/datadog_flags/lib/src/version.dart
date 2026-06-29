@@ -3,4 +3,4 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-const ddPackageVersion = '1.0.0';
+const ddPackageVersion = '1.1.0';

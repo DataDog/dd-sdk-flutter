@@ -9,6 +9,7 @@ import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/assignment.dart';
 import 'package:datadog_flags/src/flag_assignments_fetcher.dart';
 import 'package:datadog_flags/src/flags_error.dart';
+import 'package:datadog_flags/src/sdk_metadata.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
@@ -63,7 +64,7 @@ void main() {
               'env': {'dd_env': 'staging'},
               'source': {
                 'sdk_name': 'dd-sdk-dart',
-                'sdk_version': '1.0.0',
+                'sdk_version': datadogFlagsSdkVersion,
               },
               'subject': {
                 'targeting_key': 'precomputed-user',
@@ -123,7 +124,7 @@ void main() {
             'env': {'dd_env': 'dev'},
             'source': {
               'sdk_name': 'dd-sdk-dart',
-              'sdk_version': '1.0.0',
+              'sdk_version': datadogFlagsSdkVersion,
             },
             'subject': {
               'targeting_key': '',

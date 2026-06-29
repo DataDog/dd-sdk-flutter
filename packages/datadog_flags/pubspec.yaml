@@ -1,6 +1,6 @@
 name: datadog_flags
 description: Datadog Feature Flags and Experimentation SDK for client applications.
-version: 1.0.0
+version: 1.1.0
 repository: https://github.com/DataDog/dd-sdk-flutter
 homepage: https://datadoghq.com
 issue_tracker: https://github.com/DataDog/dd-sdk-flutter/issues
