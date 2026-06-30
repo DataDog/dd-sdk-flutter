@@ -153,6 +153,8 @@ scripts:
       ignore:
         - 'datadog_inappwebview_tracking'
         - 'datadog_tracking_http_client'
+        # iOS unit tests moved to datadog_flutter_plugin_ios
+        - 'datadog_flutter_plugin'
 
   unit_test:android:
     exec:
