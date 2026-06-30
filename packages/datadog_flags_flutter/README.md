@@ -15,7 +15,8 @@ Add the package:
 flutter pub add datadog_flags_flutter
 ```
 
-This package requires `datadog_flutter_plugin` 3.4.0 or later.
+This package requires Dart 3.6 or later and Flutter 3.27 or later. It depends
+on `datadog_flutter_plugin` 3.4.0 or later.
 
 Register the plugin before initializing the Datadog Flutter SDK:
 
@@ -91,6 +92,13 @@ DatadogFlagsPluginConfiguration(
 Use `package:datadog_flags/datadog_flags.dart` directly for pure Dart apps or
 Flutter apps that need full lifecycle control without Datadog Flutter SDK
 integration.
+
+## Background Isolates
+
+Flutter background isolates do not share the main isolate's plugin state. If
+your app evaluates flags from a background isolate, initialize the Datadog SDK
+and `datadog_flags_flutter` in that isolate before creating or using a flags
+client.
 
 # Contributing
 

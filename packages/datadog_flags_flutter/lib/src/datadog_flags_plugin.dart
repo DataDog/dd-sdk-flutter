@@ -64,9 +64,8 @@ class DatadogFlagsPlugin extends DatadogPlugin {
   /// Creates a Flutter flags integration plugin.
   DatadogFlagsPlugin(
     super.instance, {
-    DatadogFlagsConfiguration flagsConfiguration =
-        const DatadogFlagsConfiguration(),
-    bool rumIntegrationEnabled = true,
+    required DatadogFlagsConfiguration flagsConfiguration,
+    required bool rumIntegrationEnabled,
     @visibleForTesting DatadogFlags? flags,
   })  : _flagsConfiguration = flagsConfiguration,
         _rumIntegrationEnabled = rumIntegrationEnabled,
@@ -96,8 +95,8 @@ class DatadogFlagsPlugin extends DatadogPlugin {
           await ready;
           return _flags.sharedClient(name: name);
         },
-        addRumFeatureFlagEvaluation: _addRumFeatureFlagEvaluation,
-        rumIntegrationEnabled: _rumIntegrationEnabled,
+        addRumFeatureFlagEvaluation:
+            _rumIntegrationEnabled ? _addRumFeatureFlagEvaluation : null,
       ),
     );
   }
@@ -167,8 +166,7 @@ class DatadogFlagsPlugin extends DatadogPlugin {
 /// A feature flag client integrated with Flutter RUM feature flag tracking.
 class DatadogFlutterFlagsClient implements DatadogFlagsClient {
   final Future<DatadogFlagsClient> Function() _resolveDelegate;
-  final void Function(String key, Object value) _addRumFeatureFlagEvaluation;
-  final bool _rumIntegrationEnabled;
+  final void Function(String key, Object value)? _addRumFeatureFlagEvaluation;
 
   DatadogFlagsClient? _delegate;
 
@@ -180,12 +178,10 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
   DatadogFlutterFlagsClient({
     required this.name,
     required Future<DatadogFlagsClient> Function() resolveDelegate,
-    required void Function(String key, Object value)
+    required void Function(String key, Object value)?
         addRumFeatureFlagEvaluation,
-    bool rumIntegrationEnabled = true,
   })  : _resolveDelegate = resolveDelegate,
-        _addRumFeatureFlagEvaluation = addRumFeatureFlagEvaluation,
-        _rumIntegrationEnabled = rumIntegrationEnabled;
+        _addRumFeatureFlagEvaluation = addRumFeatureFlagEvaluation;
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
@@ -291,8 +287,8 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
 
   FlagDetails<T> _trackRumEvaluation<T>(FlagDetails<T> details) {
     final variant = details.variant;
-    if (_rumIntegrationEnabled && details.error == null && variant != null) {
-      _addRumFeatureFlagEvaluation(details.key, variant);
+    if (details.error == null && variant != null) {
+      _addRumFeatureFlagEvaluation?.call(details.key, variant);
     }
     return details;
   }

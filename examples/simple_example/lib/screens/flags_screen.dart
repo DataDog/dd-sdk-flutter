@@ -23,7 +23,7 @@ class FlagsScreen extends StatefulWidget {
 }
 
 class _FlagsScreenState extends State<FlagsScreen> {
-  late final DatadogFlagsClient? _client;
+  DatadogFlagsClient? _client;
   String _status = 'idle';
   List<_EvaluatedFlag> _flags = [];
 
@@ -35,9 +35,6 @@ class _FlagsScreenState extends State<FlagsScreen> {
   }
 
   Future<void> _refreshAssignments() async {
-    setState(() {
-      _status = 'loading';
-    });
     final client = _client;
     if (client == null) {
       _evaluateFlags();
@@ -46,6 +43,9 @@ class _FlagsScreenState extends State<FlagsScreen> {
       });
       return;
     }
+    setState(() {
+      _status = 'loading';
+    });
     try {
       await client.initialize(widget.config.evaluationContext);
       if (!mounted) {

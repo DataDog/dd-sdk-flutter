@@ -1,9 +1,5 @@
 # Changelog
 
-## 3.4.0
-
-* Expose the active SDK configuration to Flutter plugin integrations.
-
 ## 3.3.0
 
 * Capture HTTP request and response headers for RUM resources, including Flutter Web.

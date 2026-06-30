@@ -27,17 +27,26 @@ void main() async {
   DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
   final siteConfig =
       FlagsExampleSiteConfig.fromName(dotenv.maybeGet('DD_SITE'));
+  final clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
+  final env = dotenv.get('DD_ENV', fallback: '');
+  final applicationId = dotenv.get('DD_APPLICATION_ID', fallback: '');
+  final flagsConfig = FlagsExampleConfig.fromDotEnv(
+    clientToken: clientToken,
+    env: env,
+    site: siteConfig.flagsSite,
+    applicationId: applicationId,
+  );
 
   final datadogConfig = DatadogConfiguration(
-    clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
-    env: dotenv.get('DD_ENV', fallback: ''),
+    clientToken: clientToken,
+    env: env,
     site: siteConfig.datadogSite,
     loggingConfiguration: DatadogLoggingConfiguration(
       customEndpoint: siteConfig.logsCustomEndpoint,
     ),
     firstPartyHosts: ['localhost'],
     rumConfiguration: DatadogRumConfiguration(
-      applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
+      applicationId: applicationId,
       customEndpoint: siteConfig.rumCustomEndpoint,
       traceSampleRate: 100.0,
       trackResourceHeaders: ResourceHeadersExtractor(
@@ -56,12 +65,18 @@ void main() async {
         ],
       ),
     ),
-  )..enableHttpTracking(
+  )
+    ..enableHttpTracking(
       // Using ignoreUrlPatterns is needed if you want to combine HttpClient
       // tracking and GraphQL tracking through datadog_gql_link
       ignoreUrlPatterns: [
         RegExp('localhost'),
       ],
+    )
+    ..addPlugin(
+      DatadogFlagsPluginConfiguration(
+        flagsConfiguration: flagsConfig.configuration,
+      ),
     );
 
   if (siteConfig.sessionReplayEnabled) {
@@ -69,18 +84,6 @@ void main() async {
       DatadogSessionReplayConfiguration(replaySampleRate: 100),
     );
   }
-
-  final flagsConfig = FlagsExampleConfig.fromDotEnv(
-    clientToken: datadogConfig.clientToken,
-    env: datadogConfig.env,
-    site: siteConfig.flagsSite,
-    applicationId: datadogConfig.rumConfiguration?.applicationId,
-  );
-  datadogConfig.addPlugin(
-    DatadogFlagsPluginConfiguration(
-      flagsConfiguration: flagsConfig.configuration,
-    ),
-  );
 
   // runUsingRunApp(datadogConfig, flagsConfig);
   runUsingAlternativeInit(datadogConfig, flagsConfig);
