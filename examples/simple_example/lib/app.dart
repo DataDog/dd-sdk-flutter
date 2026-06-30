@@ -76,21 +76,26 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    final app = MaterialApp.router(
+      title: 'Flutter Demo',
+      theme: ThemeData.from(
+        colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.deepPurple),
+      ),
+      routerConfig: router,
+    );
+    final rum = DatadogSdk.instance.rum;
+    final sessionReplay = DatadogSessionReplay.instance;
+
     return GraphQLProvider(
       client: ValueNotifier<GraphQLClient>(widget.graphQLClient),
-      child: SessionReplayCapture(
-        key: captureKey,
-        rum: DatadogSdk.instance.rum!,
-        sessionReplay: DatadogSessionReplay.instance!,
-        child: MaterialApp.router(
-          title: 'Flutter Demo',
-          theme: ThemeData.from(
-            colorScheme:
-                ColorScheme.fromSwatch(primarySwatch: Colors.deepPurple),
-          ),
-          routerConfig: router,
-        ),
-      ),
+      child: rum == null || sessionReplay == null
+          ? app
+          : SessionReplayCapture(
+              key: captureKey,
+              rum: rum,
+              sessionReplay: sessionReplay,
+              child: app,
+            ),
     );
   }
 }

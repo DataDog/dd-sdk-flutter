@@ -126,6 +126,16 @@ void main() {
     mockSdk = MockDatadogSdk();
   });
 
+  test('maps supported Datadog Flutter sites to Datadog Flags sites', () {
+    expect(datadogFlagsSiteFor(DatadogSite.us1), DatadogFlagsSite.us1);
+    expect(datadogFlagsSiteFor(DatadogSite.us3), DatadogFlagsSite.us3);
+    expect(datadogFlagsSiteFor(DatadogSite.us5), DatadogFlagsSite.us5);
+    expect(datadogFlagsSiteFor(DatadogSite.eu1), DatadogFlagsSite.eu1);
+    expect(datadogFlagsSiteFor(DatadogSite.ap1), DatadogFlagsSite.ap1);
+    expect(datadogFlagsSiteFor(DatadogSite.ap2), DatadogFlagsSite.ap2);
+    expect(datadogFlagsSiteFor(DatadogSite.us1Fed), isNull);
+  });
+
   test('creates flags configuration from Datadog SDK configuration', () async {
     final flags = CapturingDatadogFlags();
     final configuration = DatadogConfiguration(

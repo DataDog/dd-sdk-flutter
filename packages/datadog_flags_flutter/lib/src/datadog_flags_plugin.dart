@@ -117,7 +117,7 @@ class DatadogFlagsPlugin extends DatadogPlugin {
       return;
     }
 
-    final flagsSite = _flagsSiteFor(datadogConfiguration.site);
+    final flagsSite = datadogFlagsSiteFor(datadogConfiguration.site);
     if (flagsSite == null && _flagsConfiguration.datadogConfig == null) {
       return;
     }
@@ -309,7 +309,11 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
   }
 }
 
-DatadogFlagsSite? _flagsSiteFor(DatadogSite site) {
+/// Returns the Flags SDK site matching a Datadog Flutter SDK [site].
+///
+/// Some Datadog Flutter SDK sites, such as FedRAMP, do not currently have a
+/// matching Datadog Flags endpoint.
+DatadogFlagsSite? datadogFlagsSiteFor(DatadogSite site) {
   return switch (site) {
     DatadogSite.us1 => DatadogFlagsSite.us1,
     DatadogSite.us3 => DatadogFlagsSite.us3,

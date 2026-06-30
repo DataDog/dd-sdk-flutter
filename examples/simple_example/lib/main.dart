@@ -25,46 +25,55 @@ void main() async {
   configureUrlStrategy();
 
   DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
+  final siteConfig =
+      FlagsExampleSiteConfig.fromName(dotenv.maybeGet('DD_SITE'));
 
   final datadogConfig = DatadogConfiguration(
     clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
     env: dotenv.get('DD_ENV', fallback: ''),
-    site: DatadogSite.us1,
-    loggingConfiguration: DatadogLoggingConfiguration(),
+    site: siteConfig.datadogSite,
+    loggingConfiguration: DatadogLoggingConfiguration(
+      customEndpoint: siteConfig.logsCustomEndpoint,
+    ),
     firstPartyHosts: ['localhost'],
     rumConfiguration: DatadogRumConfiguration(
-        applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
-        traceSampleRate: 100.0,
-        trackResourceHeaders: ResourceHeadersExtractor(
-          captureHeaders: [
-            'accept-ranges',
-            'content-disposition',
-            'server',
-            'user-agent',
-            'via',
-            'x-cache-hits',
-            'x-served-by',
-            'x-datadog-trace-id',
-            'x-datadog-parent-id',
-            'x-datadog-origin',
-            'traceparent',
-          ],
-        )),
-  )
-    ..enableHttpTracking(
+      applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
+      customEndpoint: siteConfig.rumCustomEndpoint,
+      traceSampleRate: 100.0,
+      trackResourceHeaders: ResourceHeadersExtractor(
+        captureHeaders: [
+          'accept-ranges',
+          'content-disposition',
+          'server',
+          'user-agent',
+          'via',
+          'x-cache-hits',
+          'x-served-by',
+          'x-datadog-trace-id',
+          'x-datadog-parent-id',
+          'x-datadog-origin',
+          'traceparent',
+        ],
+      ),
+    ),
+  )..enableHttpTracking(
       // Using ignoreUrlPatterns is needed if you want to combine HttpClient
       // tracking and GraphQL tracking through datadog_gql_link
       ignoreUrlPatterns: [
         RegExp('localhost'),
       ],
-    )
-    ..enableSessionReplay(
-        DatadogSessionReplayConfiguration(replaySampleRate: 100));
+    );
+
+  if (siteConfig.sessionReplayEnabled) {
+    datadogConfig.enableSessionReplay(
+      DatadogSessionReplayConfiguration(replaySampleRate: 100),
+    );
+  }
 
   final flagsConfig = FlagsExampleConfig.fromDotEnv(
     clientToken: datadogConfig.clientToken,
     env: datadogConfig.env,
-    siteName: dotenv.maybeGet('DD_SITE'),
+    site: siteConfig.flagsSite,
     applicationId: datadogConfig.rumConfiguration?.applicationId,
   );
   datadogConfig.addPlugin(
