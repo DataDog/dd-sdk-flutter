@@ -90,6 +90,7 @@ dependencies {
     implementation "com.google.code.gson:gson:2.12.1"
 
     testImplementation(platform("org.junit:junit-bom:5.8.2"))
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     testImplementation "org.junit.jupiter:junit-jupiter"
     testImplementation "org.mockito:mockito-junit-jupiter:4.3.1"
     testImplementation "com.github.xgouchet.Elmyr:core:1.3.1"
