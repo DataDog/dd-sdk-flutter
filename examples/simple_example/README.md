@@ -23,7 +23,7 @@ names, org names, or customer-owned flag keys.
 
 ## Feature Flags
 
-The `Flags` screen initializes the Flutter-integrated flags package, refreshes
+The `Flags` screen initializes the `datadog_flags_flutter` package, refreshes
 assignments for one evaluation context, and evaluates boolean, string, integer,
 double, and JSON flags with programmatic defaults.
 

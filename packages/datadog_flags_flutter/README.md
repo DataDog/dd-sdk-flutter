@@ -95,15 +95,15 @@ integration.
 
 ## Background Isolates
 
-`datadog_flags_flutter` does not currently support evaluation from background
+`datadog_flags_flutter` does not support evaluation from background
 isolates. If your app needs to evaluate flags from a background isolate, create
 and initialize a standalone `datadog_flags` client in that isolate.
 
-# Contributing
+## Contributing
 
 Pull requests are welcome. For more information, read the
 [contributing guide](../../CONTRIBUTING.md) in the root repository.
 
-# License
+## License
 
 [Apache License, v2.0](LICENSE)
