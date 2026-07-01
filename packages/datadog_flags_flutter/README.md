@@ -95,10 +95,9 @@ integration.
 
 ## Background Isolates
 
-Flutter background isolates do not share the main isolate's plugin state. If
-your app evaluates flags from a background isolate, initialize the Datadog SDK
-and `datadog_flags_flutter` in that isolate before creating or using a flags
-client.
+`datadog_flags_flutter` does not currently support evaluation from background
+isolates. If your app needs to evaluate flags from a background isolate, create
+and initialize a standalone `datadog_flags` client in that isolate.
 
 # Contributing
 
