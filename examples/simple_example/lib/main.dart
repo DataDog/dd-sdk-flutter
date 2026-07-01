@@ -2,8 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
+import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_gql_link/datadog_gql_link.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
@@ -25,31 +25,46 @@ void main() async {
   configureUrlStrategy();
 
   DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
+  final siteConfig =
+      FlagsExampleSiteConfig.fromName(dotenv.maybeGet('DD_SITE'));
+  final clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
+  final env = dotenv.get('DD_ENV', fallback: '');
+  final applicationId = dotenv.get('DD_APPLICATION_ID', fallback: '');
+  final flagsConfig = FlagsExampleConfig.fromDotEnv(
+    clientToken: clientToken,
+    env: env,
+    site: siteConfig.flagsSite,
+    applicationId: applicationId,
+  );
 
   final datadogConfig = DatadogConfiguration(
-    clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
-    env: dotenv.get('DD_ENV', fallback: ''),
-    site: DatadogSite.us1,
-    loggingConfiguration: DatadogLoggingConfiguration(),
+    clientToken: clientToken,
+    env: env,
+    site: siteConfig.datadogSite,
+    loggingConfiguration: DatadogLoggingConfiguration(
+      customEndpoint: siteConfig.logsCustomEndpoint,
+    ),
     firstPartyHosts: ['localhost'],
     rumConfiguration: DatadogRumConfiguration(
-        applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
-        traceSampleRate: 100.0,
-        trackResourceHeaders: ResourceHeadersExtractor(
-          captureHeaders: [
-            'accept-ranges',
-            'content-disposition',
-            'server',
-            'user-agent',
-            'via',
-            'x-cache-hits',
-            'x-served-by',
-            'x-datadog-trace-id',
-            'x-datadog-parent-id',
-            'x-datadog-origin',
-            'traceparent',
-          ],
-        )),
+      applicationId: applicationId,
+      customEndpoint: siteConfig.rumCustomEndpoint,
+      traceSampleRate: 100.0,
+      trackResourceHeaders: ResourceHeadersExtractor(
+        captureHeaders: [
+          'accept-ranges',
+          'content-disposition',
+          'server',
+          'user-agent',
+          'via',
+          'x-cache-hits',
+          'x-served-by',
+          'x-datadog-trace-id',
+          'x-datadog-parent-id',
+          'x-datadog-origin',
+          'traceparent',
+        ],
+      ),
+    ),
   )
     ..enableHttpTracking(
       // Using ignoreUrlPatterns is needed if you want to combine HttpClient
@@ -58,15 +73,17 @@ void main() async {
         RegExp('localhost'),
       ],
     )
-    ..enableSessionReplay(
-        DatadogSessionReplayConfiguration(replaySampleRate: 100));
+    ..addPlugin(
+      DatadogFlagsPluginConfiguration(
+        flagsConfiguration: flagsConfig.configuration,
+      ),
+    );
 
-  final flagsConfig = FlagsExampleConfig.fromDotEnv(
-    clientToken: datadogConfig.clientToken,
-    env: datadogConfig.env,
-    siteName: dotenv.maybeGet('DD_SITE'),
-    applicationId: datadogConfig.rumConfiguration?.applicationId,
-  );
+  if (siteConfig.sessionReplayEnabled) {
+    datadogConfig.enableSessionReplay(
+      DatadogSessionReplayConfiguration(replaySampleRate: 100),
+    );
+  }
 
   // runUsingRunApp(datadogConfig, flagsConfig);
   runUsingAlternativeInit(datadogConfig, flagsConfig);
@@ -94,7 +111,6 @@ Future<void> runUsingAlternativeInit(
   };
 
   await DatadogSdk.instance.initialize(datadogConfig, TrackingConsent.granted);
-  await DatadogFlags.instance.enable(configuration: flagsConfig.configuration);
   final link = Link.from([
     DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
     HttpLink(graphQlUrl),
@@ -112,19 +128,15 @@ Future<void> runUsingRunApp(
   FlagsExampleConfig flagsConfig,
 ) async {
   await DatadogSdk.runApp(datadogConfig, TrackingConsent.granted, () {
-    DatadogFlags.instance
-        .enable(configuration: flagsConfig.configuration)
-        .then((_) {
-      final link = Link.from([
-        DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
-        HttpLink(graphQlUrl),
-      ]);
-      final graphQlClient = GraphQLClient(link: link, cache: GraphQLCache());
+    final link = Link.from([
+      DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
+      HttpLink(graphQlUrl),
+    ]);
+    final graphQlClient = GraphQLClient(link: link, cache: GraphQLCache());
 
-      runApp(MyApp(
-        graphQLClient: graphQlClient,
-        flagsConfig: flagsConfig,
-      ));
-    });
+    runApp(MyApp(
+      graphQLClient: graphQlClient,
+      flagsConfig: flagsConfig,
+    ));
   });
 }

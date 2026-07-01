@@ -23,8 +23,8 @@ dependencies:
     path: ../../packages/datadog_gql_link
   datadog_session_replay:
     path: ../../packages/datadog_session_replay
-  datadog_flags:
-    path: ../../packages/datadog_flags
+  datadog_flags_flutter:
+    path: ../../packages/datadog_flags_flutter
 
   go_router: ^14.7.0
   path_provider: ^2.1.0
@@ -35,6 +35,10 @@ dependencies:
 dependency_overrides:
   datadog_flutter_plugin:
     path: ../../packages/datadog_flutter_plugin
+  datadog_flags_flutter:
+    path: ../../packages/datadog_flags_flutter
+  datadog_flags:
+    path: ../../packages/datadog_flags
 
 dev_dependencies:
   flutter_test:

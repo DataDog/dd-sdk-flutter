@@ -1,0 +1,26 @@
+name: datadog_flags_flutter_example
+description: Example app for the Datadog Flags Flutter integration.
+publish_to: none
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  datadog_flags_flutter:
+    path: ..
+  datadog_flutter_plugin: ^3.4.0
+
+dependency_overrides:
+  datadog_flutter_plugin:
+    path: ../../datadog_flutter_plugin
+  datadog_flags:
+    path: ../../datadog_flags
+
+dev_dependencies:
+  flutter_lints: ">=1.0.0"
+
+flutter:
+  uses-material-design: true
