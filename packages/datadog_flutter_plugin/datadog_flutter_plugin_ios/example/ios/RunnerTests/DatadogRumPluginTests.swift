@@ -1,0 +1,978 @@
+/*
+ * Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+ * This product includes software developed at Datadog (https://www.datadoghq.com/).
+ * Copyright 2019-2022 Datadog, Inc.
+ */
+
+// swiftlint:disable file_length
+
+import XCTest
+import Flutter
+import DatadogInternal
+@testable import DatadogCore
+@testable import DatadogRUM
+import datadog_flutter_plugin_ios
+
+enum ResultStatus: EquatableInTests {
+    case notCalled
+    case called(value: Any?)
+}
+
+extension RUMAddLongTaskCommand: EquatableInTests {
+
+}
+
+// MARK: - Tests
+
+// swiftlint:disable:next type_body_length
+class DatadogRumPluginTests: XCTestCase {
+    func testAllRumResourceTypes_AreParsedCorrectly() {
+        let document = RUMResourceType.parseFromFlutter("RumResourceType.document")
+        let image = RUMResourceType.parseFromFlutter("RumResourceType.image")
+        let xhr = RUMResourceType.parseFromFlutter("RumResourceType.xhr")
+        let beacon = RUMResourceType.parseFromFlutter("RumResourceType.beacon")
+        let css = RUMResourceType.parseFromFlutter("RumResourceType.css")
+        let fetch = RUMResourceType.parseFromFlutter("RumResourceType.fetch")
+        let font = RUMResourceType.parseFromFlutter("RumResourceType.font")
+        let jsx = RUMResourceType.parseFromFlutter("RumResourceType.js")
+        let media = RUMResourceType.parseFromFlutter("RumResourceType.media")
+        let other = RUMResourceType.parseFromFlutter("RumResourceType.other")
+        let native = RUMResourceType.parseFromFlutter("RumResourceType.native")
+        let unknown = RUMResourceType.parseFromFlutter("uknowntype")
+
+        XCTAssertEqual(document, .document)
+        XCTAssertEqual(image, .image)
+        XCTAssertEqual(xhr, .xhr)
+        XCTAssertEqual(beacon, .beacon)
+        XCTAssertEqual(css, .css)
+        XCTAssertEqual(fetch, .fetch)
+        XCTAssertEqual(font, .font)
+        XCTAssertEqual(jsx, .js)
+        XCTAssertEqual(media, .media)
+        XCTAssertEqual(other, .other)
+        XCTAssertEqual(native, .native)
+        XCTAssertEqual(unknown, .other)
+    }
+
+    func testAllRumHttpMethods_AreParsedCorrectly() {
+        let post = RUMMethod.parseFromFlutter("RumHttpMethod.post")
+        let get = RUMMethod.parseFromFlutter("RumHttpMethod.get")
+        let head = RUMMethod.parseFromFlutter("RumHttpMethod.head")
+        let put = RUMMethod.parseFromFlutter("RumHttpMethod.put")
+        let delete = RUMMethod.parseFromFlutter("RumHttpMethod.delete")
+        let patch = RUMMethod.parseFromFlutter("RumHttpMethod.patch")
+
+        XCTAssertEqual(post, .post)
+        XCTAssertEqual(get, .get)
+        XCTAssertEqual(head, .head)
+        XCTAssertEqual(put, .put)
+        XCTAssertEqual(delete, .delete)
+        XCTAssertEqual(patch, .patch)
+    }
+
+    func testAllUserActions_AreParsedCorrectly() {
+        let tap = RUMActionType.parseFromFlutter("RumActionType.tap")
+        let scroll = RUMActionType.parseFromFlutter("RumActionType.scroll")
+        let swipe = RUMActionType.parseFromFlutter("RumActionType.swipe")
+        let custom = RUMActionType.parseFromFlutter("RumActionType.custom")
+        let unknown = RUMActionType.parseFromFlutter("unknowntype")
+
+        XCTAssertEqual(tap, .tap)
+        XCTAssertEqual(scroll, .scroll)
+        XCTAssertEqual(swipe, .swipe)
+        XCTAssertEqual(custom, .custom)
+        XCTAssertEqual(unknown, .custom)
+    }
+
+    func testAllRumErrorSource_AreParsedCorrectly() {
+        let source = RUMErrorSource.parseFromFlutter("RumErrorSource.source")
+        let network = RUMErrorSource.parseFromFlutter("RumErrorSource.network")
+        let webview = RUMErrorSource.parseFromFlutter("RumErrorSource.webview")
+        let console = RUMErrorSource.parseFromFlutter("RumErrorSource.console")
+        let custom = RUMErrorSource.parseFromFlutter("RumErrorSource.custom")
+        let unknown = RUMErrorSource.parseFromFlutter("unknown")
+
+        XCTAssertEqual(source, .source)
+        XCTAssertEqual(network, .network)
+        XCTAssertEqual(webview, .webview)
+        XCTAssertEqual(console, .console)
+        XCTAssertEqual(custom, .custom)
+        XCTAssertEqual(unknown, .custom)
+    }
+
+    func testAllFailureReasons_AreParsedCorrectly() {
+        let error = RUMFeatureOperationFailureReason.parseFromFlutter("RumFeatureOperationFailureReason.error")
+        let abandoned = RUMFeatureOperationFailureReason.parseFromFlutter("RumFeatureOperationFailureReason.abandoned")
+        let other = RUMFeatureOperationFailureReason.parseFromFlutter("RumFeatureOperationFailureReason.other")
+        let unknown = RUMFeatureOperationFailureReason.parseFromFlutter("unknown")
+
+        XCTAssertEqual(error, .error)
+        XCTAssertEqual(abandoned, .abandoned)
+        XCTAssertEqual(other, .other)
+        XCTAssertEqual(unknown, .other)
+    }
+
+    var mock: MockRUMMonitor!
+    var plugin: DatadogRumPlugin!
+
+    override func setUp() {
+        mock = MockRUMMonitor()
+        plugin = DatadogRumPlugin.instance
+        plugin.inject(rum: mock)
+    }
+
+    let contracts = [
+        Contract(methodName: "startView", requiredParameters: [
+            "key": .string, "name": .string, "attributes": .map
+        ]),
+        Contract(methodName: "stopView", requiredParameters: [
+            "key": .string, "attributes": .map
+        ]),
+        Contract(methodName: "addTiming", requiredParameters: [
+            "name": .string
+        ]),
+        Contract(methodName: "addViewLoadingTime", requiredParameters: [
+            "overwrite": .bool
+        ]),
+        Contract(methodName: "startResource", requiredParameters: [
+            "key": .string, "url": .string, "httpMethod": .string, "attributes": .map
+        ]),
+        Contract(methodName: "stopResource", requiredParameters: [
+            "key": .string, "kind": .string, "attributes": .map
+        ]),
+        Contract(methodName: "stopResourceWithError", requiredParameters: [
+            "key": .string, "message": .string, "type": .string, "attributes": .map
+        ]),
+        Contract(methodName: "addError", requiredParameters: [
+            "message": .string, "source": .string, "attributes": .map
+        ]),
+        Contract(methodName: "addAction", requiredParameters: [
+            "type": .string, "name": .string, "attributes": .map
+        ]),
+        Contract(methodName: "startAction", requiredParameters: [
+            "type": .string, "name": .string, "attributes": .map
+        ]),
+        Contract(methodName: "stopAction", requiredParameters: [
+            "type": .string, "name": .string, "attributes": .map
+        ]),
+        Contract(methodName: "addAttribute", requiredParameters: [
+            "key": .string, "value": .string
+        ]),
+        Contract(methodName: "removeAttribute", requiredParameters: [
+            "key": .string
+        ]),
+        Contract(methodName: "addViewAttributes", requiredParameters: [
+            "attributes": .map
+        ]),
+        Contract(methodName: "removeViewAttributes", requiredParameters: [
+            "keys": .list
+        ]),
+        Contract(methodName: "reportLongTask", requiredParameters: [
+            "at": .int64,
+            "duration": .int
+        ]),
+        Contract(methodName: "updatePerformanceMetrics", requiredParameters: [
+            "buildTimes": .list,
+            "rasterTimes": .list
+        ]),
+        Contract(methodName: "addFeatureFlagEvaluation", requiredParameters: [
+            "name": .string,
+            "value": .string
+        ]),
+        Contract(methodName: "setInternalViewAttribute", requiredParameters: [
+            "key": .string,
+            "value": .string
+        ]),
+        Contract(methodName: "startFeatureOperation", requiredParameters: [
+            "name": .string,
+            "attributes": .map
+        ]),
+        Contract(methodName: "succeedFeatureOperation", requiredParameters: [
+            "name": .string,
+            "attributes": .map
+        ]),
+        Contract(methodName: "failFeatureOperation", requiredParameters: [
+            "name": .string,
+            "failureReason": .string,
+            "attributes": .map
+        ]),
+        Contract(methodName: "stopSession", requiredParameters: [:])
+    ]
+
+    func testRumPlugin_ContractViolationsThrowErrors() {
+        testContracts(contracts: contracts, plugin: plugin)
+    }
+
+    func testRumConfiguration_WithAppHangThreshold_IsSetCorrectly() {
+        let appHangThreshold = Double.mockRandom()
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "appHangThreshold": appHangThreshold
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertEqual(config?.appHangThreshold, appHangThreshold)
+    }
+
+    func testRumConfiguration_WithInitialResourceThreshold_IsSetCorrectly() throws {
+        let initialResourceThreshold = Double.mockRandom()
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "initialResourceThreshold": initialResourceThreshold
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        let predicate = try XCTUnwrap(config?.networkSettledResourcePredicate as? TimeBasedTNSResourcePredicate)
+        XCTAssertEqual(predicate.threshold, initialResourceThreshold)
+    }
+
+    func testRumConfiguration_WithTrackAnonymousUser_IsSetCorrectly() {
+        let trackAnonymousUser = Bool.mockRandom()
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "trackAnonymousUser": trackAnonymousUser
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertEqual(config?.trackAnonymousUser, trackAnonymousUser)
+    }
+
+    func testRumConfiguration_WithTrackBackgroundEvents_IsSetCorrectly() {
+        let trackBackgroundEvents = Bool.mockRandom()
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "trackBackgroundEvents": trackBackgroundEvents
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertEqual(config?.trackBackgroundEvents, trackBackgroundEvents)
+    }
+
+    func testRepeatEnable_FromMethodChannelSameOptions_DoesNothing() {
+        // Uninitialize plugin
+        plugin?.inject(rum: nil)
+
+        let configuration: [String: Any?] = [
+            "applicationId": "fake-application-id"
+        ]
+
+        let methodCallA = FlutterMethodCall(
+            methodName: "enable",
+            arguments: [
+                "configuration": configuration
+            ] as [String: Any]
+        )
+        plugin.handle(methodCallA) { _ in }
+
+        let printMock = PrintFunctionMock()
+        consolePrint = printMock.print
+
+        let methodCallB = FlutterMethodCall(
+            methodName: "initialize",
+            arguments: [
+                "configuration": configuration
+            ] as [String: Any]
+        )
+        plugin.handle(methodCallB) { _ in }
+
+        XCTAssertTrue(printMock.printedMessages.isEmpty)
+    }
+
+    func testRepeatEnable_FromMethodChannelDifferentOptions_PrintsError() {
+        // Uninitialize plugin
+        plugin?.inject(rum: nil)
+
+        let methodCallA = FlutterMethodCall(
+            methodName: "enable",
+            arguments: [
+                "configuration": [
+                    "applicationId": "fake-application-id"
+                ] as [String: Any?]
+            ] as [String: Any]
+        )
+        plugin.handle(methodCallA) { _ in }
+
+        let printMock = PrintFunctionMock()
+        consolePrint = printMock.print
+
+        let methodCallB = FlutterMethodCall(
+            methodName: "enable",
+            arguments: [
+                "configuration": [
+                    "applicationId": "fake-application-id",
+                    "customEndpoint": "http://localhost"
+                ] as [String: Any?]
+            ] as [String: Any]
+        )
+        plugin.handle(methodCallB) { _ in }
+
+        XCTAssertFalse(printMock.printedMessages.isEmpty)
+        XCTAssertTrue(printMock.printedMessages.first?.contains("🔥") == true)
+    }
+
+    func testStartViewCall_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "startView", arguments: [
+            "key": "view_key",
+            "name": "view_name",
+            "attributes": ["my_attribute": "my_value"]
+        ] as [String: Any])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .startView(key: "view_key", name: "view_name", attributes: ["my_attribute": "my_value"])
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testStopViewCall_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopView", arguments: [
+            "key": "view_key",
+            "attributes": ["my_attribute": "my_value"]
+        ] as [String: Any])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [.stopView(key: "view_key", attributes: ["my_attribute": "my_value"])])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testAddTimingCall_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "addTiming", arguments: [
+            "name": "timing name"
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [ .addTiming(name: "timing name") ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testAddViewLoadingTime_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "addViewLoadingTime", arguments: [
+            "overwrite": true
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [ .addViewLoadingTime(overwrite: true) ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testStartResource_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "startResource", arguments: [
+            "key": "resource_key",
+            "httpMethod": "RumHttpMethod.get",
+            "url": "https://fakeresource.com/url",
+            "attributes": [
+                "attribute_key": "attribute_value"
+            ]
+        ] as [String: Any?])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .startResource(key: "resource_key",
+                           httpMethod: .get,
+                           urlString: "https://fakeresource.com/url",
+                           attributes: ["attribute_key": "attribute_value"])
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testStopResource_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopResource", arguments: [
+            "key": "resource_key",
+            "statusCode": 200,
+            "kind": "RumResourceType.image",
+            "size": nil,
+            "attributes": [
+                "attribute_key": "attribute_value"
+            ]
+        ] as [String: Any?])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .stopResource(key: "resource_key", statusCode: 200, kind: .image, size: nil, attributes: [
+                "attribute_key": "attribute_value"
+            ])
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testStopResource_WithSize_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopResource", arguments: [
+            "key": "resource_key",
+            "statusCode": 200,
+            "kind": "RumResourceType.image",
+            "size": 12_408_812,
+            "attributes": [
+                "attribute_key": "attribute_value"
+            ]
+        ] as [String: Any?])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .stopResource(key: "resource_key", statusCode: 200, kind: .image,
+                          size: 12_408_812, attributes: [
+                            "attribute_key": "attribute_value"
+                          ])
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testStopResourceWithError_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopResourceWithError", arguments: [
+            "key": "resource_key",
+            "message": "error message",
+            "type": "error kind",
+            "attributes": [
+                "attribute_key": "attribute_value"
+            ]
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .stopResourceWithErrorMessage(key: "resource_key",
+                                          message: "error message",
+                                          type: "error kind",
+                                          response: nil,
+                                          attributes: [
+                                            "attribute_key": "attribute_value"
+                                          ])
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testAddError_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "addError", arguments: [
+            "message": "Error message",
+            "source": "RumErrorSource.network",
+            "stackTrace": nil,
+            "errorType": "MyErrorType",
+            "attributes": [
+                "attribute_key": "attribute_value"
+            ]
+        ] as [String: Any?])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = ResultStatus.called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .addError(message: "Error message", type: "MyErrorType", source: RUMErrorSource.network,
+                      stack: nil, attributes: ["attribute_key": "attribute_value"], file: nil, line: nil)
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testAddAction_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "addAction", arguments: [
+            "type": "RumActionType.tap",
+            "name": "Action Name",
+            "attributes": [
+                "attribute_key": "attribute_value"
+            ]
+        ] as [String: Any?])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = ResultStatus.called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .addAction(type: .tap, name: "Action Name", attributes: [
+                "attribute_key": "attribute_value"
+            ])
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testStartAction_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "startAction", arguments: [
+            "type": "RumActionType.scroll",
+            "name": "Action Name",
+            "attributes": [
+                "attribute_key": "attribute_value"
+            ]
+        ] as [String: Any?])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = ResultStatus.called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .startAction(type: .scroll, name: "Action Name", attributes: [
+                "attribute_key": "attribute_value"
+            ])
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testStopAction_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "stopAction", arguments: [
+            "type": "RumActionType.swipe",
+            "name": "Action Name",
+            "attributes": [
+                "attribute_key": "attribute_value"
+            ]
+        ] as [String: Any?])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = ResultStatus.called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .stopAction(type: .swipe, name: "Action Name", attributes: [
+                "attribute_key": "attribute_value"
+            ])
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testAddAttribute_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "addAttribute", arguments: [
+            "key": "My key",
+            "value": "My value"
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = ResultStatus.called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .addAttribute(forKey: "My key", value: "My value")
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testRemoveAttribute_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "removeAttribute", arguments: [
+            "key": "remove_key"
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = ResultStatus.called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .removeAttribute(forKey: "remove_key")
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testAddViewAttributes_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "addViewAttributes", arguments: [
+            "attributes": ["My key": "My value"]
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = ResultStatus.called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .addViewAttributes(attributes: ["My key": "My value"])
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testRemoveViewAttributes_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "removeViewAttributes", arguments: [
+            "keys": ["My key"]
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = ResultStatus.called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .removeViewAttributes(keys: ["My key"])
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testStartFeatureOperation_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "startFeatureOperation", arguments: [
+            "name": "operation_name",
+            "operationKey": "operation_key",
+            "attributes": [
+                "attribute_key": "attribute_value"
+            ]
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = ResultStatus.called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .startFeatureOperation(name: "operation_name", operationKey: "operation_key", attributes: [
+                "attribute_key": "attribute_value"
+            ])
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testSucceedFeatureOperation_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "succeedFeatureOperation", arguments: [
+            "name": "operation_name",
+            "operationKey": "operation_key",
+            "attributes": [
+                "attribute_key": "attribute_value"
+            ]
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = ResultStatus.called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .succeedFeatureOperation(name: "operation_name", operationKey: "operation_key", attributes: [
+                "attribute_key": "attribute_value"
+            ])
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testFailFeatureOperation_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "failFeatureOperation", arguments: [
+            "name": "operation_name",
+            "operationKey": "operation_key",
+            "failureReason": "RumFeatureOperationFailureReason.abandoned",
+            "attributes": [
+                "attribute_key": "attribute_value"
+            ]
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = ResultStatus.called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [
+            .failFeatureOperation(
+                name: "operation_name",
+                operationKey: "operation_key",
+                failureReason: .abandoned,
+                attributes: [
+                    "attribute_key": "attribute_value"
+                ]
+            )
+        ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testReportLongTask_CallsInternal() {
+        let startTimeInterval: TimeInterval = 1_000_000.0
+        let duration = 340124
+
+        let call = FlutterMethodCall(methodName: "reportLongTask", arguments: [
+            "at": startTimeInterval * 1000.0,
+            "duration": duration
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = ResultStatus.called(value: result)
+        }
+
+        guard let command = mock.commands.first as? RUMAddLongTaskCommand else {
+            XCTFail("Expected RUMAddLongTaskCommand")
+            return
+        }
+        XCTAssertEqual(command.time.timeIntervalSince1970, startTimeInterval, accuracy: 0.001)
+        XCTAssertEqual(command.duration, TimeInterval(Double(duration) / 1000.0), accuracy: 0.0001)
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testUpdatePerformanceMetrics_CallsInternal() {
+        let buildTimes = [ 0.44, 1.23, 6.5 ]
+        let rasterTimes = [ 11.2, 68.1, 0.223 ]
+
+        let call = FlutterMethodCall(methodName: "updatePerformanceMetrics", arguments: [
+            "buildTimes": buildTimes,
+            "rasterTimes": rasterTimes
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        let commands = mock.commands
+        XCTAssertEqual(commands.count, 6)
+        if commands.count == 6 {
+            XCTAssertEqual((commands[0] as! RUMUpdatePerformanceMetric).metric, .flutterBuildTime)
+            XCTAssertEqual((commands[0] as! RUMUpdatePerformanceMetric).value, 0.44)
+            XCTAssertEqual((commands[1] as! RUMUpdatePerformanceMetric).metric, .flutterBuildTime)
+            XCTAssertEqual((commands[1] as! RUMUpdatePerformanceMetric).value, 1.23)
+            XCTAssertEqual((commands[2] as! RUMUpdatePerformanceMetric).metric, .flutterBuildTime)
+            XCTAssertEqual((commands[2] as! RUMUpdatePerformanceMetric).value, 6.5)
+
+            XCTAssertEqual((commands[3] as! RUMUpdatePerformanceMetric).metric, .flutterRasterTime)
+            XCTAssertEqual((commands[3] as! RUMUpdatePerformanceMetric).value, 11.2)
+            XCTAssertEqual((commands[4] as! RUMUpdatePerformanceMetric).metric, .flutterRasterTime)
+            XCTAssertEqual((commands[4] as! RUMUpdatePerformanceMetric).value, 68.1)
+            XCTAssertEqual((commands[5] as! RUMUpdatePerformanceMetric).metric, .flutterRasterTime)
+            XCTAssertEqual((commands[5] as! RUMUpdatePerformanceMetric).value, 0.223)
+        }
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testSetInternalViewAttribute_CallsInternal() {
+        let key = String.mockRandom()
+        let value = String.mockRandom()
+
+        let call = FlutterMethodCall(methodName: "setInternalViewAttribute", arguments: [
+            "key": key,
+            "value": value
+        ])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        let commands = mock.commands
+        XCTAssertEqual(commands.count, 1)
+        if commands.count == 1 {
+            let command = commands[0] as! RUMAddViewAttributesCommand
+            if let attrValue = try? XCTUnwrap(command.attributes[key]) {
+                XCTAssertEqual(attrValue.dd.decode(), value)
+            }
+        }
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+}
+
+// MARK: - MockRUMMonitor
+
+class MockRUMMonitor: RUMMonitorProtocol, RUMCommandSubscriber {
+    var debug: Bool
+
+    enum MethodCall: EquatableInTests {
+        case currentSessionID
+        case startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue])
+        case stopView(key: String, attributes: [AttributeKey: AttributeValue])
+        case addTiming(name: String)
+        case addViewLoadingTime(overwrite: Bool)
+
+        case startResource(key: String, httpMethod: RUMMethod, urlString: String,
+                           attributes: [AttributeKey: AttributeValue])
+        case stopResource(key: String, statusCode: Int?, kind: RUMResourceType, size: Int64?,
+                          attributes: [AttributeKey: AttributeValue])
+        case stopResourceWithError(key: String, error: Error, response: URLResponse?,
+                                   attributes: [AttributeKey: AttributeValue])
+        case stopResourceWithErrorMessage(key: String, message: String, type: String?,
+                                   response: URLResponse?, attributes: [AttributeKey: AttributeValue])
+        case addError(message: String, type: String?, source: RUMErrorSource, stack: String?,
+                      attributes: [AttributeKey: AttributeValue], file: StaticString?, line: UInt?)
+        case addAction(type: RUMActionType, name: String, attributes: [AttributeKey: AttributeValue])
+        case startAction(type: RUMActionType, name: String, attributes: [AttributeKey: AttributeValue])
+        case stopAction(type: RUMActionType, name: String?, attributes: [AttributeKey: AttributeValue])
+        case addAttribute(forKey: AttributeKey, value: AttributeValue)
+        case removeAttribute(forKey: AttributeKey)
+        case addAttributes(attributes: [AttributeKey: any AttributeValue])
+        case removeAttributes(forKeys: [AttributeKey])
+        case addViewAttribute(key: DatadogInternal.AttributeKey, value: any DatadogInternal.AttributeValue)
+        case addViewAttributes(attributes: [DatadogInternal.AttributeKey: any DatadogInternal.AttributeValue])
+        case removeViewAttribute(key: DatadogInternal.AttributeKey)
+        case removeViewAttributes(keys: [DatadogInternal.AttributeKey])
+        case addFeatureFlagEvaluation(name: String, value: Encodable)
+        case stopSession
+        case startFeatureOperation(name: String, operationKey: String?, attributes: [AttributeKey: AttributeValue])
+        case succeedFeatureOperation(name: String, operationKey: String?, attributes: [AttributeKey: AttributeValue])
+        case failFeatureOperation(name: String, operationKey: String?, failureReason: RUMFeatureOperationFailureReason,
+                                  attributes: [AttributeKey: AttributeValue])
+        case reportAppFullyDisplayed
+    }
+
+    var callLog: [MethodCall] = []
+    var commands: [RUMCommand] = []
+
+    init() {
+        debug = true
+    }
+
+    func currentSessionID(completion: @escaping (String?) -> Void) {
+        callLog.append(.currentSessionID)
+        completion(nil)
+    }
+
+    func startView(key: String, name: String?, attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(.startView(key: key, name: name, attributes: attributes))
+    }
+
+    func stopView(key: String, attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(.stopView(key: key, attributes: attributes))
+    }
+
+    func addTiming(name: String) {
+        callLog.append(.addTiming(name: name))
+    }
+
+    func startResource(resourceKey: String, httpMethod: RUMMethod,
+                       urlString: String, attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(
+            .startResource(key: resourceKey, httpMethod: httpMethod, urlString: urlString,
+                           attributes: attributes)
+        )
+    }
+
+    func stopResource(resourceKey: String, statusCode: Int?, kind: RUMResourceType,
+                      size: Int64?, attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(
+            .stopResource(key: resourceKey, statusCode: statusCode, kind: kind, size: size,
+                          attributes: attributes)
+        )
+    }
+
+    func stopResourceWithError(
+        resourceKey: String,
+        error: Error,
+        response: URLResponse?,
+        attributes: [AttributeKey: AttributeValue]
+    ) {
+        callLog.append(.stopResourceWithError(key: resourceKey, error: error,
+                                              response: response, attributes: attributes))
+    }
+
+    func stopResourceWithError(resourceKey: String,
+                               message: String,
+                               type: String?,
+                               response: URLResponse?,
+                               attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(
+            .stopResourceWithErrorMessage(key: resourceKey, message: message, type: type,
+                                          response: response, attributes: attributes)
+        )
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    func addError(message: String, type: String?, stack: String?, source: RUMErrorSource,
+                  attributes: [AttributeKey: AttributeValue], file: StaticString?, line: UInt?) {
+        callLog.append(
+            .addError(message: message, type: type, source: source, stack: stack,
+                      attributes: attributes, file: file, line: line)
+        )
+    }
+
+    func addViewLoadingTime(overwrite: Bool) {
+        callLog.append(.addViewLoadingTime(overwrite: overwrite))
+    }
+
+    func addAttribute(forKey key: AttributeKey, value: AttributeValue) {
+        callLog.append(.addAttribute(forKey: key, value: value))
+    }
+
+    func removeAttribute(forKey key: AttributeKey) {
+        callLog.append(.removeAttribute(forKey: key))
+    }
+
+    func addAttributes(_ attributes: [AttributeKey: any AttributeValue]) {
+        callLog.append(.addAttributes(attributes: attributes))
+    }
+
+    func removeAttributes(forKeys keys: [AttributeKey]) {
+        callLog.append(.removeAttributes(forKeys: keys))
+    }
+
+    func addAction(type: RUMActionType, name: String,
+                   attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(.addAction(type: type, name: name, attributes: attributes))
+    }
+
+    func startAction(type: RUMActionType, name: String,
+                     attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(.startAction(type: type, name: name, attributes: attributes))
+    }
+
+    func stopAction(type: RUMActionType, name: String?, attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(.stopAction(type: type, name: name, attributes: attributes))
+    }
+
+    func stopSession() {
+        callLog.append(.stopSession)
+    }
+
+    func addFeatureFlagEvaluation(name: String, value: Encodable) {
+        callLog.append(.addFeatureFlagEvaluation(name: name, value: value))
+    }
+
+    func addViewAttribute(forKey key: AttributeKey, value: AttributeValue) {
+        callLog.append(.addViewAttribute(key: key, value: value))
+    }
+
+    func addViewAttributes(_ attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(.addViewAttributes(attributes: attributes))
+    }
+
+    func removeViewAttribute(forKey key: DatadogInternal.AttributeKey) {
+        callLog.append(.removeViewAttribute(key: key))
+    }
+
+    func removeViewAttributes(forKeys keys: [DatadogInternal.AttributeKey]) {
+        callLog.append(.removeViewAttributes(keys: keys))
+    }
+
+    func startFeatureOperation(name: String, operationKey: String?, attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(.startFeatureOperation(name: name, operationKey: operationKey, attributes: attributes))
+    }
+
+    func succeedFeatureOperation(name: String, operationKey: String?, attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(.succeedFeatureOperation(name: name, operationKey: operationKey, attributes: attributes))
+    }
+
+    func failFeatureOperation(name: String, operationKey: String?, reason: RUMFeatureOperationFailureReason,
+                              attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(
+            .failFeatureOperation(name: name, operationKey: operationKey, failureReason: reason, attributes: attributes)
+        )
+    }
+
+    func reportAppFullyDisplayed() {
+        callLog.append(.reportAppFullyDisplayed)
+    }
+
+    /// Processes the given RUM Command.
+    ///
+    /// - Parameter command: The RUM command to process.
+    func process(command: RUMCommand) {
+        commands.append(command)
+    }
+}

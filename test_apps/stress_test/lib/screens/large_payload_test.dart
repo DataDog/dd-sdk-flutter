@@ -5,8 +5,7 @@
 import 'dart:math';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
-// ignore: implementation_imports
-import 'package:datadog_flutter_plugin/src/datadog_sdk_method_channel.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
 import '../payload_creators.dart';
@@ -133,8 +132,8 @@ class _LargePayloadTestState extends State<LargePayloadTest>
   }
 
   Future<void> _updateMapperPerf() async {
-    final platform = DatadogSdk.instance.platform as DatadogSdkMethodChannel;
-    var perfMap = await platform.getInternalVar('mapperPerformance')
+    var perfMap = await const MethodChannel('datadog_sdk_flutter')
+            .invokeMethod('getInternalVar', {'name': 'mapperPerformance'})
         as Map<Object?, Object?>?;
     if (perfMap != null && mounted) {
       final totalPerf = PerformanceMeasure.fromEncoded(

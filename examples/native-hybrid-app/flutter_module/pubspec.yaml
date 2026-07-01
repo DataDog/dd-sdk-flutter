@@ -14,14 +14,22 @@ dependencies:
   cupertino_icons: ^1.0.2
   go_router:  ^5.0.5
   datadog_flutter_plugin:
-    path: ../../../packages/datadog_flutter_plugin
+    path: ../../../packages/datadog_flutter_plugin/datadog_flutter_plugin
   datadog_tracking_http_client:
     path: ../../../packages/datadog_tracking_http_client
   http: ">=0.13.4 <2.0.0"
 
 dependency_overrides:
   datadog_flutter_plugin:
-    path: ../../../packages/datadog_flutter_plugin
+    path: ../../../packages/datadog_flutter_plugin/datadog_flutter_plugin
+  datadog_flutter_plugin_platform_interface:
+    path: ../../../packages/datadog_flutter_plugin/datadog_flutter_plugin_platform_interface
+  datadog_flutter_plugin_android:
+    path: ../../../packages/datadog_flutter_plugin/datadog_flutter_plugin_android
+  datadog_flutter_plugin_ios:
+    path: ../../../packages/datadog_flutter_plugin/datadog_flutter_plugin_ios
+  datadog_flutter_plugin_web:
+    path: ../../../packages/datadog_flutter_plugin/datadog_flutter_plugin_web
   
 dev_dependencies:
   flutter_test:
