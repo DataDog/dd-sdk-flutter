@@ -3,7 +3,6 @@
 // Copyright 2025-Present Datadog, Inc.
 
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:jni/jni.dart';
