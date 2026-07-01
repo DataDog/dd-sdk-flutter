@@ -3,6 +3,13 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+/// Native Dart client for Datadog Feature Flags and Experimentation.
+///
+/// Use [DatadogFlags] to configure the SDK, create named
+/// [DatadogFlagsClient] instances, and evaluate precomputed flag assignments
+/// for a [FlagsEvaluationContext].
+library;
+
 export 'src/datadog_flags_config.dart'
     show DatadogFlagsConfig, DatadogFlagsSite;
 export 'src/datadog_flags.dart' show DatadogFlags;

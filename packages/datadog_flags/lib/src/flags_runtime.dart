@@ -19,3 +19,7 @@ class FlagsRuntime {
     required this.httpClient,
   });
 }
+
+bool shouldRetryFlagsUpload(int statusCode) {
+  return statusCode == 408 || statusCode == 429 || statusCode >= 500;
+}

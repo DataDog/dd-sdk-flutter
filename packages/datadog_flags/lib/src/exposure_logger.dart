@@ -160,8 +160,11 @@ class ExposureLogger {
           )
           .timeout(uploadTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        _restore(exposures, reschedule: rescheduleOnFailure);
-        return false;
+        if (shouldRetryFlagsUpload(response.statusCode)) {
+          _restore(exposures, reschedule: rescheduleOnFailure);
+          return false;
+        }
+        return true;
       }
       return true;
     } catch (_) {

@@ -23,6 +23,6 @@ PrecomputeAttributes _$PrecomputeAttributesFromJson(
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),
-      environment: json['environment'] as String?,
+      environment: _environmentFromJson(json['environment']),
       flags: _flagsFromJson(json['flags'] as Map<String, dynamic>),
     );
