@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.4.0
+
+* [datadog_flags_flutter] add Flutter integration package.
+* [datadog_flutter_plugin] integrate Datadog Flags.
+* Remove Package.resolved.
+* [rum] Extend HTTP header capture to GraphQL and Flutter Web.
+
 ## 3.3.0
 
 * Capture HTTP request and response headers for RUM resources, including Flutter Web.
