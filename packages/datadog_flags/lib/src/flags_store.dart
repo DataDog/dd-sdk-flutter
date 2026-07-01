@@ -8,24 +8,41 @@ import 'package:meta/meta.dart';
 import 'assignment.dart';
 import 'evaluation_context.dart';
 
+/// Storage contract for last-known feature flag assignments.
 abstract class DatadogFlagsStore {
+  /// Creates a storage adapter for flag assignment snapshots.
+  const DatadogFlagsStore();
+
+  /// Reads stored assignment data for [clientName].
   Future<FlagsData?> read(String clientName);
+
+  /// Writes assignment [data] for [clientName].
   Future<void> write(String clientName, FlagsData data);
+
+  /// Deletes stored assignment data for [clientName].
   Future<void> delete(String clientName);
 }
 
+/// Snapshot of flag assignments for a specific evaluation context.
 @immutable
 class FlagsData {
+  /// Assignments keyed by feature flag key.
   final Map<String, FlagAssignment> flags;
+
+  /// Evaluation context that produced [flags].
   final FlagsEvaluationContext context;
+
+  /// Timestamp when this data was created or stored.
   final DateTime date;
 
+  /// Creates a flag assignment snapshot.
   const FlagsData({
     required this.flags,
     required this.context,
     required this.date,
   });
 
+  /// Creates a flag assignment snapshot from persisted JSON.
   factory FlagsData.fromJson(Map<String, Object?> json) {
     final flags = json['flags'] as Map<String, Object?>? ?? const {};
     return FlagsData(
@@ -42,6 +59,7 @@ class FlagsData {
     );
   }
 
+  /// Converts this snapshot to persisted JSON.
   Map<String, Object?> toJson() {
     return {
       'flags': flags.map((key, value) => MapEntry(key, value.toJson())),

@@ -160,6 +160,31 @@ void main() {
     expect(resentEvaluation['evaluation_count'], 2);
   });
 
+  test('drops non-retryable client error uploads', () async {
+    final requests = <http.Request>[];
+    final aggregator = _aggregator(
+      requests: requests,
+      httpClient: MockClient((request) async {
+        requests.add(request);
+        return http.Response('{"error":"invalid token"}', 403);
+      }),
+    );
+    addTearDown(aggregator.shutdown);
+
+    aggregator.recordEvaluation(
+      flagKey: 'checkout.enabled',
+      assignment: _assignment(),
+      evaluationContext: const FlagsEvaluationContext(
+        targetingKey: 'user-123',
+      ),
+      error: null,
+    );
+    await aggregator.flush();
+    await aggregator.flush();
+
+    expect(_evaluationRequests(requests), hasLength(1));
+  });
+
   test('auto-flushes when the internal max batch size is reached', () async {
     EvaluationAggregator.maxBatchSize = 1;
 

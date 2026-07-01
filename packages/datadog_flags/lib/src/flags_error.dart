@@ -3,13 +3,21 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+/// Programmatic reason why a flag evaluation returned its default value.
 enum FlagEvaluationError {
+  /// The client has not finished initialization for the requested context.
   providerNotReady('PROVIDER_NOT_READY'),
+
+  /// The requested flag key was not present in the assignment data.
   flagNotFound('FLAG_NOT_FOUND'),
+
+  /// The requested flag type did not match the assigned value type.
   typeMismatch('TYPE_MISMATCH');
 
+  /// OpenFeature-compatible error code.
   final String code;
 
+  /// Creates an evaluation error with an OpenFeature-compatible [code].
   const FlagEvaluationError(this.code);
 }
 

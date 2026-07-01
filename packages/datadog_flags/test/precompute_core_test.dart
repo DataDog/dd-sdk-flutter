@@ -9,6 +9,7 @@ import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/assignment.dart';
 import 'package:datadog_flags/src/flag_assignments_fetcher.dart';
 import 'package:datadog_flags/src/flags_error.dart';
+import 'package:datadog_flags/src/sdk_metadata.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
@@ -63,7 +64,7 @@ void main() {
               'env': {'dd_env': 'staging'},
               'source': {
                 'sdk_name': 'dd-sdk-dart',
-                'sdk_version': '0.0.1',
+                'sdk_version': datadogFlagsSdkVersion,
               },
               'subject': {
                 'targeting_key': 'precomputed-user',
@@ -123,7 +124,7 @@ void main() {
             'env': {'dd_env': 'dev'},
             'source': {
               'sdk_name': 'dd-sdk-dart',
-              'sdk_version': '0.0.1',
+              'sdk_version': datadogFlagsSdkVersion,
             },
             'subject': {
               'targeting_key': '',
@@ -303,6 +304,32 @@ void main() {
 
       expect(response.createdAt, DateTime.utc(2026, 6, 4, 12));
       expect(response.environment, 'prod');
+      expect(response.flags.keys, ['valid']);
+    });
+
+    test('accepts live response environment objects', () async {
+      final requests = <http.Request>[];
+      final fetcher = FlagAssignmentsFetcher(
+        datadogConfig: _contextFor(DatadogFlagsSite.us1),
+        configuration: const DatadogFlagsConfiguration(),
+        httpClient: _jsonClient(requests, {
+          'data': {
+            'attributes': {
+              'createdAt': '2026-06-23T21:04:41.025844773Z',
+              'environment': {'name': 'Development - Local or Hash'},
+              'flags': {
+                'valid': _assignment('boolean', true),
+              },
+            },
+          },
+        }),
+      );
+
+      final response = await fetcher.fetch(
+        const FlagsEvaluationContext(targetingKey: 'subject'),
+      );
+
+      expect(response.environment, 'Development - Local or Hash');
       expect(response.flags.keys, ['valid']);
     });
 

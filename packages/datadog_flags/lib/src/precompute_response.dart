@@ -36,6 +36,7 @@ final class PrecomputeData {
 @JsonSerializable(createToJson: false)
 final class PrecomputeAttributes {
   final DateTime? createdAt;
+  @JsonKey(fromJson: _environmentFromJson)
   final String? environment;
   @JsonKey(fromJson: _flagsFromJson)
   final Map<String, FlagAssignment> flags;
@@ -62,4 +63,17 @@ Map<String, FlagAssignment> _flagsFromJson(Map<String, dynamic> json) {
     }
   }
   return assignments;
+}
+
+String? _environmentFromJson(Object? value) {
+  if (value is String) {
+    return value;
+  }
+  if (value is Map) {
+    final name = value['name'];
+    if (name is String) {
+      return name;
+    }
+  }
+  return null;
 }

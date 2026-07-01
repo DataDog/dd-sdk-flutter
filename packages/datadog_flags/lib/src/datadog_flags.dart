@@ -21,23 +21,38 @@ import 'no_op_flags_client.dart';
 /// isolates must use their own [DatadogFlags] instance, create any clients they
 /// need, and initialize each client before evaluating flags.
 class DatadogFlags {
+  /// Name used for the shared client when no explicit client name is provided.
   static const defaultClientName = 'default';
 
   static DatadogFlags? _singleton;
 
+  /// Process-wide convenience instance for applications that do not need to
+  /// inject their own [DatadogFlags] owner.
   static DatadogFlags get instance {
     _singleton ??= DatadogFlags();
     return _singleton!;
   }
 
   http.Client? _httpClient;
+  bool _ownsHttpClient = false;
   DatadogFlagsConfiguration? _configuration;
   final Map<String, DatadogFlagsClient> _clients = {};
 
+  /// Creates an isolated Datadog Flags owner.
+  ///
+  /// Prefer this constructor in tests or when an application owns multiple
+  /// independent SDK lifecycles. Most applications can use [instance].
   DatadogFlags();
 
+  /// Whether [enable] has completed with a usable Datadog configuration.
   bool get isEnabled => _configuration != null;
 
+  /// Enables feature flag clients with the supplied SDK [configuration].
+  ///
+  /// Calling this method replaces any existing configuration, shuts down
+  /// existing clients, and recreates the default shared client. If
+  /// [DatadogFlagsConfiguration.datadogConfig] is omitted, clients remain
+  /// available but return default values with `providerNotReady` errors.
   Future<void> enable({
     DatadogFlagsConfiguration configuration = const DatadogFlagsConfiguration(),
   }) async {
@@ -48,24 +63,38 @@ class DatadogFlags {
       return;
     }
 
-    _httpClient = configuration.httpClient ?? http.Client();
+    final customHttpClient = configuration.httpClient;
+    _httpClient = customHttpClient ?? http.Client();
+    _ownsHttpClient = customHttpClient == null;
     _configuration = configuration;
     sharedClient();
   }
 
+  /// Returns the named feature flag client, creating it if necessary.
+  ///
+  /// Use different client names for independent subjects, such as logged-out
+  /// device context and logged-in user context.
   DatadogFlagsClient sharedClient({String name = defaultClientName}) {
     return _client(name);
   }
 
+  /// Clears in-memory and stored assignments for all clients.
   Future<void> reset() async {
     await Future.wait(_clients.values.map((client) => client.reset()));
   }
 
+  /// Shuts down all clients and releases SDK-owned resources.
+  ///
+  /// After disabling, existing clients are discarded and future evaluations use
+  /// default values until [enable] is called again.
   Future<void> disable() async {
     await Future.wait(_clients.values.map((client) => client.shutdown()));
     _clients.clear();
-    _httpClient?.close();
+    if (_ownsHttpClient) {
+      _httpClient?.close();
+    }
     _httpClient = null;
+    _ownsHttpClient = false;
     _configuration = null;
   }
 

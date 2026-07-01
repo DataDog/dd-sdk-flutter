@@ -10,6 +10,7 @@ import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/evaluation_aggregator.dart';
 import 'package:datadog_flags/src/exposure_logger.dart';
 import 'package:datadog_flags/src/flags_store.dart';
+import 'package:datadog_flags/src/sdk_metadata.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
@@ -29,6 +30,25 @@ void main() {
 
     expect(shared.name, DatadogFlags.defaultClientName);
     expect(datadogFlags.isEnabled, isTrue);
+  });
+
+  test('disable does not close a caller-provided HTTP client', () async {
+    final requests = <http.Request>[];
+    final httpClient = _CloseTrackingClient(
+      _clientWithResponse(requests, _assignmentsResponse()),
+    );
+    addTearDown(httpClient.close);
+    final datadogFlags = DatadogFlags();
+    await datadogFlags.enable(
+      configuration: DatadogFlagsConfiguration(
+        datadogConfig: _datadogConfig(),
+        httpClient: httpClient,
+      ),
+    );
+
+    await datadogFlags.disable();
+
+    expect(httpClient.closed, isFalse);
   });
 
   test('missing configuration creates a no-op client', () async {
@@ -325,7 +345,7 @@ void main() {
       expect(request.headers['Content-Type'], 'text/plain;charset=UTF-8');
       expect(request.headers['DD-API-KEY'], 'client-token');
       expect(request.headers['DD-EVP-ORIGIN'], 'dart-client');
-      expect(request.headers['DD-EVP-ORIGIN-VERSION'], '0.0.1');
+      expect(request.headers['DD-EVP-ORIGIN-VERSION'], datadogFlagsSdkVersion);
       expect(request.headers['DD-REQUEST-ID'], isNotEmpty);
 
       final exposure = _exposureEvents(request).single;
@@ -403,6 +423,35 @@ void main() {
     await client.shutdown();
 
     expect(exposureAttempt, 2);
+  });
+
+  test('drops exposure emission after a non-retryable client error', () async {
+    final requests = <http.Request>[];
+    var exposureAttempt = 0;
+    final client = await _createClient(
+      requests: requests,
+      trackExposures: true,
+      httpClient: MockClient((request) async {
+        requests.add(request);
+        if (request.url.path == '/precompute-assignments') {
+          return http.Response(jsonEncode(_assignmentsResponse()), 200);
+        }
+        if (request.url.path == '/api/v2/exposures') {
+          exposureAttempt += 1;
+          return http.Response('{"error":"invalid token"}', 403);
+        }
+        return http.Response('{"error":"unexpected"}', 404);
+      }),
+    );
+    await client.initialize(
+      const FlagsEvaluationContext(targetingKey: 'user-123'),
+    );
+
+    client.getBooleanDetails(key: 'show-paywall', defaultValue: false);
+    await client.shutdown();
+    await client.shutdown();
+
+    expect(exposureAttempt, 1);
   });
 
   test('waits for an in-flight exposure upload during shutdown', () async {
@@ -707,7 +756,7 @@ void main() {
       expect(request.headers['Content-Type'], 'application/json');
       expect(request.headers['DD-API-KEY'], 'client-token');
       expect(request.headers['DD-EVP-ORIGIN'], 'dart-client');
-      expect(request.headers['DD-EVP-ORIGIN-VERSION'], '0.0.1');
+      expect(request.headers['DD-EVP-ORIGIN-VERSION'], datadogFlagsSdkVersion);
       expect(request.headers['DD-REQUEST-ID'], isNotEmpty);
 
       final body = jsonDecode(request.body) as Map<String, Object?>;
@@ -860,6 +909,38 @@ void main() {
 
     expect(evaluationAttempt, 2);
     expect(_evaluationRequests(requests), hasLength(2));
+  });
+
+  test('drops flag evaluation emission after a non-retryable client error',
+      () async {
+    final requests = <http.Request>[];
+    var evaluationAttempt = 0;
+    final client = await _createClient(
+      requests: requests,
+      trackExposures: false,
+      trackEvaluations: true,
+      httpClient: MockClient((request) async {
+        requests.add(request);
+        if (request.url.path == '/precompute-assignments') {
+          return http.Response(jsonEncode(_assignmentsResponse()), 200);
+        }
+        if (request.url.path == '/api/v2/flagevaluation') {
+          evaluationAttempt += 1;
+          return http.Response('{"error":"invalid token"}', 403);
+        }
+        return http.Response('{"error":"unexpected"}', 404);
+      }),
+    );
+    await client.initialize(
+      const FlagsEvaluationContext(targetingKey: 'user-123'),
+    );
+
+    client.getBooleanDetails(key: 'show-paywall', defaultValue: false);
+    await client.shutdown();
+    await client.shutdown();
+
+    expect(evaluationAttempt, 1);
+    expect(_evaluationRequests(requests), hasLength(1));
   });
 
   test('keeps flag evaluations recorded while upload is in flight', () async {
@@ -1312,6 +1393,25 @@ http.Client _clientWithResponse(
     requests.add(request);
     return http.Response(jsonEncode(body), statusCode);
   });
+}
+
+class _CloseTrackingClient extends http.BaseClient {
+  final http.Client _inner;
+  bool closed = false;
+
+  _CloseTrackingClient(this._inner);
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    return _inner.send(request);
+  }
+
+  @override
+  void close() {
+    closed = true;
+    _inner.close();
+    super.close();
+  }
 }
 
 Map<String, Object?> _assignmentsResponse({

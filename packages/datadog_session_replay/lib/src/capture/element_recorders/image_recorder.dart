@@ -3,7 +3,6 @@
 // Copyright 2025-Present Datadog, Inc.
 
 import 'dart:async' show TimeoutException;
-
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -222,7 +221,7 @@ class ImageRecorder implements ElementRecorder {
       scaled = await _downscale(image, scaledWidth, scaledHeight)
           .timeout(_downscaleTimeout);
       _downscalingCircuitBreaker.recordSuccess();
-      return _persistImageAsResourceNode(
+      return await _persistImageAsResourceNode(
         elementId,
         attributes,
         sourceImageForKeyGen: image,

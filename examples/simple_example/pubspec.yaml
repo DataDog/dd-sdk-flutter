@@ -23,7 +23,9 @@ dependencies:
     path: ../../packages/datadog_gql_link
   datadog_session_replay:
     path: ../../packages/datadog_session_replay
-    
+  datadog_flags:
+    path: ../../packages/datadog_flags
+
   go_router: ^14.7.0
   path_provider: ^2.1.0
   flutter_dotenv: ^5.1.0

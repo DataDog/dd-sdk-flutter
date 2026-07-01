@@ -7,10 +7,30 @@
 
 ########
 # .env generation for package examples has moved to `melos.yaml` (`melos generate_env`).
-# This script now only generates config for examples/native-hybrid-app.
+# This script now only generates config for examples/native-hybrid-app and examples/simple_example
 ########
 
 set echo off
+
+pushd exmaples/simple_example
+tee .env > /dev/null << END
+# Edit this file with your Datadog client token, environment and application id
+DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN
+DD_APPLICATION_ID=$DD_APPLICATION_ID
+DD_ENV=prod
+
+# Optional Datadog Flags example settings.
+DD_SITE=${DD_SITE:-us1}
+FLAGS_TARGETING_KEY=${FLAGS_TARGETING_KEY:-test_subject4}
+FLAGS_TARGETING_ATTRIBUTES_JSON=$flagsTargetingAttributesJson
+FLAGS_BOOLEAN_KEYS=${FLAGS_BOOLEAN_KEYS:-checkout.enabled}
+FLAGS_STRING_KEYS=${FLAGS_STRING_KEYS:-checkout.copy}
+FLAGS_INTEGER_KEYS=${FLAGS_INTEGER_KEYS:-checkout.limit}
+FLAGS_DOUBLE_KEYS=${FLAGS_DOUBLE_KEYS:-checkout.ratio}
+FLAGS_OBJECT_KEYS=${FLAGS_OBJECT_KEYS:-checkout.config}
+END
+done
+popd
 
 pushd examples/native-hybrid-app/android/app/src/main/res/
 mkdir raw
@@ -36,4 +56,3 @@ tee ./ddog_config.plist > /dev/null << END
 </plist>
 END
 popd
-
