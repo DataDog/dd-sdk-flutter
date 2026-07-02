@@ -66,8 +66,6 @@ RumViewInfo? defaultViewInfoExtractor(Route<dynamic> route) {
 /// When [routeName] includes a query string (for example
 /// `/products?category=shoes&id=123`) the `view.url` will carry the full path +
 /// query string, which Datadog will add to its standard `@view.url_query.*` facets.
-/// Additionally, each parameter will be reported as a `url_query.<key>` view
-/// attribute, accessible through `@context.url_query.<key>`.
 ///
 /// Routes without a query string use the name as-is and add no extra attributes.
 RumViewInfo rumViewInfoFromRouteName(String routeName) {
@@ -89,17 +87,9 @@ RumViewInfo rumViewInfoFromRouteName(String routeName) {
   // The path without the query string, used as the human-readable view name.
   final viewName = uri.path.isNotEmpty ? uri.path : routeName.split('?').first;
 
-  // Decompose the query string into per-parameter attributes. Multi-valued
-  // parameters (for example `?id=1&id=2`) are reported as a list.
-  final attributes = <String, Object?>{};
-  uri.queryParametersAll.forEach((key, values) {
-    attributes['url_query.$key'] = values.length == 1 ? values.first : values;
-  });
-
   return RumViewInfo(
     name: viewName.isNotEmpty ? viewName : routeName,
     path: routeName,
-    attributes: attributes,
   );
 }
 
