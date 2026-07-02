@@ -1,10 +1,13 @@
+import com.android.Version
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-val agpMajor = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.substringBefore('.').toInt()
+val agpMajor = Version.ANDROID_GRADLE_PLUGIN_VERSION.substringBefore('.').toInt()
 if (agpMajor < 9) {
     apply(plugin = "org.jetbrains.kotlin.android")
 }
@@ -45,6 +48,6 @@ flutter {
 
 kotlin {
     compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+        jvmTarget = JvmTarget.JVM_11
     }
 }

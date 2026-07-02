@@ -3,6 +3,8 @@
  * This product includes software developed at Datadog (https://www.datadoghq.com/).
  * Copyright 2016-Present Datadog, Inc.
  */
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id "com.android.application"
     id "dev.flutter.flutter-gradle-plugin"
@@ -71,7 +73,7 @@ flutter {
 
 kotlin {
     compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8
+        jvmTarget = JvmTarget.JVM_1_8
     }
 }
 

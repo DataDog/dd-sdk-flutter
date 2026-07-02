@@ -36,7 +36,7 @@ flutter:
   fonts:
     - family: OpenSans
       fonts:
-        - asset: assets/fonts/OpenSans-Regular.ttf
+        - asset: assets/fonts/Open_Sans/static/OpenSans-Regular.ttf
         - asset: assets/fonts/Open_Sans/static/OpenSans-Italic.ttf
           style: italic
         - asset: assets/fonts/Open_Sans/static/OpenSans-Bold.ttf
