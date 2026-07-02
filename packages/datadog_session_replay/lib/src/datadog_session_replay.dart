@@ -9,6 +9,7 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
+import 'package:uuid/uuid.dart';
 
 import '../datadog_session_replay.dart';
 import 'capture/recorder.dart';
@@ -35,6 +36,10 @@ class DatadogSessionReplay {
   final SessionReplayRecorder _recorder;
 
   final TouchPrivacyLevel defaultTouchPrivacyLevel;
+
+  static const _uuid = Uuid();
+  String? _flutterViewId;
+  String? _lastKnownSessionId;
 
   int _errorCounter = 0;
   bool _newFrameBuilt = true;
@@ -81,7 +86,35 @@ class DatadogSessionReplay {
   }
 
   void _onContextChanged(RUMContext context) {
-    _recorder.onContextChanged(context);
+    if (_configuration.isEmbedded) {
+      if (context.sessionId != _lastKnownSessionId) {
+        _flutterViewId = _uuid.v4();
+        _lastKnownSessionId = context.sessionId;
+      }
+      _recorder.onContextChanged(RUMContext(
+        applicationId: context.applicationId,
+        sessionId: context.sessionId,
+        viewId: _flutterViewId,
+        viewServerTimeOffset: context.viewServerTimeOffset,
+      ));
+    } else {
+      _recorder.onContextChanged(context);
+    }
+  }
+
+  /// Starts a new Flutter SR view. Only meaningful in embedded mode — call
+  /// this from a Navigator observer to align viewIds with Flutter navigation.
+  void startView() {
+    if (!_configuration.isEmbedded || _lastKnownSessionId == null) return;
+    _flutterViewId = _uuid.v4();
+    if (_recorder.currentContext case final ctx?) {
+      _recorder.onContextChanged(RUMContext(
+        applicationId: ctx.applicationId,
+        sessionId: ctx.sessionId,
+        viewId: _flutterViewId,
+        viewServerTimeOffset: ctx.viewServerTimeOffset,
+      ));
+    }
   }
 
   /// Begins periodic Session Replay tree capture. Has no effect if recording

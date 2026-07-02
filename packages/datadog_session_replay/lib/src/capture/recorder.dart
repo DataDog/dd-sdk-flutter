@@ -207,6 +207,8 @@ class SessionReplayRecorder {
     _elementRecorders.addAll(elementRecorders);
   }
 
+  RUMContext? get currentContext => _currentContext;
+
   void updateContext(RUMContext? context) {
     _currentContext = context;
   }

@@ -195,7 +195,6 @@ class _EmbeddedSlotIdObserver extends WidgetsBindingObserver {
           await _engineChannel.invokeMethod<String>('resolveSlotId');
       if (slotId != null) {
         _iosBridge.setSlotId(NSString(slotId));
-        WidgetsBinding.instance.removeObserver(this);
       }
     }
   }
