@@ -13,11 +13,11 @@ import 'package:datadog_session_replay/src/rum_context.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_test_goldens/flutter_test_goldens.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'golden_test_helpers.dart';
+import 'test_fonts.dart' as test_fonts;
 
 class MockDatadogSessionReplayPlatform extends Mock
     with MockPlatformInterfaceMixin
@@ -32,7 +32,7 @@ void main() {
   late MockDatadogSessionReplayPlatform platform;
 
   setUpAll(() async {
-    await TestFonts.loadAppFonts();
+    await test_fonts.loadAppFonts();
   });
 
   setUp(() {
@@ -67,14 +67,14 @@ void main() {
         appBar: AppBar(
           title: const Text(
             'Mask No Text',
-            style: TextStyle(fontFamily: TestFonts.openSans),
+            style: TextStyle(fontFamily: test_fonts.openSans),
           ),
         ),
         body: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Text(
             renderText,
-            style: TextStyle(fontFamily: TestFonts.openSans),
+            style: TextStyle(fontFamily: test_fonts.openSans),
           ),
         ),
       ),
@@ -88,14 +88,14 @@ void main() {
         appBar: AppBar(
           title: const Text(
             'Mask All Text',
-            style: TextStyle(fontFamily: TestFonts.openSans),
+            style: TextStyle(fontFamily: test_fonts.openSans),
           ),
         ),
         body: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Text(
             renderText,
-            style: TextStyle(fontFamily: TestFonts.openSans),
+            style: TextStyle(fontFamily: test_fonts.openSans),
           ),
         ),
       ),
@@ -109,7 +109,7 @@ void main() {
         appBar: AppBar(
           title: const Text(
             'Mask Specific Text',
-            style: TextStyle(fontFamily: TestFonts.openSans),
+            style: TextStyle(fontFamily: test_fonts.openSans),
           ),
         ),
         body: Padding(
@@ -119,7 +119,7 @@ void main() {
                 TextAndInputPrivacyLevel.maskSensitiveInputs,
             child: Text(
               renderText,
-              style: TextStyle(fontFamily: TestFonts.openSans),
+              style: TextStyle(fontFamily: test_fonts.openSans),
             ),
           ),
         ),
@@ -138,7 +138,7 @@ void main() {
         appBar: AppBar(
           title: const Text(
             'Unmask Specific Text',
-            style: TextStyle(fontFamily: TestFonts.openSans),
+            style: TextStyle(fontFamily: test_fonts.openSans),
           ),
         ),
         body: Padding(
@@ -147,7 +147,7 @@ void main() {
             textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskAll,
             child: Text(
               renderText,
-              style: TextStyle(fontFamily: TestFonts.openSans),
+              style: TextStyle(fontFamily: test_fonts.openSans),
             ),
           ),
         ),
@@ -163,24 +163,24 @@ void main() {
         TextField(
           decoration: InputDecoration(
             labelText: 'Simple Text Field',
-            labelStyle: TextStyle(fontFamily: TestFonts.openSans),
+            labelStyle: TextStyle(fontFamily: test_fonts.openSans),
           ),
-          style: TextStyle(fontFamily: TestFonts.openSans),
+          style: TextStyle(fontFamily: test_fonts.openSans),
         ),
         TextField(
           decoration: InputDecoration(
             labelText: 'Sensitive Text Field',
-            labelStyle: TextStyle(fontFamily: TestFonts.openSans),
+            labelStyle: TextStyle(fontFamily: test_fonts.openSans),
           ),
-          style: TextStyle(fontFamily: TestFonts.openSans),
+          style: TextStyle(fontFamily: test_fonts.openSans),
           keyboardType: TextInputType.phone,
         ),
         TextField(
           decoration: InputDecoration(
             labelText: 'Password',
-            labelStyle: TextStyle(fontFamily: TestFonts.openSans),
+            labelStyle: TextStyle(fontFamily: test_fonts.openSans),
           ),
-          style: TextStyle(fontFamily: TestFonts.openSans),
+          style: TextStyle(fontFamily: test_fonts.openSans),
           obscureText: true,
         ),
       ],
@@ -292,19 +292,19 @@ void main() {
       children: [
         CupertinoTextField(
           placeholder: 'Simple Text Field',
-          placeholderStyle: TextStyle(fontFamily: TestFonts.openSans),
-          style: TextStyle(fontFamily: TestFonts.openSans),
+          placeholderStyle: TextStyle(fontFamily: test_fonts.openSans),
+          style: TextStyle(fontFamily: test_fonts.openSans),
         ),
         CupertinoTextField(
           placeholder: 'Sensitive Text Field',
-          placeholderStyle: TextStyle(fontFamily: TestFonts.openSans),
-          style: TextStyle(fontFamily: TestFonts.openSans),
+          placeholderStyle: TextStyle(fontFamily: test_fonts.openSans),
+          style: TextStyle(fontFamily: test_fonts.openSans),
           keyboardType: TextInputType.phone,
         ),
         CupertinoTextField(
           placeholder: 'Password',
-          placeholderStyle: TextStyle(fontFamily: TestFonts.openSans),
-          style: TextStyle(fontFamily: TestFonts.openSans),
+          placeholderStyle: TextStyle(fontFamily: test_fonts.openSans),
+          style: TextStyle(fontFamily: test_fonts.openSans),
           obscureText: true,
         ),
       ],

@@ -1,12 +1,19 @@
 
+import com.android.Version
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 buildscript {
     ext.datadog_version = "3.+"
 }
 
 plugins {
     id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
     id("com.datadoghq.dd-sdk-android-gradle-plugin") version "1.24.0"
+}
+
+def agpMajor = Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0] as int
+if (agpMajor < 9) {
+    apply plugin: 'kotlin-android'
 }
 
 android {
@@ -34,11 +41,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-    kotlinOptions {
-        jvmTarget = '1.8'
-    }
     buildFeatures {
         viewBinding true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_1_8
     }
 }
 
