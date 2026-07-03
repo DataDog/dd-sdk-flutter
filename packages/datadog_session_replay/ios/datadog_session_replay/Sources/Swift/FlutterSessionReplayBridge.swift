@@ -52,6 +52,9 @@ public func __datadog_session_replay_keep_symbols() {
     // Retained so embedded Flutter engines can post records to the native SR message bus.
     internal static var core: DatadogCoreProtocol?
 
+    // Tracks Flutter view IDs for which we have already emitted a synthetic RUM view event.
+    private static var emittedFlutterViewIDs: Set<String> = []
+
     // Ownership token for multi-engine support: only the engine that called enable()
     // is allowed to null out the callback on detach. Set by claimOwnership(messenger:)
     // after the Dart-side method channel message is delivered.
@@ -176,6 +179,7 @@ public func __datadog_session_replay_keep_symbols() {
         contextCallback = nil
         listenerOwner = nil
         core = nil
+        emittedFlutterViewIDs = []
     }
 
     @objc public func setHasReplay(hasReplay: Bool) {
@@ -254,13 +258,41 @@ public func __datadog_session_replay_keep_symbols() {
             return
         }
 
+        if !emittedFlutterViewIDs.contains(viewID) {
+            emittedFlutterViewIDs.insert(viewID)
+            sendViewEvent(viewID: viewID, segmentJson: segmentJson)
+        }
+
         records = records.map { record in
             var r = record
             r["slotId"] = slotId
             return r
         }
 
-        FlutterSessionReplay.core?.send(message: .flutterView(.record(records, viewID)))
+        for record in records {
+            FlutterSessionReplay.core?.send(message: .flutterView(.record(record, viewID)))
+        }
+    }
+
+    /// Forwards the Flutter view event to the native RUM so it appears in the session metadata.
+    private static func sendViewEvent(viewID: String, segmentJson: String) {
+        // Extract minimal view metadata from the segment
+        guard let data = segmentJson.data(using: .utf8),
+            let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            return
+        }
+
+        let viewEvent: [String: Any] = [
+            "type": "view",
+            "date": Int64(Date().timeIntervalSince1970 * 1000),
+            "view": [
+                "id": viewID,
+                "name": "FlutterView",  // or extract from context
+                "url": "FlutterView"
+            ]
+        ]
+
+        FlutterSessionReplay.core?.send(message: .flutterView(.rum(viewEvent)))
     }
 
     @objc public func postTelemetryDebug(id: String, message: String) {
