@@ -9,3 +9,4 @@
 -keep class com.datadoghq.flutter.DatadogRumPlugin$Companion { *; }
 -keep class com.datadoghq.flutter.DatadogRumEventMapper { *; }
 -keep class com.datadoghq.flutter.DatadogRumEventMapper$EventMapper { *; }
+-dontwarn datadog.compiler.annotations.*
