@@ -14,7 +14,7 @@ dependencies:
 
   cupertino_icons: ^1.0.2
   datadog_flutter_plugin:
-    path: ../../packages/datadog_flutter_plugin
+    path: ../../packages/datadog_flutter_plugin/datadog_flutter_plugin
   datadog_tracking_http_client:
     path: ../../packages/datadog_tracking_http_client
   datadog_webview_tracking:
@@ -34,7 +34,7 @@ dependencies:
 
 dependency_overrides:
   datadog_flutter_plugin:
-    path: ../../packages/datadog_flutter_plugin
+    path: ../../packages/datadog_flutter_plugin/datadog_flutter_plugin
   datadog_flags_flutter:
     path: ../../packages/datadog_flags_flutter
   datadog_flags:
