@@ -11,21 +11,22 @@ enum InternalError: Error {
 }
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
     var methodChannel: FlutterMethodChannel!
 
     override func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        GeneratedPluginRegistrant.register(with: self)
-        let crashPluginRegistry = registrar(forPlugin: "ExampleCrashPlugin")!
-        registerCrashPlugin(with: crashPluginRegistry)
-
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 
-    @objc func registerCrashPlugin(with registrar: FlutterPluginRegistrar) {
+    func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+        GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+        registerCrashPlugin(with: engineBridge.applicationRegistrar)
+    }
+
+    func registerCrashPlugin(with registrar: FlutterApplicationRegistrar) {
         methodChannel = FlutterMethodChannel(name: "datadog_sdk_flutter.example.crash",
                                              binaryMessenger: registrar.messenger())
         methodChannel.setMethodCallHandler { call, result in

@@ -36,8 +36,6 @@ PODS:
     - KSCrash/Core
   - KSCrash/ReportingCore (2.5.0):
     - KSCrash/Core
-  - super_keyboard (0.0.1):
-    - Flutter
 
 DEPENDENCIES:
   - datadog_flutter_plugin_ios (from `.symlinks/plugins/datadog_flutter_plugin_ios/ios`)
@@ -49,7 +47,6 @@ DEPENDENCIES:
   - DatadogRUM (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - Flutter (from `Flutter`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
-  - super_keyboard (from `.symlinks/plugins/super_keyboard/ios`)
 
 SPEC REPOS:
   trunk:
@@ -80,8 +77,6 @@ EXTERNAL SOURCES:
     :path: Flutter
   integration_test:
     :path: ".symlinks/plugins/integration_test/ios"
-  super_keyboard:
-    :path: ".symlinks/plugins/super_keyboard/ios"
 
 CHECKOUT OPTIONS:
   DatadogCore:
@@ -112,7 +107,6 @@ SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
   KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
-  super_keyboard: 8e7a8c2e2499f32476103eb3be4069f2545fc92a
 
 PODFILE CHECKSUM: 357bc2de26f249c9e5dd52e99a556d5704fbd68b
 
