@@ -48,7 +48,7 @@ class AndroidRumEventMapper extends RumMapperProxy {
       ),
     );
 
-    DatadogRumPlugin.Companion.setRumEventMapper(listener);
+    DatadogRumPlugin.Companion.rumEventMapper = listener;
   }
 
   JString? _callMapper(JString encoded, _MapperFunction mapper) {

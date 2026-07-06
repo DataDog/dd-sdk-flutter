@@ -27,6 +27,6 @@ class AndroidLogEventMapper extends LogMapperProxy {
       ),
     );
 
-    DatadogLogsPlugin.Companion.setLogsEventMapper(listener);
+    DatadogLogsPlugin.Companion.logsEventMapper = listener;
   }
 }

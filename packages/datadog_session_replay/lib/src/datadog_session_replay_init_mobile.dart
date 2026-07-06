@@ -23,7 +23,7 @@ void initSessionReplayPlatform() {
 void attachSessionReplayToIsolate(Object? isolateToken) {
   // Isolates aren't a thing on web
   if (Platform.isIOS) {
-    if (isolateToken is ObjCObjectBase) {
+    if (isolateToken is ObjCObject) {
       DatadogSessionReplayPlatform.instance =
           DatadogSessionReplayPlatformIos.fromObjCRef(isolateToken);
     }

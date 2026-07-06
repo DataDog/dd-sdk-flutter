@@ -1,5 +1,5 @@
 PODS:
-  - datadog_flutter_plugin (0.0.1):
+  - datadog_flutter_plugin_ios (0.0.1):
     - DatadogCore (~> 3)
     - DatadogCrashReporting (~> 3)
     - DatadogInternal (~> 3)
@@ -36,11 +36,11 @@ PODS:
     - KSCrash/Core
   - KSCrash/ReportingCore (2.5.0):
     - KSCrash/Core
-  - objective_c (0.0.1):
+  - super_keyboard (0.0.1):
     - Flutter
 
 DEPENDENCIES:
-  - datadog_flutter_plugin (from `.symlinks/plugins/datadog_flutter_plugin/ios`)
+  - datadog_flutter_plugin_ios (from `.symlinks/plugins/datadog_flutter_plugin_ios/ios`)
   - datadog_session_replay (from `.symlinks/plugins/datadog_session_replay/ios`)
   - DatadogCore (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - DatadogCrashReporting (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
@@ -49,7 +49,7 @@ DEPENDENCIES:
   - DatadogRUM (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - Flutter (from `Flutter`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
-  - objective_c (from `.symlinks/plugins/objective_c/ios`)
+  - super_keyboard (from `.symlinks/plugins/super_keyboard/ios`)
 
 SPEC REPOS:
   trunk:
@@ -57,8 +57,8 @@ SPEC REPOS:
     - KSCrash
 
 EXTERNAL SOURCES:
-  datadog_flutter_plugin:
-    :path: ".symlinks/plugins/datadog_flutter_plugin/ios"
+  datadog_flutter_plugin_ios:
+    :path: ".symlinks/plugins/datadog_flutter_plugin_ios/ios"
   datadog_session_replay:
     :path: ".symlinks/plugins/datadog_session_replay/ios"
   DatadogCore:
@@ -80,8 +80,8 @@ EXTERNAL SOURCES:
     :path: Flutter
   integration_test:
     :path: ".symlinks/plugins/integration_test/ios"
-  objective_c:
-    :path: ".symlinks/plugins/objective_c/ios"
+  super_keyboard:
+    :path: ".symlinks/plugins/super_keyboard/ios"
 
 CHECKOUT OPTIONS:
   DatadogCore:
@@ -101,7 +101,7 @@ CHECKOUT OPTIONS:
     :git: https://github.com/DataDog/dd-sdk-ios
 
 SPEC CHECKSUMS:
-  datadog_flutter_plugin: 64adc7ef089a1328c78fd4fab24e49afa09d95a5
+  datadog_flutter_plugin_ios: 10996273528b840f9bbb30b4c14f364e38fbe126
   datadog_session_replay: 8e4f4a520f20feb2916c623c011a53ba63f8d77f
   DatadogCore: 4375353a93311e99153ab3bc2fba10fefb295749
   DatadogCrashReporting: 4eedb27058432691a7e5f1bdcf3f72d8cc7c1a67
@@ -112,7 +112,7 @@ SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
   KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
-  objective_c: 77e887b5ba1827970907e10e832eec1683f3431d
+  super_keyboard: 8e7a8c2e2499f32476103eb3be4069f2545fc92a
 
 PODFILE CHECKSUM: 357bc2de26f249c9e5dd52e99a556d5704fbd68b
 

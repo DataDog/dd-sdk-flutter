@@ -4,11 +4,11 @@ version: 1.0.0
 # homepage: https://www.example.com
 
 environment:
-  sdk: ^3.6.0
+  sdk: ^3.10.0
 
 dependencies:
   path: ^1.8.0
   pana: ^0.22.10
 
 dev_dependencies:
-  lints: ^4.0.0
+  lints: ^6.1.0

@@ -8,6 +8,7 @@ import 'dart:ffi' as ffi;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:objective_c/objective_c.dart';
+import 'package:objective_c/objective_c.dart' as objc;
 
 import '../../datadog_session_replay.dart';
 import '../datadog_session_replay_platform_interface.dart';
@@ -27,8 +28,8 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
     _iosBridge = FlutterSessionReplay();
   }
 
-  DatadogSessionReplayPlatformIos.fromObjCRef(ObjCObjectBase ref)
-      : _iosBridge = FlutterSessionReplay.castFrom(ref);
+  DatadogSessionReplayPlatformIos.fromObjCRef(ObjCObject ref)
+      : _iosBridge = FlutterSessionReplay.as(ref);
 
   @override
   Object? get isolateToken => _iosBridge;
@@ -151,21 +152,21 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
       byteData.buffer.asUint8List().address.cast(),
       byteData.lengthInBytes,
     );
-    return NSData.castFromPointer(ret, retain: true, release: true);
+    return NSData.fromPointer(ret, retain: true, release: true);
   }
 }
 
 @ffi.Native<
-    ffi.Pointer<ObjCObject> Function(
-      ffi.Pointer<ObjCObject>,
-      ffi.Pointer<ObjCSelector>,
+    ffi.Pointer<objc.ObjCObjectImpl> Function(
+      ffi.Pointer<objc.ObjCObjectImpl>,
+      ffi.Pointer<objc.ObjCSelector>,
       ffi.Pointer<ffi.Void>,
       ffi.UnsignedLong,
     )>(symbol: 'objc_msgSend', isLeaf: true)
 // ignore: non_constant_identifier_names
-external ffi.Pointer<ObjCObject> objc_msgSend_3nbx5e(
-  ffi.Pointer<ObjCObject> object,
-  ffi.Pointer<ObjCSelector> selector,
+external ffi.Pointer<objc.ObjCObjectImpl> objc_msgSend_3nbx5e(
+  ffi.Pointer<objc.ObjCObjectImpl> object,
+  ffi.Pointer<objc.ObjCSelector> selector,
   ffi.Pointer<ffi.Void> a,
   int b,
 );
