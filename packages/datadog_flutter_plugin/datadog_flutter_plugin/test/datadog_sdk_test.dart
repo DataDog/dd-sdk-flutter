@@ -23,6 +23,34 @@ class MockDatadogPluginConfiguration extends Mock
 
 class MockDatadogPlugin extends Mock implements DatadogPlugin {}
 
+class CapturingDatadogPluginConfiguration extends DatadogPluginConfiguration {
+  DatadogConfiguration? configurationOnInitialize;
+
+  @override
+  DatadogPlugin create(DatadogSdk datadogInstance) {
+    return CapturingDatadogPlugin(
+      datadogInstance,
+      onInitialize: (configuration) {
+        configurationOnInitialize = configuration;
+      },
+    );
+  }
+}
+
+class CapturingDatadogPlugin extends DatadogPlugin {
+  final void Function(DatadogConfiguration?) onInitialize;
+
+  CapturingDatadogPlugin(
+    super.instance, {
+    required this.onInitialize,
+  });
+
+  @override
+  void initialize() {
+    onInitialize(instance.configuration);
+  }
+}
+
 class MockRumPlatform extends Mock
     with MockPlatformInterfaceMixin
     implements DdRumPlatform {}
@@ -144,6 +172,20 @@ void main() {
         logCallback: any(named: 'logCallback'),
       ),
     );
+  });
+
+  test('initialize makes configuration available to plugins', () async {
+    final pluginConfiguration = CapturingDatadogPluginConfiguration();
+    final configuration = DatadogConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+    )..addPlugin(pluginConfiguration);
+
+    await datadogSdk.initialize(configuration, TrackingConsent.granted);
+
+    expect(datadogSdk.configuration, same(configuration));
+    expect(pluginConfiguration.configurationOnInitialize, same(configuration));
   });
 
   test('encode base configuration', () {

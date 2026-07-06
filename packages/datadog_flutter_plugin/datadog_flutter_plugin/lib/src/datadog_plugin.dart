@@ -8,8 +8,9 @@ import 'package:flutter/material.dart';
 
 import 'datadog_sdk.dart';
 
-abstract class DatadogPluginConfiguration
-    extends pi.DatadogPluginConfiguration {
+abstract class DatadogPluginConfiguration {
+  const DatadogPluginConfiguration();
+
   DatadogPlugin create(DatadogSdk datadogInstance);
 
   /// Indicate that this plugin can be used from and initialized from background

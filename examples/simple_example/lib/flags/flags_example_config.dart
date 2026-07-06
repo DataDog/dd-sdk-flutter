@@ -5,8 +5,58 @@
 
 import 'dart:convert';
 
-import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+const _stagingRumEndpoint = 'https://browser-intake-datad0g.com/api/v2/rum';
+const _stagingLogsEndpoint = 'https://browser-intake-datad0g.com/api/v2/logs';
+const _datadogSiteAliases = {
+  'datadoghq.com': DatadogSite.us1,
+  'app.datadoghq.com': DatadogSite.us1,
+  'us3.datadoghq.com': DatadogSite.us3,
+  'us5.datadoghq.com': DatadogSite.us5,
+  'datadoghq.eu': DatadogSite.eu1,
+  'app.datadoghq.eu': DatadogSite.eu1,
+  'ddog-gov.com': DatadogSite.us1Fed,
+  'ap1.datadoghq.com': DatadogSite.ap1,
+  'ap2.datadoghq.com': DatadogSite.ap2,
+};
+
+final class FlagsExampleSiteConfig {
+  final DatadogSite datadogSite;
+  final DatadogFlagsSite flagsSite;
+  final String? rumCustomEndpoint;
+  final String? logsCustomEndpoint;
+  final bool sessionReplayEnabled;
+
+  const FlagsExampleSiteConfig._({
+    required this.datadogSite,
+    required this.flagsSite,
+    this.sessionReplayEnabled = true,
+    this.rumCustomEndpoint,
+    this.logsCustomEndpoint,
+  });
+
+  factory FlagsExampleSiteConfig.fromName(String? siteName) {
+    final normalizedSiteName = siteName?.trim();
+    if (normalizedSiteName == 'datad0g.com') {
+      return const FlagsExampleSiteConfig._(
+        datadogSite: DatadogSite.us1,
+        flagsSite: DatadogFlagsSite.us1Staging,
+        rumCustomEndpoint: _stagingRumEndpoint,
+        logsCustomEndpoint: _stagingLogsEndpoint,
+        sessionReplayEnabled: false,
+      );
+    }
+
+    final datadogSite = _datadogSiteForName(normalizedSiteName);
+    return FlagsExampleSiteConfig._(
+      datadogSite: datadogSite,
+      flagsSite: datadogFlagsSiteFor(datadogSite) ?? DatadogFlagsSite.us1,
+    );
+  }
+}
 
 final class FlagsExampleConfig {
   final DatadogFlagsConfiguration configuration;
@@ -22,13 +72,13 @@ final class FlagsExampleConfig {
   factory FlagsExampleConfig.fromDotEnv({
     required String clientToken,
     required String env,
-    required String? siteName,
+    required DatadogFlagsSite site,
     required String? applicationId,
   }) {
     final datadogConfig = _datadogConfig(
       clientToken: clientToken,
       env: env,
-      siteName: siteName,
+      site: site,
       applicationId: applicationId,
     );
 
@@ -97,7 +147,7 @@ enum FlagsExampleFlagType { boolean, string, integer, float, object }
 DatadogFlagsConfig? _datadogConfig({
   required String clientToken,
   required String env,
-  required String? siteName,
+  required DatadogFlagsSite site,
   required String? applicationId,
 }) {
   if (clientToken.isEmpty) {
@@ -107,23 +157,27 @@ DatadogFlagsConfig? _datadogConfig({
   return DatadogFlagsConfig(
     clientToken: clientToken,
     env: env.isEmpty ? 'dev' : env,
-    site: _flagsSiteForName(siteName),
+    site: site,
     service: 'simple-example',
     version: '1.0.0',
     applicationId: _emptyToNull(applicationId),
   );
 }
 
-DatadogFlagsSite _flagsSiteForName(String? siteName) {
-  return switch (siteName) {
-    'datad0g.com' => DatadogFlagsSite.us1Staging,
-    'us3' || 'us3.datadoghq.com' => DatadogFlagsSite.us3,
-    'us5' || 'us5.datadoghq.com' => DatadogFlagsSite.us5,
-    'eu1' || 'datadoghq.eu' => DatadogFlagsSite.eu1,
-    'ap1' || 'ap1.datadoghq.com' => DatadogFlagsSite.ap1,
-    'ap2' || 'ap2.datadoghq.com' => DatadogFlagsSite.ap2,
-    _ => DatadogFlagsSite.us1,
-  };
+DatadogSite _datadogSiteForName(String? siteName) {
+  final normalizedSiteName = siteName?.trim();
+  if (normalizedSiteName == null || normalizedSiteName.isEmpty) {
+    return DatadogSite.us1;
+  }
+  final aliasedSite = _datadogSiteAliases[normalizedSiteName];
+  if (aliasedSite != null) {
+    return aliasedSite;
+  }
+  try {
+    return DatadogSite.values.byName(normalizedSiteName);
+  } on ArgumentError {
+    return DatadogSite.us1;
+  }
 }
 
 List<FlagsExampleFlag> _flagSpecs(
