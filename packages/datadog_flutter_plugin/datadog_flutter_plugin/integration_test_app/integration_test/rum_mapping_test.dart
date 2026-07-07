@@ -2,8 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2022-Present Datadog, Inc.
 
-import 'dart:convert';
-
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_integration_test_app/integration_scenarios/scenario_runner.dart';
 import 'package:flutter/foundation.dart';
@@ -27,7 +25,8 @@ void main() {
   //  * errorMapper changes 'custom-fingerprint' to 'mapped fingerprint'
   //  * longTask mapper discards all long tasks less than 200 ms
   //  * longTask mapper renames ThirdManualRumView to ThirdView
-  testWidgets('test instrumentation with mappers', (WidgetTester tester) async {
+  testWidgets('test instrumentation with mappers', skip: isDdSdkPlatform(),
+      (WidgetTester tester) async {
     var serverRecorder = await openTestScenario(
       tester,
       menuTitle: 'Manual RUM Scenario',
@@ -42,14 +41,7 @@ void main() {
       const Duration(seconds: 50),
       (requests) {
         requestLog.addAll(requests);
-        for (var request in requests) {
-          request.data.split('\n').forEach((e) {
-            dynamic jsonValue = json.decode(e);
-            if (jsonValue is Map<String, dynamic>) {
-              rumLog.add(RumEventDecoder(jsonValue));
-            }
-          });
-        }
+        rumLog.addAll(requests.expand((r) => r.asRumEvents()));
         return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
       },
     );

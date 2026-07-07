@@ -2,8 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025-Present Datadog, Inc.
 
-import 'dart:convert';
-
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -26,20 +24,12 @@ void main() {
       const Duration(seconds: 50),
       (requests) {
         requestLog.addAll(requests);
-        for (var e in requests) {
-          final asLogs = e.asLogs();
+        for (final request in requests) {
+          final asLogs = request.asLogs();
           if (asLogs != null && asLogs.isNotEmpty) {
             logLog.addAll(asLogs);
           } else {
-            e.data.split('\n').forEach((e) {
-              dynamic jsonValue = json.decode(e);
-              if (jsonValue is Map<String, Object?>) {
-                final rumEvent = RumEventDecoder.fromJson(jsonValue);
-                if (rumEvent != null) {
-                  rumLog.add(rumEvent);
-                }
-              }
-            });
+            rumLog.addAll(request.asRumEvents());
           }
         }
         final rumSession = RumSessionDecoder.fromEvents(rumLog);

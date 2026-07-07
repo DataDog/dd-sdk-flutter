@@ -1,0 +1,23 @@
+# Run: dart run ffigen --config ffigen.yaml
+#
+# Before running, build the example app for Windows to populate the FetchContent cache:
+#   cd example && flutter build windows
+# Headers land at: example/build/windows/x64/_deps/dd-sdk-cpp-src/include-c/
+name: DdSdkFfi
+description: 'Auto-generated FFI bindings for the dd-sdk-cpp C API.'
+output: 'lib/src/ffi_bindings.dart'
+
+headers:
+  entry-points:
+    - 'example/build/windows/x64/_deps/dd-sdk-cpp-src/include-c/datadog.h'
+  include-directives:
+    - 'example/build/windows/x64/_deps/dd-sdk-cpp-src/include-c/**'
+
+functions:
+  leaf:
+    include:
+      - '.*'
+
+compiler-opts:
+  - '-Iexample/build/windows/x64/_deps/dd-sdk-cpp-src/include-c'
+  - '-DDATADOG_API='

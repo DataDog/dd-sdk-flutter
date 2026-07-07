@@ -79,6 +79,13 @@ packages:
       relative: true
     source: path
     version: "1.0.0"
+  datadog_flutter_plugin_desktop:
+    dependency: "direct overridden"
+    description:
+      path: "../../../packages/datadog_flutter_plugin/datadog_flutter_plugin_desktop"
+      relative: true
+    source: path
+    version: "1.0.0"
   datadog_flutter_plugin_ios:
     dependency: "direct overridden"
     description:
@@ -385,4 +392,4 @@ packages:
     version: "1.1.1"
 sdks:
   dart: ">=3.10.0-0 <4.0.0"
-  flutter: ">=3.19.0"
+  flutter: ">=3.18.0-18.0.pre.54"

@@ -24,13 +24,13 @@ class LogDecoder {
 
   List<String> get tagValues => (log['ddtags'] as String).split(',');
   String get applicationVersion => log['version'] as String;
-  String get loggerName => getNestedProperty('logger.name', log);
-  String get loggerVersion => getNestedProperty('logger.version', log);
-  String get threadName => getNestedProperty('logger.thread_name', log);
-  String get errorKind => getNestedProperty('error.kind', log);
-  String get errorMessage => getNestedProperty('error.message', log);
-  String get errorStack => getNestedProperty('error.stack', log);
-  String get errorSourceType => getNestedProperty('error.source_type', log);
+  String? get loggerName => getNestedProperty('logger.name', log);
+  String? get loggerVersion => getNestedProperty('logger.version', log);
+  String? get threadName => getNestedProperty('logger.thread_name', log);
+  String? get errorKind => getNestedProperty('error.kind', log);
+  String? get errorMessage => getNestedProperty('error.message', log);
+  String? get errorStack => getNestedProperty('error.stack', log);
+  String? get errorSourceType => getNestedProperty('error.source_type', log);
   String? get errorFingerprint {
     if (!kManualIsWeb) {
       return getNestedProperty('error.fingerprint', log);

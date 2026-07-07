@@ -2,8 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
-import 'dart:convert';
-
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_common_test/widget_tester_extensions.dart';
 import 'package:datadog_integration_test_app/auto_integration_scenarios/scenario_runner.dart';
@@ -48,14 +46,7 @@ void main() {
       const Duration(seconds: 50),
       (requests) {
         requestLog.addAll(requests);
-        for (var request in requests) {
-          request.data.split('\n').forEach((e) {
-            dynamic jsonValue = json.decode(e);
-            if (jsonValue is Map<String, dynamic>) {
-              rumLog.add(RumEventDecoder(jsonValue));
-            }
-          });
-        }
+        rumLog.addAll(requests.expand((r) => r.asRumEvents()));
         return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
       },
     );

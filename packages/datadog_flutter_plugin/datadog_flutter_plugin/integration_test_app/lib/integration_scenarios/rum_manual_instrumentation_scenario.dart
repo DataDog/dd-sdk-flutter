@@ -12,8 +12,8 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 
 const fakeRootUrl = 'https://fake_url';
-const onboardingFeatureOperation = 'Onboarding';
-const firstDownloadFeatureOperation = 'First Screen Download';
+const onboardingFeatureOperation = 'onboarding';
+const firstDownloadFeatureOperation = 'first_screen_download';
 
 class RumManualInstrumentationScenario extends StatefulWidget {
   const RumManualInstrumentationScenario({Key? key}) : super(key: key);

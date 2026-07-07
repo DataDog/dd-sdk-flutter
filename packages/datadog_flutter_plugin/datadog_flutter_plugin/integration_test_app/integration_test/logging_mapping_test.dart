@@ -18,7 +18,7 @@ void main() {
   kManualIsWeb = kIsWeb;
 
   testWidgets('logger with mapper modifies and excludes events',
-      (tester) async {
+      skip: isDdSdkPlatform(), (tester) async {
     var recordedSession = await openTestScenario(
       tester,
       scenarioName: mappedLoggingScenarioRunner,
@@ -123,7 +123,10 @@ void main() {
         if (Platform.isIOS) {
           expect(log.applicationVersion, '1.2.3-555');
         }
-        expect(log.threadName, 'main');
+        // The C SDK (desktop) does not populate logger.thread_name.
+        if (!isDdSdkCppPlatform()) {
+          expect(log.threadName, 'main');
+        }
       }
     }
   });

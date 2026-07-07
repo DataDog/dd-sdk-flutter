@@ -2,8 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
-import 'dart:convert';
-
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_common_test/widget_tester_extensions.dart';
 import 'package:flutter/foundation.dart';
@@ -67,15 +65,7 @@ void main() {
       const Duration(seconds: 80),
       (requests) {
         requestLog.addAll(requests);
-        requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
-          dynamic jsonValue = json.decode(e);
-          if (jsonValue is Map<String, Object?>) {
-            final rumEvent = RumEventDecoder.fromJson(jsonValue);
-            if (rumEvent != null) {
-              rumLog.add(rumEvent);
-            }
-          }
-        });
+        rumLog.addAll(requests.expand((r) => r.asRumEvents()));
         return RumSessionDecoder.fromEvents(rumLog).visits.length >=
             (kIsWeb ? 5 : 3);
       },
@@ -94,8 +84,10 @@ void main() {
     for (final viewEvent in firstVisit.viewEvents) {
       expect(viewEvent.rumEvent['session']['id'], firstSession);
     }
-    expect(
-        firstVisit.viewEvents.last.rumEvent['session']['is_active'], isFalse);
+    if (!isDdSdkCppPlatform()) {
+      expect(
+          firstVisit.viewEvents.last.rumEvent['session']['is_active'], isFalse);
+    }
 
     expect(firstVisit.resourceEvents.length, 1);
     expect(
@@ -107,8 +99,10 @@ void main() {
     for (final viewEvent in secondVisit.viewEvents) {
       expect(viewEvent.rumEvent['session']['id'], secondSession);
     }
-    expect(
-        secondVisit.viewEvents.last.rumEvent['session']['is_active'], isTrue);
+    if (!isDdSdkCppPlatform()) {
+      expect(
+          secondVisit.viewEvents.last.rumEvent['session']['is_active'], isTrue);
+    }
 
     expect(secondVisit.resourceEvents.length, 1);
     expect(

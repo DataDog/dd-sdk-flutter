@@ -2,8 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
-import 'dart:convert';
-
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -37,15 +35,7 @@ void main() {
       const Duration(seconds: 50),
       (requests) {
         requestLog.addAll(requests);
-        requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
-          dynamic jsonValue = json.decode(e);
-          if (jsonValue is Map<String, dynamic>) {
-            final rumEvent = RumEventDecoder.fromJson(jsonValue);
-            if (rumEvent != null) {
-              rumLog.add(rumEvent);
-            }
-          }
-        });
+        rumLog.addAll(requests.expand((r) => r.asRumEvents()));
         var visits = RumSessionDecoder.fromEvents(rumLog).visits;
         return visits.length == 1 &&
             visits[0].viewEvents.last.view.errorCount == 3;
@@ -63,8 +53,8 @@ void main() {
     expect(exceptionError.message, contains(TypeError().toString()));
     expect(exceptionError.source, 'source');
     expect(exceptionError.errorType, 'NullThrown');
-    if (!kIsWeb) {
-      // source_type is not supported on web, but type should be browser anyway.
+    if (!kIsWeb && !isDdSdkCppPlatform()) {
+      // source_type is not supported on web or C++ SDK.
       expect(exceptionError.sourceType, 'flutter');
     }
 

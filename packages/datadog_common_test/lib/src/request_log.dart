@@ -84,6 +84,37 @@ class RequestLog {
     );
   }
 
+  /// Parses the request body as a list of RUM events, handling both JSON array
+  /// format (C SDK) and JSONL format (iOS/Android, one object per line).
+  List<RumEventDecoder> asRumEvents() {
+    List<dynamic> entries;
+    try {
+      final parsed = jsonData;
+      if (parsed is List) {
+        entries = parsed;
+      } else if (parsed is Map<String, dynamic>) {
+        entries = [parsed];
+      } else {
+        return [];
+      }
+    } on FormatException {
+      entries = [];
+      for (final line in data.split('\n')) {
+        if (line.trim().isEmpty) continue;
+        try {
+          entries.add(json.decode(line));
+        } on FormatException {
+          // skip malformed lines
+        }
+      }
+    }
+    return entries
+        .whereType<Map<String, dynamic>>()
+        .map(RumEventDecoder.fromJson)
+        .whereType<RumEventDecoder>()
+        .toList();
+  }
+
   List<LogDecoder>? asLogs() {
     List<dynamic>? logJson;
     try {

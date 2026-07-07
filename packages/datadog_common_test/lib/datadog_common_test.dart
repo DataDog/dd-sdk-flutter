@@ -4,6 +4,10 @@
 
 library datadog_common_test;
 
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+
 export 'src/data_helpers.dart';
 export 'src/decoder_helpers.dart';
 export 'src/decoders/log_decoder.dart';
@@ -12,3 +16,12 @@ export 'src/decoders/span_decoder.dart';
 export 'src/mock_http_sever.dart';
 export 'src/request_log.dart';
 export 'src/testing_configuration.dart';
+
+bool isDdSdkCppPlatform() {
+  if (!kIsWeb) {
+    return Platform.isWindows || Platform.isLinux;
+  }
+  return false;
+}
+
+bool isDdSdkPlatform() => isDdSdkCppPlatform();

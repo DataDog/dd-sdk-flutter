@@ -152,7 +152,10 @@ void main() {
         if (Platform.isIOS) {
           expect(log.applicationVersion, '1.2.3-555');
         }
-        expect(log.threadName, 'main');
+        // The C SDK (desktop) does not populate logger.thread_name.
+        if (!isDdSdkCppPlatform()) {
+          expect(log.threadName, 'main');
+        }
       }
 
       // Verify expected tags
