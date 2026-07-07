@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.4.0
+
+* Parse route query string into view.url, which allows for searching for query parameters in Datadog with `@view.url_query.*`.
+* Guard against apps using AGP 9 with `buildInKotlin` set to false.
+* Update all gradle files to support AGP 9. See [#1059](https://github.com/DataDog/dd-sdk-flutter/issues/1059)
+* Upgrade iOS SDK to 3.13.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md).
+  * Fix several instances where misaligned memory could be loaded without proper checking. 
+* Upgrade Android SDK to 3.11.0. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md).
+  * Report carrier info on Android API 24+.
+  * Optimize `isMainProcess` detection.
+  * Remove regex usage in `MemoryVitalReader`.
+  * Enforce schema character set on `vital.name` in Operation APIs.
+  * Write `CUSTOM` RUM actions immediately.
+  * Move broadcast-receiver dispatch off the main thread to reduce ANRs.
+  * Catch exception on the battery level query.
+  * Atomically write NDK crash logs and catch `NumberFormatException`.
+  * Catch `IllegalArgumentException` when reading trace input stream for last fatal ANR.
+
 ## 3.3.0
 
 * Capture HTTP request and response headers for RUM resources, including Flutter Web.
