@@ -276,7 +276,6 @@ public func __datadog_session_replay_keep_symbols() {
 
     /// Forwards the Flutter view event to the native RUM so it appears in the session metadata.
     private static func sendViewEvent(viewID: String, segmentJson: String) {
-        // Extract minimal view metadata from the segment
         guard let data = segmentJson.data(using: .utf8),
             let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             return
@@ -287,8 +286,19 @@ public func __datadog_session_replay_keep_symbols() {
             "date": Int64(Date().timeIntervalSince1970 * 1000),
             "view": [
                 "id": viewID,
-                "name": "FlutterView",  // or extract from context
-                "url": "FlutterView"
+                "name": "FlutterView",
+                "url": "FlutterView",
+                "time_spent": 1,
+                "action": ["count": 0],
+                "error": ["count": 0],
+                "resource": ["count": 0],
+                "long_task": ["count": 0],
+                "is_active": true
+            ],
+            "_dd": [
+                "format_version": 2,
+                "document_version": 1,
+                "session": ["plan": 2]
             ]
         ]
 
