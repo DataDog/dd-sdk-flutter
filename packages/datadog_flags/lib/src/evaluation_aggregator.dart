@@ -144,9 +144,7 @@ class EvaluationAggregator {
     await _uploadPendingEvaluations(rescheduleOnFailure: rescheduleOnFailure);
   }
 
-  Future<bool> _uploadPendingEvaluations({
-    required bool rescheduleOnFailure,
-  }) {
+  Future<bool> _uploadPendingEvaluations({required bool rescheduleOnFailure}) {
     final configuration = runtime.configuration;
     if (!configuration.trackEvaluations || _aggregations.isEmpty) {
       return Future.value(true);
@@ -156,14 +154,15 @@ class EvaluationAggregator {
     _aggregations.clear();
 
     late final Future<bool> uploadOperation;
-    uploadOperation = _sendEvaluations(
-      evaluations,
-      rescheduleOnFailure: rescheduleOnFailure,
-    ).whenComplete(() {
-      if (identical(_uploadInFlight, uploadOperation)) {
-        _uploadInFlight = null;
-      }
-    });
+    uploadOperation =
+        _sendEvaluations(
+          evaluations,
+          rescheduleOnFailure: rescheduleOnFailure,
+        ).whenComplete(() {
+          if (identical(_uploadInFlight, uploadOperation)) {
+            _uploadInFlight = null;
+          }
+        });
     _uploadInFlight = uploadOperation;
     return uploadOperation;
   }
@@ -223,12 +222,12 @@ class EvaluationAggregator {
 
       existing.firstEvaluation =
           existing.firstEvaluation < evaluation.firstEvaluation
-              ? existing.firstEvaluation
-              : evaluation.firstEvaluation;
+          ? existing.firstEvaluation
+          : evaluation.firstEvaluation;
       existing.lastEvaluation =
           existing.lastEvaluation > evaluation.lastEvaluation
-              ? existing.lastEvaluation
-              : evaluation.lastEvaluation;
+          ? existing.lastEvaluation
+          : evaluation.lastEvaluation;
       existing.evaluationCount += evaluation.evaluationCount;
     }
 
@@ -239,7 +238,8 @@ class EvaluationAggregator {
 
   Uri _evaluationEndpoint() {
     final datadogConfig = runtime.datadogConfig;
-    final endpoint = runtime.configuration.customEvaluationEndpoint ??
+    final endpoint =
+        runtime.configuration.customEvaluationEndpoint ??
         datadogConfig.intakeEndpoint().replace(path: '/api/v2/flagevaluation');
     return endpoint.replace(
       queryParameters: {
@@ -345,8 +345,11 @@ class _AggregatedEvaluation {
 
 Map<String, Object?> _removeNullValues(Map<String, Object?> input) {
   return Map.fromEntries(
-    input.entries.where((entry) => entry.value != null).map(
-        (entry) => MapEntry(entry.key, _removeNestedNullValues(entry.value))),
+    input.entries
+        .where((entry) => entry.value != null)
+        .map(
+          (entry) => MapEntry(entry.key, _removeNestedNullValues(entry.value)),
+        ),
   );
 }
 

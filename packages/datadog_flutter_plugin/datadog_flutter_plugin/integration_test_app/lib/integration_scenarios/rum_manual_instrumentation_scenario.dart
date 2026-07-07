@@ -24,7 +24,8 @@ class RumManualInstrumentationScenario extends StatefulWidget {
 }
 
 class _RumManualInstrumentationScenarioState
-    extends State<RumManualInstrumentationScenario> implements RouteAware {
+    extends State<RumManualInstrumentationScenario>
+    implements RouteAware {
   bool _contentReady = false;
 
   @override
@@ -67,9 +68,7 @@ class _RumManualInstrumentationScenarioState
     DatadogSdk.instance.rum?.startFeatureOperation(
       onboardingFeatureOperation,
       operationKey: 'key_a',
-      attributes: {
-        'start_state': 1,
-      },
+      attributes: {'start_state': 1},
     );
   }
 
@@ -81,9 +80,7 @@ class _RumManualInstrumentationScenarioState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manual RUM'),
-      ),
+      appBar: AppBar(title: const Text('Manual RUM')),
       body: Center(
         child: Column(
           children: [
@@ -107,10 +104,11 @@ class _RumManualInstrumentationScenarioState
     DatadogSdk.instance.rum?.addViewLoadingTime();
 
     DatadogSdk.instance.setUserInfo(
-        id: 'fake-id',
-        name: 'Johnny Silverhand',
-        email: 'fake@datadoghq.com',
-        extraInfo: {'type': 'customer', 'profession': 'rocker'});
+      id: 'fake-id',
+      name: 'Johnny Silverhand',
+      email: 'fake@datadoghq.com',
+      extraInfo: {'type': 'customer', 'profession': 'rocker'},
+    );
   }
 
   void _simulateResourceDownload() async {
@@ -123,18 +121,29 @@ class _RumManualInstrumentationScenarioState
     var simulatedResourceKey1 = '/resource/1';
     var simulatedResourceKey2 = '/resource/2';
 
-    rum?.startResource(simulatedResourceKey1, RumHttpMethod.get,
-        '$fakeRootUrl$simulatedResourceKey1');
-    rum?.startResource(simulatedResourceKey2, RumHttpMethod.get,
-        '$fakeRootUrl$simulatedResourceKey2');
+    rum?.startResource(
+      simulatedResourceKey1,
+      RumHttpMethod.get,
+      '$fakeRootUrl$simulatedResourceKey1',
+    );
+    rum?.startResource(
+      simulatedResourceKey2,
+      RumHttpMethod.get,
+      '$fakeRootUrl$simulatedResourceKey2',
+    );
 
     await Future<void>.delayed(const Duration(milliseconds: 100));
     rum?.stopResource(simulatedResourceKey1, 200, RumResourceType.image, 2048);
     rum?.stopResourceWithErrorInfo(
-        simulatedResourceKey2, 'Status code 400', 'ErrorLoading');
+      simulatedResourceKey2,
+      'Status code 400',
+      'ErrorLoading',
+    );
 
     rum?.failFeatureOperation(
-        firstDownloadFeatureOperation, RumFeatureOperationFailureReason.error);
+      firstDownloadFeatureOperation,
+      RumFeatureOperationFailureReason.error,
+    );
 
     setState(() {
       _contentReady = true;
@@ -143,12 +152,12 @@ class _RumManualInstrumentationScenarioState
 
   Future<void> _onNextTapped() async {
     DatadogSdk.instance.rum?.addAction(RumActionType.tap, 'Next Screen');
-    unawaited(Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const RumManualInstrumentation2(),
+    unawaited(
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const RumManualInstrumentation2()),
       ),
-    ));
+    );
   }
 }
 
@@ -201,14 +210,18 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
   void didPush() {
     DatadogSdk.instance.rum?.startView(_viewKey, _viewName);
 
-    DatadogSdk.instance.rum
-        ?.addViewAttribute('view_attribute', 'view_attribute_value');
+    DatadogSdk.instance.rum?.addViewAttribute(
+      'view_attribute',
+      'view_attribute_value',
+    );
 
     _simulateResourceDownload();
 
     DatadogSdk.instance.rum?.addFeatureFlagEvaluation('mock_flag_a', false);
-    DatadogSdk.instance.rum
-        ?.addFeatureFlagEvaluation('mock_flag_b', 'mock_value');
+    DatadogSdk.instance.rum?.addFeatureFlagEvaluation(
+      'mock_flag_b',
+      'mock_value',
+    );
   }
 
   @override
@@ -219,9 +232,7 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manual RUM 2'),
-      ),
+      appBar: AppBar(title: const Text('Manual RUM 2')),
       body: Center(
         child: Column(
           children: [
@@ -244,8 +255,11 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
 
     var simulatedResourceKey1 = '/tns-resource/1';
 
-    rum?.startResource(simulatedResourceKey1, RumHttpMethod.get,
-        '$fakeRootUrl$simulatedResourceKey1');
+    rum?.startResource(
+      simulatedResourceKey1,
+      RumHttpMethod.get,
+      '$fakeRootUrl$simulatedResourceKey1',
+    );
 
     await Future<void>.delayed(const Duration(milliseconds: 100));
     rum?.stopResource(simulatedResourceKey1, 200, RumResourceType.image);
@@ -261,11 +275,16 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
         DatadogAttributes.errorFingerprint: 'custom-fingerprint',
       },
     );
-    DatadogSdk.instance.rum
-        ?.startAction(RumActionType.scroll, 'User Scrolling');
+    DatadogSdk.instance.rum?.startAction(
+      RumActionType.scroll,
+      'User Scrolling',
+    );
     await Future<void>.delayed(const Duration(seconds: 2));
     DatadogSdk.instance.rum?.stopAction(
-        RumActionType.scroll, 'User Scrolling', {'scroll_distance': 12.2});
+      RumActionType.scroll,
+      'User Scrolling',
+      {'scroll_distance': 12.2},
+    );
 
     setState(() {
       _longTaskReady = true;
@@ -282,13 +301,13 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
 
   void _onNextTapped() {
     DatadogSdk.instance.rum?.addAction(RumActionType.tap, 'Next Screen');
-    DatadogSdk.instance.rum?.succeedFeatureOperation(onboardingFeatureOperation,
-        operationKey: 'key_a');
+    DatadogSdk.instance.rum?.succeedFeatureOperation(
+      onboardingFeatureOperation,
+      operationKey: 'key_a',
+    );
     Navigator.push<void>(
       context,
-      MaterialPageRoute(
-        builder: (_) => const RumManualInstrumentation3(),
-      ),
+      MaterialPageRoute(builder: (_) => const RumManualInstrumentation3()),
     );
   }
 }
@@ -334,10 +353,7 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
     DatadogSdk.instance.rum?.startView(_viewKey, _viewName);
 
     DatadogSdk.instance.rum?.addAttribute('nesting_attribute', {
-      'testing_attribute': {
-        'nested_1': 123,
-        'nested_null': null,
-      },
+      'testing_attribute': {'nested_1': 123, 'nested_null': null},
     });
 
     _simulateActions();
@@ -351,12 +367,8 @@ class _RumManualInstrumentation3State extends State<RumManualInstrumentation3>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manual RUM 2'),
-      ),
-      body: const Center(
-        child: Text('Everything is Awesome!'),
-      ),
+      appBar: AppBar(title: const Text('Manual RUM 2')),
+      body: const Center(child: Text('Everything is Awesome!')),
     );
   }
 

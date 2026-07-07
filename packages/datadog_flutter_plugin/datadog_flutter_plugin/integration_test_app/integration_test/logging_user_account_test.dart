@@ -24,13 +24,12 @@ void main() {
     );
     var logs = <LogDecoder>[];
 
-    await recordedSession.pollForLogs(
-      const Duration(seconds: 60),
-      (logRequests) {
-        logs = logRequests;
-        return logs.length >= 6;
-      },
-    );
+    await recordedSession.pollForLogs(const Duration(seconds: 60), (
+      logRequests,
+    ) {
+      logs = logRequests;
+      return logs.length >= 6;
+    });
 
     expect(logs[0].userAnonymousId, isNotNull);
     expect(logs[0].userId, isNull);

@@ -64,11 +64,7 @@ Future<void> main(List<String> arguments) async {
 
 ArgParser _argumentParser() {
   return ArgParser()
-    ..addOption(
-      'env',
-      defaultsTo: 'staging',
-      help: 'Datadog environment name.',
-    )
+    ..addOption('env', defaultsTo: 'staging', help: 'Datadog environment name.')
     ..addOption(
       'site',
       defaultsTo: 'us1',
@@ -94,12 +90,7 @@ ArgParser _argumentParser() {
       'targeting-attributes',
       help: 'Optional JSON object with targeting attributes.',
     )
-    ..addFlag(
-      'help',
-      abbr: 'h',
-      negatable: false,
-      help: 'Print usage.',
-    );
+    ..addFlag('help', abbr: 'h', negatable: false, help: 'Print usage.');
 }
 
 FlagDetails<Object?> _evaluate(
@@ -108,30 +99,13 @@ FlagDetails<Object?> _evaluate(
   String flagType,
 ) {
   return switch (flagType) {
-    'boolean' => flags.getBooleanDetails(
-        key: flagKey,
-        defaultValue: false,
-      ),
-    'string' => flags.getStringDetails(
-        key: flagKey,
-        defaultValue: '',
-      ),
-    'integer' => flags.getIntegerDetails(
-        key: flagKey,
-        defaultValue: 0,
-      ),
-    'double' || 'float' => flags.getDoubleDetails(
-        key: flagKey,
-        defaultValue: 0,
-      ),
-    'json' => flags.getObjectDetails(
-        key: flagKey,
-        defaultValue: null,
-      ),
-    _ => flags.getBooleanDetails(
-        key: flagKey,
-        defaultValue: false,
-      ),
+    'boolean' => flags.getBooleanDetails(key: flagKey, defaultValue: false),
+    'string' => flags.getStringDetails(key: flagKey, defaultValue: ''),
+    'integer' => flags.getIntegerDetails(key: flagKey, defaultValue: 0),
+    'double' ||
+    'float' => flags.getDoubleDetails(key: flagKey, defaultValue: 0),
+    'json' => flags.getObjectDetails(key: flagKey, defaultValue: null),
+    _ => flags.getBooleanDetails(key: flagKey, defaultValue: false),
   };
 }
 

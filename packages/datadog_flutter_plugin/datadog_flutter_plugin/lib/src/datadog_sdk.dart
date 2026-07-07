@@ -159,8 +159,10 @@ class DatadogSdk {
     };
 
     await DatadogSdk.instance.initialize(configuration, trackingConsent);
-    DatadogSdk.instance
-        .updateConfigurationInfo(LateConfigurationProperty.trackErrors, true);
+    DatadogSdk.instance.updateConfigurationInfo(
+      LateConfigurationProperty.trackErrors,
+      true,
+    );
 
     runner();
   }
@@ -232,9 +234,9 @@ class DatadogSdk {
           );
         }
 
-        for (final pluginConfig in attachResponse
-            .capturedConfiguration.configuredPlugins
-            .whereType<DatadogPluginConfiguration>()) {
+        for (final pluginConfig
+            in attachResponse.capturedConfiguration.configuredPlugins
+                .whereType<DatadogPluginConfiguration>()) {
           var plugin = pluginConfig.create(this);
           if (_plugins.containsKey(plugin.runtimeType)) {
             internalLogger.error(

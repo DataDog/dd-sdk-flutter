@@ -19,9 +19,7 @@ abstract interface class DatadogFlagsClient {
   ///
   /// Evaluations made before initialization completes return their provided
   /// default value with a `providerNotReady` error.
-  Future<void> initialize(
-    FlagsEvaluationContext context,
-  );
+  Future<void> initialize(FlagsEvaluationContext context);
 
   /// Evaluates a boolean flag and returns details about the result.
   FlagDetails<bool> getBooleanDetails({

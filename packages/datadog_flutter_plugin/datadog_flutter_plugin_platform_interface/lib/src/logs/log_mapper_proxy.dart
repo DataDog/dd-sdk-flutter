@@ -24,7 +24,7 @@ abstract class LogMapperProxy {
   final LogEventMapper? _logEventMapper;
 
   LogMapperProxy({required LogEventMapper? logEventMapper})
-      : _logEventMapper = logEventMapper;
+    : _logEventMapper = logEventMapper;
 
   Map<String, dynamic>? mapLogEvent(Map<String, dynamic> logEventJson) {
     if (_logEventMapper case final mapper?) {

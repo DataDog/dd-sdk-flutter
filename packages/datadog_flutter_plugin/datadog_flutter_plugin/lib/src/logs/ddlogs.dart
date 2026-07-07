@@ -36,7 +36,9 @@ class DatadogLogging {
   DatadogLogging(DatadogSdk core) : _internalLogger = core.internalLogger;
 
   static Future<DatadogLogging?> enable(
-      DatadogSdk core, DatadogLoggingConfiguration config) async {
+    DatadogSdk core,
+    DatadogLoggingConfiguration config,
+  ) async {
     DatadogLogging? logging;
 
     await wrapAsync('logs.enable', core.internalLogger, null, () {
@@ -52,8 +54,12 @@ class DatadogLogging {
   /// deregister this Logs instance from the default Core, since this should
   /// only be called from the Core
   void deinitialize() {
-    wrap('logs.deinitialize', _internalLogger, null,
-        () => _platform.deinitialize());
+    wrap(
+      'logs.deinitialize',
+      _internalLogger,
+      null,
+      () => _platform.deinitialize(),
+    );
   }
 
   DatadogLogger createLogger(DatadogLoggerConfiguration configuration) {
@@ -111,12 +117,13 @@ class DatadogLogger {
   /// [DatadogLogging.createLogger]
   @internal
   DatadogLogger(
-      InternalLogger internalLogger, DatadogLoggerConfiguration configuration)
-      : _internalLogger = internalLogger,
-        _remoteLogThreshold = configuration.remoteLogThreshold,
-        _consoleLogFunction = configuration.customConsoleLogFunction,
-        _sampler = RateBasedSampler(configuration.remoteSampleRate / 100.0),
-        loggerHandle = _uuid.v4();
+    InternalLogger internalLogger,
+    DatadogLoggerConfiguration configuration,
+  ) : _internalLogger = internalLogger,
+      _remoteLogThreshold = configuration.remoteLogThreshold,
+      _consoleLogFunction = configuration.customConsoleLogFunction,
+      _sampler = RateBasedSampler(configuration.remoteSampleRate / 100.0),
+      loggerHandle = _uuid.v4();
 
   static DdLogsPlatform get _platform {
     return DdLogsPlatform.instance;
@@ -137,8 +144,14 @@ class DatadogLogger {
     StackTrace? errorStackTrace,
     Map<String, Object?> attributes = const {},
   }) {
-    _internalLog(LogLevel.debug, message, errorMessage, errorKind,
-        errorStackTrace, attributes);
+    _internalLog(
+      LogLevel.debug,
+      message,
+      errorMessage,
+      errorKind,
+      errorStackTrace,
+      attributes,
+    );
   }
 
   /// Sends an `info` log message.
@@ -156,8 +169,14 @@ class DatadogLogger {
     StackTrace? errorStackTrace,
     Map<String, Object?> attributes = const {},
   }) {
-    _internalLog(LogLevel.info, message, errorMessage, errorKind,
-        errorStackTrace, attributes);
+    _internalLog(
+      LogLevel.info,
+      message,
+      errorMessage,
+      errorKind,
+      errorStackTrace,
+      attributes,
+    );
   }
 
   /// Sends a `warn` log message.
@@ -175,8 +194,14 @@ class DatadogLogger {
     StackTrace? errorStackTrace,
     Map<String, Object?> attributes = const {},
   }) {
-    _internalLog(LogLevel.warning, message, errorMessage, errorKind,
-        errorStackTrace, attributes);
+    _internalLog(
+      LogLevel.warning,
+      message,
+      errorMessage,
+      errorKind,
+      errorStackTrace,
+      attributes,
+    );
   }
 
   /// Sends an `error` log message.
@@ -194,8 +219,14 @@ class DatadogLogger {
     StackTrace? errorStackTrace,
     Map<String, Object?> attributes = const {},
   }) {
-    _internalLog(LogLevel.error, message, errorMessage, errorKind,
-        errorStackTrace, attributes);
+    _internalLog(
+      LogLevel.error,
+      message,
+      errorMessage,
+      errorKind,
+      errorStackTrace,
+      attributes,
+    );
   }
 
   /// Sends a log message with `LogLevel` of [level].
@@ -215,7 +246,13 @@ class DatadogLogger {
     Map<String, Object?> attributes = const {},
   }) {
     _internalLog(
-        level, message, errorMessage, errorKind, errorStackTrace, attributes);
+      level,
+      message,
+      errorMessage,
+      errorKind,
+      errorStackTrace,
+      attributes,
+    );
   }
 
   /// Add a custom attribute to all future logs sent by this logger.
@@ -285,11 +322,24 @@ class DatadogLogger {
     Map<String, Object?> attributes,
   ) {
     _consoleLogFunction?.call(
-        level, message, errorMessage, errorKind, stackTrace, attributes);
+      level,
+      message,
+      errorMessage,
+      errorKind,
+      stackTrace,
+      attributes,
+    );
     if (_remoteLogThreshold.index <= level.index && _sampler.sample()) {
       wrap('logs._internalLog', _internalLogger, attributes, () {
-        return _platform.log(loggerHandle, level, message, errorMessage,
-            errorKind, stackTrace, attributes);
+        return _platform.log(
+          loggerHandle,
+          level,
+          message,
+          errorMessage,
+          errorKind,
+          stackTrace,
+          attributes,
+        );
       });
     }
   }

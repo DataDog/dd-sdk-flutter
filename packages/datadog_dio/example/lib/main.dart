@@ -90,12 +90,9 @@ Future<void> main() async {
   }
 
   await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
-    final dio = Dio(BaseOptions(
-      validateStatus: (status) => status != null && status < 300,
-    ))
-      ..addDatadogInterceptor(
-        DatadogSdk.instance,
-      );
+    final dio = Dio(
+      BaseOptions(validateStatus: (status) => status != null && status < 300),
+    )..addDatadogInterceptor(DatadogSdk.instance);
     // User for testing baggage headers
     DatadogSdk.instance.setUserInfo(id: 'integration_test_user');
     DatadogSdk.instance.setAccountInfo(id: 'integration_test_account');
@@ -111,18 +108,15 @@ class DatadogAutoIntegrationTestApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final navObserver =
-        DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
+    final navObserver = DatadogNavigationObserver(
+      datadogSdk: DatadogSdk.instance,
+    );
     return DatadogNavigationObserverProvider(
       navObserver: navObserver,
       child: MaterialApp(
         title: 'Flutter Demo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
-        navigatorObservers: [
-          navObserver,
-        ],
+        theme: ThemeData(primarySwatch: Colors.blue),
+        navigatorObservers: [navObserver],
         home: InstrumentationScenario(dio: dio),
       ),
     );

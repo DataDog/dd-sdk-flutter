@@ -41,30 +41,31 @@ void main() {
     await app.main();
 
     await tester.pumpAndSettle();
-    var button = find.byWidgetPredicate((widget) =>
-        widget is Text && (widget.data?.startsWith('Open WebView') ?? false));
+    var button = find.byWidgetPredicate(
+      (widget) =>
+          widget is Text && (widget.data?.startsWith('Open WebView') ?? false),
+    );
     await tester.tap(button);
     await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 3));
 
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
-    await serverRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        for (var request in requests) {
-          request.data.split('\n').forEach((e) {
-            dynamic jsonValue = json.decode(e);
-            if (jsonValue is Map<String, dynamic>) {
-              rumLog.add(RumEventDecoder(jsonValue));
-            }
-          });
-        }
-        final session = RumSessionDecoder.fromEvents(rumLog);
-        return session.visits.length >= 2;
-      },
-    );
+    await serverRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      for (var request in requests) {
+        request.data.split('\n').forEach((e) {
+          dynamic jsonValue = json.decode(e);
+          if (jsonValue is Map<String, dynamic>) {
+            rumLog.add(RumEventDecoder(jsonValue));
+          }
+        });
+      }
+      final session = RumSessionDecoder.fromEvents(rumLog);
+      return session.visits.length >= 2;
+    });
 
     final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, 2);

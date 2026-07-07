@@ -24,19 +24,13 @@ void main() {
     final value = {
       'value1': 10,
       'value2': 'Testing!',
-      'value3': {
-        'internal_value': 'xyz',
-        'value_4': 3,
-      },
+      'value3': {'internal_value': 'xyz', 'value_4': 3},
       // This is valid and should be translated by native SDKs to:
       // {
       //  '1': 'value',
       //  '2': 'value'
       // }
-      'intMap': {
-        1: 'value',
-        2: 'value2',
-      },
+      'intMap': {1: 'value', 2: 'value2'},
     };
 
     final val = findInvalidAttribute(value);
@@ -44,19 +38,20 @@ void main() {
   });
 
   test(
-      'findInvalidAttribute returns property name and type for invalid property at root',
-      () {
-    final value = {
-      'value1': 10,
-      'value2': 'Testing!',
-      'object': SimpleObject('testing'),
-    };
+    'findInvalidAttribute returns property name and type for invalid property at root',
+    () {
+      final value = {
+        'value1': 10,
+        'value2': 'Testing!',
+        'object': SimpleObject('testing'),
+      };
 
-    final val = findInvalidAttribute(value);
-    expect(val, isNotNull);
-    expect(val!.propertyName, 'object');
-    expect(val.propertyType, 'SimpleObject');
-  });
+      final val = findInvalidAttribute(value);
+      expect(val, isNotNull);
+      expect(val!.propertyName, 'object');
+      expect(val.propertyType, 'SimpleObject');
+    },
+  );
 
   test('findInvalidAttribute returns property name in nested maps', () {
     final value = {
@@ -91,10 +86,7 @@ void main() {
       'list': [
         1,
         2,
-        {
-          'value': 10,
-          'object': SimpleObject('value'),
-        },
+        {'value': 10, 'object': SimpleObject('value')},
       ],
     };
 
@@ -111,10 +103,7 @@ void main() {
       'list': [
         1,
         2,
-        [
-          10,
-          SimpleObject('value'),
-        ],
+        [10, SimpleObject('value')],
       ],
     };
 
@@ -131,10 +120,7 @@ void main() {
       'list': [
         1,
         2,
-        [
-          10,
-          SimpleObject('value'),
-        ],
+        [10, SimpleObject('value')],
       ],
     };
 
@@ -149,11 +135,8 @@ void main() {
       'value1': 10,
       'value2': 'Testing!',
       'value3': {
-        SimpleObject('property'): [
-          1,
-          2,
-        ],
-      }
+        SimpleObject('property'): [1, 2],
+      },
     };
 
     final val = findInvalidAttribute(value);
@@ -162,29 +145,28 @@ void main() {
     expect(val.propertyType, 'SimpleObject');
   });
 
-  test('wrap sends logs bad attributes when an argument error is thrown',
-      () async {
-    final testValue = {
-      'value1': {
-        'internal_value': 'test',
-      },
-      'value2': 'testing',
-      'value3': SimpleObject('property'),
-    };
-    final mockLogger = MockInternalLog();
+  test(
+    'wrap sends logs bad attributes when an argument error is thrown',
+    () async {
+      final testValue = {
+        'value1': {'internal_value': 'test'},
+        'value2': 'testing',
+        'value3': SimpleObject('property'),
+      };
+      final mockLogger = MockInternalLog();
 
-    wrap('testMethod', mockLogger, testValue, () async {
-      throw ArgumentError();
-    });
+      wrap('testMethod', mockLogger, testValue, () async {
+        throw ArgumentError();
+      });
 
-    // Wait for the next set of microtasks
-    await Future<void>.microtask(() {});
+      // Wait for the next set of microtasks
+      await Future<void>.microtask(() {});
 
-    verify(() => mockLogger.warn(any(
-          that: allOf(
-            contains('value3'),
-            contains('SimpleObject'),
-          ),
-        )));
-  });
+      verify(
+        () => mockLogger.warn(
+          any(that: allOf(contains('value3'), contains('SimpleObject'))),
+        ),
+      );
+    },
+  );
 }

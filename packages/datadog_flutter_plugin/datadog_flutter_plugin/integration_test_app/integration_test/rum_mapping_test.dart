@@ -38,21 +38,20 @@ void main() {
 
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
-    await serverRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        for (var request in requests) {
-          request.data.split('\n').forEach((e) {
-            dynamic jsonValue = json.decode(e);
-            if (jsonValue is Map<String, dynamic>) {
-              rumLog.add(RumEventDecoder(jsonValue));
-            }
-          });
-        }
-        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
-      },
-    );
+    await serverRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      for (var request in requests) {
+        request.data.split('\n').forEach((e) {
+          dynamic jsonValue = json.decode(e);
+          if (jsonValue is Map<String, dynamic>) {
+            rumLog.add(RumEventDecoder(jsonValue));
+          }
+        });
+      }
+      return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
+    });
 
     final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, 3);
@@ -81,9 +80,9 @@ void main() {
     expect(view2.longTaskEvents.length, greaterThanOrEqualTo(1));
     for (var longTask in view2.longTaskEvents) {
       expect(
-          longTask.duration,
-          greaterThanOrEqualTo(
-              const Duration(milliseconds: 200).inNanoseconds));
+        longTask.duration,
+        greaterThanOrEqualTo(const Duration(milliseconds: 200).inNanoseconds),
+      );
     }
 
     expect(view2.errorEvents[0].fingerprint, 'mapped fingerprint');

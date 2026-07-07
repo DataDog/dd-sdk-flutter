@@ -12,7 +12,7 @@ class InstrumentationSecondScreen extends StatefulWidget {
   final AbstractClient client;
 
   const InstrumentationSecondScreen({Key? key, required this.client})
-      : super(key: key);
+    : super(key: key);
 
   @override
   State<InstrumentationSecondScreen> createState() =>
@@ -73,9 +73,7 @@ class _InstrumentationSecondScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Secondary Screen'),
-      ),
+      appBar: AppBar(title: const Text('Secondary Screen')),
       body: FutureBuilder(
         future: _loadingFuture,
         builder: (context, snapshot) {
@@ -99,10 +97,7 @@ class _InstrumentationSecondScreenState
       child: Column(
         children: [
           const Text('All Done'),
-          ElevatedButton(
-            onPressed: _onNext,
-            child: const Text('Next Page'),
-          ),
+          ElevatedButton(onPressed: _onNext, child: const Text('Next Page')),
         ],
       ),
     );

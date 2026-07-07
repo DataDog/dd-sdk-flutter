@@ -101,9 +101,7 @@ void main() {
       });
 
       test('returns empty map when includeDefaults is false and no custom', () {
-        final extractor = ResourceHeadersExtractor(
-          includeDefaults: false,
-        );
+        final extractor = ResourceHeadersExtractor(includeDefaults: false);
         final headers = <String, List<String>>{
           'cache-control': ['no-cache'],
         };
@@ -236,8 +234,10 @@ void main() {
           'content-type': [longValue],
         };
         final result = extractor.extractRequestHeaders(headers);
-        expect(utf8.encode(result['content-type']!).length,
-            lessThanOrEqualTo(128));
+        expect(
+          utf8.encode(result['content-type']!).length,
+          lessThanOrEqualTo(128),
+        );
       });
 
       test('truncates without splitting multi-byte characters', () {
@@ -262,7 +262,9 @@ void main() {
     group('size limits', () {
       test('respects max 100 headers count', () {
         final headerNames = List.generate(
-            110, (i) => 'x-header-${i.toString().padLeft(3, '0')}');
+          110,
+          (i) => 'x-header-${i.toString().padLeft(3, '0')}',
+        );
         final extractor = ResourceHeadersExtractor(
           includeDefaults: false,
           captureHeaders: headerNames,
@@ -276,8 +278,10 @@ void main() {
 
       test('respects 2KB total size limit', () {
         // Create headers that would exceed 2KB
-        final headerNames =
-            List.generate(30, (i) => 'x-h-${i.toString().padLeft(2, '0')}');
+        final headerNames = List.generate(
+          30,
+          (i) => 'x-h-${i.toString().padLeft(2, '0')}',
+        );
         final extractor = ResourceHeadersExtractor(
           includeDefaults: false,
           captureHeaders: headerNames,
@@ -299,50 +303,56 @@ void main() {
       });
 
       test(
-          'skips an oversized header but keeps capturing smaller subsequent ones',
-          () {
-        // Burn most of the 2048-byte budget with 16 fillers (~122 bytes each
-        // ≈ 1952 bytes), leaving ~96 bytes free. A subsequent "medium" header
-        // (~117 bytes) does not fit and must be skipped; a "tiny" header
-        // listed after it (~7 bytes) must still be captured. This exercises
-        // continue-vs-break on the byte-budget check.
-        final fillers =
-            List.generate(16, (i) => 'x-fill-${i.toString().padLeft(2, '0')}');
-        final extractor = ResourceHeadersExtractor(
-          includeDefaults: false,
-          captureHeaders: [...fillers, 'x-medium-overflow', 'x-tiny'],
-        );
-        final headers = <String, List<String>>{
-          for (final name in fillers) name: ['v' * 113],
-          'x-medium-overflow': ['m' * 100],
-          'x-tiny': ['v'],
-        };
-        final result = extractor.extractRequestHeaders(headers);
-        expect(result.containsKey('x-medium-overflow'), isFalse);
-        expect(result['x-tiny'], 'v');
-      });
+        'skips an oversized header but keeps capturing smaller subsequent ones',
+        () {
+          // Burn most of the 2048-byte budget with 16 fillers (~122 bytes each
+          // ≈ 1952 bytes), leaving ~96 bytes free. A subsequent "medium" header
+          // (~117 bytes) does not fit and must be skipped; a "tiny" header
+          // listed after it (~7 bytes) must still be captured. This exercises
+          // continue-vs-break on the byte-budget check.
+          final fillers = List.generate(
+            16,
+            (i) => 'x-fill-${i.toString().padLeft(2, '0')}',
+          );
+          final extractor = ResourceHeadersExtractor(
+            includeDefaults: false,
+            captureHeaders: [...fillers, 'x-medium-overflow', 'x-tiny'],
+          );
+          final headers = <String, List<String>>{
+            for (final name in fillers) name: ['v' * 113],
+            'x-medium-overflow': ['m' * 100],
+            'x-tiny': ['v'],
+          };
+          final result = extractor.extractRequestHeaders(headers);
+          expect(result.containsKey('x-medium-overflow'), isFalse);
+          expect(result['x-tiny'], 'v');
+        },
+      );
 
       test(
-          'preserves default response headers when many custom headers are listed first in the input',
-          () {
-        // When many large custom headers come before defaults in the input
-        // map order, defaults must still survive the byte budget.
-        final customNames = List.generate(
-            30, (i) => 'x-custom-${i.toString().padLeft(2, '0')}');
-        final extractor = ResourceHeadersExtractor(
-          captureHeaders: customNames,
-        );
-        // Each custom value is 100 bytes — 30 customs alone would blow the
-        // 2KB budget if iterated in input order before content-type.
-        final headers = <String, List<String>>{
-          for (final name in customNames) name: ['x' * 100],
-          'content-type': ['text/html'],
-          'etag': ['"abc"'],
-        };
-        final result = extractor.extractResponseHeaders(headers);
-        expect(result['content-type'], 'text/html');
-        expect(result['etag'], '"abc"');
-      });
+        'preserves default response headers when many custom headers are listed first in the input',
+        () {
+          // When many large custom headers come before defaults in the input
+          // map order, defaults must still survive the byte budget.
+          final customNames = List.generate(
+            30,
+            (i) => 'x-custom-${i.toString().padLeft(2, '0')}',
+          );
+          final extractor = ResourceHeadersExtractor(
+            captureHeaders: customNames,
+          );
+          // Each custom value is 100 bytes — 30 customs alone would blow the
+          // 2KB budget if iterated in input order before content-type.
+          final headers = <String, List<String>>{
+            for (final name in customNames) name: ['x' * 100],
+            'content-type': ['text/html'],
+            'etag': ['"abc"'],
+          };
+          final result = extractor.extractResponseHeaders(headers);
+          expect(result['content-type'], 'text/html');
+          expect(result['etag'], '"abc"');
+        },
+      );
     });
 
     group('toResourceAttributes', () {
@@ -370,10 +380,7 @@ void main() {
 
       test('omits empty header maps from attributes', () {
         final extractor = ResourceHeadersExtractor();
-        final attrs = extractor.toResourceAttributes(
-          const {},
-          const {},
-        );
+        final attrs = extractor.toResourceAttributes(const {}, const {});
         expect(attrs, isEmpty);
       });
 
@@ -381,14 +388,16 @@ void main() {
         final extractor = ResourceHeadersExtractor();
         final attrs = extractor.toResourceAttributes(
           {
-            'x-custom': ['value']
+            'x-custom': ['value'],
           },
           {
-            'content-type': ['text/html']
+            'content-type': ['text/html'],
           },
         );
-        expect(attrs.containsKey(DatadogRumPlatformAttributeKey.requestHeaders),
-            false);
+        expect(
+          attrs.containsKey(DatadogRumPlatformAttributeKey.requestHeaders),
+          false,
+        );
         expect(attrs[DatadogRumPlatformAttributeKey.responseHeaders], {
           'content-type': 'text/html',
         });
@@ -396,8 +405,7 @@ void main() {
     });
 
     group('Flutter Web mapping accessors', () {
-      test(
-          'requestHeaderNames returns the narrower request defaults; '
+      test('requestHeaderNames returns the narrower request defaults; '
           'responseHeaderNames returns the broader response defaults', () {
         final extractor = ResourceHeadersExtractor();
         final requestNames = extractor.requestHeaderNames;
@@ -406,8 +414,10 @@ void main() {
         expect(requestNames, containsAll(['cache-control', 'content-type']));
         // etag is response-only and must not leak onto the request side.
         expect(requestNames.contains('etag'), isFalse);
-        expect(responseNames,
-            containsAll(['cache-control', 'content-type', 'etag']));
+        expect(
+          responseNames,
+          containsAll(['cache-control', 'content-type', 'etag']),
+        );
       });
 
       test('custom captureHeaders apply to both directions', () {
@@ -415,9 +425,13 @@ void main() {
           captureHeaders: ['x-custom', 'X-Other'],
         );
         expect(
-            extractor.requestHeaderNames, containsAll(['x-custom', 'x-other']));
-        expect(extractor.responseHeaderNames,
-            containsAll(['x-custom', 'x-other']));
+          extractor.requestHeaderNames,
+          containsAll(['x-custom', 'x-other']),
+        );
+        expect(
+          extractor.responseHeaderNames,
+          containsAll(['x-custom', 'x-other']),
+        );
       });
 
       test('forbidden headers are excluded from both directions', () {
@@ -427,7 +441,9 @@ void main() {
         );
         expect(extractor.requestHeaderNames.contains('authorization'), isFalse);
         expect(
-            extractor.responseHeaderNames.contains('authorization'), isFalse);
+          extractor.responseHeaderNames.contains('authorization'),
+          isFalse,
+        );
         expect(extractor.requestHeaderNames, contains('x-custom'));
       });
 

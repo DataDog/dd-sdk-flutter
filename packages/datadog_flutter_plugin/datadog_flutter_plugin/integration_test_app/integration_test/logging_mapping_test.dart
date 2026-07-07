@@ -17,8 +17,9 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   kManualIsWeb = kIsWeb;
 
-  testWidgets('logger with mapper modifies and excludes events',
-      (tester) async {
+  testWidgets('logger with mapper modifies and excludes events', (
+    tester,
+  ) async {
     var recordedSession = await openTestScenario(
       tester,
       scenarioName: mappedLoggingScenarioRunner,
@@ -29,13 +30,12 @@ void main() {
     );
     var logs = <LogDecoder>[];
 
-    await recordedSession.pollForLogs(
-      const Duration(seconds: 30),
-      (logRequests) {
-        logs = logRequests;
-        return logs.length >= 6;
-      },
-    );
+    await recordedSession.pollForLogs(const Duration(seconds: 30), (
+      logRequests,
+    ) {
+      logs = logRequests;
+      return logs.length >= 6;
+    });
 
     // This is the same set of tests as logging_test.dart, except that:
     //   * logger-attribute2 should always be null
@@ -44,8 +44,9 @@ void main() {
     //   * all error fingerprints on the second-logger are replaced with 'mapped print'
     expect(logs.length, equals(6));
 
-    List<LogDecoder> firstLoggerLogs =
-        logs.where((l) => l.loggerName != 'second_logger').toList();
+    List<LogDecoder> firstLoggerLogs = logs
+        .where((l) => l.loggerName != 'second_logger')
+        .toList();
 
     expect(firstLoggerLogs[0].status, 'debug');
     expect(firstLoggerLogs[0].message, 'debug xxxxxxxx');
@@ -66,10 +67,14 @@ void main() {
     }
     expect(firstLoggerLogs[1].log['logger-attribute1'], 'string value');
     expect(firstLoggerLogs[1].log['logger-attribute2'], isNull);
-    expect(firstLoggerLogs[1].log['nestedAttribute'],
-        containsPair('internal', 'test'));
-    expect(firstLoggerLogs[1].log['nestedAttribute'],
-        containsPair('isValid', true));
+    expect(
+      firstLoggerLogs[1].log['nestedAttribute'],
+      containsPair('internal', 'test'),
+    );
+    expect(
+      firstLoggerLogs[1].log['nestedAttribute'],
+      containsPair('isValid', true),
+    );
 
     expect(firstLoggerLogs[2].status, 'warn');
     expect(firstLoggerLogs[2].message, 'warn xxxxxxxx');
@@ -102,8 +107,9 @@ void main() {
     expect(firstLoggerLogs[4].log['logger-attribute1'], isNull);
     expect(firstLoggerLogs[4].log['logger-attribute2'], isNull);
 
-    List<LogDecoder> secondLoggerLogs =
-        logs.where((l) => l.loggerName == 'second_logger').toList();
+    List<LogDecoder> secondLoggerLogs = logs
+        .where((l) => l.loggerName == 'second_logger')
+        .toList();
 
     expect(secondLoggerLogs[0].status, 'warn');
     expect(secondLoggerLogs[0].message, 'Warning: this error occurred');
@@ -113,12 +119,16 @@ void main() {
     expect(secondLoggerLogs[0].errorMessage, 'Error Message');
     expect(secondLoggerLogs[0].errorStack, isNotNull);
     expect(secondLoggerLogs[0].errorFingerprint, 'mapped print');
-    expect(getNestedProperty<String>('logger.name', secondLoggerLogs[0].log),
-        'second_logger');
+    expect(
+      getNestedProperty<String>('logger.name', secondLoggerLogs[0].log),
+      'second_logger',
+    );
 
     for (final log in logs) {
-      expect(log.serviceName,
-          equalsIgnoringCase('com.datadoghq.flutter.integration'));
+      expect(
+        log.serviceName,
+        equalsIgnoringCase('com.datadoghq.flutter.integration'),
+      );
       if (!kIsWeb) {
         if (Platform.isIOS) {
           expect(log.applicationVersion, '1.2.3-555');

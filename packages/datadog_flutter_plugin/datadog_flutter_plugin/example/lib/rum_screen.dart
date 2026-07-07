@@ -16,8 +16,9 @@ class _RumScreenState extends State<RumScreen> {
   var viewStarted = false;
   var actionStarted = false;
   var resourceStarted = false;
-  final TextEditingController _viewNameController =
-      TextEditingController(text: 'RUM Test View');
+  final TextEditingController _viewNameController = TextEditingController(
+    text: 'RUM Test View',
+  );
   String? _currentSessionId;
 
   static const actionName = 'checkout-flow';
@@ -52,9 +53,9 @@ class _RumScreenState extends State<RumScreen> {
       final viewName = _viewNameController.value.text;
       rum.startView(viewName);
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('View $viewName Started'),
-      ));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('View $viewName Started')));
 
       setState(() {
         viewStarted = true;
@@ -72,9 +73,9 @@ class _RumScreenState extends State<RumScreen> {
       final viewName = _viewNameController.value.text;
       rum.stopView(viewName);
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('View $viewName Stopped'),
-      ));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('View $viewName Stopped')));
 
       setState(() {
         viewStarted = false;
@@ -86,9 +87,9 @@ class _RumScreenState extends State<RumScreen> {
     const name = 'Test Action';
     DatadogSdk.instance.rum?.addAction(RumActionType.custom, name);
 
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Sent Action $name'),
-    ));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Sent Action $name')));
   }
 
   void _startAction() {
@@ -98,9 +99,9 @@ class _RumScreenState extends State<RumScreen> {
       actionStarted = true;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Action $actionName Started'),
-    ));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Action $actionName Started')));
   }
 
   void _stopAction() {
@@ -112,9 +113,9 @@ class _RumScreenState extends State<RumScreen> {
       actionStarted = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Action $actionName Stopped'),
-    ));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Action $actionName Stopped')));
   }
 
   static const resourceKey = 'ResourceKey';
@@ -130,9 +131,9 @@ class _RumScreenState extends State<RumScreen> {
       rum.startResource(resourceKey, RumHttpMethod.get, resource);
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Resource $resource Started'),
-    ));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Resource $resource Started')));
   }
 
   void _stopResource() {
@@ -141,9 +142,9 @@ class _RumScreenState extends State<RumScreen> {
       rum.stopResource(resourceKey, 200, RumResourceType.image, 1024);
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Resource $resource Stopped'),
-    ));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Resource $resource Stopped')));
 
     setState(() {
       resourceStarted = false;
@@ -160,9 +161,9 @@ class _RumScreenState extends State<RumScreen> {
       );
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Resource $resource Stopped With Error'),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Resource $resource Stopped With Error')),
+    );
 
     setState(() {
       resourceStarted = false;
@@ -179,8 +180,9 @@ class _RumScreenState extends State<RumScreen> {
         stackTrace: st,
       );
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Sent Exception $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Sent Exception $e')));
     }
   }
 
@@ -190,16 +192,15 @@ class _RumScreenState extends State<RumScreen> {
       // noop
     }
 
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Triggered Long Task')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Triggered Long Task')));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('RUM'),
-      ),
+      appBar: AppBar(title: const Text('RUM')),
       body: SafeArea(
         child: Stack(
           fit: StackFit.expand,
@@ -324,15 +325,16 @@ class _RumScreenState extends State<RumScreen> {
               ),
             ),
             Positioned(
-                bottom: 0,
-                child: Container(
-                  width: MediaQuery.of(context).size.width,
-                  alignment: Alignment.center,
-                  child: Text(
-                    'Current Session Id:\n$_currentSessionId',
-                    textAlign: TextAlign.center,
-                  ),
-                )),
+              bottom: 0,
+              child: Container(
+                width: MediaQuery.of(context).size.width,
+                alignment: Alignment.center,
+                child: Text(
+                  'Current Session Id:\n$_currentSessionId',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
           ],
         ),
       ),

@@ -67,14 +67,10 @@ class _IsolateTrackingScenarioState extends State<IsolateTrackingScenario>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Background Isolate Tracking'),
-      ),
+      appBar: AppBar(title: const Text('Background Isolate Tracking')),
       body: Padding(
         padding: const EdgeInsetsGeometry.all(12),
-        child: Column(children: [
-          Text(_statusText),
-        ]),
+        child: Column(children: [Text(_statusText)]),
       ),
     );
   }
@@ -85,8 +81,9 @@ void _backgroundWork(SendPort port) async {
 
   port.send('Sending log messages');
 
-  final logger =
-      DatadogSdk.instance.logs?.createLogger(DatadogLoggerConfiguration());
+  final logger = DatadogSdk.instance.logs?.createLogger(
+    DatadogLoggerConfiguration(),
+  );
   logger?.info('Message from background isolate!');
 
   port.send('Fake Downloading resources');
@@ -98,15 +95,24 @@ void _backgroundWork(SendPort port) async {
   var simulatedResourceKey1 = '/resource/1';
   var simulatedResourceKey2 = '/resource/2';
 
-  rum?.startResource(simulatedResourceKey1, RumHttpMethod.get,
-      '$fakeRootUrl$simulatedResourceKey1');
-  rum?.startResource(simulatedResourceKey2, RumHttpMethod.get,
-      '$fakeRootUrl$simulatedResourceKey2');
+  rum?.startResource(
+    simulatedResourceKey1,
+    RumHttpMethod.get,
+    '$fakeRootUrl$simulatedResourceKey1',
+  );
+  rum?.startResource(
+    simulatedResourceKey2,
+    RumHttpMethod.get,
+    '$fakeRootUrl$simulatedResourceKey2',
+  );
 
   await Future<void>.delayed(const Duration(milliseconds: 100));
   rum?.stopResource(simulatedResourceKey1, 200, RumResourceType.image);
   rum?.stopResourceWithErrorInfo(
-      simulatedResourceKey2, 'Status code 400', 'ErrorLoading');
+    simulatedResourceKey2,
+    'Status code 400',
+    'ErrorLoading',
+  );
 
   logger?.warn('Finished with background isolate!');
 

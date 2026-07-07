@@ -28,7 +28,9 @@ class AttachResponse {
   });
 
   static AttachResponse? decode(
-      Map<String, Object?> json, InternalLogger logger) {
+    Map<String, Object?> json,
+    InternalLogger logger,
+  ) {
     try {
       return AttachResponse(
         loggingEnabled: json['loggingEnabled'] as bool,
@@ -95,8 +97,11 @@ class DatadogContext {
   final String? userId;
   final String? accountId;
 
-  const DatadogContext(
-      {required this.sessionId, required this.userId, required this.accountId});
+  const DatadogContext({
+    required this.sessionId,
+    required this.userId,
+    required this.accountId,
+  });
 }
 
 abstract class DatadogSdkPlatform extends PlatformInterface {
@@ -182,7 +187,7 @@ class FirstPartyHost {
   final RegExp regExp;
 
   FirstPartyHost._(this.hostName, this.headerTypes)
-      : regExp = RegExp('^(.*\\.)*${RegExp.escape(hostName)}\$');
+    : regExp = RegExp('^(.*\\.)*${RegExp.escape(hostName)}\$');
 
   bool matches(Uri uri) {
     return regExp.hasMatch(uri.host.toString());

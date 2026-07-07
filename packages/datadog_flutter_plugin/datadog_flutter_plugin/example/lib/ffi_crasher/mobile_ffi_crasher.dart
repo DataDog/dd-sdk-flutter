@@ -26,7 +26,9 @@ class MobileFfiCrasher implements FfiCrasher {
   int crashCallback(int attribute, NativeCallback callback) {
     lastCallback = callback;
     return ffi_callback_test(
-        attribute, Pointer.fromFunction(_staticCallback, 8));
+      attribute,
+      Pointer.fromFunction(_staticCallback, 8),
+    );
   }
 }
 
@@ -44,14 +46,17 @@ final void Function(int attribute) ffi_crash_test = ffiLibrary
     .asFunction();
 
 typedef NativeFfiCallback = Int32 Function(Int32);
-typedef FfiCallbackFunction = int Function(
-    int attribute, Pointer<NativeFunction<NativeFfiCallback>> callback);
+typedef FfiCallbackFunction =
+    int Function(
+      int attribute,
+      Pointer<NativeFunction<NativeFfiCallback>> callback,
+    );
 
 // ignore: non_constant_identifier_names
 final FfiCallbackFunction ffi_callback_test = ffiLibrary
     .lookup<
-            NativeFunction<
-                Int32 Function(
-                    Int32, Pointer<NativeFunction<NativeFfiCallback>>)>>(
-        'ffi_callback_test')
+      NativeFunction<
+        Int32 Function(Int32, Pointer<NativeFunction<NativeFfiCallback>>)
+      >
+    >('ffi_callback_test')
     .asFunction();

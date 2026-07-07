@@ -108,14 +108,10 @@ class ExposureLogger {
       return;
     }
 
-    await _uploadPendingExposures(
-      rescheduleOnFailure: rescheduleOnFailure,
-    );
+    await _uploadPendingExposures(rescheduleOnFailure: rescheduleOnFailure);
   }
 
-  Future<bool> _uploadPendingExposures({
-    required bool rescheduleOnFailure,
-  }) {
+  Future<bool> _uploadPendingExposures({required bool rescheduleOnFailure}) {
     final activeUpload = _uploadInFlight;
     if (activeUpload != null) {
       return activeUpload;
@@ -129,14 +125,15 @@ class ExposureLogger {
     _pendingExposures.clear();
 
     late final Future<bool> uploadOperation;
-    uploadOperation = _sendExposures(
-      exposures,
-      rescheduleOnFailure: rescheduleOnFailure,
-    ).whenComplete(() {
-      if (identical(_uploadInFlight, uploadOperation)) {
-        _uploadInFlight = null;
-      }
-    });
+    uploadOperation =
+        _sendExposures(
+          exposures,
+          rescheduleOnFailure: rescheduleOnFailure,
+        ).whenComplete(() {
+          if (identical(_uploadInFlight, uploadOperation)) {
+            _uploadInFlight = null;
+          }
+        });
     _uploadInFlight = uploadOperation;
     return uploadOperation;
   }
@@ -224,7 +221,8 @@ class ExposureLogger {
 
   Uri _exposureEndpoint() {
     final datadogConfig = runtime.datadogConfig;
-    final endpoint = runtime.configuration.customExposureEndpoint ??
+    final endpoint =
+        runtime.configuration.customExposureEndpoint ??
         datadogConfig.intakeEndpoint().replace(path: '/api/v2/exposures');
     return endpoint.replace(
       queryParameters: {
@@ -240,10 +238,7 @@ final class _ExposureCacheKey {
   final String? targetingKey;
   final String flagKey;
 
-  const _ExposureCacheKey({
-    required this.targetingKey,
-    required this.flagKey,
-  });
+  const _ExposureCacheKey({required this.targetingKey, required this.flagKey});
 
   @override
   bool operator ==(Object other) {

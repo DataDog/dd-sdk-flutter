@@ -16,29 +16,38 @@ import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart'
 // handle is needed.
 
 @ffi.Native<ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Char>)>(
-    symbol: 'objc_getClass', isLeaf: true)
+  symbol: 'objc_getClass',
+  isLeaf: true,
+)
 external ffi.Pointer<ffi.Void> _objcGetClass(ffi.Pointer<ffi.Char> name);
 
 @ffi.Native<ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Char>)>(
-    symbol: 'sel_registerName', isLeaf: true)
+  symbol: 'sel_registerName',
+  isLeaf: true,
+)
 external ffi.Pointer<ffi.Void> _selRegisterName(ffi.Pointer<ffi.Char> name);
 
 @ffi.Native<
-    ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Void>,
-        ffi.Pointer<ffi.Void>)>(symbol: 'objc_msgSend', isLeaf: true)
+  ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>)
+>(symbol: 'objc_msgSend', isLeaf: true)
 external ffi.Pointer<ffi.Void> _objcMsgSend(
-    ffi.Pointer<ffi.Void> receiver, ffi.Pointer<ffi.Void> sel);
+  ffi.Pointer<ffi.Void> receiver,
+  ffi.Pointer<ffi.Void> sel,
+);
 
 class IosPlatformBridge {
   static DatadogContext? getContext() {
     // A single arena frees all toNativeUtf8() allocations when the block exits.
     return using((arena) {
       final cls = _objcGetClass(
-          'DatadogContextBridge'.toNativeUtf8(allocator: arena).cast());
+        'DatadogContextBridge'.toNativeUtf8(allocator: arena).cast(),
+      );
       if (cls == ffi.nullptr) return null;
 
-      final obj = _objcMsgSend(cls,
-          _selRegisterName('current'.toNativeUtf8(allocator: arena).cast()));
+      final obj = _objcMsgSend(
+        cls,
+        _selRegisterName('current'.toNativeUtf8(allocator: arena).cast()),
+      );
       if (obj == ffi.nullptr) return null;
 
       final sessionId = _readNSString(obj, 'sessionId', arena);
@@ -47,21 +56,28 @@ class IosPlatformBridge {
 
       if (sessionId == null && accountId == null && userId == null) return null;
       return DatadogContext(
-          sessionId: sessionId, userId: userId, accountId: accountId);
+        sessionId: sessionId,
+        userId: userId,
+        accountId: accountId,
+      );
     });
   }
 
   static String? _readNSString(
-      ffi.Pointer<ffi.Void> obj, String property, Arena arena) {
+    ffi.Pointer<ffi.Void> obj,
+    String property,
+    Arena arena,
+  ) {
     final nsStr = _objcMsgSend(
-        obj, _selRegisterName(property.toNativeUtf8(allocator: arena).cast()));
+      obj,
+      _selRegisterName(property.toNativeUtf8(allocator: arena).cast()),
+    );
     if (nsStr == ffi.nullptr) return null;
 
     ffi.Pointer<ffi.Char> chars = _objcMsgSend(
-            nsStr,
-            _selRegisterName(
-                'UTF8String'.toNativeUtf8(allocator: arena).cast()))
-        .cast();
+      nsStr,
+      _selRegisterName('UTF8String'.toNativeUtf8(allocator: arena).cast()),
+    ).cast();
     if (chars == ffi.nullptr) return null;
 
     // toDartString() copies the bytes into Dart. The NSString (and the chars

@@ -16,16 +16,23 @@ bool _willHandleError(Object e) {
 }
 
 // Returns true if the error was handled, false if the error should be re-thrown
-bool _handleError(Object error, StackTrace stackTrace, String methodName,
-    InternalLogger logger, Map<String, Object?>? serializedAttributes) {
+bool _handleError(
+  Object error,
+  StackTrace stackTrace,
+  String methodName,
+  InternalLogger logger,
+  Map<String, Object?>? serializedAttributes,
+) {
   if (error is ArgumentError) {
-    logger.warn(InternalLogger.argumentWarning(
-        methodName, error, serializedAttributes));
+    logger.warn(
+      InternalLogger.argumentWarning(methodName, error, serializedAttributes),
+    );
     return true;
   } else if (error is PlatformException) {
     logger.error('Datadog experienced a PlatformException - ${error.message}');
     logger.error(
-        'This may be a bug in the Datadog SDK. Please report it to Datadog.');
+      'This may be a bug in the Datadog SDK. Please report it to Datadog.',
+    );
     logger.sendToDatadog(
       'Platform exception caught by wrap($methodName): ${error.toString()}',
       stackTrace,
@@ -61,8 +68,12 @@ void wrap(
 /// Wraps a call to a platform channel that must return a value, with common
 /// error handling and telemetry. If you do not need to get a value back from
 /// your call, use [wrap] instead.
-Future<T?> wrapAsync<T>(String methodName, InternalLogger logger,
-    Map<String, Object?>? attributes, WrappedCall<T> call) async {
+Future<T?> wrapAsync<T>(
+  String methodName,
+  InternalLogger logger,
+  Map<String, Object?>? attributes,
+  WrappedCall<T> call,
+) async {
   T? result;
   try {
     result = await call();

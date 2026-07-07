@@ -25,5 +25,5 @@ enum LogLevel {
 
   /// Currently unsupported
   // ignore: unused_field
-  emergency
+  emergency,
 }

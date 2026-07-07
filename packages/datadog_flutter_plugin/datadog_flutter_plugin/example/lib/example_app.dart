@@ -39,29 +39,36 @@ class _ExampleAppState extends State<ExampleApp> {
   void initState() {
     super.initState();
 
-    router.define('/logging',
-        handler: Handler(handlerFunc: (_, __) => const LoggingScreen()));
-    router.define('/rum',
-        handler: Handler(handlerFunc: (_, __) => const RumScreen()));
-    router.define('/rum_user_actions',
-        handler: Handler(handlerFunc: (_, __) => const RumUserActionsScreen()));
-    router.define('/rum_crash_reporting',
-        handler: Handler(handlerFunc: (_, __) => const CrashReportingScreen()));
+    router.define(
+      '/logging',
+      handler: Handler(handlerFunc: (_, __) => const LoggingScreen()),
+    );
+    router.define(
+      '/rum',
+      handler: Handler(handlerFunc: (_, __) => const RumScreen()),
+    );
+    router.define(
+      '/rum_user_actions',
+      handler: Handler(handlerFunc: (_, __) => const RumUserActionsScreen()),
+    );
+    router.define(
+      '/rum_crash_reporting',
+      handler: Handler(handlerFunc: (_, __) => const CrashReportingScreen()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final navigationObserver =
-        DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
+    final navigationObserver = DatadogNavigationObserver(
+      datadogSdk: DatadogSdk.instance,
+    );
     return DatadogNavigationObserverProvider(
       navObserver: navigationObserver,
       child: MaterialApp(
         onGenerateRoute: router.generator,
         home: Builder(
           builder: (context) => Scaffold(
-            appBar: AppBar(
-              title: const Text('Datadog SDK Example App'),
-            ),
+            appBar: AppBar(title: const Text('Datadog SDK Example App')),
             body: Center(
               child: ListView.builder(
                 itemCount: items.length,
@@ -71,8 +78,11 @@ class _ExampleAppState extends State<ExampleApp> {
                     title: Text(item.label),
                     trailing: const Icon(Icons.arrow_right_sharp),
                     onTap: () {
-                      router.navigateTo(context, item.route,
-                          transition: TransitionType.native);
+                      router.navigateTo(
+                        context,
+                        item.route,
+                        transition: TransitionType.native,
+                      );
                     },
                   );
                 },

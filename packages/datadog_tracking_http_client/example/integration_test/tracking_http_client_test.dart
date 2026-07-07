@@ -56,10 +56,11 @@ void main() {
     RumAutoInstrumentationScenarioConfig.instance = scenarioConfig;
 
     app.testingConfiguration = TestingConfiguration(
-        customEndpoint: sessionRecorder.sessionEndpoint,
-        clientToken: clientToken,
-        applicationId: applicationId,
-        firstPartyHosts: ['localhost']);
+      customEndpoint: sessionRecorder.sessionEndpoint,
+      clientToken: clientToken,
+      applicationId: applicationId,
+      firstPartyHosts: ['localhost'],
+    );
     await app.main();
     await tester.pumpAndSettle();
 
@@ -68,28 +69,28 @@ void main() {
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
     final testRequests = <RequestLog>[];
-    await sessionRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        for (var request in requests) {
-          if (request.requestedUrl.contains('integration')) {
-            if (!request.requestHeaders
-                .containsKey('access-control-request-method')) {
-              testRequests.add(request);
-            }
-          } else {
-            request.data.split('\n').forEach((e) {
-              var jsonValue = json.decode(e);
-              if (jsonValue is Map<String, dynamic>) {
-                rumLog.add(RumEventDecoder(jsonValue));
-              }
-            });
+    await sessionRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      for (var request in requests) {
+        if (request.requestedUrl.contains('integration')) {
+          if (!request.requestHeaders.containsKey(
+            'access-control-request-method',
+          )) {
+            testRequests.add(request);
           }
+        } else {
+          request.data.split('\n').forEach((e) {
+            var jsonValue = json.decode(e);
+            if (jsonValue is Map<String, dynamic>) {
+              rumLog.add(RumEventDecoder(jsonValue));
+            }
+          });
         }
-        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 4;
-      },
-    );
+      }
+      return RumSessionDecoder.fromEvents(rumLog).visits.length >= 4;
+    });
 
     final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, greaterThanOrEqualTo(3));
@@ -110,14 +111,18 @@ void main() {
 
     // Check first party requests
     for (var testRequest in testRequests) {
-      expect(testRequest.requestHeaders['x-datadog-sampling-priority']?.first,
-          '1');
+      expect(
+        testRequest.requestHeaders['x-datadog-sampling-priority']?.first,
+        '1',
+      );
       expect(testRequest.requestHeaders['x-datadog-origin']?.first, 'rum');
 
       final baggageHeader = testRequest.requestHeaders['baggage']?.first;
       final baggageValues = baggageHeader?.split(',');
-      expect(baggageValues?.firstWhereOrNull((e) => e.contains('session.id')),
-          isNotNull);
+      expect(
+        baggageValues?.firstWhereOrNull((e) => e.contains('session.id')),
+        isNotNull,
+      );
       expect(baggageValues, contains('user.id=integration_test_user'));
       expect(baggageValues, contains('account.id=integration_test_account'));
     }

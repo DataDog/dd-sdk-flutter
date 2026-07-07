@@ -3,7 +3,8 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart'
-    as pi show DatadogPluginConfiguration;
+    as pi
+    show DatadogPluginConfiguration;
 import 'package:flutter/material.dart';
 
 import 'datadog_sdk.dart';

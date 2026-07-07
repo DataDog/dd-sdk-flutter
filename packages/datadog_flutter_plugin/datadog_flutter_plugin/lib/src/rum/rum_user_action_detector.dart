@@ -140,7 +140,9 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     super.initState();
     if (!_didUpdateTelemetry) {
       DatadogSdk.instance.updateConfigurationInfo(
-          LateConfigurationProperty.trackInteractions, true);
+        LateConfigurationProperty.trackInteractions,
+        true,
+      );
       _didUpdateTelemetry = true;
     }
   }
@@ -187,8 +189,9 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
   void _onPointerUp(PointerUpEvent event) {
     if (_lastPointerDownLocation != null && event.pointer == _lastPointerId) {
       final distanceOffset = Offset(
-          _lastPointerDownLocation!.dx - event.localPosition.dx,
-          _lastPointerDownLocation!.dy - event.localPosition.dy);
+        _lastPointerDownLocation!.dx - event.localPosition.dx,
+        _lastPointerDownLocation!.dy - event.localPosition.dy,
+      );
 
       final distanceSquared = distanceOffset.distanceSquared;
       if (distanceSquared < _tapSlopSquared) {
@@ -291,11 +294,16 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
       if (ro == lastRenderObject) {
         final widget = element.widget;
         if (widget is RumUserActionAnnotation) {
-          rumTreeAnnotation =
-              _RumTreeAnnotation(widget.description, widget.attributes);
+          rumTreeAnnotation = _RumTreeAnnotation(
+            widget.description,
+            widget.attributes,
+          );
         } else {
           final checkElement = _getDetectingElementDescription(
-              element, targets, rumTreeAnnotation);
+            element,
+            targets,
+            rumTreeAnnotation,
+          );
           if (checkElement != null &&
               checkElement.betterThan(detectingElement)) {
             detectingElement = checkElement;
@@ -316,8 +324,10 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
         // This is because large portions of the tree can get discarded
         // during the hit test process (especially around viewports)
         final transform = ro.getTransformTo(rootElement.renderObject);
-        final paintBounds =
-            MatrixUtils.transformRect(transform, ro.paintBounds);
+        final paintBounds = MatrixUtils.transformRect(
+          transform,
+          ro.paintBounds,
+        );
 
         if (paintBounds.contains(position)) {
           element.visitChildElements(elementVisitor);
@@ -330,15 +340,19 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     return detectingElement;
   }
 
-  _ElementDescription? _getDetectingElementDescription(Element element,
-      List<HitTestEntry> targets, _RumTreeAnnotation? treeAnnotation) {
+  _ElementDescription? _getDetectingElementDescription(
+    Element element,
+    List<HitTestEntry> targets,
+    _RumTreeAnnotation? treeAnnotation,
+  ) {
     final widget = element.widget;
     String? elementName;
     bool searchForBetter = false;
     bool searchForText = true;
 
-    final customWidgetDetected =
-        this.widget.customGestureDetector?.call(widget);
+    final customWidgetDetected = this.widget.customGestureDetector?.call(
+      widget,
+    );
     if (customWidgetDetected != null) {
       elementName = customWidgetDetected.elementName;
       searchForBetter = customWidgetDetected.searchForBetter;
@@ -414,7 +428,9 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
 }
 
 Element? _findGestureDetectorElement(
-    Element rootElement, List<HitTestEntry> hitTargets) {
+  Element rootElement,
+  List<HitTestEntry> hitTargets,
+) {
   final targets = List<HitTestEntry>.from(hitTargets);
   targets.removeLast();
 
@@ -517,8 +533,11 @@ class RumGestureDetectorInfo {
   /// subtree, allowing for a more informative label.
   final bool searchForText;
 
-  const RumGestureDetectorInfo(this.elementName,
-      {this.searchForBetter = false, this.searchForText = true});
+  const RumGestureDetectorInfo(
+    this.elementName, {
+    this.searchForBetter = false,
+    this.searchForText = true,
+  });
 }
 
 /// This function type allows you to define custom criteria for gesture detection
@@ -540,5 +559,5 @@ class RumGestureDetectorInfo {
 ///   // other fields...
 /// )
 /// ```
-typedef CustomGestureElementDetector = RumGestureDetectorInfo? Function(
-    Widget widget);
+typedef CustomGestureElementDetector =
+    RumGestureDetectorInfo? Function(Widget widget);

@@ -42,12 +42,12 @@ void main() {
     ambiguate(TestDefaultBinaryMessengerBinding.instance)
         ?.defaultBinaryMessenger
         .setMockMethodCallHandler(ddRumPlatform.methodChannel, (message) {
-      log.add(message);
-      if (message.method == 'getCurrentSessionId') {
-        return Future.value('fake-session-id');
-      }
-      return null;
-    });
+          log.add(message);
+          if (message.method == 'getCurrentSessionId') {
+            return Future.value('fake-session-id');
+          }
+          return null;
+        });
   });
 
   tearDown(() {
@@ -453,15 +453,15 @@ void main() {
 
   test('addViewAttribute calls to platform', () async {
     await ddRumPlatform.addViewAttribute(
-        'view_attribute_key', 'my view attribute value');
+      'view_attribute_key',
+      'my view attribute value',
+    );
 
     expect(log, [
       isMethodCall(
         'addViewAttributes',
         arguments: {
-          'attributes': {
-            'view_attribute_key': 'my view attribute value',
-          },
+          'attributes': {'view_attribute_key': 'my view attribute value'},
         },
       ),
     ]);
@@ -471,15 +471,20 @@ void main() {
     await ddRumPlatform.removeViewAttribute('view_attribute_key');
 
     expect(log, [
-      isMethodCall('removeViewAttributes', arguments: {
-        'keys': ['view_attribute_key']
-      }),
+      isMethodCall(
+        'removeViewAttributes',
+        arguments: {
+          'keys': ['view_attribute_key'],
+        },
+      ),
     ]);
   });
 
   test('addViewAttributes calls to platform', () async {
-    await ddRumPlatform.addViewAttributes(
-        {'key_1': 'my view attribute value', 'key_2': 'view attribute 2'});
+    await ddRumPlatform.addViewAttributes({
+      'key_1': 'my view attribute value',
+      'key_2': 'view attribute 2',
+    });
 
     expect(log, [
       isMethodCall(
@@ -498,9 +503,12 @@ void main() {
     await ddRumPlatform.removeViewAttributes(['key_1', 'key_2']);
 
     expect(log, [
-      isMethodCall('removeViewAttributes', arguments: {
-        'keys': ['key_1', 'key_2']
-      }),
+      isMethodCall(
+        'removeViewAttributes',
+        arguments: {
+          'keys': ['key_1', 'key_2'],
+        },
+      ),
     ]);
   });
 
@@ -525,22 +533,22 @@ void main() {
     final timestamp = randomTimestamp();
     final name = randomString();
     final operationKey = randomString();
-    await ddRumPlatform.startFeatureOperation(
-      timestamp,
-      name,
-      operationKey,
-      {'attribute_name': 'attribute_value'},
-    );
+    await ddRumPlatform.startFeatureOperation(timestamp, name, operationKey, {
+      'attribute_name': 'attribute_value',
+    });
 
     expect(log, [
-      isMethodCall('startFeatureOperation', arguments: {
-        'name': name,
-        'operationKey': operationKey,
-        'attributes': {
-          'attribute_name': 'attribute_value',
-          '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+      isMethodCall(
+        'startFeatureOperation',
+        arguments: {
+          'name': name,
+          'operationKey': operationKey,
+          'attributes': {
+            'attribute_name': 'attribute_value',
+            '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+          },
         },
-      })
+      ),
     ]);
   });
 
@@ -548,22 +556,22 @@ void main() {
     final timestamp = randomTimestamp();
     final name = randomString();
     final operationKey = randomString();
-    await ddRumPlatform.succeedFeatureOperation(
-      timestamp,
-      name,
-      operationKey,
-      {'attribute_name': 'attribute_value'},
-    );
+    await ddRumPlatform.succeedFeatureOperation(timestamp, name, operationKey, {
+      'attribute_name': 'attribute_value',
+    });
 
     expect(log, [
-      isMethodCall('succeedFeatureOperation', arguments: {
-        'name': name,
-        'operationKey': operationKey,
-        'attributes': {
-          'attribute_name': 'attribute_value',
-          '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+      isMethodCall(
+        'succeedFeatureOperation',
+        arguments: {
+          'name': name,
+          'operationKey': operationKey,
+          'attributes': {
+            'attribute_name': 'attribute_value',
+            '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+          },
         },
-      })
+      ),
     ]);
   });
 
@@ -580,15 +588,18 @@ void main() {
     );
 
     expect(log, [
-      isMethodCall('failFeatureOperation', arguments: {
-        'name': name,
-        'operationKey': operationKey,
-        'failureReason': 'RumFeatureOperationFailureReason.abandoned',
-        'attributes': {
-          'attribute_name': 'attribute_value',
-          '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+      isMethodCall(
+        'failFeatureOperation',
+        arguments: {
+          'name': name,
+          'operationKey': operationKey,
+          'failureReason': 'RumFeatureOperationFailureReason.abandoned',
+          'attributes': {
+            'attribute_name': 'attribute_value',
+            '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+          },
         },
-      })
+      ),
     ]);
   });
 

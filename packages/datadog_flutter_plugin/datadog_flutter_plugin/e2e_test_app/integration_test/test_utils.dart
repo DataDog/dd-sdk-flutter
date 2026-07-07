@@ -29,17 +29,18 @@ Future<void> initializeDatadog({
       ? 'instrumentation'
       : 'debug';
 
-  final configuration = DatadogConfiguration(
-    clientToken: clientToken,
-    env: env,
-    site: DatadogSite.us1,
-  )
-    ..loggingConfiguration = DatadogLoggingConfiguration()
-    ..rumConfiguration = DatadogRumConfiguration(
-      applicationId: applicationId,
-      detectLongTasks: false,
-    )
-    ..service = 'com.datadog.flutter.nightly';
+  final configuration =
+      DatadogConfiguration(
+          clientToken: clientToken,
+          env: env,
+          site: DatadogSite.us1,
+        )
+        ..loggingConfiguration = DatadogLoggingConfiguration()
+        ..rumConfiguration = DatadogRumConfiguration(
+          applicationId: applicationId,
+          detectLongTasks: false,
+        )
+        ..service = 'com.datadog.flutter.nightly';
 
   if (configCallback != null) {
     configCallback(configuration);
@@ -49,8 +50,11 @@ Future<void> initializeDatadog({
   logger = DatadogSdk.instance.logs?.createLogger(DatadogLoggerConfiguration());
 }
 
-Future<void> measure(String resourceName, AsyncVoidCallback callback,
-    [double targetSeconds = 0.02]) async {
+Future<void> measure(
+  String resourceName,
+  AsyncVoidCallback callback, [
+  double targetSeconds = 0.02,
+]) async {
   var stopwatch = Stopwatch();
   stopwatch.start();
   await callback();
@@ -60,7 +64,8 @@ Future<void> measure(String resourceName, AsyncVoidCallback callback,
   // TODO: Determine best way to monitor this moving forward
   if (elapsedSeconds > targetSeconds) {
     logger?.error(
-        'PERF ERROR: `$resourceName` took ${elapsedSeconds.toStringAsFixed(3)} (targeting ${targetSeconds.toStringAsFixed(3)})');
+      'PERF ERROR: `$resourceName` took ${elapsedSeconds.toStringAsFixed(3)} (targeting ${targetSeconds.toStringAsFixed(3)})',
+    );
   }
 }
 
@@ -72,17 +77,9 @@ Map<String, Object> e2eAttributes(WidgetTester tester) {
 }
 
 void sendRandomLog(DatadogLogger? logger, WidgetTester tester) {
-  var methods = [
-    logger?.debug,
-    logger?.info,
-    logger?.warn,
-    logger?.error,
-  ];
+  var methods = [logger?.debug, logger?.info, logger?.warn, logger?.error];
 
   var method = methods.randomElement();
 
-  method!(
-    randomString(),
-    attributes: e2eAttributes(tester),
-  );
+  method!(randomString(), attributes: e2eAttributes(tester));
 }

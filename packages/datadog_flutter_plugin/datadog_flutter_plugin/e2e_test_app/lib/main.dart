@@ -17,9 +17,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue),
       home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
@@ -38,20 +36,14 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
+      appBar: AppBar(title: Text(widget.title)),
       // Needs to be backwards compatible to Flutter 3.3
       // ignore: prefer_const_constructors
       body: Center(
         // ignore: prefer_const_constructors
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const <Widget>[
-            Text(
-              'We don\'t talk about Bruno.',
-            ),
-          ],
+          children: const <Widget>[Text('We don\'t talk about Bruno.')],
         ),
       ),
     );

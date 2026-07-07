@@ -29,7 +29,7 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
   }
 
   DatadogSessionReplayPlatformIos.fromObjCRef(ObjCObject ref)
-      : _iosBridge = FlutterSessionReplay.as(ref);
+    : _iosBridge = FlutterSessionReplay.as(ref);
 
   @override
   Object? get isolateToken => _iosBridge;
@@ -57,22 +57,19 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
 
     final contextChangedListener =
         ObjCBlock_ffiVoid_FlutterRUMCoreContext.listener((context) {
-      RUMContext? dartContext;
-      if (context != null) {
-        dartContext = RUMContext(
-          applicationId: context.applicationID.toDartString(),
-          sessionId: context.sessionID.toDartString(),
-          viewId: context.viewID?.toDartString(),
-        );
-        onContextChanged(dartContext);
-      }
-    });
+          RUMContext? dartContext;
+          if (context != null) {
+            dartContext = RUMContext(
+              applicationId: context.applicationID.toDartString(),
+              sessionId: context.sessionID.toDartString(),
+              viewId: context.viewID?.toDartString(),
+            );
+            onContextChanged(dartContext);
+          }
+        });
 
     final iOsConfiguration = FlutterSessionReplayConfiguration.alloc()
-      ..initWithCustomEndpoint(
-        url,
-        onContextChanged: contextChangedListener,
-      );
+      ..initWithCustomEndpoint(url, onContextChanged: contextChangedListener);
     _iosBridge.enableWith(iOsConfiguration);
     // Non-awaited: routes through the method channel to the correct engine's plugin
     // instance, which calls claimOwnership(messenger:) with that engine's messenger.
@@ -157,12 +154,13 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
 }
 
 @ffi.Native<
-    ffi.Pointer<objc.ObjCObjectImpl> Function(
-      ffi.Pointer<objc.ObjCObjectImpl>,
-      ffi.Pointer<objc.ObjCSelector>,
-      ffi.Pointer<ffi.Void>,
-      ffi.UnsignedLong,
-    )>(symbol: 'objc_msgSend', isLeaf: true)
+  ffi.Pointer<objc.ObjCObjectImpl> Function(
+    ffi.Pointer<objc.ObjCObjectImpl>,
+    ffi.Pointer<objc.ObjCSelector>,
+    ffi.Pointer<ffi.Void>,
+    ffi.UnsignedLong,
+  )
+>(symbol: 'objc_msgSend', isLeaf: true)
 // ignore: non_constant_identifier_names
 external ffi.Pointer<objc.ObjCObjectImpl> objc_msgSend_3nbx5e(
   ffi.Pointer<objc.ObjCObjectImpl> object,

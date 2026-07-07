@@ -35,12 +35,7 @@ class CustomCard extends StatelessWidget {
                   placeholder: kTransparentImage,
                   image: image,
                 ),
-                Center(
-                  child: Text(
-                    text,
-                    style: theme.textTheme.headlineSmall,
-                  ),
-                )
+                Center(child: Text(text, style: theme.textTheme.headlineSmall)),
               ],
             ),
           ),

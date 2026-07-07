@@ -57,10 +57,7 @@ class RumViewEventDd {
   final int documentVersion;
   final int formatVersion;
 
-  RumViewEventDd({
-    required this.documentVersion,
-    required this.formatVersion,
-  });
+  RumViewEventDd({required this.documentVersion, required this.formatVersion});
 
   factory RumViewEventDd.fromJson(Map<String, dynamic> json) =>
       _$RumViewEventDdFromJson(json);
@@ -71,9 +68,7 @@ class RumViewEventDd {
 class RumApplication {
   final String id;
 
-  RumApplication({
-    required this.id,
-  });
+  RumApplication({required this.id});
 
   factory RumApplication.fromJson(Map<String, dynamic> json) =>
       _$RumApplicationFromJson(json);
@@ -121,10 +116,7 @@ class RumCellular {
   final String? carrierName;
   final String? technology;
 
-  RumCellular({
-    required this.carrierName,
-    required this.technology,
-  });
+  RumCellular({required this.carrierName, required this.technology});
 
   factory RumCellular.fromJson(Map<String, dynamic> json) =>
       _$RumCellularFromJson(json);
@@ -137,11 +129,7 @@ class RumSession {
   final String id;
   final String type;
 
-  RumSession({
-    this.hasReplay,
-    required this.id,
-    required this.type,
-  });
+  RumSession({this.hasReplay, required this.id, required this.type});
 
   factory RumSession.fromJson(Map<String, dynamic> json) =>
       _$RumSessionFromJson(json);
@@ -206,12 +194,7 @@ class RumUser {
   @JsonKey(fromJson: attributesFromJson)
   final Map<String, Object?> usrInfo;
 
-  RumUser({
-    this.email,
-    this.id,
-    this.name,
-    this.usrInfo = const {},
-  });
+  RumUser({this.email, this.id, this.name, this.usrInfo = const {}});
 
   factory RumUser.fromJson(Map<String, dynamic> json) =>
       _$RumUserFromJson(json);
@@ -281,9 +264,7 @@ class RumViewDetails {
 class RumCount {
   final int count;
 
-  RumCount({
-    required this.count,
-  });
+  RumCount({required this.count});
 
   factory RumCount.fromJson(Map<String, dynamic> json) =>
       _$RumCountFromJson(json);
@@ -299,11 +280,12 @@ class RumPerformanceMetric {
   final double? metricMax;
   final double min;
 
-  RumPerformanceMetric(
-      {required this.average,
-      required this.max,
-      required this.metricMax,
-      required this.min});
+  RumPerformanceMetric({
+    required this.average,
+    required this.max,
+    required this.metricMax,
+    required this.min,
+  });
 
   factory RumPerformanceMetric.fromJson(Map<String, dynamic> json) =>
       _$RumPerformanceMetricFromJson(json);
@@ -397,9 +379,7 @@ class RumAction {
 class RumActionTarget {
   String name;
 
-  RumActionTarget({
-    required this.name,
-  });
+  RumActionTarget({required this.name});
 
   factory RumActionTarget.fromJson(Map<String, dynamic> json) =>
       _$RumActionTargetFromJson(json);
@@ -428,21 +408,13 @@ class RumViewSummary {
 }
 
 @JsonEnum(fieldRename: FieldRename.snake)
-enum RumFrustrationType {
-  rageClick,
-  deadClick,
-  errorClick,
-  rageTap,
-  errorTap,
-}
+enum RumFrustrationType { rageClick, deadClick, errorClick, rageTap, errorTap }
 
 @commonJsonOptions
 class RumActionFrustration {
   final List<RumFrustrationType> type;
 
-  RumActionFrustration({
-    required this.type,
-  });
+  RumActionFrustration({required this.type});
 
   factory RumActionFrustration.fromJson(Map<String, dynamic> json) =>
       _$RumActionFrustrationFromJson(json);
@@ -646,8 +618,11 @@ class RumResourceSummary {
   final int statusCode;
   String url;
 
-  RumResourceSummary(
-      {required this.method, required this.statusCode, required this.url});
+  RumResourceSummary({
+    required this.method,
+    required this.statusCode,
+    required this.url,
+  });
 
   factory RumResourceSummary.fromJson(Map<String, dynamic> json) =>
       _$RumResourceSummaryFromJson(json);
@@ -699,11 +674,7 @@ class RumLongTask {
   final String? id;
   final bool? isFrozenFrame;
 
-  RumLongTask({
-    required this.duration,
-    this.id,
-    this.isFrozenFrame,
-  });
+  RumLongTask({required this.duration, this.id, this.isFrozenFrame});
 
   factory RumLongTask.fromJson(Map<String, dynamic> json) =>
       _$RumLongTaskFromJson(json);
@@ -714,9 +685,7 @@ class RumLongTask {
 class RumContainerView {
   final String id;
 
-  RumContainerView({
-    required this.id,
-  });
+  RumContainerView({required this.id});
 
   factory RumContainerView.fromJson(Map<String, dynamic> json) =>
       _$RumContainerViewFromJson(json);
@@ -727,9 +696,7 @@ class RumContainerView {
 class RumVitalOperationStepContainer {
   final RumContainerView view;
 
-  RumVitalOperationStepContainer({
-    required this.view,
-  });
+  RumVitalOperationStepContainer({required this.view});
 
   factory RumVitalOperationStepContainer.fromJson(Map<String, dynamic> json) =>
       _$RumVitalOperationStepContainerFromJson(json);

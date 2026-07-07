@@ -16,10 +16,7 @@ class RumLongTaskObserver with WidgetsBindingObserver {
   var _detectingLongTasks = false;
   Future<void>? _longTaskDetectorFuture;
 
-  RumLongTaskObserver({
-    this.longTaskThreshold = 0.1,
-    this.rumInstance,
-  });
+  RumLongTaskObserver({this.longTaskThreshold = 0.1, this.rumInstance});
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {

@@ -13,13 +13,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 class _IsDecimalVersionOfHex extends CustomMatcher {
   _IsDecimalVersionOfHex(Object? valueOrMatcher)
-      : super(
-          "Decimal string who's hex representation is",
-          'hex string',
-          valueOrMatcher is String
-              ? valueOrMatcher.toLowerCase()
-              : valueOrMatcher,
-        );
+    : super(
+        "Decimal string who's hex representation is",
+        'hex string',
+        valueOrMatcher is String
+            ? valueOrMatcher.toLowerCase()
+            : valueOrMatcher,
+      );
 
   @override
   Object? featureValueOf(dynamic actual) =>
@@ -78,8 +78,10 @@ Future<RecordingServerClient> openTestScenario(
   await tester.pumpAndSettle();
 
   if (menuTitle != null) {
-    var integrationItem = find.byWidgetPredicate((widget) =>
-        widget is Text && (widget.data?.startsWith(menuTitle) ?? false));
+    var integrationItem = find.byWidgetPredicate(
+      (widget) =>
+          widget is Text && (widget.data?.startsWith(menuTitle) ?? false),
+    );
     await tester.tap(integrationItem);
     await tester.pumpAndSettle();
   }
@@ -88,7 +90,11 @@ Future<RecordingServerClient> openTestScenario(
 }
 
 void verifyCommonEventTags(
-    RumEventDecoder log, String service, String version, String? variant) {
+  RumEventDecoder log,
+  String service,
+  String version,
+  String? variant,
+) {
   final tags = log.ddtags;
   // Likely telemetry
   if (tags.isEmpty) return;

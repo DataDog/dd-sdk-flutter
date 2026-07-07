@@ -12,10 +12,7 @@ import 'package:meta/meta.dart';
 import 'attributes.dart';
 
 /// Default request headers captured when [includeDefaults] is true.
-const List<String> _defaultRequestHeaders = [
-  'cache-control',
-  'content-type',
-];
+const List<String> _defaultRequestHeaders = ['cache-control', 'content-type'];
 
 /// Default response headers captured when [includeDefaults] is true.
 const List<String> _defaultResponseHeaders = [
@@ -88,14 +85,14 @@ class ResourceHeadersExtractor {
   ResourceHeadersExtractor({
     this.includeDefaults = true,
     this.captureHeaders = const [],
-  })  : _requestHeaders = _buildHeaderSet(
-          includeDefaults ? _defaultRequestHeaders : const [],
-          captureHeaders,
-        ),
-        _responseHeaders = _buildHeaderSet(
-          includeDefaults ? _defaultResponseHeaders : const [],
-          captureHeaders,
-        );
+  }) : _requestHeaders = _buildHeaderSet(
+         includeDefaults ? _defaultRequestHeaders : const [],
+         captureHeaders,
+       ),
+       _responseHeaders = _buildHeaderSet(
+         includeDefaults ? _defaultResponseHeaders : const [],
+         captureHeaders,
+       );
 
   /// Extracts matching request headers from the provided header map.
   ///
@@ -112,7 +109,8 @@ class ResourceHeadersExtractor {
   /// values. Security-filtered headers are excluded. Size limits are enforced.
   @internal
   Map<String, String> extractResponseHeaders(
-      Map<String, List<String>> headers) {
+    Map<String, List<String>> headers,
+  ) {
     return _extractHeaders(headers, _responseHeaders);
   }
 

@@ -15,15 +15,15 @@ class AndroidRumEventMapper extends RumMapperProxy {
   final InternalLogger _internalLogger;
 
   AndroidRumEventMapper(DatadogRumConfiguration config, InternalLogger logger)
-      : _internalLogger = logger,
-        super(
-          viewEventMapper: config.viewEventMapper,
-          actionEventMapper: config.actionEventMapper,
-          resourceEventMapper: config.resourceEventMapper,
-          errorEventMapper: config.errorEventMapper,
-          longTaskEventMapper: config.longTaskEventMapper,
-          vitalOperationEventMapper: config.vitalOperationStepEventMapper,
-        ) {
+    : _internalLogger = logger,
+      super(
+        viewEventMapper: config.viewEventMapper,
+        actionEventMapper: config.actionEventMapper,
+        resourceEventMapper: config.resourceEventMapper,
+        errorEventMapper: config.errorEventMapper,
+        longTaskEventMapper: config.longTaskEventMapper,
+        vitalOperationEventMapper: config.vitalOperationStepEventMapper,
+      ) {
     final listener = DatadogRumEventMapper$EventMapper.implement(
       $DatadogRumEventMapper$EventMapper(
         mapViewEvent: (encoded) {

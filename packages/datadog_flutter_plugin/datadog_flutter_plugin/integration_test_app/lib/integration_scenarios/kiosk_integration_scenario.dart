@@ -37,9 +37,13 @@ class _KioskIntegrationScenarioState extends State<KioskIntegrationScenario>
   }
 
   void _startSession() {
-    Navigator.of(context).push<void>(MaterialPageRoute(builder: (context) {
-      return const KioskTrackedStreen();
-    }));
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) {
+          return const KioskTrackedStreen();
+        },
+      ),
+    );
   }
 
   @override
@@ -102,10 +106,16 @@ class _KioskTrackedStreenState extends State<KioskTrackedStreen>
 
     const resourceKey = '/resource/1';
     DatadogSdk.instance.rum?.startResource(
-        resourceKey, RumHttpMethod.get, 'https://foo.com/resources/1');
+      resourceKey,
+      RumHttpMethod.get,
+      'https://foo.com/resources/1',
+    );
     await Future<void>.delayed(const Duration(milliseconds: 300));
-    DatadogSdk.instance.rum
-        ?.stopResource(resourceKey, 200, RumResourceType.image);
+    DatadogSdk.instance.rum?.stopResource(
+      resourceKey,
+      200,
+      RumResourceType.image,
+    );
 
     setState(() {
       _resourceDownloadInProgress = false;
@@ -118,15 +128,14 @@ class _KioskTrackedStreenState extends State<KioskTrackedStreen>
 
   void _finishTest() {
     Navigator.of(context).push<void>(
-        MaterialPageRoute(builder: (_) => const TestFinishedWaitScreen()));
+      MaterialPageRoute(builder: (_) => const TestFinishedWaitScreen()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kiosk Tracked Screen'),
-      ),
+      appBar: AppBar(title: const Text('Kiosk Tracked Screen')),
       body: Center(
         child: Column(
           children: [
@@ -185,12 +194,8 @@ class _TestFinishedWaitScreenState extends State<TestFinishedWaitScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Test Complete'),
-      ),
-      body: const Center(
-        child: Text('Test is complete.'),
-      ),
+      appBar: AppBar(title: const Text('Test Complete')),
+      body: const Center(child: Text('Test is complete.')),
     );
   }
 }

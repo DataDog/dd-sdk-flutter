@@ -40,7 +40,10 @@ class InvMetricProvider {
   }
 
   void trackAction(
-      String viewKey, DateTime startTime, RumActionType actionType) {
+    String viewKey,
+    DateTime startTime,
+    RumActionType actionType,
+  ) {
     final view = _views[viewKey];
     if (view == null) return;
 
@@ -71,17 +74,22 @@ class InvMetricProvider {
     );
     if (lastAction == null) return null;
 
-    final duration =
-        view.firstBuildCompleteTime!.difference(lastAction.startTime);
+    final duration = view.firstBuildCompleteTime!.difference(
+      lastAction.startTime,
+    );
 
     return duration.inNanoseconds;
   }
 
   // Max is in total seconds
   _AcitonInfo? _findLastValidActionBefore(
-      DateTime time, List<_AcitonInfo> actions, double max) {
-    final maxDuration =
-        Duration(microseconds: (max * Duration.microsecondsPerSecond).toInt());
+    DateTime time,
+    List<_AcitonInfo> actions,
+    double max,
+  ) {
+    final maxDuration = Duration(
+      microseconds: (max * Duration.microsecondsPerSecond).toInt(),
+    );
     for (final action in actions.reversed) {
       final duration = time.difference(action.startTime);
       if (duration.isNegative) continue;

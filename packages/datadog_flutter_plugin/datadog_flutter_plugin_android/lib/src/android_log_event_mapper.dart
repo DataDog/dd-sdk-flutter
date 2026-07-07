@@ -13,8 +13,8 @@ class AndroidLogEventMapper extends LogMapperProxy {
   AndroidLogEventMapper(
     DatadogLoggingConfiguration config,
     InternalLogger logger,
-  )   : _internalLogger = logger,
-        super(logEventMapper: config.eventMapper) {
+  ) : _internalLogger = logger,
+      super(logEventMapper: config.eventMapper) {
     final listener = DatadogLogEventMapper$EventMapper.implement(
       $DatadogLogEventMapper$EventMapper(
         mapLogEvent: (encoded) {

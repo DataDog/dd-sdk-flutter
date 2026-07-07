@@ -20,11 +20,7 @@ class RumViewInfo {
   /// Any attributes to be associated with this view
   final Map<String, Object?> attributes;
 
-  RumViewInfo({
-    required this.name,
-    this.path,
-    this.attributes = const {},
-  });
+  RumViewInfo({required this.name, this.path, this.attributes = const {}});
 }
 
 /// A function that can be used to supply custom information to
@@ -77,7 +73,9 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
   }) {
     ambiguate(WidgetsBinding.instance)?.addObserver(this);
     datadogSdk.updateConfigurationInfo(
-        LateConfigurationProperty.trackViewsManually, false);
+      LateConfigurationProperty.trackViewsManually,
+      false,
+    );
   }
 
   @override
@@ -105,7 +103,8 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
   void _startView(RumViewInfo? viewInfo) {
     // For platforms that don't support app lifecycle state (lifecycleState is null)
     // assume that the application is foregrounded.
-    final lifecycleState = ambiguate(WidgetsBinding.instance)?.lifecycleState ??
+    final lifecycleState =
+        ambiguate(WidgetsBinding.instance)?.lifecycleState ??
         AppLifecycleState.resumed;
     if (lifecycleState != AppLifecycleState.resumed) {
       _pendingView = viewInfo;
@@ -121,8 +120,11 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
           Future.delayed(const Duration(milliseconds: 1)).then((_) {
             // Make sure the view wasn't overwritten in the last ~1ms
             if (_currentView == viewInfo) {
-              datadogSdk.rum
-                  ?.startView(viewInfo.name, null, viewInfo.attributes);
+              datadogSdk.rum?.startView(
+                viewInfo.name,
+                null,
+                viewInfo.attributes,
+              );
             }
           });
         } else {
@@ -231,14 +233,16 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
           _routeObserver?.subscribe(this, route);
         } else {
           DatadogSdk.instance.internalLogger.debug(
-              '$DatadogRouteAwareMixin for ${rumViewInfo.name} (on widget $T) '
-              'will be ignored because it is part of a named route ${route.settings.name}');
+            '$DatadogRouteAwareMixin for ${rumViewInfo.name} (on widget $T) '
+            'will be ignored because it is part of a named route ${route.settings.name}',
+          );
         }
       }
     } else {
       DatadogSdk.instance.internalLogger.warn(
-          'Invalid use of $DatadogRouteAwareMixin without a $DatadogNavigationObserverProvider. '
-          'Make sure to add the provider at the root of your widget tree (above your MaterialApp)');
+        'Invalid use of $DatadogRouteAwareMixin without a $DatadogNavigationObserverProvider. '
+        'Make sure to add the provider at the root of your widget tree (above your MaterialApp)',
+      );
     }
   }
 
@@ -329,12 +333,14 @@ class DatadogNavigationObserverProvider extends InheritedWidget {
 
   @override
   bool updateShouldNotify(
-          covariant DatadogNavigationObserverProvider oldWidget) =>
-      navObserver != oldWidget.navObserver;
+    covariant DatadogNavigationObserverProvider oldWidget,
+  ) => navObserver != oldWidget.navObserver;
 
   static DatadogNavigationObserverProvider? of(BuildContext context) {
-    final result = context.dependOnInheritedWidgetOfExactType<
-        DatadogNavigationObserverProvider>();
+    final result = context
+        .dependOnInheritedWidgetOfExactType<
+          DatadogNavigationObserverProvider
+        >();
     return result;
   }
 }

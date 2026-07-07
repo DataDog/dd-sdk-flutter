@@ -66,7 +66,8 @@ class RequestLog {
 
     var decoded = '';
     var contentEncoding = headers['content-encoding'];
-    var isZipped = contentEncoding != null &&
+    var isZipped =
+        contentEncoding != null &&
         (contentEncoding.contains('deflate') ||
             contentEncoding.contains('gzip'));
     if (isZipped) {

@@ -53,8 +53,8 @@ const _fixtureFileNames = [
 Future<Map<String, Object?>> _fixtureCase(String fileName) async {
   final file = File.fromUri(
     (await _packageRoot()).uri.resolve(
-          'test/fixtures/precomputed/cases/$fileName',
-        ),
+      'test/fixtures/precomputed/cases/$fileName',
+    ),
   );
   return jsonDecode(file.readAsStringSync()) as Map<String, Object?>;
 }
@@ -91,8 +91,9 @@ Directory _packageRootFromCurrentDirectory() {
 
 bool _isDatadogFlagsPackage(Directory directory) {
   return File.fromUri(directory.uri.resolve('pubspec.yaml')).existsSync() &&
-      File.fromUri(directory.uri.resolve('lib/datadog_flags.dart'))
-          .existsSync();
+      File.fromUri(
+        directory.uri.resolve('lib/datadog_flags.dart'),
+      ).existsSync();
 }
 
 Future<Map<String, FlagAssignment>> _fetchAssignments(
@@ -111,11 +112,8 @@ Future<Map<String, FlagAssignment>> _fetchAssignments(
   );
 
   return (await fetcher.fetch(
-    FlagsEvaluationContext.fromJson(
-      fixture['context'] as Map<String, Object?>,
-    ),
-  ))
-      .flags;
+    FlagsEvaluationContext.fromJson(fixture['context'] as Map<String, Object?>),
+  )).flags;
 }
 
 Map<String, FlagAssignment> _flagsFrom(Map<String, Object?> fixture) {
