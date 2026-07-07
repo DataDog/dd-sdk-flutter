@@ -103,5 +103,5 @@ void main() {
     expect(postEvent.requestHeaders!['x-datadog-origin'], 'rum');
     expect(postEvent.responseHeaders, isNotNull);
     expect(postEvent.responseHeaders!['content-type'], isNotNull);
-  }, skip: kIsWeb);
+  });
 }

@@ -134,6 +134,7 @@ class DatadogSdk {
     _logs?.deinitialize();
     _logs = null;
 
+    _configuration = null;
     _initialized = false;
   }
 
@@ -189,6 +190,7 @@ class DatadogSdk {
       logCallback: _platformLog,
       internalLogger: internalLogger,
     );
+    _configuration = configuration;
 
     if (configuration.loggingConfiguration != null) {
       _logs = await DatadogLogging.enable(

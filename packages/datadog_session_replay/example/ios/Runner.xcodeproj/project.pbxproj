@@ -13,6 +13,7 @@
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		494123582DC129660071423F /* RequestBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494123572DC129630071423F /* RequestBuilderTests.swift */; };
 		494400772E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494400762E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift */; };
+		E7162BD14BF84CACB6B101E947BD07D1 /* SessionReplayTestContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */; };
 		494400792E58BA1000AC46CC /* Mockable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494400782E58BA0700AC46CC /* Mockable.swift */; };
 		4944007D2E58C55200AC46CC /* FlutterSessionReplayFeatureMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4944007C2E58C54B00AC46CC /* FlutterSessionReplayFeatureMock.swift */; };
 		494400892E58E7A200AC46CC /* ResourceResolverMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494400882E58E7A200AC46CC /* ResourceResolverMock.swift */; };
@@ -68,6 +69,7 @@
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		494123572DC129630071423F /* RequestBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestBuilderTests.swift; sourceTree = "<group>"; };
 		494400762E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlutterSessionReplayBridgeTests.swift; sourceTree = "<group>"; };
+		F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionReplayTestContainer.swift; sourceTree = "<group>"; };
 		494400782E58BA0700AC46CC /* Mockable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mockable.swift; sourceTree = "<group>"; };
 		4944007C2E58C54B00AC46CC /* FlutterSessionReplayFeatureMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlutterSessionReplayFeatureMock.swift; sourceTree = "<group>"; };
 		494400882E58E7A200AC46CC /* ResourceResolverMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceResolverMock.swift; sourceTree = "<group>"; };
@@ -144,6 +146,7 @@
 				494123572DC129630071423F /* RequestBuilderTests.swift */,
 				49C3AB4E2DBBE4A7000D8F6E /* FlutterSessionReplayFeatureTests.swift */,
 				494400762E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift */,
+				F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */,
 				35542C60C09A47729F76E13B6A659C63 /* DatadogSessionReplayPluginTests.swift */,
 			);
 			path = RunnerTests;
@@ -491,6 +494,7 @@
 				494123582DC129660071423F /* RequestBuilderTests.swift in Sources */,
 				49C3AB4F2DBBE4B2000D8F6E /* FlutterSessionReplayFeatureTests.swift in Sources */,
 				494400772E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift in Sources */,
+				E7162BD14BF84CACB6B101E947BD07D1 /* SessionReplayTestContainer.swift in Sources */,
 				E1E091C69AD74808BE3733231FC76E98 /* DatadogSessionReplayPluginTests.swift in Sources */,
 				4944008D2E58F71300AC46CC /* ResourcesWriterTest.swift in Sources */,
 				495642A52E5E2512000FF536 /* ResourceResolverTest.swift in Sources */,

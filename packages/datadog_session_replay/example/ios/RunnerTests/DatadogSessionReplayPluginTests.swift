@@ -13,7 +13,8 @@ import Flutter
 /// because FFI plugins do not receive engine lifecycle events (Flutter issue #184124).
 /// We exercise the ownership flow via the underlying static API since creating a real
 /// `FlutterPluginRegistrar` requires a running engine.
-@Suite(.serialized)
+extension SessionReplayTestContainer {
+@Suite
 class DatadogSessionReplayPluginTests {
     init() { FlutterSessionReplay.shutdown() }
     deinit { FlutterSessionReplay.shutdown() }
@@ -49,3 +50,4 @@ class DatadogSessionReplayPluginTests {
         #expect(FlutterSessionReplay.listenerOwner === messengerA)
     }
 }
+} // extension SessionReplayTestContainer

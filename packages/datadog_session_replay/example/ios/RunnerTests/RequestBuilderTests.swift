@@ -281,7 +281,7 @@ func zlibDecode(_ data: Data, capacity: Int = 1_000_000) -> Data? {
         // buffer to hold the entire decompressed output, the function writes the
         // first dst_size bytes to the buffer and returns dst_size. Note that this
         // behavior differs from that of `compression_encode_buffer(_:_:_:_:_:_:)`.
-        let size = compression_decode_buffer(buffer, capacity, ptr, data.count, nil, COMPRESSION_ZLIB)
+        let size = compression_decode_buffer(buffer, capacity, ptr, subdata.count, nil, COMPRESSION_ZLIB)
         return Data(bytes: buffer, count: size)
     }
 }

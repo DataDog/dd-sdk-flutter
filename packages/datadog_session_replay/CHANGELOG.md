@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.0-preview.13
+
+* Guard against non-finite (NaN/Infinity) values during recording.
+* Render Switch Thumb Icon and use Material Icons for Checkbox glyphs.
+* Render Material and Cupertino buttons correctly.
+* Add support for Material and Cupertino Slider
+* Add image downscaling with a configurable pixel budget.
+* Add a configurable font-family transform.
+* Add `captureGestures` option to `stopRecording`.
+* Add `startRecording` and `stopRecording` support.
+
 ## 1.0.0-preview.12
 
 * Add support for `Switch` and `CupertinoSwitch`.

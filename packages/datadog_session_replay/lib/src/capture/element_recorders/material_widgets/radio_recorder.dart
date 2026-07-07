@@ -118,10 +118,12 @@ class RadioRecorder implements ElementRecorder {
     if (widget is Radio<T>) {
       value = widget.value;
       enabled = widget.enabled;
+      // ignore: deprecated_member_use
       hasCallbacks = widget.onChanged != null || widget.groupRegistry != null;
     } else if (widget is CupertinoRadio<T>) {
       value = widget.value;
       enabled = widget.enabled;
+      // ignore: deprecated_member_use
       hasCallbacks = widget.onChanged != null || widget.groupRegistry != null;
     } else {
       return <WidgetState>{
@@ -221,7 +223,7 @@ class RadioRecorder implements ElementRecorder {
 
     // Preserves .5 precision
     int h2 = (h * 2).round();
-    int r2 = (radius * 2).round();
+    int r2 = (radius * 2).safeRound();
 
     if ((h2 - 2 * r2) % 4 == 0) {
       return r2 / 2.0;
@@ -279,7 +281,7 @@ class RadioNode extends CaptureNode {
         width: attributes.width,
         height: attributes.height,
         border: SRShapeBorder(
-            color: side.color.toHexString(), width: side.width.round()),
+            color: side.color.toHexString(), width: side.width.safeRound()),
         shapeStyle: SRShapeStyle(
           cornerRadius: attributes.height / 2.0,
           backgroundColor: backgroundColor.toHexString(),
@@ -288,13 +290,13 @@ class RadioNode extends CaptureNode {
     ];
 
     if (isSelected) {
-      final dotDiameter = (innerRadius * 2.0).round();
+      final dotDiameter = (innerRadius * 2.0).safeRound();
 
       wireframes.add(
         SRShapeWireframe(
           id: foregroundWireframeId,
-          x: attributes.x + ((attributes.width - dotDiameter) / 2).round(),
-          y: attributes.y + ((attributes.height - dotDiameter) / 2).round(),
+          x: attributes.x + ((attributes.width - dotDiameter) / 2).safeRound(),
+          y: attributes.y + ((attributes.height - dotDiameter) / 2).safeRound(),
           width: dotDiameter,
           height: dotDiameter,
           shapeStyle: SRShapeStyle(

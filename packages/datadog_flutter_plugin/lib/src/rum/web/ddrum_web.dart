@@ -78,6 +78,9 @@ class DdRumWeb extends DdRumPlatform {
         trackViewsManually: true,
         trackUserInteractions: false,
         trackResources: trackResources,
+        trackResourceHeaders: _convertTrackResourceHeaders(
+          rumConfiguration.trackResourceHeaders,
+        ),
         trackFrustrations: rumConfiguration.trackFrustrations,
         trackLongTasks: rumConfiguration.detectLongTasks,
         enableExperimentalFeatures: [
@@ -85,6 +88,9 @@ class DdRumWeb extends DdRumPlatform {
           'feature_operation_vital'.toJS,
           'start_stop_action'.toJS,
           'start_stop_resource'.toJS,
+          // Required to emit resource headers on Browser SDK v6.x (GA in v7.1.0+).
+          if (rumConfiguration.trackResourceHeaders != null)
+            'track_resource_headers'.toJS,
         ].toJS,
         trackingConsent: trackingConsent.webValue(),
         compressIntakeRequests: false,
@@ -542,6 +548,21 @@ JSString _headerTypeToPropagatorType(TracingHeaderType type) {
   }
 }
 
+JSAny? _convertTrackResourceHeaders(ResourceHeadersExtractor? extractor) {
+  if (extractor == null) return null;
+
+  // Explicit per-direction MatchHeaders — Browser SDK's `true` mode would
+  // apply its broad default list to both directions.
+  final matchers = <_MatchHeader>[
+    for (final name in extractor.requestHeaderNames)
+      _MatchHeader(name: name, location: 'request'),
+    for (final name in extractor.responseHeaderNames)
+      _MatchHeader(name: name, location: 'response'),
+  ];
+  if (matchers.isEmpty) return null;
+  return matchers.toJS;
+}
+
 String _contextInjectionString(TraceContextInjection contextInjection) {
   switch (contextInjection) {
     case TraceContextInjection.all:
@@ -562,6 +583,11 @@ extension on RumFeatureOperationFailureReason {
         return 'other';
     }
   }
+}
+
+@anonymous
+extension type _MatchHeader._(JSObject _) implements JSObject {
+  external factory _MatchHeader({String name, String? location});
 }
 
 @anonymous
@@ -599,6 +625,7 @@ extension type _RumInitOptions._(JSObject _) implements JSObject {
     bool? trackFrustrations,
     String? trackingConsent,
     bool? trackResources,
+    JSAny? trackResourceHeaders,
     // ignore: unused_element_parameter
     bool? trackUserInteractions,
     bool? trackViewsManually,

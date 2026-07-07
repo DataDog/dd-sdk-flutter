@@ -378,7 +378,7 @@ class SwitchNode extends CaptureNode {
   // when selected, the inner filled dot.
   @override
   List<SRWireframe> buildWireframes() {
-    final dotDiameter = (innerRadius * 2.0).round();
+    final dotDiameter = (innerRadius * 2.0).safeRound();
     final thumbAttributeX = isSelected
         ? attributes.x +
             attributes.width -
@@ -395,7 +395,7 @@ class SwitchNode extends CaptureNode {
         width: attributes.width,
         height: attributes.height,
         border: SRShapeBorder(
-            color: side.color.toHexString(), width: side.width.round()),
+            color: side.color.toHexString(), width: side.width.safeRound()),
         shapeStyle: SRShapeStyle(
           cornerRadius: attributes.height / 2.0,
           backgroundColor: trackColor.toHexString(),

@@ -116,6 +116,18 @@ class ResourceHeadersExtractor {
     return _extractHeaders(headers, _responseHeaders);
   }
 
+  /// Lowercased, security-filtered set of header names this extractor will
+  /// capture on the **request** side. Used by the Flutter Web RUM bridge to
+  /// build direction-scoped `trackResourceHeaders` matchers for the Browser SDK
+  /// so request-only and response-only defaults stay scoped to their direction.
+  @internal
+  Set<String> get requestHeaderNames => _requestHeaders;
+
+  /// Lowercased, security-filtered set of header names this extractor will
+  /// capture on the **response** side.
+  @internal
+  Set<String> get responseHeaderNames => _responseHeaders;
+
   /// Convenience method that extracts both request and response headers and
   /// returns them as a map of internal attributes suitable for merging into
   /// `stopResource()` attributes.

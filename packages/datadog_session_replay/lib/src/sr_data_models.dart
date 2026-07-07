@@ -284,10 +284,10 @@ class SRShapeStyle {
   final double opacity;
 
   SRShapeStyle({
-    this.cornerRadius = 0.0,
+    double cornerRadius = 0.0,
     this.backgroundColor = srTransparentColorString,
     this.opacity = 1.0,
-  });
+  }) : cornerRadius = cornerRadius.isFinite ? cornerRadius : 0.0;
 
   @override
   bool operator ==(Object other) =>

@@ -392,5 +392,60 @@ void main() {
         });
       });
     });
+
+    group('Flutter Web mapping accessors', () {
+      test(
+          'requestHeaderNames returns the narrower request defaults; '
+          'responseHeaderNames returns the broader response defaults', () {
+        final extractor = ResourceHeadersExtractor();
+        // ignore: invalid_use_of_internal_member
+        final requestNames = extractor.requestHeaderNames;
+        // ignore: invalid_use_of_internal_member
+        final responseNames = extractor.responseHeaderNames;
+        // Request defaults are a subset: just cache-control + content-type.
+        expect(requestNames, containsAll(['cache-control', 'content-type']));
+        // etag is response-only and must not leak onto the request side.
+        expect(requestNames.contains('etag'), isFalse);
+        expect(responseNames,
+            containsAll(['cache-control', 'content-type', 'etag']));
+      });
+
+      test('custom captureHeaders apply to both directions', () {
+        final extractor = ResourceHeadersExtractor(
+          captureHeaders: ['x-custom', 'X-Other'],
+        );
+        // ignore: invalid_use_of_internal_member
+        expect(
+            extractor.requestHeaderNames, containsAll(['x-custom', 'x-other']));
+        // ignore: invalid_use_of_internal_member
+        expect(extractor.responseHeaderNames,
+            containsAll(['x-custom', 'x-other']));
+      });
+
+      test('forbidden headers are excluded from both directions', () {
+        final extractor = ResourceHeadersExtractor(
+          includeDefaults: false,
+          captureHeaders: ['authorization', 'x-custom'],
+        );
+        // ignore: invalid_use_of_internal_member
+        expect(extractor.requestHeaderNames.contains('authorization'), isFalse);
+        // ignore: invalid_use_of_internal_member
+        expect(
+            extractor.responseHeaderNames.contains('authorization'), isFalse);
+        // ignore: invalid_use_of_internal_member
+        expect(extractor.requestHeaderNames, contains('x-custom'));
+      });
+
+      test('header name sets are empty when nothing is configured', () {
+        final extractor = ResourceHeadersExtractor(
+          includeDefaults: false,
+          captureHeaders: const [],
+        );
+        // ignore: invalid_use_of_internal_member
+        expect(extractor.requestHeaderNames, isEmpty);
+        // ignore: invalid_use_of_internal_member
+        expect(extractor.responseHeaderNames, isEmpty);
+      });
+    });
   });
 }

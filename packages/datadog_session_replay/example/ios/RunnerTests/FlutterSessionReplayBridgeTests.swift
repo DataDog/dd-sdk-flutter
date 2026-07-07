@@ -13,7 +13,8 @@ extension FlutterSessionReplay {
     }
 }
 
-@Suite(.serialized)
+extension SessionReplayTestContainer {
+@Suite
 class FlutterSessionReplayBridgeTests {
     init() { FlutterSessionReplay.shutdown() }
     deinit { FlutterSessionReplay.shutdown() }
@@ -242,3 +243,4 @@ class FlutterSessionReplayBridgeTests {
         #expect(mockCore.get(feature: DefaultFlutterSessionReplayFeature.self) == nil)
     }
 }
+} // extension SessionReplayTestContainer

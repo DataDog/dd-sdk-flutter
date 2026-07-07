@@ -5,7 +5,7 @@
 import 'package:flutter/widgets.dart' show Color;
 
 int _floatToInt8(double x) {
-  return (x * 255.0).round() & 0xff;
+  return (x * 255.0).safeRound() & 0xff;
 }
 
 extension HexColor on Color {
@@ -18,5 +18,14 @@ extension HexColor on Color {
         '${gint.toRadixString(16).padLeft(2, '0')}'
         '${bint.toRadixString(16).padLeft(2, '0')}'
         '${aint.toRadixString(16).padLeft(2, '0')}';
+  }
+}
+
+extension SafeDouble on double {
+  int safeRound([int fallback = 0]) {
+    if (isFinite) {
+      return round();
+    }
+    return fallback;
   }
 }

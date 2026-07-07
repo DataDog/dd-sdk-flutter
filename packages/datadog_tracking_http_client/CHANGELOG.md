@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.2.0
+
+* Capture HTTP request and response headers for RUM resources.
+
 ## 3.1.0
 
 * Add RUM resource size tracking for chunked / streamed responses.

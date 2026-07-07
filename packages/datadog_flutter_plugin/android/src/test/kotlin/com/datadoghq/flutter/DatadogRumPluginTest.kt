@@ -263,7 +263,7 @@ class DatadogRumPluginTest {
         forge: Forge
     ) {
         // GIVEN
-        mockkStatic(Rum::class)
+        mockRumEnable()
         val applicationId = forge.aString()
         val config = mapOf(
             "applicationId" to applicationId,
@@ -295,6 +295,7 @@ class DatadogRumPluginTest {
         forge: Forge
     ) {
         // GIVEN
+        mockRumEnable()
         mockkStatic(Log::class)
         Datadog.setVerbosity(Log.INFO)
 
@@ -335,6 +336,7 @@ class DatadogRumPluginTest {
         forge: Forge
     ) {
         // GIVEN
+        mockRumEnable()
         mockkStatic(Log::class)
         Datadog.setVerbosity(Log.INFO)
 
@@ -373,6 +375,13 @@ class DatadogRumPluginTest {
         verify(exactly = 1) {
             Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_RUM_REINITIALIZATION)
         }
+    }
+
+    private fun mockRumEnable() {
+        mockkStatic(Rum::class)
+        every { Rum.enable(any()) } returns Unit
+        mockkStatic(GlobalRumMonitor::class)
+        every { GlobalRumMonitor.get() } returns monitorProxy
     }
 
     @Test

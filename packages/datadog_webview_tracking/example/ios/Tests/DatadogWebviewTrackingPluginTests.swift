@@ -14,7 +14,7 @@ enum ResultStatus: EquatableInTests {
 
 class FlutterSdkTests: XCTestCase {
     func testInitWebView_MissingIdentifier_ReturnsError() {
-        let plugin = DatadogWebViewTrackingPlugin(channel: .init())
+        let plugin = DatadogWebViewTrackingPlugin(registrar: MockFlutterPluginRegistrar(), channel: .init())
         let call = FlutterMethodCall(methodName: "initWebView", arguments: [
             "allowedHosts": []
         ])
@@ -37,7 +37,7 @@ class FlutterSdkTests: XCTestCase {
     }
 
     func testInitWebView_MissingAllowedHosts_ReturnsError() {
-        let plugin = DatadogWebViewTrackingPlugin(channel: .init())
+        let plugin = DatadogWebViewTrackingPlugin(registrar: MockFlutterPluginRegistrar(), channel: .init())
         let call = FlutterMethodCall(methodName: "initWebView", arguments: [
             "webViewIdentifier": 5
         ])
@@ -60,7 +60,7 @@ class FlutterSdkTests: XCTestCase {
     }
 
     func testInitWebView_WithValidParameters_ReturnsSuccess() {
-        let plugin = DatadogWebViewTrackingPlugin(channel: .init())
+        let plugin = DatadogWebViewTrackingPlugin(registrar: MockFlutterPluginRegistrar(), channel: .init())
         let call = FlutterMethodCall(methodName: "initWebView", arguments: [
             "webViewIdentifier": 5,
             "allowedHosts": []
@@ -72,5 +72,80 @@ class FlutterSdkTests: XCTestCase {
         })
 
         XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+}
+
+class MockFlutterPluginRegistrar: NSObject, FlutterPluginRegistrar {
+    var viewController: UIViewController?
+
+    func publish(_ value: NSObject) {}
+
+    func addMethodCallDelegate(_ delegate: any FlutterPlugin, channel: FlutterMethodChannel) {}
+
+    func addApplicationDelegate(_ delegate: any FlutterPlugin) {}
+
+    func addSceneDelegate(_ delegate: any FlutterSceneLifeCycleDelegate) {}
+
+    func lookupKey(forAsset asset: String) -> String {
+        return ""
+    }
+
+    func lookupKey(forAsset asset: String, fromPackage package: String) -> String {
+        return ""
+    }
+
+    func valuePublished(byPlugin pluginKey: String) -> NSObject? {
+        return nil
+    }
+
+    func messenger() -> any FlutterBinaryMessenger {
+        return MockFlutterBinaryMessenger()
+    }
+
+    func textures() -> any FlutterTextureRegistry {
+        return MockFlutterTextureRegistry()
+    }
+
+    func register(_ factory: any FlutterPlatformViewFactory, withId factoryId: String) {}
+
+    func register(
+        _ factory: any FlutterPlatformViewFactory,
+        withId factoryId: String,
+        gestureRecognizersBlockingPolicy: FlutterPlatformViewGestureRecognizersBlockingPolicy
+    ) {}
+}
+
+class MockFlutterBinaryMessenger: NSObject, FlutterBinaryMessenger {
+    func send(onChannel channel: String, message: Data?) {
+
+    }
+
+    func send(onChannel channel: String, message: Data?, binaryReply callback: FlutterBinaryReply? = nil) {
+
+    }
+
+    func setMessageHandlerOnChannel(
+        _ channel: String,
+        binaryMessageHandler handler: FlutterBinaryMessageHandler? = nil
+    ) -> FlutterBinaryMessengerConnection {
+        return 0
+    }
+
+    func cleanUpConnection(_ connection: FlutterBinaryMessengerConnection) {
+
+    }
+}
+
+class MockFlutterTextureRegistry: NSObject, FlutterTextureRegistry {
+    func register(_ texture: any FlutterTexture) -> Int64 {
+        return 0
+    }
+
+    func textureFrameAvailable(_ textureId: Int64) {
+
+    }
+
+    func unregisterTexture(_ textureId: Int64) {
+
     }
 }

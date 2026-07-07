@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.0
+
+* Add HTTP request and response header capture for RUM resources.
+* Support payload capture for GraphQL Link.
+
+## 2.0.2
+
+* Fix generating mismatched TracingContexts preventing correlation between APM and RUM.
+
 ## 2.0.1
 
 * Add GraphQL errors to resource events.

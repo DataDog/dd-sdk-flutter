@@ -16,6 +16,7 @@ dotEnvFiles=(
   "packages/datadog_flutter_plugin/integration_test_app/.env"
   "packages/datadog_tracking_http_client/example/.env"
   "packages/datadog_webview_tracking/example/.env"
+  "examples/simple_example/.env"
   "test_apps/stress_test/.env"
 )
 
@@ -26,6 +27,26 @@ for f in ${dotEnvFiles[@]}; do
 DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN
 DD_APPLICATION_ID=$DD_APPLICATION_ID
 DD_ENV=prod
+END
+done
+
+flagsTargetingAttributesJson=${FLAGS_TARGETING_ATTRIBUTES_JSON:-'{"attr1":"value1","companyId":"1"}'}
+flagDotEnvFiles=(
+  "examples/simple_example/.env"
+)
+
+for f in ${flagDotEnvFiles[@]}; do
+  tee -a $f > /dev/null << END
+
+# Optional Datadog Flags example settings.
+DD_SITE=${DD_SITE:-us1}
+FLAGS_TARGETING_KEY=${FLAGS_TARGETING_KEY:-test_subject4}
+FLAGS_TARGETING_ATTRIBUTES_JSON=$flagsTargetingAttributesJson
+FLAGS_BOOLEAN_KEYS=${FLAGS_BOOLEAN_KEYS:-checkout.enabled}
+FLAGS_STRING_KEYS=${FLAGS_STRING_KEYS:-checkout.copy}
+FLAGS_INTEGER_KEYS=${FLAGS_INTEGER_KEYS:-checkout.limit}
+FLAGS_DOUBLE_KEYS=${FLAGS_DOUBLE_KEYS:-checkout.ratio}
+FLAGS_OBJECT_KEYS=${FLAGS_OBJECT_KEYS:-checkout.config}
 END
 done
 
@@ -65,4 +86,3 @@ tee ./ddog_config.plist > /dev/null << END
 </plist>
 END
 popd
-

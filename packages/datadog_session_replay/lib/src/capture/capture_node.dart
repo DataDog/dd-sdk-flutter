@@ -4,6 +4,7 @@
 
 import 'package:flutter/widgets.dart';
 
+import '../extensions.dart';
 import '../sr_data_models.dart';
 
 @immutable
@@ -12,10 +13,10 @@ class CapturedViewAttributes {
   final double scaleX;
   final double scaleY;
 
-  int get x => paintBounds.left.round();
-  int get y => paintBounds.top.round();
-  int get width => paintBounds.width.round();
-  int get height => paintBounds.height.round();
+  int get x => paintBounds.left.safeRound();
+  int get y => paintBounds.top.safeRound();
+  int get width => paintBounds.width.safeRound();
+  int get height => paintBounds.height.safeRound();
 
   const CapturedViewAttributes({
     required this.paintBounds,

@@ -30,6 +30,25 @@ import 'element_recorders/text_recorder.dart';
 import 'pointer_capture.dart';
 import 'view_tree_snapshot.dart';
 
+/// Scale from transformed paint bounds vs local bounds; must stay finite for
+/// recorders that multiply by [scaleX]/[scaleY] and call [num.toInt].
+@visibleForTesting
+double finiteLayoutScale(double numerator, double denominator) {
+  if (denominator == 0.0 ||
+      (!numerator.isFinite && !denominator.isFinite) ||
+      !numerator.isFinite) {
+    return 1.0;
+  }
+  if (!denominator.isFinite) {
+    return 0.0;
+  }
+  final ratio = numerator / denominator;
+  if (ratio.isFinite) {
+    return ratio;
+  }
+  return 0.0;
+}
+
 /// Capture privacy for the current tree of nodes. This is set by the configuration,
 /// to start, but can change if the capture encounters a Widget that modifies it.
 @immutable
@@ -385,8 +404,14 @@ class SessionReplayRecorder {
           renderObject.paintBounds,
         );
 
-        final scaleX = paintBounds.width / untransformedPaintBounds.width;
-        final scaleY = paintBounds.height / untransformedPaintBounds.height;
+        final scaleX = finiteLayoutScale(
+          paintBounds.width,
+          untransformedPaintBounds.width,
+        );
+        final scaleY = finiteLayoutScale(
+          paintBounds.height,
+          untransformedPaintBounds.height,
+        );
         final viewAttributes = CapturedViewAttributes(
           paintBounds: paintBounds,
           scaleX: scaleX,

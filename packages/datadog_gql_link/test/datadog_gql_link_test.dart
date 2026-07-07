@@ -79,6 +79,8 @@ query UserInfo($id: ID!) {
     mockRum = MockDdRum();
     when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
     when(() => mockRum.traceSampleRate).thenReturn(50.0);
+    // ignore: invalid_use_of_internal_member
+    when(() => mockRum.resourceHeadersExtractor).thenReturn(null);
   });
 
   group('when rum is disabled', () {
@@ -751,6 +753,39 @@ query UserInfo($id: ID!) {
       expect(errors[0].containsKey('code'), isFalse);
     });
 
+    test('link omits locations and path when null in serialized errors',
+        () async {
+      // Given
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      when(() => response.context).thenReturn(const Context());
+      when(() => response.errors).thenReturn([
+        const GraphQLError(message: 'Server Error'),
+      ]);
+
+      // When
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+
+      responseController.sink.add(response);
+      unawaited(responseController.sink.close());
+      await stream.drain();
+
+      // Then
+      final captured = verify(() => mockRum.stopResource(
+          any(), any(), RumResourceType.native, any(), captureAny()));
+      final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
+      final errors =
+          json.decode(capturedAttrs['_dd.graphql.errors']) as List<dynamic>;
+      expect(errors.length, 1);
+      expect(errors[0].containsKey('locations'), isFalse);
+      expect(errors[0].containsKey('path'), isFalse);
+    });
+
     test('link does not add payload attribute by default', () {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
@@ -847,6 +882,167 @@ query UserInfo($id: ID!) {
           .captured[0] as Map<String, Object?>;
       expect(capturedAttributes['_dd.graphql.operation_type'], 'subscription');
       expect(capturedAttributes['_dd.graphql.operation_name'], 'ReviewAdded');
+    });
+  });
+
+  group('when resource header capture is enabled', () {
+    setUp(() {
+      when(() => mockDatadog.rum).thenReturn(mockRum);
+      when(() => mockDatadog.headerTypesForHost(any())).thenReturn({});
+    });
+
+    test('attaches matching response headers to stopResource attributes',
+        () async {
+      // ignore: invalid_use_of_internal_member
+      when(() => mockRum.resourceHeadersExtractor)
+          .thenReturn(ResourceHeadersExtractor());
+
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      var responseContext = const Context();
+      responseContext = responseContext.updateEntry<HttpLinkResponseContext>(
+        (entry) => const HttpLinkResponseContext(
+          statusCode: 200,
+          headers: {
+            'content-type': 'application/json',
+            'cache-control': 'no-cache',
+            // Must be stripped by the security filter even on the response side.
+            'authorization': 'Bearer secret-token',
+          },
+        ),
+      );
+      when(() => response.context).thenReturn(responseContext);
+
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+      responseController.sink.add(response);
+      unawaited(responseController.sink.close());
+      await stream.drain();
+
+      final captured = verify(() => mockRum.stopResource(
+          any(), any(), RumResourceType.native, any(), captureAny()));
+      final attrs = captured.captured[0] as Map<String, dynamic>;
+      final responseHeaders =
+          attrs[DatadogRumPlatformAttributeKey.responseHeaders]
+              as Map<String, String>?;
+      expect(responseHeaders, isNotNull);
+      expect(responseHeaders!['content-type'], 'application/json');
+      expect(responseHeaders['cache-control'], 'no-cache');
+      expect(responseHeaders.containsKey('authorization'), isFalse);
+    });
+
+    test(
+        'attaches matching request headers from HttpLinkHeaders to stopResource attributes',
+        () async {
+      // ignore: invalid_use_of_internal_member
+      when(() => mockRum.resourceHeadersExtractor)
+          .thenReturn(ResourceHeadersExtractor());
+
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      var requestContext = const Context();
+      requestContext = requestContext.updateEntry<HttpLinkHeaders>(
+        (entry) => const HttpLinkHeaders(headers: {
+          'content-type': 'application/json',
+          'cache-control': 'max-age=0',
+        }),
+      );
+      final request = Request(
+        operation: Operation(document: query, operationName: 'UserInfo'),
+        context: requestContext,
+      );
+      final response = MockResponse();
+      when(() => response.context).thenReturn(const Context());
+
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+      responseController.sink.add(response);
+      unawaited(responseController.sink.close());
+      await stream.drain();
+
+      final captured = verify(() => mockRum.stopResource(
+          any(), any(), RumResourceType.native, any(), captureAny()));
+      final attrs = captured.captured[0] as Map<String, dynamic>;
+      final requestHeaders =
+          attrs[DatadogRumPlatformAttributeKey.requestHeaders]
+              as Map<String, String>?;
+      expect(requestHeaders, isNotNull);
+      expect(requestHeaders!['content-type'], 'application/json');
+      expect(requestHeaders['cache-control'], 'max-age=0');
+    });
+
+    test('does not add header attributes when extractor is not configured',
+        () async {
+      // Default setUp already stubs resourceHeadersExtractor → null.
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      var responseContext = const Context();
+      responseContext = responseContext.updateEntry<HttpLinkResponseContext>(
+        (entry) => const HttpLinkResponseContext(
+          statusCode: 200,
+          headers: {'content-type': 'application/json'},
+        ),
+      );
+      when(() => response.context).thenReturn(responseContext);
+
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+      responseController.sink.add(response);
+      unawaited(responseController.sink.close());
+      await stream.drain();
+
+      final captured = verify(() => mockRum.stopResource(
+          any(), any(), RumResourceType.native, any(), captureAny()));
+      final attrs = captured.captured[0] as Map<String, dynamic>;
+      expect(attrs.containsKey(DatadogRumPlatformAttributeKey.requestHeaders),
+          isFalse);
+      expect(attrs.containsKey(DatadogRumPlatformAttributeKey.responseHeaders),
+          isFalse);
+    });
+
+    test('captures request headers injected by tracing into the snapshot',
+        () async {
+      // ignore: invalid_use_of_internal_member
+      when(() => mockRum.resourceHeadersExtractor).thenReturn(
+        ResourceHeadersExtractor(captureHeaders: ['x-datadog-origin']),
+      );
+      when(() => mockRum.contextInjectionSetting)
+          .thenReturn(TraceContextInjection.all);
+      when(() => mockDatadog.headerTypesForHost(any()))
+          .thenReturn({TracingHeaderType.datadog});
+
+      final link =
+          DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
+      final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'));
+      final response = MockResponse();
+      when(() => response.context).thenReturn(const Context());
+
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+      responseController.sink.add(response);
+      unawaited(responseController.sink.close());
+      await stream.drain();
+
+      final captured = verify(() => mockRum.stopResource(
+          any(), any(), RumResourceType.native, any(), captureAny()));
+      final attrs = captured.captured[0] as Map<String, dynamic>;
+      final requestHeaders =
+          attrs[DatadogRumPlatformAttributeKey.requestHeaders]
+              as Map<String, String>?;
+      expect(requestHeaders, isNotNull);
+      expect(requestHeaders!['x-datadog-origin'], 'rum');
     });
   });
 
@@ -1043,7 +1239,89 @@ query UserInfo($id: ID!) {
         verifyHeaders(headersEntry!.headers, headerType, false,
             TraceContextInjection.sampled);
       });
+
+      test('RUM resource trace and span ids match injected wire headers', () {
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
+        when(() => mockRum.contextInjectionSetting)
+            .thenReturn(TraceContextInjection.sampled);
+        final link =
+            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
+        final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'));
+
+        // When
+        Request? forwardedRequest;
+        link.request(request, (request) {
+          forwardedRequest = request;
+          return const Stream<Response>.empty();
+        });
+
+        // Then
+        final headers =
+            forwardedRequest!.context.entry<HttpLinkHeaders>()!.headers;
+        final capturedAttrs = verify(
+                () => mockRum.startResource(any(), any(), any(), captureAny()))
+            .captured[0] as Map<String, dynamic>;
+        final headerIds = extractTraceAndSpanFromHeaders(headers, headerType);
+        final rumTraceId = TracingId.fromString(
+                capturedAttrs[DatadogRumPlatformAttributeKey.traceID] as String,
+                TracingIdRepresentation.hex)
+            .value;
+        final rumSpanId = TracingId.fromString(
+                capturedAttrs[DatadogRumPlatformAttributeKey.spanID] as String,
+                TracingIdRepresentation.decimal)
+            .value;
+        expect(rumTraceId, headerIds.traceId);
+        expect(rumSpanId, headerIds.spanId);
+      });
     });
+  }
+}
+
+({BigInt traceId, BigInt spanId}) extractTraceAndSpanFromHeaders(
+  Map<String, String> headers,
+  TracingHeaderType type,
+) {
+  switch (type) {
+    case TracingHeaderType.datadog:
+      final low = TracingId.fromString(
+              headers['x-datadog-trace-id'], TracingIdRepresentation.decimal)
+          .value;
+      final high = TracingId.fromString(
+              headers['x-datadog-tags']!.split('=')[1],
+              TracingIdRepresentation.hex)
+          .value;
+      return (
+        traceId: (high << 64) | low,
+        spanId: TracingId.fromString(
+                headers['x-datadog-parent-id'], TracingIdRepresentation.decimal)
+            .value,
+      );
+    case TracingHeaderType.b3:
+      final parts = headers['b3']!.split('-');
+      return (
+        traceId:
+            TracingId.fromString(parts[0], TracingIdRepresentation.hex).value,
+        spanId:
+            TracingId.fromString(parts[1], TracingIdRepresentation.hex).value,
+      );
+    case TracingHeaderType.b3multi:
+      return (
+        traceId: TracingId.fromString(
+                headers['X-B3-TraceId'], TracingIdRepresentation.hex)
+            .value,
+        spanId: TracingId.fromString(
+                headers['X-B3-SpanId'], TracingIdRepresentation.hex)
+            .value,
+      );
+    case TracingHeaderType.tracecontext:
+      final parts = headers['traceparent']!.split('-');
+      return (
+        traceId:
+            TracingId.fromString(parts[1], TracingIdRepresentation.hex).value,
+        spanId:
+            TracingId.fromString(parts[2], TracingIdRepresentation.hex).value,
+      );
   }
 }
 

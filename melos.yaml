@@ -137,8 +137,7 @@ scripts:
         - 'ios'
         - 'example/ios'
       # TODO: These packages should probably have platform unit tests
-      ignore: 
-        - 'datadog_webview_tracking'
+      ignore:         
         - 'datadog_inappwebview_tracking'
 
   unit_test:android:
@@ -149,8 +148,7 @@ scripts:
       dirExists: 
         - 'android'
         - 'example/android'
-      ignore:
-        - 'datadog_webview_tracking'
+      ignore:        
         - 'datadog_inappwebview_tracking'
 
   integration_test:ios:
@@ -170,7 +168,6 @@ scripts:
       dirExists:  'example/integration_test'
       ignore: 
         - 'datadog_flutter_plugin'
-        - 'datadog_webview_tracking'
 
   # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
   # have a separate target just for it that is called by `integration_test:ios``

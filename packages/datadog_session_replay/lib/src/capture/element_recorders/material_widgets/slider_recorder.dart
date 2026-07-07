@@ -77,6 +77,7 @@ class SliderRecorder implements ElementRecorder {
     final SliderThemeData sliderTheme = SliderTheme.of(element);
 
     final bool year2023 = switch (theme.useMaterial3) {
+      // ignore: deprecated_member_use
       true => widget.year2023 ?? sliderTheme.year2023 ?? true,
       false => false,
     };
@@ -680,10 +681,10 @@ class ShapeWireframeBuilder {
   }) {
     return SRShapeWireframe(
       id: id,
-      x: rect.left.round(),
-      y: rect.top.round(),
-      width: rect.width.round(),
-      height: rect.height.round(),
+      x: rect.left.safeRound(),
+      y: rect.top.safeRound(),
+      width: rect.width.safeRound(),
+      height: rect.height.safeRound(),
       shapeStyle: SRShapeStyle(
         backgroundColor: color.toHexString(),
         cornerRadius: cornerRadius ?? rect.shortestSide / 2,

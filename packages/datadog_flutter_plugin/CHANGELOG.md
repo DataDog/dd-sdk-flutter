@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.3.0
+
+* Capture HTTP request and response headers for RUM resources, including Flutter Web.
+* Upgrade iOS SDK to 3.12.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md).
+  * Instrumented Web Views now have their tracing decision consistent with the native SDK.
+  * Align public RUM session IDs with event formatting.
+  * Prevent a crash from `VitalCPUReader` when the CPU tick counter rolls over.
+  * Prevent crash misattribution when an inactive RUM view emits a terminal event after `stopResource()`.
+* Upgrade Android SDK to 3.10.0. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md).
+  * Use rebased `sessionReplaySampleRate` for deterministic Session Replay sampling.
+  * Fix GraphQL errors extraction for streaming responses.
+  * Move broadcast-receiver dispatch off the main thread to fix ANRs.
+
 ## 3.2.1
 
 * Prevent stripping of iOS context methods. See [#990](https://github.com/DataDog/dd-sdk-flutter/issues/990)

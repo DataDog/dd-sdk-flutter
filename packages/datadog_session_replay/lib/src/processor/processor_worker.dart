@@ -12,6 +12,7 @@ import '../capture/pointer_capture.dart';
 import '../capture/recorder.dart';
 import '../capture/view_tree_snapshot.dart';
 import '../datadog_session_replay_platform_interface.dart';
+import '../extensions.dart';
 import '../sr_data_models.dart';
 import 'diff.dart';
 import 'font_family_transform.dart';
@@ -49,8 +50,8 @@ class ProcessorWorker {
       records.add(
         SRMetaRecord(
           data: SRMetaRecordData(
-            width: viewSnapshot.viewportSize.width.toInt(),
-            height: viewSnapshot.viewportSize.height.toInt(),
+            width: viewSnapshot.viewportSize.width.safeRound(1),
+            height: viewSnapshot.viewportSize.height.safeRound(1),
           ),
           timestamp: timestamp,
         ),

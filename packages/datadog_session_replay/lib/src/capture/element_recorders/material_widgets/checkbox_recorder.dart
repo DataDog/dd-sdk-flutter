@@ -300,7 +300,7 @@ class CheckboxNode extends CaptureNode {
         textStyle: SRTextStyle(
           color: symbolColor.toHexString(),
           family: symbolIcon?.fontFamily ?? '',
-          size: (attributes.height * _textScale).round(),
+          size: (attributes.height * _textScale).safeRound(),
         ),
         textPosition: SRTextPosition(
           alignment: SRAlignment(
@@ -309,7 +309,7 @@ class CheckboxNode extends CaptureNode {
           ),
         ),
         border: SRShapeBorder(
-            color: side.color.toHexString(), width: side.width.round()),
+            color: side.color.toHexString(), width: side.width.safeRound()),
         shapeStyle: SRShapeStyle(
           backgroundColor: backgroundColor.toHexString(),
           cornerRadius: cornerRadius,

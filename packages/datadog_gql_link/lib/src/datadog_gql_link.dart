@@ -9,6 +9,7 @@ import 'dart:convert';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
+import 'package:flutter/foundation.dart';
 import 'package:gql/ast.dart';
 import 'package:gql/language.dart' show printNode;
 import 'package:gql_exec/gql_exec.dart';
@@ -78,9 +79,8 @@ class DatadogGqlLink extends Link {
     try {
       if (tracingHeaderTypes.isNotEmpty) {
         tracingContext = generateTracingContext(datadogSdk, rum);
+        request = _injectTracingHeaders(request, tracingContext);
       }
-
-      request = _injectTracingHeaders(request);
     } catch (e, st) {
       datadogSdk.internalLogger.sendToDatadog(
         '$DatadogGqlLink encountered an error attempting to create a tracing context; $e',
@@ -93,6 +93,9 @@ class DatadogGqlLink extends Link {
     listener?.requestStarted(request, userAttributes);
     final resourceId = _startRumResource(
         request, internalAttributes, tracingContext, userAttributes);
+
+    final capturedRequestHeaders =
+        request.context.entry<HttpLinkHeaders>()?.headers ?? const {};
 
     return forward!(request).transform(StreamTransformer.fromHandlers(
       handleData: (data, sink) {
@@ -120,6 +123,11 @@ class DatadogGqlLink extends Link {
           );
         }
 
+        final headerAttributes = _extractHeaderAttributes(
+          capturedRequestHeaders,
+          linkResponseContext?.headers ?? const {},
+        );
+
         datadogSdk.rum?.stopResource(
           resourceId,
           statusCode,
@@ -128,6 +136,7 @@ class DatadogGqlLink extends Link {
           {
             if (errorMap != null) ...errorMap,
             ...userAttributes,
+            ...headerAttributes,
           },
         );
 
@@ -229,7 +238,11 @@ class DatadogGqlLink extends Link {
     return resourceId;
   }
 
-  Request _injectTracingHeaders(Request request) {
+  Request _injectTracingHeaders(
+      Request request, TracingContext tracingContext) {
+    // On Web the Browser SDK injects tracing headers itself; skipping here
+    // avoids two independent trace contexts ending up on the wire.
+    if (kIsWeb) return request;
     try {
       final rum = datadogSdk.rum;
       final tracingHeaderTypes = datadogSdk.headerTypesForHost(uri);
@@ -237,9 +250,6 @@ class DatadogGqlLink extends Link {
       if (rum != null && tracingHeaderTypes.isNotEmpty) {
         return request.updateContextEntry<HttpLinkHeaders>((context) {
           var headers = context?.headers ?? <String, String>{};
-
-          // No tracing context, generate one ourselves
-          final tracingContext = generateTracingContext(datadogSdk, rum);
 
           for (final headerType in tracingHeaderTypes) {
             injectTracingHeaders(tracingContext, headerType, headers,
@@ -260,19 +270,32 @@ class DatadogGqlLink extends Link {
     return request;
   }
 
+  Map<String, Object?> _extractHeaderAttributes(
+    Map<String, String> requestHeaders,
+    Map<String, String> responseHeaders,
+  ) {
+    final extractor = datadogSdk.rum?.resourceHeadersExtractor;
+    if (extractor == null) return const {};
+    return extractor.toResourceAttributes(
+      requestHeaders.map((k, v) => MapEntry(k, [v])),
+      responseHeaders.map((k, v) => MapEntry(k, [v])),
+    );
+  }
+
   Map<String, Object>? _serializeResponseErrors(Response response) {
     if (response.errors?.isEmpty ?? true) return null;
 
     final serializedErrors = response.errors!.map((e) {
       return {
         'message': e.message,
-        'locations': e.locations
-            ?.map((l) => {
-                  'line': l.line,
-                  'column': l.column,
-                })
-            .toList(),
-        'path': e.path,
+        if (e.locations != null)
+          'locations': e.locations!
+              .map((l) => {
+                    'line': l.line,
+                    'column': l.column,
+                  })
+              .toList(),
+        if (e.path != null) 'path': e.path,
         if (e.extensions?['code'] != null) 'code': e.extensions!['code'],
       };
     }).toList();

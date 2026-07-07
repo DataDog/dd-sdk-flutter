@@ -2,7 +2,7 @@ include:
   - 'https://gitlab-templates.ddbuild.io/slack-notifier/v3-sdm/template.yml'
 
 variables:
-  CURRENT_CI_IMAGE: "9"
+  CURRENT_CI_IMAGE: "10"
   BUILD_STABLE_REGISTRY: 486234852809.dkr.ecr.us-east-1.amazonaws.com
   CI_IMAGE_REPO: "ci/dd-sdk-flutter"
   CI_IMAGE_DOCKER: ${BUILD_STABLE_REGISTRY}/${CI_IMAGE_REPO}:$CURRENT_CI_IMAGE
@@ -91,7 +91,9 @@ ci-image:
   tags: [ "arch:amd64" ]
   image: "$BUILDENV_REGISTRY/docker:24.0.4-jammy"
   script:
-    - docker buildx build --tag registry.ddbuild.io/${CI_IMAGE_REPO}:${CURRENT_CI_IMAGE} --label target=build -f Dockerfile.gitlab --push .
+    - DIGEST_FILE=$(mktemp)
+    - docker buildx build --tag registry.ddbuild.io/${CI_IMAGE_REPO}:${CURRENT_CI_IMAGE} --label target=build -f Dockerfile.gitlab --push --metadata-file ${DIGEST_FILE} .
+    - ddsign sign registry.ddbuild.io/${CI_IMAGE_REPO}:${CURRENT_CI_IMAGE} --docker-metadata-file ${DIGEST_FILE}
 
 # Build (And Analyze) Stage
 

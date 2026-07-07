@@ -59,13 +59,9 @@ class DatadogFlutterWebViewPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     private fun initWebView(webViewIdentifier: Long, allowedHosts: List<String>) {
-        // The webview Plugin only accepts a FlutterEngine and this is the only way
-        // I know how to get it.
-        @Suppress("DEPRECATION")
-        val engine = binding?.flutterEngine
-        if (engine != null) {
+        binding?.let {
             val webView = WebViewFlutterAndroidExternalApi.getWebView(
-                engine,
+                it,
                 webViewIdentifier
             )
             if (webView != null) {

@@ -210,7 +210,7 @@ class ContainerNode extends CaptureNode {
       if (style.borderWidth != null) {
         shapeBorder = SRShapeBorder(
           color: style.borderColor!,
-          width: style.borderWidth!.round(),
+          width: style.borderWidth!.safeRound(),
         );
       }
     }

@@ -69,7 +69,7 @@ class EditableTextRecorder implements ElementRecorder {
       text: textValue,
       color: textStyle.color?.toHexString() ?? Colors.black.toHexString(),
       family: font ?? '',
-      size: textStyle.fontSize?.round() ?? 10,
+      size: textStyle.fontSize?.safeRound() ?? 10,
       alignment: widget.textAlign.getSrHorizontalAlignment(
         widget.textDirection,
       ),

@@ -8,15 +8,22 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 
+import 'flags/flags_example_config.dart';
 import 'main_screen.dart';
 import 'screens/crash_screen.dart';
+import 'screens/flags_screen.dart';
 import 'screens/graph_ql_screen.dart';
 import 'screens/network_screen.dart';
 
 class MyApp extends StatefulWidget {
   final GraphQLClient graphQLClient;
+  final FlagsExampleConfig flagsConfig;
 
-  const MyApp({super.key, required this.graphQLClient});
+  const MyApp({
+    super.key,
+    required this.graphQLClient,
+    required this.flagsConfig,
+  });
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -25,7 +32,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   var captureKey = GlobalKey();
 
-  final router = GoRouter(
+  late final router = GoRouter(
     observers: [DatadogNavigationObserver(datadogSdk: DatadogSdk.instance)],
     routes: [
       GoRoute(
@@ -58,26 +65,37 @@ class _MyAppState extends State<MyApp> {
           return const CrashTestScreen();
         },
       ),
+      GoRoute(
+        path: '/flags',
+        builder: (context, state) {
+          return FlagsScreen(config: widget.flagsConfig);
+        },
+      ),
     ],
   );
 
   @override
   Widget build(BuildContext context) {
+    final app = MaterialApp.router(
+      title: 'Flutter Demo',
+      theme: ThemeData.from(
+        colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.deepPurple),
+      ),
+      routerConfig: router,
+    );
+    final rum = DatadogSdk.instance.rum;
+    final sessionReplay = DatadogSessionReplay.instance;
+
     return GraphQLProvider(
       client: ValueNotifier<GraphQLClient>(widget.graphQLClient),
-      child: SessionReplayCapture(
-        key: captureKey,
-        rum: DatadogSdk.instance.rum!,
-        sessionReplay: DatadogSessionReplay.instance!,
-        child: MaterialApp.router(
-          title: 'Flutter Demo',
-          theme: ThemeData.from(
-            colorScheme:
-                ColorScheme.fromSwatch(primarySwatch: Colors.deepPurple),
-          ),
-          routerConfig: router,
-        ),
-      ),
+      child: rum == null || sessionReplay == null
+          ? app
+          : SessionReplayCapture(
+              key: captureKey,
+              rum: rum,
+              sessionReplay: sessionReplay,
+              child: app,
+            ),
     );
   }
 }

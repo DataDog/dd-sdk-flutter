@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.0
+
+* Support new versions of webview_flutter and Flutter 3.44. See [#950](https://github.com/DataDog/dd-sdk-flutter/issues/950)
+
 ## 3.0.3
 
 * Loosen constraints on `webview_flutter_android`. See [#999](https://github.com/DataDog/dd-sdk-flutter/issues/999)

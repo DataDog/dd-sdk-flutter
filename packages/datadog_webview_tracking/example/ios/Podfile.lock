@@ -8,26 +8,38 @@ PODS:
     - DictionaryCoder (= 1.2.0)
     - Flutter
   - datadog_webview_tracking (0.0.1):
+    - DatadogCore (~> 3)
     - DatadogWebViewTracking (~> 3)
     - Flutter
     - webview_flutter_wkwebview
-  - DatadogCore (3.0.0):
-    - DatadogInternal (= 3.0.0)
-  - DatadogCrashReporting (3.0.0):
-    - DatadogInternal (= 3.0.0)
-    - PLCrashReporter (~> 1.12.0)
-  - DatadogInternal (3.0.0)
-  - DatadogLogs (3.0.0):
-    - DatadogInternal (= 3.0.0)
-  - DatadogRUM (3.0.0):
-    - DatadogInternal (= 3.0.0)
-  - DatadogWebViewTracking (3.0.0):
-    - DatadogInternal (= 3.0.0)
+  - DatadogCore (3.11.1):
+    - DatadogInternal (= 3.11.1)
+  - DatadogCrashReporting (3.11.1):
+    - DatadogInternal (= 3.11.1)
+    - KSCrash/Filters (= 2.5.0)
+    - KSCrash/Recording (= 2.5.0)
+  - DatadogInternal (3.11.1)
+  - DatadogLogs (3.11.1):
+    - DatadogInternal (= 3.11.1)
+  - DatadogRUM (3.11.1):
+    - DatadogInternal (= 3.11.1)
+  - DatadogWebViewTracking (3.11.1):
+    - DatadogInternal (= 3.11.1)
   - DictionaryCoder (1.2.0)
   - Flutter (1.0.0)
   - integration_test (0.0.1):
     - Flutter
-  - PLCrashReporter (1.12.0)
+  - KSCrash/Core (2.5.0)
+  - KSCrash/Filters (2.5.0):
+    - KSCrash/Recording
+    - KSCrash/RecordingCore
+    - KSCrash/ReportingCore
+  - KSCrash/Recording (2.5.0):
+    - KSCrash/RecordingCore
+  - KSCrash/RecordingCore (2.5.0):
+    - KSCrash/Core
+  - KSCrash/ReportingCore (2.5.0):
+    - KSCrash/Core
   - webview_flutter_wkwebview (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -48,7 +60,7 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - DictionaryCoder
-    - PLCrashReporter
+    - KSCrash
 
 EXTERNAL SOURCES:
   datadog_flutter_plugin:
@@ -82,38 +94,38 @@ EXTERNAL SOURCES:
 
 CHECKOUT OPTIONS:
   DatadogCore:
-    :commit: 234dddd00614dc5b4339af196bf0223f765b1241
+    :commit: d578e2f342404e52e7efdafaa2a36ad06d8e347e
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogCrashReporting:
-    :commit: 234dddd00614dc5b4339af196bf0223f765b1241
+    :commit: d578e2f342404e52e7efdafaa2a36ad06d8e347e
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogInternal:
-    :commit: 234dddd00614dc5b4339af196bf0223f765b1241
+    :commit: d578e2f342404e52e7efdafaa2a36ad06d8e347e
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogLogs:
-    :commit: 234dddd00614dc5b4339af196bf0223f765b1241
+    :commit: d578e2f342404e52e7efdafaa2a36ad06d8e347e
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogRUM:
-    :commit: 234dddd00614dc5b4339af196bf0223f765b1241
+    :commit: d578e2f342404e52e7efdafaa2a36ad06d8e347e
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogWebViewTracking:
-    :commit: 234dddd00614dc5b4339af196bf0223f765b1241
+    :commit: d578e2f342404e52e7efdafaa2a36ad06d8e347e
     :git: https://github.com/DataDog/dd-sdk-ios
 
 SPEC CHECKSUMS:
   datadog_flutter_plugin: 64adc7ef089a1328c78fd4fab24e49afa09d95a5
-  datadog_webview_tracking: ade692e16342ff2f21258ac3e30c25d306152a3d
-  DatadogCore: 0c39ba4ef3dee02071f235f2fb56af7e29f4ceb0
-  DatadogCrashReporting: 604e65e524cb2fc22cda39fd9c9ea5fd3bddf24e
-  DatadogInternal: 442673a7fb5329299b489b91ed705aa2085380f7
-  DatadogLogs: 0146a0e3140ba62fd42729593c0910d692aea5fd
-  DatadogRUM: f97fbd0290ecec5bc952fb03a6a1ae068649243f
-  DatadogWebViewTracking: fb9591c09fca82b143f3843a7164a7e782175c53
+  datadog_webview_tracking: 58ffca1b06ba88e0bd6dc0d0d1dada0e60e6d3d5
+  DatadogCore: ac5ffe0cb500e4c826fa08e63767ab3b4434c380
+  DatadogCrashReporting: 699c20e4af5798a39b14c81e26c0e92293d86a36
+  DatadogInternal: 4ee2f5bab0371f161c8010637fff5331f49542d7
+  DatadogLogs: 9f7f10c34ea9cc4c6699f98ab2420da843f78f4b
+  DatadogRUM: 14a5f96c465e85d56ec501508d728b7aea9c2980
+  DatadogWebViewTracking: 99631d80d34cb30cf6be9b620dc6659f7f5bd15f
   DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
-  PLCrashReporter: db59ef96fa3d25f3650040d02ec2798cffee75f2
-  webview_flutter_wkwebview: a4af96a051138e28e29f60101d094683b9f82188
+  KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
+  webview_flutter_wkwebview: 29eb20d43355b48fe7d07113835b9128f84e3af4
 
 PODFILE CHECKSUM: 93609479835d96be1e50b18386849a31ac0889ab
 
