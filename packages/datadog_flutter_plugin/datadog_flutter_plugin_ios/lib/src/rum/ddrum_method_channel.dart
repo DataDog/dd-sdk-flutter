@@ -343,14 +343,14 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> startFeatureOperation(
+  Future<void> startOperation(
     DateTime at,
     String name,
     String? operationKey,
     Map<String, Object?> attributes,
   ) {
     final timestampMs = at.millisecondsSinceEpoch;
-    return methodChannel.invokeMethod('startFeatureOperation', {
+    return methodChannel.invokeMethod('startOperation', {
       'name': name,
       'operationKey': operationKey,
       'attributes': {
@@ -361,14 +361,14 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> succeedFeatureOperation(
+  Future<void> succeedOperation(
     DateTime at,
     String name,
     String? operationKey,
     Map<String, Object?> attributes,
   ) {
     final timestampMs = at.millisecondsSinceEpoch;
-    return methodChannel.invokeMethod('succeedFeatureOperation', {
+    return methodChannel.invokeMethod('succeedOperation', {
       'name': name,
       'operationKey': operationKey,
       'attributes': {
@@ -379,15 +379,15 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
-  Future<void> failFeatureOperation(
+  Future<void> failOperation(
     DateTime at,
     String name,
     String? operationKey,
-    RumFeatureOperationFailureReason failureReason,
+    RumOperationFailureReason failureReason,
     Map<String, Object?> attributes,
   ) {
     final timestampMs = at.millisecondsSinceEpoch;
-    return methodChannel.invokeMethod('failFeatureOperation', {
+    return methodChannel.invokeMethod('failOperation', {
       'name': name,
       'operationKey': operationKey,
       'failureReason': failureReason.toString(),

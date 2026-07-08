@@ -529,17 +529,17 @@ void main() {
     expect(log, [isMethodCall('stopSession', arguments: <String, Object?>{})]);
   });
 
-  test('startFeatureOperation calls to platform', () async {
+  test('startOperation calls to platform', () async {
     final timestamp = randomTimestamp();
     final name = randomString();
     final operationKey = randomString();
-    await ddRumPlatform.startFeatureOperation(timestamp, name, operationKey, {
+    await ddRumPlatform.startOperation(timestamp, name, operationKey, {
       'attribute_name': 'attribute_value',
     });
 
     expect(log, [
       isMethodCall(
-        'startFeatureOperation',
+        'startOperation',
         arguments: {
           'name': name,
           'operationKey': operationKey,
@@ -552,17 +552,17 @@ void main() {
     ]);
   });
 
-  test('succeedFeatureOperation calls to platform', () async {
+  test('succeedOperation calls to platform', () async {
     final timestamp = randomTimestamp();
     final name = randomString();
     final operationKey = randomString();
-    await ddRumPlatform.succeedFeatureOperation(timestamp, name, operationKey, {
+    await ddRumPlatform.succeedOperation(timestamp, name, operationKey, {
       'attribute_name': 'attribute_value',
     });
 
     expect(log, [
       isMethodCall(
-        'succeedFeatureOperation',
+        'succeedOperation',
         arguments: {
           'name': name,
           'operationKey': operationKey,
@@ -575,25 +575,25 @@ void main() {
     ]);
   });
 
-  test('failFeatureOperation calls to platform', () async {
+  test('failOperation calls to platform', () async {
     final timestamp = randomTimestamp();
     final name = randomString();
     final operationKey = randomString();
-    await ddRumPlatform.failFeatureOperation(
+    await ddRumPlatform.failOperation(
       timestamp,
       name,
       operationKey,
-      RumFeatureOperationFailureReason.abandoned,
+      RumOperationFailureReason.abandoned,
       {'attribute_name': 'attribute_value'},
     );
 
     expect(log, [
       isMethodCall(
-        'failFeatureOperation',
+        'failOperation',
         arguments: {
           'name': name,
           'operationKey': operationKey,
-          'failureReason': 'RumFeatureOperationFailureReason.abandoned',
+          'failureReason': 'RumOperationFailureReason.abandoned',
           'attributes': {
             'attribute_name': 'attribute_value',
             '_dd.timestamp': timestamp.millisecondsSinceEpoch,

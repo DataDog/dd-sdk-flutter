@@ -19,8 +19,9 @@ import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
 import com.datadog.android.rum.RumResourceMethod
 import com.datadog.android.rum.configuration.VitalsUpdateFrequency
-import com.datadog.android.rum.featureoperations.FailureReason
 import com.datadog.android.rum.metric.networksettled.TimeBasedInitialResourceIdentifier
+import com.datadog.android.rum.operations.FailureReason
+import com.datadog.android.rum.operations.OperationOptions
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.BoolForgery
 import fr.xgouchet.elmyr.annotation.FloatForgery
@@ -163,9 +164,9 @@ class DatadogRumPluginTest {
 
     @Test
     fun `M convert all failure reasons W parseFailureReason`() {
-        val error = parseFailureReason("RumFeatureOperationFailureReason.error")
-        val abandoned = parseFailureReason("RumFeatureOperationFailureReason.abandoned")
-        val other = parseFailureReason("RumFeatureOperationFailureReason.other")
+        val error = parseFailureReason("RumOperationFailureReason.error")
+        val abandoned = parseFailureReason("RumOperationFailureReason.abandoned")
+        val other = parseFailureReason("RumOperationFailureReason.other")
         val unknown = parseFailureReason("unknown")
 
         assertThat(error).isEqualTo(FailureReason.ERROR)
@@ -797,14 +798,14 @@ class DatadogRumPluginTest {
     }
 
     @Test
-    fun `M call monitor startFeatureOperation W startFeatureOperation is called`(
+    fun `M call monitor startOperation W startOperation is called`(
         @StringForgery name: String,
         @StringForgery operationKey: String,
         @StringForgery attributeKey: String,
         @StringForgery attributeValue: String
     ){
         // GIVEN
-        val call = MethodCall("startFeatureOperation", mapOf(
+        val call = MethodCall("startOperation", mapOf(
             "name" to name,
             "operationKey" to operationKey,
             "attributes" to mapOf(
@@ -818,21 +819,21 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.startFeatureOperation(name, operationKey, mapOf(
+        verify { monitorProxy.mockMonitor.startOperation(name, operationKey, OperationOptions.Empty, mapOf(
             attributeKey to attributeValue
         )) }
         verify { mockResult.success(null) }
     }
 
     @Test
-    fun `M call monitor succeedFeatureOperation W succeedFeatureOperation is called`(
+    fun `M call monitor succeedOperation W succeedOperation is called`(
         @StringForgery name: String,
         @StringForgery operationKey: String,
         @StringForgery attributeKey: String,
         @StringForgery attributeValue: String
     ){
         // GIVEN
-        val call = MethodCall("succeedFeatureOperation", mapOf(
+        val call = MethodCall("succeedOperation", mapOf(
             "name" to name,
             "operationKey" to operationKey,
             "attributes" to mapOf(
@@ -846,24 +847,24 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.succeedFeatureOperation(name, operationKey, mapOf(
+        verify { monitorProxy.mockMonitor.succeedOperation(name, operationKey, mapOf(
             attributeKey to attributeValue
         )) }
         verify { mockResult.success(null) }
     }
 
     @Test
-    fun `M call monitor failFeatureOperation W failFeatureOperation is called`(
+    fun `M call monitor failOperation W failOperation is called`(
         @StringForgery name: String,
         @StringForgery operationKey: String,
         @StringForgery attributeKey: String,
         @StringForgery attributeValue: String
     ){
         // GIVEN
-        val call = MethodCall("failFeatureOperation", mapOf(
+        val call = MethodCall("failOperation", mapOf(
             "name" to name,
             "operationKey" to operationKey,
-            "failureReason" to "RumFeatureOperationFailureReason.abandoned",
+            "failureReason" to "RumOperationFailureReason.abandoned",
             "attributes" to mapOf(
                 attributeKey to attributeValue
             )
@@ -875,7 +876,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.failFeatureOperation(name, operationKey, FailureReason.ABANDONED, mapOf(
+        verify { monitorProxy.mockMonitor.failOperation(name, operationKey, FailureReason.ABANDONED, mapOf(
             attributeKey to attributeValue
         )) }
         verify { mockResult.success(null) }
@@ -1053,15 +1054,15 @@ class DatadogRumPluginTest {
             "key" to ContractParameter.Type(SupportedContractType.STRING),
             "value" to ContractParameter.Type(SupportedContractType.ANY),
         )),
-        Contract("startFeatureOperation", mapOf(
+        Contract("startOperation", mapOf(
             "name" to ContractParameter.Type(SupportedContractType.STRING),
             "attributes" to ContractParameter.Type(SupportedContractType.MAP)
         )),
-        Contract("succeedFeatureOperation", mapOf(
+        Contract("succeedOperation", mapOf(
             "name" to ContractParameter.Type(SupportedContractType.STRING),
             "attributes" to ContractParameter.Type(SupportedContractType.MAP)
         )),
-        Contract("failFeatureOperation", mapOf(
+        Contract("failOperation", mapOf(
             "name" to ContractParameter.Type(SupportedContractType.STRING),
             "failureReason" to ContractParameter.Type(SupportedContractType.STRING),
             "attributes" to ContractParameter.Type(SupportedContractType.MAP)

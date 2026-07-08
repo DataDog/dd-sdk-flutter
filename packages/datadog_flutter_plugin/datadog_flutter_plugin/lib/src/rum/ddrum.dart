@@ -29,7 +29,7 @@ import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin
         ResourceHeadersExtractor,
         RumActionType,
         RumErrorSource,
-        RumFeatureOperationFailureReason,
+        RumOperationFailureReason,
         RumHttpMethod,
         RumResourceType,
         TraceContextInjection;
@@ -40,7 +40,7 @@ export 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin
     show
         RumActionType,
         RumErrorSource,
-        RumFeatureOperationFailureReason,
+        RumOperationFailureReason,
         RumHttpMethod,
         RumResourceType;
 
@@ -591,22 +591,22 @@ class DatadogRum {
     });
   }
 
-  /// Starts a feature operation with the given [name].
+  /// Starts an operation with the given [name].
   ///
   /// You can also provide an optional [operationKey], which allows you to track
   /// multiple operations of the same [name]. For example, multiple network
   /// requests for the same URL.
   ///
-  /// Additional custom attributes can be attached to this feature operation
+  /// Additional custom attributes can be attached to this operation
   /// through [attributes].
-  void startFeatureOperation(
+  void startOperation(
     String name, {
     String? operationKey,
     Map<String, Object?> attributes = const {},
   }) {
-    wrap('rum.startFeatureOperation', logger, attributes, () {
+    wrap('rum.startOperation', logger, attributes, () {
       final currentTime = timeProvider.now();
-      return _platform.startFeatureOperation(
+      return _platform.startOperation(
         currentTime,
         name,
         operationKey,
@@ -615,22 +615,22 @@ class DatadogRum {
     });
   }
 
-  /// Finishes a feature operation with the given [name] with a successful
+  /// Finishes an operation with the given [name] with a successful
   /// status.
   ///
-  /// If you provided an [operationKey] to [startFeatureOperation], the same
+  /// If you provided an [operationKey] to [startOperation], the same
   /// [operationKey] should be provided here.
   ///
   /// Additional custom attributes such as additional result data, can be
-  /// attached to this feature operation through [attributes].
-  void succeedFeatureOperation(
+  /// attached to this operation through [attributes].
+  void succeedOperation(
     String name, {
     String? operationKey,
     Map<String, Object?> attributes = const {},
   }) {
-    wrap('rum.succeedFeatureOperation', logger, attributes, () {
+    wrap('rum.succeedOperation', logger, attributes, () {
       final currentTime = timeProvider.now();
-      return _platform.succeedFeatureOperation(
+      return _platform.succeedOperation(
         currentTime,
         name,
         operationKey,
@@ -639,23 +639,23 @@ class DatadogRum {
     });
   }
 
-  /// Finishes a feature operation with the given [name] with a failure
+  /// Finishes an operation with the given [name] with a failure
   /// status and the given [failureReason].
   ///
-  /// If you provided an [operationKey] to [startFeatureOperation], the same
+  /// If you provided an [operationKey] to [startOperation], the same
   /// [operationKey] should be provided here.
   ///
   /// Additional custom attributes such as additional result data, can be
-  /// attached to this feature operation through [attributes].
-  void failFeatureOperation(
+  /// attached to this operation through [attributes].
+  void failOperation(
     String name,
-    RumFeatureOperationFailureReason failureReason, {
+    RumOperationFailureReason failureReason, {
     String? operationKey,
     Map<String, Object?> attributes = const {},
   }) {
-    wrap('rum.failFeatureOperation', logger, attributes, () {
+    wrap('rum.failOperation', logger, attributes, () {
       final currentTime = timeProvider.now();
-      return _platform.failFeatureOperation(
+      return _platform.failOperation(
         currentTime,
         name,
         operationKey,
