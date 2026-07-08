@@ -22,25 +22,21 @@ class _LoggingScenarioState extends State<LoggingScenario> {
     super.initState();
 
     DatadogSdk.instance.setUserInfo(
-        id: 'bits',
-        name: 'Bits Dawoof',
-        email: 'bits@datadoghq.com',
-        extraInfo: {
-          'type': 'dog',
-          'department': 'data',
-        });
+      id: 'bits',
+      name: 'Bits Dawoof',
+      email: 'bits@datadoghq.com',
+      extraInfo: {'type': 'dog', 'department': 'data'},
+    );
 
     // Create a logger that will not send to Datadog
     var silentLogger = DatadogSdk.instance.logs!.createLogger(
-      DatadogLoggerConfiguration(
-        name: 'silent_logger',
-        remoteSampleRate: 0,
-      ),
+      DatadogLoggerConfiguration(name: 'silent_logger', remoteSampleRate: 0),
     );
     silentLogger.info('Interesting logging information');
 
-    logger =
-        DatadogSdk.instance.logs!.createLogger(DatadogLoggerConfiguration());
+    logger = DatadogSdk.instance.logs!.createLogger(
+      DatadogLoggerConfiguration(),
+    );
     logger.addTag('tag1', 'tag-value');
     logger.addTag('my-tag');
 
@@ -50,9 +46,12 @@ class _LoggingScenarioState extends State<LoggingScenario> {
     logger.debug('debug message', attributes: {'stringAttribute': 'string'});
 
     logger.removeTag('my-tag');
-    logger.info('info message', attributes: {
-      'nestedAttribute': {'internal': 'test', 'isValid': true}
-    });
+    logger.info(
+      'info message',
+      attributes: {
+        'nestedAttribute': {'internal': 'test', 'isValid': true},
+      },
+    );
     logger.warn('warn message', attributes: {'doubleAttribute': 10.34});
 
     DatadogSdk.instance.logs?.addAttribute('global-attribute', 'global value');
@@ -64,8 +63,11 @@ class _LoggingScenarioState extends State<LoggingScenario> {
     try {
       throw Exception('This thing failed');
     } catch (e, st) {
-      logger.error('Encountered an error',
-          errorMessage: e.toString(), errorStackTrace: st);
+      logger.error(
+        'Encountered an error',
+        errorMessage: e.toString(),
+        errorStackTrace: st,
+      );
     }
 
     final config = DatadogLoggerConfiguration(
@@ -83,22 +85,19 @@ class _LoggingScenarioState extends State<LoggingScenario> {
       'Warning: this error occurred',
       errorMessage: 'Error Message',
       errorStackTrace: st,
-      attributes: {
-        DatadogAttributes.errorFingerprint: 'custom-fingerprint',
-      },
+      attributes: {DatadogAttributes.errorFingerprint: 'custom-fingerprint'},
     );
 
-    secondLogger.info('Test local attribute override', attributes: {
-      'global-attribute': 'overridden',
-    });
+    secondLogger.info(
+      'Test local attribute override',
+      attributes: {'global-attribute': 'overridden'},
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Logging Scenario'),
-      ),
+      appBar: AppBar(title: const Text('Logging Scenario')),
       body: Container(),
     );
   }

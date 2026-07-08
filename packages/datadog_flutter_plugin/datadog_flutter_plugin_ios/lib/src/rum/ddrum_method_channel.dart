@@ -304,7 +304,7 @@ class DdRumMethodChannel extends DdRumPlatform {
   @override
   Future<void> removeViewAttribute(String key) {
     return methodChannel.invokeMethod('removeViewAttributes', {
-      'keys': [key]
+      'keys': [key],
     });
   }
 

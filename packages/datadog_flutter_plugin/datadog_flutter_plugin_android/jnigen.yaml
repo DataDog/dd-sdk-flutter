@@ -9,7 +9,7 @@ preamble: |
   
 output:
   dart:
-    path: lib/src/android/datadog_android_bridge.dart
+    path: lib/src/datadog_android_bridge.dart
     structure: single_file
 source_path:
   - 'android/src/main/kotlin'

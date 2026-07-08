@@ -50,5 +50,5 @@ enum RumFeatureOperationFailureReason {
   abandoned,
 
   /// Represents a failure due to other unspecified reasons.
-  other
+  other,
 }

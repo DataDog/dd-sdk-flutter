@@ -15,15 +15,18 @@ import 'common.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('test rum manual error reporting scenario',
-      (WidgetTester tester) async {
+  testWidgets('test rum manual error reporting scenario', (
+    WidgetTester tester,
+  ) async {
     var recordedSession = await openTestScenario(
       tester,
       menuTitle: 'RUM Error Reporting Scenario',
     );
 
-    var throwButton =
-        find.widgetWithText(ElevatedButton, 'Throw / Catch Exception');
+    var throwButton = find.widgetWithText(
+      ElevatedButton,
+      'Throw / Catch Exception',
+    );
     await tester.tap(throwButton);
     await tester.pumpAndSettle();
 
@@ -33,24 +36,23 @@ void main() {
 
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
-    await recordedSession.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
-          dynamic jsonValue = json.decode(e);
-          if (jsonValue is Map<String, dynamic>) {
-            final rumEvent = RumEventDecoder.fromJson(jsonValue);
-            if (rumEvent != null) {
-              rumLog.add(rumEvent);
-            }
+    await recordedSession.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
+        dynamic jsonValue = json.decode(e);
+        if (jsonValue is Map<String, dynamic>) {
+          final rumEvent = RumEventDecoder.fromJson(jsonValue);
+          if (rumEvent != null) {
+            rumLog.add(rumEvent);
           }
-        });
-        var visits = RumSessionDecoder.fromEvents(rumLog).visits;
-        return visits.length == 1 &&
-            visits[0].viewEvents.last.view.errorCount == 3;
-      },
-    );
+        }
+      });
+      var visits = RumSessionDecoder.fromEvents(rumLog).visits;
+      return visits.length == 1 &&
+          visits[0].viewEvents.last.view.errorCount == 3;
+    });
 
     final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, 1);

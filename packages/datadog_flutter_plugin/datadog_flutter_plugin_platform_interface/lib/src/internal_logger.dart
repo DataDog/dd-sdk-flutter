@@ -17,7 +17,7 @@ class InternalLogger {
     CoreLoggerLevel.debug: '',
     CoreLoggerLevel.warn: '⚠️',
     CoreLoggerLevel.error: '🔥',
-    CoreLoggerLevel.critical: '⛔️'
+    CoreLoggerLevel.critical: '⛔️',
   };
 
   void debug(String message) => log(CoreLoggerLevel.debug, message);
@@ -39,13 +39,19 @@ class InternalLogger {
   /// used mostly to track potential issues in the Datadog SDK. The rate at which
   /// data is sent to Datadog is set by [DatadogRumConfiguration.telemetrySampleRate]
   void sendToDatadog(String message, StackTrace? stack, String? kind) {
-    DatadogSdkPlatform.instance
-        .sendTelemetryError(message, stack?.toString(), kind);
+    DatadogSdkPlatform.instance.sendTelemetryError(
+      message,
+      stack?.toString(),
+      kind,
+    );
   }
 
   // Standard error strings
-  static String argumentWarning(String methodName, ArgumentError e,
-      Map<String, Object?>? serializedAttributes) {
+  static String argumentWarning(
+    String methodName,
+    ArgumentError e,
+    Map<String, Object?>? serializedAttributes,
+  ) {
     var warning =
         'ArgumentError when calling $methodName: parameter ${e.message}.';
     if (serializedAttributes != null) {
@@ -78,7 +84,9 @@ bool _isValidAttributeType(Object? value) {
 }
 
 InvalidAttributeInfo? _checkInvalidValue(
-    Object? value, String fullPropertyName) {
+  Object? value,
+  String fullPropertyName,
+) {
   if (!_isValidAttributeType(value)) {
     return InvalidAttributeInfo(fullPropertyName, value.runtimeType.toString());
   } else if (value is Map<Object, Object?>) {
@@ -92,10 +100,13 @@ InvalidAttributeInfo? _checkInvalidValue(
 }
 
 InvalidAttributeInfo? _findInvalidAttributeInList(
-    List<Object?> list, String parentPropertyName) {
+  List<Object?> list,
+  String parentPropertyName,
+) {
   for (var i = 0; i < list.length; ++i) {
-    final fullPropertyName =
-        parentPropertyName.isEmpty ? '[$i]' : '$parentPropertyName[$i]';
+    final fullPropertyName = parentPropertyName.isEmpty
+        ? '[$i]'
+        : '$parentPropertyName[$i]';
     final info = _checkInvalidValue(list[i], fullPropertyName);
     if (info != null) return info;
   }
@@ -103,12 +114,16 @@ InvalidAttributeInfo? _findInvalidAttributeInList(
 }
 
 InvalidAttributeInfo? _findInvalidAttributeInMap(
-    Map<Object, Object?> map, String parentPropertyName) {
+  Map<Object, Object?> map,
+  String parentPropertyName,
+) {
   for (final entry in map.entries) {
     final key = entry.key;
     if (!_isValidAttributeType(key)) {
       return InvalidAttributeInfo(
-          'Key: $parentPropertyName.$key', key.runtimeType.toString());
+        'Key: $parentPropertyName.$key',
+        key.runtimeType.toString(),
+      );
     }
     final fullPropertyName = parentPropertyName.isEmpty
         ? entry.key.toString()
@@ -119,7 +134,9 @@ InvalidAttributeInfo? _findInvalidAttributeInMap(
   return null;
 }
 
-InvalidAttributeInfo? findInvalidAttribute(Map<String, Object?> attributes,
-    [String parentPropertyName = '']) {
+InvalidAttributeInfo? findInvalidAttribute(
+  Map<String, Object?> attributes, [
+  String parentPropertyName = '',
+]) {
   return _checkInvalidValue(attributes, parentPropertyName);
 }

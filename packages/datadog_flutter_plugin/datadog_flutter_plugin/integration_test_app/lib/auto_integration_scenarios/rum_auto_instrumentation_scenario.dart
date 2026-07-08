@@ -19,7 +19,7 @@ class _RumAutoInstrumentationScenarioState
     extends State<RumAutoInstrumentationScenario> {
   final images = [
     'https://placehold.co/75x75.png',
-    'https://placehold.co/75x75.png'
+    'https://placehold.co/75x75.png',
   ];
 
   @override
@@ -37,9 +37,7 @@ class _RumAutoInstrumentationScenarioState
         Navigator.push<void>(
           context,
           MaterialPageRoute(
-            settings: const RouteSettings(
-              name: 'rum_second_screen',
-            ),
+            settings: const RouteSettings(name: 'rum_second_screen'),
             builder: (_) {
               return const RumAutoInstrumentationSecondScreen();
             },
@@ -52,9 +50,7 @@ class _RumAutoInstrumentationScenarioState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Auto RUM'),
-      ),
+      appBar: AppBar(title: const Text('Auto RUM')),
       body: ListView.builder(
         itemCount: 2,
         itemBuilder: (context, index) {

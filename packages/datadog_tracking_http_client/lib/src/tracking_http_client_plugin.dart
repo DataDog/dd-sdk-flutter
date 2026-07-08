@@ -75,16 +75,16 @@ class DdHttpTrackingPluginConfiguration extends DatadogPluginConfiguration {
 class _DdHttpTrackingPlugin extends DatadogPlugin {
   final DdHttpTrackingPluginConfiguration configuration;
 
-  _DdHttpTrackingPlugin(
-    DatadogSdk datadogInstance,
-    this.configuration,
-  ) : super(datadogInstance);
+  _DdHttpTrackingPlugin(DatadogSdk datadogInstance, this.configuration)
+    : super(datadogInstance);
 
   @override
   void initialize() {
     _setHttpOverrides();
     instance.updateConfigurationInfo(
-        LateConfigurationProperty.trackNetworkRequests, true);
+      LateConfigurationProperty.trackNetworkRequests,
+      true,
+    );
   }
 
   @override

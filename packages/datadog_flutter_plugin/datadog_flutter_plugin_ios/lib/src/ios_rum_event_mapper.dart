@@ -20,14 +20,14 @@ class IosRumEventMapper extends RumMethodChannelMapperProxy {
   final InternalLogger _internalLogger;
 
   IosRumEventMapper(DatadogRumConfiguration config, InternalLogger logger)
-      : _internalLogger = logger,
-        super(
-          viewEventMapper: config.viewEventMapper,
-          actionEventMapper: config.actionEventMapper,
-          resourceEventMapper: config.resourceEventMapper,
-          errorEventMapper: config.errorEventMapper,
-          longTaskEventMapper: config.longTaskEventMapper,
-        );
+    : _internalLogger = logger,
+      super(
+        viewEventMapper: config.viewEventMapper,
+        actionEventMapper: config.actionEventMapper,
+        resourceEventMapper: config.resourceEventMapper,
+        errorEventMapper: config.errorEventMapper,
+        longTaskEventMapper: config.longTaskEventMapper,
+      );
 
   @override
   Future<dynamic> handleMethodCall(MethodCall call) async {

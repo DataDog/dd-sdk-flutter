@@ -314,8 +314,8 @@ class DatadogConfiguration {
       // make map mutable in case it's the default
       firstPartyHostsWithTracingHeaders =
           Map<String, Set<TracingHeaderType>>.from(
-        firstPartyHostsWithTracingHeaders,
-      );
+            firstPartyHostsWithTracingHeaders,
+          );
 
       for (var entry in firstPartyHosts) {
         final headerTypes = firstPartyHostsWithTracingHeaders[entry];
@@ -476,8 +476,8 @@ class DatadogAttachConfiguration {
       // make map mutable
       firstPartyHostsWithTracingHeaders =
           Map<String, Set<TracingHeaderType>>.from(
-        firstPartyHostsWithTracingHeaders,
-      );
+            firstPartyHostsWithTracingHeaders,
+          );
 
       for (var entry in firstPartyHosts) {
         final headerTypes = firstPartyHostsWithTracingHeaders[entry];

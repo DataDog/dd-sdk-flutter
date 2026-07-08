@@ -69,9 +69,11 @@ query UserInfo($id: ID!) {
   setUp(() {
     mockPlatform = MockDatadogSdkPlatform();
     mockDatadog = MockDatadogSdk();
-    when(() => mockDatadog
-            .headerTypesForHost(any(that: HasHost(equals('test_url')))))
-        .thenReturn({TracingHeaderType.datadog});
+    when(
+      () => mockDatadog.headerTypesForHost(
+        any(that: HasHost(equals('test_url'))),
+      ),
+    ).thenReturn({TracingHeaderType.datadog});
     when(() => mockDatadog.platform).thenReturn(mockPlatform);
     // ignore: invalid_use_of_internal_member
     when(() => mockDatadog.internalLogger).thenReturn(MockInternalLogger());
@@ -109,10 +111,14 @@ query UserInfo($id: ID!) {
     test('the link does not call the supplied listener', () {
       // Given
       final listener = MockDatadogGqlListener();
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
-          listener: listener);
+      final link = DatadogGqlLink(
+        mockDatadog,
+        Uri.parse('https://test_uri'),
+        listener: listener,
+      );
       final request = Request(
-          operation: Operation(document: query, operationName: 'operation'));
+        operation: Operation(document: query, operationName: 'operation'),
+      );
 
       // When
       Stream<Response> returnStream = const Stream<Response>.empty();
@@ -136,7 +142,8 @@ query UserInfo($id: ID!) {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final request = Request(
-          operation: Operation(document: query, operationName: 'operation'));
+        operation: Operation(document: query, operationName: 'operation'),
+      );
 
       // When
       link.request(request, (request) {
@@ -144,15 +151,22 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      verify(() => mockRum.startResource(
-          any(), RumHttpMethod.post, 'https://test_uri', any()));
+      verify(
+        () => mockRum.startResource(
+          any(),
+          RumHttpMethod.post,
+          'https://test_uri',
+          any(),
+        ),
+      );
     });
 
     test('link adds GraphQL custom parameters on start resource', () {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
 
       // When
       link.request(request, (request) {
@@ -160,9 +174,16 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      final capturedAttributes = verify(() => mockRum.startResource(
-              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
-          .captured[0] as Map<String, Object?>;
+      final capturedAttributes =
+          verify(
+                () => mockRum.startResource(
+                  any(),
+                  RumHttpMethod.post,
+                  'https://test_uri',
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
       expect(capturedAttributes['_dd.graphql.operation_type'], 'query');
       expect(capturedAttributes['_dd.graphql.operation_name'], 'UserInfo');
     });
@@ -178,9 +199,16 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      final capturedAttributes = verify(() => mockRum.startResource(
-              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
-          .captured[0] as Map<String, Object?>;
+      final capturedAttributes =
+          verify(
+                () => mockRum.startResource(
+                  any(),
+                  RumHttpMethod.post,
+                  'https://test_uri',
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
       expect(capturedAttributes['_dd.graphql.operation_type'], 'query');
       expect(capturedAttributes['_dd.graphql.operation_name'], 'UserInfo');
     });
@@ -190,10 +218,7 @@ query UserInfo($id: ID!) {
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final idValue = randomString();
       final request = Request(
-        operation: Operation(
-          document: query,
-          operationName: 'UserInfo',
-        ),
+        operation: Operation(document: query, operationName: 'UserInfo'),
         variables: {'id': idValue},
       );
 
@@ -203,9 +228,16 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      final capturedAttributes = verify(() => mockRum.startResource(
-              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
-          .captured[0] as Map<String, Object?>;
+      final capturedAttributes =
+          verify(
+                () => mockRum.startResource(
+                  any(),
+                  RumHttpMethod.post,
+                  'https://test_uri',
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
       expect(capturedAttributes['_dd.graphql.variables'], '{"id":"$idValue"}');
     });
 
@@ -213,10 +245,7 @@ query UserInfo($id: ID!) {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final request = Request(
-        operation: Operation(
-          document: query,
-          operationName: 'UserInfo',
-        ),
+        operation: Operation(document: query, operationName: 'UserInfo'),
         variables: {'file': Unencodable('fake_representation')},
       );
 
@@ -226,11 +255,20 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      final capturedAttributes = verify(() => mockRum.startResource(
-              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
-          .captured[0] as Map<String, Object?>;
-      expect(capturedAttributes['_dd.graphql.variables'],
-          '{"file":"Instance of Unencodable: fake_representation"}');
+      final capturedAttributes =
+          verify(
+                () => mockRum.startResource(
+                  any(),
+                  RumHttpMethod.post,
+                  'https://test_uri',
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
+      expect(
+        capturedAttributes['_dd.graphql.variables'],
+        '{"file":"Instance of Unencodable: fake_representation"}',
+      );
     });
 
     test('exception during json encoding does not break link', () {
@@ -239,10 +277,7 @@ query UserInfo($id: ID!) {
       final unencodable = Unencodable('fake_representation')
         ..shouldThrow = true;
       final request = Request(
-        operation: Operation(
-          document: query,
-          operationName: 'UserInfo',
-        ),
+        operation: Operation(document: query, operationName: 'UserInfo'),
         variables: {'file': unencodable},
       );
 
@@ -252,19 +287,30 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      final capturedAttributes = verify(() => mockRum.startResource(
-              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
-          .captured[0] as Map<String, Object?>;
+      final capturedAttributes =
+          verify(
+                () => mockRum.startResource(
+                  any(),
+                  RumHttpMethod.post,
+                  'https://test_uri',
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
       expect(capturedAttributes['_dd.graphql.variables'], isNull);
     });
 
     test('link calls listener on start resource', () {
       // Given
       final listener = MockDatadogGqlListener();
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
-          listener: listener);
+      final link = DatadogGqlLink(
+        mockDatadog,
+        Uri.parse('https://test_uri'),
+        listener: listener,
+      );
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
 
       // When
       link.request(request, (request) {
@@ -278,16 +324,21 @@ query UserInfo($id: ID!) {
     test('link adds attributes from listener to startResource', () {
       // Given
       final listener = MockDatadogGqlListener();
-      when(() => listener.requestStarted(any(), any()))
-          .thenAnswer((invocation) {
+      when(() => listener.requestStarted(any(), any())).thenAnswer((
+        invocation,
+      ) {
         final attributes =
             invocation.positionalArguments[1] as Map<String, Object?>;
         attributes['user_attribute'] = 1234;
       });
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
-          listener: listener);
+      final link = DatadogGqlLink(
+        mockDatadog,
+        Uri.parse('https://test_uri'),
+        listener: listener,
+      );
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
 
       // When
       link.request(request, (request) {
@@ -296,8 +347,10 @@ query UserInfo($id: ID!) {
 
       // Then
       var attributes =
-          verify(() => listener.requestStarted(request, captureAny()))
-              .captured[0] as Map<String, Object?>;
+          verify(
+                () => listener.requestStarted(request, captureAny()),
+              ).captured[0]
+              as Map<String, Object?>;
       expect(attributes['user_attribute'], 1234);
     });
 
@@ -305,12 +358,14 @@ query UserInfo($id: ID!) {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
       final response = MockResponse();
       when(() => response.context).thenReturn(const Context());
       String? capturedKey;
-      when(() => mockRum.startResource(any(), any(), any(), any()))
-          .thenAnswer((i) {
+      when(() => mockRum.startResource(any(), any(), any(), any())).thenAnswer((
+        i,
+      ) {
         capturedKey = i.positionalArguments[0] as String;
       });
 
@@ -325,31 +380,38 @@ query UserInfo($id: ID!) {
       await stream.drain();
 
       // Then
-      verify(() => mockRum.stopResource(
-          capturedKey!, null, RumResourceType.native, null, any()));
+      verify(
+        () => mockRum.stopResource(
+          capturedKey!,
+          null,
+          RumResourceType.native,
+          null,
+          any(),
+        ),
+      );
     });
 
     test('link calls stopResource with properties from http context', () async {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
       final response = MockResponse();
       var responseContext = const Context();
-      responseContext = responseContext.updateEntry<HttpLinkResponseContext>(
-        (entry) {
-          return const HttpLinkResponseContext(
-            statusCode: 418,
-            headers: {
-              'content-length': '66219',
-            },
-          );
-        },
-      );
+      responseContext = responseContext.updateEntry<HttpLinkResponseContext>((
+        entry,
+      ) {
+        return const HttpLinkResponseContext(
+          statusCode: 418,
+          headers: {'content-length': '66219'},
+        );
+      });
       when(() => response.context).thenReturn(responseContext);
       String? capturedKey;
-      when(() => mockRum.startResource(any(), any(), any(), any()))
-          .thenAnswer((i) {
+      when(() => mockRum.startResource(any(), any(), any(), any())).thenAnswer((
+        i,
+      ) {
         capturedKey = i.positionalArguments[0] as String;
       });
 
@@ -364,17 +426,28 @@ query UserInfo($id: ID!) {
       await stream.drain();
 
       // Then
-      verify(() => mockRum.stopResource(
-          capturedKey!, 418, RumResourceType.native, 66219, any()));
+      verify(
+        () => mockRum.stopResource(
+          capturedKey!,
+          418,
+          RumResourceType.native,
+          66219,
+          any(),
+        ),
+      );
     });
 
     test('link calls listener on response received', () async {
       // Given
       final mockListener = MockDatadogGqlListener();
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
-          listener: mockListener);
+      final link = DatadogGqlLink(
+        mockDatadog,
+        Uri.parse('https://test_uri'),
+        listener: mockListener,
+      );
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
       final response = MockResponse();
       when(() => response.context).thenReturn(const Context());
 
@@ -395,20 +468,26 @@ query UserInfo($id: ID!) {
     test('link adds attributes from listener to stopResource', () async {
       // Given
       final mockListener = MockDatadogGqlListener();
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
-          listener: mockListener);
+      final link = DatadogGqlLink(
+        mockDatadog,
+        Uri.parse('https://test_uri'),
+        listener: mockListener,
+      );
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
       final response = MockResponse();
-      when(() => mockListener.responseReceived(response, any()))
-          .thenAnswer((invocation) {
+      when(() => mockListener.responseReceived(response, any())).thenAnswer((
+        invocation,
+      ) {
         final attrs = invocation.positionalArguments[1];
         attrs['response_attribute'] = [1, 2, 3, 4];
       });
       when(() => response.context).thenReturn(const Context());
       String? capturedKey;
-      when(() => mockRum.startResource(any(), any(), any(), any()))
-          .thenAnswer((i) {
+      when(() => mockRum.startResource(any(), any(), any(), any())).thenAnswer((
+        i,
+      ) {
         capturedKey = i.positionalArguments[0] as String;
       });
 
@@ -423,67 +502,91 @@ query UserInfo($id: ID!) {
       await stream.drain();
 
       // Then
-      final captured = verify(() => mockRum.stopResource(
-          capturedKey!, any(), RumResourceType.native, any(), captureAny()));
+      final captured = verify(
+        () => mockRum.stopResource(
+          capturedKey!,
+          any(),
+          RumResourceType.native,
+          any(),
+          captureAny(),
+        ),
+      );
       final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
       expect(capturedAttrs['response_attribute'], [1, 2, 3, 4]);
     });
 
     test(
-        'link combines attributes from listener request and response to stopResource',
-        () async {
-      // Given
-      final mockListener = MockDatadogGqlListener();
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
-          listener: mockListener);
-      final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
-      final response = MockResponse();
-      when(() => mockListener.requestStarted(request, any()))
-          .thenAnswer((invocation) {
-        final attrs = invocation.positionalArguments[1];
-        attrs['request_attribute'] = 'my request';
-      });
-      when(() => mockListener.responseReceived(response, any()))
-          .thenAnswer((invocation) {
-        final attrs = invocation.positionalArguments[1];
-        attrs['response_attribute'] = [1, 2, 3, 4];
-      });
-      when(() => response.context).thenReturn(const Context());
-      String? capturedKey;
-      when(() => mockRum.startResource(any(), any(), any(), any()))
-          .thenAnswer((i) {
-        capturedKey = i.positionalArguments[0] as String;
-      });
+      'link combines attributes from listener request and response to stopResource',
+      () async {
+        // Given
+        final mockListener = MockDatadogGqlListener();
+        final link = DatadogGqlLink(
+          mockDatadog,
+          Uri.parse('https://test_uri'),
+          listener: mockListener,
+        );
+        final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'),
+        );
+        final response = MockResponse();
+        when(() => mockListener.requestStarted(request, any())).thenAnswer((
+          invocation,
+        ) {
+          final attrs = invocation.positionalArguments[1];
+          attrs['request_attribute'] = 'my request';
+        });
+        when(() => mockListener.responseReceived(response, any())).thenAnswer((
+          invocation,
+        ) {
+          final attrs = invocation.positionalArguments[1];
+          attrs['response_attribute'] = [1, 2, 3, 4];
+        });
+        when(() => response.context).thenReturn(const Context());
+        String? capturedKey;
+        when(
+          () => mockRum.startResource(any(), any(), any(), any()),
+        ).thenAnswer((i) {
+          capturedKey = i.positionalArguments[0] as String;
+        });
 
-      // When
-      final responseController = StreamController<Response>();
-      final stream = link.request(request, (request) {
-        return responseController.stream;
-      });
+        // When
+        final responseController = StreamController<Response>();
+        final stream = link.request(request, (request) {
+          return responseController.stream;
+        });
 
-      responseController.sink.add(response);
-      unawaited(responseController.sink.close());
-      await stream.drain();
+        responseController.sink.add(response);
+        unawaited(responseController.sink.close());
+        await stream.drain();
 
-      // Then
-      final captured = verify(() => mockRum.stopResource(
-          capturedKey!, any(), RumResourceType.native, any(), captureAny()));
-      final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
-      expect(capturedAttrs['response_attribute'], [1, 2, 3, 4]);
-      expect(capturedAttrs['request_attribute'], 'my request');
-    });
+        // Then
+        final captured = verify(
+          () => mockRum.stopResource(
+            capturedKey!,
+            any(),
+            RumResourceType.native,
+            any(),
+            captureAny(),
+          ),
+        );
+        final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
+        expect(capturedAttrs['response_attribute'], [1, 2, 3, 4]);
+        expect(capturedAttrs['request_attribute'], 'my request');
+      },
+    );
 
     test('link calls stopResourceWithErrorInfo on stream error', () async {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
       final response = MockResponse();
       when(() => response.context).thenReturn(const Context());
       String? capturedKey;
-      when(() => mockRum.startResource(any(), any(), any(), any()))
-          .thenAnswer((i) {
+      when(() => mockRum.startResource(any(), any(), any(), any())).thenAnswer((
+        i,
+      ) {
         capturedKey = i.positionalArguments[0] as String;
       });
 
@@ -500,20 +603,28 @@ query UserInfo($id: ID!) {
       } catch (_) {}
 
       // Then
-      verify(() => mockRum
-          .stopResourceWithErrorInfo(capturedKey!, 'FakeError', 'String', {}));
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          capturedKey!,
+          'FakeError',
+          'String',
+          {},
+        ),
+      );
     });
 
     test('link calls stopResourceWithErrorInfo on stream error', () async {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
       final response = MockResponse();
       when(() => response.context).thenReturn(const Context());
       String? capturedKey;
-      when(() => mockRum.startResource(any(), any(), any(), any()))
-          .thenAnswer((i) {
+      when(() => mockRum.startResource(any(), any(), any(), any())).thenAnswer((
+        i,
+      ) {
         capturedKey = i.positionalArguments[0] as String;
       });
 
@@ -530,17 +641,27 @@ query UserInfo($id: ID!) {
       } catch (_) {}
 
       // Then
-      verify(() => mockRum
-          .stopResourceWithErrorInfo(capturedKey!, 'FakeError', 'String', {}));
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          capturedKey!,
+          'FakeError',
+          'String',
+          {},
+        ),
+      );
     });
 
     test('link calls listener on stream error', () async {
       // Given
       final listener = MockDatadogGqlListener();
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
-          listener: listener);
+      final link = DatadogGqlLink(
+        mockDatadog,
+        Uri.parse('https://test_uri'),
+        listener: listener,
+      );
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
       final response = MockResponse();
       when(() => response.context).thenReturn(const Context());
 
@@ -564,14 +685,19 @@ query UserInfo($id: ID!) {
     test('link adds attributes from listener on stream error', () async {
       // Given
       final listener = MockDatadogGqlListener();
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
-          listener: listener);
+      final link = DatadogGqlLink(
+        mockDatadog,
+        Uri.parse('https://test_uri'),
+        listener: listener,
+      );
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
       final response = MockResponse();
       when(() => response.context).thenReturn(const Context());
-      when(() => listener.requestError(any(), any(), any()))
-          .thenAnswer((invocation) {
+      when(() => listener.requestError(any(), any(), any())).thenAnswer((
+        invocation,
+      ) {
         final attributes =
             invocation.positionalArguments[2] as Map<String, Object?>;
         attributes['error_attribute'] = 'error cause';
@@ -591,8 +717,14 @@ query UserInfo($id: ID!) {
       } catch (_) {}
 
       // Then
-      final captured = verify(() => mockRum.stopResourceWithErrorInfo(
-          any(), 'FakeError', 'String', captureAny()));
+      final captured = verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          any(),
+          'FakeError',
+          'String',
+          captureAny(),
+        ),
+      );
       final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
       expect(capturedAttrs['error_attribute'], 'error cause');
     });
@@ -600,20 +732,26 @@ query UserInfo($id: ID!) {
     test('link merges attributes from listener on stream error', () async {
       // Given
       final listener = MockDatadogGqlListener();
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'),
-          listener: listener);
+      final link = DatadogGqlLink(
+        mockDatadog,
+        Uri.parse('https://test_uri'),
+        listener: listener,
+      );
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
       final response = MockResponse();
       when(() => response.context).thenReturn(const Context());
-      when(() => listener.requestStarted(request, any()))
-          .thenAnswer((invocation) {
+      when(() => listener.requestStarted(request, any())).thenAnswer((
+        invocation,
+      ) {
         final attributes =
             invocation.positionalArguments[1] as Map<String, Object?>;
         attributes['request_attribute'] = 'my request';
       });
-      when(() => listener.requestError(any(), any(), any()))
-          .thenAnswer((invocation) {
+      when(() => listener.requestError(any(), any(), any())).thenAnswer((
+        invocation,
+      ) {
         final attributes =
             invocation.positionalArguments[2] as Map<String, Object?>;
         attributes['error_attribute'] = 'error cause';
@@ -633,8 +771,14 @@ query UserInfo($id: ID!) {
       } catch (_) {}
 
       // Then
-      final captured = verify(() => mockRum.stopResourceWithErrorInfo(
-          any(), 'FakeError', 'String', captureAny()));
+      final captured = verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          any(),
+          'FakeError',
+          'String',
+          captureAny(),
+        ),
+      );
       final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
       expect(capturedAttrs['request_attribute'], 'my request');
       expect(capturedAttrs['error_attribute'], 'error cause');
@@ -644,17 +788,16 @@ query UserInfo($id: ID!) {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
       final response = MockResponse();
       when(() => response.context).thenReturn(const Context());
       when(() => response.errors).thenReturn([
         const GraphQLError(
           message: 'GraphQL Error Message',
-          locations: [
-            ErrorLocation(line: 1, column: 10),
-          ],
+          locations: [ErrorLocation(line: 1, column: 10)],
           path: ['heroes', 2, 'name'],
-        )
+        ),
       ]);
       // When
       final responseController = StreamController<Response>();
@@ -667,72 +810,87 @@ query UserInfo($id: ID!) {
       await stream.drain();
 
       // Then
-      final captured = verify(() => mockRum.stopResource(
-          any(), any(), RumResourceType.native, any(), captureAny()));
+      final captured = verify(
+        () => mockRum.stopResource(
+          any(),
+          any(),
+          RumResourceType.native,
+          any(),
+          captureAny(),
+        ),
+      );
       final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
       expect(findInvalidAttribute(capturedAttrs), null);
       final expectedErrorString = json.encode([
         {
           'message': 'GraphQL Error Message',
           'locations': [
-            {
-              'line': 1,
-              'column': 10,
-            }
+            {'line': 1, 'column': 10},
           ],
           'path': ['heroes', 2, 'name'],
-        }
+        },
       ]);
       expect(capturedAttrs['_dd.graphql.errors'], expectedErrorString);
     });
 
-    test('link includes error code from extensions in serialized errors',
-        () async {
-      // Given
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
-      final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
-      final response = MockResponse();
-      when(() => response.context).thenReturn(const Context());
-      when(() => response.errors).thenReturn([
-        const GraphQLError(
-          message: 'Not Found',
-          path: ['user'],
-          extensions: {'code': 'USER_NOT_FOUND'},
-        ),
-      ]);
+    test(
+      'link includes error code from extensions in serialized errors',
+      () async {
+        // Given
+        final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+        final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'),
+        );
+        final response = MockResponse();
+        when(() => response.context).thenReturn(const Context());
+        when(() => response.errors).thenReturn([
+          const GraphQLError(
+            message: 'Not Found',
+            path: ['user'],
+            extensions: {'code': 'USER_NOT_FOUND'},
+          ),
+        ]);
 
-      // When
-      final responseController = StreamController<Response>();
-      final stream = link.request(request, (request) {
-        return responseController.stream;
-      });
+        // When
+        final responseController = StreamController<Response>();
+        final stream = link.request(request, (request) {
+          return responseController.stream;
+        });
 
-      responseController.sink.add(response);
-      unawaited(responseController.sink.close());
-      await stream.drain();
+        responseController.sink.add(response);
+        unawaited(responseController.sink.close());
+        await stream.drain();
 
-      // Then
-      final captured = verify(() => mockRum.stopResource(
-          any(), any(), RumResourceType.native, any(), captureAny()));
-      final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
-      final errors =
-          json.decode(capturedAttrs['_dd.graphql.errors']) as List<dynamic>;
-      expect(errors.length, 1);
-      expect(errors[0]['message'], 'Not Found');
-      expect(errors[0]['code'], 'USER_NOT_FOUND');
-    });
+        // Then
+        final captured = verify(
+          () => mockRum.stopResource(
+            any(),
+            any(),
+            RumResourceType.native,
+            any(),
+            captureAny(),
+          ),
+        );
+        final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
+        final errors =
+            json.decode(capturedAttrs['_dd.graphql.errors']) as List<dynamic>;
+        expect(errors.length, 1);
+        expect(errors[0]['message'], 'Not Found');
+        expect(errors[0]['code'], 'USER_NOT_FOUND');
+      },
+    );
 
     test('link omits error code when extensions has no code field', () async {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
       final response = MockResponse();
       when(() => response.context).thenReturn(const Context());
-      when(() => response.errors).thenReturn([
-        const GraphQLError(message: 'Server Error'),
-      ]);
+      when(
+        () => response.errors,
+      ).thenReturn([const GraphQLError(message: 'Server Error')]);
 
       // When
       final responseController = StreamController<Response>();
@@ -745,52 +903,70 @@ query UserInfo($id: ID!) {
       await stream.drain();
 
       // Then
-      final captured = verify(() => mockRum.stopResource(
-          any(), any(), RumResourceType.native, any(), captureAny()));
+      final captured = verify(
+        () => mockRum.stopResource(
+          any(),
+          any(),
+          RumResourceType.native,
+          any(),
+          captureAny(),
+        ),
+      );
       final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
       final errors =
           json.decode(capturedAttrs['_dd.graphql.errors']) as List<dynamic>;
       expect(errors[0].containsKey('code'), isFalse);
     });
 
-    test('link omits locations and path when null in serialized errors',
-        () async {
-      // Given
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
-      final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
-      final response = MockResponse();
-      when(() => response.context).thenReturn(const Context());
-      when(() => response.errors).thenReturn([
-        const GraphQLError(message: 'Server Error'),
-      ]);
+    test(
+      'link omits locations and path when null in serialized errors',
+      () async {
+        // Given
+        final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+        final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'),
+        );
+        final response = MockResponse();
+        when(() => response.context).thenReturn(const Context());
+        when(
+          () => response.errors,
+        ).thenReturn([const GraphQLError(message: 'Server Error')]);
 
-      // When
-      final responseController = StreamController<Response>();
-      final stream = link.request(request, (request) {
-        return responseController.stream;
-      });
+        // When
+        final responseController = StreamController<Response>();
+        final stream = link.request(request, (request) {
+          return responseController.stream;
+        });
 
-      responseController.sink.add(response);
-      unawaited(responseController.sink.close());
-      await stream.drain();
+        responseController.sink.add(response);
+        unawaited(responseController.sink.close());
+        await stream.drain();
 
-      // Then
-      final captured = verify(() => mockRum.stopResource(
-          any(), any(), RumResourceType.native, any(), captureAny()));
-      final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
-      final errors =
-          json.decode(capturedAttrs['_dd.graphql.errors']) as List<dynamic>;
-      expect(errors.length, 1);
-      expect(errors[0].containsKey('locations'), isFalse);
-      expect(errors[0].containsKey('path'), isFalse);
-    });
+        // Then
+        final captured = verify(
+          () => mockRum.stopResource(
+            any(),
+            any(),
+            RumResourceType.native,
+            any(),
+            captureAny(),
+          ),
+        );
+        final capturedAttrs = captured.captured[0] as Map<String, dynamic>;
+        final errors =
+            json.decode(capturedAttrs['_dd.graphql.errors']) as List<dynamic>;
+        expect(errors.length, 1);
+        expect(errors[0].containsKey('locations'), isFalse);
+        expect(errors[0].containsKey('path'), isFalse);
+      },
+    );
 
     test('link does not add payload attribute by default', () {
       // Given
       final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
 
       // When
       link.request(request, (request) {
@@ -798,9 +974,16 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      final capturedAttributes = verify(() => mockRum.startResource(
-              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
-          .captured[0] as Map<String, Object?>;
+      final capturedAttributes =
+          verify(
+                () => mockRum.startResource(
+                  any(),
+                  RumHttpMethod.post,
+                  'https://test_uri',
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
       expect(capturedAttributes['_dd.graphql.payload'], isNull);
     });
 
@@ -812,7 +995,8 @@ query UserInfo($id: ID!) {
         trackPayload: true,
       );
       final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
 
       // When
       link.request(request, (request) {
@@ -820,9 +1004,16 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      final capturedAttributes = verify(() => mockRum.startResource(
-              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
-          .captured[0] as Map<String, Object?>;
+      final capturedAttributes =
+          verify(
+                () => mockRum.startResource(
+                  any(),
+                  RumHttpMethod.post,
+                  'https://test_uri',
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
       final payload = capturedAttributes['_dd.graphql.payload'] as String?;
       expect(payload, isNotNull);
       expect(payload, contains('UserInfo'));
@@ -842,7 +1033,8 @@ query UserInfo($id: ID!) {
   }
 ''');
       final request = Request(
-          operation: Operation(document: mutation, operationName: 'AddStar'));
+        operation: Operation(document: mutation, operationName: 'AddStar'),
+      );
 
       // When
       link.request(request, (request) {
@@ -850,9 +1042,16 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      final capturedAttributes = verify(() => mockRum.startResource(
-              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
-          .captured[0] as Map<String, Object?>;
+      final capturedAttributes =
+          verify(
+                () => mockRum.startResource(
+                  any(),
+                  RumHttpMethod.post,
+                  'https://test_uri',
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
       expect(capturedAttributes['_dd.graphql.operation_type'], 'mutation');
       expect(capturedAttributes['_dd.graphql.operation_name'], 'AddStar');
     });
@@ -868,8 +1067,11 @@ query UserInfo($id: ID!) {
     }
 ''');
       final request = Request(
-          operation:
-              Operation(document: subscription, operationName: 'ReviewAdded'));
+        operation: Operation(
+          document: subscription,
+          operationName: 'ReviewAdded',
+        ),
+      );
 
       // When
       link.request(request, (request) {
@@ -877,9 +1079,16 @@ query UserInfo($id: ID!) {
       });
 
       // Then
-      final capturedAttributes = verify(() => mockRum.startResource(
-              any(), RumHttpMethod.post, 'https://test_uri', captureAny()))
-          .captured[0] as Map<String, Object?>;
+      final capturedAttributes =
+          verify(
+                () => mockRum.startResource(
+                  any(),
+                  RumHttpMethod.post,
+                  'https://test_uri',
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
       expect(capturedAttributes['_dd.graphql.operation_type'], 'subscription');
       expect(capturedAttributes['_dd.graphql.operation_name'], 'ReviewAdded');
     });
@@ -891,159 +1100,209 @@ query UserInfo($id: ID!) {
       when(() => mockDatadog.headerTypesForHost(any())).thenReturn({});
     });
 
-    test('attaches matching response headers to stopResource attributes',
-        () async {
-      // ignore: invalid_use_of_internal_member
-      when(() => mockRum.resourceHeadersExtractor)
-          .thenReturn(ResourceHeadersExtractor());
+    test(
+      'attaches matching response headers to stopResource attributes',
+      () async {
+        when(
+          // ignore: invalid_use_of_internal_member
+          () => mockRum.resourceHeadersExtractor,
+        ).thenReturn(ResourceHeadersExtractor());
 
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
-      final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
-      final response = MockResponse();
-      var responseContext = const Context();
-      responseContext = responseContext.updateEntry<HttpLinkResponseContext>(
-        (entry) => const HttpLinkResponseContext(
-          statusCode: 200,
-          headers: {
-            'content-type': 'application/json',
-            'cache-control': 'no-cache',
-            // Must be stripped by the security filter even on the response side.
-            'authorization': 'Bearer secret-token',
-          },
-        ),
-      );
-      when(() => response.context).thenReturn(responseContext);
+        final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+        final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'),
+        );
+        final response = MockResponse();
+        var responseContext = const Context();
+        responseContext = responseContext.updateEntry<HttpLinkResponseContext>(
+          (entry) => const HttpLinkResponseContext(
+            statusCode: 200,
+            headers: {
+              'content-type': 'application/json',
+              'cache-control': 'no-cache',
+              // Must be stripped by the security filter even on the response side.
+              'authorization': 'Bearer secret-token',
+            },
+          ),
+        );
+        when(() => response.context).thenReturn(responseContext);
 
-      final responseController = StreamController<Response>();
-      final stream = link.request(request, (request) {
-        return responseController.stream;
-      });
-      responseController.sink.add(response);
-      unawaited(responseController.sink.close());
-      await stream.drain();
+        final responseController = StreamController<Response>();
+        final stream = link.request(request, (request) {
+          return responseController.stream;
+        });
+        responseController.sink.add(response);
+        unawaited(responseController.sink.close());
+        await stream.drain();
 
-      final captured = verify(() => mockRum.stopResource(
-          any(), any(), RumResourceType.native, any(), captureAny()));
-      final attrs = captured.captured[0] as Map<String, dynamic>;
-      final responseHeaders =
-          attrs[DatadogRumPlatformAttributeKey.responseHeaders]
-              as Map<String, String>?;
-      expect(responseHeaders, isNotNull);
-      expect(responseHeaders!['content-type'], 'application/json');
-      expect(responseHeaders['cache-control'], 'no-cache');
-      expect(responseHeaders.containsKey('authorization'), isFalse);
-    });
+        final captured = verify(
+          () => mockRum.stopResource(
+            any(),
+            any(),
+            RumResourceType.native,
+            any(),
+            captureAny(),
+          ),
+        );
+        final attrs = captured.captured[0] as Map<String, dynamic>;
+        final responseHeaders =
+            attrs[DatadogRumPlatformAttributeKey.responseHeaders]
+                as Map<String, String>?;
+        expect(responseHeaders, isNotNull);
+        expect(responseHeaders!['content-type'], 'application/json');
+        expect(responseHeaders['cache-control'], 'no-cache');
+        expect(responseHeaders.containsKey('authorization'), isFalse);
+      },
+    );
 
     test(
-        'attaches matching request headers from HttpLinkHeaders to stopResource attributes',
-        () async {
-      // ignore: invalid_use_of_internal_member
-      when(() => mockRum.resourceHeadersExtractor)
-          .thenReturn(ResourceHeadersExtractor());
+      'attaches matching request headers from HttpLinkHeaders to stopResource attributes',
+      () async {
+        when(
+          // ignore: invalid_use_of_internal_member
+          () => mockRum.resourceHeadersExtractor,
+        ).thenReturn(ResourceHeadersExtractor());
 
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
-      var requestContext = const Context();
-      requestContext = requestContext.updateEntry<HttpLinkHeaders>(
-        (entry) => const HttpLinkHeaders(headers: {
-          'content-type': 'application/json',
-          'cache-control': 'max-age=0',
-        }),
-      );
-      final request = Request(
-        operation: Operation(document: query, operationName: 'UserInfo'),
-        context: requestContext,
-      );
-      final response = MockResponse();
-      when(() => response.context).thenReturn(const Context());
+        final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+        var requestContext = const Context();
+        requestContext = requestContext.updateEntry<HttpLinkHeaders>(
+          (entry) => const HttpLinkHeaders(
+            headers: {
+              'content-type': 'application/json',
+              'cache-control': 'max-age=0',
+            },
+          ),
+        );
+        final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'),
+          context: requestContext,
+        );
+        final response = MockResponse();
+        when(() => response.context).thenReturn(const Context());
 
-      final responseController = StreamController<Response>();
-      final stream = link.request(request, (request) {
-        return responseController.stream;
-      });
-      responseController.sink.add(response);
-      unawaited(responseController.sink.close());
-      await stream.drain();
+        final responseController = StreamController<Response>();
+        final stream = link.request(request, (request) {
+          return responseController.stream;
+        });
+        responseController.sink.add(response);
+        unawaited(responseController.sink.close());
+        await stream.drain();
 
-      final captured = verify(() => mockRum.stopResource(
-          any(), any(), RumResourceType.native, any(), captureAny()));
-      final attrs = captured.captured[0] as Map<String, dynamic>;
-      final requestHeaders =
-          attrs[DatadogRumPlatformAttributeKey.requestHeaders]
-              as Map<String, String>?;
-      expect(requestHeaders, isNotNull);
-      expect(requestHeaders!['content-type'], 'application/json');
-      expect(requestHeaders['cache-control'], 'max-age=0');
-    });
+        final captured = verify(
+          () => mockRum.stopResource(
+            any(),
+            any(),
+            RumResourceType.native,
+            any(),
+            captureAny(),
+          ),
+        );
+        final attrs = captured.captured[0] as Map<String, dynamic>;
+        final requestHeaders =
+            attrs[DatadogRumPlatformAttributeKey.requestHeaders]
+                as Map<String, String>?;
+        expect(requestHeaders, isNotNull);
+        expect(requestHeaders!['content-type'], 'application/json');
+        expect(requestHeaders['cache-control'], 'max-age=0');
+      },
+    );
 
-    test('does not add header attributes when extractor is not configured',
-        () async {
-      // Default setUp already stubs resourceHeadersExtractor → null.
-      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
-      final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
-      final response = MockResponse();
-      var responseContext = const Context();
-      responseContext = responseContext.updateEntry<HttpLinkResponseContext>(
-        (entry) => const HttpLinkResponseContext(
-          statusCode: 200,
-          headers: {'content-type': 'application/json'},
-        ),
-      );
-      when(() => response.context).thenReturn(responseContext);
+    test(
+      'does not add header attributes when extractor is not configured',
+      () async {
+        // Default setUp already stubs resourceHeadersExtractor → null.
+        final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+        final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'),
+        );
+        final response = MockResponse();
+        var responseContext = const Context();
+        responseContext = responseContext.updateEntry<HttpLinkResponseContext>(
+          (entry) => const HttpLinkResponseContext(
+            statusCode: 200,
+            headers: {'content-type': 'application/json'},
+          ),
+        );
+        when(() => response.context).thenReturn(responseContext);
 
-      final responseController = StreamController<Response>();
-      final stream = link.request(request, (request) {
-        return responseController.stream;
-      });
-      responseController.sink.add(response);
-      unawaited(responseController.sink.close());
-      await stream.drain();
+        final responseController = StreamController<Response>();
+        final stream = link.request(request, (request) {
+          return responseController.stream;
+        });
+        responseController.sink.add(response);
+        unawaited(responseController.sink.close());
+        await stream.drain();
 
-      final captured = verify(() => mockRum.stopResource(
-          any(), any(), RumResourceType.native, any(), captureAny()));
-      final attrs = captured.captured[0] as Map<String, dynamic>;
-      expect(attrs.containsKey(DatadogRumPlatformAttributeKey.requestHeaders),
-          isFalse);
-      expect(attrs.containsKey(DatadogRumPlatformAttributeKey.responseHeaders),
-          isFalse);
-    });
+        final captured = verify(
+          () => mockRum.stopResource(
+            any(),
+            any(),
+            RumResourceType.native,
+            any(),
+            captureAny(),
+          ),
+        );
+        final attrs = captured.captured[0] as Map<String, dynamic>;
+        expect(
+          attrs.containsKey(DatadogRumPlatformAttributeKey.requestHeaders),
+          isFalse,
+        );
+        expect(
+          attrs.containsKey(DatadogRumPlatformAttributeKey.responseHeaders),
+          isFalse,
+        );
+      },
+    );
 
-    test('captures request headers injected by tracing into the snapshot',
-        () async {
-      // ignore: invalid_use_of_internal_member
-      when(() => mockRum.resourceHeadersExtractor).thenReturn(
-        ResourceHeadersExtractor(captureHeaders: ['x-datadog-origin']),
-      );
-      when(() => mockRum.contextInjectionSetting)
-          .thenReturn(TraceContextInjection.all);
-      when(() => mockDatadog.headerTypesForHost(any()))
-          .thenReturn({TracingHeaderType.datadog});
+    test(
+      'captures request headers injected by tracing into the snapshot',
+      () async {
+        // ignore: invalid_use_of_internal_member
+        when(() => mockRum.resourceHeadersExtractor).thenReturn(
+          ResourceHeadersExtractor(captureHeaders: ['x-datadog-origin']),
+        );
+        when(
+          () => mockRum.contextInjectionSetting,
+        ).thenReturn(TraceContextInjection.all);
+        when(
+          () => mockDatadog.headerTypesForHost(any()),
+        ).thenReturn({TracingHeaderType.datadog});
 
-      final link =
-          DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
-      final request = Request(
-          operation: Operation(document: query, operationName: 'UserInfo'));
-      final response = MockResponse();
-      when(() => response.context).thenReturn(const Context());
+        final link = DatadogGqlLink(
+          mockDatadog,
+          Uri.parse('https://test_url/graphql'),
+        );
+        final request = Request(
+          operation: Operation(document: query, operationName: 'UserInfo'),
+        );
+        final response = MockResponse();
+        when(() => response.context).thenReturn(const Context());
 
-      final responseController = StreamController<Response>();
-      final stream = link.request(request, (request) {
-        return responseController.stream;
-      });
-      responseController.sink.add(response);
-      unawaited(responseController.sink.close());
-      await stream.drain();
+        final responseController = StreamController<Response>();
+        final stream = link.request(request, (request) {
+          return responseController.stream;
+        });
+        responseController.sink.add(response);
+        unawaited(responseController.sink.close());
+        await stream.drain();
 
-      final captured = verify(() => mockRum.stopResource(
-          any(), any(), RumResourceType.native, any(), captureAny()));
-      final attrs = captured.captured[0] as Map<String, dynamic>;
-      final requestHeaders =
-          attrs[DatadogRumPlatformAttributeKey.requestHeaders]
-              as Map<String, String>?;
-      expect(requestHeaders, isNotNull);
-      expect(requestHeaders!['x-datadog-origin'], 'rum');
-    });
+        final captured = verify(
+          () => mockRum.stopResource(
+            any(),
+            any(),
+            RumResourceType.native,
+            any(),
+            captureAny(),
+          ),
+        );
+        final attrs = captured.captured[0] as Map<String, dynamic>;
+        final requestHeaders =
+            attrs[DatadogRumPlatformAttributeKey.requestHeaders]
+                as Map<String, String>?;
+        expect(requestHeaders, isNotNull);
+        expect(requestHeaders!['x-datadog-origin'], 'rum');
+      },
+    );
   });
 
   for (final headerType in TracingHeaderType.values) {
@@ -1051,10 +1310,16 @@ query UserInfo($id: ID!) {
       setUp(() {
         mockPlatform = MockDatadogSdkPlatform();
         mockDatadog = MockDatadogSdk();
-        when(() => mockDatadog.headerTypesForHost(
-            any(that: HasHost(equals('test_url'))))).thenReturn({headerType});
-        when(() => mockDatadog.headerTypesForHost(
-            any(that: HasHost(equals('non_first_party'))))).thenReturn({});
+        when(
+          () => mockDatadog.headerTypesForHost(
+            any(that: HasHost(equals('test_url'))),
+          ),
+        ).thenReturn({headerType});
+        when(
+          () => mockDatadog.headerTypesForHost(
+            any(that: HasHost(equals('non_first_party'))),
+          ),
+        ).thenReturn({});
         when(() => mockDatadog.platform).thenReturn(mockPlatform);
         // ignore: invalid_use_of_internal_member
         when(() => mockDatadog.internalLogger).thenReturn(MockInternalLogger());
@@ -1064,36 +1329,51 @@ query UserInfo($id: ID!) {
         when(() => mockDatadog.rum).thenReturn(mockRum);
       });
 
-      test('does not set trace attributes when should sample returns false',
-          () {
-        // Given
-        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
-        final link =
-            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
-        final request = Request(
-            operation: Operation(document: query, operationName: 'UserInfo'));
+      test(
+        'does not set trace attributes when should sample returns false',
+        () {
+          // Given
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+          final link = DatadogGqlLink(
+            mockDatadog,
+            Uri.parse('https://test_url/graphql'),
+          );
+          final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'),
+          );
 
-        // When
-        link.request(request, (request) {
-          return const Stream<Response>.empty();
-        });
+          // When
+          link.request(request, (request) {
+            return const Stream<Response>.empty();
+          });
 
-        // Then
-        final capturedAttrs = verify(
-                () => mockRum.startResource(any(), any(), any(), captureAny()))
-            .captured[0] as Map<String, Object?>;
-        expect(capturedAttrs[DatadogRumPlatformAttributeKey.traceID], isNull);
-        expect(capturedAttrs[DatadogRumPlatformAttributeKey.spanID], isNull);
-        expect(capturedAttrs[DatadogRumPlatformAttributeKey.rulePsr], 0.50);
-      });
+          // Then
+          final capturedAttrs =
+              verify(
+                    () => mockRum.startResource(
+                      any(),
+                      any(),
+                      any(),
+                      captureAny(),
+                    ),
+                  ).captured[0]
+                  as Map<String, Object?>;
+          expect(capturedAttrs[DatadogRumPlatformAttributeKey.traceID], isNull);
+          expect(capturedAttrs[DatadogRumPlatformAttributeKey.spanID], isNull);
+          expect(capturedAttrs[DatadogRumPlatformAttributeKey.rulePsr], 0.50);
+        },
+      );
 
       test('start resource loading sets tracing attributes', () {
         // Given
         when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
-        final link =
-            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
+        final link = DatadogGqlLink(
+          mockDatadog,
+          Uri.parse('https://test_url/graphql'),
+        );
         final request = Request(
-            operation: Operation(document: query, operationName: 'UserInfo'));
+          operation: Operation(document: query, operationName: 'UserInfo'),
+        );
 
         // When
         link.request(request, (request) {
@@ -1101,17 +1381,22 @@ query UserInfo($id: ID!) {
         });
 
         // Then
-        final capturedAttrs = verify(
-                () => mockRum.startResource(any(), any(), any(), captureAny()))
-            .captured[0] as Map<String, dynamic>;
+        final capturedAttrs =
+            verify(
+                  () =>
+                      mockRum.startResource(any(), any(), any(), captureAny()),
+                ).captured[0]
+                as Map<String, dynamic>;
         var traceId = BigInt.parse(
-            capturedAttrs[DatadogRumPlatformAttributeKey.traceID],
-            radix: 16);
+          capturedAttrs[DatadogRumPlatformAttributeKey.traceID],
+          radix: 16,
+        );
         expect(traceId, isNotNull);
         expect(traceId.bitLength, lessThanOrEqualTo(128));
 
-        var spanId =
-            BigInt.parse(capturedAttrs[DatadogRumPlatformAttributeKey.spanID]);
+        var spanId = BigInt.parse(
+          capturedAttrs[DatadogRumPlatformAttributeKey.spanID],
+        );
         expect(spanId, isNotNull);
         expect(spanId.bitLength, lessThanOrEqualTo(63));
         expect(capturedAttrs[DatadogRumPlatformAttributeKey.rulePsr], 0.50);
@@ -1121,9 +1406,12 @@ query UserInfo($id: ID!) {
       test('does not set trace headers for third party urls', () async {
         when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
         final link = DatadogGqlLink(
-            mockDatadog, Uri.parse('https://non_first_party/graphql'));
+          mockDatadog,
+          Uri.parse('https://non_first_party/graphql'),
+        );
         final request = Request(
-            operation: Operation(document: query, operationName: 'UserInfo'));
+          operation: Operation(document: query, operationName: 'UserInfo'),
+        );
 
         // When
         Request? forwardedRequest;
@@ -1149,105 +1437,149 @@ query UserInfo($id: ID!) {
       });
 
       test(
-          'sets trace headers for first party urls { sampled, TraceContextInjection.all }',
-          () {
-        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
-        when(() => mockRum.contextInjectionSetting)
-            .thenReturn(TraceContextInjection.all);
-        final link =
-            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
-        final request = Request(
-            operation: Operation(document: query, operationName: 'UserInfo'));
+        'sets trace headers for first party urls { sampled, TraceContextInjection.all }',
+        () {
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
+          when(
+            () => mockRum.contextInjectionSetting,
+          ).thenReturn(TraceContextInjection.all);
+          final link = DatadogGqlLink(
+            mockDatadog,
+            Uri.parse('https://test_url/graphql'),
+          );
+          final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'),
+          );
 
-        // When
-        Request? forwardedRequest;
-        link.request(request, (request) {
-          forwardedRequest = request;
-          return const Stream<Response>.empty();
-        });
+          // When
+          Request? forwardedRequest;
+          link.request(request, (request) {
+            forwardedRequest = request;
+            return const Stream<Response>.empty();
+          });
 
-        final headersEntry = forwardedRequest!.context.entry<HttpLinkHeaders>();
-        verifyHeaders(
-            headersEntry!.headers, headerType, true, TraceContextInjection.all);
-      });
-
-      test(
-          'sets trace headers for first party urls { sampled, TraceContextInjection.sampled }',
-          () {
-        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
-        when(() => mockRum.contextInjectionSetting)
-            .thenReturn(TraceContextInjection.sampled);
-        final link =
-            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
-        final request = Request(
-            operation: Operation(document: query, operationName: 'UserInfo'));
-
-        // When
-        Request? forwardedRequest;
-        link.request(request, (request) {
-          forwardedRequest = request;
-          return const Stream<Response>.empty();
-        });
-
-        final headersEntry = forwardedRequest!.context.entry<HttpLinkHeaders>();
-        verifyHeaders(headersEntry!.headers, headerType, true,
-            TraceContextInjection.sampled);
-      });
+          final headersEntry = forwardedRequest!.context
+              .entry<HttpLinkHeaders>();
+          verifyHeaders(
+            headersEntry!.headers,
+            headerType,
+            true,
+            TraceContextInjection.all,
+          );
+        },
+      );
 
       test(
-          'sets trace headers for first party urls { unsampled, TraceContextInjection.all }, ',
-          () {
-        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
-        when(() => mockRum.contextInjectionSetting)
-            .thenReturn(TraceContextInjection.all);
-        final link =
-            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
-        final request = Request(
-            operation: Operation(document: query, operationName: 'UserInfo'));
+        'sets trace headers for first party urls { sampled, TraceContextInjection.sampled }',
+        () {
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
+          when(
+            () => mockRum.contextInjectionSetting,
+          ).thenReturn(TraceContextInjection.sampled);
+          final link = DatadogGqlLink(
+            mockDatadog,
+            Uri.parse('https://test_url/graphql'),
+          );
+          final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'),
+          );
 
-        // When
-        Request? forwardedRequest;
-        link.request(request, (request) {
-          forwardedRequest = request;
-          return const Stream<Response>.empty();
-        });
+          // When
+          Request? forwardedRequest;
+          link.request(request, (request) {
+            forwardedRequest = request;
+            return const Stream<Response>.empty();
+          });
 
-        final headersEntry = forwardedRequest!.context.entry<HttpLinkHeaders>();
-        verifyHeaders(headersEntry!.headers, headerType, false,
-            TraceContextInjection.all);
-      });
+          final headersEntry = forwardedRequest!.context
+              .entry<HttpLinkHeaders>();
+          verifyHeaders(
+            headersEntry!.headers,
+            headerType,
+            true,
+            TraceContextInjection.sampled,
+          );
+        },
+      );
 
       test(
-          'does not sets trace headers for first party urls { unsampled, TraceContextInjection.sampled }, ',
-          () {
-        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
-        when(() => mockRum.contextInjectionSetting)
-            .thenReturn(TraceContextInjection.sampled);
-        final link =
-            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
-        final request = Request(
-            operation: Operation(document: query, operationName: 'UserInfo'));
+        'sets trace headers for first party urls { unsampled, TraceContextInjection.all }, ',
+        () {
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+          when(
+            () => mockRum.contextInjectionSetting,
+          ).thenReturn(TraceContextInjection.all);
+          final link = DatadogGqlLink(
+            mockDatadog,
+            Uri.parse('https://test_url/graphql'),
+          );
+          final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'),
+          );
 
-        // When
-        Request? forwardedRequest;
-        link.request(request, (request) {
-          forwardedRequest = request;
-          return const Stream<Response>.empty();
-        });
+          // When
+          Request? forwardedRequest;
+          link.request(request, (request) {
+            forwardedRequest = request;
+            return const Stream<Response>.empty();
+          });
 
-        final headersEntry = forwardedRequest!.context.entry<HttpLinkHeaders>();
-        verifyHeaders(headersEntry!.headers, headerType, false,
-            TraceContextInjection.sampled);
-      });
+          final headersEntry = forwardedRequest!.context
+              .entry<HttpLinkHeaders>();
+          verifyHeaders(
+            headersEntry!.headers,
+            headerType,
+            false,
+            TraceContextInjection.all,
+          );
+        },
+      );
+
+      test(
+        'does not sets trace headers for first party urls { unsampled, TraceContextInjection.sampled }, ',
+        () {
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+          when(
+            () => mockRum.contextInjectionSetting,
+          ).thenReturn(TraceContextInjection.sampled);
+          final link = DatadogGqlLink(
+            mockDatadog,
+            Uri.parse('https://test_url/graphql'),
+          );
+          final request = Request(
+            operation: Operation(document: query, operationName: 'UserInfo'),
+          );
+
+          // When
+          Request? forwardedRequest;
+          link.request(request, (request) {
+            forwardedRequest = request;
+            return const Stream<Response>.empty();
+          });
+
+          final headersEntry = forwardedRequest!.context
+              .entry<HttpLinkHeaders>();
+          verifyHeaders(
+            headersEntry!.headers,
+            headerType,
+            false,
+            TraceContextInjection.sampled,
+          );
+        },
+      );
 
       test('RUM resource trace and span ids match injected wire headers', () {
         when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
-        when(() => mockRum.contextInjectionSetting)
-            .thenReturn(TraceContextInjection.sampled);
-        final link =
-            DatadogGqlLink(mockDatadog, Uri.parse('https://test_url/graphql'));
+        when(
+          () => mockRum.contextInjectionSetting,
+        ).thenReturn(TraceContextInjection.sampled);
+        final link = DatadogGqlLink(
+          mockDatadog,
+          Uri.parse('https://test_url/graphql'),
+        );
         final request = Request(
-            operation: Operation(document: query, operationName: 'UserInfo'));
+          operation: Operation(document: query, operationName: 'UserInfo'),
+        );
 
         // When
         Request? forwardedRequest;
@@ -1257,20 +1589,24 @@ query UserInfo($id: ID!) {
         });
 
         // Then
-        final headers =
-            forwardedRequest!.context.entry<HttpLinkHeaders>()!.headers;
-        final capturedAttrs = verify(
-                () => mockRum.startResource(any(), any(), any(), captureAny()))
-            .captured[0] as Map<String, dynamic>;
+        final headers = forwardedRequest!.context
+            .entry<HttpLinkHeaders>()!
+            .headers;
+        final capturedAttrs =
+            verify(
+                  () =>
+                      mockRum.startResource(any(), any(), any(), captureAny()),
+                ).captured[0]
+                as Map<String, dynamic>;
         final headerIds = extractTraceAndSpanFromHeaders(headers, headerType);
         final rumTraceId = TracingId.fromString(
-                capturedAttrs[DatadogRumPlatformAttributeKey.traceID] as String,
-                TracingIdRepresentation.hex)
-            .value;
+          capturedAttrs[DatadogRumPlatformAttributeKey.traceID] as String,
+          TracingIdRepresentation.hex,
+        ).value;
         final rumSpanId = TracingId.fromString(
-                capturedAttrs[DatadogRumPlatformAttributeKey.spanID] as String,
-                TracingIdRepresentation.decimal)
-            .value;
+          capturedAttrs[DatadogRumPlatformAttributeKey.spanID] as String,
+          TracingIdRepresentation.decimal,
+        ).value;
         expect(rumTraceId, headerIds.traceId);
         expect(rumSpanId, headerIds.spanId);
       });
@@ -1285,42 +1621,54 @@ query UserInfo($id: ID!) {
   switch (type) {
     case TracingHeaderType.datadog:
       final low = TracingId.fromString(
-              headers['x-datadog-trace-id'], TracingIdRepresentation.decimal)
-          .value;
+        headers['x-datadog-trace-id'],
+        TracingIdRepresentation.decimal,
+      ).value;
       final high = TracingId.fromString(
-              headers['x-datadog-tags']!.split('=')[1],
-              TracingIdRepresentation.hex)
-          .value;
+        headers['x-datadog-tags']!.split('=')[1],
+        TracingIdRepresentation.hex,
+      ).value;
       return (
         traceId: (high << 64) | low,
         spanId: TracingId.fromString(
-                headers['x-datadog-parent-id'], TracingIdRepresentation.decimal)
-            .value,
+          headers['x-datadog-parent-id'],
+          TracingIdRepresentation.decimal,
+        ).value,
       );
     case TracingHeaderType.b3:
       final parts = headers['b3']!.split('-');
       return (
-        traceId:
-            TracingId.fromString(parts[0], TracingIdRepresentation.hex).value,
-        spanId:
-            TracingId.fromString(parts[1], TracingIdRepresentation.hex).value,
+        traceId: TracingId.fromString(
+          parts[0],
+          TracingIdRepresentation.hex,
+        ).value,
+        spanId: TracingId.fromString(
+          parts[1],
+          TracingIdRepresentation.hex,
+        ).value,
       );
     case TracingHeaderType.b3multi:
       return (
         traceId: TracingId.fromString(
-                headers['X-B3-TraceId'], TracingIdRepresentation.hex)
-            .value,
+          headers['X-B3-TraceId'],
+          TracingIdRepresentation.hex,
+        ).value,
         spanId: TracingId.fromString(
-                headers['X-B3-SpanId'], TracingIdRepresentation.hex)
-            .value,
+          headers['X-B3-SpanId'],
+          TracingIdRepresentation.hex,
+        ).value,
       );
     case TracingHeaderType.tracecontext:
       final parts = headers['traceparent']!.split('-');
       return (
-        traceId:
-            TracingId.fromString(parts[1], TracingIdRepresentation.hex).value,
-        spanId:
-            TracingId.fromString(parts[2], TracingIdRepresentation.hex).value,
+        traceId: TracingId.fromString(
+          parts[1],
+          TracingIdRepresentation.hex,
+        ).value,
+        spanId: TracingId.fromString(
+          parts[2],
+          TracingIdRepresentation.hex,
+        ).value,
       );
   }
 }
@@ -1342,7 +1690,9 @@ void verifyHeaders(
       if (shouldInjectHeaders) {
         expect(headers['x-datadog-origin'], 'rum');
         expect(
-            headers['x-datadog-sampling-priority'], shouldSample ? '1' : '0');
+          headers['x-datadog-sampling-priority'],
+          shouldSample ? '1' : '0',
+        );
         var traceValue = headers['x-datadog-trace-id']!;
         traceInt = BigInt.tryParse(traceValue);
         var spanValue = headers['x-datadog-parent-id']!;

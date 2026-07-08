@@ -22,12 +22,12 @@ abstract class RumMapperProxy {
     required RumErrorEventMapper? errorEventMapper,
     required RumLongTaskEventMapper? longTaskEventMapper,
     required RumVitalOperationEventMapper? vitalOperationEventMapper,
-  })  : _viewEventMapper = viewEventMapper,
-        _actionEventMapper = actionEventMapper,
-        _resourceEventMapper = resourceEventMapper,
-        _errorEventMapper = errorEventMapper,
-        _longTaskEventMapper = longTaskEventMapper,
-        _vitalOperationEventMapper = vitalOperationEventMapper;
+  }) : _viewEventMapper = viewEventMapper,
+       _actionEventMapper = actionEventMapper,
+       _resourceEventMapper = resourceEventMapper,
+       _errorEventMapper = errorEventMapper,
+       _longTaskEventMapper = longTaskEventMapper,
+       _vitalOperationEventMapper = vitalOperationEventMapper;
 
   Map<String, dynamic> mapViewEvent(Map<String, dynamic> viewEventJson) {
     if (_viewEventMapper case final mapper?) {
@@ -87,8 +87,9 @@ abstract class RumMapperProxy {
     Map<String, dynamic> vitalOperationEventJson,
   ) {
     if (_vitalOperationEventMapper case final mapper?) {
-      final vitalOperationEvent =
-          RumVitalOperationStepEvent.fromJson(vitalOperationEventJson);
+      final vitalOperationEvent = RumVitalOperationStepEvent.fromJson(
+        vitalOperationEventJson,
+      );
       final mappedEvent = mapper(vitalOperationEvent);
       return mappedEvent?.toJson();
     }

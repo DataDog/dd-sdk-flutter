@@ -18,12 +18,17 @@ Future<void> performUserInteractions(WidgetTester tester) async {
   await tester.tap(startButton);
   await tester.pumpAndSettle();
 
-  final downloadResourceButton =
-      find.widgetWithText(ElevatedButton, 'Download Resource');
+  final downloadResourceButton = find.widgetWithText(
+    ElevatedButton,
+    'Download Resource',
+  );
   await tester.tap(downloadResourceButton);
   await tester.pumpAndSettle();
-  await tester.waitFor(downloadResourceButton, const Duration(seconds: 2),
-      (e) => (e.widget as ElevatedButton).enabled);
+  await tester.waitFor(
+    downloadResourceButton,
+    const Duration(seconds: 2),
+    (e) => (e.widget as ElevatedButton).enabled,
+  );
 
   final userActionButton = find.widgetWithText(ElevatedButton, 'User Action');
   await tester.tap(userActionButton);
@@ -40,8 +45,11 @@ Future<void> performUserInteractions(WidgetTester tester) async {
 
   await tester.tap(downloadResourceButton);
   await tester.pumpAndSettle();
-  await tester.waitFor(downloadResourceButton, const Duration(seconds: 2),
-      (e) => (e.widget as ElevatedButton).enabled);
+  await tester.waitFor(
+    downloadResourceButton,
+    const Duration(seconds: 2),
+    (e) => (e.widget as ElevatedButton).enabled,
+  );
   await tester.tap(userActionButton);
   await tester.pumpAndSettle();
 
@@ -63,23 +71,22 @@ void main() {
 
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
-    await recordedSession.pollSessionRequests(
-      const Duration(seconds: 80),
-      (requests) {
-        requestLog.addAll(requests);
-        requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
-          dynamic jsonValue = json.decode(e);
-          if (jsonValue is Map<String, Object?>) {
-            final rumEvent = RumEventDecoder.fromJson(jsonValue);
-            if (rumEvent != null) {
-              rumLog.add(rumEvent);
-            }
+    await recordedSession.pollSessionRequests(const Duration(seconds: 80), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
+        dynamic jsonValue = json.decode(e);
+        if (jsonValue is Map<String, Object?>) {
+          final rumEvent = RumEventDecoder.fromJson(jsonValue);
+          if (rumEvent != null) {
+            rumLog.add(rumEvent);
           }
-        });
-        return RumSessionDecoder.fromEvents(rumLog).visits.length >=
-            (kIsWeb ? 5 : 3);
-      },
-    );
+        }
+      });
+      return RumSessionDecoder.fromEvents(rumLog).visits.length >=
+          (kIsWeb ? 5 : 3);
+    });
 
     final sessions = RumSessionDecoder.fromEvents(rumLog);
     expect(sessions.visits.length, 3);
@@ -95,11 +102,15 @@ void main() {
       expect(viewEvent.rumEvent['session']['id'], firstSession);
     }
     expect(
-        firstVisit.viewEvents.last.rumEvent['session']['is_active'], isFalse);
+      firstVisit.viewEvents.last.rumEvent['session']['is_active'],
+      isFalse,
+    );
 
     expect(firstVisit.resourceEvents.length, 1);
     expect(
-        firstVisit.resourceEvents[0].rumEvent['session']['id'], firstSession);
+      firstVisit.resourceEvents[0].rumEvent['session']['id'],
+      firstSession,
+    );
     expect(firstVisit.actionEvents.length, 1);
     expect(firstVisit.actionEvents[0].rumEvent['session']['id'], firstSession);
 
@@ -108,13 +119,19 @@ void main() {
       expect(viewEvent.rumEvent['session']['id'], secondSession);
     }
     expect(
-        secondVisit.viewEvents.last.rumEvent['session']['is_active'], isTrue);
+      secondVisit.viewEvents.last.rumEvent['session']['is_active'],
+      isTrue,
+    );
 
     expect(secondVisit.resourceEvents.length, 1);
     expect(
-        secondVisit.resourceEvents[0].rumEvent['session']['id'], secondSession);
+      secondVisit.resourceEvents[0].rumEvent['session']['id'],
+      secondSession,
+    );
     expect(secondVisit.actionEvents.length, 1);
     expect(
-        secondVisit.actionEvents[0].rumEvent['session']['id'], secondSession);
+      secondVisit.actionEvents[0].rumEvent['session']['id'],
+      secondSession,
+    );
   });
 }

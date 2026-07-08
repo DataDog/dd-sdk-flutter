@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
         builder: (context, state) {
           return const InAppBrowserExample();
         },
-      )
+      ),
     ],
   );
 
@@ -43,8 +43,8 @@ class MyApp extends StatelessWidget {
       child: MaterialApp.router(
         title: 'InAppWebview Examples',
         theme: ThemeData.from(
-            colorScheme:
-                ColorScheme.fromSwatch(primarySwatch: Colors.deepPurple)),
+          colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.deepPurple),
+        ),
         routerConfig: router,
       ),
     );

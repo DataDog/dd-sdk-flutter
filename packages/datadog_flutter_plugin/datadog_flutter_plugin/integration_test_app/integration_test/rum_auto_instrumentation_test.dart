@@ -37,28 +37,29 @@ void main() {
   // scenario with instrumentation enabled, then checks that we got the expected
   // calls.
   testWidgets('test auto instrumentation', (WidgetTester tester) async {
-    var serverRecorder = await openTestScenario(tester,
-        scenarioName: autoInstrumentationScenarioName);
+    var serverRecorder = await openTestScenario(
+      tester,
+      scenarioName: autoInstrumentationScenarioName,
+    );
 
     await performRumUserFlow(tester);
 
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
-    await serverRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        for (var request in requests) {
-          request.data.split('\n').forEach((e) {
-            dynamic jsonValue = json.decode(e);
-            if (jsonValue is Map<String, dynamic>) {
-              rumLog.add(RumEventDecoder(jsonValue));
-            }
-          });
-        }
-        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
-      },
-    );
+    await serverRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      for (var request in requests) {
+        request.data.split('\n').forEach((e) {
+          dynamic jsonValue = json.decode(e);
+          if (jsonValue is Map<String, dynamic>) {
+            rumLog.add(RumEventDecoder(jsonValue));
+          }
+        });
+      }
+      return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
+    });
 
     final session = RumSessionDecoder.fromEvents(rumLog);
     expect(session.visits.length, 3);
@@ -97,8 +98,10 @@ void main() {
       expect(firstBuildComplete, greaterThan(tenMsInNs));
 
       // INV should be at least 10 milliseconds later, as the tap action also takes up 10 ms
-      expect(view2.viewEvents.last.inv,
-          greaterThan(firstBuildComplete! + tenMsInNs));
+      expect(
+        view2.viewEvents.last.inv,
+        greaterThan(firstBuildComplete! + tenMsInNs),
+      );
     }
 
     var actionEvent2 = view2.actionEvents[0];

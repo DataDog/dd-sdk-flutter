@@ -1,30 +1,41 @@
 PODS:
-  - datadog_flutter_plugin (0.0.1):
-    - DatadogCore (~> 2)
-    - DatadogCrashReporting (~> 2)
-    - DatadogInternal (~> 2)
-    - DatadogLogs (~> 2)
-    - DatadogRUM (~> 2)
+  - datadog_flutter_plugin_ios (0.0.1):
+    - DatadogCore (~> 3)
+    - DatadogCrashReporting (~> 3)
+    - DatadogInternal (~> 3)
+    - DatadogLogs (~> 3)
+    - DatadogRUM (~> 3)
     - DictionaryCoder (= 1.2.0)
     - Flutter
-  - DatadogCore (2.30.2):
-    - DatadogInternal (= 2.30.2)
-  - DatadogCrashReporting (2.30.2):
-    - DatadogInternal (= 2.30.2)
-    - PLCrashReporter (~> 1.12.0)
-  - DatadogInternal (2.30.2)
-  - DatadogLogs (2.30.2):
-    - DatadogInternal (= 2.30.2)
-  - DatadogRUM (2.30.2):
-    - DatadogInternal (= 2.30.2)
+  - DatadogCore (3.12.0):
+    - DatadogInternal (= 3.12.0)
+  - DatadogCrashReporting (3.12.0):
+    - DatadogInternal (= 3.12.0)
+    - KSCrash/Filters (= 2.5.0)
+    - KSCrash/Recording (= 2.5.0)
+  - DatadogInternal (3.12.0)
+  - DatadogLogs (3.12.0):
+    - DatadogInternal (= 3.12.0)
+  - DatadogRUM (3.12.0):
+    - DatadogInternal (= 3.12.0)
   - DictionaryCoder (1.2.0)
   - Flutter (1.0.0)
   - integration_test (0.0.1):
     - Flutter
-  - PLCrashReporter (1.12.0)
+  - KSCrash/Core (2.5.0)
+  - KSCrash/Filters (2.5.0):
+    - KSCrash/Recording
+    - KSCrash/RecordingCore
+    - KSCrash/ReportingCore
+  - KSCrash/Recording (2.5.0):
+    - KSCrash/RecordingCore
+  - KSCrash/RecordingCore (2.5.0):
+    - KSCrash/Core
+  - KSCrash/ReportingCore (2.5.0):
+    - KSCrash/Core
 
 DEPENDENCIES:
-  - datadog_flutter_plugin (from `.symlinks/plugins/datadog_flutter_plugin/ios`)
+  - datadog_flutter_plugin_ios (from `.symlinks/plugins/datadog_flutter_plugin_ios/ios`)
   - Flutter (from `Flutter`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
 
@@ -36,27 +47,27 @@ SPEC REPOS:
     - DatadogLogs
     - DatadogRUM
     - DictionaryCoder
-    - PLCrashReporter
+    - KSCrash
 
 EXTERNAL SOURCES:
-  datadog_flutter_plugin:
-    :path: ".symlinks/plugins/datadog_flutter_plugin/ios"
+  datadog_flutter_plugin_ios:
+    :path: ".symlinks/plugins/datadog_flutter_plugin_ios/ios"
   Flutter:
     :path: Flutter
   integration_test:
     :path: ".symlinks/plugins/integration_test/ios"
 
 SPEC CHECKSUMS:
-  datadog_flutter_plugin: dae31b2f0e5755d091601d8c8108fe86528085fd
-  DatadogCore: 8e50ad6cb68343f701707f7eeca16e0acb52ed8c
-  DatadogCrashReporting: 34763d4276d4fce286c7e8729cfcd2ac04dca43b
-  DatadogInternal: bd8672d506a7e67936ed5f7ca612169e49029b44
-  DatadogLogs: d683aa9e0c9339f5ae679ead70bbdbe41cdc32f6
-  DatadogRUM: 8b794aa458e6323ea9b1cef3f820fd3d092cbe27
+  datadog_flutter_plugin_ios: 10996273528b840f9bbb30b4c14f364e38fbe126
+  DatadogCore: 21027a92b720b7860c0b450cde4dec2e7d06c42a
+  DatadogCrashReporting: 34fccdac1b5df7b2173d10017270c25d050e3a19
+  DatadogInternal: acde40825dbe79faac53ba54d8ca742e07b88cdd
+  DatadogLogs: 804ccdfdc7e854645fd7b5997b7c961bbd6f5916
+  DatadogRUM: 2aaf4f410dde48d28d9150deff807fa6339b197d
   DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
-  PLCrashReporter: db59ef96fa3d25f3650040d02ec2798cffee75f2
+  KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
 
 PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
 

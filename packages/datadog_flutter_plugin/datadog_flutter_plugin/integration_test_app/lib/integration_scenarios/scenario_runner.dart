@@ -42,8 +42,10 @@ RumResourceEvent? mapRumResourceEvent(RumResourceEvent event) {
 
 RumErrorEvent? mapRumErrorEvent(RumErrorEvent event) {
   if (event.error.resource != null) {
-    event.error.resource?.url =
-        event.error.resource!.url.replaceAll('fake_url', 'my_url');
+    event.error.resource?.url = event.error.resource!.url.replaceAll(
+      'fake_url',
+      'my_url',
+    );
   }
   if (event.error.fingerprint == 'custom-fingerprint') {
     event.error.fingerprint = 'mapped fingerprint';
@@ -99,8 +101,9 @@ Future<void> runScenario({
         : null,
   )..additionalConfig['_dd.needsClearTextHttp'] = true;
   if (testingConfiguration?.additionalConfig != null) {
-    configuration.additionalConfig
-        .addAll(testingConfiguration!.additionalConfig);
+    configuration.additionalConfig.addAll(
+      testingConfiguration!.additionalConfig,
+    );
   }
 
   if (testingConfiguration?.scenario == mappedInstrumentationScenarioName) {
@@ -141,9 +144,7 @@ class DatadogIntegrationTestApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue),
       navigatorObservers: [routeObserver],
       home: const IntegrationScenariosScreen(),
     );

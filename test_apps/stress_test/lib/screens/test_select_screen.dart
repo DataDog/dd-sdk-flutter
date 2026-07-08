@@ -26,8 +26,10 @@ class _TestSelectScreenState extends State<TestSelectScreen>
             title: const Text('Large Payload Test'),
             trailing: const Icon(Icons.arrow_right_sharp),
             onTap: () {
-              Navigator.push<void>(context,
-                  MaterialPageRoute(builder: (_) => const LargePayloadTest()));
+              Navigator.push<void>(
+                context,
+                MaterialPageRoute(builder: (_) => const LargePayloadTest()),
+              );
             },
           ),
           ListTile(
@@ -39,7 +41,7 @@ class _TestSelectScreenState extends State<TestSelectScreen>
             title: const Text('Large Payload + High Frequency'),
             trailing: const Icon(Icons.arrow_right_sharp),
             onTap: () {},
-          )
+          ),
         ],
       ),
     );

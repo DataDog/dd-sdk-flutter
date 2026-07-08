@@ -2,25 +2,24 @@ import UIKit
 import Flutter
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
     var methodChannel: FlutterMethodChannel!
 
     override func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        GeneratedPluginRegistrant.register(with: self)
+        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
 
-        guard let controller = window?.rootViewController as? FlutterViewController else {
-            return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-        }
+    func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+        GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
         methodChannel = FlutterMethodChannel(name: "com.datadog.crash_channel",
-                                                    binaryMessenger: controller.binaryMessenger)
+                                                    binaryMessenger: engineBridge.applicationRegistrar.messenger())
         methodChannel.setMethodCallHandler { call, result in
             try? self.handle(methodCall: call, result: result)
         }
-
-        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 
     func handle(methodCall: FlutterMethodCall, result: FlutterResult) throws {

@@ -690,8 +690,9 @@ void main() {
           return http.Response(
             jsonEncode(
               _assignmentsResponse(
-                booleanVariationKey:
-                    precomputeRequestCount.isOdd ? 'enabled' : 'disabled',
+                booleanVariationKey: precomputeRequestCount.isOdd
+                    ? 'enabled'
+                    : 'disabled',
                 booleanValue: precomputeRequestCount.isOdd,
               ),
             ),
@@ -822,8 +823,8 @@ void main() {
 
     final request = _evaluationRequests(requests).single;
     final body = jsonDecode(request.body) as Map<String, Object?>;
-    final evaluations =
-        (body['flagEvaluations'] as List<Object?>).cast<Map<String, Object?>>();
+    final evaluations = (body['flagEvaluations'] as List<Object?>)
+        .cast<Map<String, Object?>>();
 
     final evaluation = evaluations.single;
     expect(evaluation['flag'], {'key': 'show-paywall'});
@@ -911,37 +912,39 @@ void main() {
     expect(_evaluationRequests(requests), hasLength(2));
   });
 
-  test('drops flag evaluation emission after a non-retryable client error',
-      () async {
-    final requests = <http.Request>[];
-    var evaluationAttempt = 0;
-    final client = await _createClient(
-      requests: requests,
-      trackExposures: false,
-      trackEvaluations: true,
-      httpClient: MockClient((request) async {
-        requests.add(request);
-        if (request.url.path == '/precompute-assignments') {
-          return http.Response(jsonEncode(_assignmentsResponse()), 200);
-        }
-        if (request.url.path == '/api/v2/flagevaluation') {
-          evaluationAttempt += 1;
-          return http.Response('{"error":"invalid token"}', 403);
-        }
-        return http.Response('{"error":"unexpected"}', 404);
-      }),
-    );
-    await client.initialize(
-      const FlagsEvaluationContext(targetingKey: 'user-123'),
-    );
+  test(
+    'drops flag evaluation emission after a non-retryable client error',
+    () async {
+      final requests = <http.Request>[];
+      var evaluationAttempt = 0;
+      final client = await _createClient(
+        requests: requests,
+        trackExposures: false,
+        trackEvaluations: true,
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          if (request.url.path == '/precompute-assignments') {
+            return http.Response(jsonEncode(_assignmentsResponse()), 200);
+          }
+          if (request.url.path == '/api/v2/flagevaluation') {
+            evaluationAttempt += 1;
+            return http.Response('{"error":"invalid token"}', 403);
+          }
+          return http.Response('{"error":"unexpected"}', 404);
+        }),
+      );
+      await client.initialize(
+        const FlagsEvaluationContext(targetingKey: 'user-123'),
+      );
 
-    client.getBooleanDetails(key: 'show-paywall', defaultValue: false);
-    await client.shutdown();
-    await client.shutdown();
+      client.getBooleanDetails(key: 'show-paywall', defaultValue: false);
+      await client.shutdown();
+      await client.shutdown();
 
-    expect(evaluationAttempt, 1);
-    expect(_evaluationRequests(requests), hasLength(1));
-  });
+      expect(evaluationAttempt, 1);
+      expect(_evaluationRequests(requests), hasLength(1));
+    },
+  );
 
   test('keeps flag evaluations recorded while upload is in flight', () async {
     addTearDown(() {
@@ -985,51 +988,54 @@ void main() {
     await client.shutdown();
 
     expect(_evaluationRequests(requests), hasLength(2));
-    final secondBody = jsonDecode(_evaluationRequests(requests).last.body)
-        as Map<String, Object?>;
+    final secondBody =
+        jsonDecode(_evaluationRequests(requests).last.body)
+            as Map<String, Object?>;
     final secondEvaluations = (secondBody['flagEvaluations'] as List<Object?>)
         .cast<Map<String, Object?>>();
     expect(secondEvaluations.single['flag'], {'key': 'theme'});
   });
 
-  test('bounds shutdown when a flag evaluation upload does not complete',
-      () async {
-    addTearDown(() {
-      EvaluationAggregator.uploadTimeout =
-          EvaluationAggregator.defaultUploadTimeout;
-    });
-    EvaluationAggregator.uploadTimeout = const Duration(milliseconds: 1);
+  test(
+    'bounds shutdown when a flag evaluation upload does not complete',
+    () async {
+      addTearDown(() {
+        EvaluationAggregator.uploadTimeout =
+            EvaluationAggregator.defaultUploadTimeout;
+      });
+      EvaluationAggregator.uploadTimeout = const Duration(milliseconds: 1);
 
-    final requests = <http.Request>[];
-    final evaluationResponse = Completer<http.Response>();
-    final client = await _createClient(
-      requests: requests,
-      trackExposures: false,
-      trackEvaluations: true,
-      httpClient: MockClient((request) async {
-        requests.add(request);
-        if (request.url.path == '/precompute-assignments') {
-          return http.Response(jsonEncode(_assignmentsResponse()), 200);
-        }
-        if (request.url.path == '/api/v2/flagevaluation') {
-          return evaluationResponse.future;
-        }
-        return http.Response('{"error":"unexpected"}', 404);
-      }),
-    );
-    await client.initialize(
-      const FlagsEvaluationContext(targetingKey: 'user-123'),
-    );
-    client.getBooleanDetails(key: 'show-paywall', defaultValue: false);
+      final requests = <http.Request>[];
+      final evaluationResponse = Completer<http.Response>();
+      final client = await _createClient(
+        requests: requests,
+        trackExposures: false,
+        trackEvaluations: true,
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          if (request.url.path == '/precompute-assignments') {
+            return http.Response(jsonEncode(_assignmentsResponse()), 200);
+          }
+          if (request.url.path == '/api/v2/flagevaluation') {
+            return evaluationResponse.future;
+          }
+          return http.Response('{"error":"unexpected"}', 404);
+        }),
+      );
+      await client.initialize(
+        const FlagsEvaluationContext(targetingKey: 'user-123'),
+      );
+      client.getBooleanDetails(key: 'show-paywall', defaultValue: false);
 
-    await expectLater(
-      client.shutdown().timeout(const Duration(seconds: 1)),
-      completes,
-    );
+      await expectLater(
+        client.shutdown().timeout(const Duration(seconds: 1)),
+        completes,
+      );
 
-    expect(evaluationResponse.isCompleted, isFalse);
-    expect(_evaluationRequests(requests), hasLength(1));
-  });
+      expect(evaluationResponse.isCompleted, isFalse);
+      expect(_evaluationRequests(requests), hasLength(1));
+    },
+  );
 
   test('uses matching stored assignments while live refresh runs', () async {
     final store = InMemoryDatadogFlagsStore();
@@ -1100,73 +1106,82 @@ void main() {
     );
   });
 
-  test('does not replace current assignments with matching stored assignments',
-      () async {
-    final store = InMemoryDatadogFlagsStore();
-    final requests = <http.Request>[];
-    final liveResponse = Completer<http.Response>();
-    var precomputeRequests = 0;
-    final datadogFlags = DatadogFlags();
-    addTearDown(datadogFlags.disable);
-    await datadogFlags.enable(
-      configuration: DatadogFlagsConfiguration(
-        datadogConfig: _datadogConfig(),
-        trackExposures: false,
-        trackEvaluations: false,
-        httpClient: MockClient((request) {
-          requests.add(request);
-          precomputeRequests += 1;
-          if (precomputeRequests == 1) {
-            return Future.value(
-              http.Response(jsonEncode(_assignmentsResponse()), 200),
-            );
-          }
-          return liveResponse.future;
+  test(
+    'does not replace current assignments with matching stored assignments',
+    () async {
+      final store = InMemoryDatadogFlagsStore();
+      final requests = <http.Request>[];
+      final liveResponse = Completer<http.Response>();
+      var precomputeRequests = 0;
+      final datadogFlags = DatadogFlags();
+      addTearDown(datadogFlags.disable);
+      await datadogFlags.enable(
+        configuration: DatadogFlagsConfiguration(
+          datadogConfig: _datadogConfig(),
+          trackExposures: false,
+          trackEvaluations: false,
+          httpClient: MockClient((request) {
+            requests.add(request);
+            precomputeRequests += 1;
+            if (precomputeRequests == 1) {
+              return Future.value(
+                http.Response(jsonEncode(_assignmentsResponse()), 200),
+              );
+            }
+            return liveResponse.future;
+          }),
+          store: store,
+        ),
+      );
+      const context = FlagsEvaluationContext(targetingKey: 'user-123');
+      final client = datadogFlags.sharedClient();
+
+      await client.initialize(context);
+      expect(
+        client
+            .getBooleanDetails(key: 'show-paywall', defaultValue: false)
+            .value,
+        isTrue,
+      );
+
+      await store.write(
+        DatadogFlags.defaultClientName,
+        FlagsData.fromJson({
+          'flags': {
+            'show-paywall': _assignment(
+              allocationKey: 'stale-allocation',
+              variationKey: 'disabled',
+              variationType: 'boolean',
+              variationValue: false,
+            ),
+          },
+          'context': context.toJson(),
+          'date': DateTime.utc(2026, 6, 23).toIso8601String(),
         }),
-        store: store,
-      ),
-    );
-    const context = FlagsEvaluationContext(targetingKey: 'user-123');
-    final client = datadogFlags.sharedClient();
+      );
 
-    await client.initialize(context);
-    expect(
-      client.getBooleanDetails(key: 'show-paywall', defaultValue: false).value,
-      isTrue,
-    );
+      final refresh = client.initialize(context);
+      await _waitUntil(() => requests.length == 2);
+      expect(
+        client
+            .getBooleanDetails(key: 'show-paywall', defaultValue: false)
+            .value,
+        isTrue,
+      );
 
-    await store.write(
-      DatadogFlags.defaultClientName,
-      FlagsData.fromJson({
-        'flags': {
-          'show-paywall': _assignment(
-            allocationKey: 'stale-allocation',
-            variationKey: 'disabled',
-            variationType: 'boolean',
-            variationValue: false,
-          ),
-        },
-        'context': context.toJson(),
-        'date': DateTime.utc(2026, 6, 23).toIso8601String(),
-      }),
-    );
-
-    final refresh = client.initialize(context);
-    await _waitUntil(() => requests.length == 2);
-    expect(
-      client.getBooleanDetails(key: 'show-paywall', defaultValue: false).value,
-      isTrue,
-    );
-
-    liveResponse.complete(
-      http.Response(jsonEncode(_assignmentsResponse(booleanValue: false)), 200),
-    );
-    await refresh;
-    expect(
-      client.getBooleanDetails(key: 'show-paywall', defaultValue: true).value,
-      isFalse,
-    );
-  });
+      liveResponse.complete(
+        http.Response(
+          jsonEncode(_assignmentsResponse(booleanValue: false)),
+          200,
+        ),
+      );
+      await refresh;
+      expect(
+        client.getBooleanDetails(key: 'show-paywall', defaultValue: true).value,
+        isFalse,
+      );
+    },
+  );
 
   test('ignores stored assignments for a different context', () async {
     final store = InMemoryDatadogFlagsStore();
@@ -1223,39 +1238,42 @@ void main() {
   });
 
   test(
-      'reset clears memory and stored assignments without shutting down client',
-      () async {
-    final store = InMemoryDatadogFlagsStore();
-    final requests = <http.Request>[];
-    final datadogFlags = DatadogFlags();
-    addTearDown(datadogFlags.disable);
-    await datadogFlags.enable(
-      configuration: DatadogFlagsConfiguration(
-        datadogConfig: _datadogConfig(),
-        trackExposures: false,
-        trackEvaluations: true,
-        evaluationFlushInterval: const Duration(seconds: 1),
-        httpClient: _clientWithResponse(requests, _assignmentsResponse()),
-        store: store,
-      ),
-    );
-    final client = datadogFlags.sharedClient();
-    const context = FlagsEvaluationContext(targetingKey: 'user-123');
-    await client.initialize(context);
-    expect(await store.read(DatadogFlags.defaultClientName), isNotNull);
+    'reset clears memory and stored assignments without shutting down client',
+    () async {
+      final store = InMemoryDatadogFlagsStore();
+      final requests = <http.Request>[];
+      final datadogFlags = DatadogFlags();
+      addTearDown(datadogFlags.disable);
+      await datadogFlags.enable(
+        configuration: DatadogFlagsConfiguration(
+          datadogConfig: _datadogConfig(),
+          trackExposures: false,
+          trackEvaluations: true,
+          evaluationFlushInterval: const Duration(seconds: 1),
+          httpClient: _clientWithResponse(requests, _assignmentsResponse()),
+          store: store,
+        ),
+      );
+      final client = datadogFlags.sharedClient();
+      const context = FlagsEvaluationContext(targetingKey: 'user-123');
+      await client.initialize(context);
+      expect(await store.read(DatadogFlags.defaultClientName), isNotNull);
 
-    await datadogFlags.reset();
+      await datadogFlags.reset();
 
-    expect(await store.read(DatadogFlags.defaultClientName), isNull);
-    expect(
-      client.getBooleanDetails(key: 'show-paywall', defaultValue: false).error,
-      FlagEvaluationError.providerNotReady,
-    );
+      expect(await store.read(DatadogFlags.defaultClientName), isNull);
+      expect(
+        client
+            .getBooleanDetails(key: 'show-paywall', defaultValue: false)
+            .error,
+        FlagEvaluationError.providerNotReady,
+      );
 
-    await client.initialize(context);
-    client.getBooleanDetails(key: 'show-paywall', defaultValue: false);
-    await _waitUntil(() => _evaluationRequests(requests).length == 1);
-  });
+      await client.initialize(context);
+      client.getBooleanDetails(key: 'show-paywall', defaultValue: false);
+      await _waitUntil(() => _evaluationRequests(requests).length == 1);
+    },
+  );
 
   test('reset cancels in-flight assignment refreshes', () async {
     final liveResponse = Completer<http.Response>();
@@ -1280,8 +1298,9 @@ void main() {
     await _waitUntil(() => requests.length == 1);
 
     await datadogFlags.reset();
-    liveResponse
-        .complete(http.Response(jsonEncode(_assignmentsResponse()), 200));
+    liveResponse.complete(
+      http.Response(jsonEncode(_assignmentsResponse()), 200),
+    );
     await initialize;
 
     expect(
@@ -1290,33 +1309,35 @@ void main() {
     );
   });
 
-  test('reset waits for pending store writes before deleting assignments',
-      () async {
-    final store = _DelayedWriteStore();
-    final requests = <http.Request>[];
-    final datadogFlags = DatadogFlags();
-    addTearDown(datadogFlags.disable);
-    await datadogFlags.enable(
-      configuration: DatadogFlagsConfiguration(
-        datadogConfig: _datadogConfig(),
-        trackExposures: false,
-        trackEvaluations: false,
-        httpClient: _clientWithResponse(requests, _assignmentsResponse()),
-        store: store,
-      ),
-    );
-    final initialize = datadogFlags
-        .sharedClient()
-        .initialize(const FlagsEvaluationContext(targetingKey: 'user-123'));
+  test(
+    'reset waits for pending store writes before deleting assignments',
+    () async {
+      final store = _DelayedWriteStore();
+      final requests = <http.Request>[];
+      final datadogFlags = DatadogFlags();
+      addTearDown(datadogFlags.disable);
+      await datadogFlags.enable(
+        configuration: DatadogFlagsConfiguration(
+          datadogConfig: _datadogConfig(),
+          trackExposures: false,
+          trackEvaluations: false,
+          httpClient: _clientWithResponse(requests, _assignmentsResponse()),
+          store: store,
+        ),
+      );
+      final initialize = datadogFlags.sharedClient().initialize(
+        const FlagsEvaluationContext(targetingKey: 'user-123'),
+      );
 
-    await store.writeStarted.future;
-    final reset = datadogFlags.reset();
-    store.allowWrite.complete();
+      await store.writeStarted.future;
+      final reset = datadogFlags.reset();
+      store.allowWrite.complete();
 
-    await initialize;
-    await reset;
-    expect(await store.read(DatadogFlags.defaultClientName), isNull);
-  });
+      await initialize;
+      await reset;
+      expect(await store.read(DatadogFlags.defaultClientName), isNull);
+    },
+  );
 
   test('unsupported context attributes miss cache without throwing', () async {
     final store = InMemoryDatadogFlagsStore();

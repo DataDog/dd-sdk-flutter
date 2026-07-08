@@ -101,8 +101,9 @@ Map<String, String> _deconstructBaggageHeader(
             properties.add(rawProperty);
           } else {
             final propertyKey = rawProperty.substring(0, firstEqualsIndex);
-            final propertyValue =
-                rawProperty.substring(firstEqualsIndex + 1).trim();
+            final propertyValue = rawProperty
+                .substring(firstEqualsIndex + 1)
+                .trim();
             if (!_baggageTokenRegExp.hasMatch(propertyKey)) {
               logger.warn(
                 'Invalid baggage header entry "$rawProperty". Key not compliant to RFC 7230 grammar.',

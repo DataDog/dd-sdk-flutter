@@ -25,8 +25,9 @@ void main() async {
   configureUrlStrategy();
 
   DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
-  final siteConfig =
-      FlagsExampleSiteConfig.fromName(dotenv.maybeGet('DD_SITE'));
+  final siteConfig = FlagsExampleSiteConfig.fromName(
+    dotenv.maybeGet('DD_SITE'),
+  );
   final clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
   final env = dotenv.get('DD_ENV', fallback: '');
   final applicationId = dotenv.get('DD_APPLICATION_ID', fallback: '');
@@ -37,47 +38,46 @@ void main() async {
     applicationId: applicationId,
   );
 
-  final datadogConfig = DatadogConfiguration(
-    clientToken: clientToken,
-    env: env,
-    site: siteConfig.datadogSite,
-    loggingConfiguration: DatadogLoggingConfiguration(
-      customEndpoint: siteConfig.logsCustomEndpoint,
-    ),
-    firstPartyHosts: ['localhost'],
-    rumConfiguration: DatadogRumConfiguration(
-      applicationId: applicationId,
-      customEndpoint: siteConfig.rumCustomEndpoint,
-      traceSampleRate: 100.0,
-      trackResourceHeaders: ResourceHeadersExtractor(
-        captureHeaders: [
-          'accept-ranges',
-          'content-disposition',
-          'server',
-          'user-agent',
-          'via',
-          'x-cache-hits',
-          'x-served-by',
-          'x-datadog-trace-id',
-          'x-datadog-parent-id',
-          'x-datadog-origin',
-          'traceparent',
-        ],
-      ),
-    ),
-  )
-    ..enableHttpTracking(
-      // Using ignoreUrlPatterns is needed if you want to combine HttpClient
-      // tracking and GraphQL tracking through datadog_gql_link
-      ignoreUrlPatterns: [
-        RegExp('localhost'),
-      ],
-    )
-    ..addPlugin(
-      DatadogFlagsPluginConfiguration(
-        flagsConfiguration: flagsConfig.configuration,
-      ),
-    );
+  final datadogConfig =
+      DatadogConfiguration(
+          clientToken: clientToken,
+          env: env,
+          site: siteConfig.datadogSite,
+          loggingConfiguration: DatadogLoggingConfiguration(
+            customEndpoint: siteConfig.logsCustomEndpoint,
+          ),
+          firstPartyHosts: ['localhost'],
+          rumConfiguration: DatadogRumConfiguration(
+            applicationId: applicationId,
+            customEndpoint: siteConfig.rumCustomEndpoint,
+            traceSampleRate: 100.0,
+            trackResourceHeaders: ResourceHeadersExtractor(
+              captureHeaders: [
+                'accept-ranges',
+                'content-disposition',
+                'server',
+                'user-agent',
+                'via',
+                'x-cache-hits',
+                'x-served-by',
+                'x-datadog-trace-id',
+                'x-datadog-parent-id',
+                'x-datadog-origin',
+                'traceparent',
+              ],
+            ),
+          ),
+        )
+        ..enableHttpTracking(
+          // Using ignoreUrlPatterns is needed if you want to combine HttpClient
+          // tracking and GraphQL tracking through datadog_gql_link
+          ignoreUrlPatterns: [RegExp('localhost')],
+        )
+        ..addPlugin(
+          DatadogFlagsPluginConfiguration(
+            flagsConfiguration: flagsConfig.configuration,
+          ),
+        );
 
   if (siteConfig.sessionReplayEnabled) {
     datadogConfig.enableSessionReplay(
@@ -117,10 +117,7 @@ Future<void> runUsingAlternativeInit(
   ]);
 
   final graphQlClient = GraphQLClient(link: link, cache: GraphQLCache());
-  runApp(MyApp(
-    graphQLClient: graphQlClient,
-    flagsConfig: flagsConfig,
-  ));
+  runApp(MyApp(graphQLClient: graphQlClient, flagsConfig: flagsConfig));
 }
 
 Future<void> runUsingRunApp(
@@ -134,9 +131,6 @@ Future<void> runUsingRunApp(
     ]);
     final graphQlClient = GraphQLClient(link: link, cache: GraphQLCache());
 
-    runApp(MyApp(
-      graphQLClient: graphQlClient,
-      flagsConfig: flagsConfig,
-    ));
+    runApp(MyApp(graphQLClient: graphQlClient, flagsConfig: flagsConfig));
   });
 }

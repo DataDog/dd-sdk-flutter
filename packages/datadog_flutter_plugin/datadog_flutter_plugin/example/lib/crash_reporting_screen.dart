@@ -12,8 +12,9 @@ typedef CrashPluginCallback = void Function(String callbackValue);
 
 /// Helper class to crash in native code
 class NativeCrashPlugin {
-  final _methodChannel =
-      const MethodChannel('datadog_sdk_flutter.example.crash');
+  final _methodChannel = const MethodChannel(
+    'datadog_sdk_flutter.example.crash',
+  );
 
   int nextCallbackId = 0;
   final Map<int, CrashPluginCallback> _callbacks = {};
@@ -35,12 +36,9 @@ class NativeCrashPlugin {
     _callbacks[callbackID] = callback;
     nextCallbackId += 1;
 
-    return _methodChannel.invokeMethod(
-      'performCallback',
-      {
-        'callbackId': callbackID,
-      },
-    );
+    return _methodChannel.invokeMethod('performCallback', {
+      'callbackId': callbackID,
+    });
   }
 
   void crashNativeFfi(int value) {
@@ -166,7 +164,8 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
       case CrashType.methodChannelCallbackException:
         await nativeCrashPlugin.performCallback((callbackValue) {
           throw Exception(
-              'Method Channel Callback Exception - with value $callbackValue');
+            'Method Channel Callback Exception - with value $callbackValue',
+          );
         });
         break;
       case CrashType.ffiCrash:
@@ -179,7 +178,8 @@ class _CrashReportingScreenState extends State<CrashReportingScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                  'Native callback threw, returned default value of $value'),
+                'Native callback threw, returned default value of $value',
+              ),
             ),
           );
         }

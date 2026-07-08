@@ -4,15 +4,15 @@ version: 1.0.0
 publish_to: none
 
 environment:
-  sdk: ^3.6.0
+  sdk: ^3.10.0
 
 # Add regular dependencies here.
 dependencies:
   args: ^2.5.0
   collection: ^1.18.0
-  http: ^1.2.1
+  http: ^1.6.0
   path: ^1.8.0
 
 dev_dependencies:
-  lints: ^4.0.0
+  lints: ^6.1.0
   test: ^1.21.0  

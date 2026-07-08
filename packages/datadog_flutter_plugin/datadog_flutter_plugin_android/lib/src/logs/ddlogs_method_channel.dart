@@ -22,7 +22,9 @@ class DdLogsMethodChannel extends DdLogsPlatform {
 
   @override
   Future<void> enable(
-      InternalLogger logger, DatadogLoggingConfiguration config) {
+    InternalLogger logger,
+    DatadogLoggingConfiguration config,
+  ) {
     _mapperProxy = AndroidLogEventMapper(config, logger);
 
     return methodChannel.invokeMethod('enable', {

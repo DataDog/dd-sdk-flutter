@@ -1,4 +1,12 @@
 PODS:
+  - datadog_flutter_plugin_ios (0.0.1):
+    - DatadogCore (~> 3)
+    - DatadogCrashReporting (~> 3)
+    - DatadogInternal (~> 3)
+    - DatadogLogs (~> 3)
+    - DatadogRUM (~> 3)
+    - DictionaryCoder (= 1.2.0)
+    - Flutter
   - DatadogCore (3.10.0):
     - DatadogInternal (= 3.10.0)
   - DatadogCrashReporting (3.10.0):
@@ -10,7 +18,10 @@ PODS:
     - DatadogInternal (= 3.10.0)
   - DatadogRUM (3.10.0):
     - DatadogInternal (= 3.10.0)
+  - DictionaryCoder (1.2.0)
   - Flutter (1.0.0)
+  - integration_test (0.0.1):
+    - Flutter
   - KSCrash/Core (2.5.0)
   - KSCrash/Filters (2.5.0):
     - KSCrash/Recording
@@ -22,20 +33,29 @@ PODS:
     - KSCrash/Core
   - KSCrash/ReportingCore (2.5.0):
     - KSCrash/Core
+  - webview_flutter_wkwebview (0.0.1):
+    - Flutter
+    - FlutterMacOS
 
 DEPENDENCIES:
+  - datadog_flutter_plugin_ios (from `.symlinks/plugins/datadog_flutter_plugin_ios/ios`)
   - DatadogCore (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - DatadogCrashReporting (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - DatadogInternal (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - DatadogLogs (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - DatadogRUM (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - Flutter (from `Flutter`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
+  - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
 SPEC REPOS:
   trunk:
+    - DictionaryCoder
     - KSCrash
 
 EXTERNAL SOURCES:
+  datadog_flutter_plugin_ios:
+    :path: ".symlinks/plugins/datadog_flutter_plugin_ios/ios"
   DatadogCore:
     :branch: develop
     :git: https://github.com/DataDog/dd-sdk-ios
@@ -53,6 +73,10 @@ EXTERNAL SOURCES:
     :git: https://github.com/DataDog/dd-sdk-ios
   Flutter:
     :path: Flutter
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
+  webview_flutter_wkwebview:
+    :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
 
 CHECKOUT OPTIONS:
   DatadogCore:
@@ -72,13 +96,17 @@ CHECKOUT OPTIONS:
     :git: https://github.com/DataDog/dd-sdk-ios
 
 SPEC CHECKSUMS:
+  datadog_flutter_plugin_ios: 10996273528b840f9bbb30b4c14f364e38fbe126
   DatadogCore: be0f6c233bef27eda40acade29763943cb88935f
   DatadogCrashReporting: 151f72523ee117000fed4b5e792de2349d38b331
   DatadogInternal: b81d08e4035de78140488b7422c239b17b89d251
   DatadogLogs: 20381f731050c500c85d36f4799cf0f28a56915e
   DatadogRUM: 4f863c5330d85d6b54bb372d830929ad3b5006ab
+  DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
   KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
+  webview_flutter_wkwebview: 29eb20d43355b48fe7d07113835b9128f84e3af4
 
 PODFILE CHECKSUM: ce33cb26ba92ce37a395781050d71b7654d9dc23
 

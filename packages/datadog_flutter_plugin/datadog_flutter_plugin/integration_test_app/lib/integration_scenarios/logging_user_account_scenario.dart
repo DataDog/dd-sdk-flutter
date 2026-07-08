@@ -22,8 +22,9 @@ class _LoggingUserAccountScenarioState
   void initState() {
     super.initState();
 
-    final log =
-        DatadogSdk.instance.logs?.createLogger(DatadogLoggerConfiguration());
+    final log = DatadogSdk.instance.logs?.createLogger(
+      DatadogLoggerConfiguration(),
+    );
 
     log?.info('Log without default user and account information.');
 
@@ -32,20 +33,20 @@ class _LoggingUserAccountScenarioState
 
     // Set a user - same as other users in integration scenarios
     DatadogSdk.instance.setUserInfo(
-        id: 'bits',
-        name: 'Bits Dawoof',
-        email: 'bits@datadoghq.com',
-        extraInfo: {
-          'type': 'dog',
-        });
+      id: 'bits',
+      name: 'Bits Dawoof',
+      email: 'bits@datadoghq.com',
+      extraInfo: {'type': 'dog'},
+    );
     DatadogSdk.instance.addUserExtraInfo({'department': 'data'});
     log?.info('Log with user set, default account information.');
 
     // Set account
     DatadogSdk.instance.setAccountInfo(
-        id: 'bits-account',
-        name: 'Dawoof, Bits',
-        extraInfo: {'type': 'top_dog'});
+      id: 'bits-account',
+      name: 'Dawoof, Bits',
+      extraInfo: {'type': 'top_dog'},
+    );
     DatadogSdk.instance.addAccountExtraInfo({'department': 'fetching'});
     log?.info('User and account set');
 
@@ -61,9 +62,7 @@ class _LoggingUserAccountScenarioState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Logging Scenario'),
-      ),
+      appBar: AppBar(title: const Text('Logging Scenario')),
       body: Container(),
     );
   }

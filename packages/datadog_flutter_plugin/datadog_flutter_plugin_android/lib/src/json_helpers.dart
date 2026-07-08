@@ -28,7 +28,7 @@ JString? safeEncodeJavaJson(
 
   try {
     String json = jsonEncode(encoded);
-    return JString.fromString(json);
+    return json.toJString();
   } catch (e, st) {
     logger.error('Error performing mapping deserialization: $e');
     logger.sendToDatadog(e.toString(), st, e.runtimeType.toString());

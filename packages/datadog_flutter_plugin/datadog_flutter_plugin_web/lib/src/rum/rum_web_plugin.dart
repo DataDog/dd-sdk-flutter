@@ -42,7 +42,10 @@ class RumWebPluginImpl extends RumWebPlugin {
   }
 
   void addEvent(
-      JSNumber time, RumWebRawEvent event, RumWebEventDomainContext context) {
+    JSNumber time,
+    RumWebRawEvent event,
+    RumWebEventDomainContext context,
+  ) {
     _addEvent?.callAsFunction(null, time, event, context, null);
   }
 

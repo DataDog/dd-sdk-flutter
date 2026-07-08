@@ -3,7 +3,7 @@ description: "Demonstrates how to use the datadog_inappwebview_tracking plugin."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 environment:
-  sdk: ^3.5.4
+  sdk: ^3.10.0
 
 dependencies:
   flutter:
@@ -22,7 +22,7 @@ dev_dependencies:
     sdk: flutter
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^6.0.0
   datadog_common_test:
     path: ../../datadog_common_test
 

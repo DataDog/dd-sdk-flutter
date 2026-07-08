@@ -10,10 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('stripPackageFontPrefix', () {
     test('strips packages/<pkg>/ prefix', () {
-      expect(
-        stripPackageFontPrefix('packages/google_fonts/Roboto'),
-        'Roboto',
-      );
+      expect(stripPackageFontPrefix('packages/google_fonts/Roboto'), 'Roboto');
       expect(stripPackageFontPrefix('Roboto'), 'Roboto');
       expect(stripPackageFontPrefix('packages/foo/bar/Baz'), 'bar/Baz');
     });
@@ -102,19 +99,14 @@ void main() {
 
     test('smart: quotes spaces in family names', () {
       final t = FontFamilyTransform(smartConfig);
-      expect(
-        t.transformFamily('Open Sans'),
-        "'Open Sans', sans-serif",
-      );
+      expect(t.transformFamily('Open Sans'), "'Open Sans', sans-serif");
     });
 
     test('smart: rules override before sentinel strip', () {
       final t = FontFamilyTransform(
         FontFamilyTransformConfig(
           strategy: FontFamilyStrategy.smart,
-          rules: {
-            'CupertinoSystemText': 'Inter, sans-serif',
-          },
+          rules: {'CupertinoSystemText': 'Inter, sans-serif'},
         ),
       );
       expect(t.transformFamily('CupertinoSystemText'), 'Inter, sans-serif');
@@ -124,9 +116,7 @@ void main() {
       final t = FontFamilyTransform(
         FontFamilyTransformConfig(
           strategy: FontFamilyStrategy.smart,
-          rules: {
-            'Roboto': 'Lato, sans-serif',
-          },
+          rules: {'Roboto': 'Lato, sans-serif'},
         ),
       );
       expect(
@@ -146,7 +136,9 @@ void main() {
         ),
       );
       expect(
-          t.transformFamily('packages/foo/Roboto'), 'FromPeeled, sans-serif');
+        t.transformFamily('packages/foo/Roboto'),
+        'FromPeeled, sans-serif',
+      );
     });
 
     test('smart: does not append sans-serif when already generic', () {
@@ -181,11 +173,7 @@ void main() {
         width: 10,
         height: 10,
         text: 'hi',
-        textStyle: SRTextStyle(
-          color: '#FF0000FF',
-          family: '',
-          size: 12,
-        ),
+        textStyle: SRTextStyle(color: '#FF0000FF', family: '', size: 12),
       );
       final out = t.apply(w);
       expect(out.textStyle.family, iosStack);

@@ -11,9 +11,12 @@ void main() {
       DatadogInAppWebViewTrackingPlatform.instance;
 
   test(
-      '$MethodChannelDatadogInAppWebViewTracking is the default platform instance',
-      () {
-    expect(initialPlatform,
-        isInstanceOf<MethodChannelDatadogInAppWebViewTracking>());
-  });
+    '$MethodChannelDatadogInAppWebViewTracking is the default platform instance',
+    () {
+      expect(
+        initialPlatform,
+        isInstanceOf<MethodChannelDatadogInAppWebViewTracking>(),
+      );
+    },
+  );
 }

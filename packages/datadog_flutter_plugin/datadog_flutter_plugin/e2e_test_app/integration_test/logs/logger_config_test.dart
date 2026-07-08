@@ -51,8 +51,9 @@ void main() {
   /// ```
   testWidgets('logger config - send network info enabled', (tester) async {
     await initializeDatadog();
-    var logger = datadog.logs
-        ?.createLogger(DatadogLoggerConfiguration(networkInfoEnabled: true));
+    var logger = datadog.logs?.createLogger(
+      DatadogLoggerConfiguration(networkInfoEnabled: true),
+    );
 
     sendRandomLog(logger, tester);
   });
@@ -65,8 +66,9 @@ void main() {
   /// ```
   testWidgets('logger config - bundle with RUM enabled', (tester) async {
     await initializeDatadog();
-    var logger = datadog.logs
-        ?.createLogger(DatadogLoggerConfiguration(bundleWithRumEnabled: true));
+    var logger = datadog.logs?.createLogger(
+      DatadogLoggerConfiguration(bundleWithRumEnabled: true),
+    );
 
     sendRandomLog(logger, tester);
   });

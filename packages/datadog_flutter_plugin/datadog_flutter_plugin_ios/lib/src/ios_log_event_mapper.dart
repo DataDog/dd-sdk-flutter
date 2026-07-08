@@ -21,8 +21,8 @@ class IosLogEventMapper extends LogMapperProxy {
   );
 
   IosLogEventMapper(DatadogLoggingConfiguration config, InternalLogger logger)
-      : _internalLogger = logger,
-        super(logEventMapper: config.eventMapper) {
+    : _internalLogger = logger,
+      super(logEventMapper: config.eventMapper) {
     _methodChannel.setMethodCallHandler(_handleMethodCall);
   }
 

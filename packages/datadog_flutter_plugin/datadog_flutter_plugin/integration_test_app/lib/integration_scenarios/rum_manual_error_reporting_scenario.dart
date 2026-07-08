@@ -24,25 +24,21 @@ class _RumManualErrorReportingScenarioState
   void initState() {
     super.initState();
 
-    DatadogSdk.instance.rum
-        ?.startView(viewKey, 'RumManualErrorReportingScenario');
+    DatadogSdk.instance.rum?.startView(
+      viewKey,
+      'RumManualErrorReportingScenario',
+    );
     _addErrors();
   }
 
   void _addErrors() {
     final rum = DatadogSdk.instance.rum;
     if (rum != null) {
-      rum.addError(
-        TypeError(),
-        RumErrorSource.source,
-        errorType: 'NullThrown',
-      );
+      rum.addError(TypeError(), RumErrorSource.source, errorType: 'NullThrown');
       rum.addErrorInfo(
         'Rum error message',
         RumErrorSource.network,
-        attributes: {
-          DatadogAttributes.errorFingerprint: 'custom-fingerprint',
-        },
+        attributes: {DatadogAttributes.errorFingerprint: 'custom-fingerprint'},
       );
     }
   }
@@ -51,8 +47,11 @@ class _RumManualErrorReportingScenarioState
     try {
       throw const OSError('This was an error!', 200);
     } catch (e, s) {
-      DatadogSdk.instance.rum
-          ?.addError(e, RumErrorSource.source, stackTrace: s);
+      DatadogSdk.instance.rum?.addError(
+        e,
+        RumErrorSource.source,
+        stackTrace: s,
+      );
     }
   }
 
@@ -64,19 +63,14 @@ class _RumManualErrorReportingScenarioState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('RUM Errors'),
-      ),
+      appBar: AppBar(title: const Text('RUM Errors')),
       body: Column(
         children: [
           ElevatedButton(
             onPressed: _throwAndCatchError,
             child: const Text('Throw / Catch Exception'),
           ),
-          ElevatedButton(
-            onPressed: _stopView,
-            child: const Text('Stop View'),
-          )
+          ElevatedButton(onPressed: _stopView, child: const Text('Stop View')),
         ],
       ),
     );

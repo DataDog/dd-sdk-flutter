@@ -22,33 +22,32 @@ void main() {
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
     var logLog = <LogDecoder>[];
-    await recordedSession.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        for (var e in requests) {
-          final asLogs = e.asLogs();
-          if (asLogs != null && asLogs.isNotEmpty) {
-            logLog.addAll(asLogs);
-          } else {
-            e.data.split('\n').forEach((e) {
-              dynamic jsonValue = json.decode(e);
-              if (jsonValue is Map<String, Object?>) {
-                final rumEvent = RumEventDecoder.fromJson(jsonValue);
-                if (rumEvent != null) {
-                  rumLog.add(rumEvent);
-                }
+    await recordedSession.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      for (var e in requests) {
+        final asLogs = e.asLogs();
+        if (asLogs != null && asLogs.isNotEmpty) {
+          logLog.addAll(asLogs);
+        } else {
+          e.data.split('\n').forEach((e) {
+            dynamic jsonValue = json.decode(e);
+            if (jsonValue is Map<String, Object?>) {
+              final rumEvent = RumEventDecoder.fromJson(jsonValue);
+              if (rumEvent != null) {
+                rumLog.add(rumEvent);
               }
-            });
-          }
+            }
+          });
         }
-        final rumSession = RumSessionDecoder.fromEvents(rumLog);
-        return logLog.length >= 2 &&
-            rumSession.visits.length == 1 &&
-            rumSession.visits[0].resourceEvents.isNotEmpty &&
-            rumSession.visits[0].errorEvents.isNotEmpty;
-      },
-    );
+      }
+      final rumSession = RumSessionDecoder.fromEvents(rumLog);
+      return logLog.length >= 2 &&
+          rumSession.visits.length == 1 &&
+          rumSession.visits[0].resourceEvents.isNotEmpty &&
+          rumSession.visits[0].errorEvents.isNotEmpty;
+    });
 
     final firstLog = logLog[0];
     expect(firstLog.status, 'info');
@@ -68,10 +67,14 @@ void main() {
     expect(manualResourceEvents[0].statusCode, 200);
     expect(manualResourceEvents[0].resourceType, 'image');
     final resourceDuration = manualResourceEvents[0].duration;
-    expect(resourceDuration,
-        greaterThan(const Duration(milliseconds: 90).inNanoseconds - 1));
     expect(
-        resourceDuration, lessThan(const Duration(seconds: 10).inNanoseconds));
+      resourceDuration,
+      greaterThan(const Duration(milliseconds: 90).inNanoseconds - 1),
+    );
+    expect(
+      resourceDuration,
+      lessThan(const Duration(seconds: 10).inNanoseconds),
+    );
 
     expect(view1.errorEvents.length, 1);
     expect(view1.errorEvents[0].resourceUrl, 'https://fake_url/resource/2');

@@ -20,9 +20,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   kManualIsWeb = kIsWeb;
 
-  testWidgets('test telemetry scenario', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('test telemetry scenario', (WidgetTester tester) async {
     var serverRecorder = await openTestScenario(
       tester,
       scenarioName: autoInstrumentationScenarioName,
@@ -40,26 +38,25 @@ void main() {
 
     final requestLog = <RequestLog>[];
     final telemetryLog = <RumEventDecoder>[];
-    await serverRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        for (var request in requests) {
-          request.data.split('\n').forEach((e) {
-            dynamic jsonValue = json.decode(e);
-            if (jsonValue is Map<String, dynamic>) {
-              var rumEvent = RumEventDecoder(jsonValue);
-              if (rumEvent.eventType == 'telemetry') {
-                telemetryLog.add(rumEvent);
-              }
+    await serverRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      for (var request in requests) {
+        request.data.split('\n').forEach((e) {
+          dynamic jsonValue = json.decode(e);
+          if (jsonValue is Map<String, dynamic>) {
+            var rumEvent = RumEventDecoder(jsonValue);
+            if (rumEvent.eventType == 'telemetry') {
+              telemetryLog.add(rumEvent);
             }
-          });
-        }
-        return telemetryLog
-            .where((element) => element.telemetryConfiguration != null)
-            .isNotEmpty;
-      },
-    );
+          }
+        });
+      }
+      return telemetryLog
+          .where((element) => element.telemetryConfiguration != null)
+          .isNotEmpty;
+    });
 
     var telemetryEvent = telemetryLog
         .where((element) => element.telemetryConfiguration != null)

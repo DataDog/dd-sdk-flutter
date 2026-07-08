@@ -5,8 +5,8 @@ homepage: https://datadoghq.com
 repository: https://github.com/DataDog/dd-sdk-flutter
 
 environment:
-  sdk: ^3.6.0
-  flutter: '>=3.27.0'
+  sdk: ^3.10.0
+  flutter: '>=3.38.0'
 
 dependencies:
   flutter:
@@ -14,23 +14,23 @@ dependencies:
   flutter_web_plugins:
     sdk: flutter
   ffi: ^2.1.3
-  jni: ^0.14.2
-  objective_c: ^8.0.0
+  jni: ^1.0.0
+  objective_c: ^9.4.1
   web: ^1.0.0
   meta: ^1.15.0  
   plugin_platform_interface: ^2.0.2
   datadog_flutter_plugin: ^3.1.0
-  json_annotation: ^4.9.0
+  json_annotation: ^4.12.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   mocktail: ^1.0.4
-  json_serializable: '>=6.7.0 <6.10.0'
-  build_runner: ^2.4.15
-  ffigen: ^19.0.0
-  jnigen: ^0.14.2
+  json_serializable: ^6.14.0
+  build_runner: ^2.15.0
+  ffigen: ^20.1.1
+  jnigen: ^0.16.0
   datadog_common_test:
     path: ../datadog_common_test
 

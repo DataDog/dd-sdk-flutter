@@ -26,10 +26,7 @@ final class FlagsEvaluationContext {
   final Map<String, Object?> attributes;
 
   /// Creates an evaluation context for assignment requests.
-  const FlagsEvaluationContext({
-    this.targetingKey,
-    this.attributes = const {},
-  });
+  const FlagsEvaluationContext({this.targetingKey, this.attributes = const {}});
 
   /// Creates an evaluation context from a JSON map.
   factory FlagsEvaluationContext.fromJson(Map<String, Object?> json) =>

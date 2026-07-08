@@ -205,10 +205,10 @@ Map<String, Object?> generateDatadogAttributes(
   if (context != null) {
     attributes[DatadogRumPlatformAttributeKey.rulePsr] = samplingRate / 100.0;
     if (context.sampled) {
-      attributes[DatadogRumPlatformAttributeKey.traceID] =
-          context.traceId.asString(TracingIdRepresentation.hex32Chars);
-      attributes[DatadogRumPlatformAttributeKey.spanID] =
-          context.spanId.asString(TracingIdRepresentation.decimal);
+      attributes[DatadogRumPlatformAttributeKey.traceID] = context.traceId
+          .asString(TracingIdRepresentation.hex32Chars);
+      attributes[DatadogRumPlatformAttributeKey.spanID] = context.spanId
+          .asString(TracingIdRepresentation.decimal);
     }
   }
 

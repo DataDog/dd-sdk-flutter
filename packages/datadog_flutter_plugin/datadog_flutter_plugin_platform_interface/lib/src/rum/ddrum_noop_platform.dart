@@ -71,7 +71,9 @@ class DdNoOpRumPlatform extends DdRumPlatform {
 
   @override
   Future<void> enable(
-      InternalLogger logger, DatadogRumConfiguration configuration) {
+    InternalLogger logger,
+    DatadogRumConfiguration configuration,
+  ) {
     return Future.value();
   }
 
@@ -197,23 +199,32 @@ class DdNoOpRumPlatform extends DdRumPlatform {
 
   @override
   Future<void> failFeatureOperation(
-      DateTime timestamp,
-      String name,
-      String? operationKey,
-      RumFeatureOperationFailureReason failureReason,
-      Map<String, Object?> attributes) {
+    DateTime timestamp,
+    String name,
+    String? operationKey,
+    RumFeatureOperationFailureReason failureReason,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 
   @override
-  Future<void> startFeatureOperation(DateTime timestamp, String name,
-      String? operationKey, Map<String, Object?> attributes) {
+  Future<void> startFeatureOperation(
+    DateTime timestamp,
+    String name,
+    String? operationKey,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 
   @override
-  Future<void> succeedFeatureOperation(DateTime timestamp, String name,
-      String? operationKey, Map<String, Object?> attributes) {
+  Future<void> succeedFeatureOperation(
+    DateTime timestamp,
+    String name,
+    String? operationKey,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 }

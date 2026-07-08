@@ -5,7 +5,6 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 @TestOn('vm')
-
 import 'dart:async';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
@@ -20,7 +19,9 @@ class MockDdRum extends Mock implements DatadogRum {}
 // automatically registers itself to the WidgetsBindingInterface during init
 void main() {
   Future<void> shutdownObserver(
-      WidgetTester tester, RumLongTaskObserver observer) async {
+    WidgetTester tester,
+    RumLongTaskObserver observer,
+  ) async {
     // Prevent timer pending exception
     await tester.runAsync(() async {
       unawaited(observer.stopLongTaskDetection());
@@ -29,8 +30,9 @@ void main() {
     observer.dispose();
   }
 
-  testWidgets('long task observer reports stall to rum instance',
-      (tester) async {
+  testWidgets('long task observer reports stall to rum instance', (
+    tester,
+  ) async {
     final mockRum = MockDdRum();
     final observer = RumLongTaskObserver(rumInstance: mockRum);
     observer.init();
@@ -45,8 +47,9 @@ void main() {
     await shutdownObserver(tester, observer);
   });
 
-  testWidgets('long task observer does not report short delays',
-      (tester) async {
+  testWidgets('long task observer does not report short delays', (
+    tester,
+  ) async {
     final mockRum = MockDdRum();
     final observer = RumLongTaskObserver(rumInstance: mockRum);
     observer.init();
@@ -78,8 +81,9 @@ void main() {
     await shutdownObserver(tester, observer);
   });
 
-  testWidgets('long task observer reports tasks longer than configured time',
-      (tester) async {
+  testWidgets('long task observer reports tasks longer than configured time', (
+    tester,
+  ) async {
     final mockRum = MockDdRum();
     final observer = RumLongTaskObserver(
       longTaskThreshold: 0.03,
@@ -100,27 +104,29 @@ void main() {
   });
 
   testWidgets(
-      'long task observer does not report tasks shorter than configured time',
-      (tester) async {
-    final mockRum = MockDdRum();
-    final observer = RumLongTaskObserver(
-      longTaskThreshold: 0.2,
-      rumInstance: mockRum,
-    );
-    observer.init();
+    'long task observer does not report tasks shorter than configured time',
+    (tester) async {
+      final mockRum = MockDdRum();
+      final observer = RumLongTaskObserver(
+        longTaskThreshold: 0.2,
+        rumInstance: mockRum,
+      );
+      observer.init();
 
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-    });
-    await tester.pump(const Duration(milliseconds: 250));
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pump(const Duration(milliseconds: 250));
 
-    verifyNever(() => mockRum.reportLongTask(any()));
+      verifyNever(() => mockRum.reportLongTask(any()));
 
-    await shutdownObserver(tester, observer);
-  });
+      await shutdownObserver(tester, observer);
+    },
+  );
 
-  testWidgets('long task observer stops observing on app inactive',
-      (tester) async {
+  testWidgets('long task observer stops observing on app inactive', (
+    tester,
+  ) async {
     final mockRum = MockDdRum();
     final observer = RumLongTaskObserver(rumInstance: mockRum);
     observer.init();
@@ -136,8 +142,9 @@ void main() {
     await shutdownObserver(tester, observer);
   });
 
-  testWidgets('long task observer starts observing on app resumed',
-      (tester) async {
+  testWidgets('long task observer starts observing on app resumed', (
+    tester,
+  ) async {
     final mockRum = MockDdRum();
     final observer = RumLongTaskObserver(rumInstance: mockRum);
     observer.init();

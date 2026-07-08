@@ -40,8 +40,9 @@ void main() {
       // Given
       final provider = InvMetricProvider();
       startView(provider, 'view1', baseStartTime);
-      final secondViewStart =
-          baseStartTime.add(const Duration(minutes: 1, seconds: 10));
+      final secondViewStart = baseStartTime.add(
+        const Duration(minutes: 1, seconds: 10),
+      );
       startView(provider, 'view2', secondViewStart);
 
       // When
@@ -64,9 +65,9 @@ void main() {
       final value = provider.valueForView('view2');
 
       // Then
-      final expectedValue =
-          Duration(milliseconds: 10 + defaultFirstBuildTime.inMilliseconds)
-              .inNanoseconds;
+      final expectedValue = Duration(
+        milliseconds: 10 + defaultFirstBuildTime.inMilliseconds,
+      ).inNanoseconds;
       expect(value, expectedValue);
     });
 
@@ -101,9 +102,9 @@ void main() {
       final value = provider.valueForView('view2');
 
       // Then
-      final expectedValue =
-          Duration(milliseconds: 20 + defaultFirstBuildTime.inMilliseconds)
-              .inNanoseconds;
+      final expectedValue = Duration(
+        milliseconds: 20 + defaultFirstBuildTime.inMilliseconds,
+      ).inNanoseconds;
       expect(value, expectedValue);
     });
 
@@ -112,8 +113,9 @@ void main() {
       final provider = InvMetricProvider();
       startView(provider, 'view1', baseStartTime);
       final actionTime = baseStartTime.add(const Duration(seconds: 5));
-      final nextViewTime = actionTime
-          .add(Duration(seconds: (defaultMaxTimeToNextView + 1).toInt()));
+      final nextViewTime = actionTime.add(
+        Duration(seconds: (defaultMaxTimeToNextView + 1).toInt()),
+      );
       provider.trackAction('view1', actionTime, RumActionType.tap);
       startView(provider, 'view2', nextViewTime);
 
@@ -129,8 +131,9 @@ void main() {
       final provider = InvMetricProvider();
       startView(provider, 'view1', baseStartTime);
       final actionTime = baseStartTime.add(const Duration(seconds: 5));
-      final nextViewTime = actionTime
-          .add(Duration(seconds: (defaultMaxTimeToNextView + 1).toInt()));
+      final nextViewTime = actionTime.add(
+        Duration(seconds: (defaultMaxTimeToNextView + 1).toInt()),
+      );
       provider.trackAction('view1', actionTime, RumActionType.tap);
       startView(provider, 'view2', nextViewTime);
 
@@ -141,31 +144,38 @@ void main() {
       expect(value, isNull);
     });
 
-    test('null value when previous view has no actions {older view exists}',
-        () {
-      // Given
-      final provider = InvMetricProvider();
-      startView(provider, 'view1', baseStartTime);
-      final actionTime = baseStartTime.add(Duration(seconds: 5));
-      final secondViewTime = actionTime
-          .add(Duration(seconds: (defaultMaxTimeToNextView + 1).toInt()));
-      provider.trackAction('view1', actionTime, RumActionType.tap);
-      startView(provider, 'view2', secondViewTime);
-      final thirdViewTime = secondViewTime.add(const Duration(seconds: 1));
-      startView(provider, 'view3', thirdViewTime);
+    test(
+      'null value when previous view has no actions {older view exists}',
+      () {
+        // Given
+        final provider = InvMetricProvider();
+        startView(provider, 'view1', baseStartTime);
+        final actionTime = baseStartTime.add(Duration(seconds: 5));
+        final secondViewTime = actionTime.add(
+          Duration(seconds: (defaultMaxTimeToNextView + 1).toInt()),
+        );
+        provider.trackAction('view1', actionTime, RumActionType.tap);
+        startView(provider, 'view2', secondViewTime);
+        final thirdViewTime = secondViewTime.add(const Duration(seconds: 1));
+        startView(provider, 'view3', thirdViewTime);
 
-      // When
-      final value = provider.valueForView('view3');
+        // When
+        final value = provider.valueForView('view3');
 
-      // Then
-      expect(value, isNull);
-    });
+        // Then
+        expect(value, isNull);
+      },
+    );
   });
 }
 
 // Helper methods
-void startView(InvMetricProvider provider, String viewKey, DateTime startTime,
-    {Duration firstBuildCompleteTime = defaultFirstBuildTime}) {
+void startView(
+  InvMetricProvider provider,
+  String viewKey,
+  DateTime startTime, {
+  Duration firstBuildCompleteTime = defaultFirstBuildTime,
+}) {
   provider.trackViewStart(viewKey, startTime);
   final firstBuildComplete = startTime.add(firstBuildCompleteTime);
   provider.trackViewFirstBuildComplete(viewKey, firstBuildComplete);

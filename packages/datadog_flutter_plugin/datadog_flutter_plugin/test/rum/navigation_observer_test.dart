@@ -6,7 +6,6 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 @TestOn('vm')
-
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/material.dart';
@@ -29,25 +28,25 @@ void main() {
     mockPlatform = MockDatadogSdkPlatform();
     mockDatadog = MockDatadogSdk();
 
-    when(() => mockPlatform.updateTelemetryConfiguration(any(), any()))
-        .thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockPlatform.updateTelemetryConfiguration(any(), any()),
+    ).thenAnswer((_) => Future<void>.value());
 
     when(() => mockDatadog.rum).thenReturn(mockRum);
     when(() => mockDatadog.platform).thenReturn(mockPlatform);
-    when(() => mockRum.startView(any(), any(), any()))
-        .thenAnswer((_) => Future<void>.value());
-    when(() => mockRum.stopView(any(), any()))
-        .thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockRum.startView(any(), any(), any()),
+    ).thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockRum.stopView(any(), any()),
+    ).thenAnswer((_) => Future<void>.value());
   });
 
   Widget buildFor({required Widget child}) {
     final observer = DatadogNavigationObserver(datadogSdk: mockDatadog);
     return DatadogNavigationObserverProvider(
       navObserver: observer,
-      child: MaterialApp(
-        navigatorObservers: [observer],
-        home: child,
-      ),
+      child: MaterialApp(navigatorObservers: [observer], home: child),
     );
   }
 
@@ -56,12 +55,11 @@ void main() {
     String? routeName,
     required WidgetBuilder builder,
   }) async {
-    await tester.pumpWidget(buildFor(
-      child: SimpleNavigator(
-        nextRouteName: routeName,
-        builder: builder,
+    await tester.pumpWidget(
+      buildFor(
+        child: SimpleNavigator(nextRouteName: routeName, builder: builder),
       ),
-    ));
+    );
 
     var button = find.text('Navigate');
 
@@ -77,8 +75,9 @@ void main() {
     verify(() => mockRum.markViewFirstBuildComplete('/'));
   });
 
-  testWidgets('pushing unnamed route ends current view',
-      (WidgetTester tester) async {
+  testWidgets('pushing unnamed route ends current view', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(tester: tester, builder: (_) => Container());
 
@@ -88,11 +87,14 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
-  testWidgets('popping unnamed route restarts root view ',
-      (WidgetTester tester) async {
+  testWidgets('popping unnamed route restarts root view ', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
-        tester: tester, builder: (context) => const SimplePopPage());
+      tester: tester,
+      builder: (context) => const SimplePopPage(),
+    );
     final popButton = find.text('Pop');
     await tester.tap(popButton);
     await tester.pumpAndSettle();
@@ -107,8 +109,9 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
-  testWidgets('pushing route with name in settings starts new view',
-      (WidgetTester tester) async {
+  testWidgets('pushing route with name in settings starts new view', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
@@ -120,8 +123,9 @@ void main() {
     verify(() => mockRum.markViewFirstBuildComplete('NextRoute'));
   });
 
-  testWidgets('popping from settings named route restarts root view ',
-      (WidgetTester tester) async {
+  testWidgets('popping from settings named route restarts root view ', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     void onPopPressed(BuildContext context) {
       Navigator.of(context).pop();
@@ -161,28 +165,27 @@ void main() {
   }) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     observer ??= DatadogNavigationObserver(datadogSdk: mockDatadog);
-    await tester.pumpWidget(MaterialApp(
-      navigatorObservers: [
-        observer,
-      ],
-      initialRoute: initialRoute,
-      routes: {
-        initialRoute: (context) => const SimpleNamedNavigator(),
-        'my_named_route': (context) => Container(),
-      },
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorObservers: [observer],
+        initialRoute: initialRoute,
+        routes: {
+          initialRoute: (context) => const SimpleNamedNavigator(),
+          'my_named_route': (context) => Container(),
+        },
+      ),
+    );
     var button = find.text('Navigate');
 
     await tester.tap(button);
     await tester.pumpAndSettle();
   }
 
-  testWidgets('using named routes starts route name ',
-      (WidgetTester tester) async {
+  testWidgets('using named routes starts route name ', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await buildNamedRouteTesterAndNavigate(
-      tester: tester,
-    );
+    await buildNamedRouteTesterAndNavigate(tester: tester);
 
     verifyInOrder([
       () => mockRum.startView('/'),
@@ -194,8 +197,9 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
-  testWidgets('using named route respects initial route name ',
-      (WidgetTester tester) async {
+  testWidgets('using named route respects initial route name ', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildNamedRouteTesterAndNavigate(
       initialRoute: 'home',
@@ -212,8 +216,9 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
-  testWidgets('overriding extractor sends extra information',
-      (WidgetTester tester) async {
+  testWidgets('overriding extractor sends extra information', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     RumViewInfo? infoExtractor(Route<dynamic> route) {
       var name = route.settings.name;
@@ -240,15 +245,16 @@ void main() {
       () => mockRum.markViewFirstBuildComplete('/'),
       () => mockRum.stopView('/'),
       () => mockRum.startView('my_named_route', null, {
-            'extra_attribute': 'attribute_value',
-          }),
+        'extra_attribute': 'attribute_value',
+      }),
       () => mockRum.markViewFirstBuildComplete('my_named_route'),
     ]);
     verifyNoMoreInteractions(mockRum);
   });
 
-  testWidgets('pushing to route using mixin calls startView',
-      (WidgetTester tester) async {
+  testWidgets('pushing to route using mixin calls startView', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
@@ -262,8 +268,9 @@ void main() {
     ]);
   });
 
-  testWidgets('pushing to route using marks build complete',
-      (WidgetTester tester) async {
+  testWidgets('pushing to route using marks build complete', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
@@ -278,8 +285,9 @@ void main() {
     ]);
   });
 
-  testWidgets('pop from route using mixin calls stopView',
-      (WidgetTester tester) async {
+  testWidgets('pop from route using mixin calls stopView', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
@@ -303,14 +311,13 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
-  testWidgets('pushing to route using mixin sends extra info',
-      (WidgetTester tester) async {
+  testWidgets('pushing to route using mixin sends extra info', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     final info = RumViewInfo(
       name: 'MixedDestination',
-      attributes: {
-        'attribute_key': 'attribute_value',
-      },
+      attributes: {'attribute_key': 'attribute_value'},
     );
     await buildAndNavigateTo(
       tester: tester,
@@ -321,19 +328,19 @@ void main() {
       () => mockRum.startView('/'),
       () => mockRum.stopView('/'),
       () => mockRum.startView('MixedDestination', null, {
-            'attribute_key': 'attribute_value',
-          }),
+        'attribute_key': 'attribute_value',
+      }),
     ]);
   });
 
-  testWidgets('pushing to next route with mixin sends stopView',
-      (WidgetTester tester) async {
+  testWidgets('pushing to next route with mixin sends stopView', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
-      builder: (_) => MixedDestination(
-        nextPageBuilder: (_) => const SimplePopPage(),
-      ),
+      builder: (_) =>
+          MixedDestination(nextPageBuilder: (_) => const SimplePopPage()),
     );
 
     final pushButton = find.text('Push');
@@ -348,14 +355,14 @@ void main() {
     ]);
   });
 
-  testWidgets('returning to mixin view restarts view',
-      (WidgetTester tester) async {
+  testWidgets('returning to mixin view restarts view', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
-      builder: (_) => MixedDestination(
-        nextPageBuilder: (_) => const SimplePopPage(),
-      ),
+      builder: (_) =>
+          MixedDestination(nextPageBuilder: (_) => const SimplePopPage()),
     );
 
     final pushButton = find.text('Push');
@@ -378,8 +385,9 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
-  testWidgets('mixin on named route does not send extra events',
-      (WidgetTester tester) async {
+  testWidgets('mixin on named route does not send extra events', (
+    WidgetTester tester,
+  ) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await buildAndNavigateTo(
       tester: tester,
@@ -408,11 +416,7 @@ class SimpleNavigator extends StatelessWidget {
   final WidgetBuilder builder;
   final String? nextRouteName;
 
-  const SimpleNavigator({
-    super.key,
-    required this.builder,
-    this.nextRouteName,
-  });
+  const SimpleNavigator({super.key, required this.builder, this.nextRouteName});
 
   @override
   Widget build(BuildContext context) {
@@ -427,21 +431,19 @@ class SimpleNavigator extends StatelessWidget {
   }
 
   void _onNavigate(BuildContext context) {
-    RouteSettings? settings =
-        nextRouteName == null ? null : RouteSettings(name: nextRouteName);
-    Navigator.of(context).push<void>(MaterialPageRoute(
-      builder: builder,
-      settings: settings,
-    ));
+    RouteSettings? settings = nextRouteName == null
+        ? null
+        : RouteSettings(name: nextRouteName);
+    Navigator.of(
+      context,
+    ).push<void>(MaterialPageRoute(builder: builder, settings: settings));
   }
 }
 
 // This does the same as SimpleNavigator but uses a named route to get to the
 // child
 class SimpleNamedNavigator extends StatelessWidget {
-  const SimpleNamedNavigator({
-    super.key,
-  });
+  const SimpleNamedNavigator({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -466,11 +468,7 @@ class MixedDestination extends StatefulWidget {
   final RumViewInfo? info;
   final WidgetBuilder? nextPageBuilder;
 
-  const MixedDestination({
-    super.key,
-    this.info,
-    this.nextPageBuilder,
-  });
+  const MixedDestination({super.key, this.info, this.nextPageBuilder});
 
   @override
   State<MixedDestination> createState() => _MixedDestinationState();
@@ -502,9 +500,9 @@ class _MixedDestinationState extends State<MixedDestination>
   }
 
   void _onPush() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(builder: widget.nextPageBuilder!),
-    );
+    Navigator.of(
+      context,
+    ).push<void>(MaterialPageRoute(builder: widget.nextPageBuilder!));
   }
 }
 

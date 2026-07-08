@@ -26,17 +26,17 @@ void main() {
 
     var logs = <LogDecoder>[];
 
-    await recordedSession.pollForLogs(
-      const Duration(seconds: 45),
-      (requestLogs) {
-        logs = requestLogs;
-        return logs.length >= 8;
-      },
-    );
+    await recordedSession.pollForLogs(const Duration(seconds: 45), (
+      requestLogs,
+    ) {
+      logs = requestLogs;
+      return logs.length >= 8;
+    });
     expect(logs.length, greaterThanOrEqualTo(8));
 
-    List<LogDecoder> firstLoggerLogs =
-        logs.where((l) => l.loggerName != 'second_logger').toList();
+    List<LogDecoder> firstLoggerLogs = logs
+        .where((l) => l.loggerName != 'second_logger')
+        .toList();
     if (!kIsWeb) {
       for (final log in firstLoggerLogs) {
         if (Platform.isAndroid) {
@@ -62,10 +62,14 @@ void main() {
     expect(firstLoggerLogs[1].tags, contains('tag1:tag-value'));
     expect(firstLoggerLogs[1].log['logger-attribute1'], 'string value');
     expect(firstLoggerLogs[1].log['logger-attribute2'], 1000);
-    expect(firstLoggerLogs[1].log['nestedAttribute'],
-        containsPair('internal', 'test'));
-    expect(firstLoggerLogs[1].log['nestedAttribute'],
-        containsPair('isValid', true));
+    expect(
+      firstLoggerLogs[1].log['nestedAttribute'],
+      containsPair('internal', 'test'),
+    );
+    expect(
+      firstLoggerLogs[1].log['nestedAttribute'],
+      containsPair('isValid', true),
+    );
     expect(firstLoggerLogs[1].log['global-attribute'], isNull);
 
     expect(firstLoggerLogs[2].status, 'warn');
@@ -99,8 +103,9 @@ void main() {
     expect(firstLoggerLogs[4].log['logger-attribute2'], 1000);
     expect(firstLoggerLogs[4].log['global-attribute'], 'global value');
 
-    List<LogDecoder> secondLoggerLogs =
-        logs.where((l) => l.loggerName == 'second_logger').toList();
+    List<LogDecoder> secondLoggerLogs = logs
+        .where((l) => l.loggerName == 'second_logger')
+        .toList();
     if (!kIsWeb) {
       for (final log in secondLoggerLogs) {
         if (Platform.isAndroid) {
@@ -117,8 +122,10 @@ void main() {
     expect(secondLoggerLogs[0].log['logger-attribute1'], isNull);
     expect(secondLoggerLogs[0].log['logger-attribute2'], isNull);
     expect(secondLoggerLogs[0].log['global-attribute'], 'global value');
-    expect(getNestedProperty<String>('logger.name', secondLoggerLogs[1].log),
-        'second_logger');
+    expect(
+      getNestedProperty<String>('logger.name', secondLoggerLogs[1].log),
+      'second_logger',
+    );
 
     expect(secondLoggerLogs[1].status, 'warn');
     expect(secondLoggerLogs[1].message, 'Warning: this error occurred');
@@ -129,19 +136,25 @@ void main() {
     expect(secondLoggerLogs[1].errorMessage, 'Error Message');
     expect(secondLoggerLogs[1].errorStack, isNotNull);
     expect(secondLoggerLogs[1].errorFingerprint, 'custom-fingerprint');
-    expect(getNestedProperty<String>('logger.name', secondLoggerLogs[1].log),
-        'second_logger');
+    expect(
+      getNestedProperty<String>('logger.name', secondLoggerLogs[1].log),
+      'second_logger',
+    );
 
     expect(secondLoggerLogs[2].status, 'info');
     expect(secondLoggerLogs[2].message, 'Test local attribute override');
     expect(secondLoggerLogs[2].log['second-logger-attribute'], 'second-value');
     expect(secondLoggerLogs[2].log['global-attribute'], 'overridden');
-    expect(getNestedProperty<String>('logger.name', secondLoggerLogs[1].log),
-        'second_logger');
+    expect(
+      getNestedProperty<String>('logger.name', secondLoggerLogs[1].log),
+      'second_logger',
+    );
 
     for (final log in logs) {
-      expect(log.serviceName,
-          equalsIgnoringCase('com.datadoghq.flutter.integration'));
+      expect(
+        log.serviceName,
+        equalsIgnoringCase('com.datadoghq.flutter.integration'),
+      );
       expect(log.userId, 'bits');
       expect(log.userName, 'Bits Dawoof');
       expect(log.userEmail, 'bits@datadoghq.com');

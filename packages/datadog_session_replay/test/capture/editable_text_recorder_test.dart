@@ -153,7 +153,9 @@ void main() {
       home: SimpleTestCapture(
         key: Key('key'),
         recorder: recorder,
-        child: Scaffold(body: Stack(children: [TextField(style: style)])),
+        child: Scaffold(
+          body: Stack(children: [TextField(style: style)]),
+        ),
       ),
     );
     await tester.pumpWidget(tree);

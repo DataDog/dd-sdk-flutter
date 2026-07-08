@@ -139,11 +139,11 @@ class DatadogRum {
   }
 
   DatadogRum.fromExisting(DatadogSdk core, DatadogAttachConfiguration config)
-      : traceSampleRate = config.traceSampleRate,
-        _maxSampledTraceId = _getMaxTraceId(config.traceSampleRate),
-        traceContextInjection = config.traceContextInjection,
-        resourceHeadersExtractor = config.trackResourceHeaders,
-        logger = core.internalLogger {
+    : traceSampleRate = config.traceSampleRate,
+      _maxSampledTraceId = _getMaxTraceId(config.traceSampleRate),
+      traceContextInjection = config.traceContextInjection,
+      resourceHeadersExtractor = config.trackResourceHeaders,
+      logger = core.internalLogger {
     _init(
       core: core,
       detectLongTasks: config.detectLongTasks,
@@ -157,8 +157,8 @@ class DatadogRum {
     this.traceSampleRate,
     this.traceContextInjection,
     this.resourceHeadersExtractor,
-  )   : _maxSampledTraceId = _getMaxTraceId(traceSampleRate),
-        logger = core.internalLogger {
+  ) : _maxSampledTraceId = _getMaxTraceId(traceSampleRate),
+      logger = core.internalLogger {
     _init(
       core: core,
       detectLongTasks: false,
@@ -168,11 +168,11 @@ class DatadogRum {
   }
 
   DatadogRum._(DatadogSdk core, DatadogRumConfiguration configuration)
-      : traceSampleRate = configuration.traceSampleRate,
-        _maxSampledTraceId = _getMaxTraceId(configuration.traceSampleRate),
-        traceContextInjection = configuration.traceContextInjection,
-        resourceHeadersExtractor = configuration.trackResourceHeaders,
-        logger = core.internalLogger {
+    : traceSampleRate = configuration.traceSampleRate,
+      _maxSampledTraceId = _getMaxTraceId(configuration.traceSampleRate),
+      traceContextInjection = configuration.traceContextInjection,
+      resourceHeadersExtractor = configuration.trackResourceHeaders,
+      logger = core.internalLogger {
     _init(
       core: core,
       detectLongTasks: configuration.detectLongTasks,
@@ -187,8 +187,9 @@ class DatadogRum {
     required double longTaskThreshold,
     required bool reportFlutterPerformance,
   }) {
-    final isBackgroundIsolate =
-        kIsWeb ? false : ServicesBinding.rootIsolateToken == null;
+    final isBackgroundIsolate = kIsWeb
+        ? false
+        : ServicesBinding.rootIsolateToken == null;
     // Don't allow initialization of foreground stuff in background isolates
     if (!isBackgroundIsolate) {
       // Never use long task observer on web -- the Browser SDK should
@@ -606,7 +607,11 @@ class DatadogRum {
     wrap('rum.startFeatureOperation', logger, attributes, () {
       final currentTime = timeProvider.now();
       return _platform.startFeatureOperation(
-          currentTime, name, operationKey, attributes);
+        currentTime,
+        name,
+        operationKey,
+        attributes,
+      );
     });
   }
 
@@ -626,7 +631,11 @@ class DatadogRum {
     wrap('rum.succeedFeatureOperation', logger, attributes, () {
       final currentTime = timeProvider.now();
       return _platform.succeedFeatureOperation(
-          currentTime, name, operationKey, attributes);
+        currentTime,
+        name,
+        operationKey,
+        attributes,
+      );
     });
   }
 
@@ -647,7 +656,12 @@ class DatadogRum {
     wrap('rum.failFeatureOperation', logger, attributes, () {
       final currentTime = timeProvider.now();
       return _platform.failFeatureOperation(
-          currentTime, name, operationKey, failureReason, attributes);
+        currentTime,
+        name,
+        operationKey,
+        failureReason,
+        attributes,
+      );
     });
   }
 

@@ -1,8 +1,7 @@
 PODS:
   - connectivity_plus (0.0.1):
     - Flutter
-    - FlutterMacOS
-  - datadog_flutter_plugin (0.0.1):
+  - datadog_flutter_plugin_ios (0.0.1):
     - DatadogCore (~> 3)
     - DatadogCrashReporting (~> 3)
     - DatadogInternal (~> 3)
@@ -44,8 +43,6 @@ PODS:
     - KSCrash/Core
   - KSCrash/ReportingCore (2.5.0):
     - KSCrash/Core
-  - objective_c (0.0.1):
-    - Flutter
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -54,12 +51,11 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
-  - connectivity_plus (from `.symlinks/plugins/connectivity_plus/darwin`)
-  - datadog_flutter_plugin (from `.symlinks/plugins/datadog_flutter_plugin/ios`)
+  - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
+  - datadog_flutter_plugin_ios (from `.symlinks/plugins/datadog_flutter_plugin_ios/ios`)
   - datadog_session_replay (from `.symlinks/plugins/datadog_session_replay/ios`)
   - datadog_webview_tracking (from `.symlinks/plugins/datadog_webview_tracking/ios`)
   - Flutter (from `Flutter`)
-  - objective_c (from `.symlinks/plugins/objective_c/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
@@ -76,25 +72,23 @@ SPEC REPOS:
 
 EXTERNAL SOURCES:
   connectivity_plus:
-    :path: ".symlinks/plugins/connectivity_plus/darwin"
-  datadog_flutter_plugin:
-    :path: ".symlinks/plugins/datadog_flutter_plugin/ios"
+    :path: ".symlinks/plugins/connectivity_plus/ios"
+  datadog_flutter_plugin_ios:
+    :path: ".symlinks/plugins/datadog_flutter_plugin_ios/ios"
   datadog_session_replay:
     :path: ".symlinks/plugins/datadog_session_replay/ios"
   datadog_webview_tracking:
     :path: ".symlinks/plugins/datadog_webview_tracking/ios"
   Flutter:
     :path: Flutter
-  objective_c:
-    :path: ".symlinks/plugins/objective_c/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   webview_flutter_wkwebview:
     :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
 
 SPEC CHECKSUMS:
-  connectivity_plus: 18382e7311ba19efcaee94442b23b32507b20695
-  datadog_flutter_plugin: 64adc7ef089a1328c78fd4fab24e49afa09d95a5
+  connectivity_plus: 2a701ffec2c0ae28a48cf7540e279787e77c447d
+  datadog_flutter_plugin_ios: 10996273528b840f9bbb30b4c14f364e38fbe126
   datadog_session_replay: 8e4f4a520f20feb2916c623c011a53ba63f8d77f
   datadog_webview_tracking: 58ffca1b06ba88e0bd6dc0d0d1dada0e60e6d3d5
   DatadogCore: e27bba3c2f490ae41ac17d41aecadee85475fe6d
@@ -106,9 +100,8 @@ SPEC CHECKSUMS:
   DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
-  objective_c: 77e887b5ba1827970907e10e832eec1683f3431d
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
-  webview_flutter_wkwebview: a4af96a051138e28e29f60101d094683b9f82188
+  webview_flutter_wkwebview: 29eb20d43355b48fe7d07113835b9128f84e3af4
 
 PODFILE CHECKSUM: cc1f88378b4bfcf93a6ce00d2c587857c6008d3b
 

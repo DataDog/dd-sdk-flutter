@@ -2,7 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 @TestOn('vm')
-
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin_ios/src/logs/ddlogs_method_channel.dart';
 import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart';
@@ -21,9 +20,9 @@ void main() {
     ambiguate(TestDefaultBinaryMessengerBinding.instance)
         ?.defaultBinaryMessenger
         .setMockMethodCallHandler(ddLogsPlatform.methodChannel, (message) {
-      log.add(message);
-      return null;
-    });
+          log.add(message);
+          return null;
+        });
   });
 
   tearDown(() {
@@ -35,10 +34,10 @@ void main() {
     await ddLogsPlatform.createLogger('uuid', config);
 
     expect(log, <Matcher>[
-      isMethodCall('createLogger', arguments: {
-        'loggerHandle': 'uuid',
-        'configuration': config.encode(),
-      })
+      isMethodCall(
+        'createLogger',
+        arguments: {'loggerHandle': 'uuid', 'configuration': config.encode()},
+      ),
     ]);
   });
 
@@ -48,8 +47,10 @@ void main() {
     await ddLogsPlatform.addGlobalAttribute(key, value);
 
     expect(log, <Matcher>[
-      isMethodCall('addGlobalAttribute',
-          arguments: {'key': key, 'value': value})
+      isMethodCall(
+        'addGlobalAttribute',
+        arguments: {'key': key, 'value': value},
+      ),
     ]);
   });
 
@@ -58,81 +59,101 @@ void main() {
     await ddLogsPlatform.removeGlobalAttribute(key);
 
     expect(log, <Matcher>[
-      isMethodCall('removeGlobalAttribute', arguments: {'key': key})
+      isMethodCall('removeGlobalAttribute', arguments: {'key': key}),
     ]);
   });
 
   test('log messages passed to method channel', () async {
     for (final logLevel in LogLevel.values) {
-      await ddLogsPlatform.log('uuid', logLevel, '$logLevel message', null,
-          null, null, {'attribute': 'value'});
+      await ddLogsPlatform.log(
+        'uuid',
+        logLevel,
+        '$logLevel message',
+        null,
+        null,
+        null,
+        {'attribute': 'value'},
+      );
     }
 
     expect(log, <Matcher>[
       for (final logLevel in LogLevel.values)
-        isMethodCall('log', arguments: {
-          'loggerHandle': 'uuid',
-          'logLevel': logLevel.toString(),
-          'message': '$logLevel message',
-          'errorMessage': null,
-          'errorKind': null,
-          'stackTrace': null,
-          'context': {
-            'attribute': 'value',
-          }
-        })
+        isMethodCall(
+          'log',
+          arguments: {
+            'loggerHandle': 'uuid',
+            'logLevel': logLevel.toString(),
+            'message': '$logLevel message',
+            'errorMessage': null,
+            'errorKind': null,
+            'stackTrace': null,
+            'context': {'attribute': 'value'},
+          },
+        ),
     ]);
   });
 
   test('log messages passed with error passed to method channel', () async {
     final st = StackTrace.current;
     for (final logLevel in LogLevel.values) {
-      await ddLogsPlatform.log('uuid', logLevel, '$logLevel message',
-          '$logLevel error message', 'error_type', st, {'attribute': 'value'});
+      await ddLogsPlatform.log(
+        'uuid',
+        logLevel,
+        '$logLevel message',
+        '$logLevel error message',
+        'error_type',
+        st,
+        {'attribute': 'value'},
+      );
     }
 
     expect(log, <Matcher>[
       for (final logLevel in LogLevel.values)
-        isMethodCall('log', arguments: {
-          'loggerHandle': 'uuid',
-          'logLevel': logLevel.toString(),
-          'message': '$logLevel message',
-          'errorMessage': '$logLevel error message',
-          'errorKind': 'error_type',
-          'stackTrace': st.toString(),
-          'context': {
-            '_dd.error.source_type': 'flutter',
-            'attribute': 'value',
-          }
-        })
+        isMethodCall(
+          'log',
+          arguments: {
+            'loggerHandle': 'uuid',
+            'logLevel': logLevel.toString(),
+            'message': '$logLevel message',
+            'errorMessage': '$logLevel error message',
+            'errorKind': 'error_type',
+            'stackTrace': st.toString(),
+            'context': {
+              '_dd.error.source_type': 'flutter',
+              'attribute': 'value',
+            },
+          },
+        ),
     ]);
   });
 
   test('log messages without stack trace do not add source_type', () async {
     for (final logLevel in LogLevel.values) {
       await ddLogsPlatform.log(
-          'uuid',
-          logLevel,
-          '$logLevel message',
-          '$logLevel error message',
-          'error_type',
-          null,
-          {'attribute': 'value'});
+        'uuid',
+        logLevel,
+        '$logLevel message',
+        '$logLevel error message',
+        'error_type',
+        null,
+        {'attribute': 'value'},
+      );
     }
 
     expect(log, <Matcher>[
       for (final logLevel in LogLevel.values)
-        isMethodCall('log', arguments: {
-          'loggerHandle': 'uuid',
-          'logLevel': logLevel.toString(),
-          'message': '$logLevel message',
-          'errorMessage': '$logLevel error message',
-          'errorKind': 'error_type',
-          'stackTrace': null,
-          'context': {
-            'attribute': 'value',
-          }
-        })
+        isMethodCall(
+          'log',
+          arguments: {
+            'loggerHandle': 'uuid',
+            'logLevel': logLevel.toString(),
+            'message': '$logLevel message',
+            'errorMessage': '$logLevel error message',
+            'errorKind': 'error_type',
+            'stackTrace': null,
+            'context': {'attribute': 'value'},
+          },
+        ),
     ]);
   });
 
@@ -140,11 +161,14 @@ void main() {
     await ddLogsPlatform.addAttribute('uuid', 'my_key', 'my_value');
 
     expect(log, <Matcher>[
-      isMethodCall('addAttribute', arguments: {
-        'loggerHandle': 'uuid',
-        'key': 'my_key',
-        'value': 'my_value',
-      })
+      isMethodCall(
+        'addAttribute',
+        arguments: {
+          'loggerHandle': 'uuid',
+          'key': 'my_key',
+          'value': 'my_value',
+        },
+      ),
     ]);
   });
 
@@ -154,25 +178,31 @@ void main() {
       'int_value': 256,
       'bool_value': false,
       'double_value': 2.3,
-      'string_value': 'test_value'
+      'string_value': 'test_value',
     });
 
     expect(log, <Matcher>[
-      isMethodCall('addAttribute', arguments: {
-        'loggerHandle': 'uuid',
-        'key': 'my_attribute',
-        'value': true,
-      }),
-      isMethodCall('addAttribute', arguments: {
-        'loggerHandle': 'uuid',
-        'key': 'my_attribute',
-        'value': {
-          'int_value': 256,
-          'bool_value': false,
-          'double_value': 2.3,
-          'string_value': 'test_value',
+      isMethodCall(
+        'addAttribute',
+        arguments: {
+          'loggerHandle': 'uuid',
+          'key': 'my_attribute',
+          'value': true,
         },
-      })
+      ),
+      isMethodCall(
+        'addAttribute',
+        arguments: {
+          'loggerHandle': 'uuid',
+          'key': 'my_attribute',
+          'value': {
+            'int_value': 256,
+            'bool_value': false,
+            'double_value': 2.3,
+            'string_value': 'test_value',
+          },
+        },
+      ),
     ]);
   });
 
@@ -180,10 +210,10 @@ void main() {
     await ddLogsPlatform.removeAttribute('uuid', 'my_attribute');
 
     expect(log, <Matcher>[
-      isMethodCall('removeAttribute', arguments: {
-        'loggerHandle': 'uuid',
-        'key': 'my_attribute',
-      })
+      isMethodCall(
+        'removeAttribute',
+        arguments: {'loggerHandle': 'uuid', 'key': 'my_attribute'},
+      ),
     ]);
   });
 
@@ -191,11 +221,10 @@ void main() {
     await ddLogsPlatform.addTag('uuid', 'my_tag');
 
     expect(log, <Matcher>[
-      isMethodCall('addTag', arguments: {
-        'loggerHandle': 'uuid',
-        'tag': 'my_tag',
-        'value': null,
-      })
+      isMethodCall(
+        'addTag',
+        arguments: {'loggerHandle': 'uuid', 'tag': 'my_tag', 'value': null},
+      ),
     ]);
   });
 
@@ -203,11 +232,14 @@ void main() {
     await ddLogsPlatform.addTag('uuid', 'my_tag', 'tag_value');
 
     expect(log, <Matcher>[
-      isMethodCall('addTag', arguments: {
-        'loggerHandle': 'uuid',
-        'tag': 'my_tag',
-        'value': 'tag_value',
-      })
+      isMethodCall(
+        'addTag',
+        arguments: {
+          'loggerHandle': 'uuid',
+          'tag': 'my_tag',
+          'value': 'tag_value',
+        },
+      ),
     ]);
   });
 
@@ -215,10 +247,10 @@ void main() {
     await ddLogsPlatform.removeTag('uuid', 'my_tag');
 
     expect(log, <Matcher>[
-      isMethodCall('removeTag', arguments: {
-        'loggerHandle': 'uuid',
-        'tag': 'my_tag',
-      }),
+      isMethodCall(
+        'removeTag',
+        arguments: {'loggerHandle': 'uuid', 'tag': 'my_tag'},
+      ),
     ]);
   });
 
@@ -226,10 +258,10 @@ void main() {
     await ddLogsPlatform.removeTagWithKey('uuid', 'my_tag');
 
     expect(log, <Matcher>[
-      isMethodCall('removeTagWithKey', arguments: {
-        'loggerHandle': 'uuid',
-        'key': 'my_tag',
-      })
+      isMethodCall(
+        'removeTagWithKey',
+        arguments: {'loggerHandle': 'uuid', 'key': 'my_tag'},
+      ),
     ]);
   });
 }
