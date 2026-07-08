@@ -38,9 +38,11 @@ void main() {
 
   test('creates flags configuration from Datadog SDK configuration', () async {
     DatadogFlagsConfiguration? capturedConfiguration;
-    final flags = _mockFlags(onEnable: (configuration) {
-      capturedConfiguration = configuration;
-    });
+    final flags = _mockFlags(
+      onEnable: (configuration) {
+        capturedConfiguration = configuration;
+      },
+    );
     final configuration = DatadogConfiguration(
       clientToken: 'client-token',
       env: 'prod',
@@ -68,9 +70,11 @@ void main() {
 
   test('keeps standalone flags configuration overrides', () async {
     DatadogFlagsConfiguration? capturedConfiguration;
-    final flags = _mockFlags(onEnable: (configuration) {
-      capturedConfiguration = configuration;
-    });
+    final flags = _mockFlags(
+      onEnable: (configuration) {
+        capturedConfiguration = configuration;
+      },
+    );
     final date = DateTime.utc(2026);
     final flagsDatadogConfig = DatadogFlagsConfig(
       clientToken: 'flags-token',
@@ -146,9 +150,7 @@ void main() {
 
     verifyNever(
       () => flags.enable(
-        configuration: any<DatadogFlagsConfiguration>(
-          named: 'configuration',
-        ),
+        configuration: any<DatadogFlagsConfiguration>(named: 'configuration'),
       ),
     );
   });
@@ -181,11 +183,7 @@ void main() {
         defaultValue: any<bool>(named: 'defaultValue'),
       ),
     ).thenReturn(
-      const FlagDetails(
-        key: 'checkout.enabled',
-        value: true,
-        variant: 'on',
-      ),
+      const FlagDetails(key: 'checkout.enabled', value: true, variant: 'on'),
     );
     final rumEvaluations = <MapEntry<String, Object>>[];
     final client = DatadogFlutterFlagsClient(
@@ -240,38 +238,31 @@ void main() {
     },
   );
 
-  test(
-    'accepts a null RUM integration callback',
-    () async {
-      final delegate = _mockClient();
-      when(
-        () => delegate.getBooleanDetails(
-          key: any<String>(named: 'key'),
-          defaultValue: any<bool>(named: 'defaultValue'),
-        ),
-      ).thenReturn(
-        const FlagDetails(
-          key: 'checkout.enabled',
-          value: true,
-          variant: 'on',
-        ),
-      );
-      final client = DatadogFlutterFlagsClient(
-        name: 'default',
-        resolveDelegate: () async => delegate,
-        addRumFeatureFlagEvaluation: null,
-      );
+  test('accepts a null RUM integration callback', () async {
+    final delegate = _mockClient();
+    when(
+      () => delegate.getBooleanDetails(
+        key: any<String>(named: 'key'),
+        defaultValue: any<bool>(named: 'defaultValue'),
+      ),
+    ).thenReturn(
+      const FlagDetails(key: 'checkout.enabled', value: true, variant: 'on'),
+    );
+    final client = DatadogFlutterFlagsClient(
+      name: 'default',
+      resolveDelegate: () async => delegate,
+      addRumFeatureFlagEvaluation: null,
+    );
 
-      await client.initialize(FlagsEvaluationContext.empty);
-      final details = client.getBooleanDetails(
-        key: 'checkout.enabled',
-        defaultValue: false,
-      );
+    await client.initialize(FlagsEvaluationContext.empty);
+    final details = client.getBooleanDetails(
+      key: 'checkout.enabled',
+      defaultValue: false,
+    );
 
-      expect(details.value, isTrue);
-      expect(details.variant, 'on');
-    },
-  );
+    expect(details.value, isTrue);
+    expect(details.variant, 'on');
+  });
 
   test('returns providerNotReady before client initialization', () {
     final client = DatadogFlutterFlagsClient(
@@ -320,9 +311,7 @@ MockDatadogFlags _mockFlags({
   final flags = MockDatadogFlags();
   when(
     () => flags.enable(
-      configuration: any<DatadogFlagsConfiguration>(
-        named: 'configuration',
-      ),
+      configuration: any<DatadogFlagsConfiguration>(named: 'configuration'),
     ),
   ).thenAnswer((invocation) async {
     onEnable?.call(

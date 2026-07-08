@@ -67,9 +67,9 @@ class DatadogFlagsPlugin extends DatadogPlugin {
     required DatadogFlagsConfiguration flagsConfiguration,
     required bool rumIntegrationEnabled,
     @visibleForTesting DatadogFlags? flags,
-  })  : _flagsConfiguration = flagsConfiguration,
-        _rumIntegrationEnabled = rumIntegrationEnabled,
-        _flags = flags ?? DatadogFlags.instance;
+  }) : _flagsConfiguration = flagsConfiguration,
+       _rumIntegrationEnabled = rumIntegrationEnabled,
+       _flags = flags ?? DatadogFlags.instance;
 
   /// Completes when the underlying `datadog_flags` SDK has been configured.
   Future<void> get ready => _ready;
@@ -95,8 +95,9 @@ class DatadogFlagsPlugin extends DatadogPlugin {
           await ready;
           return _flags.sharedClient(name: name);
         },
-        addRumFeatureFlagEvaluation:
-            _rumIntegrationEnabled ? _addRumFeatureFlagEvaluation : null,
+        addRumFeatureFlagEvaluation: _rumIntegrationEnabled
+            ? _addRumFeatureFlagEvaluation
+            : null,
       ),
     );
   }
@@ -133,7 +134,8 @@ class DatadogFlagsPlugin extends DatadogPlugin {
     required DatadogConfiguration datadogConfiguration,
     required DatadogFlagsSite? flagsSite,
   }) {
-    final flagsDatadogConfig = _flagsConfiguration.datadogConfig ??
+    final flagsDatadogConfig =
+        _flagsConfiguration.datadogConfig ??
         DatadogFlagsConfig(
           clientToken: datadogConfiguration.clientToken,
           env: datadogConfiguration.env,
@@ -179,9 +181,9 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
     required this.name,
     required Future<DatadogFlagsClient> Function() resolveDelegate,
     required void Function(String key, Object value)?
-        addRumFeatureFlagEvaluation,
-  })  : _resolveDelegate = resolveDelegate,
-        _addRumFeatureFlagEvaluation = addRumFeatureFlagEvaluation;
+    addRumFeatureFlagEvaluation,
+  }) : _resolveDelegate = resolveDelegate,
+       _addRumFeatureFlagEvaluation = addRumFeatureFlagEvaluation;
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
