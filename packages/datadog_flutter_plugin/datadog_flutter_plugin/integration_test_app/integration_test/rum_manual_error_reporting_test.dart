@@ -36,13 +36,15 @@ void main() {
       (requests) {
         requestLog.addAll(requests);
         rumLog.addAll(requests.expand((r) => r.asRumEvents()));
-        var visits = RumSessionDecoder.fromEvents(rumLog).visits;
+        final allSessions = RumSessionDecoder.fromEvents(rumLog);
+        if (allSessions.isEmpty) return false;
+        var visits = allSessions.last.visits;
         return visits.length == 1 &&
             visits[0].viewEvents.last.view.errorCount == 3;
       },
     );
 
-    final session = RumSessionDecoder.fromEvents(rumLog);
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, 1);
 
     final view = session.visits[0];
@@ -61,7 +63,10 @@ void main() {
     var manualError = view.errorEvents[1];
     expect(manualError.message, contains('Rum error message'));
     expect(manualError.source, 'network');
-    expect(manualError.fingerprint, 'custom-fingerprint');
+    if (!isDdSdkCppPlatform()) {
+      // fingerprint is not supported on C++ SDK platforms.
+      expect(manualError.fingerprint, 'custom-fingerprint');
+    }
 
     var thrownError = view.errorEvents[2];
     expect(thrownError.message, contains('This was an error!'));

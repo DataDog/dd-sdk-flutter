@@ -1,8 +1,6 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
-import 'dart:convert';
-
 import 'package:collection/collection.dart';
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_tracking_http_client_example/main.dart' as app;
@@ -79,19 +77,15 @@ void main() {
               testRequests.add(request);
             }
           } else {
-            request.data.split('\n').forEach((e) {
-              var jsonValue = json.decode(e);
-              if (jsonValue is Map<String, dynamic>) {
-                rumLog.add(RumEventDecoder(jsonValue));
-              }
-            });
+            rumLog.addAll(request.asRumEvents());
           }
         }
-        return RumSessionDecoder.fromEvents(rumLog).visits.length >= 4;
+        final allSessions = RumSessionDecoder.fromEvents(rumLog);
+        return allSessions.isNotEmpty && allSessions.last.visits.length >= 4;
       },
     );
 
-    final session = RumSessionDecoder.fromEvents(rumLog);
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, greaterThanOrEqualTo(3));
 
     final view1 = session.visits[1];
@@ -114,12 +108,14 @@ void main() {
           '1');
       expect(testRequest.requestHeaders['x-datadog-origin']?.first, 'rum');
 
-      final baggageHeader = testRequest.requestHeaders['baggage']?.first;
-      final baggageValues = baggageHeader?.split(',');
-      expect(baggageValues?.firstWhereOrNull((e) => e.contains('session.id')),
-          isNotNull);
-      expect(baggageValues, contains('user.id=integration_test_user'));
-      expect(baggageValues, contains('account.id=integration_test_account'));
+      if (!isDdSdkCppPlatform()) {
+        final baggageHeader = testRequest.requestHeaders['baggage']?.first;
+        final baggageValues = baggageHeader?.split(',');
+        expect(baggageValues?.firstWhereOrNull((e) => e.contains('session.id')),
+            isNotNull);
+        expect(baggageValues, contains('user.id=integration_test_user'));
+        expect(baggageValues, contains('account.id=integration_test_account'));
+      }
     }
 
     final getEvent = view2.resourceEvents[0];

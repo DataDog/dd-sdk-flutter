@@ -4,6 +4,8 @@
 
 import 'dart:ffi' as ffi;
 import 'dart:io';
+import 'dart:isolate';
+import 'dart:ui';
 
 import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart';
 import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
@@ -16,10 +18,39 @@ import 'logs_desktop_platform.dart';
 import 'native_char.dart';
 import 'rum_desktop_platform.dart';
 
+const String _kIsolatePortName = 'dd_flutter_desktop_sdk';
+
+@immutable
+class _IsolateAttachRequest {
+  final SendPort sendPort;
+  const _IsolateAttachRequest({required this.sendPort});
+}
+
+@immutable
+class _DesktopIsolateAttachResponse {
+  final IsolateAttachResponse isolateAttachResponse;
+  final int coreAddress;
+  final int loggingAddress;
+  final int rumAddress;
+
+  const _DesktopIsolateAttachResponse({
+    required this.isolateAttachResponse,
+    required this.coreAddress,
+    required this.loggingAddress,
+    required this.rumAddress,
+  });
+}
+
 class DatadogDesktopPlatform extends DatadogSdkPlatform {
   final DdSdkFfi _sdk;
   ffi.Pointer<dd_core>? _core;
+  ffi.Pointer<dd_logging>? _logging;
+  ffi.Pointer<dd_rum>? _rum;
   InternalLogger? _internalLogger;
+
+  ReceivePort? _isolateConfigPort;
+  RootIsolateToken? _rootIsolateToken;
+  CapturedConfiguration? _capturedConfig;
 
   // Kept alive so the C shim's function pointer remains valid for the SDK's lifetime.
   ffi.NativeCallable<_DiagnosticCallbackNative>? _diagnosticCallable;
@@ -162,16 +193,54 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
     bool rumEnabled = false;
 
     if (logging != null && logging.address != 0) {
+      _logging = logging;
       DdLogsPlatform.instance = DdLogsDesktopPlatform(_sdk, logging);
       logsEnabled = true;
     }
 
     if (rum != null && rum.address != 0) {
+      _rum = rum;
       DdRumPlatform.instance = DdRumDesktopPlatform(_sdk, rum);
       rumEnabled = true;
     }
 
+    _rootIsolateToken = RootIsolateToken.instance;
+    final backgroundPlugins = configuration.additionalPlugins
+        .where((e) => e.supportsBackgroundIsolates)
+        .toList();
+    _capturedConfig = CapturedConfiguration(
+      loggingEnabled: logsEnabled,
+      rumEnabled: rumEnabled,
+      traceSampleRate: configuration.rumConfiguration?.traceSampleRate,
+      traceContextInjection:
+          configuration.rumConfiguration?.traceContextInjection,
+      resourceHeadersExtractor:
+          configuration.rumConfiguration?.trackResourceHeaders,
+      firstPartyHosts: configuration.firstPartyHostsWithTracingHeaders,
+      configuredPlugins: backgroundPlugins,
+    );
+    _isolateConfigPort = ReceivePort();
+    _isolateConfigPort!.listen(_handleIsolateConfigRequest);
+    IsolateNameServer.registerPortWithName(
+        _isolateConfigPort!.sendPort, _kIsolatePortName);
+
     return PlatformInitializationResult(logs: logsEnabled, rum: rumEnabled);
+  }
+
+  void _handleIsolateConfigRequest(dynamic message) {
+    if (message is! _IsolateAttachRequest) return;
+    final token = _rootIsolateToken;
+    final config = _capturedConfig;
+    if (token == null || config == null) return;
+    message.sendPort.send(_DesktopIsolateAttachResponse(
+      isolateAttachResponse: IsolateAttachResponse(
+        rootIsolateToken: token,
+        capturedConfiguration: config,
+      ),
+      coreAddress: _core?.address ?? 0,
+      loggingAddress: _logging?.address ?? 0,
+      rumAddress: _rum?.address ?? 0,
+    ));
   }
 
   @override
@@ -180,7 +249,30 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
       null;
 
   @override
-  Future<IsolateAttachResponse?> attachToIsolate() async => null;
+  Future<IsolateAttachResponse?> attachToIsolate() async {
+    final configPort = IsolateNameServer.lookupPortByName(_kIsolatePortName);
+    if (configPort == null) return null;
+
+    final responsePort = ReceivePort();
+    configPort.send(_IsolateAttachRequest(sendPort: responsePort.sendPort));
+    final response = await responsePort.first as _DesktopIsolateAttachResponse;
+    responsePort.close();
+
+    if (response.coreAddress == 0) return null;
+    _core = ffi.Pointer<dd_core>.fromAddress(response.coreAddress);
+
+    if (response.loggingAddress != 0) {
+      _logging = ffi.Pointer<dd_logging>.fromAddress(response.loggingAddress);
+      DdLogsPlatform.instance = DdLogsDesktopPlatform(_sdk, _logging!);
+    }
+
+    if (response.rumAddress != 0) {
+      _rum = ffi.Pointer<dd_rum>.fromAddress(response.rumAddress);
+      DdRumPlatform.instance = DdRumDesktopPlatform(_sdk, _rum!);
+    }
+
+    return response.isolateAttachResponse;
+  }
 
   @override
   DatadogContext? getContext() => null;
@@ -293,9 +385,16 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
     _sdk.dd_core_stop(core);
     _sdk.dd_core_destroy(core);
     _core = null;
+    _logging = null;
+    _rum = null;
     _diagnosticCallable?.close();
     _diagnosticCallable = null;
     _pluginFree = null;
+    IsolateNameServer.removePortNameMapping(_kIsolatePortName);
+    _isolateConfigPort?.close();
+    _isolateConfigPort = null;
+    _capturedConfig = null;
+    _rootIsolateToken = null;
   }
 
   @override

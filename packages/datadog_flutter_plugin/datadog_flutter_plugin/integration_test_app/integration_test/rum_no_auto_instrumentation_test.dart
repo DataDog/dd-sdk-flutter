@@ -35,9 +35,9 @@ void main() {
     );
     // Decode this session. This removes events that came from
     // the ApplicationLaunchView (which can happen if the emulator is running slow)
-    var session = RumSessionDecoder.fromEvents(rumLog);
+    final sessions = RumSessionDecoder.fromEvents(rumLog);
 
-    if (session.visits.isNotEmpty) {
+    if (sessions.isNotEmpty && sessions.last.visits.isNotEmpty) {
       // ignore: avoid_print
       print('Got a RUM log!? (actually ${rumLog.length})');
       for (var log in rumLog) {
@@ -45,6 +45,6 @@ void main() {
         print('Log: { event: ${log.eventType}, view: ${log.viewInfo?.name}');
       }
     }
-    expect(session.visits.isEmpty, isTrue);
+    expect(sessions.isEmpty || sessions.last.visits.isEmpty, isTrue);
   });
 }

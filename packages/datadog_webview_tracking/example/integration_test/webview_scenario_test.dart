@@ -61,12 +61,12 @@ void main() {
             }
           });
         }
-        final session = RumSessionDecoder.fromEvents(rumLog);
-        return session.visits.length >= 2;
+        final allSessions = RumSessionDecoder.fromEvents(rumLog);
+        return allSessions.isNotEmpty && allSessions.last.visits.length >= 2;
       },
     );
 
-    final session = RumSessionDecoder.fromEvents(rumLog);
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, 2);
 
     // First view is home screen, second view should be the webview

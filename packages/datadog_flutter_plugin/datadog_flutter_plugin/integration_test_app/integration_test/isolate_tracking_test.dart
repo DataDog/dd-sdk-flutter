@@ -32,7 +32,9 @@ void main() {
             rumLog.addAll(request.asRumEvents());
           }
         }
-        final rumSession = RumSessionDecoder.fromEvents(rumLog);
+        final allSessions = RumSessionDecoder.fromEvents(rumLog);
+        if (allSessions.isEmpty) return false;
+        final rumSession = allSessions.last;
         return logLog.length >= 2 &&
             rumSession.visits.length == 1 &&
             rumSession.visits[0].resourceEvents.isNotEmpty &&
@@ -48,7 +50,7 @@ void main() {
     expect(secondLog.status, 'warn');
     expect(secondLog.message, 'Finished with background isolate!');
 
-    final session = RumSessionDecoder.fromEvents(rumLog);
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
     final view1 = session.visits[0];
 
     final manualResourceEvents = view1.resourceEvents

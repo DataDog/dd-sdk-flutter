@@ -64,8 +64,9 @@ void main() {
       (requests) {
         requestLog.addAll(requests);
         rumLog.addAll(requests.expand((r) => r.asRumEvents()));
-        return RumSessionDecoder.fromEvents(rumLog).visits.length >=
-            (kIsWeb ? 4 : 3);
+        final allSessions = RumSessionDecoder.fromEvents(rumLog);
+        return allSessions.isNotEmpty &&
+            allSessions.last.visits.length >= (kIsWeb ? 4 : 3);
       },
     );
 
@@ -85,7 +86,7 @@ void main() {
       );
     }
 
-    final session = RumSessionDecoder.fromEvents(rumLog);
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, kIsWeb ? 4 : 3);
 
     final view1 = session.visits[0];

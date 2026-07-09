@@ -22,7 +22,7 @@ ffi.Pointer<dd_attribute> buildAttrObject(
 
   for (final entry in map.entries) {
     final key = entry.key.toNativeChar(allocator: arena);
-    final val = buildSingleAttr(entry, arena, sdk);
+    final val = buildSingleAttr(entry.value, arena, sdk);
     sdk.dd_attribute_object_property_set(obj, key, val);
   }
 
@@ -63,7 +63,7 @@ void _fillAttr(
     sdk.dd_attribute_init_object(out, value.length);
     for (final entry in value.entries) {
       final key = entry.key.toNativeChar(allocator: arena);
-      final val = buildSingleAttr(value, arena, sdk);
+      final val = buildSingleAttr(entry.value, arena, sdk);
       sdk.dd_attribute_object_property_set(out, key, val);
     }
   } else if (value is List) {

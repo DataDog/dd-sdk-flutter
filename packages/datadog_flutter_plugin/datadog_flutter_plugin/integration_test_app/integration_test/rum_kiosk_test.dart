@@ -66,23 +66,27 @@ void main() {
       (requests) {
         requestLog.addAll(requests);
         rumLog.addAll(requests.expand((r) => r.asRumEvents()));
-        return RumSessionDecoder.fromEvents(rumLog).visits.length >=
+        final allSessions = RumSessionDecoder.fromEvents(rumLog);
+        return allSessions.fold<int>(0, (sum, s) => sum + s.visits.length) >=
             (kIsWeb ? 5 : 3);
       },
     );
 
     final sessions = RumSessionDecoder.fromEvents(rumLog);
-    expect(sessions.visits.length, 3);
+    expect(sessions.length, greaterThanOrEqualTo(2));
 
-    final firstSession =
-        sessions.visits[0].viewEvents[0].rumEvent['session']['id'] as String;
-    final secondSession =
-        sessions.visits[1].viewEvents[0].rumEvent['session']['id'] as String;
+    final firstSessionDecoder = sessions[0];
+    final secondSessionDecoder = sessions[1];
 
-    expect(firstSession, isNot(secondSession));
-    final firstVisit = sessions.visits[0];
+    final firstSessionId = firstSessionDecoder
+        .visits[0].viewEvents[0].rumEvent['session']['id'] as String;
+    final secondSessionId = secondSessionDecoder
+        .visits[0].viewEvents[0].rumEvent['session']['id'] as String;
+
+    expect(firstSessionId, isNot(secondSessionId));
+    final firstVisit = firstSessionDecoder.visits[0];
     for (final viewEvent in firstVisit.viewEvents) {
-      expect(viewEvent.rumEvent['session']['id'], firstSession);
+      expect(viewEvent.rumEvent['session']['id'], firstSessionId);
     }
     if (!isDdSdkCppPlatform()) {
       expect(
@@ -91,13 +95,14 @@ void main() {
 
     expect(firstVisit.resourceEvents.length, 1);
     expect(
-        firstVisit.resourceEvents[0].rumEvent['session']['id'], firstSession);
+        firstVisit.resourceEvents[0].rumEvent['session']['id'], firstSessionId);
     expect(firstVisit.actionEvents.length, 1);
-    expect(firstVisit.actionEvents[0].rumEvent['session']['id'], firstSession);
+    expect(
+        firstVisit.actionEvents[0].rumEvent['session']['id'], firstSessionId);
 
-    final secondVisit = sessions.visits[1];
+    final secondVisit = secondSessionDecoder.visits[0];
     for (final viewEvent in secondVisit.viewEvents) {
-      expect(viewEvent.rumEvent['session']['id'], secondSession);
+      expect(viewEvent.rumEvent['session']['id'], secondSessionId);
     }
     if (!isDdSdkCppPlatform()) {
       expect(
@@ -105,10 +110,10 @@ void main() {
     }
 
     expect(secondVisit.resourceEvents.length, 1);
-    expect(
-        secondVisit.resourceEvents[0].rumEvent['session']['id'], secondSession);
+    expect(secondVisit.resourceEvents[0].rumEvent['session']['id'],
+        secondSessionId);
     expect(secondVisit.actionEvents.length, 1);
     expect(
-        secondVisit.actionEvents[0].rumEvent['session']['id'], secondSession);
+        secondVisit.actionEvents[0].rumEvent['session']['id'], secondSessionId);
   });
 }

@@ -27,7 +27,7 @@ class RumSessionDecoder {
 
   RumSessionDecoder(this.visits);
 
-  static RumSessionDecoder fromEvents(List<RumEventDecoder> events,
+  static List<RumSessionDecoder> fromEvents(List<RumEventDecoder> events,
       {bool shouldDiscardApplicationLaunch = true}) {
     events.sort((firstEvent, secondEvent) {
       var comp = firstEvent.date.compareTo(secondEvent.date);
@@ -43,9 +43,17 @@ class RumSessionDecoder {
       return comp;
     });
 
-    final viewVisitsById = <String, RumViewVisit>{};
+    final sessionViewVisits = <String, Map<String, RumViewVisit>>{};
+    final sessionOrder = <String>[];
+
     for (var e in events.where((e) => e.eventType == 'view')) {
       final viewEvent = RumViewEventDecoder(e.rumEvent);
+      final sessionId = e.sessionId ?? '';
+      if (!sessionViewVisits.containsKey(sessionId)) {
+        sessionViewVisits[sessionId] = {};
+        sessionOrder.add(sessionId);
+      }
+      final viewVisitsById = sessionViewVisits[sessionId]!;
       var visit = viewVisitsById[viewEvent.view.id];
       if (visit == null) {
         visit = RumViewVisit(
@@ -60,41 +68,46 @@ class RumSessionDecoder {
       if (viewId == null) {
         continue;
       }
+      final sessionId = e.sessionId ?? '';
+      final viewVisitsById = sessionViewVisits[sessionId];
+      if (viewVisitsById == null) {
+        continue;
+      }
       var visit = viewVisitsById[viewId];
       if (visit == null) {
         continue;
       }
       switch (e.eventType) {
         case 'action':
-          final actionEvent = RumActionEventDecoder(e.rumEvent);
-          visit.actionEvents.add(actionEvent);
+          visit.actionEvents.add(RumActionEventDecoder(e.rumEvent));
           break;
         case 'resource':
-          final resourceEvent = RumResourceEventDecoder(e.rumEvent);
-          visit.resourceEvents.add(resourceEvent);
+          visit.resourceEvents.add(RumResourceEventDecoder(e.rumEvent));
           break;
         case 'error':
-          final errorEvent = RumErrorEventDecoder(e.rumEvent);
-          visit.errorEvents.add(errorEvent);
+          visit.errorEvents.add(RumErrorEventDecoder(e.rumEvent));
           break;
         case 'long_task':
-          final longTaskEvent = RumLongTaskEventDecoder(e.rumEvent);
-          visit.longTaskEvents.add(longTaskEvent);
+          visit.longTaskEvents.add(RumLongTaskEventDecoder(e.rumEvent));
           break;
         case 'vital':
-          final operationStepEvent =
-              RumVitalOperationStepEventDecoder(e.rumEvent);
-          visit.vitalStepEvents.add(operationStepEvent);
+          visit.vitalStepEvents
+              .add(RumVitalOperationStepEventDecoder(e.rumEvent));
           break;
       }
     }
 
     if (shouldDiscardApplicationLaunch) {
-      viewVisitsById
-          .removeWhere((key, value) => value.name == 'ApplicationLaunch');
+      for (var viewVisitsById in sessionViewVisits.values) {
+        viewVisitsById
+            .removeWhere((key, value) => value.name == 'ApplicationLaunch');
+      }
     }
 
-    return RumSessionDecoder(viewVisitsById.values.toList());
+    return sessionOrder
+        .map((id) => RumSessionDecoder(sessionViewVisits[id]!.values.toList()))
+        .where((s) => s.visits.isNotEmpty)
+        .toList();
   }
 }
 
@@ -143,6 +156,11 @@ class RumEventDecoder {
     final usr = rumEvent['usr'];
     if (usr == null) return null;
     return RumUser.fromJson(usr);
+  }
+
+  String? get sessionId {
+    final session = rumEvent['session'] as Map<String, dynamic>?;
+    return session?['id'] as String?;
   }
 
   int get date => rumEvent['date'] as int;
