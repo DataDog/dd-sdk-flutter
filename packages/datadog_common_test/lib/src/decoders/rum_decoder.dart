@@ -27,7 +27,7 @@ class RumSessionDecoder {
 
   RumSessionDecoder(this.visits);
 
-  static RumSessionDecoder fromEvents(
+  static List<RumSessionDecoder> fromEvents(
     List<RumEventDecoder> events, {
     bool shouldDiscardApplicationLaunch = true,
   }) {
@@ -105,9 +105,11 @@ class RumSessionDecoder {
     }
 
     if (shouldDiscardApplicationLaunch) {
-      viewVisitsById.removeWhere(
-        (key, value) => value.name == 'ApplicationLaunch',
-      );
+      for (var viewVisitsById in sessionViewVisits.values) {
+        viewVisitsById.removeWhere(
+          (key, value) => value.name == 'ApplicationLaunch',
+        );
+      }
     }
 
     return sessionOrder

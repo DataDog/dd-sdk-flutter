@@ -39,20 +39,19 @@ void main() {
 
     final requestLog = <RequestLog>[];
     final telemetryLog = <RumEventDecoder>[];
-    await serverRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        for (final event in requests.expand((r) => r.asRumEvents())) {
-          if (event.eventType == 'telemetry') {
-            telemetryLog.add(event);
-          }
+    await serverRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      for (final event in requests.expand((r) => r.asRumEvents())) {
+        if (event.eventType == 'telemetry') {
+          telemetryLog.add(event);
         }
-        return telemetryLog
-            .where((element) => element.telemetryConfiguration != null)
-            .isNotEmpty;
-      },
-    );
+      }
+      return telemetryLog
+          .where((element) => element.telemetryConfiguration != null)
+          .isNotEmpty;
+    });
 
     var telemetryEvent = telemetryLog
         .where((element) => element.telemetryConfiguration != null)

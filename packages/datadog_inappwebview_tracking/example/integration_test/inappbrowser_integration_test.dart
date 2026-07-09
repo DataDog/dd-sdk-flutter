@@ -36,7 +36,8 @@ void main() {
   if (Platform.isAndroid) {
     // ignore: avoid_print
     print(
-        'Skipping InAppBrowser tests for Android because of flutter_inappwebivew bug #1973');
+      'Skipping InAppBrowser tests for Android because of flutter_inappwebivew bug #1973',
+    );
     return;
   }
 
@@ -49,14 +50,18 @@ void main() {
     await app.main();
 
     await tester.pumpAndSettle();
-    var button = find.byWidgetPredicate((widget) =>
-        widget is Text &&
-        (widget.data?.startsWith('InAppBrowser Example') ?? false));
+    var button = find.byWidgetPredicate(
+      (widget) =>
+          widget is Text &&
+          (widget.data?.startsWith('InAppBrowser Example') ?? false),
+    );
     await tester.tap(button);
     await tester.pumpAndSettle();
-    button = find.byWidgetPredicate((widget) =>
-        widget is Text &&
-        (widget.data?.startsWith('Open InAppBrowser') ?? false));
+    button = find.byWidgetPredicate(
+      (widget) =>
+          widget is Text &&
+          (widget.data?.startsWith('Open InAppBrowser') ?? false),
+    );
     await tester.tap(button);
     await tester.pumpAndSettle();
     // Using pump stalls, but we still want to wait for the webview to load.
@@ -64,22 +69,21 @@ void main() {
 
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
-    await serverRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        for (var request in requests) {
-          request.data.split('\n').forEach((e) {
-            dynamic jsonValue = json.decode(e);
-            if (jsonValue is Map<String, dynamic>) {
-              rumLog.add(RumEventDecoder(jsonValue));
-            }
-          });
-        }
-        final allSessions = RumSessionDecoder.fromEvents(rumLog);
-        return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
-      },
-    );
+    await serverRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      for (var request in requests) {
+        request.data.split('\n').forEach((e) {
+          dynamic jsonValue = json.decode(e);
+          if (jsonValue is Map<String, dynamic>) {
+            rumLog.add(RumEventDecoder(jsonValue));
+          }
+        });
+      }
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
+    });
 
     final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, 3);

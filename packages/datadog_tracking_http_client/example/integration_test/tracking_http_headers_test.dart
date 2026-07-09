@@ -31,8 +31,9 @@ Future<void> performRumUserFlow(WidgetTester tester) async {
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('captures request and response headers on RUM resource events',
-      (WidgetTester tester) async {
+  testWidgets('captures request and response headers on RUM resource events', (
+    WidgetTester tester,
+  ) async {
     final sessionRecorder = await startMockServer();
 
     const clientToken = bool.hasEnvironment('DD_CLIENT_TOKEN')
@@ -54,36 +55,37 @@ void main() {
     RumAutoInstrumentationScenarioConfig.instance = scenarioConfig;
 
     app.testingConfiguration = TestingConfiguration(
-        customEndpoint: sessionRecorder.sessionEndpoint,
-        clientToken: clientToken,
-        applicationId: applicationId,
-        firstPartyHosts: ['localhost']);
+      customEndpoint: sessionRecorder.sessionEndpoint,
+      clientToken: clientToken,
+      applicationId: applicationId,
+      firstPartyHosts: ['localhost'],
+    );
     await app.main();
     await tester.pumpAndSettle();
 
     await performRumUserFlow(tester);
 
     final rumLog = <RumEventDecoder>[];
-    await sessionRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        for (var request in requests) {
-          if (!request.requestedUrl.contains('integration')) {
-            rumLog.addAll(request.asRumEvents());
-          }
+    await sessionRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      for (var request in requests) {
+        if (!request.requestedUrl.contains('integration')) {
+          rumLog.addAll(request.asRumEvents());
         }
-        final allSessions = RumSessionDecoder.fromEvents(rumLog);
-        return allSessions.isNotEmpty && allSessions.last.visits.length >= 4;
-      },
-    );
+      }
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty && allSessions.last.visits.length >= 4;
+    });
 
     final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, greaterThanOrEqualTo(3));
 
     final view2 = session.visits[2];
 
-    final getEvent = view2.resourceEvents
-        .firstWhereOrNull((e) => e.url == scenarioConfig.firstPartyGetUrl);
+    final getEvent = view2.resourceEvents.firstWhereOrNull(
+      (e) => e.url == scenarioConfig.firstPartyGetUrl,
+    );
     expect(getEvent, isNotNull);
     // The C++ SDK does not surface _dd.request_headers / _dd.response_headers
     // as custom attributes on resource events, so headers are always null on desktop.
@@ -94,8 +96,9 @@ void main() {
       expect(getEvent.responseHeaders!['content-type'], isNotNull);
     }
 
-    final postEvent = view2.resourceEvents
-        .firstWhereOrNull((e) => e.url == scenarioConfig.firstPartyPostUrl);
+    final postEvent = view2.resourceEvents.firstWhereOrNull(
+      (e) => e.url == scenarioConfig.firstPartyPostUrl,
+    );
     expect(postEvent, isNotNull);
     if (!isDdSdkCppPlatform()) {
       expect(postEvent!.requestHeaders, isNotNull);

@@ -59,16 +59,15 @@ void main() {
 
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
-    await recordedSession.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        rumLog.addAll(requests.expand((r) => r.asRumEvents()));
-        final allSessions = RumSessionDecoder.fromEvents(rumLog);
-        return allSessions.isNotEmpty &&
-            allSessions.last.visits.length >= (kIsWeb ? 4 : 3);
-      },
-    );
+    await recordedSession.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      rumLog.addAll(requests.expand((r) => r.asRumEvents()));
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty &&
+          allSessions.last.visits.length >= (kIsWeb ? 4 : 3);
+    });
 
     const contextKey = 'onboarding_stage';
     const expectedContextValue = 1;
@@ -108,19 +107,25 @@ void main() {
     expect(view1.viewEvents.last.view.actionCount, actionCount);
 
     expect(
-        view1.viewEvents.last.view.resourceCount, view1.resourceEvents.length);
+      view1.viewEvents.last.view.resourceCount,
+      view1.resourceEvents.length,
+    );
     expect(view1.viewEvents.last.view.errorCount, 1);
     expect(view1.viewEvents.last.context![contextKey], expectedContextValue);
     expect(view1.viewEvents.last.featureFlags?.isEmpty, isTrue);
 
     expect(view1.actionEvents[baseAction + 0].actionType, 'tap');
     expect(view1.actionEvents[baseAction + 0].actionName, 'Tapped Download');
-    expect(view1.actionEvents[baseAction + 0].context![contextKey],
-        expectedContextValue);
+    expect(
+      view1.actionEvents[baseAction + 0].context![contextKey],
+      expectedContextValue,
+    );
     expect(view1.actionEvents[baseAction + 1].actionType, 'tap');
     expect(view1.actionEvents[baseAction + 1].actionName, 'Next Screen');
-    expect(view1.actionEvents[baseAction + 1].context![contextKey],
-        expectedContextValue);
+    expect(
+      view1.actionEvents[baseAction + 1].context![contextKey],
+      expectedContextValue,
+    );
 
     if (!isDdSdkCppPlatform()) {
       final contentReadyTiming =
@@ -134,8 +139,10 @@ void main() {
       // expect(contentReadyTiming, lessThan(200 * 1000 * 100));
       if (!kIsWeb) {
         expect(viewLoadingTiming, isNotNull);
-        expect(viewLoadingTiming,
-            closeTo(contentReadyTiming!, 10000000)); // Within 10ms
+        expect(
+          viewLoadingTiming,
+          closeTo(contentReadyTiming!, 10000000),
+        ); // Within 10ms
       }
       expect(firstInteractionTiming, isNotNull);
       expect(firstInteractionTiming, greaterThanOrEqualTo(contentReadyTiming!));
@@ -151,10 +158,14 @@ void main() {
       expect(manualResourceEvents[0].statusCode, 200);
       expect(manualResourceEvents[0].resourceType, 'image');
       final resourceDuration = manualResourceEvents[0].duration;
-      expect(resourceDuration,
-          greaterThan(const Duration(milliseconds: 90).inNanoseconds - 1));
-      expect(resourceDuration,
-          lessThan(const Duration(seconds: 10).inNanoseconds));
+      expect(
+        resourceDuration,
+        greaterThan(const Duration(milliseconds: 90).inNanoseconds - 1),
+      );
+      expect(
+        resourceDuration,
+        lessThan(const Duration(seconds: 10).inNanoseconds),
+      );
       expect(manualResourceEvents[0].size, 2048);
     }
 
@@ -217,7 +228,9 @@ void main() {
       expect(view2.viewEvents.last.view.longTaskCount, greaterThanOrEqualTo(1));
     }
     expect(
-        view2.viewEvents.last.view.resourceCount, view2.resourceEvents.length);
+      view2.viewEvents.last.view.resourceCount,
+      view2.resourceEvents.length,
+    );
 
     // All view events in view2 should have the view attribute supplied (web may miss
     // the first update).
@@ -249,18 +262,24 @@ void main() {
       expect(manualResourceEvents[0].statusCode, 200);
       expect(manualResourceEvents[0].resourceType, 'image');
       final resourceDuration = manualResourceEvents[0].duration;
-      expect(resourceDuration,
-          greaterThan(const Duration(milliseconds: 90).inNanoseconds - 1));
-      expect(resourceDuration,
-          lessThan(const Duration(seconds: 10).inNanoseconds));
+      expect(
+        resourceDuration,
+        greaterThan(const Duration(milliseconds: 90).inNanoseconds - 1),
+      );
+      expect(
+        resourceDuration,
+        lessThan(const Duration(seconds: 10).inNanoseconds),
+      );
 
       // TNS is not calculated on web or ddsdkcpp
       if (!kIsWeb && !isDdSdkCppPlatform()) {
         final tns =
             Duration(milliseconds: resourceStart - viewStart).inNanoseconds +
-                resourceDuration!;
-        expect(view2.viewEvents.last.view.networkSettledTime,
-            closeTo(tns, const Duration(milliseconds: 100).inNanoseconds));
+            resourceDuration!;
+        expect(
+          view2.viewEvents.last.view.networkSettledTime,
+          closeTo(tns, const Duration(milliseconds: 100).inNanoseconds),
+        );
       }
     }
 
@@ -268,8 +287,10 @@ void main() {
     expect(view2.errorEvents[0].source, 'source');
     expect(view2.errorEvents[0].context![contextKey], expectedContextValue);
     expect(view2.errorEvents[0].context!['custom_attribute'], 'my_attribute');
-    expect(view2.errorEvents[0].context!['view_attribute'],
-        'view_attribute_value');
+    expect(
+      view2.errorEvents[0].context!['view_attribute'],
+      'view_attribute_value',
+    );
     // C++ does not support custom error fingerprinting
     if (!isDdSdkCppPlatform()) {
       expect(view2.errorEvents[0].fingerprint, 'custom-fingerprint');
@@ -284,13 +305,16 @@ void main() {
       var over200 = 0;
       for (var longTask in view2.longTaskEvents) {
         expect(
-            longTask.duration,
-            greaterThanOrEqualTo(
-                const Duration(milliseconds: longTaskThresholdMs)
-                    .inNanoseconds));
+          longTask.duration,
+          greaterThanOrEqualTo(
+            const Duration(milliseconds: longTaskThresholdMs).inNanoseconds,
+          ),
+        );
         // Nothing should have taken more than 2 seconds
-        expect(longTask.duration,
-            lessThan(const Duration(seconds: 2).inNanoseconds));
+        expect(
+          longTask.duration,
+          lessThan(const Duration(seconds: 2).inNanoseconds),
+        );
         if (longTask.duration! >
             const Duration(milliseconds: 200).inNanoseconds) {
           over200++;
@@ -303,8 +327,10 @@ void main() {
     expect(view2.actionEvents[0].actionName, 'User Scrolling');
 
     // start/stop action is supported on web via the start_stop_action experimental feature
-    expect(view2.actionEvents[0].loadingTime,
-        greaterThan(1800 * 1000 * 1000)); // 1.8s
+    expect(
+      view2.actionEvents[0].loadingTime,
+      greaterThan(1800 * 1000 * 1000),
+    ); // 1.8s
     // TODO: Figure out why occasionally these have really high values
     // expect(view1.actionEvents[0].loadingTime,
     //     lessThan(3 * 1000 * 1000 * 1000)); // 3s
@@ -345,13 +371,12 @@ void main() {
     expect(view3.viewEvents.last.view.errorCount, 0);
 
     const expectedNestedAttribute = {
-      'testing_attribute': {
-        'nested_1': 123,
-        'nested_null': null,
-      },
+      'testing_attribute': {'nested_1': 123, 'nested_null': null},
     };
-    expect(view3.viewEvents.last.context!['nesting_attribute'],
-        expectedNestedAttribute);
+    expect(
+      view3.viewEvents.last.context!['nesting_attribute'],
+      expectedNestedAttribute,
+    );
 
     // Verify service name in RUM events
     for (final event in rumLog) {

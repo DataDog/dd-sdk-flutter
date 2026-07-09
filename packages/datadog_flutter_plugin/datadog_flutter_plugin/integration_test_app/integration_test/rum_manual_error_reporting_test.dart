@@ -13,15 +13,18 @@ import 'common.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('test rum manual error reporting scenario',
-      (WidgetTester tester) async {
+  testWidgets('test rum manual error reporting scenario', (
+    WidgetTester tester,
+  ) async {
     var recordedSession = await openTestScenario(
       tester,
       menuTitle: 'RUM Error Reporting Scenario',
     );
 
-    var throwButton =
-        find.widgetWithText(ElevatedButton, 'Throw / Catch Exception');
+    var throwButton = find.widgetWithText(
+      ElevatedButton,
+      'Throw / Catch Exception',
+    );
     await tester.tap(throwButton);
     await tester.pumpAndSettle();
 
@@ -31,18 +34,17 @@ void main() {
 
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
-    await recordedSession.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        rumLog.addAll(requests.expand((r) => r.asRumEvents()));
-        final allSessions = RumSessionDecoder.fromEvents(rumLog);
-        if (allSessions.isEmpty) return false;
-        var visits = allSessions.last.visits;
-        return visits.length == 1 &&
-            visits[0].viewEvents.last.view.errorCount == 3;
-      },
-    );
+    await recordedSession.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      rumLog.addAll(requests.expand((r) => r.asRumEvents()));
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      if (allSessions.isEmpty) return false;
+      var visits = allSessions.last.visits;
+      return visits.length == 1 &&
+          visits[0].viewEvents.last.view.errorCount == 3;
+    });
 
     final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, 1);

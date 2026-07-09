@@ -72,18 +72,17 @@ void main() {
     await performRumUserFlow(tester);
 
     final rumLog = <RumEventDecoder>[];
-    await sessionRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        for (var request in requests) {
-          if (!request.requestedUrl.contains('integration')) {
-            rumLog.addAll(request.asRumEvents());
-          }
+    await sessionRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      for (var request in requests) {
+        if (!request.requestedUrl.contains('integration')) {
+          rumLog.addAll(request.asRumEvents());
         }
-        final allSessions = RumSessionDecoder.fromEvents(rumLog);
-        return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
-      },
-    );
+      }
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
+    });
 
     final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, greaterThanOrEqualTo(3));

@@ -35,22 +35,23 @@ void main() {
   // scenario with instrumentation enabled, then checks that we got the expected
   // calls.
   testWidgets('test auto instrumentation', (WidgetTester tester) async {
-    var serverRecorder = await openTestScenario(tester,
-        scenarioName: autoInstrumentationScenarioName);
+    var serverRecorder = await openTestScenario(
+      tester,
+      scenarioName: autoInstrumentationScenarioName,
+    );
 
     await performRumUserFlow(tester);
 
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
-    await serverRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        rumLog.addAll(requests.expand((r) => r.asRumEvents()));
-        final allSessions = RumSessionDecoder.fromEvents(rumLog);
-        return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
-      },
-    );
+    await serverRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      rumLog.addAll(requests.expand((r) => r.asRumEvents()));
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
+    });
 
     final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, 3);
@@ -92,8 +93,10 @@ void main() {
         expect(firstBuildComplete, greaterThan(tenMsInNs));
 
         // INV should be at least 10 milliseconds later, as the tap action also takes up 10 ms
-        expect(view2.viewEvents.last.inv,
-            greaterThan(firstBuildComplete! + tenMsInNs));
+        expect(
+          view2.viewEvents.last.inv,
+          greaterThan(firstBuildComplete! + tenMsInNs),
+        );
       }
     }
 

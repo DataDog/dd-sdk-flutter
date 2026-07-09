@@ -74,31 +74,24 @@ void main() {
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
     final testRequests = <RequestLog>[];
-    await sessionRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        for (var request in requests) {
-          if (request.requestedUrl.contains('integration')) {
-            if (!request.requestHeaders
-                .containsKey('access-control-request-method')) {
-              testRequests.add(request);
-            }
-          } else {
-            rumLog.addAll(request.asRumEvents());
+    await sessionRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      for (var request in requests) {
+        if (request.requestedUrl.contains('integration')) {
+          if (!request.requestHeaders.containsKey(
+            'access-control-request-method',
+          )) {
+            testRequests.add(request);
           }
         } else {
-          request.data.split('\n').forEach((e) {
-            var jsonValue = json.decode(e);
-            if (jsonValue is Map<String, dynamic>) {
-              rumLog.add(RumEventDecoder(jsonValue));
-            }
-          });
+          rumLog.addAll(request.asRumEvents());
         }
-        final allSessions = RumSessionDecoder.fromEvents(rumLog);
-        return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
-      },
-    );
+      }
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
+    });
 
     final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, greaterThanOrEqualTo(3));
@@ -134,8 +127,10 @@ void main() {
       if (!isDdSdkCppPlatform()) {
         final baggageHeader = testRequest.requestHeaders['baggage']?.first;
         final baggageValues = baggageHeader?.split(',');
-        expect(baggageValues?.firstWhereOrNull((e) => e.contains('session.id')),
-            isNotNull);
+        expect(
+          baggageValues?.firstWhereOrNull((e) => e.contains('session.id')),
+          isNotNull,
+        );
         expect(baggageValues, contains('user.id=integration_test_user'));
         expect(baggageValues, contains('account.id=integration_test_account'));
       }

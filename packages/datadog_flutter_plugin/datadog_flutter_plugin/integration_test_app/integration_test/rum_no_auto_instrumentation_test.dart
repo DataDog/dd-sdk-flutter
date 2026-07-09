@@ -15,8 +15,9 @@ void main() {
   // This first test boots the normal integration test app and opens the auto
   // instrumentation scenario. However, since nothing in that section of the app
   // is instrumented, we expect nothing to be sent back to Datadog
-  testWidgets('test auto instrumentation with no results',
-      (WidgetTester tester) async {
+  testWidgets('test auto instrumentation with no results', (
+    WidgetTester tester,
+  ) async {
     var recordedSession = await openTestScenario(
       tester,
       menuTitle: 'Auto RUM Scenario',
@@ -25,14 +26,13 @@ void main() {
     await performRumUserFlow(tester);
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
-    await recordedSession.pollSessionRequests(
-      const Duration(seconds: 30),
-      (requests) {
-        requestLog.addAll(requests);
-        rumLog.addAll(requests.expand((r) => r.asRumEvents()));
-        return false;
-      },
-    );
+    await recordedSession.pollSessionRequests(const Duration(seconds: 30), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      rumLog.addAll(requests.expand((r) => r.asRumEvents()));
+      return false;
+    });
     // Decode this session. This removes events that came from
     // the ApplicationLaunchView (which can happen if the emulator is running slow)
     final sessions = RumSessionDecoder.fromEvents(rumLog);

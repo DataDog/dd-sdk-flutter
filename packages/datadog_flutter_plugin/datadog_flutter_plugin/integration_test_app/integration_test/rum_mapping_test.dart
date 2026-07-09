@@ -25,8 +25,9 @@ void main() {
   //  * errorMapper changes 'custom-fingerprint' to 'mapped fingerprint'
   //  * longTask mapper discards all long tasks less than 200 ms
   //  * longTask mapper renames ThirdManualRumView to ThirdView
-  testWidgets('test instrumentation with mappers', skip: isDdSdkPlatform(),
-      (WidgetTester tester) async {
+  testWidgets('test instrumentation with mappers', skip: isDdSdkPlatform(), (
+    WidgetTester tester,
+  ) async {
     var serverRecorder = await openTestScenario(
       tester,
       menuTitle: 'Manual RUM Scenario',
@@ -37,15 +38,14 @@ void main() {
 
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
-    await serverRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        rumLog.addAll(requests.expand((r) => r.asRumEvents()));
-        final allSessions = RumSessionDecoder.fromEvents(rumLog);
-        return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
-      },
-    );
+    await serverRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      rumLog.addAll(requests.expand((r) => r.asRumEvents()));
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
+    });
 
     final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, 3);
@@ -74,9 +74,9 @@ void main() {
     expect(view2.longTaskEvents.length, greaterThanOrEqualTo(1));
     for (var longTask in view2.longTaskEvents) {
       expect(
-          longTask.duration,
-          greaterThanOrEqualTo(
-              const Duration(milliseconds: 200).inNanoseconds));
+        longTask.duration,
+        greaterThanOrEqualTo(const Duration(milliseconds: 200).inNanoseconds),
+      );
     }
 
     expect(view2.errorEvents[0].fingerprint, 'mapped fingerprint');
