@@ -320,7 +320,6 @@ void main() {
     expect(view2.actionEvents[0].actionType, 'scroll');
     expect(view2.actionEvents[0].actionName, 'User Scrolling');
 
-    // start/stop action is supported on web via the start_stop_action experimental feature
     expect(
       view2.actionEvents[0].loadingTime,
       greaterThan(1800 * 1000 * 1000),
