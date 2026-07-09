@@ -1,3 +1,22 @@
+# Migration from 3.x to 4.0
+
+## Flutter Web Changes
+
+Clients using Flutter Web should update to using the Datadog Browser SDK v7. Change the following import in your `index.html`:
+
+```diff
+-  <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-logs.js"></script> 
+-  <script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum-slim.js"></script> 
++  <script type="text/javascript" crossorigin="anonymous" src="https://www.datadoghq-browser-agent.com/us1/v7/datadog-logs.js"></script>
++  <script type="text/javascript" crossorigin="anonymous" src="https://www.datadoghq-browser-agent.com/us1/v7/datadog-rum-slim.js"></script>
+```
+
+The v7 CDN bundles use ESM dynamic imports to load async chunks, so the `crossorigin="anonymous"` attribute is now required on the script tags.
+
+If you allowlist cookies (for example in a content security policy or proxy), add `_dd_s_v2` alongside the existing `_dd_s` cookie name; the Browser SDK migrates sessions from `_dd_s` automatically on first load, but rolling back to v6 afterwards will start a new session.
+
+If you use `firstPartyHosts` with tracing headers, the Browser SDK now sends an additional `baggage` header by default. If your server's CORS configuration restricts `Access-Control-Allow-Headers`, add `baggage` to the allowlist.
+
 # Migration from 2.x to 3.0
 
 ## Android Changes

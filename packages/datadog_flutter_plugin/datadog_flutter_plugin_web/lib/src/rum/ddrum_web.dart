@@ -82,15 +82,6 @@ class DdRumWeb extends DdRumPlatform {
         ),
         trackFrustrations: rumConfiguration.trackFrustrations,
         trackLongTasks: rumConfiguration.detectLongTasks,
-        enableExperimentalFeatures: [
-          'feature_flags'.toJS,
-          'feature_operation_vital'.toJS,
-          'start_stop_action'.toJS,
-          'start_stop_resource'.toJS,
-          // Required to emit resource headers on Browser SDK v6.x (GA in v7.1.0+).
-          if (rumConfiguration.trackResourceHeaders != null)
-            'track_resource_headers'.toJS,
-        ].toJS,
         trackingConsent: trackingConsent.webValue(),
         compressIntakeRequests: false,
         plugins: plugins,
@@ -601,7 +592,6 @@ extension type _RumInitOptions._(JSObject _) implements JSObject {
     bool compressIntakeRequests,
     // ignore: unused_element_parameter
     String? defaultPrivacyLevel,
-    JSArray enableExperimentalFeatures,
     String? env,
     JSArray? plugins,
     bool? propagateTraceBaggage,

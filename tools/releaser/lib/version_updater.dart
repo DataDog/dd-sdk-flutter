@@ -156,7 +156,7 @@ Future<bool> _updateReadmeVersions(
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| ${args.iOSRelease} | ${args.androidRelease} | 5.x.x |
+| ${args.iOSRelease} | ${args.androidRelease} | 7.x.x |
 
 [//]: # (End SDK Table)''';
         return line;
