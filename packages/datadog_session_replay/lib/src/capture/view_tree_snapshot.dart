@@ -41,16 +41,16 @@ abstract class CaptureNodeSemantics {
 @immutable
 class UnknownElement extends CaptureNodeSemantics {
   const UnknownElement({super.subtreePrivacy})
-      : super(
-          subtreeStrategy: CaptureNodeSubtreeStrategy.record,
-          nodes: const [],
-        );
+    : super(
+        subtreeStrategy: CaptureNodeSubtreeStrategy.record,
+        nodes: const [],
+      );
 }
 
 @immutable
 class InvisibleElement extends CaptureNodeSemantics {
   const InvisibleElement({required super.subtreeStrategy, super.subtreePrivacy})
-      : super(nodes: const []);
+    : super(nodes: const []);
 }
 
 @immutable

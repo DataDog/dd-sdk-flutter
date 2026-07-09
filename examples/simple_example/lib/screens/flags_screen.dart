@@ -6,7 +6,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -22,23 +23,31 @@ class FlagsScreen extends StatefulWidget {
 }
 
 class _FlagsScreenState extends State<FlagsScreen> {
-  late final DatadogFlagsClient _client;
+  DatadogFlagsClient? _client;
   String _status = 'idle';
   List<_EvaluatedFlag> _flags = [];
 
   @override
   void initState() {
     super.initState();
-    _client = DatadogFlags.instance.sharedClient();
+    _client = DatadogSdk.instance.flags?.sharedClient();
     unawaited(_refreshAssignments());
   }
 
   Future<void> _refreshAssignments() async {
+    final client = _client;
+    if (client == null) {
+      _evaluateFlags();
+      setState(() {
+        _status = 'flags plugin not configured';
+      });
+      return;
+    }
     setState(() {
       _status = 'loading';
     });
     try {
-      await _client.initialize(widget.config.evaluationContext);
+      await client.initialize(widget.config.evaluationContext);
       if (!mounted) {
         return;
       }
@@ -74,27 +83,61 @@ class _FlagsScreenState extends State<FlagsScreen> {
   }
 
   FlagDetails<dynamic> _detailsFor(FlagsExampleFlag flag) {
+    final client = _client;
+    if (client == null) {
+      return _providerNotReadyDetails(flag);
+    }
     return switch (flag.type) {
-      FlagsExampleFlagType.boolean => _client.getBooleanDetails(
-          key: flag.key,
-          defaultValue: false,
-        ),
-      FlagsExampleFlagType.string => _client.getStringDetails(
-          key: flag.key,
-          defaultValue: 'Fallback title',
-        ),
-      FlagsExampleFlagType.integer => _client.getIntegerDetails(
-          key: flag.key,
-          defaultValue: 0,
-        ),
-      FlagsExampleFlagType.float => _client.getDoubleDetails(
-          key: flag.key,
-          defaultValue: 0,
-        ),
-      FlagsExampleFlagType.object => _client.getObjectDetails(
-          key: flag.key,
-          defaultValue: const {},
-        ),
+      FlagsExampleFlagType.boolean => client.getBooleanDetails(
+        key: flag.key,
+        defaultValue: false,
+      ),
+      FlagsExampleFlagType.string => client.getStringDetails(
+        key: flag.key,
+        defaultValue: 'Fallback title',
+      ),
+      FlagsExampleFlagType.integer => client.getIntegerDetails(
+        key: flag.key,
+        defaultValue: 0,
+      ),
+      FlagsExampleFlagType.float => client.getDoubleDetails(
+        key: flag.key,
+        defaultValue: 0,
+      ),
+      FlagsExampleFlagType.object => client.getObjectDetails(
+        key: flag.key,
+        defaultValue: const {},
+      ),
+    };
+  }
+
+  FlagDetails<dynamic> _providerNotReadyDetails(FlagsExampleFlag flag) {
+    return switch (flag.type) {
+      FlagsExampleFlagType.boolean => FlagDetails<bool>(
+        key: flag.key,
+        value: false,
+        error: FlagEvaluationError.providerNotReady,
+      ),
+      FlagsExampleFlagType.string => FlagDetails<String>(
+        key: flag.key,
+        value: 'Fallback title',
+        error: FlagEvaluationError.providerNotReady,
+      ),
+      FlagsExampleFlagType.integer => FlagDetails<int>(
+        key: flag.key,
+        value: 0,
+        error: FlagEvaluationError.providerNotReady,
+      ),
+      FlagsExampleFlagType.float => FlagDetails<double>(
+        key: flag.key,
+        value: 0,
+        error: FlagEvaluationError.providerNotReady,
+      ),
+      FlagsExampleFlagType.object => FlagDetails<Object?>(
+        key: flag.key,
+        value: const {},
+        error: FlagEvaluationError.providerNotReady,
+      ),
     };
   }
 
@@ -175,10 +218,7 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(width: 12),
           Expanded(child: Text(value)),
         ],
@@ -232,10 +272,7 @@ class _FlagDetailsRow extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 if (error != null)
-                  Text(
-                    error,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  Text(error, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
           ),

@@ -25,9 +25,9 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
     required FlagsRepository repository,
     required ExposureLogger exposureLogger,
     required EvaluationAggregator evaluationAggregator,
-  })  : _repository = repository,
-        _exposureLogger = exposureLogger,
-        _evaluationAggregator = evaluationAggregator;
+  }) : _repository = repository,
+       _exposureLogger = exposureLogger,
+       _evaluationAggregator = evaluationAggregator;
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {

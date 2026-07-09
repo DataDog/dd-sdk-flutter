@@ -8,23 +8,13 @@ import '../json_helpers.dart';
 
 part 'ddlog_event.g.dart';
 
-enum LogStatus {
-  debug,
-  info,
-  notice,
-  warn,
-  error,
-  critical,
-  emergency,
-}
+enum LogStatus { debug, info, notice, warn, error, critical, emergency }
 
 @commonJsonOptions
 class LogDevice {
   final String architecture;
 
-  LogDevice({
-    required this.architecture,
-  });
+  LogDevice({required this.architecture});
 
   factory LogDevice.fromJson(Map<String, dynamic> json) =>
       _$LogDeviceFromJson(json);
@@ -48,18 +38,10 @@ class LogEventUserInfo {
   final String? name;
   final String? email;
 
-  @JsonKey(
-    name: 'extraInfo',
-    fromJson: attributesFromJson,
-  )
+  @JsonKey(name: 'extraInfo', fromJson: attributesFromJson)
   final Map<String, Object?> extraInfo;
 
-  LogEventUserInfo({
-    this.id,
-    this.name,
-    this.email,
-    required this.extraInfo,
-  });
+  LogEventUserInfo({this.id, this.name, this.email, required this.extraInfo});
 
   factory LogEventUserInfo.fromJson(Map<dynamic, dynamic> json) =>
       _$LogEventUserInfoFromJson(json);
@@ -73,12 +55,7 @@ class LogEventError {
   final String? stack;
   String? fingerprint;
 
-  LogEventError({
-    this.kind,
-    this.message,
-    this.stack,
-    this.fingerprint,
-  });
+  LogEventError({this.kind, this.message, this.stack, this.fingerprint});
 
   factory LogEventError.fromJson(Map<dynamic, dynamic> json) =>
       _$LogEventErrorFromJson(json);

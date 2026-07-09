@@ -96,31 +96,33 @@ class _MaterialWidgetsScreenState extends State<MaterialWidgetsScreen> {
               ),
               _WidgetDisplay(
                 name: 'Checkbox',
-                builder: (_) => Checkbox(
-                  value: _checkboxOn,
-                  onChanged: _onCheckboxChanged,
-                ),
+                builder: (_) =>
+                    Checkbox(value: _checkboxOn, onChanged: _onCheckboxChanged),
               ),
               _WidgetDisplay(
                 name: 'Radio',
                 builder: (_) => Column(
                   children: [
-                    Row(children: [
-                      Radio<String>(
-                        value: 'a',
-                        groupValue: _radioValue,
-                        onChanged: _onRadioChanged,
-                      ),
-                      Text('A')
-                    ]),
-                    Row(children: [
-                      Radio<String>(
-                        value: 'b',
-                        groupValue: _radioValue,
-                        onChanged: _onRadioChanged,
-                      ),
-                      Text('B')
-                    ]),
+                    Row(
+                      children: [
+                        Radio<String>(
+                          value: 'a',
+                          groupValue: _radioValue,
+                          onChanged: _onRadioChanged,
+                        ),
+                        Text('A'),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Radio<String>(
+                          value: 'b',
+                          groupValue: _radioValue,
+                          onChanged: _onRadioChanged,
+                        ),
+                        Text('B'),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -165,6 +167,11 @@ class _WidgetDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(children: [Expanded(child: Text(name)), builder(context)]);
+    return Row(
+      children: [
+        Expanded(child: Text(name)),
+        builder(context),
+      ],
+    );
   }
 }

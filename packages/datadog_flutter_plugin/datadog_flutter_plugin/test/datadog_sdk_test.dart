@@ -23,6 +23,31 @@ class MockDatadogPluginConfiguration extends Mock
 
 class MockDatadogPlugin extends Mock implements DatadogPlugin {}
 
+class CapturingDatadogPluginConfiguration extends DatadogPluginConfiguration {
+  DatadogConfiguration? configurationOnInitialize;
+
+  @override
+  DatadogPlugin create(DatadogSdk datadogInstance) {
+    return CapturingDatadogPlugin(
+      datadogInstance,
+      onInitialize: (configuration) {
+        configurationOnInitialize = configuration;
+      },
+    );
+  }
+}
+
+class CapturingDatadogPlugin extends DatadogPlugin {
+  final void Function(DatadogConfiguration?) onInitialize;
+
+  CapturingDatadogPlugin(super.instance, {required this.onInitialize});
+
+  @override
+  void initialize() {
+    onInitialize(instance.configuration);
+  }
+}
+
 class MockRumPlatform extends Mock
     with MockPlatformInterfaceMixin
     implements DdRumPlatform {}
@@ -146,6 +171,20 @@ void main() {
     );
   });
 
+  test('initialize makes configuration available to plugins', () async {
+    final pluginConfiguration = CapturingDatadogPluginConfiguration();
+    final configuration = DatadogConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+    )..addPlugin(pluginConfiguration);
+
+    await datadogSdk.initialize(configuration, TrackingConsent.granted);
+
+    expect(datadogSdk.configuration, same(configuration));
+    expect(pluginConfiguration.configurationOnInitialize, same(configuration));
+  });
+
   test('encode base configuration', () {
     final configuration = DatadogConfiguration(
       clientToken: 'fake-client-token',
@@ -167,15 +206,16 @@ void main() {
   });
 
   test('initialize encoding serializes enums correctly', () {
-    final configuration = DatadogConfiguration(
-      clientToken: 'fakeClientToken',
-      env: 'environment',
-      site: DatadogSite.us1,
-    )
-      ..batchSize = BatchSize.small
-      ..uploadFrequency = UploadFrequency.frequent
-      ..batchProcessingLevel = BatchProcessingLevel.low
-      ..site = DatadogSite.eu1;
+    final configuration =
+        DatadogConfiguration(
+            clientToken: 'fakeClientToken',
+            env: 'environment',
+            site: DatadogSite.us1,
+          )
+          ..batchSize = BatchSize.small
+          ..uploadFrequency = UploadFrequency.frequent
+          ..batchProcessingLevel = BatchProcessingLevel.low
+          ..site = DatadogSite.eu1;
 
     final encoded = configuration.encode();
     expect(encoded['batchSize'], 'BatchSize.small');

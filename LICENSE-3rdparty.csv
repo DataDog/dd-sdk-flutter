@@ -38,3 +38,5 @@ import,webview_flutter,BSD-3-Clause,Copyright 2013 The Flutter Authors.
 import,webview_flutter_android,BSD-3-Clause,Copyright 2013 The Flutter Authors.
 import,webview_flutter_wkwebview,BSD-3-Clause,Copyright 2013 The Flutter Authors.
 import,flutter_inappwebview,Apache-2.0,"Copyright © 2024 Flutter InAppWebView, Inc."
+test,Open Sans,OFL,Copyright 2020 The Open Sans Project Authors
+test,test_fonts,BSD-3-Clause,"Copyright 2019-2020 eBay Inc."

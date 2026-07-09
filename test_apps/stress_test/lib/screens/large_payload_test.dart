@@ -89,14 +89,19 @@ class _LargePayloadTestState extends State<LargePayloadTest>
       var eventTypeString = '';
       switch (eventType) {
         case 0:
-          DatadogSdk.instance.rum
-              ?.addAction(RumActionType.tap, 'User Action', eventContext);
+          DatadogSdk.instance.rum?.addAction(
+            RumActionType.tap,
+            'User Action',
+            eventContext,
+          );
           eventTypeString = 'Action';
           break;
         case 1:
           DatadogSdk.instance.rum?.addErrorInfo(
-              'Fake Error', RumErrorSource.source,
-              attributes: eventContext);
+            'Fake Error',
+            RumErrorSource.source,
+            attributes: eventContext,
+          );
           eventTypeString = 'Error';
           break;
       }
@@ -104,7 +109,8 @@ class _LargePayloadTestState extends State<LargePayloadTest>
       status = 'Sent payload ${i + 1} / $payloads (an $eventTypeString)';
 
       await Future<void>.delayed(
-          Duration(milliseconds: (payloadDelay * 1000).toInt()));
+        Duration(milliseconds: (payloadDelay * 1000).toInt()),
+      );
       if (isCanceled) {
         _finish();
       }
@@ -132,14 +138,18 @@ class _LargePayloadTestState extends State<LargePayloadTest>
   }
 
   Future<void> _updateMapperPerf() async {
-    var perfMap = await const MethodChannel('datadog_sdk_flutter')
-            .invokeMethod('getInternalVar', {'name': 'mapperPerformance'})
-        as Map<Object?, Object?>?;
+    var perfMap =
+        await const MethodChannel(
+              'datadog_sdk_flutter',
+            ).invokeMethod('getInternalVar', {'name': 'mapperPerformance'})
+            as Map<Object?, Object?>?;
     if (perfMap != null && mounted) {
       final totalPerf = PerformanceMeasure.fromEncoded(
-          perfMap['total'] as Map<Object?, Object?>);
+        perfMap['total'] as Map<Object?, Object?>,
+      );
       final mainThreadPerf = PerformanceMeasure.fromEncoded(
-          perfMap['mainThread'] as Map<Object?, Object?>);
+        perfMap['mainThread'] as Map<Object?, Object?>,
+      );
       final timeouts = perfMap['mapperTimeouts'] as int;
       setState(() {
         perfStatus =
@@ -160,9 +170,7 @@ class _LargePayloadTestState extends State<LargePayloadTest>
             Row(
               children: [
                 const Text('Payloads'),
-                const SizedBox.square(
-                  dimension: 10,
-                ),
+                const SizedBox.square(dimension: 10),
                 Expanded(
                   child: Slider(
                     value: payloads.toDouble(),
@@ -184,9 +192,7 @@ class _LargePayloadTestState extends State<LargePayloadTest>
             Row(
               children: [
                 const Text('Payload Delay'),
-                const SizedBox.square(
-                  dimension: 10,
-                ),
+                const SizedBox.square(dimension: 10),
                 Expanded(
                   child: Slider(
                     value: payloadDelay,
@@ -211,20 +217,15 @@ class _LargePayloadTestState extends State<LargePayloadTest>
                   onPressed: !sendingPayloads ? _sendPayloads : null,
                   child: const Text('Send'),
                 ),
-                const SizedBox(
-                  width: 10,
-                ),
+                const SizedBox(width: 10),
                 ElevatedButton(
                   onPressed: sendingPayloads ? _cancel : null,
                   child: const Text('Cancel'),
-                )
+                ),
               ],
             ),
             Text(status),
-            Padding(
-              padding: const EdgeInsets.all(15),
-              child: Text(perfStatus),
-            )
+            Padding(padding: const EdgeInsets.all(15), child: Text(perfStatus)),
           ],
         ),
       ),

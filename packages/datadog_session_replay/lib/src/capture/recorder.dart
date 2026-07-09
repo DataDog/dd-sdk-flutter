@@ -175,13 +175,13 @@ class SessionReplayRecorder {
     ImageDownscaling imageDownscaling = ImageDownscaling.disabled,
     int maxImagePixelBudget = defaultMaxImagePixelBudget,
   }) : this._(
-          KeyGenerator(),
-          timeProvider,
-          defaultCapturePrivacy,
-          touchPrivacyLevel,
-          imageDownscaling,
-          maxImagePixelBudget,
-        );
+         KeyGenerator(),
+         timeProvider,
+         defaultCapturePrivacy,
+         touchPrivacyLevel,
+         imageDownscaling,
+         maxImagePixelBudget,
+       );
 
   SessionReplayRecorder._(
     KeyGenerator keyGenerator,
@@ -220,9 +220,9 @@ class SessionReplayRecorder {
     DatadogTimeProvider timeProvider = const DefaultTimeProvider(),
     required TreeCapturePrivacy defaultCapturePrivacy,
     required TouchPrivacyLevel touchPrivacyLevel,
-  })  : _timeProvider = timeProvider,
-        _defaultTreeCapturePrivacy = defaultCapturePrivacy,
-        _touchPrivacyLevel = touchPrivacyLevel {
+  }) : _timeProvider = timeProvider,
+       _defaultTreeCapturePrivacy = defaultCapturePrivacy,
+       _touchPrivacyLevel = touchPrivacyLevel {
     _elementRecorders.addAll(elementRecorders);
   }
 
@@ -389,8 +389,9 @@ class SessionReplayRecorder {
       }
 
       final widget = e.widget;
-      final recorder =
-          _elementRecorders.firstWhereOrNull((r) => r.accepts(widget));
+      final recorder = _elementRecorders.firstWhereOrNull(
+        (r) => r.accepts(widget),
+      );
       var subtreeStrategy = CaptureNodeSubtreeStrategy.record;
       if (recorder != null) {
         final transformMatrix = renderObject.getTransformTo(

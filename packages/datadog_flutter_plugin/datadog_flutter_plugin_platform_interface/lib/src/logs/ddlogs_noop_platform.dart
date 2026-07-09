@@ -10,7 +10,9 @@ import 'log_level.dart';
 class DdNoOpLogsPlatform extends DdLogsPlatform {
   @override
   Future<void> enable(
-      InternalLogger logger, DatadogLoggingConfiguration config) {
+    InternalLogger logger,
+    DatadogLoggingConfiguration config,
+  ) {
     return Future.value();
   }
 
@@ -37,7 +39,9 @@ class DdNoOpLogsPlatform extends DdLogsPlatform {
 
   @override
   Future<void> createLogger(
-      String loggerHandle, DatadogLoggerConfiguration config) {
+    String loggerHandle,
+    DatadogLoggerConfiguration config,
+  ) {
     return Future.value();
   }
 
@@ -48,13 +52,14 @@ class DdNoOpLogsPlatform extends DdLogsPlatform {
 
   @override
   Future<void> log(
-      String loggerHandle,
-      LogLevel level,
-      String message,
-      String? errorMessage,
-      String? errorKind,
-      StackTrace? errorStackTrace,
-      Map<String, Object?> attributes) {
+    String loggerHandle,
+    LogLevel level,
+    String message,
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 

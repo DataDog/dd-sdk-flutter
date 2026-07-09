@@ -1,0 +1,28 @@
+name: datadog_flags_flutter
+description: Flutter integration for the Datadog Feature Flags and Experimentation SDK.
+version: 1.0.0
+repository: https://github.com/DataDog/dd-sdk-flutter
+homepage: https://datadoghq.com
+issue_tracker: https://github.com/DataDog/dd-sdk-flutter/issues
+topics:
+  - datadog
+  - feature-flags
+  - experimentation
+  - flutter
+
+environment:
+  sdk: ">=3.10.0 <4.0.0"
+  flutter: ">=3.38.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  datadog_flags: ^1.0.0
+  datadog_flutter_plugin: ^3.4.0
+  meta: ^1.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ">=1.0.0"
+  mocktail: ^1.0.4

@@ -40,8 +40,8 @@ typedef RumActionEventMapper = RumActionEvent? Function(RumActionEvent event);
 ///
 /// The [RumResourceEventMapper] can modify any mutable (non-final) properties in the
 /// [RumResourceEvent]
-typedef RumResourceEventMapper = RumResourceEvent? Function(
-    RumResourceEvent event);
+typedef RumResourceEventMapper =
+    RumResourceEvent? Function(RumResourceEvent event);
 
 /// A function that allows you to modify or drop specific [RumErrorEvent]s before
 /// they are sent to Datadog.
@@ -55,16 +55,16 @@ typedef RumErrorEventMapper = RumErrorEvent? Function(RumErrorEvent event);
 ///
 /// The [RumLongTaskEvent] can modify any mutable (non-final) properties in the
 /// [RumLongTaskEvent]
-typedef RumLongTaskEventMapper = RumLongTaskEvent? Function(
-    RumLongTaskEvent event);
+typedef RumLongTaskEventMapper =
+    RumLongTaskEvent? Function(RumLongTaskEvent event);
 
 /// A function that allows you to modify or drop specific [RumVitalOperationEvent]s before
 /// they are sent to Datadog.
 ///
 /// The [RumVitalOperationEvent] can modify any mutable (non-final) properties in the
 /// [RumVitalOperationEvent]
-typedef RumVitalOperationEventMapper = RumVitalOperationStepEvent? Function(
-    RumVitalOperationStepEvent event);
+typedef RumVitalOperationEventMapper =
+    RumVitalOperationStepEvent? Function(RumVitalOperationStepEvent event);
 
 /// Configuration options for the Datadog Real User Monitoring (RUM) feature.
 class DatadogRumConfiguration {
@@ -258,9 +258,9 @@ class DatadogRumConfiguration {
     this.vitalOperationStepEventMapper,
     this.trackResourceHeaders,
     this.additionalConfig = const <String, Object>{},
-  })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
-        traceSampleRate = max(0, min(traceSampleRate, 100)),
-        longTaskThreshold = max(0.02, longTaskThreshold);
+  }) : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
+       traceSampleRate = max(0, min(traceSampleRate, 100)),
+       longTaskThreshold = max(0.02, longTaskThreshold);
 
   Map<String, Object?> encode() {
     return {

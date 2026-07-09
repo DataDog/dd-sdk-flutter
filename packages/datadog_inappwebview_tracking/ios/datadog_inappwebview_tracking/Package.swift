@@ -12,13 +12,15 @@ let package = Package(
         .library(name: "datadog-inappwebview-tracking", targets: ["datadog_inappwebview_tracking"])
     ],
     dependencies: [
-        .package(url: "https://github.com/Datadog/dd-sdk-ios.git", from: "3.0.0")
+        .package(url: "https://github.com/Datadog/dd-sdk-ios.git", from: "3.0.0"),
+        .package(name: "FlutterFramework", path: "../FlutterFramework")
     ],
     targets: [
         .target(
             name: "datadog_inappwebview_tracking",
             dependencies: [
-                .product(name: "DatadogCore", package: "dd-sdk-ios")
+                .product(name: "DatadogCore", package: "dd-sdk-ios"),
+                .product(name: "FlutterFramework", package: "FlutterFramework")
             ],
             resources: []
         )

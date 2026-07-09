@@ -12,11 +12,11 @@ import 'package:datadog_session_replay/src/datadog_session_replay_platform_inter
 import 'package:datadog_session_replay/src/rum_context.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_test_goldens/flutter_test_goldens.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'golden_test_helpers.dart';
+import 'test_fonts.dart' as test_fonts;
 
 class MockDatadogSessionReplayPlatform extends Mock
     with MockPlatformInterfaceMixin
@@ -28,7 +28,7 @@ void main() {
   late MockDatadogSessionReplayPlatform platform;
 
   setUpAll(() async {
-    await TestFonts.loadAppFonts();
+    await test_fonts.loadAppFonts();
   });
 
   setUp(() {
@@ -53,8 +53,9 @@ void main() {
     recorder.updateContext(context);
   });
 
-  testWidgets('font transform smart maps package font to open sans',
-      (tester) async {
+  testWidgets('font transform smart maps package font to open sans', (
+    tester,
+  ) async {
     final fixture = MaterialApp(
       home: Scaffold(
         appBar: AppBar(
@@ -83,15 +84,14 @@ void main() {
       fixture,
       fontFamilyTransform: FontFamilyTransformConfig(
         strategy: FontFamilyStrategy.smart,
-        rules: {
-          'CustomFont': TestFonts.openSans,
-        },
+        rules: {'CustomFont': test_fonts.openSans},
       ),
     );
   });
 
-  testWidgets('font transform smart drops sentinel and uses fallback rule',
-      (tester) async {
+  testWidgets('font transform smart drops sentinel and uses fallback rule', (
+    tester,
+  ) async {
     final fixture = MaterialApp(
       home: Scaffold(
         appBar: AppBar(
@@ -106,10 +106,7 @@ void main() {
             'This text uses .AppleSystemUIFont which the smart strategy '
             'drops as a Flutter sentinel. The empty-key fallback rule then '
             'maps it to OpenSans. Readable text proves sentinel handling works.',
-            style: TextStyle(
-              fontFamily: '.AppleSystemUIFont',
-              fontSize: 16,
-            ),
+            style: TextStyle(fontFamily: '.AppleSystemUIFont', fontSize: 16),
           ),
         ),
       ),
@@ -120,9 +117,7 @@ void main() {
       fixture,
       fontFamilyTransform: FontFamilyTransformConfig(
         strategy: FontFamilyStrategy.smart,
-        rules: {
-          '': TestFonts.openSans,
-        },
+        rules: {'': test_fonts.openSans},
       ),
     );
   });
@@ -133,7 +128,7 @@ void main() {
         appBar: AppBar(
           title: const Text(
             'Fallback Strategy',
-            style: TextStyle(fontFamily: TestFonts.openSans),
+            style: TextStyle(fontFamily: test_fonts.openSans),
           ),
         ),
         body: Padding(
@@ -143,10 +138,7 @@ void main() {
             children: [
               Text(
                 'OpenSans text stays the same font stack with fallback.',
-                style: TextStyle(
-                  fontFamily: TestFonts.openSans,
-                  fontSize: 16,
-                ),
+                style: TextStyle(fontFamily: test_fonts.openSans, fontSize: 16),
               ),
               SizedBox(height: 12),
               Text(

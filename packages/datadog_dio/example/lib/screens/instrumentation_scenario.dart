@@ -23,7 +23,7 @@ class InstrumentationScenario extends StatefulWidget {
 class _InstrumentationScenarioState extends State<InstrumentationScenario> {
   final images = [
     'https://picsum.photos/200',
-    'https://placehold.co/200x200.png'
+    'https://placehold.co/200x200.png',
   ];
 
   bool _doneWait = false;
@@ -50,9 +50,7 @@ class _InstrumentationScenarioState extends State<InstrumentationScenario> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            settings: const RouteSettings(
-              name: 'second_screen',
-            ),
+            settings: const RouteSettings(name: 'second_screen'),
             builder: (_) {
               return InstrumentationSecondScreen(dio: widget.dio);
             },
@@ -68,11 +66,13 @@ class _InstrumentationScenarioState extends State<InstrumentationScenario> {
 
     var response = await widget.dio.getUri(
       Uri.parse('https://api.datadoghq.com/api/v2/logs/events'),
-      options: Options(headers: {
-        HttpHeaders.contentTypeHeader: 'application/json',
-        'DD-API-KEY': clientToken,
-        'DD-APPLICATION-KEY': apiAppKey,
-      }),
+      options: Options(
+        headers: {
+          HttpHeaders.contentTypeHeader: 'application/json',
+          'DD-API-KEY': clientToken,
+          'DD-APPLICATION-KEY': apiAppKey,
+        },
+      ),
     );
 
     // ignore: avoid_print
@@ -83,9 +83,7 @@ class _InstrumentationScenarioState extends State<InstrumentationScenario> {
   Widget build(BuildContext context) {
     return _doneWait
         ? Scaffold(
-            appBar: AppBar(
-              title: const Text('Auto RUM'),
-            ),
+            appBar: AppBar(title: const Text('Auto RUM')),
             body: SingleChildScrollView(
               child: Column(
                 children: [

@@ -17,14 +17,15 @@ typedef LogEventMapper = LogEvent? Function(LogEvent event);
 /// A function that allows you control Datadog's console log output. This function
 /// is called instead of calling Flutter's default `print`, and does not effect what
 /// is sent to Datadog.
-typedef CustomConsoleLogFunction = void Function(
-  LogLevel level,
-  String message,
-  String? errorMessage,
-  String? errorKind,
-  StackTrace? stackTrace,
-  Map<String, Object?> attributes,
-);
+typedef CustomConsoleLogFunction =
+    void Function(
+      LogLevel level,
+      String message,
+      String? errorMessage,
+      String? errorKind,
+      StackTrace? stackTrace,
+      Map<String, Object?> attributes,
+    );
 
 /// Configuration options for the Datadog Logging feature.
 /// These options are common to all Datadog logs
@@ -35,10 +36,7 @@ class DatadogLoggingConfiguration {
   /// before they are sent to Datadog.
   LogEventMapper? eventMapper;
 
-  DatadogLoggingConfiguration({
-    this.customEndpoint,
-    this.eventMapper,
-  });
+  DatadogLoggingConfiguration({this.customEndpoint, this.eventMapper});
 
   Map<String, Object?> encode() {
     return {

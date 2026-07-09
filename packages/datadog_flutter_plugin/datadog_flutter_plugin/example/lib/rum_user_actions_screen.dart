@@ -33,9 +33,9 @@ class _RumUserActionsScreenState extends State<RumUserActionsScreen> {
   }
 
   void _buttonPressed(String name) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Tapped $name')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Tapped $name')));
   }
 
   Widget _buttonsSection() {
@@ -55,10 +55,7 @@ class _RumUserActionsScreenState extends State<RumUserActionsScreen> {
         ),
         IconButton(
           onPressed: () {},
-          icon: const Icon(
-            Icons.auto_awesome,
-            semanticLabel: 'Button E',
-          ),
+          icon: const Icon(Icons.auto_awesome, semanticLabel: 'Button E'),
         ),
         DropdownButton<String>(
           value: _dropDownValue,
@@ -138,7 +135,7 @@ class _RumUserActionsScreenState extends State<RumUserActionsScreen> {
               groupValue: _radioValue,
               onChanged: _updateRadioValue,
               value: 2,
-            )
+            ),
           ],
         ),
         Switch(
@@ -162,9 +159,7 @@ class _RumUserActionsScreenState extends State<RumUserActionsScreen> {
         return null;
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('User Action Examples'),
-        ),
+        appBar: AppBar(title: const Text('User Action Examples')),
         body: Padding(
           padding: const EdgeInsets.all(8),
           child: Column(
@@ -172,8 +167,9 @@ class _RumUserActionsScreenState extends State<RumUserActionsScreen> {
             children: [
               const Text('Buttons'),
               Padding(
-                  padding: const EdgeInsets.only(left: 10, bottom: 10),
-                  child: _buttonsSection()),
+                padding: const EdgeInsets.only(left: 10, bottom: 10),
+                child: _buttonsSection(),
+              ),
               const Text('Form Controls'),
               Padding(
                 padding: const EdgeInsets.only(left: 10, bottom: 10),

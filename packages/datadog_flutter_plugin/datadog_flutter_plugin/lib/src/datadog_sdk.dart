@@ -130,6 +130,7 @@ class DatadogSdk {
     _logs?.deinitialize();
     _logs = null;
 
+    _configuration = null;
     _initialized = false;
   }
 
@@ -158,8 +159,10 @@ class DatadogSdk {
     };
 
     await DatadogSdk.instance.initialize(configuration, trackingConsent);
-    DatadogSdk.instance
-        .updateConfigurationInfo(LateConfigurationProperty.trackErrors, true);
+    DatadogSdk.instance.updateConfigurationInfo(
+      LateConfigurationProperty.trackErrors,
+      true,
+    );
 
     runner();
   }
@@ -183,6 +186,7 @@ class DatadogSdk {
       logCallback: _platformLog,
       internalLogger: internalLogger,
     );
+    _configuration = configuration;
 
     if (configuration.loggingConfiguration != null) {
       _logs = await DatadogLogging.enable(
@@ -230,9 +234,9 @@ class DatadogSdk {
           );
         }
 
-        for (final pluginConfig in attachResponse
-            .capturedConfiguration.configuredPlugins
-            .whereType<DatadogPluginConfiguration>()) {
+        for (final pluginConfig
+            in attachResponse.capturedConfiguration.configuredPlugins
+                .whereType<DatadogPluginConfiguration>()) {
           var plugin = pluginConfig.create(this);
           if (_plugins.containsKey(plugin.runtimeType)) {
             internalLogger.error(

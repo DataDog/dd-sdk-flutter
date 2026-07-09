@@ -33,17 +33,19 @@ class RecordingHttpServer {
 
   Future<void> start() async {
     server = await HttpServer.bind(InternetAddress.anyIPv4, _bindingPort);
-    unawaited(server.forEach((HttpRequest request) async {
-      request.response.headers
-        ..add(HttpHeaders.accessControlAllowOriginHeader, '*')
-        ..add(HttpHeaders.accessControlAllowHeadersHeader, '*')
-        ..add(HttpHeaders.accessControlAllowMethodsHeader, 'GET, POST');
-      if (request.requestedUri.path.endsWith('session')) {
-        return _respondToSessionRequest(request);
-      } else {
-        return _logRequest(request);
-      }
-    }));
+    unawaited(
+      server.forEach((HttpRequest request) async {
+        request.response.headers
+          ..add(HttpHeaders.accessControlAllowOriginHeader, '*')
+          ..add(HttpHeaders.accessControlAllowHeadersHeader, '*')
+          ..add(HttpHeaders.accessControlAllowMethodsHeader, 'GET, POST');
+        if (request.requestedUri.path.endsWith('session')) {
+          return _respondToSessionRequest(request);
+        } else {
+          return _logRequest(request);
+        }
+      }),
+    );
     print('Server started, listening on port $_bindingPort');
   }
 
@@ -61,8 +63,11 @@ class RecordingHttpServer {
       _recordedRequests[session]!.add(parsed);
       if (serializeSessions) {
         final sessionFile = File('$session.session');
-        await sessionFile.writeAsString('${parsed.data}\n',
-            mode: FileMode.append, flush: true);
+        await sessionFile.writeAsString(
+          '${parsed.data}\n',
+          mode: FileMode.append,
+          flush: true,
+        );
       }
       if (printRequests) {
         print('---- BEGIN REQUEST ----');
@@ -92,8 +97,9 @@ class RecordingHttpServer {
           session = request.uri.pathSegments[0];
         }
 
-        var jsonRequests =
-            _recordedRequests[session]?.map((e) => e.toJson()).toList();
+        var jsonRequests = _recordedRequests[session]
+            ?.map((e) => e.toJson())
+            .toList();
         var responseString = json.encode(jsonRequests);
         request.response.write(responseString);
         break;
@@ -125,7 +131,9 @@ abstract class RecordingServerClient {
   /// [timeout] has expired, or until [handler] returns true, signaling it is
   /// done processing the requests.
   Future<void> pollSessionRequests(
-      Duration timeout, RequestHandler handler) async {
+    Duration timeout,
+    RequestHandler handler,
+  ) async {
     DateTime timeoutTime = DateTime.now().add(timeout);
     int lastProcessedRequest = 0;
 
@@ -188,12 +196,14 @@ class RemoteRecordingServerClient extends RecordingServerClient {
   @override
   Future<List<RequestLog>> fetchRequests(String sessionId) async {
     try {
-      var session =
-          await http.get(Uri.parse('${sessionEndpoint}session'), headers: {
-        HttpHeaders.accessControlAllowOriginHeader: '*',
-        HttpHeaders.contentTypeHeader: 'application/json',
-        HttpHeaders.acceptHeader: 'application/json',
-      });
+      var session = await http.get(
+        Uri.parse('${sessionEndpoint}session'),
+        headers: {
+          HttpHeaders.accessControlAllowOriginHeader: '*',
+          HttpHeaders.contentTypeHeader: 'application/json',
+          HttpHeaders.acceptHeader: 'application/json',
+        },
+      );
       var sessionBody = json.decode(session.body) as List;
       var requests = <RequestLog>[];
       for (var requestJson in sessionBody) {

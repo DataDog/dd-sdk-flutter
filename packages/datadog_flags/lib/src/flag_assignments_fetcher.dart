@@ -29,7 +29,8 @@ class FlagAssignmentsFetcher {
   Future<PrecomputedAssignments> fetch(
     FlagsEvaluationContext evaluationContext,
   ) async {
-    final endpoint = configuration.customFlagsEndpoint ??
+    final endpoint =
+        configuration.customFlagsEndpoint ??
         datadogConfig.flagsEndpoint().replace(path: '/precompute-assignments');
     final http.Response response;
     try {

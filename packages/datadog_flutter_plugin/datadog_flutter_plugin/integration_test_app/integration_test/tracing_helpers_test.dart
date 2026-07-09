@@ -44,8 +44,9 @@ void main() {
     expect(traceIdString.substring(16), isNot('0000000000000000'));
   });
 
-  testWidgets('generateTracingContext generates proper bit values',
-      (WidgetTester tester) async {
+  testWidgets('generateTracingContext generates proper bit values', (
+    WidgetTester tester,
+  ) async {
     final mockDatadogSdk = MockDatadogSdk();
     when(() => mockDatadogSdk.platform).thenReturn(DatadogSdkNoOpPlatform());
 
@@ -73,13 +74,15 @@ void main() {
     when(() => mockDatadogSdk.internalLogger).thenReturn(mockInternalLogger);
 
     final mockDatadogPlatform = MockDatadogPlatform();
-    when(() => mockDatadogPlatform.updateTelemetryConfiguration(any(), any()))
-        .thenAnswer((_) => Future.value());
+    when(
+      () => mockDatadogPlatform.updateTelemetryConfiguration(any(), any()),
+    ).thenAnswer((_) => Future.value());
     when(() => mockDatadogSdk.platform).thenReturn(mockDatadogPlatform);
 
     final mockRumPlatform = MockRumPlatform();
-    when(() => mockRumPlatform.setInternalViewAttribute(any(), any()))
-        .thenAnswer((_) => Future.value());
+    when(
+      () => mockRumPlatform.setInternalViewAttribute(any(), any()),
+    ).thenAnswer((_) => Future.value());
 
     final inputs = <(BigInt, double, bool)>[
       (BigInt.parse('5577006791947779410'), 94.0509, true),
@@ -121,13 +124,15 @@ void main() {
     when(() => mockDatadogSdk.internalLogger).thenReturn(mockInternalLogger);
 
     final mockDatadogPlatform = MockDatadogPlatform();
-    when(() => mockDatadogPlatform.updateTelemetryConfiguration(any(), any()))
-        .thenAnswer((_) => Future.value());
+    when(
+      () => mockDatadogPlatform.updateTelemetryConfiguration(any(), any()),
+    ).thenAnswer((_) => Future.value());
     when(() => mockDatadogSdk.platform).thenReturn(mockDatadogPlatform);
 
     final mockRumPlatform = MockRumPlatform();
-    when(() => mockRumPlatform.setInternalViewAttribute(any(), any()))
-        .thenAnswer((_) => Future.value());
+    when(
+      () => mockRumPlatform.setInternalViewAttribute(any(), any()),
+    ).thenAnswer((_) => Future.value());
 
     // The numbers used in the session UUID are the same numbers truncated to 48 bits,
     // which sometimes results in a different sampling decision. Created using this program:
@@ -137,61 +142,61 @@ void main() {
         '11111111-2222-3333-4444-822107fcfd52',
         BigInt.parse('5577006791947779410'),
         94.050909,
-        true
+        true,
       ),
       (
         '11111111-2222-3333-4444-4dc76695721d',
         BigInt.parse('15352856648520921629'),
         43.771419,
-        true
+        true,
       ),
       (
         '11111111-2222-3333-4444-858149c6e2d1',
         BigInt.parse('3916589616287113937'),
         68.682307,
-        true
+        true,
       ),
       (
         '11111111-2222-3333-4444-cb397916001e',
         BigInt.parse('9828766684487745566'),
         15.651925,
-        false
+        false,
       ),
       (
         '11111111-2222-3333-4444-7f48392907a0',
         BigInt.parse('894385949183117216'),
         30.091186,
-        true
+        true,
       ),
       (
         '11111111-2222-3333-4444-7cc6f3875d04',
         BigInt.parse('4751997750760398084'),
         81.363996,
-        true
+        true,
       ),
       (
         '11111111-2222-3333-4444-ffa2ba517936',
         BigInt.parse('11199607447739267382'),
         38.065719,
-        true
+        true,
       ),
       (
         '11111111-2222-3333-4444-21587cb3ad0b',
         BigInt.parse('12156940908066221323'),
         46.888984,
-        false
+        false,
       ),
       (
         '11111111-2222-3333-4444-768b7c4e0b68',
         BigInt.parse('11833901312327420776'),
         29.310186,
-        false
+        false,
       ),
       (
         '11111111-2222-3333-4444-3f2525632186',
         BigInt.parse('6263450610539110790'),
         21.855305,
-        false
+        false,
       ),
     ];
 

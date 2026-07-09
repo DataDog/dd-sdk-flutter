@@ -257,7 +257,9 @@ void main() {
         final baggage = headers['baggage'];
         final baggageValues = baggage!.split(',');
         expect(
-            baggageValues, contains('session.id=${datadogContext.sessionId}'));
+          baggageValues,
+          contains('session.id=${datadogContext.sessionId}'),
+        );
         expect(baggageValues, contains('user.id=${datadogContext.userId}'));
         expect(
           baggageValues,
@@ -293,7 +295,9 @@ void main() {
         final baggage = headers['baggage'];
         final baggageValues = baggage!.split(',');
         expect(
-            baggageValues, contains('session.id=${datadogContext.sessionId}'));
+          baggageValues,
+          contains('session.id=${datadogContext.sessionId}'),
+        );
         expect(baggageValues, contains('user.id=${datadogContext.userId}'));
         expect(
           baggageValues,

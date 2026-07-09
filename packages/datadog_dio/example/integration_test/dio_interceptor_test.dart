@@ -27,8 +27,11 @@ Future<void> performRumUserFlow(WidgetTester tester) async {
   await tester.pumpAndSettle();
 
   var nextButton = find.widgetWithText(ElevatedButton, 'Next Page');
-  await tester.waitFor(nextButton, const Duration(seconds: 100),
-      (e) => (e.widget as ElevatedButton).enabled);
+  await tester.waitFor(
+    nextButton,
+    const Duration(seconds: 100),
+    (e) => (e.widget as ElevatedButton).enabled,
+  );
   await tester.tap(nextButton);
   await tester.pumpAndSettle();
 }
@@ -58,10 +61,11 @@ void main() {
     RumAutoInstrumentationScenarioConfig.instance = scenarioConfig;
 
     app.testingConfiguration = TestingConfiguration(
-        customEndpoint: sessionRecorder.sessionEndpoint,
-        clientToken: clientToken,
-        applicationId: applicationId,
-        firstPartyHosts: ['localhost']);
+      customEndpoint: sessionRecorder.sessionEndpoint,
+      clientToken: clientToken,
+      applicationId: applicationId,
+      firstPartyHosts: ['localhost'],
+    );
     await app.main();
     await tester.pumpAndSettle();
 
@@ -83,6 +87,13 @@ void main() {
           } else {
             rumLog.addAll(request.asRumEvents());
           }
+        } else {
+          request.data.split('\n').forEach((e) {
+            var jsonValue = json.decode(e);
+            if (jsonValue is Map<String, dynamic>) {
+              rumLog.add(RumEventDecoder(jsonValue));
+            }
+          });
         }
         final allSessions = RumSessionDecoder.fromEvents(rumLog);
         return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
@@ -96,11 +107,15 @@ void main() {
 
     // Dio doesn't load the images, so this should always be zero
     expect(
-        view1.viewEvents.last.view.resourceCount, view1.resourceEvents.length);
+      view1.viewEvents.last.view.resourceCount,
+      view1.resourceEvents.length,
+    );
 
     final view2 = session.visits[1];
     expect(
-        view2.viewEvents.last.view.resourceCount, view2.resourceEvents.length);
+      view2.viewEvents.last.view.resourceCount,
+      view2.resourceEvents.length,
+    );
     if (!kIsWeb) {
       // Web doesn't report the failed resource as an error
       expect(view2.viewEvents.last.view.errorCount, 1);
@@ -108,8 +123,10 @@ void main() {
 
     // Check first party requests
     for (var testRequest in testRequests) {
-      expect(testRequest.requestHeaders['x-datadog-sampling-priority']?.first,
-          '1');
+      expect(
+        testRequest.requestHeaders['x-datadog-sampling-priority']?.first,
+        '1',
+      );
       expect(testRequest.requestHeaders['x-datadog-origin']?.first, 'rum');
 
       // The C++ SDK does not inject RUM session ID or user/account context into
@@ -124,11 +141,13 @@ void main() {
       }
     }
 
-    final getEvent = view2.resourceEvents
-        .firstWhereOrNull((e) => e.url == scenarioConfig.firstPartyGetUrl);
+    final getEvent = view2.resourceEvents.firstWhereOrNull(
+      (e) => e.url == scenarioConfig.firstPartyGetUrl,
+    );
     expect(getEvent, isNotNull);
-    final getRequest = testRequests
-        .firstWhere((e) => e.requestedUrl == scenarioConfig.firstPartyGetUrl);
+    final getRequest = testRequests.firstWhere(
+      (e) => e.requestedUrl == scenarioConfig.firstPartyGetUrl,
+    );
     final getTraceId = extractDatadogTraceId(getRequest.requestHeaders);
     final getSpanId = getRequest.requestHeaders['x-datadog-parent-id']?.first;
     expect(getEvent!.url, scenarioConfig.firstPartyGetUrl);
@@ -138,11 +157,13 @@ void main() {
     expect(getEvent.dd.traceId, getTraceId?.toRadixString(kIsWeb ? 10 : 16));
     expect(getEvent.dd.spanId, getSpanId!);
 
-    final postEvent = view2.resourceEvents
-        .firstWhereOrNull((e) => e.url == scenarioConfig.firstPartyPostUrl);
+    final postEvent = view2.resourceEvents.firstWhereOrNull(
+      (e) => e.url == scenarioConfig.firstPartyPostUrl,
+    );
     expect(postEvent, isNotNull);
-    final postRequest = testRequests
-        .firstWhere((e) => e.requestedUrl == scenarioConfig.firstPartyPostUrl);
+    final postRequest = testRequests.firstWhere(
+      (e) => e.requestedUrl == scenarioConfig.firstPartyPostUrl,
+    );
     final postTraceId = extractDatadogTraceId(postRequest.requestHeaders);
     final postSpanId = postRequest.requestHeaders['x-datadog-parent-id']?.first;
     expect(postEvent!.url, scenarioConfig.firstPartyPostUrl);
@@ -154,42 +175,56 @@ void main() {
 
     // Third party requests
     if (!kIsWeb) {
-      expect(view2.errorEvents[0].resourceUrl,
-          startsWith(scenarioConfig.firstPartyBadUrl));
+      expect(
+        view2.errorEvents[0].resourceUrl,
+        startsWith(scenarioConfig.firstPartyBadUrl),
+      );
       expect(view2.errorEvents[0].resourceMethod, 'GET');
     } else {
       final errorResourceEvent = view2.resourceEvents.firstWhereOrNull(
-          (e) => e.url.contains(scenarioConfig.firstPartyBadUrl));
+        (e) => e.url.contains(scenarioConfig.firstPartyBadUrl),
+      );
       expect(
-          errorResourceEvent!.url, startsWith(scenarioConfig.firstPartyBadUrl));
+        errorResourceEvent!.url,
+        startsWith(scenarioConfig.firstPartyBadUrl),
+      );
       expect(errorResourceEvent.method, 'GET');
     }
 
     final firstThirdPartyResource = view2.resourceEvents.firstWhereOrNull(
-        (e) => e.url.contains(scenarioConfig.thirdPartyGetUrl));
+      (e) => e.url.contains(scenarioConfig.thirdPartyGetUrl),
+    );
     expect(firstThirdPartyResource, isNotNull);
-    expect(firstThirdPartyResource!.url,
-        startsWith(scenarioConfig.thirdPartyGetUrl));
+    expect(
+      firstThirdPartyResource!.url,
+      startsWith(scenarioConfig.thirdPartyGetUrl),
+    );
     expect(firstThirdPartyResource.method, 'GET');
     expect(firstThirdPartyResource.duration, greaterThan(0));
     expect(firstThirdPartyResource.dd.traceId, isNull);
     expect(firstThirdPartyResource.dd.spanId, isNull);
 
     final secondThirdPartyResource = view2.resourceEvents.firstWhereOrNull(
-        (e) => e.url.contains(scenarioConfig.thirdPartyPostUrl));
+      (e) => e.url.contains(scenarioConfig.thirdPartyPostUrl),
+    );
     expect(secondThirdPartyResource, isNotNull);
-    expect(secondThirdPartyResource!.url,
-        startsWith(scenarioConfig.thirdPartyPostUrl));
+    expect(
+      secondThirdPartyResource!.url,
+      startsWith(scenarioConfig.thirdPartyPostUrl),
+    );
     expect(secondThirdPartyResource.method, 'POST');
     expect(secondThirdPartyResource.duration, greaterThan(0));
     expect(secondThirdPartyResource.dd.traceId, isNull);
     expect(secondThirdPartyResource.dd.spanId, isNull);
 
     final missingThirdPartyResource = view2.resourceEvents.firstWhereOrNull(
-        (e) => e.url.contains(scenarioConfig.thirdPartyMissingUrl));
+      (e) => e.url.contains(scenarioConfig.thirdPartyMissingUrl),
+    );
     expect(missingThirdPartyResource, isNotNull);
-    expect(missingThirdPartyResource!.url,
-        startsWith(scenarioConfig.thirdPartyMissingUrl));
+    expect(
+      missingThirdPartyResource!.url,
+      startsWith(scenarioConfig.thirdPartyMissingUrl),
+    );
     expect(missingThirdPartyResource.method, 'GET');
     expect(missingThirdPartyResource.duration, greaterThan(0));
     expect(missingThirdPartyResource.dd.traceId, isNull);

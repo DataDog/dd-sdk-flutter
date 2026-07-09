@@ -15,7 +15,7 @@ For complete documentation, see the [official Datadog documentation][11].
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 3.12.0 | 3.10.0 | 5.x.x |
+| 3.12.0 | 3.10.0 | 7.x.x |
 
 [//]: # (End SDK Table)
 
@@ -32,8 +32,8 @@ On Android, your `minSdkVersion` must be >= 23, and if you are using Kotlin, it 
 On Web, add the following to your `index.html` under your `head` tag:
 
 ```html
-<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-logs.js"></script> 
-<script type="text/javascript" src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum-slim.js"></script> 
+<script type="text/javascript" crossorigin="anonymous" src="https://www.datadoghq-browser-agent.com/us1/v7/datadog-logs.js"></script>
+<script type="text/javascript" crossorigin="anonymous" src="https://www.datadoghq-browser-agent.com/us1/v7/datadog-rum-slim.js"></script>
 ```
 
 This loads the CDN-delivered Datadog Browser SDKs for Logs and RUM. The synchronous CDN-delivered version of the Datadog Browser SDK is the only version currently supported by the Flutter plugin.

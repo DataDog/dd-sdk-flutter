@@ -11,11 +11,11 @@ import 'package:datadog_session_replay/src/rum_context.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_test_goldens/flutter_test_goldens.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'golden_test_helpers.dart';
 import 'mock_platform.dart';
+import 'test_fonts.dart' as test_fonts;
 
 void main() {
   late SessionReplayRecorder recorder;
@@ -23,7 +23,7 @@ void main() {
   late MockDatadogSessionReplayPlatform platform;
 
   setUpAll(() async {
-    await TestFonts.loadAppFonts();
+    await test_fonts.loadAppFonts();
   });
 
   setUp(() {
@@ -515,11 +515,7 @@ void main() {
                   thumbColor: Colors.red,
                 ),
                 // With secondary track value.
-                Slider(
-                  value: 0.3,
-                  secondaryTrackValue: 0.7,
-                  onChanged: (_) {},
-                ),
+                Slider(value: 0.3, secondaryTrackValue: 0.7, onChanged: (_) {}),
                 // Discrete slider with tick marks.
                 Slider(value: 0.4, divisions: 5, onChanged: (_) {}),
                 // M3-2024 (year2023 = false) — handle thumb + gap + stop indicator.
@@ -611,11 +607,7 @@ void main() {
                   thumbColor: Colors.red,
                 ),
                 // With secondary track value.
-                Slider(
-                  value: 0.3,
-                  secondaryTrackValue: 0.7,
-                  onChanged: (_) {},
-                ),
+                Slider(value: 0.3, secondaryTrackValue: 0.7, onChanged: (_) {}),
                 // Discrete slider with tick marks.
                 Slider(value: 0.4, divisions: 5, onChanged: (_) {}),
                 // M3-2024 (year2023 = false) — handle thumb + gap + stop indicator.

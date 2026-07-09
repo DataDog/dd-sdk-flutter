@@ -23,10 +23,11 @@ Future<void> runScenario({
   switch (scenario) {
     case auto_config_runners.autoInstrumentationScenarioName:
       await auto_config_runners.runScenario(
-          clientToken: clientToken,
-          applicationId: applicationId,
-          customEndpoint: customEndpoint,
-          testingConfiguration: testingConfiguration);
+        clientToken: clientToken,
+        applicationId: applicationId,
+        customEndpoint: customEndpoint,
+        testingConfiguration: testingConfiguration,
+      );
       return;
     case config_runners.mappedInstrumentationScenarioName:
     case config_runners.mappedLoggingScenarioRunner:
@@ -67,8 +68,9 @@ Future<void> runScenario({
         : null,
   )..additionalConfig['_dd.needsClearTextHttp'] = true;
   if (testingConfiguration?.additionalConfig != null) {
-    configuration.additionalConfig
-        .addAll(testingConfiguration!.additionalConfig);
+    configuration.additionalConfig.addAll(
+      testingConfiguration!.additionalConfig,
+    );
   }
 
   await DatadogSdk.instance.initialize(configuration, TrackingConsent.granted);
@@ -118,9 +120,7 @@ class DatadogIntegrationTestApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue),
       navigatorObservers: [routeObserver],
       home: const IntegrationScenariosScreen(),
     );

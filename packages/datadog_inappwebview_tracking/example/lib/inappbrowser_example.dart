@@ -35,14 +35,12 @@ class _InAppBrowserExampleState extends State<InAppBrowserExample> {
     super.initState();
 
     _browser = MyInAppBrowser(
-      initialUserScripts: UnmodifiableListView(
-        [
-          DatadogInAppWebViewUserScript(
-            datadog: DatadogSdk.instance,
-            allowedHosts: {'shopist.io'},
-          ),
-        ],
-      ),
+      initialUserScripts: UnmodifiableListView([
+        DatadogInAppWebViewUserScript(
+          datadog: DatadogSdk.instance,
+          allowedHosts: {'shopist.io'},
+        ),
+      ]),
     );
   }
 
@@ -54,9 +52,7 @@ class _InAppBrowserExampleState extends State<InAppBrowserExample> {
           toolbarTopBackgroundColor: Colors.blue,
           presentationStyle: ModalPresentationStyle.POPOVER,
         ),
-        webViewSettings: InAppWebViewSettings(
-          isInspectable: kDebugMode,
-        ),
+        webViewSettings: InAppWebViewSettings(isInspectable: kDebugMode),
       ),
     );
   }
@@ -70,8 +66,9 @@ class _InAppBrowserExampleState extends State<InAppBrowserExample> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton(
-                onPressed: () => _openInAppBrowser(),
-                child: const Text("Open InAppBrowser")),
+              onPressed: () => _openInAppBrowser(),
+              child: const Text("Open InAppBrowser"),
+            ),
           ],
         ),
       ),

@@ -67,9 +67,7 @@ class _RumAutoInstrumentationSecondScreenState
     while (DateTime.now().isBefore(delayEnd)) {}
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Secondary Screen'),
-      ),
+      appBar: AppBar(title: const Text('Secondary Screen')),
       body: FutureBuilder(
         future: _loadingFuture,
         builder: (context, snapshot) {
@@ -93,10 +91,7 @@ class _RumAutoInstrumentationSecondScreenState
       child: Column(
         children: [
           const Text('All Done'),
-          ElevatedButton(
-            onPressed: _onNext,
-            child: const Text('Next Page'),
-          ),
+          ElevatedButton(onPressed: _onNext, child: const Text('Next Page')),
         ],
       ),
     );
@@ -105,7 +100,8 @@ class _RumAutoInstrumentationSecondScreenState
   void _onNext() {
     Navigator.of(context).push<void>(
       MaterialPageRoute(
-          builder: (_) => const RumAutoInstrumentationThirdScreen()),
+        builder: (_) => const RumAutoInstrumentationThirdScreen(),
+      ),
     );
   }
 }

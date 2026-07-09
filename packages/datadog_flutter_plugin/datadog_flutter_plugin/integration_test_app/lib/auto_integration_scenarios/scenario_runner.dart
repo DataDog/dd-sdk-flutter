@@ -20,8 +20,9 @@ Future<void> runScenario({
   final firstPartyHosts = ['datadoghq.com'];
   if (testingConfiguration != null) {
     firstPartyHosts.addAll(testingConfiguration.firstPartyHosts);
-    firstPartyHosts
-        .addAll(RumAutoInstrumentationScenarioConfig.instance.firstPartyHosts);
+    firstPartyHosts.addAll(
+      RumAutoInstrumentationScenarioConfig.instance.firstPartyHosts,
+    );
   }
 
   final configuration = DatadogConfiguration(
@@ -46,8 +47,9 @@ Future<void> runScenario({
         : null,
   )..additionalConfig['_dd.needsClearTextHttp'] = true;
   if (testingConfiguration?.additionalConfig != null) {
-    configuration.additionalConfig
-        .addAll(testingConfiguration!.additionalConfig);
+    configuration.additionalConfig.addAll(
+      testingConfiguration!.additionalConfig,
+    );
   }
 
   await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
@@ -60,20 +62,17 @@ class DatadogAutoIntegrationTestApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final navObserver =
-        DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
+    final navObserver = DatadogNavigationObserver(
+      datadogSdk: DatadogSdk.instance,
+    );
     return DatadogNavigationObserverProvider(
       navObserver: navObserver,
       child: RumUserActionDetector(
         rum: DatadogSdk.instance.rum,
         child: MaterialApp(
           title: 'Flutter Demo',
-          theme: ThemeData(
-            primarySwatch: Colors.blue,
-          ),
-          navigatorObservers: [
-            navObserver,
-          ],
+          theme: ThemeData(primarySwatch: Colors.blue),
+          navigatorObservers: [navObserver],
           home: const RumAutoInstrumentationScenario(),
         ),
       ),

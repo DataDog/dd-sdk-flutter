@@ -60,16 +60,16 @@ class DatadogSessionReplay {
   }
 
   DatadogSessionReplay._(this._configuration, this.internalLogger)
-      : defaultTouchPrivacyLevel = _configuration.touchPrivacyLevel,
-        _recorder = SessionReplayRecorder(
-          defaultCapturePrivacy: TreeCapturePrivacy(
-            textAndInputPrivacyLevel: _configuration.textAndInputPrivacyLevel,
-            imagePrivacyLevel: _configuration.imagePrivacyLevel,
-          ),
-          touchPrivacyLevel: _configuration.touchPrivacyLevel,
-          imageDownscaling: _configuration.imageDownscaling,
-          maxImagePixelBudget: _configuration.maxImagePixelBudget,
-        );
+    : defaultTouchPrivacyLevel = _configuration.touchPrivacyLevel,
+      _recorder = SessionReplayRecorder(
+        defaultCapturePrivacy: TreeCapturePrivacy(
+          textAndInputPrivacyLevel: _configuration.textAndInputPrivacyLevel,
+          imagePrivacyLevel: _configuration.imagePrivacyLevel,
+        ),
+        touchPrivacyLevel: _configuration.touchPrivacyLevel,
+        imageDownscaling: _configuration.imageDownscaling,
+        maxImagePixelBudget: _configuration.maxImagePixelBudget,
+      );
 
   void addElement(Key key, Element e) {
     _recorder.addElement(key, e);

@@ -62,10 +62,13 @@ void main() {
     var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
 
     await measure('flutter_log_debug_logs', () {
-      logger?.debug('fake message', attributes: {
-        'test_method_name': tester.testDescription,
-        'operating_system': Platform.operatingSystem
-      });
+      logger?.debug(
+        'fake message',
+        attributes: {
+          'test_method_name': tester.testDescription,
+          'operating_system': Platform.operatingSystem,
+        },
+      );
     });
   });
 
@@ -91,10 +94,13 @@ void main() {
     var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
 
     await measure('flutter_log_info_logs', () async {
-      logger?.info('fake info message', attributes: {
-        'test_method_name': tester.testDescription,
-        'operating_system': Platform.operatingSystem,
-      });
+      logger?.info(
+        'fake info message',
+        attributes: {
+          'test_method_name': tester.testDescription,
+          'operating_system': Platform.operatingSystem,
+        },
+      );
     });
   });
 
@@ -120,10 +126,13 @@ void main() {
     var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
 
     await measure('flutter_log_warn_logs', () async {
-      logger?.warn('fake warn message', attributes: {
-        'test_method_name': tester.testDescription,
-        'operating_system': Platform.operatingSystem,
-      });
+      logger?.warn(
+        'fake warn message',
+        attributes: {
+          'test_method_name': tester.testDescription,
+          'operating_system': Platform.operatingSystem,
+        },
+      );
     });
   });
 
@@ -149,10 +158,13 @@ void main() {
     var logger = datadog.logs?.createLogger(DatadogLoggerConfiguration());
 
     await measure('flutter_log_error_logs', () async {
-      logger?.error('fake error message', attributes: {
-        'test_method_name': tester.testDescription,
-        'operating_system': Platform.operatingSystem,
-      });
+      logger?.error(
+        'fake error message',
+        attributes: {
+          'test_method_name': tester.testDescription,
+          'operating_system': Platform.operatingSystem,
+        },
+      );
     });
   });
 

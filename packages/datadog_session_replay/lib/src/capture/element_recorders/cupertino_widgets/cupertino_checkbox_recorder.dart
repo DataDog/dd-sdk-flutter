@@ -15,8 +15,10 @@ import 'cupertino_recording_extensions.dart';
 const double _edgeSize = CupertinoCheckbox.width; // 14 px
 
 // Transparent border
-const _transparentBorder =
-    BorderSide(width: 0.0, color: CupertinoColors.transparent);
+const _transparentBorder = BorderSide(
+  width: 0.0,
+  color: CupertinoColors.transparent,
+);
 
 // Cupertino Colors
 
@@ -31,14 +33,14 @@ const Color _disabledBorderColor = CupertinoDynamicColor.withBrightness(
 );
 const CupertinoDynamicColor _defaultBorderColor =
     CupertinoDynamicColor.withBrightness(
-  color: Color.fromARGB(255, 209, 209, 214),
-  darkColor: Color.fromARGB(50, 128, 128, 128),
-);
+      color: Color.fromARGB(255, 209, 209, 214),
+      darkColor: Color.fromARGB(50, 128, 128, 128),
+    );
 const CupertinoDynamicColor _defaultFillColorCupertino =
     CupertinoDynamicColor.withBrightness(
-  color: CupertinoColors.activeBlue,
-  darkColor: Color.fromARGB(255, 50, 100, 215),
-);
+      color: CupertinoColors.activeBlue,
+      darkColor: Color.fromARGB(255, 50, 100, 215),
+    );
 const Color _defaultCheckColor = CupertinoDynamicColor.withBrightness(
   color: CupertinoColors.white,
   darkColor: Color.fromARGB(255, 222, 232, 248),
@@ -73,12 +75,21 @@ class CupertinoCheckboxRecorder implements ElementRecorder {
       if (value != false) WidgetState.selected,
     };
 
-    final Color backgroundColor =
-        _getBackgroundColor(element: element, widget: widget, states: states);
-    final Color symbolColor =
-        _getSymbolColor(element: element, widget: widget, states: states);
-    final BorderSide borderSide =
-        _getBorderSide(element: element, widget: widget, states: states);
+    final Color backgroundColor = _getBackgroundColor(
+      element: element,
+      widget: widget,
+      states: states,
+    );
+    final Color symbolColor = _getSymbolColor(
+      element: element,
+      widget: widget,
+      states: states,
+    );
+    final BorderSide borderSide = _getBorderSide(
+      element: element,
+      widget: widget,
+      states: states,
+    );
     final double cornerRadius =
         _getCornerRadius(widget: widget) * attributes.scaleX;
 
@@ -179,10 +190,9 @@ class CupertinoCheckboxRecorder implements ElementRecorder {
     return BorderSide(color: _defaultBorderColor.resolveColor(element));
   }
 
-  double _getCornerRadius({
-    required CupertinoCheckbox widget,
-  }) {
-    final OutlinedBorder shape = widget.shape ??
+  double _getCornerRadius({required CupertinoCheckbox widget}) {
+    final OutlinedBorder shape =
+        widget.shape ??
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0));
 
     return shape is RoundedRectangleBorder

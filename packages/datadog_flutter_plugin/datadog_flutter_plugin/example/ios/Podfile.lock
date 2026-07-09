@@ -85,7 +85,7 @@ CHECKOUT OPTIONS:
     :git: https://github.com/DataDog/dd-sdk-ios
 
 SPEC CHECKSUMS:
-  datadog_flutter_plugin_ios: 8ae127632e6df7b9fb431b91512034a29af391c5
+  datadog_flutter_plugin_ios: 10996273528b840f9bbb30b4c14f364e38fbe126
   DatadogCore: 21027a92b720b7860c0b450cde4dec2e7d06c42a
   DatadogCrashReporting: 34fccdac1b5df7b2173d10017270c25d050e3a19
   DatadogInternal: acde40825dbe79faac53ba54d8ca742e07b88cdd
@@ -95,6 +95,6 @@ SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
 
-PODFILE CHECKSUM: 357bc2de26f249c9e5dd52e99a556d5704fbd68b
+PODFILE CHECKSUM: 68224f0433e9c33250822299f34c81a161859823
 
 COCOAPODS: 1.16.2

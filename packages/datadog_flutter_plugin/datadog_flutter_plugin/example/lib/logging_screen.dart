@@ -23,8 +23,9 @@ class _LoggingScreenState extends State<LoggingScreen> {
 
   @override
   void initState() {
-    logger =
-        DatadogSdk.instance.logs?.createLogger(DatadogLoggerConfiguration());
+    logger = DatadogSdk.instance.logs?.createLogger(
+      DatadogLoggerConfiguration(),
+    );
     super.initState();
   }
 
@@ -47,8 +48,9 @@ class _LoggingScreenState extends State<LoggingScreen> {
         logger?.error(message);
         break;
     }
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('Sent $message')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Sent $message')));
   }
 
   void _sendErrorWithExceptionLog() {
@@ -56,14 +58,11 @@ class _LoggingScreenState extends State<LoggingScreen> {
     try {
       throw Exception('We threw an exception!');
     } catch (e, st) {
-      logger?.error(
-        message,
-        errorMessage: e.toString(),
-        errorStackTrace: st,
-      );
+      logger?.error(message, errorMessage: e.toString(), errorStackTrace: st);
     }
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Sent $message')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Sent $message')));
   }
 
   void _sendFromBackgroundIsolate() {
@@ -75,9 +74,7 @@ class _LoggingScreenState extends State<LoggingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Logging Tests'),
-      ),
+      appBar: AppBar(title: const Text('Logging Tests')),
       body: Container(
         padding: const EdgeInsets.all(8.0),
         child: Column(
@@ -122,9 +119,9 @@ class _LoggingScreenState extends State<LoggingScreen> {
 void sendBackgroundLogs(RootIsolateToken rootIsolateToken) async {
   BackgroundIsolateBinaryMessenger.ensureInitialized(rootIsolateToken);
 
-  await DatadogSdk.instance.attachToExisting(DatadogAttachConfiguration(
-    detectLongTasks: true,
-  ));
+  await DatadogSdk.instance.attachToExisting(
+    DatadogAttachConfiguration(detectLongTasks: true),
+  );
 
   final logger = DatadogSdk.instance.logs?.createLogger(
     DatadogLoggerConfiguration(),

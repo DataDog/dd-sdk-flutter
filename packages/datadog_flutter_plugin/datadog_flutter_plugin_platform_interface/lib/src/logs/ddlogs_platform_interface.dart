@@ -24,14 +24,18 @@ abstract class DdLogsPlatform extends PlatformInterface {
   }
 
   Future<void> enable(
-      InternalLogger logger, DatadogLoggingConfiguration config);
+    InternalLogger logger,
+    DatadogLoggingConfiguration config,
+  );
   Future<void> deinitialize();
 
   Future<void> addGlobalAttribute(String key, Object value);
   Future<void> removeGlobalAttribute(String key);
 
   Future<void> createLogger(
-      String loggerHandle, DatadogLoggerConfiguration config);
+    String loggerHandle,
+    DatadogLoggerConfiguration config,
+  );
   Future<void> destroyLogger(String loggerHandle);
 
   Future<void> log(

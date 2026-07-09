@@ -7,8 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('verify logging nav item goes to logging example',
-      (WidgetTester tester) async {
+  testWidgets('verify logging nav item goes to logging example', (
+    WidgetTester tester,
+  ) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const ExampleApp());
 

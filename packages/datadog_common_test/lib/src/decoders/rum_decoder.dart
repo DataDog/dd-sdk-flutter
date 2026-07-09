@@ -27,8 +27,10 @@ class RumSessionDecoder {
 
   RumSessionDecoder(this.visits);
 
-  static List<RumSessionDecoder> fromEvents(List<RumEventDecoder> events,
-      {bool shouldDiscardApplicationLaunch = true}) {
+  static RumSessionDecoder fromEvents(
+    List<RumEventDecoder> events, {
+    bool shouldDiscardApplicationLaunch = true,
+  }) {
     events.sort((firstEvent, secondEvent) {
       var comp = firstEvent.date.compareTo(secondEvent.date);
       // In the BrowserSDK, view events always have their date set to the start of the view
@@ -57,7 +59,10 @@ class RumSessionDecoder {
       var visit = viewVisitsById[viewEvent.view.id];
       if (visit == null) {
         visit = RumViewVisit(
-            viewEvent.view.id, viewEvent.view.name, viewEvent.view.path);
+          viewEvent.view.id,
+          viewEvent.view.name,
+          viewEvent.view.path,
+        );
         viewVisitsById[viewEvent.view.id] = visit;
       }
       visit.viewEvents.add(viewEvent);
@@ -91,17 +96,18 @@ class RumSessionDecoder {
           visit.longTaskEvents.add(RumLongTaskEventDecoder(e.rumEvent));
           break;
         case 'vital':
-          visit.vitalStepEvents
-              .add(RumVitalOperationStepEventDecoder(e.rumEvent));
+          final operationStepEvent = RumVitalOperationStepEventDecoder(
+            e.rumEvent,
+          );
+          visit.vitalStepEvents.add(operationStepEvent);
           break;
       }
     }
 
     if (shouldDiscardApplicationLaunch) {
-      for (var viewVisitsById in sessionViewVisits.values) {
-        viewVisitsById
-            .removeWhere((key, value) => value.name == 'ApplicationLaunch');
-      }
+      viewVisitsById.removeWhere(
+        (key, value) => value.name == 'ApplicationLaunch',
+      );
     }
 
     return sessionOrder
@@ -190,8 +196,8 @@ class RumEventDecoder {
   }
 
   RumEventDecoder(this.rumEvent)
-      : viewInfo = RumViewInfoDecoder(rumEvent['view']),
-        dd = Dd(rumEvent['_dd']);
+    : viewInfo = RumViewInfoDecoder(rumEvent['view']),
+      dd = Dd(rumEvent['_dd']);
 
   static RumEventDecoder? fromJson(Map<String, dynamic> eventData) {
     if (eventData['type'] != null && eventData['_dd'] != null) {
@@ -207,11 +213,7 @@ class Vital {
   final double maxTime;
   final double avgTime;
 
-  Vital({
-    required this.minTime,
-    required this.maxTime,
-    required this.avgTime,
-  });
+  Vital({required this.minTime, required this.maxTime, required this.avgTime});
 }
 
 class Performance {
@@ -274,8 +276,8 @@ class RumViewEventDecoder extends RumEventDecoder {
   }
 
   RumViewEventDecoder(Map<String, dynamic> rumEvent)
-      : view = RumViewDecoder(rumEvent['view']),
-        super(rumEvent);
+    : view = RumViewDecoder(rumEvent['view']),
+      super(rumEvent);
 }
 
 class RumActionEventDecoder extends RumEventDecoder {
@@ -350,8 +352,9 @@ class RumViewDecoder {
   int? get networkSettledTime => viewData['network_settled_time'] as int?;
 
   Map<String, int> get customTimings =>
-      (viewData['custom_timings'] as Map<String, Object?>)
-          .map((key, value) => MapEntry(key, value as int));
+      (viewData['custom_timings'] as Map<String, Object?>).map(
+        (key, value) => MapEntry(key, value as int),
+      );
 
   RumViewDecoder(this.viewData);
 }

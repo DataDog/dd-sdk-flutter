@@ -1,5 +1,5 @@
 PODS:
-  - datadog_flutter_plugin (0.0.1):
+  - datadog_flutter_plugin_ios (0.0.1):
     - DatadogCore (~> 3)
     - DatadogCrashReporting (~> 3)
     - DatadogInternal (~> 3)
@@ -45,7 +45,7 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
-  - datadog_flutter_plugin (from `.symlinks/plugins/datadog_flutter_plugin/ios`)
+  - datadog_flutter_plugin_ios (from `.symlinks/plugins/datadog_flutter_plugin_ios/ios`)
   - datadog_webview_tracking (from `.symlinks/plugins/datadog_webview_tracking/ios`)
   - DatadogCore (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - DatadogCrashReporting (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
@@ -63,8 +63,8 @@ SPEC REPOS:
     - KSCrash
 
 EXTERNAL SOURCES:
-  datadog_flutter_plugin:
-    :path: ".symlinks/plugins/datadog_flutter_plugin/ios"
+  datadog_flutter_plugin_ios:
+    :path: ".symlinks/plugins/datadog_flutter_plugin_ios/ios"
   datadog_webview_tracking:
     :path: ".symlinks/plugins/datadog_webview_tracking/ios"
   DatadogCore:
@@ -113,7 +113,7 @@ CHECKOUT OPTIONS:
     :git: https://github.com/DataDog/dd-sdk-ios
 
 SPEC CHECKSUMS:
-  datadog_flutter_plugin: 64adc7ef089a1328c78fd4fab24e49afa09d95a5
+  datadog_flutter_plugin_ios: 10996273528b840f9bbb30b4c14f364e38fbe126
   datadog_webview_tracking: 58ffca1b06ba88e0bd6dc0d0d1dada0e60e6d3d5
   DatadogCore: ac5ffe0cb500e4c826fa08e63767ab3b4434c380
   DatadogCrashReporting: 699c20e4af5798a39b14c81e26c0e92293d86a36

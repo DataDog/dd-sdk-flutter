@@ -3,7 +3,7 @@ description: "Demonstrates how to use the datadog_session_replay plugin."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 environment:
-  sdk: ^3.6.0
+  sdk: ^3.10.0
 
 dependencies:
   flutter:
@@ -21,10 +21,9 @@ dev_dependencies:
     sdk: flutter
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   mocktail: ^1.0.4
   plugin_platform_interface: ^2.1.8
-  flutter_test_goldens: ^0.0.7
   datadog_common_test:
     path: ../../datadog_common_test
 
@@ -33,3 +32,20 @@ flutter:
   assets:
     - .env
     - assets/dd_logo_v_rgb.png
+
+  fonts:
+    - family: OpenSans
+      fonts:
+        - asset: assets/fonts/Open_Sans/static/OpenSans-Regular.ttf
+        - asset: assets/fonts/Open_Sans/static/OpenSans-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Open_Sans/static/OpenSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Open_Sans/static/OpenSans-BoldItalic.ttf
+          weight: 700
+          style: italic
+        - asset: assets/fonts/Open_Sans/static/OpenSans-ExtraBold.ttf
+          weight: 900
+        - asset: assets/fonts/Open_Sans/static/OpenSans-ExtraBoldItalic.ttf
+          weight: 900
+          style: italic

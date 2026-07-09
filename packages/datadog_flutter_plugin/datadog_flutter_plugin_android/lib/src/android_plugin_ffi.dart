@@ -8,17 +8,17 @@ import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart'
 import 'datadog_android_bridge.dart' as bridge;
 
 class AndroidDatadogFlutterPlugin {
-  static final JString _javaRumKey = JString.fromString('rum');
-  static final JString _javaSessionId = JString.fromString('session_id');
+  static final JString _javaRumKey = 'rum'.toJString();
+  static final JString _javaSessionId = 'session_id'.toJString();
 
   static DatadogContext? getContext() {
-    final javaContext = bridge.DatadogSdkPlugin.Companion.getCoreContext();
+    final javaContext = bridge.DatadogSdkPlugin.Companion.coreContext;
     if (javaContext == null) return null;
 
     String? sessionId;
-    final rumContext = javaContext.getFeaturesContext()[_javaRumKey];
+    final rumContext = javaContext.featuresContext.get(_javaRumKey);
     if (rumContext != null) {
-      final javaSessionId = rumContext[_javaSessionId];
+      final javaSessionId = rumContext.get(_javaSessionId);
       if (javaSessionId != null) {
         sessionId = javaSessionId.toString();
         javaSessionId.release();
@@ -27,8 +27,8 @@ class AndroidDatadogFlutterPlugin {
 
     final context = DatadogContext(
       sessionId: sessionId,
-      accountId: javaContext.getAccountInfo()?.getId().toDartString(),
-      userId: javaContext.getUserInfo().getId()?.toDartString(),
+      accountId: javaContext.accountInfo?.id.toDartString(),
+      userId: javaContext.userInfo.id?.toDartString(),
     );
     javaContext.release();
     return context;

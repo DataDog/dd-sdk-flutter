@@ -25,8 +25,11 @@ Future<void> performRumUserFlow(WidgetTester tester) async {
   await tester.pumpAndSettle();
 
   var nextButton = find.widgetWithText(ElevatedButton, 'Next Page');
-  await tester.waitFor(nextButton, const Duration(seconds: 100),
-      (e) => (e.widget as ElevatedButton).enabled);
+  await tester.waitFor(
+    nextButton,
+    const Duration(seconds: 100),
+    (e) => (e.widget as ElevatedButton).enabled,
+  );
   await tester.tap(nextButton);
   await tester.pumpAndSettle();
 }
@@ -34,8 +37,9 @@ Future<void> performRumUserFlow(WidgetTester tester) async {
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('captures request and response headers on RUM resource events',
-      (WidgetTester tester) async {
+  testWidgets('captures request and response headers on RUM resource events', (
+    WidgetTester tester,
+  ) async {
     final sessionRecorder = await startMockServer();
 
     const clientToken = bool.hasEnvironment('DD_CLIENT_TOKEN')
@@ -57,10 +61,11 @@ void main() {
     RumAutoInstrumentationScenarioConfig.instance = scenarioConfig;
 
     app.testingConfiguration = TestingConfiguration(
-        customEndpoint: sessionRecorder.sessionEndpoint,
-        clientToken: clientToken,
-        applicationId: applicationId,
-        firstPartyHosts: ['localhost']);
+      customEndpoint: sessionRecorder.sessionEndpoint,
+      clientToken: clientToken,
+      applicationId: applicationId,
+      firstPartyHosts: ['localhost'],
+    );
     await app.main();
     await tester.pumpAndSettle();
 
@@ -85,8 +90,9 @@ void main() {
 
     final view2 = session.visits[1];
 
-    final getEvent = view2.resourceEvents
-        .firstWhereOrNull((e) => e.url == scenarioConfig.firstPartyGetUrl);
+    final getEvent = view2.resourceEvents.firstWhereOrNull(
+      (e) => e.url == scenarioConfig.firstPartyGetUrl,
+    );
     expect(getEvent, isNotNull);
     // The C++ SDK does not surface _dd.request_headers / _dd.response_headers
     // as custom attributes on resource events, so headers are always null on desktop.
@@ -97,8 +103,9 @@ void main() {
       expect(getEvent.responseHeaders!['content-type'], isNotNull);
     }
 
-    final postEvent = view2.resourceEvents
-        .firstWhereOrNull((e) => e.url == scenarioConfig.firstPartyPostUrl);
+    final postEvent = view2.resourceEvents.firstWhereOrNull(
+      (e) => e.url == scenarioConfig.firstPartyPostUrl,
+    );
     expect(postEvent, isNotNull);
     if (!isDdSdkCppPlatform()) {
       expect(postEvent!.requestHeaders, isNotNull);

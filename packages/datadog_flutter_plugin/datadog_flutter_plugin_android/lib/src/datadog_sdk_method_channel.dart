@@ -192,11 +192,11 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
   Future<AttachResponse?> attachToExisting(
     DatadogAttachConfiguration attachConfig,
   ) async {
-    final channelResponse =
-        await methodChannel.invokeMapMethod<String, Object?>(
-      'attachToExisting',
-      <String, Object?>{},
-    );
+    final channelResponse = await methodChannel
+        .invokeMapMethod<String, Object?>(
+          'attachToExisting',
+          <String, Object?>{},
+        );
 
     AttachResponse? response;
     if (channelResponse != null) {

@@ -34,8 +34,9 @@ class _IntegrationScenariosScreenState
   final items = <ScenarioItem>[
     ScenarioItem(label: 'Logging Scenario', navItem: LoggingScenario.new),
     ScenarioItem(
-        label: 'Logging User & Account Scenario',
-        navItem: LoggingUserAccountScenario.new),
+      label: 'Logging User & Account Scenario',
+      navItem: LoggingUserAccountScenario.new,
+    ),
     ScenarioItem(
       label: 'Manual RUM Scenario',
       navItem: RumManualInstrumentationScenario.new,
@@ -53,16 +54,15 @@ class _IntegrationScenariosScreenState
       navItem: KioskIntegrationScenario.new,
     ),
     ScenarioItem(
-        label: 'Isolate Tracking Scenario',
-        navItem: IsolateTrackingScenario.new)
+      label: 'Isolate Tracking Scenario',
+      navItem: IsolateTrackingScenario.new,
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Integration Scenarios'),
-      ),
+      appBar: AppBar(title: const Text('Integration Scenarios')),
       body: ListView.builder(
         itemCount: items.length,
         itemBuilder: (context, i) {
@@ -73,9 +73,7 @@ class _IntegrationScenariosScreenState
             onTap: () {
               Navigator.push<void>(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => item.navItem(),
-                ),
+                MaterialPageRoute(builder: (_) => item.navItem()),
               );
             },
           );

@@ -53,11 +53,7 @@ void main() {
   testWidgets('rum - start view', (tester) async {
     final viewKey = randomString();
     await measure('flutter_rum_start_view', () {
-      datadog.rum!.startView(
-        viewKey,
-        randomString(),
-        e2eAttributes(tester),
-      );
+      datadog.rum!.startView(viewKey, randomString(), e2eAttributes(tester));
     });
 
     datadog.rum!.stopView(viewKey);
@@ -84,11 +80,7 @@ void main() {
   testWidgets('rum - add timing', (tester) async {
     final viewKey = randomString();
     final delay = random.nextInt(500) + 150;
-    datadog.rum!.startView(
-      viewKey,
-      randomString(),
-      e2eAttributes(tester),
-    );
+    datadog.rum!.startView(viewKey, randomString(), e2eAttributes(tester));
 
     await Future<void>.delayed(Duration(milliseconds: delay));
     await measure('flutter_rum_add_timing', () {
@@ -122,11 +114,7 @@ void main() {
       datadog.rum!.addAttribute('custom_attribute', randomString());
     });
 
-    datadog.rum!.startView(
-      viewKey,
-      randomString(),
-      e2eAttributes(tester),
-    );
+    datadog.rum!.startView(viewKey, randomString(), e2eAttributes(tester));
     datadog.rum!.stopView(viewKey);
   });
 
@@ -157,11 +145,7 @@ void main() {
       datadog.rum!.removeAttribute('custom_attribute');
     });
 
-    datadog.rum!.startView(
-      viewKey,
-      randomString(),
-      e2eAttributes(tester),
-    );
+    datadog.rum!.startView(viewKey, randomString(), e2eAttributes(tester));
     datadog.rum!.stopView(viewKey);
   });
 
@@ -184,10 +168,7 @@ void main() {
   /// ```
   testWidgets('rum - simple action', (tester) async {
     final viewKey = randomString();
-    datadog.rum!.startView(
-      viewKey,
-      randomString(),
-    );
+    datadog.rum!.startView(viewKey, randomString());
 
     await measure('flutter_rum_simple_action', () {
       datadog.rum!.addAction(
@@ -224,11 +205,7 @@ void main() {
   /// ```
   testWidgets('rum - long action', (tester) async {
     final viewKey = randomString();
-    datadog.rum!.startView(
-      viewKey,
-      randomString(),
-      e2eAttributes(tester),
-    );
+    datadog.rum!.startView(viewKey, randomString(), e2eAttributes(tester));
 
     final actionName = randomString();
     await measure('flutter_start_user_action', () {
@@ -270,11 +247,7 @@ void main() {
   /// ```
   testWidgets('rum - resource loading', (tester) async {
     final viewKey = randomString();
-    datadog.rum!.startView(
-      viewKey,
-      randomString(),
-      e2eAttributes(tester),
-    );
+    datadog.rum!.startView(viewKey, randomString(), e2eAttributes(tester));
 
     final resourceKey = randomString();
     await measure('flutter_start_resource', () {
@@ -288,7 +261,10 @@ void main() {
 
     await measure('flutter_stop_resource', () {
       datadog.rum!.stopResource(
-          resourceKey, 200, RumResourceType.values.randomElement());
+        resourceKey,
+        200,
+        RumResourceType.values.randomElement(),
+      );
     });
 
     datadog.rum!.stopView(viewKey);
@@ -313,11 +289,7 @@ void main() {
   /// ```
   testWidgets('rum - resource loading with error', (tester) async {
     final viewKey = randomString();
-    datadog.rum!.startView(
-      viewKey,
-      randomString(),
-      e2eAttributes(tester),
-    );
+    datadog.rum!.startView(viewKey, randomString(), e2eAttributes(tester));
 
     final resourceKey = randomString();
     datadog.rum!.startResource(
@@ -329,7 +301,11 @@ void main() {
 
     await measure('flutter_stop_resource_with_error', () {
       datadog.rum!.stopResourceWithErrorInfo(
-          resourceKey, randomString(), randomString(), e2eAttributes(tester));
+        resourceKey,
+        randomString(),
+        randomString(),
+        e2eAttributes(tester),
+      );
     });
 
     datadog.rum!.stopView(viewKey);
@@ -354,11 +330,7 @@ void main() {
   /// ```
   testWidgets('rum - add error', (tester) async {
     final viewKey = randomString();
-    datadog.rum!.startView(
-      viewKey,
-      randomString(),
-      e2eAttributes(tester),
-    );
+    datadog.rum!.startView(viewKey, randomString(), e2eAttributes(tester));
 
     await measure('flutter_add_error', () {
       datadog.rum!.addErrorInfo(
@@ -390,11 +362,7 @@ void main() {
   /// ```
   testWidgets('rum - add error with stacktrace', (tester) async {
     final viewKey = randomString();
-    datadog.rum!.startView(
-      viewKey,
-      randomString(),
-      e2eAttributes(tester),
-    );
+    datadog.rum!.startView(viewKey, randomString(), e2eAttributes(tester));
 
     final stackTrace = StackTrace.current;
     await measure('flutter_add_error_with_stacktrace', () {
