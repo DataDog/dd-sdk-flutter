@@ -82,9 +82,16 @@ packages:
     source: hosted
     version: "1.0.8"
   datadog_flags:
-    dependency: "direct main"
+    dependency: "direct overridden"
     description:
       path: "../../packages/datadog_flags"
+      relative: true
+    source: path
+    version: "1.1.0"
+  datadog_flags_flutter:
+    dependency: "direct main"
+    description:
+      path: "../../packages/datadog_flags_flutter"
       relative: true
     source: path
     version: "1.0.0"
@@ -94,7 +101,7 @@ packages:
       path: "../../packages/datadog_flutter_plugin"
       relative: true
     source: path
-    version: "3.4.0"
+    version: "3.5.0"
   datadog_gql_link:
     dependency: "direct main"
     description:

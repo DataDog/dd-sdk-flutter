@@ -82,6 +82,15 @@ class DatadogSessionReplay {
 
   void _onContextChanged(RUMContext context) {
     _recorder.onContextChanged(context);
+
+    // Force the next capture tick to run. A RUM context change (notably a view
+    // change) requires a fresh snapshot for the new view, but captures are normally
+    // gated on `_newFrameBuilt`, which is only set when Flutter builds a frame. In
+    // hybrid add-to-app the native RUM view can change while an embedded Flutter panel
+    // is static (no new frame), so without this the new view's snapshot is deferred
+    // until the next interaction. `onContextChanged` only fires on actual context
+    // changes, so this doesn't add per-frame work.
+    _newFrameBuilt = true;
   }
 
   /// Begins periodic Session Replay tree capture. Has no effect if recording

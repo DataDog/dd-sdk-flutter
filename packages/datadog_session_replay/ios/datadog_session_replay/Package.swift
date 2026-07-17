@@ -13,7 +13,15 @@ let package = Package(
         .library(name: "datadog-session-replay", targets: ["datadog_session_replay", "datadog_session_replay_objc"])
     ],
     dependencies: [
-        .package(url: "https://github.com/Datadog/dd-sdk-ios.git", from: "3.0.0")
+        // TEMP (local dev): point at local dd-sdk-ios checkout to pick up
+        // the in-progress `flutterView` FeatureMessage case. Revert to the
+        // remote git dependency before committing/releasing.
+        //
+        // Absolute path is used because Flutter's SPM plugin integration
+        // references this package through a symlink, and SwiftPM resolves
+        // relative `path:` values lexically against the symlink's location
+        // rather than its target — a relative path here resolves wrong.
+        .package(path: "/Users/juancarlos.naranjojaramillo/Development/sdk-flutter-workspace/dd-sdk-ios")
     ],
     targets: [
         .target(

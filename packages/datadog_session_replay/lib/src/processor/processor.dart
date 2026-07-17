@@ -18,26 +18,19 @@ import 'processor_worker.dart';
 /// sending them to the native platform for serialization and distribution to
 /// intake
 class SessionReplayProcessor with WidgetsBindingObserver {
-  final ReceivePort _mainReceivePort = ReceivePort('sr-replay-port');
   SendPort? _mainSendPort;
   Isolate? _processorIsolate;
+  bool _isSpawning = false;
+  FontFamilyTransformConfig _fontFamilyTransform =
+      const FontFamilyTransformConfig();
 
   Future<void> start({
     FontFamilyTransformConfig fontFamilyTransform =
         const FontFamilyTransformConfig(),
   }) async {
+    _fontFamilyTransform = fontFamilyTransform;
     WidgetsBinding.instance.addObserver(this);
-    _processorIsolate = await Isolate.spawn(
-      _captureProcessor,
-      _ProcessorArgs(
-        RootIsolateToken.instance!,
-        DatadogSessionReplayPlatform.instance.isolateToken,
-        _mainReceivePort.sendPort,
-        fontFamilyTransform,
-      ),
-    );
-
-    _mainSendPort = await _mainReceivePort.first;
+    await _spawnIsolate();
   }
 
   void process(CaptureResult captureResult) {
@@ -49,7 +42,38 @@ class SessionReplayProcessor with WidgetsBindingObserver {
     if (state == AppLifecycleState.detached) {
       _mainSendPort?.send(null);
       _processorIsolate?.kill(priority: Isolate.immediate);
+      _mainSendPort = null;
+      _processorIsolate = null;
+    } else if (state == AppLifecycleState.resumed) {
+      // Guard with `_isSpawning` in addition to the null check: `_spawnIsolate`
+      // awaits `Isolate.spawn`, so `_processorIsolate` stays null during the spawn.
+      // Without the latch, a second `resumed` arriving mid-spawn would start a
+      // duplicate isolate and leak the first.
+      if (_processorIsolate == null && !_isSpawning) {
+        _isSpawning = true;
+        // ignore: unawaited_futures
+        _spawnIsolate().whenComplete(() => _isSpawning = false);
+      }
     }
+  }
+
+  // Spawns the capture-processing isolate and completes the handshake. A fresh
+  // ReceivePort is created on each call because ReceivePort is single-subscription
+  // and cannot be reused after its initial handshake listener is consumed — this
+  // is what allows the isolate to be restarted on resume after a detach.
+  Future<void> _spawnIsolate() async {
+    final port = ReceivePort('sr-replay-port');
+    _processorIsolate = await Isolate.spawn(
+      _captureProcessor,
+      _ProcessorArgs(
+        RootIsolateToken.instance!,
+        DatadogSessionReplayPlatform.instance.isolateToken,
+        port.sendPort,
+        _fontFamilyTransform,
+      ),
+    );
+    _mainSendPort = await port.first;
+    port.close();
   }
 
   static Future<void> _captureProcessor(_ProcessorArgs args) async {
