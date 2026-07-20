@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.3.1
+
+* Properly pin Android SDK version to 3.10.0.
+
 ## 3.3.0
 
 * Capture HTTP request and response headers for RUM resources, including Flutter Web.
