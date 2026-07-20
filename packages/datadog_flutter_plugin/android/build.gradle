@@ -11,7 +11,7 @@ version "1.0-SNAPSHOT"
 
 buildscript {
     ext.kotlin_version = "2.1.0"
-    ext.datadog_version = "3+"
+    ext.datadog_version = "3.11.0"
 
     repositories {
         google()
@@ -33,6 +33,7 @@ rootProject.allprojects {
              content {
                 includeGroup "com.github.xgouchet.Elmyr"
              }
+
 
         }
     }
