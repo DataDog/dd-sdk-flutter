@@ -12,8 +12,8 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 
 const fakeRootUrl = 'https://fake_url';
-const onboardingFeatureOperation = 'onboarding';
-const firstDownloadFeatureOperation = 'first_screen_download';
+const onboardingOperation = 'onboarding';
+const firstDownloadOperation = 'first_screen_download';
 
 class RumManualInstrumentationScenario extends StatefulWidget {
   const RumManualInstrumentationScenario({Key? key}) : super(key: key);
@@ -65,8 +65,8 @@ class _RumManualInstrumentationScenarioState
   @override
   void didPush() {
     DatadogSdk.instance.rum?.startView(_viewKey);
-    DatadogSdk.instance.rum?.startFeatureOperation(
-      onboardingFeatureOperation,
+    DatadogSdk.instance.rum?.startOperation(
+      onboardingOperation,
       operationKey: 'key_a',
       attributes: {'start_state': 1},
     );
@@ -113,7 +113,7 @@ class _RumManualInstrumentationScenarioState
 
   void _simulateResourceDownload() async {
     final rum = DatadogSdk.instance.rum;
-    rum?.startFeatureOperation(firstDownloadFeatureOperation);
+    rum?.startOperation(firstDownloadOperation);
 
     rum?.addTiming('first-interaction');
     rum?.addAction(RumActionType.tap, 'Tapped Download');
@@ -140,10 +140,7 @@ class _RumManualInstrumentationScenarioState
       'ErrorLoading',
     );
 
-    rum?.failFeatureOperation(
-      firstDownloadFeatureOperation,
-      RumFeatureOperationFailureReason.error,
-    );
+    rum?.failOperation(firstDownloadOperation, RumOperationFailureReason.error);
 
     setState(() {
       _contentReady = true;
@@ -301,8 +298,8 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
 
   void _onNextTapped() {
     DatadogSdk.instance.rum?.addAction(RumActionType.tap, 'Next Screen');
-    DatadogSdk.instance.rum?.succeedFeatureOperation(
-      onboardingFeatureOperation,
+    DatadogSdk.instance.rum?.succeedOperation(
+      onboardingOperation,
       operationKey: 'key_a',
     );
     Navigator.push<void>(

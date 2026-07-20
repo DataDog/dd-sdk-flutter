@@ -424,46 +424,46 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  Future<void> startFeatureOperation(
+  Future<void> startOperation(
     DateTime timestamp,
     String name,
     String? operationKey,
     Map<String, Object?> attributes,
   ) async {
     final context = attributesToJs(attributes, 'attributes');
-    DD_RUM?.startFeatureOperation(
+    DD_RUM?.startOperation(
       name,
-      _FeatureOperationOptions(operationKey: operationKey, context: context),
+      _OperationOptions(operationKey: operationKey, context: context),
     );
   }
 
   @override
-  Future<void> succeedFeatureOperation(
+  Future<void> succeedOperation(
     DateTime timestamp,
     String name,
     String? operationKey,
     Map<String, Object?> attributes,
   ) async {
     final context = attributesToJs(attributes, 'attributes');
-    DD_RUM?.succeedFeatureOperation(
+    DD_RUM?.succeedOperation(
       name,
-      _FeatureOperationOptions(operationKey: operationKey, context: context),
+      _OperationOptions(operationKey: operationKey, context: context),
     );
   }
 
   @override
-  Future<void> failFeatureOperation(
+  Future<void> failOperation(
     DateTime timestamp,
     String name,
     String? operationKey,
-    RumFeatureOperationFailureReason failureReason,
+    RumOperationFailureReason failureReason,
     Map<String, Object?> attributes,
   ) async {
     final context = attributesToJs(attributes, 'attributes');
-    DD_RUM?.failFeatureOperation(
+    DD_RUM?.failOperation(
       name,
       failureReason.webValue(),
-      _FeatureOperationOptions(operationKey: operationKey, context: context),
+      _OperationOptions(operationKey: operationKey, context: context),
     );
   }
 
@@ -557,14 +557,14 @@ String _contextInjectionString(TraceContextInjection contextInjection) {
   }
 }
 
-extension on RumFeatureOperationFailureReason {
+extension on RumOperationFailureReason {
   String webValue() {
     switch (this) {
-      case RumFeatureOperationFailureReason.error:
+      case RumOperationFailureReason.error:
         return 'error';
-      case RumFeatureOperationFailureReason.abandoned:
+      case RumOperationFailureReason.abandoned:
         return 'abandoned';
-      case RumFeatureOperationFailureReason.other:
+      case RumOperationFailureReason.other:
         return 'other';
     }
   }
@@ -634,8 +634,8 @@ extension type _RumInternalContext._(JSObject _) implements JSObject {
   external String? session_id;
 }
 
-extension type _FeatureOperationOptions._(JSObject _) implements JSObject {
-  external factory _FeatureOperationOptions({
+extension type _OperationOptions._(JSObject _) implements JSObject {
+  external factory _OperationOptions({
     String? operationKey,
     JSObject? context,
     // ignore: unused_element_parameter
@@ -694,18 +694,12 @@ extension type _DdRum._(JSObject _) implements JSObject {
   external void setAccountProperty(String key, JSAny? value);
   external void clearAccount();
   external void setTrackingConsent(String consent);
-  external void startFeatureOperation(
-    String name,
-    _FeatureOperationOptions options,
-  );
-  external void succeedFeatureOperation(
-    String name,
-    _FeatureOperationOptions options,
-  );
-  external void failFeatureOperation(
+  external void startOperation(String name, _OperationOptions options);
+  external void succeedOperation(String name, _OperationOptions options);
+  external void failOperation(
     String name,
     String failureReason,
-    _FeatureOperationOptions options,
+    _OperationOptions options,
   );
   external void startAction(String name, _ActionOptions? options);
   external void stopAction(String name, _ActionOptions? options);

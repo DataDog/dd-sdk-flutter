@@ -41,8 +41,8 @@ enum RumResourceType {
   native,
 }
 
-/// Represents the possible reasons for a failed feature operation.
-enum RumFeatureOperationFailureReason {
+/// Represents the possible reasons for a failed operation.
+enum RumOperationFailureReason {
   /// Represents a failure caused by an error during execution.
   error,
 

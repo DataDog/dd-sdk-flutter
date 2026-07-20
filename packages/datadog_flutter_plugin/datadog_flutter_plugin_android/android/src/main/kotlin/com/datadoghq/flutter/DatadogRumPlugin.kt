@@ -24,8 +24,8 @@ import com.datadog.android.rum.RumResourceKind
 import com.datadog.android.rum.RumResourceMethod
 import com.datadog.android.rum._RumInternalProxy
 import com.datadog.android.rum.configuration.VitalsUpdateFrequency
-import com.datadog.android.rum.featureoperations.FailureReason
 import com.datadog.android.rum.metric.networksettled.TimeBasedInitialResourceIdentifier
+import com.datadog.android.rum.operations.FailureReason
 import com.datadog.android.rum.tracking.ViewTrackingStrategy
 import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -132,9 +132,9 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
                 "reportLongTask" -> reportLongTask(call, result)
                 "updatePerformanceMetrics" -> updatePerformanceMetrics(call, result)
                 "addFeatureFlagEvaluation" -> addFeatureFlagEvaluation(call, result)
-                "startFeatureOperation" -> startFeatureOperation(call, result)
-                "succeedFeatureOperation" -> succeedFeatureOperation(call, result)
-                "failFeatureOperation" -> failFeatureOperation(call, result)
+                "startOperation" -> startOperation(call, result)
+                "succeedOperation" -> succeedOperation(call, result)
+                "failOperation" -> failOperation(call, result)
                 "setInternalViewAttribute" -> setInternalViewAttribute(call, result)
                 "stopSession" -> stopSession(call, result)
                 else -> {
@@ -498,38 +498,38 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
         }
     }
 
-    private fun startFeatureOperation(call: MethodCall, result: Result) {
+    private fun startOperation(call: MethodCall, result: Result) {
         val name = call.argument<String>(PARAM_NAME)
         val operationName = call.argument<String>(PARAM_OPERATION_KEY)
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
         if (name != null && attributes != null) {
-            rum?.startFeatureOperation(name, operationName, attributes)
+            rum?.startOperation(name, operationName, attributes = attributes)
             result.success(null)
         } else {
             result.missingParameter(call.method)
         }
     }
 
-    private fun succeedFeatureOperation(call: MethodCall, result: Result) {
+    private fun succeedOperation(call: MethodCall, result: Result) {
         val name = call.argument<String>(PARAM_NAME)
         val operationName = call.argument<String>(PARAM_OPERATION_KEY)
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
         if (name != null && attributes != null) {
-            rum?.succeedFeatureOperation(name, operationName, attributes)
+            rum?.succeedOperation(name, operationName, attributes)
             result.success(null)
         } else {
             result.missingParameter(call.method)
         }
     }
 
-    private fun failFeatureOperation(call: MethodCall, result: Result) {
+    private fun failOperation(call: MethodCall, result: Result) {
         val name = call.argument<String>(PARAM_NAME)
         val operationName = call.argument<String>(PARAM_OPERATION_KEY)
         val failureReasonStr = call.argument<String>(PARAM_FAILURE_REASON)
         val attributes = call.argument<Map<String, Any?>>(PARAM_ATTRIBUTES)
         if (name != null && failureReasonStr != null && attributes != null) {
             val failureReason = parseFailureReason(failureReasonStr)
-            rum?.failFeatureOperation(name, operationName, failureReason, attributes)
+            rum?.failOperation(name, operationName, failureReason, attributes)
             result.success(null)
         } else {
             result.missingParameter(call.method)
@@ -666,9 +666,9 @@ fun parseRumActionType(value: String): RumActionType {
 
 fun parseFailureReason(value: String): FailureReason {
     return when (value) {
-        "RumFeatureOperationFailureReason.error" -> FailureReason.ERROR
-        "RumFeatureOperationFailureReason.abandoned" -> FailureReason.ABANDONED
-        "RumFeatureOperationFailureReason.other" -> FailureReason.OTHER
+        "RumOperationFailureReason.error" -> FailureReason.ERROR
+        "RumOperationFailureReason.abandoned" -> FailureReason.ABANDONED
+        "RumOperationFailureReason.other" -> FailureReason.OTHER
         else -> FailureReason.OTHER
     }
 }

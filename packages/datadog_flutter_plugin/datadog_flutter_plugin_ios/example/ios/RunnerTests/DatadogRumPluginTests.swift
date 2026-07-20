@@ -101,9 +101,9 @@ class DatadogRumPluginTests: XCTestCase {
     }
 
     func testAllFailureReasons_AreParsedCorrectly() {
-        let error = RUMFeatureOperationFailureReason.parseFromFlutter("RumFeatureOperationFailureReason.error")
-        let abandoned = RUMFeatureOperationFailureReason.parseFromFlutter("RumFeatureOperationFailureReason.abandoned")
-        let other = RUMFeatureOperationFailureReason.parseFromFlutter("RumFeatureOperationFailureReason.other")
+        let error = RUMFeatureOperationFailureReason.parseFromFlutter("RumOperationFailureReason.error")
+        let abandoned = RUMFeatureOperationFailureReason.parseFromFlutter("RumOperationFailureReason.abandoned")
+        let other = RUMFeatureOperationFailureReason.parseFromFlutter("RumOperationFailureReason.other")
         let unknown = RUMFeatureOperationFailureReason.parseFromFlutter("unknown")
 
         XCTAssertEqual(error, .error)
@@ -183,15 +183,15 @@ class DatadogRumPluginTests: XCTestCase {
             "key": .string,
             "value": .string
         ]),
-        Contract(methodName: "startFeatureOperation", requiredParameters: [
+        Contract(methodName: "startOperation", requiredParameters: [
             "name": .string,
             "attributes": .map
         ]),
-        Contract(methodName: "succeedFeatureOperation", requiredParameters: [
+        Contract(methodName: "succeedOperation", requiredParameters: [
             "name": .string,
             "attributes": .map
         ]),
-        Contract(methodName: "failFeatureOperation", requiredParameters: [
+        Contract(methodName: "failOperation", requiredParameters: [
             "name": .string,
             "failureReason": .string,
             "attributes": .map
@@ -625,8 +625,8 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testStartFeatureOperation_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "startFeatureOperation", arguments: [
+    func testStartOperation_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "startOperation", arguments: [
             "name": "operation_name",
             "operationKey": "operation_key",
             "attributes": [
@@ -640,15 +640,15 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [
-            .startFeatureOperation(name: "operation_name", operationKey: "operation_key", attributes: [
+            .startOperation(name: "operation_name", operationKey: "operation_key", attributes: [
                 "attribute_key": "attribute_value"
             ])
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testSucceedFeatureOperation_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "succeedFeatureOperation", arguments: [
+    func testSucceedOperation_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "succeedOperation", arguments: [
             "name": "operation_name",
             "operationKey": "operation_key",
             "attributes": [
@@ -662,18 +662,18 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [
-            .succeedFeatureOperation(name: "operation_name", operationKey: "operation_key", attributes: [
+            .succeedOperation(name: "operation_name", operationKey: "operation_key", attributes: [
                 "attribute_key": "attribute_value"
             ])
         ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
-    func testFailFeatureOperation_CallsRumMonitor() {
-        let call = FlutterMethodCall(methodName: "failFeatureOperation", arguments: [
+    func testFailOperation_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "failOperation", arguments: [
             "name": "operation_name",
             "operationKey": "operation_key",
-            "failureReason": "RumFeatureOperationFailureReason.abandoned",
+            "failureReason": "RumOperationFailureReason.abandoned",
             "attributes": [
                 "attribute_key": "attribute_value"
             ]
@@ -685,7 +685,7 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [
-            .failFeatureOperation(
+            .failOperation(
                 name: "operation_name",
                 operationKey: "operation_key",
                 failureReason: .abandoned,
@@ -815,9 +815,9 @@ class MockRUMMonitor: RUMMonitorProtocol, RUMCommandSubscriber {
         case removeViewAttributes(keys: [DatadogInternal.AttributeKey])
         case addFeatureFlagEvaluation(name: String, value: Encodable)
         case stopSession
-        case startFeatureOperation(name: String, operationKey: String?, attributes: [AttributeKey: AttributeValue])
-        case succeedFeatureOperation(name: String, operationKey: String?, attributes: [AttributeKey: AttributeValue])
-        case failFeatureOperation(name: String, operationKey: String?, failureReason: RUMFeatureOperationFailureReason,
+        case startOperation(name: String, operationKey: String?, attributes: [AttributeKey: AttributeValue])
+        case succeedOperation(name: String, operationKey: String?, attributes: [AttributeKey: AttributeValue])
+        case failOperation(name: String, operationKey: String?, failureReason: RUMFeatureOperationFailureReason,
                                   attributes: [AttributeKey: AttributeValue])
         case reportAppFullyDisplayed
     }
@@ -950,18 +950,19 @@ class MockRUMMonitor: RUMMonitorProtocol, RUMCommandSubscriber {
         callLog.append(.removeViewAttributes(keys: keys))
     }
 
-    func startFeatureOperation(name: String, operationKey: String?, attributes: [AttributeKey: AttributeValue]) {
-        callLog.append(.startFeatureOperation(name: name, operationKey: operationKey, attributes: attributes))
+    func startOperation(name: String, operationKey: String?, attributes: [AttributeKey: AttributeValue],
+                        options: OperationOptions?) {
+        callLog.append(.startOperation(name: name, operationKey: operationKey, attributes: attributes))
     }
 
-    func succeedFeatureOperation(name: String, operationKey: String?, attributes: [AttributeKey: AttributeValue]) {
-        callLog.append(.succeedFeatureOperation(name: name, operationKey: operationKey, attributes: attributes))
+    func succeedOperation(name: String, operationKey: String?, attributes: [AttributeKey: AttributeValue]) {
+        callLog.append(.succeedOperation(name: name, operationKey: operationKey, attributes: attributes))
     }
 
-    func failFeatureOperation(name: String, operationKey: String?, reason: RUMFeatureOperationFailureReason,
-                              attributes: [AttributeKey: AttributeValue]) {
+    func failOperation(name: String, operationKey: String?, reason: RUMFeatureOperationFailureReason,
+                       attributes: [AttributeKey: AttributeValue]) {
         callLog.append(
-            .failFeatureOperation(name: name, operationKey: operationKey, failureReason: reason, attributes: attributes)
+            .failOperation(name: name, operationKey: operationKey, failureReason: reason, attributes: attributes)
         )
     }
 
