@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.4.1
+
+* Properly pin Android SDK to 3.11.0
+
 ## 3.4.0
 
 * Parse route query string into view.url, which allows for searching for query parameters in Datadog with `@view.url_query.*`.
