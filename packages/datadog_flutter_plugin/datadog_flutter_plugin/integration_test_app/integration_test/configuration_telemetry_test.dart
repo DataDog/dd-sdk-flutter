@@ -19,7 +19,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   kManualIsWeb = kIsWeb;
 
-  testWidgets('test telemetry scenario', skip: isDdSdkPlatform(), (
+  testWidgets('test telemetry scenario', skip: isDdSdkCppPlatform(), (
     WidgetTester tester,
   ) async {
     var serverRecorder = await openTestScenario(

@@ -2,11 +2,11 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-library datadog_common_test;
+library;
 
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
+import 'src/decoder_helpers.dart';
 
 export 'src/data_helpers.dart';
 export 'src/decoder_helpers.dart';
@@ -18,10 +18,8 @@ export 'src/request_log.dart';
 export 'src/testing_configuration.dart';
 
 bool isDdSdkCppPlatform() {
-  if (!kIsWeb) {
+  if (!kManualIsWeb) {
     return Platform.isWindows || Platform.isLinux;
   }
   return false;
 }
-
-bool isDdSdkPlatform() => isDdSdkCppPlatform();

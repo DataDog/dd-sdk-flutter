@@ -25,7 +25,7 @@ void main() {
   //  * errorMapper changes 'custom-fingerprint' to 'mapped fingerprint'
   //  * longTask mapper discards all long tasks less than 200 ms
   //  * longTask mapper renames ThirdManualRumView to ThirdView
-  testWidgets('test instrumentation with mappers', skip: isDdSdkPlatform(), (
+  testWidgets('test instrumentation with mappers', skip: isDdSdkCppPlatform(), (
     WidgetTester tester,
   ) async {
     var serverRecorder = await openTestScenario(

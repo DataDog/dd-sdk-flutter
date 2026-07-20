@@ -331,7 +331,7 @@ class DdRumDesktopPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> startFeatureOperation(
+  Future<void> startOperation(
     DateTime timestamp,
     String name,
     String? operationKey,
@@ -350,7 +350,7 @@ class DdRumDesktopPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> succeedFeatureOperation(
+  Future<void> succeedOperation(
     DateTime timestamp,
     String name,
     String? operationKey,
@@ -369,11 +369,11 @@ class DdRumDesktopPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> failFeatureOperation(
+  Future<void> failOperation(
     DateTime timestamp,
     String name,
     String? operationKey,
-    RumFeatureOperationFailureReason failureReason,
+    RumOperationFailureReason failureReason,
     Map<String, Object?> attributes,
   ) async {
     final rum = _rum;
@@ -474,13 +474,13 @@ class DdRumDesktopPlatform extends DdRumPlatform {
     }
   }
 
-  int _failureReasonToC(RumFeatureOperationFailureReason reason) {
+  int _failureReasonToC(RumOperationFailureReason reason) {
     switch (reason) {
-      case RumFeatureOperationFailureReason.error:
+      case RumOperationFailureReason.error:
         return dd_rum_failure_reason_t.DD_RUM_FAILURE_REASON_ERROR;
-      case RumFeatureOperationFailureReason.abandoned:
+      case RumOperationFailureReason.abandoned:
         return dd_rum_failure_reason_t.DD_RUM_FAILURE_REASON_ABANDONED;
-      case RumFeatureOperationFailureReason.other:
+      case RumOperationFailureReason.other:
         return dd_rum_failure_reason_t.DD_RUM_FAILURE_REASON_OTHER;
     }
   }

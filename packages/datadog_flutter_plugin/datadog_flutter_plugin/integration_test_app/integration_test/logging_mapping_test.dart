@@ -19,7 +19,7 @@ void main() {
 
   testWidgets(
     'logger with mapper modifies and excludes events',
-    skip: isDdSdkPlatform(),
+    skip: isDdSdkCppPlatform(),
     (tester) async {
       var recordedSession = await openTestScenario(
         tester,
