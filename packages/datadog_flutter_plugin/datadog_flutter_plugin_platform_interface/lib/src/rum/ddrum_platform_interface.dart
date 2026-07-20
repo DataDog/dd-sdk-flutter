@@ -124,23 +124,23 @@ abstract class DdRumPlatform extends PlatformInterface {
   Future<void> addFeatureFlagEvaluation(String name, Object value);
   Future<void> stopSession();
 
-  Future<void> startFeatureOperation(
+  Future<void> startOperation(
     DateTime timestamp,
     String name,
     String? operationKey,
     Map<String, Object?> attributes,
   );
-  Future<void> succeedFeatureOperation(
+  Future<void> succeedOperation(
     DateTime timestamp,
     String name,
     String? operationKey,
     Map<String, Object?> attributes,
   );
-  Future<void> failFeatureOperation(
+  Future<void> failOperation(
     DateTime timestamp,
     String name,
     String? operationKey,
-    RumFeatureOperationFailureReason failureReason,
+    RumOperationFailureReason failureReason,
     Map<String, Object?> attributes,
   );
 
