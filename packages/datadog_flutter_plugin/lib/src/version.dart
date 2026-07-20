@@ -2,4 +2,4 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
-const ddPackageVersion = '3.2.2';
+const ddPackageVersion = '3.2.3';
