@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.4.1
+
+* Properly pin Android SDK version to 3.11.0.
+
 ## 3.4.0
 
 * Parse route query string into view.url, which allows for searching for query parameters in Datadog with `@view.url_query.*`.
@@ -18,6 +22,10 @@
   * Atomically write NDK crash logs and catch `NumberFormatException`.
   * Catch `IllegalArgumentException` when reading trace input stream for last fatal ANR.
 
+## 3.3.1
+
+* Properly pin Android SDK version to 3.10.0.
+
 ## 3.3.0
 
 * Capture HTTP request and response headers for RUM resources, including Flutter Web.
@@ -30,6 +38,10 @@
   * Use rebased `sessionReplaySampleRate` for deterministic Session Replay sampling.
   * Fix GraphQL errors extraction for streaming responses.
   * Move broadcast-receiver dispatch off the main thread to fix ANRs.
+
+## 3.2.2
+
+* Properly pin Android SDK to 3.8.0.
 
 ## 3.2.1
 
@@ -47,7 +59,11 @@
   * Propagate trace and session replay sample rates to RUM `ViewEvent`s.
   * Reduce .so file size.
   * Downgrade androidx-core to 1.15.0 in order to preserve Android compileSdk 35 compatibility.
-  
+
+## 3.1.3
+
+* Properly pin Android SDK to 3.6.0.
+
 ## 3.1.2
 
 * [iOS] Prevent stripping of iOS context methods. See [#990](https://github.com/DataDog/dd-sdk-flutter/issues/990).
@@ -70,6 +86,10 @@
   * Propagate feature flags to RUM error and view events for crashes, fatal app hangs, and watchdog terminations
 * Update Android SDK to 3.6.0. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md).
   * Mark fatal ANR as processed before RUM events are written.
+
+## 3.0.2
+
+* Properly pin Android SDK version to 3.5.0.
 
 ## 3.0.1
 
