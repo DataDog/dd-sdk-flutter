@@ -8,7 +8,6 @@ import com.datadog.android.rum.RumResourceKind
 import com.datadog.android.rum.RumResourceMethod
 import com.datadog.android.rum._RumInternalProxy
 import com.datadog.android.rum.featureoperations.FailureReason
-import com.datadog.android.rum.operations.OperationOptions
 import io.mockk.mockk
 
 class MockRumMonitor : RumMonitor {
@@ -88,16 +87,6 @@ class MockRumMonitor : RumMonitor {
         mockMonitor.failFeatureOperation(name, operationKey, failureReason, attributes)
     }
 
-    @ExperimentalRumApi
-    override fun failOperation(
-        name: String,
-        operationKey: String?,
-        failureReason: com.datadog.android.rum.operations.FailureReason,
-        attributes: Map<String, Any?>
-    ) {
-        mockMonitor.failOperation(name, operationKey, failureReason, attributes)
-    }
-
     override fun getAttributes(): Map<String, Any?> {
         return mockMonitor.getAttributes()
     }
@@ -126,16 +115,6 @@ class MockRumMonitor : RumMonitor {
         attributes: Map<String, Any?>
     ) {
         mockMonitor.startFeatureOperation(name, operationKey, attributes)
-    }
-
-    @ExperimentalRumApi
-    override fun startOperation(
-        name: String,
-        operationKey: String?,
-        options: OperationOptions,
-        attributes: Map<String, Any?>
-    ) {
-        mockMonitor.startOperation(name, operationKey, options, attributes)
     }
 
     override fun startResource(
@@ -203,14 +182,5 @@ class MockRumMonitor : RumMonitor {
         attributes: Map<String, Any?>
     ) {
         mockMonitor.succeedFeatureOperation(name, operationKey, attributes)
-    }
-
-    @ExperimentalRumApi
-    override fun succeedOperation(
-        name: String,
-        operationKey: String?,
-        attributes: Map<String, Any?>
-    ) {
-        mockMonitor.succeedOperation(name, operationKey, attributes)
     }
 }
