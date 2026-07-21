@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.0.2
+
+* Properly pin Android SDK version to 3.5.0.
+
 ## 3.0.1
 
 * Add missing Proguard rules for Android. See [#932](https://github.com/DataDog/dd-sdk-flutter/issues/932)
