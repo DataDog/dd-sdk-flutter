@@ -11,13 +11,20 @@
         "statusBar.background": "#7f757f",
         "statusBar.foreground": "#e7e7e7",
         "statusBarItem.hoverBackground": "#988f98",
-        "statusBarItem.remoteBackground": "#7f757f",
+        "statusBarItem.remoteBackground": "#484818",
         "statusBarItem.remoteForeground": "#e7e7e7",
         "titleBar.activeBackground": "#7f757f",
         "titleBar.activeForeground": "#e7e7e7",
         "titleBar.inactiveBackground": "#7f757f99",
         "titleBar.inactiveForeground": "#e7e7e799",
-        "commandCenter.border": "#e7e7e799"
+        "commandCenter.border": "#e7e7e799",
+        "activityBarTop.activeBackground": "#988f98",
+        "activityBarTop.background": "#988f98",
+        "activityBarTop.foreground": "#15202b",
+        "activityBarTop.inactiveForeground": "#15202b99",
+        "commandCenter.foreground": "#e7e7e7",
+        "statusBar.debuggingBackground": "#7f757f",
+        "statusBar.debuggingForeground": "#e7e7e7"
     },
     "dart.analysisExcludedFolders": [
         ".fvm",

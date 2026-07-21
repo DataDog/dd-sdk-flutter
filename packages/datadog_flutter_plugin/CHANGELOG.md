@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.1.3
+
+* Properly pin Android SDK to 3.6.0.
+
 ## 3.1.2
 
 * [iOS] Prevent stripping of iOS context methods. See [#990](https://github.com/DataDog/dd-sdk-flutter/issues/990)
