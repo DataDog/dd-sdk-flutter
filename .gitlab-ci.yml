@@ -127,11 +127,6 @@ build-android:
     - melos run analyze:android
     - melos run build:android  
     - melos run unit_test:android
-  artifacts:    
-    when: always
-    expire_in: "30 days"
-    paths:
-      - "$CI_PROJECT_DIR/**/reports/detekt/*"
 
 build-ios-spm:
   stage: build
