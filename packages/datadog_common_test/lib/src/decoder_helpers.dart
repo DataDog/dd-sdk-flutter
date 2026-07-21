@@ -6,7 +6,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 
-import 'is_web_stub.dart';
+import 'is_web.dart';
 
 T? getNestedProperty<T>(String key, Map<String, Object?> from) {
   if (testIsWeb() || Platform.isAndroid) {

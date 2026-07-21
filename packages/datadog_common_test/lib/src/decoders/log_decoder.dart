@@ -3,7 +3,7 @@
 // Copyright 2019-2021 Datadog, Inc.
 
 import '../../datadog_common_test.dart';
-import '../is_web_stub.dart';
+import '../is_web.dart';
 
 class LogDecoder {
   final Map<String, Object?> log;
