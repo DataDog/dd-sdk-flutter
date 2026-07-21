@@ -4,7 +4,6 @@
 
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_integration_test_app/integration_scenarios/scenario_runner.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -13,7 +12,6 @@ import 'rum_manual_test.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  kManualIsWeb = kIsWeb;
 
   // This is the same test as rum_manual_test.dart, but with the following
   // mappers:

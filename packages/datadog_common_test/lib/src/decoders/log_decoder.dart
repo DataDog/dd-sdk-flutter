@@ -3,6 +3,7 @@
 // Copyright 2019-2021 Datadog, Inc.
 
 import '../../datadog_common_test.dart';
+import '../is_web_stub.dart';
 
 class LogDecoder {
   final Map<String, Object?> log;
@@ -32,7 +33,7 @@ class LogDecoder {
   String? get errorStack => getNestedProperty('error.stack', log);
   String? get errorSourceType => getNestedProperty('error.source_type', log);
   String? get errorFingerprint {
-    if (!kManualIsWeb) {
+    if (!testIsWeb()) {
       return getNestedProperty('error.fingerprint', log);
     } else {
       return log['error.fingerprint'] as String?;

@@ -4,9 +4,9 @@
 
 library;
 
-import 'dart:io';
+import 'dart:io' show Platform;
 
-import 'src/decoder_helpers.dart';
+import 'src/is_web.dart';
 
 export 'src/data_helpers.dart';
 export 'src/decoder_helpers.dart';
@@ -18,7 +18,7 @@ export 'src/request_log.dart';
 export 'src/testing_configuration.dart';
 
 bool isDdSdkCppPlatform() {
-  if (!kManualIsWeb) {
+  if (!testIsWeb()) {
     return Platform.isWindows || Platform.isLinux;
   }
   return false;

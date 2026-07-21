@@ -15,7 +15,6 @@ import 'common.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  kManualIsWeb = kIsWeb;
 
   testWidgets(
     'logger with mapper modifies and excludes events',

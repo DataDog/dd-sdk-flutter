@@ -17,7 +17,6 @@ import 'rum_auto_instrumentation_test.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  kManualIsWeb = kIsWeb;
 
   testWidgets('test telemetry scenario', skip: isDdSdkCppPlatform(), (
     WidgetTester tester,

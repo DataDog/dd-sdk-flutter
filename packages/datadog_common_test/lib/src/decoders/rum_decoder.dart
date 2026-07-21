@@ -4,7 +4,7 @@
 
 import 'dart:io';
 
-import '../../datadog_common_test.dart';
+import '../is_web.dart';
 
 class RumUser {
   Map<String, Object?> raw;
@@ -154,7 +154,7 @@ class RumEventDecoder {
 
   String? get eventType => rumEvent['type'] as String?;
   String get service {
-    if (!kManualIsWeb) {
+    if (!testIsWeb()) {
       if (Platform.isIOS) return rumEvent['service'];
     }
     return rumEvent['service'];
@@ -277,13 +277,11 @@ class RumViewEventDecoder extends RumEventDecoder {
     return null;
   }
 
-  RumViewEventDecoder(Map<String, dynamic> rumEvent)
-    : view = RumViewDecoder(rumEvent['view']),
-      super(rumEvent);
+  RumViewEventDecoder(super.rumEvent) : view = RumViewDecoder(rumEvent['view']);
 }
 
 class RumActionEventDecoder extends RumEventDecoder {
-  RumActionEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+  RumActionEventDecoder(super.rumEvent);
 
   String get actionType => rumEvent['action']['type'];
   String get actionName => rumEvent['action']['target']?['name'];
@@ -291,7 +289,7 @@ class RumActionEventDecoder extends RumEventDecoder {
 }
 
 class RumResourceEventDecoder extends RumEventDecoder {
-  RumResourceEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+  RumResourceEventDecoder(super.rumEvent);
 
   String get url => rumEvent['resource']['url'];
   int? get statusCode => rumEvent['resource']['status_code'];
@@ -318,7 +316,7 @@ class RumResourceEventDecoder extends RumEventDecoder {
 }
 
 class RumErrorEventDecoder extends RumEventDecoder {
-  RumErrorEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+  RumErrorEventDecoder(super.rumEvent);
 
   String get errorType => rumEvent['error']['type'];
   String get message => rumEvent['error']['message'];
@@ -333,7 +331,7 @@ class RumErrorEventDecoder extends RumEventDecoder {
 }
 
 class RumLongTaskEventDecoder extends RumEventDecoder {
-  RumLongTaskEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+  RumLongTaskEventDecoder(super.rumEvent);
 
   String? get viewName => rumEvent['view']['name'];
   int? get duration => rumEvent['long_task']['duration'];

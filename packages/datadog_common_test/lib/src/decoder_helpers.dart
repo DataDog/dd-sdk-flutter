@@ -6,13 +6,10 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 
-// Because Flutter Web Driver has trouble importing package:flutter/foundation
-// from a dependent package, we set this with the value of `kIsWeb` at start-up
-// in all tests
-bool kManualIsWeb = false;
+import 'is_web_stub.dart';
 
 T? getNestedProperty<T>(String key, Map<String, Object?> from) {
-  if (kManualIsWeb || Platform.isAndroid) {
+  if (testIsWeb() || Platform.isAndroid) {
     // Android and Web always produce nested JSON objects.
     Map<String, dynamic>? lookupMap = from;
     var parts = key.split('.');
