@@ -390,7 +390,17 @@ class DdRumDesktopPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> reportLongTask(DateTime at, int durationMs) async {}
+  Future<void> reportLongTask(DateTime at, int durationMs) async {
+    final rum = _rum;
+    if (rum == null) return;
+    using((arena) {
+      _sdk.dd_rum_add_long_task(
+        rum,
+        _sdk.dd_duration_ms(durationMs),
+        ffi.nullptr,
+      );
+    });
+  }
 
   @override
   Future<void> updatePerformanceMetrics(

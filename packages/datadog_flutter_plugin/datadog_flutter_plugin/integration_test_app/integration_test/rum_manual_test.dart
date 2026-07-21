@@ -223,10 +223,8 @@ void main() {
     expect(view2.viewEvents.last.view.errorCount, 1);
     expect(view2.viewEvents.last.view.actionCount, 2);
 
-    if (!isDdSdkCppPlatform()) {
-      // We can have multiple long tasks
-      expect(view2.viewEvents.last.view.longTaskCount, greaterThanOrEqualTo(1));
-    }
+    // We can have multiple long tasks
+    expect(view2.viewEvents.last.view.longTaskCount, greaterThanOrEqualTo(1));
     expect(
       view2.viewEvents.last.view.resourceCount,
       view2.resourceEvents.length,
@@ -296,32 +294,29 @@ void main() {
       expect(view2.errorEvents[0].fingerprint, 'custom-fingerprint');
     }
 
-    // Long tasks not yet supported on C++
-    if (!isDdSdkCppPlatform()) {
-      // Check all long tasks are over 100 ms (the default) and that one is greater
-      // than 200 ms (triggered by the tapping of the button)
-      // On web, we can't configure the long task threshold, so it becomes 50ms
-      const longTaskThresholdMs = kIsWeb ? 50 : 100;
-      var over200 = 0;
-      for (var longTask in view2.longTaskEvents) {
-        expect(
-          longTask.duration,
-          greaterThanOrEqualTo(
-            const Duration(milliseconds: longTaskThresholdMs).inNanoseconds,
-          ),
-        );
-        // Nothing should have taken more than 2 seconds
-        expect(
-          longTask.duration,
-          lessThan(const Duration(seconds: 2).inNanoseconds),
-        );
-        if (longTask.duration! >
-            const Duration(milliseconds: 200).inNanoseconds) {
-          over200++;
-        }
+    // Check all long tasks are over 100 ms (the default) and that one is greater
+    // than 200 ms (triggered by the tapping of the button)
+    // On web, we can't configure the long task threshold, so it becomes 50ms
+    const longTaskThresholdMs = kIsWeb ? 50 : 100;
+    var over200 = 0;
+    for (var longTask in view2.longTaskEvents) {
+      expect(
+        longTask.duration,
+        greaterThanOrEqualTo(
+          const Duration(milliseconds: longTaskThresholdMs).inNanoseconds,
+        ),
+      );
+      // Nothing should have taken more than 2 seconds
+      expect(
+        longTask.duration,
+        lessThan(const Duration(seconds: 2).inNanoseconds),
+      );
+      if (longTask.duration! >
+          const Duration(milliseconds: 200).inNanoseconds) {
+        over200++;
       }
-      expect(over200, greaterThanOrEqualTo(1));
     }
+    expect(over200, greaterThanOrEqualTo(1));
 
     expect(view2.actionEvents[0].actionType, 'scroll');
     expect(view2.actionEvents[0].actionName, 'User Scrolling');
