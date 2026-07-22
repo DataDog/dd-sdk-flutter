@@ -242,7 +242,9 @@ public func __datadog_session_replay_keep_symbols() {
             let data = segmentJson.data(using: .utf8),
             var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
             var records = object["records"] as? [[String: Any]],
-            let viewID = object["viewID"] as? String
+            let viewID = object["viewID"] as? String,
+            let viewData = try? JSONSerialization.data(withJSONObject: ["id": viewID]),
+            let view = try? JSONDecoder().decode(FlutterMessage.View.self, from: viewData)
         else {
             return
         }
@@ -254,7 +256,7 @@ public func __datadog_session_replay_keep_symbols() {
         }
 
         for record in records {
-            FlutterSessionReplay.core?.send(message: .flutterView(.record(record, viewID)))
+            FlutterSessionReplay.core?.send(message: .flutterView(.record(record, view)))
         }
     }
 
