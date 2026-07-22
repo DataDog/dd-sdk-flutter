@@ -45,6 +45,15 @@ scripts:
     packageFilters:
       dirExists: example/web
 
+  # Runs inside the Windows CI Docker container (see ci/windows/), where melos invokes
+  # scripts via `cmd.exe /c`, not bash - avoid bash-only syntax here.
+  build:windows:
+    exec:
+      concurrency: 1
+    run: cd example && flutter build windows --release
+    packageFilters:
+      dirExists: example/windows
+
   dartfmt_check:
     exec: dart format --output=none --set-exit-if-changed .
   
@@ -225,6 +234,32 @@ scripts:
       bash -c 'set -euxo pipefail; \
       flutter test integration_test --machine -d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
       | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.xml"'
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
+  integration_test:windows:
+    run: melos integration_test:windows:main && melos integration_test:windows:other
+
+  # Windows can't run the whole integration_test directory in one `flutter test`
+  # invocation, so this uses tools/ci/bin/desktop_integration_tests.dart to run each
+  # test file individually, same idea as web's per-file `flutter drive` runner.
+  integration_test:windows:other:
+    exec:
+      concurrency: 1
+    run: |
+      cd example
+      dart %MELOS_ROOT_PATH%/tools/ci/bin/desktop_integration_tests.dart --output %MELOS_ROOT_PATH%/.build/test-results
+    packageFilters:
+      dirExists: 'example/integration_test'
+      ignore:
+        - 'datadog_flutter_plugin'
+
+  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
+  # have a separate target just for it that is called by `integration_test:windows``
+  integration_test:windows:main:
+    exec: |
+      cd integration_test_app
+      dart %MELOS_ROOT_PATH%/tools/ci/bin/desktop_integration_tests.dart --output %MELOS_ROOT_PATH%/.build/test-results
     packageFilters:
       scope: 'datadog_flutter_plugin'
 

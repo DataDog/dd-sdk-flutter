@@ -4,10 +4,15 @@ include:
 variables:
   CURRENT_CI_IMAGE: "10"
   BUILD_STABLE_REGISTRY: 486234852809.dkr.ecr.us-east-1.amazonaws.com
+  DISTRIBUTION_REGISTRY: registry.ddbuild.io
+  # Linux CI Images
   CI_IMAGE_REPO: "ci/dd-sdk-flutter"
   CI_IMAGE_DOCKER: ${BUILD_STABLE_REGISTRY}/${CI_IMAGE_REPO}:$CURRENT_CI_IMAGE
+  # Windows CI Images
+  CURRENT_WINDOWS_CI_IMAGE: "1"
+  WINDOWS_CI_IMAGE_DOCKER: ${BUILD_STABLE_REGISTRY}/${CI_IMAGE_REPO}:windows-$CURRENT_WINDOWS_CI_IMAGE
   DD_CLIENT_TOKEN: "fake-token"
-  DD_APPLICATION_ID: "fake-application-id"
+  DD_APPLICATION_ID: "00000000-aaaa-0000-aaaa-000000000000"
   IOS_SIMULATOR: "iPhone 16"
   IOS_SDK: 'iOS-18'
   ANDROID_EMULATOR_SDK: "33"
@@ -92,8 +97,27 @@ ci-image:
   image: "$BUILDENV_REGISTRY/docker:24.0.4-jammy"
   script:
     - DIGEST_FILE=$(mktemp)
-    - docker buildx build --tag registry.ddbuild.io/${CI_IMAGE_REPO}:${CURRENT_CI_IMAGE} --label target=build -f Dockerfile.gitlab --push --metadata-file ${DIGEST_FILE} .
+    - docker buildx build --tag registry.ddbuild.io/${CI_IMAGE_REPO}:${CURRENT_CI_IMAGE} --label target=build -f ci/linux/Dockerfile --push --metadata-file ${DIGEST_FILE} .
     - ddsign sign registry.ddbuild.io/${CI_IMAGE_REPO}:${CURRENT_CI_IMAGE} --docker-metadata-file ${DIGEST_FILE}
+
+ci-image-windows:
+  when: manual
+  stage: ci-image
+  except: [ tags, schedules ]
+  tags: [ "windows-v2:2022" ]
+  id_tokens:
+    CI_IDENTITY_GITLAB_JWT:
+      aud: https://vault.us1.ddbuild.io
+  variables:
+    CI_IDENTITY_ROLE_NAME_OVERRIDE: windows-ci-tmp-gitlab-id-token-dd-sdk-flutter-all-refs
+    OVERRIDE_GIT_STRATEGY: clone  # Required for Windows runners
+  script:
+    - $ErrorActionPreference = "Stop"
+    - $env:WINDOWS_CI_IMAGE = "${env:DISTRIBUTION_REGISTRY}/${env:CI_IMAGE_REPO}:windows-${env:CURRENT_WINDOWS_CI_IMAGE}"
+    - docker build --tag ${env:WINDOWS_CI_IMAGE} --label target=build ./ci/windows
+    - If ($LASTEXITCODE -ne "0") { throw "docker build returned $LASTEXITCODE" }
+    - docker push ${env:WINDOWS_CI_IMAGE}
+    - If ($LASTEXITCODE -ne "0") { throw "docker push returned $LASTEXITCODE" }
 
 # Build (And Analyze) Stage
 
@@ -181,6 +205,26 @@ build-web:
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
+# Windows builds run inside the ci-image-windows toolchain image (Visual Studio/MSVC/
+# Flutter baked in), via the runner's Docker executor - same pattern as build-android/
+# build-web on Linux, just with an `image:` instead of a bare host.
+build-windows:
+  stage: build
+  except: [ schedules ]
+  image: $WINDOWS_CI_IMAGE_DOCKER
+  tags: [ "windows-v2:2022" ]
+  variables:
+    OVERRIDE_GIT_STRATEGY: clone  # Required for Windows runners
+  script:
+    - $ErrorActionPreference = "Stop"
+    - .\ci\windows\ci-build.ps1
+    - If ($LASTEXITCODE -ne "0") { throw "ci-build.ps1 returned $LASTEXITCODE" }
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
 # Integration Tests
 
 android-integration-test:
@@ -239,6 +283,24 @@ web-integration-test:
     - !reference [.pre-web, script]
     - ./tools/ci/.tmp/chromedriver-linux64/chromedriver --port=4444 &
     - melos run integration_test:web
+
+windows-integration-test:
+  stage: integration-test
+  except: [ schedules ]
+  needs: [ build-windows ]
+  image: $WINDOWS_CI_IMAGE_DOCKER
+  tags: [ "windows-v2:2022" ]
+  variables:
+    OVERRIDE_GIT_STRATEGY: clone  # Required for Windows runners
+  script:
+    - $ErrorActionPreference = "Stop"
+    - .\ci\windows\ci-integration-test.ps1 -DdClientToken ${env:DD_CLIENT_TOKEN} -DdApplicationId ${env:DD_APPLICATION_ID}
+    - If ($LASTEXITCODE -ne "0") { throw "ci-integration-test.ps1 returned $LASTEXITCODE" }
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 # Notify
 
