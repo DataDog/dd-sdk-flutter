@@ -774,7 +774,7 @@ class DdSdkFfi {
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<ffi.Char>,
-      )>(isLeaf: true);
+      )>();
 
   /// Supplies a callback function that will be invoked whenever the SDK emits a diagnostic
   /// message whose level meets or exceeds the configured diagnostic threshold.
@@ -799,8 +799,8 @@ class DdSdkFfi {
           )>>('dd_core_config_set_diagnostic_handler');
   late final _dd_core_config_set_diagnostic_handler =
       _dd_core_config_set_diagnostic_handlerPtr.asFunction<
-          void Function(ffi.Pointer<dd_core_config_t>,
-              dd_diagnostic_handler_t)>(isLeaf: true);
+          void Function(
+              ffi.Pointer<dd_core_config_t>, dd_diagnostic_handler_t)>();
 
   /// Sets an arbitrary value that will be supplied to all invocations of the diagnostic
   /// handler callback. The default handler (dd_stderr_diagnostic_handler) will never read
@@ -820,8 +820,8 @@ class DdSdkFfi {
           )>>('dd_core_config_set_diagnostic_handler_userdata');
   late final _dd_core_config_set_diagnostic_handler_userdata =
       _dd_core_config_set_diagnostic_handler_userdataPtr.asFunction<
-          void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Pointer<ffi.Void>)>(isLeaf: true);
+          void Function(
+              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Void>)>();
 
   /// Sets the threshold for diagnostic logging: any message whose level meets or exceeds
   /// this value will be passed to the configured diagnostic handler callback.
@@ -838,9 +838,7 @@ class DdSdkFfi {
               ffi.Int32)>>('dd_core_config_set_diagnostic_threshold');
   late final _dd_core_config_set_diagnostic_threshold =
       _dd_core_config_set_diagnostic_thresholdPtr
-          .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>(
-    isLeaf: true,
-  );
+          .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>();
 
   /// Sets the directory path where the Datadog SDK will create a subdirectory to store all
   /// of the transient data it creates during normal operation.
@@ -877,8 +875,8 @@ class DdSdkFfi {
           )>>('dd_core_config_set_application_storage_path');
   late final _dd_core_config_set_application_storage_path =
       _dd_core_config_set_application_storage_pathPtr.asFunction<
-          void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(
+              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Sets the site (i.e. Datadog datacenter) where data for your organization is stored.
   /// Defaults to us1.
@@ -894,9 +892,7 @@ class DdSdkFfi {
           ffi.Void Function(ffi.Pointer<dd_core_config_t>,
               ffi.Int32)>>('dd_core_config_set_site');
   late final _dd_core_config_set_site = _dd_core_config_set_sitePtr
-      .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>(
-    isLeaf: true,
-  );
+      .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>();
 
   /// Sets the client token value, overriding the value passed to dd_core_config_init().
   void dd_core_config_set_client_token(
@@ -914,8 +910,8 @@ class DdSdkFfi {
           )>>('dd_core_config_set_client_token');
   late final _dd_core_config_set_client_token =
       _dd_core_config_set_client_tokenPtr.asFunction<
-          void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(
+              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Sets the 'service' value, overriding the value passed to dd_core_config_init().
   void dd_core_config_set_service(
@@ -933,8 +929,8 @@ class DdSdkFfi {
           )>>('dd_core_config_set_service');
   late final _dd_core_config_set_service =
       _dd_core_config_set_servicePtr.asFunction<
-          void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(
+              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Sets the 'env' value, overriding the value passed to dd_core_config_init().
   void dd_core_config_set_env(
@@ -951,8 +947,7 @@ class DdSdkFfi {
             ffi.Pointer<ffi.Char>,
           )>>('dd_core_config_set_env');
   late final _dd_core_config_set_env = _dd_core_config_set_envPtr.asFunction<
-      void Function(
-          ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>(isLeaf: true);
+      void Function(ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Sets the 'version' value, identifying the version of your applicating that's being
   /// monitored.
@@ -971,8 +966,8 @@ class DdSdkFfi {
           )>>('dd_core_config_set_version');
   late final _dd_core_config_set_version =
       _dd_core_config_set_versionPtr.asFunction<
-          void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(
+              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Set the 'variant' value, identifying the flavor or build configuration of the
   /// application that's currently running.
@@ -991,8 +986,8 @@ class DdSdkFfi {
           )>>('dd_core_config_set_variant');
   late final _dd_core_config_set_variant =
       _dd_core_config_set_variantPtr.asFunction<
-          void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(
+              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Configures the SDK's batch size, which informs how quickly it will consider a batch
   /// of event data ready for upload.
@@ -1008,9 +1003,7 @@ class DdSdkFfi {
           ffi.Void Function(ffi.Pointer<dd_core_config_t>,
               ffi.Int32)>>('dd_core_config_set_batch_size');
   late final _dd_core_config_set_batch_size = _dd_core_config_set_batch_sizePtr
-      .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>(
-    isLeaf: true,
-  );
+      .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>();
 
   /// Configures the SDK's upload frequency, which informs how frequently it will check for
   /// new batches of events to upload.
@@ -1027,9 +1020,7 @@ class DdSdkFfi {
               ffi.Int32)>>('dd_core_config_set_upload_frequency');
   late final _dd_core_config_set_upload_frequency =
       _dd_core_config_set_upload_frequencyPtr
-          .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>(
-    isLeaf: true,
-  );
+          .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>();
 
   /// Configures the SDK's batch processing level, which limits the number of batches that
   /// will be uploaded in a given upload cycle.
@@ -1046,9 +1037,7 @@ class DdSdkFfi {
               ffi.Int32)>>('dd_core_config_set_batch_processing_level');
   late final _dd_core_config_set_batch_processing_level =
       _dd_core_config_set_batch_processing_levelPtr
-          .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>(
-    isLeaf: true,
-  );
+          .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>();
 
   /// FOR INTERNAL USE ONLY - This function is not part of the public API and may change
   /// without notice. Do not use in production code.
@@ -1063,9 +1052,7 @@ class DdSdkFfi {
       'dd_core_config_internal_flush_http_requests_on_stop');
   late final _dd_core_config_internal_flush_http_requests_on_stop =
       _dd_core_config_internal_flush_http_requests_on_stopPtr
-          .asFunction<void Function(ffi.Pointer<dd_core_config_t>)>(
-    isLeaf: true,
-  );
+          .asFunction<void Function(ffi.Pointer<dd_core_config_t>)>();
 
   /// FOR INTERNAL USE ONLY - This function is not part of the public API and may change
   /// without notice. Do not use in production code.
@@ -1084,8 +1071,8 @@ class DdSdkFfi {
           )>>('dd_core_config_internal_set_custom_endpoint_url');
   late final _dd_core_config_internal_set_custom_endpoint_url =
       _dd_core_config_internal_set_custom_endpoint_urlPtr.asFunction<
-          void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(
+              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// FOR INTERNAL USE ONLY - This function is not part of the public API and may change
   /// without notice. Do not use in production code.
@@ -1104,8 +1091,8 @@ class DdSdkFfi {
           )>>('dd_core_config_internal_set_source');
   late final _dd_core_config_internal_set_source =
       _dd_core_config_internal_set_sourcePtr.asFunction<
-          void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(
+              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// FOR INTERNAL USE ONLY - This function is not part of the public API and may change
   /// without notice. Do not use in production code.
@@ -1124,8 +1111,8 @@ class DdSdkFfi {
           )>>('dd_core_config_internal_set_sdk_version');
   late final _dd_core_config_internal_set_sdk_version =
       _dd_core_config_internal_set_sdk_versionPtr.asFunction<
-          void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(
+              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Creates a new instance of the Datadog SDK, with the provided configuration and
   /// initial tracking consent. The resulting core is used as a top-level handle to the
@@ -1144,8 +1131,7 @@ class DdSdkFfi {
             ffi.Int32,
           )>>('dd_core_create');
   late final _dd_core_create = _dd_core_createPtr.asFunction<
-      ffi.Pointer<dd_core_t> Function(
-          ffi.Pointer<dd_core_config_t>, int)>(isLeaf: true);
+      ffi.Pointer<dd_core_t> Function(ffi.Pointer<dd_core_config_t>, int)>();
 
   void dd_core_destroy(ffi.Pointer<dd_core_t> core) {
     return _dd_core_destroy(core);
@@ -1155,8 +1141,8 @@ class DdSdkFfi {
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_core_t>)>>(
     'dd_core_destroy',
   );
-  late final _dd_core_destroy = _dd_core_destroyPtr
-      .asFunction<void Function(ffi.Pointer<dd_core_t>)>(isLeaf: true);
+  late final _dd_core_destroy =
+      _dd_core_destroyPtr.asFunction<void Function(ffi.Pointer<dd_core_t>)>();
 
   /// Informs the SDK of a change in the user's consent to tracking. This function may be
   /// called at any point during the lifetime of the core. Changing to
@@ -1172,7 +1158,7 @@ class DdSdkFfi {
           ffi.Void Function(ffi.Pointer<dd_core_t>,
               ffi.Int32)>>('dd_core_set_tracking_consent');
   late final _dd_core_set_tracking_consent = _dd_core_set_tracking_consentPtr
-      .asFunction<void Function(ffi.Pointer<dd_core_t>, int)>(isLeaf: true);
+      .asFunction<void Function(ffi.Pointer<dd_core_t>, int)>();
 
   /// Supplies the SDK with information about the end user, which will be included in
   /// events sent to Datadog.
@@ -1216,7 +1202,7 @@ class DdSdkFfi {
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Supplies the SDK with additional attributes that will be included when the user is
   /// identified in events.
@@ -1245,8 +1231,7 @@ class DdSdkFfi {
               ffi.Pointer<dd_attribute_t>)>>('dd_core_add_user_extra_info');
   late final _dd_core_add_user_extra_info =
       _dd_core_add_user_extra_infoPtr.asFunction<
-          void Function(ffi.Pointer<dd_core_t>,
-              ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
+          void Function(ffi.Pointer<dd_core_t>, ffi.Pointer<dd_attribute_t>)>();
 
   /// Clears all user info previously supplied to the SDK.
   ///
@@ -1260,7 +1245,7 @@ class DdSdkFfi {
     'dd_core_clear_user_info',
   );
   late final _dd_core_clear_user_info = _dd_core_clear_user_infoPtr
-      .asFunction<void Function(ffi.Pointer<dd_core_t>)>(isLeaf: true);
+      .asFunction<void Function(ffi.Pointer<dd_core_t>)>();
 
   /// Supplies the SDK with information about the account associated with the current user
   /// session, which will be included in events sent to Datadog.
@@ -1301,7 +1286,7 @@ class DdSdkFfi {
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>(isLeaf: true);
+          )>();
 
   /// Supplies the SDK with additional attributes that will be included when the account is
   /// identified in events.
@@ -1331,8 +1316,7 @@ class DdSdkFfi {
               ffi.Pointer<dd_attribute_t>)>>('dd_core_add_account_extra_info');
   late final _dd_core_add_account_extra_info =
       _dd_core_add_account_extra_infoPtr.asFunction<
-          void Function(ffi.Pointer<dd_core_t>,
-              ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
+          void Function(ffi.Pointer<dd_core_t>, ffi.Pointer<dd_attribute_t>)>();
 
   /// Clears all account info previously supplied to the SDK.
   ///
@@ -1346,7 +1330,7 @@ class DdSdkFfi {
     'dd_core_clear_account_info',
   );
   late final _dd_core_clear_account_info = _dd_core_clear_account_infoPtr
-      .asFunction<void Function(ffi.Pointer<dd_core_t>)>(isLeaf: true);
+      .asFunction<void Function(ffi.Pointer<dd_core_t>)>();
 
   bool dd_core_start(ffi.Pointer<dd_core_t> core) {
     return _dd_core_start(core);
@@ -1356,8 +1340,8 @@ class DdSdkFfi {
       _lookup<ffi.NativeFunction<ffi.Bool Function(ffi.Pointer<dd_core_t>)>>(
     'dd_core_start',
   );
-  late final _dd_core_start = _dd_core_startPtr
-      .asFunction<bool Function(ffi.Pointer<dd_core_t>)>(isLeaf: true);
+  late final _dd_core_start =
+      _dd_core_startPtr.asFunction<bool Function(ffi.Pointer<dd_core_t>)>();
 
   void dd_core_stop(ffi.Pointer<dd_core_t> core) {
     return _dd_core_stop(core);
@@ -1367,8 +1351,8 @@ class DdSdkFfi {
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_core_t>)>>(
     'dd_core_stop',
   );
-  late final _dd_core_stop = _dd_core_stopPtr
-      .asFunction<void Function(ffi.Pointer<dd_core_t>)>(isLeaf: true);
+  late final _dd_core_stop =
+      _dd_core_stopPtr.asFunction<void Function(ffi.Pointer<dd_core_t>)>();
 
   /// Initializes a dd_crash_reporting_config_t struct with default values.
   void dd_crash_reporting_config_init(
@@ -1382,10 +1366,8 @@ class DdSdkFfi {
               ffi.Void Function(ffi.Pointer<dd_crash_reporting_config_t>)>>(
       'dd_crash_reporting_config_init');
   late final _dd_crash_reporting_config_init =
-      _dd_crash_reporting_config_initPtr
-          .asFunction<void Function(ffi.Pointer<dd_crash_reporting_config_t>)>(
-    isLeaf: true,
-  );
+      _dd_crash_reporting_config_initPtr.asFunction<
+          void Function(ffi.Pointer<dd_crash_reporting_config_t>)>();
 
   /// Sets the path to the crash handler executable, overriding the default path.
   ///
@@ -1414,7 +1396,7 @@ class DdSdkFfi {
           void Function(
             ffi.Pointer<dd_crash_reporting_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>(isLeaf: true);
+          )>();
 
   /// Registers the Crash Reporting feature with the core of the Datadog SDK. MUST be
   /// matched with a call to dd_crash_reporting_destroy().
@@ -1435,7 +1417,7 @@ class DdSdkFfi {
       ffi.Pointer<dd_crash_reporting_t> Function(
         ffi.Pointer<dd_core_t>,
         ffi.Pointer<dd_crash_reporting_config_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Frees all memory allocated for the Crash Reporting feature.
   void dd_crash_reporting_destroy(
@@ -1449,9 +1431,7 @@ class DdSdkFfi {
               ffi.Void Function(ffi.Pointer<dd_crash_reporting_t>)>>(
       'dd_crash_reporting_destroy');
   late final _dd_crash_reporting_destroy = _dd_crash_reporting_destroyPtr
-      .asFunction<void Function(ffi.Pointer<dd_crash_reporting_t>)>(
-    isLeaf: true,
-  );
+      .asFunction<void Function(ffi.Pointer<dd_crash_reporting_t>)>();
 
   /// Initializes a dd_logger_config_t with default settings.
   void dd_logger_config_init(ffi.Pointer<dd_logger_config_t> config) {
@@ -1463,7 +1443,7 @@ class DdSdkFfi {
           .NativeFunction<ffi.Void Function(ffi.Pointer<dd_logger_config_t>)>>(
       'dd_logger_config_init');
   late final _dd_logger_config_init = _dd_logger_config_initPtr
-      .asFunction<void Function(ffi.Pointer<dd_logger_config_t>)>(isLeaf: true);
+      .asFunction<void Function(ffi.Pointer<dd_logger_config_t>)>();
 
   /// Sets the remote sample rate to a value between 0.0 and 100.0, indicating what
   /// percentage of log events should be sampled. At 100.0, all messages are sent to
@@ -1481,9 +1461,7 @@ class DdSdkFfi {
               ffi.Float)>>('dd_logger_config_set_remote_sample_rate');
   late final _dd_logger_config_set_remote_sample_rate =
       _dd_logger_config_set_remote_sample_ratePtr
-          .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, double)>(
-    isLeaf: true,
-  );
+          .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, double)>();
 
   /// Sets the service name to be used on messages emitted by a logger. If omitted, the
   /// logger will use the service name configured globally via dd_core_config_t.
@@ -1506,8 +1484,8 @@ class DdSdkFfi {
           )>>('dd_logger_config_set_service');
   late final _dd_logger_config_set_service =
       _dd_logger_config_set_servicePtr.asFunction<
-          void Function(ffi.Pointer<dd_logger_config_t>,
-              ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(
+              ffi.Pointer<dd_logger_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Sets the name used to identify a logger in messages emitted by that logger. If
   /// omitted, no 'logger.name' property will be present on log events.
@@ -1530,8 +1508,8 @@ class DdSdkFfi {
           )>>('dd_logger_config_set_name');
   late final _dd_logger_config_set_name =
       _dd_logger_config_set_namePtr.asFunction<
-          void Function(ffi.Pointer<dd_logger_config_t>,
-              ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(
+              ffi.Pointer<dd_logger_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Sets the minimum log level at which messages will be sent to intake. Only messages at
   /// or above this level will be considered for sampling; all messages below that level
@@ -1550,9 +1528,7 @@ class DdSdkFfi {
               ffi.Int32)>>('dd_logger_config_set_remote_log_threshold');
   late final _dd_logger_config_set_remote_log_threshold =
       _dd_logger_config_set_remote_log_thresholdPtr
-          .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, int)>(
-    isLeaf: true,
-  );
+          .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, int)>();
 
   /// Sets the initial number of custom attributes for which memory will be preallocated on
   /// logger creation. At the default of 0, does not reserve space for custom attributes.
@@ -1572,9 +1548,7 @@ class DdSdkFfi {
               ffi.Size)>>('dd_logger_config_set_initial_attribute_capacity');
   late final _dd_logger_config_set_initial_attribute_capacity =
       _dd_logger_config_set_initial_attribute_capacityPtr
-          .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, int)>(
-    isLeaf: true,
-  );
+          .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, int)>();
 
   /// Controls whether log events generated by this logger will be enriched with current
   /// RUM application state, provided that RUM is in use. Defaults to true.
@@ -1591,9 +1565,7 @@ class DdSdkFfi {
               ffi.Bool)>>('dd_logger_config_set_enrich_with_rum_context');
   late final _dd_logger_config_set_enrich_with_rum_context =
       _dd_logger_config_set_enrich_with_rum_contextPtr
-          .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, bool)>(
-    isLeaf: true,
-  );
+          .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, bool)>();
 
   /// Registers the logging feature with the core of the Datadog SDK. MUST be matched with
   /// a call to dd_logging_destroy().
@@ -1606,9 +1578,7 @@ class DdSdkFfi {
           ffi.Pointer<dd_logging_t> Function(
               ffi.Pointer<dd_core_t>)>>('dd_logging_init');
   late final _dd_logging_init = _dd_logging_initPtr
-      .asFunction<ffi.Pointer<dd_logging_t> Function(ffi.Pointer<dd_core_t>)>(
-    isLeaf: true,
-  );
+      .asFunction<ffi.Pointer<dd_logging_t> Function(ffi.Pointer<dd_core_t>)>();
 
   /// Frees all memory allocated for for the logging feature reference, rendering it no
   /// longer usable. May be called at any time.
@@ -1621,7 +1591,7 @@ class DdSdkFfi {
     'dd_logging_destroy',
   );
   late final _dd_logging_destroy = _dd_logging_destroyPtr
-      .asFunction<void Function(ffi.Pointer<dd_logging_t>)>(isLeaf: true);
+      .asFunction<void Function(ffi.Pointer<dd_logging_t>)>();
 
   /// Adds or updates a global attribute value that will be included with all log messages
   /// emitted by all loggers.
@@ -1646,7 +1616,7 @@ class DdSdkFfi {
             ffi.Pointer<dd_logging_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>(isLeaf: true);
+          )>();
 
   /// Removes a global attribute value, if one has been previously added with the given
   /// name.
@@ -1663,8 +1633,7 @@ class DdSdkFfi {
               ffi.Pointer<ffi.Char>)>>('dd_logging_remove_attribute');
   late final _dd_logging_remove_attribute =
       _dd_logging_remove_attributePtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_logging_t>, ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(ffi.Pointer<dd_logging_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Creates and returns a new logger with the given configuration. You MUST call
   /// dd_logger_destroy() when finished with the logger.
@@ -1687,7 +1656,7 @@ class DdSdkFfi {
       ffi.Pointer<dd_logger_t> Function(
         ffi.Pointer<dd_logging_t>,
         ffi.Pointer<dd_logger_config_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Frees all memory allocated for the given logger.
   void dd_logger_destroy(ffi.Pointer<dd_logger_t> logger) {
@@ -1699,7 +1668,7 @@ class DdSdkFfi {
     'dd_logger_destroy',
   );
   late final _dd_logger_destroy = _dd_logger_destroyPtr
-      .asFunction<void Function(ffi.Pointer<dd_logger_t>)>(isLeaf: true);
+      .asFunction<void Function(ffi.Pointer<dd_logger_t>)>();
 
   /// Adds or updates a logger-level attribute value that will be included with all
   /// messages emitted by this logger. If a logger-level attribute shares its name with a
@@ -1724,7 +1693,7 @@ class DdSdkFfi {
         ffi.Pointer<dd_logger_t>,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Removes a logger-level attribute value, if one has been previously added with the
   /// given name.
@@ -1741,8 +1710,7 @@ class DdSdkFfi {
               ffi.Pointer<ffi.Char>)>>('dd_logger_remove_attribute');
   late final _dd_logger_remove_attribute =
       _dd_logger_remove_attributePtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Adds a custom tag to this logger.
   ///
@@ -1780,8 +1748,7 @@ class DdSdkFfi {
           ffi.Void Function(ffi.Pointer<dd_logger_t>,
               ffi.Pointer<ffi.Char>)>>('dd_logger_add_tag');
   late final _dd_logger_add_tag = _dd_logger_add_tagPtr.asFunction<
-      void Function(
-          ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)>(isLeaf: true);
+      void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Adds a custom tag to this logger using separate key and value strings.
   void dd_logger_add_tag_kv(
@@ -1804,7 +1771,7 @@ class DdSdkFfi {
         ffi.Pointer<dd_logger_t>,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<ffi.Char>,
-      )>(isLeaf: true);
+      )>();
 
   /// Removes any previously-added tag that exactly matches the given value (both key and
   /// value) after sanitization.
@@ -1820,8 +1787,7 @@ class DdSdkFfi {
           ffi.Void Function(ffi.Pointer<dd_logger_t>,
               ffi.Pointer<ffi.Char>)>>('dd_logger_remove_tag');
   late final _dd_logger_remove_tag = _dd_logger_remove_tagPtr.asFunction<
-      void Function(
-          ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)>(isLeaf: true);
+      void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Removes all previously-added tags whose key matches `key` (after sanitization).
   void dd_logger_remove_tags_with_key(
@@ -1837,8 +1803,7 @@ class DdSdkFfi {
               ffi.Pointer<ffi.Char>)>>('dd_logger_remove_tags_with_key');
   late final _dd_logger_remove_tags_with_key =
       _dd_logger_remove_tags_with_keyPtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Emits a log message at the given level.
   ///
@@ -1875,7 +1840,7 @@ class DdSdkFfi {
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_log_error_t>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Emits a Debug-level message from the given logger, with optional error details and an
   /// optional set of extra attribute values.
@@ -1902,7 +1867,7 @@ class DdSdkFfi {
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_log_error_t>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Emits an Info-level message from the given logger, with optional error details and an
   /// optional set of extra attribute values.
@@ -1929,7 +1894,7 @@ class DdSdkFfi {
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_log_error_t>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Emits a Notice-level message from the given logger, with optional error details and
   /// an optional set of extra attribute values.
@@ -1956,7 +1921,7 @@ class DdSdkFfi {
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_log_error_t>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Emits a Warning-level message from the given logger, with optional error details and
   /// an optional set of extra attribute values.
@@ -1983,7 +1948,7 @@ class DdSdkFfi {
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_log_error_t>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Emits an Error-level message from the given logger, with optional error details and
   /// an optional set of extra attribute values.
@@ -2013,7 +1978,7 @@ class DdSdkFfi {
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_log_error_t>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Emits a Critical-level message from the given logger, with optional error details and
   /// an optional set of extra attribute values.
@@ -2043,7 +2008,7 @@ class DdSdkFfi {
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_log_error_t>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Initializes a dd_rum_config_t with all required settings.
   ///
@@ -2060,8 +2025,7 @@ class DdSdkFfi {
           ffi.Void Function(ffi.Pointer<dd_rum_config_t>,
               ffi.Pointer<ffi.Char>)>>('dd_rum_config_init');
   late final _dd_rum_config_init = _dd_rum_config_initPtr.asFunction<
-      void Function(
-          ffi.Pointer<dd_rum_config_t>, ffi.Pointer<ffi.Char>)>(isLeaf: true);
+      void Function(ffi.Pointer<dd_rum_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Sets the RUM Application ID, overriding the value passed to dd_rum_config_init().
   void dd_rum_config_set_application_id(
@@ -2077,8 +2041,7 @@ class DdSdkFfi {
               ffi.Pointer<ffi.Char>)>>('dd_rum_config_set_application_id');
   late final _dd_rum_config_set_application_id =
       _dd_rum_config_set_application_idPtr.asFunction<
-          void Function(ffi.Pointer<dd_rum_config_t>,
-              ffi.Pointer<ffi.Char>)>(isLeaf: true);
+          void Function(ffi.Pointer<dd_rum_config_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Sets the sample rate to a value between 0.0 and 100.0, indicating what percentage of
   /// RUM sessions should be sampled. At 100.0, events for all sessions are sent to intake;
@@ -2096,9 +2059,7 @@ class DdSdkFfi {
               ffi.Float)>>('dd_rum_config_set_session_sample_rate');
   late final _dd_rum_config_set_session_sample_rate =
       _dd_rum_config_set_session_sample_ratePtr
-          .asFunction<void Function(ffi.Pointer<dd_rum_config_t>, double)>(
-    isLeaf: true,
-  );
+          .asFunction<void Function(ffi.Pointer<dd_rum_config_t>, double)>();
 
   /// Registers the RUM feature with the core of the Datadog SDK. MUST be matched with
   /// a call to dd_rum_destroy().
@@ -2119,7 +2080,7 @@ class DdSdkFfi {
       ffi.Pointer<dd_rum_t> Function(
         ffi.Pointer<dd_core_t>,
         ffi.Pointer<dd_rum_config_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Frees all memory allocated for the RUM feature.
   void dd_rum_destroy(ffi.Pointer<dd_rum_t> rum) {
@@ -2130,8 +2091,8 @@ class DdSdkFfi {
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_rum_t>)>>(
     'dd_rum_destroy',
   );
-  late final _dd_rum_destroy = _dd_rum_destroyPtr
-      .asFunction<void Function(ffi.Pointer<dd_rum_t>)>(isLeaf: true);
+  late final _dd_rum_destroy =
+      _dd_rum_destroyPtr.asFunction<void Function(ffi.Pointer<dd_rum_t>)>();
 
   /// Adds or updates a global attribute value that will be included with all RUM events
   /// emitted hereafter.
@@ -2155,7 +2116,7 @@ class DdSdkFfi {
         ffi.Pointer<dd_rum_t>,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Removes a global attribute value, if one has been previously added with the given
   /// name.
@@ -2170,10 +2131,8 @@ class DdSdkFfi {
       ffi.NativeFunction<
           ffi.Void Function(ffi.Pointer<dd_rum_t>,
               ffi.Pointer<ffi.Char>)>>('dd_rum_remove_attribute');
-  late final _dd_rum_remove_attribute = _dd_rum_remove_attributePtr
-      .asFunction<void Function(ffi.Pointer<dd_rum_t>, ffi.Pointer<ffi.Char>)>(
-    isLeaf: true,
-  );
+  late final _dd_rum_remove_attribute = _dd_rum_remove_attributePtr.asFunction<
+      void Function(ffi.Pointer<dd_rum_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Explicitly stops the current RUM session, if one is active.
   ///
@@ -2190,7 +2149,7 @@ class DdSdkFfi {
     'dd_rum_stop_session',
   );
   late final _dd_rum_stop_session = _dd_rum_stop_sessionPtr
-      .asFunction<void Function(ffi.Pointer<dd_rum_t>)>(isLeaf: true);
+      .asFunction<void Function(ffi.Pointer<dd_rum_t>)>();
 
   /// Starts a new RUM view, recording that the user has navigated to the portion of the
   /// application uniquely identified by the given string `key`. `name` is an optional
@@ -2228,7 +2187,7 @@ class DdSdkFfi {
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Adds or updates a custom attribute value stored in the context of the current view.
   ///
@@ -2259,7 +2218,7 @@ class DdSdkFfi {
             ffi.Pointer<dd_rum_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>(isLeaf: true);
+          )>();
 
   /// Removes any custom attribute value stored under the given name in the context of the
   /// current view.
@@ -2277,10 +2236,9 @@ class DdSdkFfi {
       ffi.NativeFunction<
           ffi.Void Function(ffi.Pointer<dd_rum_t>,
               ffi.Pointer<ffi.Char>)>>('dd_rum_remove_view_attribute');
-  late final _dd_rum_remove_view_attribute = _dd_rum_remove_view_attributePtr
-      .asFunction<void Function(ffi.Pointer<dd_rum_t>, ffi.Pointer<ffi.Char>)>(
-    isLeaf: true,
-  );
+  late final _dd_rum_remove_view_attribute =
+      _dd_rum_remove_view_attributePtr.asFunction<
+          void Function(ffi.Pointer<dd_rum_t>, ffi.Pointer<ffi.Char>)>();
 
   /// Stops any active RUM views that have the given key, optionally including the provided
   /// set of custom user attributes in the final event sent for that view.
@@ -2304,7 +2262,7 @@ class DdSdkFfi {
         ffi.Pointer<dd_rum_t>,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Records a discrete user action of the given type in the context of the current view.
   /// A name is required, and the provided name will be used to identify the target of the
@@ -2354,7 +2312,7 @@ class DdSdkFfi {
         int,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Records a continuous user action of the given type in the context of the current
   /// view. A name is required, and the provided name will be used to identify the target
@@ -2396,7 +2354,7 @@ class DdSdkFfi {
         int,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Stops the currently-active action, if any exists in the current view.
   ///
@@ -2435,7 +2393,7 @@ class DdSdkFfi {
         int,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Records that the application has initiated an HTTP request, causing that request to
   /// be tracked as a RUM Resource in the context of the current view.
@@ -2473,7 +2431,7 @@ class DdSdkFfi {
         int,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Records that an HTTP request has been completed and has received a valid response. A
   /// response with a 400-level or 500-level status code is still considered a valid
@@ -2520,7 +2478,7 @@ class DdSdkFfi {
         int,
         int,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Records that an HTTP request could not be completed due to an error (and therefore no
   /// response was received), or that processing of the response failed due to an error.
@@ -2585,7 +2543,7 @@ class DdSdkFfi {
             bool,
             int,
             ffi.Pointer<dd_attribute_t>,
-          )>(isLeaf: true);
+          )>();
 
   /// Reports that the application's first interactive frame has been presented to the
   /// user. The SDK computes the duration from process launch to this call and emits a
@@ -2605,7 +2563,7 @@ class DdSdkFfi {
   );
   late final _dd_rum_report_app_display_initialized =
       _dd_rum_report_app_display_initializedPtr
-          .asFunction<void Function(ffi.Pointer<dd_rum_t>)>(isLeaf: true);
+          .asFunction<void Function(ffi.Pointer<dd_rum_t>)>();
 
   /// Reports that the application is fully loaded and interactive. The SDK computes
   /// the duration from process launch to this call and emits a vital event with
@@ -2626,7 +2584,7 @@ class DdSdkFfi {
   );
   late final _dd_rum_report_app_fully_displayed =
       _dd_rum_report_app_fully_displayedPtr
-          .asFunction<void Function(ffi.Pointer<dd_rum_t>)>(isLeaf: true);
+          .asFunction<void Function(ffi.Pointer<dd_rum_t>)>();
 
   /// Records the start of a operation (e.g. login, checkout, upload).
   ///
@@ -2659,7 +2617,7 @@ class DdSdkFfi {
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Records the successful completion of a operation.
   ///
@@ -2693,7 +2651,7 @@ class DdSdkFfi {
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>(isLeaf: true);
+          )>();
 
   /// Records the failure of a operation.
   ///
@@ -2736,7 +2694,7 @@ class DdSdkFfi {
         int,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Records that the application has encountered an error in the context of the current
   /// view.
@@ -2786,7 +2744,7 @@ class DdSdkFfi {
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<ffi.Char>,
         ffi.Pointer<dd_attribute_t>,
-      )>(isLeaf: true);
+      )>();
 
   /// Records that the application encountered a long task (a period during which the main
   /// thread was blocked for an extended duration) in the context of the current view.
@@ -2810,8 +2768,7 @@ class DdSdkFfi {
             ffi.Pointer<dd_attribute_t>,
           )>>('dd_rum_add_long_task');
   late final _dd_rum_add_long_task = _dd_rum_add_long_taskPtr.asFunction<
-      void Function(ffi.Pointer<dd_rum_t>, int,
-          ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
+      void Function(ffi.Pointer<dd_rum_t>, int, ffi.Pointer<dd_attribute_t>)>();
 
   /// Returns the version information stamped into this build of the Datadog SDK.
   ///
