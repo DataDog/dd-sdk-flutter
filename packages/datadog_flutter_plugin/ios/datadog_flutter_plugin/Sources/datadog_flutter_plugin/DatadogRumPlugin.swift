@@ -53,6 +53,13 @@ public extension RUM.Configuration {
                 })
             }
         }
+
+        if let timeseriesDict = encoded["timeseries"] as? [String: Any?] {
+            enableTimeseries = (timeseriesDict["enabled"] as? NSNumber)?.boolValue ?? false
+            if let bufferSize = (timeseriesDict["bufferSize"] as? NSNumber)?.intValue {
+                timeseriesBatchSize = bufferSize
+            }
+        }
     }
 }
 
