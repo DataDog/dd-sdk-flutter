@@ -140,6 +140,43 @@ void main() {
     expect(encoded['initialResourceThreshold'], 1.23);
   });
 
+  test('configuration has null timeseries by default', () {
+    final configuration = DatadogRumConfiguration(applicationId: 'fake-app-id');
+
+    expect(configuration.timeseries, isNull);
+  });
+
+  test('configuration without timeseries omits timeseries key on encode', () {
+    final configuration = DatadogRumConfiguration(applicationId: 'fake-app-id');
+
+    final encoded = configuration.encode();
+    expect(encoded.containsKey('timeseries'), false);
+  });
+
+  test('configuration encodes timeseries when set', () {
+    final bufferSize = Random().nextInt(500) + 1;
+    final configuration = DatadogRumConfiguration(
+      applicationId: 'fake-app-id',
+      timeseries: DdTimeseriesConfiguration(
+        enabled: true,
+        bufferSize: bufferSize,
+      ),
+    );
+
+    final encoded = configuration.encode();
+    final encodedTimeseries = encoded['timeseries'] as Map<String, Object?>;
+    expect(encodedTimeseries['enabled'], true);
+    expect(encodedTimeseries['bufferSize'], bufferSize);
+  });
+
+  test('timeseries configuration omits bufferSize when not set', () {
+    const timeseriesConfiguration = DdTimeseriesConfiguration(enabled: true);
+
+    final encoded = timeseriesConfiguration.encode();
+    expect(encoded['enabled'], true);
+    expect(encoded.containsKey('bufferSize'), false);
+  });
+
   test('configuration with mapper sets attach*Mapper', () {
     final configuration = DatadogRumConfiguration(
       applicationId: 'fake-application-id',
