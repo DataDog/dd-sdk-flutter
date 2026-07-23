@@ -259,6 +259,55 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(config?.trackBackgroundEvents, trackBackgroundEvents)
     }
 
+    func testRumConfiguration_WithoutTimeseries_DefaultsToDisabled() {
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id"
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertEqual(config?.enableTimeseries, false)
+    }
+
+    func testRumConfiguration_WithTimeseriesEnabled_IsSetCorrectly() {
+        let bufferSize = Int.mockRandom(min: 1, max: 500)
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "timeseries": [
+                "enabled": true,
+                "bufferSize": bufferSize
+            ]
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertEqual(config?.enableTimeseries, true)
+        XCTAssertEqual(config?.timeseriesBatchSize, bufferSize)
+    }
+
+    func testRumConfiguration_WithTimeseriesEnabledAndNoBufferSize_UsesDefaultBatchSize() {
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "timeseries": [
+                "enabled": true
+            ]
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertEqual(config?.enableTimeseries, true)
+        XCTAssertEqual(config?.timeseriesBatchSize, RUM.Configuration.defaultTimeseriesBatchSize)
+    }
+
+    func testRumConfiguration_WithTimeseriesExplicitlyDisabled_IsSetCorrectly() {
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "timeseries": [
+                "enabled": false
+            ]
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertEqual(config?.enableTimeseries, false)
+    }
+
     func testRepeatEnable_FromMethodChannelSameOptions_DoesNothing() {
         // Uninitialize plugin
         plugin?.inject(rum: nil)
