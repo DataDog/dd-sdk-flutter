@@ -9,7 +9,9 @@ import android.util.Log
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
+import assertk.assertions.isNull
 import com.datadog.android.Datadog
+import com.datadog.android.rum.ExperimentalRumApi
 import com.datadog.android.rum.GlobalRumMonitor
 import com.datadog.android.rum.Rum
 import com.datadog.android.rum.RumActionType
@@ -21,6 +23,7 @@ import com.datadog.android.rum.RumResourceMethod
 import com.datadog.android.rum.configuration.VitalsUpdateFrequency
 import com.datadog.android.rum.featureoperations.FailureReason
 import com.datadog.android.rum.metric.networksettled.TimeBasedInitialResourceIdentifier
+import com.datadog.android.rum.timeseries.TimeseriesConfiguration
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.BoolForgery
 import fr.xgouchet.elmyr.annotation.FloatForgery
@@ -231,6 +234,99 @@ class DatadogRumPluginTest {
         assertThat(featureConfiguration.getPrivate("vitalsMonitorUpdateFrequency"))
             .isEqualTo(VitalsUpdateFrequency.FREQUENT)
         assertThat(featureConfiguration.getPrivate("additionalConfig")).isEqualTo(attributes)
+    }
+
+    @OptIn(ExperimentalRumApi::class)
+    @Test
+    fun `M decode timeseries configuration W withEncoded is called { enabled with bufferSize }`(
+        @IntForgery(min = 1, max = 500) bufferSize: Int,
+        forge: Forge
+    ) {
+        // GIVEN
+        val configArg = mapOf(
+            "timeseries" to mapOf(
+                "enabled" to true,
+                "bufferSize" to bufferSize
+            )
+        )
+
+        // WHEN
+        val config = RumConfiguration.Builder(forge.aString())
+            .withEncoded(configArg)
+            .build()
+
+        // THEN
+        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val timeseriesConfiguration = featureConfiguration
+            .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
+        assertThat(timeseriesConfiguration).isNotNull()
+        assertThat(timeseriesConfiguration?.getPrivate("bufferSize")).isEqualTo(bufferSize)
+    }
+
+    @OptIn(ExperimentalRumApi::class)
+    @Test
+    fun `M decode timeseries configuration W withEncoded is called { enabled without bufferSize }`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val configArg = mapOf(
+            "timeseries" to mapOf(
+                "enabled" to true
+            )
+        )
+
+        // WHEN
+        val config = RumConfiguration.Builder(forge.aString())
+            .withEncoded(configArg)
+            .build()
+
+        // THEN
+        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val timeseriesConfiguration = featureConfiguration
+            .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
+        assertThat(timeseriesConfiguration).isNotNull()
+    }
+
+    @OptIn(ExperimentalRumApi::class)
+    @Test
+    fun `M decode timeseries configuration W withEncoded is called { disabled }`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val configArg = mapOf(
+            "timeseries" to mapOf(
+                "enabled" to false
+            )
+        )
+
+        // WHEN
+        val config = RumConfiguration.Builder(forge.aString())
+            .withEncoded(configArg)
+            .build()
+
+        // THEN
+        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val timeseriesConfiguration = featureConfiguration
+            .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
+        assertThat(timeseriesConfiguration).isNull()
+    }
+
+    @Test
+    fun `M leave timeseries configuration unset W withEncoded is called { no timeseries key }`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val configArg = emptyMap<String, Any?>()
+
+        // WHEN
+        val config = RumConfiguration.Builder(forge.aString())
+            .withEncoded(configArg)
+            .build()
+
+        // THEN
+        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val timeseriesConfiguration = featureConfiguration.getPrivate("timeseriesConfiguration")
+        assertThat(timeseriesConfiguration).isNull()
     }
 
     @Test

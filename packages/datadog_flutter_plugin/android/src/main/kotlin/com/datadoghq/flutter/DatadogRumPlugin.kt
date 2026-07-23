@@ -26,6 +26,7 @@ import com.datadog.android.rum._RumInternalProxy
 import com.datadog.android.rum.configuration.VitalsUpdateFrequency
 import com.datadog.android.rum.featureoperations.FailureReason
 import com.datadog.android.rum.metric.networksettled.TimeBasedInitialResourceIdentifier
+import com.datadog.android.rum.timeseries.TimeseriesConfiguration
 import com.datadog.android.rum.tracking.ViewTrackingStrategy
 import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -570,6 +571,7 @@ object NoOpViewTrackingStrategy : ViewTrackingStrategy {
     }
 }
 
+@OptIn(ExperimentalRumApi::class)
 @Suppress("ComplexMethod")
 fun RumConfiguration.Builder.withEncoded(encoded: Map<String, Any?>): RumConfiguration.Builder {
     var builder = this
@@ -610,6 +612,19 @@ fun RumConfiguration.Builder.withEncoded(encoded: Map<String, Any?>): RumConfigu
     }
     (encoded["additionalConfig"] as? Map<String, Any>)?.let {
         builder = _RumInternalProxy.setAdditionalConfiguration(builder, it)
+    }
+    (encoded["timeseries"] as? Map<String, Any?>)?.let { timeseries ->
+        val enabled = timeseries["enabled"] as? Boolean ?: false
+        val timeseriesConfiguration = if (enabled) {
+            var timeseriesBuilder = TimeseriesConfiguration.Builder()
+            (timeseries["bufferSize"] as? Number)?.let {
+                timeseriesBuilder = timeseriesBuilder.setBufferSize(it.toInt())
+            }
+            timeseriesBuilder.build()
+        } else {
+            null
+        }
+        builder = builder.setTimeseriesConfiguration(timeseriesConfiguration)
     }
 
     return builder
