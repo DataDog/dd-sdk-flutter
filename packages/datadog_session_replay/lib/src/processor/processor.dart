@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025-Present Datadog, Inc.
 
+import 'dart:async';
 import 'dart:isolate';
 
 import 'package:flutter/services.dart';
@@ -14,11 +15,18 @@ import '../datadog_session_replay_init_stub.dart'
 import '../datadog_session_replay_platform_interface.dart';
 import 'processor_worker.dart';
 
+/// How long to wait for the processor isolate to finish any in-flight
+/// snapshot and exit on its own before forcibly killing it.
+const _shutdownTimeout = Duration(seconds: 2);
+
 /// Spawns a background isolate to process session replay snapshots before
 /// sending them to the native platform for serialization and distribution to
 /// intake
 class SessionReplayProcessor with WidgetsBindingObserver {
   final ReceivePort _mainReceivePort = ReceivePort('sr-replay-port');
+  final ReceivePort _shutdownReceivePort = ReceivePort(
+    'sr-replay-shutdown-port',
+  );
   SendPort? _mainSendPort;
   Isolate? _processorIsolate;
 
@@ -33,6 +41,7 @@ class SessionReplayProcessor with WidgetsBindingObserver {
         RootIsolateToken.instance!,
         DatadogSessionReplayPlatform.instance.isolateToken,
         _mainReceivePort.sendPort,
+        _shutdownReceivePort.sendPort,
         fontFamilyTransform,
       ),
     );
@@ -47,8 +56,29 @@ class SessionReplayProcessor with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
-      _mainSendPort?.send(null);
-      _processorIsolate?.kill(priority: Isolate.immediate);
+      unawaited(_shutdown());
+    }
+  }
+
+  /// Asks the processor isolate to stop, then waits for it to finish any
+  /// in-flight snapshot and exit on its own. The isolate is only force
+  /// killed as a fallback if it doesn't exit within [_shutdownTimeout] -
+  /// killing it while it may still be mid-call into native JNI/ObjC code
+  /// can leave those references in a bad state.
+  Future<void> _shutdown() async {
+    final isolate = _processorIsolate;
+    if (isolate == null) {
+      return;
+    }
+    _processorIsolate = null;
+
+    _mainSendPort?.send(null);
+    try {
+      await _shutdownReceivePort.first.timeout(_shutdownTimeout);
+    } catch (_) {
+      isolate.kill(priority: Isolate.immediate);
+    } finally {
+      _shutdownReceivePort.close();
     }
   }
 
@@ -72,6 +102,7 @@ class SessionReplayProcessor with WidgetsBindingObserver {
     }
 
     commandPort.close();
+    args.shutdownSendPort.send(null);
     Isolate.exit();
   }
 }
@@ -81,12 +112,14 @@ class _ProcessorArgs {
   final RootIsolateToken rootIsolateToken;
   final Object? platformIsolateToken;
   final SendPort sendPort;
+  final SendPort shutdownSendPort;
   final FontFamilyTransformConfig fontFamilyTransform;
 
   const _ProcessorArgs(
     this.rootIsolateToken,
     this.platformIsolateToken,
     this.sendPort,
+    this.shutdownSendPort,
     this.fontFamilyTransform,
   );
 }
