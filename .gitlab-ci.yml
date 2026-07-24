@@ -106,10 +106,9 @@ ci-image-windows:
   except: [ tags, schedules ]
   tags: [ "windows-v2:2022" ]
   id_tokens:
-    CI_IDENTITY_GITLAB_JWT:
-      aud: https://vault.us1.ddbuild.io
+    CI_IDENTITIES_GITLAB_ID_TOKEN:
+      aud: ci-identities
   variables:
-    CI_IDENTITY_ROLE_NAME_OVERRIDE: windows-ci-tmp-gitlab-id-token-dd-sdk-flutter-all-refs
     OVERRIDE_GIT_STRATEGY: clone  # Required for Windows runners
   script:
     - $ErrorActionPreference = "Stop"
