@@ -10,7 +10,7 @@ variables:
   CI_IMAGE_DOCKER: ${BUILD_STABLE_REGISTRY}/${CI_IMAGE_REPO}:$CURRENT_CI_IMAGE
   # Windows CI Images
   CURRENT_WINDOWS_CI_IMAGE: "1"
-  WINDOWS_CI_IMAGE_DOCKER: ${BUILD_STABLE_REGISTRY}/${CI_IMAGE_REPO}:windows-$CURRENT_WINDOWS_CI_IMAGE
+  WINDOWS_CI_IMAGE_DOCKER: ${DISTRIBUTION_REGISTRY}/${CI_IMAGE_REPO}:windows-$CURRENT_WINDOWS_CI_IMAGE
   DD_CLIENT_TOKEN: "fake-token"
   DD_APPLICATION_ID: "00000000-aaaa-0000-aaaa-000000000000"
   IOS_SIMULATOR: "iPhone 16"
@@ -204,20 +204,24 @@ build-web:
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
-# Windows builds run inside the ci-image-windows toolchain image (Visual Studio/MSVC/
-# Flutter baked in), via the runner's Docker executor - same pattern as build-android/
-# build-web on Linux, just with an `image:` instead of a bare host.
+# Windows shell-executor runners don't support the `image:` keyword, so unlike the
+# Linux jobs (build-android/build-web), the toolchain image has to be run explicitly
+# via `docker run` on the bare host - same pattern as dd-sdk-cpp's build-windows.
 build-windows:
   stage: build
   except: [ schedules ]
-  image: $WINDOWS_CI_IMAGE_DOCKER
   tags: [ "windows-v2:2022" ]
   variables:
     OVERRIDE_GIT_STRATEGY: clone  # Required for Windows runners
   script:
     - $ErrorActionPreference = "Stop"
-    - .\ci\windows\ci-build.ps1
-    - If ($LASTEXITCODE -ne "0") { throw "ci-build.ps1 returned $LASTEXITCODE" }
+    - >
+      docker run --rm
+      -v "$(Get-Location):C:\mnt"
+      -w C:\mnt
+      ${env:WINDOWS_CI_IMAGE_DOCKER}
+      powershell -File C:\mnt\ci\windows\ci-build.ps1
+    - If ($LASTEXITCODE -ne "0") { throw "docker run (build) returned $LASTEXITCODE" }
   artifacts:
     when: always
     expire_in: "30 days"
@@ -287,14 +291,18 @@ windows-integration-test:
   stage: integration-test
   except: [ schedules ]
   needs: [ build-windows ]
-  image: $WINDOWS_CI_IMAGE_DOCKER
   tags: [ "windows-v2:2022" ]
   variables:
     OVERRIDE_GIT_STRATEGY: clone  # Required for Windows runners
   script:
     - $ErrorActionPreference = "Stop"
-    - .\ci\windows\ci-integration-test.ps1 -DdClientToken ${env:DD_CLIENT_TOKEN} -DdApplicationId ${env:DD_APPLICATION_ID}
-    - If ($LASTEXITCODE -ne "0") { throw "ci-integration-test.ps1 returned $LASTEXITCODE" }
+    - >
+      docker run --rm
+      -v "$(Get-Location):C:\mnt"
+      -w C:\mnt
+      ${env:WINDOWS_CI_IMAGE_DOCKER}
+      powershell -File C:\mnt\ci\windows\ci-integration-test.ps1 -DdClientToken ${env:DD_CLIENT_TOKEN} -DdApplicationId ${env:DD_APPLICATION_ID}
+    - If ($LASTEXITCODE -ne "0") { throw "docker run (integration test) returned $LASTEXITCODE" }
   artifacts:
     when: always
     expire_in: "30 days"
