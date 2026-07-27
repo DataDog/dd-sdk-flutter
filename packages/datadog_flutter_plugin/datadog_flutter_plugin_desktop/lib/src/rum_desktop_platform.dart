@@ -25,7 +25,9 @@ class DdRumDesktopPlatform extends DdRumPlatform {
 
   @override
   Future<void> enable(
-      InternalLogger logger, DatadogRumConfiguration configuration) async {
+    InternalLogger logger,
+    DatadogRumConfiguration configuration,
+  ) async {
     // Feature was initialized in DatadogDesktopPlatform.initialize() before dd_core_start.
   }
 
@@ -42,8 +44,12 @@ class DdRumDesktopPlatform extends DdRumPlatform {
   Future<String?> getCurrentSessionId() async => null;
 
   @override
-  Future<void> startView(DateTime timestamp, String key, String name,
-      Map<String, Object?> attributes) async {
+  Future<void> startView(
+    DateTime timestamp,
+    String key,
+    String name,
+    Map<String, Object?> attributes,
+  ) async {
     final rum = _rum;
     if (rum == null) return;
     using((arena) {
@@ -58,7 +64,10 @@ class DdRumDesktopPlatform extends DdRumPlatform {
 
   @override
   Future<void> stopView(
-      DateTime timestamp, String key, Map<String, Object?> attributes) async {
+    DateTime timestamp,
+    String key,
+    Map<String, Object?> attributes,
+  ) async {
     final rum = _rum;
     if (rum == null) return;
     using((arena) {
@@ -183,8 +192,9 @@ class DdRumDesktopPlatform extends DdRumPlatform {
         rum,
         _errorSourceToC(source),
         error.toString().toNativeChar(allocator: arena),
-        (errorType ?? error.runtimeType.toString())
-            .toNativeChar(allocator: arena),
+        (errorType ?? error.runtimeType.toString()).toNativeChar(
+          allocator: arena,
+        ),
         stackTrace?.toString().toNativeChar(allocator: arena) ?? ffi.nullptr,
         buildAttrObject(attributes, arena, _sdk),
       );
@@ -215,8 +225,12 @@ class DdRumDesktopPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> addAction(DateTime timestamp, RumActionType type, String name,
-      Map<String, Object?> attributes) async {
+  Future<void> addAction(
+    DateTime timestamp,
+    RumActionType type,
+    String name,
+    Map<String, Object?> attributes,
+  ) async {
     final rum = _rum;
     if (rum == null) return;
     using((arena) {
@@ -230,8 +244,12 @@ class DdRumDesktopPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> startAction(DateTime timestamp, RumActionType type, String name,
-      Map<String, Object?> attributes) async {
+  Future<void> startAction(
+    DateTime timestamp,
+    RumActionType type,
+    String name,
+    Map<String, Object?> attributes,
+  ) async {
     final rum = _rum;
     if (rum == null) return;
     using((arena) {
@@ -245,8 +263,12 @@ class DdRumDesktopPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> stopAction(DateTime timestamp, RumActionType type, String name,
-      Map<String, Object?> attributes) async {
+  Future<void> stopAction(
+    DateTime timestamp,
+    RumActionType type,
+    String name,
+    Map<String, Object?> attributes,
+  ) async {
     final rum = _rum;
     if (rum == null) return;
     using((arena) {
@@ -303,7 +325,9 @@ class DdRumDesktopPlatform extends DdRumPlatform {
     if (rum == null) return;
     using((arena) {
       _sdk.dd_rum_remove_view_attribute(
-          rum, key.toNativeChar(allocator: arena));
+        rum,
+        key.toNativeChar(allocator: arena),
+      );
     });
   }
 
@@ -404,7 +428,9 @@ class DdRumDesktopPlatform extends DdRumPlatform {
 
   @override
   Future<void> updatePerformanceMetrics(
-      List<double> buildTimes, List<double> rasterTimes) async {}
+    List<double> buildTimes,
+    List<double> rasterTimes,
+  ) async {}
 
   // ---------------------------------------------------------------------------
   // Helpers

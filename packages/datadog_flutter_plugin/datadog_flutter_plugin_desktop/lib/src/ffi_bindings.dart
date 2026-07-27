@@ -8,7 +8,7 @@ import 'dart:ffi' as ffi;
 class DdSdkFfi {
   /// Holds the symbol lookup function.
   final ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
-      _lookup;
+  _lookup;
 
   /// The symbols are looked up in [dynamicLibrary].
   DdSdkFfi(ffi.DynamicLibrary dynamicLibrary) : _lookup = dynamicLibrary.lookup;
@@ -24,10 +24,10 @@ class DdSdkFfi {
 
   late final _dd_timestamp_nsPtr =
       _lookup<ffi.NativeFunction<dd_timestamp_t Function(ffi.Int64)>>(
-    'dd_timestamp_ns',
-  );
-  late final _dd_timestamp_ns =
-      _dd_timestamp_nsPtr.asFunction<int Function(int)>(isLeaf: true);
+        'dd_timestamp_ns',
+      );
+  late final _dd_timestamp_ns = _dd_timestamp_nsPtr
+      .asFunction<int Function(int)>(isLeaf: true);
 
   int dd_timestamp_ms(int milliseconds_since_epoch) {
     return _dd_timestamp_ms(milliseconds_since_epoch);
@@ -35,10 +35,10 @@ class DdSdkFfi {
 
   late final _dd_timestamp_msPtr =
       _lookup<ffi.NativeFunction<dd_timestamp_t Function(ffi.Int64)>>(
-    'dd_timestamp_ms',
-  );
-  late final _dd_timestamp_ms =
-      _dd_timestamp_msPtr.asFunction<int Function(int)>(isLeaf: true);
+        'dd_timestamp_ms',
+      );
+  late final _dd_timestamp_ms = _dd_timestamp_msPtr
+      .asFunction<int Function(int)>(isLeaf: true);
 
   int dd_timestamp_seconds(int seconds_since_epoch) {
     return _dd_timestamp_seconds(seconds_since_epoch);
@@ -46,10 +46,10 @@ class DdSdkFfi {
 
   late final _dd_timestamp_secondsPtr =
       _lookup<ffi.NativeFunction<dd_timestamp_t Function(ffi.Int64)>>(
-    'dd_timestamp_seconds',
-  );
-  late final _dd_timestamp_seconds =
-      _dd_timestamp_secondsPtr.asFunction<int Function(int)>(isLeaf: true);
+        'dd_timestamp_seconds',
+      );
+  late final _dd_timestamp_seconds = _dd_timestamp_secondsPtr
+      .asFunction<int Function(int)>(isLeaf: true);
 
   int dd_duration_ns(int nanoseconds) {
     return _dd_duration_ns(nanoseconds);
@@ -57,8 +57,8 @@ class DdSdkFfi {
 
   late final _dd_duration_nsPtr =
       _lookup<ffi.NativeFunction<dd_duration_t Function(ffi.Int64)>>(
-    'dd_duration_ns',
-  );
+        'dd_duration_ns',
+      );
   late final _dd_duration_ns = _dd_duration_nsPtr.asFunction<int Function(int)>(
     isLeaf: true,
   );
@@ -69,8 +69,8 @@ class DdSdkFfi {
 
   late final _dd_duration_msPtr =
       _lookup<ffi.NativeFunction<dd_duration_t Function(ffi.Int64)>>(
-    'dd_duration_ms',
-  );
+        'dd_duration_ms',
+      );
   late final _dd_duration_ms = _dd_duration_msPtr.asFunction<int Function(int)>(
     isLeaf: true,
   );
@@ -81,10 +81,10 @@ class DdSdkFfi {
 
   late final _dd_duration_secondsPtr =
       _lookup<ffi.NativeFunction<dd_duration_t Function(ffi.Int64)>>(
-    'dd_duration_seconds',
-  );
-  late final _dd_duration_seconds =
-      _dd_duration_secondsPtr.asFunction<int Function(int)>(isLeaf: true);
+        'dd_duration_seconds',
+      );
+  late final _dd_duration_seconds = _dd_duration_secondsPtr
+      .asFunction<int Function(int)>(isLeaf: true);
 
   void dd_uuid_init(ffi.Pointer<dd_uuid_t> value) {
     return _dd_uuid_init(value);
@@ -92,8 +92,8 @@ class DdSdkFfi {
 
   late final _dd_uuid_initPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_uuid_t>)>>(
-    'dd_uuid_init',
-  );
+        'dd_uuid_init',
+      );
   late final _dd_uuid_init = _dd_uuid_initPtr
       .asFunction<void Function(ffi.Pointer<dd_uuid_t>)>(isLeaf: true);
 
@@ -103,8 +103,8 @@ class DdSdkFfi {
 
   late final _dd_uuid_randomPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_uuid_t>)>>(
-    'dd_uuid_random',
-  );
+        'dd_uuid_random',
+      );
   late final _dd_uuid_random = _dd_uuid_randomPtr
       .asFunction<void Function(ffi.Pointer<dd_uuid_t>)>(isLeaf: true);
 
@@ -112,26 +112,31 @@ class DdSdkFfi {
     return _dd_uuid_set(value, bytes);
   }
 
-  late final _dd_uuid_setPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              ffi.Pointer<dd_uuid_t>, ffi.Pointer<ffi.Uint8>)>>('dd_uuid_set');
-  late final _dd_uuid_set = _dd_uuid_setPtr.asFunction<
-      void Function(
-          ffi.Pointer<dd_uuid_t>, ffi.Pointer<ffi.Uint8>)>(isLeaf: true);
+  late final _dd_uuid_setPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_uuid_t>, ffi.Pointer<ffi.Uint8>)
+        >
+      >('dd_uuid_set');
+  late final _dd_uuid_set = _dd_uuid_setPtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_uuid_t>, ffi.Pointer<ffi.Uint8>)
+      >(isLeaf: true);
 
   bool dd_uuid_parse(ffi.Pointer<dd_uuid_t> value, ffi.Pointer<ffi.Char> s) {
     return _dd_uuid_parse(value, s);
   }
 
-  late final _dd_uuid_parsePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Bool Function(
-              ffi.Pointer<dd_uuid_t>, ffi.Pointer<ffi.Char>)>>('dd_uuid_parse');
+  late final _dd_uuid_parsePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Bool Function(ffi.Pointer<dd_uuid_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_uuid_parse');
   late final _dd_uuid_parse = _dd_uuid_parsePtr
       .asFunction<bool Function(ffi.Pointer<dd_uuid_t>, ffi.Pointer<ffi.Char>)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   void dd_uuid_to_string(
     ffi.Pointer<dd_uuid_t> value,
@@ -140,14 +145,16 @@ class DdSdkFfi {
     return _dd_uuid_to_string(value, out_s);
   }
 
-  late final _dd_uuid_to_stringPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_uuid_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_uuid_to_string');
+  late final _dd_uuid_to_stringPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_uuid_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_uuid_to_string');
   late final _dd_uuid_to_string = _dd_uuid_to_stringPtr
       .asFunction<void Function(ffi.Pointer<dd_uuid_t>, ffi.Pointer<ffi.Char>)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   bool dd_uuid_is_zero(ffi.Pointer<dd_uuid_t> value) {
     return _dd_uuid_is_zero(value);
@@ -155,8 +162,8 @@ class DdSdkFfi {
 
   late final _dd_uuid_is_zeroPtr =
       _lookup<ffi.NativeFunction<ffi.Bool Function(ffi.Pointer<dd_uuid_t>)>>(
-    'dd_uuid_is_zero',
-  );
+        'dd_uuid_is_zero',
+      );
   late final _dd_uuid_is_zero = _dd_uuid_is_zeroPtr
       .asFunction<bool Function(ffi.Pointer<dd_uuid_t>)>(isLeaf: true);
 
@@ -166,10 +173,10 @@ class DdSdkFfi {
 
   late final _dd_attribute_nullPtr =
       _lookup<ffi.NativeFunction<dd_attribute_t Function()>>(
-    'dd_attribute_null',
-  );
-  late final _dd_attribute_null =
-      _dd_attribute_nullPtr.asFunction<dd_attribute_t Function()>(isLeaf: true);
+        'dd_attribute_null',
+      );
+  late final _dd_attribute_null = _dd_attribute_nullPtr
+      .asFunction<dd_attribute_t Function()>(isLeaf: true);
 
   dd_attribute_t dd_attribute_bool(bool value) {
     return _dd_attribute_bool(value);
@@ -177,8 +184,8 @@ class DdSdkFfi {
 
   late final _dd_attribute_boolPtr =
       _lookup<ffi.NativeFunction<dd_attribute_t Function(ffi.Bool)>>(
-    'dd_attribute_bool',
-  );
+        'dd_attribute_bool',
+      );
   late final _dd_attribute_bool = _dd_attribute_boolPtr
       .asFunction<dd_attribute_t Function(bool)>(isLeaf: true);
 
@@ -188,8 +195,8 @@ class DdSdkFfi {
 
   late final _dd_attribute_intPtr =
       _lookup<ffi.NativeFunction<dd_attribute_t Function(ffi.Int64)>>(
-    'dd_attribute_int',
-  );
+        'dd_attribute_int',
+      );
   late final _dd_attribute_int = _dd_attribute_intPtr
       .asFunction<dd_attribute_t Function(int)>(isLeaf: true);
 
@@ -199,8 +206,8 @@ class DdSdkFfi {
 
   late final _dd_attribute_uintPtr =
       _lookup<ffi.NativeFunction<dd_attribute_t Function(ffi.Uint64)>>(
-    'dd_attribute_uint',
-  );
+        'dd_attribute_uint',
+      );
   late final _dd_attribute_uint = _dd_attribute_uintPtr
       .asFunction<dd_attribute_t Function(int)>(isLeaf: true);
 
@@ -210,8 +217,8 @@ class DdSdkFfi {
 
   late final _dd_attribute_timestampPtr =
       _lookup<ffi.NativeFunction<dd_attribute_t Function(dd_timestamp_t)>>(
-    'dd_attribute_timestamp',
-  );
+        'dd_attribute_timestamp',
+      );
   late final _dd_attribute_timestamp = _dd_attribute_timestampPtr
       .asFunction<dd_attribute_t Function(int)>(isLeaf: true);
 
@@ -221,8 +228,8 @@ class DdSdkFfi {
 
   late final _dd_attribute_doublePtr =
       _lookup<ffi.NativeFunction<dd_attribute_t Function(ffi.Double)>>(
-    'dd_attribute_double',
-  );
+        'dd_attribute_double',
+      );
   late final _dd_attribute_double = _dd_attribute_doublePtr
       .asFunction<dd_attribute_t Function(double)>(isLeaf: true);
 
@@ -232,8 +239,8 @@ class DdSdkFfi {
 
   late final _dd_attribute_uuidPtr =
       _lookup<ffi.NativeFunction<dd_attribute_t Function(dd_uuid_t)>>(
-    'dd_attribute_uuid',
-  );
+        'dd_attribute_uuid',
+      );
   late final _dd_attribute_uuid = _dd_attribute_uuidPtr
       .asFunction<dd_attribute_t Function(dd_uuid_t)>(isLeaf: true);
 
@@ -241,9 +248,10 @@ class DdSdkFfi {
     return _dd_attribute_string(value);
   }
 
-  late final _dd_attribute_stringPtr = _lookup<
-          ffi.NativeFunction<dd_attribute_t Function(ffi.Pointer<ffi.Char>)>>(
-      'dd_attribute_string');
+  late final _dd_attribute_stringPtr =
+      _lookup<
+        ffi.NativeFunction<dd_attribute_t Function(ffi.Pointer<ffi.Char>)>
+      >('dd_attribute_string');
   late final _dd_attribute_string = _dd_attribute_stringPtr
       .asFunction<dd_attribute_t Function(ffi.Pointer<ffi.Char>)>(isLeaf: true);
 
@@ -253,8 +261,8 @@ class DdSdkFfi {
 
   late final _dd_attribute_arrayPtr =
       _lookup<ffi.NativeFunction<dd_attribute_t Function(ffi.Size)>>(
-    'dd_attribute_array',
-  );
+        'dd_attribute_array',
+      );
   late final _dd_attribute_array = _dd_attribute_arrayPtr
       .asFunction<dd_attribute_t Function(int)>(isLeaf: true);
 
@@ -264,8 +272,8 @@ class DdSdkFfi {
 
   late final _dd_attribute_objectPtr =
       _lookup<ffi.NativeFunction<dd_attribute_t Function(ffi.Size)>>(
-    'dd_attribute_object',
-  );
+        'dd_attribute_object',
+      );
   late final _dd_attribute_object = _dd_attribute_objectPtr
       .asFunction<dd_attribute_t Function(int)>(isLeaf: true);
 
@@ -273,9 +281,10 @@ class DdSdkFfi {
     return _dd_attribute_set_null(attribute);
   }
 
-  late final _dd_attribute_set_nullPtr = _lookup<
-          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_attribute_t>)>>(
-      'dd_attribute_set_null');
+  late final _dd_attribute_set_nullPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_attribute_t>)>
+      >('dd_attribute_set_null');
   late final _dd_attribute_set_null = _dd_attribute_set_nullPtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
 
@@ -286,40 +295,46 @@ class DdSdkFfi {
     return _dd_attribute_set_bool(attribute, value);
   }
 
-  late final _dd_attribute_set_boolPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              ffi.Pointer<dd_attribute_t>, ffi.Bool)>>('dd_attribute_set_bool');
+  late final _dd_attribute_set_boolPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_attribute_t>, ffi.Bool)
+        >
+      >('dd_attribute_set_bool');
   late final _dd_attribute_set_bool = _dd_attribute_set_boolPtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>, bool)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   void dd_attribute_set_int(ffi.Pointer<dd_attribute_t> attribute, int value) {
     return _dd_attribute_set_int(attribute, value);
   }
 
-  late final _dd_attribute_set_intPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              ffi.Pointer<dd_attribute_t>, ffi.Int64)>>('dd_attribute_set_int');
+  late final _dd_attribute_set_intPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_attribute_t>, ffi.Int64)
+        >
+      >('dd_attribute_set_int');
   late final _dd_attribute_set_int = _dd_attribute_set_intPtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>, int)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   void dd_attribute_set_uint(ffi.Pointer<dd_attribute_t> attribute, int value) {
     return _dd_attribute_set_uint(attribute, value);
   }
 
-  late final _dd_attribute_set_uintPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_attribute_t>,
-              ffi.Uint64)>>('dd_attribute_set_uint');
+  late final _dd_attribute_set_uintPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_attribute_t>, ffi.Uint64)
+        >
+      >('dd_attribute_set_uint');
   late final _dd_attribute_set_uint = _dd_attribute_set_uintPtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>, int)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   void dd_attribute_set_timestamp(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -328,14 +343,16 @@ class DdSdkFfi {
     return _dd_attribute_set_timestamp(attribute, value);
   }
 
-  late final _dd_attribute_set_timestampPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_attribute_t>,
-              dd_timestamp_t)>>('dd_attribute_set_timestamp');
+  late final _dd_attribute_set_timestampPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_attribute_t>, dd_timestamp_t)
+        >
+      >('dd_attribute_set_timestamp');
   late final _dd_attribute_set_timestamp = _dd_attribute_set_timestampPtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>, int)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   void dd_attribute_set_double(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -344,14 +361,16 @@ class DdSdkFfi {
     return _dd_attribute_set_double(attribute, value);
   }
 
-  late final _dd_attribute_set_doublePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_attribute_t>,
-              ffi.Double)>>('dd_attribute_set_double');
+  late final _dd_attribute_set_doublePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_attribute_t>, ffi.Double)
+        >
+      >('dd_attribute_set_double');
   late final _dd_attribute_set_double = _dd_attribute_set_doublePtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>, double)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   void dd_attribute_set_uuid(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -360,14 +379,16 @@ class DdSdkFfi {
     return _dd_attribute_set_uuid(attribute, value);
   }
 
-  late final _dd_attribute_set_uuidPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_attribute_t>,
-              dd_uuid_t)>>('dd_attribute_set_uuid');
+  late final _dd_attribute_set_uuidPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_attribute_t>, dd_uuid_t)
+        >
+      >('dd_attribute_set_uuid');
   late final _dd_attribute_set_uuid = _dd_attribute_set_uuidPtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>, dd_uuid_t)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   void dd_attribute_set_string(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -376,13 +397,16 @@ class DdSdkFfi {
     return _dd_attribute_set_string(attribute, value);
   }
 
-  late final _dd_attribute_set_stringPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_attribute_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_attribute_set_string');
-  late final _dd_attribute_set_string = _dd_attribute_set_stringPtr.asFunction<
-      void Function(
-          ffi.Pointer<dd_attribute_t>, ffi.Pointer<ffi.Char>)>(isLeaf: true);
+  late final _dd_attribute_set_stringPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_attribute_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_attribute_set_string');
+  late final _dd_attribute_set_string = _dd_attribute_set_stringPtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_attribute_t>, ffi.Pointer<ffi.Char>)
+      >(isLeaf: true);
 
   void dd_attribute_init_array(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -391,14 +415,16 @@ class DdSdkFfi {
     return _dd_attribute_init_array(attribute, initial_capacity);
   }
 
-  late final _dd_attribute_init_arrayPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_attribute_t>,
-              ffi.Size)>>('dd_attribute_init_array');
+  late final _dd_attribute_init_arrayPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_attribute_t>, ffi.Size)
+        >
+      >('dd_attribute_init_array');
   late final _dd_attribute_init_array = _dd_attribute_init_arrayPtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>, int)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   void dd_attribute_init_object(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -407,35 +433,38 @@ class DdSdkFfi {
     return _dd_attribute_init_object(attribute, initial_capacity);
   }
 
-  late final _dd_attribute_init_objectPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_attribute_t>,
-              ffi.Size)>>('dd_attribute_init_object');
+  late final _dd_attribute_init_objectPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_attribute_t>, ffi.Size)
+        >
+      >('dd_attribute_init_object');
   late final _dd_attribute_init_object = _dd_attribute_init_objectPtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>, int)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   dd_attribute_t dd_attribute_copy(ffi.Pointer<dd_attribute_t> other) {
     return _dd_attribute_copy(other);
   }
 
-  late final _dd_attribute_copyPtr = _lookup<
-      ffi.NativeFunction<
-          dd_attribute_t Function(
-              ffi.Pointer<dd_attribute_t>)>>('dd_attribute_copy');
+  late final _dd_attribute_copyPtr =
+      _lookup<
+        ffi.NativeFunction<dd_attribute_t Function(ffi.Pointer<dd_attribute_t>)>
+      >('dd_attribute_copy');
   late final _dd_attribute_copy = _dd_attribute_copyPtr
       .asFunction<dd_attribute_t Function(ffi.Pointer<dd_attribute_t>)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   void dd_attribute_free(ffi.Pointer<dd_attribute_t> attribute) {
     return _dd_attribute_free(attribute);
   }
 
-  late final _dd_attribute_freePtr = _lookup<
-          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_attribute_t>)>>(
-      'dd_attribute_free');
+  late final _dd_attribute_freePtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_attribute_t>)>
+      >('dd_attribute_free');
   late final _dd_attribute_free = _dd_attribute_freePtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
 
@@ -443,9 +472,10 @@ class DdSdkFfi {
     return _dd_attribute_get_bool(attribute);
   }
 
-  late final _dd_attribute_get_boolPtr = _lookup<
-          ffi.NativeFunction<ffi.Bool Function(ffi.Pointer<dd_attribute_t>)>>(
-      'dd_attribute_get_bool');
+  late final _dd_attribute_get_boolPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Bool Function(ffi.Pointer<dd_attribute_t>)>
+      >('dd_attribute_get_bool');
   late final _dd_attribute_get_bool = _dd_attribute_get_boolPtr
       .asFunction<bool Function(ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
 
@@ -453,9 +483,10 @@ class DdSdkFfi {
     return _dd_attribute_get_int(attribute);
   }
 
-  late final _dd_attribute_get_intPtr = _lookup<
-          ffi.NativeFunction<ffi.Int64 Function(ffi.Pointer<dd_attribute_t>)>>(
-      'dd_attribute_get_int');
+  late final _dd_attribute_get_intPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Int64 Function(ffi.Pointer<dd_attribute_t>)>
+      >('dd_attribute_get_int');
   late final _dd_attribute_get_int = _dd_attribute_get_intPtr
       .asFunction<int Function(ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
 
@@ -463,9 +494,10 @@ class DdSdkFfi {
     return _dd_attribute_get_uint(attribute);
   }
 
-  late final _dd_attribute_get_uintPtr = _lookup<
-          ffi.NativeFunction<ffi.Uint64 Function(ffi.Pointer<dd_attribute_t>)>>(
-      'dd_attribute_get_uint');
+  late final _dd_attribute_get_uintPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Uint64 Function(ffi.Pointer<dd_attribute_t>)>
+      >('dd_attribute_get_uint');
   late final _dd_attribute_get_uint = _dd_attribute_get_uintPtr
       .asFunction<int Function(ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
 
@@ -473,10 +505,10 @@ class DdSdkFfi {
     return _dd_attribute_get_timestamp(attribute);
   }
 
-  late final _dd_attribute_get_timestampPtr = _lookup<
-      ffi.NativeFunction<
-          dd_timestamp_t Function(
-              ffi.Pointer<dd_attribute_t>)>>('dd_attribute_get_timestamp');
+  late final _dd_attribute_get_timestampPtr =
+      _lookup<
+        ffi.NativeFunction<dd_timestamp_t Function(ffi.Pointer<dd_attribute_t>)>
+      >('dd_attribute_get_timestamp');
   late final _dd_attribute_get_timestamp = _dd_attribute_get_timestampPtr
       .asFunction<int Function(ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
 
@@ -484,9 +516,10 @@ class DdSdkFfi {
     return _dd_attribute_get_double(attribute);
   }
 
-  late final _dd_attribute_get_doublePtr = _lookup<
-          ffi.NativeFunction<ffi.Double Function(ffi.Pointer<dd_attribute_t>)>>(
-      'dd_attribute_get_double');
+  late final _dd_attribute_get_doublePtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Double Function(ffi.Pointer<dd_attribute_t>)>
+      >('dd_attribute_get_double');
   late final _dd_attribute_get_double = _dd_attribute_get_doublePtr
       .asFunction<double Function(ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
 
@@ -494,13 +527,14 @@ class DdSdkFfi {
     return _dd_attribute_get_uuid(attribute);
   }
 
-  late final _dd_attribute_get_uuidPtr = _lookup<
-          ffi.NativeFunction<dd_uuid_t Function(ffi.Pointer<dd_attribute_t>)>>(
-      'dd_attribute_get_uuid');
+  late final _dd_attribute_get_uuidPtr =
+      _lookup<
+        ffi.NativeFunction<dd_uuid_t Function(ffi.Pointer<dd_attribute_t>)>
+      >('dd_attribute_get_uuid');
   late final _dd_attribute_get_uuid = _dd_attribute_get_uuidPtr
       .asFunction<dd_uuid_t Function(ffi.Pointer<dd_attribute_t>)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   ffi.Pointer<ffi.Char> dd_attribute_get_string(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -508,22 +542,25 @@ class DdSdkFfi {
     return _dd_attribute_get_string(attribute);
   }
 
-  late final _dd_attribute_get_stringPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-              ffi.Pointer<dd_attribute_t>)>>('dd_attribute_get_string');
+  late final _dd_attribute_get_stringPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<dd_attribute_t>)
+        >
+      >('dd_attribute_get_string');
   late final _dd_attribute_get_string = _dd_attribute_get_stringPtr
       .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<dd_attribute_t>)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   int dd_attribute_array_len(ffi.Pointer<dd_attribute_t> attribute) {
     return _dd_attribute_array_len(attribute);
   }
 
-  late final _dd_attribute_array_lenPtr = _lookup<
-          ffi.NativeFunction<ffi.Size Function(ffi.Pointer<dd_attribute_t>)>>(
-      'dd_attribute_array_len');
+  late final _dd_attribute_array_lenPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Size Function(ffi.Pointer<dd_attribute_t>)>
+      >('dd_attribute_array_len');
   late final _dd_attribute_array_len = _dd_attribute_array_lenPtr
       .asFunction<int Function(ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
 
@@ -534,22 +571,25 @@ class DdSdkFfi {
     return _dd_attribute_array_get(attribute, index);
   }
 
-  late final _dd_attribute_array_getPtr = _lookup<
-      ffi.NativeFunction<
-          dd_attribute_t Function(
-              ffi.Pointer<dd_attribute_t>, ffi.Int)>>('dd_attribute_array_get');
+  late final _dd_attribute_array_getPtr =
+      _lookup<
+        ffi.NativeFunction<
+          dd_attribute_t Function(ffi.Pointer<dd_attribute_t>, ffi.Int)
+        >
+      >('dd_attribute_array_get');
   late final _dd_attribute_array_get = _dd_attribute_array_getPtr
       .asFunction<dd_attribute_t Function(ffi.Pointer<dd_attribute_t>, int)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   void dd_attribute_array_clear(ffi.Pointer<dd_attribute_t> attribute) {
     return _dd_attribute_array_clear(attribute);
   }
 
-  late final _dd_attribute_array_clearPtr = _lookup<
-          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_attribute_t>)>>(
-      'dd_attribute_array_clear');
+  late final _dd_attribute_array_clearPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_attribute_t>)>
+      >('dd_attribute_array_clear');
   late final _dd_attribute_array_clear = _dd_attribute_array_clearPtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
 
@@ -560,15 +600,19 @@ class DdSdkFfi {
     return _dd_attribute_array_push(attribute, item);
   }
 
-  late final _dd_attribute_array_pushPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_attribute_array_pushPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_attribute_t>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_attribute_array_push');
-  late final _dd_attribute_array_push = _dd_attribute_array_pushPtr.asFunction<
-      void Function(ffi.Pointer<dd_attribute_t>,
-          ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
+          )
+        >
+      >('dd_attribute_array_push');
+  late final _dd_attribute_array_push = _dd_attribute_array_pushPtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_attribute_t>, ffi.Pointer<dd_attribute_t>)
+      >(isLeaf: true);
 
   void dd_attribute_array_reserve(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -577,14 +621,16 @@ class DdSdkFfi {
     return _dd_attribute_array_reserve(attribute, capacity);
   }
 
-  late final _dd_attribute_array_reservePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_attribute_t>,
-              ffi.Size)>>('dd_attribute_array_reserve');
+  late final _dd_attribute_array_reservePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_attribute_t>, ffi.Size)
+        >
+      >('dd_attribute_array_reserve');
   late final _dd_attribute_array_reserve = _dd_attribute_array_reservePtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>, int)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   int dd_attribute_object_property_count(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -592,9 +638,10 @@ class DdSdkFfi {
     return _dd_attribute_object_property_count(attribute);
   }
 
-  late final _dd_attribute_object_property_countPtr = _lookup<
-          ffi.NativeFunction<ffi.Size Function(ffi.Pointer<dd_attribute_t>)>>(
-      'dd_attribute_object_property_count');
+  late final _dd_attribute_object_property_countPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Size Function(ffi.Pointer<dd_attribute_t>)>
+      >('dd_attribute_object_property_count');
   late final _dd_attribute_object_property_count =
       _dd_attribute_object_property_countPtr
           .asFunction<int Function(ffi.Pointer<dd_attribute_t>)>(isLeaf: true);
@@ -606,14 +653,16 @@ class DdSdkFfi {
     return _dd_attribute_object_property_find(attribute, name);
   }
 
-  late final _dd_attribute_object_property_findPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Int Function(ffi.Pointer<dd_attribute_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_attribute_object_property_find');
+  late final _dd_attribute_object_property_findPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<dd_attribute_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_attribute_object_property_find');
   late final _dd_attribute_object_property_find =
       _dd_attribute_object_property_findPtr.asFunction<
-              int Function(ffi.Pointer<dd_attribute_t>, ffi.Pointer<ffi.Char>)>(
-          isLeaf: true);
+        int Function(ffi.Pointer<dd_attribute_t>, ffi.Pointer<ffi.Char>)
+      >(isLeaf: true);
 
   ffi.Pointer<ffi.Char> dd_attribute_object_name_at(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -622,14 +671,16 @@ class DdSdkFfi {
     return _dd_attribute_object_name_at(attribute, index);
   }
 
-  late final _dd_attribute_object_name_atPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(ffi.Pointer<dd_attribute_t>,
-              ffi.Int)>>('dd_attribute_object_name_at');
-  late final _dd_attribute_object_name_at =
-      _dd_attribute_object_name_atPtr.asFunction<
-          ffi.Pointer<ffi.Char> Function(
-              ffi.Pointer<dd_attribute_t>, int)>(isLeaf: true);
+  late final _dd_attribute_object_name_atPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<dd_attribute_t>, ffi.Int)
+        >
+      >('dd_attribute_object_name_at');
+  late final _dd_attribute_object_name_at = _dd_attribute_object_name_atPtr
+      .asFunction<
+        ffi.Pointer<ffi.Char> Function(ffi.Pointer<dd_attribute_t>, int)
+      >(isLeaf: true);
 
   dd_attribute_t dd_attribute_object_value_at(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -638,14 +689,16 @@ class DdSdkFfi {
     return _dd_attribute_object_value_at(attribute, index);
   }
 
-  late final _dd_attribute_object_value_atPtr = _lookup<
-      ffi.NativeFunction<
-          dd_attribute_t Function(ffi.Pointer<dd_attribute_t>,
-              ffi.Int)>>('dd_attribute_object_value_at');
+  late final _dd_attribute_object_value_atPtr =
+      _lookup<
+        ffi.NativeFunction<
+          dd_attribute_t Function(ffi.Pointer<dd_attribute_t>, ffi.Int)
+        >
+      >('dd_attribute_object_value_at');
   late final _dd_attribute_object_value_at = _dd_attribute_object_value_atPtr
       .asFunction<dd_attribute_t Function(ffi.Pointer<dd_attribute_t>, int)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   dd_attribute_t dd_attribute_object_property_get(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -654,18 +707,22 @@ class DdSdkFfi {
     return _dd_attribute_object_property_get(attribute, name);
   }
 
-  late final _dd_attribute_object_property_getPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_attribute_object_property_getPtr =
+      _lookup<
+        ffi.NativeFunction<
           dd_attribute_t Function(
             ffi.Pointer<dd_attribute_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_attribute_object_property_get');
+          )
+        >
+      >('dd_attribute_object_property_get');
   late final _dd_attribute_object_property_get =
       _dd_attribute_object_property_getPtr.asFunction<
-          dd_attribute_t Function(
-            ffi.Pointer<dd_attribute_t>,
-            ffi.Pointer<ffi.Char>,
-          )>(isLeaf: true);
+        dd_attribute_t Function(
+          ffi.Pointer<dd_attribute_t>,
+          ffi.Pointer<ffi.Char>,
+        )
+      >(isLeaf: true);
 
   void dd_attribute_object_property_set(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -675,20 +732,24 @@ class DdSdkFfi {
     return _dd_attribute_object_property_set(attribute, name, value);
   }
 
-  late final _dd_attribute_object_property_setPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_attribute_object_property_setPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_attribute_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_attribute_object_property_set');
+          )
+        >
+      >('dd_attribute_object_property_set');
   late final _dd_attribute_object_property_set =
       _dd_attribute_object_property_setPtr.asFunction<
-          void Function(
-            ffi.Pointer<dd_attribute_t>,
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<dd_attribute_t>,
-          )>(isLeaf: true);
+        void Function(
+          ffi.Pointer<dd_attribute_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >(isLeaf: true);
 
   void dd_attribute_object_property_delete(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -697,14 +758,16 @@ class DdSdkFfi {
     return _dd_attribute_object_property_delete(attribute, name);
   }
 
-  late final _dd_attribute_object_property_deletePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_attribute_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_attribute_object_property_delete');
+  late final _dd_attribute_object_property_deletePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_attribute_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_attribute_object_property_delete');
   late final _dd_attribute_object_property_delete =
       _dd_attribute_object_property_deletePtr.asFunction<
-          void Function(ffi.Pointer<dd_attribute_t>,
-              ffi.Pointer<ffi.Char>)>(isLeaf: true);
+        void Function(ffi.Pointer<dd_attribute_t>, ffi.Pointer<ffi.Char>)
+      >(isLeaf: true);
 
   void dd_attribute_object_reserve(
     ffi.Pointer<dd_attribute_t> attribute,
@@ -713,14 +776,16 @@ class DdSdkFfi {
     return _dd_attribute_object_reserve(attribute, capacity);
   }
 
-  late final _dd_attribute_object_reservePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_attribute_t>,
-              ffi.Size)>>('dd_attribute_object_reserve');
+  late final _dd_attribute_object_reservePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_attribute_t>, ffi.Size)
+        >
+      >('dd_attribute_object_reserve');
   late final _dd_attribute_object_reserve = _dd_attribute_object_reservePtr
       .asFunction<void Function(ffi.Pointer<dd_attribute_t>, int)>(
-    isLeaf: true,
-  );
+        isLeaf: true,
+      );
 
   /// Default dd_diagnostic_handler_t implementation: prints all messages to stderr,
   /// prefixed with '[DATADOG <level>]'.
@@ -731,18 +796,22 @@ class DdSdkFfi {
     return _dd_stderr_diagnostic_handler(message, arg1);
   }
 
-  late final _dd_stderr_diagnostic_handlerPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_stderr_diagnostic_handlerPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_diagnostic_message_t>,
             ffi.Pointer<ffi.Void>,
-          )>>('dd_stderr_diagnostic_handler');
-  late final _dd_stderr_diagnostic_handler =
-      _dd_stderr_diagnostic_handlerPtr.asFunction<
-          void Function(
-            ffi.Pointer<dd_diagnostic_message_t>,
-            ffi.Pointer<ffi.Void>,
-          )>(isLeaf: true);
+          )
+        >
+      >('dd_stderr_diagnostic_handler');
+  late final _dd_stderr_diagnostic_handler = _dd_stderr_diagnostic_handlerPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_diagnostic_message_t>,
+          ffi.Pointer<ffi.Void>,
+        )
+      >(isLeaf: true);
 
   /// Initializes a new dd_core_config_t with the set of values that are required for the
   /// SDK to function.
@@ -760,21 +829,26 @@ class DdSdkFfi {
     return _dd_core_config_init(config, client_token, service, env);
   }
 
-  late final _dd_core_config_initPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_config_initPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_config_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_core_config_init');
-  late final _dd_core_config_init = _dd_core_config_initPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_core_config_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<ffi.Char>,
-      )>();
+          )
+        >
+      >('dd_core_config_init');
+  late final _dd_core_config_init = _dd_core_config_initPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_core_config_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+        )
+      >();
 
   /// Supplies a callback function that will be invoked whenever the SDK emits a diagnostic
   /// message whose level meets or exceeds the configured diagnostic threshold.
@@ -791,16 +865,23 @@ class DdSdkFfi {
     return _dd_core_config_set_diagnostic_handler(config, value);
   }
 
-  late final _dd_core_config_set_diagnostic_handlerPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_config_set_diagnostic_handlerPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_config_t>,
             dd_diagnostic_handler_t,
-          )>>('dd_core_config_set_diagnostic_handler');
+          )
+        >
+      >('dd_core_config_set_diagnostic_handler');
   late final _dd_core_config_set_diagnostic_handler =
-      _dd_core_config_set_diagnostic_handlerPtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_core_config_t>, dd_diagnostic_handler_t)>();
+      _dd_core_config_set_diagnostic_handlerPtr
+          .asFunction<
+            void Function(
+              ffi.Pointer<dd_core_config_t>,
+              dd_diagnostic_handler_t,
+            )
+          >();
 
   /// Sets an arbitrary value that will be supplied to all invocations of the diagnostic
   /// handler callback. The default handler (dd_stderr_diagnostic_handler) will never read
@@ -812,16 +893,20 @@ class DdSdkFfi {
     return _dd_core_config_set_diagnostic_handler_userdata(config, value);
   }
 
-  late final _dd_core_config_set_diagnostic_handler_userdataPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_config_set_diagnostic_handler_userdataPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_config_t>,
             ffi.Pointer<ffi.Void>,
-          )>>('dd_core_config_set_diagnostic_handler_userdata');
+          )
+        >
+      >('dd_core_config_set_diagnostic_handler_userdata');
   late final _dd_core_config_set_diagnostic_handler_userdata =
-      _dd_core_config_set_diagnostic_handler_userdataPtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Void>)>();
+      _dd_core_config_set_diagnostic_handler_userdataPtr
+          .asFunction<
+            void Function(ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Void>)
+          >();
 
   /// Sets the threshold for diagnostic logging: any message whose level meets or exceeds
   /// this value will be passed to the configured diagnostic handler callback.
@@ -832,10 +917,12 @@ class DdSdkFfi {
     return _dd_core_config_set_diagnostic_threshold(config, value);
   }
 
-  late final _dd_core_config_set_diagnostic_thresholdPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Int32)>>('dd_core_config_set_diagnostic_threshold');
+  late final _dd_core_config_set_diagnostic_thresholdPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_core_config_t>, ffi.Int32)
+        >
+      >('dd_core_config_set_diagnostic_threshold');
   late final _dd_core_config_set_diagnostic_threshold =
       _dd_core_config_set_diagnostic_thresholdPtr
           .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>();
@@ -867,16 +954,20 @@ class DdSdkFfi {
     return _dd_core_config_set_application_storage_path(config, value);
   }
 
-  late final _dd_core_config_set_application_storage_pathPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_config_set_application_storage_pathPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_core_config_set_application_storage_path');
+          )
+        >
+      >('dd_core_config_set_application_storage_path');
   late final _dd_core_config_set_application_storage_path =
-      _dd_core_config_set_application_storage_pathPtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
+      _dd_core_config_set_application_storage_pathPtr
+          .asFunction<
+            void Function(ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)
+          >();
 
   /// Sets the site (i.e. Datadog datacenter) where data for your organization is stored.
   /// Defaults to us1.
@@ -887,10 +978,12 @@ class DdSdkFfi {
     return _dd_core_config_set_site(config, value);
   }
 
-  late final _dd_core_config_set_sitePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Int32)>>('dd_core_config_set_site');
+  late final _dd_core_config_set_sitePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_core_config_t>, ffi.Int32)
+        >
+      >('dd_core_config_set_site');
   late final _dd_core_config_set_site = _dd_core_config_set_sitePtr
       .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>();
 
@@ -902,16 +995,20 @@ class DdSdkFfi {
     return _dd_core_config_set_client_token(config, value);
   }
 
-  late final _dd_core_config_set_client_tokenPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_config_set_client_tokenPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_core_config_set_client_token');
+          )
+        >
+      >('dd_core_config_set_client_token');
   late final _dd_core_config_set_client_token =
-      _dd_core_config_set_client_tokenPtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
+      _dd_core_config_set_client_tokenPtr
+          .asFunction<
+            void Function(ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)
+          >();
 
   /// Sets the 'service' value, overriding the value passed to dd_core_config_init().
   void dd_core_config_set_service(
@@ -921,16 +1018,19 @@ class DdSdkFfi {
     return _dd_core_config_set_service(config, value);
   }
 
-  late final _dd_core_config_set_servicePtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_config_set_servicePtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_core_config_set_service');
-  late final _dd_core_config_set_service =
-      _dd_core_config_set_servicePtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
+          )
+        >
+      >('dd_core_config_set_service');
+  late final _dd_core_config_set_service = _dd_core_config_set_servicePtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Sets the 'env' value, overriding the value passed to dd_core_config_init().
   void dd_core_config_set_env(
@@ -940,14 +1040,19 @@ class DdSdkFfi {
     return _dd_core_config_set_env(config, value);
   }
 
-  late final _dd_core_config_set_envPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_config_set_envPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_core_config_set_env');
-  late final _dd_core_config_set_env = _dd_core_config_set_envPtr.asFunction<
-      void Function(ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
+          )
+        >
+      >('dd_core_config_set_env');
+  late final _dd_core_config_set_env = _dd_core_config_set_envPtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Sets the 'version' value, identifying the version of your applicating that's being
   /// monitored.
@@ -958,16 +1063,19 @@ class DdSdkFfi {
     return _dd_core_config_set_version(config, value);
   }
 
-  late final _dd_core_config_set_versionPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_config_set_versionPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_core_config_set_version');
-  late final _dd_core_config_set_version =
-      _dd_core_config_set_versionPtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
+          )
+        >
+      >('dd_core_config_set_version');
+  late final _dd_core_config_set_version = _dd_core_config_set_versionPtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Set the 'variant' value, identifying the flavor or build configuration of the
   /// application that's currently running.
@@ -978,16 +1086,19 @@ class DdSdkFfi {
     return _dd_core_config_set_variant(config, value);
   }
 
-  late final _dd_core_config_set_variantPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_config_set_variantPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_core_config_set_variant');
-  late final _dd_core_config_set_variant =
-      _dd_core_config_set_variantPtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
+          )
+        >
+      >('dd_core_config_set_variant');
+  late final _dd_core_config_set_variant = _dd_core_config_set_variantPtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Configures the SDK's batch size, which informs how quickly it will consider a batch
   /// of event data ready for upload.
@@ -998,10 +1109,12 @@ class DdSdkFfi {
     return _dd_core_config_set_batch_size(config, value);
   }
 
-  late final _dd_core_config_set_batch_sizePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Int32)>>('dd_core_config_set_batch_size');
+  late final _dd_core_config_set_batch_sizePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_core_config_t>, ffi.Int32)
+        >
+      >('dd_core_config_set_batch_size');
   late final _dd_core_config_set_batch_size = _dd_core_config_set_batch_sizePtr
       .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>();
 
@@ -1014,10 +1127,12 @@ class DdSdkFfi {
     return _dd_core_config_set_upload_frequency(config, value);
   }
 
-  late final _dd_core_config_set_upload_frequencyPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Int32)>>('dd_core_config_set_upload_frequency');
+  late final _dd_core_config_set_upload_frequencyPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_core_config_t>, ffi.Int32)
+        >
+      >('dd_core_config_set_upload_frequency');
   late final _dd_core_config_set_upload_frequency =
       _dd_core_config_set_upload_frequencyPtr
           .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>();
@@ -1031,10 +1146,12 @@ class DdSdkFfi {
     return _dd_core_config_set_batch_processing_level(config, value);
   }
 
-  late final _dd_core_config_set_batch_processing_levelPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_core_config_t>,
-              ffi.Int32)>>('dd_core_config_set_batch_processing_level');
+  late final _dd_core_config_set_batch_processing_levelPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_core_config_t>, ffi.Int32)
+        >
+      >('dd_core_config_set_batch_processing_level');
   late final _dd_core_config_set_batch_processing_level =
       _dd_core_config_set_batch_processing_levelPtr
           .asFunction<void Function(ffi.Pointer<dd_core_config_t>, int)>();
@@ -1047,9 +1164,10 @@ class DdSdkFfi {
     return _dd_core_config_internal_flush_http_requests_on_stop(config);
   }
 
-  late final _dd_core_config_internal_flush_http_requests_on_stopPtr = _lookup<
-          ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_core_config_t>)>>(
-      'dd_core_config_internal_flush_http_requests_on_stop');
+  late final _dd_core_config_internal_flush_http_requests_on_stopPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_core_config_t>)>
+      >('dd_core_config_internal_flush_http_requests_on_stop');
   late final _dd_core_config_internal_flush_http_requests_on_stop =
       _dd_core_config_internal_flush_http_requests_on_stopPtr
           .asFunction<void Function(ffi.Pointer<dd_core_config_t>)>();
@@ -1063,16 +1181,20 @@ class DdSdkFfi {
     return _dd_core_config_internal_set_custom_endpoint_url(config, value);
   }
 
-  late final _dd_core_config_internal_set_custom_endpoint_urlPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_config_internal_set_custom_endpoint_urlPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_core_config_internal_set_custom_endpoint_url');
+          )
+        >
+      >('dd_core_config_internal_set_custom_endpoint_url');
   late final _dd_core_config_internal_set_custom_endpoint_url =
-      _dd_core_config_internal_set_custom_endpoint_urlPtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
+      _dd_core_config_internal_set_custom_endpoint_urlPtr
+          .asFunction<
+            void Function(ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)
+          >();
 
   /// FOR INTERNAL USE ONLY - This function is not part of the public API and may change
   /// without notice. Do not use in production code.
@@ -1083,16 +1205,20 @@ class DdSdkFfi {
     return _dd_core_config_internal_set_source(config, value);
   }
 
-  late final _dd_core_config_internal_set_sourcePtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_config_internal_set_sourcePtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_core_config_internal_set_source');
+          )
+        >
+      >('dd_core_config_internal_set_source');
   late final _dd_core_config_internal_set_source =
-      _dd_core_config_internal_set_sourcePtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
+      _dd_core_config_internal_set_sourcePtr
+          .asFunction<
+            void Function(ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)
+          >();
 
   /// FOR INTERNAL USE ONLY - This function is not part of the public API and may change
   /// without notice. Do not use in production code.
@@ -1103,16 +1229,20 @@ class DdSdkFfi {
     return _dd_core_config_internal_set_sdk_version(config, value);
   }
 
-  late final _dd_core_config_internal_set_sdk_versionPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_config_internal_set_sdk_versionPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_core_config_internal_set_sdk_version');
+          )
+        >
+      >('dd_core_config_internal_set_sdk_version');
   late final _dd_core_config_internal_set_sdk_version =
-      _dd_core_config_internal_set_sdk_versionPtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)>();
+      _dd_core_config_internal_set_sdk_versionPtr
+          .asFunction<
+            void Function(ffi.Pointer<dd_core_config_t>, ffi.Pointer<ffi.Char>)
+          >();
 
   /// Creates a new instance of the Datadog SDK, with the provided configuration and
   /// initial tracking consent. The resulting core is used as a top-level handle to the
@@ -1124,14 +1254,19 @@ class DdSdkFfi {
     return _dd_core_create(config, tracking_consent);
   }
 
-  late final _dd_core_createPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_createPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Pointer<dd_core_t> Function(
             ffi.Pointer<dd_core_config_t>,
             ffi.Int32,
-          )>>('dd_core_create');
-  late final _dd_core_create = _dd_core_createPtr.asFunction<
-      ffi.Pointer<dd_core_t> Function(ffi.Pointer<dd_core_config_t>, int)>();
+          )
+        >
+      >('dd_core_create');
+  late final _dd_core_create = _dd_core_createPtr
+      .asFunction<
+        ffi.Pointer<dd_core_t> Function(ffi.Pointer<dd_core_config_t>, int)
+      >();
 
   void dd_core_destroy(ffi.Pointer<dd_core_t> core) {
     return _dd_core_destroy(core);
@@ -1139,10 +1274,10 @@ class DdSdkFfi {
 
   late final _dd_core_destroyPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_core_t>)>>(
-    'dd_core_destroy',
-  );
-  late final _dd_core_destroy =
-      _dd_core_destroyPtr.asFunction<void Function(ffi.Pointer<dd_core_t>)>();
+        'dd_core_destroy',
+      );
+  late final _dd_core_destroy = _dd_core_destroyPtr
+      .asFunction<void Function(ffi.Pointer<dd_core_t>)>();
 
   /// Informs the SDK of a change in the user's consent to tracking. This function may be
   /// called at any point during the lifetime of the core. Changing to
@@ -1153,10 +1288,10 @@ class DdSdkFfi {
     return _dd_core_set_tracking_consent(core, value);
   }
 
-  late final _dd_core_set_tracking_consentPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_core_t>,
-              ffi.Int32)>>('dd_core_set_tracking_consent');
+  late final _dd_core_set_tracking_consentPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_core_t>, ffi.Int32)>
+      >('dd_core_set_tracking_consent');
   late final _dd_core_set_tracking_consent = _dd_core_set_tracking_consentPtr
       .asFunction<void Function(ffi.Pointer<dd_core_t>, int)>();
 
@@ -1186,23 +1321,28 @@ class DdSdkFfi {
     return _dd_core_set_user_info(core, id, name, email, extra_info);
   }
 
-  late final _dd_core_set_user_infoPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_set_user_infoPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_core_set_user_info');
-  late final _dd_core_set_user_info = _dd_core_set_user_infoPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_core_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_core_set_user_info');
+  late final _dd_core_set_user_info = _dd_core_set_user_infoPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_core_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Supplies the SDK with additional attributes that will be included when the user is
   /// identified in events.
@@ -1225,13 +1365,16 @@ class DdSdkFfi {
     return _dd_core_add_user_extra_info(core, extra_info);
   }
 
-  late final _dd_core_add_user_extra_infoPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_core_t>,
-              ffi.Pointer<dd_attribute_t>)>>('dd_core_add_user_extra_info');
-  late final _dd_core_add_user_extra_info =
-      _dd_core_add_user_extra_infoPtr.asFunction<
-          void Function(ffi.Pointer<dd_core_t>, ffi.Pointer<dd_attribute_t>)>();
+  late final _dd_core_add_user_extra_infoPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_core_t>, ffi.Pointer<dd_attribute_t>)
+        >
+      >('dd_core_add_user_extra_info');
+  late final _dd_core_add_user_extra_info = _dd_core_add_user_extra_infoPtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_core_t>, ffi.Pointer<dd_attribute_t>)
+      >();
 
   /// Clears all user info previously supplied to the SDK.
   ///
@@ -1242,8 +1385,8 @@ class DdSdkFfi {
 
   late final _dd_core_clear_user_infoPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_core_t>)>>(
-    'dd_core_clear_user_info',
-  );
+        'dd_core_clear_user_info',
+      );
   late final _dd_core_clear_user_info = _dd_core_clear_user_infoPtr
       .asFunction<void Function(ffi.Pointer<dd_core_t>)>();
 
@@ -1271,22 +1414,26 @@ class DdSdkFfi {
     return _dd_core_set_account_info(core, id, name, extra_info);
   }
 
-  late final _dd_core_set_account_infoPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_core_set_account_infoPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_core_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_core_set_account_info');
-  late final _dd_core_set_account_info =
-      _dd_core_set_account_infoPtr.asFunction<
-          void Function(
-            ffi.Pointer<dd_core_t>,
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<dd_attribute_t>,
-          )>();
+          )
+        >
+      >('dd_core_set_account_info');
+  late final _dd_core_set_account_info = _dd_core_set_account_infoPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_core_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Supplies the SDK with additional attributes that will be included when the account is
   /// identified in events.
@@ -1310,13 +1457,17 @@ class DdSdkFfi {
     return _dd_core_add_account_extra_info(core, extra_info);
   }
 
-  late final _dd_core_add_account_extra_infoPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_core_t>,
-              ffi.Pointer<dd_attribute_t>)>>('dd_core_add_account_extra_info');
+  late final _dd_core_add_account_extra_infoPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_core_t>, ffi.Pointer<dd_attribute_t>)
+        >
+      >('dd_core_add_account_extra_info');
   late final _dd_core_add_account_extra_info =
-      _dd_core_add_account_extra_infoPtr.asFunction<
-          void Function(ffi.Pointer<dd_core_t>, ffi.Pointer<dd_attribute_t>)>();
+      _dd_core_add_account_extra_infoPtr
+          .asFunction<
+            void Function(ffi.Pointer<dd_core_t>, ffi.Pointer<dd_attribute_t>)
+          >();
 
   /// Clears all account info previously supplied to the SDK.
   ///
@@ -1327,8 +1478,8 @@ class DdSdkFfi {
 
   late final _dd_core_clear_account_infoPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_core_t>)>>(
-    'dd_core_clear_account_info',
-  );
+        'dd_core_clear_account_info',
+      );
   late final _dd_core_clear_account_info = _dd_core_clear_account_infoPtr
       .asFunction<void Function(ffi.Pointer<dd_core_t>)>();
 
@@ -1338,10 +1489,10 @@ class DdSdkFfi {
 
   late final _dd_core_startPtr =
       _lookup<ffi.NativeFunction<ffi.Bool Function(ffi.Pointer<dd_core_t>)>>(
-    'dd_core_start',
-  );
-  late final _dd_core_start =
-      _dd_core_startPtr.asFunction<bool Function(ffi.Pointer<dd_core_t>)>();
+        'dd_core_start',
+      );
+  late final _dd_core_start = _dd_core_startPtr
+      .asFunction<bool Function(ffi.Pointer<dd_core_t>)>();
 
   void dd_core_stop(ffi.Pointer<dd_core_t> core) {
     return _dd_core_stop(core);
@@ -1349,10 +1500,10 @@ class DdSdkFfi {
 
   late final _dd_core_stopPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_core_t>)>>(
-    'dd_core_stop',
-  );
-  late final _dd_core_stop =
-      _dd_core_stopPtr.asFunction<void Function(ffi.Pointer<dd_core_t>)>();
+        'dd_core_stop',
+      );
+  late final _dd_core_stop = _dd_core_stopPtr
+      .asFunction<void Function(ffi.Pointer<dd_core_t>)>();
 
   /// Initializes a dd_crash_reporting_config_t struct with default values.
   void dd_crash_reporting_config_init(
@@ -1361,13 +1512,17 @@ class DdSdkFfi {
     return _dd_crash_reporting_config_init(config);
   }
 
-  late final _dd_crash_reporting_config_initPtr = _lookup<
-          ffi.NativeFunction<
-              ffi.Void Function(ffi.Pointer<dd_crash_reporting_config_t>)>>(
-      'dd_crash_reporting_config_init');
+  late final _dd_crash_reporting_config_initPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_crash_reporting_config_t>)
+        >
+      >('dd_crash_reporting_config_init');
   late final _dd_crash_reporting_config_init =
-      _dd_crash_reporting_config_initPtr.asFunction<
-          void Function(ffi.Pointer<dd_crash_reporting_config_t>)>();
+      _dd_crash_reporting_config_initPtr
+          .asFunction<
+            void Function(ffi.Pointer<dd_crash_reporting_config_t>)
+          >();
 
   /// Sets the path to the crash handler executable, overriding the default path.
   ///
@@ -1385,18 +1540,23 @@ class DdSdkFfi {
     return _dd_crash_reporting_config_set_handler_exe_path(config, value);
   }
 
-  late final _dd_crash_reporting_config_set_handler_exe_pathPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_crash_reporting_config_set_handler_exe_pathPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_crash_reporting_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_crash_reporting_config_set_handler_exe_path');
+          )
+        >
+      >('dd_crash_reporting_config_set_handler_exe_path');
   late final _dd_crash_reporting_config_set_handler_exe_path =
-      _dd_crash_reporting_config_set_handler_exe_pathPtr.asFunction<
-          void Function(
-            ffi.Pointer<dd_crash_reporting_config_t>,
-            ffi.Pointer<ffi.Char>,
-          )>();
+      _dd_crash_reporting_config_set_handler_exe_pathPtr
+          .asFunction<
+            void Function(
+              ffi.Pointer<dd_crash_reporting_config_t>,
+              ffi.Pointer<ffi.Char>,
+            )
+          >();
 
   /// Registers the Crash Reporting feature with the core of the Datadog SDK. MUST be
   /// matched with a call to dd_crash_reporting_destroy().
@@ -1407,17 +1567,22 @@ class DdSdkFfi {
     return _dd_crash_reporting_init(core, config);
   }
 
-  late final _dd_crash_reporting_initPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_crash_reporting_initPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Pointer<dd_crash_reporting_t> Function(
             ffi.Pointer<dd_core_t>,
             ffi.Pointer<dd_crash_reporting_config_t>,
-          )>>('dd_crash_reporting_init');
-  late final _dd_crash_reporting_init = _dd_crash_reporting_initPtr.asFunction<
-      ffi.Pointer<dd_crash_reporting_t> Function(
-        ffi.Pointer<dd_core_t>,
-        ffi.Pointer<dd_crash_reporting_config_t>,
-      )>();
+          )
+        >
+      >('dd_crash_reporting_init');
+  late final _dd_crash_reporting_init = _dd_crash_reporting_initPtr
+      .asFunction<
+        ffi.Pointer<dd_crash_reporting_t> Function(
+          ffi.Pointer<dd_core_t>,
+          ffi.Pointer<dd_crash_reporting_config_t>,
+        )
+      >();
 
   /// Frees all memory allocated for the Crash Reporting feature.
   void dd_crash_reporting_destroy(
@@ -1426,10 +1591,10 @@ class DdSdkFfi {
     return _dd_crash_reporting_destroy(crash_reporting);
   }
 
-  late final _dd_crash_reporting_destroyPtr = _lookup<
-          ffi.NativeFunction<
-              ffi.Void Function(ffi.Pointer<dd_crash_reporting_t>)>>(
-      'dd_crash_reporting_destroy');
+  late final _dd_crash_reporting_destroyPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_crash_reporting_t>)>
+      >('dd_crash_reporting_destroy');
   late final _dd_crash_reporting_destroy = _dd_crash_reporting_destroyPtr
       .asFunction<void Function(ffi.Pointer<dd_crash_reporting_t>)>();
 
@@ -1438,10 +1603,10 @@ class DdSdkFfi {
     return _dd_logger_config_init(config);
   }
 
-  late final _dd_logger_config_initPtr = _lookup<
-          ffi
-          .NativeFunction<ffi.Void Function(ffi.Pointer<dd_logger_config_t>)>>(
-      'dd_logger_config_init');
+  late final _dd_logger_config_initPtr =
+      _lookup<
+        ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_logger_config_t>)>
+      >('dd_logger_config_init');
   late final _dd_logger_config_init = _dd_logger_config_initPtr
       .asFunction<void Function(ffi.Pointer<dd_logger_config_t>)>();
 
@@ -1455,10 +1620,12 @@ class DdSdkFfi {
     return _dd_logger_config_set_remote_sample_rate(config, value);
   }
 
-  late final _dd_logger_config_set_remote_sample_ratePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_logger_config_t>,
-              ffi.Float)>>('dd_logger_config_set_remote_sample_rate');
+  late final _dd_logger_config_set_remote_sample_ratePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_logger_config_t>, ffi.Float)
+        >
+      >('dd_logger_config_set_remote_sample_rate');
   late final _dd_logger_config_set_remote_sample_rate =
       _dd_logger_config_set_remote_sample_ratePtr
           .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, double)>();
@@ -1476,16 +1643,19 @@ class DdSdkFfi {
     return _dd_logger_config_set_service(config, value);
   }
 
-  late final _dd_logger_config_set_servicePtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logger_config_set_servicePtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_logger_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_logger_config_set_service');
-  late final _dd_logger_config_set_service =
-      _dd_logger_config_set_servicePtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_logger_config_t>, ffi.Pointer<ffi.Char>)>();
+          )
+        >
+      >('dd_logger_config_set_service');
+  late final _dd_logger_config_set_service = _dd_logger_config_set_servicePtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_logger_config_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Sets the name used to identify a logger in messages emitted by that logger. If
   /// omitted, no 'logger.name' property will be present on log events.
@@ -1500,16 +1670,19 @@ class DdSdkFfi {
     return _dd_logger_config_set_name(config, value);
   }
 
-  late final _dd_logger_config_set_namePtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logger_config_set_namePtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_logger_config_t>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_logger_config_set_name');
-  late final _dd_logger_config_set_name =
-      _dd_logger_config_set_namePtr.asFunction<
-          void Function(
-              ffi.Pointer<dd_logger_config_t>, ffi.Pointer<ffi.Char>)>();
+          )
+        >
+      >('dd_logger_config_set_name');
+  late final _dd_logger_config_set_name = _dd_logger_config_set_namePtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_logger_config_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Sets the minimum log level at which messages will be sent to intake. Only messages at
   /// or above this level will be considered for sampling; all messages below that level
@@ -1522,10 +1695,12 @@ class DdSdkFfi {
     return _dd_logger_config_set_remote_log_threshold(config, value);
   }
 
-  late final _dd_logger_config_set_remote_log_thresholdPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_logger_config_t>,
-              ffi.Int32)>>('dd_logger_config_set_remote_log_threshold');
+  late final _dd_logger_config_set_remote_log_thresholdPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_logger_config_t>, ffi.Int32)
+        >
+      >('dd_logger_config_set_remote_log_threshold');
   late final _dd_logger_config_set_remote_log_threshold =
       _dd_logger_config_set_remote_log_thresholdPtr
           .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, int)>();
@@ -1542,10 +1717,12 @@ class DdSdkFfi {
     return _dd_logger_config_set_initial_attribute_capacity(config, value);
   }
 
-  late final _dd_logger_config_set_initial_attribute_capacityPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_logger_config_t>,
-              ffi.Size)>>('dd_logger_config_set_initial_attribute_capacity');
+  late final _dd_logger_config_set_initial_attribute_capacityPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_logger_config_t>, ffi.Size)
+        >
+      >('dd_logger_config_set_initial_attribute_capacity');
   late final _dd_logger_config_set_initial_attribute_capacity =
       _dd_logger_config_set_initial_attribute_capacityPtr
           .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, int)>();
@@ -1559,10 +1736,12 @@ class DdSdkFfi {
     return _dd_logger_config_set_enrich_with_rum_context(config, value);
   }
 
-  late final _dd_logger_config_set_enrich_with_rum_contextPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_logger_config_t>,
-              ffi.Bool)>>('dd_logger_config_set_enrich_with_rum_context');
+  late final _dd_logger_config_set_enrich_with_rum_contextPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_logger_config_t>, ffi.Bool)
+        >
+      >('dd_logger_config_set_enrich_with_rum_context');
   late final _dd_logger_config_set_enrich_with_rum_context =
       _dd_logger_config_set_enrich_with_rum_contextPtr
           .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, bool)>();
@@ -1573,10 +1752,12 @@ class DdSdkFfi {
     return _dd_logging_init(core);
   }
 
-  late final _dd_logging_initPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<dd_logging_t> Function(
-              ffi.Pointer<dd_core_t>)>>('dd_logging_init');
+  late final _dd_logging_initPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<dd_logging_t> Function(ffi.Pointer<dd_core_t>)
+        >
+      >('dd_logging_init');
   late final _dd_logging_init = _dd_logging_initPtr
       .asFunction<ffi.Pointer<dd_logging_t> Function(ffi.Pointer<dd_core_t>)>();
 
@@ -1588,8 +1769,8 @@ class DdSdkFfi {
 
   late final _dd_logging_destroyPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_logging_t>)>>(
-    'dd_logging_destroy',
-  );
+        'dd_logging_destroy',
+      );
   late final _dd_logging_destroy = _dd_logging_destroyPtr
       .asFunction<void Function(ffi.Pointer<dd_logging_t>)>();
 
@@ -1603,20 +1784,24 @@ class DdSdkFfi {
     return _dd_logging_add_attribute(logging, name, value);
   }
 
-  late final _dd_logging_add_attributePtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logging_add_attributePtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_logging_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_logging_add_attribute');
-  late final _dd_logging_add_attribute =
-      _dd_logging_add_attributePtr.asFunction<
-          void Function(
-            ffi.Pointer<dd_logging_t>,
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<dd_attribute_t>,
-          )>();
+          )
+        >
+      >('dd_logging_add_attribute');
+  late final _dd_logging_add_attribute = _dd_logging_add_attributePtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_logging_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Removes a global attribute value, if one has been previously added with the given
   /// name.
@@ -1627,13 +1812,16 @@ class DdSdkFfi {
     return _dd_logging_remove_attribute(logging, name);
   }
 
-  late final _dd_logging_remove_attributePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_logging_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_logging_remove_attribute');
-  late final _dd_logging_remove_attribute =
-      _dd_logging_remove_attributePtr.asFunction<
-          void Function(ffi.Pointer<dd_logging_t>, ffi.Pointer<ffi.Char>)>();
+  late final _dd_logging_remove_attributePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_logging_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_logging_remove_attribute');
+  late final _dd_logging_remove_attribute = _dd_logging_remove_attributePtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_logging_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Creates and returns a new logger with the given configuration. You MUST call
   /// dd_logger_destroy() when finished with the logger.
@@ -1646,17 +1834,22 @@ class DdSdkFfi {
     return _dd_logger_create(logging, config);
   }
 
-  late final _dd_logger_createPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logger_createPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Pointer<dd_logger_t> Function(
             ffi.Pointer<dd_logging_t>,
             ffi.Pointer<dd_logger_config_t>,
-          )>>('dd_logger_create');
-  late final _dd_logger_create = _dd_logger_createPtr.asFunction<
-      ffi.Pointer<dd_logger_t> Function(
-        ffi.Pointer<dd_logging_t>,
-        ffi.Pointer<dd_logger_config_t>,
-      )>();
+          )
+        >
+      >('dd_logger_create');
+  late final _dd_logger_create = _dd_logger_createPtr
+      .asFunction<
+        ffi.Pointer<dd_logger_t> Function(
+          ffi.Pointer<dd_logging_t>,
+          ffi.Pointer<dd_logger_config_t>,
+        )
+      >();
 
   /// Frees all memory allocated for the given logger.
   void dd_logger_destroy(ffi.Pointer<dd_logger_t> logger) {
@@ -1665,8 +1858,8 @@ class DdSdkFfi {
 
   late final _dd_logger_destroyPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_logger_t>)>>(
-    'dd_logger_destroy',
-  );
+        'dd_logger_destroy',
+      );
   late final _dd_logger_destroy = _dd_logger_destroyPtr
       .asFunction<void Function(ffi.Pointer<dd_logger_t>)>();
 
@@ -1681,19 +1874,24 @@ class DdSdkFfi {
     return _dd_logger_add_attribute(logger, name, value);
   }
 
-  late final _dd_logger_add_attributePtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logger_add_attributePtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_logger_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_logger_add_attribute');
-  late final _dd_logger_add_attribute = _dd_logger_add_attributePtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_logger_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_logger_add_attribute');
+  late final _dd_logger_add_attribute = _dd_logger_add_attributePtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_logger_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Removes a logger-level attribute value, if one has been previously added with the
   /// given name.
@@ -1704,13 +1902,16 @@ class DdSdkFfi {
     return _dd_logger_remove_attribute(logger, name);
   }
 
-  late final _dd_logger_remove_attributePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_logger_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_logger_remove_attribute');
-  late final _dd_logger_remove_attribute =
-      _dd_logger_remove_attributePtr.asFunction<
-          void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)>();
+  late final _dd_logger_remove_attributePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_logger_remove_attribute');
+  late final _dd_logger_remove_attribute = _dd_logger_remove_attributePtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Adds a custom tag to this logger.
   ///
@@ -1743,12 +1944,16 @@ class DdSdkFfi {
     return _dd_logger_add_tag(logger, tag);
   }
 
-  late final _dd_logger_add_tagPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_logger_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_logger_add_tag');
-  late final _dd_logger_add_tag = _dd_logger_add_tagPtr.asFunction<
-      void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)>();
+  late final _dd_logger_add_tagPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_logger_add_tag');
+  late final _dd_logger_add_tag = _dd_logger_add_tagPtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Adds a custom tag to this logger using separate key and value strings.
   void dd_logger_add_tag_kv(
@@ -1759,19 +1964,24 @@ class DdSdkFfi {
     return _dd_logger_add_tag_kv(logger, key, value);
   }
 
-  late final _dd_logger_add_tag_kvPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logger_add_tag_kvPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_logger_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
-          )>>('dd_logger_add_tag_kv');
-  late final _dd_logger_add_tag_kv = _dd_logger_add_tag_kvPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_logger_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<ffi.Char>,
-      )>();
+          )
+        >
+      >('dd_logger_add_tag_kv');
+  late final _dd_logger_add_tag_kv = _dd_logger_add_tag_kvPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_logger_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+        )
+      >();
 
   /// Removes any previously-added tag that exactly matches the given value (both key and
   /// value) after sanitization.
@@ -1782,12 +1992,16 @@ class DdSdkFfi {
     return _dd_logger_remove_tag(logger, tag);
   }
 
-  late final _dd_logger_remove_tagPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_logger_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_logger_remove_tag');
-  late final _dd_logger_remove_tag = _dd_logger_remove_tagPtr.asFunction<
-      void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)>();
+  late final _dd_logger_remove_tagPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_logger_remove_tag');
+  late final _dd_logger_remove_tag = _dd_logger_remove_tagPtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Removes all previously-added tags whose key matches `key` (after sanitization).
   void dd_logger_remove_tags_with_key(
@@ -1797,13 +2011,17 @@ class DdSdkFfi {
     return _dd_logger_remove_tags_with_key(logger, key);
   }
 
-  late final _dd_logger_remove_tags_with_keyPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_logger_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_logger_remove_tags_with_key');
+  late final _dd_logger_remove_tags_with_keyPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_logger_remove_tags_with_key');
   late final _dd_logger_remove_tags_with_key =
-      _dd_logger_remove_tags_with_keyPtr.asFunction<
-          void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)>();
+      _dd_logger_remove_tags_with_keyPtr
+          .asFunction<
+            void Function(ffi.Pointer<dd_logger_t>, ffi.Pointer<ffi.Char>)
+          >();
 
   /// Emits a log message at the given level.
   ///
@@ -1824,23 +2042,28 @@ class DdSdkFfi {
     return _dd_logger_log(logger, level, message, err, attributes);
   }
 
-  late final _dd_logger_logPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logger_logPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_logger_t>,
             ffi.Int32,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_log_error_t>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_logger_log');
-  late final _dd_logger_log = _dd_logger_logPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_logger_t>,
-        int,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_log_error_t>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_logger_log');
+  late final _dd_logger_log = _dd_logger_logPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_logger_t>,
+          int,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_log_error_t>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Emits a Debug-level message from the given logger, with optional error details and an
   /// optional set of extra attribute values.
@@ -1853,21 +2076,26 @@ class DdSdkFfi {
     return _dd_logger_debug(logger, message, err, attributes);
   }
 
-  late final _dd_logger_debugPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logger_debugPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_logger_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_log_error_t>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_logger_debug');
-  late final _dd_logger_debug = _dd_logger_debugPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_logger_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_log_error_t>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_logger_debug');
+  late final _dd_logger_debug = _dd_logger_debugPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_logger_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_log_error_t>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Emits an Info-level message from the given logger, with optional error details and an
   /// optional set of extra attribute values.
@@ -1880,21 +2108,26 @@ class DdSdkFfi {
     return _dd_logger_info(logger, message, err, attributes);
   }
 
-  late final _dd_logger_infoPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logger_infoPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_logger_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_log_error_t>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_logger_info');
-  late final _dd_logger_info = _dd_logger_infoPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_logger_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_log_error_t>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_logger_info');
+  late final _dd_logger_info = _dd_logger_infoPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_logger_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_log_error_t>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Emits a Notice-level message from the given logger, with optional error details and
   /// an optional set of extra attribute values.
@@ -1907,21 +2140,26 @@ class DdSdkFfi {
     return _dd_logger_notice(logger, message, err, attributes);
   }
 
-  late final _dd_logger_noticePtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logger_noticePtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_logger_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_log_error_t>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_logger_notice');
-  late final _dd_logger_notice = _dd_logger_noticePtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_logger_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_log_error_t>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_logger_notice');
+  late final _dd_logger_notice = _dd_logger_noticePtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_logger_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_log_error_t>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Emits a Warning-level message from the given logger, with optional error details and
   /// an optional set of extra attribute values.
@@ -1934,21 +2172,26 @@ class DdSdkFfi {
     return _dd_logger_warn(logger, message, err, attributes);
   }
 
-  late final _dd_logger_warnPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logger_warnPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_logger_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_log_error_t>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_logger_warn');
-  late final _dd_logger_warn = _dd_logger_warnPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_logger_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_log_error_t>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_logger_warn');
+  late final _dd_logger_warn = _dd_logger_warnPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_logger_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_log_error_t>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Emits an Error-level message from the given logger, with optional error details and
   /// an optional set of extra attribute values.
@@ -1964,21 +2207,26 @@ class DdSdkFfi {
     return _dd_logger_error(logger, message, err, attributes);
   }
 
-  late final _dd_logger_errorPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logger_errorPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_logger_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_log_error_t>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_logger_error');
-  late final _dd_logger_error = _dd_logger_errorPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_logger_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_log_error_t>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_logger_error');
+  late final _dd_logger_error = _dd_logger_errorPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_logger_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_log_error_t>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Emits a Critical-level message from the given logger, with optional error details and
   /// an optional set of extra attribute values.
@@ -1994,21 +2242,26 @@ class DdSdkFfi {
     return _dd_logger_critical(logger, message, err, attributes);
   }
 
-  late final _dd_logger_criticalPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_logger_criticalPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_logger_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_log_error_t>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_logger_critical');
-  late final _dd_logger_critical = _dd_logger_criticalPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_logger_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_log_error_t>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_logger_critical');
+  late final _dd_logger_critical = _dd_logger_criticalPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_logger_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_log_error_t>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Initializes a dd_rum_config_t with all required settings.
   ///
@@ -2020,12 +2273,16 @@ class DdSdkFfi {
     return _dd_rum_config_init(config, application_id);
   }
 
-  late final _dd_rum_config_initPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_rum_config_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_rum_config_init');
-  late final _dd_rum_config_init = _dd_rum_config_initPtr.asFunction<
-      void Function(ffi.Pointer<dd_rum_config_t>, ffi.Pointer<ffi.Char>)>();
+  late final _dd_rum_config_initPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_rum_config_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_rum_config_init');
+  late final _dd_rum_config_init = _dd_rum_config_initPtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_rum_config_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Sets the RUM Application ID, overriding the value passed to dd_rum_config_init().
   void dd_rum_config_set_application_id(
@@ -2035,13 +2292,17 @@ class DdSdkFfi {
     return _dd_rum_config_set_application_id(config, value);
   }
 
-  late final _dd_rum_config_set_application_idPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_rum_config_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_rum_config_set_application_id');
+  late final _dd_rum_config_set_application_idPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_rum_config_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_rum_config_set_application_id');
   late final _dd_rum_config_set_application_id =
-      _dd_rum_config_set_application_idPtr.asFunction<
-          void Function(ffi.Pointer<dd_rum_config_t>, ffi.Pointer<ffi.Char>)>();
+      _dd_rum_config_set_application_idPtr
+          .asFunction<
+            void Function(ffi.Pointer<dd_rum_config_t>, ffi.Pointer<ffi.Char>)
+          >();
 
   /// Sets the sample rate to a value between 0.0 and 100.0, indicating what percentage of
   /// RUM sessions should be sampled. At 100.0, events for all sessions are sent to intake;
@@ -2053,10 +2314,12 @@ class DdSdkFfi {
     return _dd_rum_config_set_session_sample_rate(config, value);
   }
 
-  late final _dd_rum_config_set_session_sample_ratePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_rum_config_t>,
-              ffi.Float)>>('dd_rum_config_set_session_sample_rate');
+  late final _dd_rum_config_set_session_sample_ratePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_rum_config_t>, ffi.Float)
+        >
+      >('dd_rum_config_set_session_sample_rate');
   late final _dd_rum_config_set_session_sample_rate =
       _dd_rum_config_set_session_sample_ratePtr
           .asFunction<void Function(ffi.Pointer<dd_rum_config_t>, double)>();
@@ -2070,17 +2333,22 @@ class DdSdkFfi {
     return _dd_rum_init(core, config);
   }
 
-  late final _dd_rum_initPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_initPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Pointer<dd_rum_t> Function(
             ffi.Pointer<dd_core_t>,
             ffi.Pointer<dd_rum_config_t>,
-          )>>('dd_rum_init');
-  late final _dd_rum_init = _dd_rum_initPtr.asFunction<
-      ffi.Pointer<dd_rum_t> Function(
-        ffi.Pointer<dd_core_t>,
-        ffi.Pointer<dd_rum_config_t>,
-      )>();
+          )
+        >
+      >('dd_rum_init');
+  late final _dd_rum_init = _dd_rum_initPtr
+      .asFunction<
+        ffi.Pointer<dd_rum_t> Function(
+          ffi.Pointer<dd_core_t>,
+          ffi.Pointer<dd_rum_config_t>,
+        )
+      >();
 
   /// Frees all memory allocated for the RUM feature.
   void dd_rum_destroy(ffi.Pointer<dd_rum_t> rum) {
@@ -2089,10 +2357,10 @@ class DdSdkFfi {
 
   late final _dd_rum_destroyPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_rum_t>)>>(
-    'dd_rum_destroy',
-  );
-  late final _dd_rum_destroy =
-      _dd_rum_destroyPtr.asFunction<void Function(ffi.Pointer<dd_rum_t>)>();
+        'dd_rum_destroy',
+      );
+  late final _dd_rum_destroy = _dd_rum_destroyPtr
+      .asFunction<void Function(ffi.Pointer<dd_rum_t>)>();
 
   /// Adds or updates a global attribute value that will be included with all RUM events
   /// emitted hereafter.
@@ -2104,19 +2372,24 @@ class DdSdkFfi {
     return _dd_rum_add_attribute(rum, name, value);
   }
 
-  late final _dd_rum_add_attributePtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_add_attributePtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_add_attribute');
-  late final _dd_rum_add_attribute = _dd_rum_add_attributePtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_rum_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_rum_add_attribute');
+  late final _dd_rum_add_attribute = _dd_rum_add_attributePtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Removes a global attribute value, if one has been previously added with the given
   /// name.
@@ -2127,12 +2400,16 @@ class DdSdkFfi {
     return _dd_rum_remove_attribute(rum, name);
   }
 
-  late final _dd_rum_remove_attributePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_rum_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_rum_remove_attribute');
-  late final _dd_rum_remove_attribute = _dd_rum_remove_attributePtr.asFunction<
-      void Function(ffi.Pointer<dd_rum_t>, ffi.Pointer<ffi.Char>)>();
+  late final _dd_rum_remove_attributePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_rum_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_rum_remove_attribute');
+  late final _dd_rum_remove_attribute = _dd_rum_remove_attributePtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_rum_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Explicitly stops the current RUM session, if one is active.
   ///
@@ -2146,8 +2423,8 @@ class DdSdkFfi {
 
   late final _dd_rum_stop_sessionPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_rum_t>)>>(
-    'dd_rum_stop_session',
-  );
+        'dd_rum_stop_session',
+      );
   late final _dd_rum_stop_session = _dd_rum_stop_sessionPtr
       .asFunction<void Function(ffi.Pointer<dd_rum_t>)>();
 
@@ -2173,21 +2450,26 @@ class DdSdkFfi {
     return _dd_rum_start_view(rum, key, name, attributes);
   }
 
-  late final _dd_rum_start_viewPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_start_viewPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_start_view');
-  late final _dd_rum_start_view = _dd_rum_start_viewPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_rum_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_rum_start_view');
+  late final _dd_rum_start_view = _dd_rum_start_viewPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Adds or updates a custom attribute value stored in the context of the current view.
   ///
@@ -2205,20 +2487,24 @@ class DdSdkFfi {
     return _dd_rum_add_view_attribute(rum, name, value);
   }
 
-  late final _dd_rum_add_view_attributePtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_add_view_attributePtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_add_view_attribute');
-  late final _dd_rum_add_view_attribute =
-      _dd_rum_add_view_attributePtr.asFunction<
-          void Function(
-            ffi.Pointer<dd_rum_t>,
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<dd_attribute_t>,
-          )>();
+          )
+        >
+      >('dd_rum_add_view_attribute');
+  late final _dd_rum_add_view_attribute = _dd_rum_add_view_attributePtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Removes any custom attribute value stored under the given name in the context of the
   /// current view.
@@ -2232,13 +2518,16 @@ class DdSdkFfi {
     return _dd_rum_remove_view_attribute(rum, name);
   }
 
-  late final _dd_rum_remove_view_attributePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Pointer<dd_rum_t>,
-              ffi.Pointer<ffi.Char>)>>('dd_rum_remove_view_attribute');
-  late final _dd_rum_remove_view_attribute =
-      _dd_rum_remove_view_attributePtr.asFunction<
-          void Function(ffi.Pointer<dd_rum_t>, ffi.Pointer<ffi.Char>)>();
+  late final _dd_rum_remove_view_attributePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_rum_t>, ffi.Pointer<ffi.Char>)
+        >
+      >('dd_rum_remove_view_attribute');
+  late final _dd_rum_remove_view_attribute = _dd_rum_remove_view_attributePtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_rum_t>, ffi.Pointer<ffi.Char>)
+      >();
 
   /// Stops any active RUM views that have the given key, optionally including the provided
   /// set of custom user attributes in the final event sent for that view.
@@ -2250,19 +2539,24 @@ class DdSdkFfi {
     return _dd_rum_stop_view(rum, key, attributes);
   }
 
-  late final _dd_rum_stop_viewPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_stop_viewPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_stop_view');
-  late final _dd_rum_stop_view = _dd_rum_stop_viewPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_rum_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_rum_stop_view');
+  late final _dd_rum_stop_view = _dd_rum_stop_viewPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Records a discrete user action of the given type in the context of the current view.
   /// A name is required, and the provided name will be used to identify the target of the
@@ -2298,21 +2592,26 @@ class DdSdkFfi {
     return _dd_rum_add_action(rum, type, name, attributes);
   }
 
-  late final _dd_rum_add_actionPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_add_actionPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Int32,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_add_action');
-  late final _dd_rum_add_action = _dd_rum_add_actionPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_rum_t>,
-        int,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_rum_add_action');
+  late final _dd_rum_add_action = _dd_rum_add_actionPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          int,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Records a continuous user action of the given type in the context of the current
   /// view. A name is required, and the provided name will be used to identify the target
@@ -2340,21 +2639,26 @@ class DdSdkFfi {
     return _dd_rum_start_action(rum, type, name, attributes);
   }
 
-  late final _dd_rum_start_actionPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_start_actionPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Int32,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_start_action');
-  late final _dd_rum_start_action = _dd_rum_start_actionPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_rum_t>,
-        int,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_rum_start_action');
+  late final _dd_rum_start_action = _dd_rum_start_actionPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          int,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Stops the currently-active action, if any exists in the current view.
   ///
@@ -2379,21 +2683,26 @@ class DdSdkFfi {
     return _dd_rum_stop_action(rum, type, name, attributes);
   }
 
-  late final _dd_rum_stop_actionPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_stop_actionPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Int32,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_stop_action');
-  late final _dd_rum_stop_action = _dd_rum_stop_actionPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_rum_t>,
-        int,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_rum_stop_action');
+  late final _dd_rum_stop_action = _dd_rum_stop_actionPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          int,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Records that the application has initiated an HTTP request, causing that request to
   /// be tracked as a RUM Resource in the context of the current view.
@@ -2415,23 +2724,28 @@ class DdSdkFfi {
     return _dd_rum_start_resource(rum, key, method, url, attributes);
   }
 
-  late final _dd_rum_start_resourcePtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_start_resourcePtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Int32,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_start_resource');
-  late final _dd_rum_start_resource = _dd_rum_start_resourcePtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_rum_t>,
-        ffi.Pointer<ffi.Char>,
-        int,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_rum_start_resource');
+  late final _dd_rum_start_resource = _dd_rum_start_resourcePtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          ffi.Pointer<ffi.Char>,
+          int,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Records that an HTTP request has been completed and has received a valid response. A
   /// response with a 400-level or 500-level status code is still considered a valid
@@ -2460,8 +2774,9 @@ class DdSdkFfi {
     return _dd_rum_stop_resource(rum, key, status_code, size, type, attributes);
   }
 
-  late final _dd_rum_stop_resourcePtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_stop_resourcePtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Pointer<ffi.Char>,
@@ -2469,16 +2784,20 @@ class DdSdkFfi {
             ffi.Int64,
             ffi.Int32,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_stop_resource');
-  late final _dd_rum_stop_resource = _dd_rum_stop_resourcePtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_rum_t>,
-        ffi.Pointer<ffi.Char>,
-        int,
-        int,
-        int,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_rum_stop_resource');
+  late final _dd_rum_stop_resource = _dd_rum_stop_resourcePtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          ffi.Pointer<ffi.Char>,
+          int,
+          int,
+          int,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Records that an HTTP request could not be completed due to an error (and therefore no
   /// response was received), or that processing of the response failed due to an error.
@@ -2520,8 +2839,9 @@ class DdSdkFfi {
     );
   }
 
-  late final _dd_rum_stop_resource_with_errorPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_stop_resource_with_errorPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Pointer<ffi.Char>,
@@ -2531,19 +2851,23 @@ class DdSdkFfi {
             ffi.Bool,
             ffi.Int32,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_stop_resource_with_error');
+          )
+        >
+      >('dd_rum_stop_resource_with_error');
   late final _dd_rum_stop_resource_with_error =
-      _dd_rum_stop_resource_with_errorPtr.asFunction<
-          void Function(
-            ffi.Pointer<dd_rum_t>,
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<ffi.Char>,
-            bool,
-            int,
-            ffi.Pointer<dd_attribute_t>,
-          )>();
+      _dd_rum_stop_resource_with_errorPtr
+          .asFunction<
+            void Function(
+              ffi.Pointer<dd_rum_t>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              ffi.Pointer<ffi.Char>,
+              bool,
+              int,
+              ffi.Pointer<dd_attribute_t>,
+            )
+          >();
 
   /// Reports that the application's first interactive frame has been presented to the
   /// user. The SDK computes the duration from process launch to this call and emits a
@@ -2559,8 +2883,8 @@ class DdSdkFfi {
 
   late final _dd_rum_report_app_display_initializedPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_rum_t>)>>(
-    'dd_rum_report_app_display_initialized',
-  );
+        'dd_rum_report_app_display_initialized',
+      );
   late final _dd_rum_report_app_display_initialized =
       _dd_rum_report_app_display_initializedPtr
           .asFunction<void Function(ffi.Pointer<dd_rum_t>)>();
@@ -2580,8 +2904,8 @@ class DdSdkFfi {
 
   late final _dd_rum_report_app_fully_displayedPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<dd_rum_t>)>>(
-    'dd_rum_report_app_fully_displayed',
-  );
+        'dd_rum_report_app_fully_displayed',
+      );
   late final _dd_rum_report_app_fully_displayed =
       _dd_rum_report_app_fully_displayedPtr
           .asFunction<void Function(ffi.Pointer<dd_rum_t>)>();
@@ -2603,21 +2927,26 @@ class DdSdkFfi {
     return _dd_rum_start_operation(rum, name, operation_key, attributes);
   }
 
-  late final _dd_rum_start_operationPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_start_operationPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_start_operation');
-  late final _dd_rum_start_operation = _dd_rum_start_operationPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_rum_t>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_rum_start_operation');
+  late final _dd_rum_start_operation = _dd_rum_start_operationPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Records the successful completion of a operation.
   ///
@@ -2636,22 +2965,26 @@ class DdSdkFfi {
     return _dd_rum_succeed_operation(rum, name, operation_key, attributes);
   }
 
-  late final _dd_rum_succeed_operationPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_succeed_operationPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_succeed_operation');
-  late final _dd_rum_succeed_operation =
-      _dd_rum_succeed_operationPtr.asFunction<
-          void Function(
-            ffi.Pointer<dd_rum_t>,
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<dd_attribute_t>,
-          )>();
+          )
+        >
+      >('dd_rum_succeed_operation');
+  late final _dd_rum_succeed_operation = _dd_rum_succeed_operationPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Records the failure of a operation.
   ///
@@ -2678,23 +3011,28 @@ class DdSdkFfi {
     );
   }
 
-  late final _dd_rum_fail_operationPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_fail_operationPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Pointer<ffi.Char>,
             ffi.Int32,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_fail_operation');
-  late final _dd_rum_fail_operation = _dd_rum_fail_operationPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_rum_t>,
-        ffi.Pointer<ffi.Char>,
-        int,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_rum_fail_operation');
+  late final _dd_rum_fail_operation = _dd_rum_fail_operationPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          ffi.Pointer<ffi.Char>,
+          int,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Records that the application has encountered an error in the context of the current
   /// view.
@@ -2726,8 +3064,9 @@ class DdSdkFfi {
     );
   }
 
-  late final _dd_rum_add_errorPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_add_errorPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             ffi.Int32,
@@ -2735,16 +3074,20 @@ class DdSdkFfi {
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_add_error');
-  late final _dd_rum_add_error = _dd_rum_add_errorPtr.asFunction<
-      void Function(
-        ffi.Pointer<dd_rum_t>,
-        int,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<ffi.Char>,
-        ffi.Pointer<dd_attribute_t>,
-      )>();
+          )
+        >
+      >('dd_rum_add_error');
+  late final _dd_rum_add_error = _dd_rum_add_errorPtr
+      .asFunction<
+        void Function(
+          ffi.Pointer<dd_rum_t>,
+          int,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<dd_attribute_t>,
+        )
+      >();
 
   /// Records that the application encountered a long task (a period during which the main
   /// thread was blocked for an extended duration) in the context of the current view.
@@ -2760,15 +3103,20 @@ class DdSdkFfi {
     return _dd_rum_add_long_task(rum, duration, attributes);
   }
 
-  late final _dd_rum_add_long_taskPtr = _lookup<
-      ffi.NativeFunction<
+  late final _dd_rum_add_long_taskPtr =
+      _lookup<
+        ffi.NativeFunction<
           ffi.Void Function(
             ffi.Pointer<dd_rum_t>,
             dd_duration_t,
             ffi.Pointer<dd_attribute_t>,
-          )>>('dd_rum_add_long_task');
-  late final _dd_rum_add_long_task = _dd_rum_add_long_taskPtr.asFunction<
-      void Function(ffi.Pointer<dd_rum_t>, int, ffi.Pointer<dd_attribute_t>)>();
+          )
+        >
+      >('dd_rum_add_long_task');
+  late final _dd_rum_add_long_task = _dd_rum_add_long_taskPtr
+      .asFunction<
+        void Function(ffi.Pointer<dd_rum_t>, int, ffi.Pointer<dd_attribute_t>)
+      >();
 
   /// Returns the version information stamped into this build of the Datadog SDK.
   ///
@@ -2780,8 +3128,8 @@ class DdSdkFfi {
 
   late final _dd_get_version_infoPtr =
       _lookup<ffi.NativeFunction<dd_version_info_t Function()>>(
-    'dd_get_version_info',
-  );
+        'dd_get_version_info',
+      );
   late final _dd_get_version_info = _dd_get_version_infoPtr
       .asFunction<dd_version_info_t Function()>(isLeaf: true);
 }
@@ -2991,16 +3339,18 @@ final class dd_core_config extends ffi.Struct {
 /// Callback function used to handle a single diagnostic message emitted by the SDK. If
 /// you supply a value to dd_core_config_set_diagnostic_handler_userdata(), that value
 /// will be passed as `userdata`; otherwise `userdata` will be NULL.
-typedef dd_diagnostic_handler_t
-    = ffi.Pointer<ffi.NativeFunction<dd_diagnostic_handler_tFunction>>;
-typedef dd_diagnostic_handler_tFunction = ffi.Void Function(
-  ffi.Pointer<dd_diagnostic_message_t> message,
-  ffi.Pointer<ffi.Void> userdata,
-);
-typedef Dartdd_diagnostic_handler_tFunction = void Function(
-  ffi.Pointer<dd_diagnostic_message_t> message,
-  ffi.Pointer<ffi.Void> userdata,
-);
+typedef dd_diagnostic_handler_t =
+    ffi.Pointer<ffi.NativeFunction<dd_diagnostic_handler_tFunction>>;
+typedef dd_diagnostic_handler_tFunction =
+    ffi.Void Function(
+      ffi.Pointer<dd_diagnostic_message_t> message,
+      ffi.Pointer<ffi.Void> userdata,
+    );
+typedef Dartdd_diagnostic_handler_tFunction =
+    void Function(
+      ffi.Pointer<dd_diagnostic_message_t> message,
+      ffi.Pointer<ffi.Void> userdata,
+    );
 
 /// FOR INTERNAL USE ONLY - These values are not part of the public API and may change
 /// without notice. Do not use in production code.

@@ -72,8 +72,9 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
       _sdk.dd_core_config_init(
         cfg,
         configuration.clientToken.toNativeChar(allocator: arena),
-        (configuration.service ?? _defaultServiceName())
-            .toNativeChar(allocator: arena),
+        (configuration.service ?? _defaultServiceName()).toNativeChar(
+          allocator: arena,
+        ),
         configuration.env.toNativeChar(allocator: arena),
       );
 
@@ -82,7 +83,9 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
       // or to IDEs. For that reason we override the diagnostic output of the C++
       // SDK and set the threshold to match the SDK verbosity at initialization time.
       _sdk.dd_core_config_set_diagnostic_threshold(
-          cfg, _verbosityToC(internalLogger.sdkVerbosity));
+        cfg,
+        _verbosityToC(internalLogger.sdkVerbosity),
+      );
 
       // Don't bother overriding diagnostic output outside of kDebugMode, as we don't
       // want t to print outside of debug mode.
@@ -90,24 +93,29 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
         _pluginLib = _openPluginLibrary(internalLogger);
         if (_pluginLib case final pluginLib?) {
           try {
-            _pluginFree = pluginLib.lookupFunction<_DdFlutterFreeNative,
-                _DdFlutterFreeDart>('dd_flutter_free');
+            _pluginFree = pluginLib
+                .lookupFunction<_DdFlutterFreeNative, _DdFlutterFreeDart>(
+                  'dd_flutter_free',
+                );
             _diagnosticCallable =
                 ffi.NativeCallable<_DiagnosticCallbackNative>.listener(
-                    _onDiagnostic);
+                  _onDiagnostic,
+                );
             pluginLib.lookupFunction<_SetListenerNative, _SetListenerDart>(
-                    'dd_flutter_set_diagnostic_listener')(
-                _diagnosticCallable!.nativeFunction);
-            final handler =
-                pluginLib.lookup<ffi.NativeFunction<_DiagnosticHandlerNative>>(
-                    'dd_flutter_diagnostic_handler');
+              'dd_flutter_set_diagnostic_listener',
+            )(_diagnosticCallable!.nativeFunction);
+            final handler = pluginLib
+                .lookup<ffi.NativeFunction<_DiagnosticHandlerNative>>(
+                  'dd_flutter_diagnostic_handler',
+                );
             _sdk.dd_core_config_set_diagnostic_handler(cfg, handler);
           } catch (e, st) {
             internalLogger.warn("Could not setup SDK diagnostic logging.");
             internalLogger.sendToDatadog(
-                "Error setting up SDK diagnostic logging: $e",
-                st,
-                e.runtimeType.toString());
+              "Error setting up SDK diagnostic logging: $e",
+              st,
+              e.runtimeType.toString(),
+            );
           }
         }
       }
@@ -117,54 +125,80 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
       final storagePath = _storagePath(configuration.service ?? 'datadog');
       Directory(storagePath).createSync(recursive: true);
       _sdk.dd_core_config_set_application_storage_path(
-          cfg, storagePath.toNativeChar(allocator: arena));
+        cfg,
+        storagePath.toNativeChar(allocator: arena),
+      );
 
       final additionalConfig = configuration.additionalConfig;
 
       final source = additionalConfig[DatadogConfigKey.source] as String?;
       if (source != null) {
         _sdk.dd_core_config_internal_set_source(
-            cfg, source.toNativeChar(allocator: arena));
+          cfg,
+          source.toNativeChar(allocator: arena),
+        );
       }
       final sdkVersion =
           additionalConfig[DatadogConfigKey.sdkVersion] as String?;
       if (sdkVersion != null) {
         _sdk.dd_core_config_internal_set_sdk_version(
-            cfg, sdkVersion.toNativeChar(allocator: arena));
+          cfg,
+          sdkVersion.toNativeChar(allocator: arena),
+        );
       }
-      final version = configuration.versionTag ??
+      final version =
+          configuration.versionTag ??
           additionalConfig[DatadogConfigKey.version] as String?;
       if (version != null) {
         _sdk.dd_core_config_set_version(
-            cfg, version.toNativeChar(allocator: arena));
+          cfg,
+          version.toNativeChar(allocator: arena),
+        );
       }
-      final variant = configuration.flavor ??
+      final variant =
+          configuration.flavor ??
           additionalConfig[DatadogConfigKey.variant] as String?;
       if (variant != null) {
         _sdk.dd_core_config_set_variant(
-            cfg, variant.toNativeChar(allocator: arena));
+          cfg,
+          variant.toNativeChar(allocator: arena),
+        );
       }
       if (configuration.batchSize != null) {
         _sdk.dd_core_config_set_batch_size(
-            cfg, _batchSizeToC(configuration.batchSize!));
+          cfg,
+          _batchSizeToC(configuration.batchSize!),
+        );
       }
       if (configuration.uploadFrequency != null) {
         _sdk.dd_core_config_set_upload_frequency(
-            cfg, _uploadFreqToC(configuration.uploadFrequency!));
+          cfg,
+          _uploadFreqToC(configuration.uploadFrequency!),
+        );
       }
       if (configuration.batchProcessingLevel != null) {
         _sdk.dd_core_config_set_batch_processing_level(
-            cfg, _batchLevelToC(configuration.batchProcessingLevel!));
+          cfg,
+          _batchLevelToC(configuration.batchProcessingLevel!),
+        );
       }
-      final customEndpoint = configuration.rumConfiguration?.customEndpoint ??
+      final customEndpoint =
+          configuration.rumConfiguration?.customEndpoint ??
           configuration.loggingConfiguration?.customEndpoint;
       if (customEndpoint != null) {
-        _sdk.dd_core_config_internal_set_custom_endpoint_url(cfg,
-            _toEndpointBase(customEndpoint).toNativeChar(allocator: arena));
+        _sdk.dd_core_config_internal_set_custom_endpoint_url(
+          cfg,
+          _toEndpointBase(customEndpoint).toNativeChar(allocator: arena),
+        );
       }
 
       return _sdk.dd_core_create(cfg, _consentToC(trackingConsent));
     });
+
+    if (_core == null || _core!.address == 0) {
+      internalLogger.warn("Failure setting up Datadog Core.");
+      return PlatformInitializationResult(logs: false, rum: false);
+    }
 
     // Features must be registered BEFORE dd_core_start.
     ffi.Pointer<dd_logging>? logging;
@@ -178,16 +212,23 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
       rum = using((arena) {
         final cfg = arena<dd_rum_config>();
         _sdk.dd_rum_config_init(
-            cfg, rumConfig.applicationId.toNativeChar(allocator: arena));
+          cfg,
+          rumConfig.applicationId.toNativeChar(allocator: arena),
+        );
         if (rumConfig.sessionSamplingRate != 100.0) {
           _sdk.dd_rum_config_set_session_sample_rate(
-              cfg, rumConfig.sessionSamplingRate.toDouble());
+            cfg,
+            rumConfig.sessionSamplingRate.toDouble(),
+          );
         }
         return _sdk.dd_rum_init(_core!, cfg);
       });
     }
 
-    _sdk.dd_core_start(_core!);
+    if (!_sdk.dd_core_start(_core!)) {
+      internalLogger.warn("Failure setting up Datadog Core.");
+      return PlatformInitializationResult(logs: false, rum: false);
+    }
 
     bool logsEnabled = false;
     bool rumEnabled = false;
@@ -222,7 +263,9 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
     _isolateConfigPort = ReceivePort();
     _isolateConfigPort!.listen(_handleIsolateConfigRequest);
     IsolateNameServer.registerPortWithName(
-        _isolateConfigPort!.sendPort, _kIsolatePortName);
+      _isolateConfigPort!.sendPort,
+      _kIsolatePortName,
+    );
 
     return PlatformInitializationResult(logs: logsEnabled, rum: rumEnabled);
   }
@@ -232,21 +275,23 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
     final token = _rootIsolateToken;
     final config = _capturedConfig;
     if (token == null || config == null) return;
-    message.sendPort.send(_DesktopIsolateAttachResponse(
-      isolateAttachResponse: IsolateAttachResponse(
-        rootIsolateToken: token,
-        capturedConfiguration: config,
+    message.sendPort.send(
+      _DesktopIsolateAttachResponse(
+        isolateAttachResponse: IsolateAttachResponse(
+          rootIsolateToken: token,
+          capturedConfiguration: config,
+        ),
+        coreAddress: _core?.address ?? 0,
+        loggingAddress: _logging?.address ?? 0,
+        rumAddress: _rum?.address ?? 0,
       ),
-      coreAddress: _core?.address ?? 0,
-      loggingAddress: _logging?.address ?? 0,
-      rumAddress: _rum?.address ?? 0,
-    ));
+    );
   }
 
   @override
   Future<AttachResponse?> attachToExisting(
-          DatadogAttachConfiguration attachConfig) async =>
-      null;
+    DatadogAttachConfiguration attachConfig,
+  ) async => null;
 
   @override
   Future<IsolateAttachResponse?> attachToIsolate() async {
@@ -255,8 +300,19 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
 
     final responsePort = ReceivePort();
     configPort.send(_IsolateAttachRequest(sendPort: responsePort.sendPort));
-    final response = await responsePort.first as _DesktopIsolateAttachResponse;
+    final response =
+        await responsePort.first.timeout(
+              Duration(seconds: 1),
+              onTimeout: () {
+                return null;
+              },
+            )
+            as _DesktopIsolateAttachResponse?;
     responsePort.close();
+
+    if (response == null) {
+      return null;
+    }
 
     if (response.coreAddress == 0) return null;
     _core = ffi.Pointer<dd_core>.fromAddress(response.coreAddress);
@@ -280,7 +336,8 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
   @override
   Future<void> setSdkVerbosity(CoreLoggerLevel verbosity) async {
     _internalLogger?.warn(
-        'setSdkVerbosity is not supported on Desktop platforms after initialization.');
+      'setSdkVerbosity is not supported on Desktop platforms after initialization.',
+    );
   }
 
   @override
@@ -327,7 +384,9 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
 
     using((arena) {
       _sdk.dd_core_add_user_extra_info(
-          core, buildAttrObject(extraInfo, arena, _sdk));
+        core,
+        buildAttrObject(extraInfo, arena, _sdk),
+      );
     });
   }
 
@@ -364,7 +423,9 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
 
     using((arena) {
       _sdk.dd_core_add_account_extra_info(
-          core, buildAttrObject(extraInfo, arena, _sdk));
+        core,
+        buildAttrObject(extraInfo, arena, _sdk),
+      );
     });
   }
 
@@ -373,7 +434,10 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
 
   @override
   Future<void> sendTelemetryError(
-      String message, String? stack, String? kind) async {}
+    String message,
+    String? stack,
+    String? kind,
+  ) async {}
 
   @override
   Future<void> flush() async {}
@@ -402,7 +466,9 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
 
   @override
   Future<void> updateTelemetryConfiguration(
-      String property, bool value) async {}
+    String property,
+    bool value,
+  ) async {}
 
   // The C SDK takes a base URL and appends /api/v2/rum, /api/v2/logs, etc. itself.
   // Strip any trailing slash (C SDK validation rejects URLs ending with /).
@@ -516,30 +582,37 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
       return lib;
     } catch (e, st) {
       internalLogger.warn(
-          "Could not find desktop plugin library to initialize SDK diagnostic logging.");
+        "Could not find desktop plugin library to initialize SDK diagnostic logging.",
+      );
       internalLogger.sendToDatadog(
-          "Could not find desktop plugin library to initialize SDK diagnostic logging: $e",
-          st,
-          e.runtimeType.toString());
+        "Could not find desktop plugin library to initialize SDK diagnostic logging: $e",
+        st,
+        e.runtimeType.toString(),
+      );
     }
     return null;
   }
 }
 
 // FFI typedefs
-typedef _DiagnosticCallbackNative = ffi.Void Function(
-    ffi.Int32, ffi.Pointer<ffi.Char>);
+typedef _DiagnosticCallbackNative =
+    ffi.Void Function(ffi.Int32, ffi.Pointer<ffi.Char>);
 
 typedef _DdFlutterFreeNative = ffi.Void Function(ffi.Pointer<ffi.Void>);
 typedef _DdFlutterFreeDart = void Function(ffi.Pointer<ffi.Void>);
 
-typedef _SetListenerNative = ffi.Void Function(
-    ffi.Pointer<ffi.NativeFunction<_DiagnosticCallbackNative>>);
-typedef _SetListenerDart = void Function(
-    ffi.Pointer<ffi.NativeFunction<_DiagnosticCallbackNative>>);
+typedef _SetListenerNative =
+    ffi.Void Function(
+      ffi.Pointer<ffi.NativeFunction<_DiagnosticCallbackNative>>,
+    );
+typedef _SetListenerDart =
+    void Function(ffi.Pointer<ffi.NativeFunction<_DiagnosticCallbackNative>>);
 
-typedef _DiagnosticHandlerNative = ffi.Void Function(
-    ffi.Pointer<dd_diagnostic_message_t>, ffi.Pointer<ffi.Void>);
+typedef _DiagnosticHandlerNative =
+    ffi.Void Function(
+      ffi.Pointer<dd_diagnostic_message_t>,
+      ffi.Pointer<ffi.Void>,
+    );
 
 // Holds the dd_flutter_free function from the plugin shim DLL.
 // Set before _diagnosticCallable is created; read by the top-level _onDiagnostic.
