@@ -14,9 +14,8 @@ if ($LASTEXITCODE -ne 0) { throw "dart pub global activate melos failed with exi
 dart pub global activate junitreport
 if ($LASTEXITCODE -ne 0) { throw "dart pub global activate junitreport failed with exit code $LASTEXITCODE" }
 
-# `dart pub global activate` installs executables here; the Flutter SDK baked into the
-# toolchain image already adds it to PATH, but this keeps ci-pre.ps1 self-contained.
-$env:PATH = "$env:PATH;$env:APPDATA\Pub\Cache\bin"
+# `dart pub global activate` installs executables here
+$env:PATH = "$env:PATH;C:\Users\ContainerAdministrator\AppData\Pub\Cache\bin"
 
 melos bootstrap
 if ($LASTEXITCODE -ne 0) { throw "melos bootstrap failed with exit code $LASTEXITCODE" }
