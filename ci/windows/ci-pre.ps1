@@ -15,7 +15,7 @@ dart pub global activate junitreport
 if ($LASTEXITCODE -ne 0) { throw "dart pub global activate junitreport failed with exit code $LASTEXITCODE" }
 
 # `dart pub global activate` installs executables here
-$env:PATH = "$env:PATH;C:\Users\ContainerAdministrator\AppData\Pub\Cache\bin"
+$env:PATH = "$env:PATH;C:\Users\ContainerAdministrator\AppData\Local\Pub\Cache\bin"
 
 melos bootstrap
 if ($LASTEXITCODE -ne 0) { throw "melos bootstrap failed with exit code $LASTEXITCODE" }
