@@ -74,6 +74,8 @@ void _fillAttr(
     }
   } else {
     sdk.dd_attribute_set_string(
-        out, value.toString().toNativeChar(allocator: arena));
+      out,
+      value.toString().toNativeChar(allocator: arena),
+    );
   }
 }

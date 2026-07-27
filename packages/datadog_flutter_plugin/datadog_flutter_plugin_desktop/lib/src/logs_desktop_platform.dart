@@ -20,11 +20,13 @@ class DdLogsDesktopPlatform extends DdLogsPlatform {
   final Map<String, ffi.Pointer<dd_logger>> _loggers = {};
 
   DdLogsDesktopPlatform(this._sdk, ffi.Pointer<dd_logging> logging)
-      : _logging = logging;
+    : _logging = logging;
 
   @override
   Future<void> enable(
-      InternalLogger logger, DatadogLoggingConfiguration config) async {
+    InternalLogger logger,
+    DatadogLoggingConfiguration config,
+  ) async {
     // Feature was initialized in DatadogDesktopPlatform.initialize() before dd_core_start.
     // customEndpoint must be set on the core config before dd_core_start, not here.
   }
@@ -61,13 +63,17 @@ class DdLogsDesktopPlatform extends DdLogsPlatform {
     if (logging == null) return;
     using((arena) {
       _sdk.dd_logging_remove_attribute(
-          logging, key.toNativeChar(allocator: arena));
+        logging,
+        key.toNativeChar(allocator: arena),
+      );
     });
   }
 
   @override
   Future<void> createLogger(
-      String loggerHandle, DatadogLoggerConfiguration config) async {
+    String loggerHandle,
+    DatadogLoggerConfiguration config,
+  ) async {
     final logging = _logging;
     if (logging == null) return;
     using((arena) {
@@ -76,19 +82,29 @@ class DdLogsDesktopPlatform extends DdLogsPlatform {
 
       if (config.service != null) {
         _sdk.dd_logger_config_set_service(
-            cfg, config.service!.toNativeChar(allocator: arena));
+          cfg,
+          config.service!.toNativeChar(allocator: arena),
+        );
       }
       if (config.name != null) {
         _sdk.dd_logger_config_set_name(
-            cfg, config.name!.toNativeChar(allocator: arena));
+          cfg,
+          config.name!.toNativeChar(allocator: arena),
+        );
       }
 
       _sdk.dd_logger_config_set_remote_sample_rate(
-          cfg, config.remoteSampleRate.toDouble());
+        cfg,
+        config.remoteSampleRate.toDouble(),
+      );
       _sdk.dd_logger_config_set_remote_log_threshold(
-          cfg, _logLevelToC(config.remoteLogThreshold));
+        cfg,
+        _logLevelToC(config.remoteLogThreshold),
+      );
       _sdk.dd_logger_config_set_enrich_with_rum_context(
-          cfg, config.bundleWithRumEnabled);
+        cfg,
+        config.bundleWithRumEnabled,
+      );
 
       _loggers[loggerHandle] = _sdk.dd_logger_create(logging, cfg);
     });
@@ -133,18 +149,26 @@ class DdLogsDesktopPlatform extends DdLogsPlatform {
         err.ref.kind = errorKind.toNativeChar(allocator: arena);
         err.ref.stack =
             errorStackTrace?.toString().toNativeChar(allocator: arena) ??
-                ffi.nullptr;
+            ffi.nullptr;
         _sdk.dd_logger_log(logger, _logLevelToC(level), msgPtr, err, attrs);
       } else {
         _sdk.dd_logger_log(
-            logger, _logLevelToC(level), msgPtr, ffi.nullptr, attrs);
+          logger,
+          _logLevelToC(level),
+          msgPtr,
+          ffi.nullptr,
+          attrs,
+        );
       }
     });
   }
 
   @override
   Future<void> addAttribute(
-      String loggerHandle, String key, Object value) async {
+    String loggerHandle,
+    String key,
+    Object value,
+  ) async {
     final logger = _loggers[loggerHandle];
     if (logger == null) return;
     using((arena) {
@@ -162,7 +186,9 @@ class DdLogsDesktopPlatform extends DdLogsPlatform {
     if (logger == null) return;
     using((arena) {
       _sdk.dd_logger_remove_attribute(
-          logger, key.toNativeChar(allocator: arena));
+        logger,
+        key.toNativeChar(allocator: arena),
+      );
     });
   }
 
@@ -198,7 +224,9 @@ class DdLogsDesktopPlatform extends DdLogsPlatform {
     if (logger == null) return;
     using((arena) {
       _sdk.dd_logger_remove_tags_with_key(
-          logger, key.toNativeChar(allocator: arena));
+        logger,
+        key.toNativeChar(allocator: arena),
+      );
     });
   }
 

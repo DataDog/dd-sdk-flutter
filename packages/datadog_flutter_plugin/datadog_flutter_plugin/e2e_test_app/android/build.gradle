@@ -12,6 +12,18 @@ subprojects {
     project.evaluationDependsOn(':app')
 }
 
+// The jni package skips applying the legacy `kotlin-android` plugin under AGP 9,
+// assuming AGP's built-in Kotlin support will provide the `kotlin {}` extension it
+// calls unconditionally. Our gradle.properties disables built-in Kotlin
+// (android.builtInKotlin=false) to work around a separate conflict with Flutter's
+// bundled integration_test plugin, so apply kotlin-android to jni ourselves instead.
+// TODO(RUM-17789): remove once jni ships a fix (dart-lang/native#3497).
+subprojects {
+    if (project.name == 'jni') {
+        pluginManager.apply('kotlin-android')
+    }
+}
+
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }

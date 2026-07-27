@@ -14,9 +14,20 @@ headers:
     - 'example/build/windows/x64/_deps/dd-sdk-cpp-src/include-c/**'
 
 functions:
+  # Only pure value/struct functions are safe to mark as leaf calls. Anything that
+  # touches a dd_core_t/dd_logging_t/dd_logger_t/dd_rum_t handle can transitively
+  # trigger the diagnostic handler callback (registered via
+  # dd_core_config_set_diagnostic_handler), which re-enters Dart via
+  # NativeCallable.listener. Leaf calls are not allowed to re-enter Dart, so marking
+  # those functions as leaf can crash/hang.
   leaf:
     include:
-      - '.*'
+      - 'dd_timestamp_.*'
+      - 'dd_duration_.*'
+      - 'dd_uuid_.*'
+      - 'dd_attribute_.*'
+      - 'dd_get_version_info'
+      - 'dd_stderr_diagnostic_handler'
 
 compiler-opts:
   - '-Iexample/build/windows/x64/_deps/dd-sdk-cpp-src/include-c'
