@@ -51,6 +51,7 @@ RUN set -x \
     pkg-config \
     libblkid-dev \
     liblzma-dev \
+    libcurl4-openssl-dev \
     xvfb \
     dbus-x11
 
