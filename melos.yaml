@@ -24,12 +24,15 @@ scripts:
     packageFilters:
       dirExists: example/ios
 
+  # `rm` isn't a cmd.exe builtin and the Windows toolchain image doesn't provide it;
+  # `del` isn't a bash command either, so try both and let the `||` fallback pick the
+  # one available on the current shell.
   full_clean:
     exec:
       concurrency: 1
     run:
-      flutter clean && 
-      rm pubspec.lock 
+      flutter clean &&
+      (rm pubspec.lock || del pubspec.lock)
 
   build:android:
     exec:
@@ -341,32 +344,25 @@ scripts:
     packageFilters:
       dependsOn: build_runner
   
+  # `%MELOS_ROOT_PATH%` is only expanded by cmd.exe (Windows); on bash it's a literal
+  # string that fails to resolve, so `dart` exits non-zero and the `||` fallback runs
+  # the bash-style `$MELOS_ROOT_PATH` form instead. This lets one line work on both
+  # shells melos may invoke, without needing to globally activate the script.
   generate_env:
-    exec: |
-      echo "Generating .env"
-      tee .env > /dev/null << END
-      # Edit this file with your Datadog client token, environment and application id
-      DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN
-      DD_APPLICATION_ID=$DD_APPLICATION_ID
-      DD_ENV=prod
-      END
+    exec: >
+      dart %MELOS_ROOT_PATH%/tools/ci/bin/generate_env.dart ||
+      dart $MELOS_ROOT_PATH/tools/ci/bin/generate_env.dart
     packageFilters:
-      scope: 
+      scope:
         - "*example*"
         - "*integration_test_app*"
 
   generate_env:e2e:
-    exec: |
-      echo "Generating .env"
-      tee .env > /dev/null << END
-      # Edit this file with your Datadog client token, environment and application id
-      DD_CLIENT_TOKEN=$DD_E2E_CLIENT_TOKEN
-      DD_APPLICATION_ID=$DD_E2E_APPLICATION_ID
-      DD_E2E_IS_ON_CI=${IS_ON_CI:-false}
-      DD_ENV=prod
-      END
+    exec: >
+      dart %MELOS_ROOT_PATH%/tools/ci/bin/generate_env.dart --e2e ||
+      dart $MELOS_ROOT_PATH/tools/ci/bin/generate_env.dart --e2e
     packageFilters:
-      scope: 
+      scope:
         - "*e2e_test_app*"
 
   pin:ios:
