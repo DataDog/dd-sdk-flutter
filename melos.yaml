@@ -55,6 +55,13 @@ scripts:
     packageFilters:
       dirExists: example/windows
 
+  build:linux:
+    exec:
+      concurrency: 1
+    run: cd example && flutter build linux --release
+    packageFilters:
+      dirExists: example/linux
+
   dartfmt_check:
     exec: dart format --output=none --set-exit-if-changed .
   
@@ -131,6 +138,15 @@ scripts:
         - 'datadog_flutter_plugin_web'
 
   unit_test:windows:
+    exec:
+      concurrency: 1
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine
+    packageFilters:
+      dirExists: 'test'
+      ignore:
+        - 'datadog_flutter_plugin_web'
+
+  unit_test:linux:
     exec:
       concurrency: 1
     run: dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine
@@ -268,6 +284,32 @@ scripts:
   # have a separate target just for it that is called by `integration_test:windows``
   integration_test:windows:main:
     exec: cd integration_test_app && dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
+  integration_test:linux:
+    run: melos integration_test:linux:main && melos integration_test:linux:other
+
+  # Desktop platforms can't run the whole integration_test directory in one `flutter test`
+  # invocation, so this uses tools/ci/bin/desktop_integration_tests.dart to run each
+  # test file individually, same idea as web's per-file `flutter drive` runner.
+  integration_test:linux:other:
+    exec:
+      concurrency: 1
+    run: |
+      cd example
+      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
+    packageFilters:
+      dirExists: 'example/integration_test'
+      ignore:
+        - 'datadog_flutter_plugin'
+
+  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
+  # have a separate target just for it that is called by `integration_test:linux``
+  integration_test:linux:main:
+    exec: |
+      cd integration_test_app
+      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
