@@ -18,6 +18,7 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifyOrder
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
@@ -27,6 +28,7 @@ internal class ResourceWriterTest {
     val mockScope = mockk<FeatureScope>()
     val mockDataStoreManager = mockk<ResourceDataStoreManager>()
 
+    @BeforeEach
     fun setUp() {
         every {
             mockSdkCore.getFeature(ResourceFeature.SESSION_REPLAY_RESOURCES_FEATURE_NAME)
@@ -47,7 +49,6 @@ internal class ResourceWriterTest {
         @StringForgery resourceData: String
     ) {
         // Given
-        setUp()
         every { mockDataStoreManager.isPreviouslySentResource(identifier) } returns false
         every { mockDataStoreManager.isReady() } returns true
         val writer = DefaultResourceWriter(mockSdkCore, mockDataStoreManager)
@@ -66,7 +67,6 @@ internal class ResourceWriterTest {
         @StringForgery resourceData: String
     ) {
         // Given
-        setUp()
         every { mockDataStoreManager.isPreviouslySentResource(identifier) } returns false
         every { mockDataStoreManager.isReady() } returns true
         val writer = DefaultResourceWriter(mockSdkCore, mockDataStoreManager)
@@ -88,7 +88,6 @@ internal class ResourceWriterTest {
         @StringForgery resourceData: String
     ) {
         // Given
-        setUp()
         every { mockDataStoreManager.isPreviouslySentResource(identifier) } returns true
 
         val writer = DefaultResourceWriter(mockSdkCore, mockDataStoreManager)
@@ -107,7 +106,6 @@ internal class ResourceWriterTest {
         @StringForgery resourceData: String
     ) {
         // Given
-        setUp()
         every { mockDataStoreManager.isPreviouslySentResource(identifier) } returns false
         every { mockDataStoreManager.isReady() } returns false
 

@@ -6,6 +6,7 @@
 
 package com.datadoghq.flutter.sessionreplay.resource
 
+import com.datadog.android.api.InternalLogger
 import com.datadog.android.api.feature.FeatureSdkCore
 import com.datadog.android.api.storage.datastore.DataStoreReadCallback
 import com.datadog.android.api.storage.datastore.DataStoreWriteCallback
@@ -23,11 +24,11 @@ import java.util.concurrent.atomic.AtomicLong
 internal class ResourceDataStoreManager(
     private val featureSdkCore: FeatureSdkCore,
     private val gson: Gson = Gson(),
-    private val dataStoreResetTimeNs: Long = TimeUnit.DAYS.toNanos(30)
+    private val dataStoreResetTimeMs: Long = TimeUnit.DAYS.toMillis(30)
 ) {
     @Suppress("UnsafeThirdPartyFunctionCall") // map is initialized empty
     private val knownResources = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
-    private val storedLastUpdateDateNs = AtomicLong(featureSdkCore.timeProvider.getDeviceElapsedTimeNanos())
+    private val storedLastUpdateDateMs = AtomicLong(featureSdkCore.timeProvider.getDeviceTimestampMillis())
     private val isInitialized = AtomicBoolean(false) // has init finished executing its async actions
 
     init {
@@ -40,10 +41,10 @@ internal class ResourceDataStoreManager(
                     return@lambda
                 }
 
-                val lastUpdateDateNs = storedData.lastUpdateDateNs
+                val lastUpdateDateMs = storedData.lastUpdateDateMs
                 val storedHashes = storedData.resourceHashes
 
-                if (didDataStoreExpire(lastUpdateDateNs)) {
+                if (didDataStoreExpire(lastUpdateDateMs)) {
                     deleteStoredHashesEntry(
                         callback = object : DataStoreWriteCallback {
                             override fun onSuccess() {
@@ -51,17 +52,27 @@ internal class ResourceDataStoreManager(
                             }
 
                             override fun onFailure() {
+                                featureSdkCore.internalLogger.log(
+                                    InternalLogger.Level.ERROR,
+                                    InternalLogger.Target.TELEMETRY,
+                                    { Constants.FAILED_TO_DELETE_STALE_ENTRY_ERROR_MESSAGE }
+                                )
                                 finishedInitializingManager()
                             }
                         }
                     )
                 } else {
-                    storedLastUpdateDateNs.set(lastUpdateDateNs)
+                    storedLastUpdateDateMs.set(lastUpdateDateMs)
                     knownResources.addAll(storedHashes)
                     finishedInitializingManager()
                 }
             },
             onFetchFailure = {
+                featureSdkCore.internalLogger.log(
+                    InternalLogger.Level.ERROR,
+                    InternalLogger.Target.TELEMETRY,
+                    { Constants.FAILED_TO_FETCH_ENTRY_ERROR_MESSAGE }
+                )
                 finishedInitializingManager()
             }
         )
@@ -86,7 +97,7 @@ internal class ResourceDataStoreManager(
 
     private fun writeResourcesToStore() {
         val data = ResourceHashesEntry(
-            lastUpdateDateNs = storedLastUpdateDateNs.get(),
+            lastUpdateDateMs = storedLastUpdateDateMs.get(),
             resourceHashes = knownResources.toList()
         )
 
@@ -131,7 +142,7 @@ internal class ResourceDataStoreManager(
         )
 
     private fun didDataStoreExpire(lastUpdateDate: Long): Boolean =
-        featureSdkCore.timeProvider.getDeviceElapsedTimeNanos() - lastUpdateDate > dataStoreResetTimeNs
+        featureSdkCore.timeProvider.getDeviceTimestampMillis() - lastUpdateDate > dataStoreResetTimeMs
 
     // endregion
 
@@ -141,12 +152,16 @@ internal class ResourceDataStoreManager(
         )?.dataStore
 
     internal data class ResourceHashesEntry(
-        @SerializedName("last_update_date_ns") val lastUpdateDateNs: Long,
+        @SerializedName("last_update_date_ms") val lastUpdateDateMs: Long,
         @SerializedName("resource_hashes") val resourceHashes: List<String>
     )
 
     internal object Constants {
         const val DATASTORE_HASHES_ENTRY_KEY = "resource-hash-store"
         const val CURRENT_STORE_VERSION = 1
+        const val FAILED_TO_FETCH_ENTRY_ERROR_MESSAGE =
+            "Failed to fetch the stored resource hashes entry from the DataStore."
+        const val FAILED_TO_DELETE_STALE_ENTRY_ERROR_MESSAGE =
+            "Failed to delete the stale resource hashes entry from the DataStore."
     }
 }

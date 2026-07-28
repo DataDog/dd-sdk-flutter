@@ -23,22 +23,24 @@ import fr.xgouchet.elmyr.junit5.ForgeExtension
 import io.mockk.every
 import io.mockk.mockk
 import java.util.concurrent.TimeUnit
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 
 @ExtendWith(ForgeExtension::class)
 internal class ResourceDataStoreManagerTest {
-    val mockSdkCore = mockk<FeatureSdkCore>()
+    val mockSdkCore = mockk<FeatureSdkCore>(relaxed = true)
     val mockScope = mockk<FeatureScope>()
     private val fakeDataStore = FakeDataStoreHandler()
-    private var fakeElapsedTimeNs = TimeUnit.DAYS.toNanos(60)
+    private var fakeTimestampMs = TimeUnit.DAYS.toMillis(60)
 
+    @BeforeEach
     fun setUp() {
         every {
             mockSdkCore.getFeature(ResourceFeature.SESSION_REPLAY_RESOURCES_FEATURE_NAME)
         } returns mockScope
         every { mockScope.dataStore } returns fakeDataStore
-        every { mockSdkCore.timeProvider } returns FakeTimeProvider { fakeElapsedTimeNs }
+        every { mockSdkCore.timeProvider } returns FakeTimeProvider { fakeTimestampMs }
     }
 
     @Test
@@ -46,7 +48,6 @@ internal class ResourceDataStoreManagerTest {
         @StringForgery hash: String
     ) {
         // Given
-        setUp()
         val manager = ResourceDataStoreManager(mockSdkCore)
 
         // Then
@@ -58,7 +59,6 @@ internal class ResourceDataStoreManagerTest {
         @StringForgery hash: String
     ) {
         // Given
-        setUp()
         val manager = ResourceDataStoreManager(mockSdkCore)
 
         // When
@@ -73,7 +73,6 @@ internal class ResourceDataStoreManagerTest {
         @StringForgery hash: String
     ) {
         // Given
-        setUp()
         val manager = ResourceDataStoreManager(mockSdkCore)
 
         // When
@@ -90,10 +89,9 @@ internal class ResourceDataStoreManagerTest {
         @StringForgery hash: String
     ) {
         // Given
-        setUp()
         fakeDataStore.storage[ResourceDataStoreManager.Constants.DATASTORE_HASHES_ENTRY_KEY] =
             ResourceDataStoreManager.Constants.CURRENT_STORE_VERSION to
-            "{\"last_update_date_ns\":$fakeElapsedTimeNs,\"resource_hashes\":[\"$hash\"]}"
+            "{\"last_update_date_ms\":$fakeTimestampMs,\"resource_hashes\":[\"$hash\"]}"
 
         // When
         val manager = ResourceDataStoreManager(mockSdkCore)
@@ -108,11 +106,10 @@ internal class ResourceDataStoreManagerTest {
         @StringForgery hash: String
     ) {
         // Given
-        setUp()
-        val staleUpdateNs = fakeElapsedTimeNs - TimeUnit.DAYS.toNanos(31)
+        val staleUpdateMs = fakeTimestampMs - TimeUnit.DAYS.toMillis(31)
         fakeDataStore.storage[ResourceDataStoreManager.Constants.DATASTORE_HASHES_ENTRY_KEY] =
             ResourceDataStoreManager.Constants.CURRENT_STORE_VERSION to
-            "{\"last_update_date_ns\":$staleUpdateNs,\"resource_hashes\":[\"$hash\"]}"
+            "{\"last_update_date_ms\":$staleUpdateMs,\"resource_hashes\":[\"$hash\"]}"
 
         // When
         val manager = ResourceDataStoreManager(mockSdkCore)
@@ -131,11 +128,10 @@ internal class ResourceDataStoreManagerTest {
         @StringForgery staleHash: String
     ) {
         // Given
-        setUp()
-        val staleUpdateNs = fakeElapsedTimeNs - TimeUnit.DAYS.toNanos(31)
+        val staleUpdateMs = fakeTimestampMs - TimeUnit.DAYS.toMillis(31)
         fakeDataStore.storage[ResourceDataStoreManager.Constants.DATASTORE_HASHES_ENTRY_KEY] =
             ResourceDataStoreManager.Constants.CURRENT_STORE_VERSION to
-            "{\"last_update_date_ns\":$staleUpdateNs,\"resource_hashes\":[\"$staleHash\"]}"
+            "{\"last_update_date_ms\":$staleUpdateMs,\"resource_hashes\":[\"$staleHash\"]}"
         val manager = ResourceDataStoreManager(mockSdkCore)
 
         // When
@@ -143,14 +139,11 @@ internal class ResourceDataStoreManagerTest {
 
         // Then
         val persisted = fakeDataStore.storage[ResourceDataStoreManager.Constants.DATASTORE_HASHES_ENTRY_KEY]
-        assertThat(persisted?.second?.contains("\"last_update_date_ns\":$staleUpdateNs") ?: false).isFalse()
+        assertThat(persisted?.second?.contains("\"last_update_date_ms\":$staleUpdateMs") ?: false).isFalse()
     }
 
     @Test
     fun `M return isReady true W init {no data to fetch}`() {
-        // Given
-        setUp()
-
         // When
         val manager = ResourceDataStoreManager(mockSdkCore)
 
@@ -163,7 +156,7 @@ internal class ResourceDataStoreManagerTest {
         @StringForgery hash: String
     ) {
         // Given
-        setUp(dataStore = FailingReadDataStoreHandler())
+        every { mockScope.dataStore } returns FailingReadDataStoreHandler()
 
         // When
         val manager = ResourceDataStoreManager(mockSdkCore)
@@ -178,11 +171,10 @@ internal class ResourceDataStoreManagerTest {
         @StringForgery hash: String
     ) {
         // Given
-        setUp()
-        val staleUpdateNs = fakeElapsedTimeNs - TimeUnit.DAYS.toNanos(31)
+        val staleUpdateMs = fakeTimestampMs - TimeUnit.DAYS.toMillis(31)
         fakeDataStore.storage[ResourceDataStoreManager.Constants.DATASTORE_HASHES_ENTRY_KEY] =
             ResourceDataStoreManager.Constants.CURRENT_STORE_VERSION to
-            "{\"last_update_date_ns\":$staleUpdateNs,\"resource_hashes\":[\"$hash\"]}"
+            "{\"last_update_date_ms\":$staleUpdateMs,\"resource_hashes\":[\"$hash\"]}"
         fakeDataStore.failOnRemove = true
 
         // When
@@ -190,11 +182,6 @@ internal class ResourceDataStoreManagerTest {
 
         // Then
         assertThat(manager.isReady()).isTrue()
-    }
-
-    private fun setUp(dataStore: DataStoreHandler) {
-        setUp()
-        every { mockScope.dataStore } returns dataStore
     }
 
     /**
@@ -248,10 +235,10 @@ internal class ResourceDataStoreManagerTest {
         }
     }
 
-    private class FakeTimeProvider(private val elapsedTimeNs: () -> Long) : TimeProvider {
-        override fun getDeviceTimestampMillis(): Long = 0L
+    private class FakeTimeProvider(private val timestampMs: () -> Long) : TimeProvider {
+        override fun getDeviceTimestampMillis(): Long = timestampMs()
         override fun getServerTimestampMillis(): Long = 0L
-        override fun getDeviceElapsedTimeNanos(): Long = elapsedTimeNs()
+        override fun getDeviceElapsedTimeNanos(): Long = 0L
         override fun getServerOffsetNanos(): Long = 0L
         override fun getServerOffsetMillis(): Long = 0L
         override fun getDeviceElapsedRealtimeMillis(): Long = 0L
