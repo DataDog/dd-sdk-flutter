@@ -2,7 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
@@ -64,17 +63,10 @@ void main() {
       requests,
     ) {
       requestLog.addAll(requests);
-      requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
-        dynamic jsonValue = json.decode(e);
-        if (jsonValue is Map<String, Object?>) {
-          final rumEvent = RumEventDecoder.fromJson(jsonValue);
-          if (rumEvent != null) {
-            rumLog.add(rumEvent);
-          }
-        }
-      });
-      return RumSessionDecoder.fromEvents(rumLog).visits.length >=
-          (kIsWeb ? 4 : 3);
+      rumLog.addAll(requests.expand((r) => r.asRumEvents()));
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty &&
+          allSessions.last.visits.length >= (kIsWeb ? 4 : 3);
     });
 
     const contextKey = 'onboarding_stage';
@@ -93,7 +85,7 @@ void main() {
       );
     }
 
-    final session = RumSessionDecoder.fromEvents(rumLog);
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, kIsWeb ? 4 : 3);
 
     final view1 = session.visits[0];
@@ -135,26 +127,28 @@ void main() {
       expectedContextValue,
     );
 
-    final contentReadyTiming =
-        view1.viewEvents.last.view.customTimings['content-ready'];
-    final viewLoadingTiming = view1.viewEvents.last.view.loadingTime;
-    final firstInteractionTiming =
-        view1.viewEvents.last.view.customTimings['first-interaction'];
-    expect(contentReadyTiming, isNotNull);
-    expect(contentReadyTiming, greaterThanOrEqualTo(50 * 1000 * 1000));
-    // TODO: Figure out why occasionally these have really high values
-    // expect(contentReadyTiming, lessThan(200 * 1000 * 100));
-    if (!kIsWeb) {
-      expect(viewLoadingTiming, isNotNull);
-      expect(
-        viewLoadingTiming,
-        closeTo(contentReadyTiming!, 10000000),
-      ); // Within 10ms
+    if (!isDdSdkCppPlatform()) {
+      final contentReadyTiming =
+          view1.viewEvents.last.view.customTimings['content-ready'];
+      final viewLoadingTiming = view1.viewEvents.last.view.loadingTime;
+      final firstInteractionTiming =
+          view1.viewEvents.last.view.customTimings['first-interaction'];
+      expect(contentReadyTiming, isNotNull);
+      expect(contentReadyTiming, greaterThanOrEqualTo(50 * 1000 * 1000));
+      // TODO: Figure out why occasionally these have really high values
+      // expect(contentReadyTiming, lessThan(200 * 1000 * 100));
+      if (!kIsWeb) {
+        expect(viewLoadingTiming, isNotNull);
+        expect(
+          viewLoadingTiming,
+          closeTo(contentReadyTiming!, 10000000),
+        ); // Within 10ms
+      }
+      expect(firstInteractionTiming, isNotNull);
+      expect(firstInteractionTiming, greaterThanOrEqualTo(contentReadyTiming!));
+      // TODO: Figure out why occasionally these have really high values
+      // expect(firstInteractionTiming, lessThan(800 * 1000 * 1000));
     }
-    expect(firstInteractionTiming, isNotNull);
-    expect(firstInteractionTiming, greaterThanOrEqualTo(contentReadyTiming!));
-    // TODO: Figure out why occasionally these have really high values
-    // expect(firstInteractionTiming, lessThan(800 * 1000 * 1000));
 
     {
       final manualResourceEvents = view1.resourceEvents
@@ -183,17 +177,17 @@ void main() {
     expect(view1.errorEvents[0].context![contextKey], expectedContextValue);
 
     expect(view1.vitalStepEvents.length, 3);
-    expect(view1.vitalStepEvents[0].vitalName, 'Onboarding');
+    expect(view1.vitalStepEvents[0].vitalName, 'onboarding');
     expect(view1.vitalStepEvents[0].stepType, 'start');
     expect(view1.vitalStepEvents[0].vitalOperationKey, 'key_a');
     expect(view1.vitalStepEvents[0].vitalFailureReason, isNull);
 
-    expect(view1.vitalStepEvents[1].vitalName, 'First Screen Download');
+    expect(view1.vitalStepEvents[1].vitalName, 'first_screen_download');
     expect(view1.vitalStepEvents[1].stepType, 'start');
     expect(view1.vitalStepEvents[1].vitalOperationKey, isNull);
     expect(view1.vitalStepEvents[1].vitalFailureReason, isNull);
 
-    expect(view1.vitalStepEvents[2].vitalName, 'First Screen Download');
+    expect(view1.vitalStepEvents[2].vitalName, 'first_screen_download');
     expect(view1.vitalStepEvents[2].stepType, 'end');
     expect(view1.vitalStepEvents[2].vitalOperationKey, isNull);
     expect(view1.vitalStepEvents[2].vitalFailureReason, 'error');
@@ -228,6 +222,7 @@ void main() {
     }
     expect(view2.viewEvents.last.view.errorCount, 1);
     expect(view2.viewEvents.last.view.actionCount, 2);
+
     // We can have multiple long tasks
     expect(view2.viewEvents.last.view.longTaskCount, greaterThanOrEqualTo(1));
     expect(
@@ -247,8 +242,11 @@ void main() {
       // let's not check it for now.
       expect(view2.viewEvents.last.context![contextKey], expectedContextValue);
     }
-    expect(view2.viewEvents.last.featureFlags?['mock_flag_a'], false);
-    expect(view2.viewEvents.last.featureFlags?['mock_flag_b'], 'mock_value');
+
+    if (!isDdSdkCppPlatform()) {
+      expect(view2.viewEvents.last.featureFlags?['mock_flag_a'], false);
+      expect(view2.viewEvents.last.featureFlags?['mock_flag_b'], 'mock_value');
+    }
 
     {
       final viewStart = view2.viewEvents.first.date;
@@ -271,8 +269,8 @@ void main() {
         lessThan(const Duration(seconds: 10).inNanoseconds),
       );
 
-      // TNS is not calculated on web
-      if (!kIsWeb) {
+      // TNS is not calculated on web or ddsdkcpp
+      if (!kIsWeb && !isDdSdkCppPlatform()) {
         final tns =
             Duration(milliseconds: resourceStart - viewStart).inNanoseconds +
             resourceDuration!;
@@ -291,7 +289,10 @@ void main() {
       view2.errorEvents[0].context!['view_attribute'],
       'view_attribute_value',
     );
-    expect(view2.errorEvents[0].fingerprint, 'custom-fingerprint');
+    // C++ does not support custom error fingerprinting
+    if (!isDdSdkCppPlatform()) {
+      expect(view2.errorEvents[0].fingerprint, 'custom-fingerprint');
+    }
 
     // Check all long tasks are over 100 ms (the default) and that one is greater
     // than 200 ms (triggered by the tapping of the button)
@@ -320,6 +321,7 @@ void main() {
     expect(view2.actionEvents[0].actionType, 'scroll');
     expect(view2.actionEvents[0].actionName, 'User Scrolling');
 
+    // start/stop action is supported on web via the start_stop_action experimental feature
     expect(
       view2.actionEvents[0].loadingTime,
       greaterThan(1800 * 1000 * 1000),
@@ -334,7 +336,7 @@ void main() {
     expect(tapAction.context![contextKey], expectedContextValue);
 
     expect(view2.vitalStepEvents.length, 1);
-    expect(view2.vitalStepEvents[0].vitalName, 'Onboarding');
+    expect(view2.vitalStepEvents[0].vitalName, 'onboarding');
     expect(view2.vitalStepEvents[0].stepType, 'end');
     expect(view2.vitalStepEvents[0].vitalOperationKey, 'key_a');
     expect(view2.vitalStepEvents[0].vitalFailureReason, isNull);

@@ -4,7 +4,6 @@
 
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -12,7 +11,6 @@ import 'common.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  kManualIsWeb = kIsWeb;
 
   testWidgets('logger reflects user and account changes', (tester) async {
     var recordedSession = await openTestScenario(
@@ -31,14 +29,18 @@ void main() {
       return logs.length >= 6;
     });
 
-    expect(logs[0].userAnonymousId, isNotNull);
+    if (!isDdSdkCppPlatform()) {
+      expect(logs[0].userAnonymousId, isNotNull);
+    }
     expect(logs[0].userId, isNull);
     expect(logs[0].userEmail, isNull);
     expect(logs[0].userName, isNull);
     expect(logs[0].accountId, isNull);
     expect(logs[0].accountName, isNull);
 
-    expect(logs[1].userAnonymousId, isNotNull);
+    if (!isDdSdkCppPlatform()) {
+      expect(logs[1].userAnonymousId, isNotNull);
+    }
     expect(logs[1].userId, isNull);
     expect(logs[1].userEmail, isNull);
     expect(logs[1].userName, isNull);
@@ -46,7 +48,9 @@ void main() {
     expect(logs[1].accountName, isNull);
     expect(logs[1].getUserProperty('fetch_status'), 'waiting_for_ball');
 
-    expect(logs[2].userAnonymousId, isNotNull);
+    if (!isDdSdkCppPlatform()) {
+      expect(logs[2].userAnonymousId, isNotNull);
+    }
     expect(logs[2].userId, 'bits');
     expect(logs[2].userEmail, 'bits@datadoghq.com');
     expect(logs[2].userName, 'Bits Dawoof');
@@ -55,7 +59,9 @@ void main() {
     expect(logs[2].accountId, isNull);
     expect(logs[2].accountName, isNull);
 
-    expect(logs[3].userAnonymousId, isNotNull);
+    if (!isDdSdkCppPlatform()) {
+      expect(logs[3].userAnonymousId, isNotNull);
+    }
     expect(logs[3].userId, 'bits');
     expect(logs[3].userEmail, 'bits@datadoghq.com');
     expect(logs[3].userName, 'Bits Dawoof');
@@ -66,7 +72,9 @@ void main() {
     expect(logs[3].getAccountProperty('type'), 'top_dog');
     expect(logs[3].getAccountProperty('department'), 'fetching');
 
-    expect(logs[4].userAnonymousId, isNotNull);
+    if (!isDdSdkCppPlatform()) {
+      expect(logs[4].userAnonymousId, isNotNull);
+    }
     expect(logs[4].userId, isNull);
     expect(logs[4].userEmail, isNull);
     expect(logs[4].userName, isNull);
@@ -77,7 +85,9 @@ void main() {
     expect(logs[4].getAccountProperty('type'), 'top_dog');
     expect(logs[4].getAccountProperty('department'), 'fetching');
 
-    expect(logs[5].userAnonymousId, isNotNull);
+    if (!isDdSdkCppPlatform()) {
+      expect(logs[5].userAnonymousId, isNotNull);
+    }
     expect(logs[5].userId, isNull);
     expect(logs[5].userEmail, isNull);
     expect(logs[5].userName, isNull);

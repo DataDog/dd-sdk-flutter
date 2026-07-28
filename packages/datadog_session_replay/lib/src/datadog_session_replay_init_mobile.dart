@@ -14,7 +14,7 @@ import 'ios/datadog_session_replay_platform_ios.dart';
 void initSessionReplayPlatform() {
   if (Platform.isIOS) {
     DatadogSessionReplayPlatform.instance = DatadogSessionReplayPlatformIos();
-  } else {
+  } else if (Platform.isAndroid) {
     DatadogSessionReplayPlatform.instance =
         DatadogSessionReplayPlatformAndroid();
   }

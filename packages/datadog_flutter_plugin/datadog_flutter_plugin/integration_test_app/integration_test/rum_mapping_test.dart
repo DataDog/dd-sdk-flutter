@@ -2,11 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2022-Present Datadog, Inc.
 
-import 'dart:convert';
-
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_integration_test_app/integration_scenarios/scenario_runner.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -15,7 +12,6 @@ import 'rum_manual_test.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  kManualIsWeb = kIsWeb;
 
   // This is the same test as rum_manual_test.dart, but with the following
   // mappers:
@@ -27,7 +23,9 @@ void main() {
   //  * errorMapper changes 'custom-fingerprint' to 'mapped fingerprint'
   //  * longTask mapper discards all long tasks less than 200 ms
   //  * longTask mapper renames ThirdManualRumView to ThirdView
-  testWidgets('test instrumentation with mappers', (WidgetTester tester) async {
+  testWidgets('test instrumentation with mappers', skip: isDdSdkCppPlatform(), (
+    WidgetTester tester,
+  ) async {
     var serverRecorder = await openTestScenario(
       tester,
       menuTitle: 'Manual RUM Scenario',
@@ -42,18 +40,12 @@ void main() {
       requests,
     ) {
       requestLog.addAll(requests);
-      for (var request in requests) {
-        request.data.split('\n').forEach((e) {
-          dynamic jsonValue = json.decode(e);
-          if (jsonValue is Map<String, dynamic>) {
-            rumLog.add(RumEventDecoder(jsonValue));
-          }
-        });
-      }
-      return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
+      rumLog.addAll(requests.expand((r) => r.asRumEvents()));
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
     });
 
-    final session = RumSessionDecoder.fromEvents(rumLog);
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, 3);
 
     final view1 = session.visits[0];

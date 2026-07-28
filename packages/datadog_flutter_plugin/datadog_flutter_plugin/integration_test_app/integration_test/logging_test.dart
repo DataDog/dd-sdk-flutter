@@ -13,7 +13,6 @@ import 'common.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  kManualIsWeb = kIsWeb;
 
   testWidgets('test logging scenario', (WidgetTester tester) async {
     var recordedSession = await openTestScenario(
@@ -93,7 +92,7 @@ void main() {
     expect(firstLoggerLogs[4].status, 'error');
     expect(firstLoggerLogs[4].message, 'Encountered an error');
     expect(firstLoggerLogs[4].errorMessage, isNotNull);
-    if (!kIsWeb) {
+    if (!kIsWeb && !isDdSdkCppPlatform()) {
       // Errors from web will always be `browser`
       expect(firstLoggerLogs[4].errorSourceType, 'flutter');
     }
@@ -135,7 +134,10 @@ void main() {
     expect(secondLoggerLogs[1].log['global-attribute'], 'global value');
     expect(secondLoggerLogs[1].errorMessage, 'Error Message');
     expect(secondLoggerLogs[1].errorStack, isNotNull);
-    expect(secondLoggerLogs[1].errorFingerprint, 'custom-fingerprint');
+    if (!isDdSdkCppPlatform()) {
+      // fingerprint is not supported on C++ SDK platforms.
+      expect(secondLoggerLogs[1].errorFingerprint, 'custom-fingerprint');
+    }
     expect(
       getNestedProperty<String>('logger.name', secondLoggerLogs[1].log),
       'second_logger',
@@ -165,7 +167,10 @@ void main() {
         if (Platform.isIOS) {
           expect(log.applicationVersion, '1.2.3-555');
         }
-        expect(log.threadName, 'main');
+        // The C SDK (desktop) does not populate logger.thread_name.
+        if (!isDdSdkCppPlatform()) {
+          expect(log.threadName, 'main');
+        }
       }
 
       // Verify expected tags

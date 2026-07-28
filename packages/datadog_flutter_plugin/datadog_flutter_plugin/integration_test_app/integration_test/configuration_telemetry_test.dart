@@ -2,7 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2021 Datadog, Inc.
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
@@ -18,9 +17,10 @@ import 'rum_auto_instrumentation_test.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  kManualIsWeb = kIsWeb;
 
-  testWidgets('test telemetry scenario', (WidgetTester tester) async {
+  testWidgets('test telemetry scenario', skip: isDdSdkCppPlatform(), (
+    WidgetTester tester,
+  ) async {
     var serverRecorder = await openTestScenario(
       tester,
       scenarioName: autoInstrumentationScenarioName,
@@ -42,16 +42,10 @@ void main() {
       requests,
     ) {
       requestLog.addAll(requests);
-      for (var request in requests) {
-        request.data.split('\n').forEach((e) {
-          dynamic jsonValue = json.decode(e);
-          if (jsonValue is Map<String, dynamic>) {
-            var rumEvent = RumEventDecoder(jsonValue);
-            if (rumEvent.eventType == 'telemetry') {
-              telemetryLog.add(rumEvent);
-            }
-          }
-        });
+      for (final event in requests.expand((r) => r.asRumEvents())) {
+        if (event.eventType == 'telemetry') {
+          telemetryLog.add(event);
+        }
       }
       return telemetryLog
           .where((element) => element.telemetryConfiguration != null)

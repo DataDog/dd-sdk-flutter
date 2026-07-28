@@ -64,11 +64,11 @@ void main() {
           }
         });
       }
-      final session = RumSessionDecoder.fromEvents(rumLog);
-      return session.visits.length >= 3;
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
     });
 
-    final session = RumSessionDecoder.fromEvents(rumLog);
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, 3);
 
     // First view is home screen, second view is the Flutter view, third is the loaded webview

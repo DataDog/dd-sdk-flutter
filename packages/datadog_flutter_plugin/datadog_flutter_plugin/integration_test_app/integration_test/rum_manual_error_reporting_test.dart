@@ -2,8 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
 
-import 'dart:convert';
-
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -40,21 +38,15 @@ void main() {
       requests,
     ) {
       requestLog.addAll(requests);
-      requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
-        dynamic jsonValue = json.decode(e);
-        if (jsonValue is Map<String, dynamic>) {
-          final rumEvent = RumEventDecoder.fromJson(jsonValue);
-          if (rumEvent != null) {
-            rumLog.add(rumEvent);
-          }
-        }
-      });
-      var visits = RumSessionDecoder.fromEvents(rumLog).visits;
+      rumLog.addAll(requests.expand((r) => r.asRumEvents()));
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      if (allSessions.isEmpty) return false;
+      var visits = allSessions.last.visits;
       return visits.length == 1 &&
           visits[0].viewEvents.last.view.errorCount == 3;
     });
 
-    final session = RumSessionDecoder.fromEvents(rumLog);
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, 1);
 
     final view = session.visits[0];
@@ -65,15 +57,18 @@ void main() {
     expect(exceptionError.message, contains(TypeError().toString()));
     expect(exceptionError.source, 'source');
     expect(exceptionError.errorType, 'NullThrown');
-    if (!kIsWeb) {
-      // source_type is not supported on web, but type should be browser anyway.
+    if (!kIsWeb && !isDdSdkCppPlatform()) {
+      // source_type is not supported on web or C++ SDK.
       expect(exceptionError.sourceType, 'flutter');
     }
 
     var manualError = view.errorEvents[1];
     expect(manualError.message, contains('Rum error message'));
     expect(manualError.source, 'network');
-    expect(manualError.fingerprint, 'custom-fingerprint');
+    if (!isDdSdkCppPlatform()) {
+      // fingerprint is not supported on C++ SDK platforms.
+      expect(manualError.fingerprint, 'custom-fingerprint');
+    }
 
     var thrownError = view.errorEvents[2];
     expect(thrownError.message, contains('This was an error!'));

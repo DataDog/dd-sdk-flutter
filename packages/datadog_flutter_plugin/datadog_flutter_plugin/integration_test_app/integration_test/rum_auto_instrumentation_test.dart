@@ -2,8 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
-import 'dart:convert';
-
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_common_test/widget_tester_extensions.dart';
 import 'package:datadog_integration_test_app/auto_integration_scenarios/scenario_runner.dart';
@@ -50,18 +48,12 @@ void main() {
       requests,
     ) {
       requestLog.addAll(requests);
-      for (var request in requests) {
-        request.data.split('\n').forEach((e) {
-          dynamic jsonValue = json.decode(e);
-          if (jsonValue is Map<String, dynamic>) {
-            rumLog.add(RumEventDecoder(jsonValue));
-          }
-        });
-      }
-      return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
+      rumLog.addAll(requests.expand((r) => r.asRumEvents()));
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
     });
 
-    final session = RumSessionDecoder.fromEvents(rumLog);
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, 3);
 
     final view1 = session.visits[0];
@@ -70,12 +62,14 @@ void main() {
       // Path is the actual browser path in web
       expect(view1.path, '/');
 
-      // Web doesn't support performance metrics
-      expect(view1.viewEvents.last.flutterBuildTime, isNotNull);
-      expect(view1.viewEvents.last.flutterRasterTime, isNotNull);
-      expect(view1.viewEvents.last.performance?.fbc, isNotNull);
-      // Should not have INV as no interaction led here
-      expect(view1.viewEvents.last.inv, isNull);
+      // Web and C++ don't yet support performance metrics
+      if (!isDdSdkCppPlatform()) {
+        expect(view1.viewEvents.last.flutterBuildTime, isNotNull);
+        expect(view1.viewEvents.last.flutterRasterTime, isNotNull);
+        expect(view1.viewEvents.last.performance?.fbc, isNotNull);
+        // Should not have INV as no interaction led here
+        expect(view1.viewEvents.last.inv, isNull);
+      }
     }
 
     var actionEvent = view1.actionEvents.last;
@@ -88,20 +82,22 @@ void main() {
       // Path is the actual browser path in web
       expect(view2.path, 'rum_second_screen');
 
-      // Web doesn't support performance metrics
-      expect(view2.viewEvents.last.flutterBuildTime, isNotNull);
-      expect(view2.viewEvents.last.flutterRasterTime, isNotNull);
+      // Web and C++ don't yet support performance metrics
+      if (!isDdSdkCppPlatform()) {
+        expect(view2.viewEvents.last.flutterBuildTime, isNotNull);
+        expect(view2.viewEvents.last.flutterRasterTime, isNotNull);
 
-      // Second screen build time should delay
-      final firstBuildComplete = view2.viewEvents.last.performance?.fbc;
-      final tenMsInNs = const Duration(milliseconds: 10).inNanoseconds;
-      expect(firstBuildComplete, greaterThan(tenMsInNs));
+        // Second screen build time should delay
+        final firstBuildComplete = view2.viewEvents.last.performance?.fbc;
+        final tenMsInNs = const Duration(milliseconds: 10).inNanoseconds;
+        expect(firstBuildComplete, greaterThan(tenMsInNs));
 
-      // INV should be at least 10 milliseconds later, as the tap action also takes up 10 ms
-      expect(
-        view2.viewEvents.last.inv,
-        greaterThan(firstBuildComplete! + tenMsInNs),
-      );
+        // INV should be at least 10 milliseconds later, as the tap action also takes up 10 ms
+        expect(
+          view2.viewEvents.last.inv,
+          greaterThan(firstBuildComplete! + tenMsInNs),
+        );
+      }
     }
 
     var actionEvent2 = view2.actionEvents[0];

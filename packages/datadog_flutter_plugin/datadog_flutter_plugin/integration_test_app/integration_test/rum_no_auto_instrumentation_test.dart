@@ -2,8 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
-import 'dart:convert';
-
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -32,20 +30,14 @@ void main() {
       requests,
     ) {
       requestLog.addAll(requests);
-      requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
-        Map<String, Object?> jsonValue = json.decode(e);
-        final rumEvent = RumEventDecoder.fromJson(jsonValue);
-        if (rumEvent != null) {
-          rumLog.add(rumEvent);
-        }
-      });
+      rumLog.addAll(requests.expand((r) => r.asRumEvents()));
       return false;
     });
     // Decode this session. This removes events that came from
     // the ApplicationLaunchView (which can happen if the emulator is running slow)
-    var session = RumSessionDecoder.fromEvents(rumLog);
+    final sessions = RumSessionDecoder.fromEvents(rumLog);
 
-    if (session.visits.isNotEmpty) {
+    if (sessions.isNotEmpty && sessions.last.visits.isNotEmpty) {
       // ignore: avoid_print
       print('Got a RUM log!? (actually ${rumLog.length})');
       for (var log in rumLog) {
@@ -53,6 +45,6 @@ void main() {
         print('Log: { event: ${log.eventType}, view: ${log.viewInfo?.name}');
       }
     }
-    expect(session.visits.isEmpty, isTrue);
+    expect(sessions.isEmpty || sessions.last.visits.isEmpty, isTrue);
   });
 }

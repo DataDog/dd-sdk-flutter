@@ -4,7 +4,7 @@
 
 import 'dart:io';
 
-import '../../datadog_common_test.dart';
+import '../is_web.dart';
 
 class RumUser {
   Map<String, Object?> raw;
@@ -27,7 +27,7 @@ class RumSessionDecoder {
 
   RumSessionDecoder(this.visits);
 
-  static RumSessionDecoder fromEvents(
+  static List<RumSessionDecoder> fromEvents(
     List<RumEventDecoder> events, {
     bool shouldDiscardApplicationLaunch = true,
   }) {
@@ -45,9 +45,17 @@ class RumSessionDecoder {
       return comp;
     });
 
-    final viewVisitsById = <String, RumViewVisit>{};
+    final sessionViewVisits = <String, Map<String, RumViewVisit>>{};
+    final sessionOrder = <String>[];
+
     for (var e in events.where((e) => e.eventType == 'view')) {
       final viewEvent = RumViewEventDecoder(e.rumEvent);
+      final sessionId = e.sessionId ?? '';
+      if (!sessionViewVisits.containsKey(sessionId)) {
+        sessionViewVisits[sessionId] = {};
+        sessionOrder.add(sessionId);
+      }
+      final viewVisitsById = sessionViewVisits[sessionId]!;
       var visit = viewVisitsById[viewEvent.view.id];
       if (visit == null) {
         visit = RumViewVisit(
@@ -65,26 +73,27 @@ class RumSessionDecoder {
       if (viewId == null) {
         continue;
       }
+      final sessionId = e.sessionId ?? '';
+      final viewVisitsById = sessionViewVisits[sessionId];
+      if (viewVisitsById == null) {
+        continue;
+      }
       var visit = viewVisitsById[viewId];
       if (visit == null) {
         continue;
       }
       switch (e.eventType) {
         case 'action':
-          final actionEvent = RumActionEventDecoder(e.rumEvent);
-          visit.actionEvents.add(actionEvent);
+          visit.actionEvents.add(RumActionEventDecoder(e.rumEvent));
           break;
         case 'resource':
-          final resourceEvent = RumResourceEventDecoder(e.rumEvent);
-          visit.resourceEvents.add(resourceEvent);
+          visit.resourceEvents.add(RumResourceEventDecoder(e.rumEvent));
           break;
         case 'error':
-          final errorEvent = RumErrorEventDecoder(e.rumEvent);
-          visit.errorEvents.add(errorEvent);
+          visit.errorEvents.add(RumErrorEventDecoder(e.rumEvent));
           break;
         case 'long_task':
-          final longTaskEvent = RumLongTaskEventDecoder(e.rumEvent);
-          visit.longTaskEvents.add(longTaskEvent);
+          visit.longTaskEvents.add(RumLongTaskEventDecoder(e.rumEvent));
           break;
         case 'vital':
           final operationStepEvent = RumVitalOperationStepEventDecoder(
@@ -96,12 +105,17 @@ class RumSessionDecoder {
     }
 
     if (shouldDiscardApplicationLaunch) {
-      viewVisitsById.removeWhere(
-        (key, value) => value.name == 'ApplicationLaunch',
-      );
+      for (var viewVisitsById in sessionViewVisits.values) {
+        viewVisitsById.removeWhere(
+          (key, value) => value.name == 'ApplicationLaunch',
+        );
+      }
     }
 
-    return RumSessionDecoder(viewVisitsById.values.toList());
+    return sessionOrder
+        .map((id) => RumSessionDecoder(sessionViewVisits[id]!.values.toList()))
+        .where((s) => s.visits.isNotEmpty)
+        .toList();
   }
 }
 
@@ -140,7 +154,7 @@ class RumEventDecoder {
 
   String? get eventType => rumEvent['type'] as String?;
   String get service {
-    if (!kManualIsWeb) {
+    if (!testIsWeb()) {
       if (Platform.isIOS) return rumEvent['service'];
     }
     return rumEvent['service'];
@@ -150,6 +164,11 @@ class RumEventDecoder {
     final usr = rumEvent['usr'];
     if (usr == null) return null;
     return RumUser.fromJson(usr);
+  }
+
+  String? get sessionId {
+    final session = rumEvent['session'] as Map<String, dynamic>?;
+    return session?['id'] as String?;
   }
 
   int get date => rumEvent['date'] as int;
@@ -258,13 +277,11 @@ class RumViewEventDecoder extends RumEventDecoder {
     return null;
   }
 
-  RumViewEventDecoder(Map<String, dynamic> rumEvent)
-    : view = RumViewDecoder(rumEvent['view']),
-      super(rumEvent);
+  RumViewEventDecoder(super.rumEvent) : view = RumViewDecoder(rumEvent['view']);
 }
 
 class RumActionEventDecoder extends RumEventDecoder {
-  RumActionEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+  RumActionEventDecoder(super.rumEvent);
 
   String get actionType => rumEvent['action']['type'];
   String get actionName => rumEvent['action']['target']?['name'];
@@ -272,7 +289,7 @@ class RumActionEventDecoder extends RumEventDecoder {
 }
 
 class RumResourceEventDecoder extends RumEventDecoder {
-  RumResourceEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+  RumResourceEventDecoder(super.rumEvent);
 
   String get url => rumEvent['resource']['url'];
   int? get statusCode => rumEvent['resource']['status_code'];
@@ -299,7 +316,7 @@ class RumResourceEventDecoder extends RumEventDecoder {
 }
 
 class RumErrorEventDecoder extends RumEventDecoder {
-  RumErrorEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+  RumErrorEventDecoder(super.rumEvent);
 
   String get errorType => rumEvent['error']['type'];
   String get message => rumEvent['error']['message'];
@@ -314,7 +331,7 @@ class RumErrorEventDecoder extends RumEventDecoder {
 }
 
 class RumLongTaskEventDecoder extends RumEventDecoder {
-  RumLongTaskEventDecoder(Map<String, dynamic> rumEvent) : super(rumEvent);
+  RumLongTaskEventDecoder(super.rumEvent);
 
   String? get viewName => rumEvent['view']['name'];
   int? get duration => rumEvent['long_task']['duration'];

@@ -5,16 +5,15 @@
 import 'dart:async';
 import 'dart:ui' show DartPluginRegistrant;
 
+import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart'
+    hide DatadogPluginConfiguration;
+import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 // Dart 3.9 made it so meta is no longer needed for `@internal`, but we
 // still need it for versions below 3.9.
 // ignore: unnecessary_import
 import 'package:meta/meta.dart';
-
-import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart'
-    hide DatadogPluginConfiguration;
-import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
 
 import 'datadog_plugin.dart';
 import 'helpers.dart';
@@ -213,8 +212,8 @@ class DatadogSdk {
       final attachResponse = await platform.attachToIsolate();
       if (attachResponse == null) {
         internalLogger.warn(
-          'Could not attach to background isolate. Did not recieve a configuration from the main isolate.'
-          ' You are either trying to attach on a platform that does not support isolates, or trying to attach before Datadog initialization is complete.',
+          'Could not attach to background isolate. Did not receive a configuration from the main isolate.'
+          ' You may be trying to attach on a platform that does not support isolates, or trying to attach before Datadog initialization is complete.',
         );
       } else {
         _setFirstPartyHosts(

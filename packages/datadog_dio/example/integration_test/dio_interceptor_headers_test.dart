@@ -1,8 +1,6 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025-Present Datadog, Inc.
-import 'dart:convert';
-
 import 'package:collection/collection.dart';
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_common_test/widget_tester_extensions.dart';
@@ -79,18 +77,14 @@ void main() {
     ) {
       for (var request in requests) {
         if (!request.requestedUrl.contains('integration')) {
-          request.data.split('\n').forEach((e) {
-            var jsonValue = json.decode(e);
-            if (jsonValue is Map<String, dynamic>) {
-              rumLog.add(RumEventDecoder(jsonValue));
-            }
-          });
+          rumLog.addAll(request.asRumEvents());
         }
       }
-      return RumSessionDecoder.fromEvents(rumLog).visits.length >= 3;
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
     });
 
-    final session = RumSessionDecoder.fromEvents(rumLog);
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, greaterThanOrEqualTo(3));
 
     final view2 = session.visits[1];
@@ -99,18 +93,24 @@ void main() {
       (e) => e.url == scenarioConfig.firstPartyGetUrl,
     );
     expect(getEvent, isNotNull);
-    expect(getEvent!.requestHeaders, isNotNull);
-    expect(getEvent.requestHeaders!['x-datadog-origin'], 'rum');
-    expect(getEvent.responseHeaders, isNotNull);
-    expect(getEvent.responseHeaders!['content-type'], isNotNull);
+    // The C++ SDK does not surface _dd.request_headers / _dd.response_headers
+    // as custom attributes on resource events, so headers are always null on desktop.
+    if (!isDdSdkCppPlatform()) {
+      expect(getEvent!.requestHeaders, isNotNull);
+      expect(getEvent.requestHeaders!['x-datadog-origin'], 'rum');
+      expect(getEvent.responseHeaders, isNotNull);
+      expect(getEvent.responseHeaders!['content-type'], isNotNull);
+    }
 
     final postEvent = view2.resourceEvents.firstWhereOrNull(
       (e) => e.url == scenarioConfig.firstPartyPostUrl,
     );
     expect(postEvent, isNotNull);
-    expect(postEvent!.requestHeaders, isNotNull);
-    expect(postEvent.requestHeaders!['x-datadog-origin'], 'rum');
-    expect(postEvent.responseHeaders, isNotNull);
-    expect(postEvent.responseHeaders!['content-type'], isNotNull);
+    if (!isDdSdkCppPlatform()) {
+      expect(postEvent!.requestHeaders, isNotNull);
+      expect(postEvent.requestHeaders!['x-datadog-origin'], 'rum');
+      expect(postEvent.responseHeaders, isNotNull);
+      expect(postEvent.responseHeaders!['content-type'], isNotNull);
+    }
   }, skip: kIsWeb);
 }
