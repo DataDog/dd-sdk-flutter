@@ -241,27 +241,14 @@ scripts:
     run: melos integration_test:macos:main
 
   # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
-  # have a separate target just for it that is called by `integration_test:macos`
-  # flutter test runs every file in `integration_test` inside a single process against
-  # one debug connection on desktop targets. On macOS, only the first file's app launch
-  # actually attaches; every subsequent file fails with "The log reader stopped
-  # unexpectedly, or never started." (a known Flutter desktop-runner issue, see
-  # https://github.com/flutter/flutter/issues/118532). Work around it by launching each
-  # test file as its own `flutter test` invocation.
+  # have a separate target just for it that is called by `integration_test:macos`.
+  # Desktop platforms can't run the whole integration_test directory in one `flutter test`
+  # invocation, so this uses tools/ci/bin/desktop_integration_tests.dart to run each
+  # test file individually, same as integration_test:windows:main.
   integration_test:macos:main:
     exec: |
-      mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd integration_test_app
-
-      bash -c 'set -uxo pipefail; \
-      overall=0; \
-      for f in integration_test/*_test.dart; do \
-        name=\$(basename "\$f" .dart); \
-        flutter test "\$f" --machine -d macos --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
-        | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_macos_integration_\$name.xml" \
-        || overall=1; \
-      done; \
-      exit \$overall'
+      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
@@ -364,27 +351,21 @@ scripts:
     exec:
       concurrency: 1
     run: |
-      if [ -d example/ios ]; then
-        cd example/ios
-        pod deintegrate
-        rm Podfile || true
-        rm Podfile.lock || true
-        cd -
-      fi
-      if [ -d example/macos ]; then
-        cd example/macos
-        pod deintegrate
-        rm Podfile || true
-        rm Podfile.lock || true
-        cd -
-      fi
+      for dir in example/ios example/macos integration_test_app/ios integration_test_app/macos; do
+        if [ -d "\$dir" ]; then
+          (cd "\$dir" && pod deintegrate; rm Podfile || true; rm Podfile.lock || true)
+        fi
+      done
     description: |
-      Remove Cocoapods support from examples.  This prevents some build failures when testing
-      spm support. This change is permanent and should not be committed to source control.
+      Remove Cocoapods support from examples and the integration test app. This prevents some
+      build failures when testing spm support. This change is permanent and should not be
+      committed to source control.
     packageFilters:
       dirExists:
         - example/ios
         - example/macos
+        - integration_test_app/ios
+        - integration_test_app/macos
 
   prepare:
     run: melos pub:get && melos build_runner && melos generate_env && melos generate_env:e2e
