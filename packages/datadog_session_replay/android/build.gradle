@@ -60,6 +60,9 @@ android {
 
     dependencies {
         implementation("com.datadoghq:dd-sdk-android-core:$datadog_version")
+        // dd-sdk-android-core only declares this as a runtime dependency, so it must be
+        // added explicitly to be visible on the compile classpath (needed for TimeProvider).
+        implementation("com.datadoghq:dd-sdk-android-internal:$datadog_version")
         implementation("com.squareup.okhttp3:okhttp:5.3.2")
         implementation("com.google.code.gson:gson:2.12.1")
 

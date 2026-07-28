@@ -9,11 +9,11 @@
 /* Begin PBXBuildFile section */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		1BF9F7287A523E34D5710707 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A0117D673D82B937FDFE484 /* Pods_RunnerTests.framework */; };
+		1F0B9721A43A6A63DCC17933 /* DataStoreMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE0C0F8D524DC14EF6F6CFB0 /* DataStoreMock.swift */; };
 		3698E2CC21FBD5E1AEAE147E /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0F083243CD88418C21034C30 /* Pods_Runner.framework */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		494123582DC129660071423F /* RequestBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494123572DC129630071423F /* RequestBuilderTests.swift */; };
 		494400772E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494400762E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift */; };
-		E7162BD14BF84CACB6B101E947BD07D1 /* SessionReplayTestContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */; };
 		494400792E58BA1000AC46CC /* Mockable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494400782E58BA0700AC46CC /* Mockable.swift */; };
 		4944007D2E58C55200AC46CC /* FlutterSessionReplayFeatureMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4944007C2E58C54B00AC46CC /* FlutterSessionReplayFeatureMock.swift */; };
 		494400892E58E7A200AC46CC /* ResourceResolverMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494400882E58E7A200AC46CC /* ResourceResolverMock.swift */; };
@@ -34,6 +34,7 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		E1E091C69AD74808BE3733231FC76E98 /* DatadogSessionReplayPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35542C60C09A47729F76E13B6A659C63 /* DatadogSessionReplayPluginTests.swift */; };
+		E7162BD14BF84CACB6B101E947BD07D1 /* SessionReplayTestContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,7 +70,6 @@
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		494123572DC129630071423F /* RequestBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestBuilderTests.swift; sourceTree = "<group>"; };
 		494400762E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlutterSessionReplayBridgeTests.swift; sourceTree = "<group>"; };
-		F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionReplayTestContainer.swift; sourceTree = "<group>"; };
 		494400782E58BA0700AC46CC /* Mockable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mockable.swift; sourceTree = "<group>"; };
 		4944007C2E58C54B00AC46CC /* FlutterSessionReplayFeatureMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlutterSessionReplayFeatureMock.swift; sourceTree = "<group>"; };
 		494400882E58E7A200AC46CC /* ResourceResolverMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceResolverMock.swift; sourceTree = "<group>"; };
@@ -98,9 +98,11 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9840D6870413420E38040A85 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
+		BE0C0F8D524DC14EF6F6CFB0 /* DataStoreMock.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DataStoreMock.swift; sourceTree = "<group>"; };
 		CB6E419C80EE782C5F5B2C8E /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		CDF9F7F84B03E7F780D7C869 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		E3A52EA2C191523119AFBBD1 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
+		F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionReplayTestContainer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -190,6 +192,7 @@
 				495A027D2DCE433B00869BEA /* FileWriterMock.swift */,
 				495A027F2DCE433B00869BEA /* FoundationMocks.swift */,
 				495A02802DCE433B00869BEA /* MultipartBuilderSpy.swift */,
+				BE0C0F8D524DC14EF6F6CFB0 /* DataStoreMock.swift */,
 			);
 			path = Mocks;
 			sourceTree = "<group>";
@@ -498,6 +501,7 @@
 				E1E091C69AD74808BE3733231FC76E98 /* DatadogSessionReplayPluginTests.swift in Sources */,
 				4944008D2E58F71300AC46CC /* ResourcesWriterTest.swift in Sources */,
 				495642A52E5E2512000FF536 /* ResourceResolverTest.swift in Sources */,
+				1F0B9721A43A6A63DCC17933 /* DataStoreMock.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
