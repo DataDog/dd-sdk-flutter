@@ -21,6 +21,9 @@ migration:
     - platform: windows
       create_revision: c9a6c484230f8b5e408ec57be1ef71dee1e77020
       base_revision: c9a6c484230f8b5e408ec57be1ef71dee1e77020
+    - platform: macos
+      create_revision: 84fc5cbb223bc12f83d65b647ff8a56caf779ffd
+      base_revision: 84fc5cbb223bc12f83d65b647ff8a56caf779ffd
     - platform: android
       create_revision: cf4400006550b70f28e4b4af815151d1e74846c6
       base_revision: cf4400006550b70f28e4b4af815151d1e74846c6

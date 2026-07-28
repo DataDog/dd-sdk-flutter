@@ -69,6 +69,11 @@ stages:
     - xcodebuild -downloadPlatform iOS
     - pushd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR && popd
 
+.pre-macos:
+  script:
+    - xcode-select -p
+    - xcodebuild -runFirstLaunch
+
 .pre-android:
   script:
     - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;36.0.0" "platform-tools" "platforms;android-36" || true
@@ -169,6 +174,25 @@ build-ios-spm:
     - melos run build:ios
     - melos run unit_test:ios
 
+# dd-sdk-ios's CocoaPods podspecs don't declare macOS support (SPM-only for now), so
+# macOS can only build via Swift Package Manager until that's fixed upstream.
+build-macos-spm:
+  stage: build
+  except: [ schedules ]
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  tags:
+    - macos:sonoma
+    - specific:true
+  script:
+    - !reference [.pre, script]
+    - !reference [.pre-macos, script]
+    - flutter config --enable-swift-package-manager
+    - melos remove_cocoapods
+    - melos pub:get
+    - melos run build:macos
+    - melos run unit_test:macos
+
 build-ios:
   stage: build
   except: [ schedules ]
@@ -268,6 +292,28 @@ ios-integration-test:
     - melos pub:get
     - melos pod_update --no-select
     - melos run integration_test:ios
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+macos-integration-test:
+  stage: integration-test
+  except: [ schedules ]
+  needs: [ build-macos-spm ]
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  tags:
+    - macos:sonoma
+    - specific:true
+  script:
+    - !reference [.pre, script]
+    - !reference [.pre-macos, script]
+    - flutter config --enable-swift-package-manager
+    - melos remove_cocoapods
+    - melos pub:get
+    - melos run integration_test:macos
   artifacts:
     when: always
     expire_in: "30 days"

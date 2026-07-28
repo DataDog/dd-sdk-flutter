@@ -29,3 +29,8 @@ flutter:
       ios:
         pluginClass: DatadogSdkPlugin
         dartPluginClass: DatadogFlutterPluginIos
+        sharedDarwinSource: true
+      macos:
+        pluginClass: DatadogSdkPlugin
+        dartPluginClass: DatadogFlutterPluginIos
+        sharedDarwinSource: true

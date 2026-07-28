@@ -24,6 +24,13 @@ scripts:
     packageFilters:
       dirExists: example/ios
 
+  build:macos:
+    exec:
+      concurrency: 1
+    run: cd example && flutter clean && flutter build macos --release
+    packageFilters:
+      dirExists: example/macos
+
   # `rm` isn't a cmd.exe builtin and the Windows toolchain image doesn't provide it;
   # `del` isn't a bash command either, so try both and let the `||` fallback pick the
   # one available on the current shell.
@@ -71,7 +78,9 @@ scripts:
     description: |
       Run swiftlint --fix
     packageFilters:
-      dirExists: ios
+      dirExists:
+        - ios
+        - darwin
 
   lint_fix:android:
     exec:
@@ -110,10 +119,12 @@ scripts:
         - "*e2e_test_app*"
   
   analyze:ios:
-    exec: cd ios && swiftlint
+    exec: (test -d darwin && cd darwin || cd ios) && swiftlint
     packageFilters:
-      dirExists: ios
-      ignore: 
+      dirExists:
+        - ios
+        - darwin
+      ignore:
         - "*example*"
         - "*integration_test_app*"
         - "*e2e_test_app*"
@@ -175,6 +186,15 @@ scripts:
         # iOS unit tests moved to datadog_flutter_plugin_ios
         - 'datadog_flutter_plugin'
 
+  unit_test:macos:
+    exec:
+      concurrency: 1
+    run:
+      set -euxo pipefail &&
+      xcodebuild test -workspace example/macos/Runner.xcworkspace -scheme Runner -destination "platform=macOS" | xcbeautify
+    packageFilters:
+      dirExists: 'example/macos'
+
   unit_test:android:
     exec:
       concurrency: 1
@@ -210,10 +230,38 @@ scripts:
     exec: |
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd integration_test_app
-      
+
       bash -c 'set -euxo pipefail; \
       flutter test integration_test --machine -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
       | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_ios_integration.xml"'
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
+  integration_test:macos:
+    run: melos integration_test:macos:main
+
+  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
+  # have a separate target just for it that is called by `integration_test:macos`
+  # flutter test runs every file in `integration_test` inside a single process against
+  # one debug connection on desktop targets. On macOS, only the first file's app launch
+  # actually attaches; every subsequent file fails with "The log reader stopped
+  # unexpectedly, or never started." (a known Flutter desktop-runner issue, see
+  # https://github.com/flutter/flutter/issues/118532). Work around it by launching each
+  # test file as its own `flutter test` invocation.
+  integration_test:macos:main:
+    exec: |
+      mkdir -p $MELOS_ROOT_PATH/.build/test-results
+      cd integration_test_app
+
+      bash -c 'set -uxo pipefail; \
+      overall=0; \
+      for f in integration_test/*_test.dart; do \
+        name=\$(basename "\$f" .dart); \
+        flutter test "\$f" --machine -d macos --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
+        | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_macos_integration_\$name.xml" \
+        || overall=1; \
+      done; \
+      exit \$overall'
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
