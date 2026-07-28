@@ -48,8 +48,6 @@ scripts:
     packageFilters:
       dirExists: example/web
 
-  # Runs inside the Windows CI Docker container (see ci/windows/), where melos invokes
-  # scripts via `cmd.exe /c`, not bash - avoid bash-only syntax here.
   build:windows:
     exec:
       concurrency: 1
@@ -127,6 +125,15 @@ scripts:
     run: 
       mkdir -p .build/test-results &&
       melos exec -c 1 -- "set -e -o pipefail && flutter test --machine | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml\"" 
+    packageFilters:
+      dirExists: 'test'
+      ignore:
+        - 'datadog_flutter_plugin_web'
+
+  unit_test:windows:
+    exec:
+      concurrency: 1
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine
     packageFilters:
       dirExists: 'test'
       ignore:
@@ -243,7 +250,7 @@ scripts:
   integration_test:windows:
     run: melos integration_test:windows:main && melos integration_test:windows:other
 
-  # Windows can't run the whole integration_test directory in one `flutter test`
+  # Desktop platforms can't run the whole integration_test directory in one `flutter test`
   # invocation, so this uses tools/ci/bin/desktop_integration_tests.dart to run each
   # test file individually, same idea as web's per-file `flutter drive` runner.
   integration_test:windows:other:
@@ -251,7 +258,7 @@ scripts:
       concurrency: 1
     run: |
       cd example
-      dart %MELOS_ROOT_PATH%/tools/ci/bin/desktop_integration_tests.dart --output %MELOS_ROOT_PATH%/.build/test-results
+      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       dirExists: 'example/integration_test'
       ignore:
@@ -262,7 +269,7 @@ scripts:
   integration_test:windows:main:
     exec: |
       cd integration_test_app
-      dart %MELOS_ROOT_PATH%/tools/ci/bin/desktop_integration_tests.dart --output %MELOS_ROOT_PATH%/.build/test-results
+      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
@@ -344,23 +351,15 @@ scripts:
     packageFilters:
       dependsOn: build_runner
   
-  # `%MELOS_ROOT_PATH%` is only expanded by cmd.exe (Windows); on bash it's a literal
-  # string that fails to resolve, so `dart` exits non-zero and the `||` fallback runs
-  # the bash-style `$MELOS_ROOT_PATH` form instead. This lets one line work on both
-  # shells melos may invoke, without needing to globally activate the script.
   generate_env:
-    exec: >
-      dart %MELOS_ROOT_PATH%/tools/ci/bin/generate_env.dart ||
-      dart $MELOS_ROOT_PATH/tools/ci/bin/generate_env.dart
+    exec: dart $MELOS_ROOT_PATH/tools/ci/bin/generate_env.dart
     packageFilters:
       scope:
         - "*example*"
         - "*integration_test_app*"
 
   generate_env:e2e:
-    exec: >
-      dart %MELOS_ROOT_PATH%/tools/ci/bin/generate_env.dart --e2e ||
-      dart $MELOS_ROOT_PATH/tools/ci/bin/generate_env.dart --e2e
+    exec: dart $MELOS_ROOT_PATH/tools/ci/bin/generate_env.dart --e2e
     packageFilters:
       scope:
         - "*e2e_test_app*"
