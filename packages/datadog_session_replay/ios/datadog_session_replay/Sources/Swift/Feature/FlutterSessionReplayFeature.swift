@@ -18,6 +18,7 @@ protocol FlutterSessionReplayFeature {
         get
     }
 
+    func readCurrentContext(_ completion: @escaping (RUMCoreContext?) -> Void)
     func setHasReplay(_ hasReplay: Bool)
     func setRecordCount(for viewId: String, count: Int64)
     func writeSegment(segment: String)

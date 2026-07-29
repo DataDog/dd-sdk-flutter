@@ -19,6 +19,6 @@ public extension FlutterViewController {
     /// This stores the view's hash (the slotId) keyed on the engine messenger so the
     /// plugin can retrieve it when the Dart side asks for it on the first frame.
     func enableDatadogSessionReplay() {
-        FlutterSessionReplay.registerSlotId(String(view.hash), for: engine.binaryMessenger)
+        FlutterSessionReplayManager.shared.registerSlotId(String(view.hash), for: engine.binaryMessenger)
     }
 }

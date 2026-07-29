@@ -34,7 +34,7 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
             // `FlutterViewController.enableDatadogSessionReplay()`, or `nil` if the host app
             // has not called it (i.e. Flutter is full-screen, not embedded, or the view is
             // not yet attached).
-            result(FlutterSessionReplay.resolveSlotId(for: messenger))
+            result(FlutterSessionReplayManager.shared.slotId(for: messenger))
         } else {
             result(FlutterMethodNotImplemented)
         }
