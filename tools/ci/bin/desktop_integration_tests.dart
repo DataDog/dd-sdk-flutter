@@ -27,6 +27,30 @@ String currentDevice() {
   );
 }
 
+// Must match the `service` configured in lib/main.dart and
+// lib/integration_scenarios/scenario_runner.dart.
+const _dataStorageService = 'com.datadoghq.flutter.integration';
+
+// Mirrors DesktopPlatform._storagePath in datadog_flutter_plugin_desktop.
+Directory _dataStorageDirectory() {
+  if (Platform.isWindows) {
+    final base = Platform.environment['LOCALAPPDATA'] ?? '.';
+    return Directory('$base\\Datadog\\$_dataStorageService');
+  }
+  final home = Platform.environment['HOME'] ?? '.';
+  return Directory('$home/.local/share/datadog/$_dataStorageService');
+}
+
+// The C SDK's on-disk storage persists across app runs so it can recover
+// from an abandoned process. That means a previous test file's session/batch
+// data can otherwise leak into the next test file's run.
+void _deleteStaleDatadogData() {
+  final dir = _dataStorageDirectory();
+  if (dir.existsSync()) {
+    dir.deleteSync(recursive: true);
+  }
+}
+
 void main(List<String> arguments) async {
   final parser = ArgParser()
     ..addOption(
@@ -65,6 +89,8 @@ void main(List<String> arguments) async {
         continue;
       }
       final testName = path.basenameWithoutExtension(baseName);
+
+      _deleteStaleDatadogData();
 
       final args = ['test', 'integration_test/$baseName', '-d', device];
       final clientToken = Platform.environment['DD_CLIENT_TOKEN'];
