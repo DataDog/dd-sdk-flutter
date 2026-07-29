@@ -14,6 +14,11 @@ if ($LASTEXITCODE -ne 0) { throw "dart pub global activate melos failed with exi
 dart pub global activate junitreport
 if ($LASTEXITCODE -ne 0) { throw "dart pub global activate junitreport failed with exit code $LASTEXITCODE" }
 
+Push-Location tools/ci
+dart pub get
+if ($LASTEXITCODE -ne 0) { throw "dart pub get (tools/ci) failed with exit code $LASTEXITCODE" }
+Pop-Location
+
 # `dart pub global activate` installs executables here
 $env:PATH = "$env:PATH;C:\Users\ContainerAdministrator\AppData\Local\Pub\Cache\bin"
 

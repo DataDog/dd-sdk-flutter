@@ -11,8 +11,6 @@ import 'package:path/path.dart' as path;
 // Not all functionality is available in Flutter web. These integration tests
 // are skipped because they do not work in Flutter web yet.
 const fileExclude = [
-  // Not a test
-  'common.dart',
   // Web does not support configuraiton telemetry the same as mobile
   'configuration_telemetry_test.dart',
   // Web does not yet support mapping
@@ -22,8 +20,6 @@ const fileExclude = [
   'rum_kiosk_test.dart',
   // Web does not yet support mapping
   'rum_mapping_test.dart',
-  // Not a test
-  'tracing_id_helpers.dart',
   // Web does not support dart:io clients
   'tracking_http_client_test.dart',
   // Web does not support isolates
@@ -44,6 +40,9 @@ void main() async {
   for (final file in testDirectory.listSync()) {
     if (file is File) {
       final baseName = path.basename(file.path);
+      if (!baseName.endsWith('_test.dart')) {
+        continue;
+      }
       if (fileExclude.contains(baseName)) {
         continue;
       }

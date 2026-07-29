@@ -80,15 +80,6 @@ stages:
     - melos pub:get
     - flutter doctor
 
-.pre-web:
-  script:
-    - pushd tools/ci && dart pub get && dart run ci_helpers chrome_driver --extract && popd
-    - ./tools/ci/.tmp/chromedriver-linux64/chromedriver --version
-    - ./tools/ci/.tmp/chrome-linux64/chrome --version    
-    - export CHROME_EXECUTABLE=${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/chrome
-    - export PATH="$PATH:${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/"
-    - echo $CHROME_EXECUTABLE 
-  
 ci-image:
   when: manual
   stage: ci-image

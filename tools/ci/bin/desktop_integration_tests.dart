@@ -14,8 +14,6 @@ import 'package:path/path.dart' as path;
 //
 // See issue https://github.com/flutter/flutter/issues/135673
 const fileExclude = [
-  // Not a test
-  'common.dart',
   // Not supported on desktop currently
   'configuration_telemetry_test.dart',
 ];
@@ -60,6 +58,9 @@ void main(List<String> arguments) async {
   for (final file in testDirectory.listSync()) {
     if (file is File) {
       final baseName = path.basename(file.path);
+      if (!baseName.endsWith('_test.dart')) {
+        continue;
+      }
       if (fileExclude.contains(baseName)) {
         continue;
       }
@@ -81,10 +82,7 @@ void main(List<String> arguments) async {
           outputDir,
           '${packageName}_${device}_integration_$testName.xml',
         );
-        exitCode = await _runTestWithJunit(
-          [...args, '--machine'],
-          outputFile,
-        );
+        exitCode = await _runTestWithJunit([...args, '--machine'], outputFile);
       } else {
         exitCode = await _runTest(args);
       }
@@ -99,7 +97,11 @@ void main(List<String> arguments) async {
 
 Future<int> _runTest(List<String> args) async {
   print('flutter ${args.join(' ')}');
-  final process = await Process.start('flutter', args);
+  final process = await Process.start(
+    'flutter',
+    args,
+    runInShell: Platform.isWindows,
+  );
   process.stdout
       .transform(utf8.decoder)
       .transform(const LineSplitter())
@@ -114,18 +116,27 @@ Future<int> _runTest(List<String> args) async {
 
 Future<int> _runTestWithJunit(List<String> args, String outputFile) async {
   print('flutter ${args.join(' ')} | tojunit --output $outputFile');
-  final testProcess = await Process.start('flutter', args);
+  final testProcess = await Process.start(
+    'flutter',
+    args,
+    runInShell: Platform.isWindows,
+  );
   final tojunitProcess = await Process.start('tojunit', [
     '--output',
     outputFile,
-  ]);
+  ], runInShell: Platform.isWindows);
 
   testProcess.stderr
       .transform(utf8.decoder)
       .transform(const LineSplitter())
       .listen(print);
 
-  final pipeDone = testProcess.stdout.pipe(tojunitProcess.stdin);
+  // If tojunit exits early (e.g. it can't parse the test output) it closes its
+  // stdin, and writing to it after that throws - swallow that here so a tojunit
+  // failure can never mask the real flutter test exit code below.
+  final pipeDone = testProcess.stdout
+      .pipe(tojunitProcess.stdin)
+      .catchError((_) {});
   final testExitCode = await testProcess.exitCode;
   await pipeDone;
   final tojunitExitCode = await tojunitProcess.exitCode;

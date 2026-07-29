@@ -60,10 +60,7 @@ DatadogSite _datadogSiteFor(String site) {
 class FlagsExampleApp extends StatefulWidget {
   final bool isConfigured;
 
-  const FlagsExampleApp({
-    super.key,
-    required this.isConfigured,
-  });
+  const FlagsExampleApp({super.key, required this.isConfigured});
 
   @override
   State<FlagsExampleApp> createState() => _FlagsExampleAppState();
@@ -138,14 +135,8 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
               label: 'Value',
               value: details == null ? '(none)' : details.value.toString(),
             ),
-            _InfoRow(
-              label: 'Variant',
-              value: details?.variant ?? '(none)',
-            ),
-            _InfoRow(
-              label: 'Error',
-              value: details?.error?.name ?? '(none)',
-            ),
+            _InfoRow(label: 'Variant', value: details?.variant ?? '(none)'),
+            _InfoRow(label: 'Error', value: details?.error?.name ?? '(none)'),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _evaluate,
@@ -162,10 +153,7 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
