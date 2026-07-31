@@ -193,8 +193,16 @@ void main() {
     expect(view1.vitalStepEvents[2].vitalFailureReason, 'error');
 
     // Verify user in all events, except for the first view event
-    for (final viewEvent in view1.viewEvents.sublist(1)) {
-      verifyUser(viewEvent);
+    // Verify user in all events, except for the first few view events
+    bool sawUser = false;
+    for (final viewEvent in view1.viewEvents) {
+      // It's okay for view events to not have a user for the first few,
+      // so long as it remains consistent after the first event. This can happen
+      // if long tasks are reported during boot.
+      if (viewEvent.user != null || sawUser) {
+        sawUser = true;
+        verifyUser(viewEvent);
+      }
     }
     for (final actionEvent in view1.actionEvents) {
       verifyUser(actionEvent);
@@ -205,6 +213,7 @@ void main() {
     for (final errorEvent in view1.errorEvents) {
       verifyUser(errorEvent);
     }
+    // Everything after the first vital should contain a user.
     for (final vitalEvent in view1.vitalStepEvents.sublist(1)) {
       verifyUser(vitalEvent);
     }
