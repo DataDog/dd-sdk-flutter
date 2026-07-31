@@ -300,7 +300,9 @@ scripts:
       cd example
       dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
-      dirExists: 'example/integration_test'
+      dirExists: 
+        - 'example/integration_test'
+        - 'example/linux'
       ignore:
         - 'datadog_flutter_plugin'
 
