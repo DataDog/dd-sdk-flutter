@@ -81,7 +81,7 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
     if (configuration.isEmbedded) {
       // Resolve the slotId on the first frame, and re-resolve whenever the view is
       // (re)attached. A pre-warmed engine is reused across view open/close, so its
-      // FlutterView — and therefore its slotId (the view hash) — changes on each
+      // FlutterView — and therefore its slotId, which is assigned per view — changes on each
       // reopen. A one-shot resolve would leave records stamped with a stale slotId
       // that no longer matches the native embedded_view placeholder. The observer
       // re-resolves on `didChangeMetrics` (fires on view attach/detach/resize) and
@@ -102,7 +102,7 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
   }
 
   /// The slotId last forwarded to the native bridge, so re-resolution only pushes
-  /// changes (a reused engine's view hash changes across open/close).
+  /// changes (a reused engine gets a new view, and a new slotId, across open/close).
   String? _lastSlotId;
 
   /// Resolves the embedded Flutter view's slotId and forwards it to the native
@@ -196,8 +196,8 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
 }
 
 // Resolves (and re-resolves) the embedded Flutter view's slotId. A pre-warmed engine
-// is reused across view open/close, so its FlutterView — and thus its slotId (view
-// hash) — changes on each reopen. This observer re-resolves whenever the view is
+// is reused across view open/close, so its FlutterView — and thus its slotId, which is
+// assigned per view — changes on each reopen. This observer re-resolves whenever the view is
 // (re)attached (`didChangeMetrics`) or the app resumes, so the bridge always stamps
 // records with the current slotId. It persists for the engine's lifetime; `_lastSlotId`
 // dedupes so unchanged resolutions are no-ops.

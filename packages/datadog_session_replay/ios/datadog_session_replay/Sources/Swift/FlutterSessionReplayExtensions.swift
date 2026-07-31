@@ -16,9 +16,14 @@ public extension FlutterViewController {
     /// present(flutterVC, animated: true)
     /// ```
     ///
-    /// This stores the view's hash (the slotId) keyed on the engine messenger so the
-    /// plugin can retrieve it when the Dart side asks for it on the first frame.
+    /// This assigns a slot ID to the view — the identifier the native recorder reads back to
+    /// emit the `embedded_view` placeholder — and keys this view controller on the engine
+    /// messenger so the plugin can resolve that ID when the Dart side asks for it on the
+    /// first frame.
+    ///
+    /// Calling this more than once for the same view controller is safe: the slot ID is
+    /// assigned only if the view does not already have one.
     func enableDatadogSessionReplay() {
-        FlutterSessionReplayManager.shared.registerSlotId(String(view.hash), for: engine.binaryMessenger)
+        FlutterSessionReplayManager.shared.registerSlot(for: self, messenger: engine.binaryMessenger)
     }
 }

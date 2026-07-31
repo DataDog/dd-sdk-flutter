@@ -3,6 +3,10 @@
 // Copyright 2025-Present Datadog, Inc.
 import Foundation
 import Flutter
+import UIKit
+
+// `sessionReplaySlotID` is exposed as SPI by `DatadogInternal`.
+@_spi(Internal)
 import DatadogInternal
 
 /// Process-wide coordinator for Flutter Session Replay.
@@ -31,12 +35,16 @@ internal final class FlutterSessionReplayManager {
     /// bridge is released.
     private let engines = NSHashTable<FlutterSessionReplay>.weakObjects()
 
-    /// Maps each engine's canonical messenger → the slotId (`FlutterView.hash`) of its
-    /// associated `FlutterViewController`. Populated by `enableDatadogSessionReplay()`.
-    /// Weak keys so entries clear automatically when an engine is released.
-    private let slotIdsByMessenger = NSMapTable<AnyObject, NSString>(
+    /// Maps each engine's canonical messenger → the `FlutterViewController` hosting its embedded
+    /// view. Populated by `enableDatadogSessionReplay()`. Both sides are weak, so entries clear
+    /// automatically when an engine or its view controller is released.
+    ///
+    /// The slot ID itself is deliberately *not* stored here: it lives on the view as
+    /// `view.dd.sessionReplaySlotID` and is read on demand, so an engine whose `FlutterView` was
+    /// recreated resolves the current view's ID instead of a stale snapshot.
+    private let viewControllersByMessenger = NSMapTable<AnyObject, UIViewController>(
         keyOptions: .weakMemory,
-        valueOptions: .strongMemory
+        valueOptions: .weakMemory
     )
 
     private init() { }
@@ -99,12 +107,46 @@ internal final class FlutterSessionReplayManager {
 
     // MARK: - Slot IDs
 
-    internal func registerSlotId(_ slotId: String, for messenger: FlutterBinaryMessenger) {
-        slotIdsByMessenger.setObject(slotId as NSString, forKey: canonical(messenger as AnyObject))
+    /// Registers the view controller hosting `messenger`'s embedded Flutter view and assigns its
+    /// slot ID.
+    ///
+    /// The ID is assigned eagerly rather than on the first `slotId(for:)` query because the
+    /// native recorder only emits the `embedded_view` placeholder for views that already carry
+    /// one, and it may snapshot the host before Dart asks for the ID on the first frame.
+    internal func registerSlot(for viewController: UIViewController, messenger: FlutterBinaryMessenger) {
+        viewControllersByMessenger.setObject(viewController, forKey: canonical(messenger as AnyObject))
+        _ = slotId(assigningTo: viewController.viewIfLoaded)
     }
 
     internal func slotId(for messenger: AnyObject) -> String? {
-        return slotIdsByMessenger.object(forKey: canonical(messenger)) as String?
+        let viewController = viewControllersByMessenger.object(forKey: canonical(messenger))
+        return slotId(assigningTo: viewController?.viewIfLoaded)
+    }
+
+    /// Returns `view`'s slot ID, assigning a new one if it does not have one yet.
+    ///
+    /// `sessionReplaySlotID` is a plain associated object with no default — the embedding SDK
+    /// mints the value and the native recorder reads it back, skipping any view without one. The
+    /// value is arbitrary, so a UUID is used: nothing on either side derives it from the view.
+    ///
+    /// Assigning here (and not only in `enableDatadogSessionReplay()`) covers views recreated
+    /// after registration: a pre-warmed engine reused across open/close gets a fresh
+    /// `FlutterView`, which starts out without an ID.
+    ///
+    /// Returns `nil` when the view is not loaded yet — the Dart side retries on the next
+    /// `didChangeMetrics`.
+    private func slotId(assigningTo view: UIView?) -> String? {
+        guard let view = view else {
+            return nil
+        }
+
+        if let slotId = view.dd.sessionReplaySlotID {
+            return slotId
+        }
+
+        let slotId = UUID().uuidString
+        view.dd.sessionReplaySlotID = slotId
+        return slotId
     }
 
     /// Returns the canonical underlying messenger used as a stable registry key.
@@ -124,26 +166,32 @@ internal final class FlutterSessionReplayManager {
 
     // MARK: - Records
 
-    /// Parses `segment`, injects `slotId` into each record, and posts the records to the
-    /// native SDK message bus as `FeatureMessage.flutterView(.record(…))`, where
-    /// `FlutterRecordReceiver` (inside the native `SessionReplayFeature`) picks them up.
-    /// This follows the same pattern used for web-view records.
+    /// Parses `segment` and posts its records to the native SDK message bus as
+    /// `FeatureMessage.embeddedContent(.records(…))`, where `EmbeddedContentReceiver` (inside the
+    /// native `SessionReplayFeature`) picks them up, stamps each record with `slotID`, and writes
+    /// them to the native Session Replay scope so the player can composite them into the host's
+    /// `embedded_view` placeholder.
+    ///
+    /// `viewID` must be the *native* RUM view ID: the receiver pairs it with the native
+    /// application and session IDs, and uses it as the key it increments in
+    /// `sr_records_count_by_view_id`, which RUM reads back per view. It is — the Dart side stamps
+    /// records with the RUM context this manager fans out, which originates natively.
     internal func sendToMessageBus(segment: String, slotId: String) {
         guard
             let data = segment.data(using: .utf8),
             let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-            let records = object["records"] as? [[String: Any]],
+            let records = object["records"] as? [EmbeddedContentMessage.RecordBatch.Record],
             let viewID = object["viewID"] as? String,
-            let viewData = try? JSONSerialization.data(withJSONObject: ["id": viewID]),
-            let view = try? JSONDecoder().decode(FlutterMessage.View.self, from: viewData)
+            !records.isEmpty
         else {
             return
         }
 
-        for var record in records {
-            record["slotId"] = slotId
-            core?.send(message: .flutterView(.record(record, view)))
-        }
+        core?.send(
+            message: .embeddedContent(
+                .records(.init(records: records, slotID: slotId, viewID: viewID))
+            )
+        )
     }
 
     // MARK: - Testing
@@ -153,6 +201,6 @@ internal final class FlutterSessionReplayManager {
         feature = nil
         core = nil
         engines.removeAllObjects()
-        slotIdsByMessenger.removeAllObjects()
+        viewControllersByMessenger.removeAllObjects()
     }
 }

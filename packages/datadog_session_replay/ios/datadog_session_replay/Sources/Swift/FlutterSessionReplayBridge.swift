@@ -115,11 +115,30 @@ public func __datadog_session_replay_keep_symbols() {
         manager.primeContext(for: self)
     }
 
+    /// Whether this engine should publish replay state (`has_replay`, record counts) to the core.
+    ///
+    /// Only the standalone path may: when embedded, the native `SessionReplayFeature` publishes
+    /// both — `EmbeddedContentReceiver` counts our records through its `SRContextPublisher` —
+    /// and publishing from here too would have the two fight over the same core-context keys,
+    /// making the value RUM reads depend on which wrote last.
+    private var publishesReplayState: Bool {
+        if case .standalone = embeddingState {
+            return true
+        }
+        return false
+    }
+
     @objc public func setHasReplay(hasReplay: Bool) {
+        guard publishesReplayState else {
+            return
+        }
         manager.feature?.setHasReplay(hasReplay)
     }
 
     @objc public func setRecordCount(for viewId: String, count: Int) {
+        guard publishesReplayState else {
+            return
+        }
         manager.feature?.setRecordCount(for: viewId, count: Int64(count))
     }
 
