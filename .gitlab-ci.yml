@@ -302,7 +302,7 @@ linux-integration-test:
     [ "arch:amd64" ]
   script:
     - !reference [.pre, script]
-    - melos run integration_test:linux
+    - xvfb-run -a dbus-run-session -- melos run integration_test:linux
   artifacts:
     when: always
     expire_in: "30 days"
