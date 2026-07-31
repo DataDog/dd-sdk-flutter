@@ -47,6 +47,10 @@ internal final class FlutterSessionReplayManager {
         valueOptions: .weakMemory
     )
 
+    /// Whether Flutter is embedded in a native host, and therefore whether resources belong to the
+    /// native Session Replay rather than the Flutter `ResourcesFeature`.
+    private var isEmbedded = false
+
     private init() { }
 
     // MARK: - Engines
@@ -99,7 +103,14 @@ internal final class FlutterSessionReplayManager {
                     self?.broadcastContext(context)
                 }
             ),
-            resourceResolver: nil   // Use the default resource resolver
+            resourceResolver: nil,  // Use the default resource resolver
+            embeddedResourceSink: { [weak self] identifier, data, mimeType in
+                self?.sendToMessageBus(
+                    resourceWithIdentifier: identifier,
+                    data: data,
+                    mimeType: mimeType
+                ) ?? false
+            }
         )
         try core.register(feature: feature)
         self.feature = feature
@@ -114,6 +125,7 @@ internal final class FlutterSessionReplayManager {
     /// native recorder only emits the `embedded_view` placeholder for views that already carry
     /// one, and it may snapshot the host before Dart asks for the ID on the first frame.
     internal func registerSlot(for viewController: UIViewController, messenger: FlutterBinaryMessenger) {
+        isEmbedded = true
         viewControllersByMessenger.setObject(viewController, forKey: canonical(messenger as AnyObject))
         _ = slotId(assigningTo: viewController.viewIfLoaded)
     }
@@ -194,12 +206,35 @@ internal final class FlutterSessionReplayManager {
         )
     }
 
+    // MARK: - Resources
+
+    /// Posts a resource to the native SR message bus as `FeatureMessage.embeddedContent(.resource(…))`,
+    /// where `EmbeddedContentReceiver` writes it through the *native* `ResourcesWriter` — the same one
+    /// the host's own resources go through, so identifiers are deduped across both and that dedup
+    /// survives app launches.
+    ///
+    /// Returns `false` when Flutter is not embedded, so the caller writes to the Flutter
+    /// `ResourcesFeature` instead.
+    internal func sendToMessageBus(resourceWithIdentifier identifier: String, data: Data, mimeType: String) -> Bool {
+        guard isEmbedded, let core = core else {
+            return false
+        }
+
+        core.send(
+            message: .embeddedContent(
+                .resource(.init(identifier: identifier, data: data, mimeType: mimeType))
+            )
+        )
+        return true
+    }
+
     // MARK: - Testing
 
     /// Only used in testing.
     internal func shutdown() {
         feature = nil
         core = nil
+        isEmbedded = false
         engines.removeAllObjects()
         viewControllersByMessenger.removeAllObjects()
     }

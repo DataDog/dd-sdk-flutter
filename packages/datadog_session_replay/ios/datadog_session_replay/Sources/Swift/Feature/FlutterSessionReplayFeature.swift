@@ -66,6 +66,7 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
         core: DatadogCoreProtocol,
         configuration: Configuration,
         resourceResolver: ResourceResolver?,
+        embeddedResourceSink: @escaping EmbeddedResourceSink = { _, _, _ in false },
         performanceOverride: PerformancePresetOverride? = nil
     ) throws {
         self.core = core
@@ -88,7 +89,10 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
         try core.register(feature: resourcesFeature)
 
         self.resourceResolver = resourceResolver ?? DefaultResourceResolver(
-            writer: ResourcesWriter(scope: core.scope(for: ResourcesFeature.self))
+            writer: RoutedResourcesWriter(
+                standaloneWriter: ResourcesWriter(scope: core.scope(for: ResourcesFeature.self)),
+                sendToNative: embeddedResourceSink
+            )
         )
 
         self.performanceOverride = performanceOverride
