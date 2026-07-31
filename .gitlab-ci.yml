@@ -293,6 +293,22 @@ web-integration-test:
     - ./tools/ci/.tmp/chromedriver-linux64/chromedriver --port=4444 &
     - melos run integration_test:web
 
+linux-integration-test:
+  stage: integration-test
+  except: [ schedules ]
+  needs: [ build-linux ]
+  image: $CI_IMAGE_DOCKER
+  tags:
+    [ "arch:amd64" ]
+  script:
+    - !reference [.pre, script]
+    - melos run integration_test:linux
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
 # windows-integration-test:
 #   stage: integration-test
 #   except: [ schedules ]
