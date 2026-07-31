@@ -90,7 +90,7 @@ class DatadogSessionReplay {
     // is static (no new frame), so without this the new view's snapshot is deferred
     // until the next interaction. `onContextChanged` only fires on actual context
     // changes, so this doesn't add per-frame work.
-    _newFrameBuilt = true;
+    // _newFrameBuilt = true;                       // This might not be necessary. Let's wait until the player ships to see whether we need to add it.
   }
 
   /// Begins periodic Session Replay tree capture. Has no effect if recording

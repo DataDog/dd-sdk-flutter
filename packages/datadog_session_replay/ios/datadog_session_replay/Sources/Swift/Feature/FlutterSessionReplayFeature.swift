@@ -107,7 +107,7 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
     ///
     /// Call this once right after a Flutter engine enables to prime it immediately.
     func readCurrentContext(_ completion: @escaping (RUMCoreContext?) -> Void) {
-        featureScope?.eventWriteContext(bypassConsent: true) { context, _ in
+        featureScope?.context { context in
             completion(context.additionalContext(ofType: RUMCoreContext.self))
         }
     }

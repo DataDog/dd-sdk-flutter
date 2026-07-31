@@ -20,7 +20,11 @@ import DatadogInternal
 /// This state also has to outlive engine detach/re-attach cycles, which is why it is held
 /// by a singleton rather than by the bridges themselves — mirroring the Android
 /// `FlutterSessionReplayBridge` singleton pattern.
-internal final class FlutterSessionReplayManager {
+///
+/// Not `final`, and its initializer is not private, so tests can build an isolated instance —
+/// or a subclass spying on it — and inject it into `FlutterSessionReplay(manager:)` instead of
+/// sharing process-wide state between test cases.
+internal class FlutterSessionReplayManager {
     internal static let shared = FlutterSessionReplayManager()
 
     /// The shared feature, registered on the first engine to enable.
@@ -51,7 +55,7 @@ internal final class FlutterSessionReplayManager {
     /// native Session Replay rather than the Flutter `ResourcesFeature`.
     private var isEmbedded = false
 
-    private init() { }
+    internal init() { }
 
     // MARK: - Engines
 

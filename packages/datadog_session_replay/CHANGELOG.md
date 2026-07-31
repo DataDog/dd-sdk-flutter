@@ -2,11 +2,6 @@
 
 ## 1.0.0-preview.13
 
-* Add iOS add-to-app (embedded) Session Replay support: set `isEmbedded: true` on
-  `DatadogSessionReplayConfiguration` to stamp Flutter records with the host's
-  `FlutterView` slot so the player composites them into the native recording.
-* Support multiple Flutter engines in a single hybrid app, each receiving live RUM
-  context updates.
 * Guard against non-finite (NaN/Infinity) values during recording.
 * Render Switch Thumb Icon and use Material Icons for Checkbox glyphs.
 * Render Material and Cupertino buttons correctly.

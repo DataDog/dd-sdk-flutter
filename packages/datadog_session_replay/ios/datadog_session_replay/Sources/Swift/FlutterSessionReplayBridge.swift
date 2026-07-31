@@ -59,8 +59,20 @@ public func __datadog_session_replay_keep_symbols() {
 /// everything shared (the feature, the core, the engine registry, host slot IDs) to
 /// `FlutterSessionReplayManager`.
 @objc(FlutterSessionReplay) public class FlutterSessionReplay: NSObject {
-    /// The shared coordinator.
-    internal var manager: FlutterSessionReplayManager = .shared
+    /// The coordinator shared with every other engine's bridge.
+    internal let manager: FlutterSessionReplayManager
+
+    /// Creates a bridge backed by the process-wide coordinator. This is the initializer Dart
+    /// calls over FFI, so it must stay `@objc` and argument-free.
+    @objc public override convenience init() {
+        self.init(manager: .shared)
+    }
+
+    /// Creates a bridge backed by `manager`, so tests can substitute the coordinator.
+    internal init(manager: FlutterSessionReplayManager) {
+        self.manager = manager
+        super.init()
+    }
 
     /// This engine's Dart RUM-context callback, set in `enable()` and invoked by the
     /// manager's context fan-out.
