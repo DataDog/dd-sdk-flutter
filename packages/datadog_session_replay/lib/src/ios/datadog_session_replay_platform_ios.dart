@@ -6,7 +6,9 @@ import 'dart:async';
 import 'dart:ffi' as ffi;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:objective_c/objective_c.dart';
 
 import '../../datadog_session_replay.dart';
@@ -14,8 +16,10 @@ import '../datadog_session_replay_platform_interface.dart';
 import '../rum_context.dart';
 import 'datadog_session_replay_bridge_ios.dart';
 
-// See comment in DatadogSessionReplayPlugin.register(with:) for why we use a
-// method channel to claim engine ownership after the FFI enable() call.
+// Per-engine method channel used to resolve this engine's embedded slotId
+// (`resolveSlotId`). The FFI `enable()` call can't tell which engine invoked it, so
+// this channel — which routes to the plugin instance for a specific engine — provides
+// that engine's messenger natively. See DatadogSessionReplayPlugin.register(with:).
 // Flutter issue: https://github.com/flutter/flutter/issues/184124
 const _engineChannel = MethodChannel('datadog_session_replay/engine');
 
@@ -73,11 +77,47 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
         onContextChanged: contextChangedListener,
       );
     _iosBridge.enableWith(iOsConfiguration);
-    // Non-awaited: routes through the method channel to the correct engine's plugin
-    // instance, which calls claimOwnership(messenger:) with that engine's messenger.
-    // ignore: unawaited_futures
-    _engineChannel.invokeMethod<void>('claimOwnership');
 
+    if (configuration.isEmbedded) {
+      // Resolve the slotId on the first frame, and re-resolve whenever the view is
+      // (re)attached. A pre-warmed engine is reused across view open/close, so its
+      // FlutterView — and therefore its slotId, which is assigned per view — changes on each
+      // reopen. A one-shot resolve would leave records stamped with a stale slotId
+      // that no longer matches the native embedded_view placeholder. The observer
+      // re-resolves on `didChangeMetrics` (fires on view attach/detach/resize) and
+      // on `AppLifecycleState.resumed`, and persists for the engine's lifetime.
+      WidgetsBinding.instance
+          .addObserver(_EmbeddedSlotIdObserver(_resolveAndSetSlotId));
+      SchedulerBinding.instance.addPostFrameCallback((_) async {
+        await _resolveAndSetSlotId();
+      });
+    } else {
+      // Flutter is the host app (not embedded) — resolve `embeddingState` to
+      // `.standalone` immediately. Without this, it stays `.unknown` forever
+      // and every segment is buffered in memory instead of being written.
+      _iosBridge.setSlotId(null);
+    }
+
+    return true;
+  }
+
+  /// The slotId last forwarded to the native bridge, so re-resolution only pushes
+  /// changes (a reused engine gets a new view, and a new slotId, across open/close).
+  String? _lastSlotId;
+
+  /// Resolves the embedded Flutter view's slotId and forwards it to the native
+  /// bridge when it changes. Returns `true` if a slotId was resolved (the view is
+  /// attached), `false` if it is not yet available (e.g. a pre-warmed, not-yet-
+  /// presented engine) and resolution should be retried later.
+  Future<bool> _resolveAndSetSlotId() async {
+    final slotId = await _engineChannel.invokeMethod<String>('resolveSlotId');
+    if (slotId == null) {
+      return false;
+    }
+    if (slotId != _lastSlotId) {
+      _lastSlotId = slotId;
+      _iosBridge.setSlotId(NSString(slotId));
+    }
     return true;
   }
 
@@ -152,6 +192,34 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
       byteData.lengthInBytes,
     );
     return NSData.castFromPointer(ret, retain: true, release: true);
+  }
+}
+
+// Resolves (and re-resolves) the embedded Flutter view's slotId. A pre-warmed engine
+// is reused across view open/close, so its FlutterView — and thus its slotId, which is
+// assigned per view — changes on each reopen. This observer re-resolves whenever the view is
+// (re)attached (`didChangeMetrics`) or the app resumes, so the bridge always stamps
+// records with the current slotId. It persists for the engine's lifetime; `_lastSlotId`
+// dedupes so unchanged resolutions are no-ops.
+class _EmbeddedSlotIdObserver extends WidgetsBindingObserver {
+  final Future<bool> Function() _resolveAndSetSlotId;
+
+  _EmbeddedSlotIdObserver(this._resolveAndSetSlotId);
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // ignore: unawaited_futures
+      _resolveAndSetSlotId();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    // Fires when a FlutterView attaches/detaches/resizes — including when a reused
+    // engine's view is recreated on reopen, which is exactly when the slotId changes.
+    // ignore: unawaited_futures
+    _resolveAndSetSlotId();
   }
 }
 
