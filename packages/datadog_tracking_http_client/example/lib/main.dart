@@ -75,6 +75,7 @@ Future<void> main() async {
   final configuration = DatadogConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
+    service: 'com.datadoghq.flutter.tracking_http_client.integration',
     site: DatadogSite.us1,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
