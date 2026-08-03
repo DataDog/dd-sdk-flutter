@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Use a widget's `Tooltip` message as a fallback description for actions detected by `RumUserActionDetector`. See [#1033](https://github.com/DataDog/dd-sdk-flutter/issues/1033).
+* Report `FloatingActionButton` as its own element type in `RumUserActionDetector`, using its label text or tooltip as the description. Actions on these buttons were previously reported as their inner `InkWell`, so both the element type and description of existing actions may change.
 
 ## 3.4.1
 

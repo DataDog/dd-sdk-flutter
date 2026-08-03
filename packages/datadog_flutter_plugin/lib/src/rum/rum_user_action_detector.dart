@@ -72,8 +72,8 @@ class _ElementDescription {
 /// This wrapper widget automatically detects tap user actions that occur in its
 /// tree and sends them to RUM. It detects interactions with several common
 /// Flutter widgets, including [ElevatedButton], [TextButton],
-/// [CupertinoButton], [BottomNavigationBar], [TabBar], [InkWell], and
-/// [GestureDetector].
+/// [CupertinoButton], [FloatingActionButton], [BottomNavigationBar], [TabBar],
+/// [InkWell], and [GestureDetector].
 /// You can also provide a custom detection logic by passing [customGestureDetector]
 /// parameter to detect your custom tappable widgets. Example:
 ///
@@ -367,6 +367,11 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     } else if (widget is CupertinoButton) {
       if (widget.enabled) {
         elementName = 'Button';
+      }
+    } else if (widget is FloatingActionButton) {
+      if (widget.onPressed != null) {
+        elementName = 'FloatingActionButton';
+        widgetTooltip = _nonEmpty(widget.tooltip);
       }
     } else if (widget is IconButton) {
       if (widget.onPressed != null) {

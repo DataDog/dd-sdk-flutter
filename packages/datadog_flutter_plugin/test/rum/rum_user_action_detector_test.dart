@@ -893,6 +893,93 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
+  testWidgets('tap FloatingActionButton with tooltip reports tooltip message',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      FloatingActionButton(
+        onPressed: () {},
+        tooltip: tooltip,
+        child: const Icon(Icons.add),
+      ),
+    ));
+
+    final button = find.byType(FloatingActionButton);
+    await tester.tap(button);
+
+    verify(() =>
+        mockRum.addAction(RumActionType.tap, 'FloatingActionButton($tooltip)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap FloatingActionButton without tooltip reports unknown',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      FloatingActionButton(
+        onPressed: () {},
+        child: const Icon(Icons.add),
+      ),
+    ));
+
+    final button = find.byType(FloatingActionButton);
+    await tester.tap(button);
+
+    verify(() =>
+        mockRum.addAction(RumActionType.tap, 'FloatingActionButton(unknown)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets(
+      'tap extended FloatingActionButton prefers label text over tooltip',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final label = randomString();
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      FloatingActionButton.extended(
+        onPressed: () {},
+        tooltip: tooltip,
+        label: Text(label),
+      ),
+    ));
+
+    final button = find.byType(FloatingActionButton);
+    await tester.tap(button);
+
+    verify(() =>
+        mockRum.addAction(RumActionType.tap, 'FloatingActionButton($label)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap disabled FloatingActionButton does not report tap',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      FloatingActionButton(
+        onPressed: null,
+        tooltip: tooltip,
+        child: const Icon(Icons.add),
+      ),
+    ));
+
+    final button = find.byType(FloatingActionButton);
+    await tester.tap(button);
+
+    verifyNever(() => mockRum.addAction(any(), any()));
+    verifyNoMoreInteractions(mockRum);
+  });
+
   testWidgets('tap Radio reports tap with value', (tester) async {
     final mockRum = MockDdRum();
 
