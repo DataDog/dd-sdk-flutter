@@ -504,6 +504,395 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
+  testWidgets('tap IconButton with tooltip reports tooltip message',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      IconButton(
+        onPressed: () {},
+        tooltip: tooltip,
+        icon: const Icon(Icons.ac_unit),
+      ),
+    ));
+
+    final button = find.byType(IconButton);
+    await tester.tap(button);
+
+    verify(() => mockRum.addAction(RumActionType.tap, 'IconButton($tooltip)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets(
+      'tap IconButton with semantic label and tooltip prefers semantic label',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final semanticLabel = randomString();
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      IconButton(
+        onPressed: () {},
+        tooltip: tooltip,
+        icon: Icon(
+          Icons.ac_unit,
+          semanticLabel: semanticLabel,
+        ),
+      ),
+    ));
+
+    final button = find.byType(IconButton);
+    await tester.tap(button);
+
+    verify(() =>
+        mockRum.addAction(RumActionType.tap, 'IconButton($semanticLabel)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap Material 2 IconButton with tooltip reports tooltip message',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      Theme(
+        data: ThemeData(useMaterial3: false),
+        child: IconButton(
+          onPressed: () {},
+          tooltip: tooltip,
+          icon: const Icon(Icons.ac_unit),
+        ),
+      ),
+    ));
+
+    final button = find.byType(IconButton);
+    await tester.tap(button);
+
+    verify(() => mockRum.addAction(RumActionType.tap, 'IconButton($tooltip)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap button wrapped in Tooltip uses tooltip message as fallback',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      Tooltip(
+        message: tooltip,
+        child: ElevatedButton(
+          onPressed: () {},
+          child: const Icon(Icons.add),
+        ),
+      ),
+    ));
+
+    final button = find.byType(ElevatedButton);
+    await tester.tap(button);
+
+    verify(() => mockRum.addAction(RumActionType.tap, 'Button($tooltip)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap button with text wrapped in Tooltip prefers button text',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final buttonText = randomString();
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      Tooltip(
+        message: tooltip,
+        child: ElevatedButton(
+          onPressed: () {},
+          child: Text(buttonText),
+        ),
+      ),
+    ));
+
+    final button = find.byType(ElevatedButton);
+    await tester.tap(button);
+
+    verify(() => mockRum.addAction(RumActionType.tap, 'Button($buttonText)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets(
+      'tap button with annotation wrapped in Tooltip prefers annotation',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final annotation = randomString();
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      Tooltip(
+        message: tooltip,
+        child: RumUserActionAnnotation(
+          description: annotation,
+          child: ElevatedButton(
+            onPressed: () {},
+            child: const Icon(Icons.add),
+          ),
+        ),
+      ),
+    ));
+
+    final button = find.byType(ElevatedButton);
+    await tester.tap(button);
+
+    verify(() => mockRum.addAction(RumActionType.tap, 'Button($annotation)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap gesture detector wrapped in Tooltip reports tooltip message',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      Tooltip(
+        message: tooltip,
+        child: GestureDetector(
+          onTap: () {},
+          child: _testWidgetBuilder(null),
+        ),
+      ),
+    ));
+
+    final detector = find.byType(GestureDetector);
+    await tester.tap(detector);
+
+    verify(() =>
+        mockRum.addAction(RumActionType.tap, 'GestureDetector($tooltip)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap InkWell does not use tooltip of untapped descendant control',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    const tapTarget = Key('emptyRowSpace');
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      InkWell(
+        onTap: () {},
+        child: Row(
+          children: [
+            const SizedBox(key: tapTarget, width: 80, height: 48),
+            IconButton(
+              onPressed: () {},
+              tooltip: tooltip,
+              icon: const Icon(Icons.delete),
+            ),
+          ],
+        ),
+      ),
+    ));
+
+    // Tap the empty part of the row, not the IconButton
+    await tester.tap(find.byKey(tapTarget));
+
+    verify(() => mockRum.addAction(RumActionType.tap, 'InkWell(unknown)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap button wrapped in Tooltip with richMessage uses plain text',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      Tooltip(
+        richMessage: TextSpan(text: tooltip),
+        child: ElevatedButton(
+          onPressed: () {},
+          child: const Icon(Icons.add),
+        ),
+      ),
+    ));
+
+    final button = find.byType(ElevatedButton);
+    await tester.tap(button);
+
+    verify(() => mockRum.addAction(RumActionType.tap, 'Button($tooltip)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets(
+      'tap IconButton with tooltip wrapped in Tooltip prefers its own tooltip',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final ownTooltip = randomString();
+    final outerTooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      Tooltip(
+        message: outerTooltip,
+        child: IconButton(
+          onPressed: () {},
+          tooltip: ownTooltip,
+          icon: const Icon(Icons.ac_unit),
+        ),
+      ),
+    ));
+
+    final button = find.byType(IconButton);
+    await tester.tap(button);
+
+    verify(
+        () => mockRum.addAction(RumActionType.tap, 'IconButton($ownTooltip)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap button in nested Tooltips uses nearest enclosing message',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final outerTooltip = randomString();
+    final innerTooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      Tooltip(
+        message: outerTooltip,
+        child: Tooltip(
+          message: innerTooltip,
+          child: ElevatedButton(
+            onPressed: () {},
+            child: const Icon(Icons.add),
+          ),
+        ),
+      ),
+    ));
+
+    final button = find.byType(ElevatedButton);
+    await tester.tap(button);
+
+    verify(() => mockRum.addAction(RumActionType.tap, 'Button($innerTooltip)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets(
+      'tap button wrapped in Tooltip with empty message reports unknown',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      Tooltip(
+        message: '',
+        child: ElevatedButton(
+          onPressed: () {},
+          child: const Icon(Icons.add),
+        ),
+      ),
+    ));
+
+    final button = find.byType(ElevatedButton);
+    await tester.tap(button);
+
+    verify(() => mockRum.addAction(RumActionType.tap, 'Button(unknown)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap IconButton with empty tooltip reports unknown',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      IconButton(
+        onPressed: () {},
+        tooltip: '',
+        icon: const Icon(Icons.ac_unit),
+      ),
+    ));
+
+    final button = find.byType(IconButton);
+    await tester.tap(button);
+
+    verify(() => mockRum.addAction(RumActionType.tap, 'IconButton(unknown)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('Tooltip message applies to all hit branches of its subtree',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      Tooltip(
+        message: tooltip,
+        child: SizedBox(
+          width: 100,
+          height: 100,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const ColoredBox(color: Colors.red),
+              GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    ));
+
+    final detector = find.byType(GestureDetector);
+    await tester.tap(detector);
+
+    verify(() =>
+        mockRum.addAction(RumActionType.tap, 'GestureDetector($tooltip)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('annotation applies to all hit branches of its subtree',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final annotation = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      RumUserActionAnnotation(
+        description: annotation,
+        child: SizedBox(
+          width: 100,
+          height: 100,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const ColoredBox(color: Colors.red),
+              GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    ));
+
+    final detector = find.byType(GestureDetector);
+    await tester.tap(detector);
+
+    verify(() =>
+        mockRum.addAction(RumActionType.tap, 'GestureDetector($annotation)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
   testWidgets('tap Radio reports tap with value', (tester) async {
     final mockRum = MockDdRum();
 

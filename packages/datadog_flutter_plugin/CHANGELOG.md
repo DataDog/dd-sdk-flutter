@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Use a widget's `Tooltip` message as a fallback description for actions detected by `RumUserActionDetector`. See [#1033](https://github.com/DataDog/dd-sdk-flutter/issues/1033).
+
 ## 3.4.1
 
 * Properly pin Android SDK version to 3.11.0.
