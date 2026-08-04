@@ -525,8 +525,7 @@ void main() {
     verifyNoMoreInteractions(mockRum);
   });
 
-  testWidgets(
-      'tap IconButton with semantic label and tooltip prefers semantic label',
+  testWidgets('tap IconButton with semantic label and tooltip prefers tooltip',
       (tester) async {
     final mockRum = MockDdRum();
 
@@ -547,8 +546,61 @@ void main() {
     final button = find.byType(IconButton);
     await tester.tap(button);
 
-    verify(() =>
-        mockRum.addAction(RumActionType.tap, 'IconButton($semanticLabel)'));
+    verify(() => mockRum.addAction(RumActionType.tap, 'IconButton($tooltip)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets(
+      'tap IconButton with annotation in subtree prefers annotation over tooltip',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final annotation = randomString();
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      IconButton(
+        onPressed: () {},
+        tooltip: tooltip,
+        icon: RumUserActionAnnotation(
+          description: annotation,
+          child: const Icon(Icons.ac_unit),
+        ),
+      ),
+    ));
+
+    final button = find.byType(IconButton);
+    await tester.tap(button);
+
+    verify(
+        () => mockRum.addAction(RumActionType.tap, 'IconButton($annotation)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets(
+      'tap IconButton wrapped in annotation prefers annotation over tooltip',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final annotation = randomString();
+    final tooltip = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      RumUserActionAnnotation(
+        description: annotation,
+        child: IconButton(
+          onPressed: () {},
+          tooltip: tooltip,
+          icon: const Icon(Icons.ac_unit),
+        ),
+      ),
+    ));
+
+    final button = find.byType(IconButton);
+    await tester.tap(button);
+
+    verify(
+        () => mockRum.addAction(RumActionType.tap, 'IconButton($annotation)'));
     verifyNoMoreInteractions(mockRum);
   });
 
@@ -936,7 +988,7 @@ void main() {
   });
 
   testWidgets(
-      'tap extended FloatingActionButton prefers label text over tooltip',
+      'tap extended FloatingActionButton prefers tooltip over label text',
       (tester) async {
     final mockRum = MockDdRum();
 
@@ -947,6 +999,27 @@ void main() {
       FloatingActionButton.extended(
         onPressed: () {},
         tooltip: tooltip,
+        label: Text(label),
+      ),
+    ));
+
+    final button = find.byType(FloatingActionButton);
+    await tester.tap(button);
+
+    verify(() =>
+        mockRum.addAction(RumActionType.tap, 'FloatingActionButton($tooltip)'));
+    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('tap extended FloatingActionButton without tooltip reports label',
+      (tester) async {
+    final mockRum = MockDdRum();
+
+    final label = randomString();
+    await tester.pumpWidget(_buildSimpleApp(
+      mockRum,
+      FloatingActionButton.extended(
+        onPressed: () {},
         label: Text(label),
       ),
     ));
