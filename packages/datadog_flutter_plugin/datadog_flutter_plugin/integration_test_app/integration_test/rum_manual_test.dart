@@ -194,13 +194,15 @@ void main() {
 
     // Verify user in all events, except for the first view event
     // Verify user in all events, except for the first few view events
-    bool sawUser = false;
+    bool sawRealUser = false;
     for (final viewEvent in view1.viewEvents) {
-      // It's okay for view events to not have a user for the first few,
+      // It's okay for view events to not have a real user for the first few,
       // so long as it remains consistent after the first event. This can happen
-      // if long tasks are reported during boot.
-      if (viewEvent.user != null || sawUser) {
-        sawUser = true;
+      // if long tasks are reported during boot. Events may still have an
+      // anonymous user (usr.anonymous_id) before a real user is set, which
+      // doesn't count as "seeing" a user.
+      if (viewEvent.user?.id != null || sawRealUser) {
+        sawRealUser = true;
         verifyUser(viewEvent);
       }
     }
