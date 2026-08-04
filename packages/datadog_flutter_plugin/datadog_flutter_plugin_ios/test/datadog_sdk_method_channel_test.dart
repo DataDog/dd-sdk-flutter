@@ -39,6 +39,7 @@ void main() {
       clientToken: 'fakeClientToken',
       env: 'environment',
       site: DatadogSite.us1,
+      service: 'fake-service',
     );
     await ddSdkPlatform.initialize(
       configuration,
@@ -64,6 +65,7 @@ void main() {
       clientToken: 'fakeClientToken',
       env: 'environment',
       site: DatadogSite.us1,
+      service: 'fake-service',
     );
     await ddSdkPlatform.initialize(
       configuration,

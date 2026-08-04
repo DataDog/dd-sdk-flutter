@@ -72,9 +72,7 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
       _sdk.dd_core_config_init(
         cfg,
         configuration.clientToken.toNativeChar(allocator: arena),
-        (configuration.service ?? _defaultServiceName()).toNativeChar(
-          allocator: arena,
-        ),
+        configuration.service.toNativeChar(allocator: arena),
         configuration.env.toNativeChar(allocator: arena),
       );
 
@@ -122,7 +120,7 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
 
       _sdk.dd_core_config_set_site(cfg, _siteToC(configuration.site));
 
-      final storagePath = _storagePath(configuration.service ?? 'datadog');
+      final storagePath = _storagePath(configuration.service);
       Directory(storagePath).createSync(recursive: true);
       _sdk.dd_core_config_set_application_storage_path(
         cfg,
@@ -480,13 +478,6 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
       base = base.substring(0, base.length - 1);
     }
     return base;
-  }
-
-  String _defaultServiceName() {
-    var name = Platform.resolvedExecutable.split(Platform.pathSeparator).last;
-    final dot = name.lastIndexOf('.');
-    if (dot > 0) name = name.substring(0, dot);
-    return name;
   }
 
   String _storagePath(String service) {

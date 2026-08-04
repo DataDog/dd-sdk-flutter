@@ -1,5 +1,9 @@
 # Migration from 3.x to 4.0
 
+## SDK Configuration Changes
+
+`DatadogConfiguration.service` is no longer optional; it must now be provided when constructing `DatadogConfiguration`.
+
 ## Flutter Web Changes
 
 Clients using Flutter Web should update to using the Datadog Browser SDK v7. Change the following import in your `index.html`:

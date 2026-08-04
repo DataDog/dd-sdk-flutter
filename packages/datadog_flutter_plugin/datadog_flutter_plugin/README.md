@@ -60,6 +60,7 @@ final configuration = DatadogConfiguration(
   clientToken: '<CLIENT_TOKEN>',
   env: '<ENV_NAME>',
   site: DatadogSite.us1,
+  service: '<SERVICE_NAME>',
   nativeCrashReportEnabled: true,
   loggingConfiguration: DatadogLoggingConfiguration(),
   rumConfiguration: DatadogRumConfiguration(

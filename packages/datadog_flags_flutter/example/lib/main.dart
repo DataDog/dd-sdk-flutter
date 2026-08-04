@@ -31,6 +31,7 @@ Future<void> main() async {
       clientToken: _clientToken,
       env: _env,
       site: _datadogSiteFor(_site),
+      service: 'com.datadoghq.flutter.flags.example',
       rumConfiguration: _applicationId.isEmpty
           ? null
           : DatadogRumConfiguration(applicationId: _applicationId),

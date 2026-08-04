@@ -20,6 +20,7 @@ void main() async {
     clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
     env: dotenv.get('DD_ENV', fallback: ''),
     site: DatadogSite.us1,
+    service: 'com.datadoghq.flutter.stress_test',
     nativeCrashReportEnabled: true,
     loggingConfiguration: DatadogLoggingConfiguration(
       eventMapper: (event) => event,
