@@ -160,7 +160,7 @@ class DatadogConfiguration {
   DatadogSite site;
 
   /// The service name for this application
-  String? service;
+  String service;
 
   /// Sets the preferred size of batched data uploaded to Datadog servers. This
   /// value impacts the size and number of requests performed by the SDK.
@@ -293,8 +293,8 @@ class DatadogConfiguration {
     required this.clientToken,
     required this.env,
     required this.site,
+    required this.service,
     this.nativeCrashReportEnabled = false,
-    this.service,
     this.uploadFrequency,
     this.batchSize,
     this.batchProcessingLevel,

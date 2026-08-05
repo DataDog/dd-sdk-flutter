@@ -43,6 +43,7 @@ void main() async {
           clientToken: clientToken,
           env: env,
           site: siteConfig.datadogSite,
+          service: 'com.datadoghq.example.flutter',
           loggingConfiguration: DatadogLoggingConfiguration(
             customEndpoint: siteConfig.logsCustomEndpoint,
           ),

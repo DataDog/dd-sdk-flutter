@@ -34,13 +34,13 @@ Future<void> initializeDatadog({
           clientToken: clientToken,
           env: env,
           site: DatadogSite.us1,
+          service: 'com.datadog.flutter.nightly',
         )
         ..loggingConfiguration = DatadogLoggingConfiguration()
         ..rumConfiguration = DatadogRumConfiguration(
           applicationId: applicationId,
           detectLongTasks: false,
-        )
-        ..service = 'com.datadog.flutter.nightly';
+        );
 
   if (configCallback != null) {
     configCallback(configuration);

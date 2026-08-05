@@ -158,6 +158,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
     );
     await datadogSdk.initialize(configuration, TrackingConsent.granted);
 
@@ -177,6 +178,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
     )..addPlugin(pluginConfiguration);
 
     await datadogSdk.initialize(configuration, TrackingConsent.granted);
@@ -190,6 +192,7 @@ void main() {
       clientToken: 'fake-client-token',
       env: 'prod',
       site: DatadogSite.us1,
+      service: 'test-service',
     );
     final encoded = configuration.encode();
     expect(encoded, {
@@ -197,7 +200,7 @@ void main() {
       'env': 'prod',
       'site': 'DatadogSite.us1',
       'nativeCrashReportEnabled': false,
-      'service': null,
+      'service': 'test-service',
       'batchSize': null,
       'uploadFrequency': null,
       'batchProcessingLevel': null,
@@ -211,6 +214,7 @@ void main() {
             clientToken: 'fakeClientToken',
             env: 'environment',
             site: DatadogSite.us1,
+            service: 'test-service',
           )
           ..batchSize = BatchSize.small
           ..uploadFrequency = UploadFrequency.frequent
@@ -242,6 +246,7 @@ void main() {
       clientToken: 'fakeClientToken',
       env: 'fake-env',
       site: DatadogSite.us1,
+      service: 'test-service',
       version: '1.9.8+123',
     );
 
@@ -256,6 +261,7 @@ void main() {
       clientToken: 'fakeClientToken',
       env: 'fake-env',
       site: DatadogSite.us1,
+      service: 'test-service',
       flavor: 'strawberry',
     );
 
@@ -275,6 +281,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
       loggingConfiguration: loggingConfiguration,
     );
     await datadogSdk.initialize(configuration, TrackingConsent.pending);
@@ -308,6 +315,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
       rumConfiguration: rumConfiguration,
     );
     await datadogSdk.initialize(configuration, TrackingConsent.pending);
@@ -394,6 +402,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
       firstPartyHosts: ['example.com', 'datadoghq.com'],
     );
     await datadogSdk.initialize(configuration, TrackingConsent.granted);
@@ -416,6 +425,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
       firstPartyHostsWithTracingHeaders: {
         'example.com': {TracingHeaderType.b3},
         'datadoghq.com': {TracingHeaderType.datadog},
@@ -437,6 +447,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
       firstPartyHosts: ['datadoghq.com'],
       firstPartyHostsWithTracingHeaders: {
         'example.com': {TracingHeaderType.b3},
@@ -459,6 +470,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
     );
     await datadogSdk.initialize(configuration, TrackingConsent.granted);
 
@@ -475,6 +487,7 @@ void main() {
         clientToken: 'clientToken',
         env: 'env',
         site: DatadogSite.us1,
+        service: 'test-service',
         firstPartyHosts: firstPartyHosts,
       );
       await datadogSdk.initialize(configuration, TrackingConsent.pending);
@@ -496,6 +509,7 @@ void main() {
         clientToken: 'clientToken',
         env: 'env',
         site: DatadogSite.us1,
+        service: 'test-service',
         firstPartyHosts: firstPartyHosts,
       );
       await datadogSdk.initialize(configuration, TrackingConsent.pending);
@@ -517,6 +531,7 @@ void main() {
         clientToken: 'clientToken',
         env: 'env',
         site: DatadogSite.us1,
+        service: 'test-service',
         firstPartyHosts: firstPartyHosts,
       );
       await datadogSdk.initialize(configuration, TrackingConsent.granted);
@@ -533,6 +548,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
       firstPartyHosts: firstPartyHosts,
     );
     await datadogSdk.initialize(configuration, TrackingConsent.pending);
@@ -551,6 +567,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
       firstPartyHostsWithTracingHeaders: firstPartyHosts,
     );
     await datadogSdk.initialize(configuration, TrackingConsent.granted);
@@ -573,6 +590,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
       firstPartyHostsWithTracingHeaders: firstPartyHosts,
     );
     await datadogSdk.initialize(configuration, TrackingConsent.granted);
@@ -693,6 +711,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
       loggingConfiguration: loggingConfig,
     );
     await datadogSdk.initialize(configuration, TrackingConsent.granted);
@@ -719,6 +738,7 @@ void main() {
         clientToken: 'fake_token',
         env: 'env',
         site: DatadogSite.us1,
+        service: 'test-service',
       )..addPlugin(mockPluginConfig);
 
       await datadogSdk.initialize(config, TrackingConsent.pending);
@@ -759,6 +779,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
     );
     await datadogSdk.initialize(configuration, TrackingConsent.pending);
 
@@ -788,6 +809,7 @@ void main() {
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
+      service: 'test-service',
     );
     await datadogSdk.initialize(configuration, TrackingConsent.pending);
 
