@@ -28,6 +28,7 @@ final configuration = DatadogConfiguration(
   clientToken: '<CLIENT_TOKEN>',
   env: '<ENV_NAME>',
   site: DatadogSite.us1,
+  service: '<SERVICE_NAME>',
   rumConfiguration: DatadogRumConfiguration(
     applicationId: '<RUM_APPLICATION_ID>',
   ),
@@ -64,6 +65,7 @@ final configuration = DatadogConfiguration(
   clientToken: '<CLIENT_TOKEN>',
   env: '<ENV_NAME>',
   site: DatadogSite.us1,
+  service: '<SERVICE_NAME>',
 )..addPlugin(
     const DatadogFlagsPluginConfiguration(
       rumIntegrationEnabled: false,

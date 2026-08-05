@@ -14,7 +14,8 @@ import 'package:datadog_grpc_interceptor/datadog_grpc_interceptor.dart'
 // to enable Datadog Distributed Tracing
 final config = DatadogConfiguration(
   // ...
-  firstParthHosts = ['localhost']
+  service: '<SERVICE_NAME>',
+  firstPartyHosts: ['localhost'],
 )
 
 // Create the gRPC channel
