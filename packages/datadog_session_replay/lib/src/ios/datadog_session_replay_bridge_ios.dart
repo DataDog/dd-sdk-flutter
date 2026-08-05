@@ -311,6 +311,7 @@ class FlutterRUMCoreContext extends objc.NSObject {
 }
 
 late final _class_FlutterSessionReplay = objc.getClass("FlutterSessionReplay");
+late final _sel_engineToken = objc.registerName("engineToken");
 late final _class_FlutterSessionReplayConfiguration =
     objc.getClass("FlutterSessionReplayConfiguration");
 late final _sel_customEndpoint = objc.registerName("customEndpoint");
@@ -761,6 +762,12 @@ class FlutterSessionReplay extends objc.NSObject {
   static bool isInstance(objc.ObjCObjectBase obj) {
     return _objc_msgSend_19nvye5(
         obj.ref.pointer, _sel_isKindOfClass_, _class_FlutterSessionReplay);
+  }
+
+  /// engineToken
+  objc.NSString get engineToken {
+    final _ret = _objc_msgSend_151sglz(this.ref.pointer, _sel_engineToken);
+    return objc.NSString.castFromPointer(_ret, retain: true, release: true);
   }
 
   /// enableWith:

@@ -317,6 +317,7 @@ SWIFT_CLASS_NAMED("FlutterRUMCoreContext")
 
 SWIFT_CLASS_NAMED("FlutterSessionReplay")
 @interface FlutterSessionReplay : NSObject
+@property (nonatomic, readonly, copy) NSString * _Nonnull engineToken;
 - (void)enableWith:(FlutterSessionReplayConfiguration * _Nonnull)configuration;
 - (void)setHasReplayWithHasReplay:(BOOL)hasReplay;
 - (void)setRecordCountFor:(NSString * _Nonnull)viewId count:(NSInteger)count;

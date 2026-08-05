@@ -27,9 +27,13 @@ class DatadogSessionReplayPluginTests {
     }
 
     /// Calls `handle` and returns whatever the plugin passed to its `FlutterResult`.
-    private func handle(_ plugin: DatadogSessionReplayPlugin, method: String) -> Any? {
+    private func handle(
+        _ plugin: DatadogSessionReplayPlugin,
+        method: String,
+        arguments: Any? = nil
+    ) -> Any? {
         var result: Any?
-        plugin.handle(FlutterMethodCall(methodName: method, arguments: nil)) { result = $0 }
+        plugin.handle(FlutterMethodCall(methodName: method, arguments: arguments)) { result = $0 }
         return result
     }
 
@@ -72,6 +76,38 @@ class DatadogSessionReplayPluginTests {
 
         // Then — engine B must not inherit engine A's slot, or their records would collide
         #expect(result == nil)
+    }
+
+    @Test
+    func registerEngine_pairsTheBridgeWithThisEnginesMessenger() throws {
+        // Given — a bridge created over FFI, which never sees a messenger
+        var callsToEngine = 0
+        let core = PassthroughCoreMock()
+        let messenger = FlutterBinaryMessengerMock()
+        let engine = FlutterSessionReplay(manager: manager)
+        try engine.enableOrThrow(with: .init(onContextChanged: { _ in callsToEngine += 1 }), in: core)
+        let plugin = DatadogSessionReplayPlugin(messenger: messenger, manager: manager)
+
+        // When — Dart hands the plugin its bridge's token, then the engine detaches
+        let result = handle(plugin, method: "registerEngine", arguments: engine.engineToken)
+        manager.detach(messenger: messenger)
+        manager.broadcastContext(.mockRandom())
+
+        // Then — the pairing is what let detach find and release this engine's Dart callback
+        #expect(result == nil)
+        #expect(callsToEngine == 1)  // primed on enable, nothing after
+    }
+
+    @Test
+    func registerEngine_withoutAToken_returnsAnError() {
+        // Given
+        let plugin = DatadogSessionReplayPlugin(messenger: FlutterBinaryMessengerMock(), manager: manager)
+
+        // When
+        let result = handle(plugin, method: "registerEngine", arguments: nil)
+
+        // Then
+        #expect((result as? FlutterError)?.code == "invalid_arguments")
     }
 
     @Test

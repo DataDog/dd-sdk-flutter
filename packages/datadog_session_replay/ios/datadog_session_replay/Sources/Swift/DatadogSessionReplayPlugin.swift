@@ -32,15 +32,39 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
     }
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        if call.method == "resolveSlotId" {
+        switch call.method {
+        case "resolveSlotId":
             // Called from Dart when isEmbedded = true (on first frame and whenever the view
             // re-attaches). Returns the slotId registered for this engine's messenger via
             // `FlutterViewController.enableDatadogSessionReplay()`, or `nil` if the host app
             // has not called it (i.e. Flutter is full-screen, not embedded, or the view is
             // not yet attached).
             result(manager.slotId(for: messenger))
-        } else {
+
+        case "registerEngine":
+            // Called from Dart right after `enable()`, carrying the token of the bridge that
+            // FFI call created. Pairing it with this engine's messenger is what lets
+            // `detachFromEngine(for:)` find the right bridge to tear down.
+            guard let engineToken = call.arguments as? String else {
+                result(FlutterError(
+                    code: "invalid_arguments",
+                    message: "registerEngine expects the engine token as a String",
+                    details: nil
+                ))
+                return
+            }
+            manager.bind(engineToken: engineToken, to: messenger)
+            result(nil)
+
+        default:
             result(FlutterMethodNotImplemented)
         }
+    }
+
+    public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
+        // Release this engine's Dart context callback before its isolate goes away —
+        // invoking it afterwards traps in `DLRT_GetFfiCallbackMetadata` on force close.
+        // Keyed by messenger, so a detaching secondary engine cannot clear a live one's.
+        manager.detach(messenger: messenger)
     }
 }

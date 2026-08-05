@@ -39,6 +39,18 @@ internal class FlutterSessionReplayManager {
     /// bridge is released.
     private let engines = NSHashTable<FlutterSessionReplay>.weakObjects()
 
+    /// Maps each engine's canonical messenger → that engine's bridge, so a detaching engine can be
+    /// torn down (see `detach(messenger:)`). Populated by `bind(engineToken:to:)`, because neither
+    /// side knows both halves on its own: the bridge is created over FFI without a messenger, and
+    /// the plugin instance that has the messenger never sees the bridge.
+    ///
+    /// Values are weak, so an entry disappears with its bridge even if the engine never detaches
+    /// cleanly.
+    private let bridgesByMessenger = NSMapTable<AnyObject, FlutterSessionReplay>(
+        keyOptions: .weakMemory,
+        valueOptions: .weakMemory
+    )
+
     /// Maps each engine's canonical messenger → the `FlutterViewController` hosting its embedded
     /// view. Populated by `enableDatadogSessionReplay()`. Both sides are weak, so entries clear
     /// automatically when an engine or its view controller is released.
@@ -79,6 +91,36 @@ internal class FlutterSessionReplayManager {
         for engine in engines.allObjects {
             engine.receive(context: flutterContext)
         }
+    }
+
+    /// Pairs the bridge holding `engineToken` with the engine `messenger` belongs to.
+    ///
+    /// Called from the engine method channel, so it runs once per engine, after that engine's
+    /// bridge has registered.
+    internal func bind(engineToken: String, to messenger: AnyObject) {
+        guard let bridge = engines.allObjects.first(where: { $0.engineToken == engineToken }) else {
+            return
+        }
+        bridgesByMessenger.setObject(bridge, forKey: canonical(messenger))
+    }
+
+    /// Tears down the engine `messenger` belongs to, called when its plugin detaches.
+    ///
+    /// Drops the engine's bridge from the fan-out registry and releases its Dart context callback,
+    /// so a context update arriving after the isolate is gone cannot trap in
+    /// `DLRT_GetFfiCallbackMetadata`. The weak tables would clear these entries eventually; doing
+    /// it here closes the window where the bridge outlives its isolate.
+    ///
+    /// Only ever affects the detaching engine, so a secondary engine closing cannot disturb a live
+    /// one.
+    internal func detach(messenger: AnyObject) {
+        let key = canonical(messenger)
+        if let bridge = bridgesByMessenger.object(forKey: key) {
+            bridge.detach()
+            engines.remove(bridge)
+        }
+        bridgesByMessenger.removeObject(forKey: key)
+        viewControllersByMessenger.removeObject(forKey: key)
     }
 
     /// Reads the current RUM context and delivers it to `engine` alone.
@@ -131,10 +173,20 @@ internal class FlutterSessionReplayManager {
     ///
     /// The ID is assigned eagerly rather than on the first `slotId(for:)` query because the
     /// native recorder only emits the `embedded_view` placeholder for views that already carry
-    /// one, and it may snapshot the host before Dart asks for the ID on the first frame.
+    /// one. Left to the first query — which happens on the first segment write — the ID would
+    /// not exist during the snapshots taken while the host presents the view, so the player
+    /// would receive Flutter records for a slot it has never seen a placeholder for, until some
+    /// unrelated change happens to trigger the next snapshot.
+    ///
+    /// The view is loaded on purpose. Hosts call `enableDatadogSessionReplay()` straight after
+    /// `FlutterViewController(engine:)` and before presenting it, so `viewIfLoaded` is still
+    /// `nil` here and the host is about to load the view anyway — loading it now is what gets
+    /// the ID on before the presentation's layout pass, which is the snapshot that first
+    /// carries the placeholder.
     internal func registerSlot(for viewController: UIViewController, messenger: FlutterBinaryMessenger) {
         isEmbedded = true
         viewControllersByMessenger.setObject(viewController, forKey: canonical(messenger as AnyObject))
+        viewController.loadViewIfNeeded()
         _ = slotId(assigningTo: viewController.viewIfLoaded)
     }
 
@@ -244,6 +296,7 @@ internal class FlutterSessionReplayManager {
         core = nil
         isEmbedded = false
         engines.removeAllObjects()
+        bridgesByMessenger.removeAllObjects()
         viewControllersByMessenger.removeAllObjects()
     }
 }

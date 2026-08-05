@@ -78,6 +78,13 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
       );
     _iosBridge.enableWith(iOsConfiguration);
 
+    // Hand this bridge's token to the plugin instance for this engine. The bridge is
+    // created over FFI and never sees a messenger, while the plugin has the messenger but
+    // never sees the bridge — this call is what pairs them, so the engine's Dart context
+    // callback can be released when the engine detaches.
+    unawaited(_engineChannel.invokeMethod<void>(
+        'registerEngine', _iosBridge.engineToken.toDartString()));
+
     if (configuration.isEmbedded) {
       // Resolve the slotId on the first frame, and re-resolve whenever the view is
       // (re)attached. A pre-warmed engine is reused across view open/close, so its

@@ -62,13 +62,21 @@ public func __datadog_session_replay_keep_symbols() {
     /// The coordinator shared with every other engine's bridge.
     internal let manager: FlutterSessionReplayManager
 
-    /// Creates a bridge backed by the process-wide coordinator. This is the initializer Dart
-    /// calls over FFI, so it must stay `@objc` and argument-free.
+    /// Identifies this bridge to its own engine.
+    ///
+    /// The FFI `enable()` call cannot tell which engine invoked it, and this bridge never sees a
+    /// messenger. Dart reads this token after construction and passes it to the plugin instance
+    /// for its engine over the engine method channel, which is the one place the messenger *is*
+    /// known — letting the manager pair the two. See `FlutterSessionReplayManager.bind(engineToken:to:)`.
+    @objc public let engineToken: String = UUID().uuidString
+
+    /// Creates a bridge backed by the process-wide coordinator.
     @objc public override convenience init() {
         self.init(manager: .shared)
     }
 
-    /// Creates a bridge backed by `manager`, so tests can substitute the coordinator.
+    /// Creates a bridge backed by `manager`. Primarily used in tests, to substitute the
+    /// coordinator.
     internal init(manager: FlutterSessionReplayManager) {
         self.manager = manager
         super.init()
@@ -94,6 +102,13 @@ public func __datadog_session_replay_keep_symbols() {
     /// Delivers a RUM context update to this engine's Dart callback.
     internal func receive(context: FlutterRUMCoreContext?) {
         contextCallback?(context)
+    }
+
+    /// Tears down everything tied to this engine's Dart isolate, called when the engine detaches.
+    internal func detach() {
+        contextCallback = nil
+        embeddingState = .unknown
+        pendingSegments = []
     }
 
     @objc public func enable(with configuration: FlutterSessionReplayConfiguration) {

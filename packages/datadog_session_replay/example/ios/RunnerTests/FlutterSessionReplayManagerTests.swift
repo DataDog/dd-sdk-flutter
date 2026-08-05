@@ -119,6 +119,96 @@ class FlutterSessionReplayManagerTests {
         #expect(callsToB == 1)
     }
 
+    // MARK: - Detach
+
+    @Test
+    func detach_afterBind_stopsDeliveringContextToThatEngine() throws {
+        // Given — one engine, bound to its messenger the way `registerEngine` does
+        var callsToEngine = 0
+        let messenger = FlutterBinaryMessengerMock()
+        let engine = FlutterSessionReplay(manager: manager)
+        try engine.enableOrThrow(with: .init(onContextChanged: { _ in callsToEngine += 1 }), in: core)
+        manager.bind(engineToken: engine.engineToken, to: messenger)
+
+        // When — the engine detaches while the bridge is still alive, as on force close
+        manager.detach(messenger: messenger)
+        manager.broadcastContext(.mockRandom())
+
+        // Then — the Dart callback is gone, so this cannot trap in `DLRT_GetFfiCallbackMetadata`
+        #expect(callsToEngine == 1)  // primed on enable, nothing after
+    }
+
+    @Test
+    func detach_leavesOtherEnginesRecording() throws {
+        // Given — two engines, as in a hybrid app with an embedded panel and a full-screen route
+        var callsToA = 0
+        var contextB: FlutterRUMCoreContext?
+        let messengerA = FlutterBinaryMessengerMock()
+        let messengerB = FlutterBinaryMessengerMock()
+        let engineA = FlutterSessionReplay(manager: manager)
+        let engineB = FlutterSessionReplay(manager: manager)
+        try engineA.enableOrThrow(with: .init(onContextChanged: { _ in callsToA += 1 }), in: core)
+        try engineB.enableOrThrow(with: .init(onContextChanged: { contextB = $0 }), in: core)
+        manager.bind(engineToken: engineA.engineToken, to: messengerA)
+        manager.bind(engineToken: engineB.engineToken, to: messengerB)
+
+        // When — only the secondary engine detaches
+        manager.detach(messenger: messengerA)
+        let expectedContext: RUMCoreContext = .mockRandom()
+        manager.broadcastContext(expectedContext)
+
+        // Then — B keeps receiving; a closing engine cannot clear a live one's callback
+        #expect(callsToA == 1)
+        #expect(contextB?.viewID == expectedContext.viewID)
+    }
+
+    @Test
+    func detach_dropsTheEnginesSlot() {
+        // Given — an embedded engine with a registered slot
+        let messenger = embed()
+        #expect(manager.slotId(for: messenger) != nil)
+
+        // When
+        manager.detach(messenger: messenger)
+
+        // Then — the host must re-register on re-attach rather than reuse a dead view's slot
+        #expect(manager.slotId(for: messenger) == nil)
+    }
+
+    @Test
+    func detach_withAnUnboundMessenger_doesNothing() throws {
+        // Given — an engine that never completed the `registerEngine` handshake
+        var contextForEngine: FlutterRUMCoreContext?
+        let engine = FlutterSessionReplay(manager: manager)
+        try engine.enableOrThrow(with: .init(onContextChanged: { contextForEngine = $0 }), in: core)
+
+        // When — an unrelated messenger detaches
+        manager.detach(messenger: FlutterBinaryMessengerMock())
+        let expectedContext: RUMCoreContext = .mockRandom()
+        manager.broadcastContext(expectedContext)
+
+        // Then
+        #expect(contextForEngine?.viewID == expectedContext.viewID)
+    }
+
+    @Test
+    func bind_withAnUnknownToken_isIgnored() throws {
+        // Given
+        var contextForEngine: FlutterRUMCoreContext?
+        let messenger = FlutterBinaryMessengerMock()
+        let engine = FlutterSessionReplay(manager: manager)
+        try engine.enableOrThrow(with: .init(onContextChanged: { contextForEngine = $0 }), in: core)
+
+        // When — a token no bridge claims, then that messenger detaches
+        manager.bind(engineToken: UUID().uuidString, to: messenger)
+        manager.detach(messenger: messenger)
+        let expectedContext: RUMCoreContext = .mockRandom()
+        manager.broadcastContext(expectedContext)
+
+        // Then — no bridge was associated, so nothing was torn down
+        #expect(contextForEngine?.viewID == expectedContext.viewID)
+    }
+
     @Test
     func broadcastContext_withNoContext_forwardsNil() throws {
         // Given
@@ -241,13 +331,20 @@ class FlutterSessionReplayManagerTests {
     }
 
     @Test
-    func slotId_whenTheViewIsNotLoadedYet_isNil() {
-        // Given — a view controller whose view has not been loaded
+    func registerSlot_whenTheViewIsNotLoadedYet_loadsItAndAssignsAnId() {
+        // Given — a view controller whose view has not been loaded, which is what hosts pass:
+        // `enableDatadogSessionReplay()` is called straight after `FlutterViewController(engine:)`
         let messenger = FlutterBinaryMessengerMock()
-        manager.registerSlot(for: UIViewController(), messenger: messenger)
+        let viewController = UIViewController()
 
-        // Then — Dart retries on the next `didChangeMetrics`
-        #expect(manager.slotId(for: messenger) == nil)
+        // When
+        manager.registerSlot(for: viewController, messenger: messenger)
+
+        // Then — waiting for the view to load on its own would leave the ID missing from the
+        // snapshots taken while the host presents it, so the first Flutter records would reach
+        // the player before any placeholder carrying their slot
+        #expect(viewController.viewIfLoaded?.dd.sessionReplaySlotID != nil)
+        #expect(manager.slotId(for: messenger) == viewController.view.dd.sessionReplaySlotID)
     }
 
     @Test
