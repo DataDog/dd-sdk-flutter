@@ -43,6 +43,18 @@ RUN set -x \
     ca-certificates \
     zip
 
+ # Add Flutter Linux desktop build/test dependencies
+ RUN apt-get update && apt-get install -y -q --no-install-recommends \
+    clang \
+    cmake \
+    ninja-build \
+    pkg-config \
+    libblkid-dev \
+    liblzma-dev \
+    libcurl4-openssl-dev \
+    xvfb \
+    dbus-x11
+
 ENV GRADLE_VERSION 8.1.1
 ENV ANDROID_COMPILE_SDK 34
 ENV ANDROID_BUILD_TOOLS 34.0.0
