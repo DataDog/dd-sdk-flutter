@@ -86,27 +86,50 @@ public func __datadog_session_replay_keep_symbols() {
     /// manager's context fan-out.
     private var contextCallback: ((FlutterRUMCoreContext?) -> Void)?
 
-    /// Tracks whether the Dart side has determined the embedding context. Records that
-    /// arrive before `setSlotId` is called are buffered and flushed through the correct
-    /// path once the embedding state is known.
+    /// The canonical messenger of the engine this bridge serves, set by
+    /// `FlutterSessionReplayManager.bind(engineToken:to:)` once `registerEngine` has paired the
+    /// two. Needed to resolve this engine's slot ID at write time. Weak — the engine owns it.
+    private weak var boundMessenger: AnyObject?
+
+    /// Which recording path this engine's segments belong to, as declared by Dart in
+    /// `setEmbedded(_:)`. Deliberately does *not* carry the slot ID: that is resolved per segment
+    /// from the engine's current view, so a re-registered view controller is picked up without
+    /// anything on the Dart side having to notice it changed.
     private enum EmbeddingState {
-        case unknown            // `setSlotId` not yet called
-        case embedded(String)   // Flutter is embedded — slotId is known
-        case standalone         // Flutter is the host app — no slotId
+        case unknown        // `setEmbedded` not yet called
+        case embedded       // Flutter is embedded in a native host
+        case standalone     // Flutter is the host app
     }
 
     private var embeddingState: EmbeddingState = .unknown
-    /// Segments buffered while `embeddingState == .unknown`.
+
+    /// Segments with nowhere to go yet — either Dart has not declared the embedding state, or the
+    /// embedded slot cannot be resolved because the host has not registered this engine's view
+    /// controller yet (a pre-warmed engine). Drained by `flushPendingSegments()`.
     private var pendingSegments: [String] = []
+
+    /// Cap on `pendingSegments`, so an engine that never becomes resolvable — a host that
+    /// configured `isEmbedded: true` but never called `enableDatadogSessionReplay()` — drops the
+    /// oldest segments rather than growing without bound. Two seconds of capture at the default
+    /// 100ms cadence.
+    internal static let maxPendingSegments = 20
 
     /// Delivers a RUM context update to this engine's Dart callback.
     internal func receive(context: FlutterRUMCoreContext?) {
         contextCallback?(context)
     }
 
+    /// Records the messenger of the engine this bridge belongs to, and drains anything that was
+    /// waiting on it. See `boundMessenger`.
+    internal func bind(messenger: AnyObject) {
+        boundMessenger = messenger
+        flushPendingSegments()
+    }
+
     /// Tears down everything tied to this engine's Dart isolate, called when the engine detaches.
     internal func detach() {
         contextCallback = nil
+        boundMessenger = nil
         embeddingState = .unknown
         pendingSegments = []
     }
@@ -169,28 +192,56 @@ public func __datadog_session_replay_keep_symbols() {
         manager.feature?.setRecordCount(for: viewId, count: Int64(count))
     }
 
-    @objc public func setSlotId(_ slotId: String?) {
-        embeddingState = slotId.map { .embedded($0) } ?? .standalone
-
-        // Replay buffered segments through `writeSegment`, which now routes them
-        // according to the resolved `embeddingState` (single source of truth).
-        let pending = pendingSegments
-        pendingSegments = []
-        pending.forEach { writeSegment(segment: $0) }
+    /// Declares which recording path this engine writes to. Called once by Dart, straight after
+    /// `enable()`, from the `isEmbedded` it was configured with.
+    @objc public func setEmbedded(_ isEmbedded: Bool) {
+        embeddingState = isEmbedded ? .embedded : .standalone
+        flushPendingSegments()
     }
 
     @objc public func writeSegment(segment segmentJson: String) {
+        pendingSegments.append(segmentJson)
+        if pendingSegments.count > Self.maxPendingSegments {
+            pendingSegments.removeFirst(pendingSegments.count - Self.maxPendingSegments)
+        }
+        flushPendingSegments()
+    }
+
+    /// Writes every buffered segment, if a destination can be resolved right now.
+    ///
+    /// The embedded slot is resolved here — per flush, from the engine's current view — rather than
+    /// cached when the engine enables. That is what removes the need for Dart to observe its view:
+    /// each segment simply picks up whatever slot ID the host's registered view carries now.
+    private func flushPendingSegments() {
+        guard !pendingSegments.isEmpty else {
+            return
+        }
+
         switch embeddingState {
         case .unknown:
-            // Embedding not yet determined — buffer until `setSlotId` is called.
-            pendingSegments.append(segmentJson)
-        case .embedded(let slotId):
-            // Flutter is embedded — hand the records to the native recording so the player
-            // can composite them into the host's `embedded_view` placeholder.
-            manager.sendToMessageBus(segment: segmentJson, slotId: slotId)
+            // Dart has not declared the embedding state yet.
+            return
+
         case .standalone:
             // Flutter is the host app — write directly to the Flutter SR feature scope.
-            manager.feature?.writeSegment(segment: segmentJson)
+            let pending = pendingSegments
+            pendingSegments = []
+            pending.forEach { manager.feature?.writeSegment(segment: $0) }
+
+        case .embedded:
+            // Flutter is embedded — hand the records to the native recording so the player can
+            // composite them into the host's `embedded_view` placeholder.
+            guard
+                let messenger = boundMessenger,
+                let slotId = manager.slotId(for: messenger)
+            else {
+                // Either `registerEngine` has not landed yet, or the host has not registered this
+                // engine's view controller. Keep buffering and retry on the next segment.
+                return
+            }
+            let pending = pendingSegments
+            pendingSegments = []
+            pending.forEach { manager.sendToMessageBus(segment: $0, slotId: slotId) }
         }
     }
 

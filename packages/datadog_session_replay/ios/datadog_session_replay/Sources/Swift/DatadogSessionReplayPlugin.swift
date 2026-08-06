@@ -9,7 +9,8 @@ import UIKit
 public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
     private let messenger: AnyObject
 
-    /// The coordinator holding the slot-ID registry. Injected so tests can substitute it.
+    /// The coordinator holding the engine and slot-ID registries. Injected so tests can
+    /// substitute it.
     private let manager: FlutterSessionReplayManager
 
     internal init(messenger: AnyObject, manager: FlutterSessionReplayManager = .shared) {
@@ -21,9 +22,9 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
         let messenger = registrar.messenger() as AnyObject
         let instance = DatadogSessionReplayPlugin(messenger: messenger)
         // The FFI `enable()` call cannot determine which engine invoked it, so per-engine
-        // Dart→native lookups go through this method channel instead. Method channels route
-        // to the plugin instance for their specific engine, giving us that engine's
-        // messenger — used to resolve the engine's embedded slotId (see `resolveSlotId`).
+        // Dart→native calls go through this method channel instead. Method channels route to
+        // the plugin instance for their specific engine, giving us that engine's messenger —
+        // which is what `registerEngine` pairs with the engine's bridge.
         let channel = FlutterMethodChannel(
             name: "datadog_session_replay/engine",
             binaryMessenger: registrar.messenger()
@@ -33,18 +34,11 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch call.method {
-        case "resolveSlotId":
-            // Called from Dart when isEmbedded = true (on first frame and whenever the view
-            // re-attaches). Returns the slotId registered for this engine's messenger via
-            // `FlutterViewController.enableDatadogSessionReplay()`, or `nil` if the host app
-            // has not called it (i.e. Flutter is full-screen, not embedded, or the view is
-            // not yet attached).
-            result(manager.slotId(for: messenger))
-
         case "registerEngine":
-            // Called from Dart right after `enable()`, carrying the token of the bridge that
-            // FFI call created. Pairing it with this engine's messenger is what lets
-            // `detachFromEngine(for:)` find the right bridge to tear down.
+            // Called from Dart right after `enable()`, carrying the token of the bridge that FFI
+            // call created. Pairing it with this engine's messenger is both what lets
+            // `detachFromEngine(for:)` find the right bridge to tear down, and what gives the
+            // bridge the messenger it resolves slot IDs through on every segment write.
             guard let engineToken = call.arguments as? String else {
                 result(FlutterError(
                     code: "invalid_arguments",

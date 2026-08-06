@@ -101,7 +101,11 @@ internal class FlutterSessionReplayManager {
         guard let bridge = engines.allObjects.first(where: { $0.engineToken == engineToken }) else {
             return
         }
-        bridgesByMessenger.setObject(bridge, forKey: canonical(messenger))
+        let key = canonical(messenger)
+        bridgesByMessenger.setObject(bridge, forKey: key)
+        // The bridge needs the messenger too — it resolves this engine's slot ID through it on
+        // every segment write, so records always carry the current view's ID.
+        bridge.bind(messenger: key)
     }
 
     /// Tears down the engine `messenger` belongs to, called when its plugin detaches.
@@ -171,54 +175,46 @@ internal class FlutterSessionReplayManager {
     /// Registers the view controller hosting `messenger`'s embedded Flutter view and assigns its
     /// slot ID.
     ///
-    /// The ID is assigned eagerly rather than on the first `slotId(for:)` query because the
-    /// native recorder only emits the `embedded_view` placeholder for views that already carry
-    /// one. Left to the first query — which happens on the first segment write — the ID would
-    /// not exist during the snapshots taken while the host presents the view, so the player
-    /// would receive Flutter records for a slot it has never seen a placeholder for, until some
-    /// unrelated change happens to trigger the next snapshot.
+    /// This is the only place a slot ID is minted. Reading one — which happens on every segment
+    /// write — deliberately does not assign, so a write can never be what brings a slot into
+    /// existence: the native recorder emits the `embedded_view` placeholder only for views that
+    /// already carry an ID when a snapshot is taken, and minting on write would let records reach
+    /// the player ahead of the placeholder they belong to. Assigning here instead means the ID is
+    /// in place before Dart records anything, and assignment posts
+    /// `ddSessionReplaySlotIDDidChange`, which makes Session Replay snapshot the placeholder.
     ///
     /// The view is loaded on purpose. Hosts call `enableDatadogSessionReplay()` straight after
-    /// `FlutterViewController(engine:)` and before presenting it, so `viewIfLoaded` is still
-    /// `nil` here and the host is about to load the view anyway — loading it now is what gets
-    /// the ID on before the presentation's layout pass, which is the snapshot that first
-    /// carries the placeholder.
+    /// `FlutterViewController(engine:)` and before presenting it, so `viewIfLoaded` is still `nil`
+    /// here while the host is about to load the view anyway — loading it now is what gives the
+    /// assignment a view to attach to.
     internal func registerSlot(for viewController: UIViewController, messenger: FlutterBinaryMessenger) {
         isEmbedded = true
         viewControllersByMessenger.setObject(viewController, forKey: canonical(messenger as AnyObject))
         viewController.loadViewIfNeeded()
-        _ = slotId(assigningTo: viewController.viewIfLoaded)
+        assignSlotId(to: viewController.viewIfLoaded)
     }
 
+    /// Returns the slot ID of the view hosting `messenger`'s embedded Flutter content, or `nil` if
+    /// the host has not registered one — Flutter is not embedded, or its view controller is gone.
+    ///
+    /// Read-only, and read from the view rather than cached, so a re-registered view controller is
+    /// picked up without anything having to notice it changed. Callers keep their segments buffered
+    /// while this is `nil`.
     internal func slotId(for messenger: AnyObject) -> String? {
         let viewController = viewControllersByMessenger.object(forKey: canonical(messenger))
-        return slotId(assigningTo: viewController?.viewIfLoaded)
+        return viewController?.viewIfLoaded?.dd.sessionReplaySlotID
     }
 
-    /// Returns `view`'s slot ID, assigning a new one if it does not have one yet.
+    /// Gives `view` a slot ID, unless it already has one.
     ///
-    /// `sessionReplaySlotID` is a plain associated object with no default — the embedding SDK
-    /// mints the value and the native recorder reads it back, skipping any view without one. The
-    /// value is arbitrary, so a UUID is used: nothing on either side derives it from the view.
-    ///
-    /// Assigning here (and not only in `enableDatadogSessionReplay()`) covers views recreated
-    /// after registration: a pre-warmed engine reused across open/close gets a fresh
-    /// `FlutterView`, which starts out without an ID.
-    ///
-    /// Returns `nil` when the view is not loaded yet — the Dart side retries on the next
-    /// `didChangeMetrics`.
-    private func slotId(assigningTo view: UIView?) -> String? {
-        guard let view = view else {
-            return nil
+    /// `sessionReplaySlotID` is an associated object with no default — the embedding SDK mints the
+    /// value and the native recorder reads it back, skipping any view without one. The value is
+    /// arbitrary, so a UUID is used: nothing on either side derives it from the view.
+    private func assignSlotId(to view: UIView?) {
+        guard let view = view, view.dd.sessionReplaySlotID == nil else {
+            return
         }
-
-        if let slotId = view.dd.sessionReplaySlotID {
-            return slotId
-        }
-
-        let slotId = UUID().uuidString
-        view.dd.sessionReplaySlotID = slotId
-        return slotId
+        view.dd.sessionReplaySlotID = UUID().uuidString
     }
 
     /// Returns the canonical underlying messenger used as a stable registry key.

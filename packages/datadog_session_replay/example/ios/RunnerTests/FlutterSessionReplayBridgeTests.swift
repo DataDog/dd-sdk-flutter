@@ -4,6 +4,8 @@
 
 import Foundation
 import Testing
+import Flutter
+import UIKit
 
 @_spi(Internal)
 import DatadogInternal
@@ -28,6 +30,11 @@ class FlutterSessionReplayBridgeTests {
     private let manager: FlutterSessionReplayManager
     private let bridge: FlutterSessionReplay
 
+    /// Retained for the whole test: the manager's registries and the bridge's `boundMessenger` are
+    /// all weak, so locals would be released and take the engine's slot with them.
+    private let messenger = FlutterBinaryMessengerMock()
+    private let hostViewController = UIViewController()
+
     init() {
         manager = FlutterSessionReplayManager(feature: feature)
         bridge = FlutterSessionReplay(manager: manager)
@@ -38,6 +45,18 @@ class FlutterSessionReplayBridgeTests {
     /// is what the embedded path posts records to.
     private func enable(onContextChanged: ((FlutterRUMCoreContext?) -> Void)? = nil) throws {
         try bridge.enableOrThrow(with: .init(onContextChanged: onContextChanged), in: core)
+    }
+
+    /// Puts the bridge on the embedded path with a resolvable slot: the host registering its view
+    /// controller, the `registerEngine` handshake, and Dart declaring `isEmbedded`. Returns the
+    /// slot ID the records are expected to carry. Must be called after `enable()`, which is what
+    /// puts the bridge in the registry `bind` looks it up in.
+    @discardableResult
+    private func embed() throws -> String {
+        manager.registerSlot(for: hostViewController, messenger: messenger)
+        manager.bind(engineToken: bridge.engineToken, to: messenger)
+        bridge.setEmbedded(true)
+        return try #require(manager.slotId(for: messenger))
     }
 
     private var recordBatches: [EmbeddedContentMessage.RecordBatch] {
@@ -115,7 +134,7 @@ class FlutterSessionReplayBridgeTests {
         // Given
         try enable()
 
-        // When — Dart has not called `setSlotId` yet
+        // When — Dart has not called `setEmbedded` yet
         bridge.writeSegment(segment: Self.segment())
 
         // Then — the records go nowhere rather than down the wrong path
@@ -124,7 +143,7 @@ class FlutterSessionReplayBridgeTests {
     }
 
     @Test
-    func setSlotId_whenStandalone_flushesBufferedSegmentsToTheFeature() throws {
+    func setEmbedded_whenStandalone_flushesBufferedSegmentsToTheFeature() throws {
         // Given
         try enable()
         let first = Self.segment(viewID: "view-1")
@@ -133,7 +152,7 @@ class FlutterSessionReplayBridgeTests {
         bridge.writeSegment(segment: second)
 
         // When — Flutter is the host app
-        bridge.setSlotId(nil)
+        bridge.setEmbedded(false)
 
         // Then — buffered segments replay in order
         #expect(feature.writtenSegments == [first, second])
@@ -141,26 +160,26 @@ class FlutterSessionReplayBridgeTests {
     }
 
     @Test
-    func setSlotId_whenEmbedded_flushesBufferedSegmentsToTheMessageBus() throws {
+    func setEmbedded_whenEmbedded_flushesBufferedSegmentsToTheMessageBus() throws {
         // Given
         try enable()
         bridge.writeSegment(segment: Self.segment(viewID: "view-1"))
         bridge.writeSegment(segment: Self.segment(viewID: "view-2"))
 
         // When
-        bridge.setSlotId("slot-id")
+        let expectedSlotId = try embed()
 
         // Then
         #expect(feature.writtenSegments.isEmpty)
         #expect(recordBatches.map(\.viewID) == ["view-1", "view-2"])
-        #expect(recordBatches.allSatisfy { $0.slotID == "slot-id" })
+        #expect(recordBatches.allSatisfy { $0.slotID == expectedSlotId })
     }
 
     @Test
     func writeSegment_whenStandalone_writesToTheFeature() throws {
         // Given
         try enable()
-        bridge.setSlotId(nil)
+        bridge.setEmbedded(false)
 
         // When
         let segment = Self.segment()
@@ -175,7 +194,7 @@ class FlutterSessionReplayBridgeTests {
     func writeSegment_whenEmbedded_stampsTheRecordsWithTheSlotId() throws {
         // Given
         try enable()
-        bridge.setSlotId("slot-id")
+        let expectedSlotId = try embed()
 
         // When
         bridge.writeSegment(segment: Self.segment(viewID: "view-id", recordCount: 3))
@@ -183,10 +202,53 @@ class FlutterSessionReplayBridgeTests {
         // Then — the player needs the slot to composite these into the host's placeholder, and
         // RUM keys record counts off the *native* view ID the records were stamped with
         try #require(recordBatches.count == 1)
-        #expect(recordBatches[0].slotID == "slot-id")
+        #expect(recordBatches[0].slotID == expectedSlotId)
         #expect(recordBatches[0].viewID == "view-id")
         #expect(recordBatches[0].records.count == 3)
         #expect(feature.writtenSegments.isEmpty)
+    }
+
+    @Test
+    func writeSegment_whenEmbeddedBeforeTheHostRegistersItsView_buffersUntilItDoes() throws {
+        // Given — a pre-warmed engine: Dart declared `isEmbedded` and started recording before the
+        // host called `enableDatadogSessionReplay()`, so there is no slot to stamp records with
+        try enable()
+        bridge.setEmbedded(true)
+        let first = Self.segment(viewID: "view-1")
+        let second = Self.segment(viewID: "view-2")
+        bridge.writeSegment(segment: first)
+        bridge.writeSegment(segment: second)
+        #expect(recordBatches.isEmpty)
+
+        // When — the host presents the engine's view controller
+        let expectedSlotId = try embed()
+        bridge.writeSegment(segment: Self.segment(viewID: "view-3"))
+
+        // Then — nothing was written to a slot the player has no placeholder for, and the buffered
+        // segments replay in order once one exists
+        #expect(recordBatches.map(\.viewID) == ["view-1", "view-2", "view-3"])
+        #expect(recordBatches.allSatisfy { $0.slotID == expectedSlotId })
+        #expect(feature.writtenSegments.isEmpty)
+    }
+
+    @Test
+    func writeSegment_whenTheSlotNeverResolves_dropsTheOldestSegments() throws {
+        // Given — a host that configured `isEmbedded: true` but never registered a view
+        try enable()
+        bridge.setEmbedded(true)
+        let overflow = FlutterSessionReplay.maxPendingSegments + 5
+        for index in 0..<overflow {
+            bridge.writeSegment(segment: Self.segment(viewID: "view-\(index)"))
+        }
+
+        // When — a slot finally appears
+        try embed()
+
+        // Then — the buffer is capped, so an unresolvable engine cannot grow it without bound; what
+        // survives is the most recent capture rather than a stale prefix
+        #expect(recordBatches.count == FlutterSessionReplay.maxPendingSegments)
+        #expect(recordBatches.first?.viewID == "view-\(overflow - FlutterSessionReplay.maxPendingSegments)")
+        #expect(recordBatches.last?.viewID == "view-\(overflow - 1)")
     }
 
     // MARK: - Replay state publishing
@@ -195,7 +257,7 @@ class FlutterSessionReplayBridgeTests {
     func setHasReplay_whenStandalone_publishesToTheFeature() throws {
         // Given
         try enable()
-        bridge.setSlotId(nil)
+        bridge.setEmbedded(false)
 
         // When
         let expectedValue: Bool = .mockRandom()
@@ -209,7 +271,7 @@ class FlutterSessionReplayBridgeTests {
     func setHasReplay_whenEmbedded_staysQuiet() throws {
         // Given
         try enable()
-        bridge.setSlotId("slot-id")
+        bridge.setEmbedded(true)
 
         // When
         bridge.setHasReplay(hasReplay: true)
@@ -235,7 +297,7 @@ class FlutterSessionReplayBridgeTests {
     func setRecordCount_whenStandalone_publishesToTheFeature() throws {
         // Given
         try enable()
-        bridge.setSlotId(nil)
+        bridge.setEmbedded(false)
 
         // When
         let viewId: String = .mockRandom()
@@ -250,7 +312,7 @@ class FlutterSessionReplayBridgeTests {
     func setRecordCount_whenEmbedded_staysQuiet() throws {
         // Given
         try enable()
-        bridge.setSlotId("slot-id")
+        bridge.setEmbedded(true)
 
         // When
         bridge.setRecordCount(for: .mockRandom(), count: 1)

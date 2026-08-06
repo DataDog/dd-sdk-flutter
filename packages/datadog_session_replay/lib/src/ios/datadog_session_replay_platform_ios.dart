@@ -6,9 +6,7 @@ import 'dart:async';
 import 'dart:ffi' as ffi;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 import 'package:objective_c/objective_c.dart';
 
 import '../../datadog_session_replay.dart';
@@ -16,8 +14,8 @@ import '../datadog_session_replay_platform_interface.dart';
 import '../rum_context.dart';
 import 'datadog_session_replay_bridge_ios.dart';
 
-// Per-engine method channel used to resolve this engine's embedded slotId
-// (`resolveSlotId`). The FFI `enable()` call can't tell which engine invoked it, so
+// Per-engine method channel used to pair this engine's bridge with its messenger
+// (`registerEngine`). The FFI `enable()` call can't tell which engine invoked it, so
 // this channel — which routes to the plugin instance for a specific engine — provides
 // that engine's messenger natively. See DatadogSessionReplayPlugin.register(with:).
 // Flutter issue: https://github.com/flutter/flutter/issues/184124
@@ -78,53 +76,20 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
       );
     _iosBridge.enableWith(iOsConfiguration);
 
+    // Tell the bridge which path its segments take. Embedded records go to the native
+    // recording, standalone records to the Flutter feature. The slotId is deliberately not
+    // part of this: the bridge resolves it natively per segment, from the view the host
+    // registered, so Dart never has to observe its own view to keep up.
+    _iosBridge.setEmbedded(configuration.isEmbedded);
+
     // Hand this bridge's token to the plugin instance for this engine. The bridge is
     // created over FFI and never sees a messenger, while the plugin has the messenger but
-    // never sees the bridge — this call is what pairs them, so the engine's Dart context
-    // callback can be released when the engine detaches.
+    // never sees the bridge — this call is what pairs them, which is both how the engine's
+    // Dart context callback gets released on detach and how the bridge reaches the messenger
+    // it resolves slotIds through. Segments captured before it lands are buffered natively.
     unawaited(_engineChannel.invokeMethod<void>(
         'registerEngine', _iosBridge.engineToken.toDartString()));
 
-    if (configuration.isEmbedded) {
-      // Resolve the slotId on the first frame, and re-resolve whenever the view is
-      // (re)attached. A pre-warmed engine is reused across view open/close, so its
-      // FlutterView — and therefore its slotId, which is assigned per view — changes on each
-      // reopen. A one-shot resolve would leave records stamped with a stale slotId
-      // that no longer matches the native embedded_view placeholder. The observer
-      // re-resolves on `didChangeMetrics` (fires on view attach/detach/resize) and
-      // on `AppLifecycleState.resumed`, and persists for the engine's lifetime.
-      WidgetsBinding.instance
-          .addObserver(_EmbeddedSlotIdObserver(_resolveAndSetSlotId));
-      SchedulerBinding.instance.addPostFrameCallback((_) async {
-        await _resolveAndSetSlotId();
-      });
-    } else {
-      // Flutter is the host app (not embedded) — resolve `embeddingState` to
-      // `.standalone` immediately. Without this, it stays `.unknown` forever
-      // and every segment is buffered in memory instead of being written.
-      _iosBridge.setSlotId(null);
-    }
-
-    return true;
-  }
-
-  /// The slotId last forwarded to the native bridge, so re-resolution only pushes
-  /// changes (a reused engine gets a new view, and a new slotId, across open/close).
-  String? _lastSlotId;
-
-  /// Resolves the embedded Flutter view's slotId and forwards it to the native
-  /// bridge when it changes. Returns `true` if a slotId was resolved (the view is
-  /// attached), `false` if it is not yet available (e.g. a pre-warmed, not-yet-
-  /// presented engine) and resolution should be retried later.
-  Future<bool> _resolveAndSetSlotId() async {
-    final slotId = await _engineChannel.invokeMethod<String>('resolveSlotId');
-    if (slotId == null) {
-      return false;
-    }
-    if (slotId != _lastSlotId) {
-      _lastSlotId = slotId;
-      _iosBridge.setSlotId(NSString(slotId));
-    }
     return true;
   }
 
@@ -199,34 +164,6 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
       byteData.lengthInBytes,
     );
     return NSData.castFromPointer(ret, retain: true, release: true);
-  }
-}
-
-// Resolves (and re-resolves) the embedded Flutter view's slotId. A pre-warmed engine
-// is reused across view open/close, so its FlutterView — and thus its slotId, which is
-// assigned per view — changes on each reopen. This observer re-resolves whenever the view is
-// (re)attached (`didChangeMetrics`) or the app resumes, so the bridge always stamps
-// records with the current slotId. It persists for the engine's lifetime; `_lastSlotId`
-// dedupes so unchanged resolutions are no-ops.
-class _EmbeddedSlotIdObserver extends WidgetsBindingObserver {
-  final Future<bool> Function() _resolveAndSetSlotId;
-
-  _EmbeddedSlotIdObserver(this._resolveAndSetSlotId);
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // ignore: unawaited_futures
-      _resolveAndSetSlotId();
-    }
-  }
-
-  @override
-  void didChangeMetrics() {
-    // Fires when a FlutterView attaches/detaches/resizes — including when a reused
-    // engine's view is recreated on reopen, which is exactly when the slotId changes.
-    // ignore: unawaited_futures
-    _resolveAndSetSlotId();
   }
 }
 

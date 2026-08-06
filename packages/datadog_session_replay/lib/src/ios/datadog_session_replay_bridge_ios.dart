@@ -676,7 +676,7 @@ final _objc_msgSend_1nvl641 = objc.msgSendPointer
             ffi.Pointer<objc.ObjCSelector>,
             ffi.Pointer<objc.ObjCObject>,
             int)>();
-late final _sel_setSlotId_ = objc.registerName("setSlotId:");
+late final _sel_setEmbedded_ = objc.registerName("setEmbedded:");
 late final _sel_writeSegmentWithSegment_ =
     objc.registerName("writeSegmentWithSegment:");
 late final _sel_postTelemetryDebugWithId_message_ =
@@ -788,10 +788,9 @@ class FlutterSessionReplay extends objc.NSObject {
         viewId.ref.pointer, count);
   }
 
-  /// setSlotId:
-  void setSlotId(objc.NSString? slotId) {
-    _objc_msgSend_xtuoz7(
-        this.ref.pointer, _sel_setSlotId_, slotId?.ref.pointer ?? ffi.nullptr);
+  /// setEmbedded:
+  void setEmbedded(bool isEmbedded) {
+    _objc_msgSend_1s56lr9(this.ref.pointer, _sel_setEmbedded_, isEmbedded);
   }
 
   /// writeSegmentWithSegment:

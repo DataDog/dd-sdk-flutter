@@ -280,7 +280,7 @@ class FlutterSessionReplayManagerTests {
 
     @Test
     func slotId_isStableAcrossRepeatedQueries() {
-        // Given — Dart re-resolves on every `didChangeMetrics`
+        // Given — the bridge resolves the slot on every segment write
         let messenger = embed()
 
         // When
@@ -308,7 +308,7 @@ class FlutterSessionReplayManagerTests {
     }
 
     @Test
-    func slotId_whenTheFlutterViewWasRecreated_assignsAFreshId() {
+    func slotId_whenTheFlutterViewWasRecreated_isNilUntilTheHostRegistersAgain() {
         // Given — a pre-warmed engine reused across open/close gets a new `FlutterView`
         let messenger = FlutterBinaryMessengerMock()
         let viewController = hostViewController()
@@ -318,8 +318,13 @@ class FlutterSessionReplayManagerTests {
         // When
         viewController.view = UIView()
 
-        // Then — the ID lives on the view, so the new view gets its own rather than reusing a
-        // stale one the recorder would no longer emit a placeholder for
+        // Then — reading deliberately does not assign. Minting here would put the ID on the view
+        // *after* the snapshots taken while the host presents it, so the records stamped with it
+        // would reach the player before its placeholder. The caller buffers instead.
+        #expect(manager.slotId(for: messenger) == nil)
+
+        // And — re-registering mints a fresh ID, which is what notifies the recorder to snapshot
+        manager.registerSlot(for: viewController, messenger: messenger)
         let secondSlotId = manager.slotId(for: messenger)
         #expect(secondSlotId != nil)
         #expect(secondSlotId != firstSlotId)
@@ -340,11 +345,31 @@ class FlutterSessionReplayManagerTests {
         // When
         manager.registerSlot(for: viewController, messenger: messenger)
 
-        // Then — waiting for the view to load on its own would leave the ID missing from the
-        // snapshots taken while the host presents it, so the first Flutter records would reach
-        // the player before any placeholder carrying their slot
+        // Then — this is the only place a slot is minted, so without loading the view here the
+        // engine would have no slot at all and every segment would stay buffered
         #expect(viewController.viewIfLoaded?.dd.sessionReplaySlotID != nil)
         #expect(manager.slotId(for: messenger) == viewController.view.dd.sessionReplaySlotID)
+    }
+
+    @Test
+    func registerSlot_doesNotKeepTheHostViewControllerAlive() {
+        // Given — a registered host, as after a full-screen Flutter route was presented
+        let messenger = FlutterBinaryMessengerMock()
+        weak var releasedViewController: UIViewController?
+
+        // When — the host dismisses the route and drops its reference. The pool is drained because
+        // registering hands the view controller to ObjC APIs, which autorelease it.
+        autoreleasepool {
+            let viewController = hostViewController()
+            releasedViewController = viewController
+            manager.registerSlot(for: viewController, messenger: messenger)
+        }
+
+        // Then — nothing here may outlive it. The native recorder keeps the slot of every view it
+        // has recorded in a weak-keyed cache, so a view retained past its dismissal keeps feeding
+        // the player a placeholder mapping for content that is no longer on screen.
+        #expect(releasedViewController == nil, "the view controller is still alive")
+        #expect(manager.slotId(for: messenger) == nil, "the registry still resolves a slot")
     }
 
     @Test
