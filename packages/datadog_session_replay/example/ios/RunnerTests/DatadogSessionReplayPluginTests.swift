@@ -17,7 +17,8 @@ import DatadogInternal
 /// The FFI `enable()` call cannot tell which engine invoked it, so Dart pairs its bridge with its
 /// engine over a method channel instead: channels route to the plugin instance registered for that
 /// specific engine, which is how the plugin knows which messenger to pair the token with.
-@Suite
+@Suite(.serialized)
+@MainActor
 class DatadogSessionReplayPluginTests {
     private let manager = FlutterSessionReplayManager()
 

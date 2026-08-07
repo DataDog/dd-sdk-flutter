@@ -16,7 +16,8 @@ import DatadogInternal
 ///
 /// Every test builds its own manager, so no state leaks between tests and nothing touches
 /// `FlutterSessionReplayManager.shared`.
-@Suite
+@Suite(.serialized)
+@MainActor
 class FlutterSessionReplayBridgeTests {
     /// A record batch the manager will accept: `sendToMessageBus(segment:slotId:)` requires
     /// non-empty `records` and a `viewID`.
@@ -211,7 +212,7 @@ class FlutterSessionReplayBridgeTests {
     @Test
     func writeSegment_whenEmbeddedBeforeTheHostRegistersItsView_buffersUntilItDoes() throws {
         // Given — a pre-warmed engine: Dart declared `isEmbedded` and started recording before the
-        // host called `enableDatadogSessionReplay()`, so there is no slot to stamp records with
+        // host called `dd.enableSessionReplay()`, so there is no slot to stamp records with
         try enable()
         bridge.setEmbedded(true)
         let first = Self.segment(viewID: "view-1")

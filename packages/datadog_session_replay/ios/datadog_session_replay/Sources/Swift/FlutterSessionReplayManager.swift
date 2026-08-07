@@ -52,7 +52,7 @@ internal class FlutterSessionReplayManager {
     )
 
     /// Maps each engine's canonical messenger → the `FlutterViewController` hosting its embedded
-    /// view. Populated by `enableDatadogSessionReplay()`. Both sides are weak, so entries clear
+    /// view. Populated by `dd.enableSessionReplay()`. Both sides are weak, so entries clear
     /// automatically when an engine or its view controller is released.
     ///
     /// The slot ID itself is deliberately *not* stored here: it lives on the view as
@@ -183,7 +183,7 @@ internal class FlutterSessionReplayManager {
     /// in place before Dart records anything, and assignment posts
     /// `ddSessionReplaySlotIDDidChange`, which makes Session Replay snapshot the placeholder.
     ///
-    /// The view is loaded on purpose. Hosts call `enableDatadogSessionReplay()` straight after
+    /// The view is loaded on purpose. Hosts call `dd.enableSessionReplay()` straight after
     /// `FlutterViewController(engine:)` and before presenting it, so `viewIfLoaded` is still `nil`
     /// here while the host is about to load the view anyway — loading it now is what gives the
     /// assignment a view to attach to.
@@ -214,7 +214,9 @@ internal class FlutterSessionReplayManager {
         guard let view = view, view.dd.sessionReplaySlotID == nil else {
             return
         }
-        view.dd.sessionReplaySlotID = UUID().uuidString
+        runOnMainThreadSync {
+            view.dd.setSessionReplaySlotID(UUID().uuidString)
+        }
     }
 
     /// Returns the canonical underlying messenger used as a stable registry key.

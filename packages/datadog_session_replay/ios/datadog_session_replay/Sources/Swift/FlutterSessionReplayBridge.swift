@@ -109,7 +109,7 @@ public func __datadog_session_replay_keep_symbols() {
     private var pendingSegments: [String] = []
 
     /// Cap on `pendingSegments`, so an engine that never becomes resolvable — a host that
-    /// configured `isEmbedded: true` but never called `enableDatadogSessionReplay()` — drops the
+    /// configured `isEmbedded: true` but never called `dd.enableSessionReplay()` — drops the
     /// oldest segments rather than growing without bound. Two seconds of capture at the default
     /// 100ms cadence.
     internal static let maxPendingSegments = 20

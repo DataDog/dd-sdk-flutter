@@ -15,7 +15,8 @@ import DatadogInternal
 
 /// Tests the process-wide coordinator: the shared feature, context fan-out across engines, the
 /// host slot-ID registry, and the two message-bus paths (records and resources).
-@Suite
+@Suite(.serialized)
+@MainActor
 class FlutterSessionReplayManagerTests {
     private let core = PassthroughCoreMock()
     private let feature = FlutterSessionReplayFeatureMock()
@@ -32,11 +33,18 @@ class FlutterSessionReplayManagerTests {
         return viewController
     }
 
+    /// View controllers `embed()` registered, retained for the test's duration. `embed()` callers
+    /// expect the slot to keep resolving afterward — unlike `hostViewController()`'s direct
+    /// callers, some of which test the weak-storage contract itself.
+    private var embeddedViewControllers: [UIViewController] = []
+
     /// Puts the manager in the embedded state and returns the messenger it was registered under.
     @discardableResult
     private func embed() -> FlutterBinaryMessengerMock {
         let messenger = FlutterBinaryMessengerMock()
-        manager.registerSlot(for: hostViewController(), messenger: messenger)
+        let viewController = hostViewController()
+        embeddedViewControllers.append(viewController)
+        manager.registerSlot(for: viewController, messenger: messenger)
         return messenger
     }
 
@@ -300,7 +308,7 @@ class FlutterSessionReplayManagerTests {
         manager.registerSlot(for: viewController, messenger: messenger)
         let firstSlotId = manager.slotId(for: messenger)
 
-        // When — the host calls `enableDatadogSessionReplay()` again
+        // When — the host calls `dd.enableSessionReplay()` again
         manager.registerSlot(for: viewController, messenger: messenger)
 
         // Then
@@ -338,7 +346,7 @@ class FlutterSessionReplayManagerTests {
     @Test
     func registerSlot_whenTheViewIsNotLoadedYet_loadsItAndAssignsAnId() {
         // Given — a view controller whose view has not been loaded, which is what hosts pass:
-        // `enableDatadogSessionReplay()` is called straight after `FlutterViewController(engine:)`
+        // `dd.enableSessionReplay()` is called straight after `FlutterViewController(engine:)`
         let messenger = FlutterBinaryMessengerMock()
         let viewController = UIViewController()
 
@@ -379,7 +387,8 @@ class FlutterSessionReplayManagerTests {
         let engineMessenger = FlutterBinaryMessengerMock()
         let relayUsedToRegister = FlutterBinaryMessengerRelayMock(parent: engineMessenger)
         let relayUsedToQuery = FlutterBinaryMessengerRelayMock(parent: engineMessenger)
-        manager.registerSlot(for: hostViewController(), messenger: relayUsedToRegister)
+        let viewController = hostViewController()
+        manager.registerSlot(for: viewController, messenger: relayUsedToRegister)
 
         // When
         let slotId = manager.slotId(for: relayUsedToQuery)
