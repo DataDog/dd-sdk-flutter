@@ -10,6 +10,8 @@ import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/assignment.dart';
 import 'package:datadog_flags/src/evaluation_aggregator.dart';
 import 'package:datadog_flags/src/flags_runtime.dart';
+import 'package:datadog_flags/src/intake_platform.dart';
+import 'package:datadog_flags/src/sdk_metadata.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
@@ -62,10 +64,7 @@ void main() {
     await aggregator.flush();
 
     final request = _evaluationRequests(requests).single;
-    expect(request.headers['Content-Type'], 'application/json');
-    expect(request.headers['DD-API-KEY'], 'client-token');
-    expect(request.headers['DD-EVP-ORIGIN'], 'dart-client');
-    expect(request.headers['DD-REQUEST-ID'], isNotEmpty);
+    _expectIntakeMetadata(request, nativeContentType: 'application/json');
 
     final evaluation = _flagEvaluations(request).single;
     expect(evaluation['flag'], {'key': 'checkout.enabled'});
@@ -80,6 +79,13 @@ void main() {
         'companyId': '1',
         'plan': 'pro',
       },
+      if (isWebFlagsIntake)
+        'dd': {
+          'service': 'shopping-cart',
+          'rum': {
+            'application': {'id': 'application-id'},
+          },
+        },
     });
     expect(evaluation.containsKey('runtime_default_used'), isFalse);
   });
@@ -315,9 +321,47 @@ List<http.Request> _evaluationRequests(List<http.Request> requests) {
 }
 
 List<Map<String, Object?>> _flagEvaluations(http.Request request) {
+  if (isWebFlagsIntake) {
+    return request.body
+        .split('\n')
+        .where((line) => line.isNotEmpty)
+        .map((line) => jsonDecode(line) as Map<String, Object?>)
+        .toList();
+  }
   final body = jsonDecode(request.body) as Map<String, Object?>;
   return (body['flagEvaluations'] as List<Object?>)
       .cast<Map<String, Object?>>();
+}
+
+void _expectIntakeMetadata(
+  http.Request request, {
+  required String nativeContentType,
+}) {
+  expect(request.url.queryParameters['ddsource'], datadogFlagsSource);
+  if (isWebFlagsIntake) {
+    expect(request.headers['Content-Type'], startsWith('text/plain'));
+    expect(request.headers['DD-API-KEY'], isNull);
+    expect(request.headers['DD-EVP-ORIGIN'], isNull);
+    expect(request.headers['DD-EVP-ORIGIN-VERSION'], isNull);
+    expect(request.headers['DD-REQUEST-ID'], isNull);
+    expect(request.url.queryParameters['dd-api-key'], 'client-token');
+    expect(request.url.queryParameters['dd-evp-origin'], datadogFlagsSource);
+    expect(
+      request.url.queryParameters['dd-evp-origin-version'],
+      datadogFlagsSdkVersion,
+    );
+    expect(request.url.queryParameters['dd-request-id'], isNotEmpty);
+    return;
+  }
+
+  expect(request.headers['Content-Type'], nativeContentType);
+  expect(request.headers['DD-API-KEY'], 'client-token');
+  expect(request.headers['DD-EVP-ORIGIN'], datadogFlagsSource);
+  expect(
+    request.headers['DD-EVP-ORIGIN-VERSION'],
+    datadogFlagsSdkVersion,
+  );
+  expect(request.headers['DD-REQUEST-ID'], isNotEmpty);
 }
 
 Future<void> _waitUntil(

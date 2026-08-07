@@ -10,6 +10,7 @@ import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/evaluation_aggregator.dart';
 import 'package:datadog_flags/src/exposure_logger.dart';
 import 'package:datadog_flags/src/flags_store.dart';
+import 'package:datadog_flags/src/intake_platform.dart';
 import 'package:datadog_flags/src/sdk_metadata.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -339,14 +340,13 @@ void main() {
       expect(_exposureRequests(requests), hasLength(1));
       final request = _exposureRequests(requests).single;
       expect(
-        request.url.toString(),
-        'https://browser-intake-datadoghq.com/api/v2/exposures?ddsource=dart-client',
+        '${request.url.origin}${request.url.path}',
+        'https://browser-intake-datadoghq.com/api/v2/exposures',
       );
-      expect(request.headers['Content-Type'], 'text/plain;charset=UTF-8');
-      expect(request.headers['DD-API-KEY'], 'client-token');
-      expect(request.headers['DD-EVP-ORIGIN'], 'dart-client');
-      expect(request.headers['DD-EVP-ORIGIN-VERSION'], datadogFlagsSdkVersion);
-      expect(request.headers['DD-REQUEST-ID'], isNotEmpty);
+      _expectIntakeMetadata(
+        request,
+        nativeContentType: 'text/plain;charset=UTF-8',
+      );
 
       final exposure = _exposureEvents(request).single;
       expect(exposure, {
@@ -750,20 +750,17 @@ void main() {
 
       final request = _evaluationRequests(requests).single;
       expect(
-        request.url.toString(),
-        'https://browser-intake-datadoghq.com/api/v2/flagevaluation?ddsource=dart-client',
+        '${request.url.origin}${request.url.path}',
+        'https://browser-intake-datadoghq.com/api/v2/flagevaluation',
       );
-      expect(request.headers['Content-Type'], 'application/json');
-      expect(request.headers['DD-API-KEY'], 'client-token');
-      expect(request.headers['DD-EVP-ORIGIN'], 'dart-client');
-      expect(request.headers['DD-EVP-ORIGIN-VERSION'], datadogFlagsSdkVersion);
-      expect(request.headers['DD-REQUEST-ID'], isNotEmpty);
+      _expectIntakeMetadata(request, nativeContentType: 'application/json');
 
-      final body = jsonDecode(request.body) as Map<String, Object?>;
-      expect(body['context'], _datadogEventContext());
+      if (!isWebFlagsIntake) {
+        final body = jsonDecode(request.body) as Map<String, Object?>;
+        expect(body['context'], _datadogEventContext());
+      }
 
-      final evaluations = (body['flagEvaluations'] as List<Object?>)
-          .cast<Map<String, Object?>>();
+      final evaluations = _flagEvaluationEvents(request);
       expect(evaluations, hasLength(3));
 
       final success = _evaluation(
@@ -780,6 +777,13 @@ void main() {
       expect(success['targeting_key'], 'user-123');
       expect(success['context'], {
         'evaluation': {'plan': 'pro'},
+        if (isWebFlagsIntake)
+          'dd': {
+            'service': 'shopping-cart',
+            'rum': {
+              'application': {'id': 'application-id'},
+            },
+          },
       });
       expect(success.containsKey('runtime_default_used'), isFalse);
 
@@ -821,9 +825,7 @@ void main() {
     await client.shutdown();
 
     final request = _evaluationRequests(requests).single;
-    final body = jsonDecode(request.body) as Map<String, Object?>;
-    final evaluations =
-        (body['flagEvaluations'] as List<Object?>).cast<Map<String, Object?>>();
+    final evaluations = _flagEvaluationEvents(request);
 
     final evaluation = evaluations.single;
     expect(evaluation['flag'], {'key': 'show-paywall'});
@@ -985,10 +987,8 @@ void main() {
     await client.shutdown();
 
     expect(_evaluationRequests(requests), hasLength(2));
-    final secondBody = jsonDecode(_evaluationRequests(requests).last.body)
-        as Map<String, Object?>;
-    final secondEvaluations = (secondBody['flagEvaluations'] as List<Object?>)
-        .cast<Map<String, Object?>>();
+    final secondEvaluations =
+        _flagEvaluationEvents(_evaluationRequests(requests).last);
     expect(secondEvaluations.single['flag'], {'key': 'theme'});
   });
 
@@ -1518,6 +1518,50 @@ List<Map<String, Object?>> _exposureEvents(http.Request request) {
       .where((line) => line.isNotEmpty)
       .map((line) => jsonDecode(line) as Map<String, Object?>)
       .toList();
+}
+
+List<Map<String, Object?>> _flagEvaluationEvents(http.Request request) {
+  if (isWebFlagsIntake) {
+    return request.body
+        .split('\n')
+        .where((line) => line.isNotEmpty)
+        .map((line) => jsonDecode(line) as Map<String, Object?>)
+        .toList();
+  }
+  final body = jsonDecode(request.body) as Map<String, Object?>;
+  return (body['flagEvaluations'] as List<Object?>)
+      .cast<Map<String, Object?>>();
+}
+
+void _expectIntakeMetadata(
+  http.Request request, {
+  required String nativeContentType,
+}) {
+  expect(request.url.queryParameters['ddsource'], datadogFlagsSource);
+  if (isWebFlagsIntake) {
+    expect(request.headers['Content-Type'], startsWith('text/plain'));
+    expect(request.headers['DD-API-KEY'], isNull);
+    expect(request.headers['DD-EVP-ORIGIN'], isNull);
+    expect(request.headers['DD-EVP-ORIGIN-VERSION'], isNull);
+    expect(request.headers['DD-REQUEST-ID'], isNull);
+    expect(request.url.queryParameters['dd-api-key'], 'client-token');
+    expect(request.url.queryParameters['dd-evp-origin'], datadogFlagsSource);
+    expect(
+      request.url.queryParameters['dd-evp-origin-version'],
+      datadogFlagsSdkVersion,
+    );
+    expect(request.url.queryParameters['dd-request-id'], isNotEmpty);
+    return;
+  }
+
+  expect(request.headers['Content-Type'], nativeContentType);
+  expect(request.headers['DD-API-KEY'], 'client-token');
+  expect(request.headers['DD-EVP-ORIGIN'], datadogFlagsSource);
+  expect(
+    request.headers['DD-EVP-ORIGIN-VERSION'],
+    datadogFlagsSdkVersion,
+  );
+  expect(request.headers['DD-REQUEST-ID'], isNotEmpty);
 }
 
 Map<String, Object?> _datadogEventContext() {
