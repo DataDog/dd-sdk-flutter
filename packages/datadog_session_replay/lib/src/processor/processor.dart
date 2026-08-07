@@ -23,30 +23,23 @@ const _shutdownTimeout = Duration(seconds: 2);
 /// sending them to the native platform for serialization and distribution to
 /// intake
 class SessionReplayProcessor with WidgetsBindingObserver {
-  final ReceivePort _mainReceivePort = ReceivePort('sr-replay-port');
-  final ReceivePort _shutdownReceivePort = ReceivePort(
-    'sr-replay-shutdown-port',
-  );
   SendPort? _mainSendPort;
   Isolate? _processorIsolate;
+  bool _isSpawning = false;
+  // The port the current isolate signals on once it has finished shutting down.
+  // Recreated per spawn, because a ReceivePort is single-subscription and cannot
+  // be reused after `_shutdown` has consumed its first event.
+  ReceivePort? _shutdownReceivePort;
+  FontFamilyTransformConfig _fontFamilyTransform =
+      const FontFamilyTransformConfig();
 
   Future<void> start({
     FontFamilyTransformConfig fontFamilyTransform =
         const FontFamilyTransformConfig(),
   }) async {
+    _fontFamilyTransform = fontFamilyTransform;
     WidgetsBinding.instance.addObserver(this);
-    _processorIsolate = await Isolate.spawn(
-      _captureProcessor,
-      _ProcessorArgs(
-        RootIsolateToken.instance!,
-        DatadogSessionReplayPlatform.instance.isolateToken,
-        _mainReceivePort.sendPort,
-        _shutdownReceivePort.sendPort,
-        fontFamilyTransform,
-      ),
-    );
-
-    _mainSendPort = await _mainReceivePort.first;
+    await _spawnIsolate();
   }
 
   void process(CaptureResult captureResult) {
@@ -57,6 +50,16 @@ class SessionReplayProcessor with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
       unawaited(_shutdown());
+    } else if (state == AppLifecycleState.resumed) {
+      // Guard with `_isSpawning` in addition to the null check: `_spawnIsolate`
+      // awaits `Isolate.spawn`, so `_processorIsolate` stays null during the spawn.
+      // Without the latch, a second `resumed` arriving mid-spawn would start a
+      // duplicate isolate and leak the first.
+      if (_processorIsolate == null && !_isSpawning) {
+        _isSpawning = true;
+        // ignore: unawaited_futures
+        _spawnIsolate().whenComplete(() => _isSpawning = false);
+      }
     }
   }
 
@@ -67,19 +70,46 @@ class SessionReplayProcessor with WidgetsBindingObserver {
   /// can leave those references in a bad state.
   Future<void> _shutdown() async {
     final isolate = _processorIsolate;
+    final shutdownReceivePort = _shutdownReceivePort;
     if (isolate == null) {
       return;
     }
+    // Cleared before awaiting so a `resumed` arriving mid-shutdown sees no
+    // isolate and spawns a fresh one instead of reusing this dying one.
     _processorIsolate = null;
+    _shutdownReceivePort = null;
 
     _mainSendPort?.send(null);
+    _mainSendPort = null;
     try {
-      await _shutdownReceivePort.first.timeout(_shutdownTimeout);
+      await shutdownReceivePort?.first.timeout(_shutdownTimeout);
     } catch (_) {
       isolate.kill(priority: Isolate.immediate);
     } finally {
-      _shutdownReceivePort.close();
+      shutdownReceivePort?.close();
     }
+  }
+
+  // Spawns the capture-processing isolate and completes the handshake. A fresh
+  // ReceivePort is created on each call because ReceivePort is single-subscription
+  // and cannot be reused after its initial handshake listener is consumed — this
+  // is what allows the isolate to be restarted on resume after a detach.
+  Future<void> _spawnIsolate() async {
+    final port = ReceivePort('sr-replay-port');
+    final shutdownPort = ReceivePort('sr-replay-shutdown-port');
+    _shutdownReceivePort = shutdownPort;
+    _processorIsolate = await Isolate.spawn(
+      _captureProcessor,
+      _ProcessorArgs(
+        RootIsolateToken.instance!,
+        DatadogSessionReplayPlatform.instance.isolateToken,
+        port.sendPort,
+        shutdownPort.sendPort,
+        _fontFamilyTransform,
+      ),
+    );
+    _mainSendPort = await port.first;
+    port.close();
   }
 
   static Future<void> _captureProcessor(_ProcessorArgs args) async {
