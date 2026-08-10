@@ -247,26 +247,12 @@ class EvaluationAggregator {
       Map<String, Object?> context => Map<String, Object?>.from(context),
       _ => <String, Object?>{},
     };
-    final datadogContext = _webDatadogContext();
+    final datadogContext = _datadogContext();
     if (datadogContext.isNotEmpty) {
       eventContext['dd'] = datadogContext;
       event['context'] = eventContext;
     }
     return jsonEncode(event);
-  }
-
-  Map<String, Object?> _webDatadogContext() {
-    final applicationId = runtime.datadogConfig.applicationId;
-    return _removeNullValues({
-      'env': runtime.datadogConfig.env,
-      'service': runtime.datadogConfig.service,
-      'version': runtime.datadogConfig.version,
-      'rum': applicationId == null
-          ? null
-          : {
-              'application': {'id': applicationId},
-            },
-    });
   }
 
   Map<String, Object?> _datadogContext() {
