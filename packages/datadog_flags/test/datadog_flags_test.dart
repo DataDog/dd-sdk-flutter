@@ -779,7 +779,9 @@ void main() {
         'evaluation': {'plan': 'pro'},
         if (isWebFlagsIntake)
           'dd': {
+            'env': 'staging',
             'service': 'shopping-cart',
+            'version': '1.2.3',
             'rum': {
               'application': {'id': 'application-id'},
             },

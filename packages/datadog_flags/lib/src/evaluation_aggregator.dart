@@ -259,7 +259,9 @@ class EvaluationAggregator {
   Map<String, Object?> _webDatadogContext() {
     final applicationId = runtime.datadogConfig.applicationId;
     return _removeNullValues({
+      'env': runtime.datadogConfig.env,
       'service': runtime.datadogConfig.service,
+      'version': runtime.datadogConfig.version,
       'rum': applicationId == null
           ? null
           : {

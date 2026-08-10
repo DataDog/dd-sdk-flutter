@@ -31,6 +31,7 @@ void main() {
           site: DatadogFlagsSite.us1,
           applicationId: 'application-id',
           service: 'integration-service',
+          version: '1.2.3',
         ),
         customEvaluationEndpoint: Uri.parse(
           '${recordingServer.sessionEndpoint}api/v2/flagevaluation',
@@ -87,5 +88,14 @@ void main() {
     expect(event['flag'], {'key': 'web-intake-test'});
     expect(event['runtime_default_used'], isTrue);
     expect(event['error'], {'message': 'PROVIDER_NOT_READY'});
+    final context = event['context'] as Map<String, Object?>;
+    expect(context['dd'], {
+      'env': 'integration',
+      'service': 'integration-service',
+      'version': '1.2.3',
+      'rum': {
+        'application': {'id': 'application-id'},
+      },
+    });
   }, skip: !kIsWeb);
 }
