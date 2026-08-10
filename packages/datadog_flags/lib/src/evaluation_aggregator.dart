@@ -171,16 +171,15 @@ class EvaluationAggregator {
     List<_AggregatedEvaluation> evaluations, {
     required bool rescheduleOnFailure,
   }) async {
-    final nativeBody = jsonEncode({
-      'context': _datadogContext(),
-      'flagEvaluations': evaluations.map((e) => e.toJson()).toList(),
-    });
     final request = buildFlagsIntakeRequest(
       endpoint: _evaluationEndpoint(),
       clientToken: runtime.datadogConfig.clientToken,
       nativeContentType: 'application/json',
-      nativeBody: nativeBody,
-      webBody: evaluations.map(_webEvaluationJson).join('\n'),
+      nativeBodyBuilder: () => jsonEncode({
+        'context': _datadogContext(),
+        'flagEvaluations': evaluations.map((e) => e.toJson()).toList(),
+      }),
+      webBodyBuilder: () => evaluations.map(_webEvaluationJson).join('\n'),
     );
 
     try {

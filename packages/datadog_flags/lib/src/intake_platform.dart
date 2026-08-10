@@ -3,5 +3,5 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-export 'intake_platform_native.dart'
-    if (dart.library.js_interop) 'intake_platform_web.dart';
+export 'intake_platform_web.dart'
+    if (dart.library.io) 'intake_platform_native.dart';

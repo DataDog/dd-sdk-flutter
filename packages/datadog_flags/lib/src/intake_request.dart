@@ -26,8 +26,8 @@ FlagsIntakeRequest buildFlagsIntakeRequest({
   required Uri endpoint,
   required String clientToken,
   required String nativeContentType,
-  required String nativeBody,
-  required String webBody,
+  required String Function() nativeBodyBuilder,
+  required String Function() webBodyBuilder,
 }) {
   final requestId = const Uuid().v4();
   final queryParameters = {
@@ -47,7 +47,7 @@ FlagsIntakeRequest buildFlagsIntakeRequest({
     return FlagsIntakeRequest(
       endpoint: endpoint.replace(queryParameters: queryParameters),
       headers: const {'Content-Type': 'text/plain'},
-      body: webBody,
+      body: webBodyBuilder(),
     );
   }
 
@@ -60,6 +60,6 @@ FlagsIntakeRequest buildFlagsIntakeRequest({
       'DD-EVP-ORIGIN-VERSION': datadogFlagsSdkVersion,
       'DD-REQUEST-ID': requestId,
     },
-    body: nativeBody,
+    body: nativeBodyBuilder(),
   );
 }

@@ -149,8 +149,8 @@ class ExposureLogger {
       endpoint: _exposureEndpoint(),
       clientToken: runtime.datadogConfig.clientToken,
       nativeContentType: 'text/plain;charset=UTF-8',
-      nativeBody: body,
-      webBody: body,
+      nativeBodyBuilder: () => body,
+      webBodyBuilder: () => body,
     );
     try {
       final response = await runtime.httpClient
