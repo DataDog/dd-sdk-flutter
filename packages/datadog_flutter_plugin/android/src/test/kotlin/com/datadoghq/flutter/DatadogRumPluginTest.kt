@@ -9,6 +9,7 @@ import android.util.Log
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
+import assertk.assertions.isNull
 import com.datadog.android.Datadog
 import com.datadog.android.rum.GlobalRumMonitor
 import com.datadog.android.rum.Rum
@@ -28,6 +29,7 @@ import fr.xgouchet.elmyr.annotation.IntForgery
 import fr.xgouchet.elmyr.annotation.LongForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
+import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.mockk.Called
@@ -41,6 +43,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 
@@ -64,6 +67,25 @@ class DatadogRumPluginTest {
         unmockkStatic(Log::class)
         unmockkStatic(Rum::class)
         unmockkStatic(GlobalRumMonitor::class)
+    }
+
+    @Test
+    fun `M clear the static event mapper W detachFromEngine`() {
+        // Given
+        val mockFlutterPluginBinding = mock<FlutterPlugin.FlutterPluginBinding>()
+        whenever(mockFlutterPluginBinding.binaryMessenger).thenReturn(mock())
+        plugin.attachToEngine(mockFlutterPluginBinding)
+
+        val mockMapper = mock<DatadogRumEventMapper.EventMapper>()
+        DatadogRumPlugin.setRumEventMapper(mockMapper)
+
+        // When
+        plugin.detachFromEngine()
+
+        // Then
+        // RUMS-6227: without clearing this, a background RUM writer thread invoking the mapper
+        // after this (now detached) engine's Dart isolate is gone crashes with a JNI SIGSEGV.
+        assertThat(DatadogRumPlugin.eventMapper.eventMapper).isNull()
     }
 
     @Test

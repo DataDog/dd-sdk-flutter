@@ -98,6 +98,9 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
 
     fun detachFromEngine() {
         channel.setMethodCallHandler(null)
+        // Clear the static event mapper reference so a background RUM writer thread can't
+        // invoke a JNI callback tied to this (now detached) engine's Dart isolate. See RUMS-6227.
+        eventMapper.eventMapper = null
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {

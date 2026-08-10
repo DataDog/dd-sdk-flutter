@@ -31,6 +31,7 @@ class DatadogRumEventMapper {
         fun mapVitalOperationStepEvent(encodedEvent: String): String?
     }
 
+    @Volatile
     var eventMapper: EventMapper? = null
 
     fun attachMappers(

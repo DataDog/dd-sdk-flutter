@@ -19,6 +19,7 @@ class DatadogLogEventMapper {
         fun mapLogEvent(encodedEvent: String): String?
     }
 
+    @Volatile
     var eventMapper: EventMapper? = null
 
     fun attachMapper(config: LogsConfiguration.Builder): LogsConfiguration.Builder {
