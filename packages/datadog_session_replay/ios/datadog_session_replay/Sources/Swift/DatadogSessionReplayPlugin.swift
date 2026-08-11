@@ -16,6 +16,12 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
     internal init(messenger: AnyObject, manager: FlutterSessionReplayManager = .shared) {
         self.messenger = messenger
         self.manager = manager
+        super.init()
+        observeEngineTeardown()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     public static func register(with registrar: FlutterPluginRegistrar) {
@@ -30,6 +36,7 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
             binaryMessenger: registrar.messenger()
         )
         registrar.addMethodCallDelegate(instance, channel: channel)
+        registrar.publish(instance)
     }
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -55,7 +62,37 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
         }
     }
 
+    /// Covers teardown path `detachFromEngine(for:)` cannot see: app termination.
+    ///
+    /// Every other way an engine goes away ends in `-[FlutterEngine dealloc]`, which is the sole
+    /// caller of `detachFromEngineForRegistrar:` — closing a scene, or a host releasing an engine,
+    /// both land there. Termination does not: `-[FlutterViewController applicationWillTerminate:]`
+    /// resets the engine's shell via `-appOrSceneWillTerminate` → `-destroyContext` while the engine
+    /// object itself stays alive, so no plugin is ever notified (flutter/flutter#126671). Our Dart
+    /// context callback would then outlive the isolate that shell owned and trap in
+    /// `DLRT_GetFfiCallbackMetadata`.
+    private func observeEngineTeardown() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(engineWillTearDown),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
+    }
+
+    /// Internal rather than private so tests can drive it without posting the real notification,
+    /// which every plugin instance in the process observes — including those of suites running in
+    /// parallel.
+    @objc
+    internal func engineWillTearDown() {
+        _onDetach()
+    }
+
     public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
+        _onDetach()
+    }
+
+    private func _onDetach() {
         // Release this engine's Dart context callback before its isolate goes away —
         // invoking it afterwards traps in `DLRT_GetFfiCallbackMetadata` on force close.
         // Keyed by messenger, so a detaching secondary engine cannot clear a live one's.

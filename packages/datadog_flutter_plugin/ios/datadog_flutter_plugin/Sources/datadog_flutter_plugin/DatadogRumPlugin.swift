@@ -58,12 +58,15 @@ public extension RUM.Configuration {
 
 // swiftlint:disable:next type_body_length
 public class DatadogRumPlugin: NSObject, FlutterPlugin {
-    private static var methodChannel: FlutterMethodChannel?
+    /// Assigned by `register(with:)` rather than by `init`, because `instance` is created before any
+    /// registrar exists. Internal so tests can seed and inspect it.
+    internal var methodChannel: FlutterMethodChannel?
 
     public static let instance =  DatadogRumPlugin()
     public static func register(with registrar: FlutterPluginRegistrar) {
-        methodChannel = FlutterMethodChannel(name: "datadog_sdk_flutter.rum", binaryMessenger: registrar.messenger())
-        registrar.addMethodCallDelegate(instance, channel: methodChannel!)
+        let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.rum", binaryMessenger: registrar.messenger())
+        instance.methodChannel = channel
+        registrar.addMethodCallDelegate(instance, channel: channel)
     }
 
     internal var rum: RUMMonitorProtocol?
@@ -83,8 +86,19 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         self.rum = rum
     }
 
+    /// Drops the channel so nothing is sent to an engine that can no longer receive it.
+    ///
+    /// `onSessionStart` and the event mappers both hop to the main queue to call Dart, and both fire
+    /// from Datadog worker threads long after a view controller is gone. Once the engine resets its
+    /// shell, `-[FlutterEngine sendOnChannel:message:binaryReply:]` asserts and the app dies with an
+    /// `NSInternalInconsistencyException` — see #1062.
+    ///
+    /// Called by `DatadogSdkPlugin`, which owns this plugin's registration: `register(with:)` here is
+    /// handed that plugin's registrar, so this type has no `FlutterPlugin` teardown callback of its
+    /// own to hook, and must not `publish:` itself — that would overwrite `DatadogSdkPlugin`'s own
+    /// publication under the shared plugin key and break *its* detach.
     public func onDetach() {
-
+        methodChannel = nil
     }
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -403,9 +417,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 attachEventMappers(configArg: configArg, config: &config)
                 // Disable INV as the Flutter calculations for it are different
                 config.nextViewActionPredicate = nil
-                config.onSessionStart = { sessionId, discarded in
+                config.onSessionStart = { [weak self] sessionId, discarded in
                     DispatchQueue.main.async {
-                        guard let methodChannel = DatadogRumPlugin.methodChannel else { return }
+                        guard let methodChannel = self?.methodChannel else { return }
                         methodChannel.invokeMethod(
                             "onSessionChanged",
                             arguments: [
@@ -541,7 +555,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         event: T,
         encodedEvent: [String: Any?],
         completion: ([String: Any?]?) -> T?) -> T? {
-        guard let methodChannel = DatadogRumPlugin.methodChannel else {
+        guard methodChannel != nil else {
             return event
         }
 
@@ -549,7 +563,15 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         let semaphore = DispatchSemaphore(value: 0)
 
         mainThreadMapperPerf.start()
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            // Re-read the channel instead of capturing it: mappers run on a Datadog worker thread,
+            // so the engine can tear down — and `onDetach()` clear the channel — between the check
+            // above and this block being drained. Sending after that asserts on a reset shell.
+            // Signalling leaves `encodedResult` as the unmapped event, which is what we want.
+            guard let methodChannel = self?.methodChannel else {
+                semaphore.signal()
+                return
+            }
             methodChannel.invokeMethod(mapperName, arguments: ["event": encodedEvent]) { result in
                 if result == nil {
                     encodedResult = nil

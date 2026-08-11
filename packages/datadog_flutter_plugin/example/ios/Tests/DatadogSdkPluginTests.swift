@@ -565,3 +565,97 @@ class FlutterSdkTests: XCTestCase {
 //        }
 //    }
 }
+
+/// A messenger that does nothing. `FlutterMethodChannel` needs one to exist, but these tests only
+/// care about whether the channel is still held, never about messages crossing it.
+private class NoOpBinaryMessenger: NSObject, FlutterBinaryMessenger {
+    func send(onChannel channel: String, message: Data?) { }
+
+    func send(onChannel channel: String, message: Data?, binaryReply callback: FlutterBinaryReply? = nil) { }
+
+    func setMessageHandlerOnChannel(
+        _ channel: String,
+        binaryMessageHandler handler: FlutterBinaryMessageHandler? = nil
+    ) -> FlutterBinaryMessengerConnection {
+        return 0
+    }
+
+    func cleanUpConnection(_ connection: FlutterBinaryMessengerConnection) { }
+}
+
+/// Teardown has to drop every channel the SDK can call Dart on. Flutter resets the engine's shell on
+/// termination without notifying plugins (flutter/flutter#126671), and anything sent afterwards
+/// asserts inside `-[FlutterEngine sendOnChannel:message:binaryReply:]` — see #1062.
+class DatadogPluginDetachTests: XCTestCase {
+    private let messenger = NoOpBinaryMessenger()
+
+    /// The test host is the Runner app, so the real plugins already registered at launch and these
+    /// channels are live. Saved and restored rather than nil'd, so clearing them here cannot leak into
+    /// whatever test class runs next.
+    private var originalRumChannel: FlutterMethodChannel?
+    private var originalLogsChannel: FlutterMethodChannel?
+
+    override func setUp() {
+        originalRumChannel = DatadogRumPlugin.instance.methodChannel
+        originalLogsChannel = DatadogLogsPlugin.instance?.methodChannel
+
+        DatadogRumPlugin.instance.methodChannel = FlutterMethodChannel(
+            name: "datadog_sdk_flutter.rum",
+            binaryMessenger: messenger
+        )
+        DatadogLogsPlugin.instance?.methodChannel = FlutterMethodChannel(
+            name: "datadog_sdk_flutter.logs",
+            binaryMessenger: messenger
+        )
+    }
+
+    override func tearDown() {
+        DatadogRumPlugin.instance.methodChannel = originalRumChannel
+        DatadogLogsPlugin.instance?.methodChannel = originalLogsChannel
+    }
+
+    private func makePlugin() -> DatadogSdkPlugin {
+        DatadogSdkPlugin(channel: FlutterMethodChannel(
+            name: "datadog_sdk_flutter",
+            binaryMessenger: messenger
+        ))
+    }
+
+    func testApplicationWillTerminate_releasesEveryMethodChannel() {
+        let plugin = makePlugin()
+
+        // Termination arrives as a notification, not as a plugin callback
+        NotificationCenter.default.post(name: UIApplication.willTerminateNotification, object: nil)
+
+        XCTAssertNil(DatadogRumPlugin.instance.methodChannel)
+        XCTAssertNil(DatadogLogsPlugin.instance?.methodChannel)
+        XCTAssertNotNil(plugin)  // kept alive: NotificationCenter does not retain observers
+    }
+
+    func testDetach_isIdempotent() {
+        // Both teardown paths can run for the same engine: termination fires the notification, and a
+        // host releasing the engine afterwards still calls `detachFromEngine(for:)`.
+        DatadogRumPlugin.instance.onDetach()
+        DatadogLogsPlugin.instance?.onDetach()
+        DatadogRumPlugin.instance.onDetach()
+        DatadogLogsPlugin.instance?.onDetach()
+
+        XCTAssertNil(DatadogRumPlugin.instance.methodChannel)
+        XCTAssertNil(DatadogLogsPlugin.instance?.methodChannel)
+    }
+
+    func testWithoutAChannel_eventMappersReturnTheEventUnmapped() {
+        DatadogRumPlugin.instance.onDetach()
+
+        // Would otherwise hop to the main queue and block on a semaphore until it times out
+        let event = DatadogRumPlugin.instance.callEventMapper(
+            mapperName: "mapViewEvent",
+            event: "unmapped",
+            encodedEvent: [:],
+            completion: { _ in "mapped" }
+        )
+
+        XCTAssertEqual(event, "unmapped")
+        XCTAssertEqual(DatadogRumPlugin.instance.mapperTimeouts, 0)
+    }
+}

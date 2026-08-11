@@ -86,6 +86,56 @@ class DatadogSessionReplayPluginTests {
         #expect(callsToEngine == 1)  // primed on enable, nothing after
     }
 
+    /// Flutter never calls `detachFromEngine(for:)` on termination — it resets the engine's shell and
+    /// leaves the engine object, and therefore the plugin registry, alone
+    /// (flutter/flutter#126671) — so the plugin has to notice termination itself, or the Dart context
+    /// callback outlives the isolate that shell owned.
+    @Test
+    func applicationWillTerminate_releasesThisEnginesDartCallback() throws {
+        // Given — an engine paired with this plugin's messenger
+        var callsToEngine = 0
+        let core = PassthroughCoreMock()
+        let engine = FlutterSessionReplay(manager: manager)
+        try engine.enableOrThrow(with: .init(onContextChanged: { _ in callsToEngine += 1 }), in: core)
+        let plugin = DatadogSessionReplayPlugin(messenger: messenger, manager: manager)
+        _ = handle(plugin, method: "registerEngine", arguments: engine.engineToken)
+
+        // When — the app terminates without ever detaching the plugin. The plugin is kept alive
+        // across the post because `NotificationCenter` does not retain its observers.
+        withExtendedLifetime(plugin) {
+            NotificationCenter.default.post(name: UIApplication.willTerminateNotification, object: nil)
+            manager.broadcastContext(.mockRandom())
+        }
+
+        // Then
+        #expect(callsToEngine == 1)  // primed on enable, nothing after
+    }
+
+    /// Flutter never calls `detachFromEngine(for:)` on termination — it resets the engine's shell and
+    /// leaves the engine object, and therefore the plugin registry, alone (flutter/flutter#126671) —
+    /// so the plugin observes `UIApplication.willTerminateNotification` itself. Otherwise the Dart
+    /// context callback outlives the isolate that shell owned.
+    ///
+    /// Drives the handler directly instead of posting that notification: every plugin instance in the
+    /// process observes it, so a real post tears down engines belonging to suites running in parallel.
+    @Test
+    func engineWillTearDown_releasesThisEnginesDartCallback() throws {
+        // Given — an engine paired with this plugin's messenger
+        var callsToEngine = 0
+        let core = PassthroughCoreMock()
+        let engine = FlutterSessionReplay(manager: manager)
+        try engine.enableOrThrow(with: .init(onContextChanged: { _ in callsToEngine += 1 }), in: core)
+        let plugin = DatadogSessionReplayPlugin(messenger: messenger, manager: manager)
+        _ = handle(plugin, method: "registerEngine", arguments: engine.engineToken)
+
+        // When — the app terminates without ever detaching the plugin
+        plugin.engineWillTearDown()
+        manager.broadcastContext(.mockRandom())
+
+        // Then
+        #expect(callsToEngine == 1)  // primed on enable, nothing after
+    }
+
     @Test
     func registerEngine_withoutAToken_returnsAnError() {
         // Given

@@ -35,6 +35,7 @@ extension Logger.Configuration {
 
 public class DatadogLogsPlugin: NSObject, FlutterPlugin {
     public static var instance: DatadogLogsPlugin?
+
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.logs", binaryMessenger: registrar.messenger())
         instance = DatadogLogsPlugin(channel: channel)
@@ -42,17 +43,27 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
 
     }
 
-    private let channel: FlutterMethodChannel
+    /// Cleared on teardown, so `FlutterLogEventMapper` — which lives inside the SDK for the rest of the
+    /// process — can re-read it per event rather than holding a channel that outlives its engine.
+    internal var methodChannel: FlutterMethodChannel?
     private var currentConfiguration: [AnyHashable: Any]?
     private var loggerRegistry: [String: LoggerProtocol] = [:]
 
     private init(channel: FlutterMethodChannel) {
-        self.channel = channel
+        self.methodChannel = channel
         super.init()
     }
 
+    /// Drops the channel so a log mapper cannot reach an engine that can no longer receive it.
+    ///
+    /// `FlutterLogEventMapper` is handed to `Logs.enable` and lives inside the SDK for the rest of the
+    /// process, mapping events on Datadog worker threads. Once the engine resets its shell,
+    /// `-[FlutterEngine sendOnChannel:message:binaryReply:]` asserts and the app dies — the same crash
+    /// as #1062 in RUM.
+    ///
+    /// Called by `DatadogSdkPlugin`, which owns this plugin's registration.
     public func onDetach() {
-
+        methodChannel = nil
     }
 
     func addLogger(logger: LoggerProtocol, withHandle handle: String) {
@@ -248,7 +259,7 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
                 let attachLogMapper = (configArg["attachLogMapper"] as? NSNumber)?.boolValue ?? false
                 if attachLogMapper {
                     config._internal_mutation {
-                        $0.setLogEventMapper(FlutterLogEventMapper(channel: channel))
+                        $0.setLogEventMapper(FlutterLogEventMapper())
                     }
                 }
                 Logs.enable(with: config)
@@ -283,12 +294,6 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         "application_id", "session_id", "view.id", "user_action.id"
     ]
 
-    let channel: FlutterMethodChannel
-
-    public init(channel: FlutterMethodChannel) {
-        self.channel = channel
-    }
-
     func map(event: LogEvent, callback: @escaping (LogEvent) -> Void) {
         guard let encoded = logEventToFlutterDictionary(event: event) else {
             // TELEMETRY
@@ -297,6 +302,13 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         }
 
         DispatchQueue.main.async {
+            // Re-read the channel instead of holding it: this mapper lives inside the SDK for the rest
+            // of the process, so the engine can tear down — and `onDetach` clear the channel — between
+            // `Logs.enable` and this block being drained. Sending after that asserts on a reset shell.
+            guard let channel = DatadogLogsPlugin.instance?.methodChannel else {
+                callback(event)
+                return
+            }
             channel.invokeMethod("mapLogEvent", arguments: ["event": encoded]) { result in
                 guard let result = result as? [String: Any] else {
                     // Don't call the callback, this event was discarded

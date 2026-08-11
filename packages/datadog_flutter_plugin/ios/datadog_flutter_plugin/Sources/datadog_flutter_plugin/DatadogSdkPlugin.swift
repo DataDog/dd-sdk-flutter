@@ -116,13 +116,17 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     public init(channel: FlutterMethodChannel) {
         self.channel = channel
         super.init()
+        observeEngineTeardown()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: registrar.messenger())
         let instance = DatadogSdkPlugin(channel: channel)
         registrar.addMethodCallDelegate(instance, channel: channel)
-        registrar.addApplicationDelegate(instance)
         registrar.publish(instance)
 
         DatadogLogsPlugin.register(with: registrar)
@@ -396,7 +400,27 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         }
     }
 
-    public func applicationWillTerminate(_ application: UIApplication) {
+    /// Covers the teardown `detachFromEngine(for:)` cannot see: app termination.
+    ///
+    /// `-[FlutterEngine dealloc]` is the only caller of `detachFromEngineForRegistrar:`, so every
+    /// teardown that releases the engine is already handled. Termination is not: the view controller
+    /// resets the engine's shell from `-applicationWillTerminate:` while the engine object lives on,
+    /// and no plugin is told (flutter/flutter#126671).
+    ///
+    /// Observed directly rather than via `registrar.addApplicationDelegate(self)`, which forwards app
+    /// lifecycle events only when `UIApplication`'s delegate conforms to `FlutterAppLifeCycleProvider`
+    /// — true for `FlutterAppDelegate`, often false for a native host embedding Flutter.
+    private func observeEngineTeardown() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(engineWillTearDown),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
+    }
+
+    @objc
+    private func engineWillTearDown() {
         _onDetach()
     }
 
@@ -412,6 +436,11 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
             consolePrint = oldConsolePrint
         }
         oldConsolePrint = nil
+
+        // RUM and Logs register on this plugin's registrar, so neither has a teardown callback of its
+        // own. Both hold channels that Datadog worker threads call Dart through.
+        DatadogRumPlugin.instance.onDetach()
+        DatadogLogsPlugin.instance?.onDetach()
     }
 
     private func attachToExisting() -> [String: Any?] {
