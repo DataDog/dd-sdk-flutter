@@ -97,6 +97,7 @@ void main() {
     expect(configuration.reportFlutterPerformance, false);
     expect(configuration.trackNonFatalAnrs, isNull);
     expect(configuration.appHangThreshold, isNull);
+    expect(configuration.trackWatchdogTerminations, false);
     expect(configuration.trackAnonymousUser, true);
     expect(configuration.initialResourceThreshold, 0.1);
   });
@@ -117,6 +118,7 @@ void main() {
       vitalUpdateFrequency: vitalUpdateFrequency,
       trackNonFatalAnrs: false,
       appHangThreshold: 0.332,
+      trackWatchdogTerminations: true,
       trackAnonymousUser: false,
       trackBackgroundEvents: true,
       initialResourceThreshold: 1.23,
@@ -134,6 +136,7 @@ void main() {
     expect(encoded['trackAnonymousUser'], false);
     expect(encoded['trackBackgroundEvents'], true);
     expect(encoded['appHangThreshold'], 0.332);
+    expect(encoded['trackWatchdogTerminations'], true);
     expect(encoded['customEndpoint'], customEndpoint);
     expect(encoded['initialResourceThreshold'], 1.23);
   });

@@ -20,6 +20,7 @@ import com.datadog.android.api.storage.FeatureStorageConfiguration
 import com.datadog.android.api.storage.RawBatchEvent
 import com.datadoghq.flutter.sessionreplay.resource.DefaultResourceResolver
 import com.datadoghq.flutter.sessionreplay.resource.DefaultResourceWriter
+import com.datadoghq.flutter.sessionreplay.resource.ResourceDataStoreManager
 import com.datadoghq.flutter.sessionreplay.resource.ResourceFeature
 import com.datadoghq.flutter.sessionreplay.resource.ResourceResolver
 
@@ -54,10 +55,7 @@ internal class DefaultFlutterSessionReplayFeature(
         )
     }
 
-    override val resourceResolver: ResourceResolver = DefaultResourceResolver(
-        sdkCore.internalLogger,
-        DefaultResourceWriter(sdkCore)
-    )
+    override lateinit var resourceResolver: ResourceResolver
 
     override val name = Feature.SESSION_REPLAY_FEATURE_NAME
     override val storageConfiguration = STORAGE_CONFIGURATION
@@ -83,6 +81,13 @@ internal class DefaultFlutterSessionReplayFeature(
             customEndpointUrl
         )
         sdkCore.registerFeature(resourcesFeature)
+
+        // ResourceDataStoreManager loads its known-resources entry eagerly on construction,
+        // so it must be created after the resources feature above is registered.
+        resourceResolver = DefaultResourceResolver(
+            sdkCore.internalLogger,
+            DefaultResourceWriter(sdkCore, ResourceDataStoreManager(sdkCore))
+        )
     }
 
     override fun onStop() {

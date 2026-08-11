@@ -20,7 +20,7 @@ internal struct RequestBuilder: FeatureRequestBuilder {
         with context: DatadogContext,
         execution: DatadogInternal.ExecutionContext
     ) throws -> URLRequest {
-        let source = context.source
+        let source = FlutterSessionReplayConstants.source
 
         // If we can't decode `events: [Data]` there is no way to recover, so we throw an
         // error to let the core delete the batch:
@@ -50,7 +50,7 @@ internal struct RequestBuilder: FeatureRequestBuilder {
                     os: context.os
                 ),
                 .ddAPIKeyHeader(clientToken: context.clientToken),
-                .ddEVPOriginHeader(source: context.source),
+                .ddEVPOriginHeader(source: FlutterSessionReplayConstants.source),
                 .ddEVPOriginVersionHeader(sdkVersion: context.sdkVersion),
                 .ddRequestIDHeader()
             ],

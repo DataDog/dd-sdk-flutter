@@ -18,9 +18,21 @@ internal interface ResourceWriter {
 }
 
 internal class DefaultResourceWriter(
-    private val sdkCore: FeatureSdkCore
+    private val sdkCore: FeatureSdkCore,
+    private val resourceDataStoreManager: ResourceDataStoreManager
 ) : ResourceWriter {
     override fun write(identifier: String, resourceData: ByteArray) {
+        if (resourceDataStoreManager.isPreviouslySentResource(identifier)) {
+            return
+        }
+
+        // cacheResourceHash overwrites the datastore entry, so don't call it until the
+        // manager has finished its initial load - otherwise we'd stomp on data we haven't
+        // read yet.
+        if (resourceDataStoreManager.isReady()) {
+            resourceDataStoreManager.cacheResourceHash(identifier)
+        }
+
         sdkCore.getFeature(ResourceFeature.SESSION_REPLAY_RESOURCES_FEATURE_NAME)
             ?.withWriteContext(
                 withFeatureContexts = setOf(Feature.RUM_FEATURE_NAME)

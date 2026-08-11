@@ -9,11 +9,11 @@
 /* Begin PBXBuildFile section */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		1BF9F7287A523E34D5710707 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A0117D673D82B937FDFE484 /* Pods_RunnerTests.framework */; };
+		1F0B9721A43A6A63DCC17933 /* DataStoreMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE0C0F8D524DC14EF6F6CFB0 /* DataStoreMock.swift */; };
 		3698E2CC21FBD5E1AEAE147E /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0F083243CD88418C21034C30 /* Pods_Runner.framework */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		494123582DC129660071423F /* RequestBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494123572DC129630071423F /* RequestBuilderTests.swift */; };
 		494400772E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494400762E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift */; };
-		E7162BD14BF84CACB6B101E947BD07D1 /* SessionReplayTestContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */; };
 		494400792E58BA1000AC46CC /* Mockable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494400782E58BA0700AC46CC /* Mockable.swift */; };
 		4944007D2E58C55200AC46CC /* FlutterSessionReplayFeatureMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4944007C2E58C54B00AC46CC /* FlutterSessionReplayFeatureMock.swift */; };
 		494400892E58E7A200AC46CC /* ResourceResolverMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494400882E58E7A200AC46CC /* ResourceResolverMock.swift */; };
@@ -26,6 +26,9 @@
 		495A02842DCE433B00869BEA /* FileWriterMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495A027D2DCE433B00869BEA /* FileWriterMock.swift */; };
 		495A02862DCE433B00869BEA /* FoundationMocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495A027F2DCE433B00869BEA /* FoundationMocks.swift */; };
 		495A02872DCE433B00869BEA /* MultipartBuilderSpy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495A02802DCE433B00869BEA /* MultipartBuilderSpy.swift */; };
+		4988A1022F3A100000AC46CC /* FlutterSessionReplayManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4988A1012F3A100000AC46CC /* FlutterSessionReplayManagerTests.swift */; };
+		4988A1042F3A100000AC46CC /* FlutterBinaryMessengerMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4988A1032F3A100000AC46CC /* FlutterBinaryMessengerMock.swift */; };
+		49AA10022E7B000100AC46CC /* RoutedResourcesWriterTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49AA10012E7B000100AC46CC /* RoutedResourcesWriterTest.swift */; };
 		49B919692E5E36B60024D733 /* ResourceRequestBuilderTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49B919682E5E36B60024D733 /* ResourceRequestBuilderTest.swift */; };
 		49C3AB4F2DBBE4B2000D8F6E /* FlutterSessionReplayFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C3AB4E2DBBE4A7000D8F6E /* FlutterSessionReplayFeatureTests.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
@@ -34,6 +37,7 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		E1E091C69AD74808BE3733231FC76E98 /* DatadogSessionReplayPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35542C60C09A47729F76E13B6A659C63 /* DatadogSessionReplayPluginTests.swift */; };
+		E7162BD14BF84CACB6B101E947BD07D1 /* SessionReplayTestContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,7 +73,6 @@
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		494123572DC129630071423F /* RequestBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestBuilderTests.swift; sourceTree = "<group>"; };
 		494400762E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlutterSessionReplayBridgeTests.swift; sourceTree = "<group>"; };
-		F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionReplayTestContainer.swift; sourceTree = "<group>"; };
 		494400782E58BA0700AC46CC /* Mockable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mockable.swift; sourceTree = "<group>"; };
 		4944007C2E58C54B00AC46CC /* FlutterSessionReplayFeatureMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlutterSessionReplayFeatureMock.swift; sourceTree = "<group>"; };
 		494400882E58E7A200AC46CC /* ResourceResolverMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceResolverMock.swift; sourceTree = "<group>"; };
@@ -82,6 +85,9 @@
 		495A027D2DCE433B00869BEA /* FileWriterMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileWriterMock.swift; sourceTree = "<group>"; };
 		495A027F2DCE433B00869BEA /* FoundationMocks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationMocks.swift; sourceTree = "<group>"; };
 		495A02802DCE433B00869BEA /* MultipartBuilderSpy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultipartBuilderSpy.swift; sourceTree = "<group>"; };
+		4988A1012F3A100000AC46CC /* FlutterSessionReplayManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlutterSessionReplayManagerTests.swift; sourceTree = "<group>"; };
+		4988A1032F3A100000AC46CC /* FlutterBinaryMessengerMock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlutterBinaryMessengerMock.swift; sourceTree = "<group>"; };
+		49AA10012E7B000100AC46CC /* RoutedResourcesWriterTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutedResourcesWriterTest.swift; sourceTree = "<group>"; };
 		49B919682E5E36B60024D733 /* ResourceRequestBuilderTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourceRequestBuilderTest.swift; sourceTree = "<group>"; };
 		49C3AB4E2DBBE4A7000D8F6E /* FlutterSessionReplayFeatureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlutterSessionReplayFeatureTests.swift; sourceTree = "<group>"; };
 		6A0117D673D82B937FDFE484 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -98,9 +104,11 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9840D6870413420E38040A85 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
+		BE0C0F8D524DC14EF6F6CFB0 /* DataStoreMock.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DataStoreMock.swift; sourceTree = "<group>"; };
 		CB6E419C80EE782C5F5B2C8E /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		CDF9F7F84B03E7F780D7C869 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		E3A52EA2C191523119AFBBD1 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
+		F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionReplayTestContainer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -148,6 +156,7 @@
 				494400762E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift */,
 				F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */,
 				35542C60C09A47729F76E13B6A659C63 /* DatadogSessionReplayPluginTests.swift */,
+				4988A1012F3A100000AC46CC /* FlutterSessionReplayManagerTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -158,6 +167,7 @@
 				495642A42E5E250B000FF536 /* ResourceResolverTest.swift */,
 				4944008C2E58F71300AC46CC /* ResourcesWriterTest.swift */,
 				49B919682E5E36B60024D733 /* ResourceRequestBuilderTest.swift */,
+				49AA10012E7B000100AC46CC /* RoutedResourcesWriterTest.swift */,
 			);
 			path = Resource;
 			sourceTree = "<group>";
@@ -184,12 +194,14 @@
 			children = (
 				494400852E58E6FE00AC46CC /* Resource */,
 				4944007C2E58C54B00AC46CC /* FlutterSessionReplayFeatureMock.swift */,
+				4988A1032F3A100000AC46CC /* FlutterBinaryMessengerMock.swift */,
 				494400782E58BA0700AC46CC /* Mockable.swift */,
 				495A027B2DCE433B00869BEA /* DatadogContextMock.swift */,
 				495A027C2DCE433B00869BEA /* DatadogCoreMock.swift */,
 				495A027D2DCE433B00869BEA /* FileWriterMock.swift */,
 				495A027F2DCE433B00869BEA /* FoundationMocks.swift */,
 				495A02802DCE433B00869BEA /* MultipartBuilderSpy.swift */,
+				BE0C0F8D524DC14EF6F6CFB0 /* DataStoreMock.swift */,
 			);
 			path = Mocks;
 			sourceTree = "<group>";
@@ -487,6 +499,7 @@
 				495A02842DCE433B00869BEA /* FileWriterMock.swift in Sources */,
 				495A02862DCE433B00869BEA /* FoundationMocks.swift in Sources */,
 				49B919692E5E36B60024D733 /* ResourceRequestBuilderTest.swift in Sources */,
+				49AA10022E7B000100AC46CC /* RoutedResourcesWriterTest.swift in Sources */,
 				495A02872DCE433B00869BEA /* MultipartBuilderSpy.swift in Sources */,
 				494400792E58BA1000AC46CC /* Mockable.swift in Sources */,
 				494400892E58E7A200AC46CC /* ResourceResolverMock.swift in Sources */,
@@ -496,8 +509,11 @@
 				494400772E58AC8B00AC46CC /* FlutterSessionReplayBridgeTests.swift in Sources */,
 				E7162BD14BF84CACB6B101E947BD07D1 /* SessionReplayTestContainer.swift in Sources */,
 				E1E091C69AD74808BE3733231FC76E98 /* DatadogSessionReplayPluginTests.swift in Sources */,
+				4988A1022F3A100000AC46CC /* FlutterSessionReplayManagerTests.swift in Sources */,
+				4988A1042F3A100000AC46CC /* FlutterBinaryMessengerMock.swift in Sources */,
 				4944008D2E58F71300AC46CC /* ResourcesWriterTest.swift in Sources */,
 				495642A52E5E2512000FF536 /* ResourceResolverTest.swift in Sources */,
+				1F0B9721A43A6A63DCC17933 /* DataStoreMock.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -583,7 +599,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -717,7 +733,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -768,7 +784,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;

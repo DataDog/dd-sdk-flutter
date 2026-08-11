@@ -214,6 +214,17 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(config?.appHangThreshold, appHangThreshold)
     }
 
+    func testRumConfiguration_WithTrackWatchdogTerminations_IsSetCorrectly() {
+        let trackWatchdogTerminations = Bool.random()
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "trackWatchdogTerminations": trackWatchdogTerminations
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertEqual(config?.trackWatchdogTerminations, trackWatchdogTerminations)
+    }
+
     func testRumConfiguration_WithInitialResourceThreshold_IsSetCorrectly() throws {
         let initialResourceThreshold = Double.mockRandom()
         let encoded: [String: Any?] = [

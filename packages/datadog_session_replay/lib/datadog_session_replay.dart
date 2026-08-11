@@ -193,6 +193,15 @@ class DatadogSessionReplayConfiguration {
   /// Defaults to approximately 800×800 decoded pixels.
   int maxImagePixelBudget;
 
+  /// Whether this Flutter module is embedded inside a native iOS host app
+  /// (Flutter add-to-app). When `true`, Session Replay resolves the
+  /// `FlutterView` slot ID after the first frame and stamps it on every
+  /// outgoing record so the player can composite the Flutter content into
+  /// the native host's `embedded_view` placeholder.
+  ///
+  /// Set to `false` (the default) when Flutter is the host application.
+  bool isEmbedded;
+
   DatadogSessionReplayConfiguration({
     required this.replaySampleRate,
     this.textAndInputPrivacyLevel = TextAndInputPrivacyLevel.maskAll,
@@ -203,6 +212,7 @@ class DatadogSessionReplayConfiguration {
     this.fontFamilyTransform = const FontFamilyTransformConfig(),
     this.imageDownscaling = ImageDownscaling.disabled,
     this.maxImagePixelBudget = defaultMaxImagePixelBudget,
+    this.isEmbedded = false,
   });
 }
 

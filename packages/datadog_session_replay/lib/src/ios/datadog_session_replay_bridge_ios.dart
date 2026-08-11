@@ -248,6 +248,7 @@ extension FlutterRUMCoreContext$Methods on FlutterRUMCoreContext {
 }
 
 late final _class_FlutterSessionReplay = objc.getClass("FlutterSessionReplay");
+late final _sel_engineToken = objc.registerName("engineToken");
 late final _class_FlutterSessionReplayConfiguration = objc.getClass(
   "FlutterSessionReplayConfiguration",
 );
@@ -726,6 +727,7 @@ final _objc_msgSend_1nvl641 = objc.msgSendPointer
         int,
       )
     >();
+late final _sel_setEmbedded_ = objc.registerName("setEmbedded:");
 late final _sel_writeSegmentWithSegment_ = objc.registerName(
   "writeSegmentWithSegment:",
 );
@@ -878,6 +880,12 @@ extension FlutterSessionReplay$Methods on FlutterSessionReplay {
     );
   }
 
+  /// engineToken
+  objc.NSString get engineToken {
+    final $ret = _objc_msgSend_151sglz(object$.ref.pointer, _sel_engineToken);
+    return objc.NSString.fromPointer($ret, retain: true, release: true);
+  }
+
   /// init
   FlutterSessionReplay init() {
     objc.checkOsVersionInternal(
@@ -947,6 +955,11 @@ extension FlutterSessionReplay$Methods on FlutterSessionReplay {
       height,
       data.ref.pointer,
     );
+  }
+
+  /// setEmbedded:
+  void setEmbedded(bool isEmbedded) {
+    _objc_msgSend_1s56lr9(object$.ref.pointer, _sel_setEmbedded_, isEmbedded);
   }
 
   /// setHasReplayWithHasReplay:
