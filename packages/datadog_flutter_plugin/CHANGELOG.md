@@ -1,11 +1,5 @@
 # Changelog
 
-## Unreleased
-
-* Fix a native crash (`SIGSEGV` in JNI `CallObjectMethod`) on Android when a RUM or Logs event
-  mapper is invoked from a background writer thread after the Flutter engine that registered it
-  has been detached (e.g. app backgrounded and killed, hot restart, or Activity recreation).
-
 ## 3.4.1
 
 * Properly pin Android SDK version to 3.11.0.
