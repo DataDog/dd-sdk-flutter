@@ -7,13 +7,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:meta/meta.dart';
-import 'package:uuid/uuid.dart';
 
 import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flags_runtime.dart';
+import 'intake_request.dart';
 import 'json_value.dart';
-import 'sdk_metadata.dart';
 
 class EvaluationAggregator {
   static const int defaultMaxBatchSize = 1000;
@@ -172,24 +171,23 @@ class EvaluationAggregator {
     List<_AggregatedEvaluation> evaluations, {
     required bool rescheduleOnFailure,
   }) async {
-    final endpoint = _evaluationEndpoint();
-    final body = jsonEncode({
-      'context': _datadogContext(),
-      'flagEvaluations': evaluations.map((e) => e.toJson()).toList(),
-    });
+    final request = buildFlagsIntakeRequest(
+      endpoint: _evaluationEndpoint(),
+      clientToken: runtime.datadogConfig.clientToken,
+      nativeContentType: 'application/json',
+      nativeBodyBuilder: () => jsonEncode({
+        'context': _datadogContext(),
+        'flagEvaluations': evaluations.map((e) => e.toJson()).toList(),
+      }),
+      webBodyBuilder: () => evaluations.map(_webEvaluationJson).join('\n'),
+    );
 
     try {
       final response = await runtime.httpClient
           .post(
-            endpoint,
-            headers: {
-              'Content-Type': 'application/json',
-              'DD-API-KEY': runtime.datadogConfig.clientToken,
-              'DD-EVP-ORIGIN': datadogFlagsSource,
-              'DD-EVP-ORIGIN-VERSION': datadogFlagsSdkVersion,
-              'DD-REQUEST-ID': const Uuid().v4(),
-            },
-            body: body,
+            request.endpoint,
+            headers: request.headers,
+            body: request.body,
           )
           .timeout(uploadTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -239,14 +237,22 @@ class EvaluationAggregator {
 
   Uri _evaluationEndpoint() {
     final datadogConfig = runtime.datadogConfig;
-    final endpoint = runtime.configuration.customEvaluationEndpoint ??
+    return runtime.configuration.customEvaluationEndpoint ??
         datadogConfig.intakeEndpoint().replace(path: '/api/v2/flagevaluation');
-    return endpoint.replace(
-      queryParameters: {
-        ...endpoint.queryParameters,
-        'ddsource': datadogFlagsSource,
-      },
-    );
+  }
+
+  String _webEvaluationJson(_AggregatedEvaluation evaluation) {
+    final event = evaluation.toJson();
+    final eventContext = switch (event['context']) {
+      Map<String, Object?> context => Map<String, Object?>.from(context),
+      _ => <String, Object?>{},
+    };
+    final datadogContext = _datadogContext();
+    if (datadogContext.isNotEmpty) {
+      eventContext['dd'] = datadogContext;
+      event['context'] = eventContext;
+    }
+    return jsonEncode(event);
   }
 
   Map<String, Object?> _datadogContext() {
