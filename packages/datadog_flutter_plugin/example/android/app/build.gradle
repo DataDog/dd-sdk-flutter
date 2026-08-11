@@ -6,7 +6,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 buildscript {
-    ext.datadog_version = "null"
+    ext.datadog_version = "3.11.0"
 }
 
 plugins {
