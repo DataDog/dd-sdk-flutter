@@ -262,7 +262,10 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     element.visitChildren(visitor);
 
     return _RumTreeAnnotation(
-        elementDescription, attributes, fromUserAnnotation);
+      elementDescription,
+      attributes,
+      fromUserAnnotation,
+    );
   }
 
   _ElementDescription? _getDetectingElementAtPosition(Offset position) {
@@ -305,14 +308,21 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
 
         final widget = element.widget;
         if (widget is RumUserActionAnnotation) {
-          rumTreeAnnotation =
-              _RumTreeAnnotation(widget.description, widget.attributes, true);
+          rumTreeAnnotation = _RumTreeAnnotation(
+            widget.description,
+            widget.attributes,
+            true,
+          );
         } else {
           if (widget is Tooltip) {
             tooltipMessage = _tooltipDescription(widget) ?? tooltipMessage;
           }
           final checkElement = _getDetectingElementDescription(
-              element, targets, rumTreeAnnotation, tooltipMessage);
+            element,
+            targets,
+            rumTreeAnnotation,
+            tooltipMessage,
+          );
           if (checkElement != null &&
               checkElement.betterThan(detectingElement)) {
             detectingElement = checkElement;
@@ -351,10 +361,11 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
   }
 
   _ElementDescription? _getDetectingElementDescription(
-      Element element,
-      List<HitTestEntry> targets,
-      _RumTreeAnnotation? treeAnnotation,
-      String? ancestorTooltipMessage) {
+    Element element,
+    List<HitTestEntry> targets,
+    _RumTreeAnnotation? treeAnnotation,
+    String? ancestorTooltipMessage,
+  ) {
     final widget = element.widget;
     String? elementName;
     String? widgetTooltip;
@@ -437,7 +448,8 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
       if (elementDescription?.fromUserAnnotation ?? false) {
         description = elementDescription?.description;
       }
-      description ??= widgetTooltip ??
+      description ??=
+          widgetTooltip ??
           elementDescription?.description ??
           ancestorTooltipMessage ??
           'unknown';
@@ -545,8 +557,11 @@ class _RumTreeAnnotation {
   // description source.
   final bool fromUserAnnotation;
 
-  const _RumTreeAnnotation(this.description,
-      [this.attributes, this.fromUserAnnotation = false]);
+  const _RumTreeAnnotation(
+    this.description, [
+    this.attributes,
+    this.fromUserAnnotation = false,
+  ]);
 }
 
 /// Contains information about a gesture-detectable element.

@@ -85,8 +85,12 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
     // never sees the bridge — this call is what pairs them, which is both how the engine's
     // Dart context callback gets released on detach and how the bridge reaches the messenger
     // it resolves slotIds through. Segments captured before it lands are buffered natively.
-    unawaited(_engineChannel.invokeMethod<void>(
-        'registerEngine', _iosBridge.engineToken.toDartString()));
+    unawaited(
+      _engineChannel.invokeMethod<void>(
+        'registerEngine',
+        _iosBridge.engineToken.toDartString(),
+      ),
+    );
 
     return true;
   }

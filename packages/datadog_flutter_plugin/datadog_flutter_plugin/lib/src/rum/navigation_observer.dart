@@ -23,11 +23,7 @@ class RumViewInfo {
   /// Any attributes to be associated with this view
   final Map<String, Object?> attributes;
 
-  RumViewInfo({
-    required this.name,
-    this.path,
-    this.attributes = const {},
-  });
+  RumViewInfo({required this.name, this.path, this.attributes = const {}});
 
   /// The key that identifies this view to RUM, reported as `view.url`. Prefers
   /// [path] (which may include a query string, so the backend can derive
@@ -178,7 +174,10 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
           });
         } else {
           datadogSdk.rum?.startView(
-              viewInfo.viewKey, viewInfo.viewName, viewInfo.attributes);
+            viewInfo.viewKey,
+            viewInfo.viewName,
+            viewInfo.attributes,
+          );
           WidgetsBinding.instance.addPostFrameCallback((_) {
             datadogSdk.rum?.markViewFirstBuildComplete(viewInfo.viewKey);
           });
