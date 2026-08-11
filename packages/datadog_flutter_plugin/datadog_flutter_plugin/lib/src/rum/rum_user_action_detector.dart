@@ -73,8 +73,8 @@ class _ElementDescription {
 /// This wrapper widget automatically detects tap user actions that occur in its
 /// tree and sends them to RUM. It detects interactions with several common
 /// Flutter widgets, including [ElevatedButton], [TextButton],
-/// [CupertinoButton], [BottomNavigationBar], [TabBar], [InkWell], and
-/// [GestureDetector].
+/// [CupertinoButton], [FloatingActionButton], [BottomNavigationBar], [TabBar],
+/// [InkWell], and [GestureDetector].
 /// You can also provide a custom detection logic by passing [customGestureDetector]
 /// parameter to detect your custom tappable widgets. Example:
 ///
@@ -87,10 +87,14 @@ class _ElementDescription {
 /// }
 /// ```
 ///
-/// For most Button types, the detector will look for a [Text] widget child,
-/// which it will use for the description of the action. In other cases, it will
-/// look for a child [Semantics] object, or an [Icon] with its [Icon.semanticsLabel]
-/// property set.
+/// For buttons that provide a tooltip, like [IconButton.tooltip] and
+/// [FloatingActionButton.tooltip], the detector will use the tooltip as the
+/// description of the action. For most other Button types, the detector will
+/// look for a [Text] widget child, which it will use for the description of
+/// the action. In other cases, it will look for a child [Semantics] object,
+/// or an [Icon] with its [Icon.semanticsLabel] property set. If none of these
+/// provide a description, the detector falls back to the message of a
+/// [Tooltip] enclosing the tapped widget.
 ///
 /// Alternately, you can enclose any Widget tree with a
 /// [RumUserActionAnnotation], which will use the provided description when
@@ -215,6 +219,7 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
   _RumTreeAnnotation? _findElementInnerText(Element element, bool allowText) {
     String? elementDescription;
     Map<String, Object?>? attributes;
+    bool fromUserAnnotation = false;
     // visitChildren will visit siblings for widget collections like Columns,
     // but if we encounter a RumUserActionAnnotation somewhere in the tree, that
     // is likely the text we want and siblings can be ignored.
@@ -244,6 +249,7 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
       } else if (widget is RumUserActionAnnotation) {
         elementDescription = widget.description;
         attributes = widget.attributes;
+        fromUserAnnotation = true;
         stopVisits = true;
         stopSiblingVisits = true;
       }
@@ -255,7 +261,8 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
 
     element.visitChildren(visitor);
 
-    return _RumTreeAnnotation(elementDescription, attributes);
+    return _RumTreeAnnotation(
+        elementDescription, attributes, fromUserAnnotation);
   }
 
   _ElementDescription? _getDetectingElementAtPosition(Offset position) {
@@ -274,6 +281,7 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     _ElementDescription? detectingElement;
 
     _RumTreeAnnotation? rumTreeAnnotation;
+    String? tooltipMessage;
     RenderObject? lastRenderObject;
 
     void elementVisitor(Element element) {
@@ -292,18 +300,19 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
       }
 
       if (ro == lastRenderObject) {
+        final previousAnnotation = rumTreeAnnotation;
+        final previousTooltipMessage = tooltipMessage;
+
         final widget = element.widget;
         if (widget is RumUserActionAnnotation) {
-          rumTreeAnnotation = _RumTreeAnnotation(
-            widget.description,
-            widget.attributes,
-          );
+          rumTreeAnnotation =
+              _RumTreeAnnotation(widget.description, widget.attributes, true);
         } else {
+          if (widget is Tooltip) {
+            tooltipMessage = _tooltipDescription(widget) ?? tooltipMessage;
+          }
           final checkElement = _getDetectingElementDescription(
-            element,
-            targets,
-            rumTreeAnnotation,
-          );
+              element, targets, rumTreeAnnotation, tooltipMessage);
           if (checkElement != null &&
               checkElement.betterThan(detectingElement)) {
             detectingElement = checkElement;
@@ -313,8 +322,9 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
         if (detectingElement?.tryForBetter != false) {
           element.visitChildElements(elementVisitor);
         }
-        // This annotation was only for this tree
-        rumTreeAnnotation = null;
+        // Any annotation or tooltip captured here only applied to this tree
+        rumTreeAnnotation = previousAnnotation;
+        tooltipMessage = previousTooltipMessage;
       } else {
         // RenderBoxes without size will assert in debug mode.
         if (ro is RenderBox && !ro.hasSize) return;
@@ -341,12 +351,13 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
   }
 
   _ElementDescription? _getDetectingElementDescription(
-    Element element,
-    List<HitTestEntry> targets,
-    _RumTreeAnnotation? treeAnnotation,
-  ) {
+      Element element,
+      List<HitTestEntry> targets,
+      _RumTreeAnnotation? treeAnnotation,
+      String? ancestorTooltipMessage) {
     final widget = element.widget;
     String? elementName;
+    String? widgetTooltip;
     bool searchForBetter = false;
     bool searchForText = true;
 
@@ -369,10 +380,16 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
       if (widget.enabled) {
         elementName = 'Button';
       }
+    } else if (widget is FloatingActionButton) {
+      if (widget.onPressed != null) {
+        elementName = 'FloatingActionButton';
+        widgetTooltip = _nonEmpty(widget.tooltip);
+      }
     } else if (widget is IconButton) {
       if (widget.onPressed != null) {
         elementName = 'IconButton';
         searchForText = false;
+        widgetTooltip = _nonEmpty(widget.tooltip);
       }
     } else if (widget is Tab) {
       elementName = 'Tab';
@@ -410,14 +427,24 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
     }
 
     if (elementName != null) {
-      // A user added annotation takes precedence over a search, but using
-      // semantic information from further up the tree is a last resort.
+      // A user added annotation takes precedence over everything else. The
+      // widget's own tooltip describes the button's action, so it is
+      // preferred over content found in its subtree, and the message of a
+      // Tooltip enclosing the tapped widget is a last resort.
       var elementDescription =
           treeAnnotation ?? _findElementInnerText(element, searchForText);
+      String? description;
+      if (elementDescription?.fromUserAnnotation ?? false) {
+        description = elementDescription?.description;
+      }
+      description ??= widgetTooltip ??
+          elementDescription?.description ??
+          ancestorTooltipMessage ??
+          'unknown';
       return _ElementDescription(
         element: element,
         elementName: elementName,
-        elementDescription: elementDescription?.description ?? 'unknown',
+        elementDescription: description,
         tryForBetter: searchForBetter,
         attributes: elementDescription?.attributes,
       );
@@ -425,6 +452,12 @@ class _RumUserActionDetectorState extends State<RumUserActionDetector> {
 
     return null;
   }
+}
+
+String? _nonEmpty(String? value) => (value?.isNotEmpty ?? false) ? value : null;
+
+String? _tooltipDescription(Tooltip tooltip) {
+  return _nonEmpty(tooltip.message ?? tooltip.richMessage?.toPlainText());
 }
 
 Element? _findGestureDetectorElement(
@@ -507,7 +540,13 @@ class _RumTreeAnnotation {
   final String? description;
   final Map<String, Object?>? attributes;
 
-  const _RumTreeAnnotation(this.description, [this.attributes]);
+  // Whether this description came from a user provided
+  // [RumUserActionAnnotation], which takes precedence over any other
+  // description source.
+  final bool fromUserAnnotation;
+
+  const _RumTreeAnnotation(this.description,
+      [this.attributes, this.fromUserAnnotation = false]);
 }
 
 /// Contains information about a gesture-detectable element.

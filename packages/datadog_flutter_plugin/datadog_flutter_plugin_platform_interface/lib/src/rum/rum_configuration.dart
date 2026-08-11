@@ -166,6 +166,18 @@ class DatadogRumConfiguration {
   /// Defaults to disabled (`null`).
   double? appHangThreshold;
 
+  /// Whether to track application terminations by the iOS watchdog as RUM
+  /// errors.
+  ///
+  /// This option is specific to iOS. Watchdog terminations require Crash
+  /// Reporting to be enabled ([DatadogConfiguration.nativeCrashReportEnabled])
+  /// and are reported on the next application launch. Read more about
+  /// watchdog terminations at
+  /// https://developer.apple.com/documentation/xcode/addressing-watchdog-terminations
+  ///
+  /// Defaults to `false`.
+  bool trackWatchdogTerminations;
+
   /// Enables collection of anonymous user ID across sessions.
   ///
   /// When enabled, the SDK generates a unique, non-personal anonymous user ID that is persisted across
@@ -245,6 +257,7 @@ class DatadogRumConfiguration {
     this.reportFlutterPerformance = false,
     this.trackNonFatalAnrs,
     this.appHangThreshold,
+    this.trackWatchdogTerminations = false,
     this.trackAnonymousUser = true,
     this.trackBackgroundEvents = false,
     this.initialResourceThreshold = 0.1,
@@ -273,6 +286,7 @@ class DatadogRumConfiguration {
       'reportFlutterPerformance': reportFlutterPerformance,
       'trackNonFatalAnrs': trackNonFatalAnrs,
       'appHangThreshold': appHangThreshold,
+      'trackWatchdogTerminations': trackWatchdogTerminations,
       'trackAnonymousUser': trackAnonymousUser,
       'trackBackgroundEvents': trackBackgroundEvents,
       'initialResourceThreshold': initialResourceThreshold,

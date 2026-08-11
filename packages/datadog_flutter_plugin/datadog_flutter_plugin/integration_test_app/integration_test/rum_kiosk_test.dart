@@ -97,12 +97,10 @@ void main() {
     for (final viewEvent in firstVisit.viewEvents) {
       expect(viewEvent.rumEvent['session']['id'], firstSessionId);
     }
-    if (!isDdSdkCppPlatform()) {
-      expect(
-        firstVisit.viewEvents.last.rumEvent['session']['is_active'],
-        isFalse,
-      );
-    }
+    expect(
+      firstVisit.viewEvents.last.rumEvent['session']['is_active'],
+      isFalse,
+    );
 
     expect(firstVisit.resourceEvents.length, 1);
     expect(
@@ -119,12 +117,10 @@ void main() {
     for (final viewEvent in secondVisit.viewEvents) {
       expect(viewEvent.rumEvent['session']['id'], secondSessionId);
     }
-    if (!isDdSdkCppPlatform()) {
-      expect(
-        secondVisit.viewEvents.last.rumEvent['session']['is_active'],
-        isTrue,
-      );
-    }
+    expect(
+      secondVisit.viewEvents.last.rumEvent['session']['is_active'],
+      isTrue,
+    );
 
     expect(secondVisit.resourceEvents.length, 1);
     expect(

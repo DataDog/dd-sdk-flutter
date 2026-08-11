@@ -34,13 +34,15 @@ class UpdateGradleFilesCommand extends Command {
       bool inMavenBlock = false;
       bool writeMavenBlock = true;
       await transformFile(file, logger, args.dryRun, (line) {
-        // If we're shipping datadog_flutter_plugin, use tighter constraints
-        if (args.packages.contains((e) => e.name == 'datadog_flutter_plugin')) {
+        // For the datadog_flutter_plugin, use a tighter constraint
+        if (file.path.contains('datadog_flutter_plugin')) {
           final versionMatch = versionRegex.firstMatch(line);
           if (versionMatch != null) {
             final oldVersion = versionMatch.group(1);
-            line = line.replaceFirst('$versionPrefix = "$oldVersion"',
-                '$versionPrefix = "${args.androidRelease}"');
+            line = line.replaceFirst(
+              '$versionPrefix = "$oldVersion"',
+              '$versionPrefix = "${args.androidRelease}"',
+            );
           }
         }
 

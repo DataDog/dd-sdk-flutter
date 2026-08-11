@@ -28,6 +28,10 @@ public extension RUM.Configuration {
             self.appHangThreshold = appHangThreshold
         }
 
+        if let trackWatchdogTerminations = (encoded["trackWatchdogTerminations"] as? NSNumber)?.boolValue {
+            self.trackWatchdogTerminations = trackWatchdogTerminations
+        }
+
         if let customEndpoint = encoded["customEndpoint"] as? String {
             self.customEndpoint = URL(string: customEndpoint)
         }

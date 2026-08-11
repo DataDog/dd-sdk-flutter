@@ -15,8 +15,10 @@ import '../datadog_session_replay_platform_interface.dart';
 import '../rum_context.dart';
 import 'datadog_session_replay_bridge_ios.dart';
 
-// See comment in DatadogSessionReplayPlugin.register(with:) for why we use a
-// method channel to claim engine ownership after the FFI enable() call.
+// Per-engine method channel used to pair this engine's bridge with its messenger
+// (`registerEngine`). The FFI `enable()` call can't tell which engine invoked it, so
+// this channel — which routes to the plugin instance for a specific engine — provides
+// that engine's messenger natively. See DatadogSessionReplayPlugin.register(with:).
 // Flutter issue: https://github.com/flutter/flutter/issues/184124
 const _engineChannel = MethodChannel('datadog_session_replay/engine');
 
@@ -71,10 +73,20 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
     final iOsConfiguration = FlutterSessionReplayConfiguration.alloc()
       ..initWithCustomEndpoint(url, onContextChanged: contextChangedListener);
     _iosBridge.enableWith(iOsConfiguration);
-    // Non-awaited: routes through the method channel to the correct engine's plugin
-    // instance, which calls claimOwnership(messenger:) with that engine's messenger.
-    // ignore: unawaited_futures
-    _engineChannel.invokeMethod<void>('claimOwnership');
+
+    // Tell the bridge which path its segments take. Embedded records go to the native
+    // recording, standalone records to the Flutter feature. The slotId is deliberately not
+    // part of this: the bridge resolves it natively per segment, from the view the host
+    // registered, so Dart never has to observe its own view to keep up.
+    _iosBridge.setEmbedded(configuration.isEmbedded);
+
+    // Hand this bridge's token to the plugin instance for this engine. The bridge is
+    // created over FFI and never sees a messenger, while the plugin has the messenger but
+    // never sees the bridge — this call is what pairs them, which is both how the engine's
+    // Dart context callback gets released on detach and how the bridge reaches the messenger
+    // it resolves slotIds through. Segments captured before it lands are buffered natively.
+    unawaited(_engineChannel.invokeMethod<void>(
+        'registerEngine', _iosBridge.engineToken.toDartString()));
 
     return true;
   }

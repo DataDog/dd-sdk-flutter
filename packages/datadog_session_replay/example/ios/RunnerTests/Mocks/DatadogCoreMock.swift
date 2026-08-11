@@ -76,11 +76,14 @@ open class PassthroughCoreMock: DatadogCoreProtocol, FeatureScope, @unchecked Se
         self.context.set(additionalContext: context())
     }
 
+    /// Every message passed to `send(message:else:)`, in order, so tests can assert on what a
+    /// feature posted to the message bus.
+    public var sentMessages: [FeatureMessage] = []
+
     public func send(message: FeatureMessage, else fallback: () -> Void) {
-        for feature in registeredFeatures {
-            if !feature.messageReceiver.receive(message: message, from: self) {
-                fallback()
-            }
+        sentMessages.append(message)
+        for feature in registeredFeatures where !feature.messageReceiver.receive(message: message, from: self) {
+            fallback()
         }
     }
 
