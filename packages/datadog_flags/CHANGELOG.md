@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+* [flags] preserve web evaluation metadata.
+* [flags] avoid web intake preflights.
+
 ## 1.0.0
 
 * Initial preview release of the native Dart Datadog Feature Flags and Experimentation SDK.
