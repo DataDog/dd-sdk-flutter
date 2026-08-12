@@ -11,10 +11,9 @@ buildscript {
     // TEMPORARY, REVERT BEFORE MERGING. The embedded-content API this plugin calls
     // (`_SessionReplayInternalProxy.setEmbeddedContentSlotId` and friends) is not in a released
     // dd-sdk-android — see https://github.com/DataDog/dd-sdk-android/pull/3690. Until it ships,
-    // point this at the `classes.jar` of a locally built session-replay AAR; that is enough for a
-    // compileOnly dependency, which only needs the API on the compile classpath.
+    // it comes from a locally published snapshot in `mavenLocal()`.
     // Set it to null to fall back to the released coordinate. See HYBRID_SR_LOCAL_TESTING.md.
-    ext.dd_sdk_android_session_replay_jar = "/tmp/dd-sr-embedded-api/dd-sdk-android-session-replay-3.13.0-SNAPSHOT.jar"
+    ext.dd_sdk_android_session_replay_version = "3.13.0-SNAPSHOT"
 
     repositories {
         google()
@@ -28,6 +27,15 @@ buildscript {
 }
 
 allprojects {
+    // TEMPORARY, REVERT BEFORE MERGING — resolves the locally published
+    // dd-sdk-android-session-replay snapshot. Added at the front rather than declared in the
+    // block below because datadog_flutter_plugin contributes the Sonatype snapshots repository
+    // to every project first, and that one also serves a 3.13.0-SNAPSHOT — the upstream one,
+    // without the unmerged embedded-content API. See HYBRID_SR_LOCAL_TESTING.md.
+    def local = repositories.mavenLocal()
+    repositories.remove(local)
+    repositories.add(0, local)
+
     repositories {
         google()
         mavenCentral()
@@ -79,9 +87,9 @@ android {
         // app where Flutter is the host never enables native Session Replay and must not pay for
         // the module. Every call site goes through EmbeddedSessionReplay, which no-ops when the
         // class is absent at runtime.
-        if (dd_sdk_android_session_replay_jar) {
+        if (dd_sdk_android_session_replay_version) {
             // TEMPORARY, REVERT BEFORE MERGING — see the note in the buildscript block.
-            compileOnly(files(dd_sdk_android_session_replay_jar))
+            compileOnly("com.datadoghq:dd-sdk-android-session-replay:$dd_sdk_android_session_replay_version")
         } else {
             compileOnly("com.datadoghq:dd-sdk-android-session-replay:$datadog_version")
         }
@@ -135,3 +143,4 @@ kotlin {
         freeCompilerArgs.add("-Xmetadata-version=2.1.0")
     }
 }
+
