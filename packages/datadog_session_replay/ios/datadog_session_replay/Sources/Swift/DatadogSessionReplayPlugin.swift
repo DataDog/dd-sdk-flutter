@@ -5,6 +5,16 @@ import Foundation
 import Flutter
 import UIKit
 
+/// Thin abstraction over `NotificationCenter` so tests can inject a fake that never broadcasts
+/// process-wide, instead of every test posting the real `UIApplication.willTerminateNotification`
+/// (which every live plugin instance in the process would observe, including other suites' engines).
+protocol NotificationCenterProtocol {
+    func addObserver(_ observer: Any, selector: Selector, name: NSNotification.Name?, object: Any?)
+    func removeObserver(_ observer: Any)
+}
+
+extension NotificationCenter: NotificationCenterProtocol {}
+
 @objc(DatadogSessionReplayPlugin)
 public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
     private let messenger: AnyObject
@@ -13,15 +23,24 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
     /// substitute it.
     private let manager: FlutterSessionReplayManager
 
-    internal init(messenger: AnyObject, manager: FlutterSessionReplayManager = .shared) {
+    /// Injected so tests can drive termination through a fake center instead of posting the real,
+    /// process-wide notification.
+    private let notificationCenter: NotificationCenterProtocol
+
+    internal init(
+        messenger: AnyObject,
+        manager: FlutterSessionReplayManager = .shared,
+        notificationCenter: NotificationCenterProtocol = NotificationCenter.default
+    ) {
         self.messenger = messenger
         self.manager = manager
+        self.notificationCenter = notificationCenter
         super.init()
         observeEngineTeardown()
     }
 
     deinit {
-        NotificationCenter.default.removeObserver(self)
+        notificationCenter.removeObserver(self)
     }
 
     public static func register(with registrar: FlutterPluginRegistrar) {
@@ -72,7 +91,7 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
     /// context callback would then outlive the isolate that shell owned and trap in
     /// `DLRT_GetFfiCallbackMetadata`.
     private func observeEngineTeardown() {
-        NotificationCenter.default.addObserver(
+        notificationCenter.addObserver(
             self,
             selector: #selector(engineWillTearDown),
             name: UIApplication.willTerminateNotification,
@@ -80,11 +99,8 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
         )
     }
 
-    /// Internal rather than private so tests can drive it without posting the real notification,
-    /// which every plugin instance in the process observes — including those of suites running in
-    /// parallel.
     @objc
-    internal func engineWillTearDown() {
+    private func engineWillTearDown() {
         _onDetach()
     }
 

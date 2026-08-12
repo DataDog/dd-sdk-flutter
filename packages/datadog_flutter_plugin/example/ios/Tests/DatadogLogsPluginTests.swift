@@ -102,7 +102,7 @@ class DatadogLogsPluginTests: XCTestCase {
     var mockV2Logger: MockLogger?
 
     override func setUp() {
-        plugin = DatadogLogsPlugin.instance
+        plugin = DatadogLogsPlugin()
         mockV2Logger = MockLogger()
         // "fake string" is the string that the contract tests will send
         plugin.addLogger(logger: mockV2Logger!, withHandle: "fake string")

@@ -589,36 +589,20 @@ private class NoOpBinaryMessenger: NSObject, FlutterBinaryMessenger {
 class DatadogPluginDetachTests: XCTestCase {
     private let messenger = NoOpBinaryMessenger()
 
-    /// The test host is the Runner app, so the real plugins already registered at launch and these
-    /// channels are live. Saved and restored rather than nil'd, so clearing them here cannot leak into
-    /// whatever test class runs next.
-    private var originalRumChannel: FlutterMethodChannel?
-    private var originalLogsChannel: FlutterMethodChannel?
-
-    override func setUp() {
-        originalRumChannel = DatadogRumPlugin.instance.methodChannel
-        originalLogsChannel = DatadogLogsPlugin.instance?.methodChannel
-
-        DatadogRumPlugin.instance.methodChannel = FlutterMethodChannel(
-            name: "datadog_sdk_flutter.rum",
-            binaryMessenger: messenger
-        )
-        DatadogLogsPlugin.instance?.methodChannel = FlutterMethodChannel(
-            name: "datadog_sdk_flutter.logs",
-            binaryMessenger: messenger
-        )
-    }
-
-    override func tearDown() {
-        DatadogRumPlugin.instance.methodChannel = originalRumChannel
-        DatadogLogsPlugin.instance?.methodChannel = originalLogsChannel
-    }
-
     private func makePlugin() -> DatadogSdkPlugin {
-        DatadogSdkPlugin(channel: FlutterMethodChannel(
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel(
             name: "datadog_sdk_flutter",
             binaryMessenger: messenger
         ))
+        plugin.rum.methodChannel = FlutterMethodChannel(
+            name: "datadog_sdk_flutter.rum",
+            binaryMessenger: messenger
+        )
+        plugin.logs.methodChannel = FlutterMethodChannel(
+            name: "datadog_sdk_flutter.logs",
+            binaryMessenger: messenger
+        )
+        return plugin
     }
 
     func testApplicationWillTerminate_releasesEveryMethodChannel() {
@@ -627,28 +611,29 @@ class DatadogPluginDetachTests: XCTestCase {
         // Termination arrives as a notification, not as a plugin callback
         NotificationCenter.default.post(name: UIApplication.willTerminateNotification, object: nil)
 
-        XCTAssertNil(DatadogRumPlugin.instance.methodChannel)
-        XCTAssertNil(DatadogLogsPlugin.instance?.methodChannel)
-        XCTAssertNotNil(plugin)  // kept alive: NotificationCenter does not retain observers
+        XCTAssertNil(plugin.rum.methodChannel)
+        XCTAssertNil(plugin.logs.methodChannel)
     }
 
     func testDetach_isIdempotent() {
         // Both teardown paths can run for the same engine: termination fires the notification, and a
         // host releasing the engine afterwards still calls `detachFromEngine(for:)`.
-        DatadogRumPlugin.instance.onDetach()
-        DatadogLogsPlugin.instance?.onDetach()
-        DatadogRumPlugin.instance.onDetach()
-        DatadogLogsPlugin.instance?.onDetach()
+        let plugin = makePlugin()
+        plugin.rum.onDetach()
+        plugin.logs.onDetach()
+        plugin.rum.onDetach()
+        plugin.logs.onDetach()
 
-        XCTAssertNil(DatadogRumPlugin.instance.methodChannel)
-        XCTAssertNil(DatadogLogsPlugin.instance?.methodChannel)
+        XCTAssertNil(plugin.rum.methodChannel)
+        XCTAssertNil(plugin.logs.methodChannel)
     }
 
     func testWithoutAChannel_eventMappersReturnTheEventUnmapped() {
-        DatadogRumPlugin.instance.onDetach()
+        let plugin = makePlugin()
+        plugin.rum.onDetach()
 
         // Would otherwise hop to the main queue and block on a semaphore until it times out
-        let event = DatadogRumPlugin.instance.callEventMapper(
+        let event = plugin.rum.callEventMapper(
             mapperName: "mapViewEvent",
             event: "unmapped",
             encodedEvent: [:],
@@ -656,6 +641,21 @@ class DatadogPluginDetachTests: XCTestCase {
         )
 
         XCTAssertEqual(event, "unmapped")
-        XCTAssertEqual(DatadogRumPlugin.instance.mapperTimeouts, 0)
+        XCTAssertEqual(plugin.rum.mapperTimeouts, 0)
+    }
+
+    func testEngineATeardown_doesNotAffectEngineB() {
+        // Regression test for the original multi-engine bug: engine A detaching must not clear
+        // engine B's still-live channel (they used to share one process-wide singleton).
+        let pluginA = makePlugin()
+        let pluginB = makePlugin()
+
+        pluginA.rum.onDetach()
+        pluginA.logs.onDetach()
+
+        XCTAssertNil(pluginA.rum.methodChannel)
+        XCTAssertNil(pluginA.logs.methodChannel)
+        XCTAssertNotNil(pluginB.rum.methodChannel)
+        XCTAssertNotNil(pluginB.logs.methodChannel)
     }
 }

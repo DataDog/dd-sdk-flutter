@@ -113,6 +113,9 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     var core: DatadogCoreProtocol?
     var oldConsolePrint: ((String, CoreLoggerLevel) -> Void)?
 
+    internal let rum = DatadogRumPlugin()
+    internal let logs = DatadogLogsPlugin()
+
     public init(channel: FlutterMethodChannel) {
         self.channel = channel
         super.init()
@@ -129,8 +132,8 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         registrar.addMethodCallDelegate(instance, channel: channel)
         registrar.publish(instance)
 
-        DatadogLogsPlugin.register(with: registrar)
-        DatadogRumPlugin.register(with: registrar)
+        instance.logs.attachToEngine(registrar: registrar)
+        instance.rum.attachToEngine(registrar: registrar)
     }
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -383,16 +386,16 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
             // TODO:
             let value: [String: Any?] = [
                 "total": [
-                    "minMs": DatadogRumPlugin.instance.mapperPerf.minInMs,
-                    "maxMs": DatadogRumPlugin.instance.mapperPerf.maxInMs,
-                    "avgMs": DatadogRumPlugin.instance.mapperPerf.avgInMs
+                    "minMs": self.rum.mapperPerf.minInMs,
+                    "maxMs": self.rum.mapperPerf.maxInMs,
+                    "avgMs": self.rum.mapperPerf.avgInMs
                 ],
                 "mainThread": [
-                    "minMs": DatadogRumPlugin.instance.mainThreadMapperPerf.minInMs,
-                    "maxMs": DatadogRumPlugin.instance.mainThreadMapperPerf.maxInMs,
-                    "avgMs": DatadogRumPlugin.instance.mainThreadMapperPerf.avgInMs
+                    "minMs": self.rum.mainThreadMapperPerf.minInMs,
+                    "maxMs": self.rum.mainThreadMapperPerf.maxInMs,
+                    "avgMs": self.rum.mainThreadMapperPerf.avgInMs
                 ],
-                "mapperTimeouts": DatadogRumPlugin.instance.mapperTimeouts
+                "mapperTimeouts": self.rum.mapperTimeouts
             ]
             return value
         default:
@@ -437,10 +440,11 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         }
         oldConsolePrint = nil
 
-        // RUM and Logs register on this plugin's registrar, so neither has a teardown callback of its
-        // own. Both hold channels that Datadog worker threads call Dart through.
-        DatadogRumPlugin.instance.onDetach()
-        DatadogLogsPlugin.instance?.onDetach()
+        // RUM and Logs are owned instances (one per engine, see `rum`/`logs` above), not singletons,
+        // so neither has a teardown callback of its own to hook. Both hold channels that Datadog
+        // worker threads call Dart through.
+        rum.onDetach()
+        logs.onDetach()
     }
 
     private func attachToExisting() -> [String: Any?] {

@@ -58,15 +58,16 @@ public extension RUM.Configuration {
 
 // swiftlint:disable:next type_body_length
 public class DatadogRumPlugin: NSObject, FlutterPlugin {
-    /// Assigned by `register(with:)` rather than by `init`, because `instance` is created before any
-    /// registrar exists. Internal so tests can seed and inspect it.
-    internal var methodChannel: FlutterMethodChannel?
+    /// No-op: registration now happens per-instance via `attachToEngine(registrar:)`, called by
+    /// `DatadogSdkPlugin`, which owns one `DatadogRumPlugin` instance per engine. This static method
+    /// only exists to satisfy `FlutterPlugin` conformance and is never actually invoked, since this
+    /// type is not listed in `GeneratedPluginRegistrant` (only `DatadogSdkPlugin` is).
+    public static func register(with registrar: FlutterPluginRegistrar) {}
 
-    public static let instance =  DatadogRumPlugin()
-    public static func register(with registrar: FlutterPluginRegistrar) {
+    func attachToEngine(registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.rum", binaryMessenger: registrar.messenger())
-        instance.methodChannel = channel
-        registrar.addMethodCallDelegate(instance, channel: channel)
+        methodChannel = channel
+        registrar.addMethodCallDelegate(self, channel: channel)
     }
 
     internal var rum: RUMMonitorProtocol?
@@ -75,9 +76,27 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
     internal var mainThreadMapperPerf = PerformanceTracker()
     internal var mapperTimeouts = 0
 
-    private var currentConfiguration: [AnyHashable: Any]?
+    private static var previousConfiguration: [AnyHashable: Any]?
 
-    private override init() {
+    private let methodChannelLock = NSLock()
+    private var _methodChannel: FlutterMethodChannel?
+    /// Cleared on teardown so nothing is sent to an engine that can no longer receive it. Internal so
+    /// tests can seed and inspect it. Lock-backed because it's read on Datadog worker threads
+    /// (`callEventMapper`, `onSessionStart`) while `onDetach()` clears it on the main thread.
+    internal var methodChannel: FlutterMethodChannel? {
+        get {
+            methodChannelLock.lock()
+            defer { methodChannelLock.unlock() }
+            return _methodChannel
+        }
+        set {
+            methodChannelLock.lock()
+            defer { methodChannelLock.unlock() }
+            _methodChannel = newValue
+        }
+    }
+
+    override init() {
         super.init()
     }
 
@@ -412,8 +431,11 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
     private func enable(arguments: [String: Any?], call: FlutterMethodCall) {
         let configArg = arguments["configuration"] as? [String: Any?]
         if rum == nil {
-            if let configArg = configArg,
-               var config = RUM.Configuration(fromEncoded: configArg) {
+            if RUM._internal.isEnabled() {
+                // Another engine's instance already configured RUM; just attach to it.
+                rum = RUMMonitor.shared()
+                warnIfConfigMismatch(configArg)
+            } else if let configArg = configArg, var config = RUM.Configuration(fromEncoded: configArg) {
                 attachEventMappers(configArg: configArg, config: &config)
                 // Disable INV as the Flutter calculations for it are different
                 config.nextViewActionPredicate = nil
@@ -433,26 +455,27 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 RUM.enable(with: config)
                 rum = RUMMonitor.shared()
 
-                currentConfiguration = configArg as [AnyHashable: Any]
+                Self.previousConfiguration = configArg as [AnyHashable: Any]
             }
-        } else if currentConfiguration != nil,
-                    let configArg = configArg {
-            let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
-            if !dict.isEqual(to: currentConfiguration!) {
-                consolePrint(
-                    "🔥 Calling RUM `enable` with different options, even after a hot restart," +
-                    " is not supported. Cold restart your application to change your current configuation.",
-                    .error
-                )
-            }
+        } else {
+            warnIfConfigMismatch(configArg)
+        }
+    }
+
+    private func warnIfConfigMismatch(_ configArg: [String: Any?]?) {
+        guard let previous = Self.previousConfiguration, let configArg = configArg else { return }
+        let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
+        if !dict.isEqual(to: previous) {
+            consolePrint(
+                "🔥 Calling RUM `enable` with different options, even after a hot restart," +
+                " is not supported. Cold restart your application to change your current configuation.",
+                .error
+            )
         }
     }
 
     private func deinitialize(arguments: [String: Any?], call: FlutterMethodCall) {
-        if rum != nil {
-            currentConfiguration = nil
-            rum = nil
-        }
+        rum = nil
     }
 
     private func getCurrentSessionId(result: @escaping FlutterResult) {
