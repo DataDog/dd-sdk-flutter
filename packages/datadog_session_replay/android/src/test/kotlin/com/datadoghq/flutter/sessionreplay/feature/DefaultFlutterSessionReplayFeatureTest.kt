@@ -57,7 +57,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
             mockCore,
             onContextChanged,
             customEndpoint,
-            mockHandler
+            mainThreadHandler = mockHandler
         )
         val contextValue = mapOf(
             "application_id" to applicationId,
@@ -93,7 +93,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
             mockCore,
             onContextChanged,
             customEndpoint,
-            mockHandler
+            mainThreadHandler = mockHandler
         )
         var context = mutableMapOf<String, Any?>()
         every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
@@ -130,7 +130,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
             mockCore,
             onContextChanged,
             customEndpoint,
-            mockHandler
+            mainThreadHandler = mockHandler
         )
         var context = mutableMapOf<String, Any?>()
         every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {

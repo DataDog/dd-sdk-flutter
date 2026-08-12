@@ -8,6 +8,14 @@ buildscript {
     ext.kotlin_version = "2.2.20"
     ext.datadog_version = "3.11.0"
 
+    // TEMPORARY, REVERT BEFORE MERGING. The embedded-content API this plugin calls
+    // (`_SessionReplayInternalProxy.setEmbeddedContentSlotId` and friends) is not in a released
+    // dd-sdk-android — see https://github.com/DataDog/dd-sdk-android/pull/3690. Until it ships,
+    // point this at the `classes.jar` of a locally built session-replay AAR; that is enough for a
+    // compileOnly dependency, which only needs the API on the compile classpath.
+    // Set it to null to fall back to the released coordinate. See HYBRID_SR_LOCAL_TESTING.md.
+    ext.dd_sdk_android_session_replay_jar = "/tmp/dd-sr-embedded-api/dd-sdk-android-session-replay-3.13.0-SNAPSHOT.jar"
+
     repositories {
         google()
         mavenCentral()
@@ -66,6 +74,27 @@ android {
         implementation("com.squareup.okhttp3:okhttp:5.3.2")
         implementation("com.google.code.gson:gson:2.12.1")
 
+        // Only needed to reach `_SessionReplayInternalProxy`, which hands embedded records and
+        // resources to the *native* Session Replay in hybrid apps. Deliberately compileOnly: an
+        // app where Flutter is the host never enables native Session Replay and must not pay for
+        // the module. Every call site goes through EmbeddedSessionReplay, which no-ops when the
+        // class is absent at runtime.
+        if (dd_sdk_android_session_replay_jar) {
+            // TEMPORARY, REVERT BEFORE MERGING — see the note in the buildscript block.
+            compileOnly(files(dd_sdk_android_session_replay_jar))
+        } else {
+            compileOnly("com.datadoghq:dd-sdk-android-session-replay:$datadog_version")
+        }
+
+        // Only the Flutter embedding brings these in, and it is added compileOnly by the Flutter
+        // Gradle plugin — which is non-transitive, so the host-facing extensions need them declared.
+        compileOnly("androidx.annotation:annotation:1.9.1")
+        // Pinned to match what flutter_embedding's consistent-resolution constraint forces on
+        // debugCompileClasspath (2.7.0), not the latest available — a higher compileOnly version
+        // here conflicts with that constraint and fails the build. The Lifecycle/LifecycleObserver
+        // API this module actually uses is unchanged between 2.7.0 and 2.8.7.
+        compileOnly("androidx.lifecycle:lifecycle-common:2.7.0")
+
         testImplementation("com.willowtreeapps.assertk:assertk:0.28.1")
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -77,6 +106,12 @@ android {
     }
 
     testOptions {
+        // Lets tests construct types that touch the android.jar stubs incidentally — notably the
+        // `Handler(Looper.getMainLooper())` default on DefaultFlutterSessionReplayFeature — instead
+        // of every one of them having to inject a handler it never exercises. Tests that do depend
+        // on handler behaviour still pass an explicit mock.
+        unitTests.returnDefaultValues = true
+
         unitTests.all {
             useJUnitPlatform()
 
@@ -92,5 +127,11 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_11
+
+        // jnigen 0.14.2 bundles kotlinx-metadata-jvm, which refuses to read the 2.2.0 `@Metadata`
+        // that Kotlin 2.2 emits, so `dart run jnigen` cannot summarize this module. Pinning the
+        // metadata version keeps the generated bindings buildable without holding the whole module
+        // back to Kotlin 2.1; it only affects the annotation, not the bytecode.
+        freeCompilerArgs.add("-Xmetadata-version=2.1.0")
     }
 }

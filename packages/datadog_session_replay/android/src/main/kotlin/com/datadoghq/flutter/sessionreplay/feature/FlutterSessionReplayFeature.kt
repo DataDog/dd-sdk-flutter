@@ -20,14 +20,17 @@ import com.datadog.android.api.storage.FeatureStorageConfiguration
 import com.datadog.android.api.storage.RawBatchEvent
 import com.datadoghq.flutter.sessionreplay.resource.DefaultResourceResolver
 import com.datadoghq.flutter.sessionreplay.resource.DefaultResourceWriter
+import com.datadoghq.flutter.sessionreplay.resource.EmbeddedResourceSink
 import com.datadoghq.flutter.sessionreplay.resource.ResourceDataStoreManager
 import com.datadoghq.flutter.sessionreplay.resource.ResourceFeature
 import com.datadoghq.flutter.sessionreplay.resource.ResourceResolver
+import com.datadoghq.flutter.sessionreplay.resource.RoutedResourceWriter
 
 internal interface FlutterSessionReplayFeature : StorageBackedFeature {
     fun setHasReplay(viewId: String, hasReplay: Boolean)
     fun setRecordCount(viewId: String, recordCount: Int)
     fun writeSegment(segment: String)
+    fun readCurrentContext(): DefaultFlutterSessionReplayFeature.RumContext?
 
     val resourceResolver: ResourceResolver
 }
@@ -36,6 +39,7 @@ internal class DefaultFlutterSessionReplayFeature(
     private val sdkCore: FeatureSdkCore,
     private val onContextChanged: (RumContext) -> Unit,
     private val customEndpointUrl: String?,
+    private val embeddedResourceSink: EmbeddedResourceSink = { _, _, _ -> false },
     private val mainThreadHandler: Handler = Handler(Looper.getMainLooper())
 ) : FlutterSessionReplayFeature,
     StorageBackedFeature,
@@ -86,8 +90,26 @@ internal class DefaultFlutterSessionReplayFeature(
         // so it must be created after the resources feature above is registered.
         resourceResolver = DefaultResourceResolver(
             sdkCore.internalLogger,
-            DefaultResourceWriter(sdkCore, ResourceDataStoreManager(sdkCore))
+            RoutedResourceWriter(
+                DefaultResourceWriter(sdkCore, ResourceDataStoreManager(sdkCore)),
+                embeddedResourceSink
+            )
         )
+    }
+
+    /**
+     * The RUM context as it stands right now, rather than at the next change.
+     *
+     * Used to prime an engine that enables while a RUM view is already active — see
+     * `FlutterSessionReplayManager.primeContext`. Returns `null` when RUM has published no context
+     * yet, in which case [onContextUpdate] delivers the first one soon enough.
+     */
+    override fun readCurrentContext(): RumContext? {
+        val context = sdkCore.getFeatureContext(Feature.RUM_FEATURE_NAME)
+        if (context.isEmpty()) {
+            return null
+        }
+        return RumContext(context)
     }
 
     override fun onStop() {
