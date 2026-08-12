@@ -2,8 +2,8 @@
 
 ## 1.0.1
 
-* [flags] preserve web evaluation metadata.
-* [flags] avoid web intake preflights.
+* Fix Flutter Web flag evaluation events failing with HTTP 403 errors caused by CORS preflight requests.
+* Preserve evaluation metadata when sending flag evaluation events from Flutter Web.
 
 ## 1.0.0
 
