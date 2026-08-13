@@ -35,8 +35,7 @@ Next, at the root of the repository, bootstrap melos:
 melos bootstrap
 ```
 
-Next, we need to generate some necessary files with `flutter pub run build_runner build`, 
-and generate `.env` files for the various apps in order to use them with
+Next, we need to generate necessary `.env` files for the various apps in order to use them with
 Datadog. We use Melos for this as well. Run:
 
 ```bash

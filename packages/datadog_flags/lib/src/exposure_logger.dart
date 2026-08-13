@@ -7,13 +7,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:meta/meta.dart';
-import 'package:uuid/uuid.dart';
 
 import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flags_runtime.dart';
+import 'intake_request.dart';
 import 'json_value.dart';
-import 'sdk_metadata.dart';
 
 class ExposureLogger {
   static const Duration defaultUploadTimeout = Duration(seconds: 15);
@@ -142,19 +141,17 @@ class ExposureLogger {
     List<Map<String, Object?>> exposures, {
     required bool rescheduleOnFailure,
   }) async {
+    final body = exposures.map(jsonEncode).join('\n');
+    final request = buildFlagsIntakeRequest(
+      endpoint: _exposureEndpoint(),
+      clientToken: runtime.datadogConfig.clientToken,
+      nativeContentType: 'text/plain;charset=UTF-8',
+      nativeBodyBuilder: () => body,
+      webBodyBuilder: () => body,
+    );
     try {
       final response = await runtime.httpClient
-          .post(
-            _exposureEndpoint(),
-            headers: {
-              'Content-Type': 'text/plain;charset=UTF-8',
-              'DD-API-KEY': runtime.datadogConfig.clientToken,
-              'DD-EVP-ORIGIN': datadogFlagsSource,
-              'DD-EVP-ORIGIN-VERSION': datadogFlagsSdkVersion,
-              'DD-REQUEST-ID': const Uuid().v4(),
-            },
-            body: exposures.map(jsonEncode).join('\n'),
-          )
+          .post(request.endpoint, headers: request.headers, body: request.body)
           .timeout(uploadTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (shouldRetryFlagsUpload(response.statusCode)) {
@@ -221,15 +218,8 @@ class ExposureLogger {
 
   Uri _exposureEndpoint() {
     final datadogConfig = runtime.datadogConfig;
-    final endpoint =
-        runtime.configuration.customExposureEndpoint ??
+    return runtime.configuration.customExposureEndpoint ??
         datadogConfig.intakeEndpoint().replace(path: '/api/v2/exposures');
-    return endpoint.replace(
-      queryParameters: {
-        ...endpoint.queryParameters,
-        'ddsource': datadogFlagsSource,
-      },
-    );
   }
 }
 

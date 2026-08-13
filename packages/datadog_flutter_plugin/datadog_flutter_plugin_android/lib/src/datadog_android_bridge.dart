@@ -2083,7 +2083,8 @@ final class $DatadogSdkPlugin$Companion$Type$
 /// from: `com.datadoghq.flutter.DatadogSdkPlugin$ConfigurationTelemetryOverrides`
 extension type DatadogSdkPlugin$ConfigurationTelemetryOverrides._(
   jni$_.JObject _$this
-) implements jni$_.JObject {
+)
+    implements jni$_.JObject {
   static final _class = jni$_.JClass.forName(
     r'com/datadoghq/flutter/DatadogSdkPlugin$ConfigurationTelemetryOverrides',
   );
