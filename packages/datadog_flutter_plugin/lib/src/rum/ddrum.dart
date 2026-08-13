@@ -18,62 +18,11 @@ import 'ddrum_platform_interface.dart';
 import 'inv_metric_provider.dart';
 import 'rum_long_task_observer.dart';
 
-/// HTTP method of the resource
-enum RumHttpMethod { post, get, head, put, delete, patch }
-
 RumHttpMethod rumMethodFromMethodString(String value) {
   var lowerValue = value.toLowerCase();
   return RumHttpMethod.values.firstWhere(
     (e) => e.toString() == 'RumHttpMethod.$lowerValue',
   );
-}
-
-/// Describes the type of a RUM Action.
-enum RumActionType { click, tap, scroll, swipe, custom }
-
-/// Describe the source of a RUM Error.
-enum RumErrorSource {
-  /// Error originated in the source code.
-  source,
-
-  /// Error originated in the network layer.
-  network,
-
-  /// Error originated in a webview.
-  webview,
-
-  /// Error originated in a web console (used by bridges).
-  console,
-
-  /// Custom error source.
-  custom,
-}
-
-/// Describe the type of resource loaded.
-enum RumResourceType {
-  document,
-  image,
-  xhr,
-  beacon,
-  css,
-  fetch,
-  font,
-  js,
-  media,
-  other,
-  native,
-}
-
-/// Represents the possible reasons for a failed feature operation.
-enum RumFeatureOperationFailureReason {
-  /// Represents a failure caused by an error during execution.
-  error,
-
-  /// Represents a failure caused by user or process abandonment.
-  abandoned,
-
-  /// Represents a failure due to other unspecified reasons.
-  other
 }
 
 RumResourceType resourceTypeFromContentType(ContentType? type) {

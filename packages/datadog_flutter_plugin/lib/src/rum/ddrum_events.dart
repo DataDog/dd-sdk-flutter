@@ -4,8 +4,8 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
-import '../../datadog_flutter_plugin.dart';
 import '../json_helpers.dart';
+import 'ddrum_enums.dart';
 
 part 'ddrum_events.g.dart';
 

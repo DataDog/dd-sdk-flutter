@@ -3,3 +3,7 @@ targets:
     sources:
       exclude:
         - example/**
+    builders:
+      json_serializable:
+        generate_for:
+          - lib/src/sr_data_models.dart

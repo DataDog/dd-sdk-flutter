@@ -7,8 +7,8 @@ import 'dart:math';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
-import 'package:datadog_flutter_plugin/src/rum/ddrum.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum_method_channel.dart';
+import 'package:datadog_flutter_plugin/src/rum/rum.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
