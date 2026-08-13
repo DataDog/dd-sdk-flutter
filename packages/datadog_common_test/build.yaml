@@ -1,0 +1,6 @@
+targets:
+  $default:
+    builders:
+      json_serializable:
+        generate_for:
+          - lib/src/request_log.dart

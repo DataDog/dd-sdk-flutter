@@ -266,10 +266,9 @@ scripts:
       dirExists: 'example/ios'
 
   prepare:
-    run: melos pub:get && melos build_runner && melos generate_env && melos generate_env:e2e
+    run: melos pub:get && melos generate_env && melos generate_env:e2e
     description: |
-      Run `flutter pub run build_runner build` on all packages and
-      generate `.env` files for all package examples
+      Run `flutter pub get` on all packages and generate `.env` files for all package examples
 
   pub:get:
     exec:
@@ -286,7 +285,7 @@ scripts:
   build_runner:
     exec:
       concurrency: 1
-    run: flutter pub run build_runner build --delete-conflicting-outputs
+    run: dart run build_runner build --delete-conflicting-outputs
     packageFilters:
       dependsOn: build_runner
   
