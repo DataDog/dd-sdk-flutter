@@ -34,25 +34,54 @@ extension Logger.Configuration {
 }
 
 public class DatadogLogsPlugin: NSObject, FlutterPlugin {
-    public static var instance: DatadogLogsPlugin?
-    public static func register(with registrar: FlutterPluginRegistrar) {
-        let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.logs", binaryMessenger: registrar.messenger())
-        instance = DatadogLogsPlugin(channel: channel)
-        registrar.addMethodCallDelegate(instance!, channel: channel)
+    /// No-op: registration now happens per-instance via `attachToEngine(registrar:)`, called by
+    /// `DatadogSdkPlugin`, which owns one `DatadogLogsPlugin` instance per engine. This static method
+    /// only exists to satisfy `FlutterPlugin` conformance and is never actually invoked, since this
+    /// type is not listed in `GeneratedPluginRegistrant` (only `DatadogSdkPlugin` is).
+    public static func register(with registrar: FlutterPluginRegistrar) {}
 
+    func attachToEngine(registrar: FlutterPluginRegistrar) {
+        let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.logs", binaryMessenger: registrar.messenger())
+        methodChannel = channel
+        registrar.addMethodCallDelegate(self, channel: channel)
     }
 
-    private let channel: FlutterMethodChannel
-    private var currentConfiguration: [AnyHashable: Any]?
+    private let methodChannelLock = NSLock()
+    private var _methodChannel: FlutterMethodChannel?
+    /// Cleared on teardown, so `FlutterLogEventMapper` — which lives inside the SDK for the rest of the
+    /// process — can re-read it per event rather than holding a channel that outlives its engine.
+    /// Lock-backed because it's read on Datadog worker threads while `onDetach()` clears it on the
+    /// main thread.
+    internal var methodChannel: FlutterMethodChannel? {
+        get {
+            methodChannelLock.lock()
+            defer { methodChannelLock.unlock() }
+            return _methodChannel
+        }
+        set {
+            methodChannelLock.lock()
+            defer { methodChannelLock.unlock() }
+            _methodChannel = newValue
+        }
+    }
+
+    private static var previousConfiguration: [AnyHashable: Any]?
     private var loggerRegistry: [String: LoggerProtocol] = [:]
 
-    private init(channel: FlutterMethodChannel) {
-        self.channel = channel
+    override init() {
         super.init()
     }
 
+    /// Drops the channel so a log mapper cannot reach an engine that can no longer receive it.
+    ///
+    /// `FlutterLogEventMapper` is handed to `Logs.enable` and lives inside the SDK for the rest of the
+    /// process, mapping events on Datadog worker threads. Once the engine resets its shell,
+    /// `-[FlutterEngine sendOnChannel:message:binaryReply:]` asserts and the app dies — the same crash
+    /// as #1062 in RUM.
+    ///
+    /// Called by `DatadogSdkPlugin`, which owns this plugin's registration.
     public func onDetach() {
-
+        methodChannel = nil
     }
 
     func addLogger(logger: LoggerProtocol, withHandle handle: String) {
@@ -242,36 +271,39 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
     }
 
     private func enable(arguments: [String: Any?], result: @escaping FlutterResult) {
-        if let configArg = arguments["configuration"] as? [String: Any?] {
-            if currentConfiguration == nil {
+        guard let configArg = arguments["configuration"] as? [String: Any?] else {
+            result(FlutterError.missingParameter(methodName: "enable"))
+            return
+        }
+
+        if Self.previousConfiguration == nil {
+            if Logs._internal.isEnabled() {
+                // Another engine's instance already configured Logs; nothing more to configure.
+                Self.previousConfiguration = configArg as [AnyHashable: Any]
+            } else {
                 var config = Logs.Configuration(fromEncoded: configArg)
                 let attachLogMapper = (configArg["attachLogMapper"] as? NSNumber)?.boolValue ?? false
                 if attachLogMapper {
                     config._internal_mutation {
-                        $0.setLogEventMapper(FlutterLogEventMapper(channel: channel))
+                        $0.setLogEventMapper(FlutterLogEventMapper(owner: self))
                     }
                 }
                 Logs.enable(with: config)
-                currentConfiguration = configArg as [AnyHashable: Any]
-            } else {
-                let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
-                if !dict.isEqual(to: currentConfiguration!) {
-                    consolePrint(
-                        "🔥 Calling Logging `enable` with different options, even after a hot restart," +
-                        " is not supported. Cold restart your application to change your current configuation.",
-                        .error)
-                }
+                Self.previousConfiguration = configArg as [AnyHashable: Any]
             }
-            result(nil)
         } else {
-            result(
-                FlutterError.missingParameter(methodName: "enable")
-            )
+            let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
+            if !dict.isEqual(to: Self.previousConfiguration!) {
+                consolePrint(
+                    "🔥 Calling Logging `enable` with different options, even after a hot restart," +
+                    " is not supported. Cold restart your application to change your current configuation.",
+                    .error)
+            }
         }
+        result(nil)
     }
 
     private func deinitialize(arguments: [String: Any?], result: @escaping FlutterResult) {
-        currentConfiguration = nil
         result(nil)
     }
 }
@@ -283,11 +315,9 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         "application_id", "session_id", "view.id", "user_action.id"
     ]
 
-    let channel: FlutterMethodChannel
-
-    public init(channel: FlutterMethodChannel) {
-        self.channel = channel
-    }
+    /// Weak because the native SDK retains this mapper for the life of the process — a strong
+    /// reference here would keep a torn-down engine's plugin (and its channel) alive indefinitely.
+    weak var owner: DatadogLogsPlugin?
 
     func map(event: LogEvent, callback: @escaping (LogEvent) -> Void) {
         guard let encoded = logEventToFlutterDictionary(event: event) else {
@@ -297,6 +327,13 @@ public class DatadogLogsPlugin: NSObject, FlutterPlugin {
         }
 
         DispatchQueue.main.async {
+            // Re-read the channel instead of holding it: this mapper lives inside the SDK for the rest
+            // of the process, so the engine can tear down — and `onDetach` clear the channel — between
+            // `Logs.enable` and this block being drained. Sending after that asserts on a reset shell.
+            guard let channel = owner?.methodChannel else {
+                callback(event)
+                return
+            }
             channel.invokeMethod("mapLogEvent", arguments: ["event": encoded]) { result in
                 guard let result = result as? [String: Any] else {
                     // Don't call the callback, this event was discarded

@@ -36,6 +36,7 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		BC0DEB13FDD8056873023575 /* NotificationCenterMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CBB840D216545E3DE18D5B /* NotificationCenterMock.swift */; };
 		E1E091C69AD74808BE3733231FC76E98 /* DatadogSessionReplayPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35542C60C09A47729F76E13B6A659C63 /* DatadogSessionReplayPluginTests.swift */; };
 		E7162BD14BF84CACB6B101E947BD07D1 /* SessionReplayTestContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */; };
 /* End PBXBuildFile section */
@@ -93,6 +94,8 @@
 		6A0117D673D82B937FDFE484 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		784666492D4C4C64000A1A5F /* FlutterFramework */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterFramework; path = Flutter/ephemeral/Packages/.packages/FlutterFramework; sourceTree = "<group>"; };
+		78DABEA22ED26510000E7860 /* datadog_session_replay */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = datadog_session_replay; path = ../../ios/datadog_session_replay; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		79BD53055738C1114E4457B5 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
@@ -107,6 +110,7 @@
 		BE0C0F8D524DC14EF6F6CFB0 /* DataStoreMock.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DataStoreMock.swift; sourceTree = "<group>"; };
 		CB6E419C80EE782C5F5B2C8E /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		CDF9F7F84B03E7F780D7C869 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
+		D9CBB840D216545E3DE18D5B /* NotificationCenterMock.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationCenterMock.swift; sourceTree = "<group>"; };
 		E3A52EA2C191523119AFBBD1 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		F2038B61D19548C0AF36B8B3C6603AE1 /* SessionReplayTestContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionReplayTestContainer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -202,6 +206,7 @@
 				495A027F2DCE433B00869BEA /* FoundationMocks.swift */,
 				495A02802DCE433B00869BEA /* MultipartBuilderSpy.swift */,
 				BE0C0F8D524DC14EF6F6CFB0 /* DataStoreMock.swift */,
+				D9CBB840D216545E3DE18D5B /* NotificationCenterMock.swift */,
 			);
 			path = Mocks;
 			sourceTree = "<group>";
@@ -209,6 +214,8 @@
 		9740EEB11CF90186004384FC /* Flutter */ = {
 			isa = PBXGroup;
 			children = (
+				78DABEA22ED26510000E7860 /* datadog_session_replay */,
+				784666492D4C4C64000A1A5F /* FlutterFramework */,
 				78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */,
 				3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */,
 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
@@ -297,7 +304,6 @@
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				856D27D165E93DCA04A44742 /* [CP] Embed Pods Frameworks */,
-				F6722193A3C2B1911D5FE9DF /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -468,23 +474,6 @@
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
 		};
-		F6722193A3C2B1911D5FE9DF /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -514,6 +503,7 @@
 				4944008D2E58F71300AC46CC /* ResourcesWriterTest.swift in Sources */,
 				495642A52E5E2512000FF536 /* ResourceResolverTest.swift in Sources */,
 				1F0B9721A43A6A63DCC17933 /* DataStoreMock.swift in Sources */,
+				BC0DEB13FDD8056873023575 /* NotificationCenterMock.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
