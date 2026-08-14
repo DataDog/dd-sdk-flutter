@@ -101,6 +101,16 @@ public class ContextMessageReceiver: FeatureMessageReceiver {
     }
 }
 
+/// Thin abstraction over `NotificationCenter` so tests can inject a fake that never broadcasts
+/// process-wide, instead of every test posting the real `UIApplication.willTerminateNotification`
+/// (which every live plugin instance in the process would observe, including other suites' engines).
+public protocol NotificationCenterProtocol {
+    func addObserver(_ observer: Any, selector: Selector, name: NSNotification.Name?, object: Any?)
+    func removeObserver(_ observer: Any)
+}
+
+extension NotificationCenter: NotificationCenterProtocol {}
+
 // swiftlint:disable:next type_body_length
 public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     public static var name: String = "flutter_plugin"
@@ -116,14 +126,19 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     internal let rum = DatadogRumPlugin()
     internal let logs = DatadogLogsPlugin()
 
-    public init(channel: FlutterMethodChannel) {
+    /// Injected so tests can drive termination through a fake center instead of posting the real,
+    /// process-wide notification.
+    private let notificationCenter: NotificationCenterProtocol
+
+    public init(channel: FlutterMethodChannel, notificationCenter: NotificationCenterProtocol = NotificationCenter.default) {
         self.channel = channel
+        self.notificationCenter = notificationCenter
         super.init()
         observeEngineTeardown()
     }
 
     deinit {
-        NotificationCenter.default.removeObserver(self)
+        notificationCenter.removeObserver(self)
     }
 
     public static func register(with registrar: FlutterPluginRegistrar) {
@@ -414,7 +429,7 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     /// lifecycle events only when `UIApplication`'s delegate conforms to `FlutterAppLifeCycleProvider`
     /// — true for `FlutterAppDelegate`, often false for a native host embedding Flutter.
     private func observeEngineTeardown() {
-        NotificationCenter.default.addObserver(
+        notificationCenter.addObserver(
             self,
             selector: #selector(engineWillTearDown),
             name: UIApplication.willTerminateNotification,

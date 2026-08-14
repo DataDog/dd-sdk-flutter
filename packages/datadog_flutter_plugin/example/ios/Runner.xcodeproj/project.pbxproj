@@ -19,6 +19,7 @@
 		496AAFBA27B4496400236887 /* ffi_crash_test.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 496AAFB927B4496400236887 /* ffi_crash_test.cpp */; };
 		49939D582C65038900F1D95E /* FoundationMocks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49939D572C65038900F1D95E /* FoundationMocks.swift */; };
 		49D7C98927834F7600A03589 /* DatadogRumPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49D7C98827834F7600A03589 /* DatadogRumPluginTests.swift */; };
+		58EC399E23D26709BDCED55B /* NotificationCenterMock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26867B7B46842D6DC4DC7D95 /* NotificationCenterMock.swift */; };
 		72372305D7FBA4CF1A7B797B /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 36CD9E6991F0A4392113DBF7 /* Pods_Runner.framework */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
@@ -55,6 +56,7 @@
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		265F3872DA5BFB339330883E /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
+		26867B7B46842D6DC4DC7D95 /* NotificationCenterMock.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationCenterMock.swift; sourceTree = "<group>"; };
 		36CD9E6991F0A4392113DBF7 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		495118EE27C596AB00F206FE /* DatadogLogsPluginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatadogLogsPluginTests.swift; sourceTree = "<group>"; };
@@ -111,6 +113,7 @@
 				4956E9562785DA5500E0E3B3 /* EquatableInTests.swift */,
 				495118F227C7C96700F206FE /* ContractHelpers.swift */,
 				49939D572C65038900F1D95E /* FoundationMocks.swift */,
+				26867B7B46842D6DC4DC7D95 /* NotificationCenterMock.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -453,6 +456,7 @@
 				495118EF27C596AB00F206FE /* DatadogLogsPluginTests.swift in Sources */,
 				49939D582C65038900F1D95E /* FoundationMocks.swift in Sources */,
 				4956E9572785DA5500E0E3B3 /* EquatableInTests.swift in Sources */,
+				58EC399E23D26709BDCED55B /* NotificationCenterMock.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

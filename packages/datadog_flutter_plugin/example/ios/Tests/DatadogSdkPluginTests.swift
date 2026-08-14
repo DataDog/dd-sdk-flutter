@@ -589,11 +589,14 @@ private class NoOpBinaryMessenger: NSObject, FlutterBinaryMessenger {
 class DatadogPluginDetachTests: XCTestCase {
     private let messenger = NoOpBinaryMessenger()
 
-    private func makePlugin() -> DatadogSdkPlugin {
-        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel(
-            name: "datadog_sdk_flutter",
-            binaryMessenger: messenger
-        ))
+    private func makePlugin(notificationCenter: NotificationCenterProtocol = NotificationCenter.default) -> DatadogSdkPlugin {
+        let plugin = DatadogSdkPlugin(
+            channel: FlutterMethodChannel(
+                name: "datadog_sdk_flutter",
+                binaryMessenger: messenger
+            ),
+            notificationCenter: notificationCenter
+        )
         plugin.rum.methodChannel = FlutterMethodChannel(
             name: "datadog_sdk_flutter.rum",
             binaryMessenger: messenger
@@ -606,10 +609,14 @@ class DatadogPluginDetachTests: XCTestCase {
     }
 
     func testApplicationWillTerminate_releasesEveryMethodChannel() {
-        let plugin = makePlugin()
+        // Posts to an injected `NotificationCenterMock` instead of the real, process-wide center:
+        // a real post would tear down every other live `DatadogSdkPlugin` in the process too,
+        // including the Runner's own registered plugin and other suites' engines.
+        let notificationCenter = NotificationCenterMock()
+        let plugin = makePlugin(notificationCenter: notificationCenter)
 
         // Termination arrives as a notification, not as a plugin callback
-        NotificationCenter.default.post(name: UIApplication.willTerminateNotification, object: nil)
+        notificationCenter.post(name: UIApplication.willTerminateNotification)
 
         XCTAssertNil(plugin.rum.methodChannel)
         XCTAssertNil(plugin.logs.methodChannel)
