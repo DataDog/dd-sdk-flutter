@@ -15,7 +15,7 @@ import '../datadog_tracking_http_client.dart';
 ///
 /// DatadogTrackingHttpClient allows you to receive a callback when an
 /// HttpClientRequest starts and when an HttpClientResponse finishes. They
-/// provide a resource key and a mutable Map<String, Object?> of attributes that
+/// provide a resource key and a mutable Map&lt;String, Object?&gt; of attributes that
 /// you can modify to add attributes to the resulting Datadog RUM resource.
 ///
 /// The userAttributes parameter supplied in [requestStarted] and

@@ -41,19 +41,19 @@ class _ExampleAppState extends State<ExampleApp> {
 
     router.define(
       '/logging',
-      handler: Handler(handlerFunc: (_, __) => const LoggingScreen()),
+      handler: Handler(handlerFunc: (_, _) => const LoggingScreen()),
     );
     router.define(
       '/rum',
-      handler: Handler(handlerFunc: (_, __) => const RumScreen()),
+      handler: Handler(handlerFunc: (_, _) => const RumScreen()),
     );
     router.define(
       '/rum_user_actions',
-      handler: Handler(handlerFunc: (_, __) => const RumUserActionsScreen()),
+      handler: Handler(handlerFunc: (_, _) => const RumUserActionsScreen()),
     );
     router.define(
       '/rum_crash_reporting',
-      handler: Handler(handlerFunc: (_, __) => const CrashReportingScreen()),
+      handler: Handler(handlerFunc: (_, _) => const CrashReportingScreen()),
     );
   }
 

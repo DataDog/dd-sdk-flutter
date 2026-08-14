@@ -1165,7 +1165,10 @@ void main() {
     await tester.pumpWidget(
       _buildSimpleApp(
         mockRum,
-        Radio(groupValue: 0, onChanged: (value) {}, value: 1),
+        RadioGroup(
+          onChanged: (value) {},
+          child: Column(children: [Radio(value: 1)]),
+        ),
       ),
     );
 
@@ -1185,7 +1188,10 @@ void main() {
         mockRum,
         RumUserActionAnnotation(
           description: annotation,
-          child: Radio(groupValue: 0, onChanged: (value) {}, value: 1),
+          child: RadioGroup(
+            onChanged: (value) {},
+            child: Column(children: [Radio(value: 1)]),
+          ),
         ),
       ),
     );
