@@ -37,22 +37,21 @@ RumViewEvent _$RumViewEventFromJson(Map json) => RumViewEvent(
   view: RumViewDetails.fromJson(Map<String, dynamic>.from(json['view'] as Map)),
 );
 
-Map<String, dynamic> _$RumViewEventToJson(
-  RumViewEvent instance,
-) => <String, dynamic>{
-  '_dd': instance.dd.toJson(),
-  'application': instance.application.toJson(),
-  if (instance.connectivity?.toJson() case final value?) 'connectivity': value,
-  'context': instance.context,
-  'date': instance.date,
-  if (instance.device?.toJson() case final value?) 'device': value,
-  if (instance.os?.toJson() case final value?) 'os': value,
-  'service': instance.service,
-  'session': instance.session.toJson(),
-  if (instance.usr?.toJson() case final value?) 'usr': value,
-  'version': instance.version,
-  'view': instance.view.toJson(),
-};
+Map<String, dynamic> _$RumViewEventToJson(RumViewEvent instance) =>
+    <String, dynamic>{
+      '_dd': instance.dd.toJson(),
+      'application': instance.application.toJson(),
+      'connectivity': ?instance.connectivity?.toJson(),
+      'context': instance.context,
+      'date': instance.date,
+      'device': ?instance.device?.toJson(),
+      'os': ?instance.os?.toJson(),
+      'service': instance.service,
+      'session': instance.session.toJson(),
+      'usr': ?instance.usr?.toJson(),
+      'version': instance.version,
+      'view': instance.view.toJson(),
+    };
 
 RumViewEventDd _$RumViewEventDdFromJson(Map json) => RumViewEventDd(
   documentVersion: (json['document_version'] as num).toInt(),
@@ -85,7 +84,7 @@ RumConnectivity _$RumConnectivityFromJson(Map json) => RumConnectivity(
 
 Map<String, dynamic> _$RumConnectivityToJson(RumConnectivity instance) =>
     <String, dynamic>{
-      if (instance.cellular?.toJson() case final value?) 'cellular': value,
+      'cellular': ?instance.cellular?.toJson(),
       'interfaces': instance.interfaces
           .map((e) => _$RumConnectivityInterfacesEnumMap[e]!)
           .toList(),
@@ -129,7 +128,7 @@ RumSession _$RumSessionFromJson(Map json) => RumSession(
 
 Map<String, dynamic> _$RumSessionToJson(RumSession instance) =>
     <String, dynamic>{
-      if (instance.hasReplay case final value?) 'has_replay': value,
+      'has_replay': ?instance.hasReplay,
       'id': instance.id,
       'type': instance.type,
     };
@@ -143,10 +142,10 @@ RumDevice _$RumDeviceFromJson(Map json) => RumDevice(
 );
 
 Map<String, dynamic> _$RumDeviceToJson(RumDevice instance) => <String, dynamic>{
-  if (instance.architecture case final value?) 'architecture': value,
-  if (instance.brand case final value?) 'brand': value,
-  if (instance.model case final value?) 'model': value,
-  if (instance.name case final value?) 'name': value,
+  'architecture': ?instance.architecture,
+  'brand': ?instance.brand,
+  'model': ?instance.model,
+  'name': ?instance.name,
   'type': _$RumDeviceTypeEnumMap[instance.type]!,
 };
 
@@ -183,9 +182,9 @@ RumUser _$RumUserFromJson(Map json) => RumUser(
 );
 
 Map<String, dynamic> _$RumUserToJson(RumUser instance) => <String, dynamic>{
-  if (instance.email case final value?) 'email': value,
-  if (instance.id case final value?) 'id': value,
-  if (instance.name case final value?) 'name': value,
+  'email': ?instance.email,
+  'id': ?instance.id,
+  'name': ?instance.name,
   'usr_info': instance.usrInfo,
 };
 
@@ -237,37 +236,32 @@ RumViewDetails _$RumViewDetailsFromJson(Map json) => RumViewDetails(
   url: json['url'] as String,
 );
 
-Map<String, dynamic> _$RumViewDetailsToJson(
-  RumViewDetails instance,
-) => <String, dynamic>{
-  'action': instance.action.toJson(),
-  if (instance.cpuTicksCount case final value?) 'cpu_ticks_count': value,
-  if (instance.cpuTicksPerSecond case final value?)
-    'cpu_ticks_per_second': value,
-  'crash': instance.crash.toJson(),
-  if (instance.customTimings case final value?) 'custom_timings': value,
-  'error': instance.error.toJson(),
-  if (instance.flutterBuildTime?.toJson() case final value?)
-    'flutter_build_time': value,
-  if (instance.flutterRasterTime?.toJson() case final value?)
-    'flutter_raster_time': value,
-  if (instance.frozenFrame?.toJson() case final value?) 'frozen_frame': value,
-  if (instance.frustration?.toJson() case final value?) 'frustration': value,
-  'id': instance.id,
-  if (instance.isActive case final value?) 'is_active': value,
-  if (instance.isSlowRendered case final value?) 'is_slow_rendered': value,
-  if (instance.longTask?.toJson() case final value?) 'long_task': value,
-  if (instance.memoryAverage case final value?) 'memory_average': value,
-  if (instance.memoryMax case final value?) 'memory_max': value,
-  if (instance.name case final value?) 'name': value,
-  if (instance.referrer case final value?) 'referrer': value,
-  if (instance.refreshRateAverage case final value?)
-    'refresh_rate_average': value,
-  if (instance.refreshRateMin case final value?) 'refresh_rate_min': value,
-  'resource': instance.resource.toJson(),
-  'time_spent': instance.timeSpent,
-  'url': instance.url,
-};
+Map<String, dynamic> _$RumViewDetailsToJson(RumViewDetails instance) =>
+    <String, dynamic>{
+      'action': instance.action.toJson(),
+      'cpu_ticks_count': ?instance.cpuTicksCount,
+      'cpu_ticks_per_second': ?instance.cpuTicksPerSecond,
+      'crash': instance.crash.toJson(),
+      'custom_timings': ?instance.customTimings,
+      'error': instance.error.toJson(),
+      'flutter_build_time': ?instance.flutterBuildTime?.toJson(),
+      'flutter_raster_time': ?instance.flutterRasterTime?.toJson(),
+      'frozen_frame': ?instance.frozenFrame?.toJson(),
+      'frustration': ?instance.frustration?.toJson(),
+      'id': instance.id,
+      'is_active': ?instance.isActive,
+      'is_slow_rendered': ?instance.isSlowRendered,
+      'long_task': ?instance.longTask?.toJson(),
+      'memory_average': ?instance.memoryAverage,
+      'memory_max': ?instance.memoryMax,
+      'name': ?instance.name,
+      'referrer': ?instance.referrer,
+      'refresh_rate_average': ?instance.refreshRateAverage,
+      'refresh_rate_min': ?instance.refreshRateMin,
+      'resource': instance.resource.toJson(),
+      'time_spent': instance.timeSpent,
+      'url': instance.url,
+    };
 
 RumCount _$RumCountFromJson(Map json) =>
     RumCount(count: (json['count'] as num).toInt());
@@ -289,7 +283,7 @@ Map<String, dynamic> _$RumPerformanceMetricToJson(
 ) => <String, dynamic>{
   'average': instance.average,
   'max': instance.max,
-  if (instance.metricMax case final value?) 'metric_max': value,
+  'metric_max': ?instance.metricMax,
   'min': instance.min,
 };
 
@@ -324,22 +318,21 @@ RumActionEvent _$RumActionEventFromJson(Map json) => RumActionEvent(
   context: attributesFromJson(json['context'] as Map?),
 );
 
-Map<String, dynamic> _$RumActionEventToJson(
-  RumActionEvent instance,
-) => <String, dynamic>{
-  'action': instance.action.toJson(),
-  'application': instance.application.toJson(),
-  if (instance.connectivity?.toJson() case final value?) 'connectivity': value,
-  'date': instance.date,
-  if (instance.device?.toJson() case final value?) 'device': value,
-  if (instance.os?.toJson() case final value?) 'os': value,
-  if (instance.service case final value?) 'service': value,
-  'session': instance.session.toJson(),
-  if (instance.usr?.toJson() case final value?) 'usr': value,
-  if (instance.version case final value?) 'version': value,
-  'view': instance.view.toJson(),
-  'context': instance.context,
-};
+Map<String, dynamic> _$RumActionEventToJson(RumActionEvent instance) =>
+    <String, dynamic>{
+      'action': instance.action.toJson(),
+      'application': instance.application.toJson(),
+      'connectivity': ?instance.connectivity?.toJson(),
+      'date': instance.date,
+      'device': ?instance.device?.toJson(),
+      'os': ?instance.os?.toJson(),
+      'service': ?instance.service,
+      'session': instance.session.toJson(),
+      'usr': ?instance.usr?.toJson(),
+      'version': ?instance.version,
+      'view': instance.view.toJson(),
+      'context': instance.context,
+    };
 
 RumAction _$RumActionFromJson(Map json) => RumAction(
   crash: json['crash'] == null
@@ -370,14 +363,14 @@ RumAction _$RumActionFromJson(Map json) => RumAction(
 );
 
 Map<String, dynamic> _$RumActionToJson(RumAction instance) => <String, dynamic>{
-  if (instance.crash?.toJson() case final value?) 'crash': value,
-  if (instance.error?.toJson() case final value?) 'error': value,
-  if (instance.frustration?.toJson() case final value?) 'frustration': value,
-  if (instance.id case final value?) 'id': value,
-  if (instance.loadingTime case final value?) 'loading_time': value,
-  if (instance.longTask?.toJson() case final value?) 'long_task': value,
-  if (instance.resource?.toJson() case final value?) 'resource': value,
-  if (instance.target?.toJson() case final value?) 'target': value,
+  'crash': ?instance.crash?.toJson(),
+  'error': ?instance.error?.toJson(),
+  'frustration': ?instance.frustration?.toJson(),
+  'id': ?instance.id,
+  'loading_time': ?instance.loadingTime,
+  'long_task': ?instance.longTask?.toJson(),
+  'resource': ?instance.resource?.toJson(),
+  'target': ?instance.target?.toJson(),
   'type': _$RumActionTypeInternalEnumMap[instance.type]!,
 };
 
@@ -408,9 +401,9 @@ RumViewSummary _$RumViewSummaryFromJson(Map json) => RumViewSummary(
 Map<String, dynamic> _$RumViewSummaryToJson(RumViewSummary instance) =>
     <String, dynamic>{
       'id': instance.id,
-      if (instance.inForeground case final value?) 'in_foreground': value,
-      if (instance.name case final value?) 'name': value,
-      if (instance.referrer case final value?) 'referrer': value,
+      'in_foreground': ?instance.inForeground,
+      'name': ?instance.name,
+      'referrer': ?instance.referrer,
       'url': instance.url,
     };
 
@@ -448,10 +441,10 @@ RumResource _$RumResourceFromJson(Map json) => RumResource(
 Map<String, dynamic> _$RumResourceToJson(RumResource instance) =>
     <String, dynamic>{
       'duration': instance.duration,
-      if (instance.id case final value?) 'id': value,
+      'id': ?instance.id,
       'method': instance.method,
-      if (instance.size case final value?) 'size': value,
-      if (instance.statusCode case final value?) 'status_code': value,
+      'size': ?instance.size,
+      'status_code': ?instance.statusCode,
       'type': _$RumResourceTypeEnumMap[instance.type]!,
       'url': instance.url,
     };
@@ -505,22 +498,21 @@ RumResourceEvent _$RumResourceEventFromJson(Map json) => RumResourceEvent(
   context: attributesFromJson(json['context'] as Map?),
 );
 
-Map<String, dynamic> _$RumResourceEventToJson(
-  RumResourceEvent instance,
-) => <String, dynamic>{
-  if (instance.action?.toJson() case final value?) 'action': value,
-  'application': instance.application.toJson(),
-  if (instance.connectivity?.toJson() case final value?) 'connectivity': value,
-  'date': instance.date,
-  if (instance.device?.toJson() case final value?) 'device': value,
-  if (instance.os?.toJson() case final value?) 'os': value,
-  'resource': instance.resource.toJson(),
-  if (instance.service case final value?) 'service': value,
-  if (instance.usr?.toJson() case final value?) 'usr': value,
-  if (instance.version case final value?) 'version': value,
-  if (instance.view?.toJson() case final value?) 'view': value,
-  'context': instance.context,
-};
+Map<String, dynamic> _$RumResourceEventToJson(RumResourceEvent instance) =>
+    <String, dynamic>{
+      'action': ?instance.action?.toJson(),
+      'application': instance.application.toJson(),
+      'connectivity': ?instance.connectivity?.toJson(),
+      'date': instance.date,
+      'device': ?instance.device?.toJson(),
+      'os': ?instance.os?.toJson(),
+      'resource': instance.resource.toJson(),
+      'service': ?instance.service,
+      'usr': ?instance.usr?.toJson(),
+      'version': ?instance.version,
+      'view': ?instance.view?.toJson(),
+      'context': instance.context,
+    };
 
 RumErrorEvent _$RumErrorEventFromJson(Map json) => RumErrorEvent(
   action: json['action'] == null
@@ -556,23 +548,22 @@ RumErrorEvent _$RumErrorEventFromJson(Map json) => RumErrorEvent(
   context: attributesFromJson(json['context'] as Map?),
 );
 
-Map<String, dynamic> _$RumErrorEventToJson(
-  RumErrorEvent instance,
-) => <String, dynamic>{
-  if (instance.action?.toJson() case final value?) 'action': value,
-  'application': instance.application.toJson(),
-  if (instance.connectivity?.toJson() case final value?) 'connectivity': value,
-  'date': instance.date,
-  if (instance.device?.toJson() case final value?) 'device': value,
-  'error': instance.error.toJson(),
-  if (instance.os?.toJson() case final value?) 'os': value,
-  if (instance.service case final value?) 'service': value,
-  'session': instance.session.toJson(),
-  if (instance.usr?.toJson() case final value?) 'usr': value,
-  if (instance.version case final value?) 'version': value,
-  'view': instance.view.toJson(),
-  'context': instance.context,
-};
+Map<String, dynamic> _$RumErrorEventToJson(RumErrorEvent instance) =>
+    <String, dynamic>{
+      'action': ?instance.action?.toJson(),
+      'application': instance.application.toJson(),
+      'connectivity': ?instance.connectivity?.toJson(),
+      'date': instance.date,
+      'device': ?instance.device?.toJson(),
+      'error': instance.error.toJson(),
+      'os': ?instance.os?.toJson(),
+      'service': ?instance.service,
+      'session': instance.session.toJson(),
+      'usr': ?instance.usr?.toJson(),
+      'version': ?instance.version,
+      'view': instance.view.toJson(),
+      'context': instance.context,
+    };
 
 RumActionId _$RumActionIdFromJson(Map json) =>
     RumActionId(id: actionListFromJson(json['id']));
@@ -602,20 +593,18 @@ RumError _$RumErrorFromJson(Map json) => RumError(
 );
 
 Map<String, dynamic> _$RumErrorToJson(RumError instance) => <String, dynamic>{
-  if (instance.causes?.map((e) => e.toJson()).toList() case final value?)
-    'causes': value,
-  if (_$RumErrorHandlingEnumMap[instance.handling] case final value?)
-    'handling': value,
-  if (instance.handlingStack case final value?) 'handling_stack': value,
-  if (instance.id case final value?) 'id': value,
-  if (instance.isCrash case final value?) 'is_crash': value,
+  'causes': ?instance.causes?.map((e) => e.toJson()).toList(),
+  'handling': ?_$RumErrorHandlingEnumMap[instance.handling],
+  'handling_stack': ?instance.handlingStack,
+  'id': ?instance.id,
+  'is_crash': ?instance.isCrash,
   'message': instance.message,
-  if (instance.resource?.toJson() case final value?) 'resource': value,
+  'resource': ?instance.resource?.toJson(),
   'source': _$RumInternalErrorSourceEnumMap[instance.source]!,
-  if (instance.sourceType case final value?) 'source_type': value,
-  if (instance.stack case final value?) 'stack': value,
-  if (instance.type case final value?) 'type': value,
-  if (instance.fingerprint case final value?) 'fingerprint': value,
+  'source_type': ?instance.sourceType,
+  'stack': ?instance.stack,
+  'type': ?instance.type,
+  'fingerprint': ?instance.fingerprint,
 };
 
 const _$RumErrorHandlingEnumMap = {
@@ -645,8 +634,8 @@ Map<String, dynamic> _$RumErrorCauseToJson(RumErrorCause instance) =>
     <String, dynamic>{
       'message': instance.message,
       'source': _$RumErrorSourceEnumMap[instance.source]!,
-      if (instance.stack case final value?) 'stack': value,
-      if (instance.type case final value?) 'type': value,
+      'stack': ?instance.stack,
+      'type': ?instance.type,
     };
 
 const _$RumErrorSourceEnumMap = {
@@ -706,23 +695,22 @@ RumLongTaskEvent _$RumLongTaskEventFromJson(Map json) => RumLongTaskEvent(
   context: attributesFromJson(json['context'] as Map?),
 );
 
-Map<String, dynamic> _$RumLongTaskEventToJson(
-  RumLongTaskEvent instance,
-) => <String, dynamic>{
-  if (instance.action?.toJson() case final value?) 'action': value,
-  'application': instance.application.toJson(),
-  if (instance.connectivity?.toJson() case final value?) 'connectivity': value,
-  'date': instance.date,
-  if (instance.device?.toJson() case final value?) 'device': value,
-  'long_task': instance.longTask.toJson(),
-  if (instance.os?.toJson() case final value?) 'os': value,
-  if (instance.service case final value?) 'service': value,
-  'session': instance.session.toJson(),
-  if (instance.usr?.toJson() case final value?) 'usr': value,
-  if (instance.version case final value?) 'version': value,
-  'view': instance.view.toJson(),
-  'context': instance.context,
-};
+Map<String, dynamic> _$RumLongTaskEventToJson(RumLongTaskEvent instance) =>
+    <String, dynamic>{
+      'action': ?instance.action?.toJson(),
+      'application': instance.application.toJson(),
+      'connectivity': ?instance.connectivity?.toJson(),
+      'date': instance.date,
+      'device': ?instance.device?.toJson(),
+      'long_task': instance.longTask.toJson(),
+      'os': ?instance.os?.toJson(),
+      'service': ?instance.service,
+      'session': instance.session.toJson(),
+      'usr': ?instance.usr?.toJson(),
+      'version': ?instance.version,
+      'view': instance.view.toJson(),
+      'context': instance.context,
+    };
 
 RumLongTask _$RumLongTaskFromJson(Map json) => RumLongTask(
   duration: (json['duration'] as num).toInt(),
@@ -733,8 +721,8 @@ RumLongTask _$RumLongTaskFromJson(Map json) => RumLongTask(
 Map<String, dynamic> _$RumLongTaskToJson(RumLongTask instance) =>
     <String, dynamic>{
       'duration': instance.duration,
-      if (instance.id case final value?) 'id': value,
-      if (instance.isFrozenFrame case final value?) 'is_frozen_frame': value,
+      'id': ?instance.id,
+      'is_frozen_frame': ?instance.isFrozenFrame,
     };
 
 RumContainerView _$RumContainerViewFromJson(Map json) =>
@@ -766,9 +754,9 @@ RumVital _$RumVitalFromJson(Map json) => RumVital(
 
 Map<String, dynamic> _$RumVitalToJson(RumVital instance) => <String, dynamic>{
   'id': instance.id,
-  if (instance.name case final value?) 'name': value,
-  if (instance.description case final value?) 'description': value,
-  if (instance.operationKey case final value?) 'operation_key': value,
+  'name': ?instance.name,
+  'description': ?instance.description,
+  'operation_key': ?instance.operationKey,
   'step_type': instance.stepType,
   'failure_reason': instance.failureReason,
 };
@@ -818,18 +806,18 @@ Map<String, dynamic> _$RumVitalOperationStepEventToJson(
   RumVitalOperationStepEvent instance,
 ) => <String, dynamic>{
   'application': instance.application.toJson(),
-  if (instance.buildVersion case final value?) 'build_version': value,
-  if (instance.buildId case final value?) 'build_id': value,
-  if (instance.connectivity?.toJson() case final value?) 'connectivity': value,
-  if (instance.container?.toJson() case final value?) 'container': value,
+  'build_version': ?instance.buildVersion,
+  'build_id': ?instance.buildId,
+  'connectivity': ?instance.connectivity?.toJson(),
+  'container': ?instance.container?.toJson(),
   'date': instance.date,
-  if (instance.ddtags case final value?) 'ddtags': value,
-  if (instance.device?.toJson() case final value?) 'device': value,
-  if (instance.os?.toJson() case final value?) 'os': value,
-  if (instance.service case final value?) 'service': value,
+  'ddtags': ?instance.ddtags,
+  'device': ?instance.device?.toJson(),
+  'os': ?instance.os?.toJson(),
+  'service': ?instance.service,
   'session': instance.session.toJson(),
-  if (instance.usr?.toJson() case final value?) 'usr': value,
-  if (instance.version case final value?) 'version': value,
+  'usr': ?instance.usr?.toJson(),
+  'version': ?instance.version,
   'view': instance.view.toJson(),
   'vital': instance.vital.toJson(),
   'context': instance.context,

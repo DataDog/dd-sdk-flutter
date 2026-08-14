@@ -21,5 +21,5 @@ dev_dependencies:
   datadog_common_test:
     path: ../datadog_common_test
   flutter_lints: ^6.0.0
-  mocktail: ^0.2.0
+  mocktail: ^1.0.5
 
