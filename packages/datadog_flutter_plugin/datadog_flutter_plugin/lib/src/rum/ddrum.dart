@@ -4,6 +4,8 @@
 
 import 'dart:io';
 
+import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart';
+import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -12,42 +14,13 @@ import 'package:flutter/services.dart';
 // ignore: unnecessary_import
 import 'package:meta/meta.dart';
 
-import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart'
-    show
-        ambiguate,
-        InternalLogger,
-        DatadogPlatformAttributeKey,
-        DatadogRumPlatformAttributeKey,
-        DatadogTimeProvider,
-        DefaultTimeProvider,
-        DdRumPlatform,
-        LateConfigurationProperty;
-import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart'
-    show
-        DatadogAttachConfiguration,
-        DatadogRumConfiguration,
-        ResourceHeadersExtractor,
-        RumActionType,
-        RumErrorSource,
-        RumOperationFailureReason,
-        RumHttpMethod,
-        RumResourceType,
-        TraceContextInjection;
-
 import '../datadog_sdk.dart';
-
-export 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart'
-    show
-        RumActionType,
-        RumErrorSource,
-        RumOperationFailureReason,
-        RumHttpMethod,
-        RumResourceType;
-
 import '../helpers.dart';
 import '../tracing/tracing_headers.dart';
 import 'inv_metric_provider.dart';
 import 'rum_long_task_observer.dart';
+
+export 'package:datadog_flutter_plugin_platform_interface/src/rum/rum_enums.dart';
 
 RumHttpMethod rumMethodFromMethodString(String value) {
   var lowerValue = value.toLowerCase();

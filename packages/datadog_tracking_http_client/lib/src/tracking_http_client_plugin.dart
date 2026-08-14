@@ -61,7 +61,7 @@ class DdHttpTrackingPluginConfiguration extends DatadogPluginConfiguration {
   @override
   bool get supportsBackgroundIsolates => true;
 
-  DdHttpTrackingPluginConfiguration({
+  const DdHttpTrackingPluginConfiguration({
     this.clientListener,
     this.ignoreUrlPatterns = const [],
   });
@@ -75,8 +75,7 @@ class DdHttpTrackingPluginConfiguration extends DatadogPluginConfiguration {
 class _DdHttpTrackingPlugin extends DatadogPlugin {
   final DdHttpTrackingPluginConfiguration configuration;
 
-  _DdHttpTrackingPlugin(DatadogSdk datadogInstance, this.configuration)
-    : super(datadogInstance);
+  _DdHttpTrackingPlugin(super.datadogInstance, this.configuration);
 
   @override
   void initialize() {

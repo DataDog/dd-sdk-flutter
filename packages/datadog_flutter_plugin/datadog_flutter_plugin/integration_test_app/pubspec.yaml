@@ -21,6 +21,8 @@ dependencies:
 
   datadog_flutter_plugin:
     path: ../
+  datadog_flags:
+    path: ../../../datadog_flags
   datadog_common_test:
     path: ../../../datadog_common_test
   http: ">=0.13.4 <2.0.0"

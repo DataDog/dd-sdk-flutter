@@ -413,7 +413,8 @@ final class $FlutterSessionReplayBridge$Configuration$Type$
 /// from: `com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge$ContextListener`
 extension type FlutterSessionReplayBridge$ContextListener._(
   jni$_.JObject _$this
-) implements jni$_.JObject {
+)
+    implements jni$_.JObject {
   static final _class = jni$_.JClass.forName(
     r'com/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$ContextListener',
   );
