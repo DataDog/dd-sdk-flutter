@@ -15,7 +15,7 @@ For complete documentation, see the [official Datadog documentation][11].
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
-| 3.13.0 | 3.11.0 | 5.x.x |
+| 3.15.0 | 3.12.1 | 5.x.x |
 
 [//]: # (End SDK Table)
 
