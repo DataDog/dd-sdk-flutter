@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.5.0
+
+* [Android] Prevent native crash when reading RUM context for tracing. See [#1106](https://github.com/DataDog/dd-sdk-flutter/issues/1106)
+* [iOS] Attempt to avoid crashes caused by forced app termination. See [#1062](https://github.com/DataDog/dd-sdk-flutter/issues/1062)
+* Prefer a widget's own tooltip over subtree content for action descriptions.
+* Update Kotlin versions to 2.2.20.
+* Recognize FloatingActionButton in `RumUserActionDetector`.
+* Use Tooltip message as fallback action description in `RumUserActionDetector`.
+* Add `trackWatchdogTerminations` to `DatadogRumConfiguration`.
+* Upgrade iOS SDK to 3.15.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md).
+  * Bump KSCrash to 2.5.1.
+  * Merge WebView RUM `ddtags` by key to avoid duplicate keys.
+  * `onSessionStart` is now called only after sampling information used by WebView Tracking is in place, avoiding missing traces in early requests.
+* Upgrade Android SDK to 3.12.1. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md).
+  * Fix clock mismatch in `DefaultAppStartTimeProvider` app start time computation.
+  * Fix R8 failures due to missing `SourceLines` annotation.
+
 ## 3.4.1
 
 * Properly pin Android SDK version to 3.11.0.
