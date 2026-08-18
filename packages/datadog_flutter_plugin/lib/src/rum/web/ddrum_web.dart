@@ -211,6 +211,11 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
+  Future<void> reportAppFullyDisplayed() async {
+    // NOOP - Not supported by the Browser SDK
+  }
+
+  @override
   Future<void> addAction(
     DateTime timestamp,
     RumActionType type,

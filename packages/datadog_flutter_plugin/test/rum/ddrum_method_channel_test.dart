@@ -150,6 +150,14 @@ void main() {
     ]);
   });
 
+  test('reportAppFullyDisplayed calls to platform', () async {
+    await ddRumPlatform.reportAppFullyDisplayed();
+
+    expect(log, [
+      isMethodCall('reportAppFullyDisplayed', arguments: <String, Object?>{}),
+    ]);
+  });
+
   test('startResource calls to platform', () async {
     final timestamp = randomTimestamp();
     await ddRumPlatform.startResource(
