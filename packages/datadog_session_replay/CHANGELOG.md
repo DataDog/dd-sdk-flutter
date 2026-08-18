@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0-preview.14
+
+* Fix dangling bridge reference in JNI. See [#942](https://github.com/DataDog/dd-sdk-flutter/issues/942)
+
 ## 1.0.0-preview.13
 
 * Guard against non-finite (NaN/Infinity) values during recording.
