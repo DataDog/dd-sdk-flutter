@@ -1,8 +1,18 @@
-# Run: dart run ffigen --config ffigen.yaml
+# Prefer: dart tools/ci/bin/verify_ffi_bindings.dart --write
 #
-# Before running, build the example app for Windows to populate the FetchContent cache:
+# That regenerates using this config but retargets the header paths below at
+# whichever FetchContent tree actually exists, so it works on Linux as well as
+# Windows. `melos run verify:ffi_bindings` runs the same thing in check mode.
+#
+# To run ffigen directly instead, build the example app for Windows first, to
+# populate the FetchContent cache:
 #   cd example && flutter build windows
 # Headers land at: example/build/windows/x64/_deps/dd-sdk-cpp-src/include-c/
+#
+# include-directives is deliberately a loose glob rather than the entry-point
+# path: an exact prefix silently dropped every declaration from timestamp.h and
+# uuid.h (they are reached via attribute.h, not directly from datadog.h), which
+# removed 12 functions from the generated bindings.
 name: DdSdkFfi
 description: 'Auto-generated FFI bindings for the dd-sdk-cpp C API.'
 output: 'lib/src/ffi_bindings.dart'
@@ -11,7 +21,7 @@ headers:
   entry-points:
     - 'example/build/windows/x64/_deps/dd-sdk-cpp-src/include-c/datadog.h'
   include-directives:
-    - 'example/build/windows/x64/_deps/dd-sdk-cpp-src/include-c/**'
+    - '**/dd-sdk-cpp-src/include-c/**'
 
 functions:
   # Only pure value/struct functions are safe to mark as leaf calls. Anything that
