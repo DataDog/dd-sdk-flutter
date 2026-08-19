@@ -298,9 +298,9 @@ scripts:
       concurrency: 1
     run: |
       cd example
-      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
+      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results --verbose
     packageFilters:
-      dirExists: 
+      dirExists:
         - 'example/integration_test'
         - 'example/linux'
       ignore:
@@ -311,7 +311,7 @@ scripts:
   integration_test:linux:main:
     exec: |
       cd integration_test_app
-      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
+      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results --verbose
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
