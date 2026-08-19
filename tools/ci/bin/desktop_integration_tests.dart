@@ -92,7 +92,6 @@ void main(List<String> arguments) async {
   }
 
   final device = currentDevice();
-  final packageName = Platform.environment['MELOS_PACKAGE_NAME'] ?? 'desktop';
 
   if (outputDir != null) {
     Directory(outputDir).createSync(recursive: true);
@@ -145,19 +144,10 @@ void main(List<String> arguments) async {
         }
 
         final startTime = DateTime.now();
-        if (outputDir != null) {
-          final outputFile = path.join(
-            outputDir,
-            '${packageName}_${device}_integration_$testName.xml',
-          );
-          exitCode = await _runTestWithJunit(
-            [...args, '--machine'],
-            outputFile,
-            testName,
-          );
-        } else {
-          exitCode = await _runTest(args, testName);
-        }
+        // TODO: tojunit was swallowing flutter test's stdout (including
+        // --verbose trace output), so junit reporting is disabled for now
+        // while we diagnose the isolate_tracking_test CI failure.
+        exitCode = await _runTest(args, testName);
         final elapsed = DateTime.now().difference(startTime);
         print(
           '[${_timestamp()}] $testName attempt $attempt finished with exit '

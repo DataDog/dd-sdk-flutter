@@ -140,7 +140,7 @@ scripts:
   unit_test:windows:
     exec:
       concurrency: 1
-    run: dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/${MELOS_PACKAGE_NAME}_unit.xml -- flutter test --machine
     packageFilters:
       dirExists: 'test'
       ignore:
@@ -149,7 +149,7 @@ scripts:
   unit_test:linux:
     exec:
       concurrency: 1
-    run: dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/${MELOS_PACKAGE_NAME}_unit.xml -- flutter test --machine
     packageFilters:
       dirExists: 'test'
       ignore:
