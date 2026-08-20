@@ -187,6 +187,28 @@ void main() {
     expect(view1.vitalStepEvents[2].vitalOperationKey, isNull);
     expect(view1.vitalStepEvents[2].vitalFailureReason, 'error');
 
+    // `reportAppFullyDisplayed` reports TTFD as an app launch vital rather than
+    // as a property of the view it was called from, so look for it across the
+    // whole session. It is not supported by the Browser SDK.
+    if (!kIsWeb) {
+      final ttfdVitals = rumLog
+          .where((e) =>
+              e.eventType == 'vital' &&
+              RumVitalAppLaunchEventDecoder.isAppLaunchVital(e.rumEvent))
+          .map((e) => RumVitalAppLaunchEventDecoder(e.rumEvent))
+          .where((e) => e.appLaunchMetric == 'ttfd')
+          .toList();
+
+      // Only the first call to `reportAppFullyDisplayed` is reported.
+      expect(ttfdVitals.length, 1);
+      // TTFD is measured from the launch of the app, so it should be at least
+      // as long as the fake loading the scenario performs before reporting it.
+      expect(ttfdVitals[0].duration,
+          greaterThanOrEqualTo(const Duration(milliseconds: 50).inNanoseconds));
+      expect(ttfdVitals[0].duration,
+          lessThan(const Duration(seconds: 60).inNanoseconds));
+    }
+
     // Verify user in all events, except for the first view event
     for (final viewEvent in view1.viewEvents.sublist(1)) {
       verifyUser(viewEvent);
