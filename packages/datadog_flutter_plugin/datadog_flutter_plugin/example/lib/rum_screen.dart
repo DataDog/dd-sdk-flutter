@@ -254,7 +254,7 @@ class _RumScreenState extends State<RumScreen> {
                         padding: const EdgeInsets.all(8),
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.2),
+                          color: Colors.green.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text(

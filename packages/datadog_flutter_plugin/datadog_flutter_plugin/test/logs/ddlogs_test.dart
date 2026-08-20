@@ -405,7 +405,7 @@ void main() {
       var printLog = <String>[];
       void Function() overridePrint(void Function() testFn) => () {
         var spec = ZoneSpecification(
-          print: (_, __, ___, String msg) {
+          print: (_, _, _, String msg) {
             // Add to log instead of printing to stdout
             printLog.add(msg);
           },
