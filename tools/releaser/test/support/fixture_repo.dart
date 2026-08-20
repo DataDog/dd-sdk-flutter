@@ -7,11 +7,12 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 /// A throwaway pubspec.yaml tree, mirroring the shapes that matter in
-/// dd-sdk-flutter's real `packages/` layout (a federated group, several
-/// singletons, an intentionally-unpublished support package, an example
-/// app, and a package whose name merely *looks* federated). Discovery
-/// tests run against this instead of the real tree so they don't depend
-/// on -- or get broken by -- packages/ changing over time.
+/// dd-sdk-flutter's real `packages/` layout (a federated group with all
+/// four real platform implementations, several singletons, an
+/// intentionally-unpublished support package, an example app, and a
+/// package whose name merely *looks* federated). Discovery tests run
+/// against this instead of the real tree so they don't depend on -- or
+/// get broken by -- packages/ changing over time.
 class FixtureRepo {
   final Directory root;
 
@@ -67,6 +68,16 @@ class FixtureRepo {
       '$flutterPluginBase/datadog_flutter_plugin_ios/example',
       name: 'datadog_flutter_plugin_ios_example',
       publishTo: 'none',
+    );
+    repo._writePubspec(
+      '$flutterPluginBase/datadog_flutter_plugin_web',
+      name: 'datadog_flutter_plugin_web',
+      version: '1.0.0',
+    );
+    repo._writePubspec(
+      '$flutterPluginBase/datadog_flutter_plugin_desktop',
+      name: 'datadog_flutter_plugin_desktop',
+      version: '1.0.0',
     );
     repo._writePubspec(
       '$flutterPluginBase/datadog_flutter_plugin',

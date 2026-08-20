@@ -98,13 +98,20 @@ Future<List<PackageGroup>> discoverPackages(String repoRoot) async {
 
     if (pubspec.publishTo == 'none') continue;
 
+    if (pubspec.version == null) {
+      throw StateError(
+        'Package "${pubspec.name}" (${pubspecFile.path}) has no version in '
+        'its pubspec.yaml -- every releasable package must declare one.',
+      );
+    }
+
     final relativePath = p.dirname(
       p.relative(pubspecFile.path, from: repoRoot),
     );
     packages.add(
       DiscoveredPackage(
         name: pubspec.name,
-        version: pubspec.version?.toString() ?? '0.0.0',
+        version: pubspec.version.toString(),
         relativePath: relativePath,
         // Corrected below once every package's group is known.
         role: PackageRole.appFacing,

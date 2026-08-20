@@ -57,6 +57,20 @@ void main() {
     );
   });
 
+  test('mainline with an unknown requested package throws', () async {
+    await expectLater(
+      computeReleasePlan(
+        RunContext(
+          repoRoot: fixture.root.path,
+          trigger: TriggerContext.mainline,
+          currentBranch: 'develop',
+          requestedPackages: ['datadog_dio', 'does_not_exist'],
+        ),
+      ),
+      throwsStateError,
+    );
+  });
+
   test(
     'patch branch resolves the single named package with no grouping',
     () async {
@@ -113,5 +127,21 @@ void main() {
       ),
       throwsStateError,
     );
+  });
+
+  test('patch branch ignores an inherited requestedPackages filter', () async {
+    final plan = await computeReleasePlan(
+      RunContext(
+        repoRoot: fixture.root.path,
+        trigger: TriggerContext.patch,
+        currentBranch: 'release/datadog_dio/v1.1.x',
+        // Simulates a stale/inherited PACKAGES env var that doesn't name
+        // this branch's package -- it must not empty out the plan.
+        requestedPackages: ['some_other_package'],
+      ),
+    );
+
+    expect(plan.packages, hasLength(1));
+    expect(plan.packages.single.package.name, 'datadog_dio');
   });
 }

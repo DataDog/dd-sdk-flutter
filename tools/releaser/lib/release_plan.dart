@@ -142,6 +142,19 @@ List<DiscoveredPackage> _selectPackages(
 
   if (ctx.requestedPackages.isEmpty) return all;
 
+  if (ctx.trigger == TriggerContext.patch) {
+    // A patch run's single package is already implied by currentBranch (see
+    // _resolveGroups) -- an inherited --packages/PACKAGES filter shouldn't
+    // be able to narrow or wipe that out, so it doesn't apply here.
+    return all;
+  }
+
   final requested = ctx.requestedPackages.toSet();
+  final discovered = all.map((pkg) => pkg.name).toSet();
+  final unknown = requested.difference(discovered);
+  if (unknown.isNotEmpty) {
+    throw StateError('Requested package(s) not found: ${unknown.join(', ')}.');
+  }
+
   return all.where((pkg) => requested.contains(pkg.name)).toList();
 }
