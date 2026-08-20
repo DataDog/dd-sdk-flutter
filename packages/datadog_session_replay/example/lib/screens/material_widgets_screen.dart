@@ -101,29 +101,25 @@ class _MaterialWidgetsScreenState extends State<MaterialWidgetsScreen> {
               ),
               _WidgetDisplay(
                 name: 'Radio',
-                builder: (_) => Column(
-                  children: [
-                    Row(
-                      children: [
-                        Radio<String>(
-                          value: 'a',
-                          groupValue: _radioValue,
-                          onChanged: _onRadioChanged,
-                        ),
-                        Text('A'),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Radio<String>(
-                          value: 'b',
-                          groupValue: _radioValue,
-                          onChanged: _onRadioChanged,
-                        ),
-                        Text('B'),
-                      ],
-                    ),
-                  ],
+                builder: (_) => RadioGroup(
+                  onChanged: _onRadioChanged,
+                  groupValue: _radioValue,
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Radio<String>(value: 'a'),
+                          Text('A'),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Radio<String>(value: 'b'),
+                          Text('B'),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
               _WidgetDisplay(

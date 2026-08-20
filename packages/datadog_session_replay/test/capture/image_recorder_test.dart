@@ -826,7 +826,7 @@ void main() {
           ImageRecorder(
             kg,
             imageDownscaling: ImageDownscaling.enabled,
-            downscaleOverride: (_, __, ___) async =>
+            downscaleOverride: (_, _, _) async =>
                 throw StateError('simulated raster failure'),
           ),
         ],
@@ -1270,7 +1270,7 @@ void main() {
             kg6,
             imageDownscaling: ImageDownscaling.enabled,
             circuitBreaker: circuitBreaker,
-            downscaleOverride: (_, __, ___) async {
+            downscaleOverride: (_, _, _) async {
               downscaleCalled = true;
               return smallImage!;
             },

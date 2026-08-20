@@ -1746,6 +1746,16 @@ class DdSdkFfi {
       _dd_logger_config_set_enrich_with_rum_contextPtr
           .asFunction<void Function(ffi.Pointer<dd_logger_config_t>, bool)>();
 
+  /// Attribute key that, when included in the `attributes` passed to a log call, sets
+  /// a custom Error Tracking grouping fingerprint on the resulting log event.
+  late final ffi.Pointer<ffi.Pointer<ffi.Char>>
+  _DD_LOG_ERROR_FINGERPRINT_ATTRIBUTE_KEY = _lookup<ffi.Pointer<ffi.Char>>(
+    'DD_LOG_ERROR_FINGERPRINT_ATTRIBUTE_KEY',
+  );
+
+  ffi.Pointer<ffi.Char> get DD_LOG_ERROR_FINGERPRINT_ATTRIBUTE_KEY =>
+      _DD_LOG_ERROR_FINGERPRINT_ATTRIBUTE_KEY.value;
+
   /// Registers the logging feature with the core of the Datadog SDK. MUST be matched with
   /// a call to dd_logging_destroy().
   ffi.Pointer<dd_logging_t> dd_logging_init(ffi.Pointer<dd_core_t> core) {
@@ -2323,6 +2333,39 @@ class DdSdkFfi {
   late final _dd_rum_config_set_session_sample_rate =
       _dd_rum_config_set_session_sample_ratePtr
           .asFunction<void Function(ffi.Pointer<dd_rum_config_t>, double)>();
+
+  /// Sets whether an anonymous user id should be generated and tracked for the current
+  /// device, persisted across app launches. If true (the default), a randomly-generated
+  /// id is written to a file in the SDK's configured storage directory and is included as
+  /// `usr.anonymous_id` on RUM and Log events.
+  void dd_rum_config_set_track_anonymous_user(
+    ffi.Pointer<dd_rum_config_t> config,
+    bool value,
+  ) {
+    return _dd_rum_config_set_track_anonymous_user(config, value);
+  }
+
+  late final _dd_rum_config_set_track_anonymous_userPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_rum_config_t>, ffi.Bool)
+        >
+      >('dd_rum_config_set_track_anonymous_user');
+  late final _dd_rum_config_set_track_anonymous_user =
+      _dd_rum_config_set_track_anonymous_userPtr
+          .asFunction<void Function(ffi.Pointer<dd_rum_config_t>, bool)>();
+
+  /// Attribute key that, when included in the `attributes` passed to
+  /// dd_rum_add_error(), sets a custom Error Tracking grouping fingerprint on the
+  /// resulting RUM error event.
+  late final ffi.Pointer<ffi.Pointer<ffi.Char>>
+  _DD_RUM_ERROR_CUSTOM_FINGERPRINT_ATTRIBUTE_KEY =
+      _lookup<ffi.Pointer<ffi.Char>>(
+        'DD_RUM_ERROR_CUSTOM_FINGERPRINT_ATTRIBUTE_KEY',
+      );
+
+  ffi.Pointer<ffi.Char> get DD_RUM_ERROR_CUSTOM_FINGERPRINT_ATTRIBUTE_KEY =>
+      _DD_RUM_ERROR_CUSTOM_FINGERPRINT_ATTRIBUTE_KEY.value;
 
   /// Registers the RUM feature with the core of the Datadog SDK. MUST be matched with
   /// a call to dd_rum_destroy().
@@ -3464,6 +3507,9 @@ final class dd_rum_config extends ffi.Struct {
 
   @ffi.Float()
   external double session_sample_rate;
+
+  @ffi.Bool()
+  external bool track_anonymous_user;
 }
 
 /// RUM configuration struct: initialize with dd_rum_config_init(), then call

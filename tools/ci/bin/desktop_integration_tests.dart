@@ -31,6 +31,8 @@ String currentDevice() {
 // lib/integration_scenarios/scenario_runner.dart.
 const _dataStorageService = 'com.datadoghq.flutter.integration';
 
+final packageName = Platform.environment['MELOS_PACKAGE_NAME'] ?? 'desktop';
+
 // Mirrors DesktopPlatform._storagePath in datadog_flutter_plugin_desktop.
 Directory _dataStorageDirectory() {
   if (Platform.isWindows) {
@@ -46,10 +48,22 @@ Directory _dataStorageDirectory() {
 // data can otherwise leak into the next test file's run.
 void _deleteStaleDatadogData() {
   final dir = _dataStorageDirectory();
-  if (dir.existsSync()) {
+  if (!dir.existsSync()) {
+    return;
+  }
+  try {
     dir.deleteSync(recursive: true);
+  } catch (e) {
+    // If a previous test's process hasn't fully released its file handles
+    // yet, this delete can fail. It could mean the previous process outlived
+    // `flutter test`, so surface it loudly instead of silently retrying or
+    // swallowing it.
+    print('[${_timestamp()}] WARNING: failed to delete $dir: $e');
+    rethrow;
   }
 }
+
+String _timestamp() => DateTime.now().toIso8601String();
 
 void main(List<String> arguments) async {
   final parser = ArgParser()
@@ -59,6 +73,11 @@ void main(List<String> arguments) async {
       help:
           'Directory to write a junit XML report per test file to. If '
           'omitted, test output is streamed to the console instead.',
+    )
+    ..addFlag(
+      'verbose',
+      abbr: 'v',
+      help: 'Enable verbose output from flutter test',
     );
   final results = parser.parse(arguments);
   final outputDir = results['output'] as String?;
@@ -73,7 +92,6 @@ void main(List<String> arguments) async {
   }
 
   final device = currentDevice();
-  final packageName = Platform.environment['MELOS_PACKAGE_NAME'] ?? 'desktop';
 
   if (outputDir != null) {
     Directory(outputDir).createSync(recursive: true);
@@ -93,6 +111,13 @@ void main(List<String> arguments) async {
       _deleteStaleDatadogData();
 
       final args = ['test', 'integration_test/$baseName', '-d', device];
+      // Opt-in: captures the flutter tool's own VM-service/test-harness
+      // logs, which is what we need to confirm whether "did not complete"
+      // failures are a lost connection to a still-alive app versus a real
+      // app-side failure. Off by default since it's very noisy.
+      if (results['verbose'] == true) {
+        args.add('--verbose');
+      }
       final clientToken = Platform.environment['DD_CLIENT_TOKEN'];
       if (clientToken != null) {
         args.addAll(['--dart-define', 'DD_CLIENT_TOKEN=$clientToken']);
@@ -102,16 +127,25 @@ void main(List<String> arguments) async {
         args.addAll(['--dart-define', 'DD_APPLICATION_ID=$applicationId']);
       }
 
-      int exitCode;
+      final startTime = DateTime.now();
+
       if (outputDir != null) {
         final outputFile = path.join(
           outputDir,
           '${packageName}_${device}_integration_$testName.xml',
         );
-        exitCode = await _runTestWithJunit([...args, '--machine'], outputFile);
+        exitCode = await _runTestWithJunit(
+          [...args, '--machine'],
+          outputFile,
+          testName,
+        );
       } else {
-        exitCode = await _runTest(args);
+        exitCode = await _runTest(args, testName);
       }
+      final elapsed = DateTime.now().difference(startTime);
+      print(
+        '[${_timestamp()}] $testName attempt finished with exit code $exitCode after ${elapsed.inMilliseconds}ms',
+      );
 
       if (exitCode != 0) {
         print('Command failed');
@@ -121,8 +155,8 @@ void main(List<String> arguments) async {
   }
 }
 
-Future<int> _runTest(List<String> args) async {
-  print('flutter ${args.join(' ')}');
+Future<int> _runTest(List<String> args, String testName) async {
+  print('[${_timestamp()}] flutter ${args.join(' ')}');
   final process = await Process.start(
     'flutter',
     args,
@@ -131,17 +165,25 @@ Future<int> _runTest(List<String> args) async {
   process.stdout
       .transform(utf8.decoder)
       .transform(const LineSplitter())
-      .listen(print);
+      .listen((line) => print('[${_timestamp()}] $line'));
   process.stderr
       .transform(utf8.decoder)
       .transform(const LineSplitter())
-      .listen(print);
+      .listen((line) => print('[${_timestamp()}] $line'));
 
-  return process.exitCode;
+  final exitCode = await process.exitCode;
+
+  return exitCode;
 }
 
-Future<int> _runTestWithJunit(List<String> args, String outputFile) async {
-  print('flutter ${args.join(' ')} | tojunit --output $outputFile');
+Future<int> _runTestWithJunit(
+  List<String> args,
+  String outputFile,
+  String testName,
+) async {
+  print(
+    '[${_timestamp()}] flutter ${args.join(' ')} | tojunit --output $outputFile',
+  );
   final testProcess = await Process.start(
     'flutter',
     args,
@@ -155,7 +197,7 @@ Future<int> _runTestWithJunit(List<String> args, String outputFile) async {
   testProcess.stderr
       .transform(utf8.decoder)
       .transform(const LineSplitter())
-      .listen(print);
+      .listen((line) => print('[${_timestamp()}] $line'));
 
   // If tojunit exits early (e.g. it can't parse the test output) it closes its
   // stdin, and writing to it after that throws - swallow that here so a tojunit
@@ -167,7 +209,9 @@ Future<int> _runTestWithJunit(List<String> args, String outputFile) async {
   await pipeDone;
   final tojunitExitCode = await tojunitProcess.exitCode;
   if (tojunitExitCode != 0) {
-    print('tojunit failed with exit code $tojunitExitCode for $outputFile');
+    print(
+      '[${_timestamp()}] tojunit failed with exit code $tojunitExitCode for $outputFile',
+    );
   }
 
   return testExitCode;
