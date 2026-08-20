@@ -12,7 +12,42 @@ import 'package:version/version.dart';
 import 'command.dart';
 import 'helpers.dart';
 
-enum VersionBumpType { major, minor, rev, prerelease }
+enum VersionBumpType {
+  patch(severity: 0),
+  minor(severity: 1),
+  major(severity: 2),
+  // Not part of the major/minor/patch severity ordering below -- assigned
+  // directly from a prerelease label/counter, never derived by comparing
+  // against another bump level.
+  prerelease(severity: -1);
+
+  /// Where this bump ranks against another major/minor/patch bump (higher
+  /// wins). Meaningless for [prerelease], which is never compared this way.
+  final int severity;
+
+  const VersionBumpType({required this.severity});
+
+  /// Parses a `BUMP_TYPE` per-run override -- major/minor/patch only, or
+  /// null for "no override given" (a null or empty [raw]). `prerelease`
+  /// isn't a valid override; that path is driven by `PRERELEASE_LABEL` on
+  /// a pre-release branch instead. Throws rather than silently falling
+  /// back on anything unrecognized (a typo'd `BUMP_TYPE` used to silently
+  /// become a patch bump).
+  static VersionBumpType? parseOverride(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+
+    switch (raw) {
+      case 'major':
+        return VersionBumpType.major;
+      case 'minor':
+        return VersionBumpType.minor;
+      case 'patch':
+        return VersionBumpType.patch;
+      default:
+        throw StateError('BUMP_TYPE "$raw" is not one of major, minor, patch.');
+    }
+  }
+}
 
 class UpdateVersionsCommand extends Command {
   @override
@@ -20,13 +55,18 @@ class UpdateVersionsCommand extends Command {
     for (final package in args.packages) {
       final packageRoot = getPackageRoot(args, package);
       if (!await updateVersions(
-          packageRoot, package.version, logger, args.dryRun)) {
+        packageRoot,
+        package.version,
+        logger,
+        args.dryRun,
+      )) {
         return false;
       }
     }
 
-    final corePackage = args.packages
-        .firstWhereOrNull((e) => e.name == 'datadog_flutter_plugin');
+    final corePackage = args.packages.firstWhereOrNull(
+      (e) => e.name == 'datadog_flutter_plugin',
+    );
 
     if (corePackage != null) {
       if (!await _updateReadmeVersions(args, corePackage, logger)) {
@@ -60,7 +100,7 @@ class BumpVersionCommand extends Command {
         case VersionBumpType.minor:
           newVersion = version.incrementMinor();
           break;
-        case VersionBumpType.rev:
+        case VersionBumpType.patch:
           newVersion = version.incrementPatch();
           break;
         case VersionBumpType.prerelease:
@@ -68,15 +108,20 @@ class BumpVersionCommand extends Command {
             newVersion = version.incrementPreRelease();
           } catch (e) {
             logger.shout(
-                '❌ Failed to increment the pre-release version of $version. Is it not a pre-release?');
+              '❌ Failed to increment the pre-release version of $version. Is it not a pre-release?',
+            );
             return false;
           }
           break;
       }
 
       logger.info('🔀 Bumping version to $newVersion');
-      success &= await updateVersions(getPackageRoot(args, package),
-          newVersion.toString(), logger, args.dryRun);
+      success &= await updateVersions(
+        getPackageRoot(args, package),
+        newVersion.toString(),
+        logger,
+        args.dryRun,
+      );
     }
     return success;
   }
@@ -85,7 +130,11 @@ class BumpVersionCommand extends Command {
 final _versionCapture = RegExp(r'^version\: (?<version>.*)');
 
 Future<bool> updateVersions(
-    String packageRoot, String version, Logger logger, bool dryRun) async {
+  String packageRoot,
+  String version,
+  Logger logger,
+  bool dryRun,
+) async {
   if (!await _updatePackagePubspec(packageRoot, version, logger, dryRun)) {
     return false;
   }
@@ -96,7 +145,11 @@ Future<bool> updateVersions(
 }
 
 Future<bool> _updatePackagePubspec(
-    String packageRoot, String version, Logger logger, bool dryRun) async {
+  String packageRoot,
+  String version,
+  Logger logger,
+  bool dryRun,
+) async {
   final pubspecFile = File(path.join(packageRoot, 'pubspec.yaml'));
   if (!pubspecFile.existsSync()) {
     logger.shout('⁉️ Could not find pubspec.yaml at ${pubspecFile.path}');
@@ -107,8 +160,9 @@ Future<bool> _updatePackagePubspec(
     final match = _versionCapture.firstMatch(element);
     if (match != null) {
       final oldVersion = match.namedGroup('version');
-      logger
-          .info(' - 🔀 Replacing version $oldVersion with $version in pubspec');
+      logger.info(
+        ' - 🔀 Replacing version $oldVersion with $version in pubspec',
+      );
       element = 'version: $version';
     }
     return element;
@@ -118,7 +172,11 @@ Future<bool> _updatePackagePubspec(
 }
 
 Future<bool> _updateVersionDartFile(
-    String packageRoot, String version, Logger logger, bool dryRun) async {
+  String packageRoot,
+  String version,
+  Logger logger,
+  bool dryRun,
+) async {
   final versionFile = File(path.join(packageRoot, 'lib/src/version.dart'));
   if (!versionFile.existsSync()) {
     logger.shout('⁉️ Could not find version.dart at ${versionFile.path}');
@@ -137,7 +195,10 @@ Future<bool> _updateVersionDartFile(
 }
 
 Future<bool> _updateReadmeVersions(
-    CommandArguments args, PackageRelease package, Logger logger) async {
+  CommandArguments args,
+  PackageRelease package,
+  Logger logger,
+) async {
   final packageRoot = getPackageRoot(args, package);
   final changelogFile = File(path.join(packageRoot, 'README.md'));
   if (!changelogFile.existsSync()) {
@@ -152,7 +213,8 @@ Future<bool> _updateReadmeVersions(
         inVersionTable = false;
 
         // Write the new version table:
-        line = '''[//]: # (SDK Table)
+        line =
+            '''[//]: # (SDK Table)
 
 | iOS SDK | Android SDK | Browser SDK |
 | :-----: | :---------: | :---------: |
@@ -176,20 +238,26 @@ Future<bool> _updateReadmeVersions(
 }
 
 Future<bool> _updateNativeSDKVersions(
-    CommandArguments args, PackageRelease package, Logger logger) async {
+  CommandArguments args,
+  PackageRelease package,
+  Logger logger,
+) async {
   final packageRoot = getPackageRoot(args, package);
-  final nativeSDKVersionsFile =
-      File(path.join(packageRoot, 'NATIVE_SDK_VERSIONS.md'));
+  final nativeSDKVersionsFile = File(
+    path.join(packageRoot, 'NATIVE_SDK_VERSIONS.md'),
+  );
   final newVersionEntry =
       '| ${package.version} | ${args.iOSRelease} | ${args.androidRelease} |';
   final header = '| Flutter | iOS SDK | Android SDK |';
   final separator = '|---------|---------|-------------|';
 
   if (!nativeSDKVersionsFile.existsSync()) {
-    logger
-        .warning('⚠️ NATIVE_SDK_VERSIONS.md does not exist, creating it now.');
-    await nativeSDKVersionsFile
-        .writeAsString('$header\n$separator\n$newVersionEntry');
+    logger.warning(
+      '⚠️ NATIVE_SDK_VERSIONS.md does not exist, creating it now.',
+    );
+    await nativeSDKVersionsFile.writeAsString(
+      '$header\n$separator\n$newVersionEntry',
+    );
     return true;
   }
 
@@ -200,7 +268,8 @@ Future<bool> _updateNativeSDKVersions(
     final parts = line.split('|').map((s) => s.trim()).toList();
     if (parts.length > 1 && parts[1] == package.version) {
       logger.info(
-          '✅ Version ${package.version} already exists in NATIVE_SDK_VERSIONS.md, skipping.');
+        '✅ Version ${package.version} already exists in NATIVE_SDK_VERSIONS.md, skipping.',
+      );
       return true;
     }
   }

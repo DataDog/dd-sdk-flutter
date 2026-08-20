@@ -4,13 +4,15 @@
 
 import 'dart:io';
 
-import 'package:git/git.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
-import 'package:version/version.dart';
 
 import 'command.dart';
+import 'conventional_commits.dart';
+import 'git_history.dart';
 import 'helpers.dart';
+
+final _githubIssueRefPattern = RegExp(r'^#(?<issue_number>\d+)$');
 
 // Maps common scope abbreviations that are added to conventional commits to more human
 // readable versions.
@@ -31,24 +33,34 @@ class GenerateChangelogCommand extends Command {
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
     for (final package in args.packages) {
-      final lastReleaseSha = await _findLastReleaseSha(logger, args, package);
-      if (lastReleaseSha == null) {
+      final lastReleaseTag = await findLastReleaseTag(
+        args.gitDir,
+        package.name,
+      );
+      if (lastReleaseTag == null) {
         Logger.root.shout(
-            '⚠️ Could not find last release! Hopefully this is a new package!.');
+          '⚠️ Could not find last release! Hopefully this is a new package!.',
+        );
         Logger.root.shout(
-            '‼️ Changelogs cannot be generated for an initial release! Make sure you have what you need in there.');
+          '‼️ Changelogs cannot be generated for an initial release! Make sure you have what you need in there.',
+        );
       } else {
-        final commits =
-            await _getCommits(args, package, '$lastReleaseSha..HEAD');
+        final commits = await commitMessagesSince(
+          args.gitDir,
+          pathspec: getPackageRoot(args, package),
+          sinceSha: lastReleaseTag.objectSha,
+        );
 
         final changelogItems = _getChangelogItems(commits);
         logger.fine(
-            'Found ${changelogItems.length} changelog items for ${package.name} version ${package.version}');
+          'Found ${changelogItems.length} changelog items for ${package.name} version ${package.version}',
+        );
 
         final versionChangelog = changelogItems.map((e) => '* $e').join('\n');
 
-        final file =
-            File(path.join(getPackageRoot(args, package), 'CHANGELOG.md'));
+        final file = File(
+          path.join(getPackageRoot(args, package), 'CHANGELOG.md'),
+        );
         if (!file.existsSync()) {
           Logger.root.shout('❌ Could not find file CHANGELOG.md for package.');
           return false;
@@ -62,7 +74,8 @@ class GenerateChangelogCommand extends Command {
             String? oldLine = line;
             if (line == '## Unreleased') {
               logger.info(
-                  'ℹ️ ## Unreleased headers are no longer needed. Removing.');
+                'ℹ️ ## Unreleased headers are no longer needed. Removing.',
+              );
               oldLine = null;
             }
 
@@ -78,9 +91,11 @@ class GenerateChangelogCommand extends Command {
     }
 
     print(
-        'Verify the CHANGELOG.md changes for all packages and add changes from iOS and Android Native SDK updates.');
+      'Verify the CHANGELOG.md changes for all packages and add changes from iOS and Android Native SDK updates.',
+    );
     print(
-        'For reference iOS SDK will be updated to ${args.iOSRelease} and Android SDK will be updated to ${args.androidRelease}.');
+      'For reference iOS SDK will be updated to ${args.iOSRelease} and Android SDK will be updated to ${args.androidRelease}.',
+    );
 
     return _waitForConfirmation(logger);
   }
@@ -98,121 +113,55 @@ class GenerateChangelogCommand extends Command {
         return false;
       } else {
         logger.shout(
-            '❓ Not sure what you meant by that... stopping just in case.');
+          '❓ Not sure what you meant by that... stopping just in case.',
+        );
         return false;
       }
     }
 
     return true;
   }
-
-  Future<String?> _findLastReleaseSha(
-      Logger logger, CommandArguments args, PackageRelease package) async {
-    final packageTags = await args.gitDir
-        .tags()
-        .where((t) => t.tag.startsWith('${package.name}/'))
-        .toList();
-
-    Version? _getVersion(Tag tag) {
-      Version? v;
-      try {
-        final versionString = tag.tag.split('/').last.replaceFirst('v', '');
-        v = Version.parse(versionString);
-      } catch (_) {
-        // Nothing to do
-      }
-      return v;
-    }
-
-    packageTags.sort((a, b) {
-      Version? versionA = _getVersion(a);
-      Version? versionB = _getVersion(b);
-      if (versionA == null) return -1;
-      if (versionB == null) return 1;
-
-      return versionA.compareTo(versionB);
-    });
-
-    if (packageTags.isEmpty) return null;
-
-    final lastTag = packageTags.last;
-
-    logger.fine('Found tag ${lastTag.tag} with sha ${lastTag.objectSha}');
-
-    return packageTags.last.objectSha;
-  }
-
-  Future<List<String>> _getCommits(
-      CommandArguments args, PackageRelease package, String commitRange) async {
-    final packageRoot = getPackageRoot(args, package);
-    final result = await args.gitDir.runCommand([
-      '--no-pager',
-      'log',
-      commitRange,
-      '--pretty=format:%H|||%an <%aE>|||%ai|||%B||||',
-      '--',
-      packageRoot
-    ]);
-
-    final rawCommits = (result.stdout as String)
-        .split('||||\n')
-        .where((e) => e.trim().isNotEmpty)
-        .toList();
-
-    return rawCommits.map((c) {
-      final parts = c.split('|||');
-      return parts[3].trim();
-    }).toList();
-  }
 }
 
 List<String> _getChangelogItems(List<String> commitMessages) {
-  RegExp conventionalCommitPattern =
-      RegExp(r'(?<type>\w*)(\((?<scope>.*)\))?(?<breaking>!)?: (?<rest>.*)');
-  RegExp githubIssueMention = RegExp(r'\#(?<issue_number>\d+)');
-
   final items = <String>[];
   for (final commitMessage in commitMessages) {
-    final lines = commitMessage.split('\n');
-    final summaryLine = lines[0];
-    final match = conventionalCommitPattern.firstMatch(summaryLine);
-    if (match != null) {
-      final type = match.namedGroup('type');
-      if (type == 'fix' || type == 'feat') {
-        String changelogItem = '';
-        if (match.namedGroup('scope') case final scopes?) {
-          final scopeList = scopes.split(',').map((e) {
-            final scope = e.trim();
-            if (scopeAbbreviationMap[scope] case final scope?) {
-              return scope;
-            }
+    final commit = ConventionalCommit.parse(commitMessage);
+    if (commit == null) continue;
+
+    if (commit.type == 'fix' || commit.type == 'feat') {
+      String changelogItem = '';
+      if (commit.scope case final scopes?) {
+        final scopeList = scopes.split(',').map((e) {
+          final scope = e.trim();
+          if (scopeAbbreviationMap[scope] case final scope?) {
             return scope;
-          });
-          changelogItem = '[${scopeList.join(', ')}] ';
-        }
-
-        changelogItem += match.namedGroup('rest')!;
-        if (!changelogItem.endsWith('.')) {
-          // Commits frequently forget they're sentences.
-          changelogItem += '.';
-        }
-
-        // Check to see if there are any Github issues referenced
-        final refLines = lines.where((l) => l.startsWith('refs:'));
-        var githubRefs = <String>[];
-        for (var refLine in refLines) {
-          for (var match in githubIssueMention.allMatches(refLine)) {
-            githubRefs.add(match.namedGroup('issue_number')!);
           }
-        }
-        if (githubRefs.isNotEmpty) {
-          final seeStrings = githubRefs
-              .map((r) => '[#$r](${GenerateChangelogCommand.issuesLink}$r)');
-          changelogItem += ' See ${seeStrings.join(' ')}';
-        }
-
-        items.add(changelogItem);
+          return scope;
+        });
+        changelogItem = '[${scopeList.join(', ')}] ';
       }
+
+      changelogItem += commit.description;
+      if (!changelogItem.endsWith('.')) {
+        // Commits frequently forget they're sentences.
+        changelogItem += '.';
+      }
+
+      // refs: can carry more than GitHub issues (JIRA tickets, etc.) --
+      // only build links for the ones that look like a GitHub issue.
+      final githubIssueNumbers = commit.refs
+          .map((r) => _githubIssueRefPattern.firstMatch(r))
+          .nonNulls
+          .map((m) => m.namedGroup('issue_number')!);
+      if (githubIssueNumbers.isNotEmpty) {
+        final seeStrings = githubIssueNumbers.map(
+          (r) => '[#$r](${GenerateChangelogCommand.issuesLink}$r)',
+        );
+        changelogItem += ' See ${seeStrings.join(' ')}';
+      }
+
+      items.add(changelogItem);
     }
   }
 

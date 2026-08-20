@@ -4,21 +4,26 @@
 
 import 'dart:io';
 
+import 'package:git/git.dart';
 import 'package:path/path.dart' as p;
 
 /// A throwaway pubspec.yaml tree, mirroring the shapes that matter in
-/// dd-sdk-flutter's real `packages/` layout (a federated group with all
-/// four real platform implementations, several singletons, an
-/// intentionally-unpublished support package, an example app, and a
-/// package whose name merely *looks* federated). Discovery tests run
-/// against this instead of the real tree so they don't depend on -- or
-/// get broken by -- packages/ changing over time.
+/// dd-sdk-flutter's real `packages/` layout (a federated group, several
+/// singletons, an intentionally-unpublished support package, an example
+/// app, and a package whose name merely *looks* federated). Discovery
+/// tests run against this instead of the real tree so they don't depend
+/// on -- or get broken by -- packages/ changing over time.
+///
+/// Also a real git repo (unless [withGit] is false) with an initial commit,
+/// so release-plan tests can layer real commits/tags on top of this same
+/// layout instead of needing a second, separately-maintained fixture.
 class FixtureRepo {
   final Directory root;
+  GitDir? _gitDir;
 
   FixtureRepo._(this.root);
 
-  static Future<FixtureRepo> create() async {
+  static Future<FixtureRepo> create({bool withGit = true}) async {
     final root = await Directory.systemTemp.createTemp('releaser_test_');
     final repo = FixtureRepo._(root);
 
@@ -85,8 +90,42 @@ class FixtureRepo {
       version: '4.0.0',
     );
 
+    if (withGit) {
+      await repo._run(['init', '-q', '-b', 'main']);
+      await repo._run(['config', 'user.email', 'releaser-test@example.com']);
+      await repo._run(['config', 'user.name', 'Releaser Test']);
+      await repo.commit('chore: Initial fixture layout');
+    }
+
     return repo;
   }
+
+  /// Writes (or overwrites) a file at [relativePath], creating parent
+  /// directories as needed. Does not commit -- call [commit] separately.
+  void writeFile(String relativePath, String contents) {
+    final file = File(p.join(root.path, relativePath));
+    file.parent.createSync(recursive: true);
+    file.writeAsStringSync(contents);
+  }
+
+  /// Stages everything and commits. [body] lines (e.g. a `BREAKING CHANGE:`
+  /// footer) are appended after a blank line, matching real commit shape.
+  Future<void> commit(String subject, {List<String> body = const []}) async {
+    await _run(['add', '.']);
+    final message = body.isEmpty ? subject : '$subject\n\n${body.join('\n')}';
+    await _run(['commit', '-q', '--allow-empty', '-m', message]);
+  }
+
+  // Annotated, not lightweight -- this machine's git config signs tags,
+  // which requires a message (`git tag <name>` alone fails with
+  // "no tag message?").
+  Future<void> tag(String name) => _run(['tag', '-a', '-m', name, name]);
+
+  Future<GitDir> get gitDir async =>
+      _gitDir ??= await GitDir.fromExisting(root.path);
+
+  Future<ProcessResult> _run(List<String> args) =>
+      Process.run('git', args, workingDirectory: root.path);
 
   void _writePubspec(
     String relativeDir, {

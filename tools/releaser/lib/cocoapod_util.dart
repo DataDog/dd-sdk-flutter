@@ -6,13 +6,11 @@ import 'package:path/path.dart' as path;
 
 import 'command.dart';
 import 'helpers.dart';
+import 'native_sdk.dart';
 import 'package_list.dart';
 
 final overridesStartPattern = RegExp(r'\s+# Datadog Pod Overrides');
 final overridesEndPattern = RegExp(r'\s+# End Datadog Pod Overrides');
-final specDependencyPattern = RegExp(
-  r"\s+s\.dependency\s+'(?<dependency>Datadog.+)', '.+",
-);
 
 class PinCocoapodsVersionCommand extends Command {
   @override
@@ -22,8 +20,9 @@ class PinCocoapodsVersionCommand extends Command {
     }
 
     // Other packages can keep looser version constraints
-    final pinedPackage = args.packages
-        .firstWhereOrNull((e) => e.name == 'datadog_flutter_plugin');
+    final pinedPackage = args.packages.firstWhereOrNull(
+      (e) => e.name == 'datadog_flutter_plugin',
+    );
     if (pinedPackage != null) {
       if (!await _pinPodspecVersion(args, pinedPackage, logger)) {
         return false;
@@ -64,14 +63,14 @@ class PinCocoapodsVersionCommand extends Command {
   }
 
   Future<bool> _pinPodspecVersion(
-      CommandArguments args, PackageRelease package, Logger logger) async {
+    CommandArguments args,
+    PackageRelease package,
+    Logger logger,
+  ) async {
     final podspecLocation = 'ios/${package.name}.podspec';
 
     final file = File(
-      path.join(
-        getPackageRoot(args, package),
-        podspecLocation,
-      ),
+      path.join(getPackageRoot(args, package), podspecLocation),
     );
 
     if (!file.existsSync()) {
@@ -83,7 +82,7 @@ class PinCocoapodsVersionCommand extends Command {
 
     logger.info('ℹ️ Setting the iOS Pod Dependency to ${args.iOSRelease}');
     await transformFile(file, logger, args.dryRun, (element) {
-      final match = specDependencyPattern.firstMatch(element);
+      final match = iosPodspecDependencyPattern.firstMatch(element);
       if (match != null) {
         element =
             "  s.dependency '${match.namedGroup('dependency')}', '${args.iOSRelease}'";

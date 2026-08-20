@@ -57,7 +57,7 @@ class GithubCommandWrapper {
         '--repo',
         repoSlug,
         '--json',
-        'name,isLatest,tagName'
+        'name,isLatest,tagName',
       ],
       workingDirectory: cwd,
       stdout: (line) => buffer.write(line),
@@ -79,13 +79,46 @@ class GithubCommandWrapper {
   }
 
   Future<GHRelease?> getReleaseByTagName(
-      Logger logger, String repoSlug, String tagName) async {
+    Logger logger,
+    String repoSlug,
+    String tagName,
+  ) async {
     final releases = await fetchReleases(logger, repoSlug);
     return releases.firstWhereOrNull((e) => e.tagName == tagName);
   }
 
-  Future<void> createRelease(Logger logger, String tag, String name,
-      String changelog, bool isPrerelease) async {
+  /// Resolves [ref] (a tag or branch name) to the full commit SHA it
+  /// currently points to, for pinning native SDKs whose config has no
+  /// dedicated "verify this tag against this commit" field (CMake's
+  /// `FetchContent_Declare`, notably) -- the SHA is what's actually pinned.
+  Future<String> getCommitSha(
+    Logger logger,
+    String repoSlug,
+    String ref,
+  ) async {
+    final buffer = StringBuffer();
+    final exitCode = await runProcess(
+      'gh',
+      ['api', 'repos/$repoSlug/commits/$ref', '--jq', '.sha'],
+      workingDirectory: cwd,
+      stdout: (line) => buffer.write(line),
+      stderr: (line) => logger.shout(line),
+    );
+
+    if (exitCode != 0) {
+      throw Exception('gh returned exit code $exitCode.');
+    }
+
+    return buffer.toString().trim();
+  }
+
+  Future<void> createRelease(
+    Logger logger,
+    String tag,
+    String name,
+    String changelog,
+    bool isPrerelease,
+  ) async {
     final buffer = StringBuffer();
     final exitCode = await runProcess(
       'gh',
@@ -98,7 +131,7 @@ class GithubCommandWrapper {
         '--notes',
         changelog,
         '--draft',
-        if (isPrerelease) '--prerelease'
+        if (isPrerelease) '--prerelease',
       ],
       workingDirectory: cwd,
       stdout: (line) => buffer.write(line),

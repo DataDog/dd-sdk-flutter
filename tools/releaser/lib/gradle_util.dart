@@ -5,12 +5,10 @@ import 'package:path/path.dart' as path;
 
 import 'command.dart';
 import 'helpers.dart';
+import 'native_sdk.dart';
 import 'package_list.dart';
 
 class UpdateGradleFilesCommand extends Command {
-  static const versionPrefix = 'ext.datadog_version';
-  final versionRegex = RegExp('$versionPrefix = "(.*)"');
-
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
     if (!await _updateGradleFiles(args, logger)) {
@@ -36,12 +34,12 @@ class UpdateGradleFilesCommand extends Command {
       await transformFile(file, logger, args.dryRun, (line) {
         // For the datadog_flutter_plugin, use a tighter constraint
         if (file.path.contains('datadog_flutter_plugin')) {
-          final versionMatch = versionRegex.firstMatch(line);
+          final versionMatch = androidGradleVersionPattern.firstMatch(line);
           if (versionMatch != null) {
-            final oldVersion = versionMatch.group(1);
+            final oldVersion = versionMatch.namedGroup('version');
             line = line.replaceFirst(
-              '$versionPrefix = "$oldVersion"',
-              '$versionPrefix = "${args.androidRelease}"',
+              '$androidGradleVersionPrefix = "$oldVersion"',
+              '$androidGradleVersionPrefix = "${args.androidRelease}"',
             );
           }
         }
