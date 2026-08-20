@@ -31,7 +31,7 @@ String currentDevice() {
 // lib/integration_scenarios/scenario_runner.dart.
 const _dataStorageService = 'com.datadoghq.flutter.integration';
 
-const _appExecutableName = 'datadog_integration_test_app';
+final packageName = Platform.environment['MELOS_PACKAGE_NAME'] ?? 'desktop';
 
 // Mirrors DesktopPlatform._storagePath in datadog_flutter_plugin_desktop.
 Directory _dataStorageDirectory() {
@@ -108,54 +108,44 @@ void main(List<String> arguments) async {
       }
       final testName = path.basenameWithoutExtension(baseName);
 
-      // Desktop `flutter test` occasionally fails with a "did not complete"
-      // / "No tests were found" combo caused by a Flutter/Dart test-harness
-      // race (the local package:test harness channel closing while the app
-      // is still alive and healthy, so retry once before treating it as a
-      // real failure.
-      const maxAttempts = 2;
-      var exitCode = 1;
-      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-        if (attempt > 1) {
-          await Future.delayed(Duration(seconds: 2));
-          print(
-            '[${_timestamp()}] retrying $testName in 2 seconds (attempt $attempt/$maxAttempts) '
-            'after a possible test-harness flake',
-          );
-        }
+      _deleteStaleDatadogData();
 
-        _deleteStaleDatadogData();
-
-        final args = ['test', 'integration_test/$baseName', '-d', device];
-        // Opt-in: captures the flutter tool's own VM-service/test-harness
-        // logs, which is what we need to confirm whether "did not complete"
-        // failures are a lost connection to a still-alive app versus a real
-        // app-side failure. Off by default since it's very noisy.
-        if (results['verbose'] == true) {
-          args.add('--verbose');
-        }
-        final clientToken = Platform.environment['DD_CLIENT_TOKEN'];
-        if (clientToken != null) {
-          args.addAll(['--dart-define', 'DD_CLIENT_TOKEN=$clientToken']);
-        }
-        final applicationId = Platform.environment['DD_APPLICATION_ID'];
-        if (applicationId != null) {
-          args.addAll(['--dart-define', 'DD_APPLICATION_ID=$applicationId']);
-        }
-
-        final startTime = DateTime.now();
-        // TODO: tojunit was swallowing flutter test's stdout (including
-        // --verbose trace output), so junit reporting is disabled for now
-        // while we diagnose the isolate_tracking_test CI failure.
-        exitCode = await _runTest(args, testName);
-        final elapsed = DateTime.now().difference(startTime);
-        print(
-          '[${_timestamp()}] $testName attempt $attempt finished with exit '
-          'code $exitCode after ${elapsed.inMilliseconds}ms',
-        );
-
-        if (exitCode == 0) break;
+      final args = ['test', 'integration_test/$baseName', '-d', device];
+      // Opt-in: captures the flutter tool's own VM-service/test-harness
+      // logs, which is what we need to confirm whether "did not complete"
+      // failures are a lost connection to a still-alive app versus a real
+      // app-side failure. Off by default since it's very noisy.
+      if (results['verbose'] == true) {
+        args.add('--verbose');
       }
+      final clientToken = Platform.environment['DD_CLIENT_TOKEN'];
+      if (clientToken != null) {
+        args.addAll(['--dart-define', 'DD_CLIENT_TOKEN=$clientToken']);
+      }
+      final applicationId = Platform.environment['DD_APPLICATION_ID'];
+      if (applicationId != null) {
+        args.addAll(['--dart-define', 'DD_APPLICATION_ID=$applicationId']);
+      }
+
+      final startTime = DateTime.now();
+
+      if (outputDir != null) {
+        final outputFile = path.join(
+          outputDir,
+          '${packageName}_${device}_integration_$testName.xml',
+        );
+        exitCode = await _runTestWithJunit(
+          [...args, '--machine'],
+          outputFile,
+          testName,
+        );
+      } else {
+        exitCode = await _runTest(args, testName);
+      }
+      final elapsed = DateTime.now().difference(startTime);
+      print(
+        '[${_timestamp()}] $testName attempt finished with exit code $exitCode after ${elapsed.inMilliseconds}ms',
+      );
 
       if (exitCode != 0) {
         print('Command failed');
