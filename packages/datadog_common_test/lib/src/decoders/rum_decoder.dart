@@ -380,7 +380,8 @@ class RumVitalAppLaunchEventDecoder extends RumEventDecoder {
 
   RumViewInfoDecoder get view => RumViewInfoDecoder(rumEvent['view']);
 
-  String get appLaunchMetric => rumEvent['vital']['app_launch_metric'] as String;
+  String get appLaunchMetric =>
+      rumEvent['vital']['app_launch_metric'] as String;
 
   /// Duration of the app launch metric, in nanoseconds.
   int get duration => (rumEvent['vital']['duration'] as num).toInt();

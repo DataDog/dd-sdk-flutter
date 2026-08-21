@@ -189,8 +189,13 @@ void main() {
 
     // `reportAppFullyDisplayed` reports TTFD as an app launch vital rather than
     // as a property of the view it was called from, so look for it across the
-    // whole session. It is not supported by the Browser SDK.
-    if (!kIsWeb) {
+    // whole session.
+    //
+    // This is only checked on iOS. The Browser SDK has no equivalent API, and
+    // the Android SDK only sends TTFD once it has computed TTID for the startup
+    // scenario, which does not happen in this app -- it sends no app launch
+    // vitals at all, so there is nothing to assert on there yet.
+    if (!kIsWeb && Platform.isIOS) {
       final ttfdVitals = rumLog
           .where((e) =>
               e.eventType == 'vital' &&
