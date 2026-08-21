@@ -10,7 +10,7 @@ import XCTest
 import Flutter
 import DatadogInternal
 @testable import DatadogCore
-@testable import DatadogRUM
+@_spi(Experimental) @testable import DatadogRUM
 @testable import datadog_flutter_plugin
 
 enum ResultStatus: EquatableInTests {
@@ -259,53 +259,48 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(config?.trackBackgroundEvents, trackBackgroundEvents)
     }
 
-    func testRumConfiguration_WithoutTimeseries_DefaultsToDisabled() {
+    func testRumConfiguration_WithoutTimeseries_IsNotSet() {
         let encoded: [String: Any?] = [
             "applicationId": "fake-application-id"
         ]
 
         let config = RUM.Configuration.init(fromEncoded: encoded)
-        XCTAssertEqual(config?.enableTimeseries, false)
+        XCTAssertNil(config?.timeseries)
     }
 
-    func testRumConfiguration_WithTimeseriesEnabled_IsSetCorrectly() {
-        let bufferSize = Int.mockRandom(min: 1, max: 500)
+    func testRumConfiguration_WithTimeseriesCollectTypes_IsSetCorrectly() {
         let encoded: [String: Any?] = [
             "applicationId": "fake-application-id",
             "timeseries": [
-                "enabled": true,
-                "bufferSize": bufferSize
+                "collectTypes": ["DdTimeseriesType.memory", "DdTimeseriesType.cpu"]
             ]
         ]
 
         let config = RUM.Configuration.init(fromEncoded: encoded)
-        XCTAssertEqual(config?.enableTimeseries, true)
-        XCTAssertEqual(config?.timeseriesBatchSize, bufferSize)
+        XCTAssertEqual(config?.timeseries?.collectTypes, [.memory, .cpu])
     }
 
-    func testRumConfiguration_WithTimeseriesEnabledAndNoBufferSize_UsesDefaultBatchSize() {
+    func testRumConfiguration_WithTimeseriesSingleCollectType_IsSetCorrectly() {
         let encoded: [String: Any?] = [
             "applicationId": "fake-application-id",
             "timeseries": [
-                "enabled": true
+                "collectTypes": ["DdTimeseriesType.memory"]
             ]
         ]
 
         let config = RUM.Configuration.init(fromEncoded: encoded)
-        XCTAssertEqual(config?.enableTimeseries, true)
-        XCTAssertEqual(config?.timeseriesBatchSize, RUM.Configuration.defaultTimeseriesBatchSize)
+        XCTAssertEqual(config?.timeseries?.collectTypes, [.memory])
     }
 
-    func testRumConfiguration_WithTimeseriesExplicitlyDisabled_IsSetCorrectly() {
+    func testRumConfiguration_WithTimeseriesAndNoCollectTypes_CollectsAllTypes() {
         let encoded: [String: Any?] = [
             "applicationId": "fake-application-id",
-            "timeseries": [
-                "enabled": false
-            ]
+            "timeseries": [String: Any?]()
         ]
 
         let config = RUM.Configuration.init(fromEncoded: encoded)
-        XCTAssertEqual(config?.enableTimeseries, false)
+        XCTAssertNotNil(config?.timeseries)
+        XCTAssertNil(config?.timeseries?.collectTypes)
     }
 
     func testRepeatEnable_FromMethodChannelSameOptions_DoesNothing() {

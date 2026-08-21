@@ -55,10 +55,11 @@ public extension RUM.Configuration {
         }
 
         if let timeseriesDict = encoded["timeseries"] as? [String: Any?] {
-            enableTimeseries = (timeseriesDict["enabled"] as? NSNumber)?.boolValue ?? false
-            if let bufferSize = (timeseriesDict["bufferSize"] as? NSNumber)?.intValue {
-                timeseriesBatchSize = bufferSize
+            var timeseriesConfig = RUM.Configuration.Timeseries()
+            if let collectTypesArg = timeseriesDict["collectTypes"] as? [String] {
+                timeseriesConfig.collectTypes = collectTypesArg.compactMap { RUM.Configuration.TimeseriesType.parseFromFlutter($0) }
             }
+            timeseries = timeseriesConfig
         }
     }
 }
@@ -991,6 +992,17 @@ public extension RUM.Configuration.VitalsFrequency {
         case "VitalsFrequency.frequent": return .frequent
         case "VitalsFrequency.average": return .average
         case "VitalsFrequency.rare": return .rare
+        default: return nil
+        }
+    }
+}
+
+@_spi(Experimental)
+public extension RUM.Configuration.TimeseriesType {
+    static func parseFromFlutter(_ value: String) -> RUM.Configuration.TimeseriesType? {
+        switch value {
+        case "DdTimeseriesType.memory": return .memory
+        case "DdTimeseriesType.cpu": return .cpu
         default: return nil
         }
     }
