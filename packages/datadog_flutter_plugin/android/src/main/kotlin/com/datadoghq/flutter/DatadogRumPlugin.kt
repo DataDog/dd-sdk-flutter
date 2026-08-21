@@ -27,6 +27,7 @@ import com.datadog.android.rum.configuration.VitalsUpdateFrequency
 import com.datadog.android.rum.featureoperations.FailureReason
 import com.datadog.android.rum.metric.networksettled.TimeBasedInitialResourceIdentifier
 import com.datadog.android.rum.timeseries.TimeseriesConfiguration
+import com.datadog.android.rum.timeseries.TimeseriesType
 import com.datadog.android.rum.tracking.ViewTrackingStrategy
 import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -614,17 +615,12 @@ fun RumConfiguration.Builder.withEncoded(encoded: Map<String, Any?>): RumConfigu
         builder = _RumInternalProxy.setAdditionalConfiguration(builder, it)
     }
     (encoded["timeseries"] as? Map<String, Any?>)?.let { timeseries ->
-        val enabled = timeseries["enabled"] as? Boolean ?: false
-        val timeseriesConfiguration = if (enabled) {
-            var timeseriesBuilder = TimeseriesConfiguration.Builder()
-            (timeseries["bufferSize"] as? Number)?.let {
-                timeseriesBuilder = timeseriesBuilder.setBufferSize(it.toInt())
-            }
-            timeseriesBuilder.build()
-        } else {
-            null
+        var timeseriesBuilder = TimeseriesConfiguration.Builder()
+        (timeseries["collectTypes"] as? List<*>)?.let { collectTypes ->
+            val types = collectTypes.mapNotNull { (it as? String)?.let { type -> parseTimeseriesType(type) } }
+            timeseriesBuilder = timeseriesBuilder.collectOnly(*types.toTypedArray())
         }
-        builder = builder.setTimeseriesConfiguration(timeseriesConfiguration)
+        builder = builder.setTimeseriesConfiguration(timeseriesBuilder.build())
     }
 
     return builder
@@ -713,6 +709,14 @@ internal fun parseVitalsFrequency(vitalsFrequency: String): VitalsUpdateFrequenc
         "VitalsFrequency.rare" -> VitalsUpdateFrequency.RARE
         "VitalsFrequency.never" -> VitalsUpdateFrequency.NEVER
         else -> VitalsUpdateFrequency.AVERAGE
+    }
+}
+
+internal fun parseTimeseriesType(timeseriesType: String): TimeseriesType? {
+    return when (timeseriesType) {
+        "DdTimeseriesType.memory" -> TimeseriesType.MEMORY
+        "DdTimeseriesType.cpu" -> TimeseriesType.CPU
+        else -> null
     }
 }
 
