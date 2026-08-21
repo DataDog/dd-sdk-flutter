@@ -24,6 +24,7 @@ import com.datadog.android.rum.configuration.VitalsUpdateFrequency
 import com.datadog.android.rum.featureoperations.FailureReason
 import com.datadog.android.rum.metric.networksettled.TimeBasedInitialResourceIdentifier
 import com.datadog.android.rum.timeseries.TimeseriesConfiguration
+import com.datadog.android.rum.timeseries.TimeseriesType
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.BoolForgery
 import fr.xgouchet.elmyr.annotation.FloatForgery
@@ -238,15 +239,13 @@ class DatadogRumPluginTest {
 
     @OptIn(ExperimentalRumApi::class)
     @Test
-    fun `M decode timeseries configuration W withEncoded is called { enabled with bufferSize }`(
-        @IntForgery(min = 1, max = 500) bufferSize: Int,
+    fun `M decode timeseries configuration W withEncoded is called { collectTypes }`(
         forge: Forge
     ) {
         // GIVEN
         val configArg = mapOf(
             "timeseries" to mapOf(
-                "enabled" to true,
-                "bufferSize" to bufferSize
+                "collectTypes" to listOf("DdTimeseriesType.memory", "DdTimeseriesType.cpu")
             )
         )
 
@@ -260,18 +259,19 @@ class DatadogRumPluginTest {
         val timeseriesConfiguration = featureConfiguration
             .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
         assertThat(timeseriesConfiguration).isNotNull()
-        assertThat(timeseriesConfiguration?.getPrivate("bufferSize")).isEqualTo(bufferSize)
+        assertThat(timeseriesConfiguration?.getPrivate("enabledTypes"))
+            .isEqualTo(setOf(TimeseriesType.MEMORY, TimeseriesType.CPU))
     }
 
     @OptIn(ExperimentalRumApi::class)
     @Test
-    fun `M decode timeseries configuration W withEncoded is called { enabled without bufferSize }`(
+    fun `M decode timeseries configuration W withEncoded is called { single collectType }`(
         forge: Forge
     ) {
         // GIVEN
         val configArg = mapOf(
             "timeseries" to mapOf(
-                "enabled" to true
+                "collectTypes" to listOf("DdTimeseriesType.memory")
             )
         )
 
@@ -285,18 +285,18 @@ class DatadogRumPluginTest {
         val timeseriesConfiguration = featureConfiguration
             .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
         assertThat(timeseriesConfiguration).isNotNull()
+        assertThat(timeseriesConfiguration?.getPrivate("enabledTypes"))
+            .isEqualTo(setOf(TimeseriesType.MEMORY))
     }
 
     @OptIn(ExperimentalRumApi::class)
     @Test
-    fun `M decode timeseries configuration W withEncoded is called { disabled }`(
+    fun `M decode timeseries configuration W withEncoded is called { no collectTypes }`(
         forge: Forge
     ) {
         // GIVEN
         val configArg = mapOf(
-            "timeseries" to mapOf(
-                "enabled" to false
-            )
+            "timeseries" to emptyMap<String, Any?>()
         )
 
         // WHEN
@@ -308,7 +308,9 @@ class DatadogRumPluginTest {
         val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
         val timeseriesConfiguration = featureConfiguration
             .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
-        assertThat(timeseriesConfiguration).isNull()
+        assertThat(timeseriesConfiguration).isNotNull()
+        assertThat(timeseriesConfiguration?.getPrivate("enabledTypes"))
+            .isEqualTo(TimeseriesType.values().toSet())
     }
 
     @Test
