@@ -154,27 +154,26 @@ void main() {
   });
 
   test('configuration encodes timeseries when set', () {
-    final bufferSize = Random().nextInt(500) + 1;
     final configuration = DatadogRumConfiguration(
       applicationId: 'fake-app-id',
-      timeseries: DdTimeseriesConfiguration(
-        enabled: true,
-        bufferSize: bufferSize,
+      timeseries: const DdTimeseriesConfiguration(
+        collectTypes: [DdTimeseriesType.memory, DdTimeseriesType.cpu],
       ),
     );
 
     final encoded = configuration.encode();
     final encodedTimeseries = encoded['timeseries'] as Map<String, Object?>;
-    expect(encodedTimeseries['enabled'], true);
-    expect(encodedTimeseries['bufferSize'], bufferSize);
+    expect(encodedTimeseries['collectTypes'], [
+      'DdTimeseriesType.memory',
+      'DdTimeseriesType.cpu',
+    ]);
   });
 
-  test('timeseries configuration omits bufferSize when not set', () {
-    const timeseriesConfiguration = DdTimeseriesConfiguration(enabled: true);
+  test('timeseries configuration omits collectTypes when not set', () {
+    const timeseriesConfiguration = DdTimeseriesConfiguration();
 
     final encoded = timeseriesConfiguration.encode();
-    expect(encoded['enabled'], true);
-    expect(encoded.containsKey('bufferSize'), false);
+    expect(encoded.containsKey('collectTypes'), false);
   });
 
   test('configuration with mapper sets attach*Mapper', () {

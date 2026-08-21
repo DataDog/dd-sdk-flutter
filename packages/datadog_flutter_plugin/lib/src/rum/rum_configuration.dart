@@ -64,29 +64,37 @@ typedef RumLongTaskEventMapper = RumLongTaskEvent? Function(
 typedef RumVitalOperationEventMapper = RumVitalOperationStepEvent? Function(
     RumVitalOperationStepEvent event);
 
+/// A device timeseries type that can be collected by the Performance
+/// Timeseries RUM feature.
+///
+/// *Note*: This API is experimental and may change in the future.
+enum DdTimeseriesType {
+  /// Memory footprint and percentage of total device RAM.
+  memory,
+
+  /// CPU usage as a percentage.
+  cpu,
+}
+
 /// Configuration for the Performance Timeseries RUM feature, which samples
 /// memory and CPU usage at regular intervals throughout a session,
 /// independent of view lifecycle.
+///
+/// *Note*: This API is experimental and may change in the future.
 class DdTimeseriesConfiguration {
-  /// Whether to enable collection of memory and CPU timeseries events.
+  /// The specific timeseries types to collect.
   ///
-  /// Defaults to `false`.
-  final bool enabled;
-
-  /// The number of samples collected before a timeseries batch is flushed.
-  ///
-  /// If not set, the native SDK default is used.
-  final int? bufferSize;
+  /// If not set, all available timeseries types are collected.
+  final List<DdTimeseriesType>? collectTypes;
 
   const DdTimeseriesConfiguration({
-    required this.enabled,
-    this.bufferSize,
+    this.collectTypes,
   });
 
   Map<String, Object?> encode() {
     return {
-      'enabled': enabled,
-      if (bufferSize != null) 'bufferSize': bufferSize,
+      if (collectTypes != null)
+        'collectTypes': collectTypes!.map((e) => e.toString()).toList(),
     };
   }
 }
@@ -273,6 +281,8 @@ class DatadogRumConfiguration {
   /// Configuration for the Performance Timeseries feature.
   ///
   /// Assign to `null` (the default) to disable timeseries collection.
+  ///
+  /// *Note*: This API is experimental and may change in the future.
   DdTimeseriesConfiguration? timeseries;
 
   DatadogRumConfiguration({
