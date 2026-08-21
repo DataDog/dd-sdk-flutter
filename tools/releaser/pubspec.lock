@@ -178,7 +178,7 @@ packages:
     source: hosted
     version: "2.3.1"
   glob:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: glob
       sha256: c3f1ee72c96f8f78935e18aa8cecced9ab132419e8625dc187e1c2408efc20de
@@ -314,7 +314,7 @@ packages:
     source: hosted
     version: "2.2.0"
   pubspec_parse:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: pubspec_parse
       sha256: "0560ba233314abbed0a48a2956f7f022cce7c3e1e73df540277da7544cad4082"
