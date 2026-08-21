@@ -31,7 +31,10 @@ class LoggingGreeterService extends GreeterServiceBase {
 }
 
 void main() {
-  const int port = 50192;
+  // Bound by the OS at serve() time rather than hardcoded: any fixed port here
+  // lands inside Linux's ephemeral range (32768-60999) and intermittently
+  // collides with an in-use port on CI, erroring every test in the file.
+  late int port;
   late LoggingGreeterService loggingService;
 
   late DatadogPlatformMock mockPlatform;
@@ -149,6 +152,11 @@ void main() {
     late Server server;
 
     setUp(() async {
+      loggingService = LoggingGreeterService();
+      server = Server.create(services: [loggingService]);
+      await server.serve(port: 0);
+      port = server.port!;
+
       channel = ClientChannel(
         'localhost',
         port: port,
@@ -156,9 +164,6 @@ void main() {
           credentials: ChannelCredentials.insecure(),
         ),
       );
-      loggingService = LoggingGreeterService();
-      server = Server.create(services: [loggingService]);
-      await server.serve(port: port);
 
       mockPlatform = DatadogPlatformMock();
 
@@ -415,14 +420,16 @@ void main() {
   });
 
   test('secure channel adds https scheme', () async {
+    loggingService = LoggingGreeterService();
+    final server = Server.create(services: [loggingService]);
+    await server.serve(port: 0);
+    port = server.port!;
+
     final channel = ClientChannel(
       'localhost',
       port: port,
       options: const ChannelOptions(credentials: ChannelCredentials.secure()),
     );
-    loggingService = LoggingGreeterService();
-    final server = Server.create(services: [loggingService]);
-    await server.serve(port: port);
 
     mockPlatform = DatadogPlatformMock();
     mockDatadog = DatadogSdkMock();
@@ -471,14 +478,16 @@ void main() {
   });
 
   test('internet address channel adds scheme', () async {
+    loggingService = LoggingGreeterService();
+    final server = Server.create(services: [loggingService]);
+    await server.serve(port: 0);
+    port = server.port!;
+
     final channel = ClientChannel(
       InternetAddress.loopbackIPv4,
       port: port,
       options: const ChannelOptions(credentials: ChannelCredentials.insecure()),
     );
-    loggingService = LoggingGreeterService();
-    final server = Server.create(services: [loggingService]);
-    await server.serve(port: port);
 
     mockPlatform = DatadogPlatformMock();
     mockDatadog = DatadogSdkMock();
@@ -521,14 +530,16 @@ void main() {
   });
 
   test('secure internet address channel adds scheme', () async {
+    loggingService = LoggingGreeterService();
+    final server = Server.create(services: [loggingService]);
+    await server.serve(port: 0);
+    port = server.port!;
+
     final channel = ClientChannel(
       InternetAddress.loopbackIPv4,
       port: port,
       options: const ChannelOptions(credentials: ChannelCredentials.secure()),
     );
-    loggingService = LoggingGreeterService();
-    final server = Server.create(services: [loggingService]);
-    await server.serve(port: port);
 
     mockPlatform = DatadogPlatformMock();
     mockDatadog = DatadogSdkMock();
