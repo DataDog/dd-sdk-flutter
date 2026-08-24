@@ -59,9 +59,9 @@ class DdRumWeb extends DdRumPlatform {
         allowedTracingUrls: [
           for (final host in sanitizedFirstPartyHosts)
             _TracingUrl(
-              match: ((String check) {
-                final uri = Uri.parse(check);
-                return host.regExp.hasMatch(uri.host);
+              match: ((JSString check) {
+                final uri = Uri.parse(check.toDart);
+                return host.regExp.hasMatch(uri.host).toJS;
               }).toJS,
               propagatorTypes: host.headerTypes
                   .map(_headerTypeToPropagatorType)
