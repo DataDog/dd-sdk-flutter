@@ -73,6 +73,7 @@ final class FlagAssignment {
   final Object variationValue;
   final String reason;
   final bool doLog;
+  final int? serialId;
 
   const FlagAssignment._({
     required this.allocationKey,
@@ -81,6 +82,7 @@ final class FlagAssignment {
     required this.variationValue,
     required this.reason,
     required this.doLog,
+    this.serialId,
   });
 
   factory FlagAssignment.fromJson(Map<String, Object?> json) {
@@ -96,6 +98,7 @@ final class FlagAssignment {
       variationValue: variationValue,
       reason: assignment.reason,
       doLog: assignment.doLog,
+      serialId: assignment.serialId,
     );
   }
 

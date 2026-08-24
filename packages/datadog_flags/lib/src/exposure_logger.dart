@@ -47,6 +47,7 @@ class ExposureLogger {
     final cacheValue = _ExposureCacheValue(
       allocationKey: assignment.allocationKey,
       variationKey: assignment.variationKey,
+      serialId: assignment.serialId,
     );
     if (_loggedAssignments[cacheKey] == cacheValue) {
       return;
@@ -183,11 +184,13 @@ class ExposureLogger {
       'id': evaluationContext.targetingKey,
       'attributes': sanitizeJsonValue(evaluationContext.attributes),
     });
+    final serialId = assignment.serialId;
     return {
       'timestamp': runtime.configuration.dateProvider().millisecondsSinceEpoch,
       'allocation': {'key': assignment.allocationKey},
       'flag': {'key': flagKey},
       'variant': {'key': assignment.variationKey},
+      if (serialId != null) 'serial_id': serialId,
       'subject': subject,
     };
   }
@@ -257,22 +260,25 @@ final class _ExposureCacheKey {
 final class _ExposureCacheValue {
   final String allocationKey;
   final String variationKey;
+  final int? serialId;
 
   const _ExposureCacheValue({
     required this.allocationKey,
     required this.variationKey,
+    required this.serialId,
   });
 
   @override
   bool operator ==(Object other) {
     return other is _ExposureCacheValue &&
         other.allocationKey == allocationKey &&
-        other.variationKey == variationKey;
+        other.variationKey == variationKey &&
+        other.serialId == serialId;
   }
 
   @override
   int get hashCode {
-    return Object.hash(allocationKey, variationKey);
+    return Object.hash(allocationKey, variationKey, serialId);
   }
 }
 
