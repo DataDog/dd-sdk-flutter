@@ -193,11 +193,16 @@ class DatadogSessionReplayConfiguration {
   /// Defaults to approximately 800×800 decoded pixels.
   int maxImagePixelBudget;
 
-  /// Whether this Flutter module is embedded inside a native iOS host app
-  /// (Flutter add-to-app). When `true`, Session Replay resolves the
-  /// `FlutterView` slot ID after the first frame and stamps it on every
-  /// outgoing record so the player can composite the Flutter content into
-  /// the native host's `embedded_view` placeholder.
+  /// Whether this Flutter module is embedded inside a native host app
+  /// (Flutter add-to-app). When `true`, records are handed to the native
+  /// Session Replay instead of being uploaded from here, stamped with the slot
+  /// ID of the host view showing this engine, so the player composites the
+  /// Flutter content into the native host's embedded-content placeholder.
+  ///
+  /// The host must opt each Flutter view in as well — call
+  /// `flutterViewController.dd.enableSessionReplay()` on iOS, or
+  /// `flutterFragment.enableSessionReplay()` on Android. Records captured
+  /// before it does are buffered natively, up to a couple of seconds' worth.
   ///
   /// Set to `false` (the default) when Flutter is the host application.
   bool isEmbedded;
