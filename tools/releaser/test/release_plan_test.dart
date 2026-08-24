@@ -20,6 +20,14 @@ FetchContent_Declare(dd-sdk-cpp
   GIT_TAG        develop)
 ''';
 
+const _packageSwiftWithDatadogDependency = '''
+let package = Package(
+    dependencies: [
+        .package(url: "https://github.com/Datadog/dd-sdk-ios.git", from: "3.0.0")
+    ]
+)
+''';
+
 void main() {
   late FixtureRepo fixture;
 
@@ -258,6 +266,30 @@ void main() {
       );
       expect(result.packages.single.nativeSdkDeltas, isEmpty);
     });
+
+    test(
+      'a Package.swift alongside the podspec surfaces its own current pin',
+      () async {
+        fixture.writeFile(
+          'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+          'datadog_flutter_plugin_ios/Package.swift',
+          _packageSwiftWithDatadogDependency,
+        );
+        await fixture.commit('chore: add Package.swift fixture');
+
+        final result = await plan(
+          mainlineCtx(
+            requestedPackages: ['datadog_flutter_plugin_ios'],
+            iosSdkVersionOverride: '3.12.0',
+          ),
+        );
+
+        final delta = result.packages.single.nativeSdkDeltas.single;
+        expect(delta.currentPin, '~> 3');
+        expect(delta.currentSpmPin, 'from: "3.0.0"');
+        expect(delta.targetVersion, '3.12.0');
+      },
+    );
   });
 
   group('mainline, C++ native SDK delta (CMake GIT_TAG + SHA)', () {

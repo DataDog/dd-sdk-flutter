@@ -321,8 +321,13 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
   final files = resolveNativeDependencyFiles(pkg.absolutePath(ctx.repoRoot));
   final deltas = <NativeSdkDelta>[];
 
-  if (files.iosPodspec != null) {
-    final currentPin = readIosPodspecPin(files.iosPodspec!.readAsStringSync());
+  if (files.iosPodspec != null || files.iosSpmManifest != null) {
+    final currentPin = files.iosPodspec != null
+        ? readIosPodspecPin(files.iosPodspec!.readAsStringSync())
+        : null;
+    final currentSpmPin = files.iosSpmManifest != null
+        ? readSpmPin(files.iosSpmManifest!.readAsStringSync())
+        : null;
     final target = await resolveNativeSdkTarget(
       trigger: ctx.trigger,
       override: ctx.iosSdkVersionOverride,
@@ -335,6 +340,7 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
         sdk: NativeSdk.ios,
         currentPin: currentPin,
         targetVersion: target,
+        currentSpmPin: currentSpmPin,
       ),
     );
   }

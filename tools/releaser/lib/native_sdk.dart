@@ -35,6 +35,14 @@ const androidGradleVersionPrefix = 'ext.datadog_version';
 final androidGradleVersionPattern = RegExp(
   '$androidGradleVersionPrefix\\s*=\\s*"(?<version>[^"]+)"',
 );
+
+/// Matches a `Package.swift`'s dd-sdk-ios dependency line (e.g.
+/// `.package(url: "https://github.com/Datadog/dd-sdk-ios.git", from:
+/// "3.0.0")`) -- public so `spm_util.dart`'s pin-rewriting step uses the
+/// exact same pattern this file reads the current pin with.
+final iosSpmDependencyPattern = RegExp(
+  r'\.package\(url:\s*"(?<url>[^"]*dd-sdk-ios[^"]*)",\s*(?<spec>[^)]+)\)',
+);
 final _cmakeGitTagPattern = RegExp(
   r'^\s*GIT_TAG\s+(?<ref>[\w./-]+).*?(?:#\s*(?<comment>\S+))?$',
   multiLine: true,
@@ -52,6 +60,26 @@ String? readAndroidGradlePin(String buildGradleContent) =>
     androidGradleVersionPattern
         .firstMatch(buildGradleContent)
         ?.namedGroup('version');
+
+/// The current iOS pin from a `Package.swift`'s dd-sdk-ios dependency spec
+/// (e.g. `from: "3.0.0"`, `exact: "3.5.0"`, `branch: "develop"`), or null if
+/// it has none. Kept separate from [readIosPodspecPin] since a package can
+/// carry both a podspec (CocoaPods) and a `Package.swift` (SPM) pinning the
+/// same dependency in independently-formatted ways.
+String? readSpmPin(String packageSwiftContent) =>
+    iosSpmDependencyPattern.firstMatch(packageSwiftContent)?.namedGroup('spec');
+
+/// Pulls the bare version literal out of an SPM dependency spec whose kind
+/// pins to a specific version (`exact: "3.12.0"` / `from: "3.0.0"` ->
+/// `3.12.0`/`3.0.0`), or null for a spec with nothing to compare (`branch:
+/// "develop"`) -- used to tell whether a `Package.swift` needs to be
+/// brought in line with a resolved target, the same way [readIosPodspecPin]
+/// is compared against one.
+final _spmVersionLiteralPattern = RegExp(
+  r'^(?:exact|from|upToNextMajor|upToNextMinor):\s*"(?<version>[^"]+)"',
+);
+String? _spmPinnedVersion(String spec) =>
+    _spmVersionLiteralPattern.firstMatch(spec)?.namedGroup('version');
 
 /// The current C++ pin from a CMakeLists.txt's dd-sdk-cpp `GIT_TAG` line, or
 /// null if it has none. Once pinned by this tooling, `GIT_TAG` holds a
@@ -74,26 +102,37 @@ String? readCppCMakePin(String cmakeListsContent) {
 /// package's name or role.
 class NativeDependencyFiles {
   final File? iosPodspec;
+
+  /// A `Package.swift` pinning dd-sdk-ios via SPM -- independent of
+  /// [iosPodspec] since a package can ship both, each pinning the same
+  /// dependency in its own file format.
+  final File? iosSpmManifest;
   final File? androidGradle;
   final List<File> cppCMakeLists;
 
   NativeDependencyFiles({
     this.iosPodspec,
+    this.iosSpmManifest,
     this.androidGradle,
     this.cppCMakeLists = const [],
   });
 
   bool get isEmpty =>
-      iosPodspec == null && androidGradle == null && cppCMakeLists.isEmpty;
+      iosPodspec == null &&
+      iosSpmManifest == null &&
+      androidGradle == null &&
+      cppCMakeLists.isEmpty;
 }
 
 /// Walks [packageRoot] (a package's own directory, not its example/test
 /// apps) for the native-dependency files this tooling knows how to read and
-/// pin: an iOS podspec with a Datadog pod dependency, an Android
-/// `build.gradle` with a `datadog_version`, and/or a `windows/`/`linux/`
-/// `CMakeLists.txt` with a dd-sdk-cpp `GIT_TAG`.
+/// pin: an iOS podspec with a Datadog pod dependency, a `Package.swift`
+/// pinning dd-sdk-ios via SPM, an Android `build.gradle` with a
+/// `datadog_version`, and/or a `windows/`/`linux/` `CMakeLists.txt` with a
+/// dd-sdk-cpp `GIT_TAG`.
 NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
   File? iosPodspec;
+  File? iosSpmManifest;
   final iosDir = Directory(p.join(packageRoot, 'ios'));
   if (iosDir.existsSync()) {
     for (final entity in iosDir.listSync()) {
@@ -101,7 +140,15 @@ NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
           entity.path.endsWith('.podspec') &&
           iosPodspecDependencyPattern.hasMatch(entity.readAsStringSync())) {
         iosPodspec = entity;
-        break;
+      } else if (entity is Directory) {
+        // The real layout is `ios/<package_name>/Package.swift` -- a
+        // manifest for building the plugin's iOS code via SPM instead of
+        // CocoaPods.
+        final packageSwift = File(p.join(entity.path, 'Package.swift'));
+        if (packageSwift.existsSync() &&
+            iosSpmDependencyPattern.hasMatch(packageSwift.readAsStringSync())) {
+          iosSpmManifest = packageSwift;
+        }
       }
     }
   }
@@ -124,6 +171,7 @@ NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
 
   return NativeDependencyFiles(
     iosPodspec: iosPodspec,
+    iosSpmManifest: iosSpmManifest,
     androidGradle: androidGradle,
     cppCMakeLists: cppCMakeLists,
   );
@@ -144,14 +192,31 @@ class NativeSdkDelta {
   final String? targetVersion;
   final String? targetSha;
 
+  /// The separate pin an [NativeSdk.ios] package's `Package.swift` (SPM)
+  /// carries, when it has one -- always null for [NativeSdk.android]/
+  /// [NativeSdk.cpp]. A podspec and a `Package.swift` pin the same
+  /// dependency independently, in their own file formats, so this is read
+  /// (and compared in [isChange]) separately from [currentPin] -- this
+  /// tool always pins both to the exact same version, so either one
+  /// drifting from [targetVersion] counts as a change.
+  final String? currentSpmPin;
+
   NativeSdkDelta({
     required this.sdk,
     required this.currentPin,
     required this.targetVersion,
     this.targetSha,
+    this.currentSpmPin,
   });
 
-  bool get isChange => targetVersion != null && targetVersion != currentPin;
+  bool get isChange {
+    if (targetVersion == null) return false;
+    final podspecOutOfDate = currentPin != null && currentPin != targetVersion;
+    final spmOutOfDate =
+        currentSpmPin != null &&
+        _spmPinnedVersion(currentSpmPin!) != targetVersion;
+    return podspecOutOfDate || spmOutOfDate;
+  }
 
   @override
   String toString() => isChange

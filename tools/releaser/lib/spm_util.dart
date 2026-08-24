@@ -9,18 +9,17 @@ import 'package:path/path.dart' as path;
 
 import 'command.dart';
 import 'helpers.dart';
+import 'native_sdk.dart';
 
 const datadogIosRepo = 'https://github.com/Datadog/dd-sdk-ios.git';
-final packageDependencyPattern = RegExp(
-  r'\s+\.package\(url\: "(?<package>.+)", .+\)',
-);
 
 class PinSwiftPackageVersion extends Command {
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
     // Other packages can keep looser version constraints
-    final corePacakge = args.packages
-        .firstWhereOrNull((e) => e.name == 'datadog_flutter_plugin');
+    final corePacakge = args.packages.firstWhereOrNull(
+      (e) => e.name == 'datadog_flutter_plugin',
+    );
     if (corePacakge != null) {
       if (!await _pinSpmVersion(args, corePacakge, logger)) {
         return false;
@@ -31,7 +30,10 @@ class PinSwiftPackageVersion extends Command {
   }
 
   Future<bool> _pinSpmVersion(
-      CommandArguments args, PackageRelease package, Logger logger) {
+    CommandArguments args,
+    PackageRelease package,
+    Logger logger,
+  ) {
     return pinSpmVersion(
       args.gitDir.path,
       package.name,
@@ -63,8 +65,8 @@ class PinSwiftPackageVersion extends Command {
 
     logger.info('ℹ️ Setting the iOS Pod Dependency to $versionString');
     await transformFile(file, logger, dryRun, (line) {
-      final match = packageDependencyPattern.firstMatch(line);
-      if (match != null && match.namedGroup('package') == datadogIosRepo) {
+      final match = iosSpmDependencyPattern.firstMatch(line);
+      if (match != null && match.namedGroup('url') == datadogIosRepo) {
         final needsComma = line.trimRight().endsWith(',');
         line =
             '        .package(url: "$datadogIosRepo", $versionString)${needsComma ? ',' : ''}';

@@ -39,6 +39,15 @@ FetchContent_Declare(dd-sdk-cpp
   GIT_TAG        develop)
 ''';
 
+const _packageSwift = '''
+let package = Package(
+    name: "datadog_session_replay",
+    dependencies: [
+        .package(url: "https://github.com/Datadog/dd-sdk-ios.git", from: "3.0.0")
+    ]
+)
+''';
+
 void main() {
   group('reading current pins', () {
     test('readIosPodspecPin finds the shared Datadog pod constraint', () {
@@ -79,6 +88,19 @@ FetchContent_Declare(dd-sdk-cpp
     test('readCppCMakePin returns null with no GIT_TAG', () {
       expect(readCppCMakePin('FetchContent_Declare(something_else)'), isNull);
     });
+
+    test('readSpmPin finds the dd-sdk-ios dependency spec', () {
+      expect(readSpmPin(_packageSwift), 'from: "3.0.0"');
+    });
+
+    test('readSpmPin returns null with no dd-sdk-ios dependency', () {
+      expect(
+        readSpmPin(
+          '.package(url: "https://github.com/other/pkg.git", from: "1.0.0")',
+        ),
+        isNull,
+      );
+    });
   });
 
   group('resolveNativeDependencyFiles', () {
@@ -96,8 +118,9 @@ FetchContent_Declare(dd-sdk-cpp
       file.writeAsStringSync(contents);
     }
 
-    test('finds all three native dependency files when present', () {
+    test('finds all native dependency files when present', () {
       write('ios/datadog_flutter_plugin_ios.podspec', _iosPodspec);
+      write('ios/datadog_flutter_plugin_ios/Package.swift', _packageSwift);
       write('android/build.gradle', _androidGradle);
       write('windows/CMakeLists.txt', _windowsCMakeLists);
       write('linux/CMakeLists.txt', _linuxCMakeLists);
@@ -105,9 +128,33 @@ FetchContent_Declare(dd-sdk-cpp
       final files = resolveNativeDependencyFiles(root.path);
 
       expect(files.iosPodspec, isNotNull);
+      expect(files.iosSpmManifest, isNotNull);
       expect(files.androidGradle, isNotNull);
       expect(files.cppCMakeLists, hasLength(2));
       expect(files.isEmpty, isFalse);
+    });
+
+    test(
+      'finds a Package.swift even when there is no podspec alongside it',
+      () {
+        write('ios/datadog_flutter_plugin_ios/Package.swift', _packageSwift);
+
+        final files = resolveNativeDependencyFiles(root.path);
+
+        expect(files.iosPodspec, isNull);
+        expect(files.iosSpmManifest, isNotNull);
+      },
+    );
+
+    test('ignores a Package.swift with no dd-sdk-ios dependency', () {
+      write(
+        'ios/some_other_plugin/Package.swift',
+        '.package(url: "https://github.com/other/pkg.git", from: "1.0.0")',
+      );
+
+      final files = resolveNativeDependencyFiles(root.path);
+
+      expect(files.iosSpmManifest, isNull);
     });
 
     test('ignores a build.gradle with no Datadog dependency', () {
@@ -233,6 +280,47 @@ FetchContent_Declare(dd-sdk-cpp
       final delta = NativeSdkDelta(
         sdk: NativeSdk.android,
         currentPin: '3.11.0',
+        targetVersion: '3.12.0',
+      );
+      expect(delta.isChange, isTrue);
+    });
+
+    test('is true when the podspec matches but the SPM pin lags behind -- '
+        'both must track the same version', () {
+      final delta = NativeSdkDelta(
+        sdk: NativeSdk.ios,
+        currentPin: '3.12.0',
+        currentSpmPin: 'from: "3.0.0"',
+        targetVersion: '3.12.0',
+      );
+      expect(delta.isChange, isTrue);
+    });
+
+    test('is true when the SPM pin matches but the podspec lags behind', () {
+      final delta = NativeSdkDelta(
+        sdk: NativeSdk.ios,
+        currentPin: '~> 3',
+        currentSpmPin: 'exact: "3.12.0"',
+        targetVersion: '3.12.0',
+      );
+      expect(delta.isChange, isTrue);
+    });
+
+    test('is false when both the podspec and SPM pin match the target', () {
+      final delta = NativeSdkDelta(
+        sdk: NativeSdk.ios,
+        currentPin: '3.12.0',
+        currentSpmPin: 'exact: "3.12.0"',
+        targetVersion: '3.12.0',
+      );
+      expect(delta.isChange, isFalse);
+    });
+
+    test('a branch-tracking SPM pin always counts as needing a change', () {
+      final delta = NativeSdkDelta(
+        sdk: NativeSdk.ios,
+        currentPin: '3.12.0',
+        currentSpmPin: 'branch: "develop"',
         targetVersion: '3.12.0',
       );
       expect(delta.isChange, isTrue);
