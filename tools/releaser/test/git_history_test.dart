@@ -61,6 +61,28 @@ void main() {
   });
 
   test(
+    'ignores a higher-versioned tag that is not an ancestor of HEAD -- '
+    'e.g. cut on a long-lived prerelease branch that never merged back',
+    () async {
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'v2.2.0 work');
+      await fixture.commit('fix: something for 2.2.0');
+      await fixture.tag('datadog_dio/v2.2.0');
+
+      await fixture.checkoutNewBranch('prerelease-line');
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'v4.0.0-beta.1 work');
+      await fixture.commit('feat!: something for 4.0.0-beta.1');
+      await fixture.tag('datadog_dio/v4.0.0-beta.1');
+      await fixture.checkout('main');
+
+      final gitDir = await fixture.gitDir;
+      final tag = await findLastReleaseTag(gitDir, 'datadog_dio');
+
+      expect(tag, isNotNull);
+      expect(tag!.tag, 'datadog_dio/v2.2.0');
+    },
+  );
+
+  test(
     'commitMessagesSince only returns commits after the given sha',
     () async {
       fixture.writeFile('packages/datadog_dio/CHANGES', 'released');

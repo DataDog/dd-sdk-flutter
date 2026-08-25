@@ -64,26 +64,48 @@ FetchContent_Declare(dd-sdk-cpp
     () async {
       final file = File(p.join(root.path, 'CMakeLists.txt'));
       await file.writeAsString(
+        'FetchContent_Declare(dd-sdk-cpp\n'
         '  GIT_TAG        oldsha1234567890oldsha1234567890oldsha1)  # v1.3.0\n',
       );
 
       await pinCppVersion(file, 'v1.4.0', _sha, logger, false);
 
       final contents = await file.readAsString();
-      // trimRight only -- trim() would also eat the leading indentation
-      // this test is specifically checking gets preserved.
-      expect(contents.trimRight(), '  GIT_TAG        $_sha)  # v1.4.0');
+      expect(contents, contains('  GIT_TAG        $_sha)  # v1.4.0'));
     },
   );
 
   test('dry run leaves the file untouched', () async {
     final file = File(p.join(root.path, 'CMakeLists.txt'));
-    const original = '  GIT_TAG        develop\n';
+    const original =
+        'FetchContent_Declare(dd-sdk-cpp\n  GIT_TAG        develop)\n';
     await file.writeAsString(original);
 
     await pinCppVersion(file, 'v1.4.0', _sha, logger, true);
 
     expect(await file.readAsString(), original);
+  });
+
+  test('a second FetchContent_Declare for a different dependency keeps its '
+      'own GIT_TAG untouched', () async {
+    final file = File(p.join(root.path, 'CMakeLists.txt'));
+    await file.writeAsString('''
+FetchContent_Declare(dd-sdk-cpp
+  GIT_REPOSITORY https://github.com/DataDog/dd-sdk-cpp.git
+  GIT_TAG        develop)
+FetchContent_MakeAvailable(dd-sdk-cpp)
+
+FetchContent_Declare(some_other_dep
+  GIT_REPOSITORY https://github.com/example/some_other_dep.git
+  GIT_TAG        v9.9.9)
+FetchContent_MakeAvailable(some_other_dep)
+''');
+
+    await pinCppVersion(file, 'v1.4.0', _sha, logger, false);
+
+    final contents = await file.readAsString();
+    expect(contents, contains('GIT_TAG        $_sha)  # v1.4.0'));
+    expect(contents, contains('GIT_TAG        v9.9.9)'));
   });
 
   test('leaves everything else in the file untouched', () async {

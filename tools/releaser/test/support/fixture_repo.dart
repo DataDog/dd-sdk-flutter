@@ -121,6 +121,15 @@ class FixtureRepo {
   // "no tag message?").
   Future<void> tag(String name) => _run(['tag', '-a', '-m', name, name]);
 
+  /// Creates and switches to a new branch off the current commit -- used
+  /// to simulate a tag cut on a line that never merged back (a long-lived
+  /// prerelease branch), so it exists in the repo but isn't an ancestor of
+  /// `main` once [checkout] switches back.
+  Future<void> checkoutNewBranch(String name) =>
+      _run(['checkout', '-q', '-b', name]);
+
+  Future<void> checkout(String name) => _run(['checkout', '-q', name]);
+
   Future<GitDir> get gitDir async =>
       _gitDir ??= await GitDir.fromExisting(root.path);
 

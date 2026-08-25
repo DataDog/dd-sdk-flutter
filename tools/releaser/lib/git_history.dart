@@ -2,18 +2,34 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-import 'package:collection/collection.dart';
 import 'package:git/git.dart';
 import 'package:version/version.dart';
 
-/// Finds the most recent tag matching `{packageName}/v*`, or null if the
-/// package has never been tagged (its first release, or a brand-new
-/// federated sub-package -- see [commitMessagesSince]'s no-`sinceSha` path).
+/// Whether [ref] (a tag name -- passed as-is, not its peeled object sha, so
+/// this works for both annotated and lightweight tags) is reachable from
+/// HEAD -- a release tag cut on some other branch (a long-lived prerelease
+/// line, a newer major mainline has since moved past) is not an ancestor of
+/// the branch currently being planned, even though it may still sort as
+/// the highest version by number alone.
+Future<bool> _isAncestorOfHead(GitDir gitDir, String ref) async {
+  final result = await gitDir.runCommand([
+    'merge-base',
+    '--is-ancestor',
+    ref,
+    'HEAD',
+  ], throwOnError: false);
+  return result.exitCode == 0;
+}
+
+/// Finds the most recent tag matching `{packageName}/v*` that HEAD is
+/// descended from, or null if the package has never been tagged on this
+/// line (its first release, a brand-new federated sub-package -- see
+/// [commitMessagesSince]'s no-`sinceSha` path -- or simply no ancestor tag).
 ///
 /// [releaseLine], when given, restricts the search to tags whose
 /// major/minor matches -- a patch branch's own release line, so a tag
-/// mainline has since cut for a newer major/minor (which is not an
-/// ancestor of the patch branch) can't be picked up instead.
+/// mainline has since cut for a newer major/minor can't be picked up
+/// instead even if it happened to be an ancestor.
 Future<Tag?> findLastReleaseTag(
   GitDir gitDir,
   String packageName, {
@@ -46,7 +62,12 @@ Future<Tag?> findLastReleaseTag(
           .toList()
         ..sort((a, b) => a.$2!.compareTo(b.$2!));
 
-  return withVersions.lastOrNull?.$1;
+  for (final pair in withVersions.reversed) {
+    if (await _isAncestorOfHead(gitDir, pair.$1.tag)) {
+      return pair.$1;
+    }
+  }
+  return null;
 }
 
 /// Full commit messages (subject + body/footers) touching [pathspec], from
