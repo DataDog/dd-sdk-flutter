@@ -99,11 +99,14 @@ class DatadogRumEventMapper {
             if (encodedResult != null) {
                 val jsonObject = JsonParser.parseString(encodedResult).asJsonObject
                 val jsonView = jsonObject.get("view").asJsonObject
-                result!!.view.name = jsonView.get("name")?.asString
-                result.view.referrer = jsonView.get("referrer")?.asString
-                result.view.url = jsonView.get("url").asString
+                val mappedResult = result!!
+                mappedResult.view?.let { view ->
+                    view.name = jsonView.get("name")?.asString
+                    view.referrer = jsonView.get("referrer")?.asString
+                    view.url = jsonView.get("url").asString
+                }
 
-                result.action.target?.let { resultTarget ->
+                mappedResult.action.target?.let { resultTarget ->
                     jsonObject.get("action")?.asJsonObject?.get("target")?.asJsonObject?.let {
                         resultTarget.name = it.get("name").asString
                     }
@@ -126,11 +129,14 @@ class DatadogRumEventMapper {
             if (encodedResult != null) {
                 val jsonObject = JsonParser.parseString(encodedResult).asJsonObject
                 val jsonView = jsonObject.get("view").asJsonObject
-                result!!.view.name = jsonView.get("name")?.asString
-                result.view.referrer = jsonView.get("referrer")?.asString
-                result.view.url = jsonView.get("url").asString
+                val mappedResult = result!!
+                mappedResult.view?.let { view ->
+                    view.name = jsonView.get("name")?.asString
+                    view.referrer = jsonView.get("referrer")?.asString
+                    view.url = jsonView.get("url").asString
+                }
 
-                result.resource.url = jsonObject.get("resource").asJsonObject.get("url").asString
+                mappedResult.resource.url = jsonObject.get("resource").asJsonObject.get("url").asString
             } else {
                 result = null
             }
@@ -150,9 +156,12 @@ class DatadogRumEventMapper {
             if (encodedResult != null) {
                 val jsonObject = JsonParser.parseString(encodedResult).asJsonObject
                 val jsonView = jsonObject.get("view").asJsonObject
-                result!!.view.name = jsonView.get("name")?.asString
-                result.view.referrer = jsonView.get("referrer")?.asString
-                result.view.url = jsonView.get("url").asString
+                val mappedResult = result!!
+                mappedResult.view?.let { view ->
+                    view.name = jsonView.get("name")?.asString
+                    view.referrer = jsonView.get("referrer")?.asString
+                    view.url = jsonView.get("url").asString
+                }
 
                 val jsonError = jsonObject.get("error").asJsonObject
                 event.error.causes?.let { causes ->
@@ -165,14 +174,14 @@ class DatadogRumEventMapper {
                         }
                     }
                 }
-                result.error.resource?.let { resultResource ->
+                mappedResult.error.resource?.let { resultResource ->
                     jsonError.get("resource")?.asJsonObject?.let {
                         resultResource.url = it.get("url").asString
                     }
                 }
 
-                result.error.stack = jsonError.get("stack")?.asString
-                result.error.fingerprint = jsonError.get("fingerprint")?.asString
+                mappedResult.error.stack = jsonError.get("stack")?.asString
+                mappedResult.error.fingerprint = jsonError.get("fingerprint")?.asString
             } else {
                 result = null
             }
@@ -192,9 +201,12 @@ class DatadogRumEventMapper {
                 val jsonObject = JsonParser.parseString(encodedResult).asJsonObject
                 val jsonView = jsonObject.get("view").asJsonObject
 
-                result!!.view.name = jsonView.get("name")?.asString
-                result.view.referrer = jsonView.get("referrer")?.asString
-                result.view.url = jsonView.get("url").asString
+                val mappedResult = result!!
+                mappedResult.view?.let { view ->
+                    view.name = jsonView.get("name")?.asString
+                    view.referrer = jsonView.get("referrer")?.asString
+                    view.url = jsonView.get("url").asString
+                }
             } else {
                 result = null
             }
@@ -216,9 +228,12 @@ class DatadogRumEventMapper {
                 val jsonObject = JsonParser.parseString(encodedResult).asJsonObject
                 val jsonView = jsonObject.get("view").asJsonObject
 
-                result!!.view.name = jsonView.get("name")?.asString
-                result.view.referrer = jsonView.get("referrer")?.asString
-                result.view.url = jsonView.get("url").asString
+                val mappedResult = result!!
+                mappedResult.view?.let { view ->
+                    view.name = jsonView.get("name")?.asString
+                    view.referrer = jsonView.get("referrer")?.asString
+                    view.url = jsonView.get("url").asString
+                }
             } else {
                 result = null
             }
