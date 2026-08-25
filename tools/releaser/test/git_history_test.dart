@@ -38,6 +38,28 @@ void main() {
     expect(tag, isNull);
   });
 
+  test('releaseLine restricts the search to that major/minor, ignoring a '
+      'newer tag from a different line', () async {
+    fixture.writeFile('packages/datadog_dio/CHANGES', 'v2.0.0 work');
+    await fixture.commit('fix: something for 2.0.0');
+    await fixture.tag('datadog_dio/v2.0.0');
+
+    // Mainline has since moved on to a new major.
+    fixture.writeFile('packages/datadog_dio/CHANGES', 'v3.0.0 work');
+    await fixture.commit('feat!: something for 3.0.0');
+    await fixture.tag('datadog_dio/v3.0.0');
+
+    final gitDir = await fixture.gitDir;
+    final tag = await findLastReleaseTag(
+      gitDir,
+      'datadog_dio',
+      releaseLine: (2, 0),
+    );
+
+    expect(tag, isNotNull);
+    expect(tag!.tag, 'datadog_dio/v2.0.0');
+  });
+
   test(
     'commitMessagesSince only returns commits after the given sha',
     () async {

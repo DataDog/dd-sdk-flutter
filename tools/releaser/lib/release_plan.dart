@@ -5,6 +5,7 @@
 import 'package:collection/collection.dart';
 import 'package:git/git.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
 import 'package:version/version.dart';
 
 import 'conventional_commits.dart';
@@ -151,7 +152,7 @@ Future<PackagePlan?> _computePackagePlan(
 
   switch (ctx.trigger) {
     case TriggerContext.patch:
-      return await _computePatchPlan(pkg, gitDir, nativeSdkDeltas);
+      return await _computePatchPlan(pkg, ctx, gitDir, nativeSdkDeltas);
     case TriggerContext.preRelease:
       return await _computePrereleasePlan(pkg, ctx, gitDir, nativeSdkDeltas);
     case TriggerContext.mainline:
@@ -168,10 +169,15 @@ Future<PackagePlan?> _computePackagePlan(
 
 Future<PackagePlan> _computePatchPlan(
   DiscoveredPackage pkg,
+  RunContext ctx,
   GitDir gitDir,
   List<NativeSdkDelta> nativeSdkDeltas,
 ) async {
-  final lastTag = await findLastReleaseTag(gitDir, pkg.name);
+  final lastTag = await findLastReleaseTag(
+    gitDir,
+    pkg.name,
+    releaseLine: _releaseLineFromPatchBranch(ctx.currentBranch),
+  );
   final commits = await _conventionalCommitsSince(
     gitDir,
     pathspec: pkg.relativePath,
@@ -212,9 +218,24 @@ Future<PackagePlan> _computePrereleasePlan(
   List<NativeSdkDelta> nativeSdkDeltas,
 ) async {
   final lastTag = await findLastReleaseTag(gitDir, pkg.name);
-  final base = Version.parse(
-    lastTag != null ? _versionFromTag(lastTag, pkg.name) : pkg.version,
-  );
+  final target = Version.parse(pkg.version);
+
+  // A prior tag only continues the current prerelease sequence when it's
+  // for the exact version pubspec.yaml is declaring as the target -- e.g.
+  // a `4.0.0-beta.1` tag continues towards a pubspec of `4.0.0`. A tag for
+  // an older, already-published line (say the last stable `3.2.0`, with
+  // pubspec since bumped to `4.0.0` for this pre-release line) must not be
+  // used as the base, or the new prerelease would sort below that already-
+  // published release.
+  final tagVersion = lastTag != null
+      ? Version.parse(_versionFromTag(lastTag, pkg.name))
+      : null;
+  final tagIsOnTargetLine =
+      tagVersion != null &&
+      tagVersion.major == target.major &&
+      tagVersion.minor == target.minor &&
+      tagVersion.patch == target.patch;
+  final base = tagIsOnTargetLine ? tagVersion : target;
 
   final Version newVersion;
   if (base.isPreRelease &&
@@ -322,12 +343,17 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
   final deltas = <NativeSdkDelta>[];
 
   if (files.iosPodspec != null || files.iosSpmManifest != null) {
-    final currentPin = files.iosPodspec != null
-        ? readIosPodspecPin(files.iosPodspec!.readAsStringSync())
-        : null;
-    final currentSpmPin = files.iosSpmManifest != null
-        ? readSpmPin(files.iosSpmManifest!.readAsStringSync())
-        : null;
+    final pins = <NativeSdkPin>[];
+    if (files.iosPodspec != null) {
+      final pin = readIosPodspecPin(files.iosPodspec!.readAsStringSync());
+      if (pin != null) pins.add((source: 'podspec', value: pin));
+    }
+    if (files.iosSpmManifest != null) {
+      final pin = readSpmPin(files.iosSpmManifest!.readAsStringSync());
+      if (pin != null) {
+        pins.add((source: 'Package.swift', value: spmPinForComparison(pin)));
+      }
+    }
     final target = await resolveNativeSdkTarget(
       trigger: ctx.trigger,
       override: ctx.iosSdkVersionOverride,
@@ -336,19 +362,12 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
           gateways.releaseExists(NativeSdk.ios.repoSlug, version),
     );
     deltas.add(
-      NativeSdkDelta(
-        sdk: NativeSdk.ios,
-        currentPin: currentPin,
-        targetVersion: target,
-        currentSpmPin: currentSpmPin,
-      ),
+      NativeSdkDelta(sdk: NativeSdk.ios, targetVersion: target, pins: pins),
     );
   }
 
   if (files.androidGradle != null) {
-    final currentPin = readAndroidGradlePin(
-      files.androidGradle!.readAsStringSync(),
-    );
+    final pin = readAndroidGradlePin(files.androidGradle!.readAsStringSync());
     final target = await resolveNativeSdkTarget(
       trigger: ctx.trigger,
       override: ctx.androidSdkVersionOverride,
@@ -359,16 +378,25 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
     deltas.add(
       NativeSdkDelta(
         sdk: NativeSdk.android,
-        currentPin: currentPin,
         targetVersion: target,
+        pins: [if (pin != null) (source: 'build.gradle', value: pin)],
       ),
     );
   }
 
   if (files.cppCMakeLists.isNotEmpty) {
-    final currentPin = readCppCMakePin(
-      files.cppCMakeLists.first.readAsStringSync(),
-    );
+    // A package can ship a CMakeLists.txt per platform (windows, linux),
+    // each pinning dd-sdk-cpp independently -- every one of them needs to
+    // be checked, not just the first, or a still-stale platform would
+    // silently be missed (see NativeSdkDelta.pins).
+    final pins = <NativeSdkPin>[
+      for (final file in files.cppCMakeLists)
+        if (readCppCMakePin(file.readAsStringSync()) case final pin?)
+          (
+            source: p.relative(file.path, from: pkg.absolutePath(ctx.repoRoot)),
+            value: pin,
+          ),
+    ];
     final target = await resolveNativeSdkTarget(
       trigger: ctx.trigger,
       override: ctx.cppVersionOverride,
@@ -385,9 +413,9 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
     deltas.add(
       NativeSdkDelta(
         sdk: NativeSdk.cpp,
-        currentPin: currentPin,
         targetVersion: target,
         targetSha: targetSha,
+        pins: pins,
       ),
     );
   }
@@ -417,12 +445,26 @@ Future<List<ConventionalCommit>> _conventionalCommitsSince(
       .toList();
 }
 
-final _patchBranchPattern = RegExp(r'^release/([^/]+)/v\d+\.\d+\.x$');
+final _patchBranchPattern = RegExp(
+  r'^release/(?<package>[^/]+)/v(?<major>\d+)\.(?<minor>\d+)\.x$',
+);
 
 /// Extracts the package name from a `release/{package}/v{major}.{minor}.x`
 /// patch-branch name, or null if [branch] doesn't match that convention.
 String? _packageNameFromPatchBranch(String branch) =>
-    _patchBranchPattern.firstMatch(branch)?.group(1);
+    _patchBranchPattern.firstMatch(branch)?.namedGroup('package');
+
+/// Extracts the `{major}.{minor}` release line from a
+/// `release/{package}/v{major}.{minor}.x` patch-branch name. Only called
+/// once [_resolveGroups] has already validated the branch matches the
+/// convention, so a non-match here would be a bug in that validation.
+(int major, int minor) _releaseLineFromPatchBranch(String branch) {
+  final match = _patchBranchPattern.firstMatch(branch)!;
+  return (
+    int.parse(match.namedGroup('major')!),
+    int.parse(match.namedGroup('minor')!),
+  );
+}
 
 Future<List<PackageGroup>> _resolveGroups(RunContext ctx) async {
   final allGroups = await discoverPackages(ctx.repoRoot);

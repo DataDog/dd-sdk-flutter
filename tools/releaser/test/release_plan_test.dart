@@ -242,7 +242,7 @@ void main() {
       );
 
       final delta = result.packages.single.nativeSdkDeltas.single;
-      expect(delta.currentPin, '~> 3');
+      expect(delta.pins, [(source: 'podspec', value: '~> 3')]);
       expect(delta.targetVersion, '3.12.0');
       expect(delta.isChange, isTrue);
     });
@@ -285,8 +285,10 @@ void main() {
         );
 
         final delta = result.packages.single.nativeSdkDeltas.single;
-        expect(delta.currentPin, '~> 3');
-        expect(delta.currentSpmPin, 'from: "3.0.0"');
+        expect(delta.pins, [
+          (source: 'podspec', value: '~> 3'),
+          (source: 'Package.swift', value: '3.0.0'),
+        ]);
         expect(delta.targetVersion, '3.12.0');
       },
     );
@@ -316,7 +318,9 @@ void main() {
       );
 
       final delta = result.packages.single.nativeSdkDeltas.single;
-      expect(delta.currentPin, 'develop');
+      expect(delta.pins, [
+        (source: 'windows/CMakeLists.txt', value: 'develop'),
+      ]);
       expect(delta.targetVersion, 'v1.4.0');
       expect(delta.targetSha, 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2');
     });
@@ -339,6 +343,44 @@ void main() {
         expect(delta.targetSha, isNull);
       },
     );
+
+    test('a still-stale second CMakeLists (e.g. linux) is not masked by a '
+        'first one (windows) that already matches the target', () async {
+      // windows/CMakeLists.txt (from setUp, checked first) is rewritten
+      // to already match the target; linux/CMakeLists.txt is still
+      // pinned to "develop".
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_desktop/'
+            'windows/CMakeLists.txt',
+        '''
+FetchContent_Declare(dd-sdk-cpp
+  GIT_REPOSITORY https://github.com/DataDog/dd-sdk-cpp.git
+  GIT_TAG        deadbeefdeadbeefdeadbeefdeadbeefdeadbeef)  # v1.4.0
+''',
+      );
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_desktop/'
+        'linux/CMakeLists.txt',
+        _windowsCMakeListsWithGitTag,
+      );
+      await fixture.commit('chore: update CMakeLists fixtures');
+
+      final result = await plan(
+        mainlineCtx(
+          requestedPackages: ['datadog_flutter_plugin_desktop'],
+          cppVersionOverride: 'v1.4.0',
+        ),
+        resolveCommitSha: (repoSlug, ref) async =>
+            'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+      );
+
+      final delta = result.packages.single.nativeSdkDeltas.single;
+      expect(delta.pins, [
+        (source: 'windows/CMakeLists.txt', value: 'v1.4.0'),
+        (source: 'linux/CMakeLists.txt', value: 'develop'),
+      ]);
+      expect(delta.isChange, isTrue);
+    });
   });
 
   group('patch branch', () {
@@ -406,6 +448,28 @@ void main() {
         throwsStateError,
       );
     });
+
+    test(
+      'ignores a newer tag from a line mainline has already moved past',
+      () async {
+        await fixture.tag('datadog_dio/v2.0.0');
+        // Mainline has since released a new major -- not an ancestor of
+        // the 2.0.x patch branch, and must not be picked up as "the last
+        // release" for it. (Tagged directly, rather than via a feat!/major
+        // commit, so this test isolates tag selection from the separate
+        // "no major/minor commits on a patch branch" check.)
+        fixture.writeFile('packages/datadog_dio/CHANGES', 'v3.0.0 work');
+        await fixture.commit('fix: something for 3.0.0');
+        await fixture.tag('datadog_dio/v3.0.0');
+
+        fixture.writeFile('packages/datadog_dio/CHANGES', 'a cherry-pick');
+        await fixture.commit('fix: a cherry-picked fix');
+
+        final result = await plan(patchCtx('release/datadog_dio/v2.0.x'));
+
+        expect(result.packages.single.newVersion, '2.0.1');
+      },
+    );
   });
 
   group('pre-release branch', () {
@@ -452,6 +516,17 @@ void main() {
       final result = await plan(preReleaseCtx(prereleaseLabel: 'rc'));
 
       expect(result.packages.single.newVersion, '4.0.0-rc.1');
+    });
+
+    test('bases a new prerelease line on the declared target version, not a '
+        'stale prior stable tag', () async {
+      // pubspec.version is already 4.0.0 (a new major, not yet released),
+      // but the last real tag is the old 3.x stable line.
+      await fixture.tag('datadog_flutter_plugin/v3.2.0');
+
+      final result = await plan(preReleaseCtx(prereleaseLabel: 'beta'));
+
+      expect(result.packages.single.newVersion, '4.0.0-beta.1');
     });
   });
 

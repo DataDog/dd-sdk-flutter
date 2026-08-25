@@ -261,7 +261,7 @@ FetchContent_Declare(dd-sdk-cpp
     test('is false when the target matches the current pin', () {
       final delta = NativeSdkDelta(
         sdk: NativeSdk.android,
-        currentPin: '3.11.0',
+        pins: [(source: 'build.gradle', value: '3.11.0')],
         targetVersion: '3.11.0',
       );
       expect(delta.isChange, isFalse);
@@ -270,7 +270,7 @@ FetchContent_Declare(dd-sdk-cpp
     test('is false when there is no target (no change)', () {
       final delta = NativeSdkDelta(
         sdk: NativeSdk.android,
-        currentPin: '3.11.0',
+        pins: [(source: 'build.gradle', value: '3.11.0')],
         targetVersion: null,
       );
       expect(delta.isChange, isFalse);
@@ -279,7 +279,7 @@ FetchContent_Declare(dd-sdk-cpp
     test('is true when the target differs from the current pin', () {
       final delta = NativeSdkDelta(
         sdk: NativeSdk.android,
-        currentPin: '3.11.0',
+        pins: [(source: 'build.gradle', value: '3.11.0')],
         targetVersion: '3.12.0',
       );
       expect(delta.isChange, isTrue);
@@ -289,8 +289,10 @@ FetchContent_Declare(dd-sdk-cpp
         'both must track the same version', () {
       final delta = NativeSdkDelta(
         sdk: NativeSdk.ios,
-        currentPin: '3.12.0',
-        currentSpmPin: 'from: "3.0.0"',
+        pins: [
+          (source: 'podspec', value: '3.12.0'),
+          (source: 'Package.swift', value: '3.0.0'),
+        ],
         targetVersion: '3.12.0',
       );
       expect(delta.isChange, isTrue);
@@ -299,8 +301,10 @@ FetchContent_Declare(dd-sdk-cpp
     test('is true when the SPM pin matches but the podspec lags behind', () {
       final delta = NativeSdkDelta(
         sdk: NativeSdk.ios,
-        currentPin: '~> 3',
-        currentSpmPin: 'exact: "3.12.0"',
+        pins: [
+          (source: 'podspec', value: '~> 3'),
+          (source: 'Package.swift', value: '3.12.0'),
+        ],
         targetVersion: '3.12.0',
       );
       expect(delta.isChange, isTrue);
@@ -309,8 +313,10 @@ FetchContent_Declare(dd-sdk-cpp
     test('is false when both the podspec and SPM pin match the target', () {
       final delta = NativeSdkDelta(
         sdk: NativeSdk.ios,
-        currentPin: '3.12.0',
-        currentSpmPin: 'exact: "3.12.0"',
+        pins: [
+          (source: 'podspec', value: '3.12.0'),
+          (source: 'Package.swift', value: '3.12.0'),
+        ],
         targetVersion: '3.12.0',
       );
       expect(delta.isChange, isFalse);
@@ -319,11 +325,49 @@ FetchContent_Declare(dd-sdk-cpp
     test('a branch-tracking SPM pin always counts as needing a change', () {
       final delta = NativeSdkDelta(
         sdk: NativeSdk.ios,
-        currentPin: '3.12.0',
-        currentSpmPin: 'branch: "develop"',
+        pins: [
+          (source: 'podspec', value: '3.12.0'),
+          (source: 'Package.swift', value: 'branch: "develop"'),
+        ],
         targetVersion: '3.12.0',
       );
       expect(delta.isChange, isTrue);
+    });
+
+    test('is true when the first pin matches but an additional pin '
+        '(e.g. a second CMakeLists) lags behind', () {
+      final delta = NativeSdkDelta(
+        sdk: NativeSdk.cpp,
+        pins: [
+          (source: 'windows/CMakeLists.txt', value: 'v1.4.0'),
+          (source: 'linux/CMakeLists.txt', value: 'develop'),
+        ],
+        targetVersion: 'v1.4.0',
+      );
+      expect(delta.isChange, isTrue);
+    });
+
+    test('is false when the first pin and every additional pin match', () {
+      final delta = NativeSdkDelta(
+        sdk: NativeSdk.cpp,
+        pins: [
+          (source: 'windows/CMakeLists.txt', value: 'v1.4.0'),
+          (source: 'linux/CMakeLists.txt', value: 'v1.4.0'),
+        ],
+        targetVersion: 'v1.4.0',
+      );
+      expect(delta.isChange, isFalse);
+    });
+  });
+
+  group('spmPinForComparison', () {
+    test('extracts the bare version literal from a version-pinned spec', () {
+      expect(spmPinForComparison('from: "3.0.0"'), '3.0.0');
+      expect(spmPinForComparison('exact: "3.12.0"'), '3.12.0');
+    });
+
+    test('returns a branch-tracking spec unchanged', () {
+      expect(spmPinForComparison('branch: "develop"'), 'branch: "develop"');
     });
   });
 }

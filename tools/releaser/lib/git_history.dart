@@ -9,7 +9,16 @@ import 'package:version/version.dart';
 /// Finds the most recent tag matching `{packageName}/v*`, or null if the
 /// package has never been tagged (its first release, or a brand-new
 /// federated sub-package -- see [commitMessagesSince]'s no-`sinceSha` path).
-Future<Tag?> findLastReleaseTag(GitDir gitDir, String packageName) async {
+///
+/// [releaseLine], when given, restricts the search to tags whose
+/// major/minor matches -- a patch branch's own release line, so a tag
+/// mainline has since cut for a newer major/minor (which is not an
+/// ancestor of the patch branch) can't be picked up instead.
+Future<Tag?> findLastReleaseTag(
+  GitDir gitDir,
+  String packageName, {
+  (int major, int minor)? releaseLine,
+}) async {
   final prefix = '$packageName/v';
   final matchingTags = await gitDir
       .tags()
@@ -28,6 +37,12 @@ Future<Tag?> findLastReleaseTag(GitDir gitDir, String packageName) async {
       matchingTags
           .map((tag) => (tag, versionOf(tag)))
           .where((pair) => pair.$2 != null)
+          .where(
+            (pair) =>
+                releaseLine == null ||
+                (pair.$2!.major == releaseLine.$1 &&
+                    pair.$2!.minor == releaseLine.$2),
+          )
           .toList()
         ..sort((a, b) => a.$2!.compareTo(b.$2!));
 

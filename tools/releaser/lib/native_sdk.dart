@@ -71,15 +71,16 @@ String? readSpmPin(String packageSwiftContent) =>
 
 /// Pulls the bare version literal out of an SPM dependency spec whose kind
 /// pins to a specific version (`exact: "3.12.0"` / `from: "3.0.0"` ->
-/// `3.12.0`/`3.0.0`), or null for a spec with nothing to compare (`branch:
-/// "develop"`) -- used to tell whether a `Package.swift` needs to be
-/// brought in line with a resolved target, the same way [readIosPodspecPin]
-/// is compared against one.
+/// `3.12.0`/`3.0.0`). A spec with nothing to compare (`branch: "develop"`)
+/// is returned unchanged, so it never accidentally equals a resolved
+/// target and always reads as needing a pin -- used to normalize a
+/// `Package.swift` pin into the same shape as [readIosPodspecPin]'s before
+/// the two are compared as just another entry in [NativeSdkDelta.pins].
+String spmPinForComparison(String spec) =>
+    _spmVersionLiteralPattern.firstMatch(spec)?.namedGroup('version') ?? spec;
 final _spmVersionLiteralPattern = RegExp(
   r'^(?:exact|from|upToNextMajor|upToNextMinor):\s*"(?<version>[^"]+)"',
 );
-String? _spmPinnedVersion(String spec) =>
-    _spmVersionLiteralPattern.firstMatch(spec)?.namedGroup('version');
 
 /// The current C++ pin from a CMakeLists.txt's dd-sdk-cpp `GIT_TAG` line, or
 /// null if it has none. Once pinned by this tooling, `GIT_TAG` holds a
@@ -177,6 +178,12 @@ NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
   );
 }
 
+/// One file's current pin on a native SDK dependency, and where it came
+/// from (e.g. `'podspec'`, `'Package.swift'`, `'windows/CMakeLists.txt'`) --
+/// the label exists purely so a stale pin can be reported back to whoever's
+/// reading the plan, not for any comparison logic.
+typedef NativeSdkPin = ({String source, String value});
+
 /// What's changing (if anything) for one native SDK dependency of a
 /// package. [targetVersion] is null when nothing should change -- the
 /// patch-branch default, absent an explicit override.
@@ -188,40 +195,38 @@ NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
 /// is immutable, unlike a tag, which can be moved.
 class NativeSdkDelta {
   final NativeSdk sdk;
-  final String? currentPin;
   final String? targetVersion;
   final String? targetSha;
 
-  /// The separate pin an [NativeSdk.ios] package's `Package.swift` (SPM)
-  /// carries, when it has one -- always null for [NativeSdk.android]/
-  /// [NativeSdk.cpp]. A podspec and a `Package.swift` pin the same
-  /// dependency independently, in their own file formats, so this is read
-  /// (and compared in [isChange]) separately from [currentPin] -- this
-  /// tool always pins both to the exact same version, so either one
-  /// drifting from [targetVersion] counts as a change.
-  final String? currentSpmPin;
+  /// Every file's current pin on this dependency -- one for [NativeSdk.
+  /// android] (`build.gradle`), up to two for [NativeSdk.ios] (podspec and/
+  /// or `Package.swift`), and one per platform for [NativeSdk.cpp]
+  /// (`windows/CMakeLists.txt`, `linux/CMakeLists.txt`). Outside of a bug,
+  /// every pin on a dependency should already agree with every other --
+  /// they're all pinned to the same target by this same tooling -- so
+  /// [isChange] just checks that they all still match [targetVersion]
+  /// rather than tracking each file's staleness independently.
+  final List<NativeSdkPin> pins;
 
   NativeSdkDelta({
     required this.sdk,
-    required this.currentPin,
     required this.targetVersion,
     this.targetSha,
-    this.currentSpmPin,
+    this.pins = const [],
   });
 
   bool get isChange {
     if (targetVersion == null) return false;
-    final podspecOutOfDate = currentPin != null && currentPin != targetVersion;
-    final spmOutOfDate =
-        currentSpmPin != null &&
-        _spmPinnedVersion(currentSpmPin!) != targetVersion;
-    return podspecOutOfDate || spmOutOfDate;
+    return pins.any((pin) => pin.value != targetVersion);
   }
 
   @override
-  String toString() => isChange
-      ? '${sdk.name}: $currentPin -> $targetVersion'
-      : '${sdk.name}: $currentPin (no change)';
+  String toString() {
+    final current = pins.map((pin) => '${pin.source}=${pin.value}').join(', ');
+    return isChange
+        ? '${sdk.name}: $current -> $targetVersion'
+        : '${sdk.name}: $current (no change)';
+  }
 }
 
 /// The network calls native SDK resolution needs -- bundled so callers
