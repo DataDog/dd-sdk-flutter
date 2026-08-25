@@ -3,7 +3,10 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
+import 'package:datadog_flutter_plugin/src/datadog_noop_platform.dart';
 import 'package:datadog_flutter_plugin/src/rum/rum.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -79,6 +82,10 @@ Widget _buildSimpleApp(DatadogRum rum, Widget innerWidget) {
 void main() {
   setUpAll(() {
     registerFallbackValue(RumActionType.custom);
+    if (kIsWeb) {
+      // This doesn't happen automatically in wasm testing for some reason
+      DatadogSdkPlatform.instance = DatadogSdkNoOpPlatform();
+    }
   });
 
   testWidgets('tap button reports tap to RUM', (tester) async {

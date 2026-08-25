@@ -121,8 +121,8 @@ scripts:
   unit_test:web:
     run:
       mkdir -p $MELOS_ROOT_PATH/.build/test-results &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'"
-      # melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome --wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'" 
+      melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
+      melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome --wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'" 
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
@@ -219,6 +219,7 @@ scripts:
     exec: |
       cd integration_test_app
       dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart
+      dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart --wasm
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
@@ -228,6 +229,7 @@ scripts:
     run: |
       cd example      
       dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart
+      dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart --wasm
     packageFilters:
       scope: 'datadog_tracking_http_client'
 
