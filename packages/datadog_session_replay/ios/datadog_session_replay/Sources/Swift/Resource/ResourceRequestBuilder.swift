@@ -60,7 +60,7 @@ internal struct ResourceRequestBuilder: FeatureRequestBuilder {
                     os: context.os
                 ),
                 .ddAPIKeyHeader(clientToken: context.clientToken),
-                .ddEVPOriginHeader(source: FlutterSessionReplayConstants.source),
+                .ddEVPOriginHeader(source: context.source),
                 .ddEVPOriginVersionHeader(sdkVersion: context.sdkVersion),
                 .ddRequestIDHeader()
             ],

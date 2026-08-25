@@ -3,7 +3,6 @@
 // Copyright 2025-Present Datadog, Inc.
 
 import Foundation
-import DatadogInternal
 
 @testable import datadog_session_replay
 
@@ -13,13 +12,6 @@ class FlutterSessionReplayFeatureMock: FlutterSessionReplayFeature {
     var hasReplay: Bool?
     var recordCount: [String: Int64] = [:]
     var writtenSegments: [String] = []
-
-    /// The context handed to `readCurrentContext`'s completion.
-    var currentContext: RUMCoreContext?
-
-    func readCurrentContext(_ completion: @escaping (RUMCoreContext?) -> Void) {
-        completion(currentContext)
-    }
 
     func setHasReplay(_ hasReplay: Bool) {
         self.hasReplay = hasReplay

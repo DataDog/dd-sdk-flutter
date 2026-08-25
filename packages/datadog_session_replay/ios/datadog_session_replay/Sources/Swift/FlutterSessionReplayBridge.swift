@@ -26,15 +26,6 @@ public func __datadog_session_replay_keep_symbols() {
         self.applicationID = applicationID
         super.init()
     }
-
-    /// Maps the internal RUM context to the Flutter-facing type delivered to Dart.
-    internal convenience init(_ context: RUMCoreContext) {
-        self.init(
-            sessionID: context.sessionID,
-            viewID: context.viewID,
-            applicationID: context.applicationID
-        )
-    }
 }
 
 @objc(FlutterSessionReplayConfiguration) public class FlutterSessionReplayConfiguration: NSObject {
@@ -52,86 +43,19 @@ public func __datadog_session_replay_keep_symbols() {
     }
 }
 
-/// The Session Replay bridge for a single Flutter engine.
-///
-/// One instance exists per engine. It owns only per-engine state — this engine's Dart
-/// RUM-context callback and the routing of this engine's records — and delegates
-/// everything shared (the feature, the core, the engine registry, host slot IDs) to
-/// `FlutterSessionReplayManager`.
 @objc(FlutterSessionReplay) public class FlutterSessionReplay: NSObject {
-    /// The coordinator shared with every other engine's bridge.
-    internal let manager: FlutterSessionReplayManager
+    // Static properties so the callback and feature survive engine detach/re-attach cycles,
+    // mirroring the Android FlutterSessionReplayBridge singleton pattern.
+    internal static var contextCallback: ((FlutterRUMCoreContext?) -> Void)?
+    internal static var feature: FlutterSessionReplayFeature?
 
-    /// Identifies this bridge to its own engine.
-    ///
-    /// The FFI `enable()` call cannot tell which engine invoked it, and this bridge never sees a
-    /// messenger. Dart reads this token after construction and passes it to the plugin instance
-    /// for its engine over the engine method channel, which is the one place the messenger *is*
-    /// known — letting the manager pair the two. See `FlutterSessionReplayManager.bind(engineToken:to:)`.
-    @objc public let engineToken: String = UUID().uuidString
+    // Ownership token for multi-engine support: only the engine that called enable()
+    // is allowed to null out the callback on detach. Set by claimOwnership(messenger:)
+    // after the Dart-side method channel message is delivered.
+    internal static var listenerOwner: AnyObject?
 
-    /// Creates a bridge backed by the process-wide coordinator.
-    @objc public override convenience init() {
-        self.init(manager: .shared)
-    }
-
-    /// Creates a bridge backed by `manager`. Primarily used in tests, to substitute the
-    /// coordinator.
-    internal init(manager: FlutterSessionReplayManager) {
-        self.manager = manager
-        super.init()
-    }
-
-    /// This engine's Dart RUM-context callback, set in `enable()` and invoked by the
-    /// manager's context fan-out.
-    private var contextCallback: ((FlutterRUMCoreContext?) -> Void)?
-
-    /// The canonical messenger of the engine this bridge serves, set by
-    /// `FlutterSessionReplayManager.bind(engineToken:to:)` once `registerEngine` has paired the
-    /// two. Needed to resolve this engine's slot ID at write time. Weak — the engine owns it.
-    private weak var boundMessenger: AnyObject?
-
-    /// Which recording path this engine's segments belong to, as declared by Dart in
-    /// `setEmbedded(_:)`. Deliberately does *not* carry the slot ID: that is resolved per segment
-    /// from the engine's current view, so a re-registered view controller is picked up without
-    /// anything on the Dart side having to notice it changed.
-    private enum EmbeddingState {
-        case unknown        // `setEmbedded` not yet called
-        case embedded       // Flutter is embedded in a native host
-        case standalone     // Flutter is the host app
-    }
-
-    private var embeddingState: EmbeddingState = .unknown
-
-    /// Segments with nowhere to go yet — either Dart has not declared the embedding state, or the
-    /// embedded slot cannot be resolved because the host has not registered this engine's view
-    /// controller yet (a pre-warmed engine). Drained by `flushPendingSegments()`.
-    private var pendingSegments: [String] = []
-
-    /// Cap on `pendingSegments`, so an engine that never becomes resolvable — a host that
-    /// configured `isEmbedded: true` but never called `dd.enableSessionReplay()` — drops the
-    /// oldest segments rather than growing without bound. Two seconds of capture at the default
-    /// 100ms cadence.
-    internal static let maxPendingSegments = 20
-
-    /// Delivers a RUM context update to this engine's Dart callback.
-    internal func receive(context: FlutterRUMCoreContext?) {
-        contextCallback?(context)
-    }
-
-    /// Records the messenger of the engine this bridge belongs to, and drains anything that was
-    /// waiting on it. See `boundMessenger`.
-    internal func bind(messenger: AnyObject) {
-        boundMessenger = messenger
-        flushPendingSegments()
-    }
-
-    /// Tears down everything tied to this engine's Dart isolate, called when the engine detaches.
-    internal func detach() {
-        contextCallback = nil
-        boundMessenger = nil
-        embeddingState = .unknown
-        pendingSegments = []
+    static func claimOwnership(messenger: AnyObject) {
+        listenerOwner = messenger
     }
 
     @objc public func enable(with configuration: FlutterSessionReplayConfiguration) {
@@ -152,97 +76,73 @@ public func __datadog_session_replay_keep_symbols() {
             )
         }
 
-        // Register this engine for live RUM context fan-out before anything else, so it
-        // receives updates even if the feature was already registered by another engine.
-        contextCallback = configuration.onContextChanged
-        manager.register(engine: self)
+        // Always replace the context callback to prevent a crash on Hot Restart / engine
+        // re-attach, where the previously created FFI callback has been destroyed.
+        FlutterSessionReplay.contextCallback = configuration.onContextChanged
+        // Clear any stale ownership. claimOwnership(messenger:) will re-establish it for
+        // the correct engine once the Dart-side 'claimOwnership' method channel message
+        // is delivered. There is a brief gap between enable() and claimOwnership() during
+        // which listenerOwner is nil; this is intentional and acceptable — see the comment
+        // in DatadogSessionReplayPlugin.register(with:) for the full explanation.
+        FlutterSessionReplay.listenerOwner = nil
 
-        try manager.enableFeature(in: core, customEndpoint: configuration.customEndpoint)
+        // If already initialized, reuse the existing feature (don't re-register with core).
+        if FlutterSessionReplay.feature != nil {
+            return
+        }
 
-        // The feature only reports context *changes*, and in hybrid apps the native RUM
-        // view is usually already active by now — so prime this engine with the current
-        // context instead of waiting for the next change.
-        manager.primeContext(for: self)
+        let mappedConfiguration = DefaultFlutterSessionReplayFeature.Configuration(
+            customEndpoint: configuration.customEndpoint,
+            onContextChanged: { context in
+                // Read contextCallback at call time so that nullifying it on engine detach
+                // makes this a no-op, preventing calls into a destroyed Dart isolate.
+                if let context = context {
+                    FlutterSessionReplay.contextCallback?(FlutterRUMCoreContext(
+                        sessionID: context.sessionID,
+                        viewID: context.viewID,
+                        applicationID: context.applicationID
+                    ))
+                } else {
+                    FlutterSessionReplay.contextCallback?(nil)
+                }
+            }
+        )
+
+        let sessionReplay = try DefaultFlutterSessionReplayFeature(
+            core: core,
+            configuration: mappedConfiguration,
+            resourceResolver: nil   // Use the default resource resolver
+        )
+        try core.register(feature: sessionReplay)
+        FlutterSessionReplay.feature = sessionReplay
     }
 
-    /// Whether this engine should publish replay state (`has_replay`, record counts) to the core.
-    ///
-    /// Only the standalone path may: when embedded, the native `SessionReplayFeature` publishes
-    /// both — `EmbeddedContentReceiver` counts our records through its `SRContextPublisher` —
-    /// and publishing from here too would have the two fight over the same core-context keys,
-    /// making the value RUM reads depend on which wrote last.
-    private var publishesReplayState: Bool {
-        if case .standalone = embeddingState {
-            return true
+    /// Nullifies the context callback if the detaching engine is the one that registered it.
+    /// This prevents a secondary engine's detach from clearing a live engine's callback.
+    static func detachFromEngine(messenger: AnyObject) {
+        if listenerOwner === messenger {
+            contextCallback = nil
+            listenerOwner = nil
         }
-        return false
+    }
+
+    // Only used in testing
+    internal static func shutdown() {
+        feature = nil
+        contextCallback = nil
+        listenerOwner = nil
     }
 
     @objc public func setHasReplay(hasReplay: Bool) {
-        guard publishesReplayState else {
-            return
-        }
-        manager.feature?.setHasReplay(hasReplay)
+        FlutterSessionReplay.feature?.setHasReplay(hasReplay)
     }
 
     @objc public func setRecordCount(for viewId: String, count: Int) {
-        guard publishesReplayState else {
-            return
-        }
-        manager.feature?.setRecordCount(for: viewId, count: Int64(count))
-    }
-
-    /// Declares which recording path this engine writes to. Called once by Dart, straight after
-    /// `enable()`, from the `isEmbedded` it was configured with.
-    @objc public func setEmbedded(_ isEmbedded: Bool) {
-        embeddingState = isEmbedded ? .embedded : .standalone
-        flushPendingSegments()
+        FlutterSessionReplay.feature?.setRecordCount(for: viewId, count: Int64(count))
     }
 
     @objc public func writeSegment(segment segmentJson: String) {
-        pendingSegments.append(segmentJson)
-        if pendingSegments.count > Self.maxPendingSegments {
-            pendingSegments.removeFirst(pendingSegments.count - Self.maxPendingSegments)
-        }
-        flushPendingSegments()
-    }
-
-    /// Writes every buffered segment, if a destination can be resolved right now.
-    ///
-    /// The embedded slot is resolved here — per flush, from the engine's current view — rather than
-    /// cached when the engine enables. That is what removes the need for Dart to observe its view:
-    /// each segment simply picks up whatever slot ID the host's registered view carries now.
-    private func flushPendingSegments() {
-        guard !pendingSegments.isEmpty else {
-            return
-        }
-
-        switch embeddingState {
-        case .unknown:
-            // Dart has not declared the embedding state yet.
-            return
-
-        case .standalone:
-            // Flutter is the host app — write directly to the Flutter SR feature scope.
-            let pending = pendingSegments
-            pendingSegments = []
-            pending.forEach { manager.feature?.writeSegment(segment: $0) }
-
-        case .embedded:
-            // Flutter is embedded — hand the records to the native recording so the player can
-            // composite them into the host's `embedded_view` placeholder.
-            guard
-                let messenger = boundMessenger,
-                let slotId = manager.slotId(for: messenger)
-            else {
-                // Either `registerEngine` has not landed yet, or the host has not registered this
-                // engine's view controller. Keep buffering and retry on the next segment.
-                return
-            }
-            let pending = pendingSegments
-            pendingSegments = []
-            pending.forEach { manager.sendToMessageBus(segment: $0, slotId: slotId) }
-        }
+        FlutterSessionReplay.feature?.writeSegment(segment: segmentJson)
     }
 
     @objc public func postTelemetryDebug(id: String, message: String) {
@@ -255,10 +155,10 @@ public func __datadog_session_replay_keep_symbols() {
     }
 
     @objc public func saveImageForProcessing(resourceKey: Int, width: Int, height: Int, data: Data) {
-        manager.feature?.resourceResolver.addResource(withKey: resourceKey, width: width, height: height, data: data)
+        FlutterSessionReplay.feature?.resourceResolver.addResource(withKey: resourceKey, width: width, height: height, data: data)
     }
 
     @objc public func resourceId(forKey key: Int) -> String? {
-        return manager.feature?.resourceResolver.resolveResource(withKey: key)
+        return FlutterSessionReplay.feature?.resourceResolver.resolveResource(withKey: key)
     }
 }

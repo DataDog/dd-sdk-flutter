@@ -6,7 +6,7 @@ import Foundation
 import DatadogInternal
 
 internal class ResourcesFeature: DatadogRemoteFeature {
-    static var name = "flutter-session-replay-resources"
+    static var name = "session-replay-resources"
 
     let messageReceiver: FeatureMessageReceiver = NOPFeatureMessageReceiver()
     let performanceOverride: PerformancePresetOverride?

@@ -5,27 +5,18 @@
 import Foundation
 import DatadogInternal
 
-/// Constants shared across the Flutter Session Replay feature.
-internal enum FlutterSessionReplayConstants {
-    /// The `source` reported to the intake for all Flutter SR uploads. Hardcoded
-    /// (rather than derived from `context.source`) because these records always
-    /// originate from the Flutter SDK, even when embedded in a native host app.
-    static let source = "flutter"
-}
-
 protocol FlutterSessionReplayFeature {
     var resourceResolver: ResourceResolver {
         get
     }
 
-    func readCurrentContext(_ completion: @escaping (RUMCoreContext?) -> Void)
     func setHasReplay(_ hasReplay: Bool)
     func setRecordCount(for viewId: String, count: Int64)
     func writeSegment(segment: String)
 }
 
 class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRemoteFeature {
-    static var name: String = "flutter-session-replay"
+    static var name: String = "session-replay"
 
     public struct Configuration {
         public var customEndpoint: URL?
@@ -66,7 +57,6 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
         core: DatadogCoreProtocol,
         configuration: Configuration,
         resourceResolver: ResourceResolver?,
-        embeddedResourceSink: @escaping EmbeddedResourceSink = { _, _, _ in false },
         performanceOverride: PerformancePresetOverride? = nil
     ) throws {
         self.core = core
@@ -89,27 +79,10 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
         try core.register(feature: resourcesFeature)
 
         self.resourceResolver = resourceResolver ?? DefaultResourceResolver(
-            writer: RoutedResourcesWriter(
-                standaloneWriter: ResourcesWriter(scope: core.scope(for: ResourcesFeature.self)),
-                sendToNative: embeddedResourceSink
-            )
+            writer: ResourcesWriter(scope: core.scope(for: ResourcesFeature.self))
         )
 
         self.performanceOverride = performanceOverride
-    }
-
-    /// Reads the current RUM context off the feature scope and passes it to `completion`.
-    ///
-    /// `RUMContextReceiver` only fires `onContextChanged` when the native RUM context
-    /// *changes*. In hybrid apps the native RUM view is already active before an engine
-    /// enables, so without an explicit read the engine never receives the initial context
-    /// and `viewId` stays nil — deferring the first full snapshot until the next change.
-    ///
-    /// Call this once right after a Flutter engine enables to prime it immediately.
-    func readCurrentContext(_ completion: @escaping (RUMCoreContext?) -> Void) {
-        featureScope?.context { context in
-            completion(context.additionalContext(ofType: RUMCoreContext.self))
-        }
     }
 
     func setHasReplay(_ hasReplay: Bool) {
