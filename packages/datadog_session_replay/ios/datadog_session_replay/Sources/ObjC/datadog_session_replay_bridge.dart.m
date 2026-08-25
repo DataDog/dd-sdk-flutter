@@ -19,15 +19,18 @@ typedef struct {
   void (*exitIsolate)(void);
   int64_t (*getMainPortId)(void);
   bool (*getCurrentThreadOwnsIsolate)(int64_t);
+  void (*invokeListenerPortBlock)(int64_t port, void*);
+  void (*invokeBlockingPortBlock)(int64_t port, void*, void*);
 } DOBJC_Context;
 
 id objc_retainBlock(id);
 
-#define BLOCKING_BLOCK_IMPL(ctx, BLOCK_SIG, INVOKE_DIRECT, INVOKE_LISTENER)    \
+#define BLOCKING_BLOCK_IMPL(ctx, TYPE, SIG, INVOKE_DIRECT, INVOKE_LISTENER)    \
   assert(ctx->version >= 1);                                                   \
   void* targetIsolate = ctx->currentIsolate();                                 \
   int64_t targetPort = ctx->getMainPortId == NULL ? 0 : ctx->getMainPortId();  \
-  return BLOCK_SIG {                                                           \
+  __block __weak TYPE weakSelfBlock = nil;                                     \
+  TYPE strongSelfBlock = [SIG {                                                \
     void* currentIsolate = ctx->currentIsolate();                              \
     bool mayEnterIsolate =                                                     \
         currentIsolate == NULL &&                                              \
@@ -43,32 +46,59 @@ id objc_retainBlock(id);
       }                                                                        \
     } else {                                                                   \
       void* waiter = ctx->newWaiter();                                         \
+      TYPE selfRetain = [weakSelfBlock copy];                                  \
       INVOKE_LISTENER;                                                         \
       ctx->awaitWaiter(waiter);                                                \
+      (void)selfRetain;                                                        \
     }                                                                          \
-  };
+  } copy];                                                                     \
+  weakSelfBlock = strongSelfBlock;                                             \
+  return strongSelfBlock;
 
+
+__attribute__((visibility("default")))
+@interface _9m2kop_BlockArgs_xtuoz7 : NSObject
+@property (copy) id block;
+@property (strong) id arg0;
+@end
+@implementation _9m2kop_BlockArgs_xtuoz7
+@end
 
 typedef void  (^_ListenerTrampoline)(id arg0);
 __attribute__((visibility("default"))) __attribute__((used))
-_ListenerTrampoline _datadog_session_replay_bridge_wrapListenerBlock_xtuoz7(_ListenerTrampoline block) NS_RETURNS_RETAINED {
-  return ^void(id arg0) {
-    objc_retainBlock(block);
-    block((__bridge id)(__bridge_retained void*)(arg0));
-  };
+_ListenerTrampoline _9m2kop_wrapListenerBlock_xtuoz7(
+    int64_t port, DOBJC_Context* ctx) NS_RETURNS_RETAINED {
+  __block __weak _ListenerTrampoline weakSelfBlock = nil;
+  _ListenerTrampoline strongSelfBlock = [^void(id arg0) {
+    @autoreleasepool {
+      _9m2kop_BlockArgs_xtuoz7* args = [[_9m2kop_BlockArgs_xtuoz7 alloc] init];
+      args.block = weakSelfBlock;
+      args.arg0 = arg0;
+      ctx->invokeListenerPortBlock(port, (__bridge_retained void*)args);
+    }
+  } copy];
+  weakSelfBlock = strongSelfBlock;
+  return strongSelfBlock;
 }
 
 typedef void  (^_BlockingTrampoline)(void * waiter, id arg0);
 __attribute__((visibility("default"))) __attribute__((used))
-_ListenerTrampoline _datadog_session_replay_bridge_wrapBlockingBlock_xtuoz7(
-    _BlockingTrampoline block, _BlockingTrampoline listenerBlock,
-    DOBJC_Context* ctx) NS_RETURNS_RETAINED {
-  BLOCKING_BLOCK_IMPL(ctx, ^void(id arg0), {
-    objc_retainBlock(block);
-    block(nil, (__bridge id)(__bridge_retained void*)(arg0));
+_ListenerTrampoline _9m2kop_wrapBlockingBlock_xtuoz7(int64_t port, DOBJC_Context* ctx,
+    void (*directInvoke)(void*)) NS_RETURNS_RETAINED {
+  BLOCKING_BLOCK_IMPL(ctx, _ListenerTrampoline, ^void(id arg0), {
+    @autoreleasepool {
+      _9m2kop_BlockArgs_xtuoz7* args = [[_9m2kop_BlockArgs_xtuoz7 alloc] init];
+      args.block = weakSelfBlock;
+      args.arg0 = arg0;
+      directInvoke((__bridge_retained void*)args);
+    }
   }, {
-    objc_retainBlock(listenerBlock);
-    listenerBlock(waiter, (__bridge id)(__bridge_retained void*)(arg0));
+    @autoreleasepool {
+      _9m2kop_BlockArgs_xtuoz7* args = [[_9m2kop_BlockArgs_xtuoz7 alloc] init];
+      args.block = weakSelfBlock;
+      args.arg0 = arg0;
+      ctx->invokeBlockingPortBlock(port, (__bridge_retained void*)args, waiter);
+    }
   });
 }
 #undef BLOCKING_BLOCK_IMPL

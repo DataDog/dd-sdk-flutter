@@ -16,6 +16,6 @@ FlagsEvaluationContext _$FlagsEvaluationContextFromJson(
 Map<String, dynamic> _$FlagsEvaluationContextToJson(
   FlagsEvaluationContext instance,
 ) => <String, dynamic>{
-  if (instance.targetingKey case final value?) 'targetingKey': value,
+  'targetingKey': ?instance.targetingKey,
   'attributes': sanitizeJsonValue(instance.attributes),
 };

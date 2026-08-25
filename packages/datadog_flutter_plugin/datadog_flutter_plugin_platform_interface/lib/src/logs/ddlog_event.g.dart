@@ -29,9 +29,9 @@ LogEventUserInfo _$LogEventUserInfoFromJson(Map json) => LogEventUserInfo(
 
 Map<String, dynamic> _$LogEventUserInfoToJson(LogEventUserInfo instance) =>
     <String, dynamic>{
-      if (instance.id case final value?) 'id': value,
-      if (instance.name case final value?) 'name': value,
-      if (instance.email case final value?) 'email': value,
+      'id': ?instance.id,
+      'name': ?instance.name,
+      'email': ?instance.email,
       'extraInfo': instance.extraInfo,
     };
 
@@ -44,10 +44,10 @@ LogEventError _$LogEventErrorFromJson(Map json) => LogEventError(
 
 Map<String, dynamic> _$LogEventErrorToJson(LogEventError instance) =>
     <String, dynamic>{
-      if (instance.kind case final value?) 'kind': value,
-      if (instance.message case final value?) 'message': value,
-      if (instance.stack case final value?) 'stack': value,
-      if (instance.fingerprint case final value?) 'fingerprint': value,
+      'kind': ?instance.kind,
+      'message': ?instance.message,
+      'stack': ?instance.stack,
+      'fingerprint': ?instance.fingerprint,
     };
 
 LogEventLoggerInfo _$LogEventLoggerInfoFromJson(Map json) => LogEventLoggerInfo(
@@ -59,7 +59,7 @@ LogEventLoggerInfo _$LogEventLoggerInfoFromJson(Map json) => LogEventLoggerInfo(
 Map<String, dynamic> _$LogEventLoggerInfoToJson(LogEventLoggerInfo instance) =>
     <String, dynamic>{
       'name': instance.name,
-      if (instance.threadName case final value?) 'thread_name': value,
+      'thread_name': ?instance.threadName,
       'version': instance.version,
     };
 
@@ -83,9 +83,9 @@ Map<String, dynamic> _$LogEventToJson(LogEvent instance) => <String, dynamic>{
   'date': instance.date,
   'status': _$LogStatusEnumMap[instance.status]!,
   'message': instance.message,
-  if (instance.error?.toJson() case final value?) 'error': value,
+  'error': ?instance.error?.toJson(),
   'service': instance.service,
-  if (instance.usr?.toJson() case final value?) 'usr': value,
+  'usr': ?instance.usr?.toJson(),
   'logger': instance.logger.toJson(),
   '_dd': instance.dd.toJson(),
   'ddtags': instance.ddtags,

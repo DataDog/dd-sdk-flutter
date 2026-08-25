@@ -29,8 +29,8 @@ dev_dependencies:
   mocktail: ^1.0.4
   json_serializable: ^6.14.0
   build_runner: ^2.15.0
-  ffigen: ^20.1.1
-  jnigen: ^0.16.0
+  ffigen: ^21.0.0
+  jnigen: ^0.17.0
   datadog_common_test:
     path: ../datadog_common_test
 
