@@ -400,7 +400,7 @@ internal class FlutterSessionReplayBridgeTest {
         bridge.saveImageForProcessing(key, data, width, height)
 
         // Then
-        verify { mockResourceResolver.addResource(key, width, height, data) }
+        verify { mockResourceResolver.addResource(bridge.engineToken, key, width, height, data) }
     }
 
     @Test
@@ -411,7 +411,7 @@ internal class FlutterSessionReplayBridgeTest {
         // Given
         val mockResourceResolver = mockk<ResourceResolver>(relaxed = true)
         every { mockFeature.resourceResolver } returns mockResourceResolver
-        every { mockResourceResolver.resolveResource(key) } returns resolvedId
+        every { mockResourceResolver.resolveResource(bridge.engineToken, key) } returns resolvedId
         enable()
 
         // When
@@ -428,11 +428,26 @@ internal class FlutterSessionReplayBridgeTest {
         // Given
         val mockResourceResolver = mockk<ResourceResolver>(relaxed = true)
         every { mockFeature.resourceResolver } returns mockResourceResolver
-        every { mockResourceResolver.resolveResource(key) } returns null
+        every { mockResourceResolver.resolveResource(bridge.engineToken, key) } returns null
         enable()
 
         // Then
         assertThat(bridge.resourceIdForKey(key)).isNull()
+    }
+
+    @Test
+    fun `M release the engine's resources W detach`() {
+        // Given
+        val mockResourceResolver = mockk<ResourceResolver>(relaxed = true)
+        every { mockFeature.resourceResolver } returns mockResourceResolver
+        enable()
+
+        // When
+        bridge.detach()
+
+        // Then - the resolver is shared and never evicts on its own, so the entries this engine's
+        // keys point at would otherwise outlive its isolate
+        verify { mockResourceResolver.releaseEngine(bridge.engineToken) }
     }
 
     // endregion

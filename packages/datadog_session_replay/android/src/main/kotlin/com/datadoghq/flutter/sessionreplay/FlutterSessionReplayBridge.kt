@@ -142,9 +142,20 @@ internal class FlutterSessionReplayBridge private constructor(
         flushPendingSegments()
     }
 
+    /**
+     * Retries delivery of this engine's buffered segments, called once the host has registered the
+     * view that hosts its content.
+     */
+    fun onSlotRegistered() {
+        flushPendingSegments()
+    }
+
     /** Tears down everything tied to this engine's Dart isolate, called when the engine detaches. */
     fun detach() {
         contextListener = null
+        // The resolver is shared and keeps entries indefinitely, so this engine's resources have to
+        // be dropped explicitly or they outlive the isolate that issued their keys.
+        manager.feature?.resourceResolver?.releaseEngine(engineToken)
         synchronized(lock) {
             boundMessenger = null
             embeddingState = EmbeddingState.UNKNOWN
@@ -296,6 +307,7 @@ internal class FlutterSessionReplayBridge private constructor(
         height: Int
     ) {
         manager.feature?.resourceResolver?.addResource(
+            engineToken = engineToken,
             resourceKey = resourceId,
             width = width,
             height = height,
@@ -304,7 +316,7 @@ internal class FlutterSessionReplayBridge private constructor(
     }
 
     fun resourceIdForKey(resourceId: Int): String? {
-        return manager.feature?.resourceResolver?.resolveResource(resourceId)
+        return manager.feature?.resourceResolver?.resolveResource(engineToken, resourceId)
     }
 
     // endregion

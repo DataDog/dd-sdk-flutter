@@ -160,14 +160,17 @@ internal class FlutterSessionReplayManager(
      * Only ever affects the detaching engine, so a secondary engine closing cannot disturb a live one.
      */
     fun detach(messenger: BinaryMessenger) {
+        var slotView: View? = null
         val bridge = synchronized(lock) {
             val existing = bridgesByMessenger.remove(messenger)?.get()
             if (existing != null) {
                 engines.remove(existing)
             }
-            slotsByMessenger.remove(messenger)
+            slotView = slotsByMessenger.remove(messenger)?.view
             existing
         }
+
+        slotView?.let { embeddedSessionReplay.setSlotId(it, null) }
         bridge?.detach()
     }
 
@@ -236,6 +239,7 @@ internal class FlutterSessionReplayManager(
     fun registerSlot(view: View, messenger: BinaryMessenger) {
         isEmbedded = true
 
+        var bridge: FlutterSessionReplayBridge? = null
         val registration = synchronized(lock) {
             val existing = slotsByMessenger[messenger]
             if (existing != null && existing.view === view) {
@@ -245,22 +249,35 @@ internal class FlutterSessionReplayManager(
             // registry stops tracking a slot nothing renders into any more.
             existing?.view?.let { embeddedSessionReplay.setSlotId(it, null) }
 
+            bridge = bridgesByMessenger[messenger]?.get()
             val slotId = existing?.slotId ?: UUID.randomUUID().toString()
             SlotRegistration(slotId, view).also { slotsByMessenger[messenger] = it }
         } ?: return
 
         embeddedSessionReplay.setSlotId(view, registration.slotId)
+        
+        bridge?.onSlotRegistered()
     }
 
     /**
-     * Detaches the slot registered for [messenger], if its view is still the one registered.
+     * Detaches the slot registered for [messenger], if [view] is still the one registered.
      *
      * Called when a host view detaches from its engine. The registration is dropped rather than
      * kept, so records go back to buffering instead of naming a slot the native recorder no longer
      * emits a placeholder for.
+     *
+     * Scoped to [view] rather than dropping whatever [messenger] currently points at, because a
+     * cached engine can be handed from one host view to the next: if the new view registers before
+     * the old one reports its detach, dropping by messenger alone would tear down the registration
+     * that just replaced this one.
      */
-    fun unregisterSlot(messenger: BinaryMessenger) {
-        val view = synchronized(lock) { slotsByMessenger.remove(messenger)?.view } ?: return
+    fun unregisterSlot(messenger: BinaryMessenger, view: View) {
+        synchronized(lock) {
+            if (slotsByMessenger[messenger]?.view !== view) {
+                return
+            }
+            slotsByMessenger.remove(messenger)
+        }
         embeddedSessionReplay.setSlotId(view, null)
     }
 

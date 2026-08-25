@@ -16,6 +16,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.FlutterFragment
 import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.BinaryMessenger
 
 /**
  * Records this Flutter content as part of the native app's Session Replay.
@@ -63,14 +64,23 @@ fun FlutterView.enableSessionReplay() {
     // pointing at the view currently showing it.
     addFlutterEngineAttachmentListener(
         object : FlutterView.FlutterEngineAttachmentListener {
+            private var attachedMessenger: BinaryMessenger? = null
+
             override fun onFlutterEngineAttachedToFlutterView(engine: FlutterEngine) {
+                attachedMessenger = engine.messenger
                 FlutterSessionReplayManager.shared.registerSlot(this@enableSessionReplay, engine.messenger)
             }
 
             override fun onFlutterEngineDetachedFromFlutterView() {
-                // The engine is already gone by the time this fires, so the slot cannot be
-                // unregistered by messenger here. It is dropped when the plugin detaches, and until
-                // then the weakly held view lets a re-attach reuse the same slot.
+                // A cached engine moving between views — the common add-to-app pattern — keeps its
+                // plugin attached, so `onDetachedFromEngine` never runs and nothing else would drop
+                // this slot. Left registered, the engine would go on naming a view it no longer
+                // renders into, and the native recorder would keep emitting a placeholder for it.
+                // Dropping it sends records back to buffering until the engine registers somewhere.
+                attachedMessenger?.let {
+                    FlutterSessionReplayManager.shared.unregisterSlot(it, this@enableSessionReplay)
+                }
+                attachedMessenger = null
             }
         }
     )
