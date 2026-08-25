@@ -206,6 +206,22 @@ internal class FlutterSessionReplayManagerTest {
     }
 
     @Test
+    fun `M clear the host view's slot W detach`() {
+        // Given - an embedded engine whose host view is still on screen, as when a cached engine is
+        // destroyed out from under the view showing it
+        val messenger = mockk<BinaryMessenger>()
+        val view = mockk<View>()
+        manager.registerSlot(view, messenger)
+
+        // When
+        manager.detach(messenger)
+
+        // Then - the tag has to go too: the native recorder draws the placeholder from the view, so
+        // leaving it set would keep a slot on screen that nothing can fill
+        assertThat(embedded.slotIdOf(view)).isNull()
+    }
+
+    @Test
     fun `M do nothing W detach with an unbound messenger`(
         @StringForgery viewId: String
     ) {
@@ -334,11 +350,29 @@ internal class FlutterSessionReplayManagerTest {
         manager.registerSlot(view, messenger)
 
         // When - the host view detaches from its engine
-        manager.unregisterSlot(messenger)
+        manager.unregisterSlot(messenger, view)
 
         // Then - records go back to buffering rather than naming a slot with no placeholder
         assertThat(manager.slotId(messenger)).isNull()
         assertThat(embedded.slotIdOf(view)).isNull()
+    }
+
+    @Test
+    fun `M keep the new registration W unregisterSlot for a view already replaced`() {
+        // Given - a cached engine handed from one host view to the next, the new view registering
+        // before the old one reports its detach
+        val messenger = mockk<BinaryMessenger>()
+        val oldView = mockk<View>()
+        val newView = mockk<View>()
+        manager.registerSlot(oldView, messenger)
+        manager.registerSlot(newView, messenger)
+
+        // When - the old view's detach arrives late
+        manager.unregisterSlot(messenger, oldView)
+
+        // Then - it must not tear down the registration that replaced it
+        assertThat(manager.slotId(messenger)).isNotNull()
+        assertThat(embedded.slotIdOf(newView)).isEqualTo(manager.slotId(messenger))
     }
 
     @Test
@@ -354,6 +388,28 @@ internal class FlutterSessionReplayManagerTest {
         // Then - sharing a slot would composite both engines into the same placeholder
         assertThat(manager.slotId(messengerA)).isNotNull()
         assertThat(manager.slotId(messengerA)).isNotEqualTo(manager.slotId(messengerB))
+    }
+
+    @Test
+    fun `M deliver what the engine buffered W registerSlot`() {
+        // Given - a pre-warmed engine: it enables, binds and records before the host has a view to
+        // host it, so its segments have nowhere to go yet
+        manager.enableFeature(mockCore, null)
+        val bridge = enableEngine()
+        val messenger = mockk<BinaryMessenger>()
+        manager.bind(bridge.engineToken, messenger)
+        bridge.setEmbedded(true)
+        bridge.writeSegment("""{"records":[{"type":1}],"viewID":"view-id"}""")
+        assertThat(embedded.recordBatches).isEmpty()
+
+        // When - the host finally registers its view
+        val view = mockk<View>()
+        manager.registerSlot(view, messenger)
+
+        // Then - the buffer is drained rather than left waiting on a segment that a static UI may
+        // never produce, and that detach would discard
+        assertThat(embedded.recordBatches).hasSize(1)
+        assertThat(embedded.recordBatches[0].slotId).isEqualTo(embedded.slotIdOf(view))
     }
 
     // endregion
