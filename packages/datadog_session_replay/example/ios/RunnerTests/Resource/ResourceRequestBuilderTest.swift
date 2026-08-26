@@ -48,7 +48,7 @@ struct ResourceRequestBuilderTests {
         let expectedUserAgent = "\(context.applicationName)/\(context.version) CFNetwork (\(context.device.name); \(context.os.name)/\(context.os.version))"
         #expect(request.value(forHTTPHeaderField: "User-Agent") == expectedUserAgent)
         #expect(request.value(forHTTPHeaderField: "DD-API-KEY") == context.clientToken)
-        #expect(request.value(forHTTPHeaderField: "DD-EVP-ORIGIN") == FlutterSessionReplayConstants.source)
+        #expect(request.value(forHTTPHeaderField: "DD-EVP-ORIGIN") == context.source)
         #expect(request.value(forHTTPHeaderField: "DD-EVP-ORIGIN-VERSION") == context.sdkVersion)
         #expect(UUID(uuidString: request.value(forHTTPHeaderField: "DD-REQUEST-ID")!) != nil)
     }

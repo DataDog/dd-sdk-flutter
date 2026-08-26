@@ -72,7 +72,7 @@ func requestBuildsURLRequest_WithCorrectHeaders() throws {
     let expectedUserAgent = "\(context.applicationName)/\(context.version) CFNetwork (\(context.device.name); \(context.os.name)/\(context.os.version))"
     #expect(request.value(forHTTPHeaderField: "User-Agent") == expectedUserAgent)
     #expect(request.value(forHTTPHeaderField: "DD-API-KEY") == context.clientToken)
-    #expect(request.value(forHTTPHeaderField: "DD-EVP-ORIGIN") == FlutterSessionReplayConstants.source)
+    #expect(request.value(forHTTPHeaderField: "DD-EVP-ORIGIN") == context.source)
     #expect(request.value(forHTTPHeaderField: "DD-EVP-ORIGIN-VERSION") == context.sdkVersion)
     #expect(UUID(uuidString: request.value(forHTTPHeaderField: "DD-REQUEST-ID")!) != nil)
 }
@@ -111,7 +111,7 @@ func requestBuilder_BuildsFormData_WithMultipartBuilder() throws {
     #expect((segment["application"] as! JSONObject)["id"] as? String == rumContext.applicationID)
     #expect((segment["session"] as! JSONObject)["id"] as? String == rumContext.sessionID)
     #expect((segment["view"] as! JSONObject)["id"] as? String == rumContext.viewID)
-    #expect(segment["source"] as? String == FlutterSessionReplayConstants.source)
+    #expect(segment["source"] as? String == context.source)
     #expect(segment["records_count"] as? Int == 0)
 
     let metadataFile = multipartSpy.formFiles[1]
@@ -230,7 +230,7 @@ func requestBuilder_BuildsFormDataWithMultipleContexts_WithMultipartBuilder() th
     #expect((segment0["application"] as! JSONObject)["id"] as? String == context0.applicationID)
     #expect((segment0["session"] as! JSONObject)["id"] as? String == context0.sessionID)
     #expect((segment0["view"] as! JSONObject)["id"] as? String == context0.viewID)
-    #expect(segment0["source"] as? String == FlutterSessionReplayConstants.source)
+    #expect(segment0["source"] as? String == context.source)
     #expect(segment0["records_count"] as? Int == 4)
 
     let file1 = multipartSpy.formFiles[1]
@@ -242,7 +242,7 @@ func requestBuilder_BuildsFormDataWithMultipleContexts_WithMultipartBuilder() th
     #expect((segment1["application"] as! JSONObject)["id"] as? String == context1.applicationID)
     #expect((segment1["session"] as! JSONObject)["id"] as? String == context1.sessionID)
     #expect((segment1["view"] as! JSONObject)["id"] as? String == context1.viewID)
-    #expect(segment1["source"] as? String == FlutterSessionReplayConstants.source)
+    #expect(segment1["source"] as? String == context.source)
     #expect(segment1["records_count"] as? Int == 5)
 
     let metadataFile = multipartSpy.formFiles[2]

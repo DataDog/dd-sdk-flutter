@@ -5,85 +5,49 @@
 import Foundation
 import Testing
 import Flutter
-import UIKit
-
-@_spi(Internal)
-import DatadogInternal
-
 @testable import datadog_session_replay
 
-/// Tests the `registerEngine` method channel.
+/// Tests the `DatadogSessionReplayPlugin` engine-lifecycle methods.
 ///
-/// The FFI `enable()` call cannot tell which engine invoked it, so Dart pairs its bridge with its
-/// engine over a method channel instead: channels route to the plugin instance registered for that
-/// specific engine, which is how the plugin knows which messenger to pair the token with.
-@Suite(.serialized)
-@MainActor
+/// The plugin uses a method channel to establish ownership after `enable()` is called via FFI,
+/// because FFI plugins do not receive engine lifecycle events (Flutter issue #184124).
+/// We exercise the ownership flow via the underlying static API since creating a real
+/// `FlutterPluginRegistrar` requires a running engine.
+extension SessionReplayTestContainer {
+@Suite
 class DatadogSessionReplayPluginTests {
-    private let manager = FlutterSessionReplayManager()
+    init() { FlutterSessionReplay.shutdown() }
+    deinit { FlutterSessionReplay.shutdown() }
 
-    /// Retained for the whole test: the manager's registries and the bridge's `boundMessenger` are
-    /// all weak, so locals would be released and take the engine's slot with them.
-    private let messenger = FlutterBinaryMessengerMock()
-    private let hostViewController = UIViewController()
+    @Test
+    func detach_withOwningEngine_nullsCallback() {
+        // Given — simulate enable() + claimOwnership arriving for engine A
+        let messengerA = NSObject()
+        FlutterSessionReplay.contextCallback = { _ in }
+        FlutterSessionReplay.claimOwnership(messenger: messengerA)
 
-    /// Calls `handle` and returns whatever the plugin passed to its `FlutterResult`.
-    private func handle(
-        _ plugin: DatadogSessionReplayPlugin,
-        method: String,
-        arguments: Any? = nil
-    ) -> Any? {
-        var result: Any?
-        plugin.handle(FlutterMethodCall(methodName: method, arguments: arguments)) { result = $0 }
-        return result
+        // When — simulate detachFromEngine(for:) for engine A
+        FlutterSessionReplay.detachFromEngine(messenger: messengerA)
+
+        // Then
+        #expect(FlutterSessionReplay.contextCallback == nil)
+        #expect(FlutterSessionReplay.listenerOwner == nil)
     }
 
     @Test
-    func registerEngine_letsTheBridgeResolveThisEnginesSlot() throws {
-        // Given — an embedded engine whose host registered its view controller. The bridge is
-        // created over FFI and never sees a messenger, so until the handshake lands it has no way
-        // to reach the slot its records must be stamped with.
-        let core = PassthroughCoreMock()
-        let engine = FlutterSessionReplay(manager: manager)
-        try engine.enableOrThrow(with: .init(), in: core)
-        engine.setEmbedded(true)
-        manager.registerSlot(for: hostViewController, messenger: messenger)
-        let expectedSlotId = try #require(manager.slotId(for: messenger))
-        let plugin = DatadogSessionReplayPlugin(messenger: messenger, manager: manager)
+    func detach_withNonOwningEngine_preservesCallback() {
+        // Given — engine A owns the callback; engine B attaches but never enables
+        let messengerA = NSObject()
+        let messengerB = NSObject()
+        FlutterSessionReplay.contextCallback = { _ in }
+        FlutterSessionReplay.claimOwnership(messenger: messengerA)
 
-        // When
-        let result = handle(plugin, method: "registerEngine", arguments: engine.engineToken)
-        engine.writeSegment(segment: #"{"records":[{"type":1}],"viewID":"view-id"}"#)
+        // When — engine B detaches (non-owner)
+        FlutterSessionReplay.detachFromEngine(messenger: messengerB)
 
-        // Then — the records reach the native recording carrying this engine's slot
-        #expect(result == nil)
-        let batches: [EmbeddedContentMessage.RecordBatch] = core.sentMessages.compactMap {
-            guard case .embeddedContent(.records(let batch)) = $0 else {
-                return nil
-            }
-            return batch
-        }
-        try #require(batches.count == 1)
-        #expect(batches[0].slotID == expectedSlotId)
-    }
-
-    @Test
-    func registerEngine_pairsTheBridgeWithThisEnginesMessenger() throws {
-        // Given — a bridge created over FFI, which never sees a messenger
-        var callsToEngine = 0
-        let core = PassthroughCoreMock()
-        let engine = FlutterSessionReplay(manager: manager)
-        try engine.enableOrThrow(with: .init(onContextChanged: { _ in callsToEngine += 1 }), in: core)
-        let plugin = DatadogSessionReplayPlugin(messenger: messenger, manager: manager)
-
-        // When — Dart hands the plugin its bridge's token, then the engine detaches
-        let result = handle(plugin, method: "registerEngine", arguments: engine.engineToken)
-        manager.detach(messenger: messenger)
-        manager.broadcastContext(.mockRandom())
-
-        // Then — the pairing is what let detach find and release this engine's Dart callback
-        #expect(result == nil)
-        #expect(callsToEngine == 1)  // primed on enable, nothing after
+        // Then — engine A's callback is preserved
+        #expect(FlutterSessionReplay.contextCallback != nil)
+        #expect(FlutterSessionReplay.listenerOwner === messengerA)
     }
 
     /// Flutter never calls `detachFromEngine(for:)` on termination — it resets the engine's shell and
@@ -95,49 +59,22 @@ class DatadogSessionReplayPluginTests {
     /// exercises the actual observer registration (name, selector) rather than calling a test-only
     /// escape hatch, without the risk of tearing down another suite's engine.
     @Test
-    func engineWillTearDown_releasesThisEnginesDartCallback() throws {
-        // Given — an engine paired with this plugin's messenger
-        var callsToEngine = 0
-        let core = PassthroughCoreMock()
-        let engine = FlutterSessionReplay(manager: manager)
-        try engine.enableOrThrow(with: .init(onContextChanged: { _ in callsToEngine += 1 }), in: core)
+    func engineWillTearDown_releasesThisEnginesDartCallback() {
+        // Given — engine A owns the callback
+        let messengerA = NSObject()
+        FlutterSessionReplay.contextCallback = { _ in }
+        FlutterSessionReplay.claimOwnership(messenger: messengerA)
         let notificationCenter = NotificationCenterMock()
-        let plugin = DatadogSessionReplayPlugin(
-            messenger: messenger,
-            manager: manager,
-            notificationCenter: notificationCenter
-        )
-        _ = handle(plugin, method: "registerEngine", arguments: engine.engineToken)
+        let plugin = DatadogSessionReplayPlugin(messenger: messengerA, notificationCenter: notificationCenter)
 
         // When — the app terminates without ever detaching the plugin
-        notificationCenter.post(name: UIApplication.willTerminateNotification)
-        manager.broadcastContext(.mockRandom())
+        withExtendedLifetime(plugin) {
+            notificationCenter.post(name: UIApplication.willTerminateNotification)
+        }
 
         // Then
-        #expect(callsToEngine == 1)  // primed on enable, nothing after
+        #expect(FlutterSessionReplay.contextCallback == nil)
+        #expect(FlutterSessionReplay.listenerOwner == nil)
     }
-
-    @Test
-    func registerEngine_withoutAToken_returnsAnError() {
-        // Given
-        let plugin = DatadogSessionReplayPlugin(messenger: FlutterBinaryMessengerMock(), manager: manager)
-
-        // When
-        let result = handle(plugin, method: "registerEngine", arguments: nil)
-
-        // Then
-        #expect((result as? FlutterError)?.code == "invalid_arguments")
-    }
-
-    @Test
-    func handle_withAnUnknownMethod_returnsNotImplemented() {
-        // Given
-        let plugin = DatadogSessionReplayPlugin(messenger: FlutterBinaryMessengerMock(), manager: manager)
-
-        // When
-        let result = handle(plugin, method: "someUnimplementedMethod")
-
-        // Then
-        #expect((result as? NSObject) === FlutterMethodNotImplemented)
-    }
+}
 } // extension SessionReplayTestContainer

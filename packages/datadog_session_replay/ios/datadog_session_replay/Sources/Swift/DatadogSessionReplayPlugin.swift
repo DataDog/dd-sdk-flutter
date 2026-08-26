@@ -15,13 +15,8 @@ protocol NotificationCenterProtocol {
 
 extension NotificationCenter: NotificationCenterProtocol {}
 
-@objc(DatadogSessionReplayPlugin)
 public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
     private let messenger: AnyObject
-
-    /// The coordinator holding the engine and slot-ID registries. Injected so tests can
-    /// substitute it.
-    private let manager: FlutterSessionReplayManager
 
     /// Injected so tests can drive termination through a fake center instead of posting the real,
     /// process-wide notification.
@@ -29,11 +24,9 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
 
     internal init(
         messenger: AnyObject,
-        manager: FlutterSessionReplayManager = .shared,
         notificationCenter: NotificationCenterProtocol = NotificationCenter.default
     ) {
         self.messenger = messenger
-        self.manager = manager
         self.notificationCenter = notificationCenter
         super.init()
         observeEngineTeardown()
@@ -46,10 +39,13 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
     public static func register(with registrar: FlutterPluginRegistrar) {
         let messenger = registrar.messenger() as AnyObject
         let instance = DatadogSessionReplayPlugin(messenger: messenger)
-        // The FFI `enable()` call cannot determine which engine invoked it, so per-engine
-        // Dart→native calls go through this method channel instead. Method channels route to
-        // the plugin instance for their specific engine, giving us that engine's messenger —
-        // which is what `registerEngine` pairs with the engine's bridge.
+        // FFI plugins do not receive engine lifecycle events, so we cannot determine
+        // which engine called enable() from within the FFI call itself. Instead, after
+        // calling enable() via FFI, Dart fires a non-awaited 'claimOwnership' message
+        // through this method channel. Because method channels route to the plugin
+        // instance for their specific engine, we can reliably associate the enable()
+        // call with this engine's messenger and set listenerOwner correctly.
+        // See: https://github.com/flutter/flutter/issues/184124
         let channel = FlutterMethodChannel(
             name: "datadog_session_replay/engine",
             binaryMessenger: registrar.messenger()
@@ -59,24 +55,10 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
     }
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        switch call.method {
-        case "registerEngine":
-            // Called from Dart right after `enable()`, carrying the token of the bridge that FFI
-            // call created. Pairing it with this engine's messenger is both what lets
-            // `detachFromEngine(for:)` find the right bridge to tear down, and what gives the
-            // bridge the messenger it resolves slot IDs through on every segment write.
-            guard let engineToken = call.arguments as? String else {
-                result(FlutterError(
-                    code: "invalid_arguments",
-                    message: "registerEngine expects the engine token as a String",
-                    details: nil
-                ))
-                return
-            }
-            manager.bind(engineToken: engineToken, to: messenger)
+        if call.method == "claimOwnership" {
+            FlutterSessionReplay.claimOwnership(messenger: messenger)
             result(nil)
-
-        default:
+        } else {
             result(FlutterMethodNotImplemented)
         }
     }
@@ -109,9 +91,9 @@ public class DatadogSessionReplayPlugin: NSObject, FlutterPlugin {
     }
 
     private func _onDetach() {
-        // Release this engine's Dart context callback before its isolate goes away —
-        // invoking it afterwards traps in `DLRT_GetFfiCallbackMetadata` on force close.
-        // Keyed by messenger, so a detaching secondary engine cannot clear a live one's.
-        manager.detach(messenger: messenger)
+        // Null out the context callback only if this engine is the registered owner.
+        // Prevents a detaching secondary engine from clearing a live engine's callback,
+        // which would cause DLRT_GetFfiCallbackMetadata crashes on the next context update.
+        FlutterSessionReplay.detachFromEngine(messenger: messenger)
     }
 }
