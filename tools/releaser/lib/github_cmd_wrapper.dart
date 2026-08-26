@@ -58,6 +58,11 @@ class GithubCommandWrapper {
         repoSlug,
         '--json',
         'name,isLatest,tagName',
+        // `gh release list` defaults to a page of 30 -- without this, a repo
+        // with more releases than that silently drops older ones, making
+        // getReleaseByTagName reject a perfectly valid older override.
+        '--limit',
+        '1000',
       ],
       workingDirectory: cwd,
       stdout: (line) => buffer.write(line),

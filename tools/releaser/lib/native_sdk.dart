@@ -231,16 +231,25 @@ class NativeSdkDelta {
   /// rather than tracking each file's staleness independently.
   final List<NativeSdkPin> pins;
 
+  /// True when a dependency file this package currently ships couldn't be
+  /// read at [lastReleaseTag] on `release_plan.dart`'s mainline path --
+  /// most commonly because the file is new (added since that release) or
+  /// was renamed/moved, so it has no historical pin to compare against.
+  /// Treated as a change: silently treating "no historical pin" as "no
+  /// change" would leave a newly-added or renamed manifest floating.
+  final bool hasUnknownPin;
+
   NativeSdkDelta({
     required this.sdk,
     required this.targetVersion,
     this.targetSha,
     this.pins = const [],
+    this.hasUnknownPin = false,
   });
 
   bool get isChange {
     if (targetVersion == null) return false;
-    return pins.any((pin) => pin.value != targetVersion);
+    return hasUnknownPin || pins.any((pin) => pin.value != targetVersion);
   }
 
   @override

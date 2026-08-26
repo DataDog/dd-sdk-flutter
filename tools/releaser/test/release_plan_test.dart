@@ -219,6 +219,20 @@ void main() {
       expect(result.packages.single.bumpLevel, VersionBumpType.patch);
       expect(result.packages.single.newVersion, '1.1.1');
     });
+
+    test('a merged prerelease tag is promoted to the stable version it was '
+        'leading up to, rather than bumped past it', () async {
+      // Simulates a long-lived prerelease branch (`v4`) merging back into
+      // mainline -- its beta tag becomes an ancestor of HEAD and would
+      // otherwise be picked as lastTag and bumped from, skipping 4.0.0.
+      await fixture.tag('datadog_flutter_plugin/v4.0.0-beta.3');
+
+      final result = await plan(
+        mainlineCtx(requestedPackages: ['datadog_flutter_plugin']),
+      );
+
+      expect(result.packages.single.newVersion, '4.0.0');
+    });
   });
 
   group('mainline, native SDK deltas', () {
@@ -425,6 +439,32 @@ FetchContent_Declare(dd-sdk-cpp
     });
   });
 
+  group('mainline, native SDK deltas with a manifest added after the last '
+      'release', () {
+    test('a manifest with no historical pin to compare against is treated as '
+        'a change rather than silently skipped', () async {
+      // Released with no podspec at all -- nothing to compare against.
+      await fixture.tag('datadog_flutter_plugin_ios/v1.0.0');
+
+      // The podspec is only added afterwards.
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+        'datadog_flutter_plugin_ios.podspec',
+        _iosPodspecWithDatadogDependency,
+      );
+      await fixture.commit('chore: add podspec fixture after the release');
+
+      final result = await plan(
+        mainlineCtx(requestedPackages: ['datadog_flutter_plugin_ios']),
+        fetchLatestNativeSdkVersion: (_) async => '3.13.0',
+      );
+
+      final delta = result.packages.single.nativeSdkDeltas.single;
+      expect(delta.pins, isEmpty);
+      expect(delta.isChange, isTrue);
+    });
+  });
+
   group('patch branch', () {
     RunContext patchCtx(String branch) => RunContext(
       repoRoot: fixture.root.path,
@@ -569,6 +609,18 @@ FetchContent_Declare(dd-sdk-cpp
       final result = await plan(preReleaseCtx(prereleaseLabel: 'beta'));
 
       expect(result.packages.single.newVersion, '4.0.0-beta.1');
+    });
+
+    test('rejects starting a new pre-release once the target version has '
+        'already been released stably', () async {
+      // pubspec.version is 4.0.0, and it's already been released stably
+      // as such -- a new "4.0.0-beta.1" would sort below that release.
+      await fixture.tag('datadog_flutter_plugin/v4.0.0');
+
+      await expectLater(
+        plan(preReleaseCtx(prereleaseLabel: 'beta')),
+        throwsStateError,
+      );
     });
   });
 

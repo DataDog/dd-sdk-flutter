@@ -256,6 +256,16 @@ Future<PackagePlan> _computePrereleasePlan(
       (ctx.prereleaseLabel == null ||
           base.preRelease.first == ctx.prereleaseLabel)) {
     newVersion = base.incrementPreRelease();
+  } else if (tagIsOnTargetLine && !tagVersion.isPreRelease) {
+    // [lastTag] is a *stable* tag for this exact target version (e.g. the
+    // target line was already released as 4.0.0 and pubspec.yaml hasn't
+    // been bumped since) -- a new pre-release here would sort below that
+    // already-published release (`4.0.0-beta.1` < `4.0.0`).
+    throw StateError(
+      'Package "${pkg.name}" version $target has already been released '
+      'stably as ${lastTag!.tag} -- bump the version in pubspec.yaml '
+      'before starting a new pre-release line.',
+    );
   } else if (ctx.prereleaseLabel != null) {
     newVersion = Version(
       base.major,
@@ -310,12 +320,26 @@ Future<PackagePlan?> _computeMainlinePlan(
     bump = lastTag == null ? null : VersionBumpType.patch;
   }
 
-  final newVersion = lastTag == null
-      ? pkg.version
-      : _applyBump(
-          Version.parse(_versionFromTag(lastTag, pkg.name)),
-          bump!,
-        ).toString();
+  final tagVersion = lastTag != null
+      ? Version.parse(_versionFromTag(lastTag, pkg.name))
+      : null;
+
+  // A prerelease tag (e.g. `4.0.0-beta.5`) becomes an ancestor of HEAD once
+  // its branch merges back into mainline, so it can be selected as
+  // [lastTag] here. Applying a bump on top of it (e.g. incrementPatch ->
+  // `4.0.1`) would skip the stable release the prerelease line was leading
+  // up to entirely. Promote it instead: this release publishes that same
+  // `major.minor.patch` stably, dropping the prerelease suffix, rather than
+  // bumping past it.
+  final newVersion = switch (tagVersion) {
+    null => pkg.version,
+    final v when v.isPreRelease => Version(
+      v.major,
+      v.minor,
+      v.patch,
+    ).toString(),
+    final v => _applyBump(v, bump!).toString(),
+  };
 
   return PackagePlan(
     package: pkg,
@@ -367,20 +391,25 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
 
   if (files.iosPodspec != null || files.iosSpmManifest != null) {
     final pins = <NativeSdkPin>[];
+    var hasUnknownPin = false;
     if (files.iosPodspec != null) {
-      final pin = switch (await content(files.iosPodspec!)) {
-        final c? => readIosPodspecPin(c),
-        null => null,
-      };
-      if (pin != null) pins.add((source: 'podspec', value: pin));
+      final fileContent = await content(files.iosPodspec!);
+      if (fileContent == null) {
+        hasUnknownPin = true;
+      } else {
+        final pin = readIosPodspecPin(fileContent);
+        if (pin != null) pins.add((source: 'podspec', value: pin));
+      }
     }
     if (files.iosSpmManifest != null) {
-      final pin = switch (await content(files.iosSpmManifest!)) {
-        final c? => readSpmPin(c),
-        null => null,
-      };
-      if (pin != null) {
-        pins.add((source: 'Package.swift', value: spmPinForComparison(pin)));
+      final fileContent = await content(files.iosSpmManifest!);
+      if (fileContent == null) {
+        hasUnknownPin = true;
+      } else {
+        final pin = readSpmPin(fileContent);
+        if (pin != null) {
+          pins.add((source: 'Package.swift', value: spmPinForComparison(pin)));
+        }
       }
     }
     final target = await resolveNativeSdkTarget(
@@ -391,15 +420,18 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
           gateways.releaseExists(NativeSdk.ios.repoSlug, version),
     );
     deltas.add(
-      NativeSdkDelta(sdk: NativeSdk.ios, targetVersion: target, pins: pins),
+      NativeSdkDelta(
+        sdk: NativeSdk.ios,
+        targetVersion: target,
+        pins: pins,
+        hasUnknownPin: hasUnknownPin,
+      ),
     );
   }
 
   if (files.androidGradle != null) {
-    final pin = switch (await content(files.androidGradle!)) {
-      final c? => readAndroidGradlePin(c),
-      null => null,
-    };
+    final fileContent = await content(files.androidGradle!);
+    final pin = fileContent != null ? readAndroidGradlePin(fileContent) : null;
     final target = await resolveNativeSdkTarget(
       trigger: ctx.trigger,
       override: ctx.androidSdkVersionOverride,
@@ -412,6 +444,7 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
         sdk: NativeSdk.android,
         targetVersion: target,
         pins: [if (pin != null) (source: 'build.gradle', value: pin)],
+        hasUnknownPin: fileContent == null,
       ),
     );
   }
@@ -422,9 +455,14 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
     // be checked, not just the first, or a still-stale platform would
     // silently be missed (see NativeSdkDelta.pins).
     final pins = <NativeSdkPin>[];
+    var hasUnknownPin = false;
     for (final file in files.cppCMakeLists) {
       final fileContent = await content(file);
-      final pin = fileContent != null ? readCppCMakePin(fileContent) : null;
+      if (fileContent == null) {
+        hasUnknownPin = true;
+        continue;
+      }
+      final pin = readCppCMakePin(fileContent);
       if (pin != null) {
         pins.add((
           source: p.relative(file.path, from: pkg.absolutePath(ctx.repoRoot)),
@@ -451,6 +489,7 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
         targetVersion: target,
         targetSha: targetSha,
         pins: pins,
+        hasUnknownPin: hasUnknownPin,
       ),
     );
   }
