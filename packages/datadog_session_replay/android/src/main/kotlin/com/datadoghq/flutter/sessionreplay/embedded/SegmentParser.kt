@@ -7,11 +7,9 @@
 package com.datadoghq.flutter.sessionreplay.embedded
 
 import com.datadoghq.flutter.sessionreplay.models.EnrichedRecord
-import com.google.gson.JsonArray
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
-import com.google.gson.JsonPrimitive
+import com.google.gson.GsonBuilder
+import com.google.gson.ToNumberPolicy
+import com.google.gson.reflect.TypeToken
 
 /**
  * A segment produced by the Dart processor, unpacked into what the native embedded-content API
@@ -32,56 +30,28 @@ internal data class ParsedSegment(
  * keeps the caller's buffering logic from treating a dud segment as delivered.
  */
 internal object SegmentParser {
+    
+    private val gson = GsonBuilder()
+        .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
+        .create()
+
+    private val segmentType = object : TypeToken<Map<String, Any?>>() {}.type
+
     fun parse(segmentJson: String): ParsedSegment? {
-        val root = runCatching { JsonParser.parseString(segmentJson) }
-            .getOrNull() as? JsonObject
-            ?: return null
+        val root: Map<String, Any?> = runCatching {
+            gson.fromJson<Map<String, Any?>>(segmentJson, segmentType)
+        }.getOrNull() ?: return null
 
-        val viewId = (root.get(EnrichedRecord.VIEW_ID_KEY) as? JsonPrimitive)
-            ?.takeIf { it.isString }
-            ?.asString
-            ?: return null
+        val viewId = root[EnrichedRecord.VIEW_ID_KEY] as? String ?: return null
 
-        val records = (root.get(EnrichedRecord.RECORDS_KEY) as? JsonArray)
-            ?.mapNotNull { element -> (element as? JsonObject)?.let { toMap(it) } }
+        val records = (root[EnrichedRecord.RECORDS_KEY] as? List<*>)
+            ?.mapNotNull { it.asRecord() }
             ?.takeIf { it.isNotEmpty() }
             ?: return null
 
         return ParsedSegment(records, viewId)
     }
 
-    private fun toMap(source: JsonObject): Map<String, Any?> {
-        return source.entrySet().associate { (key, value) -> key to toValue(value) }
-    }
-
-    private fun toValue(element: JsonElement): Any? {
-        return when {
-            element.isJsonObject -> toMap(element.asJsonObject)
-            element.isJsonArray -> element.asJsonArray.map { toValue(it) }
-            element.isJsonPrimitive -> toPrimitive(element.asJsonPrimitive)
-            else -> null
-        }
-    }
-
-    /**
-     * Gson models every JSON number as a single `Number` type, so the integral ones have to be
-     * recovered by inspecting the literal. Reading them all as `Double` would re-serialize record
-     * timestamps in exponent form and lose precision past 2^53, and the player reads those
-     * timestamps as integers.
-     */
-    private fun toPrimitive(primitive: JsonPrimitive): Any? {
-        return when {
-            primitive.isBoolean -> primitive.asBoolean
-            primitive.isString -> primitive.asString
-            primitive.isNumber -> {
-                val literal = primitive.asString
-                if (literal.any { it == '.' || it == 'e' || it == 'E' }) {
-                    primitive.asDouble
-                } else {
-                    literal.toLongOrNull() ?: primitive.asDouble
-                }
-            }
-            else -> null
-        }
-    }
+    @Suppress("UNCHECKED_CAST")
+    private fun Any?.asRecord(): Map<String, Any?>? = this as? Map<String, Any?>
 }
