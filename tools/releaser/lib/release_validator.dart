@@ -9,9 +9,7 @@ import 'package:path/path.dart' as path;
 import 'command.dart';
 import 'github_cmd_wrapper.dart';
 import 'helpers.dart';
-import 'native_sdk.dart';
 import 'process_helper.dart';
-import 'trigger_context.dart';
 
 final versionHeadingRegEx = RegExp(r'\s*#');
 final changeItemRegEx = RegExp(r'\s*\*');
@@ -107,37 +105,24 @@ class ValidateReleaseCommand extends Command {
     Logger logger,
   ) async {
     final gh = GithubCommandWrapper(args.gitDir.path);
-    try {
-      // This legacy CLI has no notion of a patch/pre-release trigger
-      // context -- it always behaves like `mainline`: default to the
-      // latest release when none is given, or validate an explicit one.
-      final resolved = await resolveNativeSdkTarget(
-        trigger: TriggerContext.mainline,
-        override: release,
-        fetchLatest: () async {
-          logger.fine('🌎 Fetching latest $platform release from github... ');
-          final latestRelease = await gh.getLatestRelease(logger, repoName);
-          logger.fine('ℹ️ Latest $platform release is ${latestRelease.name}');
-          return latestRelease.tagName;
-        },
-        releaseExists: (version) async {
-          final ghRelease = await gh.getReleaseByTagName(
-            logger,
-            repoName,
-            version,
-          );
-          return ghRelease != null;
-        },
-      );
 
-      logger.info('ℹ️ Releasing with $platform version $resolved.');
-      return resolved;
-    } on StateError {
+    // This legacy CLI has no notion of a patch/pre-release trigger context --
+    // it always behaves like `mainline`: default to the latest release when
+    // none is given, or validate an explicit one.
+    if (release == null) {
+      logger.fine('🌎 Fetching latest $platform release from github... ');
+      final latestRelease = await gh.getLatestRelease(logger, repoName);
+      logger.fine('ℹ️ Latest $platform release is ${latestRelease.name}');
+      release = latestRelease.tagName;
+    } else if (!await gh.releaseExists(logger, repoName, release)) {
       logger.shout(
         '❌ Could not find target $platform release $release. Please check the tag name',
       );
       return null;
     }
+
+    logger.info('ℹ️ Releasing with $platform version $release.');
+    return release;
   }
 }
 

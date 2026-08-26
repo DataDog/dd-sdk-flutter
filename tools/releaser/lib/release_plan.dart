@@ -2,12 +2,9 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-import 'dart:io';
-
 import 'package:collection/collection.dart';
 import 'package:git/git.dart';
 import 'package:logging/logging.dart';
-import 'package:path/path.dart' as p;
 import 'package:version/version.dart';
 
 import 'conventional_commits.dart';
@@ -114,14 +111,8 @@ Future<ReleasePlan> computeReleasePlan(
         },
         resolveCommitSha: (repoSlug, ref) =>
             github.getCommitSha(Logger('native_sdk'), repoSlug, ref),
-        releaseExists: (repoSlug, version) async {
-          final release = await github.getReleaseByTagName(
-            Logger('native_sdk'),
-            repoSlug,
-            version,
-          );
-          return release != null;
-        },
+        releaseExists: (repoSlug, version) =>
+            github.releaseExists(Logger('native_sdk'), repoSlug, version),
       );
 
   final groups = await _resolveGroups(ctx);
@@ -149,55 +140,84 @@ Future<PackagePlan?> _computePackagePlan(
   NativeSdkGateways gateways, {
   required bool isExplicitlyRequested,
 }) async {
-  switch (ctx.trigger) {
-    case TriggerContext.patch:
-    case TriggerContext.preRelease:
-      final nativeSdkDeltas = await _computeNativeSdkDeltas(pkg, ctx, gateways);
-      return ctx.trigger == TriggerContext.patch
-          ? await _computePatchPlan(pkg, ctx, gitDir, nativeSdkDeltas)
-          : await _computePrereleasePlan(pkg, ctx, gitDir, nativeSdkDeltas);
-    case TriggerContext.mainline:
-      // Fetched up front (rather than inside _computeNativeSdkDeltas /
-      // _computeMainlinePlan separately) so both use the exact same tag --
-      // it's also what the native SDK comparison below reads its
-      // "previously released" pin from.
-      final lastTag = await findLastReleaseTag(gitDir, pkg.name);
-      final nativeSdkDeltas = await _computeNativeSdkDeltas(
-        pkg,
-        ctx,
-        gateways,
-        gitDir: gitDir,
-        lastReleaseTag: lastTag,
-      );
-      return await _computeMainlinePlan(
-        pkg,
-        ctx,
-        gitDir,
-        nativeSdkDeltas,
-        lastTag: lastTag,
-        isExplicitlyRequested: isExplicitlyRequested,
-        hasNativeSdkChange: nativeSdkDeltas.any((d) => d.isChange),
-      );
-  }
-}
-
-Future<PackagePlan> _computePatchPlan(
-  DiscoveredPackage pkg,
-  RunContext ctx,
-  GitDir gitDir,
-  List<NativeSdkDelta> nativeSdkDeltas,
-) async {
+  // A patch branch is confined to its own release line. Mainline takes the
+  // last *stable* release as its baseline -- a pre-release line's tags (e.g.
+  // `4.0.0-beta.3` off `v4`) sort higher but haven't shipped stably. The
+  // pre-release path wants exactly those, so it constrains neither.
   final lastTag = await findLastReleaseTag(
     gitDir,
     pkg.name,
-    releaseLine: _releaseLineFromPatchBranch(ctx.currentBranch),
+    releaseLine: ctx.trigger == TriggerContext.patch
+        ? _releaseLineFromPatchBranch(ctx.currentBranch)
+        : null,
+    stableOnly: ctx.trigger == TriggerContext.mainline,
   );
   final commits = await _conventionalCommitsSince(
     gitDir,
     pathspec: pkg.relativePath,
-    sinceSha: lastTag?.objectSha,
+    sinceSha: lastTag?.tag.objectSha,
   );
+  final files = resolveNativeDependencyFiles(pkg.absolutePath(ctx.repoRoot));
 
+  // Whether this package releases at all is decided here, before anything
+  // touches the network -- resolving native SDK targets for a package that
+  // turns out to have nothing to ship is pure waste.
+  //
+  // Eligibility must come from the package's actual changes, never from
+  // BUMP_TYPE alone: a targeted override like BUMP_TYPE=major would otherwise
+  // sweep every discovered package into a major release of the entire repo.
+  // Patch and pre-release runs release whatever they were pointed at.
+  if (ctx.trigger == TriggerContext.mainline &&
+      aggregateBumpLevel(commits) == null &&
+      !isExplicitlyRequested &&
+      !_hasForcedNativeUpdate(files, ctx)) {
+    return null;
+  }
+
+  final nativeSdkDeltas = await _computeNativeSdkDeltas(files, ctx, gateways);
+
+  return switch (ctx.trigger) {
+    TriggerContext.patch => _computePatchPlan(
+      pkg,
+      commits,
+      lastTag,
+      nativeSdkDeltas,
+    ),
+    TriggerContext.preRelease => _computePrereleasePlan(
+      pkg,
+      ctx,
+      commits,
+      lastTag,
+      nativeSdkDeltas,
+    ),
+    TriggerContext.mainline => _computeMainlinePlan(
+      pkg,
+      ctx,
+      commits,
+      lastTag,
+      nativeSdkDeltas,
+    ),
+  };
+}
+
+/// Whether this run carries an explicit native SDK version override for an SDK
+/// [files] shows the package actually depends on.
+///
+/// Scoped that way deliberately: an `IOS_SDK_VERSION` on an `--all` run should
+/// make the iOS packages eligible, not sweep every pure-Dart package in the
+/// repo into the release alongside them.
+bool _hasForcedNativeUpdate(NativeDependencyFiles files, RunContext ctx) =>
+    ((files.iosPodspec != null || files.iosSpmManifest != null) &&
+        ctx.iosSdkVersionOverride != null) ||
+    (files.androidGradle != null && ctx.androidSdkVersionOverride != null) ||
+    (files.cppCMakeLists.isNotEmpty && ctx.cppVersionOverride != null);
+
+PackagePlan _computePatchPlan(
+  DiscoveredPackage pkg,
+  List<ConventionalCommit> commits,
+  ReleaseTag? lastTag,
+  List<NativeSdkDelta> nativeSdkDeltas,
+) {
   for (final commit in commits) {
     final bump = commit.bumpType;
     if (bump == VersionBumpType.major || bump == VersionBumpType.minor) {
@@ -209,29 +229,25 @@ Future<PackagePlan> _computePatchPlan(
     }
   }
 
-  final newVersion = lastTag == null
-      ? pkg.version
-      : Version.parse(
-          _versionFromTag(lastTag, pkg.name),
-        ).incrementPatch().toString();
-
   return PackagePlan(
     package: pkg,
     currentVersion: pkg.version,
-    newVersion: newVersion,
+    newVersion: lastTag == null
+        ? pkg.version
+        : lastTag.version.incrementPatch().toString(),
     bumpLevel: VersionBumpType.patch,
     contributingCommits: commits,
     nativeSdkDeltas: nativeSdkDeltas,
   );
 }
 
-Future<PackagePlan> _computePrereleasePlan(
+PackagePlan _computePrereleasePlan(
   DiscoveredPackage pkg,
   RunContext ctx,
-  GitDir gitDir,
+  List<ConventionalCommit> commits,
+  ReleaseTag? lastTag,
   List<NativeSdkDelta> nativeSdkDeltas,
-) async {
-  final lastTag = await findLastReleaseTag(gitDir, pkg.name);
+) {
   final target = Version.parse(pkg.version);
 
   // A prior tag only continues the current prerelease sequence when it's
@@ -241,9 +257,7 @@ Future<PackagePlan> _computePrereleasePlan(
   // pubspec since bumped to `4.0.0` for this pre-release line) must not be
   // used as the base, or the new prerelease would sort below that already-
   // published release.
-  final tagVersion = lastTag != null
-      ? Version.parse(_versionFromTag(lastTag, pkg.name))
-      : null;
+  final tagVersion = lastTag?.version;
   final tagIsOnTargetLine =
       tagVersion != null &&
       tagVersion.major == target.major &&
@@ -263,7 +277,7 @@ Future<PackagePlan> _computePrereleasePlan(
     // already-published release (`4.0.0-beta.1` < `4.0.0`).
     throw StateError(
       'Package "${pkg.name}" version $target has already been released '
-      'stably as ${lastTag!.tag} -- bump the version in pubspec.yaml '
+      'stably as ${lastTag!.tag.tag} -- bump the version in pubspec.yaml '
       'before starting a new pre-release line.',
     );
   } else if (ctx.prereleaseLabel != null) {
@@ -286,65 +300,40 @@ Future<PackagePlan> _computePrereleasePlan(
     currentVersion: pkg.version,
     newVersion: newVersion.toString(),
     bumpLevel: VersionBumpType.prerelease,
+    // The bump here is counter-based rather than commit-derived, but the
+    // commits are still what the changelog is written from.
+    contributingCommits: commits,
     nativeSdkDeltas: nativeSdkDeltas,
   );
 }
 
-Future<PackagePlan?> _computeMainlinePlan(
+PackagePlan _computeMainlinePlan(
   DiscoveredPackage pkg,
   RunContext ctx,
-  GitDir gitDir,
-  List<NativeSdkDelta> nativeSdkDeltas, {
-  required Tag? lastTag,
-  required bool isExplicitlyRequested,
-  required bool hasNativeSdkChange,
-}) async {
-  final commits = await _conventionalCommitsSince(
-    gitDir,
-    pathspec: pkg.relativePath,
-    sinceSha: lastTag?.objectSha,
-  );
-
-  var bump =
+  List<ConventionalCommit> commits,
+  ReleaseTag? lastTag,
+  List<NativeSdkDelta> nativeSdkDeltas,
+) {
+  // With nothing auto-detected, this package is here because it was asked for
+  // by name or a forced native SDK update is driving it -- still worth a
+  // release, treated as a maintenance patch.
+  //
+  // [lastTag] is always a stable version here (see [findLastReleaseTag]'s
+  // `stableOnly`), so bumping from it is unconditionally right: after a
+  // long-lived pre-release line merges back, the baseline is still the last
+  // stable release and the line's own breaking commits are what carry the
+  // version to the major it was leading up to.
+  final bump =
       VersionBumpType.parseOverride(ctx.bumpTypeOverride) ??
-      aggregateBumpLevel(commits);
-
-  if (bump == null) {
-    if (!isExplicitlyRequested && !hasNativeSdkChange) {
-      // Nothing changed for this package and nobody asked for it by name --
-      // --all auto-detection leaves it out of this run entirely.
-      return null;
-    }
-    // Explicitly requested, or only a native SDK bump is driving this
-    // release: still worth a release, treated as a maintenance patch.
-    bump = lastTag == null ? null : VersionBumpType.patch;
-  }
-
-  final tagVersion = lastTag != null
-      ? Version.parse(_versionFromTag(lastTag, pkg.name))
-      : null;
-
-  // A prerelease tag (e.g. `4.0.0-beta.5`) becomes an ancestor of HEAD once
-  // its branch merges back into mainline, so it can be selected as
-  // [lastTag] here. Applying a bump on top of it (e.g. incrementPatch ->
-  // `4.0.1`) would skip the stable release the prerelease line was leading
-  // up to entirely. Promote it instead: this release publishes that same
-  // `major.minor.patch` stably, dropping the prerelease suffix, rather than
-  // bumping past it.
-  final newVersion = switch (tagVersion) {
-    null => pkg.version,
-    final v when v.isPreRelease => Version(
-      v.major,
-      v.minor,
-      v.patch,
-    ).toString(),
-    final v => _applyBump(v, bump!).toString(),
-  };
+      aggregateBumpLevel(commits) ??
+      (lastTag == null ? null : VersionBumpType.patch);
 
   return PackagePlan(
     package: pkg,
     currentVersion: pkg.version,
-    newVersion: newVersion,
+    newVersion: lastTag == null
+        ? pkg.version
+        : _applyBump(lastTag.version, bump!).toString(),
     bumpLevel: bump,
     contributingCommits: commits,
     nativeSdkDeltas: nativeSdkDeltas,
@@ -367,179 +356,61 @@ Version _applyBump(Version base, VersionBumpType bump) {
   }
 }
 
-/// A tag's name is `{package}/v{version}` -- strip the known prefix rather
-/// than trusting [Tag.tag]'s shape blindly.
-String _versionFromTag(Tag tag, String packageName) =>
-    tag.tag.substring('$packageName/v'.length);
-
+/// Resolves what each native SDK this package depends on should be pinned to
+/// this run, one [NativeSdkDelta] per SDK it actually ships a manifest for.
+///
+/// Purely a *target* resolution -- see [NativeSdkDelta] for why there's no
+/// "current pin" to compare against. What each SDK resolves to (latest,
+/// an explicit override, or no change on a patch branch) is
+/// [resolveNativeSdkTarget]'s call.
 Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
-  DiscoveredPackage pkg,
+  NativeDependencyFiles files,
   RunContext ctx,
-  NativeSdkGateways gateways, {
-  GitDir? gitDir,
-  Tag? lastReleaseTag,
-}) async {
-  final files = resolveNativeDependencyFiles(pkg.absolutePath(ctx.repoRoot));
-  final deltas = <NativeSdkDelta>[];
-
-  Future<String?> content(File file) => _nativeDependencyPinSource(
-    file,
-    repoRoot: ctx.repoRoot,
-    gitDir: gitDir,
-    lastReleaseTag: lastReleaseTag,
-  );
-
-  if (files.iosPodspec != null || files.iosSpmManifest != null) {
-    final pins = <NativeSdkPin>[];
-    var hasUnknownPin = false;
-    if (files.iosPodspec != null) {
-      final fileContent = await content(files.iosPodspec!);
-      if (fileContent == null) {
-        hasUnknownPin = true;
-      } else {
-        final pin = readIosPodspecPin(fileContent);
-        if (pin != null) pins.add((source: 'podspec', value: pin));
-      }
-    }
-    if (files.iosSpmManifest != null) {
-      final fileContent = await content(files.iosSpmManifest!);
-      if (fileContent == null) {
-        hasUnknownPin = true;
-      } else {
-        final pin = readSpmPin(fileContent);
-        if (pin != null) {
-          pins.add((source: 'Package.swift', value: spmPinForComparison(pin)));
-        }
-      }
-    }
-    final target = await resolveNativeSdkTarget(
-      trigger: ctx.trigger,
+  NativeSdkGateways gateways,
+) async {
+  final perSdkFiles = {
+    NativeSdk.ios: (
+      files: [?files.iosPodspec, ?files.iosSpmManifest],
       override: ctx.iosSdkVersionOverride,
-      fetchLatest: () => gateways.fetchLatest(NativeSdk.ios.repoSlug),
-      releaseExists: (version) =>
-          gateways.releaseExists(NativeSdk.ios.repoSlug, version),
-    );
-    deltas.add(
-      NativeSdkDelta(
-        sdk: NativeSdk.ios,
-        targetVersion: target,
-        pins: pins,
-        hasUnknownPin: hasUnknownPin,
-      ),
-    );
-  }
-
-  if (files.androidGradle != null) {
-    final fileContent = await content(files.androidGradle!);
-    final pin = fileContent != null ? readAndroidGradlePin(fileContent) : null;
-    final target = await resolveNativeSdkTarget(
-      trigger: ctx.trigger,
+    ),
+    NativeSdk.android: (
+      files: [?files.androidGradle],
       override: ctx.androidSdkVersionOverride,
-      fetchLatest: () => gateways.fetchLatest(NativeSdk.android.repoSlug),
-      releaseExists: (version) =>
-          gateways.releaseExists(NativeSdk.android.repoSlug, version),
-    );
-    deltas.add(
-      NativeSdkDelta(
-        sdk: NativeSdk.android,
-        targetVersion: target,
-        pins: [if (pin != null) (source: 'build.gradle', value: pin)],
-        hasUnknownPin: fileContent == null,
-      ),
-    );
-  }
+    ),
+    NativeSdk.cpp: (
+      files: files.cppCMakeLists,
+      override: ctx.cppVersionOverride,
+    ),
+  };
 
-  if (files.cppCMakeLists.isNotEmpty) {
-    // A package can ship a CMakeLists.txt per platform (windows, linux),
-    // each pinning dd-sdk-cpp independently -- every one of them needs to
-    // be checked, not just the first, or a still-stale platform would
-    // silently be missed (see NativeSdkDelta.pins).
-    final pins = <NativeSdkPin>[];
-    var hasUnknownPin = false;
-    for (final file in files.cppCMakeLists) {
-      final fileContent = await content(file);
-      if (fileContent == null) {
-        hasUnknownPin = true;
-        continue;
-      }
-      final pin = readCppCMakePin(fileContent);
-      if (pin != null) {
-        pins.add((
-          source: p.relative(file.path, from: pkg.absolutePath(ctx.repoRoot)),
-          value: pin,
-        ));
-      }
-    }
+  final deltas = <NativeSdkDelta>[];
+  for (final MapEntry(key: sdk, value: (:files, :override))
+      in perSdkFiles.entries) {
+    if (files.isEmpty) continue;
+
     final target = await resolveNativeSdkTarget(
       trigger: ctx.trigger,
-      override: ctx.cppVersionOverride,
-      fetchLatest: () => gateways.fetchLatest(NativeSdk.cpp.repoSlug),
-      releaseExists: (version) =>
-          gateways.releaseExists(NativeSdk.cpp.repoSlug, version),
+      override: override,
+      fetchLatest: () => gateways.fetchLatest(sdk.repoSlug),
+      releaseExists: (version) => gateways.releaseExists(sdk.repoSlug, version),
     );
-    // CMake's FetchContent_Declare has no field for pinning a tag and
-    // verifying its commit -- the resolved SHA is what actually gets
-    // written to GIT_TAG (see cmake_util.dart's pinCppVersion).
-    final targetSha = target != null
-        ? await gateways.resolveCommitSha(NativeSdk.cpp.repoSlug, target)
-        : null;
+
     deltas.add(
       NativeSdkDelta(
-        sdk: NativeSdk.cpp,
+        sdk: sdk,
         targetVersion: target,
-        targetSha: targetSha,
-        pins: pins,
-        hasUnknownPin: hasUnknownPin,
+        // CMake's FetchContent_Declare has no field for pinning a tag and
+        // verifying its commit -- the resolved SHA is what actually gets
+        // written to GIT_TAG (see cmake_util.dart's pinCppVersion).
+        targetSha: sdk == NativeSdk.cpp && target != null
+            ? await gateways.resolveCommitSha(sdk.repoSlug, target)
+            : null,
+        files: files,
       ),
     );
   }
 
   return deltas;
-}
-
-/// The content to read a native dependency file's current pin from, for
-/// comparison against [NativeSdkDelta.targetVersion].
-///
-/// With no [lastReleaseTag] (patch/pre-release branches, or a package's
-/// first-ever mainline release), [file]'s own on-disk content already
-/// reflects what was actually pinned last -- release tooling rewrites it in
-/// place. On mainline, though, [file] is `develop`'s own copy, which is
-/// deliberately left on a floating constraint (`~> 3`, `branch: "develop"`,
-/// `GIT_TAG develop`) by that same tooling -- comparing the resolved target
-/// against a floating constraint would report a native SDK change on every
-/// run. What was actually shipped is whatever got pinned into this same
-/// file right before [lastReleaseTag] was cut, so read that historical
-/// blob instead. Returns null (nothing to compare) if the file didn't
-/// exist yet at that tag.
-Future<String?> _nativeDependencyPinSource(
-  File file, {
-  required String repoRoot,
-  GitDir? gitDir,
-  Tag? lastReleaseTag,
-}) async {
-  if (gitDir == null || lastReleaseTag == null) {
-    return file.readAsStringSync();
-  }
-  final relativePath = p.posix.joinAll(
-    p.split(p.relative(file.path, from: repoRoot)),
-  );
-  final result = await gitDir.runCommand([
-    'show',
-    '${lastReleaseTag.tag}:$relativePath',
-  ], throwOnError: false);
-  if (result.exitCode != 0) {
-    // Usually means the file didn't exist yet at lastReleaseTag, but it's
-    // equally what a moved/renamed file looks like -- log so a real stale
-    // pin hiding behind a rename isn't dropped completely silently.
-    Logger('native_sdk').warning(
-      "⚠️ Couldn't read $relativePath as of ${lastReleaseTag.tag} "
-      '(git show exit ${result.exitCode}); skipping it for native SDK '
-      'comparison. If this file moved since that release, the comparison '
-      'may miss a stale pin.',
-    );
-    return null;
-  }
-  return result.stdout as String;
 }
 
 /// [commitMessagesSince]'s raw messages, parsed into [ConventionalCommit]s

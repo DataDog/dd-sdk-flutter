@@ -2,44 +2,42 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'package:collection/collection.dart';
 import 'package:git/git.dart';
 import 'package:version/version.dart';
 
-/// Whether [ref] (a tag name -- passed as-is, not its peeled object sha, so
-/// this works for both annotated and lightweight tags) is reachable from
-/// HEAD -- a release tag cut on some other branch (a long-lived prerelease
-/// line, a newer major mainline has since moved past) is not an ancestor of
-/// the branch currently being planned, even though it may still sort as
-/// the highest version by number alone.
-Future<bool> _isAncestorOfHead(GitDir gitDir, String ref) async {
-  final result = await gitDir.runCommand([
-    'merge-base',
-    '--is-ancestor',
-    ref,
-    'HEAD',
-  ], throwOnError: false);
-  return result.exitCode == 0;
-}
+/// A package's release tag paired with the version parsed out of its name --
+/// returned together so callers don't re-parse `{package}/v{version}` (and
+/// can't disagree with [findLastReleaseTag] about how to).
+typedef ReleaseTag = ({Tag tag, Version version});
 
-/// Finds the most recent tag matching `{packageName}/v*` that HEAD is
-/// descended from, or null if the package has never been tagged on this
-/// line (its first release, a brand-new federated sub-package -- see
-/// [commitMessagesSince]'s no-`sinceSha` path -- or simply no ancestor tag).
+/// The highest-versioned tag matching `{packageName}/v*`, or null if the
+/// package has never been tagged (its first release, or a brand-new federated
+/// sub-package -- see [commitMessagesSince]'s no-`sinceSha` path).
 ///
-/// [releaseLine], when given, restricts the search to tags whose
-/// major/minor matches -- a patch branch's own release line, so a tag
-/// mainline has since cut for a newer major/minor can't be picked up
-/// instead even if it happened to be an ancestor.
-Future<Tag?> findLastReleaseTag(
+/// Deliberately *not* filtered by reachability from HEAD. Release tags in this
+/// repo land on `release/...` branches that are never merged back, so no
+/// release tag is an ancestor of `develop` or of a pre-release branch like
+/// `v4` -- an ancestor check would reject every real release and fall back to
+/// ancient tags. The two callers that need to exclude something exclude it by
+/// what the tag *is*, not by where it sits in the graph:
+///
+/// [releaseLine], when given, restricts the search to tags whose major/minor
+/// matches -- a patch branch's own release line, so a tag mainline has since
+/// cut for a newer major/minor can't be picked up instead.
+///
+/// [stableOnly] drops pre-release versions. Mainline passes this: a
+/// `4.0.0-beta.3` tag cut off a long-lived pre-release line sorts above the
+/// last stable `3.5.0` but doesn't represent anything shipped stably, so it
+/// must not become mainline's baseline. The pre-release path itself wants the
+/// opposite (its whole job is continuing that counter) and leaves it false.
+Future<ReleaseTag?> findLastReleaseTag(
   GitDir gitDir,
   String packageName, {
   (int major, int minor)? releaseLine,
+  bool stableOnly = false,
 }) async {
   final prefix = '$packageName/v';
-  final matchingTags = await gitDir
-      .tags()
-      .where((t) => t.tag.startsWith(prefix))
-      .toList();
 
   Version? versionOf(Tag tag) {
     try {
@@ -49,25 +47,22 @@ Future<Tag?> findLastReleaseTag(
     }
   }
 
-  final withVersions =
-      matchingTags
-          .map((tag) => (tag, versionOf(tag)))
-          .where((pair) => pair.$2 != null)
+  final candidates =
+      (await gitDir.tags().where((t) => t.tag.startsWith(prefix)).toList())
+          .map((tag) => (tag: tag, version: versionOf(tag)))
+          .where((pair) => pair.version != null)
+          .map((pair) => (tag: pair.tag, version: pair.version!))
+          .where((pair) => !stableOnly || !pair.version.isPreRelease)
           .where(
             (pair) =>
                 releaseLine == null ||
-                (pair.$2!.major == releaseLine.$1 &&
-                    pair.$2!.minor == releaseLine.$2),
+                (pair.version.major == releaseLine.$1 &&
+                    pair.version.minor == releaseLine.$2),
           )
           .toList()
-        ..sort((a, b) => a.$2!.compareTo(b.$2!));
+        ..sort((a, b) => a.version.compareTo(b.version));
 
-  for (final pair in withVersions.reversed) {
-    if (await _isAncestorOfHead(gitDir, pair.$1.tag)) {
-      return pair.$1;
-    }
-  }
-  return null;
+  return candidates.lastOrNull;
 }
 
 /// Full commit messages (subject + body/footers) touching [pathspec], from

@@ -48,7 +48,7 @@ class GenerateChangelogCommand extends Command {
         final commits = await commitMessagesSince(
           args.gitDir,
           pathspec: getPackageRoot(args, package),
-          sinceSha: lastReleaseTag.objectSha,
+          sinceSha: lastReleaseTag.tag.objectSha,
         );
 
         final changelogItems = _getChangelogItems(commits);

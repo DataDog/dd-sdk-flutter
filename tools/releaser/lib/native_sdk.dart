@@ -21,9 +21,9 @@ enum NativeSdk {
 }
 
 /// Matches a podspec's `s.dependency 'Datadog...', '<constraint>'` lines --
-/// public so `cocoapod_util.dart`'s pin-rewriting step uses the exact same
-/// pattern this file reads the current pin with, instead of a second,
-/// separately-maintained regex for the same line shape.
+/// public so `cocoapod_util.dart`'s pin-rewriting step and this file's
+/// discovery share one definition of the line shape instead of maintaining
+/// two separate regexes for it.
 final iosPodspecDependencyPattern = RegExp(
   r"s\.dependency\s+'(?<dependency>Datadog\w*)'\s*,\s*'(?<constraint>[^']+)'",
 );
@@ -32,6 +32,9 @@ final iosPodspecDependencyPattern = RegExp(
 /// the pattern built from it -- both public so `gradle_util.dart`'s
 /// pin-rewriting step shares this file's exact definition of the line
 /// rather than maintaining its own copy.
+///
+/// Discovery below uses the same pattern to decide whether a `build.gradle`
+/// is an Android native-dependency file at all.
 const androidGradleVersionPrefix = 'ext.datadog_version';
 final androidGradleVersionPattern = RegExp(
   '$androidGradleVersionPrefix\\s*=\\s*"(?<version>[^"]+)"',
@@ -39,87 +42,11 @@ final androidGradleVersionPattern = RegExp(
 
 /// Matches a `Package.swift`'s dd-sdk-ios dependency line (e.g.
 /// `.package(url: "https://github.com/Datadog/dd-sdk-ios.git", from:
-/// "3.0.0")`) -- public so `spm_util.dart`'s pin-rewriting step uses the
-/// exact same pattern this file reads the current pin with.
+/// "3.0.0")`) -- public so `spm_util.dart`'s pin-rewriting step and this
+/// file's discovery share one definition of it.
 final iosSpmDependencyPattern = RegExp(
   r'\.package\(url:\s*"(?<url>[^"]*dd-sdk-ios[^"]*)",\s*(?<spec>[^)]+)\)',
 );
-final _cmakeGitTagPattern = RegExp(
-  r'^\s*GIT_TAG\s+(?<ref>[\w./-]+).*?(?:#\s*(?<comment>\S+))?$',
-  multiLine: true,
-);
-
-/// The current iOS pin from a podspec's `s.dependency 'Datadog...'` lines
-/// (they all share one constraint), or null if it has none.
-String? readIosPodspecPin(String podspecContent) => iosPodspecDependencyPattern
-    .firstMatch(podspecContent)
-    ?.namedGroup('constraint');
-
-/// The current Android pin from a `build.gradle`'s `ext.datadog_version`,
-/// or null if it has none.
-String? readAndroidGradlePin(String buildGradleContent) =>
-    androidGradleVersionPattern
-        .firstMatch(buildGradleContent)
-        ?.namedGroup('version');
-
-/// The current iOS pin from a `Package.swift`'s dd-sdk-ios dependency spec
-/// (e.g. `from: "3.0.0"`, `exact: "3.5.0"`, `branch: "develop"`), or null if
-/// it has none. Kept separate from [readIosPodspecPin] since a package can
-/// carry both a podspec (CocoaPods) and a `Package.swift` (SPM) pinning the
-/// same dependency in independently-formatted ways.
-String? readSpmPin(String packageSwiftContent) =>
-    iosSpmDependencyPattern.firstMatch(packageSwiftContent)?.namedGroup('spec');
-
-/// Pulls the bare version literal out of an SPM dependency spec whose kind
-/// pins to a specific version (`exact: "3.12.0"` / `from: "3.0.0"` ->
-/// `3.12.0`/`3.0.0`). A spec with nothing to compare (`branch: "develop"`)
-/// is returned unchanged, so it never accidentally equals a resolved
-/// target and always reads as needing a pin -- used to normalize a
-/// `Package.swift` pin into the same shape as [readIosPodspecPin]'s before
-/// the two are compared as just another entry in [NativeSdkDelta.pins].
-String spmPinForComparison(String spec) =>
-    _spmVersionLiteralPattern.firstMatch(spec)?.namedGroup('version') ?? spec;
-final _spmVersionLiteralPattern = RegExp(
-  r'^(?:exact|from|upToNextMajor|upToNextMinor):\s*"(?<version>[^"]+)"',
-);
-
-/// The current C++ pin from a CMakeLists.txt's dd-sdk-cpp `GIT_TAG` line, or
-/// null if it has none. Once pinned by this tooling, `GIT_TAG` holds a
-/// commit SHA with the human-meaningful tag kept as a trailing `# <tag>`
-/// comment (see [pinCppVersion] in cmake_util.dart) -- that comment is
-/// preferred here so the *tag* is what gets compared run-over-run, not an
-/// opaque SHA that would never equal a freshly-resolved target tag.
-///
-/// Only reads a `GIT_TAG` line while inside the `dd-sdk-cpp`
-/// `FetchContent_Declare(...)` block (tracked the same way [pinCppVersion]
-/// tracks it) -- a file that also vendors another dependency via its own
-/// `FetchContent_Declare` must not have that dependency's `GIT_TAG` read as
-/// if it were dd-sdk-cpp's pin.
-String? readCppCMakePin(String cmakeListsContent) {
-  var insideDdSdkCppDeclare = false;
-  var parenDepth = 0;
-
-  for (final line in cmakeListsContent.split('\n')) {
-    if (ddSdkCppDeclareStartPattern.hasMatch(line)) {
-      insideDdSdkCppDeclare = true;
-      parenDepth = parenBalance(line);
-    } else if (insideDdSdkCppDeclare) {
-      parenDepth += parenBalance(line);
-    }
-
-    if (insideDdSdkCppDeclare) {
-      final match = _cmakeGitTagPattern.firstMatch(line);
-      if (match != null) {
-        return match.namedGroup('comment') ?? match.namedGroup('ref');
-      }
-    }
-
-    if (insideDdSdkCppDeclare && parenDepth <= 0) {
-      insideDdSdkCppDeclare = false;
-    }
-  }
-  return null;
-}
 
 /// The native-dependency files found in a package's own directory --
 /// resolved by checking what's actually there, not assumed from the
@@ -153,7 +80,9 @@ class NativeDependencyFiles {
 /// pin: an iOS podspec with a Datadog pod dependency, a `Package.swift`
 /// pinning dd-sdk-ios via SPM, an Android `build.gradle` with a
 /// `datadog_version`, and/or a `windows/`/`linux/` `CMakeLists.txt` with a
-/// dd-sdk-cpp `GIT_TAG`.
+/// dd-sdk-cpp `GIT_TAG` inside its `FetchContent_Declare(dd-sdk-cpp ...)`
+/// block (a `CMakeLists.txt` whose only `GIT_TAG` belongs to some other
+/// vendored dependency doesn't count).
 NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
   File? iosPodspec;
   File? iosSpmManifest;
@@ -188,7 +117,7 @@ NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
   for (final platformDir in ['windows', 'linux']) {
     final cmakeFile = File(p.join(packageRoot, platformDir, 'CMakeLists.txt'));
     if (cmakeFile.existsSync() &&
-        _cmakeGitTagPattern.hasMatch(cmakeFile.readAsStringSync())) {
+        hasDdSdkCppGitTag(cmakeFile.readAsStringSync())) {
       cppCMakeLists.add(cmakeFile);
     }
   }
@@ -201,15 +130,17 @@ NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
   );
 }
 
-/// One file's current pin on a native SDK dependency, and where it came
-/// from (e.g. `'podspec'`, `'Package.swift'`, `'windows/CMakeLists.txt'`) --
-/// the label exists purely so a stale pin can be reported back to whoever's
-/// reading the plan, not for any comparison logic.
-typedef NativeSdkPin = ({String source, String value});
-
-/// What's changing (if anything) for one native SDK dependency of a
-/// package. [targetVersion] is null when nothing should change -- the
-/// patch-branch default, absent an explicit override.
+/// What one native SDK dependency of a package resolves to this run.
+///
+/// This is a *target*, not a diff: `develop` (and a long-lived pre-release
+/// branch) deliberately keeps its manifests on floating constraints (`~> 3`,
+/// `branch: "develop"`, `GIT_TAG develop`), and only the release-prep branch's
+/// copy is ever pinned. So there's no meaningful "current pin" to subtract
+/// from -- the plan just says what to pin to, and `prepare_release.dart`
+/// rewrites [files] to match.
+///
+/// [targetVersion] is null when nothing should change -- the patch-branch
+/// default, absent an explicit override.
 ///
 /// [targetSha] is only meaningful for [NativeSdk.cpp]: CMake's
 /// `FetchContent_Declare` has no field for pinning a tag *and* verifying
@@ -221,44 +152,25 @@ class NativeSdkDelta {
   final String? targetVersion;
   final String? targetSha;
 
-  /// Every file's current pin on this dependency -- one for [NativeSdk.
-  /// android] (`build.gradle`), up to two for [NativeSdk.ios] (podspec and/
-  /// or `Package.swift`), and one per platform for [NativeSdk.cpp]
-  /// (`windows/CMakeLists.txt`, `linux/CMakeLists.txt`). Outside of a bug,
-  /// every pin on a dependency should already agree with every other --
-  /// they're all pinned to the same target by this same tooling -- so
-  /// [isChange] just checks that they all still match [targetVersion]
-  /// rather than tracking each file's staleness independently.
-  final List<NativeSdkPin> pins;
-
-  /// True when a dependency file this package currently ships couldn't be
-  /// read at [lastReleaseTag] on `release_plan.dart`'s mainline path --
-  /// most commonly because the file is new (added since that release) or
-  /// was renamed/moved, so it has no historical pin to compare against.
-  /// Treated as a change: silently treating "no historical pin" as "no
-  /// change" would leave a newly-added or renamed manifest floating.
-  final bool hasUnknownPin;
+  /// Every file of this package that pins this dependency and therefore needs
+  /// rewriting -- one for [NativeSdk.android] (`build.gradle`), up to two for
+  /// [NativeSdk.ios] (podspec and/or `Package.swift`), and one per platform
+  /// for [NativeSdk.cpp] (`windows/CMakeLists.txt`, `linux/CMakeLists.txt`).
+  /// Carried on the plan so the apply step rewrites exactly what discovery
+  /// found, rather than resolving the file set a second time.
+  final List<File> files;
 
   NativeSdkDelta({
     required this.sdk,
     required this.targetVersion,
     this.targetSha,
-    this.pins = const [],
-    this.hasUnknownPin = false,
+    this.files = const [],
   });
 
-  bool get isChange {
-    if (targetVersion == null) return false;
-    return hasUnknownPin || pins.any((pin) => pin.value != targetVersion);
-  }
-
   @override
-  String toString() {
-    final current = pins.map((pin) => '${pin.source}=${pin.value}').join(', ');
-    return isChange
-        ? '${sdk.name}: $current -> $targetVersion'
-        : '${sdk.name}: $current (no change)';
-  }
+  String toString() => targetVersion == null
+      ? '${sdk.name}: no change'
+      : '${sdk.name}: -> $targetVersion';
 }
 
 /// The network calls native SDK resolution needs -- bundled so callers

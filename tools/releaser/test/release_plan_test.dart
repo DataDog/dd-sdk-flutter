@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'package:path/path.dart' as p;
 import 'package:releaser/native_sdk.dart';
 import 'package:releaser/release_plan.dart';
 import 'package:test/test.dart';
@@ -115,6 +116,60 @@ void main() {
         expect(names, contains('datadog_flutter_plugin_ios'));
       },
     );
+
+    test('a native SDK override does not sweep in a package that ships no '
+        'manifest for that SDK', () async {
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+        'datadog_flutter_plugin_ios.podspec',
+        _iosPodspecWithDatadogDependency,
+      );
+      await fixture.commit('chore: add podspec fixture');
+
+      final result = await plan(mainlineCtx(iosSdkVersionOverride: '3.12.0'));
+      final names = result.packages.map((p) => p.package.name);
+
+      // Pure-Dart: an IOS_SDK_VERSION has nothing to do with it.
+      expect(names, isNot(contains('lonely_ios')));
+      expect(names, isNot(contains('datadog_dio')));
+    });
+
+    test("an override for one SDK doesn't sweep in a package that only depends "
+        'on another', () async {
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+        'datadog_flutter_plugin_ios.podspec',
+        _iosPodspecWithDatadogDependency,
+      );
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_desktop/'
+        'windows/CMakeLists.txt',
+        _windowsCMakeListsWithGitTag,
+      );
+      await fixture.commit('chore: add native dependency fixtures');
+
+      final result = await plan(
+        mainlineCtx(cppVersionOverride: 'v1.4.0'),
+        resolveCommitSha: (repoSlug, ref) async =>
+            'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+      );
+      final names = result.packages.map((p) => p.package.name);
+
+      expect(names, contains('datadog_flutter_plugin_desktop'));
+      expect(names, isNot(contains('datadog_flutter_plugin_ios')));
+    });
+
+    test('BUMP_TYPE alone does not sweep an otherwise-unqualifying package '
+        'into --all', () async {
+      // No qualifying commits, no native SDK change, not explicitly
+      // requested -- BUMP_TYPE must not be the thing that grants
+      // eligibility here, or a targeted override would release every
+      // discovered package.
+      final result = await plan(mainlineCtx(bumpTypeOverride: 'major'));
+      final names = result.packages.map((p) => p.package.name);
+
+      expect(names, isNot(contains('lonely_ios')));
+    });
   });
 
   group('mainline, version computation', () {
@@ -220,19 +275,28 @@ void main() {
       expect(result.packages.single.newVersion, '1.1.1');
     });
 
-    test('a merged prerelease tag is promoted to the stable version it was '
-        'leading up to, rather than bumped past it', () async {
-      // Simulates a long-lived prerelease branch (`v4`) merging back into
-      // mainline -- its beta tag becomes an ancestor of HEAD and would
-      // otherwise be picked as lastTag and bumped from, skipping 4.0.0.
-      await fixture.tag('datadog_flutter_plugin/v4.0.0-beta.3');
+    test(
+      "a pre-release line's tags are not mainline's baseline -- the last "
+      'stable release is, and the merged line\'s own commits carry the bump',
+      () async {
+        // A long-lived `v4` line ships betas, then merges back into mainline.
+        await fixture.tag('datadog_flutter_plugin/v3.5.0');
+        fixture.writeFile(
+          'packages/datadog_flutter_plugin/datadog_flutter_plugin/CHANGES',
+          'the v4 work',
+        );
+        await fixture.commit('feat!: the federation rework');
+        await fixture.tag('datadog_flutter_plugin/v4.0.0-beta.3');
 
-      final result = await plan(
-        mainlineCtx(requestedPackages: ['datadog_flutter_plugin']),
-      );
+        final result = await plan(
+          mainlineCtx(requestedPackages: ['datadog_flutter_plugin']),
+        );
 
-      expect(result.packages.single.newVersion, '4.0.0');
-    });
+        // 3.5.0 + the breaking commit, not 4.0.0-beta.3 + a patch bump.
+        expect(result.packages.single.newVersion, '4.0.0');
+        expect(result.packages.single.bumpLevel, VersionBumpType.major);
+      },
+    );
   });
 
   group('mainline, native SDK deltas', () {
@@ -256,9 +320,8 @@ void main() {
       );
 
       final delta = result.packages.single.nativeSdkDeltas.single;
-      expect(delta.pins, [(source: 'podspec', value: '~> 3')]);
+      expect(delta.sdk, NativeSdk.ios);
       expect(delta.targetVersion, '3.12.0');
-      expect(delta.isChange, isTrue);
     });
 
     test('with no override, resolves via fetchLatest', () async {
@@ -281,50 +344,8 @@ void main() {
       expect(result.packages.single.nativeSdkDeltas, isEmpty);
     });
 
-    test('isChange compares against the pin from the last release tag, not '
-        "develop's intentionally-floating current pin", () async {
-      // Simulate what release tooling actually pins into the file right
-      // before cutting a release.
-      fixture.writeFile(
-        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-            'datadog_flutter_plugin_ios.podspec',
-        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
-      );
-      await fixture.commit('chore: release datadog_flutter_plugin_ios 1.0.0');
-      await fixture.tag('datadog_flutter_plugin_ios/v1.0.0');
-
-      // develop moves on, reverting back to its usual floating pin --
-      // this must not be mistaken for a native SDK change.
-      fixture.writeFile(
-        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-        'datadog_flutter_plugin_ios.podspec',
-        _iosPodspecWithDatadogDependency,
-      );
-      await fixture.commit('chore: back to floating on develop');
-
-      final unchanged = await plan(
-        mainlineCtx(),
-        fetchLatestNativeSdkVersion: (_) async => '3.10.0',
-      );
-      expect(
-        unchanged.packages.map((p) => p.package.name),
-        isNot(contains('datadog_flutter_plugin_ios')),
-      );
-
-      final changed = await plan(
-        mainlineCtx(),
-        fetchLatestNativeSdkVersion: (_) async => '3.13.0',
-      );
-      final delta = changed.packages
-          .firstWhere((p) => p.package.name == 'datadog_flutter_plugin_ios')
-          .nativeSdkDeltas
-          .single;
-      expect(delta.pins, [(source: 'podspec', value: '3.10.0')]);
-      expect(delta.isChange, isTrue);
-    });
-
     test(
-      'a Package.swift alongside the podspec surfaces its own current pin',
+      'a Package.swift alongside the podspec is picked up for rewriting',
       () async {
         fixture.writeFile(
           'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
@@ -341,11 +362,11 @@ void main() {
         );
 
         final delta = result.packages.single.nativeSdkDeltas.single;
-        expect(delta.pins, [
-          (source: 'podspec', value: '~> 3'),
-          (source: 'Package.swift', value: '3.0.0'),
-        ]);
         expect(delta.targetVersion, '3.12.0');
+        expect(delta.files.map((f) => p.basename(f.path)), [
+          'datadog_flutter_plugin_ios.podspec',
+          'Package.swift',
+        ]);
       },
     );
   });
@@ -374,9 +395,6 @@ void main() {
       );
 
       final delta = result.packages.single.nativeSdkDeltas.single;
-      expect(delta.pins, [
-        (source: 'windows/CMakeLists.txt', value: 'develop'),
-      ]);
       expect(delta.targetVersion, 'v1.4.0');
       expect(delta.targetSha, 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2');
     });
@@ -400,26 +418,14 @@ void main() {
       },
     );
 
-    test('a still-stale second CMakeLists (e.g. linux) is not masked by a '
-        'first one (windows) that already matches the target', () async {
-      // windows/CMakeLists.txt (from setUp, checked first) is rewritten
-      // to already match the target; linux/CMakeLists.txt is still
-      // pinned to "develop".
-      fixture.writeFile(
-        'packages/datadog_flutter_plugin/datadog_flutter_plugin_desktop/'
-            'windows/CMakeLists.txt',
-        '''
-FetchContent_Declare(dd-sdk-cpp
-  GIT_REPOSITORY https://github.com/DataDog/dd-sdk-cpp.git
-  GIT_TAG        deadbeefdeadbeefdeadbeefdeadbeefdeadbeef)  # v1.4.0
-''',
-      );
+    test('every platform CMakeLists is carried for rewriting, not just the '
+        'first', () async {
       fixture.writeFile(
         'packages/datadog_flutter_plugin/datadog_flutter_plugin_desktop/'
         'linux/CMakeLists.txt',
         _windowsCMakeListsWithGitTag,
       );
-      await fixture.commit('chore: update CMakeLists fixtures');
+      await fixture.commit('chore: add the linux CMakeLists fixture');
 
       final result = await plan(
         mainlineCtx(
@@ -431,37 +437,10 @@ FetchContent_Declare(dd-sdk-cpp
       );
 
       final delta = result.packages.single.nativeSdkDeltas.single;
-      expect(delta.pins, [
-        (source: 'windows/CMakeLists.txt', value: 'v1.4.0'),
-        (source: 'linux/CMakeLists.txt', value: 'develop'),
+      expect(delta.files.map((f) => p.basename(p.dirname(f.path))), [
+        'windows',
+        'linux',
       ]);
-      expect(delta.isChange, isTrue);
-    });
-  });
-
-  group('mainline, native SDK deltas with a manifest added after the last '
-      'release', () {
-    test('a manifest with no historical pin to compare against is treated as '
-        'a change rather than silently skipped', () async {
-      // Released with no podspec at all -- nothing to compare against.
-      await fixture.tag('datadog_flutter_plugin_ios/v1.0.0');
-
-      // The podspec is only added afterwards.
-      fixture.writeFile(
-        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-        'datadog_flutter_plugin_ios.podspec',
-        _iosPodspecWithDatadogDependency,
-      );
-      await fixture.commit('chore: add podspec fixture after the release');
-
-      final result = await plan(
-        mainlineCtx(requestedPackages: ['datadog_flutter_plugin_ios']),
-        fetchLatestNativeSdkVersion: (_) async => '3.13.0',
-      );
-
-      final delta = result.packages.single.nativeSdkDeltas.single;
-      expect(delta.pins, isEmpty);
-      expect(delta.isChange, isTrue);
     });
   });
 

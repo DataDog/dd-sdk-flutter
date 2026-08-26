@@ -49,75 +49,6 @@ let package = Package(
 ''';
 
 void main() {
-  group('reading current pins', () {
-    test('readIosPodspecPin finds the shared Datadog pod constraint', () {
-      expect(readIosPodspecPin(_iosPodspec), '~> 3');
-    });
-
-    test('readIosPodspecPin returns null with no Datadog dependency', () {
-      expect(readIosPodspecPin("s.dependency 'Flutter'"), isNull);
-    });
-
-    test('readAndroidGradlePin finds ext.datadog_version', () {
-      expect(readAndroidGradlePin(_androidGradle), '3.11.0');
-    });
-
-    test('readAndroidGradlePin returns null with no datadog_version', () {
-      expect(readAndroidGradlePin('ext.kotlin_version = "2.2.20"'), isNull);
-    });
-
-    test('readCppCMakePin finds GIT_TAG regardless of trailing syntax', () {
-      expect(readCppCMakePin(_windowsCMakeLists), 'develop');
-      expect(readCppCMakePin(_linuxCMakeLists), 'develop');
-    });
-
-    test(
-      'readCppCMakePin prefers the trailing tag comment over a pinned SHA',
-      () {
-        const pinned = '''
-FetchContent_Declare(dd-sdk-cpp
-  GIT_REPOSITORY https://github.com/DataDog/dd-sdk-cpp.git
-  GIT_TAG        a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2)  # v1.4.0
-''';
-        // The tag, not the opaque SHA -- that's what a freshly-resolved
-        // target tag needs to compare against to detect "no change".
-        expect(readCppCMakePin(pinned), 'v1.4.0');
-      },
-    );
-
-    test('readCppCMakePin returns null with no GIT_TAG', () {
-      expect(readCppCMakePin('FetchContent_Declare(something_else)'), isNull);
-    });
-
-    test('readCppCMakePin ignores a GIT_TAG belonging to another '
-        'FetchContent_Declare that appears before dd-sdk-cpp', () {
-      const content = '''
-FetchContent_Declare(some_other_dep
-  GIT_REPOSITORY https://github.com/example/some_other_dep.git
-  GIT_TAG        v9.9.9)
-FetchContent_MakeAvailable(some_other_dep)
-
-FetchContent_Declare(dd-sdk-cpp
-  GIT_REPOSITORY https://github.com/DataDog/dd-sdk-cpp.git
-  GIT_TAG        develop)
-''';
-      expect(readCppCMakePin(content), 'develop');
-    });
-
-    test('readSpmPin finds the dd-sdk-ios dependency spec', () {
-      expect(readSpmPin(_packageSwift), 'from: "3.0.0"');
-    });
-
-    test('readSpmPin returns null with no dd-sdk-ios dependency', () {
-      expect(
-        readSpmPin(
-          '.package(url: "https://github.com/other/pkg.git", from: "1.0.0")',
-        ),
-        isNull,
-      );
-    });
-  });
-
   group('resolveNativeDependencyFiles', () {
     late Directory root;
 
@@ -178,6 +109,20 @@ FetchContent_Declare(dd-sdk-cpp
       final files = resolveNativeDependencyFiles(root.path);
 
       expect(files.androidGradle, isNull);
+      expect(files.isEmpty, isTrue);
+    });
+
+    test('ignores a CMakeLists.txt whose only GIT_TAG belongs to a different '
+        'FetchContent_Declare', () {
+      write('windows/CMakeLists.txt', '''
+FetchContent_Declare(some_other_dep
+  GIT_REPOSITORY https://github.com/example/some_other_dep.git
+  GIT_TAG        v9.9.9)
+''');
+
+      final files = resolveNativeDependencyFiles(root.path);
+
+      expect(files.cppCMakeLists, isEmpty);
       expect(files.isEmpty, isTrue);
     });
 
@@ -269,120 +214,6 @@ FetchContent_Declare(dd-sdk-cpp
             throw StateError('should not be called with no override'),
       );
       expect(target, '3.13.0');
-    });
-  });
-
-  group('NativeSdkDelta.isChange', () {
-    test('is false when the target matches the current pin', () {
-      final delta = NativeSdkDelta(
-        sdk: NativeSdk.android,
-        pins: [(source: 'build.gradle', value: '3.11.0')],
-        targetVersion: '3.11.0',
-      );
-      expect(delta.isChange, isFalse);
-    });
-
-    test('is false when there is no target (no change)', () {
-      final delta = NativeSdkDelta(
-        sdk: NativeSdk.android,
-        pins: [(source: 'build.gradle', value: '3.11.0')],
-        targetVersion: null,
-      );
-      expect(delta.isChange, isFalse);
-    });
-
-    test('is true when the target differs from the current pin', () {
-      final delta = NativeSdkDelta(
-        sdk: NativeSdk.android,
-        pins: [(source: 'build.gradle', value: '3.11.0')],
-        targetVersion: '3.12.0',
-      );
-      expect(delta.isChange, isTrue);
-    });
-
-    test('is true when the podspec matches but the SPM pin lags behind -- '
-        'both must track the same version', () {
-      final delta = NativeSdkDelta(
-        sdk: NativeSdk.ios,
-        pins: [
-          (source: 'podspec', value: '3.12.0'),
-          (source: 'Package.swift', value: '3.0.0'),
-        ],
-        targetVersion: '3.12.0',
-      );
-      expect(delta.isChange, isTrue);
-    });
-
-    test('is true when the SPM pin matches but the podspec lags behind', () {
-      final delta = NativeSdkDelta(
-        sdk: NativeSdk.ios,
-        pins: [
-          (source: 'podspec', value: '~> 3'),
-          (source: 'Package.swift', value: '3.12.0'),
-        ],
-        targetVersion: '3.12.0',
-      );
-      expect(delta.isChange, isTrue);
-    });
-
-    test('is false when both the podspec and SPM pin match the target', () {
-      final delta = NativeSdkDelta(
-        sdk: NativeSdk.ios,
-        pins: [
-          (source: 'podspec', value: '3.12.0'),
-          (source: 'Package.swift', value: '3.12.0'),
-        ],
-        targetVersion: '3.12.0',
-      );
-      expect(delta.isChange, isFalse);
-    });
-
-    test('a branch-tracking SPM pin always counts as needing a change', () {
-      final delta = NativeSdkDelta(
-        sdk: NativeSdk.ios,
-        pins: [
-          (source: 'podspec', value: '3.12.0'),
-          (source: 'Package.swift', value: 'branch: "develop"'),
-        ],
-        targetVersion: '3.12.0',
-      );
-      expect(delta.isChange, isTrue);
-    });
-
-    test('is true when the first pin matches but an additional pin '
-        '(e.g. a second CMakeLists) lags behind', () {
-      final delta = NativeSdkDelta(
-        sdk: NativeSdk.cpp,
-        pins: [
-          (source: 'windows/CMakeLists.txt', value: 'v1.4.0'),
-          (source: 'linux/CMakeLists.txt', value: 'develop'),
-        ],
-        targetVersion: 'v1.4.0',
-      );
-      expect(delta.isChange, isTrue);
-    });
-
-    test('is false when the first pin and every additional pin match', () {
-      final delta = NativeSdkDelta(
-        sdk: NativeSdk.cpp,
-        pins: [
-          (source: 'windows/CMakeLists.txt', value: 'v1.4.0'),
-          (source: 'linux/CMakeLists.txt', value: 'v1.4.0'),
-        ],
-        targetVersion: 'v1.4.0',
-      );
-      expect(delta.isChange, isFalse);
-    });
-  });
-
-  group('spmPinForComparison', () {
-    test('extracts the bare version literal from a version-pinned spec', () {
-      expect(spmPinForComparison('from: "3.0.0"'), '3.0.0');
-      expect(spmPinForComparison('exact: "3.12.0"'), '3.12.0');
-    });
-
-    test('returns a branch-tracking spec unchanged', () {
-      expect(spmPinForComparison('branch: "develop"'), 'branch: "develop"');
     });
   });
 }

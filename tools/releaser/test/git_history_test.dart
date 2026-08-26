@@ -29,7 +29,7 @@ void main() {
     final tag = await findLastReleaseTag(gitDir, 'datadog_dio');
 
     expect(tag, isNotNull);
-    expect(tag!.tag, 'datadog_dio/v2.3.0');
+    expect(tag!.tag.tag, 'datadog_dio/v2.3.0');
   });
 
   test('returns null when a package has never been tagged', () async {
@@ -57,28 +57,37 @@ void main() {
     );
 
     expect(tag, isNotNull);
-    expect(tag!.tag, 'datadog_dio/v2.0.0');
+    expect(tag!.tag.tag, 'datadog_dio/v2.0.0');
   });
 
   test(
-    'ignores a higher-versioned tag that is not an ancestor of HEAD -- '
-    'e.g. cut on a long-lived prerelease branch that never merged back',
+    'stableOnly ignores a higher-versioned prerelease tag -- e.g. one cut on '
+    'a long-lived pre-release line that has not shipped stably yet',
     () async {
       fixture.writeFile('packages/datadog_dio/CHANGES', 'v2.2.0 work');
       await fixture.commit('fix: something for 2.2.0');
       await fixture.tag('datadog_dio/v2.2.0');
 
-      await fixture.checkoutNewBranch('prerelease-line');
       fixture.writeFile('packages/datadog_dio/CHANGES', 'v4.0.0-beta.1 work');
       await fixture.commit('feat!: something for 4.0.0-beta.1');
       await fixture.tag('datadog_dio/v4.0.0-beta.1');
-      await fixture.checkout('main');
 
       final gitDir = await fixture.gitDir;
-      final tag = await findLastReleaseTag(gitDir, 'datadog_dio');
 
-      expect(tag, isNotNull);
-      expect(tag!.tag, 'datadog_dio/v2.2.0');
+      // Mainline's baseline: the last thing actually shipped stably.
+      expect(
+        (await findLastReleaseTag(
+          gitDir,
+          'datadog_dio',
+          stableOnly: true,
+        ))?.tag.tag,
+        'datadog_dio/v2.2.0',
+      );
+      // The pre-release path wants the opposite -- that beta is its counter.
+      expect(
+        (await findLastReleaseTag(gitDir, 'datadog_dio'))?.tag.tag,
+        'datadog_dio/v4.0.0-beta.1',
+      );
     },
   );
 
@@ -91,7 +100,7 @@ void main() {
       final tagSha = (await findLastReleaseTag(
         await fixture.gitDir,
         'datadog_dio',
-      ))!.objectSha;
+      ))!.tag.objectSha;
 
       fixture.writeFile('packages/datadog_dio/CHANGES', 'unreleased');
       await fixture.commit('feat: not yet released');

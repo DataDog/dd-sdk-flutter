@@ -4,7 +4,6 @@
 
 import 'dart:convert';
 
-import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:logging/logging.dart';
 
@@ -58,11 +57,6 @@ class GithubCommandWrapper {
         repoSlug,
         '--json',
         'name,isLatest,tagName',
-        // `gh release list` defaults to a page of 30 -- without this, a repo
-        // with more releases than that silently drops older ones, making
-        // getReleaseByTagName reject a perfectly valid older override.
-        '--limit',
-        '1000',
       ],
       workingDirectory: cwd,
       stdout: (line) => buffer.write(line),
@@ -83,13 +77,28 @@ class GithubCommandWrapper {
     return releases.firstWhere((e) => e.isLatest);
   }
 
-  Future<GHRelease?> getReleaseByTagName(
+  /// Whether [repoSlug] has a published release tagged [tagName].
+  ///
+  /// Hits the by-tag endpoint directly rather than scanning [fetchReleases] --
+  /// `gh release list` is paged (30 by default), so a repo with a long release
+  /// history would silently drop older tags and make a perfectly valid version
+  /// override look nonexistent.
+  Future<bool> releaseExists(
     Logger logger,
     String repoSlug,
     String tagName,
   ) async {
-    final releases = await fetchReleases(logger, repoSlug);
-    return releases.firstWhereOrNull((e) => e.tagName == tagName);
+    final exitCode = await runProcess(
+      'gh',
+      ['api', 'repos/$repoSlug/releases/tags/$tagName', '--silent'],
+      workingDirectory: cwd,
+      stdout: (_) {},
+      // A 404 here is the expected "no such release" answer, not a failure
+      // worth shouting about -- the non-zero exit is what reports it.
+      stderr: (line) => logger.fine(line),
+    );
+
+    return exitCode == 0;
   }
 
   /// Resolves [ref] (a tag or branch name) to the full commit SHA it
