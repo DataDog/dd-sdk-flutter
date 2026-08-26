@@ -1,0 +1,11 @@
+# Remove this file once openfeature_dart_client_sdk 0.0.1-beta.1 is available
+# on pub.dev. The pinned source revision is the contract reviewed by this
+# package while the upstream promotion PR remains in draft.
+dependency_overrides:
+  datadog_flags:
+    path: ../datadog_flags
+  openfeature_dart_client_sdk:
+    git:
+      url: https://github.com/open-feature/dart-server-sdk.git
+      ref: 64777195fdc727cb9c6cf9f74a4cd42b53906d63
+      path: packages/openfeature_dart_client_sdk

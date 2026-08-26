@@ -164,7 +164,8 @@ class DatadogFlagsPlugin extends DatadogPlugin {
 }
 
 /// A feature flag client integrated with Flutter RUM feature flag tracking.
-class DatadogFlutterFlagsClient implements DatadogFlagsClient {
+class DatadogFlutterFlagsClient
+    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
   final Future<DatadogFlagsClient> Function() _resolveDelegate;
   final void Function(String key, Object value)? _addRumFeatureFlagEvaluation;
 
@@ -172,6 +173,23 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
 
   @override
   final String name;
+
+  @override
+  FlagsEvaluationContext? get evaluationContext {
+    return switch (_delegate) {
+      final DatadogFlagsClientLifecycle lifecycle =>
+        lifecycle.evaluationContext,
+      _ => null,
+    };
+  }
+
+  @override
+  DatadogFlagsClientStatus get status {
+    return switch (_delegate) {
+      final DatadogFlagsClientLifecycle lifecycle => lifecycle.status,
+      _ => DatadogFlagsClientStatus.notReady,
+    };
+  }
 
   /// Creates a Flutter-integrated feature flag client.
   @visibleForTesting

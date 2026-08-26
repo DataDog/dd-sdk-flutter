@@ -14,6 +14,7 @@ final projectList = [
   '$root/packages/datadog_common_test',
   '$root/packages/datadog_flags',
   '$root/packages/datadog_flags_flutter',
+  '$root/packages/datadog_openfeature_provider',
   '$root/packages/datadog_flutter_plugin',
   '$root/packages/datadog_flutter_plugin/example',
   '$root/packages/datadog_flutter_plugin/e2e_test_app',
@@ -31,6 +32,7 @@ final projectList = [
 final ignorePackages = [
   "datadog_flags",
   "datadog_flags_flutter",
+  "datadog_openfeature_provider",
   "datadog_flutter_plugin",
 ];
 

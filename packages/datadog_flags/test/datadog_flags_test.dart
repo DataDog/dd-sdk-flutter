@@ -111,6 +111,10 @@ void main() {
       const FlagsEvaluationContext(targetingKey: 'user-123'),
     );
 
+    final lifecycle = client as DatadogFlagsClientLifecycle;
+    expect(lifecycle.status, DatadogFlagsClientStatus.ready);
+    expect(lifecycle.evaluationContext?.targetingKey, 'user-123');
+
     final booleanDetails = client.getBooleanDetails(
       key: 'show-paywall',
       defaultValue: false,
@@ -167,6 +171,9 @@ void main() {
       );
       expect(notReady.value, isFalse);
       expect(notReady.error, FlagEvaluationError.providerNotReady);
+      final lifecycle = client as DatadogFlagsClientLifecycle;
+      expect(lifecycle.status, DatadogFlagsClientStatus.notReady);
+      expect(lifecycle.evaluationContext, isNull);
 
       await client.initialize(
         const FlagsEvaluationContext(targetingKey: 'user-123'),
@@ -185,6 +192,15 @@ void main() {
       );
       expect(mismatch.value, 7);
       expect(mismatch.error, FlagEvaluationError.typeMismatch);
+      expect(mismatch.flagMetadata, isEmpty);
+
+      final success = client.getBooleanDetails(
+        key: 'show-paywall',
+        defaultValue: false,
+      );
+      expect(success.flagMetadata, {
+        'datadog.allocation_key': 'allocation-a',
+      });
     },
   );
 
@@ -257,6 +273,10 @@ void main() {
     await client.initialize(
       const FlagsEvaluationContext(targetingKey: 'user-123'),
     );
+
+    final lifecycle = client as DatadogFlagsClientLifecycle;
+    expect(lifecycle.status, DatadogFlagsClientStatus.error);
+    expect(lifecycle.evaluationContext, isNull);
 
     final details = client.getBooleanDetails(
       key: 'show-paywall',
@@ -1211,6 +1231,9 @@ void main() {
       ),
     );
     await _waitUntil(() => restoredRequests.length == 1);
+    final lifecycle = restored as DatadogFlagsClientLifecycle;
+    expect(lifecycle.status, DatadogFlagsClientStatus.stale);
+    expect(lifecycle.evaluationContext?.targetingKey, 'user-123');
     expect(
       restored
           .getBooleanDetails(key: 'show-paywall', defaultValue: false)
@@ -1222,6 +1245,7 @@ void main() {
       http.Response(jsonEncode(_assignmentsResponse(booleanValue: false)), 200),
     );
     await refresh;
+    expect(lifecycle.status, DatadogFlagsClientStatus.ready);
     expect(
       restored.getBooleanDetails(key: 'show-paywall', defaultValue: true).value,
       isFalse,

@@ -110,6 +110,7 @@ build-flutter:
     - melos dartfmt_check
     - melos run analyze:dart
     - melos run unit_test:flutter
+    - melos run publish_dry_run:openfeature
     - melos run golden_test:flutter
   artifacts:
     when: always
@@ -178,6 +179,7 @@ build-web:
   script:
     - !reference [.pre, script]
     - !reference [.pre-web, script]
+    - melos run compile:openfeature-web
     - melos run build:web
     - melos run unit_test:web
   artifacts:
@@ -414,5 +416,3 @@ nightly-android:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
-
-

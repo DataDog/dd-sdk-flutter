@@ -14,6 +14,9 @@ class MockDatadogFlags extends Mock implements DatadogFlags {}
 
 class MockDatadogFlagsClient extends Mock implements DatadogFlagsClient {}
 
+class MockDatadogFlagsLifecycleClient extends Mock
+    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {}
+
 void main() {
   late MockDatadogSdk mockSdk;
 
@@ -173,6 +176,28 @@ void main() {
     verify(() => delegate.initialize(context)).called(1);
   });
 
+  test('forwards assignment lifecycle state from Datadog clients', () async {
+    const context = FlagsEvaluationContext(targetingKey: 'user-1');
+    final delegate = MockDatadogFlagsLifecycleClient();
+    when(() => delegate.name).thenReturn(DatadogFlags.defaultClientName);
+    when(() => delegate.initialize(context)).thenAnswer((_) async {});
+    when(() => delegate.status).thenReturn(DatadogFlagsClientStatus.ready);
+    when(() => delegate.evaluationContext).thenReturn(context);
+    final client = DatadogFlutterFlagsClient(
+      name: 'default',
+      resolveDelegate: () async => delegate,
+      addRumFeatureFlagEvaluation: null,
+    );
+
+    expect(client.status, DatadogFlagsClientStatus.notReady);
+    expect(client.evaluationContext, isNull);
+
+    await client.initialize(context);
+
+    expect(client.status, DatadogFlagsClientStatus.ready);
+    expect(client.evaluationContext, same(context));
+  });
+
   test('adds successful variants to RUM feature flag tracking', () async {
     final delegate = _mockClient();
     when(
@@ -287,6 +312,8 @@ void main() {
 
     expect(details.value, isFalse);
     expect(details.error, FlagEvaluationError.providerNotReady);
+    expect(client.status, DatadogFlagsClientStatus.notReady);
+    expect(client.evaluationContext, isNull);
   });
 
   test('sdk extension returns configured flags plugin', () {

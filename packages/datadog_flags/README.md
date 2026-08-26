@@ -222,6 +222,7 @@ print(details.value);
 print(details.variant);
 print(details.reason);
 print(details.error?.code);
+print(details.flagMetadata);
 ```
 
 `FlagDetails.error` is set when the SDK returns the default because of one of
@@ -234,8 +235,9 @@ these conditions:
 - `FlagEvaluationError.typeMismatch`: the assignment value does not match the
   typed evaluation method.
 
-Successful details include the evaluated value plus assignment metadata such as
-`variant` and `reason` when Datadog returned it.
+Successful details include the evaluated value plus `variant`, `reason`, and
+provider metadata. `flagMetadata` contains `datadog.allocation_key` and, when
+present on the assignment, `datadog.serial_id`.
 
 ## Assignment Fetching and Fallbacks
 
@@ -247,6 +249,23 @@ Successful details include the evaluated value plus assignment metadata such as
 Assignment fetch and response decoding failures are contained by the SDK. If no
 matching stored assignments are available, later evaluations return defaults
 with `providerNotReady` or `flagNotFound` details.
+
+Datadog SDK clients implement `DatadogFlagsClientLifecycle`. Use that
+capability to distinguish fresh, stored, and unavailable assignments:
+
+```dart
+final lifecycle = client as DatadogFlagsClientLifecycle;
+print(lifecycle.status);
+print(lifecycle.evaluationContext);
+```
+
+- `notReady` before initialization and after reset or shutdown.
+- `ready` after a successful live assignment fetch.
+- `stale` when matching stored assignments remain usable after refresh fails.
+- `error` when initialization fails without usable stored assignments.
+
+`evaluationContext` is the context associated with the assignments that are
+currently used for evaluation.
 
 Unknown or malformed individual flag assignments are ignored so that one
 invalid assignment does not prevent other assignments from loading.

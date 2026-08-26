@@ -11,7 +11,8 @@ import 'flags_client.dart';
 import 'flags_error.dart';
 import 'flags_repository.dart';
 
-class DefaultDatadogFlagsClient implements DatadogFlagsClient {
+class DefaultDatadogFlagsClient
+    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
   static final Object _typeMismatch = Object();
 
   @override
@@ -28,6 +29,12 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
   })  : _repository = repository,
         _exposureLogger = exposureLogger,
         _evaluationAggregator = evaluationAggregator;
+
+  @override
+  DatadogFlagsClientStatus get status => _repository.status;
+
+  @override
+  FlagsEvaluationContext? get evaluationContext => _repository.context;
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
@@ -200,6 +207,11 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
       value: resolvedValue as T,
       variant: assignment.variationKey,
       reason: assignment.reason,
+      flagMetadata: {
+        'datadog.allocation_key': assignment.allocationKey,
+        if (assignment.serialId case final serialId?)
+          'datadog.serial_id': serialId,
+      },
     );
   }
 }

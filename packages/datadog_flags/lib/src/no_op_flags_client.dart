@@ -7,11 +7,18 @@ import 'evaluation_context.dart';
 import 'flags_client.dart';
 import 'flags_error.dart';
 
-class NoOpDatadogFlagsClient implements DatadogFlagsClient {
+class NoOpDatadogFlagsClient
+    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
   @override
   final String name;
 
   const NoOpDatadogFlagsClient({required this.name});
+
+  @override
+  DatadogFlagsClientStatus get status => DatadogFlagsClientStatus.notReady;
+
+  @override
+  FlagsEvaluationContext? get evaluationContext => null;
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {}
