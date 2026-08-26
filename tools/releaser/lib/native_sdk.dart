@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import 'cmake_util.dart';
 import 'trigger_context.dart';
 
 /// A native SDK a Flutter package can depend on.
@@ -88,11 +89,33 @@ final _spmVersionLiteralPattern = RegExp(
 /// comment (see [pinCppVersion] in cmake_util.dart) -- that comment is
 /// preferred here so the *tag* is what gets compared run-over-run, not an
 /// opaque SHA that would never equal a freshly-resolved target tag.
+///
+/// Only reads a `GIT_TAG` line while inside the `dd-sdk-cpp`
+/// `FetchContent_Declare(...)` block (tracked the same way [pinCppVersion]
+/// tracks it) -- a file that also vendors another dependency via its own
+/// `FetchContent_Declare` must not have that dependency's `GIT_TAG` read as
+/// if it were dd-sdk-cpp's pin.
 String? readCppCMakePin(String cmakeListsContent) {
+  var insideDdSdkCppDeclare = false;
+  var parenDepth = 0;
+
   for (final line in cmakeListsContent.split('\n')) {
-    final match = _cmakeGitTagPattern.firstMatch(line);
-    if (match != null) {
-      return match.namedGroup('comment') ?? match.namedGroup('ref');
+    if (ddSdkCppDeclareStartPattern.hasMatch(line)) {
+      insideDdSdkCppDeclare = true;
+      parenDepth = parenBalance(line);
+    } else if (insideDdSdkCppDeclare) {
+      parenDepth += parenBalance(line);
+    }
+
+    if (insideDdSdkCppDeclare) {
+      final match = _cmakeGitTagPattern.firstMatch(line);
+      if (match != null) {
+        return match.namedGroup('comment') ?? match.namedGroup('ref');
+      }
+    }
+
+    if (insideDdSdkCppDeclare && parenDepth <= 0) {
+      insideDdSdkCppDeclare = false;
     }
   }
   return null;

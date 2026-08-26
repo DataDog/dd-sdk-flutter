@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:io';
+
 import 'package:collection/collection.dart';
 import 'package:git/git.dart';
 import 'package:logging/logging.dart';
@@ -147,22 +149,34 @@ Future<PackagePlan?> _computePackagePlan(
   NativeSdkGateways gateways, {
   required bool isExplicitlyRequested,
 }) async {
-  final nativeSdkDeltas = await _computeNativeSdkDeltas(pkg, ctx, gateways);
-  final hasNativeSdkChange = nativeSdkDeltas.any((d) => d.isChange);
-
   switch (ctx.trigger) {
     case TriggerContext.patch:
-      return await _computePatchPlan(pkg, ctx, gitDir, nativeSdkDeltas);
     case TriggerContext.preRelease:
-      return await _computePrereleasePlan(pkg, ctx, gitDir, nativeSdkDeltas);
+      final nativeSdkDeltas = await _computeNativeSdkDeltas(pkg, ctx, gateways);
+      return ctx.trigger == TriggerContext.patch
+          ? await _computePatchPlan(pkg, ctx, gitDir, nativeSdkDeltas)
+          : await _computePrereleasePlan(pkg, ctx, gitDir, nativeSdkDeltas);
     case TriggerContext.mainline:
+      // Fetched up front (rather than inside _computeNativeSdkDeltas /
+      // _computeMainlinePlan separately) so both use the exact same tag --
+      // it's also what the native SDK comparison below reads its
+      // "previously released" pin from.
+      final lastTag = await findLastReleaseTag(gitDir, pkg.name);
+      final nativeSdkDeltas = await _computeNativeSdkDeltas(
+        pkg,
+        ctx,
+        gateways,
+        gitDir: gitDir,
+        lastReleaseTag: lastTag,
+      );
       return await _computeMainlinePlan(
         pkg,
         ctx,
         gitDir,
         nativeSdkDeltas,
+        lastTag: lastTag,
         isExplicitlyRequested: isExplicitlyRequested,
-        hasNativeSdkChange: hasNativeSdkChange,
+        hasNativeSdkChange: nativeSdkDeltas.any((d) => d.isChange),
       );
   }
 }
@@ -271,10 +285,10 @@ Future<PackagePlan?> _computeMainlinePlan(
   RunContext ctx,
   GitDir gitDir,
   List<NativeSdkDelta> nativeSdkDeltas, {
+  required Tag? lastTag,
   required bool isExplicitlyRequested,
   required bool hasNativeSdkChange,
 }) async {
-  final lastTag = await findLastReleaseTag(gitDir, pkg.name);
   final commits = await _conventionalCommitsSince(
     gitDir,
     pathspec: pkg.relativePath,
@@ -337,19 +351,34 @@ String _versionFromTag(Tag tag, String packageName) =>
 Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
   DiscoveredPackage pkg,
   RunContext ctx,
-  NativeSdkGateways gateways,
-) async {
+  NativeSdkGateways gateways, {
+  GitDir? gitDir,
+  Tag? lastReleaseTag,
+}) async {
   final files = resolveNativeDependencyFiles(pkg.absolutePath(ctx.repoRoot));
   final deltas = <NativeSdkDelta>[];
+
+  Future<String?> content(File file) => _nativeDependencyPinSource(
+    file,
+    repoRoot: ctx.repoRoot,
+    gitDir: gitDir,
+    lastReleaseTag: lastReleaseTag,
+  );
 
   if (files.iosPodspec != null || files.iosSpmManifest != null) {
     final pins = <NativeSdkPin>[];
     if (files.iosPodspec != null) {
-      final pin = readIosPodspecPin(files.iosPodspec!.readAsStringSync());
+      final pin = switch (await content(files.iosPodspec!)) {
+        final c? => readIosPodspecPin(c),
+        null => null,
+      };
       if (pin != null) pins.add((source: 'podspec', value: pin));
     }
     if (files.iosSpmManifest != null) {
-      final pin = readSpmPin(files.iosSpmManifest!.readAsStringSync());
+      final pin = switch (await content(files.iosSpmManifest!)) {
+        final c? => readSpmPin(c),
+        null => null,
+      };
       if (pin != null) {
         pins.add((source: 'Package.swift', value: spmPinForComparison(pin)));
       }
@@ -367,7 +396,10 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
   }
 
   if (files.androidGradle != null) {
-    final pin = readAndroidGradlePin(files.androidGradle!.readAsStringSync());
+    final pin = switch (await content(files.androidGradle!)) {
+      final c? => readAndroidGradlePin(c),
+      null => null,
+    };
     final target = await resolveNativeSdkTarget(
       trigger: ctx.trigger,
       override: ctx.androidSdkVersionOverride,
@@ -389,14 +421,17 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
     // each pinning dd-sdk-cpp independently -- every one of them needs to
     // be checked, not just the first, or a still-stale platform would
     // silently be missed (see NativeSdkDelta.pins).
-    final pins = <NativeSdkPin>[
-      for (final file in files.cppCMakeLists)
-        if (readCppCMakePin(file.readAsStringSync()) case final pin?)
-          (
-            source: p.relative(file.path, from: pkg.absolutePath(ctx.repoRoot)),
-            value: pin,
-          ),
-    ];
+    final pins = <NativeSdkPin>[];
+    for (final file in files.cppCMakeLists) {
+      final fileContent = await content(file);
+      final pin = fileContent != null ? readCppCMakePin(fileContent) : null;
+      if (pin != null) {
+        pins.add((
+          source: p.relative(file.path, from: pkg.absolutePath(ctx.repoRoot)),
+          value: pin,
+        ));
+      }
+    }
     final target = await resolveNativeSdkTarget(
       trigger: ctx.trigger,
       override: ctx.cppVersionOverride,
@@ -421,6 +456,51 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
   }
 
   return deltas;
+}
+
+/// The content to read a native dependency file's current pin from, for
+/// comparison against [NativeSdkDelta.targetVersion].
+///
+/// With no [lastReleaseTag] (patch/pre-release branches, or a package's
+/// first-ever mainline release), [file]'s own on-disk content already
+/// reflects what was actually pinned last -- release tooling rewrites it in
+/// place. On mainline, though, [file] is `develop`'s own copy, which is
+/// deliberately left on a floating constraint (`~> 3`, `branch: "develop"`,
+/// `GIT_TAG develop`) by that same tooling -- comparing the resolved target
+/// against a floating constraint would report a native SDK change on every
+/// run. What was actually shipped is whatever got pinned into this same
+/// file right before [lastReleaseTag] was cut, so read that historical
+/// blob instead. Returns null (nothing to compare) if the file didn't
+/// exist yet at that tag.
+Future<String?> _nativeDependencyPinSource(
+  File file, {
+  required String repoRoot,
+  GitDir? gitDir,
+  Tag? lastReleaseTag,
+}) async {
+  if (gitDir == null || lastReleaseTag == null) {
+    return file.readAsStringSync();
+  }
+  final relativePath = p.posix.joinAll(
+    p.split(p.relative(file.path, from: repoRoot)),
+  );
+  final result = await gitDir.runCommand([
+    'show',
+    '${lastReleaseTag.tag}:$relativePath',
+  ], throwOnError: false);
+  if (result.exitCode != 0) {
+    // Usually means the file didn't exist yet at lastReleaseTag, but it's
+    // equally what a moved/renamed file looks like -- log so a real stale
+    // pin hiding behind a rename isn't dropped completely silently.
+    Logger('native_sdk').warning(
+      "⚠️ Couldn't read $relativePath as of ${lastReleaseTag.tag} "
+      '(git show exit ${result.exitCode}); skipping it for native SDK '
+      'comparison. If this file moved since that release, the comparison '
+      'may miss a stale pin.',
+    );
+    return null;
+  }
+  return result.stdout as String;
 }
 
 /// [commitMessagesSince]'s raw messages, parsed into [ConventionalCommit]s

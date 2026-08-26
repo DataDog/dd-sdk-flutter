@@ -15,12 +15,16 @@ final _gitTagLinePattern = RegExp(
 /// Matches the start of the `FetchContent_Declare(dd-sdk-cpp ...` call --
 /// used to find where that block begins, since a `CMakeLists.txt` can
 /// declare more than one `FetchContent` dependency and only this one's
-/// `GIT_TAG` should be rewritten.
-final _ddSdkCppDeclareStartPattern = RegExp(
+/// `GIT_TAG` should be read/rewritten. Public so `native_sdk.dart`'s
+/// `readCppCMakePin` scopes its read the same way this file scopes its
+/// write, instead of risking the two drifting out of sync.
+final ddSdkCppDeclareStartPattern = RegExp(
   r'FetchContent_Declare\(\s*dd-sdk-cpp\b',
 );
 
-int _parenBalance(String line) =>
+/// Public alongside [ddSdkCppDeclareStartPattern] for the same reason --
+/// `native_sdk.dart` needs to track the same multi-line block boundary.
+int parenBalance(String line) =>
     '('.allMatches(line).length - ')'.allMatches(line).length;
 
 /// Rewrites a CMakeLists.txt's dd-sdk-cpp `GIT_TAG` line to pin at
@@ -60,11 +64,11 @@ Future<void> pinCppVersion(
   var parenDepth = 0;
 
   await transformFile(cmakeListsFile, logger, dryRun, (line) {
-    if (_ddSdkCppDeclareStartPattern.hasMatch(line)) {
+    if (ddSdkCppDeclareStartPattern.hasMatch(line)) {
       insideDdSdkCppDeclare = true;
-      parenDepth = _parenBalance(line);
+      parenDepth = parenBalance(line);
     } else if (insideDdSdkCppDeclare) {
-      parenDepth += _parenBalance(line);
+      parenDepth += parenBalance(line);
     }
 
     var result = line;

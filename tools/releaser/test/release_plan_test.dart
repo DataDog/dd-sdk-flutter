@@ -267,6 +267,48 @@ void main() {
       expect(result.packages.single.nativeSdkDeltas, isEmpty);
     });
 
+    test('isChange compares against the pin from the last release tag, not '
+        "develop's intentionally-floating current pin", () async {
+      // Simulate what release tooling actually pins into the file right
+      // before cutting a release.
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+            'datadog_flutter_plugin_ios.podspec',
+        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+      );
+      await fixture.commit('chore: release datadog_flutter_plugin_ios 1.0.0');
+      await fixture.tag('datadog_flutter_plugin_ios/v1.0.0');
+
+      // develop moves on, reverting back to its usual floating pin --
+      // this must not be mistaken for a native SDK change.
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+        'datadog_flutter_plugin_ios.podspec',
+        _iosPodspecWithDatadogDependency,
+      );
+      await fixture.commit('chore: back to floating on develop');
+
+      final unchanged = await plan(
+        mainlineCtx(),
+        fetchLatestNativeSdkVersion: (_) async => '3.10.0',
+      );
+      expect(
+        unchanged.packages.map((p) => p.package.name),
+        isNot(contains('datadog_flutter_plugin_ios')),
+      );
+
+      final changed = await plan(
+        mainlineCtx(),
+        fetchLatestNativeSdkVersion: (_) async => '3.13.0',
+      );
+      final delta = changed.packages
+          .firstWhere((p) => p.package.name == 'datadog_flutter_plugin_ios')
+          .nativeSdkDeltas
+          .single;
+      expect(delta.pins, [(source: 'podspec', value: '3.10.0')]);
+      expect(delta.isChange, isTrue);
+    });
+
     test(
       'a Package.swift alongside the podspec surfaces its own current pin',
       () async {
