@@ -135,20 +135,37 @@ Future<ReleasePlan> computeReleasePlan(
   return ReleasePlan(trigger: ctx.trigger, packages: plans);
 }
 
-/// Rejects per-run overrides that the trigger the run is happening under has
-/// no way to honour, rather than accepting and silently ignoring them.
+/// Rejects per-run overrides the run has no coherent way to honour, rather
+/// than accepting and silently reinterpreting them.
 ///
 /// Only the mainline path derives a bump level at all: a patch branch forces
 /// `patch` by definition, and a pre-release branch's bump comes from the
 /// prerelease counter. A `BUMP_TYPE` on either would read as "this release is
 /// a major" and quietly not be.
+///
+/// And even on mainline it requires an explicit `PACKAGES`. "Override the
+/// computed bump" is only a meaningful instruction about packages the caller
+/// named: combined with `--all` it silently re-levels whatever happened to
+/// qualify this run, so a single `fix:` typo ships as a major. Nobody typing
+/// `BUMP_TYPE=major` means "and also major-release everything else that has a
+/// commit", so that combination is an error rather than something to make
+/// safe.
 void _validateTriggerInputs(RunContext ctx) {
   final bumpType = ctx.bumpTypeOverride;
   if (bumpType == null || bumpType.isEmpty) return;
 
   switch (ctx.trigger) {
     case TriggerContext.mainline:
-      // Parsed (and rejected if unrecognized) where it's applied.
+      if (ctx.requestedPackages.isEmpty) {
+        throw StateError(
+          'BUMP_TYPE="$bumpType" requires an explicit PACKAGES list -- it '
+          'applies uniformly to every package in the run, so on an --all run '
+          'it would re-level whichever packages happened to qualify, turning '
+          'an unrelated fix into a $bumpType release. Name the packages this '
+          'bump is for, or clear BUMP_TYPE and let the commits decide.',
+        );
+      }
+      // Otherwise parsed (and rejected if unrecognized) where it's applied.
       return;
     case TriggerContext.patch:
       throw StateError(
@@ -202,11 +219,21 @@ Future<PackagePlan?> _computePackagePlan(
   // touches the network -- resolving native SDK targets for a package that
   // turns out to have nothing to ship is pure waste.
   //
-  // Eligibility must come from the package's actual changes, never from
-  // BUMP_TYPE alone: a targeted override like BUMP_TYPE=major would otherwise
-  // sweep every discovered package into a major release of the entire repo.
-  // Patch and pre-release runs release whatever they were pointed at.
-  if (ctx.trigger == TriggerContext.mainline &&
+  // Eligibility comes from the package's actual changes. (BUMP_TYPE can't
+  // reach here on its own -- _validateTriggerInputs requires an explicit
+  // PACKAGES alongside it, which makes every package in such a run
+  // isExplicitlyRequested.)
+  //
+  // This applies to pre-release `--all` runs too, not just mainline. Without
+  // it, every untouched package is handed a fresh `-beta.1`, and -- worse --
+  // omitting PRERELEASE_LABEL to continue an existing counter aborts the whole
+  // plan on the first package that has never been part of the pre-release
+  // line. A package's first-ever alpha still qualifies: with no tag at the
+  // target version its commit range is the package's whole history.
+  //
+  // A patch run is exempt: its single package comes from the branch name, and
+  // a patch branch exists precisely because something needs shipping from it.
+  if (ctx.trigger != TriggerContext.patch &&
       aggregateBumpLevel(commits) == null &&
       !isExplicitlyRequested &&
       !_hasForcedNativeUpdate(files, ctx)) {
@@ -323,6 +350,28 @@ PackagePlan _computePrereleasePlan(
       'No prior pre-release tag for "${pkg.name}" at base version $base -- '
       'PRERELEASE_LABEL is required the first time a label is used against '
       'a given base version.',
+    );
+  }
+
+  // Whatever the branches above decided, a release has to move forward.
+  //
+  // Asserted as an invariant rather than enumerated as another case, because
+  // the ways to go backwards outnumber the ways to go forwards: labels are
+  // compared lexically by semver, so `beta` after `rc.1` restarts at
+  // `beta.1` -- already published, and below the latest release. Worse, it
+  // doesn't self-correct: `rc.1` stays the highest tag, so every subsequent
+  // run proposes that same `beta.1` again.
+  //
+  // A forward label change is still fine (`beta.3` -> `rc.1`); only a
+  // non-increasing result is rejected.
+  if (lastTag != null && newVersion <= lastTag.version) {
+    throw StateError(
+      'Pre-release $newVersion for "${pkg.name}" would not move forward from '
+      '${lastTag.tag.tag}. Pre-release labels are ordered lexically '
+      '(alpha < beta < rc), so a label earlier than the one already shipped '
+      'restarts below it. Continue with a label that sorts after '
+      '"${lastTag.version.preRelease.first}", or bump pubspec.yaml to start a '
+      'new target version.',
     );
   }
 

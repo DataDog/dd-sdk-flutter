@@ -24,8 +24,12 @@ enum NativeSdk {
 /// public so `cocoapod_util.dart`'s pin-rewriting step and this file's
 /// discovery share one definition of the line shape instead of maintaining
 /// two separate regexes for it.
+/// [prefix] spans everything up to and including the constraint's opening
+/// quote, so a rewrite can rebuild the line from the match instead of
+/// reconstructing it -- see [pinIosPodspecDependencyLine].
 final iosPodspecDependencyPattern = RegExp(
-  r"s\.dependency\s+'(?<dependency>Datadog\w*)'\s*,\s*'(?<constraint>[^']+)'",
+  r"(?<prefix>s\.dependency\s+'(?<dependency>Datadog\w*)'\s*,\s*')"
+  r"(?<constraint>[^']+)'",
 );
 
 /// The `ext.datadog_version = "..."` line prefix in a `build.gradle`, and
@@ -36,8 +40,13 @@ final iosPodspecDependencyPattern = RegExp(
 /// Discovery below uses the same pattern to decide whether a `build.gradle`
 /// is an Android native-dependency file at all.
 const androidGradleVersionPrefix = 'ext.datadog_version';
+
+/// [prefix] spans everything up to and including the opening quote, so a
+/// rewrite can rebuild the assignment from the match rather than from a
+/// literal -- reproducing a literal `x = "y"` would silently fail to replace
+/// a line the pattern happily matched with different spacing.
 final androidGradleVersionPattern = RegExp(
-  '$androidGradleVersionPrefix\\s*=\\s*"(?<version>[^"]+)"',
+  '(?<prefix>$androidGradleVersionPrefix\\s*=\\s*")(?<version>[^"]+)"',
 );
 
 /// Matches a `Package.swift`'s dd-sdk-ios dependency line (e.g.

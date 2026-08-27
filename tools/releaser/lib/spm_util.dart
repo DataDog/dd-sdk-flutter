@@ -11,7 +11,29 @@ import 'command.dart';
 import 'helpers.dart';
 import 'native_sdk.dart';
 
-const datadogIosRepo = 'https://github.com/Datadog/dd-sdk-ios.git';
+/// Rewrites a `Package.swift`'s dd-sdk-ios dependency to [versionString] (a
+/// full SPM spec such as `exact: "3.13.0"`), or returns [line] unchanged if it
+/// isn't that dependency.
+///
+/// Keeps the file's own URL rather than comparing against one canonical
+/// spelling: [iosSpmDependencyPattern] already guarantees this is a dd-sdk-ios
+/// dependency, and `DataDog` vs `Datadog` casing genuinely varies across this
+/// repo's manifests. Gating on an exact match meant discovery would report
+/// such a manifest while the rewrite silently skipped it.
+///
+/// Replacing only the matched range preserves the line's indentation and
+/// anything after the call -- a trailing comma between array elements, most
+/// commonly -- instead of reconstructing them.
+String pinSpmDependencyLine(String line, String versionString) {
+  final match = iosSpmDependencyPattern.firstMatch(line);
+  if (match == null) return line;
+
+  return line.replaceRange(
+    match.start,
+    match.end,
+    '.package(url: "${match.namedGroup('url')}", $versionString)',
+  );
+}
 
 class PinSwiftPackageVersion extends Command {
   @override
@@ -64,15 +86,12 @@ class PinSwiftPackageVersion extends Command {
     }
 
     logger.info('ℹ️ Setting the iOS Pod Dependency to $versionString');
-    await transformFile(file, logger, dryRun, (line) {
-      final match = iosSpmDependencyPattern.firstMatch(line);
-      if (match != null && match.namedGroup('url') == datadogIosRepo) {
-        final needsComma = line.trimRight().endsWith(',');
-        line =
-            '        .package(url: "$datadogIosRepo", $versionString)${needsComma ? ',' : ''}';
-      }
-      return line;
-    });
+    await transformFile(
+      file,
+      logger,
+      dryRun,
+      (line) => pinSpmDependencyLine(line, versionString),
+    );
 
     return true;
   }

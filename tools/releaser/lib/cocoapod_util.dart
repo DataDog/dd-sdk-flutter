@@ -12,6 +12,25 @@ import 'package_list.dart';
 final overridesStartPattern = RegExp(r'\s+# Datadog Pod Overrides');
 final overridesEndPattern = RegExp(r'\s+# End Datadog Pod Overrides');
 
+/// Rewrites a podspec's `s.dependency 'Datadog...'` constraint to [version],
+/// or returns [line] unchanged if it isn't one.
+///
+/// Replaces only the matched range rather than reconstructing the line.
+/// [iosPodspecDependencyPattern] tolerates any spacing around the comma, so
+/// rebuilding a canonical `  s.dependency 'X', 'Y'` reformats whatever
+/// spacing and indentation the podspec actually used and drops anything
+/// trailing the constraint.
+String pinIosPodspecDependencyLine(String line, String version) {
+  final match = iosPodspecDependencyPattern.firstMatch(line);
+  if (match == null) return line;
+
+  return line.replaceRange(
+    match.start,
+    match.end,
+    "${match.namedGroup('prefix')}$version'",
+  );
+}
+
 class PinCocoapodsVersionCommand extends Command {
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
@@ -81,14 +100,12 @@ class PinCocoapodsVersionCommand extends Command {
     }
 
     logger.info('ℹ️ Setting the iOS Pod Dependency to ${args.iOSRelease}');
-    await transformFile(file, logger, args.dryRun, (element) {
-      final match = iosPodspecDependencyPattern.firstMatch(element);
-      if (match != null) {
-        element =
-            "  s.dependency '${match.namedGroup('dependency')}', '${args.iOSRelease}'";
-      }
-      return element;
-    });
+    await transformFile(
+      file,
+      logger,
+      args.dryRun,
+      (element) => pinIosPodspecDependencyLine(element, args.iOSRelease!),
+    );
 
     return true;
   }

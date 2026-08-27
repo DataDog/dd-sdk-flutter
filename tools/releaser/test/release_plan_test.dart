@@ -159,16 +159,41 @@ void main() {
       expect(names, isNot(contains('datadog_flutter_plugin_ios')));
     });
 
-    test('BUMP_TYPE alone does not sweep an otherwise-unqualifying package '
-        'into --all', () async {
-      // No qualifying commits, no native SDK change, not explicitly
-      // requested -- BUMP_TYPE must not be the thing that grants
-      // eligibility here, or a targeted override would release every
-      // discovered package.
-      final result = await plan(mainlineCtx(bumpTypeOverride: 'major'));
-      final names = result.packages.map((p) => p.package.name);
+    test('BUMP_TYPE without an explicit PACKAGES list is rejected', () async {
+      // "Override the computed bump" only means something about packages the
+      // caller named. On an --all run it would re-level whatever qualified --
+      // a lone `fix:` typo shipping as a major.
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'a typo fix');
+      await fixture.commit('fix: correct a typo');
 
-      expect(names, isNot(contains('lonely_ios')));
+      await expectLater(
+        plan(mainlineCtx(bumpTypeOverride: 'major')),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('requires an explicit PACKAGES list'),
+          ),
+        ),
+      );
+    });
+
+    test('BUMP_TYPE applies to the named packages only', () async {
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'a typo fix');
+      await fixture.commit('fix: correct a typo');
+      await fixture.tag('datadog_dio/v2.3.0');
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'another');
+      await fixture.commit('fix: correct another typo');
+
+      final result = await plan(
+        mainlineCtx(
+          requestedPackages: ['datadog_dio'],
+          bumpTypeOverride: 'major',
+        ),
+      );
+
+      expect(result.packages.single.package.name, 'datadog_dio');
+      expect(result.packages.single.newVersion, '3.0.0');
     });
   });
 
@@ -587,6 +612,47 @@ void main() {
       );
     });
 
+    test('--all excludes packages with nothing to ship', () async {
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'a real feature');
+      await fixture.commit('feat: add a real feature to dio');
+
+      final result = await plan(
+        RunContext(
+          repoRoot: fixture.root.path,
+          trigger: TriggerContext.preRelease,
+          currentBranch: 'v4',
+          prereleaseLabel: 'beta',
+        ),
+      );
+      final names = result.packages.map((p) => p.package.name);
+
+      expect(names, contains('datadog_dio'));
+      // Untouched -- handing it a fresh beta would publish a release nobody
+      // asked for.
+      expect(names, isNot(contains('lonely_ios')));
+    });
+
+    test("--all without a label doesn't abort on a package that was never part "
+        'of the pre-release line', () async {
+      // Omitting PRERELEASE_LABEL to continue an existing counter is a
+      // documented workflow; an untouched package with no tag at the target
+      // version used to throw and take the whole plan down with it.
+      await fixture.tag('datadog_flutter_plugin/v4.0.0-beta.1');
+
+      final result = await plan(
+        RunContext(
+          repoRoot: fixture.root.path,
+          trigger: TriggerContext.preRelease,
+          currentBranch: 'v4',
+        ),
+      );
+
+      expect(
+        result.packages.map((p) => p.package.name),
+        isNot(contains('lonely_ios')),
+      );
+    });
+
     test('the first prerelease for a base version requires a label', () async {
       await expectLater(plan(preReleaseCtx()), throwsStateError);
     });
@@ -615,6 +681,26 @@ void main() {
         expect(result.packages.single.newVersion, '4.0.0-beta.2');
       },
     );
+
+    test('a label that would move the version backward is rejected', () async {
+      // Labels are ordered lexically, so `beta` after `rc.1` restarts at
+      // `beta.1` -- already published, and below the latest release. It
+      // also never self-corrects: `rc.1` stays the highest tag, so every
+      // later run proposes that same `beta.1` again.
+      await fixture.tag('datadog_flutter_plugin/v4.0.0-beta.1');
+      await fixture.tag('datadog_flutter_plugin/v4.0.0-rc.1');
+
+      await expectLater(
+        plan(preReleaseCtx(prereleaseLabel: 'beta')),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('would not move forward from'),
+          ),
+        ),
+      );
+    });
 
     test('switching to a new label restarts the counter at .1', () async {
       await fixture.tag('datadog_flutter_plugin/v4.0.0-beta.3');
