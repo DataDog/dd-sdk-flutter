@@ -590,6 +590,20 @@ void main() {
       expect(result.packages.single.newVersion, '4.0.0-beta.1');
     });
 
+    test('an unrelated higher tag does not mask the target line -- the counter '
+        'continues from the tag at the declared target version', () async {
+      // pubspec.version is 4.0.0. A patch off an older line and a
+      // concurrent v5 effort both sort above this line's own beta;
+      // selecting either would restart at beta.1 and collide.
+      await fixture.tag('datadog_flutter_plugin/v4.0.0-beta.1');
+      await fixture.tag('datadog_flutter_plugin/v4.0.1');
+      await fixture.tag('datadog_flutter_plugin/v5.0.0-beta.1');
+
+      final result = await plan(preReleaseCtx(prereleaseLabel: 'beta'));
+
+      expect(result.packages.single.newVersion, '4.0.0-beta.2');
+    });
+
     test('rejects starting a new pre-release once the target version has '
         'already been released stably', () async {
       // pubspec.version is 4.0.0, and it's already been released stably

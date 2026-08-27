@@ -38,7 +38,7 @@ void main() {
     expect(tag, isNull);
   });
 
-  test('releaseLine restricts the search to that major/minor, ignoring a '
+  test('versionScope restricts the search to that major/minor, ignoring a '
       'newer tag from a different line', () async {
     fixture.writeFile('packages/datadog_dio/CHANGES', 'v2.0.0 work');
     await fixture.commit('fix: something for 2.0.0');
@@ -53,7 +53,7 @@ void main() {
     final tag = await findLastReleaseTag(
       gitDir,
       'datadog_dio',
-      releaseLine: (2, 0),
+      versionScope: (major: 2, minor: 0, patch: null),
     );
 
     expect(tag, isNotNull);
@@ -90,6 +90,26 @@ void main() {
       );
     },
   );
+
+  test('a versionScope with a patch restricts to that exact version -- the '
+      'pre-release path, where only tags at the declared target can continue '
+      'its counter', () async {
+    fixture.writeFile('packages/datadog_dio/CHANGES', 'beta work');
+    await fixture.commit('feat: 4.0.0-beta.1');
+    await fixture.tag('datadog_dio/v4.0.0-beta.1');
+    // A patch off an older line, and a concurrent v5 effort -- both sort
+    // above the beta and would mask it without the patch component.
+    await fixture.tag('datadog_dio/v4.0.1');
+    await fixture.tag('datadog_dio/v5.0.0-beta.1');
+
+    final tag = await findLastReleaseTag(
+      await fixture.gitDir,
+      'datadog_dio',
+      versionScope: (major: 4, minor: 0, patch: 0),
+    );
+
+    expect(tag?.tag.tag, 'datadog_dio/v4.0.0-beta.1');
+  });
 
   test(
     'commitMessagesSince only returns commits after the given sha',

@@ -22,9 +22,14 @@ typedef ReleaseTag = ({Tag tag, Version version});
 /// ancient tags. The two callers that need to exclude something exclude it by
 /// what the tag *is*, not by where it sits in the graph:
 ///
-/// [releaseLine], when given, restricts the search to tags whose major/minor
-/// matches -- a patch branch's own release line, so a tag mainline has since
-/// cut for a newer major/minor can't be picked up instead.
+/// [versionScope], when given, restricts the search to tags at that
+/// major/minor -- and, when its `patch` is non-null, that exact
+/// major.minor.patch. A patch branch scopes to its own release line, so a tag
+/// mainline has since cut for a newer major/minor can't be picked up instead.
+/// A pre-release run scopes to the full version its pubspec declares as the
+/// target, since "the last release at 4.0.0" is the only tag that can continue
+/// its counter -- an unrelated higher tag (a `4.0.1` patch, a concurrent
+/// `5.0.0-beta.1`) would otherwise be selected and mask the real one.
 ///
 /// [stableOnly] drops pre-release versions. Mainline passes this: a
 /// `4.0.0-beta.3` tag cut off a long-lived pre-release line sorts above the
@@ -34,7 +39,7 @@ typedef ReleaseTag = ({Tag tag, Version version});
 Future<ReleaseTag?> findLastReleaseTag(
   GitDir gitDir,
   String packageName, {
-  (int major, int minor)? releaseLine,
+  ({int major, int minor, int? patch})? versionScope,
   bool stableOnly = false,
 }) async {
   final prefix = '$packageName/v';
@@ -55,9 +60,11 @@ Future<ReleaseTag?> findLastReleaseTag(
           .where((pair) => !stableOnly || !pair.version.isPreRelease)
           .where(
             (pair) =>
-                releaseLine == null ||
-                (pair.version.major == releaseLine.$1 &&
-                    pair.version.minor == releaseLine.$2),
+                versionScope == null ||
+                (pair.version.major == versionScope.major &&
+                    pair.version.minor == versionScope.minor &&
+                    (versionScope.patch == null ||
+                        pair.version.patch == versionScope.patch)),
           )
           .toList()
         ..sort((a, b) => a.version.compareTo(b.version));

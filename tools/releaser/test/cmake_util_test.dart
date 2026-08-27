@@ -108,6 +108,38 @@ FetchContent_MakeAvailable(some_other_dep)
     expect(contents, contains('GIT_TAG        v9.9.9)'));
   });
 
+  test('handles a declaration written on a single line', () async {
+    final file = File(p.join(root.path, 'CMakeLists.txt'));
+    await file.writeAsString(
+      'FetchContent_Declare(dd-sdk-cpp '
+      'GIT_REPOSITORY https://github.com/DataDog/dd-sdk-cpp.git '
+      'GIT_TAG develop)\n',
+    );
+
+    await pinCppVersion(file, 'v1.4.0', _sha, logger, false);
+
+    expect(
+      (await file.readAsString()).trim(),
+      'FetchContent_Declare(dd-sdk-cpp '
+      'GIT_REPOSITORY https://github.com/DataDog/dd-sdk-cpp.git '
+      'GIT_TAG $_sha)  # v1.4.0',
+    );
+  });
+
+  test('re-pinning replaces the previous annotation rather than stacking '
+      'another one', () async {
+    final file = File(p.join(root.path, 'CMakeLists.txt'));
+    await file.writeAsString(
+      'FetchContent_Declare(dd-sdk-cpp\n  GIT_TAG        $_sha)  # v1.4.0\n',
+    );
+
+    await pinCppVersion(file, 'v1.5.0', _sha, logger, false);
+
+    final contents = await file.readAsString();
+    expect(contents, contains('GIT_TAG        $_sha)  # v1.5.0'));
+    expect(contents, isNot(contains('v1.4.0')));
+  });
+
   test('leaves everything else in the file untouched', () async {
     final file = File(p.join(root.path, 'CMakeLists.txt'));
     await file.writeAsString('''

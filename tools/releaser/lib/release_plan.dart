@@ -140,16 +140,21 @@ Future<PackagePlan?> _computePackagePlan(
   NativeSdkGateways gateways, {
   required bool isExplicitlyRequested,
 }) async {
-  // A patch branch is confined to its own release line. Mainline takes the
-  // last *stable* release as its baseline -- a pre-release line's tags (e.g.
-  // `4.0.0-beta.3` off `v4`) sort higher but haven't shipped stably. The
-  // pre-release path wants exactly those, so it constrains neither.
+  // Each trigger asks a different question of the tag history, and each asks
+  // it in the query rather than filtering afterwards:
+  //   mainline    -- the last *stable* release. A pre-release line's tags
+  //                  (`4.0.0-beta.3` off `v4`) sort higher but haven't shipped.
+  //   patch       -- the last release on the branch's own release line.
+  //   pre-release -- the last release at the exact version pubspec declares as
+  //                  the target, the only tag that can continue its counter.
   final lastTag = await findLastReleaseTag(
     gitDir,
     pkg.name,
-    releaseLine: ctx.trigger == TriggerContext.patch
-        ? _releaseLineFromPatchBranch(ctx.currentBranch)
-        : null,
+    versionScope: switch (ctx.trigger) {
+      TriggerContext.mainline => null,
+      TriggerContext.patch => _versionScopeFromPatchBranch(ctx.currentBranch),
+      TriggerContext.preRelease => _versionScopeFromTarget(pkg.version),
+    },
     stableOnly: ctx.trigger == TriggerContext.mainline,
   );
   final commits = await _conventionalCommitsSince(
@@ -250,34 +255,26 @@ PackagePlan _computePrereleasePlan(
 ) {
   final target = Version.parse(pkg.version);
 
-  // A prior tag only continues the current prerelease sequence when it's
-  // for the exact version pubspec.yaml is declaring as the target -- e.g.
-  // a `4.0.0-beta.1` tag continues towards a pubspec of `4.0.0`. A tag for
-  // an older, already-published line (say the last stable `3.2.0`, with
-  // pubspec since bumped to `4.0.0` for this pre-release line) must not be
-  // used as the base, or the new prerelease would sort below that already-
-  // published release.
-  final tagVersion = lastTag?.version;
-  final tagIsOnTargetLine =
-      tagVersion != null &&
-      tagVersion.major == target.major &&
-      tagVersion.minor == target.minor &&
-      tagVersion.patch == target.patch;
-  final base = tagIsOnTargetLine ? tagVersion : target;
+  // [lastTag] is already scoped to [target]'s exact major.minor.patch (see
+  // _versionScopeFromTarget), so any tag found here is by construction one
+  // that continues this pre-release line -- either an earlier counter for it
+  // or the stable release it was leading up to. With none, the pubspec's own
+  // declared version is the base.
+  final base = lastTag?.version ?? target;
 
   final Version newVersion;
   if (base.isPreRelease &&
       (ctx.prereleaseLabel == null ||
           base.preRelease.first == ctx.prereleaseLabel)) {
     newVersion = base.incrementPreRelease();
-  } else if (tagIsOnTargetLine && !tagVersion.isPreRelease) {
+  } else if (lastTag != null && !base.isPreRelease) {
     // [lastTag] is a *stable* tag for this exact target version (e.g. the
     // target line was already released as 4.0.0 and pubspec.yaml hasn't
     // been bumped since) -- a new pre-release here would sort below that
     // already-published release (`4.0.0-beta.1` < `4.0.0`).
     throw StateError(
       'Package "${pkg.name}" version $target has already been released '
-      'stably as ${lastTag!.tag.tag} -- bump the version in pubspec.yaml '
+      'stably as ${lastTag.tag.tag} -- bump the version in pubspec.yaml '
       'before starting a new pre-release line.',
     );
   } else if (ctx.prereleaseLabel != null) {
@@ -444,16 +441,33 @@ final _patchBranchPattern = RegExp(
 String? _packageNameFromPatchBranch(String branch) =>
     _patchBranchPattern.firstMatch(branch)?.namedGroup('package');
 
-/// Extracts the `{major}.{minor}` release line from a
-/// `release/{package}/v{major}.{minor}.x` patch-branch name. Only called
-/// once [_resolveGroups] has already validated the branch matches the
-/// convention, so a non-match here would be a bug in that validation.
-(int major, int minor) _releaseLineFromPatchBranch(String branch) {
+/// The `{major}.{minor}` release line from a
+/// `release/{package}/v{major}.{minor}.x` patch-branch name, as a scope for
+/// [findLastReleaseTag] -- `patch` is left open, since any patch level on that
+/// line is a valid predecessor. Only called once [_resolveGroups] has already
+/// validated the branch matches the convention, so a non-match here would be a
+/// bug in that validation.
+({int major, int minor, int? patch}) _versionScopeFromPatchBranch(
+  String branch,
+) {
   final match = _patchBranchPattern.firstMatch(branch)!;
   return (
-    int.parse(match.namedGroup('major')!),
-    int.parse(match.namedGroup('minor')!),
+    major: int.parse(match.namedGroup('major')!),
+    minor: int.parse(match.namedGroup('minor')!),
+    patch: null,
   );
+}
+
+/// The exact `{major}.{minor}.{patch}` a pre-release run is working towards,
+/// from the package's declared pubspec version, as a scope for
+/// [findLastReleaseTag].
+///
+/// Deliberately drops any pre-release suffix the pubspec itself carries: a
+/// pubspec sitting at `4.0.0-beta.1` mid-line is still targeting `4.0.0`, and
+/// its own earlier betas are exactly the tags that must be found.
+({int major, int minor, int? patch}) _versionScopeFromTarget(String version) {
+  final target = Version.parse(version);
+  return (major: target.major, minor: target.minor, patch: target.patch);
 }
 
 Future<List<PackageGroup>> _resolveGroups(RunContext ctx) async {

@@ -8,9 +8,15 @@ import 'package:logging/logging.dart';
 
 import 'helpers.dart';
 
-final _gitTagLinePattern = RegExp(
-  r'^(?<prefix>\s*GIT_TAG\s+)(?<ref>[\w./-]+)(?<trailing>[^#]*)(?:#.*)?$',
-);
+/// Matches the `GIT_TAG <ref>` argument anywhere on a line -- not anchored to
+/// the line start, since `FetchContent_Declare(dd-sdk-cpp ... GIT_TAG develop)`
+/// is valid CMake written on a single line.
+final _gitTagPattern = RegExp(r'(?<prefix>GIT_TAG\s+)(?<ref>[\w./-]+)');
+
+/// A trailing `# ...` comment, stripped before [_gitTagPattern] is applied so
+/// a previous run's `# <tag>` annotation is replaced rather than duplicated --
+/// and so a `#`-commented mention of `GIT_TAG` can't be mistaken for the pin.
+final _trailingCommentPattern = RegExp(r'\s*#.*$');
 
 final _ddSdkCppDeclareStartPattern = RegExp(
   r'FetchContent_Declare\(\s*dd-sdk-cpp\b',
@@ -56,9 +62,33 @@ class _DdSdkCppBlockScanner {
 bool hasDdSdkCppGitTag(String cmakeListsContent) {
   final scanner = _DdSdkCppBlockScanner();
   for (final line in cmakeListsContent.split('\n')) {
-    if (scanner.accept(line) && _gitTagLinePattern.hasMatch(line)) return true;
+    if (scanner.accept(line) &&
+        _gitTagPattern.hasMatch(
+          line.replaceFirst(_trailingCommentPattern, ''),
+        )) {
+      return true;
+    }
   }
   return false;
+}
+
+/// Rewrites [line]'s `GIT_TAG` ref to [targetSha], re-annotated with
+/// `# [targetTag]`, leaving everything else on the line as-is -- a trailing
+/// `)` closing the `FetchContent_Declare(...` call, a `GIT_REPOSITORY` sharing
+/// the line in a single-line declaration, the original indentation. The
+/// comment goes at end of line, since a `#` placed before the closing paren
+/// would comment it out and break the call.
+String _pinGitTagLine(String line, String targetTag, String targetSha) {
+  final bare = line.replaceFirst(_trailingCommentPattern, '');
+  final match = _gitTagPattern.firstMatch(bare);
+  if (match == null) return line;
+
+  final pinned = bare.replaceRange(
+    match.start,
+    match.end,
+    '${match.namedGroup('prefix')}$targetSha',
+  );
+  return '${pinned.trimRight()}  # $targetTag';
 }
 
 /// Rewrites a CMakeLists.txt's dd-sdk-cpp `GIT_TAG` line to pin at
@@ -68,10 +98,8 @@ bool hasDdSdkCppGitTag(String cmakeListsContent) {
 /// full commit SHA is used as the actual pin (not the tag) because it's
 /// immutable, unlike a tag, which can be moved to point elsewhere later.
 ///
-/// Preserves the line's existing whitespace and anything between the ref
-/// and end of line -- a trailing `)` closing the `FetchContent_Declare(...`
-/// call is common, and the new comment is appended *after* it, since a `#`
-/// placed before would comment out the paren too and break the call.
+/// Preserves the line's existing whitespace and everything around the ref --
+/// see [_pinGitTagLine].
 ///
 /// Only ever called against a release-prep/patch/pre-release branch's copy
 /// of the file -- `develop`'s own floating `GIT_TAG develop` is never
@@ -90,14 +118,12 @@ Future<void> pinCppVersion(
 
   final scanner = _DdSdkCppBlockScanner();
 
-  await transformFile(cmakeListsFile, logger, dryRun, (line) {
-    if (!scanner.accept(line)) return line;
-
-    final match = _gitTagLinePattern.firstMatch(line);
-    if (match == null) return line;
-
-    final prefix = match.namedGroup('prefix')!;
-    final trailing = (match.namedGroup('trailing') ?? '').trimRight();
-    return '$prefix$targetSha$trailing  # $targetTag';
-  });
+  await transformFile(
+    cmakeListsFile,
+    logger,
+    dryRun,
+    (line) => scanner.accept(line)
+        ? _pinGitTagLine(line, targetTag, targetSha)
+        : line,
+  );
 }
