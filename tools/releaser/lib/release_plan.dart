@@ -115,6 +115,8 @@ Future<ReleasePlan> computeReleasePlan(
             github.releaseExists(Logger('native_sdk'), repoSlug, version),
       );
 
+  _validateTriggerInputs(ctx);
+
   final groups = await _resolveGroups(ctx);
   final selected = _selectPackages(groups, ctx);
 
@@ -131,6 +133,38 @@ Future<ReleasePlan> computeReleasePlan(
   }
 
   return ReleasePlan(trigger: ctx.trigger, packages: plans);
+}
+
+/// Rejects per-run overrides that the trigger the run is happening under has
+/// no way to honour, rather than accepting and silently ignoring them.
+///
+/// Only the mainline path derives a bump level at all: a patch branch forces
+/// `patch` by definition, and a pre-release branch's bump comes from the
+/// prerelease counter. A `BUMP_TYPE` on either would read as "this release is
+/// a major" and quietly not be.
+void _validateTriggerInputs(RunContext ctx) {
+  final bumpType = ctx.bumpTypeOverride;
+  if (bumpType == null || bumpType.isEmpty) return;
+
+  switch (ctx.trigger) {
+    case TriggerContext.mainline:
+      // Parsed (and rejected if unrecognized) where it's applied.
+      return;
+    case TriggerContext.patch:
+      throw StateError(
+        'BUMP_TYPE="$bumpType" does not apply on a patch branch -- a patch '
+        'release always increments the patch level of its release line, and '
+        'a commit that would justify anything more is rejected outright. '
+        'Clear BUMP_TYPE, or release from develop instead.',
+      );
+    case TriggerContext.preRelease:
+      throw StateError(
+        'BUMP_TYPE="$bumpType" does not apply on a pre-release branch -- the '
+        'version comes from the prerelease counter against the target '
+        'declared in pubspec.yaml. Use PRERELEASE_LABEL to start a new label, '
+        'or bump pubspec.yaml to move to a new target version.',
+      );
+  }
 }
 
 Future<PackagePlan?> _computePackagePlan(

@@ -451,6 +451,28 @@ void main() {
       currentBranch: branch,
     );
 
+    test('BUMP_TYPE is rejected rather than silently ignored', () async {
+      // A patch branch always increments the patch level, so an override
+      // here would read as "this release is a major" and quietly not be.
+      await expectLater(
+        plan(
+          RunContext(
+            repoRoot: fixture.root.path,
+            trigger: TriggerContext.patch,
+            currentBranch: 'release/datadog_dio/v1.1.x',
+            bumpTypeOverride: 'major',
+          ),
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('does not apply on a patch branch'),
+          ),
+        ),
+      );
+    });
+
     test('resolves the single named package with no grouping', () async {
       final result = await plan(patchCtx('release/datadog_dio/v1.1.x'));
       expect(result.packages, hasLength(1));
@@ -541,6 +563,29 @@ void main() {
       requestedPackages: ['datadog_flutter_plugin'],
       prereleaseLabel: prereleaseLabel,
     );
+
+    test('BUMP_TYPE is rejected rather than silently ignored', () async {
+      // The version here comes from the prerelease counter, not a bump level.
+      await expectLater(
+        plan(
+          RunContext(
+            repoRoot: fixture.root.path,
+            trigger: TriggerContext.preRelease,
+            currentBranch: 'v4',
+            requestedPackages: ['datadog_flutter_plugin'],
+            prereleaseLabel: 'beta',
+            bumpTypeOverride: 'minor',
+          ),
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('does not apply on a pre-release branch'),
+          ),
+        ),
+      );
+    });
 
     test('the first prerelease for a base version requires a label', () async {
       await expectLater(plan(preReleaseCtx()), throwsStateError);
