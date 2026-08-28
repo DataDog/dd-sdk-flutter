@@ -82,9 +82,14 @@ class RumSessionDecoder {
           visit.longTaskEvents.add(longTaskEvent);
           break;
         case 'vital':
-          final operationStepEvent =
-              RumVitalOperationStepEventDecoder(e.rumEvent);
-          visit.vitalStepEvents.add(operationStepEvent);
+          if (RumVitalAppLaunchEventDecoder.isAppLaunchVital(e.rumEvent)) {
+            final appLaunchEvent = RumVitalAppLaunchEventDecoder(e.rumEvent);
+            visit.appLaunchVitalEvents.add(appLaunchEvent);
+          } else {
+            final operationStepEvent =
+                RumVitalOperationStepEventDecoder(e.rumEvent);
+            visit.vitalStepEvents.add(operationStepEvent);
+          }
           break;
       }
     }
@@ -109,6 +114,7 @@ class RumViewVisit {
   final List<RumErrorEventDecoder> errorEvents = [];
   final List<RumLongTaskEventDecoder> longTaskEvents = [];
   final List<RumVitalOperationStepEventDecoder> vitalStepEvents = [];
+  final List<RumVitalAppLaunchEventDecoder> appLaunchVitalEvents = [];
 
   RumViewVisit(this.id, this.name, this.path);
 }
@@ -360,4 +366,25 @@ class RumVitalOperationStepEventDecoder extends RumEventDecoder {
   String? get vitalFailureReason =>
       rumEvent['vital']['failure_reason'] as String?;
   String get stepType => rumEvent['vital']['step_type'] as String;
+}
+
+/// Decodes app launch vitals, which carry the app launch metrics (`ttid` and
+/// `ttfd`) rather than the operation step properties.
+class RumVitalAppLaunchEventDecoder extends RumEventDecoder {
+  RumVitalAppLaunchEventDecoder(super.rumEvent);
+
+  static bool isAppLaunchVital(Map<String, dynamic> rumEvent) {
+    final vital = rumEvent['vital'];
+    return vital is Map && vital['type'] == 'app_launch';
+  }
+
+  RumViewInfoDecoder get view => RumViewInfoDecoder(rumEvent['view']);
+
+  String get appLaunchMetric =>
+      rumEvent['vital']['app_launch_metric'] as String;
+
+  /// Duration of the app launch metric, in nanoseconds.
+  int get duration => (rumEvent['vital']['duration'] as num).toInt();
+
+  String? get startupType => rumEvent['vital']['startup_type'] as String?;
 }

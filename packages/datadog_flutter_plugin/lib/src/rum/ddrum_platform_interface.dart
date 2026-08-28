@@ -41,6 +41,7 @@ abstract class DdRumPlatform extends PlatformInterface {
   );
   Future<void> addTiming(DateTime timestamp, String name);
   Future<void> addViewLoadingTime(bool overwrite);
+  Future<void> reportAppFullyDisplayed();
 
   Future<void> startResource(
     DateTime timestamp,
