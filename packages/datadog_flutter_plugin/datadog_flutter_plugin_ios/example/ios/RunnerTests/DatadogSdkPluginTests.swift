@@ -565,3 +565,104 @@ class FlutterSdkTests: XCTestCase {
 //        }
 //    }
 }
+
+/// A messenger that does nothing. `FlutterMethodChannel` needs one to exist, but these tests only
+/// care about whether the channel is still held, never about messages crossing it.
+private class NoOpBinaryMessenger: NSObject, FlutterBinaryMessenger {
+    func send(onChannel channel: String, message: Data?) { }
+
+    func send(onChannel channel: String, message: Data?, binaryReply callback: FlutterBinaryReply? = nil) { }
+
+    func setMessageHandlerOnChannel(
+        _ channel: String,
+        binaryMessageHandler handler: FlutterBinaryMessageHandler? = nil
+    ) -> FlutterBinaryMessengerConnection {
+        return 0
+    }
+
+    func cleanUpConnection(_ connection: FlutterBinaryMessengerConnection) { }
+}
+
+/// Teardown has to drop every channel the SDK can call Dart on. Flutter resets the engine's shell on
+/// termination without notifying plugins (flutter/flutter#126671), and anything sent afterwards
+/// asserts inside `-[FlutterEngine sendOnChannel:message:binaryReply:]` — see #1062.
+class DatadogPluginDetachTests: XCTestCase {
+    private let messenger = NoOpBinaryMessenger()
+
+    private func makePlugin(notificationCenter: NotificationCenterProtocol = NotificationCenter.default) -> DatadogSdkPlugin {
+        let plugin = DatadogSdkPlugin(
+            channel: FlutterMethodChannel(
+                name: "datadog_sdk_flutter",
+                binaryMessenger: messenger
+            ),
+            notificationCenter: notificationCenter
+        )
+        plugin.rum.methodChannel = FlutterMethodChannel(
+            name: "datadog_sdk_flutter.rum",
+            binaryMessenger: messenger
+        )
+        plugin.logs.methodChannel = FlutterMethodChannel(
+            name: "datadog_sdk_flutter.logs",
+            binaryMessenger: messenger
+        )
+        return plugin
+    }
+
+    func testApplicationWillTerminate_releasesEveryMethodChannel() {
+        // Posts to an injected `NotificationCenterMock` instead of the real, process-wide center:
+        // a real post would tear down every other live `DatadogSdkPlugin` in the process too,
+        // including the Runner's own registered plugin and other suites' engines.
+        let notificationCenter = NotificationCenterMock()
+        let plugin = makePlugin(notificationCenter: notificationCenter)
+
+        // Termination arrives as a notification, not as a plugin callback
+        notificationCenter.post(name: UIApplication.willTerminateNotification)
+
+        XCTAssertNil(plugin.rum.methodChannel)
+        XCTAssertNil(plugin.logs.methodChannel)
+    }
+
+    func testDetach_isIdempotent() {
+        // Both teardown paths can run for the same engine: termination fires the notification, and a
+        // host releasing the engine afterwards still calls `detachFromEngine(for:)`.
+        let plugin = makePlugin()
+        plugin.rum.onDetach()
+        plugin.logs.onDetach()
+        plugin.rum.onDetach()
+        plugin.logs.onDetach()
+
+        XCTAssertNil(plugin.rum.methodChannel)
+        XCTAssertNil(plugin.logs.methodChannel)
+    }
+
+    func testWithoutAChannel_eventMappersReturnTheEventUnmapped() {
+        let plugin = makePlugin()
+        plugin.rum.onDetach()
+
+        // Would otherwise hop to the main queue and block on a semaphore until it times out
+        let event = plugin.rum.callEventMapper(
+            mapperName: "mapViewEvent",
+            event: "unmapped",
+            encodedEvent: [:],
+            completion: { _ in "mapped" }
+        )
+
+        XCTAssertEqual(event, "unmapped")
+        XCTAssertEqual(plugin.rum.mapperTimeouts, 0)
+    }
+
+    func testEngineATeardown_doesNotAffectEngineB() {
+        // Regression test for the original multi-engine bug: engine A detaching must not clear
+        // engine B's still-live channel (they used to share one process-wide singleton).
+        let pluginA = makePlugin()
+        let pluginB = makePlugin()
+
+        pluginA.rum.onDetach()
+        pluginA.logs.onDetach()
+
+        XCTAssertNil(pluginA.rum.methodChannel)
+        XCTAssertNil(pluginA.logs.methodChannel)
+        XCTAssertNotNil(pluginB.rum.methodChannel)
+        XCTAssertNotNil(pluginB.logs.methodChannel)
+    }
+}

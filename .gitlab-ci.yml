@@ -13,8 +13,8 @@ variables:
   WINDOWS_CI_IMAGE_DOCKER: ${DISTRIBUTION_REGISTRY}/${CI_IMAGE_REPO}:windows-$CURRENT_WINDOWS_CI_IMAGE
   DD_CLIENT_TOKEN: "fake-token"
   DD_APPLICATION_ID: "00000000-aaaa-0000-aaaa-000000000000"
-  IOS_SIMULATOR: "iPhone 16"
-  IOS_SDK: 'iOS-18'
+  IOS_SIMULATOR: "iPhone 17 Pro"
+  IOS_SDK: 'iOS-26'
   ANDROID_EMULATOR_SDK: "33"
   IS_ON_CI: $CI
   SLACK_CHANNEL: "#mobile-sdk-ops"
@@ -117,7 +117,7 @@ build-flutter:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
-    - macos:sonoma
+    - macos:sequoia
     - specific:true
   script:
     - !reference [.pre, script]
@@ -148,7 +148,7 @@ build-ios-spm:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
-    - macos:sonoma
+    - macos:sequoia
     - specific:true
   script:
     - !reference [.pre, script]
@@ -166,7 +166,7 @@ build-ios:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
-    - macos:sonoma
+    - macos:sequoia
     - specific:true
   script:
     - !reference [.pre, script]
@@ -243,7 +243,7 @@ android-integration-test:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags: 
-    - macos:sonoma
+    - macos:sequoia
     - specific:true
   script:
     - !reference [.pre, script]
@@ -265,7 +265,7 @@ ios-integration-test:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
-    - macos:sonoma
+    - macos:sequoia
     - specific:true
   script:
     - !reference [.pre, script]
@@ -381,7 +381,7 @@ notify-nightly-failed:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
-    - macos:sonoma
+    - macos:sequoia
     - specific:true
 
 nightly-min-version-test:
@@ -390,7 +390,7 @@ nightly-min-version-test:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
-    - macos:sonoma
+    - macos:sequoia
     - specific:true
   script:
     - !reference [.pre, script]
@@ -414,7 +414,7 @@ nightly-beta-test:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
-    - macos:sonoma
+    - macos:sequoia
     - specific:true
   script:
     - !reference [.pre, script]

@@ -9,3 +9,4 @@ excluded:
   - example/ios/Pods
   - example/ios/.symlinks
   - example/ios/Flutter
+  - ios/datadog_flutter_plugin/.build

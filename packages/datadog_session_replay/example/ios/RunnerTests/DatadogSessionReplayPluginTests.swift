@@ -86,6 +86,37 @@ class DatadogSessionReplayPluginTests {
         #expect(callsToEngine == 1)  // primed on enable, nothing after
     }
 
+    /// Flutter never calls `detachFromEngine(for:)` on termination — it resets the engine's shell and
+    /// leaves the engine object, and therefore the plugin registry, alone (flutter/flutter#126671) —
+    /// so the plugin observes `UIApplication.willTerminateNotification` itself. Otherwise the Dart
+    /// context callback outlives the isolate that shell owned.
+    ///
+    /// Posts to an injected `NotificationCenterMock` instead of the real, process-wide center: this
+    /// exercises the actual observer registration (name, selector) rather than calling a test-only
+    /// escape hatch, without the risk of tearing down another suite's engine.
+    @Test
+    func engineWillTearDown_releasesThisEnginesDartCallback() throws {
+        // Given — an engine paired with this plugin's messenger
+        var callsToEngine = 0
+        let core = PassthroughCoreMock()
+        let engine = FlutterSessionReplay(manager: manager)
+        try engine.enableOrThrow(with: .init(onContextChanged: { _ in callsToEngine += 1 }), in: core)
+        let notificationCenter = NotificationCenterMock()
+        let plugin = DatadogSessionReplayPlugin(
+            messenger: messenger,
+            manager: manager,
+            notificationCenter: notificationCenter
+        )
+        _ = handle(plugin, method: "registerEngine", arguments: engine.engineToken)
+
+        // When — the app terminates without ever detaching the plugin
+        notificationCenter.post(name: UIApplication.willTerminateNotification)
+        manager.broadcastContext(.mockRandom())
+
+        // Then
+        #expect(callsToEngine == 1)  // primed on enable, nothing after
+    }
+
     @Test
     func registerEngine_withoutAToken_returnsAnError() {
         // Given

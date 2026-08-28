@@ -29,9 +29,16 @@ void main() {
       return logs.length >= 6;
     });
 
+	// Assert the count before indexing, so a delivery failure reports how many
+    // logs actually arrived instead of throwing a bare RangeError below.
+    expect(logs.length, greaterThanOrEqualTo(6),
+        reason: 'Expected 6 logs from the scenario, got ${logs.length}. '
+            'Messages received: ${logs.map((l) => l.message).toList()}');
+
     if (!isDdSdkCppPlatform()) {
       expect(logs[0].userAnonymousId, isNotNull);
     }
+    
     expect(logs[0].userId, isNull);
     expect(logs[0].userEmail, isNull);
     expect(logs[0].userName, isNull);

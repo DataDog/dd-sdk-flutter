@@ -76,15 +76,17 @@ class _IsolateTrackingScenarioState extends State<IsolateTrackingScenario>
   }
 }
 
+// Strong reference for the lifetime of the isolate.
+DatadogLogger? _isolateLogger;
+
 void _backgroundWork(SendPort port) async {
   await DatadogSdk.instance.attachToBackgroundIsolate();
 
   port.send('Sending log messages');
 
-  final logger = DatadogSdk.instance.logs?.createLogger(
-    DatadogLoggerConfiguration(),
-  );
-  logger?.info('Message from background isolate!');
+  _isolateLogger =
+      DatadogSdk.instance.logs?.createLogger(DatadogLoggerConfiguration());
+  _isolateLogger?.info('Message from background isolate!');
 
   port.send('Fake Downloading resources');
   final rum = DatadogSdk.instance.rum;
@@ -114,7 +116,7 @@ void _backgroundWork(SendPort port) async {
     'ErrorLoading',
   );
 
-  logger?.warn('Finished with background isolate!');
+  _isolateLogger?.warn('Finished with background isolate!');
 
   port.send('Done!');
 }
