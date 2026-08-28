@@ -3,7 +3,7 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import Foundation
-@testable import datadog_flutter_plugin
+@testable import datadog_flutter_plugin_ios
 
 /// A `NotificationCenter` stand-in that never broadcasts process-wide: `post(name:)` only invokes
 /// observers registered on this instance, so driving termination in a test cannot tear down another

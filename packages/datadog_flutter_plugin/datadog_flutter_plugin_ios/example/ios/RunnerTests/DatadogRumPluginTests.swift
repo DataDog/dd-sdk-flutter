@@ -11,7 +11,7 @@ import Flutter
 import DatadogInternal
 @testable import DatadogCore
 @testable import DatadogRUM
-@testable import datadog_flutter_plugin
+@testable import datadog_flutter_plugin_ios
 
 enum ResultStatus: EquatableInTests {
     case notCalled
