@@ -101,6 +101,16 @@ public class ContextMessageReceiver: FeatureMessageReceiver {
     }
 }
 
+/// Thin abstraction over `NotificationCenter` so tests can inject a fake that never broadcasts
+/// process-wide, instead of every test posting the real `UIApplication.willTerminateNotification`
+/// (which every live plugin instance in the process would observe, including other suites' engines).
+public protocol NotificationCenterProtocol {
+    func addObserver(_ observer: Any, selector: Selector, name: NSNotification.Name?, object: Any?)
+    func removeObserver(_ observer: Any)
+}
+
+extension NotificationCenter: NotificationCenterProtocol {}
+
 // swiftlint:disable:next type_body_length
 public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     public static var name: String = "flutter_plugin"
@@ -113,20 +123,32 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     var core: DatadogCoreProtocol?
     var oldConsolePrint: ((String, CoreLoggerLevel) -> Void)?
 
-    public init(channel: FlutterMethodChannel) {
+    internal let rum = DatadogRumPlugin()
+    internal let logs = DatadogLogsPlugin()
+
+    /// Injected so tests can drive termination through a fake center instead of posting the real,
+    /// process-wide notification.
+    private let notificationCenter: NotificationCenterProtocol
+
+    public init(channel: FlutterMethodChannel, notificationCenter: NotificationCenterProtocol = NotificationCenter.default) {
         self.channel = channel
+        self.notificationCenter = notificationCenter
         super.init()
+        observeEngineTeardown()
+    }
+
+    deinit {
+        notificationCenter.removeObserver(self)
     }
 
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: registrar.messenger())
         let instance = DatadogSdkPlugin(channel: channel)
         registrar.addMethodCallDelegate(instance, channel: channel)
-        registrar.addApplicationDelegate(instance)
         registrar.publish(instance)
 
-        DatadogLogsPlugin.register(with: registrar)
-        DatadogRumPlugin.register(with: registrar)
+        instance.logs.attachToEngine(registrar: registrar)
+        instance.rum.attachToEngine(registrar: registrar)
     }
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -379,16 +401,16 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
             // TODO:
             let value: [String: Any?] = [
                 "total": [
-                    "minMs": DatadogRumPlugin.instance.mapperPerf.minInMs,
-                    "maxMs": DatadogRumPlugin.instance.mapperPerf.maxInMs,
-                    "avgMs": DatadogRumPlugin.instance.mapperPerf.avgInMs
+                    "minMs": self.rum.mapperPerf.minInMs,
+                    "maxMs": self.rum.mapperPerf.maxInMs,
+                    "avgMs": self.rum.mapperPerf.avgInMs
                 ],
                 "mainThread": [
-                    "minMs": DatadogRumPlugin.instance.mainThreadMapperPerf.minInMs,
-                    "maxMs": DatadogRumPlugin.instance.mainThreadMapperPerf.maxInMs,
-                    "avgMs": DatadogRumPlugin.instance.mainThreadMapperPerf.avgInMs
+                    "minMs": self.rum.mainThreadMapperPerf.minInMs,
+                    "maxMs": self.rum.mainThreadMapperPerf.maxInMs,
+                    "avgMs": self.rum.mainThreadMapperPerf.avgInMs
                 ],
-                "mapperTimeouts": DatadogRumPlugin.instance.mapperTimeouts
+                "mapperTimeouts": self.rum.mapperTimeouts
             ]
             return value
         default:
@@ -396,7 +418,27 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         }
     }
 
-    public func applicationWillTerminate(_ application: UIApplication) {
+    /// Covers the teardown `detachFromEngine(for:)` cannot see: app termination.
+    ///
+    /// `-[FlutterEngine dealloc]` is the only caller of `detachFromEngineForRegistrar:`, so every
+    /// teardown that releases the engine is already handled. Termination is not: the view controller
+    /// resets the engine's shell from `-applicationWillTerminate:` while the engine object lives on,
+    /// and no plugin is told (flutter/flutter#126671).
+    ///
+    /// Observed directly rather than via `registrar.addApplicationDelegate(self)`, which forwards app
+    /// lifecycle events only when `UIApplication`'s delegate conforms to `FlutterAppLifeCycleProvider`
+    /// — true for `FlutterAppDelegate`, often false for a native host embedding Flutter.
+    private func observeEngineTeardown() {
+        notificationCenter.addObserver(
+            self,
+            selector: #selector(engineWillTearDown),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
+    }
+
+    @objc
+    private func engineWillTearDown() {
         _onDetach()
     }
 
@@ -412,6 +454,12 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
             consolePrint = oldConsolePrint
         }
         oldConsolePrint = nil
+
+        // RUM and Logs are owned instances (one per engine, see `rum`/`logs` above), not singletons,
+        // so neither has a teardown callback of its own to hook. Both hold channels that Datadog
+        // worker threads call Dart through.
+        rum.onDetach()
+        logs.onDetach()
     }
 
     private func attachToExisting() -> [String: Any?] {

@@ -58,12 +58,16 @@ public extension RUM.Configuration {
 
 // swiftlint:disable:next type_body_length
 public class DatadogRumPlugin: NSObject, FlutterPlugin {
-    private static var methodChannel: FlutterMethodChannel?
+    /// No-op: registration now happens per-instance via `attachToEngine(registrar:)`, called by
+    /// `DatadogSdkPlugin`, which owns one `DatadogRumPlugin` instance per engine. This static method
+    /// only exists to satisfy `FlutterPlugin` conformance and is never actually invoked, since this
+    /// type is not listed in `GeneratedPluginRegistrant` (only `DatadogSdkPlugin` is).
+    public static func register(with registrar: FlutterPluginRegistrar) {}
 
-    public static let instance =  DatadogRumPlugin()
-    public static func register(with registrar: FlutterPluginRegistrar) {
-        methodChannel = FlutterMethodChannel(name: "datadog_sdk_flutter.rum", binaryMessenger: registrar.messenger())
-        registrar.addMethodCallDelegate(instance, channel: methodChannel!)
+    func attachToEngine(registrar: FlutterPluginRegistrar) {
+        let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.rum", binaryMessenger: registrar.messenger())
+        methodChannel = channel
+        registrar.addMethodCallDelegate(self, channel: channel)
     }
 
     internal var rum: RUMMonitorProtocol?
@@ -72,9 +76,27 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
     internal var mainThreadMapperPerf = PerformanceTracker()
     internal var mapperTimeouts = 0
 
-    private var currentConfiguration: [AnyHashable: Any]?
+    private static var previousConfiguration: [AnyHashable: Any]?
 
-    private override init() {
+    private let methodChannelLock = NSLock()
+    private var _methodChannel: FlutterMethodChannel?
+    /// Cleared on teardown so nothing is sent to an engine that can no longer receive it. Internal so
+    /// tests can seed and inspect it. Lock-backed because it's read on Datadog worker threads
+    /// (`callEventMapper`, `onSessionStart`) while `onDetach()` clears it on the main thread.
+    internal var methodChannel: FlutterMethodChannel? {
+        get {
+            methodChannelLock.lock()
+            defer { methodChannelLock.unlock() }
+            return _methodChannel
+        }
+        set {
+            methodChannelLock.lock()
+            defer { methodChannelLock.unlock() }
+            _methodChannel = newValue
+        }
+    }
+
+    override init() {
         super.init()
     }
 
@@ -83,8 +105,19 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         self.rum = rum
     }
 
+    /// Drops the channel so nothing is sent to an engine that can no longer receive it.
+    ///
+    /// `onSessionStart` and the event mappers both hop to the main queue to call Dart, and both fire
+    /// from Datadog worker threads long after a view controller is gone. Once the engine resets its
+    /// shell, `-[FlutterEngine sendOnChannel:message:binaryReply:]` asserts and the app dies with an
+    /// `NSInternalInconsistencyException` — see #1062.
+    ///
+    /// Called by `DatadogSdkPlugin`, which owns this plugin's registration: `register(with:)` here is
+    /// handed that plugin's registrar, so this type has no `FlutterPlugin` teardown callback of its
+    /// own to hook, and must not `publish:` itself — that would overwrite `DatadogSdkPlugin`'s own
+    /// publication under the shared plugin key and break *its* detach.
     public func onDetach() {
-
+        methodChannel = nil
     }
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -398,14 +431,17 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
     private func enable(arguments: [String: Any?], call: FlutterMethodCall) {
         let configArg = arguments["configuration"] as? [String: Any?]
         if rum == nil {
-            if let configArg = configArg,
-               var config = RUM.Configuration(fromEncoded: configArg) {
+            if RUM._internal.isEnabled() {
+                // Another engine's instance already configured RUM; just attach to it.
+                rum = RUMMonitor.shared()
+                warnIfConfigMismatch(configArg)
+            } else if let configArg = configArg, var config = RUM.Configuration(fromEncoded: configArg) {
                 attachEventMappers(configArg: configArg, config: &config)
                 // Disable INV as the Flutter calculations for it are different
                 config.nextViewActionPredicate = nil
-                config.onSessionStart = { sessionId, discarded in
+                config.onSessionStart = { [weak self] sessionId, discarded in
                     DispatchQueue.main.async {
-                        guard let methodChannel = DatadogRumPlugin.methodChannel else { return }
+                        guard let methodChannel = self?.methodChannel else { return }
                         methodChannel.invokeMethod(
                             "onSessionChanged",
                             arguments: [
@@ -419,26 +455,27 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                 RUM.enable(with: config)
                 rum = RUMMonitor.shared()
 
-                currentConfiguration = configArg as [AnyHashable: Any]
+                Self.previousConfiguration = configArg as [AnyHashable: Any]
             }
-        } else if currentConfiguration != nil,
-                    let configArg = configArg {
-            let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
-            if !dict.isEqual(to: currentConfiguration!) {
-                consolePrint(
-                    "🔥 Calling RUM `enable` with different options, even after a hot restart," +
-                    " is not supported. Cold restart your application to change your current configuation.",
-                    .error
-                )
-            }
+        } else {
+            warnIfConfigMismatch(configArg)
+        }
+    }
+
+    private func warnIfConfigMismatch(_ configArg: [String: Any?]?) {
+        guard let previous = Self.previousConfiguration, let configArg = configArg else { return }
+        let dict = NSDictionary(dictionary: configArg as [AnyHashable: Any])
+        if !dict.isEqual(to: previous) {
+            consolePrint(
+                "🔥 Calling RUM `enable` with different options, even after a hot restart," +
+                " is not supported. Cold restart your application to change your current configuation.",
+                .error
+            )
         }
     }
 
     private func deinitialize(arguments: [String: Any?], call: FlutterMethodCall) {
-        if rum != nil {
-            currentConfiguration = nil
-            rum = nil
-        }
+        rum = nil
     }
 
     private func getCurrentSessionId(result: @escaping FlutterResult) {
@@ -541,7 +578,7 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         event: T,
         encodedEvent: [String: Any?],
         completion: ([String: Any?]?) -> T?) -> T? {
-        guard let methodChannel = DatadogRumPlugin.methodChannel else {
+        guard methodChannel != nil else {
             return event
         }
 
@@ -549,7 +586,15 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         let semaphore = DispatchSemaphore(value: 0)
 
         mainThreadMapperPerf.start()
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            // Re-read the channel instead of capturing it: mappers run on a Datadog worker thread,
+            // so the engine can tear down — and `onDetach()` clear the channel — between the check
+            // above and this block being drained. Sending after that asserts on a reset shell.
+            // Signalling leaves `encodedResult` as the unmapped event, which is what we want.
+            guard let methodChannel = self?.methodChannel else {
+                semaphore.signal()
+                return
+            }
             methodChannel.invokeMethod(mapperName, arguments: ["event": encodedEvent]) { result in
                 if result == nil {
                     encodedResult = nil

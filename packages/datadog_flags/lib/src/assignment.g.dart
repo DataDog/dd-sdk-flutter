@@ -16,6 +16,7 @@ FlagAssignment _$FlagAssignmentFromJson(Map<String, dynamic> json) =>
       variationValue: json['variationValue'] as Object,
       reason: json['reason'] as String,
       doLog: json['doLog'] as bool,
+      serialId: (json['serialId'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$FlagAssignmentToJson(FlagAssignment instance) =>
@@ -26,4 +27,5 @@ Map<String, dynamic> _$FlagAssignmentToJson(FlagAssignment instance) =>
       'variationValue': sanitizeJsonValue(instance.variationValue),
       'reason': instance.reason,
       'doLog': instance.doLog,
+      'serialId': instance.serialId,
     };

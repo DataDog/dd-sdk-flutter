@@ -15,21 +15,25 @@ class LoggingUserAccountScenario extends StatefulWidget {
 
 class _LoggingUserAccountScenarioState
     extends State<LoggingUserAccountScenario> {
-  late DatadogLogger logger;
-  late DatadogLogger secondLogger;
+  // Held as a field, not a local: `DatadogLogging.createLogger` attaches a
+  // `Finalizer` that calls `destroyLogger` once the Dart logger is unreachable,
+  // and the native logger drops any writes still queued on the SDK's context
+  // queue when it goes away. A local would be collectable as soon as
+  // `initState` returns, which silently loses logs on a loaded machine.
+  DatadogLogger? logger;
 
   @override
   void initState() {
     super.initState();
 
-    final log = DatadogSdk.instance.logs?.createLogger(
+    logger = DatadogSdk.instance.logs?.createLogger(
       DatadogLoggerConfiguration(),
     );
 
-    log?.info('Log without default user and account information.');
+    logger?.info('Log without default user and account information.');
 
     DatadogSdk.instance.addUserExtraInfo({'fetch_status': 'waiting_for_ball'});
-    log?.info('Log with only extra info.');
+    logger?.info('Log with only extra info.');
 
     // Set a user - same as other users in integration scenarios
     DatadogSdk.instance.setUserInfo(
@@ -39,7 +43,7 @@ class _LoggingUserAccountScenarioState
       extraInfo: {'type': 'dog'},
     );
     DatadogSdk.instance.addUserExtraInfo({'department': 'data'});
-    log?.info('Log with user set, default account information.');
+    logger?.info('Log with user set, default account information.');
 
     // Set account
     DatadogSdk.instance.setAccountInfo(
@@ -48,15 +52,15 @@ class _LoggingUserAccountScenarioState
       extraInfo: {'type': 'top_dog'},
     );
     DatadogSdk.instance.addAccountExtraInfo({'department': 'fetching'});
-    log?.info('User and account set');
+    logger?.info('User and account set');
 
     // Clear user
     DatadogSdk.instance.clearUserInfo();
-    log?.info('User info cleared');
+    logger?.info('User info cleared');
 
     // Clear account
     DatadogSdk.instance.clearAccountInfo();
-    log?.info('Account info cleared');
+    logger?.info('Account info cleared');
   }
 
   @override

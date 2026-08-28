@@ -724,6 +724,132 @@ void main() {
     );
   });
 
+  test('sends the serial id only for assignments that carry one', () async {
+    final requests = <http.Request>[];
+    final client = await _createClient(
+      requests: requests,
+      response: _assignmentsResponse(
+        additionalFlags: {
+          'first-allocation': {
+            ..._assignment(
+              allocationKey: 'allocation-g',
+              variationKey: 'treatment',
+              variationType: 'boolean',
+              variationValue: true,
+            ),
+            'serialId': 0,
+          },
+          'later-allocation': {
+            ..._assignment(
+              allocationKey: 'allocation-h',
+              variationKey: 'treatment',
+              variationType: 'boolean',
+              variationValue: true,
+            ),
+            'serialId': 340132,
+          },
+        },
+      ),
+      trackExposures: true,
+    );
+    await client.initialize(
+      const FlagsEvaluationContext(targetingKey: 'user-123'),
+    );
+
+    client.getBooleanDetails(key: 'first-allocation', defaultValue: false);
+    client.getBooleanDetails(key: 'later-allocation', defaultValue: false);
+    client.getBooleanDetails(key: 'show-paywall', defaultValue: false);
+    await client.shutdown();
+
+    final events = _exposureEvents(_exposureRequests(requests).single);
+    expect(events, hasLength(3));
+    expect(events[0]['serial_id'], 0);
+    expect(events[1]['serial_id'], 340132);
+    expect(events[2].containsKey('serial_id'), isFalse);
+  });
+
+  test('omits the serial id when the server sends an explicit null', () async {
+    final requests = <http.Request>[];
+    final client = await _createClient(
+      requests: requests,
+      response: _assignmentsResponse(
+        additionalFlags: {
+          'null-serial': {
+            ..._assignment(
+              allocationKey: 'allocation-g',
+              variationKey: 'treatment',
+              variationType: 'boolean',
+              variationValue: true,
+            ),
+            'serialId': null,
+          },
+        },
+      ),
+      trackExposures: true,
+    );
+    await client.initialize(
+      const FlagsEvaluationContext(targetingKey: 'user-123'),
+    );
+
+    final details = client.getBooleanDetails(
+      key: 'null-serial',
+      defaultValue: false,
+    );
+    await client.shutdown();
+
+    expect(details.value, isTrue);
+    final event = _exposureEvents(_exposureRequests(requests).single).single;
+    expect(event.containsKey('serial_id'), isFalse);
+  });
+
+  test('logs another exposure when only the serial id changes', () async {
+    final requests = <http.Request>[];
+    var precomputeRequestCount = 0;
+    final client = await _createClient(
+      requests: requests,
+      trackExposures: true,
+      httpClient: MockClient((request) async {
+        requests.add(request);
+        if (request.url.path == '/precompute-assignments') {
+          precomputeRequestCount += 1;
+          return http.Response(
+            jsonEncode(
+              _assignmentsResponse(
+                additionalFlags: {
+                  'serial-cycle': {
+                    ..._assignment(
+                      allocationKey: 'allocation-g',
+                      variationKey: 'treatment',
+                      variationType: 'boolean',
+                      variationValue: true,
+                    ),
+                    if (precomputeRequestCount > 1) 'serialId': 0,
+                  },
+                },
+              ),
+            ),
+            200,
+          );
+        }
+        return http.Response('{"ok":true}', 200);
+      }),
+    );
+
+    for (var attempt = 0; attempt < 3; attempt += 1) {
+      await client.initialize(
+        const FlagsEvaluationContext(targetingKey: 'user-123'),
+      );
+      client.getBooleanDetails(key: 'serial-cycle', defaultValue: false);
+    }
+    await client.shutdown();
+
+    expect(precomputeRequestCount, 3);
+    final events = _exposureEvents(_exposureRequests(requests).single);
+    expect(events, hasLength(2));
+    expect(events[0].containsKey('serial_id'), isFalse);
+    expect(events[1]['serial_id'], 0);
+  });
+
   test(
     'emits flag evaluation batches for typed details at the HTTP boundary',
     () async {

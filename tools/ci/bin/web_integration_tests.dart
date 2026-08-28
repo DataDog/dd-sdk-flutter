@@ -28,7 +28,7 @@ const fileExclude = [
 
 const testDriver = 'test_driver/integration_test.dart';
 
-void main() async {
+void main(List<String> args) async {
   // Check path
   var testDirectory = Directory('integration_test');
   if (!testDirectory.existsSync()) {
@@ -36,6 +36,8 @@ void main() async {
         'Could not find the "integration_test" directory. Make sure you are running this from the integration_test_app root');
     exit(1);
   }
+
+  bool wasm = args.contains('--wasm');
 
   for (final file in testDirectory.listSync()) {
     if (file is File) {
@@ -49,6 +51,7 @@ void main() async {
 
       final args = [
         'drive',
+        if (wasm) '--wasm',
         '--driver=$testDriver',
         '--target=integration_test/$baseName',
         '-d',

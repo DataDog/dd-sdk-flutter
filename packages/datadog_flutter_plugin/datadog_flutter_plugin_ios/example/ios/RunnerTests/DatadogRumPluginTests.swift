@@ -11,7 +11,7 @@ import Flutter
 import DatadogInternal
 @testable import DatadogCore
 @testable import DatadogRUM
-import datadog_flutter_plugin_ios
+@testable import datadog_flutter_plugin_ios
 
 enum ResultStatus: EquatableInTests {
     case notCalled
@@ -117,7 +117,7 @@ class DatadogRumPluginTests: XCTestCase {
 
     override func setUp() {
         mock = MockRUMMonitor()
-        plugin = DatadogRumPlugin.instance
+        plugin = DatadogRumPlugin()
         plugin.inject(rum: mock)
     }
 
