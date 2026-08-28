@@ -84,8 +84,9 @@ void _backgroundWork(SendPort port) async {
 
   port.send('Sending log messages');
 
-  _isolateLogger =
-      DatadogSdk.instance.logs?.createLogger(DatadogLoggerConfiguration());
+  _isolateLogger = DatadogSdk.instance.logs?.createLogger(
+    DatadogLoggerConfiguration(),
+  );
   _isolateLogger?.info('Message from background isolate!');
 
   port.send('Fake Downloading resources');

@@ -26,8 +26,9 @@ class _LoggingUserAccountScenarioState
   void initState() {
     super.initState();
 
-    logger =
-        DatadogSdk.instance.logs?.createLogger(DatadogLoggerConfiguration());
+    logger = DatadogSdk.instance.logs?.createLogger(
+      DatadogLoggerConfiguration(),
+    );
 
     logger?.info('Log without default user and account information.');
 
