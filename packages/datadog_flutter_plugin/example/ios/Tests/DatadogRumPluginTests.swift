@@ -10,7 +10,7 @@ import XCTest
 import Flutter
 import DatadogInternal
 @testable import DatadogCore
-@testable import DatadogRUM
+@_spi(Experimental) @testable import DatadogRUM
 @testable import datadog_flutter_plugin
 
 enum ResultStatus: EquatableInTests {
@@ -257,6 +257,50 @@ class DatadogRumPluginTests: XCTestCase {
 
         let config = RUM.Configuration.init(fromEncoded: encoded)
         XCTAssertEqual(config?.trackBackgroundEvents, trackBackgroundEvents)
+    }
+
+    func testRumConfiguration_WithoutTimeseries_IsNotSet() {
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id"
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertNil(config?.timeseries)
+    }
+
+    func testRumConfiguration_WithTimeseriesCollectTypes_IsSetCorrectly() {
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "timeseries": [
+                "collectTypes": ["DdTimeseriesType.memory", "DdTimeseriesType.cpu"]
+            ]
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertEqual(config?.timeseries?.collectTypes, [.memory, .cpu])
+    }
+
+    func testRumConfiguration_WithTimeseriesSingleCollectType_IsSetCorrectly() {
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "timeseries": [
+                "collectTypes": ["DdTimeseriesType.memory"]
+            ]
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertEqual(config?.timeseries?.collectTypes, [.memory])
+    }
+
+    func testRumConfiguration_WithTimeseriesAndNoCollectTypes_CollectsAllTypes() {
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "timeseries": [String: Any?]()
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertNotNil(config?.timeseries)
+        XCTAssertNil(config?.timeseries?.collectTypes)
     }
 
     func testRepeatEnable_FromMethodChannelSameOptions_DoesNothing() {

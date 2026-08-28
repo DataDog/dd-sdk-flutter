@@ -64,6 +64,41 @@ typedef RumLongTaskEventMapper = RumLongTaskEvent? Function(
 typedef RumVitalOperationEventMapper = RumVitalOperationStepEvent? Function(
     RumVitalOperationStepEvent event);
 
+/// A device timeseries type that can be collected by the Performance
+/// Timeseries RUM feature.
+///
+/// *Note*: This API is experimental and may change in the future.
+enum DdTimeseriesType {
+  /// Memory footprint and percentage of total device RAM.
+  memory,
+
+  /// CPU usage as a percentage.
+  cpu,
+}
+
+/// Configuration for the Performance Timeseries RUM feature, which samples
+/// memory and CPU usage at regular intervals throughout a session,
+/// independent of view lifecycle.
+///
+/// *Note*: This API is experimental and may change in the future.
+class DdTimeseriesConfiguration {
+  /// The specific timeseries types to collect.
+  ///
+  /// If not set, all available timeseries types are collected.
+  final List<DdTimeseriesType>? collectTypes;
+
+  const DdTimeseriesConfiguration({
+    this.collectTypes,
+  });
+
+  Map<String, Object?> encode() {
+    return {
+      if (collectTypes != null)
+        'collectTypes': collectTypes!.map((e) => e.toString()).toList(),
+    };
+  }
+}
+
 /// Configuration options for the Datadog Real User Monitoring (RUM) feature.
 class DatadogRumConfiguration {
   // Either a RUM Application Id. Obtained on the Datadog website.
@@ -243,6 +278,13 @@ class DatadogRumConfiguration {
 
   Map<String, Object?> additionalConfig;
 
+  /// Configuration for the Performance Timeseries feature.
+  ///
+  /// Assign to `null` (the default) to disable timeseries collection.
+  ///
+  /// *Note*: This API is experimental and may change in the future.
+  DdTimeseriesConfiguration? timeseries;
+
   DatadogRumConfiguration({
     required this.applicationId,
     double sessionSamplingRate = 100.0,
@@ -269,6 +311,7 @@ class DatadogRumConfiguration {
     this.vitalOperationStepEventMapper,
     this.trackResourceHeaders,
     this.additionalConfig = const <String, Object>{},
+    this.timeseries,
   })  : sessionSamplingRate = max(0, min(sessionSamplingRate, 100)),
         traceSampleRate = max(0, min(traceSampleRate, 100)),
         longTaskThreshold = max(0.02, longTaskThreshold);
@@ -298,6 +341,7 @@ class DatadogRumConfiguration {
       'attachVitalOperationStepEventMapper':
           vitalOperationStepEventMapper != null,
       'additionalConfig': additionalConfig,
+      if (timeseries != null) 'timeseries': timeseries!.encode(),
     };
   }
 }
