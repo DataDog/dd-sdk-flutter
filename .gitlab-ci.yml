@@ -121,6 +121,7 @@ build-flutter:
     - specific:true
   script:
     - !reference [.pre, script]
+    - pushd tools/releaser && dart pub get && dart test && popd
     - melos dartfmt_check
     - melos run analyze:dart
     - melos run unit_test:flutter
