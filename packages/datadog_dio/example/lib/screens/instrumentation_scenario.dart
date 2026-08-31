@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../custom_card.dart';
+import '../scenario_config.dart';
 import 'instrumentation_second_screen.dart';
 
 class InstrumentationScenario extends StatefulWidget {
@@ -21,11 +22,6 @@ class InstrumentationScenario extends StatefulWidget {
 }
 
 class _InstrumentationScenarioState extends State<InstrumentationScenario> {
-  final images = [
-    'https://picsum.photos/200',
-    'https://placehold.co/200x200.png'
-  ];
-
   bool _doneWait = false;
 
   @override
@@ -81,6 +77,7 @@ class _InstrumentationScenarioState extends State<InstrumentationScenario> {
 
   @override
   Widget build(BuildContext context) {
+    final imageUrls = RumAutoInstrumentationScenarioConfig.instance.imageUrls;
     return _doneWait
         ? Scaffold(
             appBar: AppBar(
@@ -89,9 +86,9 @@ class _InstrumentationScenarioState extends State<InstrumentationScenario> {
             body: SingleChildScrollView(
               child: Column(
                 children: [
-                  for (int i = 0; i < images.length; ++i)
+                  for (int i = 0; i < imageUrls.length; ++i)
                     CustomCard(
-                      image: images[i],
+                      image: imageUrls[i],
                       text: 'Item $i',
                       onTap: () => _onTap(i),
                     ),

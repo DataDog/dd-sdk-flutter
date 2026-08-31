@@ -45,6 +45,7 @@ void main() {
         : null;
 
     final scenarioConfig = RumAutoInstrumentationScenarioConfig(
+      imageUrls: sessionRecorder.imageUrls,
       firstPartyHosts: [(sessionRecorder.sessionEndpoint)],
       firstPartyGetUrl: '${sessionRecorder.sessionEndpoint}/integration_get',
       firstPartyPostUrl: '${sessionRecorder.sessionEndpoint}/integration_post',
@@ -104,18 +105,12 @@ void main() {
     expect(
         view1.viewEvents.last.view.resourceCount, view1.resourceEvents.length);
 
-    // After redirects, we don't end up with a picsum.photos url.
-    final picsumResource = view1.resourceEvents
-        .firstWhereOrNull((e) => e.url.contains('picsum.photos'));
-    expect(picsumResource, isNotNull);
-
-    final placeholdResource = view1.resourceEvents
-        .firstWhereOrNull((e) => e.url.contains('placehold.co'));
-    expect(placeholdResource, isNotNull);
-    expect(placeholdResource!.url, 'https://placehold.co/200x200.png');
-    // Allow this to fail since we don't have as much control over them
-    if (placeholdResource.statusCode == 200) {
-      expect(view1.resourceEvents[1].resourceType, kIsWeb ? 'xhr' : 'image');
+    for (final imageUrl in scenarioConfig.imageUrls) {
+      final imageResource = view1.resourceEvents
+          .firstWhereOrNull((resource) => resource.url == imageUrl);
+      expect(imageResource, isNotNull);
+      expect(imageResource!.statusCode, 200);
+      expect(imageResource.resourceType, kIsWeb ? 'xhr' : 'image');
     }
 
     final view2 = session.visits[2];
