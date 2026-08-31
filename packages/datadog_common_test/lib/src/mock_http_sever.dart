@@ -20,6 +20,9 @@ const uuid = Uuid();
 
 const int _bindingPort = 2228;
 String get _endpoint => 'http://localhost:$_bindingPort';
+const _imagePaths = ['/test-image-1.png', '/test-image-2.png'];
+const _transparentPng =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
 class RecordingHttpServer {
   late HttpServer server;
@@ -38,13 +41,27 @@ class RecordingHttpServer {
         ..add(HttpHeaders.accessControlAllowOriginHeader, '*')
         ..add(HttpHeaders.accessControlAllowHeadersHeader, '*')
         ..add(HttpHeaders.accessControlAllowMethodsHeader, 'GET, POST');
-      if (request.requestedUri.path.endsWith('session')) {
+      if (_imagePaths.contains(request.requestedUri.path)) {
+        return _respondToImageRequest(request);
+      } else if (request.requestedUri.path.endsWith('session')) {
         return _respondToSessionRequest(request);
       } else {
         return _logRequest(request);
       }
     }));
     print('Server started, listening on port $_bindingPort');
+  }
+
+  Future<void> _respondToImageRequest(HttpRequest request) async {
+    if (request.method == 'GET') {
+      request.response.headers.contentType = ContentType('image', 'png');
+      request.response.add(base64Decode(_transparentPng));
+    } else if (request.method == 'OPTIONS') {
+      request.response.statusCode = HttpStatus.noContent;
+    } else {
+      request.response.statusCode = HttpStatus.methodNotAllowed;
+    }
+    return request.response.close();
   }
 
   Future<dynamic> _logRequest(HttpRequest request) async {
@@ -116,6 +133,8 @@ abstract class RecordingServerClient {
   var currentSession = '';
 
   String get sessionEndpoint => '$_endpoint/$currentSession/';
+  List<String> get imageUrls =>
+      _imagePaths.map((path) => '$_endpoint$path').toList();
 
   Future<String> startNewSession();
   Future<List<RequestLog>> fetchRequests(String sessionId);

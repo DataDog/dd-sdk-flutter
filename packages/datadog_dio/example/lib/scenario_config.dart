@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025-Present Datadog, Inc.
 class RumAutoInstrumentationScenarioConfig {
+  final List<String> imageUrls;
   final List<String> firstPartyHosts;
   final String firstPartyGetUrl;
   final String? firstPartyPostUrl;
@@ -11,6 +12,10 @@ class RumAutoInstrumentationScenarioConfig {
   final String thirdPartyMissingUrl;
 
   RumAutoInstrumentationScenarioConfig({
+    this.imageUrls = const [
+      'https://picsum.photos/200',
+      'https://placehold.co/200x200.png',
+    ],
     this.firstPartyHosts = const ['foo.bar'],
     this.firstPartyGetUrl = 'https://status.datadoghq.com',
     this.firstPartyPostUrl,
