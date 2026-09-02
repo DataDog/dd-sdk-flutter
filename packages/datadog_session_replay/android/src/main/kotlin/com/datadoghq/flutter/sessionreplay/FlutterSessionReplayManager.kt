@@ -137,12 +137,17 @@ internal class FlutterSessionReplayManager(
      * has registered.
      */
     fun bind(engineToken: String, messenger: BinaryMessenger) {
-        val bridge = synchronized(lock) {
+        val binding = synchronized(lock) {
             val match = engines.firstOrNull { it.engineToken == engineToken }
                 ?: return@synchronized null
-            bridgesByMessenger[messenger] = WeakReference(match)
-            match
+            val previous = bridgesByMessenger.put(messenger, WeakReference(match))?.get()
+                ?.takeUnless { it === match }
+            previous?.let { engines.remove(it) }
+            match to previous
         } ?: return
+
+        val (bridge, previous) = binding
+        previous?.detach()
 
         // The bridge needs the messenger too — it resolves this engine's slot ID through it on
         // every segment write, so records always carry the slot the host registered.

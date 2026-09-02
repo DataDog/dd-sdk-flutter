@@ -169,6 +169,28 @@ internal class FlutterSessionReplayManagerTest {
     }
 
     @Test
+    fun `M stop delivering context to previous bridge W bind replacement to same messenger`(
+        @StringForgery viewId: String
+    ) {
+        // Given - a bridge bound to an engine before a Hot Restart creates its replacement
+        var callsToPrevious = 0
+        var contextForReplacement: FlutterSessionReplayBridge.RumContext? = null
+        val messenger = mockk<BinaryMessenger>()
+        val previous = enableEngine { callsToPrevious++ }
+        val replacement = enableEngine { contextForReplacement = it }
+        manager.bind(previous.engineToken, messenger)
+        val callsBeforeRebind = callsToPrevious
+
+        // When - the restarted Dart isolate binds its new bridge to the same native engine
+        manager.bind(replacement.engineToken, messenger)
+        manager.broadcastContext(FlutterSessionReplayBridge.RumContext(rumContext(viewId)))
+
+        // Then - the destroyed isolate's callback is not invoked
+        assertThat(callsToPrevious).isEqualTo(callsBeforeRebind)
+        assertThat(contextForReplacement?.viewId).isEqualTo(viewId)
+    }
+
+    @Test
     fun `M leave other engines recording W detach`(
         @StringForgery viewId: String
     ) {
