@@ -16,7 +16,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.FlutterFragment
 import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.BinaryMessenger
+import java.lang.ref.WeakReference
 
 /**
  * Records this Flutter content as part of the native app's Session Replay.
@@ -58,17 +58,20 @@ fun FlutterActivity.enableSessionReplay() {
  */
 @UiThread
 fun FlutterView.enableSessionReplay() {
-    registerSlot()
+    val manager = FlutterSessionReplayManager.shared
+    // The listener is not called for an engine that was already attached before it was added, so
+    // remember that messenger now as well as registering its slot.
+    var attachedMessenger = attachedFlutterEngine?.messenger
+    attachedMessenger?.let { manager.registerSlot(this, it) }
+
     // Registration needs an engine, which a view is not required to have yet. Following attachment
     // is also what keeps a cached engine moving between views — a common add-to-app pattern —
     // pointing at the view currently showing it.
     addFlutterEngineAttachmentListener(
         object : FlutterView.FlutterEngineAttachmentListener {
-            private var attachedMessenger: BinaryMessenger? = null
-
             override fun onFlutterEngineAttachedToFlutterView(engine: FlutterEngine) {
                 attachedMessenger = engine.messenger
-                FlutterSessionReplayManager.shared.registerSlot(this@enableSessionReplay, engine.messenger)
+                manager.registerSlot(this@enableSessionReplay, engine.messenger)
             }
 
             override fun onFlutterEngineDetachedFromFlutterView() {
@@ -78,19 +81,12 @@ fun FlutterView.enableSessionReplay() {
                 // renders into, and the native recorder would keep emitting a placeholder for it.
                 // Dropping it sends records back to buffering until the engine registers somewhere.
                 attachedMessenger?.let {
-                    FlutterSessionReplayManager.shared.unregisterSlot(it, this@enableSessionReplay)
+                    manager.unregisterSlot(it, this@enableSessionReplay)
                 }
                 attachedMessenger = null
             }
         }
     )
-}
-
-/** Registers this view as its engine's slot, if it currently has an engine. */
-@UiThread
-private fun FlutterView.registerSlot() {
-    val engine = attachedFlutterEngine ?: return
-    FlutterSessionReplayManager.shared.registerSlot(this, engine.messenger)
 }
 
 /**
@@ -112,8 +108,19 @@ private val FlutterEngine.messenger get() = dartExecutor
  * unbroken.
  */
 @UiThread
-private fun observeHost(lifecycle: Lifecycle, findView: () -> FlutterView?) {
-    findView()?.registerSlot()
+@JvmSynthetic
+internal fun observeHost(lifecycle: Lifecycle, findView: () -> FlutterView?) {
+    var observedView: WeakReference<FlutterView>? = null
+    fun observeCurrentView() {
+        val view = findView() ?: return
+        if (observedView?.get() === view) {
+            return
+        }
+        observedView = WeakReference(view)
+        view.enableSessionReplay()
+    }
+
+    observeCurrentView()
 
     // Observed even when that succeeded: a fragment's view is torn down and rebuilt around a stop,
     // so the view registered just now is not necessarily the one the host ends up displaying.
@@ -123,7 +130,7 @@ private fun observeHost(lifecycle: Lifecycle, findView: () -> FlutterView?) {
                 when (event) {
                     // ON_START rather than ON_CREATE: for both hosts the Flutter view exists and has
                     // its engine by the time the host is started.
-                    Lifecycle.Event.ON_START -> findView()?.registerSlot()
+                    Lifecycle.Event.ON_START -> observeCurrentView()
                     Lifecycle.Event.ON_DESTROY -> source.lifecycle.removeObserver(this)
                     else -> Unit
                 }
