@@ -57,7 +57,7 @@ internal interface EmbeddedSessionReplay {
  * call is still guarded — the class resolving does not by itself prove every member links.
  */
 internal object DefaultEmbeddedSessionReplay : EmbeddedSessionReplay {
-    override val isAvailable: Boolean by lazy {
+    private val isProxyClassAvailable: Boolean by lazy {
         try {
             Class.forName(PROXY_CLASS_NAME)
             true
@@ -67,6 +67,12 @@ internal object DefaultEmbeddedSessionReplay : EmbeddedSessionReplay {
             false
         }
     }
+
+    @Volatile
+    private var hasLinkageError = false
+
+    override val isAvailable: Boolean
+        get() = !hasLinkageError && isProxyClassAvailable
 
     override fun setSlotId(view: View, slotId: String?) {
         guarded {
@@ -109,6 +115,7 @@ internal object DefaultEmbeddedSessionReplay : EmbeddedSessionReplay {
             block()
         } catch (@Suppress("SwallowedException") e: LinkageError) {
             // Native Session Replay is present but does not expose the embedded-content API.
+            hasLinkageError = true
         }
     }
 
