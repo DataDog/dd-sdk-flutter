@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "datadog_inappwebview_tracking",
     platforms: [
-        .iOS("12.0")
+        .iOS("15.0")
     ],
     products: [
         .library(name: "datadog-inappwebview-tracking", targets: ["datadog_inappwebview_tracking"])

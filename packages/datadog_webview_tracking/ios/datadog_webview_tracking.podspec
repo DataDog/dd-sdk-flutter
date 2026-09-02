@@ -18,7 +18,7 @@ A Flutter plugin for use with the Datadog Flutter Plugin to track webviews as pa
   s.dependency 'DatadogCore', '~> 3'
   s.dependency 'DatadogWebViewTracking', '~> 3'
   s.dependency 'webview_flutter_wkwebview'
-  s.platform = :ios, '13.0'
+  s.platform = :ios, '15.0'
 
   # Flutter.framework does not contain a i386 slice.
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
