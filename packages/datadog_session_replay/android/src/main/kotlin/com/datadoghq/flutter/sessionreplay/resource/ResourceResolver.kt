@@ -10,6 +10,8 @@ import com.datadog.android.api.InternalLogger
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 
 internal interface ResourceResolver {
     class ResourceEntry(
@@ -19,17 +21,25 @@ internal interface ResourceResolver {
         val width: Int,
         // The height of the resource
         val height: Int,
-        // The resource Id which is the MD5 hash of the actual resource
-        var resourceId: String? = null,
+        // The resource Id which is the MD5 hash of the actual resource.
+        // Volatile because [DefaultResourceResolver.resolveResource] reads it on a fast path
+        // outside the entry's lock, while the thread that resolves it writes it under that lock.
+        @Volatile var resourceId: String? = null,
         // The actual byte array of the resource, which is valid only until
-        // the resource's hash is generated, at which point it is set to null
+        // the resource's hash is generated, at which point it is set to null.
+        // Only ever touched while holding the entry's lock.
         var resourceBytes: ByteBuffer?
     )
 
     /**
      * Adds a resource with the given Flutter Key to be resolved later.
+     *
+     * @param engineToken Identifies the engine that issued [resourceKey]. Resource keys are only
+     * unique within one engine, so this is what keeps two engines' resources apart — see the note
+     * on engine scoping in [DefaultResourceResolver].
      */
     fun addResource(
+        engineToken: String,
         resourceKey: Int,
         width: Int,
         height: Int,
@@ -41,10 +51,16 @@ internal interface ResourceResolver {
      * This will process the resource if it has not been processed yet, and therefore
      * should only be called on a background thread.
      *
+     * @param engineToken The engine that issued [resourceKey], as passed to [addResource].
      * @param resourceKey The Flutter resource key to resolve.
      * @return The resource ID (MD5 hash) or null if the resource key is unknown or processing failed.
      */
-    fun resolveResource(resourceKey: Int): String?
+    fun resolveResource(engineToken: String, resourceKey: Int): String?
+
+    /**
+     * Forgets every resource belonging to [engineToken], called when that engine detaches.
+     */
+    fun releaseEngine(engineToken: String)
 }
 
 /**
@@ -61,10 +77,21 @@ internal class DefaultResourceResolver(
     val resourceWriter: ResourceWriter,
     val bitmapHandler: BitmapHandler = DefaultBitmapHandler(internalLogger)
 ) : ResourceResolver {
-    private val resourceKeyMap: MutableMap<Int, ResourceResolver.ResourceEntry> = mutableMapOf()
-    private val knownResources: MutableSet<String> = mutableSetOf()
+    /**
+     * Engine token -> that engine's resources by key. Nested rather than keyed on a composite so a
+     * lookup allocates nothing — [resolveResource] runs for every resource in every segment — and
+     * so [releaseEngine] is a single removal.
+     */
+    @Suppress("UnsafeThirdPartyFunctionCall") // map is initialized empty
+    private val resourcesByEngine:
+        MutableMap<String, MutableMap<Int, ResourceResolver.ResourceEntry>> = ConcurrentHashMap()
+
+    @Suppress("UnsafeThirdPartyFunctionCall") // map is initialized empty
+    private val knownResources: MutableSet<String> =
+        Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
 
     override fun addResource(
+        engineToken: String,
         resourceKey: Int,
         width: Int,
         height: Int,
@@ -76,38 +103,51 @@ internal class DefaultResourceResolver(
             height,
             resourceBytes = resourceBytes
         )
-        resourceKeyMap[resourceKey] = entry
+        // computeIfAbsent rather than getOrPut: two engines enabling at once would otherwise each
+        // build a map and one would be dropped, taking whatever the loser had already added.
+        @Suppress("UnsafeThirdPartyFunctionCall") // map is initialized empty
+        val engineResources = resourcesByEngine.computeIfAbsent(engineToken) { ConcurrentHashMap() }
+        engineResources[resourceKey] = entry
         return entry
     }
 
-    override fun resolveResource(resourceKey: Int): String? {
+    override fun releaseEngine(engineToken: String) {
+        resourcesByEngine.remove(engineToken)
+    }
+
+    override fun resolveResource(engineToken: String, resourceKey: Int): String? {
         // TODO(RUM-0): Telemetry, unknown resource key
-        val resourceEntry = resourceKeyMap[resourceKey] ?: return null
+        val resourceEntry = resourcesByEngine[engineToken]?.get(resourceKey) ?: return null
 
-        if (resourceEntry.resourceId != null) {
-            return resourceEntry.resourceId
-        }
+        resourceEntry.resourceId?.let { return it }
 
-        val resourceId = resourceEntry.resourceBytes?.let {
-            val bitmap = bitmapHandler.createBitmap(resourceEntry.width, resourceEntry.height, it)
+        return synchronized(resourceEntry) {
+            resourceEntry.resourceId?.let { return@synchronized it }
+
+            val resourceBytes = resourceEntry.resourceBytes ?: return@synchronized null
+            val bitmap = bitmapHandler.createBitmap(
+                resourceEntry.width,
+                resourceEntry.height,
+                resourceBytes
+            )
             // Discard the original bytes as fast as possible as they are no longer needed
             resourceEntry.resourceBytes = null
 
-            return bitmapHandler.compressBitmap(bitmap, IMAGE_QUALITY)?.let { compressedData ->
-                // Generate the resource ID (MD5 hash) from the bytes
-                val resourceId = generateResourceId(compressedData)
-                resourceEntry.resourceId = resourceId
+            val compressedData = bitmapHandler.compressBitmap(bitmap, IMAGE_QUALITY)
+                ?: return@synchronized null
 
-                if (resourceId != null && !knownResources.contains(resourceEntry.resourceId)) {
-                    knownResources.add(resourceId)
-                    resourceWriter.write(identifier = resourceId, resourceData = compressedData)
-                }
+            // Generate the resource ID (MD5 hash) from the bytes
+            val resourceId = generateResourceId(compressedData) ?: return@synchronized null
+            resourceEntry.resourceId = resourceId
 
-                return resourceId
+            // `add` reports whether the ID was new, which makes the check-and-claim atomic;
+            // `contains` followed by `add` would let two threads both write the same resource.
+            if (knownResources.add(resourceId)) {
+                resourceWriter.write(identifier = resourceId, resourceData = compressedData)
             }
-        }
 
-        return resourceId
+            resourceId
+        }
     }
 
     private fun generateResourceId(input: ByteArray): String? {
