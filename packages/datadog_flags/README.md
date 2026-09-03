@@ -121,6 +121,8 @@ DatadogFlagsConfiguration(
   trackExposures: true,
   trackEvaluations: true,
   evaluationFlushInterval: const Duration(seconds: 10),
+  assignmentRequestTimeout: const Duration(seconds: 2),
+  assignmentRequestRetryCount: 2,
   store: myStore,
 );
 ```
@@ -129,9 +131,56 @@ DatadogFlagsConfiguration(
 - `trackEvaluations` enables aggregated flag evaluation events.
 - `evaluationFlushInterval` controls periodic flag evaluation uploads and is
   bounded to 1-60 seconds.
+- `assignmentRequestTimeout` sets the timeout for each assignment request,
+  including response-body download. No SDK-added timeout is applied by default;
+  the underlying client or platform may still impose its own bounds. Set a
+  positive duration to enable one; `Duration.zero` disables it.
+- `assignmentRequestRetryCount` sets the retry count after the first attempt.
+  It defaults to zero (one initial request only) and supports values from zero
+  through ten.
 - `store` is optional last-known assignment storage.
-- `httpClient` and custom endpoints are available for tests and advanced
+- `httpClient` is the shared base client used for assignment requests and
+  telemetry. Custom endpoints are also available for tests and advanced
   embedding.
+
+For lower-level control, provide a fully composed client used only for
+assignment requests. This override is used verbatim, so it replaces the scalar
+timeout and retry settings above and never affects exposure or evaluation
+uploads:
+
+```dart
+import 'package:http/http.dart' as http;
+
+final assignmentClient = withAssignmentRequestRetry(
+  withAssignmentRequestTimeout(
+    http.Client(),
+    const Duration(seconds: 2),
+  ),
+  2,
+);
+
+await DatadogFlags.instance.enable(
+  configuration: DatadogFlagsConfiguration(
+    datadogConfig: datadogConfig,
+    assignmentRequestHttpClient: assignmentClient,
+  ),
+);
+
+// The application owns a supplied assignment client.
+await DatadogFlags.instance.disable();
+assignmentClient.close();
+```
+
+The timeout helper includes response-body download, and a zero duration returns
+the wrapped client unchanged. The retry helper creates a fresh request for each
+attempt and preserves the SDK's transient-status, `Retry-After`, and jitter
+policy.
+
+Retries use randomized exponential backoff for transport errors, timeouts,
+HTTP 408, and HTTP 5xx responses. HTTP 429 is not retried. For HTTP 503, a
+valid `Retry-After` value up to 30 seconds is used as a minimum delay before
+backoff is added; a longer delay prevents the retry. Each attempt creates a new
+request while preserving Datadog authentication and custom headers.
 
 If `enable()` is called without a `datadogConfig`, the SDK creates no live
 provider. Evaluations still return the caller-provided default with
