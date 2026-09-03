@@ -341,14 +341,16 @@ internal class FlutterSessionReplayManagerTest {
     }
 
     @Test
-    fun `M keep the slot id and clear the old view W registerSlot with a recreated view`() {
+    fun `M keep the slot id W unregisterSlot then registerSlot with a recreated view`() {
         // Given - a fragment recreated on a configuration change gets a new FlutterView
         val messenger = mockk<BinaryMessenger>()
         val firstView = mockk<View>()
         manager.registerSlot(firstView, messenger)
         val firstSlotId = manager.slotId(messenger)
 
-        // When
+        // When - the old view detaches before the replacement attaches
+        manager.unregisterSlot(messenger, firstView)
+        assertThat(manager.slotId(messenger)).isNull()
         val secondView = mockk<View>()
         manager.registerSlot(secondView, messenger)
 

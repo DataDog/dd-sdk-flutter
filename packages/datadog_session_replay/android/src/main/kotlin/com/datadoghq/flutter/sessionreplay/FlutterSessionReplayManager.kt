@@ -93,16 +93,17 @@ internal class FlutterSessionReplayManager(
     private val slotsByMessenger = WeakHashMap<BinaryMessenger, SlotRegistration>()
 
     /**
-     * A slot minted for one engine's Flutter view. The view is weak so a released host view
-     * controller does not keep its view tree alive; a cleared reference means the slot is no longer
-     * resolvable and callers go back to buffering.
+     * A slot minted for one engine's Flutter view. The view is weak so a released host view does not
+     * keep its tree alive. The slot ID remains after the view detaches, so a cached engine can reuse
+     * it when its replacement view registers; the missing view keeps the slot unresolvable and
+     * callers buffer in the meantime.
      */
     private class SlotRegistration(
         val slotId: String,
-        view: View
+        view: View?
     ) {
-        private val viewRef = WeakReference(view)
-        val view: View? get() = viewRef.get()
+        private val viewRef = view?.let { WeakReference(it) }
+        val view: View? get() = viewRef?.get()
     }
 
     // region Engines
@@ -237,9 +238,9 @@ internal class FlutterSessionReplayManager(
      * already carry an ID when a snapshot is taken, and minting on write would let records reach the
      * player ahead of the placeholder they belong to.
      *
-     * Re-registering the same view for the same engine keeps the existing ID, so the player sees one
-     * continuous slot across a host view that is torn down and rebuilt. Must be called on the UI
-     * thread, as [EmbeddedSessionReplay.setSlotId] tags the view.
+     * Re-registering a view for the same engine keeps the existing ID, including when the old view
+     * detached first, so the player sees one continuous slot across recreation. Must be called on
+     * the UI thread, as [EmbeddedSessionReplay.setSlotId] tags the view.
      */
     fun registerSlot(view: View, messenger: BinaryMessenger) {
         isEmbedded = true
@@ -267,9 +268,9 @@ internal class FlutterSessionReplayManager(
     /**
      * Detaches the slot registered for [messenger], if [view] is still the one registered.
      *
-     * Called when a host view detaches from its engine. The registration is dropped rather than
-     * kept, so records go back to buffering instead of naming a slot the native recorder no longer
-     * emits a placeholder for.
+     * Called when a host view detaches from its engine. The view is cleared so records go back to
+     * buffering instead of naming a slot the native recorder no longer emits a placeholder for. The
+     * ID stays with the engine so its replacement view can continue the same replay.
      *
      * Scoped to [view] rather than dropping whatever [messenger] currently points at, because a
      * cached engine can be handed from one host view to the next: if the new view registers before
@@ -278,10 +279,11 @@ internal class FlutterSessionReplayManager(
      */
     fun unregisterSlot(messenger: BinaryMessenger, view: View) {
         synchronized(lock) {
-            if (slotsByMessenger[messenger]?.view !== view) {
+            val registration = slotsByMessenger[messenger]
+            if (registration?.view !== view) {
                 return
             }
-            slotsByMessenger.remove(messenger)
+            slotsByMessenger[messenger] = SlotRegistration(registration.slotId, null)
         }
         embeddedSessionReplay.setSlotId(view, null)
     }
@@ -294,12 +296,7 @@ internal class FlutterSessionReplayManager(
     fun slotId(messenger: BinaryMessenger): String? {
         return synchronized(lock) {
             val registration = slotsByMessenger[messenger] ?: return@synchronized null
-            if (registration.view == null) {
-                slotsByMessenger.remove(messenger)
-                null
-            } else {
-                registration.slotId
-            }
+            registration.view?.let { registration.slotId }
         }
     }
 
