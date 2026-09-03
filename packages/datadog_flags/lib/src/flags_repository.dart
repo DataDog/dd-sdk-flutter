@@ -10,6 +10,7 @@ import 'package:meta/meta.dart';
 import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flag_assignments_fetcher.dart';
+import 'flags_client.dart';
 import 'flags_store.dart';
 import 'json_value.dart';
 
@@ -25,6 +26,7 @@ class FlagsRepository {
   final DateTime Function() dateProvider;
 
   FlagsData? _state;
+  DatadogFlagsClientStatus _status = DatadogFlagsClientStatus.notReady;
   _CancelToken? _currentToken;
   Future<void> _cacheOperation = Future<void>.value();
 
@@ -37,6 +39,8 @@ class FlagsRepository {
   });
 
   FlagsEvaluationContext? get context => _state?.context;
+
+  DatadogFlagsClientStatus get status => _status;
 
   FlagAssignment? flagAssignment(String key) => _state?.flags[key];
 
@@ -56,6 +60,7 @@ class FlagsRepository {
             : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
       _state = matchingCached;
+      _status = DatadogFlagsClientStatus.stale;
     }
 
     try {
@@ -69,10 +74,14 @@ class FlagsRepository {
         date: dateProvider(),
       );
       _state = data;
+      _status = DatadogFlagsClientStatus.ready;
       await _writeCached(data);
     } catch (_) {
       if (!token.isCanceled && matchingCached == null) {
         _state = null;
+        _status = DatadogFlagsClientStatus.error;
+      } else if (!token.isCanceled) {
+        _status = DatadogFlagsClientStatus.stale;
       }
     }
   }
@@ -86,6 +95,7 @@ class FlagsRepository {
     _currentToken?.cancel();
     _currentToken = null;
     _state = null;
+    _status = DatadogFlagsClientStatus.notReady;
   }
 
   Future<void> reset() async {

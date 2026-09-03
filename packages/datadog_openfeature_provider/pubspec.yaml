@@ -1,0 +1,22 @@
+name: datadog_openfeature_provider
+description: Datadog provider for the OpenFeature Dart client SDK.
+version: 0.1.0-beta.1
+repository: https://github.com/DataDog/dd-sdk-flutter
+homepage: https://datadoghq.com
+issue_tracker: https://github.com/DataDog/dd-sdk-flutter/issues
+topics:
+  - datadog
+  - feature-flags
+  - openfeature
+
+environment:
+  sdk: ">=3.12.2 <4.0.0"
+
+dependencies:
+  datadog_flags: ^1.1.0
+  openfeature_dart_client_sdk: ^0.0.1-beta.1
+
+dev_dependencies:
+  http: ^1.0.0
+  lints: ">=5.0.0"
+  test: ^1.26.3

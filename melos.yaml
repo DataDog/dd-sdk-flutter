@@ -124,7 +124,25 @@ scripts:
       melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
       melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome --wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'" 
     packageFilters:
-      scope: 'datadog_flutter_plugin'
+      scope:
+        - 'datadog_flutter_plugin'
+        - 'datadog_openfeature_provider'
+
+  compile:openfeature-web:
+    exec:
+      concurrency: 1
+    run:
+      mkdir -p "$MELOS_ROOT_PATH/.build" &&
+      dart compile js test/web_compile_smoke.dart -o "$MELOS_ROOT_PATH/.build/datadog_openfeature_provider.js"
+    packageFilters:
+      scope: 'datadog_openfeature_provider'
+
+  publish_dry_run:openfeature:
+    exec:
+      concurrency: 1
+    run: dart pub publish --dry-run
+    packageFilters:
+      scope: 'datadog_openfeature_provider'
 
   unit_test:ios:
     exec:
