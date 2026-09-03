@@ -49,7 +49,8 @@ stages:
     - melos bootstrap
     - mkdir -p $CI_PROJECT_DIR/.build/test-results/
     - melos full_clean
-    - melos prepare    
+    - melos prepare
+    - pushd tools/ci && dart pub get && popd
 
 .pre-web:
   script:
@@ -67,7 +68,7 @@ stages:
     - xcode-select -p
     - xcodebuild -runFirstLaunch
     - xcodebuild -downloadPlatform iOS
-    - pushd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR && popd
+    - pushd && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR && popd
 
 .pre-android:
   script:
@@ -142,7 +143,8 @@ build-android:
     - melos run analyze:android
     - melos run build:android  
     - melos run unit_test:android
-
+    - melos run verify:jni_bindings
+    
 build-ios-spm:
   stage: build
   except: [ schedules ]
@@ -178,6 +180,7 @@ build-ios:
     - melos run analyze:ios
     - melos run build:ios
     - melos run unit_test:ios
+    - melos run verify:ios_ffi_bindings
 
 build-web:
   stage: build
@@ -205,6 +208,7 @@ build-linux:
     - !reference [.pre, script]
     - melos run build:linux
     - melos run unit_test:linux
+    - melos run verify:ffi_bindings
   artifacts:
     when: always
     expire_in: "30 days"

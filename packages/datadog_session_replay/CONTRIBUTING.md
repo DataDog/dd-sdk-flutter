@@ -40,19 +40,14 @@ dart run ffigen --config ffigen_ios.yaml
 
 The bridge between Dart and Android is held in `android/src/main/kotlin/com/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge.kt`.
 
-If you make a change to this interface, you will need to regenerate the Dart bridge from JNI. You can do this first building the example APK:
-
-```bash
-# From ./examples
-flutter build apk
-```
-
-Then, run jnigen:
+If you make a change to this interface, you will need to regenerate the Dart bridge from JNI:
 
 ```bash
 # From the root
-dart run jnigen --config jnigen.ysml
+melos run generate:jni_bindings
 ```
+
+This regenerates the jnigen bindings for every package that declares a `jnigen.yaml` (this package and `datadog_flutter_plugin_android`) and reports a diff; `melos run verify:jni_bindings` runs the same thing in check mode without leaving the change in place. jnigen resolves its own Android classpath, so no separate APK build is required first.
 
 ## Golden Tests
 
