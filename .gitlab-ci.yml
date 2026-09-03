@@ -68,7 +68,7 @@ stages:
     - xcode-select -p
     - xcodebuild -runFirstLaunch
     - xcodebuild -downloadPlatform iOS
-    - pushd && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR && popd
+    - pushd tools/ci && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR && popd
 
 .pre-android:
   script:
