@@ -851,23 +851,23 @@ Future<List<NativeDependencyChange>> _nativeDependencyChanges(
   return changes;
 }
 
-/// [commitMessagesSince]'s raw messages, parsed into [ConventionalCommit]s
-/// and narrowed to the ones that carry semver weight -- commits that fail
-/// to parse, or parse but don't bump anything (`chore:`, `docs:`, etc.),
-/// are dropped since nothing here cares about them either as bump input or
-/// as a [PackagePlan.contributingCommits] entry.
+/// [commitsSince]'s raw records, parsed into [ConventionalCommit]s and
+/// narrowed to the ones that carry semver weight -- commits that fail to
+/// parse, or parse but don't bump anything (`chore:`, `docs:`, etc.), are
+/// dropped since nothing here cares about them either as bump input or as a
+/// [PackagePlan.contributingCommits] entry.
 Future<List<ConventionalCommit>> _conventionalCommitsSince(
   GitDir gitDir, {
   required String pathspec,
   String? sinceSha,
 }) async {
-  final messages = await commitMessagesSince(
+  final records = await commitsSince(
     gitDir,
     pathspec: pathspec,
     sinceSha: sinceSha,
   );
-  return messages
-      .map(ConventionalCommit.parse)
+  return records
+      .map((r) => ConventionalCommit.parse(r.message, sha: r.sha))
       .nonNulls
       .where((c) => c.bumpType != null)
       .toList();

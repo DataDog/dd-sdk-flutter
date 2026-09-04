@@ -6,7 +6,10 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:logging/logging.dart';
+import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/helpers.dart';
+import 'package:releaser/native_sdk_changelog.dart';
+import 'package:releaser/pr_resolution.dart';
 import 'package:releaser/release_plan.dart';
 
 final _log = Logger('preview_release');
@@ -137,10 +140,18 @@ Future<void> main(List<String> arguments) async {
     return;
   }
 
-  _printPlan(plan);
+  await _printPlan(
+    plan,
+    verbose: args['verbose'] as bool,
+    github: GithubCommandWrapper(gitDir.path),
+  );
 }
 
-void _printPlan(ReleasePlan plan) {
+Future<void> _printPlan(
+  ReleasePlan plan, {
+  required bool verbose,
+  required GithubCommandWrapper github,
+}) async {
   if (plan.packages.isEmpty) {
     _log.info('No packages would release from this run.');
     return;
@@ -174,9 +185,57 @@ void _printPlan(ReleasePlan plan) {
       '$bumpLabel$nativeSuffix',
     );
 
-    for (final commit in row.plan.contributingCommits) {
-      final flag = commit.isBreaking ? '  [BREAKING]' : '';
-      _log.fine('    ${commit.type}: ${commit.description}$flag');
+    if (verbose) {
+      for (final delta in row.plan.nativeSdkDeltas) {
+        final targetVersion = delta.targetVersion;
+        if (targetVersion == null) continue;
+
+        final result = await resolveNativeSdkChangelog(
+          delta.sdk,
+          currentDeclaration: delta.currentDeclaration,
+          targetVersion: targetVersion,
+          fetchChangelog: githubChangelogFetcher(_log, github),
+        );
+
+        if (result.warning != null) {
+          _log.warning('  ⚠️ ${result.warning}');
+          continue;
+        }
+
+        final sections = result.sections!;
+        if (sections.isEmpty) continue;
+
+        _log.fine(
+          '  ${delta.sdk.name} CHANGELOG '
+          '(${delta.currentDeclaration} → $targetVersion):',
+        );
+        for (final section in sections) {
+          _log.fine('    ${section.version}');
+          for (final entry in section.entries) {
+            _log.fine('      $entry');
+          }
+        }
+      }
+
+      for (final commit in row.plan.contributingCommits) {
+        final resolved = commit.sha == null
+            ? null
+            : await resolvePr(
+                commit.sha!,
+                commit.description,
+                (sha) => github.searchMergedPrBySha(_log, sha),
+              );
+        final prefix = resolved != null ? '#${resolved.number} ' : '';
+        final scope = commit.scope != null ? '(${commit.scope})' : '';
+        final bang = commit.hasBreakingMarker ? '!' : '';
+        final description = stripSquashSuffix(commit.description);
+        final flag = (commit.isBreaking && row.isMajor)
+            ? '  [BREAKING — caused MAJOR bump]'
+            : commit.isBreaking
+            ? '  [BREAKING]'
+            : '';
+        _log.fine('    $prefix${commit.type}$scope$bang: $description$flag');
+      }
     }
 
     for (final warning in row.plan.warnings) {

@@ -55,11 +55,21 @@ Future<String?> fileContentAtTag(
   return result.exitCode == 0 ? result.stdout as String : null;
 }
 
-/// Full commit messages (subject + body/footers) touching [pathspec], from
-/// just after [sinceSha] through HEAD. A null [sinceSha] walks the entire
-/// history of [pathspec] -- the "since inception" case for a package that has
-/// never been published.
-Future<List<String>> commitMessagesSince(
+/// A single commit's full SHA alongside its message -- the SHA is what
+/// [resolvePr] searches GitHub with for commits that didn't land via a
+/// squash merge (see `pr_resolution.dart`).
+class CommitRecord {
+  final String sha;
+  final String message;
+
+  const CommitRecord({required this.sha, required this.message});
+}
+
+/// Commits (SHA + full message: subject + body/footers) touching [pathspec],
+/// from just after [sinceSha] through HEAD. A null [sinceSha] walks the
+/// entire history of [pathspec] -- the "since inception" case for a package
+/// that has never been published.
+Future<List<CommitRecord>> commitsSince(
   GitDir gitDir, {
   required String pathspec,
   String? sinceSha,
@@ -69,14 +79,23 @@ Future<List<String>> commitMessagesSince(
     '--no-pager',
     'log',
     range,
-    '--pretty=format:%B|||END|||',
+    // %x1f/%x1e are ASCII unit/record separators -- content a commit
+    // message could plausibly contain, unlike a literal string delimiter.
+    '--pretty=format:%H%x1f%B%x1e',
     '--',
     pathspec,
   ]);
 
   return (result.stdout as String)
-      .split('|||END|||')
-      .map((m) => m.trim())
-      .where((m) => m.isNotEmpty)
+      .split('\x1e')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .map((entry) {
+        final sepIndex = entry.indexOf('\x1f');
+        return CommitRecord(
+          sha: entry.substring(0, sepIndex),
+          message: entry.substring(sepIndex + 1).trim(),
+        );
+      })
       .toList();
 }
