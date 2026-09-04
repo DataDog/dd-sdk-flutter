@@ -2,9 +2,12 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:io';
+
 import 'package:collection/collection.dart';
 import 'package:git/git.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
 import 'package:version/version.dart';
 
 import 'conventional_commits.dart';
@@ -23,6 +26,11 @@ export 'version_bump.dart';
 
 final _log = Logger('release_plan');
 
+/// The only [PackageGroup.key] whose members get native SDK version
+/// resolution. Other packages' podspec/gradle files are never read for
+/// this purpose, even if one declares a Datadog dependency.
+const _nativeSdkEligibleGroupKey = 'datadog_flutter_plugin';
+
 /// Everything about how a `prepare-release`/`preview-release` run was
 /// invoked -- shared by both entry points so they can't compute different
 /// plans from the same inputs.
@@ -36,6 +44,14 @@ class RunContext {
   /// patch branch, where the package is implied by [currentBranch].
   final List<String> requestedPackages;
 
+  /// When true, naming any member of a federated group in
+  /// [requestedPackages] widens selection to every member of that group --
+  /// see `_selectPackages`. Those extra siblings are still not
+  /// "explicitly requested" themselves: each is only included if it's
+  /// independently eligible (qualifying commits, or a forced native SDK
+  /// update). A no-op for a singleton group.
+  final bool includeFederated;
+
   final String? bumpTypeOverride;
   final String? prereleaseLabel;
   final String? iosSdkVersionOverride;
@@ -47,6 +63,7 @@ class RunContext {
     required this.trigger,
     required this.currentBranch,
     this.requestedPackages = const [],
+    this.includeFederated = false,
     this.bumpTypeOverride,
     this.prereleaseLabel,
     this.iosSdkVersionOverride,
@@ -78,6 +95,13 @@ class PackagePlan {
 
   final List<NativeSdkDelta> nativeSdkDeltas;
 
+  /// Native dependency constraints, outside [_nativeSdkEligibleGroupKey],
+  /// that have changed since this package's last published release --
+  /// e.g. a hand-edit to raise the minimum supported dd-sdk-ios version to
+  /// pick up a new feature. Not resolved or pinned by this tooling, just
+  /// reported.
+  final List<NativeDependencyChange> nativeDependencyChanges;
+
   /// Anything a human should see about how this plan was derived -- notably
   /// a published version whose tag is missing, which widens the commit range.
   final List<String> warnings;
@@ -89,8 +113,26 @@ class PackagePlan {
     this.bumpLevel,
     this.contributingCommits = const [],
     this.nativeSdkDeltas = const [],
+    this.nativeDependencyChanges = const [],
     this.warnings = const [],
   });
+}
+
+/// A native dependency's constraint as declared now vs. as declared at
+/// [PackagePlan.currentVersion] -- see [PackagePlan.nativeDependencyChanges].
+class NativeDependencyChange {
+  final NativeSdk sdk;
+  final String? previous;
+  final String? current;
+
+  NativeDependencyChange({
+    required this.sdk,
+    required this.previous,
+    required this.current,
+  });
+
+  @override
+  String toString() => '${sdk.name}: $previous -> $current';
 }
 
 class ReleasePlan {
@@ -224,7 +266,21 @@ Future<PackagePlan?> _computePackagePlan(
 
   switch (ctx.trigger) {
     case TriggerContext.mainline:
-      versionBase = commitBase = published.latestStable;
+      final latestPrerelease = published.latest;
+      if (published.latestStable != null) {
+        versionBase = commitBase = published.latestStable;
+      } else if (latestPrerelease != null) {
+        // Promote to the base version the pre-release already declares
+        // ("1.0.0-preview.14" -> "1.0.0"), not pubspec.yaml.
+        versionBase = Version(
+          latestPrerelease.major,
+          latestPrerelease.minor,
+          latestPrerelease.patch,
+        );
+        commitBase = latestPrerelease;
+      } else {
+        versionBase = commitBase = null;
+      }
     case TriggerContext.patch:
       final (major, minor) = _releaseLineFromPatchBranch(ctx.currentBranch);
       versionBase = commitBase = published.latestOn(major, minor);
@@ -267,6 +323,10 @@ Future<PackagePlan?> _computePackagePlan(
 
   final files = resolveNativeDependencyFiles(pkg.absolutePath(ctx.repoRoot));
 
+  // See [_nativeSdkEligibleGroupKey]. Non-eligible packages' files are
+  // still discovered, for [_nativeDependencyChanges] below.
+  final isNativeSdkEligible = pkg.groupKey == _nativeSdkEligibleGroupKey;
+
   // Whether this package releases at all is decided before anything touches
   // the network -- resolving native SDK targets for a package with nothing to
   // ship is pure waste.
@@ -276,11 +336,25 @@ Future<PackagePlan?> _computePackagePlan(
   if (ctx.trigger != TriggerContext.patch &&
       aggregateBumpLevel(commits) == null &&
       !isExplicitlyRequested &&
-      !_hasForcedNativeUpdate(files, ctx)) {
+      !(isNativeSdkEligible && _hasForcedNativeUpdate(files, ctx))) {
     return null;
   }
 
-  final nativeSdkDeltas = await _computeNativeSdkDeltas(files, ctx, gateways);
+  final nativeSdkDeltas = isNativeSdkEligible
+      ? await _computeNativeSdkDeltas(
+          pkg,
+          files,
+          ctx,
+          gitDir,
+          published,
+          gateways,
+        )
+      : const <NativeSdkDelta>[];
+
+  final nativeDependencyChanges = isNativeSdkEligible
+      ? const <NativeDependencyChange>[]
+      : await _nativeDependencyChanges(pkg, files, ctx, gitDir, published);
+
   final currentVersion = published.latest?.toString() ?? pkg.version;
 
   return switch (ctx.trigger) {
@@ -290,6 +364,7 @@ Future<PackagePlan?> _computePackagePlan(
       commits,
       versionBase,
       nativeSdkDeltas,
+      nativeDependencyChanges,
       warnings,
     ),
     TriggerContext.preRelease => _computePrereleasePlan(
@@ -300,6 +375,7 @@ Future<PackagePlan?> _computePackagePlan(
       versionBase,
       published,
       nativeSdkDeltas,
+      nativeDependencyChanges,
       warnings,
     ),
     TriggerContext.mainline => _computeMainlinePlan(
@@ -308,8 +384,10 @@ Future<PackagePlan?> _computePackagePlan(
       currentVersion,
       commits,
       versionBase,
-      nativeSdkDeltas,
-      warnings,
+      isPromotion: published.latestStable == null && published.latest != null,
+      nativeSdkDeltas: nativeSdkDeltas,
+      nativeDependencyChanges: nativeDependencyChanges,
+      warnings: warnings,
     ),
   };
 }
@@ -417,6 +495,7 @@ PackagePlan _computePatchPlan(
   List<ConventionalCommit> commits,
   Version? versionBase,
   List<NativeSdkDelta> nativeSdkDeltas,
+  List<NativeDependencyChange> nativeDependencyChanges,
   List<String> warnings,
 ) {
   for (final commit in commits) {
@@ -441,6 +520,7 @@ PackagePlan _computePatchPlan(
     bumpLevel: versionBase == null ? null : VersionBumpType.patch,
     contributingCommits: commits,
     nativeSdkDeltas: nativeSdkDeltas,
+    nativeDependencyChanges: nativeDependencyChanges,
     warnings: warnings,
   );
 }
@@ -450,15 +530,13 @@ PackagePlan _computeMainlinePlan(
   RunContext ctx,
   String currentVersion,
   List<ConventionalCommit> commits,
-  Version? versionBase,
-  List<NativeSdkDelta> nativeSdkDeltas,
-  List<String> warnings,
-) {
-  // Never released stably: pubspec.yaml states the intended first version and
-  // is the only source for it, so nothing is bumped and bumpLevel stays null.
-  // Reporting a level here would misdescribe the plan -- datadog_session_replay
-  // has only ever published previews, and its commits aggregate to `major`
-  // while the version comes from pubspec untouched.
+  Version? versionBase, {
+  required bool isPromotion,
+  required List<NativeSdkDelta> nativeSdkDeltas,
+  required List<NativeDependencyChange> nativeDependencyChanges,
+  required List<String> warnings,
+}) {
+  // Never published: pubspec.yaml is the only declaration of the first version.
   if (versionBase == null) {
     return PackagePlan(
       package: pkg,
@@ -466,6 +544,20 @@ PackagePlan _computeMainlinePlan(
       newVersion: pkg.version,
       contributingCommits: commits,
       nativeSdkDeltas: nativeSdkDeltas,
+      nativeDependencyChanges: nativeDependencyChanges,
+      warnings: warnings,
+    );
+  }
+
+  // versionBase is already the promotion target -- not something to bump.
+  if (isPromotion) {
+    return PackagePlan(
+      package: pkg,
+      currentVersion: currentVersion,
+      newVersion: versionBase.toString(),
+      contributingCommits: commits,
+      nativeSdkDeltas: nativeSdkDeltas,
+      nativeDependencyChanges: nativeDependencyChanges,
       warnings: warnings,
     );
   }
@@ -485,6 +577,7 @@ PackagePlan _computeMainlinePlan(
     bumpLevel: bump,
     contributingCommits: commits,
     nativeSdkDeltas: nativeSdkDeltas,
+    nativeDependencyChanges: nativeDependencyChanges,
     warnings: warnings,
   );
 }
@@ -505,6 +598,7 @@ PackagePlan _computePrereleasePlan(
   Version? target,
   PublishedVersions published,
   List<NativeSdkDelta> nativeSdkDeltas,
+  List<NativeDependencyChange> nativeDependencyChanges,
   List<String> warnings,
 ) {
   target!;
@@ -571,6 +665,7 @@ PackagePlan _computePrereleasePlan(
     // commits are still what the changelog is written from.
     contributingCommits: commits,
     nativeSdkDeltas: nativeSdkDeltas,
+    nativeDependencyChanges: nativeDependencyChanges,
     warnings: warnings,
   );
 }
@@ -603,33 +698,65 @@ bool _hasForcedNativeUpdate(NativeDependencyFiles files, RunContext ctx) =>
     (files.androidGradle != null && ctx.androidSdkVersionOverride != null) ||
     (files.cppCMakeLists.isNotEmpty && ctx.cppVersionOverride != null);
 
-/// Resolves what each native SDK this package depends on should be pinned to
-/// this run, one [NativeSdkDelta] per SDK it actually ships a manifest for.
-///
-/// Purely a *target* resolution -- see [NativeSdkDelta] for why there's no
-/// "current pin" to compare against.
+/// [file]'s content as it existed in [pkg]'s last published version's git
+/// history, or null if there's no published version, no tag resolves (see
+/// [tagSha]), or [file] didn't exist at that commit.
+Future<String?> _lastPublishedContent(
+  DiscoveredPackage pkg,
+  PublishedVersions published,
+  RunContext ctx,
+  GitDir gitDir,
+  File? file,
+) async {
+  final latest = published.latest;
+  if (latest == null || file == null) return null;
+  return fileContentAtTag(
+    gitDir,
+    '${pkg.name}/v$latest',
+    p.relative(file.path, from: ctx.repoRoot),
+  );
+}
+
+/// One [NativeSdkDelta] per SDK [pkg] ships a manifest for.
 Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
+  DiscoveredPackage pkg,
   NativeDependencyFiles files,
   RunContext ctx,
+  GitDir gitDir,
+  PublishedVersions published,
   NativeSdkGateways gateways,
 ) async {
+  Future<String?> historicalContent(File? file) =>
+      _lastPublishedContent(pkg, published, ctx, gitDir, file);
+
+  final iosPodspecContent = await historicalContent(files.iosPodspec);
+  final iosSpmContent = await historicalContent(files.iosSpmManifest);
+  final androidContent = await historicalContent(files.androidGradle);
+  final cppContent = await historicalContent(files.cppCMakeLists.firstOrNull);
+
   final perSdkFiles = {
     NativeSdk.ios: (
       files: [?files.iosPodspec, ?files.iosSpmManifest],
       override: ctx.iosSdkVersionOverride,
+      current: currentIosDeclaration(
+        podspecContent: iosPodspecContent,
+        spmContent: iosSpmContent,
+      ),
     ),
     NativeSdk.android: (
       files: [?files.androidGradle],
       override: ctx.androidSdkVersionOverride,
+      current: currentAndroidDeclaration(androidContent),
     ),
     NativeSdk.cpp: (
       files: files.cppCMakeLists,
       override: ctx.cppVersionOverride,
+      current: currentCppDeclaration(cppContent),
     ),
   };
 
   final deltas = <NativeSdkDelta>[];
-  for (final MapEntry(key: sdk, value: (:files, :override))
+  for (final MapEntry(key: sdk, value: (:files, :override, :current))
       in perSdkFiles.entries) {
     if (files.isEmpty) continue;
 
@@ -644,6 +771,7 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
       NativeSdkDelta(
         sdk: sdk,
         targetVersion: target,
+        currentDeclaration: current,
         // CMake's FetchContent_Declare has no field for pinning a tag and
         // verifying its commit -- the resolved SHA is what actually gets
         // written to GIT_TAG (see cmake_util.dart's pinCppVersion).
@@ -656,6 +784,71 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
   }
 
   return deltas;
+}
+
+/// Native dependency constraints, for a package outside
+/// [_nativeSdkEligibleGroupKey], that have changed since its own last
+/// published release -- see [PackagePlan.nativeDependencyChanges].
+Future<List<NativeDependencyChange>> _nativeDependencyChanges(
+  DiscoveredPackage pkg,
+  NativeDependencyFiles files,
+  RunContext ctx,
+  GitDir gitDir,
+  PublishedVersions published,
+) async {
+  // Require a resolvable tag, not just published.latest != null -- else a
+  // package whose latest published version has no tag (e.g.
+  // datadog_session_replay's 1.0.0-preview.14) falsely reports every
+  // dependency as newly added.
+  final latest = published.latest;
+  if (latest == null || await tagSha(gitDir, '${pkg.name}/v$latest') == null) {
+    return const [];
+  }
+
+  Future<String?> historicalContent(File? file) =>
+      _lastPublishedContent(pkg, published, ctx, gitDir, file);
+
+  final changes = <NativeDependencyChange>[];
+
+  void checkFor(NativeSdk sdk, String? current, String? previous) {
+    if (current == previous) return;
+    changes.add(
+      NativeDependencyChange(sdk: sdk, previous: previous, current: current),
+    );
+  }
+
+  if (files.iosPodspec != null || files.iosSpmManifest != null) {
+    checkFor(
+      NativeSdk.ios,
+      currentIosDeclaration(
+        podspecContent: files.iosPodspec?.readAsStringSync(),
+        spmContent: files.iosSpmManifest?.readAsStringSync(),
+      ),
+      currentIosDeclaration(
+        podspecContent: await historicalContent(files.iosPodspec),
+        spmContent: await historicalContent(files.iosSpmManifest),
+      ),
+    );
+  }
+
+  if (files.androidGradle != null) {
+    checkFor(
+      NativeSdk.android,
+      currentAndroidDeclaration(files.androidGradle!.readAsStringSync()),
+      currentAndroidDeclaration(await historicalContent(files.androidGradle)),
+    );
+  }
+
+  if (files.cppCMakeLists.isNotEmpty) {
+    final file = files.cppCMakeLists.first;
+    checkFor(
+      NativeSdk.cpp,
+      currentCppDeclaration(file.readAsStringSync()),
+      currentCppDeclaration(await historicalContent(file)),
+    );
+  }
+
+  return changes;
 }
 
 /// [commitMessagesSince]'s raw messages, parsed into [ConventionalCommit]s
@@ -688,6 +881,19 @@ final _patchBranchPattern = RegExp(
 /// patch-branch name, or null if [branch] doesn't match that convention.
 String? packageNameFromPatchBranch(String branch) =>
     _patchBranchPattern.firstMatch(branch)?.namedGroup('package');
+
+/// Auto-detects a run's trigger context from [currentBranch] where that's
+/// unambiguous, and defaults to mainline otherwise.
+///
+/// Patch is recognised unconditionally by branch-name convention. Pre-release
+/// is deliberately *not* guessed here. To preview a pre-release run with an
+/// explicit `--trigger=prerelease` instead.
+TriggerContext resolveTriggerContext(String currentBranch) {
+  if (packageNameFromPatchBranch(currentBranch) != null) {
+    return TriggerContext.patch;
+  }
+  return TriggerContext.mainline;
+}
 
 /// The `{major}.{minor}` release line a patch branch is confined to. Only
 /// called once [_resolveGroups] has validated the branch matches the
@@ -759,5 +965,16 @@ List<DiscoveredPackage> _selectPackages(
     throw StateError('Requested package(s) not found: ${unknown.join(', ')}.');
   }
 
-  return all.where((pkg) => requested.contains(pkg.name)).toList();
+  if (!ctx.includeFederated) {
+    return all.where((pkg) => requested.contains(pkg.name)).toList();
+  }
+
+  final groupKeys = groups
+      .where(
+        (group) => group.members.any((pkg) => requested.contains(pkg.name)),
+      )
+      .map((group) => group.key)
+      .toSet();
+
+  return all.where((pkg) => groupKeys.contains(pkg.groupKey)).toList();
 }

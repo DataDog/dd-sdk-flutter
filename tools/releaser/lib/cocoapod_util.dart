@@ -22,8 +22,9 @@ class PinCocoapodsVersionCommand extends Command {
     }
 
     // Other packages can keep looser version constraints
-    final pinedPackage = args.packages
-        .firstWhereOrNull((e) => e.name == 'datadog_flutter_plugin');
+    final pinedPackage = args.packages.firstWhereOrNull(
+      (e) => e.name == 'datadog_flutter_plugin',
+    );
     if (pinedPackage != null) {
       if (!await _pinPodspecVersion(args, pinedPackage, logger)) {
         return false;
@@ -64,14 +65,14 @@ class PinCocoapodsVersionCommand extends Command {
   }
 
   Future<bool> _pinPodspecVersion(
-      CommandArguments args, PackageRelease package, Logger logger) async {
+    CommandArguments args,
+    PackageRelease package,
+    Logger logger,
+  ) async {
     final podspecLocation = 'ios/${package.name}.podspec';
 
     final file = File(
-      path.join(
-        getPackageRoot(args, package),
-        podspecLocation,
-      ),
+      path.join(getPackageRoot(args, package), podspecLocation),
     );
 
     if (!file.existsSync()) {

@@ -23,8 +23,10 @@ void main(List<String> arguments) async {
   });
 
   final argParser = ArgParser()
-    ..addOption('packages',
-        help: 'A comma separated list of package:version pairs to release.')
+    ..addOption(
+      'packages',
+      help: 'A comma separated list of package:version pairs to release.',
+    )
     ..addOption('version', abbr: 'v')
     ..addOption('repo-root', help: 'The root of the repo to release from')
     ..addFlag(
@@ -116,8 +118,9 @@ void main(List<String> arguments) async {
   // }
 
   // If there are any initial releases, having no changes on the chore branch is okay (though unlikely)
-  final isInitialRelease =
-      commandArgs.packages.where((e) => e.version == '1.0.0').isNotEmpty;
+  final isInitialRelease = commandArgs.packages
+      .where((e) => e.version == '1.0.0')
+      .isNotEmpty;
 
   final commitPackageName = commandArgs.packages.length == 1
       ? '${commandArgs.packages.first.name} ${commandArgs.packages.first.version}'
@@ -128,7 +131,7 @@ void main(List<String> arguments) async {
     commitBody = 'Releasing the following packages:\n';
     commitBody += [
       for (final package in commandArgs.packages)
-        ' - ${package.name} ${package.version}'
+        ' - ${package.name} ${package.version}',
     ].join('\n');
   }
 
@@ -173,7 +176,9 @@ void main(List<String> arguments) async {
 }
 
 Future<CommandArguments?> _validateArguments(
-    ArgResults argResults, Logger logger) async {
+  ArgResults argResults,
+  Logger logger,
+) async {
   var packages = _parsePackages(argResults['packages'], logger);
   if (packages == null) {
     if (argResults.rest.isEmpty) {
@@ -228,7 +233,8 @@ List<PackageRelease>? _parsePackages(String? packages, Logger logger) {
     final colonIndex = e.indexOf(':');
     if (colonIndex < 0) {
       logger.shout(
-          '❌ Invalid package specification $e. Missing : to specify version.');
+        '❌ Invalid package specification $e. Missing : to specify version.',
+      );
       throw Error();
     }
 
