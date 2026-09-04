@@ -11,4 +11,21 @@
 /// `release_plan.dart` in turn needs types from `native_sdk.dart` --
 /// putting the enum in either file would create a cyclic import between
 /// the two.
-enum TriggerContext { mainline, patch, preRelease }
+enum TriggerContext {
+  mainline,
+  patch,
+  preRelease;
+
+  static TriggerContext? parse(String raw) {
+    switch (raw.toLowerCase()) {
+      case 'mainline':
+        return TriggerContext.mainline;
+      case 'patch':
+        return TriggerContext.patch;
+      case 'prerelease':
+        return TriggerContext.preRelease;
+      default:
+        return null;
+    }
+  }
+}

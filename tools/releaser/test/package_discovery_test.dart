@@ -60,6 +60,22 @@ void main() {
   });
 
   test(
+    'every member carries its own group\'s key, even after flattening',
+    () async {
+      final groups = await discoverPackages(fixture.root.path);
+      final byName = {
+        for (final pkg in groups.expand((g) => g.members)) pkg.name: pkg,
+      };
+
+      expect(
+        byName['datadog_flutter_plugin_ios']?.groupKey,
+        'datadog_flutter_plugin',
+      );
+      expect(byName['datadog_dio']?.groupKey, 'datadog_dio');
+    },
+  );
+
+  test(
     'a lone package with a federation-looking suffix is not misclassified as an implementation',
     () async {
       final groups = await discoverPackages(fixture.root.path);

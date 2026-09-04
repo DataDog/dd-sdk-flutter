@@ -29,12 +29,12 @@ enum NativeSdk {
 /// wants to be permissive, a rewriter has to reproduce exactly what it
 /// matched.
 final _iosPodspecDependencyPattern = RegExp(
-  r"s\.dependency\s+'Datadog\w*'\s*,\s*'[^']+'",
+  r"s\.dependency\s+'Datadog\w*'\s*,\s*'(?<constraint>[^']+)'",
 );
 
 /// Matches a `build.gradle`'s `ext.datadog_version = "..."` assignment.
 final _androidGradleVersionPattern = RegExp(
-  r'ext\.datadog_version\s*=\s*"[^"]+"',
+  r'ext\.datadog_version\s*=\s*"(?<version>[^"]+)"',
 );
 
 /// Matches a `Package.swift`'s dd-sdk-ios dependency line, e.g.
@@ -42,7 +42,7 @@ final _androidGradleVersionPattern = RegExp(
 /// Matched case-insensitively on the URL: both `Datadog` and `DataDog`
 /// spellings appear across this repo's manifests.
 final _iosSpmDependencyPattern = RegExp(
-  r'\.package\(url:\s*"[^"]*dd-sdk-ios[^"]*",\s*[^)]+\)',
+  r'\.package\(url:\s*"[^"]*dd-sdk-ios[^"]*",\s*(?<versionArg>[^)]+)\)',
   caseSensitive: false,
 );
 
@@ -130,17 +130,52 @@ NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
   );
 }
 
+/// The dd-sdk-ios constraint declared in [podspecContent] (e.g. `~> 3`), or,
+/// absent that, [spmContent]'s version argument (e.g. `from: "3.0.0"`).
+/// Null if neither matches. Takes content, not a [File] -- see
+/// [NativeSdkDelta.currentDeclaration].
+String? currentIosDeclaration({String? podspecContent, String? spmContent}) {
+  if (podspecContent != null) {
+    return _iosPodspecDependencyPattern
+        .firstMatch(podspecContent)
+        ?.namedGroup('constraint');
+  }
+  if (spmContent == null) return null;
+  return _iosSpmDependencyPattern
+      .firstMatch(spmContent)
+      ?.namedGroup('versionArg')
+      ?.trim();
+}
+
+/// The `ext.datadog_version` declared in [gradleContent], or null.
+String? currentAndroidDeclaration(String? gradleContent) {
+  if (gradleContent == null) return null;
+  return _androidGradleVersionPattern
+      .firstMatch(gradleContent)
+      ?.namedGroup('version');
+}
+
+/// The dd-sdk-cpp `GIT_TAG` declared in [cmakeListsContent], or null.
+String? currentCppDeclaration(String? cmakeListsContent) {
+  if (cmakeListsContent == null) return null;
+  return currentGitTag(cmakeListsContent);
+}
+
 /// What one native SDK dependency of a package resolves to this run.
 ///
-/// This is a *target*, not a diff: `develop` (and a long-lived pre-release
-/// branch) deliberately keeps its manifests on floating constraints (`~> 3`,
-/// `branch: "develop"`, `GIT_TAG develop`), and only the release-prep branch's
-/// copy is ever pinned. So there's no meaningful "current pin" to subtract
-/// from -- the plan just says what to pin to, and `prepare_release.dart`
-/// rewrites [files] to match.
+/// [targetVersion]/[targetSha] are a *target*, not a diff: `develop` (and a
+/// long-lived pre-release branch) deliberately keeps its manifests on
+/// floating constraints (`~> 3`, `branch: "develop"`, `GIT_TAG develop`), and
+/// only the release-prep branch's copy is ever pinned. Planning decisions
+/// (eligibility, bump level) never compare against a "current" value for
+/// exactly that reason -- the plan just says what to pin to, and
+/// `prepare_release.dart` rewrites [files] to match.
 ///
-/// [targetVersion] is null when nothing should change -- the patch-branch
-/// default, absent an explicit override.
+/// [currentDeclaration] is purely informational, shown alongside
+/// [targetVersion]. Must be sourced from the last published version's git
+/// history (`fileContentAtTag` in `git_history.dart`), not from [files] as
+/// they sit in the working tree -- the working tree floats, so it isn't
+/// evidence of what anything previously released with.
 ///
 /// [targetSha] is only meaningful for [NativeSdk.cpp]: CMake's
 /// `FetchContent_Declare` has no field for pinning a tag *and* verifying
@@ -150,6 +185,7 @@ NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
 class NativeSdkDelta {
   final NativeSdk sdk;
   final String? targetVersion;
+  final String? currentDeclaration;
   final String? targetSha;
 
   /// Every file of this package that pins this dependency and therefore needs
@@ -163,14 +199,19 @@ class NativeSdkDelta {
   NativeSdkDelta({
     required this.sdk,
     required this.targetVersion,
+    this.currentDeclaration,
     this.targetSha,
     this.files = const [],
   });
 
   @override
-  String toString() => targetVersion == null
-      ? '${sdk.name}: no change'
-      : '${sdk.name}: -> $targetVersion';
+  String toString() {
+    if (targetVersion == null) return '${sdk.name}: no change';
+    final from = currentDeclaration;
+    return from == null
+        ? '${sdk.name}: -> $targetVersion'
+        : '${sdk.name}: $from -> $targetVersion';
+  }
 }
 
 /// The network calls native SDK resolution needs -- bundled so callers
