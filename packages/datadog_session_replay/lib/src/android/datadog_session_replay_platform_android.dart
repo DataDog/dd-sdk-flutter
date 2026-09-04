@@ -3,7 +3,7 @@
 // Copyright 2025-Present Datadog, Inc.
 
 import 'dart:async';
-import 'dart:typed_data';
+
 
 import 'package:flutter/services.dart';
 import 'package:jni/jni.dart';
@@ -41,11 +41,11 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
         onContextChanged: (context) {
           onContextChanged(
             RUMContext(
-              applicationId: context.getApplicationId()?.toDartString() ?? '',
-              sessionId: context.getSessionId()?.toDartString() ?? '',
-              viewId: context.getViewId()?.toDartString(),
+              applicationId: context.applicationId?.toDartString() ?? '',
+              sessionId: context.sessionId?.toDartString() ?? '',
+              viewId: context.viewId?.toDartString(),
               viewServerTimeOffset:
-                  context.getViewServerTimeOffset()?.doubleValue(),
+                  context.viewServerTimeOffset?.doubleValue(),
             ),
           );
         },
@@ -78,15 +78,15 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
 
   @override
   FutureOr<void> telemetryDebug(String id, String message) {
-    _bridge.telemetryDebug(JString.fromString(message));
+    _bridge.telemetryDebug(message.toJString());
   }
 
   @override
   FutureOr<void> telemetryError(String message, String kind, String stack) {
     _bridge.telemetryError(
-      JString.fromString(message),
-      JString.fromString(stack),
-      JString.fromString(kind),
+      message.toJString(),
+      stack.toJString(),
+      kind.toJString(),
     );
   }
 

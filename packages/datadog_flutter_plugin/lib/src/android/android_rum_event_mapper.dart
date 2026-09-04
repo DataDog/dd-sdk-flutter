@@ -50,9 +50,9 @@ class AndroidRumEventMapper extends RumMapperProxy {
     );
 
     // Deliberately calling the static overload, not
-    // `DatadogLogsPlugin.Companion.setLogsEventMapper(listener)` to avoid
+    // `DatadogLogsPlugin.Companion.logsEventMapper = listener` to avoid
     // potentially retaining a GC'd Companion object
-    DatadogRumPlugin.setRumEventMapper(listener);
+    DatadogRumPlugin.rumEventMapper = listener;
   }
 
   JString? _callMapper(JString encoded, _MapperFunction mapper) {
