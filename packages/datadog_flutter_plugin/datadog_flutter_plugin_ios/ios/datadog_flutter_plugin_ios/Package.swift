@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "datadog_flutter_plugin_ios",
     platforms: [
-        .iOS("12.0")
+        .iOS("15.0")
     ],
     products: [
         .library(name: "datadog-flutter-plugin-ios", targets: ["datadog_flutter_plugin_ios"])
