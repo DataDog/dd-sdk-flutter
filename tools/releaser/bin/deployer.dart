@@ -17,12 +17,7 @@ class ReleaseInfo {
   final String version;
   final String changeLog;
 
-  ReleaseInfo(
-    this.commitSha,
-    this.package,
-    this.version,
-    this.changeLog,
-  );
+  ReleaseInfo(this.commitSha, this.package, this.version, this.changeLog);
 }
 
 void main(List<String> arguments) async {
@@ -74,8 +69,9 @@ void main(List<String> arguments) async {
 
   final github = GithubCommandWrapper(gitDir.path);
   if (!await github.checkAuth(Logger.root)) {
-    Logger.root
-        .shout('❌ Could not auth with `gh` command. Run `gh auth login`.');
+    Logger.root.shout(
+      '❌ Could not auth with `gh` command. Run `gh auth login`.',
+    );
     exit(1);
   }
 
@@ -94,11 +90,18 @@ void main(List<String> arguments) async {
 }
 
 Future<bool> _performGitHubRelease(
-    GitDir gitDir, ReleaseInfo releaseInfo) async {
+  GitDir gitDir,
+  ReleaseInfo releaseInfo,
+) async {
   final tag = '${releaseInfo.package}/v${releaseInfo.version}';
   Logger.root.fine('ℹ️ Creating tag $tag');
-  await gitDir.runCommand(
-      ['tag', '-a', tag, '-m', '🏷 Tag created by deploy.dart for $tag']);
+  await gitDir.runCommand([
+    'tag',
+    '-a',
+    tag,
+    '-m',
+    '🏷 Tag created by deploy.dart for $tag',
+  ]);
   Logger.root.fine('ℹ️ Pushing to origin');
   await gitDir.runCommand(['push', 'origin', tag]);
 
@@ -132,8 +135,9 @@ Future<bool> _validateBranchState(GitDir gitDir) async {
   final currentBranch = await gitDir.currentBranch();
   if (!(currentBranch.branchName == 'main' ||
       currentBranch.branchName.startsWith('release'))) {
-    Logger.root
-        .shout('❌ Only deploy releases from `main` or a `release` branch.');
+    Logger.root.shout(
+      '❌ Only deploy releases from `main` or a `release` branch.',
+    );
     return false;
   }
 
@@ -159,11 +163,11 @@ Future<ReleaseInfo?> _getReleaseInfo(GitDir gitDir, String packageName) async {
       .transform(utf8.decoder)
       .transform(LineSplitter())
       .forEach((element) {
-    final match = pubspecVersionRegex.firstMatch(element);
-    if (match != null) {
-      pubspecVersion = match.namedGroup('version');
-    }
-  });
+        final match = pubspecVersionRegex.firstMatch(element);
+        if (match != null) {
+          pubspecVersion = match.namedGroup('version');
+        }
+      });
 
   if (pubspecVersion == null) {
     Logger.root.shout('Version in pubspec is missing!');
@@ -183,17 +187,17 @@ Future<ReleaseInfo?> _getReleaseInfo(GitDir gitDir, String packageName) async {
       .transform(utf8.decoder)
       .transform(LineSplitter())
       .forEach((line) {
-    if (foundVersion) {
-      if (line.startsWith('##')) {
-        // Reached the end of the version
-        foundVersion = false;
-      } else if (line.trim().isNotEmpty) {
-        changeLog.writeln(line);
-      }
-    } else if (line == '## $pubspecVersion') {
-      foundVersion = true;
-    }
-  });
+        if (foundVersion) {
+          if (line.startsWith('##')) {
+            // Reached the end of the version
+            foundVersion = false;
+          } else if (line.trim().isNotEmpty) {
+            changeLog.writeln(line);
+          }
+        } else if (line == '## $pubspecVersion') {
+          foundVersion = true;
+        }
+      });
 
   return ReleaseInfo(
     currentBranch.sha,

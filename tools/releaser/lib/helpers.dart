@@ -25,10 +25,7 @@ Future<GitDir?> getGitDir(String? root) async {
     return null;
   }
 
-  return await GitDir.fromExisting(
-    currentPath,
-    allowSubdirectory: true,
-  );
+  return await GitDir.fromExisting(currentPath, allowSubdirectory: true);
 }
 
 String getPackageRoot(CommandArguments args, PackageRelease package) {
@@ -47,11 +44,11 @@ Future<void> transformFile(
       .transform(utf8.decoder)
       .transform(LineSplitter())
       .forEach((element) {
-    final newValue = transformer(element);
-    if (newValue != null) {
-      newFileBuffer.writeln(newValue);
-    }
-  });
+        final newValue = transformer(element);
+        if (newValue != null) {
+          newFileBuffer.writeln(newValue);
+        }
+      });
 
   final filename = path.basename(file.path);
   logger.finest(' ------- NEW  $filename CONTENTS ------');
@@ -70,7 +67,8 @@ bool validateVersionNumber(String versionNumber, Logger logger) {
     return true;
   } on FormatException {
     logger.shout(
-        '❌ Version $versionNumber does not parse properly as a semantic version');
+      '❌ Version $versionNumber does not parse properly as a semantic version',
+    );
   }
   return false;
 }

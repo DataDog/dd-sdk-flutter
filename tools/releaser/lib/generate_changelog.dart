@@ -34,21 +34,28 @@ class GenerateChangelogCommand extends Command {
       final lastReleaseSha = await _findLastReleaseSha(logger, args, package);
       if (lastReleaseSha == null) {
         Logger.root.shout(
-            '⚠️ Could not find last release! Hopefully this is a new package!.');
+          '⚠️ Could not find last release! Hopefully this is a new package!.',
+        );
         Logger.root.shout(
-            '‼️ Changelogs cannot be generated for an initial release! Make sure you have what you need in there.');
+          '‼️ Changelogs cannot be generated for an initial release! Make sure you have what you need in there.',
+        );
       } else {
-        final commits =
-            await _getCommits(args, package, '$lastReleaseSha..HEAD');
+        final commits = await _getCommits(
+          args,
+          package,
+          '$lastReleaseSha..HEAD',
+        );
 
         final changelogItems = _getChangelogItems(commits);
         logger.fine(
-            'Found ${changelogItems.length} changelog items for ${package.name} version ${package.version}');
+          'Found ${changelogItems.length} changelog items for ${package.name} version ${package.version}',
+        );
 
         final versionChangelog = changelogItems.map((e) => '* $e').join('\n');
 
-        final file =
-            File(path.join(getPackageRoot(args, package), 'CHANGELOG.md'));
+        final file = File(
+          path.join(getPackageRoot(args, package), 'CHANGELOG.md'),
+        );
         if (!file.existsSync()) {
           Logger.root.shout('❌ Could not find file CHANGELOG.md for package.');
           return false;
@@ -62,7 +69,8 @@ class GenerateChangelogCommand extends Command {
             String? oldLine = line;
             if (line == '## Unreleased') {
               logger.info(
-                  'ℹ️ ## Unreleased headers are no longer needed. Removing.');
+                'ℹ️ ## Unreleased headers are no longer needed. Removing.',
+              );
               oldLine = null;
             }
 
@@ -78,9 +86,11 @@ class GenerateChangelogCommand extends Command {
     }
 
     print(
-        'Verify the CHANGELOG.md changes for all packages and add changes from iOS and Android Native SDK updates.');
+      'Verify the CHANGELOG.md changes for all packages and add changes from iOS and Android Native SDK updates.',
+    );
     print(
-        'For reference iOS SDK will be updated to ${args.iOSRelease} and Android SDK will be updated to ${args.androidRelease}.');
+      'For reference iOS SDK will be updated to ${args.iOSRelease} and Android SDK will be updated to ${args.androidRelease}.',
+    );
 
     return _waitForConfirmation(logger);
   }
@@ -98,7 +108,8 @@ class GenerateChangelogCommand extends Command {
         return false;
       } else {
         logger.shout(
-            '❓ Not sure what you meant by that... stopping just in case.');
+          '❓ Not sure what you meant by that... stopping just in case.',
+        );
         return false;
       }
     }
@@ -107,7 +118,10 @@ class GenerateChangelogCommand extends Command {
   }
 
   Future<String?> _findLastReleaseSha(
-      Logger logger, CommandArguments args, PackageRelease package) async {
+    Logger logger,
+    CommandArguments args,
+    PackageRelease package,
+  ) async {
     final packageTags = await args.gitDir
         .tags()
         .where((t) => t.tag.startsWith('${package.name}/'))
@@ -143,7 +157,10 @@ class GenerateChangelogCommand extends Command {
   }
 
   Future<List<String>> _getCommits(
-      CommandArguments args, PackageRelease package, String commitRange) async {
+    CommandArguments args,
+    PackageRelease package,
+    String commitRange,
+  ) async {
     final packageRoot = getPackageRoot(args, package);
     final result = await args.gitDir.runCommand([
       '--no-pager',
@@ -151,7 +168,7 @@ class GenerateChangelogCommand extends Command {
       commitRange,
       '--pretty=format:%H|||%an <%aE>|||%ai|||%B||||',
       '--',
-      packageRoot
+      packageRoot,
     ]);
 
     final rawCommits = (result.stdout as String)
@@ -167,8 +184,9 @@ class GenerateChangelogCommand extends Command {
 }
 
 List<String> _getChangelogItems(List<String> commitMessages) {
-  RegExp conventionalCommitPattern =
-      RegExp(r'(?<type>\w*)(\((?<scope>.*)\))?(?<breaking>!)?: (?<rest>.*)');
+  RegExp conventionalCommitPattern = RegExp(
+    r'(?<type>\w*)(\((?<scope>.*)\))?(?<breaking>!)?: (?<rest>.*)',
+  );
   RegExp githubIssueMention = RegExp(r'\#(?<issue_number>\d+)');
 
   final items = <String>[];
@@ -206,8 +224,9 @@ List<String> _getChangelogItems(List<String> commitMessages) {
           }
         }
         if (githubRefs.isNotEmpty) {
-          final seeStrings = githubRefs
-              .map((r) => '[#$r](${GenerateChangelogCommand.issuesLink}$r)');
+          final seeStrings = githubRefs.map(
+            (r) => '[#$r](${GenerateChangelogCommand.issuesLink}$r)',
+          );
           changelogItem += ' See ${seeStrings.join(' ')}';
         }
 
