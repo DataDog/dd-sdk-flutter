@@ -3,7 +3,6 @@
 // Copyright 2025-Present Datadog, Inc.
 // ignore: library_annotations
 @TestOn('browser')
-
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
@@ -29,8 +28,10 @@ void main() {
     test('converts simple values', () {
       expect(1, (valueToJs(1, 'integer') as JSNumber).toDartInt);
       expect(3.1415, (valueToJs(3.1415, 'double') as JSNumber).toDartDouble);
-      expect('Test String',
-          (valueToJs('Test String', 'string') as JSString).toDart);
+      expect(
+        'Test String',
+        (valueToJs('Test String', 'string') as JSString).toDart,
+      );
       expect(false, (valueToJs(false, 'bool') as JSBoolean).toDart);
     });
 
@@ -45,10 +46,14 @@ void main() {
       final jsMap = valueToJs(mapValue, 'map') as JSObject;
       expect(1, (jsMap.getProperty('integer'.toJS) as JSNumber).toDartInt);
       expect(
-          3.1415, (jsMap.getProperty('double'.toJS) as JSNumber).toDartDouble);
+        3.1415,
+        (jsMap.getProperty('double'.toJS) as JSNumber).toDartDouble,
+      );
       expect(false, (jsMap.getProperty('bool'.toJS) as JSBoolean).toDart);
       expect(
-          'Test String', (jsMap.getProperty('string'.toJS) as JSString).toDart);
+        'Test String',
+        (jsMap.getProperty('string'.toJS) as JSString).toDart,
+      );
     });
 
     test('converts nested map values', () {
@@ -64,11 +69,15 @@ void main() {
       final jsMap = valueToJs(mapValue, 'map') as JSObject;
       final innerMap = jsMap.getProperty('object'.toJS) as JSObject;
       expect(1, (innerMap.getProperty('integer'.toJS) as JSNumber).toDartInt);
-      expect(3.1415,
-          (innerMap.getProperty('double'.toJS) as JSNumber).toDartDouble);
+      expect(
+        3.1415,
+        (innerMap.getProperty('double'.toJS) as JSNumber).toDartDouble,
+      );
       expect(false, (innerMap.getProperty('bool'.toJS) as JSBoolean).toDart);
-      expect('Test String',
-          (innerMap.getProperty('string'.toJS) as JSString).toDart);
+      expect(
+        'Test String',
+        (innerMap.getProperty('string'.toJS) as JSString).toDart,
+      );
     });
 
     test('converts integer array', () {
@@ -99,27 +108,69 @@ void main() {
         'double': 3.1415,
         'object': {
           'array_test': [14, 23, 11],
-          'string': 'test string'
+          'string': 'test string',
         },
-        'flags': ['my_flag', 'another_flag']
+        'flags': ['my_flag', 'another_flag'],
       };
 
       final jsMap = valueToJs(mapValue, 'map') as JSObject;
       expect(1, (jsMap.getProperty('integer'.toJS) as JSNumber).toDartInt);
       expect(
-          3.1415, (jsMap.getProperty('double'.toJS) as JSNumber).toDartDouble);
+        3.1415,
+        (jsMap.getProperty('double'.toJS) as JSNumber).toDartDouble,
+      );
       final innerMap = jsMap.getProperty('object'.toJS) as JSObject;
       final testArray =
           (innerMap.getProperty('array_test'.toJS) as JSArray).toDart;
       expect(14, (testArray[0] as JSNumber).toDartInt);
       expect(23, (testArray[1] as JSNumber).toDartInt);
       expect(11, (testArray[2] as JSNumber).toDartInt);
-      expect('test string',
-          (innerMap.getProperty('string'.toJS) as JSString).toDart);
+      expect(
+        'test string',
+        (innerMap.getProperty('string'.toJS) as JSString).toDart,
+      );
 
       final flagsArray = (jsMap.getProperty('flags'.toJS) as JSArray).toDart;
       expect('my_flag', (flagsArray[0] as JSString).toDart);
       expect('another_flag', (flagsArray[1] as JSString).toDart);
+    });
+  });
+
+  group('WebAssembly stack metadata', () {
+    test('classifies stacks containing WebAssembly frames', () {
+      final stackTrace = StackTrace.fromString(
+        'RuntimeError: unreachable\n'
+        '  at foo (https://example.com/flutter/main.dart.wasm:'
+        'wasm-function[42]:0x10)',
+      );
+
+      expect(webErrorSourceType(stackTrace), 'browser+wasm');
+    });
+
+    test('keeps regular browser stacks classified as browser', () {
+      final stackTrace = StackTrace.fromString(
+        'Error: failure\n  at foo (https://example.com/main.dart.js:1:2)',
+      );
+
+      expect(webErrorSourceType(stackTrace), 'browser');
+      expect(webWasmModuleUrls(stackTrace), isEmpty);
+    });
+
+    test('extracts each unique WebAssembly module URL', () {
+      final stackTrace = StackTrace.fromString(
+        'RuntimeError: unreachable\n'
+        '  at foo (https://example.com/flutter/main.dart.wasm:'
+        'wasm-function[42]:0x10)\n'
+        '  at bar (https://cdn.example.com/vendor.wasm?hash=abc:'
+        'wasm-function[7]:0x20)\n'
+        '  at foo (https://example.com/flutter/main.dart.wasm:'
+        'wasm-function[42]:0x10)',
+      );
+
+      expect(webWasmModuleUrls(stackTrace), [
+        'https://example.com/flutter/main.dart.wasm',
+        'https://cdn.example.com/vendor.wasm?hash=abc',
+      ]);
     });
   });
 }
