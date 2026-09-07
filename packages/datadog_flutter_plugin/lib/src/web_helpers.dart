@@ -88,6 +88,16 @@ final _dartLineRegex = RegExp(
   r'(?<file>.+) (?<location>\d+:\d+)\s*(?<function>.+)',
 );
 
+final _wasmStackFrameRegex = RegExp(
+  r'wasm-function(?:\[|@)|\[wasm code\]|wasm:\/\/|\.wasm(?=$|[:@)\s]|[?#])',
+  caseSensitive: false,
+);
+
+final _wasmModuleUrlRegex = RegExp(
+  r'(?:(?:https?|blob):\/\/)[^\s()]+?\.wasm(?:[?#][^\s():)]*)?',
+  caseSensitive: false,
+);
+
 @JS('RegExp')
 extension type JSRegExp._(JSObject _) implements JSObject {
   external factory JSRegExp([String? pattern, String? flags]);
@@ -116,6 +126,24 @@ String? convertWebStackTrace(StackTrace? stackTrace) {
   }
 
   return stackTraceString;
+}
+
+String webErrorSourceType(StackTrace? stackTrace) {
+  if (stackTrace != null &&
+      _wasmStackFrameRegex.hasMatch(stackTrace.toString())) {
+    return 'browser+wasm';
+  }
+  return 'browser';
+}
+
+List<String> webWasmModuleUrls(StackTrace? stackTrace) {
+  if (stackTrace == null) return const [];
+
+  return _wasmModuleUrlRegex
+      .allMatches(stackTrace.toString())
+      .map((match) => match.group(0)!)
+      .toSet()
+      .toList();
 }
 
 extension TrackingConsentWebValue on TrackingConsent {
