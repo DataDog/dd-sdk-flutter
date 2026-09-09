@@ -58,6 +58,11 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   }
 
   @override
+  Future<void> reportAppFullyDisplayed() {
+    return Future.value();
+  }
+
+  @override
   Future<void> addAction(
     DateTime timestamp,
     RumActionType type,

@@ -194,6 +194,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                     FlutterError.missingParameter(methodName: call.method)
                 )
             }
+        case "reportAppFullyDisplayed":
+            rum?.reportAppFullyDisplayed()
+            result(nil)
         case "startResource":
             if let key = arguments["key"] as? String,
                let methodString = arguments["httpMethod"] as? String,

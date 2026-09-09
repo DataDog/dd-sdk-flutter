@@ -196,7 +196,8 @@ class DatadogRumPluginTests: XCTestCase {
             "failureReason": .string,
             "attributes": .map
         ]),
-        Contract(methodName: "stopSession", requiredParameters: [:])
+        Contract(methodName: "stopSession", requiredParameters: [:]),
+        Contract(methodName: "reportAppFullyDisplayed", requiredParameters: [:])
     ]
 
     func testRumPlugin_ContractViolationsThrowErrors() {
@@ -379,6 +380,18 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [ .addViewLoadingTime(overwrite: true) ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testReportAppFullyDisplayed_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "reportAppFullyDisplayed", arguments: [:] as [String: Any?])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [ .reportAppFullyDisplayed ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 

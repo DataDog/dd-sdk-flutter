@@ -594,6 +594,21 @@ class DatadogRumPluginTest {
     }
 
     @Test
+    fun `M call monitor reportAppFullyDisplayed W reportAppFullyDisplayed is called`() {
+        // GIVEN
+        val call = MethodCall("reportAppFullyDisplayed", mapOf<String, Any?>())
+        val mockResult = mockk<MethodChannel.Result>()
+        every { mockResult.success(any()) } returns Unit
+
+        // WHEN
+        plugin.onMethodCall(call, mockResult)
+
+        // THEN
+        verify { monitorProxy.mockMonitor.reportAppFullyDisplayed() }
+        verify { mockResult.success(null) }
+    }
+
+    @Test
     fun `M call monitor startResource W startResource is called`(
         @StringForgery resourceKey: String,
         @StringForgery url: String,
@@ -1066,7 +1081,8 @@ class DatadogRumPluginTest {
             "failureReason" to ContractParameter.Type(SupportedContractType.STRING),
             "attributes" to ContractParameter.Type(SupportedContractType.MAP)
         )),
-        Contract("stopSession", mapOf())
+        Contract("stopSession", mapOf()),
+        Contract("reportAppFullyDisplayed", mapOf())
     )
 
     @Test

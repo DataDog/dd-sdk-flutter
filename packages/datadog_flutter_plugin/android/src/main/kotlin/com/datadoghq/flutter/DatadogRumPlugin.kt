@@ -118,6 +118,7 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
                 "stopView" -> stopView(call, result)
                 "addTiming" -> addTiming(call, result)
                 "addViewLoadingTime" -> addViewLoadingTime(call, result)
+                "reportAppFullyDisplayed" -> reportAppFullyDisplayed(call, result)
                 "startResource" -> startResource(call, result)
                 "stopResource" -> stopResource(call, result)
                 "stopResourceWithError" -> stopResourceWithError(call, result)
@@ -289,6 +290,11 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
         } else {
             result.missingParameter(call.method)
         }
+    }
+
+    private fun reportAppFullyDisplayed(call: MethodCall, result: Result) {
+        rum?.reportAppFullyDisplayed()
+        result.success(null)
     }
 
     private fun startResource(call: MethodCall, result: Result) {
