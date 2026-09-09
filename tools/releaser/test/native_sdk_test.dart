@@ -9,6 +9,7 @@ import 'package:test/test.dart';
 
 import 'package:releaser/native_sdk.dart';
 import 'package:releaser/trigger_context.dart';
+import 'package:releaser/version_bump.dart';
 
 const _iosPodspec = '''
 Pod::Spec.new do |s|
@@ -181,6 +182,104 @@ FetchContent_Declare(some_other_dep
 
     test('C++ is null with no content', () {
       expect(currentCppDeclaration(null), isNull);
+    });
+  });
+
+  group('normalizeVersion', () {
+    test('strips a CocoaPods constraint operator', () {
+      expect(normalizeVersion('~> 3.5.0'), '3.5.0');
+    });
+
+    test('pulls the version out of an SPM version argument', () {
+      expect(normalizeVersion('from: "3.0.0"'), '3.0.0');
+    });
+
+    test('is a no-op on an already-bare version', () {
+      expect(normalizeVersion('3.5.0'), '3.5.0');
+    });
+
+    test('null in, null out', () {
+      expect(normalizeVersion(null), isNull);
+    });
+
+    test('null when nothing semver-shaped is present', () {
+      expect(normalizeVersion('develop'), isNull);
+    });
+  });
+
+  group('nativeSdkImpliedBump', () {
+    NativeSdkDelta delta({String? currentDeclaration, String? targetVersion}) =>
+        NativeSdkDelta(
+          sdk: NativeSdk.ios,
+          targetVersion: targetVersion,
+          currentDeclaration: currentDeclaration,
+        );
+
+    test('a minor native SDK bump implies a minor bump', () {
+      expect(
+        nativeSdkImpliedBump(
+          delta(currentDeclaration: '3.10.0', targetVersion: '3.13.0'),
+        ),
+        VersionBumpType.minor,
+      );
+    });
+
+    test('a major native SDK bump implies a major bump', () {
+      expect(
+        nativeSdkImpliedBump(
+          delta(currentDeclaration: '3.10.0', targetVersion: '4.0.0'),
+        ),
+        VersionBumpType.major,
+      );
+    });
+
+    test('a patch-only native SDK bump implies a patch bump', () {
+      expect(
+        nativeSdkImpliedBump(
+          delta(currentDeclaration: '3.10.0', targetVersion: '3.10.5'),
+        ),
+        VersionBumpType.patch,
+      );
+    });
+
+    test('null with no target (no change this run)', () {
+      expect(nativeSdkImpliedBump(delta(currentDeclaration: '3.10.0')), isNull);
+    });
+
+    test('null with no resolvable current version (never pinned before)', () {
+      expect(nativeSdkImpliedBump(delta(targetVersion: '3.13.0')), isNull);
+    });
+
+    test('null when the target is not actually newer', () {
+      expect(
+        nativeSdkImpliedBump(
+          delta(currentDeclaration: '3.13.0', targetVersion: '3.13.0'),
+        ),
+        isNull,
+      );
+    });
+  });
+
+  group('nativeSdkAggregateBump', () {
+    test('the highest bump across multiple deltas wins', () {
+      final deltas = [
+        NativeSdkDelta(
+          sdk: NativeSdk.ios,
+          currentDeclaration: '3.10.0',
+          targetVersion: '3.10.5', // patch
+        ),
+        NativeSdkDelta(
+          sdk: NativeSdk.android,
+          currentDeclaration: '3.10.0',
+          targetVersion: '4.0.0', // major
+        ),
+      ];
+
+      expect(nativeSdkAggregateBump(deltas), VersionBumpType.major);
+    });
+
+    test('null when nothing implies a bump', () {
+      expect(nativeSdkAggregateBump(const []), isNull);
     });
   });
 

@@ -13,6 +13,24 @@ class ResolvedPr {
   String toString() => '#$number $title';
 }
 
+/// A PR's full title and body -- richer LLM input than a commit message or
+/// [ResolvedPr]'s bare title alone (see `llm/changelog.dart`). Fetched
+/// separately from resolution itself: most commits resolve to a PR number
+/// for free via the squash-merge suffix, but the LLM changelog pass needs
+/// the body too, which only a `gh pr view` call provides (see
+/// `GithubCommandWrapper.fetchPrDetails`).
+class PrDetails {
+  final int number;
+  final String title;
+  final String body;
+
+  const PrDetails({
+    required this.number,
+    required this.title,
+    required this.body,
+  });
+}
+
 /// GitHub's squash-merge suffix, appended to the commit subject: `... (#N)`.
 final _squashSuffixPattern = RegExp(r'^(?<title>.*)\(#(?<number>\d+)\)\s*$');
 

@@ -1,7 +1,7 @@
 {
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#988f98",
-        "activityBar.activeBorder": "#d7d787",
+        "activityBar.activeBorder": "#15202b",
         "activityBar.background": "#988f98",
         "activityBar.foreground": "#15202b",
         "activityBar.inactiveForeground": "#15202b99",
@@ -24,7 +24,8 @@
         "activityBarTop.inactiveForeground": "#15202b99",
         "commandCenter.foreground": "#e7e7e7",
         "statusBar.debuggingBackground": "#7f757f",
-        "statusBar.debuggingForeground": "#e7e7e7"
+        "statusBar.debuggingForeground": "#e7e7e7",
+        "activityBarTop.activeBorder": "#15202b"
     },
     "dart.analysisExcludedFolders": [
         ".fvm",

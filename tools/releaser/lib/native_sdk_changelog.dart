@@ -23,18 +23,6 @@ class ChangelogSection {
 /// sub-headings, which aren't version boundaries.
 final _headingPattern = RegExp(r'^#{1,2}\s*(?<version>\d+\.\d+\.\d+)\b');
 
-/// The first bare semver found in [declaration], or null.
-///
-/// Handles every real shape a native SDK pin is declared in: a CocoaPods
-/// constraint (`~> 3.5.0`), an SPM version argument (`from: "3.0.0"`), and
-/// a bare version (Android's `ext.datadog_version`, C++'s resolved
-/// `GIT_TAG`) -- all reduce to "pull out the semver", so one pattern
-/// covers them instead of a stripper per format.
-String? normalizeVersion(String? declaration) {
-  if (declaration == null) return null;
-  return RegExp(r'\d+\.\d+\.\d+').firstMatch(declaration)?.group(0);
-}
-
 /// Parses raw `CHANGELOG.md` content into ordered sections, newest first
 /// (the file's own order). Content before the first version heading (an
 /// `# Unreleased` section, if present) is dropped -- it isn't a resolved
@@ -160,3 +148,9 @@ Future<NativeSdkChangelogResult> resolveNativeSdkChangelog(
 
   return NativeSdkChangelogResult(sections: sliced);
 }
+
+/// A stable, browsable link to [sdk]'s full `CHANGELOG.md` -- `HEAD` lets
+/// GitHub resolve to whatever the repo's actual default branch is, without
+/// hardcoding it here.
+String nativeSdkChangelogUrl(NativeSdk sdk) =>
+    'https://github.com/${sdk.repoSlug}/blob/HEAD/CHANGELOG.md';

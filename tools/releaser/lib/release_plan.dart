@@ -565,9 +565,18 @@ PackagePlan _computeMainlinePlan(
   // With nothing auto-detected, this package is here because it was asked for
   // by name or a forced native SDK update is driving it -- still worth a
   // release, treated as a maintenance patch.
+  //
+  // A native SDK's own bump carries through even without a qualifying
+  // commit of the wrapper package's own -- a dd-sdk-ios minor release
+  // pinned here is itself a minor change for whoever depends on this
+  // package. An explicit BUMP_TYPE override still wins outright, since
+  // that's a human's direct instruction.
   final bump =
       VersionBumpType.parseOverride(ctx.bumpTypeOverride) ??
-      aggregateBumpLevel(commits) ??
+      highestBump([
+        aggregateBumpLevel(commits),
+        nativeSdkAggregateBump(nativeSdkDeltas),
+      ]) ??
       VersionBumpType.patch;
 
   return PackagePlan(

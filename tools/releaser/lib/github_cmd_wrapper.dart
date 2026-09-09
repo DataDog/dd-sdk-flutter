@@ -8,7 +8,7 @@ import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:logging/logging.dart';
 
-import 'pr_resolution.dart' show ResolvedPr;
+import 'pr_resolution.dart';
 import 'process_helper.dart';
 
 part 'github_cmd_wrapper.g.dart';
@@ -141,6 +141,32 @@ class GithubCommandWrapper {
     }
 
     return buffer.toString();
+  }
+
+  /// `gh pr view {number}`'s title + body -- the richer LLM input
+  /// `llm/changelog.dart`'s changelog pass needs, beyond what
+  /// [searchMergedPrBySha]/the squash-merge suffix already gives
+  /// [ResolvedPr] for free.
+  Future<PrDetails> fetchPrDetails(Logger logger, int number) async {
+    final buffer = StringBuffer();
+    final exitCode = await runProcess(
+      'gh',
+      ['pr', 'view', '$number', '--json', 'number,title,body'],
+      workingDirectory: cwd,
+      stdout: (line) => buffer.write(line),
+      stderr: (line) => logger.shout(line),
+    );
+
+    if (exitCode != 0) {
+      throw Exception('gh returned exit code $exitCode.');
+    }
+
+    final json = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+    return PrDetails(
+      number: json['number'] as int,
+      title: json['title'] as String,
+      body: json['body'] as String? ?? '',
+    );
   }
 
   /// `gh pr list --search "sha:{sha}"` -- the fallback `pr_resolution.dart`

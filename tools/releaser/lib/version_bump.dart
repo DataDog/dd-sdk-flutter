@@ -46,3 +46,15 @@ enum VersionBumpType {
     }
   }
 }
+
+/// The highest-severity bump among [bumps], ignoring nulls -- null if every
+/// entry is null. Used to combine independent bump signals (conventional
+/// commits, a native SDK version delta) into one overall bump level.
+VersionBumpType? highestBump(Iterable<VersionBumpType?> bumps) {
+  VersionBumpType? highest;
+  for (final bump in bumps) {
+    if (bump == null) continue;
+    if (highest == null || bump.severity > highest.severity) highest = bump;
+  }
+  return highest;
+}

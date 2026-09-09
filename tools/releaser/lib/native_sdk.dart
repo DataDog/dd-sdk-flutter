@@ -5,19 +5,22 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:version/version.dart';
 
 import 'cmake_util.dart';
 import 'trigger_context.dart';
+import 'version_bump.dart';
 
 /// A native SDK a Flutter package can depend on.
 enum NativeSdk {
-  ios(repoSlug: 'DataDog/dd-sdk-ios'),
-  android(repoSlug: 'DataDog/dd-sdk-android'),
-  cpp(repoSlug: 'DataDog/dd-sdk-cpp');
+  ios(repoSlug: 'DataDog/dd-sdk-ios', displayName: 'iOS'),
+  android(repoSlug: 'DataDog/dd-sdk-android', displayName: 'Android'),
+  cpp(repoSlug: 'DataDog/dd-sdk-cpp', displayName: 'C++');
 
   final String repoSlug;
+  final String displayName;
 
-  const NativeSdk({required this.repoSlug});
+  const NativeSdk({required this.repoSlug, required this.displayName});
 }
 
 /// Matches a podspec's `s.dependency 'Datadog...', '<constraint>'` lines.
@@ -161,15 +164,32 @@ String? currentCppDeclaration(String? cmakeListsContent) {
   return currentGitTag(cmakeListsContent);
 }
 
+/// The first bare semver found in [declaration], or null.
+///
+/// Handles every real shape a native SDK pin is declared in: a CocoaPods
+/// constraint (`~> 3.5.0`), an SPM version argument (`from: "3.0.0"`), and
+/// a bare version (Android's `ext.datadog_version`, C++'s resolved
+/// `GIT_TAG`) -- all reduce to "pull out the semver", so one pattern
+/// covers them instead of a stripper per format.
+String? normalizeVersion(String? declaration) {
+  if (declaration == null) return null;
+  return RegExp(r'\d+\.\d+\.\d+').firstMatch(declaration)?.group(0);
+}
+
 /// What one native SDK dependency of a package resolves to this run.
 ///
 /// [targetVersion]/[targetSha] are a *target*, not a diff: `develop` (and a
 /// long-lived pre-release branch) deliberately keeps its manifests on
 /// floating constraints (`~> 3`, `branch: "develop"`, `GIT_TAG develop`), and
-/// only the release-prep branch's copy is ever pinned. Planning decisions
-/// (eligibility, bump level) never compare against a "current" value for
-/// exactly that reason -- the plan just says what to pin to, and
-/// `prepare_release.dart` rewrites [files] to match.
+/// only the release-prep branch's copy is ever pinned. Eligibility never
+/// compares against a "current" value for exactly that reason -- whether a
+/// package ships is a commits/override question, not a native-SDK-drift
+/// question. Bump *level* is the one planning decision that does compare
+/// [currentDeclaration] against [targetVersion] -- see
+/// [nativeSdkAggregateBump] -- since a native SDK's own minor/major bump
+/// should carry through to the Flutter package wrapping it. The plan
+/// otherwise just says what to pin to, and `prepare_release.dart` rewrites
+/// [files] to match.
 ///
 /// [currentDeclaration] is purely informational, shown alongside
 /// [targetVersion]. Must be sourced from the last published version's git
@@ -213,6 +233,33 @@ class NativeSdkDelta {
         : '${sdk.name}: $from -> $targetVersion';
   }
 }
+
+/// The bump [delta] implies on its own -- e.g. dd-sdk-ios 3.15.0 -> 3.16.0
+/// implies at least a minor bump on the Flutter package wrapping it, with
+/// or without any qualifying commits of its own. Null when there's nothing
+/// to compare (no target, or no resolvable current version) or the target
+/// isn't actually newer.
+VersionBumpType? nativeSdkImpliedBump(NativeSdkDelta delta) {
+  final targetVersion = delta.targetVersion;
+  if (targetVersion == null) return null;
+
+  final fromRaw = normalizeVersion(delta.currentDeclaration);
+  if (fromRaw == null) return null;
+  final toRaw = normalizeVersion(targetVersion);
+  if (toRaw == null) return null;
+
+  final from = Version.parse(fromRaw);
+  final to = Version.parse(toRaw);
+  if (to <= from) return null;
+  if (to.major != from.major) return VersionBumpType.major;
+  if (to.minor != from.minor) return VersionBumpType.minor;
+  if (to.patch != from.patch) return VersionBumpType.patch;
+  return null;
+}
+
+/// The highest bump implied across [deltas] -- see [nativeSdkImpliedBump].
+VersionBumpType? nativeSdkAggregateBump(List<NativeSdkDelta> deltas) =>
+    highestBump(deltas.map(nativeSdkImpliedBump));
 
 /// The network calls native SDK resolution needs -- bundled so callers
 /// (`release_plan.dart`) don't thread three separate function parameters

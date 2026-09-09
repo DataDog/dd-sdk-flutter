@@ -113,14 +113,5 @@ class ConventionalCommit {
 
 /// The highest-severity bump implied by [commits] (major > minor > patch),
 /// or null if none of them carry semver weight.
-VersionBumpType? aggregateBumpLevel(Iterable<ConventionalCommit> commits) {
-  VersionBumpType? highest;
-  for (final commit in commits) {
-    final bump = commit.bumpType;
-    if (bump == null) continue;
-    if (highest == null || bump.severity > highest.severity) {
-      highest = bump;
-    }
-  }
-  return highest;
-}
+VersionBumpType? aggregateBumpLevel(Iterable<ConventionalCommit> commits) =>
+    highestBump(commits.map((c) => c.bumpType));

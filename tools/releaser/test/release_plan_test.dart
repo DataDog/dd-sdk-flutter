@@ -566,6 +566,40 @@ void main() {
       // working tree's current floating '~> 3'.
       expect(delta.currentDeclaration, '3.10.0');
     });
+
+    test('a minor native SDK bump escalates the package bump level even with '
+        'no qualifying commits of its own', () async {
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+            'datadog_flutter_plugin_ios.podspec',
+        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+      );
+      await fixture.commit('chore: pin for the 3.10.0 release');
+      await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
+
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+        'datadog_flutter_plugin_ios.podspec',
+        _iosPodspecWithDatadogDependency, // floats again, back to '~> 3'
+      );
+      await fixture.commit('chore: float the constraint again post-release');
+
+      final result = await plan(
+        mainlineCtx(requestedPackages: ['datadog_flutter_plugin_ios']),
+        published: {
+          'datadog_flutter_plugin_ios': ['3.10.0'],
+        },
+        fetchLatestNativeSdkVersion: (repoSlug) async => '3.13.0',
+      );
+
+      final packagePlan = result.packages.single;
+      // Nothing here is a qualifying commit (both are chores) -- absent
+      // the native SDK bump this would fall back to a patch, per
+      // _computeMainlinePlan's "explicitly requested with nothing
+      // detected" case.
+      expect(packagePlan.bumpLevel, VersionBumpType.minor);
+      expect(packagePlan.newVersion, '3.11.0');
+    });
   });
 
   group('missing tag for a published version', () {
