@@ -6,8 +6,8 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:logging/logging.dart';
+import 'package:releaser/git/git_dir.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
-import 'package:releaser/helpers.dart';
 import 'package:releaser/native_sdk_changelog.dart';
 import 'package:releaser/pr_resolution.dart';
 import 'package:releaser/release_plan.dart';

@@ -1,84 +1,33 @@
 import 'dart:io';
 
 import 'package:logging/logging.dart';
-import 'package:path/path.dart' as path;
 
-import 'command.dart';
 import 'helpers.dart';
-import 'package_list.dart';
 
-class UpdateGradleFilesCommand extends Command {
-  static const versionPrefix = 'ext.datadog_version';
-  final versionRegex = RegExp('$versionPrefix = "(.*)"');
+/// Matches a `build.gradle`'s `ext.datadog_version = "..."` assignment --
+/// mirrors `native_sdk.dart`'s private matcher of the same shape, kept
+/// separate deliberately (see `cocoapod_util.dart`'s equivalent note).
+final _androidGradleVersionRewritePattern = RegExp(
+  r'(?<prefix>ext\.datadog_version\s*=\s*")(?<version>[^"]+)(?<suffix>".*)',
+);
 
-  @override
-  Future<bool> run(CommandArguments args, Logger logger) async {
-    if (!await _updateGradleFiles(args, logger)) {
-      return false;
-    }
+/// Rewrites [gradleFile]'s `ext.datadog_version` assignment to pin at
+/// [targetVersion] -- usable directly against any package's
+/// `build.gradle` rather than only a hardcoded list.
+Future<void> pinAndroidGradleVersion(
+  File gradleFile,
+  String targetVersion,
+  Logger logger,
+  bool dryRun,
+) async {
+  logger.info(
+    'ℹ️ Pinning dd-sdk-android to $targetVersion in ${gradleFile.path}',
+  );
 
-    return true;
-  }
-
-  Future<bool> _updateGradleFiles(CommandArguments args, Logger logger) async {
-    for (var filePath in gradleList) {
-      final file = File(path.join(args.gitDir.path, filePath));
-      if (!file.existsSync()) {
-        logger.shout('❌ Could not find file $filePath');
-        return false;
-      }
-
-      // IF we see a maven block, hold onto it until we know if it's
-      // one we want to keep or remove
-      final mavenBlock = StringBuffer();
-      bool inMavenBlock = false;
-      bool writeMavenBlock = true;
-      await transformFile(file, logger, args.dryRun, (line) {
-        // For the datadog_flutter_plugin, use a tighter constraint
-        if (file.path.contains('datadog_flutter_plugin')) {
-          final versionMatch = versionRegex.firstMatch(line);
-          if (versionMatch != null) {
-            final oldVersion = versionMatch.group(1);
-            line = line.replaceFirst(
-              '$versionPrefix = "$oldVersion"',
-              '$versionPrefix = "${args.androidRelease}"',
-            );
-          }
-        }
-
-        // Remove requests for external gradle files
-        if (line.contains("apply from: '../")) return null;
-
-        if (line.contains('maven ')) {
-          inMavenBlock = true;
-        }
-
-        if (inMavenBlock) {
-          mavenBlock.writeln(line);
-          if (line.contains('url') && line.contains('/maven-snapshots/')) {
-            // this is a request for a snapshots maven repo. Don't write it to the final file
-            writeMavenBlock = false;
-          }
-          if (line.contains('}')) {
-            String? returnLine;
-            inMavenBlock = false;
-            if (writeMavenBlock) {
-              returnLine = mavenBlock.toString();
-            }
-
-            // Reset to default values
-            mavenBlock.clear();
-            writeMavenBlock = true;
-
-            return returnLine;
-          }
-          return null;
-        }
-
-        return line;
-      });
-    }
-
-    return true;
-  }
+  await transformFile(gradleFile, logger, dryRun, (line) {
+    final match = _androidGradleVersionRewritePattern.firstMatch(line);
+    if (match == null) return line;
+    return '${match.namedGroup('prefix')}$targetVersion'
+        '${match.namedGroup('suffix')}';
+  });
 }
