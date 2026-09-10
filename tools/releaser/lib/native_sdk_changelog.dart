@@ -132,16 +132,20 @@ Future<NativeSdkChangelogResult> resolveNativeSdkChangelog(
     );
   }
 
+  // A C++ target is a tag like `v1.4.0`, but `parseChangelog` records bare
+  // `1.4.0` headings -- normalize so `sectionsBetween` can find it.
+  final toVersion = normalizeVersion(targetVersion) ?? targetVersion;
+
   final sections = await fetchChangelog(sdk.repoSlug);
   final sliced = sectionsBetween(
     sections,
     fromVersion: fromVersion,
-    toVersion: targetVersion,
+    toVersion: toVersion,
   );
   if (sliced == null) {
     return NativeSdkChangelogResult(
       warning:
-          '${sdk.name}: could not find $fromVersion and/or $targetVersion '
+          '${sdk.name}: could not find $fromVersion and/or $toVersion '
           'in CHANGELOG.md -- skipping changelog.',
     );
   }

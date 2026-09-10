@@ -264,6 +264,18 @@ Future<PackagePlan?> _computePackagePlan(
   final Version? commitBase;
   final warnings = <String>[];
 
+  final files = resolveNativeDependencyFiles(pkg.absolutePath(ctx.repoRoot));
+
+  // See [_nativeSdkEligibleGroupKey]. Non-eligible packages' files are
+  // still discovered, for [_nativeDependencyChanges] below.
+  final isNativeSdkEligible = pkg.groupKey == _nativeSdkEligibleGroupKey;
+
+  // Resolved early only for a pre-release run, which needs the native SDK
+  // signal to compute its target below -- see [_prereleaseTarget]. Other
+  // triggers resolve it after the "does this package release at all" check,
+  // to avoid the network cost when there's nothing to ship.
+  List<NativeSdkDelta>? nativeSdkDeltas;
+
   switch (ctx.trigger) {
     case TriggerContext.mainline:
       final latestPrerelease = published.latest;
@@ -294,7 +306,23 @@ Future<PackagePlan?> _computePackagePlan(
         );
       }
     case TriggerContext.preRelease:
-      final target = await _prereleaseTarget(pkg, published, gitDir, warnings);
+      nativeSdkDeltas = isNativeSdkEligible
+          ? await _computeNativeSdkDeltas(
+              pkg,
+              files,
+              ctx,
+              gitDir,
+              published,
+              gateways,
+            )
+          : const <NativeSdkDelta>[];
+      final target = await _prereleaseTarget(
+        pkg,
+        published,
+        gitDir,
+        warnings,
+        nativeSdkDeltas,
+      );
       versionBase = target;
       // Scoped to the target's own line. The global newest release is the
       // wrong answer here: a concurrent pre-release effort (a `v5` branch
@@ -321,12 +349,6 @@ Future<PackagePlan?> _computePackagePlan(
     sinceSha: sinceSha,
   );
 
-  final files = resolveNativeDependencyFiles(pkg.absolutePath(ctx.repoRoot));
-
-  // See [_nativeSdkEligibleGroupKey]. Non-eligible packages' files are
-  // still discovered, for [_nativeDependencyChanges] below.
-  final isNativeSdkEligible = pkg.groupKey == _nativeSdkEligibleGroupKey;
-
   // Whether this package releases at all is decided before anything touches
   // the network -- resolving native SDK targets for a package with nothing to
   // ship is pure waste.
@@ -340,7 +362,9 @@ Future<PackagePlan?> _computePackagePlan(
     return null;
   }
 
-  final nativeSdkDeltas = isNativeSdkEligible
+  // A pre-release run already resolved this above, to feed its target
+  // computation -- see [_prereleaseTarget].
+  nativeSdkDeltas ??= isNativeSdkEligible
       ? await _computeNativeSdkDeltas(
           pkg,
           files,
@@ -408,11 +432,18 @@ Future<PackagePlan?> _computePackagePlan(
 ///
 /// A package with no stable release takes `pubspec.yaml`'s version, which for
 /// something never published is the only declaration of what it's aiming at.
+///
+/// [nativeSdkDeltas] folds in the same native-SDK bump signal a stable
+/// release's mainline plan uses (see [_computeMainlinePlan]) -- otherwise a
+/// wrapper package sitting on a patch-only commit set but pinning a major
+/// native SDK bump would compute a prerelease target one line below where
+/// the eventual stable release lands.
 Future<Version> _prereleaseTarget(
   DiscoveredPackage pkg,
   PublishedVersions published,
   GitDir gitDir,
   List<String> warnings,
+  List<NativeSdkDelta> nativeSdkDeltas,
 ) async {
   final stableBase = published.latestStable;
   if (stableBase == null) return Version.parse(pkg.version);
@@ -427,13 +458,17 @@ Future<Version> _prereleaseTarget(
     if (!warnings.contains(warning)) warnings.add(warning);
   }
 
-  final bump = aggregateBumpLevel(
+  final commitBump = aggregateBumpLevel(
     await _conventionalCommitsSince(
       gitDir,
       pathspec: pkg.relativePath,
       sinceSha: sinceSha,
     ),
   );
+  final bump = highestBump([
+    commitBump,
+    nativeSdkAggregateBump(nativeSdkDeltas),
+  ]);
 
   // Nothing since the last stable carries semver weight -- this package is
   // only here because it was named or a native SDK override is driving it, so

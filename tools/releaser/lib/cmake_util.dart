@@ -18,6 +18,11 @@ final _gitTagPattern = RegExp(r'(?<prefix>GIT_TAG\s+)(?<ref>[\w./-]+)');
 /// and so a `#`-commented mention of `GIT_TAG` can't be mistaken for the pin.
 final _trailingCommentPattern = RegExp(r'\s*#.*$');
 
+/// Captures the text of a trailing `# ...` comment -- see
+/// [currentGitTagVersion], which reads it back as the tag [pinCppVersion]
+/// annotated a pinned SHA with.
+final _trailingCommentCapturePattern = RegExp(r'#\s*(?<comment>\S+)');
+
 final _ddSdkCppDeclareStartPattern = RegExp(
   r'FetchContent_Declare\(\s*dd-sdk-cpp\b',
 );
@@ -85,6 +90,28 @@ String? currentGitTag(String cmakeListsContent) {
       line.replaceFirst(_trailingCommentPattern, ''),
     );
     if (match != null) return match.namedGroup('ref');
+  }
+  return null;
+}
+
+/// The dd-sdk-cpp version [cmakeListsContent] is currently pinned to, for
+/// comparing against a resolved target -- unlike [currentGitTag], which
+/// returns the raw `GIT_TAG` ref. Once a package has gone through
+/// [pinCppVersion], that ref is a commit SHA and the actual version (e.g.
+/// `v1.4.0`) only survives as the trailing `# v1.4.0` comment [pinCppVersion]
+/// writes alongside it, so this prefers that annotation and falls back to
+/// the bare ref (a floating `develop`, or a tag with no annotation yet).
+String? currentGitTagVersion(String cmakeListsContent) {
+  final scanner = _DdSdkCppBlockScanner();
+  for (final line in cmakeListsContent.split('\n')) {
+    if (!scanner.accept(line)) continue;
+    final bare = line.replaceFirst(_trailingCommentPattern, '');
+    final match = _gitTagPattern.firstMatch(bare);
+    if (match == null) continue;
+    final comment = _trailingCommentCapturePattern
+        .firstMatch(line)
+        ?.namedGroup('comment');
+    return comment ?? match.namedGroup('ref');
   }
   return null;
 }

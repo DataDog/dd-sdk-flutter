@@ -158,10 +158,13 @@ String? currentAndroidDeclaration(String? gradleContent) {
       ?.namedGroup('version');
 }
 
-/// The dd-sdk-cpp `GIT_TAG` declared in [cmakeListsContent], or null.
+/// The dd-sdk-cpp version declared in [cmakeListsContent], or null. Reads
+/// [currentGitTagVersion] rather than the raw ref, since a previously-pinned
+/// package's `GIT_TAG` is a commit SHA whose version only survives in its
+/// trailing `# <tag>` annotation -- see [currentGitTagVersion].
 String? currentCppDeclaration(String? cmakeListsContent) {
   if (cmakeListsContent == null) return null;
-  return currentGitTag(cmakeListsContent);
+  return currentGitTagVersion(cmakeListsContent);
 }
 
 /// The first bare semver found in [declaration], or null.
