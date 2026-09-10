@@ -22,8 +22,9 @@ class RemoveDependencyOverridesCommand extends Command {
       }
 
       await _removeDependencyOverrides(logger, pubspecFile, args.dryRun);
-      final examplePubspec =
-          File(path.join(packageRoot, 'example', 'pubspec.yaml'));
+      final examplePubspec = File(
+        path.join(packageRoot, 'example', 'pubspec.yaml'),
+      );
       if (await examplePubspec.exists()) {
         await _removeDependencyOverrides(logger, examplePubspec, args.dryRun);
       }

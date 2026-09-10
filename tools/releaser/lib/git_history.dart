@@ -36,6 +36,25 @@ Future<String?> tagSha(GitDir gitDir, String tagName) async {
   return sha.isEmpty ? null : sha;
 }
 
+/// [relativePath]'s content as it existed at the commit tagged [tagName], or
+/// null if the tag can't be resolved (see [tagSha]) or the file didn't
+/// exist at that commit.
+Future<String?> fileContentAtTag(
+  GitDir gitDir,
+  String tagName,
+  String relativePath,
+) async {
+  final sha = await tagSha(gitDir, tagName);
+  if (sha == null) return null;
+
+  final result = await gitDir.runCommand([
+    'show',
+    '$sha:$relativePath',
+  ], throwOnError: false);
+
+  return result.exitCode == 0 ? result.stdout as String : null;
+}
+
 /// Full commit messages (subject + body/footers) touching [pathspec], from
 /// just after [sinceSha] through HEAD. A null [sinceSha] walks the entire
 /// history of [pathspec] -- the "since inception" case for a package that has

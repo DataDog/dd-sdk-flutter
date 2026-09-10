@@ -22,22 +22,21 @@ Future<int> main(List<String> arguments) async {
     print(event.message);
   });
 
-  final argParser =
-      ArgParser()
-        ..addOption('version', abbr: 'v')
-        ..addOption(
-          'platform',
-          abbr: 'p',
-          allowed: ['ios', 'android'],
-          mandatory: true,
-        )
-        ..addOption('package', mandatory: true)
-        ..addFlag(
-          'remove',
-          abbr: 'r',
-          help: 'Remove the version pin and set back to develop / snapshots',
-          negatable: false,
-        );
+  final argParser = ArgParser()
+    ..addOption('version', abbr: 'v')
+    ..addOption(
+      'platform',
+      abbr: 'p',
+      allowed: ['ios', 'android'],
+      mandatory: true,
+    )
+    ..addOption('package', mandatory: true)
+    ..addFlag(
+      'remove',
+      abbr: 'r',
+      help: 'Remove the version pin and set back to develop / snapshots',
+      negatable: false,
+    );
 
   ArgResults argResults;
   try {
@@ -82,8 +81,9 @@ Future<int> _pinIOS(GitDir gitDir, String package, String? version) async {
     r"(?<ws>\s+)pod '(?<dependency>.+)', :git => '(?<git>[^']*?)', :(?<overrideType>\w+) => '(?<override>[^']*?)'",
   );
 
-  final podVersionString =
-      version != null ? ":tag => '$version'" : ":branch => 'develop'";
+  final podVersionString = version != null
+      ? ":tag => '$version'"
+      : ":branch => 'develop'";
   final podFile = 'packages/$package/example/ios/Podfile';
 
   final file = File(path.join(gitDir.path, podFile));
@@ -111,8 +111,9 @@ Future<int> _pinIOS(GitDir gitDir, String package, String? version) async {
     return line;
   });
 
-  final spmVersionString =
-      version != null ? 'exact: "$version"' : 'branch: "develop"';
+  final spmVersionString = version != null
+      ? 'exact: "$version"'
+      : 'branch: "develop"';
   await PinSwiftPackageVersion.pinSpmVersion(
     gitDir.path,
     package,

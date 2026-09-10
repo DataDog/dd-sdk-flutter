@@ -19,8 +19,9 @@ class PinSwiftPackageVersion extends Command {
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
     // Other packages can keep looser version constraints
-    final corePacakge = args.packages
-        .firstWhereOrNull((e) => e.name == 'datadog_flutter_plugin');
+    final corePacakge = args.packages.firstWhereOrNull(
+      (e) => e.name == 'datadog_flutter_plugin',
+    );
     if (corePacakge != null) {
       if (!await _pinSpmVersion(args, corePacakge, logger)) {
         return false;
@@ -31,7 +32,10 @@ class PinSwiftPackageVersion extends Command {
   }
 
   Future<bool> _pinSpmVersion(
-      CommandArguments args, PackageRelease package, Logger logger) {
+    CommandArguments args,
+    PackageRelease package,
+    Logger logger,
+  ) {
     return pinSpmVersion(
       args.gitDir.path,
       package.name,

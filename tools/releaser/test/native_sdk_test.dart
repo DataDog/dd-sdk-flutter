@@ -143,6 +143,47 @@ FetchContent_Declare(some_other_dep
     );
   });
 
+  group('current*Declaration -- display strings, not resolvable versions', () {
+    // Pure content-parsing functions -- no filesystem needed. The caller
+    // (release_plan.dart) is responsible for sourcing that content from a
+    // past release's git history, not the working tree; see
+    // NativeSdkDelta.currentDeclaration.
+
+    test('iOS prefers the podspec constraint over Package.swift', () {
+      expect(
+        currentIosDeclaration(
+          podspecContent: _iosPodspec,
+          spmContent: _packageSwift,
+        ),
+        '~> 3',
+      );
+    });
+
+    test('iOS falls back to the Package.swift version arg with no podspec', () {
+      expect(currentIosDeclaration(spmContent: _packageSwift), 'from: "3.0.0"');
+    });
+
+    test('iOS is null with neither content', () {
+      expect(currentIosDeclaration(), isNull);
+    });
+
+    test('Android reads the current ext.datadog_version verbatim', () {
+      expect(currentAndroidDeclaration(_androidGradle), '3.11.0');
+    });
+
+    test('Android is null with no content', () {
+      expect(currentAndroidDeclaration(null), isNull);
+    });
+
+    test('C++ reads the floating GIT_TAG as-is, not resolved to a version', () {
+      expect(currentCppDeclaration(_windowsCMakeLists), 'develop');
+    });
+
+    test('C++ is null with no content', () {
+      expect(currentCppDeclaration(null), isNull);
+    });
+  });
+
   group('resolveNativeSdkTarget', () {
     test(
       'an explicit override wins once confirmed to be a real release',

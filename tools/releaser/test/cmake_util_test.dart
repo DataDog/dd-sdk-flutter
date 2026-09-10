@@ -158,4 +158,42 @@ FetchContent_MakeAvailable(dd-sdk-cpp)
     expect(contents, contains('cmake_minimum_required(VERSION 3.14)'));
     expect(contents, contains('FetchContent_MakeAvailable(dd-sdk-cpp)'));
   });
+
+  group('currentGitTag', () {
+    test('reads the floating ref as-is', () {
+      expect(
+        currentGitTag('''
+FetchContent_Declare(dd-sdk-cpp
+  GIT_REPOSITORY https://github.com/DataDog/dd-sdk-cpp.git
+  GIT_TAG        develop)
+'''),
+        'develop',
+      );
+    });
+
+    test('reads a previously-pinned SHA, ignoring its trailing comment', () {
+      expect(
+        currentGitTag('''
+FetchContent_Declare(dd-sdk-cpp
+  GIT_REPOSITORY https://github.com/DataDog/dd-sdk-cpp.git
+  GIT_TAG        $_sha)  # v1.4.0
+'''),
+        _sha,
+      );
+    });
+
+    test('is null with no dd-sdk-cpp declaration at all', () {
+      expect(currentGitTag('cmake_minimum_required(VERSION 3.14)'), isNull);
+    });
+
+    test("ignores another dependency's GIT_TAG outside the block", () {
+      expect(
+        currentGitTag('''
+FetchContent_Declare(some_other_dep
+  GIT_TAG v9.9.9)
+'''),
+        isNull,
+      );
+    });
+  });
 }

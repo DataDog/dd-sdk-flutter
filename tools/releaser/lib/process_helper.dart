@@ -7,27 +7,33 @@ import 'dart:io';
 
 typedef OutputPipeHandler = void Function(String line);
 
-Future<int> runProcess(String executable, List<String> args,
-    {String? workingDirectory,
-    OutputPipeHandler? stdout,
-    OutputPipeHandler? stderr}) async {
-  var process =
-      await Process.start(executable, args, workingDirectory: workingDirectory);
+Future<int> runProcess(
+  String executable,
+  List<String> args, {
+  String? workingDirectory,
+  OutputPipeHandler? stdout,
+  OutputPipeHandler? stderr,
+}) async {
+  var process = await Process.start(
+    executable,
+    args,
+    workingDirectory: workingDirectory,
+  );
   if (stdout != null) {
     process.stdout
         .transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen((event) {
-      stdout(event);
-    });
+          stdout(event);
+        });
   }
   if (stderr != null) {
     process.stderr
         .transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen((event) {
-      stderr(event);
-    });
+          stderr(event);
+        });
   }
 
   return await process.exitCode;

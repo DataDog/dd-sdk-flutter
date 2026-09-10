@@ -70,6 +70,7 @@ void main() {
 
   RunContext mainlineCtx({
     List<String> requestedPackages = const [],
+    bool includeFederated = false,
     String? bumpTypeOverride,
     String? iosSdkVersionOverride,
     String? cppVersionOverride,
@@ -78,6 +79,7 @@ void main() {
     trigger: TriggerContext.mainline,
     currentBranch: 'develop',
     requestedPackages: requestedPackages,
+    includeFederated: includeFederated,
     bumpTypeOverride: bumpTypeOverride,
     iosSdkVersionOverride: iosSdkVersionOverride,
     cppVersionOverride: cppVersionOverride,
@@ -119,27 +121,55 @@ void main() {
       expect(result.packages.single.currentVersion, '2.3.0');
     });
 
-    test(
-      'a package with only pre-releases published reports no bump level',
-      () async {
-        // datadog_session_replay's real shape: 14 previews, never a stable
-        // release. The version comes from pubspec untouched, so reporting the
-        // commits' `major` aggregate would misdescribe what happened.
-        fixture.writeFile('packages/datadog_dio/CHANGES', 'work');
-        await fixture.commit('feat!: breaking work');
+    test('a package with only pre-releases published promotes to the base '
+        'version its pre-releases already declared, not pubspec', () async {
+      // datadog_session_replay's real shape: 14 previews, never a stable
+      // release, with pubspec left at a stale-looking 2.3.0. A
+      // "1.0.0-preview.2" is already announcing "1.0.0" -- promoting it
+      // takes that triple regardless of how much feature work happened
+      // during the preview, not pubspec, which is exactly the kind of
+      // second source of truth this planner exists to stop trusting once
+      // pub.dev has real history for a package.
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'work');
+      await fixture.commit('feat!: breaking work');
 
-        final result = await plan(
-          mainlineCtx(requestedPackages: ['datadog_dio']),
-          published: {
-            'datadog_dio': ['1.0.0-preview.1', '1.0.0-preview.2'],
-          },
-        );
+      final result = await plan(
+        mainlineCtx(requestedPackages: ['datadog_dio']),
+        published: {
+          'datadog_dio': ['1.0.0-preview.1', '1.0.0-preview.2'],
+        },
+      );
 
-        expect(result.packages.single.newVersion, '2.3.0'); // pubspec
-        expect(result.packages.single.currentVersion, '1.0.0-preview.2');
-        expect(result.packages.single.bumpLevel, isNull);
-      },
-    );
+      expect(result.packages.single.newVersion, '1.0.0');
+      expect(result.packages.single.currentVersion, '1.0.0-preview.2');
+      expect(result.packages.single.bumpLevel, isNull);
+    });
+
+    test('promotion measures new commits from the last pre-release, not the '
+        'whole package history', () async {
+      // Work already shipped in the preview shouldn't resurface in the
+      // promotion's changelog just because there's no stable tag yet for
+      // the commit range to stop at.
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'preview work');
+      await fixture.commit('fix: work included in the preview');
+      await fixture.tag('datadog_dio/v1.0.0-preview.2');
+
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'more work');
+      await fixture.commit('fix: a fix after the last preview');
+
+      final result = await plan(
+        mainlineCtx(requestedPackages: ['datadog_dio']),
+        published: {
+          'datadog_dio': ['1.0.0-preview.1', '1.0.0-preview.2'],
+        },
+      );
+
+      expect(result.packages.single.newVersion, '1.0.0');
+      expect(
+        result.packages.single.contributingCommits.map((c) => c.description),
+        ['a fix after the last preview'],
+      );
+    });
 
     test('a published pre-release is not mainline\'s baseline', () async {
       // A v4 line published betas, then merged back. Mainline computes from
@@ -165,6 +195,71 @@ void main() {
   });
 
   group('mainline, package selection', () {
+    test('--include-federated widens selection to the whole group, but '
+        'siblings still need their own eligibility', () async {
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_android/'
+            'CHANGES',
+        'a fix',
+      );
+      await fixture.commit('fix: something in the android impl');
+
+      final result = await plan(
+        mainlineCtx(
+          requestedPackages: ['datadog_flutter_plugin'],
+          includeFederated: true,
+        ),
+      );
+      final names = result.packages.map((e) => e.package.name).toSet();
+
+      expect(names, contains('datadog_flutter_plugin')); // named explicitly
+      expect(names, contains('datadog_flutter_plugin_android')); // has a fix
+      expect(
+        names,
+        isNot(contains('datadog_flutter_plugin_web')),
+      ); // nothing to ship
+      expect(names, isNot(contains('datadog_dio'))); // outside the group
+    });
+
+    test('without --include-federated, a sibling with qualifying commits is '
+        'not swept in', () async {
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_android/'
+            'CHANGES',
+        'a fix',
+      );
+      await fixture.commit('fix: something in the android impl');
+
+      final result = await plan(
+        mainlineCtx(requestedPackages: ['datadog_flutter_plugin']),
+      );
+
+      expect(result.packages.map((e) => e.package.name), [
+        'datadog_flutter_plugin',
+      ]);
+    });
+
+    test(
+      '--include-federated is a no-op for a non-federated package',
+      () async {
+        await fixture.tag('datadog_dio/v2.2.0');
+        fixture.writeFile('packages/datadog_dio/CHANGES', 'work');
+        await fixture.commit('feat: something new');
+
+        final result = await plan(
+          mainlineCtx(
+            requestedPackages: ['datadog_dio'],
+            includeFederated: true,
+          ),
+          published: {
+            'datadog_dio': ['2.2.0'],
+          },
+        );
+
+        expect(result.packages.map((e) => e.package.name), ['datadog_dio']);
+      },
+    );
+
     test('--all excludes packages with no qualifying commits', () async {
       await fixture.tag('datadog_dio/v2.2.0');
       fixture.writeFile('packages/datadog_dio/CHANGES', 'a real feature');
@@ -213,6 +308,144 @@ void main() {
         expect(names, isNot(contains('datadog_dio')));
       },
     );
+
+    test(
+      'a non-federated package with a matching dependency file still gets '
+      'no native SDK handling at all -- only the flagship group does',
+      () async {
+        // datadog_webview_tracking and datadog_inappwebview_tracking are the
+        // real shape this guards against: a loose Datadog pod/gradle
+        // dependency in a package that should keep it loose, not have this
+        // tooling start resolving and pinning it just because the file
+        // happens to match the same pattern the flagship group uses.
+        fixture.writeFile(
+          'packages/datadog_dio/ios/datadog_dio.podspec',
+          _iosPodspecWithDatadogDependency,
+        );
+        await fixture.commit(
+          'chore: add a podspec fixture to a non-federated package',
+        );
+
+        final result = await plan(
+          mainlineCtx(
+            requestedPackages: ['datadog_dio'],
+            iosSdkVersionOverride: '3.12.0',
+          ),
+        );
+
+        // Explicitly requested, so it still appears in the plan -- just
+        // with nothing native-SDK-related resolved for it. An
+        // IOS_SDK_VERSION override must not be able to sweep it in either
+        // (unlike the flagship group, where the test above confirms it can).
+        expect(result.packages.single.nativeSdkDeltas, isEmpty);
+        // Never published, so there's nothing to compare against -- no
+        // drift warning either. See the dedicated group below for the case
+        // where a past release exists.
+        expect(result.packages.single.warnings, isEmpty);
+      },
+    );
+  });
+
+  group('native dependency changes (non-federated packages)', () {
+    test(
+      'reports a constraint that changed since the package\'s last release',
+      () async {
+        // datadog_webview_tracking's real shape: hand-edited from '~> 3' to
+        // '~> 3.15' to pick up a new dd-sdk-ios feature, with no release
+        // tooling involved.
+        fixture.writeFile(
+          'packages/datadog_dio/ios/datadog_dio.podspec',
+          _iosPodspecWithDatadogDependency, // '~> 3'
+        );
+        await fixture.commit('chore: pin for the 2.2.0 release');
+        await fixture.tag('datadog_dio/v2.2.0');
+
+        fixture.writeFile(
+          'packages/datadog_dio/ios/datadog_dio.podspec',
+          "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '~> 3.15'\nend\n",
+        );
+        await fixture.commit('feat: pick up a new dd-sdk-ios feature');
+
+        final result = await plan(
+          mainlineCtx(requestedPackages: ['datadog_dio']),
+          published: {
+            'datadog_dio': ['2.2.0'],
+          },
+        );
+
+        expect(result.packages.single.nativeSdkDeltas, isEmpty);
+        expect(result.packages.single.warnings, isEmpty);
+
+        final change = result.packages.single.nativeDependencyChanges.single;
+        expect(change.sdk, NativeSdk.ios);
+        expect(change.previous, '~> 3');
+        expect(change.current, '~> 3.15');
+      },
+    );
+
+    test('nothing reported when the constraint has not changed', () async {
+      fixture.writeFile(
+        'packages/datadog_dio/ios/datadog_dio.podspec',
+        _iosPodspecWithDatadogDependency,
+      );
+      await fixture.commit('chore: pin for the 2.2.0 release');
+      await fixture.tag('datadog_dio/v2.2.0');
+
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'unrelated work');
+      await fixture.commit('fix: something unrelated to the native dependency');
+
+      final result = await plan(
+        mainlineCtx(),
+        published: {
+          'datadog_dio': ['2.2.0'],
+        },
+      );
+
+      expect(result.packages.single.nativeDependencyChanges, isEmpty);
+    });
+
+    test(
+      'nothing reported for a package that has never been published',
+      () async {
+        fixture.writeFile(
+          'packages/datadog_dio/ios/datadog_dio.podspec',
+          _iosPodspecWithDatadogDependency,
+        );
+        await fixture.commit(
+          'feat: the first release, with a native dependency',
+        );
+
+        final result = await plan(
+          mainlineCtx(requestedPackages: ['datadog_dio']),
+        );
+
+        // Nothing to compare against -- not evidence of a change.
+        expect(result.packages.single.nativeDependencyChanges, isEmpty);
+      },
+    );
+
+    test(
+      'nothing reported when the last published version has no tag to read',
+      () async {
+        // datadog_session_replay's real shape: pub.dev knows 1.0.0-preview.14
+        // but no tag was ever pushed for it, so there is nothing reliable to
+        // compare the working tree against.
+        fixture.writeFile(
+          'packages/datadog_dio/ios/datadog_dio.podspec',
+          _iosPodspecWithDatadogDependency,
+        );
+        await fixture.commit('fix: something');
+
+        final result = await plan(
+          mainlineCtx(requestedPackages: ['datadog_dio']),
+          published: {
+            'datadog_dio': ['1.0.0-preview.1', '1.0.0-preview.2'],
+          },
+        );
+
+        expect(result.packages.single.nativeDependencyChanges, isEmpty);
+      },
+    );
   });
 
   group('mainline, native SDK deltas', () {
@@ -239,6 +472,11 @@ void main() {
         final delta = result.packages.single.nativeSdkDeltas.single;
         expect(delta.sdk, NativeSdk.ios);
         expect(delta.targetVersion, '3.13.0');
+        // Never published, so there's no past release to read a "current"
+        // declaration from -- the live '~> 3' fixture podspec above must
+        // NOT leak in here as if it were evidence of one. See the
+        // dedicated group below for the case where a past release exists.
+        expect(delta.currentDeclaration, isNull);
       },
     );
 
@@ -291,6 +529,42 @@ void main() {
       final delta = result.packages.single.nativeSdkDeltas.single;
       expect(delta.targetVersion, 'v1.4.0');
       expect(delta.targetSha, 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2');
+    });
+
+    test('the current declaration comes from the last published tag, not the '
+        'working tree', () async {
+      // Simulates a real release: DatadogCore was pinned to exactly
+      // 3.10.0 when v3.10.0 was tagged and published, then development
+      // moved the working tree past it to a floating constraint again --
+      // the same shape as the real datadog_flutter_plugin_ios podspec.
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+            'datadog_flutter_plugin_ios.podspec',
+        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+      );
+      await fixture.commit('chore: pin for the 3.10.0 release');
+      await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
+
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+        'datadog_flutter_plugin_ios.podspec',
+        _iosPodspecWithDatadogDependency, // floats again, back to '~> 3'
+      );
+      await fixture.commit('chore: float the constraint again post-release');
+
+      final result = await plan(
+        mainlineCtx(requestedPackages: ['datadog_flutter_plugin_ios']),
+        published: {
+          'datadog_flutter_plugin_ios': ['3.10.0'],
+        },
+        fetchLatestNativeSdkVersion: (repoSlug) async => '3.13.0',
+      );
+
+      final delta = result.packages.single.nativeSdkDeltas.single;
+      expect(delta.targetVersion, '3.13.0');
+      // Must be what v3.10.0 actually shipped with (3.10.0), not the
+      // working tree's current floating '~> 3'.
+      expect(delta.currentDeclaration, '3.10.0');
     });
   });
 
@@ -633,6 +907,20 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('resolveTriggerContext', () {
+    test('a patch branch name is recognised unconditionally', () {
+      expect(
+        resolveTriggerContext('release/datadog_dio/v1.1.x'),
+        TriggerContext.patch,
+      );
+    });
+
+    test('anything else defaults to mainline, including a pre-release', () {
+      expect(resolveTriggerContext('develop'), TriggerContext.mainline);
+      expect(resolveTriggerContext('v4'), TriggerContext.mainline);
     });
   });
 }

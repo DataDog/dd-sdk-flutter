@@ -72,6 +72,23 @@ bool hasDdSdkCppGitTag(String cmakeListsContent) {
   return false;
 }
 
+/// The `GIT_TAG` ref currently declared in [cmakeListsContent]'s
+/// `FetchContent_Declare(dd-sdk-cpp ...)` block (e.g. `develop`, or a
+/// previously-pinned tag/SHA), or null if there isn't one. Purely
+/// informational -- a display string for "what this currently says", never
+/// compared against anything; see `NativeSdkDelta.currentDeclaration`.
+String? currentGitTag(String cmakeListsContent) {
+  final scanner = _DdSdkCppBlockScanner();
+  for (final line in cmakeListsContent.split('\n')) {
+    if (!scanner.accept(line)) continue;
+    final match = _gitTagPattern.firstMatch(
+      line.replaceFirst(_trailingCommentPattern, ''),
+    );
+    if (match != null) return match.namedGroup('ref');
+  }
+  return null;
+}
+
 /// Rewrites [line]'s `GIT_TAG` ref to [targetSha], re-annotated with
 /// `# [targetTag]`, leaving everything else on the line as-is -- a trailing
 /// `)` closing the `FetchContent_Declare(...` call, a `GIT_REPOSITORY` sharing

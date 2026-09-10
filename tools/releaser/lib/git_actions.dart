@@ -75,17 +75,15 @@ class CommitChangesCommand extends Command {
         return true;
       } else if (!args.dryRun) {
         logger.shout(
-            '❌ No changes from previous command. This is probably not expected.');
+          '❌ No changes from previous command. This is probably not expected.',
+        );
         return false;
       }
     }
 
     logger.info('ℹ️ Committing changes');
     if (!args.dryRun) {
-      var result = await args.gitDir.runCommand([
-        'add',
-        '.',
-      ]);
+      var result = await args.gitDir.runCommand(['add', '.']);
       if (result.exitCode != 0) {
         logger.shout('❌ Failed to stage: ${result.stderr}');
         return false;
@@ -122,10 +120,7 @@ class SwitchBranchCommand extends Command {
   Future<bool> run(CommandArguments args, Logger logger) async {
     logger.info('ℹ️ Switching to branch $branch');
     if (!args.dryRun) {
-      var result = await args.gitDir.runCommand([
-        'checkout',
-        branch,
-      ]);
+      var result = await args.gitDir.runCommand(['checkout', branch]);
       if (result.exitCode != 0) {
         logger.shout('❌ Failed to checkout branch $branch: ${result.stderr}');
         return false;

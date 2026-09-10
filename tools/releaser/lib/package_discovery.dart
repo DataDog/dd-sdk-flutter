@@ -46,11 +46,15 @@ class DiscoveredPackage {
   final String relativePath;
   final PackageRole role;
 
+  /// The [PackageGroup.key] of the group this package belongs to.
+  final String groupKey;
+
   DiscoveredPackage({
     required this.name,
     required this.version,
     required this.relativePath,
     required this.role,
+    required this.groupKey,
   });
 
   String absolutePath(String repoRoot) => p.join(repoRoot, relativePath);
@@ -113,8 +117,9 @@ Future<List<PackageGroup>> discoverPackages(String repoRoot) async {
         name: pubspec.name,
         version: pubspec.version.toString(),
         relativePath: relativePath,
-        // Corrected below once every package's group is known.
+        // Both corrected below once every package's group is known.
         role: PackageRole.appFacing,
+        groupKey: '',
       ),
     );
   }
@@ -148,20 +153,23 @@ List<PackageGroup> _groupPackages(List<DiscoveredPackage> packages) {
       groups.add(
         PackageGroup(
           key: pkg.name,
-          members: [_withRole(pkg, PackageRole.appFacing)],
+          members: [_withRoleAndGroup(pkg, PackageRole.appFacing, pkg.name)],
         ),
       );
       return;
     }
 
+    final groupKey = p.basename(containerDir);
     final roled =
-        members.map((pkg) => _withRole(pkg, _roleFor(pkg.name))).toList()
+        members
+            .map((pkg) => _withRoleAndGroup(pkg, _roleFor(pkg.name), groupKey))
+            .toList()
           ..sort((a, b) {
             final byOrder = a.role.publishOrder.compareTo(b.role.publishOrder);
             return byOrder != 0 ? byOrder : a.name.compareTo(b.name);
           });
 
-    groups.add(PackageGroup(key: p.basename(containerDir), members: roled));
+    groups.add(PackageGroup(key: groupKey, members: roled));
   });
 
   return groups;
@@ -179,10 +187,14 @@ PackageRole _roleFor(String name) {
   return PackageRole.appFacing;
 }
 
-DiscoveredPackage _withRole(DiscoveredPackage pkg, PackageRole role) =>
-    DiscoveredPackage(
-      name: pkg.name,
-      version: pkg.version,
-      relativePath: pkg.relativePath,
-      role: role,
-    );
+DiscoveredPackage _withRoleAndGroup(
+  DiscoveredPackage pkg,
+  PackageRole role,
+  String groupKey,
+) => DiscoveredPackage(
+  name: pkg.name,
+  version: pkg.version,
+  relativePath: pkg.relativePath,
+  role: role,
+  groupKey: groupKey,
+);
