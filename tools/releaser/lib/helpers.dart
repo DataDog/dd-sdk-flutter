@@ -5,32 +5,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:git/git.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 import 'package:version/version.dart';
-
-import 'command.dart';
-
-bool hasNativeDependency(String packageName) {
-  return packageName == 'datadog_flutter_plugin' ||
-      packageName == 'datadog_webview_tracking';
-}
-
-Future<GitDir?> getGitDir(String? root) async {
-  final currentPath = root ?? path.current;
-
-  if (!await GitDir.isGitDir(currentPath)) {
-    Logger.root.shout('❌ Current directory is not a git directory.');
-    return null;
-  }
-
-  return await GitDir.fromExisting(currentPath, allowSubdirectory: true);
-}
-
-String getPackageRoot(CommandArguments args, PackageRelease package) {
-  return path.join(args.gitDir.path, 'packages/${package.name}');
-}
 
 Future<void> transformFile(
   File file,

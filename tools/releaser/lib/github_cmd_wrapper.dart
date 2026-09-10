@@ -3,6 +3,7 @@
 // Copyright 2025-Present Datadog, Inc.
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -241,6 +242,55 @@ class GithubCommandWrapper {
       number: entry['number'] as int,
       title: entry['title'] as String,
     );
+  }
+
+  /// `gh pr create` for a release-prep branch -- returns the created PR's
+  /// URL. [body] is passed via a temp file (like
+  /// `CommitChangesCommand`'s `commitBody`) since a release PR body is
+  /// long-form markdown (version table, changelog diff, native SDK
+  /// deltas), not something safe to hand through a single CLI argument.
+  Future<String> createPullRequest(
+    Logger logger, {
+    required String base,
+    required String head,
+    required String title,
+    required String body,
+  }) async {
+    final tempFile = await File(
+      '${Directory.systemTemp.path}/dart_releaser_pr_body_'
+      '${DateTime.now().microsecondsSinceEpoch}.tmp',
+    ).create();
+    await tempFile.writeAsString(body);
+
+    final buffer = StringBuffer();
+    try {
+      final exitCode = await runProcess(
+        'gh',
+        [
+          'pr',
+          'create',
+          '--base',
+          base,
+          '--head',
+          head,
+          '--title',
+          title,
+          '--body-file',
+          tempFile.path,
+        ],
+        workingDirectory: cwd,
+        stdout: (line) => buffer.write(line),
+        stderr: (line) => logger.shout(line),
+      );
+
+      if (exitCode != 0) {
+        throw Exception('gh returned exit code $exitCode.');
+      }
+    } finally {
+      await tempFile.delete();
+    }
+
+    return buffer.toString().trim();
   }
 
   Future<void> createRelease(

@@ -11,7 +11,7 @@ import 'package:path/path.dart' as p;
 import 'package:version/version.dart';
 
 import 'conventional_commits.dart';
-import 'git_history.dart';
+import 'git/git_history.dart';
 import 'github_cmd_wrapper.dart';
 import 'native_sdk.dart';
 import 'package_discovery.dart';

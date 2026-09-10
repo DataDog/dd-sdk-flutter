@@ -2,10 +2,10 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-import 'package:releaser/git_history.dart';
+import 'package:releaser/git/git_history.dart';
 import 'package:test/test.dart';
 
-import 'support/fixture_repo.dart';
+import '../support/fixture_repo.dart';
 
 void main() {
   late FixtureRepo fixture;

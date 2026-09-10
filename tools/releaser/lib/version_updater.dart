@@ -4,91 +4,113 @@
 
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
-import 'package:version/version.dart';
 
-import 'command.dart';
 import 'helpers.dart';
 
-enum VersionBumpType { major, minor, rev, prerelease }
+/// Adds (or, if already present, leaves alone) a row to [nativeSdkVersionsFile]
+/// recording [packageVersion] against the native SDK versions it was built
+/// against -- the discovery-driven equivalent of `_updateNativeSDKVersions`,
+/// usable directly against a [File] without the legacy
+/// `CommandArguments`/`PackageRelease` coupling. Any of [iosVersion]/
+/// [androidVersion]/[cppVersion] may be null when this package doesn't
+/// wrap that SDK.
+Future<void> updateNativeSdkVersionsMd(
+  File nativeSdkVersionsFile,
+  String packageVersion,
+  Logger logger,
+  bool dryRun, {
+  String? iosVersion,
+  String? androidVersion,
+  String? cppVersion,
+}) async {
+  final newVersionEntry =
+      '| $packageVersion | ${iosVersion ?? '-'} | ${androidVersion ?? '-'} '
+      '| ${cppVersion ?? '-'} |';
+  const header = '| Flutter | iOS SDK | Android SDK | C++ SDK |';
+  const separator = '|---------|---------|-------------|---------|';
 
-class UpdateVersionsCommand extends Command {
-  @override
-  Future<bool> run(CommandArguments args, Logger logger) async {
-    for (final package in args.packages) {
-      final packageRoot = getPackageRoot(args, package);
-      if (!await updateVersions(
-        packageRoot,
-        package.version,
-        logger,
-        args.dryRun,
-      )) {
-        return false;
-      }
-    }
-
-    final corePackage = args.packages.firstWhereOrNull(
-      (e) => e.name == 'datadog_flutter_plugin',
+  if (!nativeSdkVersionsFile.existsSync()) {
+    logger.warning(
+      '⚠️ ${nativeSdkVersionsFile.path} does not exist, creating it now.',
     );
-
-    if (corePackage != null) {
-      if (!await _updateReadmeVersions(args, corePackage, logger)) {
-        return false;
-      }
-
-      if (!await _updateNativeSDKVersions(args, corePackage, logger)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-}
-
-class BumpVersionCommand extends Command {
-  final VersionBumpType bumpType;
-
-  BumpVersionCommand(this.bumpType);
-
-  @override
-  Future<bool> run(CommandArguments args, Logger logger) async {
-    bool success = true;
-    for (final package in args.packages) {
-      final version = Version.parse(package.version);
-      Version newVersion;
-      switch (bumpType) {
-        case VersionBumpType.major:
-          newVersion = version.incrementMajor();
-          break;
-        case VersionBumpType.minor:
-          newVersion = version.incrementMinor();
-          break;
-        case VersionBumpType.rev:
-          newVersion = version.incrementPatch();
-          break;
-        case VersionBumpType.prerelease:
-          try {
-            newVersion = version.incrementPreRelease();
-          } catch (e) {
-            logger.shout(
-              '❌ Failed to increment the pre-release version of $version. Is it not a pre-release?',
-            );
-            return false;
-          }
-          break;
-      }
-
-      logger.info('🔀 Bumping version to $newVersion');
-      success &= await updateVersions(
-        getPackageRoot(args, package),
-        newVersion.toString(),
-        logger,
-        args.dryRun,
+    if (!dryRun) {
+      await nativeSdkVersionsFile.writeAsString(
+        '$header\n$separator\n$newVersionEntry\n',
       );
     }
-    return success;
+    return;
+  }
+
+  final lines = await nativeSdkVersionsFile.readAsLines();
+  for (final line in lines) {
+    if (!line.startsWith('|')) continue;
+    final parts = line.split('|').map((s) => s.trim()).toList();
+    if (parts.length > 1 && parts[1] == packageVersion) {
+      logger.info(
+        '✅ Version $packageVersion already exists in '
+        '${nativeSdkVersionsFile.path}, skipping.',
+      );
+      return;
+    }
+  }
+
+  await transformFile(nativeSdkVersionsFile, logger, dryRun, (line) {
+    if (line.startsWith('|-')) {
+      return '$separator\n$newVersionEntry';
+    }
+    return line;
+  });
+}
+
+const _sdkTableStartMarker = '[//]: # (SDK Table)';
+const _sdkTableEndMarker = '[//]: # (End SDK Table)';
+
+/// Rewrites the `[//]: # (SDK Table)` ... `[//]: # (End SDK Table)` block
+/// in [readmeFile] to the current SDK versions -- only the app-facing
+/// package of a federated group carries this table, so this is a no-op
+/// (not an error) if the markers aren't found. Browser SDK isn't tracked
+/// by this tool, so it's carried over as a fixed "7.x.x", matching prior
+/// behavior. Any of [iosVersion]/[androidVersion]/[cppVersion] may be
+/// null when this package doesn't wrap that SDK.
+Future<void> updateReadmeSdkTable(
+  File readmeFile,
+  Logger logger,
+  bool dryRun, {
+  String? iosVersion,
+  String? androidVersion,
+  String? cppVersion,
+}) async {
+  if (!readmeFile.existsSync()) return;
+
+  final newTable =
+      '$_sdkTableStartMarker\n\n'
+      '| iOS SDK | Android SDK | C++ SDK | Browser SDK |\n'
+      '| :-----: | :---------: | :-----: | :---------: |\n'
+      '| ${iosVersion ?? '-'} | ${androidVersion ?? '-'} '
+      '| ${cppVersion ?? '-'} | 7.x.x |\n\n'
+      '$_sdkTableEndMarker';
+
+  var inTable = false;
+  var foundTable = false;
+  await transformFile(readmeFile, logger, dryRun, (line) {
+    if (inTable) {
+      if (line.trim() == _sdkTableEndMarker) {
+        inTable = false;
+        return newTable;
+      }
+      return null;
+    } else if (line.trim() == _sdkTableStartMarker) {
+      inTable = true;
+      foundTable = true;
+      return null;
+    }
+    return line;
+  });
+
+  if (!foundTable) {
+    logger.fine('No SDK table markers in ${readmeFile.path}, skipping.');
   }
 }
 
@@ -154,97 +176,6 @@ Future<bool> _updateVersionDartFile(
       element = "const ddPackageVersion = '$version';";
     }
     return element;
-  });
-
-  return true;
-}
-
-Future<bool> _updateReadmeVersions(
-  CommandArguments args,
-  PackageRelease package,
-  Logger logger,
-) async {
-  final packageRoot = getPackageRoot(args, package);
-  final changelogFile = File(path.join(packageRoot, 'README.md'));
-  if (!changelogFile.existsSync()) {
-    logger.shout('⁉️ Could not find README.md at ${changelogFile.path}');
-    return false;
-  }
-
-  var inVersionTable = false;
-  await transformFile(changelogFile, logger, args.dryRun, (line) {
-    if (inVersionTable) {
-      if (line.startsWith('[//]: #')) {
-        inVersionTable = false;
-
-        // Write the new version table:
-        line =
-            '''[//]: # (SDK Table)
-
-| iOS SDK | Android SDK | Browser SDK |
-| :-----: | :---------: | :---------: |
-| ${args.iOSRelease} | ${args.androidRelease} | 7.x.x |
-
-[//]: # (End SDK Table)''';
-        return line;
-      }
-
-      // Return no lines for the entire version table.
-      return null;
-    } else if (line == '[//]: # (SDK Table)') {
-      inVersionTable = true;
-      return null;
-    }
-
-    return line;
-  });
-
-  return true;
-}
-
-Future<bool> _updateNativeSDKVersions(
-  CommandArguments args,
-  PackageRelease package,
-  Logger logger,
-) async {
-  final packageRoot = getPackageRoot(args, package);
-  final nativeSDKVersionsFile = File(
-    path.join(packageRoot, 'NATIVE_SDK_VERSIONS.md'),
-  );
-  final newVersionEntry =
-      '| ${package.version} | ${args.iOSRelease} | ${args.androidRelease} |';
-  final header = '| Flutter | iOS SDK | Android SDK |';
-  final separator = '|---------|---------|-------------|';
-
-  if (!nativeSDKVersionsFile.existsSync()) {
-    logger.warning(
-      '⚠️ NATIVE_SDK_VERSIONS.md does not exist, creating it now.',
-    );
-    await nativeSDKVersionsFile.writeAsString(
-      '$header\n$separator\n$newVersionEntry',
-    );
-    return true;
-  }
-
-  final lines = await nativeSDKVersionsFile.readAsLines();
-  for (final line in lines) {
-    if (!line.startsWith('|')) continue;
-
-    final parts = line.split('|').map((s) => s.trim()).toList();
-    if (parts.length > 1 && parts[1] == package.version) {
-      logger.info(
-        '✅ Version ${package.version} already exists in NATIVE_SDK_VERSIONS.md, skipping.',
-      );
-      return true;
-    }
-  }
-
-  await transformFile(nativeSDKVersionsFile, logger, args.dryRun, (line) {
-    if (line.startsWith('|-')) {
-      return '$separator\n$newVersionEntry';
-    }
-
-    return line;
   });
 
   return true;

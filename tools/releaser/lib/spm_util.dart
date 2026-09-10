@@ -15,6 +15,38 @@ final packageDependencyPattern = RegExp(
   r'\s+\.package\(url\: "(?<package>.+)", .+\)',
 );
 
+/// Matches a `Package.swift` dd-sdk-ios dependency line -- mirrors
+/// `native_sdk.dart`'s private matcher of the same shape, kept separate
+/// deliberately (see `cocoapod_util.dart`'s equivalent note): a matcher
+/// wants to be permissive, a rewriter has to reproduce exactly what it
+/// matched.
+final _iosSpmDependencyRewritePattern = RegExp(
+  r'(?<prefix>\.package\(url:\s*"[^"]*dd-sdk-ios[^"]*",\s*)(?<versionArg>[^)]+)(?<suffix>\).*)',
+  caseSensitive: false,
+);
+
+/// Rewrites [packageSwiftFile]'s dd-sdk-ios dependency line to pin at
+/// [targetVersion] via an `exact:` constraint -- the discovery-driven
+/// equivalent of [PinSwiftPackageVersion]'s `pinSpmVersion`, usable
+/// directly against any package's `Package.swift`.
+Future<void> pinIosSpmVersion(
+  File packageSwiftFile,
+  String targetVersion,
+  Logger logger,
+  bool dryRun,
+) async {
+  logger.info(
+    'ℹ️ Pinning dd-sdk-ios to $targetVersion in ${packageSwiftFile.path}',
+  );
+
+  await transformFile(packageSwiftFile, logger, dryRun, (line) {
+    final match = _iosSpmDependencyRewritePattern.firstMatch(line);
+    if (match == null) return line;
+    return '${match.namedGroup('prefix')}exact: "$targetVersion"'
+        '${match.namedGroup('suffix')}';
+  });
+}
+
 class PinSwiftPackageVersion extends Command {
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {

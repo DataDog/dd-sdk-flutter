@@ -5,9 +5,8 @@
 import 'package:releaser/llm/ai_gateway.dart';
 
 /// A canned-response [AiGatewayClient] for testing the LLM pipeline without
-/// a live token -- also a stand-in for [HttpAiGatewayClient] until P0's AI
-/// Gateway prerequisite is proven out for this repo (see
-/// `.plans/release-process-phases.md` P4).
+/// a live token -- also a stand-in for [HttpAiGatewayClient] until the AI
+/// Gateway token-minting prerequisite is wired up for this repo's CI.
 ///
 /// Returns [responses] in call order; records every prompt it was sent so
 /// tests can assert on prompt content without re-deriving it.

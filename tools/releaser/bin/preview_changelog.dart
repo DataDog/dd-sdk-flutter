@@ -15,8 +15,8 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:logging/logging.dart';
+import 'package:releaser/git/git_dir.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
-import 'package:releaser/helpers.dart';
 import 'package:releaser/llm/ai_gateway.dart';
 import 'package:releaser/llm/changelog.dart';
 import 'package:releaser/llm/costs.dart';
