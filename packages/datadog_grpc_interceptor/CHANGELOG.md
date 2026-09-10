@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.0
+
+* Support grpc 5.x. See [#1150](https://github.com/DataDog/dd-sdk-flutter/issues/1150).
+
 ## 2.0.0
 
 * Support RUM context in trace headers.
