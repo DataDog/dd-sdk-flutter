@@ -7,11 +7,15 @@ import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 
 import 'datadog_flags_config.dart';
+import 'flags_client.dart';
 import 'flags_store.dart';
 
 /// Runtime configuration for Datadog feature flag clients.
 @immutable
 final class DatadogFlagsConfiguration {
+  /// Default maximum time to wait for the first evaluation context.
+  static const defaultInitializationTimeout = Duration(seconds: 5);
+
   /// Default interval for aggregating and sending flag evaluation telemetry.
   static const defaultEvaluationFlushInterval = Duration(seconds: 10);
 
@@ -26,6 +30,21 @@ final class DatadogFlagsConfiguration {
 
   /// Additional headers sent with precompute assignment requests.
   final Map<String, String>? customFlagsHeaders;
+
+  /// Maximum time to wait for initialization of the first evaluation context.
+  ///
+  /// This timeout covers the complete initialization operation. It includes
+  /// loading stored assignments, encoding the request, fetching assignments,
+  /// reading the response body, decoding JSON, storing assignments, and making
+  /// the assignments available for evaluation. It does not change the HTTP
+  /// client's timeout. The assignment operation continues after this timeout
+  /// and can make assignments available when it completes.
+  ///
+  /// The timeout applies only to the first
+  /// [DatadogFlagsClient.initialize] call for each client. A `null`, zero, or
+  /// negative value disables the timeout. If a later call supersedes the first
+  /// call, only the first call remains bounded by this timeout.
+  final Duration? initializationTimeout;
 
   /// Overrides the exposure intake endpoint.
   final Uri? customExposureEndpoint;
@@ -59,6 +78,7 @@ final class DatadogFlagsConfiguration {
   const DatadogFlagsConfiguration({
     this.customFlagsEndpoint,
     this.customFlagsHeaders,
+    this.initializationTimeout = defaultInitializationTimeout,
     this.customExposureEndpoint,
     this.trackExposures = true,
     this.customEvaluationEndpoint,
