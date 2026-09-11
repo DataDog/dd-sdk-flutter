@@ -66,6 +66,8 @@ android {
         implementation("com.squareup.okhttp3:okhttp:5.3.2")
         implementation("com.google.code.gson:gson:2.12.1")
 
+        compileOnly("com.datadoghq:dd-sdk-android-session-replay:$datadog_version")
+
         testImplementation("com.willowtreeapps.assertk:assertk:0.28.1")
         testImplementation("org.jetbrains.kotlin:kotlin-test")
         testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -77,6 +79,8 @@ android {
     }
 
     testOptions {
+        unitTests.returnDefaultValues = true
+
         unitTests.all {
             useJUnitPlatform()
 
