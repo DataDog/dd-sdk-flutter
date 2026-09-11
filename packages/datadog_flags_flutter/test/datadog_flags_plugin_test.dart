@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
+
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
@@ -13,6 +15,9 @@ class MockDatadogSdk extends Mock implements DatadogSdk {}
 class MockDatadogFlags extends Mock implements DatadogFlags {}
 
 class MockDatadogFlagsClient extends Mock implements DatadogFlagsClient {}
+
+class MockDatadogFlagsLifecycleClient extends Mock
+    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {}
 
 void main() {
   late MockDatadogSdk mockSdk;
@@ -178,6 +183,40 @@ void main() {
     verify(() => delegate.initialize(context)).called(1);
   });
 
+  test('forwards assignment lifecycle state from Datadog clients', () async {
+    const context = FlagsEvaluationContext(targetingKey: 'user-1');
+    final delegate = MockDatadogFlagsLifecycleClient();
+    final delegateStatusChanges =
+        StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
+    addTearDown(delegateStatusChanges.close);
+    when(() => delegate.name).thenReturn(DatadogFlags.defaultClientName);
+    when(() => delegate.initialize(context)).thenAnswer((_) async {
+      delegateStatusChanges.add(DatadogFlagsClientStatus.ready);
+    });
+    when(() => delegate.status).thenReturn(DatadogFlagsClientStatus.ready);
+    when(() => delegate.statusChanges).thenAnswer(
+      (_) => delegateStatusChanges.stream,
+    );
+    when(() => delegate.evaluationContext).thenReturn(context);
+    final client = DatadogFlutterFlagsClient(
+      name: 'default',
+      resolveDelegate: () async => delegate,
+      addRumFeatureFlagEvaluation: null,
+    );
+
+    expect(client.status, DatadogFlagsClientStatus.notReady);
+    expect(client.evaluationContext, isNull);
+    final statusChanges = <DatadogFlagsClientStatus>[];
+    final statusSubscription = client.statusChanges.listen(statusChanges.add);
+    addTearDown(statusSubscription.cancel);
+
+    await client.initialize(context);
+
+    expect(client.status, DatadogFlagsClientStatus.ready);
+    expect(client.evaluationContext, same(context));
+    expect(statusChanges, [DatadogFlagsClientStatus.ready]);
+  });
+
   test('adds successful variants to RUM feature flag tracking', () async {
     final delegate = _mockClient();
     when(
@@ -292,6 +331,8 @@ void main() {
 
     expect(details.value, isFalse);
     expect(details.error, FlagEvaluationError.providerNotReady);
+    expect(client.status, DatadogFlagsClientStatus.notReady);
+    expect(client.evaluationContext, isNull);
   });
 
   test('sdk extension returns configured flags plugin', () {

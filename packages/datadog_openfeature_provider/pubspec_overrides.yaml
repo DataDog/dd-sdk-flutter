@@ -1,0 +1,4 @@
+# Use the repository version of datadog_flags during development.
+dependency_overrides:
+  datadog_flags:
+    path: ../datadog_flags

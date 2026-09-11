@@ -7,6 +7,11 @@
 Use this package when your Flutter app already initializes the Datadog Flutter
 SDK and you want feature flags to reuse that configuration.
 
+Use [`datadog_openfeature_provider`](../datadog_openfeature_provider/) instead
+when the application must evaluate flags through the OpenFeature API. The
+OpenFeature provider is a separate integration. It does not reuse this plugin's
+configuration or add evaluations to the active Flutter RUM view.
+
 ## Getting Started
 
 Add the package:
@@ -96,6 +101,10 @@ timeout. The timeout covers the complete first context initialization.
 Use `package:datadog_flags/datadog_flags.dart` directly for pure Dart apps or
 Flutter apps that need full lifecycle control without Datadog Flutter SDK
 integration.
+
+Do not use this plugin and `datadog_openfeature_provider` for the same flag
+evaluations. Each integration owns a separate Flags runtime and sends its own
+assignment requests and telemetry.
 
 ## Background Isolates
 

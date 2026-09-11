@@ -3,6 +3,8 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
+
 import 'assignment.dart';
 import 'evaluation_aggregator.dart';
 import 'evaluation_context.dart';
@@ -11,7 +13,8 @@ import 'flags_client.dart';
 import 'flags_error.dart';
 import 'flags_repository.dart';
 
-class DefaultDatadogFlagsClient implements DatadogFlagsClient {
+class DefaultDatadogFlagsClient
+    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
   static final Object _typeMismatch = Object();
 
   @override
@@ -25,9 +28,19 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
     required FlagsRepository repository,
     required ExposureLogger exposureLogger,
     required EvaluationAggregator evaluationAggregator,
-  })  : _repository = repository,
-        _exposureLogger = exposureLogger,
-        _evaluationAggregator = evaluationAggregator;
+  }) : _repository = repository,
+       _exposureLogger = exposureLogger,
+       _evaluationAggregator = evaluationAggregator;
+
+  @override
+  DatadogFlagsClientStatus get status => _repository.status;
+
+  @override
+  Stream<DatadogFlagsClientStatus> get statusChanges =>
+      _repository.statusChanges;
+
+  @override
+  FlagsEvaluationContext? get evaluationContext => _repository.context;
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
@@ -100,7 +113,7 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
       _evaluationAggregator.shutdown(),
       _exposureLogger.shutdown(),
     ]);
-    await _repository.clearMemory();
+    await _repository.dispose();
   }
 
   @override
@@ -200,6 +213,11 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
       value: resolvedValue as T,
       variant: assignment.variationKey,
       reason: assignment.reason,
+      flagMetadata: {
+        'datadog.allocation_key': assignment.allocationKey,
+        if (assignment.serialId case final serialId?)
+          'datadog.serial_id': serialId,
+      },
     );
   }
 }

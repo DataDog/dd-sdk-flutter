@@ -3,6 +3,8 @@
 ## 1.1.0
 
 * Add a configurable timeout for the complete first context initialization.
+* Expose assignment lifecycle status changes for provider adapters.
+* Include Datadog assignment identifiers in successful flag details.
 
 ## 1.0.1
 
