@@ -888,7 +888,7 @@ Future<String?> _publishedContentAt(
   File? file,
 ) async {
   if (atVersion == null || file == null) return null;
-  return fileContentAtTag(
+  return fileContentAtRef(
     gitDir,
     '${pkg.name}/v$atVersion',
     p.relative(file.path, from: ctx.repoRoot),

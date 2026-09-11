@@ -30,7 +30,15 @@ Future<void> main(List<String> arguments) async {
 
   final argParser = ArgParser()
     ..addOption('repo-root', mandatory: true)
-    ..addOption('package', mandatory: true);
+    ..addOption('package', mandatory: true)
+    ..addOption(
+      'trigger',
+      allowed: ['auto', 'mainline', 'patch', 'prerelease'],
+      defaultsTo: 'auto',
+      help:
+          'Which trigger context to plan for. "auto" detects patch from '
+          'the current branch name, defaulting to mainline otherwise.',
+    );
   final args = argParser.parse(arguments);
 
   final gitDir = await getGitDir(args['repo-root'] as String);
@@ -40,10 +48,13 @@ Future<void> main(List<String> arguments) async {
   }
 
   final currentBranch = (await gitDir.currentBranch()).branchName;
+  final trigger =
+      TriggerContext.parse(args['trigger'] as String) ??
+      resolveTriggerContext(currentBranch);
   final plan = await computeReleasePlan(
     RunContext(
       repoRoot: gitDir.path,
-      trigger: resolveTriggerContext(currentBranch),
+      trigger: trigger,
       currentBranch: currentBranch,
       requestedPackages: [args['package'] as String],
     ),

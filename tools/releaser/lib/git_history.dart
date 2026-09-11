@@ -36,20 +36,17 @@ Future<String?> tagSha(GitDir gitDir, String tagName) async {
   return sha.isEmpty ? null : sha;
 }
 
-/// [relativePath]'s content as it existed at the commit tagged [tagName], or
-/// null if the tag can't be resolved (see [tagSha]) or the file didn't
-/// exist at that commit.
-Future<String?> fileContentAtTag(
+/// [relativePath]'s content as it existed at [ref] -- a tag name or a raw
+/// commit SHA, `git show` treats both the same way -- or null if [ref]
+/// doesn't resolve or the file didn't exist there.
+Future<String?> fileContentAtRef(
   GitDir gitDir,
-  String tagName,
+  String ref,
   String relativePath,
 ) async {
-  final sha = await tagSha(gitDir, tagName);
-  if (sha == null) return null;
-
   final result = await gitDir.runCommand([
     'show',
-    '$sha:$relativePath',
+    '$ref:$relativePath',
   ], throwOnError: false);
 
   return result.exitCode == 0 ? result.stdout as String : null;

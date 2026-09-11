@@ -221,7 +221,7 @@ bool isPinnedDeclaration(String? declaration) {
 /// [currentDeclaration] is what this SDK was pinned to by the last release
 /// *on the line being released*, and is what [NativeSdkDelta.getImpliedBump] compares
 /// [targetVersion] against. Must be sourced from that release's git history
-/// (`fileContentAtTag` in `git_history.dart`), not from [files] as they sit
+/// (`fileContentAtRef` in `git_history.dart`), not from [files] as they sit
 /// in the working tree -- the working tree normally floats, so it isn't
 /// evidence of what anything previously released with.
 ///
@@ -321,9 +321,12 @@ abstract class NativeSdkGateways {
 ///   harder-to-diagnose build failure. An override beats a pin: passing one
 ///   on the run is a more specific instruction than a pin someone left in a
 ///   file earlier;
-/// - on a patch branch (default: no change) the pin is left alone, since
-///   auto-jumping to the latest native SDK defeats the point of an
-///   isolated patch.
+/// - on a patch branch, no "what's newest" lookup ever happens -- auto-jumping
+///   to the latest native SDK defeats the point of an isolated patch -- but
+///   an already-pinned working tree still resolves to its own pin rather
+///   than null, so a cherry-picked commit that itself bumped the pin is
+///   still compared against what the line last shipped, instead of the size
+///   check below silently seeing nothing to compare.
 /// - when [workingTreeDeclaration] is already pinned to one immutable
 ///   version (see [isPinnedDeclaration]), that pin is the target and no
 ///   "what's newest" lookup happens at all. The dev line normally floats, so
@@ -334,9 +337,12 @@ abstract class NativeSdkGateways {
 /// - otherwise (a floating declaration on mainline or pre-release), it
 ///   defaults to the latest published release, resolved via [fetchLatest].
 ///
-/// [onPinned] is called with the honoured pin when that branch is taken, so
-/// the caller can surface it -- silently declining to update a native SDK is
-/// exactly the kind of thing a release reviewer needs told.
+/// [onPinned] is called with the honoured pin when that branch is taken
+/// outside a patch run, so the caller can surface it -- silently declining
+/// to update a native SDK is exactly the kind of thing a release reviewer
+/// needs told. A patch branch's manifest is pinned as a matter of course
+/// (see above), so the same event there is routine, not news -- calling
+/// [onPinned] for it would warn on every single patch run.
 Future<String?> resolveNativeSdkTarget({
   required TriggerContext trigger,
   required String? override,
@@ -351,13 +357,14 @@ Future<String?> resolveNativeSdkTarget({
     }
     return override;
   }
-  if (trigger == TriggerContext.patch) return null;
 
   if (isPinnedDeclaration(workingTreeDeclaration)) {
     final pin = workingTreeDeclaration!.trim();
-    onPinned?.call(pin);
+    if (trigger != TriggerContext.patch) onPinned?.call(pin);
     return pin;
   }
+
+  if (trigger == TriggerContext.patch) return null;
 
   return await fetchLatest();
 }

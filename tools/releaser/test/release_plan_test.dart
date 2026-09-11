@@ -772,6 +772,14 @@ void main() {
         await fixture.commit('chore: pin for 4.0.0');
         await fixture.tag('datadog_flutter_plugin_ios/v4.0.0');
 
+        // Simulates checking out release/v3.10.x, which never saw the 4.0.0
+        // line's commit above -- this fixture's history is linear only
+        // because the test needs both tags reachable, not because a real
+        // 3.10.x branch would carry the 4.0.0 pin.
+        fixture.writeFile(
+          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
+          podspecPinnedAt('3.10.0'),
+        );
         fixture.writeFile('$iosPackage/CHANGES', 'a fix');
         await fixture.commit('fix: a cherry-picked fix');
 
@@ -834,6 +842,50 @@ void main() {
         ),
       );
     });
+
+    test(
+      'a patch branch rejects a major bump smuggled in via a cherry-picked '
+      'manifest edit, with no override involved',
+      () async {
+        fixture.writeFile(
+          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
+          podspecPinnedAt('3.10.0'),
+        );
+        await fixture.commit('chore: pin for 3.10.0');
+        await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
+
+        // A cherry-picked "fix" commit that also carries a manifest edit --
+        // e.g. it depends on a fix that only landed in the new native major.
+        fixture.writeFile(
+          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
+          podspecPinnedAt('4.0.0'),
+        );
+        await fixture.commit('fix: needs the native fix from 4.0.0');
+
+        await expectLater(
+          plan(
+            RunContext(
+              repoRoot: fixture.root.path,
+              trigger: TriggerContext.patch,
+              currentBranch: 'release/datadog_flutter_plugin_ios/v3.10.x',
+            ),
+            published: {
+              'datadog_flutter_plugin_ios': ['3.10.0'],
+            },
+          ),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              allOf(
+                contains('major change'),
+                contains('does not belong on a patch branch'),
+              ),
+            ),
+          ),
+        );
+      },
+    );
 
     test(
       'a patch branch accepts an override implying only a patch bump',
