@@ -9,7 +9,7 @@
 - Check the proposed subject before you create the commit:
 
   ```bash
-  dart tools/ci/bin/check_conventional_commits.dart --subject "feat(flags): add initialization timeout"
+  sh tools/ci/check_conventional_commits.sh --subject "feat(flags): add initialization timeout"
   ```
 
 - Change an invalid subject before you create the commit.

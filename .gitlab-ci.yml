@@ -103,13 +103,13 @@ conventional-commits:
   image: $CI_IMAGE_DOCKER
   tags: [ "arch:amd64" ]
   script:
-    - cd tools/ci && dart pub get && dart test test/conventional_commit_test.dart && cd ../..
+    - sh tools/ci/test/check_conventional_commits_test.sh
     - |
       BASE_REVISION="${DDCI_PULL_REQUEST_TARGET_SHA:-${CI_MERGE_REQUEST_DIFF_BASE_SHA:-$CI_COMMIT_BEFORE_SHA}}"
       if [ -z "$BASE_REVISION" ] || [ "$BASE_REVISION" = "0000000000000000000000000000000000000000" ]; then
         BASE_REVISION="${CI_COMMIT_SHA:-HEAD}^"
       fi
-      dart tools/ci/bin/check_conventional_commits.dart "$BASE_REVISION" "${CI_COMMIT_SHA:-HEAD}"
+      sh tools/ci/check_conventional_commits.sh "$BASE_REVISION" "${CI_COMMIT_SHA:-HEAD}"
 
 build-flutter:
   stage: build
@@ -428,4 +428,3 @@ nightly-android:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
-
