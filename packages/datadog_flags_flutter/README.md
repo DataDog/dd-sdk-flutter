@@ -80,6 +80,7 @@ application ID, service, and version from `DatadogConfiguration`. Pass a
 ```dart
 DatadogFlagsPluginConfiguration(
   flagsConfiguration: DatadogFlagsConfiguration(
+    initializationTimeout: const Duration(seconds: 5),
     datadogConfig: DatadogFlagsConfig(
       clientToken: '<CLIENT_TOKEN>',
       env: '<ENV_NAME>',
@@ -88,6 +89,9 @@ DatadogFlagsPluginConfiguration(
   ),
 );
 ```
+
+The Flutter integration preserves the core `datadog_flags` initialization
+timeout. The timeout covers the complete first context initialization.
 
 Use `package:datadog_flags/datadog_flags.dart` directly for pure Dart apps or
 Flutter apps that need full lifecycle control without Datadog Flutter SDK
