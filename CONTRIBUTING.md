@@ -85,6 +85,12 @@ For example, use `feat(flags): add initialization timeout` or
 to generate changelog entries. CI checks all non-merge commits in each pull
 request.
 
+Validate the proposed subject before you create the commit:
+
+```bash
+sh tools/ci/check_conventional_commits.sh --subject "feat(flags): add initialization timeout"
+```
+
 ## Tests
 
 There are three types of tests in this repo
