@@ -41,7 +41,7 @@ class DdRumWeb extends DdRumPlatform {
 
     _webPlugin = RumWebPluginImpl();
     final plugins = [
-      createJSInteropWrapper<RumWebPluginImpl>(_webPlugin!),
+      createRumWebPluginJs(_webPlugin!),
     ].toJS;
 
     DD_RUM?.init(

@@ -12,7 +12,6 @@ import 'raw_events.dart';
 /// https://github.com/DataDog/browser-sdk/blob/bd6074ff1f33cb0b94acf7b6b7eae95180271475/packages/rum-core/src/domain/plugins.ts#L30
 ///
 /// Keep this class updated to match the original interface.
-@JSExport()
 abstract interface class RumWebPlugin {
   String get name;
 
@@ -28,7 +27,6 @@ abstract interface class RumWebPlugin {
   void onRumStart(OnRumStartOptions options) {}
 }
 
-@JSExport()
 class RumWebPluginImpl extends RumWebPlugin {
   @override
   String get name => 'DatadogFlutterWeb';
@@ -60,3 +58,18 @@ class RumWebPluginImpl extends RumWebPlugin {
 extension type OnRumStartOptions._(JSObject _) implements JSObject {
   external JSFunction addEvent;
 }
+
+@anonymous
+extension type _RumWebPluginJs._(JSObject _) implements JSObject {
+  external factory _RumWebPluginJs({
+    String name,
+    JSFunction getConfigurationTelemetry,
+    JSFunction onRumStart,
+  });
+}
+
+JSObject createRumWebPluginJs(RumWebPluginImpl plugin) => _RumWebPluginJs(
+      name: plugin.name,
+      getConfigurationTelemetry: plugin.getConfigurationTelemetry.toJS,
+      onRumStart: plugin.onRumStart.toJS,
+    );
