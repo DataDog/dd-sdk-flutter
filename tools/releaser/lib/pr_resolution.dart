@@ -45,14 +45,14 @@ String stripSquashSuffix(String description) {
 /// Resolves the PR [subjectLine] (a commit's parsed description, or the raw
 /// subject) landed through.
 ///
-/// Tries the free, network-free path first: GitHub's squash-merge commits
-/// append `(#N)` to the subject, and that covers the overwhelming majority
-/// of commits into this repo. [searchBySha] (`gh pr list --search
-/// "sha:{sha}"`) is the fallback for anything else -- a merge commit, a
-/// rebase-and-merge -- and is injected here (see `GithubCommandWrapper
-/// .searchMergedPrBySha`) so this stays testable without shelling out to
-/// `gh`. Returns null if neither finds a PR -- a direct push with no PR is
-/// rare, but real.
+/// Tries the free, network-free path first: a squash-merge commit's subject
+/// gets `(#N)` appended by GitHub, and it's a cheap check even though this
+/// repo merges rather than squashes, so most commits fall through to
+/// [searchBySha] (`gh pr list --search "{sha}"`) -- the fallback for a merge
+/// commit, a rebase-and-merge, or the rare squash. It's injected here (see
+/// `GithubCommandWrapper.searchMergedPrBySha`) so this stays testable
+/// without shelling out to `gh`. Returns null if neither finds a PR -- a
+/// direct push with no PR is rare, but real.
 Future<ResolvedPr?> resolvePr(
   String sha,
   String subjectLine,

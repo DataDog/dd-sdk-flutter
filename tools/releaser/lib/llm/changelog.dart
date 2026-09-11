@@ -6,7 +6,7 @@ import 'package:collection/collection.dart';
 import 'package:logging/logging.dart';
 
 import '../github_cmd_wrapper.dart' show GithubCommandWrapper;
-import '../native_sdk.dart' show NativeSdkDelta, nativeSdkImpliedBump;
+import '../native_sdk.dart' show NativeSdkDelta;
 import '../native_sdk_changelog.dart'
     show
         ChangelogFetcher,
@@ -202,7 +202,7 @@ class ChangelogEntryList {
   /// [entry] appended to [breakingChanges] if [breaking], else [features].
   /// Used for a native SDK update entry, whose category is decided in Dart
   /// from the version delta rather than asked of an LLM (see
-  /// [nativeSdkImpliedBump]).
+  /// [NativeSdkDelta.getImpliedBump]).
   ChangelogEntryList withEntry(
     ChangelogEntry entry, {
     required bool breaking,
@@ -371,7 +371,7 @@ Future<ChangelogEntryList> runCleanupPrompt(
 ///
 /// [impliedBump] decides which category the resulting entry lands in (see
 /// [buildNativeSdkUpdateEntry]) -- computed in Dart from the version delta
-/// itself ([nativeSdkImpliedBump]), not asked of the LLM, since it's a
+/// itself ([NativeSdkDelta.getImpliedBump]), not asked of the LLM, since it's a
 /// deterministic fact this tooling already knows.
 class NativeSdkChangelogContext {
   final String displayName;
@@ -521,7 +521,7 @@ Future<List<NativeSdkChangelogContext>> resolveNativeSdkChangelogContexts(
         targetVersion: targetVersion,
         entries: entries,
         changelogUrl: nativeSdkChangelogUrl(delta.sdk),
-        impliedBump: nativeSdkImpliedBump(delta),
+        impliedBump: delta.getImpliedBump(),
       ),
     );
   }

@@ -31,10 +31,20 @@ class GHRelease {
 }
 
 /// Wraps the `gh` command line tool for performing operations with Github
+///
+/// Read-only lookups are cached for the life of the instance -- see
+/// [fetchReleases] and [getCommitSha]. Construct one per run (every call site
+/// already does) and the cache lifetime takes care of itself.
 class GithubCommandWrapper {
   final String cwd;
 
-  const GithubCommandWrapper(this.cwd);
+  /// Keyed by repo slug for [fetchReleases], and by `slug@ref` for
+  /// [getCommitSha]. Futures rather than results, so concurrent askers share
+  /// one in-flight call instead of racing to start their own.
+  final _releasesByRepo = <String, Future<List<GHRelease>>>{};
+  final _shaByRef = <String, Future<String>>{};
+
+  GithubCommandWrapper(this.cwd);
 
   Future<bool> checkAuth(Logger logger) async {
     final exitCode = await runProcess(
@@ -48,7 +58,23 @@ class GithubCommandWrapper {
     return exitCode == 0;
   }
 
-  Future<List<GHRelease>> fetchReleases(Logger logger, String repoSlug) async {
+  /// Every release of [repoSlug], fetched once per instance.
+  ///
+  /// Both [getLatestRelease] and [getReleaseByTagName] go through here, and
+  /// each is asked once per package being planned -- "what is the latest
+  /// dd-sdk-ios release" has the same answer for all six members of a
+  /// federated group, so without this an `--include-federated` run makes a
+  /// dozen identical `gh release list` calls.
+  ///
+  /// A failed lookup stays failed for the life of the instance; nothing here
+  /// retries, and a run that can't reach GitHub has no path to succeeding.
+  Future<List<GHRelease>> fetchReleases(Logger logger, String repoSlug) =>
+      _releasesByRepo.putIfAbsent(
+        repoSlug,
+        () => _fetchReleases(logger, repoSlug),
+      );
+
+  Future<List<GHRelease>> _fetchReleases(Logger logger, String repoSlug) async {
     final buffer = StringBuffer();
     final exitCode = await runProcess(
       'gh',
@@ -92,7 +118,17 @@ class GithubCommandWrapper {
   /// currently points to, for pinning native SDKs whose config has no
   /// dedicated "verify this tag against this commit" field (CMake's
   /// `FetchContent_Declare`, notably) -- the SHA is what's actually pinned.
-  Future<String> getCommitSha(
+  ///
+  /// Cached per `slug@ref` for the life of the instance, like
+  /// [fetchReleases]: every desktop package resolving the same dd-sdk-cpp
+  /// tag should cost one call, not one each.
+  Future<String> getCommitSha(Logger logger, String repoSlug, String ref) =>
+      _shaByRef.putIfAbsent(
+        '$repoSlug@$ref',
+        () => _getCommitSha(logger, repoSlug, ref),
+      );
+
+  Future<String> _getCommitSha(
     Logger logger,
     String repoSlug,
     String ref,
@@ -169,10 +205,10 @@ class GithubCommandWrapper {
     );
   }
 
-  /// `gh pr list --search "sha:{sha}"` -- the fallback `pr_resolution.dart`
-  /// uses for a commit that didn't land via a squash merge (no `(#N)`
-  /// suffix to parse locally). Merged PRs only; the newest match if somehow
-  /// more than one comes back.
+  /// `gh pr list --search "{sha}"` -- the fallback `pr_resolution.dart` uses
+  /// for a commit that didn't land via a squash merge (no `(#N)` suffix to
+  /// parse locally). Merged PRs only; the newest match if somehow more than
+  /// one comes back.
   Future<ResolvedPr?> searchMergedPrBySha(Logger logger, String sha) async {
     final buffer = StringBuffer();
     final exitCode = await runProcess(
@@ -181,7 +217,7 @@ class GithubCommandWrapper {
         'pr',
         'list',
         '--search',
-        'sha:$sha',
+        sha,
         '--state',
         'merged',
         '--json',
