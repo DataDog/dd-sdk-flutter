@@ -258,6 +258,82 @@ void main() {
     },
   );
 
+  test(
+    'later context supersedes initialization before timeout',
+    () async {
+      final responses = <Completer<http.Response>>[];
+      void Function()? timeoutAction;
+      var scheduleCount = 0;
+      final httpClient = MockClient((_) {
+        final response = Completer<http.Response>();
+        responses.add(response);
+        return response.future;
+      });
+      final configuration = _configuration(
+        httpClient: httpClient,
+        initializationTimeout: const Duration(seconds: 5),
+      );
+      final repository = FlagsRepository(
+        clientName: DatadogFlags.defaultClientName,
+        fetcher: FlagAssignmentsFetcher(
+          datadogConfig: _datadogConfig,
+          configuration: configuration,
+          httpClient: httpClient,
+        ),
+        dateProvider: DateTime.now,
+        initializationTimeout: configuration.initializationTimeout,
+        scheduleInitializationTimeout: (_, action) {
+          scheduleCount += 1;
+          timeoutAction = action;
+          return _TestTimer();
+        },
+      );
+
+      final first = repository.initialize(_context);
+      await _waitUntil(() => responses.length == 1);
+
+      var secondCompleted = false;
+      const secondContext = FlagsEvaluationContext(
+        targetingKey: 'user-second',
+      );
+      final second = repository
+          .initialize(secondContext)
+          .whenComplete(() => secondCompleted = true);
+      await _waitUntil(() => responses.length == 2);
+
+      expect(scheduleCount, 1);
+      timeoutAction!();
+      await first.timeout(const Duration(seconds: 1));
+      await Future<void>.delayed(Duration.zero);
+      expect(secondCompleted, isFalse);
+      expect(repository.context, isNull);
+
+      responses[1].complete(
+        http.Response(
+          jsonEncode(_assignmentsResponse(booleanValue: false)),
+          200,
+        ),
+      );
+      await second.timeout(const Duration(seconds: 1));
+      expect(repository.context, secondContext);
+      expect(
+        repository.flagAssignment('show-paywall')?.variationValue,
+        isFalse,
+      );
+
+      responses[0].complete(
+        http.Response(jsonEncode(_assignmentsResponse()), 200),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(repository.context, secondContext);
+      expect(
+        repository.flagAssignment('show-paywall')?.variationValue,
+        isFalse,
+      );
+    },
+  );
+
   test('keeps the deadline active through response JSON decoding', () async {
     void Function()? timeoutAction;
     final fetcher = FlagAssignmentsFetcher(
