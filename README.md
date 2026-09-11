@@ -22,11 +22,14 @@ This is the monorepo for Datadog Flutter packages. To get started, check the
 
 ## Choose a Feature Flags Integration
 
+Use `datadog_openfeature_provider` for new Dart and Flutter integrations. It is
+the canonical customer integration and uses the OpenFeature API.
+
 | Application | Evaluation API | Package |
 | --- | --- | --- |
-| Dart | Datadog | [`datadog_flags`](packages/datadog_flags/) |
-| Flutter with Datadog Flutter SDK integration | Datadog | [`datadog_flags_flutter`](packages/datadog_flags_flutter/) |
-| Dart or Flutter | OpenFeature | [`datadog_openfeature_provider`](packages/datadog_openfeature_provider/) |
+| Dart or Flutter | OpenFeature (recommended) | [`datadog_openfeature_provider`](packages/datadog_openfeature_provider/) |
+| Dart with low-level lifecycle control | Datadog | [`datadog_flags`](packages/datadog_flags/) |
+| Flutter with automatic RUM view association | Datadog | [`datadog_flags_flutter`](packages/datadog_flags_flutter/) |
 
 The OpenFeature provider uses the pure-Dart `datadog_flags` runtime. It does
 not use `datadog_flags_flutter` or add evaluations to the active Flutter RUM

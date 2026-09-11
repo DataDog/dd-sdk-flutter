@@ -4,13 +4,13 @@
 [`datadog_flags`](https://pub.dev/packages/datadog_flags) Dart package with
 [`datadog_flutter_plugin`](https://pub.dev/packages/datadog_flutter_plugin).
 
-Use this package when your Flutter app already initializes the Datadog Flutter
-SDK and you want feature flags to reuse that configuration.
+Use [`datadog_openfeature_provider`](../datadog_openfeature_provider/) for new
+customer integrations. It provides the canonical OpenFeature evaluation API
+for Dart and Flutter applications.
 
-Use [`datadog_openfeature_provider`](../datadog_openfeature_provider/) instead
-when the application must evaluate flags through the OpenFeature API. The
-OpenFeature provider is a separate integration. It does not reuse this plugin's
-configuration or add evaluations to the active Flutter RUM view.
+Use this package when a Flutter app needs the Datadog-specific evaluation API,
+must reuse the Datadog Flutter SDK configuration, or must add evaluations to
+the active Flutter RUM view.
 
 ## Getting Started
 

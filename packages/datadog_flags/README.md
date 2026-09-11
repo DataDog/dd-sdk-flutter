@@ -14,9 +14,10 @@ configure the provider, initialize a client for an evaluation context, evaluate
 typed details with a programmatic default, and shut the client down when the app
 no longer needs it.
 
-Use [`datadog_openfeature_provider`](../datadog_openfeature_provider/) when an
-application must evaluate flags through the OpenFeature API. The provider owns
-and configures this core runtime for the application.
+Use [`datadog_openfeature_provider`](../datadog_openfeature_provider/) for new
+customer integrations. The provider exposes the canonical OpenFeature API and
+owns this core runtime. Use this package directly for low-level lifecycle
+control or a custom integration.
 
 ## Installation
 

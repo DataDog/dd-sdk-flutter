@@ -8,18 +8,23 @@ fetching and cached local evaluation without introducing a Flutter dependency.
 > `openfeature_dart_client_sdk` `0.0.1-beta.1` release. The local dependency
 > override uses the repository version of `datadog_flags` during development.
 
-## Choose an integration
+## Recommended integration
+
+Use this provider for new Dart and Flutter customer integrations. OpenFeature
+is the canonical evaluation API for the example application in this repository.
 
 | Application | Evaluation API | Use |
 | --- | --- | --- |
-| Dart | OpenFeature | `openfeature_dart_client_sdk` and `datadog_openfeature_provider` |
-| Flutter | OpenFeature | The same Dart OpenFeature packages |
-| Flutter with Datadog Flutter SDK integration | Datadog | `datadog_flags_flutter` instead of this provider |
+| Dart or Flutter | OpenFeature (recommended) | `openfeature_dart_client_sdk` and `datadog_openfeature_provider` |
+| Flutter with automatic RUM view association | Datadog | `datadog_flags_flutter` instead of this provider |
 
 Flutter runs Dart, so Flutter applications can use this provider directly. The
 provider is independent from `datadog_flags_flutter`. It requires explicit
 Datadog Flags configuration and does not add evaluations to the active Flutter
 RUM view.
+
+See the [simple Flutter example](../../examples/simple_example/) for the
+canonical integration with the Datadog Flutter SDK.
 
 Do not use both integrations for the same flag evaluations. Each integration
 owns a separate Flags runtime and sends its own assignment requests and

@@ -2,15 +2,16 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
-import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_gql_link/datadog_gql_link.dart';
+import 'package:datadog_openfeature_provider/datadog_openfeature_provider.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 import 'app.dart';
 import 'flags/flags_example_config.dart';
@@ -65,18 +66,12 @@ void main() async {
         ],
       ),
     ),
-  )
-    ..enableHttpTracking(
+  )..enableHttpTracking(
       // Using ignoreUrlPatterns is needed if you want to combine HttpClient
       // tracking and GraphQL tracking through datadog_gql_link
       ignoreUrlPatterns: [
         RegExp('localhost'),
       ],
-    )
-    ..addPlugin(
-      DatadogFlagsPluginConfiguration(
-        flagsConfiguration: flagsConfig.configuration,
-      ),
     );
 
   if (siteConfig.sessionReplayEnabled) {
@@ -85,8 +80,8 @@ void main() async {
     );
   }
 
-  // runUsingRunApp(datadogConfig, flagsConfig);
-  runUsingAlternativeInit(datadogConfig, flagsConfig);
+  // await runUsingRunApp(datadogConfig, flagsConfig);
+  await runUsingAlternativeInit(datadogConfig, flagsConfig);
 }
 
 Future<void> runUsingAlternativeInit(
@@ -111,6 +106,7 @@ Future<void> runUsingAlternativeInit(
   };
 
   await DatadogSdk.instance.initialize(datadogConfig, TrackingConsent.granted);
+  final flagsClient = await _initializeOpenFeature(flagsConfig);
   final link = Link.from([
     DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
     HttpLink(graphQlUrl),
@@ -120,6 +116,7 @@ Future<void> runUsingAlternativeInit(
   runApp(MyApp(
     graphQLClient: graphQlClient,
     flagsConfig: flagsConfig,
+    flagsClient: flagsClient,
   ));
 }
 
@@ -127,6 +124,7 @@ Future<void> runUsingRunApp(
   DatadogConfiguration datadogConfig,
   FlagsExampleConfig flagsConfig,
 ) async {
+  final flagsClient = await _initializeOpenFeature(flagsConfig);
   await DatadogSdk.runApp(datadogConfig, TrackingConsent.granted, () {
     final link = Link.from([
       DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),
@@ -137,6 +135,18 @@ Future<void> runUsingRunApp(
     runApp(MyApp(
       graphQLClient: graphQlClient,
       flagsConfig: flagsConfig,
+      flagsClient: flagsClient,
     ));
   });
+}
+
+Future<OpenFeatureClient> _initializeOpenFeature(
+  FlagsExampleConfig flagsConfig,
+) async {
+  final api = OpenFeatureAPI.instance;
+  await api.setEvaluationContextAndWait(flagsConfig.evaluationContext);
+  await api.setProviderAndWait(
+    DatadogOpenFeatureProvider(configuration: flagsConfig.configuration),
+  );
+  return api.getClient();
 }
