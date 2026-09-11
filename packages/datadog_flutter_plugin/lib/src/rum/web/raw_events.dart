@@ -45,6 +45,20 @@ extension type RumWebRawErrorResource._(JSObject _) implements JSObject {
   });
 }
 
+extension type RumWebWasmModule._(JSObject _) implements JSObject {
+  external String url;
+  @JS('build_id')
+  external String buildId;
+  @JS('debug_info_type')
+  external String debugInfoType;
+
+  external factory RumWebWasmModule({
+    required String url,
+    required String build_id,
+    required String debug_info_type,
+  });
+}
+
 extension type RumWebRawErrorData.__(JSObject __) implements JSObject {
   external String id;
   external String? type;
@@ -59,6 +73,8 @@ extension type RumWebRawErrorData.__(JSObject __) implements JSObject {
   external String? handling;
   @JS('source_type')
   external String sourceType;
+  @JS('wasm_modules')
+  external JSArray<RumWebWasmModule>? wasmModules;
   external RumWebRawErrorResource? resource;
 
   factory RumWebRawErrorData({
@@ -72,21 +88,22 @@ extension type RumWebRawErrorData.__(JSObject __) implements JSObject {
     required String message,
     String? handling,
     String source_type = 'browser',
+    JSArray<RumWebWasmModule>? wasm_modules,
     RumWebRawErrorResource? resource,
-  }) =>
-      RumWebRawErrorData._(
-        id: id,
-        message: message,
-        type: type,
-        stack: stack,
-        handling_stack: handling_stack,
-        component_stack: component_stack,
-        fingerprint: fingerprint,
-        source: source,
-        handling: handling,
-        source_type: source_type,
-        resource: resource,
-      );
+  }) => RumWebRawErrorData._(
+    id: id,
+    message: message,
+    type: type,
+    stack: stack,
+    handling_stack: handling_stack,
+    component_stack: component_stack,
+    fingerprint: fingerprint,
+    source: source,
+    handling: handling,
+    source_type: source_type,
+    wasm_modules: wasm_modules,
+    resource: resource,
+  );
 
   external factory RumWebRawErrorData._({
     required String id,
@@ -99,6 +116,7 @@ extension type RumWebRawErrorData.__(JSObject __) implements JSObject {
     required String message,
     String? handling,
     String source_type,
+    JSArray<RumWebWasmModule>? wasm_modules,
     RumWebRawErrorResource? resource,
   });
 }
@@ -113,13 +131,12 @@ extension type RumWebRawErrorEvent.__(RumWebRawEvent __)
     required JSNumber date,
     required JSObject context,
     required RumWebRawErrorData error,
-  }) =>
-      RumWebRawErrorEvent._(
-        type: 'error',
-        date: date,
-        context: context,
-        error: error,
-      );
+  }) => RumWebRawErrorEvent._(
+    type: 'error',
+    date: date,
+    context: context,
+    error: error,
+  );
 
   external factory RumWebRawErrorEvent._({
     JSObject context,
@@ -191,13 +208,12 @@ extension type RumWebRawActionEvent.__(RumWebRawEvent __)
     required JSObject context,
     required RumWebRawActionData action,
     RumWebRawEventViewData? view,
-  }) =>
-      RumWebRawActionEvent._(
-        date: date,
-        context: context,
-        type: 'action',
-        action: action,
-      );
+  }) => RumWebRawActionEvent._(
+    date: date,
+    context: context,
+    type: 'action',
+    action: action,
+  );
 
   external factory RumWebRawActionEvent._({
     required JSNumber date,
