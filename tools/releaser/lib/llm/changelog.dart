@@ -121,14 +121,22 @@ $prText
 </prs>''';
 }
 
-/// Runs the grouping pass and sanity-checks that the PR numbers it
-/// referenced exactly match the set of PRs it was given -- an LLM
-/// inventing or dropping a PR number here would silently corrupt the
-/// changelog, so this fails loudly instead.
+/// Runs the grouping pass and sanity-checks that it partitioned the PRs it
+/// was given -- every input number used, nothing invented, and each in
+/// exactly one group.
+///
+/// Inventing or dropping a number throws: the changelog would be wrong in a
+/// way nothing downstream can detect, and there's no sound way to guess what
+/// was meant. Assigning one PR to two groups is recoverable, though -- the
+/// grouping is still complete, just not a partition -- so the repeat is
+/// dropped from the later group and reported via [onWarning] rather than
+/// failing the build. Left in, pass 2 would write that PR up twice, from two
+/// angles, with nothing to reconcile them.
 Future<GroupedPrs> runGroupedPrsPrompt(
   AiGatewayClient client,
   List<PrDetails> prs, {
   LlmCostTracker? costTracker,
+  void Function(String warning)? onWarning,
 }) async {
   final result = await runStructuredPrompt(
     client,
@@ -140,15 +148,45 @@ Future<GroupedPrs> runGroupedPrsPrompt(
   );
 
   final expected = prs.map((pr) => pr.number).toSet();
-  final got = result.groups.expand((g) => g.prs).map((pr) => pr.number).toSet();
-  if (!const SetEquality<int>().equals(expected, got)) {
+  final assigned = result.groups
+      .expand((g) => g.prs)
+      .map((pr) => pr.number)
+      .toList();
+
+  if (!const SetEquality<int>().equals(expected, assigned.toSet())) {
     throw StateError(
       'AI Gateway response PR numbers do not match input: expected '
-      '${expected.join(',')}; got ${got.join(',')}',
+      '${expected.join(',')}; got ${assigned.toSet().join(',')}',
     );
   }
 
-  return result;
+  // Checked on the list, not the set the comparison above collapses to --
+  // a repeat leaves the set equal while duplicating the entry downstream.
+  if (assigned.length == expected.length) return result;
+
+  final seen = <int>{};
+  final duplicated = <int>[];
+  final deduped = <PrGroup>[];
+
+  for (final group in result.groups) {
+    final kept = <GroupedPr>[];
+    for (final pr in group.prs) {
+      if (seen.add(pr.number)) {
+        kept.add(pr);
+      } else {
+        duplicated.add(pr.number);
+      }
+    }
+    // A group whose every PR was a repeat has nothing left to summarize.
+    if (kept.isNotEmpty) deduped.add(PrGroup(label: group.label, prs: kept));
+  }
+
+  onWarning?.call(
+    'AI Gateway put ${duplicated.map((n) => '#$n').join(', ')} in more than '
+    'one group; keeping the first of each so the entry is written once.',
+  );
+
+  return GroupedPrs(groups: deduped);
 }
 
 // == LLM Pass 2: Given full PRs from each group, synthesize 0 or more changelog items
@@ -551,6 +589,7 @@ Future<ChangelogEntryList> generateChangelogEntries(
   List<PrDetails> prs, {
   List<NativeSdkChangelogContext> nativeSdkContexts = const [],
   LlmCostTracker? costTracker,
+  void Function(String warning)? onWarning,
 }) async {
   if (prs.isEmpty && nativeSdkContexts.isEmpty) {
     return const ChangelogEntryList();
@@ -563,6 +602,7 @@ Future<ChangelogEntryList> generateChangelogEntries(
       client,
       prs,
       costTracker: costTracker,
+      onWarning: onWarning,
     )).groups;
 
     for (final group in groups) {
@@ -637,6 +677,7 @@ Future<ChangelogEntryList> generateChangelogForPackage(
     prDetails,
     nativeSdkContexts: nativeSdkContexts,
     costTracker: costTracker,
+    onWarning: (w) => logger.warning('⚠️ $w'),
   );
 }
 

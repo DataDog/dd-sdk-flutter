@@ -80,6 +80,77 @@ void main() {
 
       expect(() => runGroupedPrsPrompt(client, prs), throwsStateError);
     });
+
+    test('drops a PR repeated in a second group, and warns', () async {
+      // Every expected number is present, so a set comparison sees nothing
+      // wrong -- but left alone, pass 2 would write #2 up twice, from two
+      // angles. Recoverable, so it must not fail the release build.
+      final client = FakeAiGatewayClient([
+        {
+          'groups': [
+            {
+              'label': 'a thing',
+              'prs': [
+                {'number': 1, 'title': 'feat: add a thing'},
+                {'number': 2, 'title': 'fix: correct a bug'},
+              ],
+            },
+            {
+              'label': 'the same bug again',
+              'prs': [
+                {'number': 2, 'title': 'fix: correct a bug'},
+              ],
+            },
+          ],
+        },
+      ]);
+
+      final warnings = <String>[];
+      final result = await runGroupedPrsPrompt(
+        client,
+        prs,
+        onWarning: warnings.add,
+      );
+
+      // The second group held nothing but the repeat, so it falls away.
+      expect(result.groups, hasLength(1));
+      expect(result.groups.single.prs.map((p) => p.number), [1, 2]);
+      expect(
+        warnings,
+        contains(allOf(contains('more than one group'), contains('#2'))),
+      );
+    });
+
+    test(
+      'keeps the first group when a repeat leaves the second non-empty',
+      () async {
+        final client = FakeAiGatewayClient([
+          {
+            'groups': [
+              {
+                'label': 'a thing',
+                'prs': [
+                  {'number': 1, 'title': 'feat: add a thing'},
+                ],
+              },
+              {
+                'label': 'everything',
+                'prs': [
+                  {'number': 1, 'title': 'feat: add a thing'},
+                  {'number': 2, 'title': 'fix: correct a bug'},
+                ],
+              },
+            ],
+          },
+        ]);
+
+        final result = await runGroupedPrsPrompt(client, prs);
+
+        expect(result.groups.map((g) => g.label), ['a thing', 'everything']);
+        expect(result.groups[0].prs.map((p) => p.number), [1]);
+        expect(result.groups[1].prs.map((p) => p.number), [2]);
+      },
+    );
   });
 
   group('runChangelogEntryListPrompt', () {

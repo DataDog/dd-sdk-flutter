@@ -18,10 +18,19 @@ final _gitTagPattern = RegExp(r'(?<prefix>GIT_TAG\s+)(?<ref>[\w./-]+)');
 /// and so a `#`-commented mention of `GIT_TAG` can't be mistaken for the pin.
 final _trailingCommentPattern = RegExp(r'\s*#.*$');
 
-/// Captures the text of a trailing `# ...` comment -- see
-/// [currentGitTagVersion], which reads it back as the tag [pinCppVersion]
-/// annotated a pinned SHA with.
-final _trailingCommentCapturePattern = RegExp(r'#\s*(?<comment>\S+)');
+/// A trailing comment holding *only* a version tag -- the annotation
+/// [pinCppVersion] writes beside a pinned SHA, read back by
+/// [currentGitTagVersion].
+///
+/// Anchored and version-shaped on purpose. A comment is free text, and a
+/// hand-pinned line may well explain itself (`GIT_TAG v1.4.0 # hold until
+/// #123 lands`); matching the first word of any comment would read `hold` as
+/// the version, which loses the bump baseline and -- worse, now that a pin
+/// means "hold" -- makes [isPinnedDeclaration] see a floating ref and go
+/// fetch a newer SDK, overriding the very pin the comment was explaining.
+final _versionAnnotationPattern = RegExp(
+  r'#\s*(?<version>v?\d+\.\d+\.\d+)\s*$',
+);
 
 final _ddSdkCppDeclareStartPattern = RegExp(
   r'FetchContent_Declare\(\s*dd-sdk-cpp\b',
@@ -101,6 +110,10 @@ String? currentGitTag(String cmakeListsContent) {
 /// `v1.4.0`) only survives as the trailing `# v1.4.0` comment [pinCppVersion]
 /// writes alongside it, so this prefers that annotation and falls back to
 /// the bare ref (a floating `develop`, or a tag with no annotation yet).
+///
+/// Only a comment that is *just* a version counts as that annotation -- see
+/// [_versionAnnotationPattern]. A hand-written explanation next to a pin is
+/// prose, not a version, and the ref itself is the better answer there.
 String? currentGitTagVersion(String cmakeListsContent) {
   final scanner = _DdSdkCppBlockScanner();
   for (final line in cmakeListsContent.split('\n')) {
@@ -108,10 +121,10 @@ String? currentGitTagVersion(String cmakeListsContent) {
     final bare = line.replaceFirst(_trailingCommentPattern, '');
     final match = _gitTagPattern.firstMatch(bare);
     if (match == null) continue;
-    final comment = _trailingCommentCapturePattern
+    final annotation = _versionAnnotationPattern
         .firstMatch(line)
-        ?.namedGroup('comment');
-    return comment ?? match.namedGroup('ref');
+        ?.namedGroup('version');
+    return annotation ?? match.namedGroup('ref');
   }
   return null;
 }
