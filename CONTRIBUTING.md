@@ -71,6 +71,20 @@ repo. Using this script requires you have both
 [Swiftlint](https://github.com/realm/SwiftLint) and [Bitrise
 CLI](https://app.bitrise.io/cli) available on your path
 
+## Commit messages
+
+Use the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
+format for each non-merge commit:
+
+```text
+<type>[optional scope][!]: <description>
+```
+
+For example, use `feat(flags): add initialization timeout` or
+`fix(web): avoid duplicate requests`. The release tooling uses these subjects
+to generate changelog entries. CI checks all non-merge commits in each pull
+request.
+
 ## Tests
 
 There are three types of tests in this repo
