@@ -12,14 +12,18 @@ import 'support/fake_ai_gateway_client.dart';
 
 void main() {
   group('runStructuredPrompt', () {
+    Prompt<String> greetingPrompt() => Prompt(
+      text: 'say hi',
+      schema: {'type': 'object'},
+      fromJson: (json) => json['greeting'] as String,
+    );
+
     test('deserializes the response content via fromJson', () async {
       final client = FakeAiGatewayClient([
         {'greeting': 'hello'},
       ]);
 
-      final result = await runStructuredPrompt(client, 'say hi', {
-        'type': 'object',
-      }, (json) => json['greeting'] as String);
+      final result = await runStructuredPrompt(client, greetingPrompt());
 
       expect(result, 'hello');
       expect(client.prompts, ['say hi']);
@@ -40,9 +44,7 @@ void main() {
 
       await runStructuredPrompt(
         client,
-        'say hi',
-        {'type': 'object'},
-        (json) => json['greeting'] as String,
+        greetingPrompt(),
         costTracker: tracker,
         costLabel: 'Greeting',
       );
@@ -62,9 +64,7 @@ void main() {
       ]);
 
       // Should not throw for lack of a cost tracker.
-      await runStructuredPrompt(client, 'say hi', {
-        'type': 'object',
-      }, (json) => json['greeting'] as String);
+      await runStructuredPrompt(client, greetingPrompt());
     });
   });
 }

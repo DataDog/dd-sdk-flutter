@@ -5,30 +5,45 @@
 import 'ai_gateway.dart';
 import 'costs.dart';
 
-/// Sends [prompt] to [client] with [schema] as the required output shape,
-/// and returns the response deserialized by [fromJson].
+/// One structured-output LLM call, bundled as a single value: the rendered
+/// prompt [text], the [schema] its response must satisfy, and [fromJson] to
+/// turn that response back into [T]. The three are never useful apart from
+/// each other -- a schema with no matching parser is meaningless, and a
+/// prompt written against a schema nobody enforces is just a hope -- so one
+/// object carries all three rather than three parameters that happen to be
+/// passed around together.
 ///
-/// [schema] is hand-written per response type rather than derived from a
-/// class at runtime as there are only a few response shapes in this
-/// pipeline (`changelog.dart`'s `groupedPrsSchema`/`changelogEntryListSchema`),
-/// so writing them out is simpler than building a reflection-based
-/// generator for a handful of call sites.
+/// Each concrete prompt (see `prompts/`) is a top-level function that builds
+/// one of these from its specific inputs, rather than a subclass -- there's
+/// no behaviour to override, only data to assemble.
+class Prompt<T> {
+  final String text;
+  final Map<String, dynamic> schema;
+  final T Function(Map<String, dynamic>) fromJson;
+
+  const Prompt({
+    required this.text,
+    required this.schema,
+    required this.fromJson,
+  });
+}
+
+/// Sends [prompt]'s text to [client] with its schema as the required output
+/// shape, and returns the response deserialized by its `fromJson`.
 Future<T> runStructuredPrompt<T>(
   AiGatewayClient client,
-  String prompt,
-  Map<String, dynamic> schema,
-  T Function(Map<String, dynamic>) fromJson, {
+  Prompt<T> prompt, {
   String model = defaultModel,
   int maxTokens = 4096,
   LlmCostTracker? costTracker,
   String costLabel = '',
 }) async {
   final response = await client.createStructuredMessage(
-    prompt: prompt,
-    schema: schema,
+    prompt: prompt.text,
+    schema: prompt.schema,
     model: model,
     maxTokens: maxTokens,
   );
   costTracker?.record(response.usage, costLabel);
-  return fromJson(response.content);
+  return prompt.fromJson(response.content);
 }
