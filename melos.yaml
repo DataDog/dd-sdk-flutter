@@ -308,6 +308,39 @@ scripts:
   verify:ffi_bindings:
     run: dart $MELOS_ROOT_PATH/tools/ci/bin/verify_ffi_bindings.dart
 
+  # Regenerates datadog_flutter_plugin_desktop's ffigen bindings unconditionally
+  # (see verify:ffi_bindings for why they can drift). Requires a desktop build
+  # to have populated the FetchContent headers first.
+  generate:ffi_bindings:
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/verify_ffi_bindings.dart --write
+
+  # Regenerates every package's jnigen bindings and fails if the result
+  # differs from what is committed. jnigen resolves its own Android classpath
+  # (via `flutter build apk --config-only` against each package's
+  # android_example), so unlike verify:ffi_bindings this needs no separate
+  # build step, just an Android SDK on PATH. Drift here can also mean the
+  # installed jnigen version moved out from under the checked-in output --
+  # see tools/ci/bin/verify_jni_bindings.dart for why that matters on its own.
+  verify:jni_bindings:
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/verify_jni_bindings.dart
+
+  # Regenerates every package's jnigen bindings unconditionally.
+  generate:jni_bindings:
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/verify_jni_bindings.dart --write
+
+  # Regenerates datadog_session_replay's iOS FFI bridge (a Swift-emitted
+  # bridging header, plus the ffigen bindings and Objective-C shim generated
+  # from it) and fails if the result differs from what is committed. Needs
+  # only a Swift toolchain -- `swift build` resolves its own dependencies and
+  # is expected to fail past header emission (see
+  # tools/ci/bin/verify_ios_ffi_bindings.dart), so no app build is required.
+  verify:ios_ffi_bindings:
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/verify_ios_ffi_bindings.dart
+
+  # Regenerates datadog_session_replay's iOS FFI bridge unconditionally.
+  generate:ios_ffi_bindings:
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/verify_ios_ffi_bindings.dart --write
+
   integration_test:linux:
     run: melos integration_test:linux:build && melos verify:ffi_bindings && melos integration_test:linux:tests
 

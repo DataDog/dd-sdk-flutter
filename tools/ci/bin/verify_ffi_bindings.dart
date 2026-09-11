@@ -30,6 +30,7 @@
 
 import 'dart:io';
 
+import 'package:ci_helpers/generated_file_verifier.dart';
 import 'package:path/path.dart' as path;
 
 const _desktopPkgRelPath =
@@ -39,21 +40,6 @@ const _bindingsRelPath = 'lib/src/ffi_bindings.dart';
 String? _option(List<String> args, String name) {
   final i = args.indexOf(name);
   return (i >= 0 && i + 1 < args.length) ? args[i + 1] : null;
-}
-
-/// Walks up from this script to find the repository root.
-String _repoRoot() {
-  final fromEnv = Platform.environment['MELOS_ROOT_PATH'];
-  if (fromEnv != null && File(path.join(fromEnv, 'melos.yaml')).existsSync()) {
-    return fromEnv;
-  }
-  var dir = path.dirname(Platform.script.toFilePath());
-  for (var i = 0; i < 8; i++) {
-    if (File(path.join(dir, 'melos.yaml')).existsSync()) return dir;
-    dir = path.dirname(dir);
-  }
-  print('Could not locate the repository root (no melos.yaml found).');
-  exit(2);
 }
 
 /// Where the FetchContent headers land once `integration_test:<platform>:build`
@@ -129,13 +115,9 @@ File _tempConfig(Directory pkg, Directory headers) {
 }
 
 void main(List<String> args) {
-  final root = _repoRoot();
+  final root = findRepoRoot(Platform.script.toFilePath());
   final pkg = Directory(path.join(root, _desktopPkgRelPath));
   final bindings = File(path.join(pkg.path, _bindingsRelPath));
-  if (!bindings.existsSync()) {
-    print('Generated bindings not found at ${bindings.path}');
-    exit(2);
-  }
 
   final headers = _resolveHeaders(root, args);
   if (!File(path.join(headers.path, 'datadog.h')).existsSync()) {
@@ -143,57 +125,31 @@ void main(List<String> args) {
     exit(2);
   }
 
-  final before = bindings.readAsStringSync();
-  final backup = File('${bindings.path}.verify-backup')
-    ..writeAsStringSync(before);
-  final config = _tempConfig(pkg, headers);
-
   print('Headers:  ${headers.path}');
   print('Bindings: ${bindings.path}');
-  print('Regenerating...\n');
 
-  ProcessResult result;
+  final config = _tempConfig(pkg, headers);
+  final bool upToDate;
   try {
-    result = Process.runSync(Platform.resolvedExecutable, [
-      'run',
-      'ffigen',
-      '--config',
-      path.basename(config.path),
-    ], workingDirectory: pkg.path);
+    upToDate = verifyGeneratedFile(
+      root: root,
+      bindings: bindings,
+      label: pkg.path,
+      toolName: 'ffigen',
+      write: args.contains('--write'),
+      regenerate: () => Process.runSync(Platform.resolvedExecutable, [
+        'run',
+        'ffigen',
+        '--config',
+        path.basename(config.path),
+      ], workingDirectory: pkg.path),
+    );
   } finally {
     config.deleteSync();
   }
 
-  if (result.exitCode != 0) {
-    backup.deleteSync();
-    print('ffigen failed:\n${result.stdout}\n${result.stderr}');
-    exit(2);
-  }
-
-  final after = bindings.readAsStringSync();
-  if (after == before) {
-    backup.deleteSync();
-    print('Bindings are up to date.');
+  if (upToDate) {
     exit(0);
-  }
-
-  // Render a real diff rather than just announcing a mismatch.
-  final diff = Process.runSync('git', [
-    '--no-pager',
-    'diff',
-    '--no-index',
-    '--',
-    backup.path,
-    bindings.path,
-  ], workingDirectory: root);
-  print(diff.stdout);
-
-  if (args.contains('--write')) {
-    backup.deleteSync();
-    print('\nRegenerated bindings left in place (--write).');
-  } else {
-    bindings.writeAsStringSync(before);
-    backup.deleteSync();
   }
 
   print(
