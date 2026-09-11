@@ -76,13 +76,18 @@ class RunContext {
 class PackagePlan {
   final DiscoveredPackage package;
 
-  /// What is currently published, or `pubspec.yaml`'s version for a package
-  /// that has never been published.
+  /// The last release *on the line being released* -- or `pubspec.yaml`'s
+  /// version for a package that has never been published.
   ///
   /// Read from pub.dev rather than `pubspec.yaml` for anything published:
-  /// every release ends by bumping pubspec to a "next potential" version that
+  /// old releases ended by bumping pubspec to a "next potential" version that
   /// doesn't exist, so pubspec routinely names something never shipped
   /// (`3.6.0` while `3.5.0` is the newest release).
+  ///
+  /// Scoped to the line rather than "newest published anywhere", because
+  /// release branches never merge back and the lines are disjoint: rendering
+  /// `3.0.0 -> 2.1.3` for a patch of the `2.1.x` line names a version from a
+  /// branch this release has nothing to do with.
   final String currentVersion;
 
   final String newVersion;
@@ -162,10 +167,14 @@ Future<ReleasePlan> computeReleasePlan(
       gitDir ??
       await GitDir.fromExisting(ctx.repoRoot, allowSubdirectory: true);
   final published = publishedVersions ?? fetchPublishedVersions;
-  final gateways = nativeSdkGateways ?? _githubGateways(ctx.repoRoot);
+  final gateways = nativeSdkGateways ?? GithubSdkGateways.forRepo(ctx.repoRoot);
 
   final groups = await _resolveGroups(ctx);
   final selected = _selectPackages(groups, ctx);
+
+  // Collected across every package so an `--all` run reports every stale pubspec
+  // at once instead of dying on the first.
+  final targetConflicts = <String>[];
 
   final plans = <PackagePlan>[];
   for (final pkg in selected) {
@@ -176,23 +185,49 @@ Future<ReleasePlan> computeReleasePlan(
       gateways,
       await published(pkg.name),
       isExplicitlyRequested: ctx.requestedPackages.contains(pkg.name),
+      targetConflicts: targetConflicts,
     );
     if (plan != null) plans.add(plan);
+  }
+
+  if (targetConflicts.isNotEmpty) {
+    throw StateError(
+      'Pre-release target${targetConflicts.length == 1 ? '' : 's'} not ahead '
+      'of what pub.dev already has:\n\n'
+      '${targetConflicts.map((c) => '  - $c').join('\n\n')}',
+    );
   }
 
   return ReleasePlan(trigger: ctx.trigger, packages: plans);
 }
 
-NativeSdkGateways _githubGateways(String repoRoot) {
-  final github = GithubCommandWrapper(repoRoot);
-  return NativeSdkGateways(
-    fetchLatest: (repoSlug) async =>
-        (await github.getLatestRelease(_log, repoSlug)).tagName,
-    resolveCommitSha: (repoSlug, ref) =>
-        github.getCommitSha(_log, repoSlug, ref),
-    releaseExists: (repoSlug, version) async =>
-        await github.getReleaseByTagName(_log, repoSlug, version) != null,
-  );
+/// [NativeSdkGateways] backed by real `gh` calls.
+///
+/// A thin adapter with no state of its own -- [github] does the remembering,
+/// caching each repo's release list and each resolved ref for its own
+/// lifetime. One wrapper per run therefore means the same "latest
+/// dd-sdk-ios release" question costs one call, not one per package: all six
+/// members of a federated group share the answer.
+class GithubSdkGateways extends NativeSdkGateways {
+  final GithubCommandWrapper github;
+  final Logger logger;
+
+  GithubSdkGateways(this.github, {Logger? logger}) : logger = logger ?? _log;
+
+  GithubSdkGateways.forRepo(String repoRoot, {Logger? logger})
+    : this(GithubCommandWrapper(repoRoot), logger: logger);
+
+  @override
+  Future<String> fetchLatest(String repoSlug) async =>
+      (await github.getLatestRelease(logger, repoSlug)).tagName;
+
+  @override
+  Future<String> resolveCommitSha(String repoSlug, String ref) =>
+      github.getCommitSha(logger, repoSlug, ref);
+
+  @override
+  Future<bool> releaseExists(String repoSlug, String version) async =>
+      await github.getReleaseByTagName(logger, repoSlug, version) != null;
 }
 
 /// Rejects per-run overrides the run has no coherent way to honour, rather
@@ -234,9 +269,9 @@ void _validateTriggerInputs(RunContext ctx) {
     case TriggerContext.preRelease:
       throw StateError(
         'BUMP_TYPE="$bumpType" does not apply on a pre-release branch -- the '
-        'version comes from the prerelease counter against a target computed '
-        'from the last stable release. Use PRERELEASE_LABEL to start a new '
-        'label.',
+        'version comes from the prerelease counter against the target the '
+        'package declares in its pubspec.yaml. Edit that version to move the '
+        'line, or use PRERELEASE_LABEL to start a new label.',
       );
   }
 }
@@ -248,21 +283,35 @@ Future<PackagePlan?> _computePackagePlan(
   NativeSdkGateways gateways,
   PublishedVersions published, {
   required bool isExplicitlyRequested,
+  required List<String> targetConflicts,
 }) async {
   // Two questions, answered separately because on a pre-release line they
   // have different answers:
   //
   //   versionBase -- what the new version is derived from.
-  //   commitBase  -- what "since we last shipped" means, for the changelog
-  //                  range and for whether this package ships at all.
+  //   commitBase  -- the last release *on the line being released*: what
+  //                  "since we last shipped" means, for the changelog range,
+  //                  for whether this package ships at all, and for what the
+  //                  native SDK pins are compared against.
   //
   // They coincide on mainline (a stable release supersedes the whole line)
-  // and on a patch branch (confined to its own line). A pre-release run has
-  // to resolve its target first, because both its baselines are scoped to
-  // that target's line -- see [_prereleaseTarget].
+  // and on a patch branch (confined to its own line), and diverge on a
+  // pre-release, whose version comes from pubspec while its changelog still
+  // runs from the previous beta.
+  //
+  // commitBase is deliberately not `published.latest`. Release branches never
+  // merge back, so release lines are disjoint: on a `2.1.x` patch branch a
+  // published `3.0.0` lives on a branch with no relationship to this one, and
+  // its pins describe nothing about what this line last shipped.
   final Version? versionBase;
   final Version? commitBase;
   final warnings = <String>[];
+
+  final files = resolveNativeDependencyFiles(pkg.absolutePath(ctx.repoRoot));
+
+  // See [_nativeSdkEligibleGroupKey]. Non-eligible packages' files are
+  // still discovered, for [_nativeDependencyChanges] below.
+  final isNativeSdkEligible = pkg.groupKey == _nativeSdkEligibleGroupKey;
 
   switch (ctx.trigger) {
     case TriggerContext.mainline:
@@ -294,7 +343,7 @@ Future<PackagePlan?> _computePackagePlan(
         );
       }
     case TriggerContext.preRelease:
-      final target = await _prereleaseTarget(pkg, published, gitDir, warnings);
+      final target = declaredPrereleaseTarget(pkg);
       versionBase = target;
       // Scoped to the target's own line. The global newest release is the
       // wrong answer here: a concurrent pre-release effort (a `v5` branch
@@ -306,26 +355,32 @@ Future<PackagePlan?> _computePackagePlan(
           published.prereleasesAt(target).lastOrNull ?? published.latestStable;
   }
 
-  final (sinceSha, rangeWarnings) = await _commitRangeStart(
-    gitDir,
-    pkg.name,
-    published,
-    commitBase,
-  );
-  for (final warning in rangeWarnings) {
-    if (!warnings.contains(warning)) warnings.add(warning);
+  // Memoized because a pre-release asks for two ranges -- since the previous
+  // beta for the changelog, since the last stable for the advisory -- and on
+  // a first beta those are the same baseline. Walking twice would also emit
+  // the missing-tag warning twice.
+  final commitsByBaseline = <Version?, List<ConventionalCommit>>{};
+  Future<List<ConventionalCommit>> commitsSince(Version? baseline) async {
+    final cached = commitsByBaseline[baseline];
+    if (cached != null) return cached;
+
+    final (sinceSha, rangeWarnings) = await _commitRangeStart(
+      gitDir,
+      pkg.name,
+      published,
+      baseline,
+    );
+    for (final warning in rangeWarnings) {
+      if (!warnings.contains(warning)) warnings.add(warning);
+    }
+    return commitsByBaseline[baseline] = await _conventionalCommitsSince(
+      gitDir,
+      pathspec: pkg.relativePath,
+      sinceSha: sinceSha,
+    );
   }
-  final commits = await _conventionalCommitsSince(
-    gitDir,
-    pathspec: pkg.relativePath,
-    sinceSha: sinceSha,
-  );
 
-  final files = resolveNativeDependencyFiles(pkg.absolutePath(ctx.repoRoot));
-
-  // See [_nativeSdkEligibleGroupKey]. Non-eligible packages' files are
-  // still discovered, for [_nativeDependencyChanges] below.
-  final isNativeSdkEligible = pkg.groupKey == _nativeSdkEligibleGroupKey;
+  final commits = await commitsSince(commitBase);
 
   // Whether this package releases at all is decided before anything touches
   // the network -- resolving native SDK targets for a package with nothing to
@@ -340,14 +395,26 @@ Future<PackagePlan?> _computePackagePlan(
     return null;
   }
 
+  // Deliberately after the eligibility gate: a package that isn't shipping
+  // this run has no target to conflict with, and letting an untouched sibling
+  // fail an `--all` run is the exact thing the gate exists to prevent.
+  if (ctx.trigger == TriggerContext.preRelease) {
+    final conflict = _prereleaseTargetConflict(pkg, versionBase!, published);
+    if (conflict != null) {
+      targetConflicts.add(conflict);
+      return null;
+    }
+  }
+
   final nativeSdkDeltas = isNativeSdkEligible
       ? await _computeNativeSdkDeltas(
           pkg,
           files,
           ctx,
           gitDir,
-          published,
+          commitBase,
           gateways,
+          warnings,
         )
       : const <NativeSdkDelta>[];
 
@@ -355,14 +422,31 @@ Future<PackagePlan?> _computePackagePlan(
       ? const <NativeDependencyChange>[]
       : await _nativeDependencyChanges(pkg, files, ctx, gitDir, published);
 
-  final currentVersion = published.latest?.toString() ?? pkg.version;
+  // The line's own last release, not the newest published anywhere -- see the
+  // commitBase note above. Rendering "3.0.0 -> 2.1.3" for a patch of the
+  // 2.1.x line names a version from a branch this release has nothing to do
+  // with.
+  final currentVersion = commitBase?.toString() ?? pkg.version;
+
+  if (ctx.trigger == TriggerContext.preRelease) {
+    final advisory = _prereleaseTargetAdvisory(
+      pkg: pkg,
+      target: versionBase!,
+      latestStable: published.latestStable,
+      commitsSinceStable: await commitsSince(published.latestStable),
+      nativeSdkDeltas: nativeSdkDeltas,
+    );
+    if (advisory != null) warnings.add(advisory);
+  }
 
   return switch (ctx.trigger) {
     TriggerContext.patch => _computePatchPlan(
       pkg,
       currentVersion,
       commits,
-      versionBase,
+      // Non-null on this path: the patch arm of the switch above throws
+      // rather than leaving a branch with no release to patch.
+      versionBase!,
       nativeSdkDeltas,
       nativeDependencyChanges,
       warnings,
@@ -372,7 +456,8 @@ Future<PackagePlan?> _computePackagePlan(
       ctx,
       currentVersion,
       commits,
-      versionBase,
+      // Non-null on this path: declaredPrereleaseTarget always returns one.
+      versionBase!,
       published,
       nativeSdkDeltas,
       nativeDependencyChanges,
@@ -392,53 +477,62 @@ Future<PackagePlan?> _computePackagePlan(
   };
 }
 
-/// The version a pre-release run is working towards.
+/// The version a pre-release line is working towards, as declared in the
+/// package's own `pubspec.yaml`.
 ///
-/// Computed, not declared: the last stable release plus the bump aggregated
-/// from every commit since it (`3.5.0` + a `feat!` on `v4` -> `4.0.0`). This
-/// is the same derivation a stable release would use, which is what makes a
-/// pre-release "mainline plus a suffix" and makes the path self-correcting --
-/// once `4.0.0` ships stably the base moves on and the target becomes
-/// `4.1.0`.
+/// Declared, not computed. A computed target has to be re-derived on every
+/// run, from a baseline that moves as the line progresses -- which means every
+/// signal feeding it must be measured since the last *stable* release or the
+/// target silently regresses (`4.0.0-beta.1`, then `3.5.1-beta.1` once a prior
+/// beta has already absorbed the evidence). That invariant is invisible at the
+/// call site and was broken twice. A declared target cannot regress.
 ///
-/// Note this aggregates from the last **stable** release, not the last
-/// pre-release. Measuring from the previous beta would make the target
-/// collapse as the line progresses: after `4.0.0-beta.1`, a lone `fix:` would
-/// compute `3.5.1` instead of `4.0.0`.
+/// Any pre-release suffix and build metadata are stripped: after
+/// `4.0.0-beta.1` ships, the content commit leaves pubspec reading
+/// `4.0.0-beta.1`, and that is still a declaration of `4.0.0`. This matches
+/// [PublishedVersions.prereleasesAt], which ignores the target's own suffix
+/// for the same reason.
 ///
-/// A package with no stable release takes `pubspec.yaml`'s version, which for
-/// something never published is the only declaration of what it's aiming at.
-Future<Version> _prereleaseTarget(
-  DiscoveredPackage pkg,
-  PublishedVersions published,
-  GitDir gitDir,
-  List<String> warnings,
-) async {
-  final stableBase = published.latestStable;
-  if (stableBase == null) return Version.parse(pkg.version);
+/// The objection this design has to answer -- that pubspec is a second source
+/// of truth free to disagree with what has shipped -- is handled by
+/// [_prereleaseTargetConflict], which refuses a target that isn't ahead of
+/// pub.dev, and by [_prereleaseTargetAdvisory], which flags a target the
+/// commits say is too low.
+Version declaredPrereleaseTarget(DiscoveredPackage pkg) {
+  final declared = Version.parse(pkg.version);
+  return Version(declared.major, declared.minor, declared.patch);
+}
 
-  final (sinceSha, stableWarnings) = await _commitRangeStart(
-    gitDir,
-    pkg.name,
-    published,
-    stableBase,
-  );
-  for (final warning in stableWarnings) {
-    if (!warnings.contains(warning)) warnings.add(warning);
+/// Why [target] can't be released as a pre-release, or null if it can.
+///
+/// Returned rather than thrown so `computeReleasePlan` can preflight every
+/// selected package and report all of them at once: on an `--all` or
+/// `--include-federated` run, throwing from inside the per-package loop would
+/// kill the whole plan over a sibling nobody asked for.
+String? _prereleaseTargetConflict(
+  DiscoveredPackage pkg,
+  Version target,
+  PublishedVersions published,
+) {
+  if (published.hasStableAt(target)) {
+    return '${pkg.name}: pubspec.yaml declares $target, which has already '
+        'been released stably. A pre-release against it would sort below the '
+        'published version -- bump pubspec.yaml to the version this '
+        'pre-release line is working towards.';
   }
 
-  final bump = aggregateBumpLevel(
-    await _conventionalCommitsSince(
-      gitDir,
-      pathspec: pkg.relativePath,
-      sinceSha: sinceSha,
-    ),
-  );
+  // Explicit null check rather than `target <= latestStable`: package:version's
+  // `<=` takes a dynamic and quietly returns false against null, so the
+  // shorter form would fail open for a never-published package.
+  final stable = published.latestStable;
+  if (stable != null && target <= stable) {
+    return '${pkg.name}: pubspec.yaml declares $target, but $stable is '
+        'already published. A pre-release has to work towards something newer '
+        '-- bump pubspec.yaml to the version this pre-release line is working '
+        'towards.';
+  }
 
-  // Nothing since the last stable carries semver weight -- this package is
-  // only here because it was named or a native SDK override is driving it, so
-  // the next patch is what it's aiming at.
-  return _applyBump(stableBase, bump ?? VersionBumpType.patch);
+  return null;
 }
 
 /// The sha a commit range starts from, plus anything a human should know
@@ -493,7 +587,7 @@ PackagePlan _computePatchPlan(
   DiscoveredPackage pkg,
   String currentVersion,
   List<ConventionalCommit> commits,
-  Version? versionBase,
+  Version versionBase,
   List<NativeSdkDelta> nativeSdkDeltas,
   List<NativeDependencyChange> nativeDependencyChanges,
   List<String> warnings,
@@ -509,15 +603,27 @@ PackagePlan _computePatchPlan(
     }
   }
 
+  // The same rejection, for the other way a change of that size can arrive.
+  // A patch branch's pins are left alone by default, so this is only
+  // reachable through an explicit override -- someone asking to jump the
+  // native SDK a minor or major on a line that can only ship patches.
+  for (final delta in nativeSdkDeltas) {
+    final bump = delta.getImpliedBump();
+    if (bump == VersionBumpType.major || bump == VersionBumpType.minor) {
+      throw StateError(
+        '${delta.sdk.displayName} SDK ${delta.currentDeclaration} -> '
+        '${delta.targetVersion} is a ${bump!.name} change, which does not '
+        'belong on a patch branch (only fixes are allowed here). Release it '
+        'from develop instead, or pick a patch-level version of the SDK.',
+      );
+    }
+  }
+
   return PackagePlan(
     package: pkg,
     currentVersion: currentVersion,
-    newVersion: versionBase == null
-        ? pkg.version
-        : versionBase.incrementPatch().toString(),
-    // Nothing to increment from means nothing was bumped -- see the same
-    // reasoning in _computeMainlinePlan.
-    bumpLevel: versionBase == null ? null : VersionBumpType.patch,
+    newVersion: versionBase.incrementPatch().toString(),
+    bumpLevel: VersionBumpType.patch,
     contributingCommits: commits,
     nativeSdkDeltas: nativeSdkDeltas,
     nativeDependencyChanges: nativeDependencyChanges,
@@ -566,8 +672,11 @@ PackagePlan _computeMainlinePlan(
   // by name or a forced native SDK update is driving it -- still worth a
   // release, treated as a maintenance patch.
   final bump =
-      VersionBumpType.parseOverride(ctx.bumpTypeOverride) ??
-      aggregateBumpLevel(commits) ??
+      _impliedBump(
+        commits: commits,
+        nativeSdkDeltas: nativeSdkDeltas,
+        bumpTypeOverride: ctx.bumpTypeOverride,
+      ) ??
       VersionBumpType.patch;
 
   return PackagePlan(
@@ -582,41 +691,32 @@ PackagePlan _computeMainlinePlan(
   );
 }
 
-/// A pre-release is mainline plus a suffix: the target is computed the same
-/// way a stable release would be, then a counter is appended.
+/// A pre-release is its declared target plus a counter: `4.0.0` from
+/// [declaredPrereleaseTarget], then `-beta.1`, `-beta.2`, and so on.
 ///
-/// The target is deliberately *not* read from `pubspec.yaml`, which would be
-/// a second source of truth free to disagree with what has actually shipped.
-/// Computing it also makes the path self-correcting: once `4.0.0` ships
-/// stably the base moves on, the target becomes `4.1.0` or `5.0.0`, and no
-/// state is left claiming otherwise.
+/// The target being declared rather than computed is what keeps the base
+/// still while the line progresses -- see [declaredPrereleaseTarget] for why
+/// a computed one couldn't be. Everything decided here is about the suffix.
 PackagePlan _computePrereleasePlan(
   DiscoveredPackage pkg,
   RunContext ctx,
   String currentVersion,
   List<ConventionalCommit> commits,
-  Version? target,
+  Version target,
   PublishedVersions published,
   List<NativeSdkDelta> nativeSdkDeltas,
   List<NativeDependencyChange> nativeDependencyChanges,
   List<String> warnings,
 ) {
-  target!;
   final counter = published.prereleasesAt(target).lastOrNull;
   final label = ctx.prereleaseLabel;
 
+  // A target already released stably was rejected by
+  // _prereleaseTargetConflict before this point, so there's no such case to
+  // handle here.
   final Version newVersion;
   if (counter != null && (label == null || counter.preRelease.first == label)) {
     newVersion = counter.incrementPreRelease();
-  } else if (published.hasStableAt(target)) {
-    // Can only happen when the target was reached by a path that doesn't
-    // consult the commits (a never-published package taking its version from
-    // pubspec, say) -- a new pre-release here would sort below a release
-    // that already exists.
-    throw StateError(
-      'Package "${pkg.name}" target $target has already been released stably '
-      '-- a pre-release against it would sort below the published version.',
-    );
   } else if (label != null) {
     newVersion = Version(
       target.major,
@@ -656,6 +756,19 @@ PackagePlan _computePrereleasePlan(
     );
   }
 
+  // Sorting below something already published is legitimate when another line
+  // is shipping concurrently (`4.0.0-beta.2` while `5.0.0-alpha.1` exists),
+  // so this can't be the error the invariant above is -- but it's also what a
+  // pubspec left behind looks like, and that's worth saying out loud.
+  final newestPublished = published.latest;
+  if (newestPublished != null && newVersion < newestPublished) {
+    warnings.add(
+      '${pkg.name}: $newVersion sorts below the published $newestPublished. '
+      'Expected if another release line is shipping concurrently; otherwise '
+      'pubspec.yaml is behind what has already gone out.',
+    );
+  }
+
   return PackagePlan(
     package: pkg,
     currentVersion: currentVersion,
@@ -668,6 +781,72 @@ PackagePlan _computePrereleasePlan(
     nativeDependencyChanges: nativeDependencyChanges,
     warnings: warnings,
   );
+}
+
+/// The bump the evidence implies, independent of how any target is chosen --
+/// null when nothing carries semver weight.
+///
+/// A native SDK's own bump carries through even without a qualifying commit
+/// of the wrapper package's own: a dd-sdk-ios minor release pinned here is
+/// itself a minor change for whoever depends on this package. An explicit
+/// `BUMP_TYPE` wins outright, since that's a human's direct instruction.
+///
+/// One function rather than one per caller: mainline uses it to pick the
+/// version, and [_prereleaseTargetAdvisory] uses it to sanity-check a
+/// declared one. Keeping them separate is how the native SDK signal came to
+/// be wired into the first and not the second.
+VersionBumpType? _impliedBump({
+  required List<ConventionalCommit> commits,
+  required List<NativeSdkDelta> nativeSdkDeltas,
+  String? bumpTypeOverride,
+}) =>
+    VersionBumpType.parseOverride(bumpTypeOverride) ??
+    highestBump([
+      aggregateBumpLevel(commits),
+      nativeSdkAggregateBump(nativeSdkDeltas),
+    ]);
+
+/// A warning when the pre-release target declared in pubspec sits *below*
+/// what the evidence implies -- null when there's nothing to say.
+///
+/// Deliberately one-directional. Declaring a target ahead of the commits is
+/// the whole point of declaring one (the `v4` line targets `4.0.0` from its
+/// first beta, long before every breaking change has landed), so warning on
+/// that would fire on every run. Worse, commits here are pathspec-scoped, so
+/// a breaking change living in `_platform_interface` is invisible to
+/// `datadog_flutter_plugin` -- a symmetric check would cry wolf on the
+/// flagship group forever.
+///
+/// A target that's too *low* is the real hazard: a `feat!:` landed and the
+/// line is about to ship `4.0.1-beta.3` as though nothing broke.
+String? _prereleaseTargetAdvisory({
+  required DiscoveredPackage pkg,
+  required Version target,
+  required Version? latestStable,
+  required List<ConventionalCommit> commitsSinceStable,
+  required List<NativeSdkDelta> nativeSdkDeltas,
+}) {
+  // Nothing to measure from: never published, or published only as
+  // pre-releases. Bumping a base that doesn't exist would invent a comparison.
+  if (latestStable == null) return null;
+
+  final implied = _impliedBump(
+    commits: commitsSinceStable,
+    nativeSdkDeltas: nativeSdkDeltas,
+  );
+  if (implied == null) return null;
+
+  final impliedTarget = _applyBump(latestStable, implied);
+  if (impliedTarget <= target) return null;
+
+  final reason = commitsSinceStable.firstWhereOrNull(
+    (c) => c.bumpType == implied,
+  );
+
+  return '${pkg.name}: pubspec.yaml targets $target, but changes since '
+      '$latestStable imply $impliedTarget'
+      '${reason == null ? '' : ' (${reason.type}: ${reason.description})'}. '
+      'Shipping $target as declared -- bump pubspec.yaml if that is wrong.';
 }
 
 Version _applyBump(Version base, VersionBumpType bump) {
@@ -698,74 +877,119 @@ bool _hasForcedNativeUpdate(NativeDependencyFiles files, RunContext ctx) =>
     (files.androidGradle != null && ctx.androidSdkVersionOverride != null) ||
     (files.cppCMakeLists.isNotEmpty && ctx.cppVersionOverride != null);
 
-/// [file]'s content as it existed in [pkg]'s last published version's git
-/// history, or null if there's no published version, no tag resolves (see
-/// [tagSha]), or [file] didn't exist at that commit.
-Future<String?> _lastPublishedContent(
+/// [file]'s content as it existed at [atVersion] in [pkg]'s git history, or
+/// null if [atVersion] is null, no tag resolves for it (see [tagSha]), or
+/// [file] didn't exist at that commit.
+Future<String?> _publishedContentAt(
   DiscoveredPackage pkg,
-  PublishedVersions published,
+  Version? atVersion,
   RunContext ctx,
   GitDir gitDir,
   File? file,
 ) async {
-  final latest = published.latest;
-  if (latest == null || file == null) return null;
-  return fileContentAtTag(
+  if (atVersion == null || file == null) return null;
+  return fileContentAtRef(
     gitDir,
-    '${pkg.name}/v$latest',
+    '${pkg.name}/v$atVersion',
     p.relative(file.path, from: ctx.repoRoot),
   );
 }
 
-/// One [NativeSdkDelta] per SDK [pkg] ships a manifest for.
+/// One [NativeSdkDelta] per SDK [pkg] ships a manifest for, comparing each
+/// SDK's resolved target against what that manifest declared at [baseline] --
+/// the last release *on the line being released*, i.e. `commitBase`. Release
+/// branches never merge back, so a version from another line's tag describes
+/// nothing about this one.
+///
+/// Two declarations are read per SDK, and they answer different questions:
+/// the one at [baseline] is what the line last shipped (the bump comparison),
+/// and the one in the working tree is what someone has asked for now (a pin
+/// means hold -- see [resolveNativeSdkTarget]).
+///
+/// Appends to [warnings] when a pin is honoured, and when the baseline
+/// declaration can't be read as a version.
 Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
   DiscoveredPackage pkg,
   NativeDependencyFiles files,
   RunContext ctx,
   GitDir gitDir,
-  PublishedVersions published,
+  Version? baseline,
   NativeSdkGateways gateways,
+  List<String> warnings,
 ) async {
   Future<String?> historicalContent(File? file) =>
-      _lastPublishedContent(pkg, published, ctx, gitDir, file);
+      _publishedContentAt(pkg, baseline, ctx, gitDir, file);
 
-  final iosPodspecContent = await historicalContent(files.iosPodspec);
-  final iosSpmContent = await historicalContent(files.iosSpmManifest);
-  final androidContent = await historicalContent(files.androidGradle);
-  final cppContent = await historicalContent(files.cppCMakeLists.firstOrNull);
+  String? workingTreeContent(File? file) => file?.readAsStringSync();
 
   final perSdkFiles = {
     NativeSdk.ios: (
       files: [?files.iosPodspec, ?files.iosSpmManifest],
       override: ctx.iosSdkVersionOverride,
       current: currentIosDeclaration(
-        podspecContent: iosPodspecContent,
-        spmContent: iosSpmContent,
+        podspecContent: await historicalContent(files.iosPodspec),
+        spmContent: await historicalContent(files.iosSpmManifest),
+      ),
+      declared: currentIosDeclaration(
+        podspecContent: workingTreeContent(files.iosPodspec),
+        spmContent: workingTreeContent(files.iosSpmManifest),
       ),
     ),
     NativeSdk.android: (
       files: [?files.androidGradle],
       override: ctx.androidSdkVersionOverride,
-      current: currentAndroidDeclaration(androidContent),
+      current: currentAndroidDeclaration(
+        await historicalContent(files.androidGradle),
+      ),
+      declared: currentAndroidDeclaration(
+        workingTreeContent(files.androidGradle),
+      ),
     ),
     NativeSdk.cpp: (
       files: files.cppCMakeLists,
       override: ctx.cppVersionOverride,
-      current: currentCppDeclaration(cppContent),
+      current: currentCppDeclaration(
+        await historicalContent(files.cppCMakeLists.firstOrNull),
+      ),
+      declared: currentCppDeclaration(
+        workingTreeContent(files.cppCMakeLists.firstOrNull),
+      ),
     ),
   };
 
   final deltas = <NativeSdkDelta>[];
-  for (final MapEntry(key: sdk, value: (:files, :override, :current))
+  for (final MapEntry(key: sdk, value: (:files, :override, :current, :declared))
       in perSdkFiles.entries) {
     if (files.isEmpty) continue;
 
     final target = await resolveNativeSdkTarget(
       trigger: ctx.trigger,
       override: override,
+      workingTreeDeclaration: declared,
       fetchLatest: () => gateways.fetchLatest(sdk.repoSlug),
       releaseExists: (version) => gateways.releaseExists(sdk.repoSlug, version),
+      onPinned: (pin) => warnings.add(
+        '${sdk.displayName} SDK is pinned at $pin in ${pkg.name}\'s manifest '
+        '-- honouring the pin and not checking for a newer release. Remove '
+        'the pin to resume tracking the latest, or pass an explicit override '
+        'to move it.',
+      ),
     );
+
+    // A baseline we can't read costs both the bump signal and the changelog
+    // section, so say so rather than silently contributing nothing. Only
+    // reachable for tags predating the current tooling (an Android `3+`, a
+    // hand-pinned GIT_TAG SHA with no `# vX.Y.Z` annotation) -- every tag it
+    // cuts carries a complete version.
+    if (target != null &&
+        current != null &&
+        normalizeVersion(current) == null) {
+      warnings.add(
+        '${sdk.displayName} SDK: ${pkg.name}\'s last release on this line '
+        'declared "$current", which is not a complete version -- it adds no '
+        'bump signal and has no changelog section this run.',
+      );
+    }
 
     deltas.add(
       NativeSdkDelta(
@@ -806,7 +1030,7 @@ Future<List<NativeDependencyChange>> _nativeDependencyChanges(
   }
 
   Future<String?> historicalContent(File? file) =>
-      _lastPublishedContent(pkg, published, ctx, gitDir, file);
+      _publishedContentAt(pkg, latest, ctx, gitDir, file);
 
   final changes = <NativeDependencyChange>[];
 
@@ -851,23 +1075,23 @@ Future<List<NativeDependencyChange>> _nativeDependencyChanges(
   return changes;
 }
 
-/// [commitMessagesSince]'s raw messages, parsed into [ConventionalCommit]s
-/// and narrowed to the ones that carry semver weight -- commits that fail
-/// to parse, or parse but don't bump anything (`chore:`, `docs:`, etc.),
-/// are dropped since nothing here cares about them either as bump input or
-/// as a [PackagePlan.contributingCommits] entry.
+/// [commitsSince]'s raw records, parsed into [ConventionalCommit]s and
+/// narrowed to the ones that carry semver weight -- commits that fail to
+/// parse, or parse but don't bump anything (`chore:`, `docs:`, etc.), are
+/// dropped since nothing here cares about them either as bump input or as a
+/// [PackagePlan.contributingCommits] entry.
 Future<List<ConventionalCommit>> _conventionalCommitsSince(
   GitDir gitDir, {
   required String pathspec,
   String? sinceSha,
 }) async {
-  final messages = await commitMessagesSince(
+  final records = await commitsSince(
     gitDir,
     pathspec: pathspec,
     sinceSha: sinceSha,
   );
-  return messages
-      .map(ConventionalCommit.parse)
+  return records
+      .map((r) => ConventionalCommit.parse(r.message, sha: r.sha))
       .nonNulls
       .where((c) => c.bumpType != null)
       .toList();

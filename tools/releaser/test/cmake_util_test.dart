@@ -196,4 +196,75 @@ FetchContent_Declare(some_other_dep
       );
     });
   });
+
+  group('currentGitTagVersion', () {
+    /// [gitTagLine] carries its own closing paren, because `pinCppVersion`
+    /// writes the annotation at end of line -- after the `)`, since a `#`
+    /// before it would comment the paren out and break the call.
+    String declaring(String gitTagLine) =>
+        '''
+FetchContent_Declare(dd-sdk-cpp
+  GIT_REPOSITORY https://github.com/DataDog/dd-sdk-cpp.git
+  $gitTagLine
+''';
+
+    test('recovers the version pinCppVersion annotated a SHA with', () {
+      // A bare SHA carries no version, so the annotation is the only record
+      // of what was actually pinned.
+      expect(
+        currentGitTagVersion(declaring('GIT_TAG $_sha)  # v1.4.0')),
+        'v1.4.0',
+      );
+    });
+
+    test('falls back to the ref when there is no annotation', () {
+      expect(currentGitTagVersion(declaring('GIT_TAG develop)')), 'develop');
+      expect(currentGitTagVersion(declaring('GIT_TAG v1.4.0)')), 'v1.4.0');
+    });
+
+    test(
+      'ignores a comment that explains a pin rather than naming a version',
+      () {
+        // The shape a human writes when deliberately holding a version.
+        // Taking the first word would yield "hold", which reads as a floating
+        // ref and makes the planner fetch a newer SDK -- overriding the very
+        // pin the comment is explaining.
+        expect(
+          currentGitTagVersion(
+            declaring('GIT_TAG v1.4.0)  # hold until #123 lands'),
+          ),
+          'v1.4.0',
+        );
+        expect(
+          currentGitTagVersion(declaring('GIT_TAG $_sha)  # hold until #123')),
+          _sha,
+        );
+      },
+    );
+
+    test('does not read a version out of surrounding prose', () {
+      // Only the exact shape pinCppVersion writes counts. Digging a version
+      // out of free text reads `# hold until 2.0.0 is out` as a pin at
+      // 2.0.0, which is the opposite of what the comment says. Falling back
+      // to the SHA loses the version, but `_computeNativeSdkDeltas` warns
+      // about an unreadable baseline rather than acting on a wrong one.
+      expect(
+        currentGitTagVersion(declaring('GIT_TAG $_sha)  # pinned to 1.4.0')),
+        _sha,
+      );
+      expect(
+        currentGitTagVersion(
+          declaring('GIT_TAG $_sha)  # hold until 2.0.0 is out'),
+        ),
+        _sha,
+      );
+    });
+
+    test('is null with no dd-sdk-cpp declaration at all', () {
+      expect(
+        currentGitTagVersion('cmake_minimum_required(VERSION 3.14)'),
+        isNull,
+      );
+    });
+  });
 }

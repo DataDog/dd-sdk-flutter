@@ -8,6 +8,7 @@ import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:logging/logging.dart';
 
+import 'pr_resolution.dart';
 import 'process_helper.dart';
 
 part 'github_cmd_wrapper.g.dart';
@@ -30,10 +31,20 @@ class GHRelease {
 }
 
 /// Wraps the `gh` command line tool for performing operations with Github
+///
+/// Read-only lookups are cached for the life of the instance -- see
+/// [fetchReleases] and [getCommitSha]. Construct one per run (every call site
+/// already does) and the cache lifetime takes care of itself.
 class GithubCommandWrapper {
   final String cwd;
 
-  const GithubCommandWrapper(this.cwd);
+  /// Keyed by repo slug for [fetchReleases], and by `slug@ref` for
+  /// [getCommitSha]. Futures rather than results, so concurrent askers share
+  /// one in-flight call instead of racing to start their own.
+  final _releasesByRepo = <String, Future<List<GHRelease>>>{};
+  final _shaByRef = <String, Future<String>>{};
+
+  GithubCommandWrapper(this.cwd);
 
   Future<bool> checkAuth(Logger logger) async {
     final exitCode = await runProcess(
@@ -47,7 +58,23 @@ class GithubCommandWrapper {
     return exitCode == 0;
   }
 
-  Future<List<GHRelease>> fetchReleases(Logger logger, String repoSlug) async {
+  /// Every release of [repoSlug], fetched once per instance.
+  ///
+  /// Both [getLatestRelease] and [getReleaseByTagName] go through here, and
+  /// each is asked once per package being planned -- "what is the latest
+  /// dd-sdk-ios release" has the same answer for all six members of a
+  /// federated group, so without this an `--include-federated` run makes a
+  /// dozen identical `gh release list` calls.
+  ///
+  /// A failed lookup stays failed for the life of the instance; nothing here
+  /// retries, and a run that can't reach GitHub has no path to succeeding.
+  Future<List<GHRelease>> fetchReleases(Logger logger, String repoSlug) =>
+      _releasesByRepo.putIfAbsent(
+        repoSlug,
+        () => _fetchReleases(logger, repoSlug),
+      );
+
+  Future<List<GHRelease>> _fetchReleases(Logger logger, String repoSlug) async {
     final buffer = StringBuffer();
     final exitCode = await runProcess(
       'gh',
@@ -91,7 +118,17 @@ class GithubCommandWrapper {
   /// currently points to, for pinning native SDKs whose config has no
   /// dedicated "verify this tag against this commit" field (CMake's
   /// `FetchContent_Declare`, notably) -- the SHA is what's actually pinned.
-  Future<String> getCommitSha(
+  ///
+  /// Cached per `slug@ref` for the life of the instance, like
+  /// [fetchReleases]: every desktop package resolving the same dd-sdk-cpp
+  /// tag should cost one call, not one each.
+  Future<String> getCommitSha(Logger logger, String repoSlug, String ref) =>
+      _shaByRef.putIfAbsent(
+        '$repoSlug@$ref',
+        () => _getCommitSha(logger, repoSlug, ref),
+      );
+
+  Future<String> _getCommitSha(
     Logger logger,
     String repoSlug,
     String ref,
@@ -110,6 +147,100 @@ class GithubCommandWrapper {
     }
 
     return buffer.toString().trim();
+  }
+
+  /// Raw content of [path] in [repoSlug] at its default branch HEAD -- via
+  /// `gh api`'s raw-media-type override, which returns the file's bytes
+  /// directly instead of the JSON+base64 envelope the endpoint returns by
+  /// default. `native_sdk_changelog.dart` uses this to fetch `CHANGELOG.md`.
+  Future<String> fetchFileContent(
+    Logger logger,
+    String repoSlug,
+    String path,
+  ) async {
+    final buffer = StringBuffer();
+    final exitCode = await runProcess(
+      'gh',
+      [
+        'api',
+        '-H',
+        'Accept: application/vnd.github.raw',
+        'repos/$repoSlug/contents/$path',
+      ],
+      workingDirectory: cwd,
+      stdout: (line) => buffer.writeln(line),
+      stderr: (line) => logger.shout(line),
+    );
+
+    if (exitCode != 0) {
+      throw Exception('gh returned exit code $exitCode.');
+    }
+
+    return buffer.toString();
+  }
+
+  /// `gh pr view {number}`'s title + body -- the richer LLM input
+  /// `llm/changelog.dart`'s changelog pass needs, beyond what
+  /// [searchMergedPrBySha]/the squash-merge suffix already gives
+  /// [ResolvedPr] for free.
+  Future<PrDetails> fetchPrDetails(Logger logger, int number) async {
+    final buffer = StringBuffer();
+    final exitCode = await runProcess(
+      'gh',
+      ['pr', 'view', '$number', '--json', 'number,title,body'],
+      workingDirectory: cwd,
+      stdout: (line) => buffer.write(line),
+      stderr: (line) => logger.shout(line),
+    );
+
+    if (exitCode != 0) {
+      throw Exception('gh returned exit code $exitCode.');
+    }
+
+    final json = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+    return PrDetails(
+      number: json['number'] as int,
+      title: json['title'] as String,
+      body: json['body'] as String? ?? '',
+    );
+  }
+
+  /// `gh pr list --search "{sha}"` -- the fallback `pr_resolution.dart` uses
+  /// for a commit that didn't land via a squash merge (no `(#N)` suffix to
+  /// parse locally). Merged PRs only; the newest match if somehow more than
+  /// one comes back.
+  Future<ResolvedPr?> searchMergedPrBySha(Logger logger, String sha) async {
+    final buffer = StringBuffer();
+    final exitCode = await runProcess(
+      'gh',
+      [
+        'pr',
+        'list',
+        '--search',
+        sha,
+        '--state',
+        'merged',
+        '--json',
+        'number,title',
+        '--limit',
+        '1',
+      ],
+      workingDirectory: cwd,
+      stdout: (line) => buffer.write(line),
+      stderr: (line) => logger.shout(line),
+    );
+
+    if (exitCode != 0) {
+      throw Exception('gh returned exit code $exitCode.');
+    }
+
+    final json = jsonDecode(buffer.toString()) as List;
+    if (json.isEmpty) return null;
+    final entry = json.first as Map<String, dynamic>;
+    return ResolvedPr(
+      number: entry['number'] as int,
+      title: entry['title'] as String,
+    );
   }
 
   Future<void> createRelease(

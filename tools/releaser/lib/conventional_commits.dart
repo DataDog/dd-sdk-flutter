@@ -28,6 +28,11 @@ class ConventionalCommit {
   /// (like `generate_changelog.dart`) picks those out itself.
   final List<String> refs;
 
+  /// The commit's full SHA, when parsed from real git history (`sha:` was
+  /// passed to [parse]) -- what `pr_resolution.dart` searches GitHub with.
+  /// Null for commits parsed in isolation, e.g. in tests.
+  final String? sha;
+
   ConventionalCommit({
     required this.type,
     required this.scope,
@@ -35,6 +40,7 @@ class ConventionalCommit {
     required this.description,
     required this.hasBreakingFooter,
     required this.refs,
+    this.sha,
   });
 
   bool get isBreaking => hasBreakingMarker || hasBreakingFooter;
@@ -79,7 +85,7 @@ class ConventionalCommit {
   /// Parses a full commit message (subject line plus body/footers) into
   /// its conventional-commit parts, or returns null if the subject line
   /// doesn't match the convention at all.
-  static ConventionalCommit? parse(String commitMessage) {
+  static ConventionalCommit? parse(String commitMessage, {String? sha}) {
     final lines = commitMessage.split('\n');
     final match = _headerPattern.firstMatch(lines.first);
     if (match == null) return null;
@@ -100,20 +106,12 @@ class ConventionalCommit {
       description: match.namedGroup('rest')!,
       hasBreakingFooter: _breakingFooterPattern.hasMatch(commitMessage),
       refs: refs,
+      sha: sha,
     );
   }
 }
 
 /// The highest-severity bump implied by [commits] (major > minor > patch),
 /// or null if none of them carry semver weight.
-VersionBumpType? aggregateBumpLevel(Iterable<ConventionalCommit> commits) {
-  VersionBumpType? highest;
-  for (final commit in commits) {
-    final bump = commit.bumpType;
-    if (bump == null) continue;
-    if (highest == null || bump.severity > highest.severity) {
-      highest = bump;
-    }
-  }
-  return highest;
-}
+VersionBumpType? aggregateBumpLevel(Iterable<ConventionalCommit> commits) =>
+    highestBump(commits.map((c) => c.bumpType));

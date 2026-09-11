@@ -36,30 +36,37 @@ Future<String?> tagSha(GitDir gitDir, String tagName) async {
   return sha.isEmpty ? null : sha;
 }
 
-/// [relativePath]'s content as it existed at the commit tagged [tagName], or
-/// null if the tag can't be resolved (see [tagSha]) or the file didn't
-/// exist at that commit.
-Future<String?> fileContentAtTag(
+/// [relativePath]'s content as it existed at [ref] -- a tag name or a raw
+/// commit SHA, `git show` treats both the same way -- or null if [ref]
+/// doesn't resolve or the file didn't exist there.
+Future<String?> fileContentAtRef(
   GitDir gitDir,
-  String tagName,
+  String ref,
   String relativePath,
 ) async {
-  final sha = await tagSha(gitDir, tagName);
-  if (sha == null) return null;
-
   final result = await gitDir.runCommand([
     'show',
-    '$sha:$relativePath',
+    '$ref:$relativePath',
   ], throwOnError: false);
 
   return result.exitCode == 0 ? result.stdout as String : null;
 }
 
-/// Full commit messages (subject + body/footers) touching [pathspec], from
-/// just after [sinceSha] through HEAD. A null [sinceSha] walks the entire
-/// history of [pathspec] -- the "since inception" case for a package that has
-/// never been published.
-Future<List<String>> commitMessagesSince(
+/// A single commit's full SHA alongside its message -- the SHA is what
+/// [resolvePr] searches GitHub with for commits that didn't land via a
+/// squash merge (see `pr_resolution.dart`).
+class CommitRecord {
+  final String sha;
+  final String message;
+
+  const CommitRecord({required this.sha, required this.message});
+}
+
+/// Commits (SHA + full message: subject + body/footers) touching [pathspec],
+/// from just after [sinceSha] through HEAD. A null [sinceSha] walks the
+/// entire history of [pathspec] -- the "since inception" case for a package
+/// that has never been published.
+Future<List<CommitRecord>> commitsSince(
   GitDir gitDir, {
   required String pathspec,
   String? sinceSha,
@@ -69,14 +76,23 @@ Future<List<String>> commitMessagesSince(
     '--no-pager',
     'log',
     range,
-    '--pretty=format:%B|||END|||',
+    // %x1f/%x1e are ASCII unit/record separators -- content a commit
+    // message could plausibly contain, unlike a literal string delimiter.
+    '--pretty=format:%H%x1f%B%x1e',
     '--',
     pathspec,
   ]);
 
   return (result.stdout as String)
-      .split('|||END|||')
-      .map((m) => m.trim())
-      .where((m) => m.isNotEmpty)
+      .split('\x1e')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .map((entry) {
+        final sepIndex = entry.indexOf('\x1f');
+        return CommitRecord(
+          sha: entry.substring(0, sepIndex),
+          message: entry.substring(sepIndex + 1).trim(),
+        );
+      })
       .toList();
 }
