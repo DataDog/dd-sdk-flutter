@@ -9,10 +9,10 @@ This package is Dart-only. It does not bridge to the Datadog iOS or Android
 flagging SDKs, and it does not require a Flutter dependency. Flutter
 applications can use it directly from Dart code.
 
-The API follows the same client-side concepts used by OpenFeature providers:
-configure the provider, initialize a client for an evaluation context, evaluate
-typed details with a programmatic default, and shut the client down when the app
-no longer needs it.
+Use `DatadogOpenFeatureProvider` for new customer integrations. The provider is
+part of this package. It exposes the canonical OpenFeature API and owns the
+Datadog Flags runtime. Use the Datadog API directly only when you need low-level
+lifecycle control or a custom integration.
 
 ## Installation
 
@@ -28,21 +28,26 @@ For Flutter:
 flutter pub add datadog_flags
 ```
 
-Then import the public API:
+Add the OpenFeature client SDK:
+
+```bash
+dart pub add openfeature_dart_client_sdk
+```
+
+Then import both public APIs:
 
 ```dart
 import 'package:datadog_flags/datadog_flags.dart';
+import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 ```
 
 ## Quick Start
 
-Enable Datadog Flags, initialize a client with an evaluation context, and
-evaluate typed details from the current assignment state:
+Register the Datadog provider, set an evaluation context, and use an OpenFeature
+client to evaluate flags:
 
 ```dart
-final datadogFlags = DatadogFlags.instance;
-
-await datadogFlags.enable(
+final provider = DatadogOpenFeatureProvider(
   configuration: DatadogFlagsConfiguration(
     datadogConfig: const DatadogFlagsConfig(
       clientToken: 'pub...',
@@ -55,38 +60,55 @@ await datadogFlags.enable(
   ),
 );
 
-final flags = datadogFlags.sharedClient();
-await flags.initialize(
-  const FlagsEvaluationContext(
+final api = OpenFeatureAPI.instance;
+await api.setEvaluationContextAndWait(
+  EvaluationContext(
     targetingKey: 'user-123',
-    attributes: {
+    attributes: const {
       'plan': 'pro',
       'companyId': 'company-456',
     },
   ),
+);
+await api.setProviderAndWait(provider);
+
+final client = api.getClient();
+final enabled = client.getBooleanValue('checkout.enabled', false);
+
+if (enabled) {
+  showNewCheckout();
+}
+```
+
+Call the OpenFeature shutdown method when the application tears down the Flags
+SDK:
+
+```dart
+await OpenFeatureAPI.instance.shutdown();
+```
+
+Shutdown drains pending exposure and flag evaluation uploads before it clears
+the in-memory assignments.
+
+## Direct Datadog API
+
+The package also exposes the Datadog API for custom integrations. Enable the
+runtime, initialize a client, and evaluate typed details:
+
+```dart
+final datadogFlags = DatadogFlags.instance;
+await datadogFlags.enable(configuration: configuration);
+
+final flags = datadogFlags.sharedClient();
+await flags.initialize(
+  const FlagsEvaluationContext(targetingKey: 'user-123'),
 );
 
 final details = flags.getBooleanDetails(
   key: 'checkout.enabled',
   defaultValue: false,
 );
-
-if (details.error == null && details.value) {
-  showNewCheckout();
-}
 ```
-
-Call `shutdown()` when a client is no longer needed, or call
-`DatadogFlags.instance.disable()` when the application is tearing down the
-flags SDK:
-
-```dart
-await flags.shutdown();
-await DatadogFlags.instance.disable();
-```
-
-`shutdown()` drains pending exposure and flag evaluation uploads before clearing
-the client's in-memory assignments.
 
 ## Configuration
 
@@ -231,6 +253,7 @@ print(details.value);
 print(details.variant);
 print(details.reason);
 print(details.error?.code);
+print(details.flagMetadata);
 ```
 
 `FlagDetails.error` is set when the SDK returns the default because of one of
@@ -243,8 +266,9 @@ these conditions:
 - `FlagEvaluationError.typeMismatch`: the assignment value does not match the
   typed evaluation method.
 
-Successful details include the evaluated value plus assignment metadata such as
-`variant` and `reason` when Datadog returned it.
+Successful details include the evaluated value plus `variant`, `reason`, and
+provider metadata. `flagMetadata` contains `datadog.allocation_key` and, when
+present on the assignment, `datadog.serial_id`.
 
 ## Assignment Fetching and Fallbacks
 
@@ -256,6 +280,27 @@ Successful details include the evaluated value plus assignment metadata such as
 Assignment fetch and response decoding failures are contained by the SDK. If no
 matching stored assignments are available, later evaluations return defaults
 with `providerNotReady` or `flagNotFound` details.
+
+Datadog SDK clients implement `DatadogFlagsClientLifecycle`. Use that
+capability to distinguish fresh, stored, and unavailable assignments:
+
+```dart
+final lifecycle = client as DatadogFlagsClientLifecycle;
+print(lifecycle.status);
+print(lifecycle.evaluationContext);
+final subscription = lifecycle.statusChanges.listen(print);
+```
+
+- `notReady` before initialization and after reset or shutdown.
+- `ready` after a successful live assignment fetch.
+- `stale` when matching stored assignments remain usable after refresh fails.
+- `error` when initialization fails without usable stored assignments.
+
+`statusChanges` emits later transitions. For example, it emits `ready` when an
+assignment request succeeds after the first initialization deadline.
+
+`evaluationContext` is the context associated with the assignments that are
+currently used for evaluation.
 
 Unknown or malformed individual flag assignments are ignored so that one
 invalid assignment does not prevent other assignments from loading.

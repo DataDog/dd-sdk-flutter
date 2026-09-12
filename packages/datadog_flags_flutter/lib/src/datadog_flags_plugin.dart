@@ -165,14 +165,38 @@ class DatadogFlagsPlugin extends DatadogPlugin {
 }
 
 /// A feature flag client integrated with Flutter RUM feature flag tracking.
-class DatadogFlutterFlagsClient implements DatadogFlagsClient {
+class DatadogFlutterFlagsClient
+    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
   final Future<DatadogFlagsClient> Function() _resolveDelegate;
   final void Function(String key, Object value)? _addRumFeatureFlagEvaluation;
+  final StreamController<DatadogFlagsClientStatus> _statusChanges =
+      StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
 
   DatadogFlagsClient? _delegate;
+  StreamSubscription<DatadogFlagsClientStatus>? _statusSubscription;
 
   @override
   final String name;
+
+  @override
+  FlagsEvaluationContext? get evaluationContext {
+    return switch (_delegate) {
+      final DatadogFlagsClientLifecycle lifecycle =>
+        lifecycle.evaluationContext,
+      _ => null,
+    };
+  }
+
+  @override
+  DatadogFlagsClientStatus get status {
+    return switch (_delegate) {
+      final DatadogFlagsClientLifecycle lifecycle => lifecycle.status,
+      _ => DatadogFlagsClientStatus.notReady,
+    };
+  }
+
+  @override
+  Stream<DatadogFlagsClientStatus> get statusChanges => _statusChanges.stream;
 
   /// Creates a Flutter-integrated feature flag client.
   @visibleForTesting
@@ -273,6 +297,8 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
       return;
     }
     await delegate.shutdown();
+    await _statusSubscription?.cancel();
+    _statusSubscription = null;
     _delegate = null;
   }
 
@@ -282,6 +308,9 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
       return existing;
     }
     final resolved = await _resolveDelegate();
+    if (resolved case final DatadogFlagsClientLifecycle lifecycle) {
+      _statusSubscription = lifecycle.statusChanges.listen(_statusChanges.add);
+    }
     _delegate = resolved;
     return resolved;
   }

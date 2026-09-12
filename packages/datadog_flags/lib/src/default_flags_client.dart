@@ -3,6 +3,8 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
+
 import 'assignment.dart';
 import 'evaluation_aggregator.dart';
 import 'evaluation_context.dart';
@@ -11,7 +13,8 @@ import 'flags_client.dart';
 import 'flags_error.dart';
 import 'flags_repository.dart';
 
-class DefaultDatadogFlagsClient implements DatadogFlagsClient {
+class DefaultDatadogFlagsClient
+    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
   static final Object _typeMismatch = Object();
 
   @override
@@ -28,6 +31,16 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
   })  : _repository = repository,
         _exposureLogger = exposureLogger,
         _evaluationAggregator = evaluationAggregator;
+
+  @override
+  DatadogFlagsClientStatus get status => _repository.status;
+
+  @override
+  Stream<DatadogFlagsClientStatus> get statusChanges =>
+      _repository.statusChanges;
+
+  @override
+  FlagsEvaluationContext? get evaluationContext => _repository.context;
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
@@ -94,13 +107,25 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
     );
   }
 
+  FlagDetails<Map<String, Object?>> getStructureDetails({
+    required String key,
+    required Map<String, Object?> defaultValue,
+  }) {
+    return getDetails(
+      key: key,
+      defaultValue: defaultValue,
+      requestedType: FlagVariationType.object,
+      valueGuard: (value) => value is Map<String, Object?>,
+    );
+  }
+
   @override
   Future<void> shutdown() async {
     await Future.wait([
       _evaluationAggregator.shutdown(),
       _exposureLogger.shutdown(),
     ]);
-    await _repository.clearMemory();
+    await _repository.dispose();
   }
 
   @override
@@ -112,6 +137,7 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
     required String key,
     required T defaultValue,
     required FlagVariationType requestedType,
+    bool Function(Object?)? valueGuard,
   }) {
     final context = _repository.context;
     if (context == null) {
@@ -168,7 +194,8 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
       _ => _typeMismatch,
     };
 
-    if (identical(resolvedValue, _typeMismatch)) {
+    if (identical(resolvedValue, _typeMismatch) ||
+        (valueGuard != null && !valueGuard(resolvedValue))) {
       _evaluationAggregator.recordEvaluation(
         flagKey: key,
         assignment: assignment,
@@ -200,6 +227,11 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
       value: resolvedValue as T,
       variant: assignment.variationKey,
       reason: assignment.reason,
+      flagMetadata: {
+        'datadog.allocation_key': assignment.allocationKey,
+        if (assignment.serialId case final serialId?)
+          'datadog.serial_id': serialId,
+      },
     );
   }
 }

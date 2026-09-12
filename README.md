@@ -19,6 +19,20 @@ This is the monorepo for Datadog Flutter packages. To get started, check the
 | datadog_grpc_interceptor | [![Pub](https://img.shields.io/pub/v/datadog_grpc_interceptor.svg)](https://pub.dev/packages/datadog_grpc_interceptor) | [packages/datadog_grpc_interceptor](packages/datadog_grpc_interceptor/) | 
 | datadog_gql_link | [![Pub](https://img.shields.io/pub/v/datadog_gql_link.svg)](https://pub.dev/packages/datadog_gql_link) | [packages/datadog_gql_link](packages/datadog_gql_link/) | 
 
+## Choose a Feature Flags Integration
+
+Use the OpenFeature provider in `datadog_flags` for new Dart and Flutter
+integrations. It is the canonical customer integration.
+
+| Application | Evaluation API | Package |
+| --- | --- | --- |
+| Dart or Flutter | OpenFeature (recommended) | [`datadog_flags`](packages/datadog_flags/) |
+| Dart with low-level lifecycle control | Datadog | [`datadog_flags`](packages/datadog_flags/) |
+| Flutter with automatic RUM view association | Datadog | [`datadog_flags_flutter`](packages/datadog_flags_flutter/) |
+
+The provider is part of the public `datadog_flags` API. It does not use
+`datadog_flags_flutter` or add evaluations to the active Flutter RUM view.
+
 # Contributing
 
 Please read the [Contributing Guide](CONTRIBUTING.md)

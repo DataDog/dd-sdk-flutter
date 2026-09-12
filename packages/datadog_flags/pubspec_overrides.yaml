@@ -1,0 +1,6 @@
+dependency_overrides:
+  openfeature_dart_client_sdk:
+    git:
+      url: https://github.com/leoromanovsky/dart-server-sdk.git
+      ref: fix/client-sdk-minimum-dart-version
+      path: packages/openfeature_dart_client_sdk

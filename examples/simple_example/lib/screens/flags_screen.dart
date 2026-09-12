@@ -3,70 +3,78 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-import 'dart:async';
 import 'dart:convert';
 
-import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
-import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 import '../flags/flags_example_config.dart';
 
 class FlagsScreen extends StatefulWidget {
   final FlagsExampleConfig config;
+  final OpenFeatureClient client;
 
-  const FlagsScreen({super.key, required this.config});
+  const FlagsScreen({
+    super.key,
+    required this.config,
+    required this.client,
+  });
 
   @override
   State<FlagsScreen> createState() => _FlagsScreenState();
 }
 
 class _FlagsScreenState extends State<FlagsScreen> {
-  DatadogFlagsClient? _client;
   String _status = 'idle';
   List<_EvaluatedFlag> _flags = [];
+  final List<ProviderEventSubscription> _subscriptions = [];
 
   @override
   void initState() {
     super.initState();
-    _client = DatadogSdk.instance.flags?.sharedClient();
-    unawaited(_refreshAssignments());
+    for (final eventType in ProviderEventType.values) {
+      _subscriptions.add(widget.client.addHandler(eventType, _onProviderEvent));
+    }
+    _evaluateFlags(status: widget.client.providerStatus.name);
+  }
+
+  @override
+  void dispose() {
+    for (final subscription in _subscriptions) {
+      subscription.cancel();
+    }
+    super.dispose();
   }
 
   Future<void> _refreshAssignments() async {
-    final client = _client;
-    if (client == null) {
-      _evaluateFlags();
-      setState(() {
-        _status = 'flags plugin not configured';
-      });
-      return;
-    }
     setState(() {
       _status = 'loading';
     });
     try {
-      await client.initialize(widget.config.evaluationContext);
+      await OpenFeatureAPI.instance.setEvaluationContextAndWait(
+        widget.config.evaluationContext,
+      );
       if (!mounted) {
         return;
       }
-      _evaluateFlags();
-      setState(() {
-        _status = 'ready';
-      });
+      _evaluateFlags(status: widget.client.providerStatus.name);
     } catch (error) {
       if (!mounted) {
         return;
       }
-      _evaluateFlags();
-      setState(() {
-        _status = 'using defaults: $error';
-      });
+      _evaluateFlags(status: 'using defaults: $error');
     }
   }
 
-  void _evaluateFlags() {
+  void _onProviderEvent(ProviderEventDetails details) {
+    if (!mounted) {
+      return;
+    }
+    _evaluateFlags(status: details.type.name);
+  }
+
+  void _evaluateFlags({String? status}) {
     final flags = <_EvaluatedFlag>[];
     for (final flag in widget.config.flags) {
       flags.add(
@@ -79,64 +87,34 @@ class _FlagsScreenState extends State<FlagsScreen> {
     }
     setState(() {
       _flags = flags;
+      if (status != null) {
+        _status = status;
+      }
     });
   }
 
-  FlagDetails<dynamic> _detailsFor(FlagsExampleFlag flag) {
-    final client = _client;
-    if (client == null) {
-      return _providerNotReadyDetails(flag);
-    }
+  FlagEvaluationDetails<dynamic> _detailsFor(FlagsExampleFlag flag) {
+    final client = widget.client;
     return switch (flag.type) {
       FlagsExampleFlagType.boolean => client.getBooleanDetails(
-          key: flag.key,
-          defaultValue: false,
+          flag.key,
+          false,
         ),
       FlagsExampleFlagType.string => client.getStringDetails(
-          key: flag.key,
-          defaultValue: 'Fallback title',
+          flag.key,
+          'Fallback title',
         ),
       FlagsExampleFlagType.integer => client.getIntegerDetails(
-          key: flag.key,
-          defaultValue: 0,
+          flag.key,
+          0,
         ),
       FlagsExampleFlagType.float => client.getDoubleDetails(
-          key: flag.key,
-          defaultValue: 0,
+          flag.key,
+          0.0,
         ),
-      FlagsExampleFlagType.object => client.getObjectDetails(
-          key: flag.key,
-          defaultValue: const {},
-        ),
-    };
-  }
-
-  FlagDetails<dynamic> _providerNotReadyDetails(FlagsExampleFlag flag) {
-    return switch (flag.type) {
-      FlagsExampleFlagType.boolean => FlagDetails<bool>(
-          key: flag.key,
-          value: false,
-          error: FlagEvaluationError.providerNotReady,
-        ),
-      FlagsExampleFlagType.string => FlagDetails<String>(
-          key: flag.key,
-          value: 'Fallback title',
-          error: FlagEvaluationError.providerNotReady,
-        ),
-      FlagsExampleFlagType.integer => FlagDetails<int>(
-          key: flag.key,
-          value: 0,
-          error: FlagEvaluationError.providerNotReady,
-        ),
-      FlagsExampleFlagType.float => FlagDetails<double>(
-          key: flag.key,
-          value: 0,
-          error: FlagEvaluationError.providerNotReady,
-        ),
-      FlagsExampleFlagType.object => FlagDetails<Object?>(
-          key: flag.key,
-          value: const {},
-          error: FlagEvaluationError.providerNotReady,
+      FlagsExampleFlagType.object => client.getStructureDetails(
+          flag.key,
+          const {},
         ),
     };
   }
@@ -160,6 +138,7 @@ class _FlagsScreenState extends State<FlagsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const _InfoRow(label: 'API', value: 'OpenFeature'),
           _InfoRow(label: 'Status', value: _status),
           _InfoRow(label: 'Targeting key', value: targetingKey),
           const SizedBox(height: 12),
@@ -196,7 +175,7 @@ class _FlagsScreenState extends State<FlagsScreen> {
 class _EvaluatedFlag {
   final String label;
   final String key;
-  final FlagDetails<dynamic> details;
+  final FlagEvaluationDetails<dynamic> details;
 
   const _EvaluatedFlag({
     required this.label,
@@ -233,7 +212,7 @@ class _InfoRow extends StatelessWidget {
 class _FlagDetailsRow extends StatelessWidget {
   final String label;
   final String keyName;
-  final FlagDetails<dynamic> details;
+  final FlagEvaluationDetails<dynamic> details;
 
   const _FlagDetailsRow({
     required this.label,
@@ -243,7 +222,7 @@ class _FlagDetailsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final error = details.error?.name;
+    final error = details.errorCode?.name;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(

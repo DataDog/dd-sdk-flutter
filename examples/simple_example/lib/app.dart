@@ -7,6 +7,7 @@ import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 import 'flags/flags_example_config.dart';
 import 'main_screen.dart';
@@ -18,11 +19,13 @@ import 'screens/network_screen.dart';
 class MyApp extends StatefulWidget {
   final GraphQLClient graphQLClient;
   final FlagsExampleConfig flagsConfig;
+  final OpenFeatureClient flagsClient;
 
   const MyApp({
     super.key,
     required this.graphQLClient,
     required this.flagsConfig,
+    required this.flagsClient,
   });
 
   @override
@@ -68,7 +71,10 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/flags',
         builder: (context, state) {
-          return FlagsScreen(config: widget.flagsConfig);
+          return FlagsScreen(
+            config: widget.flagsConfig,
+            client: widget.flagsClient,
+          );
         },
       ),
     ],

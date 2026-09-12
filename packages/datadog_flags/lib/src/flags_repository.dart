@@ -10,6 +10,7 @@ import 'package:meta/meta.dart';
 import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flag_assignments_fetcher.dart';
+import 'flags_client.dart';
 import 'flags_store.dart';
 import 'json_value.dart';
 
@@ -29,6 +30,9 @@ class FlagsRepository {
   final Timer Function(Duration, void Function()) scheduleInitializationTimeout;
 
   FlagsData? _state;
+  DatadogFlagsClientStatus _status = DatadogFlagsClientStatus.notReady;
+  final StreamController<DatadogFlagsClientStatus> _statusChanges =
+      StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
   _CancelToken? _currentToken;
   Future<void> _cacheOperation = Future<void>.value();
   bool _didStartInitialization = false;
@@ -44,6 +48,10 @@ class FlagsRepository {
   });
 
   FlagsEvaluationContext? get context => _state?.context;
+
+  DatadogFlagsClientStatus get status => _status;
+
+  Stream<DatadogFlagsClientStatus> get statusChanges => _statusChanges.stream;
 
   FlagAssignment? flagAssignment(String key) => _state?.flags[key];
 
@@ -87,6 +95,7 @@ class FlagsRepository {
             : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
       _state = matchingCached;
+      _setStatus(DatadogFlagsClientStatus.stale);
     }
 
     try {
@@ -111,9 +120,13 @@ class FlagsRepository {
         return;
       }
       _state = data;
+      _setStatus(DatadogFlagsClientStatus.ready);
     } catch (_) {
       if (!token.isCanceled && matchingCached == null) {
         _state = null;
+        _setStatus(DatadogFlagsClientStatus.error);
+      } else if (!token.isCanceled) {
+        _setStatus(DatadogFlagsClientStatus.stale);
       }
     }
   }
@@ -152,11 +165,29 @@ class FlagsRepository {
     _currentToken?.cancel();
     _currentToken = null;
     _state = null;
+    _setStatus(DatadogFlagsClientStatus.notReady);
+  }
+
+  Future<void> dispose() async {
+    await clearMemory();
+    if (!_statusChanges.isClosed) {
+      await _statusChanges.close();
+    }
   }
 
   Future<void> reset() async {
     await clearMemory();
     await _deleteCached();
+  }
+
+  void _setStatus(DatadogFlagsClientStatus status) {
+    if (_status == status) {
+      return;
+    }
+    _status = status;
+    if (!_statusChanges.isClosed) {
+      _statusChanges.add(status);
+    }
   }
 
   Future<FlagsData?> _readCached() async {
@@ -166,10 +197,9 @@ class FlagsRepository {
     }
 
     try {
-      return await store.read(clientName).timeout(
-            storeReadTimeout,
-            onTimeout: () => null,
-          );
+      return await store
+          .read(clientName)
+          .timeout(storeReadTimeout, onTimeout: () => null);
     } catch (_) {
       return null;
     }

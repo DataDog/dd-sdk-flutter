@@ -102,6 +102,12 @@ void main() {
         ),
       );
       final client = datadogFlags.sharedClient();
+      final lifecycle = client as DatadogFlagsClientLifecycle;
+      final statusChanges = <DatadogFlagsClientStatus>[];
+      final statusSubscription = lifecycle.statusChanges.listen(
+        statusChanges.add,
+      );
+      addTearDown(statusSubscription.cancel);
 
       final initialization = client.initialize(_context);
       await httpClient.requestStarted.future;
@@ -114,6 +120,7 @@ void main() {
             .error,
         FlagEvaluationError.providerNotReady,
       );
+      expect(statusChanges, isEmpty);
 
       await httpClient.completeBody(_assignmentsResponse());
       await _waitUntil(() {
@@ -128,6 +135,7 @@ void main() {
             .value,
         isTrue,
       );
+      expect(statusChanges, [DatadogFlagsClientStatus.ready]);
     },
   );
 
@@ -153,6 +161,12 @@ void main() {
         ),
       );
       final client = datadogFlags.sharedClient();
+      final lifecycle = client as DatadogFlagsClientLifecycle;
+      final statusChanges = <DatadogFlagsClientStatus>[];
+      final statusSubscription = lifecycle.statusChanges.listen(
+        statusChanges.add,
+      );
+      addTearDown(statusSubscription.cancel);
 
       await client.initialize(_context).timeout(const Duration(seconds: 1));
 
@@ -162,6 +176,7 @@ void main() {
             .value,
         isTrue,
       );
+      expect(statusChanges, [DatadogFlagsClientStatus.stale]);
 
       await httpClient.completeBody(_assignmentsResponse(booleanValue: false));
       await _waitUntil(() {
@@ -170,6 +185,10 @@ void main() {
                 .value ==
             false;
       });
+      expect(statusChanges, [
+        DatadogFlagsClientStatus.stale,
+        DatadogFlagsClientStatus.ready,
+      ]);
     },
   );
 

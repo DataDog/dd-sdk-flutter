@@ -3,8 +3,25 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
+
 import 'evaluation_context.dart';
 import 'flags_error.dart';
+
+/// Current assignment availability for a Datadog feature flags client.
+enum DatadogFlagsClientStatus {
+  /// No assignments are available for evaluation.
+  notReady,
+
+  /// Fresh assignments are available for evaluation.
+  ready,
+
+  /// Cached assignments are available because the latest refresh failed.
+  stale,
+
+  /// No assignments are available because initialization failed.
+  error,
+}
 
 /// Evaluates feature flags for one current evaluation context.
 ///
@@ -25,9 +42,7 @@ abstract interface class DatadogFlagsClient {
   ///
   /// Evaluations made before initialization completes return their provided
   /// default value with a `providerNotReady` error.
-  Future<void> initialize(
-    FlagsEvaluationContext context,
-  );
+  Future<void> initialize(FlagsEvaluationContext context);
 
   /// Evaluates a boolean flag and returns details about the result.
   FlagDetails<bool> getBooleanDetails({
@@ -66,6 +81,23 @@ abstract interface class DatadogFlagsClient {
   Future<void> shutdown();
 }
 
+/// Optional assignment lifecycle state exposed by Datadog SDK clients.
+///
+/// This is separate from [DatadogFlagsClient] so existing custom clients and
+/// test doubles are not required to implement lifecycle reporting.
+abstract interface class DatadogFlagsClientLifecycle {
+  /// Current assignment availability for this client.
+  DatadogFlagsClientStatus get status;
+
+  /// Emits changes to assignment availability for this client.
+  ///
+  /// Read [status] before subscribing when the current value is required.
+  Stream<DatadogFlagsClientStatus> get statusChanges;
+
+  /// Context associated with the assignments currently used for evaluation.
+  FlagsEvaluationContext? get evaluationContext;
+}
+
 /// Result of a typed flag evaluation.
 class FlagDetails<T> {
   /// Flag key that was evaluated.
@@ -83,6 +115,9 @@ class FlagDetails<T> {
   /// Programmatic error describing why the default value was returned.
   final FlagEvaluationError? error;
 
+  /// Provider-specific metadata associated with a successful evaluation.
+  final Map<String, Object> flagMetadata;
+
   /// Creates immutable details for a flag evaluation result.
   const FlagDetails({
     required this.key,
@@ -90,5 +125,6 @@ class FlagDetails<T> {
     this.variant,
     this.reason,
     this.error,
+    this.flagMetadata = const {},
   });
 }
