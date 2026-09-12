@@ -94,6 +94,13 @@ class FlagsRepository {
       if (token.isCanceled) {
         return;
       }
+      final fetchDeadlineYield = _yieldAfterExpiredDeadline(deadline);
+      if (fetchDeadlineYield != null) {
+        await fetchDeadlineYield;
+      }
+      if (token.isCanceled) {
+        return;
+      }
       final data = FlagsData(
         flags: assignments.flags,
         context: context,

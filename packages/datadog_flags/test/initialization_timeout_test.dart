@@ -381,29 +381,27 @@ void main() {
     },
   );
 
-  test('uses one total budget across storage, network, and JSON decoding',
-      () async {
-    void Function()? timeoutAction;
-    var scheduleCount = 0;
-    final store = _DelayedReadStore();
-    final httpClient = _ControlledResponseBodyClient();
+  test('returns after slow JSON decoding before assignment storage', () async {
+    final store = _DelayedWriteStore();
     addTearDown(() async {
-      if (!store.allowRead.isCompleted) {
-        store.allowRead.complete();
+      if (!store.allowWrite.isCompleted) {
+        store.allowWrite.complete();
       }
-      httpClient.close();
+    });
+    final httpClient = MockClient((_) async {
+      return http.Response('{}', 200);
     });
     final configuration = _configuration(
       httpClient: httpClient,
       store: store,
-      initializationTimeout: const Duration(seconds: 5),
+      initializationTimeout: const Duration(milliseconds: 1),
     );
     final fetcher = FlagAssignmentsFetcher(
       datadogConfig: _datadogConfig,
       configuration: configuration,
       httpClient: httpClient,
       responseDecoder: (_) {
-        timeoutAction!();
+        _blockFor(const Duration(milliseconds: 10));
         return PrecomputedAssignments(
           flags: {'show-paywall': _assignment(value: true)},
         );
@@ -415,24 +413,17 @@ void main() {
       store: store,
       dateProvider: DateTime.now,
       initializationTimeout: configuration.initializationTimeout,
-      scheduleInitializationTimeout: (_, action) {
-        scheduleCount += 1;
-        timeoutAction = action;
-        return _TestTimer();
-      },
+      scheduleInitializationTimeout: (_, __) => _TestTimer(),
     );
 
     final initialization = repository.initialize(_context);
-    await store.readStarted.future;
-    expect(scheduleCount, 1);
-
-    store.allowRead.complete();
-    await httpClient.requestStarted.future;
-    final bodyCompletion = httpClient.completeBody(_assignmentsResponse());
     await initialization.timeout(const Duration(seconds: 1));
 
+    expect(store.writeStarted.isCompleted, isFalse);
     expect(repository.flagAssignment('show-paywall'), isNull);
-    await bodyCompletion;
+
+    await store.writeStarted.future.timeout(const Duration(seconds: 1));
+    store.allowWrite.complete();
     await _waitUntil(() => repository.flagAssignment('show-paywall') != null);
   });
 
@@ -542,6 +533,11 @@ Future<void> _waitUntil(
   }
 }
 
+void _blockFor(Duration duration) {
+  final stopwatch = Stopwatch()..start();
+  while (stopwatch.elapsed < duration) {}
+}
+
 class _ControlledResponseBodyClient extends http.BaseClient {
   final StreamController<List<int>> _body = StreamController<List<int>>();
   final Completer<void> requestStarted = Completer<void>();
@@ -634,8 +630,7 @@ class _SlowIterable extends Iterable<Object?> {
 
   @override
   Iterator<Object?> get iterator {
-    final stopwatch = Stopwatch()..start();
-    while (stopwatch.elapsed < delay) {}
+    _blockFor(delay);
     return <Object?>[true].iterator;
   }
 }
