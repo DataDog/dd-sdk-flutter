@@ -97,6 +97,21 @@ ci-image:
 
 # Build (And Analyze) Stage
 
+conventional-commits:
+  stage: build
+  except: [ schedules, tags ]
+  allow_failure: true
+  image: $CI_IMAGE_DOCKER
+  tags: [ "arch:amd64" ]
+  script:
+    - sh tools/ci/test/check_conventional_commits_test.sh
+    - |
+      BASE_REVISION="${DDCI_PULL_REQUEST_TARGET_SHA:-${CI_MERGE_REQUEST_DIFF_BASE_SHA:-$CI_COMMIT_BEFORE_SHA}}"
+      if [ -z "$BASE_REVISION" ] || [ "$BASE_REVISION" = "0000000000000000000000000000000000000000" ]; then
+        BASE_REVISION="${CI_COMMIT_SHA:-HEAD}^"
+      fi
+      sh tools/ci/check_conventional_commits.sh "$BASE_REVISION" "${CI_COMMIT_SHA:-HEAD}"
+
 build-flutter:
   stage: build
   except: [ schedules ]
@@ -414,5 +429,3 @@ nightly-android:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
-
-

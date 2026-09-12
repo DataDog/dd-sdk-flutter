@@ -71,6 +71,29 @@ repo. Using this script requires you have both
 [Swiftlint](https://github.com/realm/SwiftLint) and [Bitrise
 CLI](https://app.bitrise.io/cli) available on your path
 
+## Commit messages
+
+Use the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
+format for each non-merge commit:
+
+```text
+<type>[optional scope][!]: <description>
+```
+
+For example, use `feat(flags): add initialization timeout` or
+`fix(web): avoid duplicate requests`. The release tooling uses these subjects
+to generate changelog entries. CI checks all non-merge commits in each pull
+request.
+
+Do not add changelog entries in a pull request. The release tooling generates
+the changelog from the Conventional Commit subjects.
+
+Validate the proposed subject before you create the commit:
+
+```bash
+sh tools/ci/check_conventional_commits.sh --subject "feat(flags): add initialization timeout"
+```
+
 ## Tests
 
 There are three types of tests in this repo
