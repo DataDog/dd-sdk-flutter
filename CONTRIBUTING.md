@@ -85,6 +85,9 @@ For example, use `feat(flags): add initialization timeout` or
 to generate changelog entries. CI checks all non-merge commits in each pull
 request.
 
+Do not add changelog entries in a pull request. The release tooling generates
+the changelog from the Conventional Commit subjects.
+
 Validate the proposed subject before you create the commit:
 
 ```bash
