@@ -16,6 +16,7 @@ dependencies:
   http: ^1.0.0
   json_annotation: ^4.9.0
   meta: ^1.0.0
+  openfeature_dart_client_sdk: ^0.0.1-beta.1
   uuid: ^4.0.0
 
 dev_dependencies:

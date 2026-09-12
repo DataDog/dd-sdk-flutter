@@ -7,7 +7,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
-import 'package:datadog_openfeature_provider/datadog_openfeature_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
@@ -345,6 +344,37 @@ void main() {
     },
   );
 
+  test('reports structure mismatches without logging an exposure', () async {
+    final requests = <http.Request>[];
+    final provider = DatadogOpenFeatureProvider(
+      configuration: _configuration(
+        MockClient((request) async {
+          requests.add(request);
+          return _responseFor(
+            request,
+            _assignmentsResponse(configValue: const ['not-a-structure']),
+          );
+        }),
+        trackTelemetry: true,
+      ),
+    );
+
+    await api.setEvaluationContextAndWait(
+      EvaluationContext(targetingKey: 'user-123'),
+    );
+    await api.setProviderAndWait(provider);
+
+    final details = api.getClient().getStructureDetails('config', const {});
+    expect(details.value, isEmpty);
+    expect(details.errorCode, ErrorCode.typeMismatch);
+
+    await api.shutdown();
+    expect(
+      requests.where((request) => request.url.path == '/api/v2/exposures'),
+      isEmpty,
+    );
+  });
+
   test('returns provider-not-ready defaults before initialization', () {
     final provider = DatadogOpenFeatureProvider(
       configuration: _configuration(
@@ -411,7 +441,13 @@ http.Response _responseFor(
   return http.Response('{}', 202);
 }
 
-Map<String, Object?> _assignmentsResponse({bool booleanValue = true}) {
+Map<String, Object?> _assignmentsResponse({
+  bool booleanValue = true,
+  Object configValue = const {
+    'enabled': true,
+    'labels': ['a', 'b'],
+  },
+}) {
   return {
     'data': {
       'attributes': {
@@ -442,10 +478,7 @@ Map<String, Object?> _assignmentsResponse({bool booleanValue = true}) {
             allocationKey: 'allocation-e',
             variationKey: 'object',
             variationType: 'object',
-            variationValue: {
-              'enabled': true,
-              'labels': ['a', 'b'],
-            },
+            variationValue: configValue,
           ),
         },
       },
@@ -467,7 +500,7 @@ Map<String, Object?> _assignment({
     'variationValue': variationValue,
     'reason': 'TARGETING_MATCH',
     'doLog': true,
-    'serialId': ?serialId,
+    if (serialId != null) 'serialId': serialId,
   };
 }
 

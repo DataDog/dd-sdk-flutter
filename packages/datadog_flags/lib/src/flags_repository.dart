@@ -91,8 +91,8 @@ class FlagsRepository {
 
     final matchingCached =
         cached != null && _contextsMatch(cached.context, context)
-        ? cached
-        : null;
+            ? cached
+            : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
       _state = matchingCached;
       _setStatus(DatadogFlagsClientStatus.stale);

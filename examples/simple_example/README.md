@@ -23,11 +23,11 @@ names, org names, or customer-owned flag keys.
 
 ## Feature Flags
 
-The `Flags` screen uses `openfeature_dart_client_sdk` with
-`datadog_openfeature_provider`. This is the recommended integration for new
-Dart and Flutter applications. The app sets an OpenFeature evaluation context,
-registers the Datadog provider, and evaluates typed flags with programmatic
-defaults.
+The `Flags` screen uses `openfeature_dart_client_sdk` with the
+`DatadogOpenFeatureProvider` from `datadog_flags`. This is the recommended
+integration for new Dart and Flutter applications. The app sets an OpenFeature
+evaluation context, registers the Datadog provider, and evaluates typed flags
+with programmatic defaults.
 
 The Datadog Flutter SDK initializes separately for RUM, Logs, and Traces. The
 OpenFeature provider owns the Flags runtime and its assignment lifecycle.

@@ -4,7 +4,6 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'package:datadog_flags/datadog_flags.dart';
-import 'package:datadog_openfeature_provider/datadog_openfeature_provider.dart';
 
 void main() {
   final provider = DatadogOpenFeatureProvider(

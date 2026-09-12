@@ -28,9 +28,9 @@ class DefaultDatadogFlagsClient
     required FlagsRepository repository,
     required ExposureLogger exposureLogger,
     required EvaluationAggregator evaluationAggregator,
-  }) : _repository = repository,
-       _exposureLogger = exposureLogger,
-       _evaluationAggregator = evaluationAggregator;
+  })  : _repository = repository,
+        _exposureLogger = exposureLogger,
+        _evaluationAggregator = evaluationAggregator;
 
   @override
   DatadogFlagsClientStatus get status => _repository.status;
@@ -107,6 +107,18 @@ class DefaultDatadogFlagsClient
     );
   }
 
+  FlagDetails<Map<String, Object?>> getStructureDetails({
+    required String key,
+    required Map<String, Object?> defaultValue,
+  }) {
+    return getDetails(
+      key: key,
+      defaultValue: defaultValue,
+      requestedType: FlagVariationType.object,
+      valueGuard: (value) => value is Map<String, Object?>,
+    );
+  }
+
   @override
   Future<void> shutdown() async {
     await Future.wait([
@@ -125,6 +137,7 @@ class DefaultDatadogFlagsClient
     required String key,
     required T defaultValue,
     required FlagVariationType requestedType,
+    bool Function(Object?)? valueGuard,
   }) {
     final context = _repository.context;
     if (context == null) {
@@ -181,7 +194,8 @@ class DefaultDatadogFlagsClient
       _ => _typeMismatch,
     };
 
-    if (identical(resolvedValue, _typeMismatch)) {
+    if (identical(resolvedValue, _typeMismatch) ||
+        (valueGuard != null && !valueGuard(resolvedValue))) {
       _evaluationAggregator.recordEvaluation(
         flagKey: key,
         assignment: assignment,

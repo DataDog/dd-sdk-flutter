@@ -110,7 +110,7 @@ build-flutter:
     - melos dartfmt_check
     - melos run analyze:dart
     - melos run unit_test:flutter
-    - melos run publish_dry_run:openfeature
+    - melos run publish_dry_run:flags
     - melos run golden_test:flutter
   artifacts:
     when: always

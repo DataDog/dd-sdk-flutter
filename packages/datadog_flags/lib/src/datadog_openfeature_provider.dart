@@ -5,9 +5,15 @@
 
 import 'dart:async';
 
-import 'package:datadog_flags/datadog_flags.dart' as datadog;
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart'
     as openfeature;
+
+import 'datadog_flags.dart' as datadog;
+import 'default_flags_client.dart' as datadog;
+import 'evaluation_context.dart' as datadog;
+import 'flags_client.dart' as datadog;
+import 'flags_configuration.dart' as datadog;
+import 'flags_error.dart' as datadog;
 
 /// An OpenFeature provider backed by the pure-Dart Datadog Flags runtime.
 ///
@@ -169,7 +175,7 @@ final class DatadogOpenFeatureProvider
       return _notReady(defaultValue);
     }
 
-    final details = client.getObjectDetails(
+    final details = client.getStructureDetails(
       key: flagKey,
       defaultValue: defaultValue,
     );
@@ -184,19 +190,8 @@ final class DatadogOpenFeatureProvider
       );
     }
 
-    final value = details.value;
-    if (value is! Map<String, Object?>) {
-      return openfeature.ResolutionDetails(
-        value: defaultValue,
-        errorCode: openfeature.ErrorCode.typeMismatch,
-        errorMessage: 'Datadog flag "$flagKey" is not a structure.',
-        reason: 'ERROR',
-        flagMetadata: details.flagMetadata,
-      );
-    }
-
     return openfeature.ResolutionDetails(
-      value: _immutableStructure(value),
+      value: _immutableStructure(details.value),
       reason: details.reason,
       variant: details.variant,
       flagMetadata: details.flagMetadata,
@@ -211,6 +206,9 @@ final class DatadogOpenFeatureProvider
     final previousPending = _pendingRuntime;
     _pendingRuntime = null;
     await _disableQuietly(previousPending);
+    if (revision != _contextRevision) {
+      return;
+    }
 
     if (configuration.datadogConfig == null) {
       _emitLoadError('Datadog Flags configuration is required.');
@@ -225,7 +223,7 @@ final class DatadogOpenFeatureProvider
       final client = owner.sharedClient(
         name: _resolvedClientName ?? datadog.DatadogFlags.defaultClientName,
       );
-      if (client is! datadog.DatadogFlagsClientLifecycle) {
+      if (client is! datadog.DefaultDatadogFlagsClient) {
         await _disableOwnerQuietly(owner);
         _emitLoadError(
           'The Datadog client does not expose assignment lifecycle state.',
@@ -439,9 +437,8 @@ final class DatadogOpenFeatureProvider
     return openfeature.ResolutionDetails(
       value: errorCode == null ? details.value : defaultValue,
       errorCode: errorCode,
-      errorMessage: details.error == null
-          ? null
-          : _errorMessage(details.error!),
+      errorMessage:
+          details.error == null ? null : _errorMessage(details.error!),
       reason: errorCode == null ? details.reason : 'ERROR',
       variant: details.variant,
       flagMetadata: details.flagMetadata,
@@ -494,7 +491,7 @@ final class DatadogOpenFeatureProvider
 
 final class _ProviderRuntime {
   final datadog.DatadogFlags owner;
-  final datadog.DatadogFlagsClient client;
+  final datadog.DefaultDatadogFlagsClient client;
   StreamSubscription<datadog.DatadogFlagsClientStatus>? statusSubscription;
   var _disabled = false;
 

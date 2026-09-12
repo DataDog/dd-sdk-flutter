@@ -130,27 +130,27 @@ scripts:
   unit_test:openfeature-web:
     run:
       mkdir -p $MELOS_ROOT_PATH/.build/test-results &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome --compiler dart2wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'"
+      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome test/datadog_openfeature_provider_test.dart | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
+      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome --compiler dart2wasm test/datadog_openfeature_provider_test.dart | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'"
     packageFilters:
       scope:
-        - 'datadog_openfeature_provider'
+        - 'datadog_flags'
 
   compile:openfeature-web:
     exec:
       concurrency: 1
     run:
       mkdir -p "$MELOS_ROOT_PATH/.build" &&
-      dart compile js test/web_compile_smoke.dart -o "$MELOS_ROOT_PATH/.build/datadog_openfeature_provider.js"
+      dart compile js test/openfeature_web_compile_smoke.dart -o "$MELOS_ROOT_PATH/.build/datadog_flags_openfeature.js"
     packageFilters:
-      scope: 'datadog_openfeature_provider'
+      scope: 'datadog_flags'
 
-  publish_dry_run:openfeature:
+  publish_dry_run:flags:
     exec:
       concurrency: 1
     run: dart pub publish --dry-run
     packageFilters:
-      scope: 'datadog_openfeature_provider'
+      scope: 'datadog_flags'
 
   unit_test:ios:
     exec:
