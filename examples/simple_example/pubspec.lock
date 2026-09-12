@@ -87,7 +87,7 @@ packages:
       path: "../../packages/datadog_flags"
       relative: true
     source: path
-    version: "1.1.0"
+    version: "1.2.0-beta.1"
   datadog_flutter_plugin:
     dependency: "direct main"
     description:

@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0
+## 1.2.0-beta.1
 
 * Add a configurable timeout for the complete first context initialization.
 * Expose assignment lifecycle status changes for provider adapters.
