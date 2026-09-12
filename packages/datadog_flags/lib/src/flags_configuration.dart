@@ -31,14 +31,15 @@ final class DatadogFlagsConfiguration {
   /// Additional headers sent with precompute assignment requests.
   final Map<String, String>? customFlagsHeaders;
 
-  /// Maximum time to wait for initialization of the first evaluation context.
+  /// Maximum wall-clock time to wait for the first evaluation context.
   ///
-  /// This timeout covers the complete initialization operation. It includes
-  /// loading stored assignments, encoding the request, fetching assignments,
-  /// reading the response body, decoding JSON, storing assignments, and making
-  /// the assignments available for evaluation. It does not change the HTTP
-  /// client's timeout. The assignment operation continues after this timeout
-  /// and can make assignments available when it completes.
+  /// This value is one budget for the complete initialization operation. The
+  /// SDK does not restart it for each stage. It includes loading stored
+  /// assignments, encoding the request, fetching assignments, reading the
+  /// response body, decoding JSON, storing assignments, and making the
+  /// assignments available for evaluation. It does not change the HTTP client's
+  /// timeout. The assignment operation continues after this timeout and can
+  /// make assignments available when it completes.
   ///
   /// The timeout applies only to the first
   /// [DatadogFlagsClient.initialize] call for each client. A `null`, zero, or

@@ -87,7 +87,7 @@ void main() {
   });
 
   test(
-    'times out while downloading the response body and recovers later',
+    'returns at the total budget while the network response is loading',
     () async {
       final httpClient = _ControlledResponseBodyClient();
       final datadogFlags = DatadogFlags();
@@ -128,6 +128,52 @@ void main() {
             .value,
         isTrue,
       );
+    },
+  );
+
+  test(
+    'returns at the total budget while persistent assignments are loading',
+    () async {
+      void Function()? timeoutAction;
+      final store = _DelayedReadStore();
+      addTearDown(() {
+        if (!store.allowRead.isCompleted) {
+          store.allowRead.complete();
+        }
+      });
+      final httpClient = MockClient((_) async {
+        return http.Response(jsonEncode(_assignmentsResponse()), 200);
+      });
+      final configuration = _configuration(
+        httpClient: httpClient,
+        store: store,
+        initializationTimeout: const Duration(seconds: 5),
+      );
+      final repository = FlagsRepository(
+        clientName: DatadogFlags.defaultClientName,
+        fetcher: FlagAssignmentsFetcher(
+          datadogConfig: _datadogConfig,
+          configuration: configuration,
+          httpClient: httpClient,
+        ),
+        store: store,
+        dateProvider: DateTime.now,
+        initializationTimeout: configuration.initializationTimeout,
+        scheduleInitializationTimeout: (_, action) {
+          timeoutAction = action;
+          return _TestTimer();
+        },
+      );
+
+      final initialization = repository.initialize(_context);
+      await store.readStarted.future;
+      timeoutAction!();
+      await initialization.timeout(const Duration(seconds: 1));
+
+      expect(repository.flagAssignment('show-paywall'), isNull);
+
+      store.allowRead.complete();
+      await _waitUntil(() => repository.flagAssignment('show-paywall') != null);
     },
   );
 
@@ -173,7 +219,8 @@ void main() {
     },
   );
 
-  test('includes assignment storage before publishing ready state', () async {
+  test('includes assignment storage in the total initialization budget',
+      () async {
     final store = _DelayedWriteStore();
     final datadogFlags = DatadogFlags();
     addTearDown(() async {
@@ -334,18 +381,27 @@ void main() {
     },
   );
 
-  test('keeps the deadline active through response JSON decoding', () async {
+  test('uses one total budget across storage, network, and JSON decoding',
+      () async {
     void Function()? timeoutAction;
+    var scheduleCount = 0;
+    final store = _DelayedReadStore();
+    final httpClient = _ControlledResponseBodyClient();
+    addTearDown(() async {
+      if (!store.allowRead.isCompleted) {
+        store.allowRead.complete();
+      }
+      httpClient.close();
+    });
+    final configuration = _configuration(
+      httpClient: httpClient,
+      store: store,
+      initializationTimeout: const Duration(seconds: 5),
+    );
     final fetcher = FlagAssignmentsFetcher(
       datadogConfig: _datadogConfig,
-      configuration: _configuration(
-        httpClient: MockClient((_) async {
-          return http.Response('{}', 200);
-        }),
-      ),
-      httpClient: MockClient((_) async {
-        return http.Response('{}', 200);
-      }),
+      configuration: configuration,
+      httpClient: httpClient,
       responseDecoder: (_) {
         timeoutAction!();
         return PrecomputedAssignments(
@@ -356,21 +412,31 @@ void main() {
     final repository = FlagsRepository(
       clientName: DatadogFlags.defaultClientName,
       fetcher: fetcher,
+      store: store,
       dateProvider: DateTime.now,
-      initializationTimeout: const Duration(seconds: 5),
+      initializationTimeout: configuration.initializationTimeout,
       scheduleInitializationTimeout: (_, action) {
+        scheduleCount += 1;
         timeoutAction = action;
         return _TestTimer();
       },
     );
 
-    await repository.initialize(_context);
+    final initialization = repository.initialize(_context);
+    await store.readStarted.future;
+    expect(scheduleCount, 1);
+
+    store.allowRead.complete();
+    await httpClient.requestStarted.future;
+    final bodyCompletion = httpClient.completeBody(_assignmentsResponse());
+    await initialization.timeout(const Duration(seconds: 1));
 
     expect(repository.flagAssignment('show-paywall'), isNull);
+    await bodyCompletion;
     await _waitUntil(() => repository.flagAssignment('show-paywall') != null);
   });
 
-  test('counts synchronous request encoding against the deadline', () async {
+  test('counts synchronous request encoding in the total budget', () async {
     final response = Completer<http.Response>();
     final httpClient = MockClient((_) => response.future);
     final configuration = _configuration(
@@ -393,6 +459,8 @@ void main() {
       attributes: {'slow': _SlowIterable(const Duration(milliseconds: 10))},
     );
 
+    // The fake timer never runs. This proves that the elapsed-time check still
+    // enforces the budget when synchronous work blocks the Dart isolate.
     await repository.initialize(context).timeout(const Duration(seconds: 1));
 
     expect(repository.flagAssignment('show-paywall'), isNull);
@@ -491,6 +559,31 @@ class _ControlledResponseBodyClient extends http.BaseClient {
     bodyCompleted = true;
     _body.add(utf8.encode(jsonEncode(body)));
     await _body.close();
+  }
+}
+
+class _DelayedReadStore implements DatadogFlagsStore {
+  final InMemoryDatadogFlagsStore _delegate = InMemoryDatadogFlagsStore();
+  final Completer<void> readStarted = Completer<void>();
+  final Completer<void> allowRead = Completer<void>();
+
+  @override
+  Future<FlagsData?> read(String clientName) async {
+    if (!readStarted.isCompleted) {
+      readStarted.complete();
+    }
+    await allowRead.future;
+    return _delegate.read(clientName);
+  }
+
+  @override
+  Future<void> write(String clientName, FlagsData data) {
+    return _delegate.write(clientName, data);
+  }
+
+  @override
+  Future<void> delete(String clientName) {
+    return _delegate.delete(clientName);
   }
 }
 

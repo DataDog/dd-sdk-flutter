@@ -91,7 +91,9 @@ DatadogFlagsPluginConfiguration(
 ```
 
 The Flutter integration preserves the core `datadog_flags` initialization
-timeout. The timeout covers the complete first context initialization.
+timeout. Set it to the maximum time that the app can wait for the first context.
+It is one wall-clock budget for stored assignment loading, network work, JSON
+decoding, assignment storage, and state publication.
 
 Use `package:datadog_flags/datadog_flags.dart` directly for pure Dart apps or
 Flutter apps that need full lifecycle control without Datadog Flutter SDK

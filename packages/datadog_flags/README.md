@@ -128,19 +128,22 @@ DatadogFlagsConfiguration(
 
 - `trackExposures` enables exposure events for assignments marked `doLog`.
 - `trackEvaluations` enables aggregated flag evaluation events.
-- `initializationTimeout` limits the first context initialization. The default
-  is five seconds. Set it to `null`, zero, or a negative value to disable it.
+- `initializationTimeout` is the maximum time that the app waits for the first
+  context initialization. The default is five seconds. Set it to `null`, zero,
+  or a negative value to disable it.
 - `evaluationFlushInterval` controls periodic flag evaluation uploads and is
   bounded to 1-60 seconds.
 - `store` is optional last-known assignment storage.
 - `httpClient` and custom endpoints are available for tests and advanced
   embedding.
 
-The initialization timeout covers stored assignment loading, request encoding,
-the network response and body, JSON decoding, assignment storage, and state
-publication. It does not change the HTTP client timeout or cancel the assignment
-operation. A late successful response still makes assignments available. Later
-context changes do not use the initialization timeout.
+The initialization timeout is one wall-clock budget for the complete operation.
+The SDK does not restart the budget for each initialization stage. The budget
+covers stored assignment loading, request encoding, the network response and
+body, JSON decoding, assignment storage, and state publication. It does not
+change the HTTP client timeout or cancel the assignment operation. A late
+successful response still makes assignments available. Later context changes do
+not use the initialization timeout.
 
 If `enable()` is called without a `datadogConfig`, the SDK creates no live
 provider. Evaluations still return the caller-provided default with

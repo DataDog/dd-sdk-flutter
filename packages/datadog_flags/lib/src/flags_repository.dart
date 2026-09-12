@@ -203,6 +203,9 @@ class FlagsRepository {
 }
 
 class _InitializationDeadline {
+  // Dart timers cannot run while synchronous encoding or decoding blocks the
+  // isolate. The stopwatch checks enforce the wall-clock deadline before the
+  // operation can publish assignments or win the completion race.
   final Duration timeout;
   final Completer<void> _completion = Completer<void>();
   final Stopwatch _stopwatch = Stopwatch()..start();
