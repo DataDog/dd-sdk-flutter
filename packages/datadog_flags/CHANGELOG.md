@@ -1,9 +1,5 @@
 # Changelog
 
-## 1.1.0
-
-* Add a configurable timeout for the complete first context initialization.
-
 ## 1.0.1
 
 * Fix Flutter Web flag evaluation events failing with HTTP 403 errors caused by CORS preflight requests.
