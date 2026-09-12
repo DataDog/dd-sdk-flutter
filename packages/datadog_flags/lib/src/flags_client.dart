@@ -17,6 +17,12 @@ abstract interface class DatadogFlagsClient {
 
   /// Fetches assignments for [context] and makes them available to evaluations.
   ///
+  /// The first call completes when initialization finishes or the configured
+  /// initialization timeout expires. A timeout does not cancel the assignment
+  /// operation. A late successful response still makes assignments available.
+  /// If a later call supersedes the first call, the first call remains bounded
+  /// by its original deadline. The later call does not use this timeout.
+  ///
   /// Evaluations made before initialization completes return their provided
   /// default value with a `providerNotReady` error.
   Future<void> initialize(

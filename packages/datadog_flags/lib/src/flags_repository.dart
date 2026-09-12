@@ -23,29 +23,60 @@ class FlagsRepository {
   final FlagAssignmentsFetcher fetcher;
   final DatadogFlagsStore? store;
   final DateTime Function() dateProvider;
+  final Duration? initializationTimeout;
+
+  @visibleForTesting
+  final Timer Function(Duration, void Function()) scheduleInitializationTimeout;
 
   FlagsData? _state;
   _CancelToken? _currentToken;
   Future<void> _cacheOperation = Future<void>.value();
+  bool _didStartInitialization = false;
 
   FlagsRepository({
     required this.clientName,
     required this.fetcher,
     this.store,
     required this.dateProvider,
+    this.initializationTimeout,
     this.storeReadTimeout = defaultStoreReadTimeout,
+    this.scheduleInitializationTimeout = _scheduleInitializationTimeout,
   });
 
   FlagsEvaluationContext? get context => _state?.context;
 
   FlagAssignment? flagAssignment(String key) => _state?.flags[key];
 
-  Future<void> initialize(FlagsEvaluationContext context) async {
+  Future<void> initialize(FlagsEvaluationContext context) {
     _currentToken?.cancel();
     final token = _CancelToken();
     _currentToken = token;
 
+    final timeout = _takeInitializationTimeout();
+    final deadline = timeout == null
+        ? null
+        : _InitializationDeadline(timeout, scheduleInitializationTimeout);
+    final operation = _initialize(context, token, deadline);
+    if (deadline == null) {
+      return operation;
+    }
+    deadline.observe(operation);
+    return deadline.future;
+  }
+
+  Future<void> _initialize(
+    FlagsEvaluationContext context,
+    _CancelToken token,
+    _InitializationDeadline? deadline,
+  ) async {
     final cached = store == null ? null : await _readCached();
+    if (token.isCanceled) {
+      return;
+    }
+    final cacheDeadlineYield = _yieldAfterExpiredDeadline(deadline);
+    if (cacheDeadlineYield != null) {
+      await cacheDeadlineYield;
+    }
     if (token.isCanceled) {
       return;
     }
@@ -63,18 +94,60 @@ class FlagsRepository {
       if (token.isCanceled) {
         return;
       }
+      final fetchDeadlineYield = _yieldAfterExpiredDeadline(deadline);
+      if (fetchDeadlineYield != null) {
+        await fetchDeadlineYield;
+      }
+      if (token.isCanceled) {
+        return;
+      }
       final data = FlagsData(
         flags: assignments.flags,
         context: context,
         date: dateProvider(),
       );
-      _state = data;
       await _writeCached(data);
+      if (token.isCanceled) {
+        return;
+      }
+      final publicationDeadlineYield = _yieldAfterExpiredDeadline(deadline);
+      if (publicationDeadlineYield != null) {
+        await publicationDeadlineYield;
+      }
+      if (token.isCanceled) {
+        return;
+      }
+      _state = data;
     } catch (_) {
       if (!token.isCanceled && matchingCached == null) {
         _state = null;
       }
     }
+  }
+
+  Duration? _takeInitializationTimeout() {
+    if (_didStartInitialization) {
+      return null;
+    }
+    _didStartInitialization = true;
+    final timeout = initializationTimeout;
+    return timeout != null && timeout > Duration.zero ? timeout : null;
+  }
+
+  static Timer _scheduleInitializationTimeout(
+    Duration timeout,
+    void Function() action,
+  ) {
+    return Timer(timeout, action);
+  }
+
+  static Future<void>? _yieldAfterExpiredDeadline(
+    _InitializationDeadline? deadline,
+  ) {
+    if (deadline?.expireIfNeeded() ?? false) {
+      return Future<void>.delayed(Duration.zero);
+    }
+    return null;
   }
 
   bool _hasCurrentStateForContext(FlagsEvaluationContext context) {
@@ -133,6 +206,72 @@ class FlagsRepository {
     final next = _cacheOperation.then((_) => operation());
     _cacheOperation = next.catchError((_) {});
     return next;
+  }
+}
+
+class _InitializationDeadline {
+  // Dart timers cannot run while synchronous encoding or decoding blocks the
+  // isolate. The stopwatch checks enforce the wall-clock deadline before the
+  // operation can publish assignments or win the completion race.
+  final Duration timeout;
+  final Completer<void> _completion = Completer<void>();
+  final Stopwatch _stopwatch = Stopwatch()..start();
+  Timer? _timer;
+  var _expired = false;
+
+  _InitializationDeadline(
+    this.timeout,
+    Timer Function(Duration, void Function()) schedule,
+  ) {
+    _timer = schedule(timeout, _expire);
+    if (_expired) {
+      _timer?.cancel();
+    }
+  }
+
+  Future<void> get future => _completion.future;
+
+  bool expireIfNeeded() {
+    if (!_expired && _stopwatch.elapsed >= timeout) {
+      _expire();
+    }
+    return _expired;
+  }
+
+  void observe(Future<void> operation) {
+    expireIfNeeded();
+    operation.then<void>(
+      (_) => _completeOperation(),
+      onError: _completeOperationWithError,
+    );
+  }
+
+  void _expire() {
+    if (_completion.isCompleted) {
+      return;
+    }
+    _expired = true;
+    _stopwatch.stop();
+    _timer?.cancel();
+    _completion.complete();
+  }
+
+  void _completeOperation() {
+    if (expireIfNeeded()) {
+      return;
+    }
+    _stopwatch.stop();
+    _timer?.cancel();
+    _completion.complete();
+  }
+
+  void _completeOperationWithError(Object error, StackTrace stackTrace) {
+    if (expireIfNeeded()) {
+      return;
+    }
+    _stopwatch.stop();
+    _timer?.cancel();
+    _completion.completeError(error, stackTrace);
   }
 }
 
