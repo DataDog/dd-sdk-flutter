@@ -48,22 +48,21 @@ if ! git log --no-merges --format='%H%x09%s' "$base_revision..$head_revision" > 
   exit 2
 fi
 
-invalid=0
+found=0
 tab=$(printf '\t')
 while IFS="$tab" read -r sha subject; do
   [ -n "$sha" ] || continue
-  if ! check_subject "$subject"; then
-    if [ "$invalid" -eq 0 ]; then
-      printf 'These commits do not use Conventional Commit subjects:\n' >&2
-    fi
-    printf '  %.8s %s\n' "$sha" "$subject" >&2
-    invalid=1
+  if check_subject "$subject"; then
+    printf 'Found Conventional Commit: %.8s %s\n' "$sha" "$subject"
+    found=1
+    break
   fi
 done < "$log_file"
 
-if [ "$invalid" -ne 0 ]; then
+if [ "$found" -eq 0 ]; then
+  printf 'No non-merge commit uses a Conventional Commit subject.\n' >&2
   write_expected_format
   exit 1
 fi
 
-printf 'All non-merge commits use Conventional Commit subjects.\n'
+printf 'The commit range contains a Conventional Commit subject.\n'

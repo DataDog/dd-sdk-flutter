@@ -73,22 +73,23 @@ CLI](https://app.bitrise.io/cli) available on your path
 
 ## Commit messages
 
-Use the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
-format for each non-merge commit:
+Each pull request must contain at least one non-merge commit that uses the
+[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format:
 
 ```text
 <type>[optional scope][!]: <description>
 ```
 
 For example, use `feat(flags): add initialization timeout` or
-`fix(web): avoid duplicate requests`. The release tooling uses these subjects
-to generate changelog entries. CI checks all non-merge commits in each pull
-request.
+`fix(web): avoid duplicate requests`. The release tooling creates one changelog
+entry for each `feat:` or `fix:` commit that changes a package. Use one such
+commit to summarize one changelog entry. Other commits in the pull request can
+use descriptive subjects without this format.
 
 Do not add changelog entries in a pull request. The release tooling generates
 the changelog from the Conventional Commit subjects.
 
-Validate the proposed subject before you create the commit:
+Validate the summary subject before you create the commit:
 
 ```bash
 sh tools/ci/check_conventional_commits.sh --subject "feat(flags): add initialization timeout"

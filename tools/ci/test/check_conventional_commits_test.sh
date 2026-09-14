@@ -6,7 +6,8 @@
 
 set -eu
 
-checker=tools/ci/check_conventional_commits.sh
+repo_root=$(pwd)
+checker=$repo_root/tools/ci/check_conventional_commits.sh
 
 for subject in \
   'feat: add a feature' \
@@ -30,5 +31,28 @@ do
     exit 1
   fi
 done
+
+test_repo=$(mktemp -d "${TMPDIR:-/tmp}/conventional-commits-test.XXXXXX")
+trap 'rm -rf "$test_repo"' EXIT HUP INT TERM
+
+git -C "$test_repo" init -q
+git -C "$test_repo" config user.name 'CI Test'
+git -C "$test_repo" config user.email 'ci-test@example.com'
+git -C "$test_repo" config commit.gpgsign false
+git -C "$test_repo" config core.hooksPath /dev/null
+git -C "$test_repo" commit -q --allow-empty -m 'base commit'
+base_revision=$(git -C "$test_repo" rev-parse HEAD)
+
+git -C "$test_repo" commit -q --allow-empty -m 'add the implementation'
+invalid_head=$(git -C "$test_repo" rev-parse HEAD)
+if (cd "$test_repo" && sh "$checker" "$base_revision" "$invalid_head" >/dev/null 2>&1); then
+  printf 'Expected a range without a Conventional Commit to fail.\n' >&2
+  exit 1
+fi
+
+git -C "$test_repo" commit -q --allow-empty -m 'feat: summarize the implementation'
+git -C "$test_repo" commit -q --allow-empty -m 'address review feedback'
+review_head=$(git -C "$test_repo" rev-parse HEAD)
+(cd "$test_repo" && sh "$checker" "$base_revision" "$review_head" >/dev/null)
 
 printf 'Conventional Commit subject tests passed.\n'
