@@ -16,6 +16,13 @@ import 'helpers.dart';
 /// `CommandArguments`/`PackageRelease` coupling. Any of [iosVersion]/
 /// [androidVersion]/[cppVersion] may be null when this package doesn't
 /// wrap that SDK.
+const _nativeSdkColumns = ['Flutter', 'iOS SDK', 'Android SDK', 'C++ SDK'];
+
+String _renderMdTableRow(List<String> values) => '| ${values.join(' | ')} |';
+
+String _renderMdSeparatorRow(List<String> columns) =>
+    '|${columns.map((c) => '-' * (c.length + 2)).join('|')}|';
+
 Future<void> updateNativeSdkVersionsMd(
   File nativeSdkVersionsFile,
   String packageVersion,
@@ -25,27 +32,51 @@ Future<void> updateNativeSdkVersionsMd(
   String? androidVersion,
   String? cppVersion,
 }) async {
-  final newVersionEntry =
-      '| $packageVersion | ${iosVersion ?? '-'} | ${androidVersion ?? '-'} '
-      '| ${cppVersion ?? '-'} |';
-  const header = '| Flutter | iOS SDK | Android SDK | C++ SDK |';
-  const separator = '|---------|---------|-------------|---------|';
+  final newValues = {
+    'Flutter': packageVersion,
+    'iOS SDK': iosVersion,
+    'Android SDK': androidVersion,
+    'C++ SDK': cppVersion,
+  };
 
   if (!nativeSdkVersionsFile.existsSync()) {
     logger.warning(
       '⚠️ ${nativeSdkVersionsFile.path} does not exist, creating it now.',
     );
+    final columns = _nativeSdkColumns;
     if (!dryRun) {
+      final header = _renderMdTableRow(columns);
+      final separator = _renderMdSeparatorRow(columns);
+      final row = _renderMdTableRow(
+        columns.map((c) => newValues[c] ?? '-').toList(),
+      );
       await nativeSdkVersionsFile.writeAsString(
-        '$header\n$separator\n$newVersionEntry\n',
+        '$header\n$separator\n$row\n',
       );
     }
     return;
   }
 
   final lines = await nativeSdkVersionsFile.readAsLines();
-  for (final line in lines) {
-    if (!line.startsWith('|')) continue;
+  final headerIndex = lines.indexWhere((l) => l.trimLeft().startsWith('|'));
+  if (headerIndex == -1 || headerIndex + 1 >= lines.length) {
+    logger.warning(
+      '⚠️ Could not find a markdown table header in '
+      '${nativeSdkVersionsFile.path}, skipping.',
+    );
+    return;
+  }
+  final separatorIndex = headerIndex + 1;
+  final bodyStartIndex = separatorIndex + 1;
+
+  final existingColumns = lines[headerIndex]
+      .split('|')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
+
+  for (final line in lines.skip(bodyStartIndex)) {
+    if (!line.trimLeft().startsWith('|')) continue;
     final parts = line.split('|').map((s) => s.trim()).toList();
     if (parts.length > 1 && parts[1] == packageVersion) {
       logger.info(
@@ -56,12 +87,49 @@ Future<void> updateNativeSdkVersionsMd(
     }
   }
 
-  await transformFile(nativeSdkVersionsFile, logger, dryRun, (line) {
-    if (line.startsWith('|-')) {
-      return '$separator\n$newVersionEntry';
+  // The column set only ever grows -- e.g. a package's first release that
+  // wraps a C++ SDK -- so existing rows are backfilled with '-' for any
+  // newly-added column rather than left narrower than the new header.
+  final columns = [
+    for (final c in _nativeSdkColumns)
+      if (existingColumns.contains(c) ||
+          (c != 'Flutter' && newValues[c] != null))
+        c,
+  ];
+  final columnGrew = columns.length != existingColumns.length;
+
+  if (!dryRun) {
+    final newLines = <String>[
+      ...lines.take(headerIndex),
+      _renderMdTableRow(columns),
+      _renderMdSeparatorRow(columns),
+      // New entries go at the top of the body, newest-first, matching the
+      // existing convention.
+      _renderMdTableRow(columns.map((c) => newValues[c] ?? '-').toList()),
+    ];
+
+    for (final line in lines.skip(bodyStartIndex)) {
+      if (!line.trimLeft().startsWith('|') || !columnGrew) {
+        newLines.add(line);
+        continue;
+      }
+      final parts = line
+          .split('|')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      final byColumn = {
+        for (var i = 0; i < existingColumns.length && i < parts.length; i++)
+          existingColumns[i]: parts[i],
+      };
+      newLines.add(
+        _renderMdTableRow(columns.map((c) => byColumn[c] ?? '-').toList()),
+      );
     }
-    return line;
-  });
+
+    await nativeSdkVersionsFile.writeAsString('${newLines.join('\n')}\n');
+    logger.info(' ✏️ Wrote ${nativeSdkVersionsFile.path}');
+  }
 }
 
 const _sdkTableStartMarker = '[//]: # (SDK Table)';
@@ -114,7 +182,7 @@ Future<void> updateReadmeSdkTable(
   }
 }
 
-final _versionCapture = RegExp(r'^version\: (?<version>.*)');
+final _versionCapture = RegExp(r'^version:\s*(?<version>.*)');
 
 Future<bool> updateVersions(
   String packageRoot,
@@ -143,9 +211,11 @@ Future<bool> _updatePackagePubspec(
     return false;
   }
 
+  var foundVersionLine = false;
   await transformFile(pubspecFile, logger, dryRun, (element) {
     final match = _versionCapture.firstMatch(element);
     if (match != null) {
+      foundVersionLine = true;
       final oldVersion = match.namedGroup('version');
       logger.info(
         ' - 🔀 Replacing version $oldVersion with $version in pubspec',
@@ -154,6 +224,13 @@ Future<bool> _updatePackagePubspec(
     }
     return element;
   });
+
+  if (!foundVersionLine) {
+    logger.shout(
+      '⁉️ Could not find a "version:" line in ${pubspecFile.path}',
+    );
+    return false;
+  }
 
   return true;
 }

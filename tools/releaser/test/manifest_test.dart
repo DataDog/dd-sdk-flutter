@@ -9,11 +9,13 @@ import 'package:test/test.dart';
 
 import 'package:releaser/manifest.dart';
 
+import 'support/test_temp.dart';
+
 void main() {
   late Directory root;
 
   setUp(() async {
-    root = await Directory.systemTemp.createTemp('manifest_test_');
+    root = await createTestTempDir('manifest_test_');
   });
 
   tearDown(() => root.delete(recursive: true));

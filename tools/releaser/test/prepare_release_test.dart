@@ -20,6 +20,12 @@ import 'package:test/test.dart';
 import '../bin/prepare_release.dart';
 import 'support/fixture_repo.dart';
 
+// Stands in for `fetchPublishedVersions`'s real pub.dev lookup -- this suite
+// runs against a `FixtureRepo` with no network access, and `datadog_dio`'s
+// published history isn't what any of these tests are about.
+Future<PublishedVersions> _neverPublished(String packageName) async =>
+    PublishedVersions.never;
+
 class _NeverCalledAiGatewayClient implements AiGatewayClient {
   @override
   Future<StructuredResponse> createStructuredMessage({
@@ -38,7 +44,6 @@ void main() {
 
   setUp(() async {
     fixture = await FixtureRepo.create();
-    // prependChangelogSection requires the file to already exist.
     fixture.writeFile('packages/datadog_dio/CHANGELOG.md', '');
     await fixture.commit('chore: seed CHANGELOG.md');
   });
@@ -69,6 +74,7 @@ void main() {
         aiGatewayClient: _NeverCalledAiGatewayClient(),
         dryRun: true,
         skipPublishValidation: true,
+        publishedVersions: _neverPublished,
       );
 
       final log = await gitDir.runCommand([
@@ -140,6 +146,7 @@ void main() {
         aiGatewayClient: _NeverCalledAiGatewayClient(),
         dryRun: true,
         skipPublishValidation: true,
+        publishedVersions: _neverPublished,
       );
 
       final branchAfter = (await gitDir.currentBranch()).branchName;
@@ -164,6 +171,7 @@ dependency_overrides:
       await fixture.commit('chore: accidentally commit an override');
 
       final gitDir = await fixture.gitDir;
+      final branchBefore = (await gitDir.currentBranch()).branchName;
 
       expect(
         () => prepareRelease(
@@ -178,12 +186,50 @@ dependency_overrides:
           aiGatewayClient: _NeverCalledAiGatewayClient(),
           dryRun: true,
           skipPublishValidation: true,
+          publishedVersions: _neverPublished,
         ),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
             'message',
             contains('dependency_overrides'),
+          ),
+        ),
+      );
+
+      // The check runs before any branch is created, so a failed run
+      // doesn't leave a half-prepared `release-prep/*` branch behind.
+      final branchAfter = (await gitDir.currentBranch()).branchName;
+      expect(branchAfter, branchBefore);
+    },
+  );
+
+  test(
+    'refuses to run against a working tree with uncommitted changes',
+    () async {
+      fixture.writeFile('packages/datadog_dio/CHANGELOG.md', 'dirty');
+      final gitDir = await fixture.gitDir;
+
+      expect(
+        () => prepareRelease(
+          RunContext(
+            repoRoot: fixture.root.path,
+            trigger: TriggerContext.mainline,
+            currentBranch: 'develop',
+            requestedPackages: ['datadog_dio'],
+          ),
+          gitDir: gitDir,
+          github: GithubCommandWrapper(fixture.root.path),
+          aiGatewayClient: _NeverCalledAiGatewayClient(),
+          dryRun: true,
+          skipPublishValidation: true,
+          publishedVersions: _neverPublished,
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('uncommitted changes'),
           ),
         ),
       );

@@ -10,12 +10,14 @@ import 'package:test/test.dart';
 
 import 'package:releaser/version_updater.dart';
 
+import 'support/test_temp.dart';
+
 void main() {
   late Directory root;
   final logger = Logger('version_updater_test');
 
   setUp(() async {
-    root = await Directory.systemTemp.createTemp('version_updater_test_');
+    root = await createTestTempDir('version_updater_test_');
   });
 
   tearDown(() => root.delete(recursive: true));
@@ -92,6 +94,97 @@ void main() {
     );
 
     expect(file.readAsStringSync(), original);
+  });
+
+  test(
+    'migrates a legacy 3-column table when a new column is introduced',
+    () async {
+      final file = File(p.join(root.path, 'NATIVE_SDK_VERSIONS.md'))
+        ..writeAsStringSync(
+          '| Flutter | iOS SDK | Android SDK |\n'
+          '|---------|---------|-------------|\n'
+          '| 3.4.0 | 3.13.0 | 3.11.0 |\n',
+        );
+
+      await updateNativeSdkVersionsMd(
+        file,
+        '3.5.0',
+        logger,
+        false,
+        iosVersion: '3.15.0',
+        androidVersion: '3.12.1',
+        cppVersion: '1.4.0',
+      );
+
+      expect(
+        file.readAsStringSync(),
+        '| Flutter | iOS SDK | Android SDK | C++ SDK |\n'
+        '|---------|---------|-------------|---------|\n'
+        '| 3.5.0 | 3.15.0 | 3.12.1 | 1.4.0 |\n'
+        '| 3.4.0 | 3.13.0 | 3.11.0 | - |\n',
+      );
+    },
+  );
+
+  test(
+    'leaves a legacy 3-column table alone when no new column is needed',
+    () async {
+      final file = File(p.join(root.path, 'NATIVE_SDK_VERSIONS.md'))
+        ..writeAsStringSync(
+          '| Flutter | iOS SDK | Android SDK |\n'
+          '|---------|---------|-------------|\n'
+          '| 3.4.0 | 3.13.0 | 3.11.0 |\n',
+        );
+
+      await updateNativeSdkVersionsMd(
+        file,
+        '3.5.0',
+        logger,
+        false,
+        iosVersion: '3.15.0',
+        androidVersion: '3.12.1',
+      );
+
+      expect(
+        file.readAsStringSync(),
+        '| Flutter | iOS SDK | Android SDK |\n'
+        '|---------|---------|-------------|\n'
+        '| 3.5.0 | 3.15.0 | 3.12.1 |\n'
+        '| 3.4.0 | 3.13.0 | 3.11.0 |\n',
+      );
+    },
+  );
+
+  group('updateVersions', () {
+    test('updates the version line regardless of internal spacing', () async {
+      File(
+        p.join(root.path, 'pubspec.yaml'),
+      ).writeAsStringSync('name: foo\nversion:   1.0.0\n');
+
+      final result = await updateVersions(root.path, '1.1.0', logger, false);
+
+      expect(result, isTrue);
+      expect(
+        File(p.join(root.path, 'pubspec.yaml')).readAsStringSync(),
+        contains('version: 1.1.0'),
+      );
+    });
+
+    test('fails when pubspec.yaml has no version line', () async {
+      File(
+        p.join(root.path, 'pubspec.yaml'),
+      ).writeAsStringSync('name: foo\n');
+
+      final result = await updateVersions(root.path, '1.1.0', logger, false);
+
+      expect(result, isFalse);
+    });
+
+    test('fails when pubspec.yaml is missing', () async {
+      final result = await updateVersions(root.path, '1.1.0', logger, false);
+
+      expect(result, isFalse);
+    });
   });
 
   group('updateReadmeSdkTable', () {

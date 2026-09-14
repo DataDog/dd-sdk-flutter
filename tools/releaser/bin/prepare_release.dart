@@ -150,12 +150,13 @@ Future<void> main(List<String> arguments) async {
     cppVersionOverride: args['cpp-version'] as String?,
   );
 
+  final aiGatewayClient = HttpAiGatewayClient.fromEnvironment();
   try {
     await prepareRelease(
       ctx,
       gitDir: gitDir,
       github: GithubCommandWrapper(gitDir.path),
-      aiGatewayClient: HttpAiGatewayClient.fromEnvironment(),
+      aiGatewayClient: aiGatewayClient,
       dryRun: args['dry-run'] as bool,
       skipPublishValidation: args['skip-publish-validation'] as bool,
     );
@@ -163,6 +164,8 @@ Future<void> main(List<String> arguments) async {
     _log.shout(e is StateError ? '❌ ${e.message}' : '❌ $e');
     exitCode = 1;
     return;
+  } finally {
+    aiGatewayClient.close();
   }
 }
 
@@ -231,11 +234,44 @@ Future<void> prepareRelease(
   required AiGatewayClient aiGatewayClient,
   bool dryRun = false,
   bool skipPublishValidation = false,
+  PublishedVersionsGateway? publishedVersions,
 }) async {
-  final plan = await computeReleasePlan(ctx);
+  if (!await isWorkingTreeClean(gitDir, _log)) {
+    throw StateError(
+      'Working tree at ${gitDir.path} has uncommitted changes -- '
+      'prepare-release stages everything with `git add .`, so it would '
+      'sweep them into a release commit. Commit, stash, or discard them '
+      'first.',
+    );
+  }
+
+  final plan = await computeReleasePlan(
+    ctx,
+    gitDir: gitDir,
+    nativeSdkGateways: GithubSdkGateways(github, logger: _log),
+    publishedVersions: publishedVersions,
+  );
   if (plan.packages.isEmpty) {
     _log.info('No packages would release from this run. Nothing to do.');
     return;
+  }
+
+  // Cheap, purely-local checks run before anything is mutated -- a branch
+  // created or a commit made here can't be cleanly undone once
+  // `_applyPublishPrep` (which used to run this same check) has already
+  // produced commit A, leaving a half-prepared `release-prep/*` branch
+  // behind on failure.
+  for (final packagePlan in plan.packages) {
+    final pubspecFile = File(
+      p.join(packagePlan.package.absolutePath(ctx.repoRoot), 'pubspec.yaml'),
+    );
+    if (pubspecHasDependencyOverrides(pubspecFile)) {
+      throw StateError(
+        '${pubspecFile.path} has a committed dependency_overrides block. '
+        'pub.dev will refuse to publish this package -- remove it before '
+        're-running.',
+      );
+    }
   }
 
   final allGroups = await discoverPackages(ctx.repoRoot);
@@ -317,7 +353,11 @@ Future<void> prepareRelease(
   }
 
   final title = _prTitle(plan.packages);
-  final body = _prBody(plan.packages, staleConsumerWarnings);
+  final body = _prBody(
+    plan.packages,
+    staleConsumerWarnings,
+    publishValidationSkipped: skipPublishValidation,
+  );
   final prUrl = await github.createPullRequest(
     _log,
     base: prBase,
@@ -355,7 +395,17 @@ Future<void> _applyContentChanges(
     false,
   );
 
-  await updateVersions(packageRoot, packagePlan.newVersion, _log, false);
+  final updatedVersions = await updateVersions(
+    packageRoot,
+    packagePlan.newVersion,
+    _log,
+    false,
+  );
+  if (!updatedVersions) {
+    throw StateError(
+      'Failed to update version for ${pkg.name} at $packageRoot',
+    );
+  }
 
   // Raise the app-facing package's lower bound on this package, if it's a
   // releasing federated sibling. Not applicable on patch branches (patch
@@ -442,18 +492,6 @@ Future<void> _applyPublishPrep(
   final pkg = packagePlan.package;
   final packageRoot = pkg.absolutePath(ctx.repoRoot);
 
-  // A real, publishable package's own pubspec.yaml should never carry a
-  // committed `dependency_overrides`, instead we let Melos manage
-  // `pubspec_overrides.yaml` files. Still, double check none slippped through.
-  final pubspecFile = File(p.join(packageRoot, 'pubspec.yaml'));
-  if (pubspecHasDependencyOverrides(pubspecFile)) {
-    throw StateError(
-      '${pubspecFile.path} has a committed dependency_overrides block. '
-      'pub.dev will refuse to publish this package -- remove it before '
-      're-running.',
-    );
-  }
-
   // Example apps' Podfiles do still carry a real, intentional override --
   // pinning dd-sdk-ios's `develop` branch via git rather than the
   // podspec's semver constraint, so the example floats between releases.
@@ -525,8 +563,9 @@ String _prTitle(List<PackagePlan> packages) {
 
 String _prBody(
   List<PackagePlan> packages,
-  List<StaleConsumerWarning> staleConsumerWarnings,
-) {
+  List<StaleConsumerWarning> staleConsumerWarnings, {
+  required bool publishValidationSkipped,
+}) {
   final buffer = StringBuffer();
 
   buffer.writeln('## Versions');
@@ -573,7 +612,11 @@ String _prBody(
 
   buffer.writeln();
   buffer.writeln(
-    '`flutter pub publish --dry-run` passed for every package above.',
+    publishValidationSkipped
+        ? '⚠️ `flutter pub publish --dry-run` was skipped '
+              '(--skip-publish-validation) -- not verified for any package '
+              'above.'
+        : '`flutter pub publish --dry-run` passed for every package above.',
   );
 
   return buffer.toString();

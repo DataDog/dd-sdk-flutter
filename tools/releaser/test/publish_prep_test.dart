@@ -18,12 +18,14 @@ import 'package:releaser/gradle_util.dart';
 import 'package:releaser/spm_util.dart';
 import 'package:releaser/yaml_util.dart';
 
+import 'support/test_temp.dart';
+
 void main() {
   late Directory root;
   final logger = Logger('publish_prep_test');
 
   setUp(() async {
-    root = await Directory.systemTemp.createTemp('publish_prep_test_');
+    root = await createTestTempDir('publish_prep_test_');
   });
 
   tearDown(() => root.delete(recursive: true));

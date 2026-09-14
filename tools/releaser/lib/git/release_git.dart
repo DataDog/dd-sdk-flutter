@@ -42,6 +42,21 @@ Future<ProcessResult> _run(
   return result;
 }
 
+/// Whether [gitDir]'s working tree has no staged or unstaged changes and no
+/// untracked files -- checked before `prepareRelease` starts mutating
+/// anything, since [commitAll] stages everything under [gitDir] with
+/// `git add .` and would otherwise sweep up unrelated local work into a
+/// release commit.
+Future<bool> isWorkingTreeClean(GitDir gitDir, Logger logger) async {
+  final result = await _run(
+    gitDir,
+    ['status', '--porcelain'],
+    logger,
+    'Failed to check working tree status',
+  );
+  return (result.stdout as String).trim().isEmpty;
+}
+
 Future<void> createAndCheckoutBranch(
   GitDir gitDir,
   String branchName,

@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:logging/logging.dart';
 import 'package:pub_semver/pub_semver.dart' as semver;
+import 'package:yaml/yaml.dart';
 
 import 'helpers.dart';
 import 'package_discovery.dart';
@@ -14,23 +15,26 @@ import 'package_discovery.dart';
 /// constraint value -- `name: ^1.0.0`, `name: ">=1.0.0 <2.0.0"`, or
 /// `name: '1.0.0'`. Doesn't match a nested-map dependency (`name:` with
 /// `path:`/`sdk:` on following lines), which this tooling never rewrites.
-/// `multiLine: true` since [findStaleConsumerWarnings] matches against a
-/// whole-file string (one `pubspec.yaml` per candidate consumer) rather
-/// than line-by-line -- without it, `^`/`$` would only anchor to the
-/// start/end of the entire file.
 RegExp _dependencyLinePattern(String name) => RegExp(
   '^(?<indent>\\s+)${RegExp.escape(name)}:\\s*'
   '(?<quote>["\']?)(?<constraint>[^"\'\\s][^"\']*?)(?<endquote>["\']?)\\s*\$',
-  multiLine: true,
 );
+
+/// Matches an unindented top-level YAML key (`dependencies:`,
+/// `dev_dependencies:`, `dependency_overrides:`, `environment:`, ...),
+/// tracked while scanning so a dependency of the same name under a
+/// different section (a `dev_dependencies` entry, say) is never mistaken
+/// for the real one in `dependencies:`.
+final _topLevelKeyPattern = RegExp(r'^(?<key>[A-Za-z_][A-Za-z0-9_]*):');
 
 /// Rewrites [pubspecFile]'s dependency line for [dependencyName] to a
 /// caret constraint on [newVersion] -- used to raise a federated
 /// app-facing package's lower bound on a sibling (platform interface or
 /// implementation) that's releasing this cycle. Leaves the line alone if
-/// [dependencyName] isn't a simple version-constraint dependency there
-/// (e.g. a `path:`-based one, which this repo doesn't use for a federated
-/// sibling, or simply absent).
+/// [dependencyName] isn't a simple version-constraint dependency under
+/// `dependencies:` there (e.g. a `path:`-based one, which this repo
+/// doesn't use for a federated sibling, one only present under
+/// `dev_dependencies:`/`dependency_overrides:`, or simply absent).
 Future<void> bumpDependentConstraint(
   File pubspecFile,
   String dependencyName,
@@ -40,8 +44,16 @@ Future<void> bumpDependentConstraint(
 ) async {
   final pattern = _dependencyLinePattern(dependencyName);
   var found = false;
+  String? currentTopLevelKey;
 
   await transformFile(pubspecFile, logger, dryRun, (line) {
+    final topLevelMatch = _topLevelKeyPattern.firstMatch(line);
+    if (topLevelMatch != null) {
+      currentTopLevelKey = topLevelMatch.namedGroup('key');
+      return line;
+    }
+    if (currentTopLevelKey != 'dependencies') return line;
+
     final match = pattern.firstMatch(line);
     if (match == null) return line;
     found = true;
@@ -54,8 +66,8 @@ Future<void> bumpDependentConstraint(
 
   if (!found) {
     logger.fine(
-      'No simple version-constraint dependency on $dependencyName found in '
-      '${pubspecFile.path} -- nothing to bump.',
+      'No simple version-constraint dependency on $dependencyName found '
+      'under dependencies: in ${pubspecFile.path} -- nothing to bump.',
     );
   }
 }
@@ -105,12 +117,16 @@ Future<List<StaleConsumerWarning>> findStaleConsumerWarnings({
       );
       if (!pubspecFile.existsSync()) continue;
 
-      final match = _dependencyLinePattern(
-        releasingPackage.name,
-      ).firstMatch(await pubspecFile.readAsString());
-      if (match == null) continue;
+      final pubspec = loadYaml(await pubspecFile.readAsString());
+      if (pubspec is! YamlMap) continue;
+      final dependencies = pubspec['dependencies'];
+      if (dependencies is! YamlMap) continue;
 
-      final rawConstraint = match.namedGroup('constraint')!.trim();
+      final value = dependencies[releasingPackage.name];
+      // Not a simple constraint: absent, or a nested `path:`/`sdk:` map.
+      if (value is! String) continue;
+
+      final rawConstraint = value.trim();
       semver.VersionConstraint constraint;
       try {
         constraint = semver.VersionConstraint.parse(rawConstraint);

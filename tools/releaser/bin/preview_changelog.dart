@@ -64,17 +64,22 @@ Future<void> main(List<String> arguments) async {
   );
 
   final costTracker = LlmCostTracker();
-  final entries = await generateChangelogForPackage(
-    HttpAiGatewayClient.fromEnvironment(),
-    packagePlan,
-    github: GithubCommandWrapper(gitDir.path),
-    logger: _log,
-    costTracker: costTracker,
-  );
+  final aiGatewayClient = HttpAiGatewayClient.fromEnvironment();
+  try {
+    final entries = await generateChangelogForPackage(
+      aiGatewayClient,
+      packagePlan,
+      github: GithubCommandWrapper(gitDir.path),
+      logger: _log,
+      costTracker: costTracker,
+    );
 
-  print('## ${packagePlan.newVersion}\n');
-  print(renderChangelogSection(entries));
+    print('## ${packagePlan.newVersion}\n');
+    print(renderChangelogSection(entries));
 
-  print('\n--- LLM cost summary ---\n');
-  costTracker.printSummary(_log);
+    print('\n--- LLM cost summary ---\n');
+    costTracker.printSummary(_log);
+  } finally {
+    aiGatewayClient.close();
+  }
 }

@@ -84,6 +84,13 @@ class GithubCommandWrapper {
         'list',
         '--repo',
         repoSlug,
+        // Without an explicit limit, `gh release list` only returns the 30
+        // most recent releases -- silently hiding an older-but-still-valid
+        // IOS_SDK_VERSION/ANDROID_SDK_VERSION override, and any repo with
+        // more than 30 releases risks losing its "isLatest" entry from the
+        // page entirely.
+        '--limit',
+        '1000',
         '--json',
         'name,isLatest,tagName',
       ],
@@ -103,7 +110,14 @@ class GithubCommandWrapper {
 
   Future<GHRelease> getLatestRelease(Logger logger, String repoSlug) async {
     final releases = await fetchReleases(logger, repoSlug);
-    return releases.firstWhere((e) => e.isLatest);
+    final latest = releases.firstWhereOrNull((e) => e.isLatest);
+    if (latest == null) {
+      throw StateError(
+        'No release of $repoSlug is marked "latest" (fetched '
+        '${releases.length} release(s)).',
+      );
+    }
+    return latest;
   }
 
   Future<GHRelease?> getReleaseByTagName(

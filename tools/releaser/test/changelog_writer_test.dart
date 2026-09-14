@@ -10,12 +10,14 @@ import 'package:test/test.dart';
 
 import 'package:releaser/changelog_writer.dart';
 
+import 'support/test_temp.dart';
+
 void main() {
   late Directory root;
   final logger = Logger('changelog_writer_test');
 
   setUp(() async {
-    root = await Directory.systemTemp.createTemp('changelog_writer_test_');
+    root = await createTestTempDir('changelog_writer_test_');
   });
 
   tearDown(() => root.delete(recursive: true));
@@ -38,6 +40,26 @@ void main() {
     expect(contents, contains('* Old entry.'));
   });
 
+  test('inserts a new section below a leading # title', () async {
+    final file = File(p.join(root.path, 'CHANGELOG.md'))
+      ..writeAsStringSync('# Changelog\n\n## 2.2.0\n\n* Old entry.\n');
+
+    await prependChangelogSection(
+      file,
+      '2.3.0',
+      '### Features\n\n- New thing.',
+      logger,
+      false,
+    );
+
+    final contents = file.readAsStringSync();
+    expect(
+      contents,
+      '# Changelog\n\n## 2.3.0\n\n### Features\n\n- New thing.\n\n'
+      '## 2.2.0\n\n* Old entry.\n',
+    );
+  });
+
   test('writes the section directly into an empty file', () async {
     final file = File(p.join(root.path, 'CHANGELOG.md'))..writeAsStringSync('');
 
@@ -50,6 +72,35 @@ void main() {
     );
 
     expect(file.readAsStringSync(), '## 1.0.0\n\n- First release.\n');
+  });
+
+  test('creates the file when it does not exist yet', () async {
+    final file = File(p.join(root.path, 'CHANGELOG.md'));
+    expect(file.existsSync(), isFalse);
+
+    await prependChangelogSection(
+      file,
+      '1.0.0',
+      '- First release.',
+      logger,
+      false,
+    );
+
+    expect(file.readAsStringSync(), '## 1.0.0\n\n- First release.\n');
+  });
+
+  test('a missing file is left alone on a dry run', () async {
+    final file = File(p.join(root.path, 'CHANGELOG.md'));
+
+    await prependChangelogSection(
+      file,
+      '1.0.0',
+      '- First release.',
+      logger,
+      true,
+    );
+
+    expect(file.existsSync(), isFalse);
   });
 
   test('dry run leaves the file untouched', () async {
