@@ -2,11 +2,14 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:io';
+
 import 'package:logging/logging.dart';
 import 'package:releaser/git/release_git.dart';
 import 'package:test/test.dart';
 
 import '../support/fixture_repo.dart';
+import '../support/test_temp.dart';
 
 void main() {
   late FixtureRepo fixture;
@@ -37,6 +40,66 @@ void main() {
       final gitDir = await fixture.gitDir;
 
       expect(await isWorkingTreeClean(gitDir, logger), isFalse);
+    });
+  });
+
+  group('pushTag', () {
+    // A local bare repo standing in for the real remote -- exercises the
+    // actual `git push` rather than mocking it, the same way the rest of
+    // this file tests real git plumbing; no network involved.
+    late Directory bareRemote;
+
+    setUp(() async {
+      bareRemote = await createTestTempDir('release_git_test_remote_');
+      await Process.run('git', [
+        'init',
+        '-q',
+        '--bare',
+        bareRemote.path,
+      ]);
+      await Process.run('git', [
+        'remote',
+        'add',
+        'origin',
+        bareRemote.path,
+      ], workingDirectory: fixture.root.path);
+    });
+
+    tearDown(() => bareRemote.delete(recursive: true));
+
+    test('creates a tag at the given commit and pushes it', () async {
+      final gitDir = await fixture.gitDir;
+      final sha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      await pushTag(gitDir, 'release-content/test-tag', sha, logger);
+
+      final result = await Process.run('git', [
+        'rev-parse',
+        'release-content/test-tag^{commit}',
+      ], workingDirectory: bareRemote.path);
+      expect((result.stdout as String).trim(), sha);
+    });
+
+    test('tags exactly the given commit, not the current branch tip',
+        () async {
+      final gitDir = await fixture.gitDir;
+      final firstSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      await fixture.commit('chore: a second commit');
+
+      await pushTag(gitDir, 'release-content/test-tag', firstSha, logger);
+
+      final result = await Process.run('git', [
+        'rev-parse',
+        'release-content/test-tag^{commit}',
+      ], workingDirectory: bareRemote.path);
+      expect((result.stdout as String).trim(), firstSha);
     });
   });
 }

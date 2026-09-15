@@ -184,45 +184,61 @@ class _ReleaseTarget {
 
   final bool createsNewBranch;
 
+  /// Tag to push at commit A's SHA, or null on patch (no commit A exists to
+  /// protect -- patch never splits). This repo auto-deletes a PR's head
+  /// branch on merge and allows squash/rebase, either of which would
+  /// otherwise strand commit A's original commit object once
+  /// `release-prep/*` is gone; the tag keeps it fetchable by SHA regardless
+  /// of which merge strategy lands the release-prep PR, so Phase 2's
+  /// backport can still `git merge` that exact commit into the dev-line
+  /// branch afterwards. See `.plans/new-release-process.md` step 1g.
+  final String? contentTagName;
+
   _ReleaseTarget({
     required this.workingBranch,
     required this.prBase,
     required this.createsNewBranch,
+    required this.contentTagName,
   });
 
   factory _ReleaseTarget.forTrigger(RunContext ctx) {
     switch (ctx.trigger) {
       case TriggerContext.mainline:
+        final id = _dateId();
         return _ReleaseTarget(
-          workingBranch: _releasePrepBranchName(),
+          workingBranch: 'release-prep/$id',
           prBase: 'main',
           createsNewBranch: true,
+          contentTagName: 'release-content/$id',
         );
       case TriggerContext.preRelease:
+        final id = _dateId();
         return _ReleaseTarget(
-          workingBranch: _releasePrepBranchName(),
+          workingBranch: 'release-prep/$id',
           // Every whitelisted pre-release branch is paired with its own
           // disposable `{branch}-main` -- release-prep never commits or
           // PRs onto the pre-release branch itself.
           prBase: '${ctx.currentBranch}-main',
           createsNewBranch: true,
+          contentTagName: 'release-content/$id',
         );
       case TriggerContext.patch:
         return _ReleaseTarget(
           workingBranch: ctx.currentBranch,
           prBase: null,
           createsNewBranch: false,
+          contentTagName: null,
         );
     }
   }
 
-  static String _releasePrepBranchName() {
+  static String _dateId() {
     final now = DateTime.now().toUtc();
     final date =
         '${now.year}${now.month.toString().padLeft(2, '0')}'
         '${now.day.toString().padLeft(2, '0')}';
     final shortId = (now.microsecondsSinceEpoch % 0xFFFFFF).toRadixString(16);
-    return 'release-prep/$date-$shortId';
+    return '$date-$shortId';
   }
 }
 
@@ -415,6 +431,11 @@ Future<void> prepareRelease(
   }
 
   await pushBranch(gitDir, target.workingBranch, _log);
+
+  final contentTagName = target.contentTagName;
+  if (contentTagName != null && contentCommit != null) {
+    await pushTag(gitDir, contentTagName, contentCommit, _log);
+  }
 
   final prBase = target.prBase;
   if (prBase == null) {

@@ -128,3 +128,33 @@ Future<void> pushBranch(
     'Failed to push $branchName',
   );
 }
+
+/// Tags [commitSha] as [tagName] and pushes it -- used to keep commit A
+/// fetchable by SHA after its `release-prep/*` branch is gone (this repo
+/// auto-deletes a PR's head branch on merge), so Phase 2's backport can
+/// still `git merge` it into the dev-line branch later regardless of which
+/// merge strategy landed the release-prep PR.
+Future<void> pushTag(
+  GitDir gitDir,
+  String tagName,
+  String commitSha,
+  Logger logger, {
+  String remote = 'origin',
+}) async {
+  logger.info('ℹ️ Tagging $commitSha as $tagName');
+  // Annotated, not lightweight -- some git configs (this repo's included)
+  // sign tags, which requires a message; `git tag <name> <sha>` alone then
+  // fails with "no tag message?".
+  await _run(
+    gitDir,
+    ['tag', '-a', '-m', tagName, tagName, commitSha],
+    logger,
+    'Failed to create tag $tagName',
+  );
+  await _run(
+    gitDir,
+    ['push', remote, tagName],
+    logger,
+    'Failed to push tag $tagName',
+  );
+}
