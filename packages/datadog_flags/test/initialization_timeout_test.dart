@@ -433,6 +433,62 @@ void main() {
     await initialization.timeout(const Duration(seconds: 1));
     expect(repository.flagAssignment('show-paywall'), isNotNull);
   });
+
+  test('preserves store write order across SDK reconfiguration', () async {
+    final store = _CrossLifecycleStore();
+    final datadogFlags = DatadogFlags();
+    addTearDown(() async {
+      if (!store.allowFirstWrite.isCompleted) {
+        store.allowFirstWrite.complete();
+      }
+      await datadogFlags.disable();
+    });
+
+    await datadogFlags.enable(
+      configuration: _configuration(
+        httpClient: MockClient((_) async {
+          return http.Response(jsonEncode(_assignmentsResponse()), 200);
+        }),
+        store: store,
+        initializationTimeout: const Duration(milliseconds: 5),
+      ),
+    );
+    final firstInitialization =
+        datadogFlags.sharedClient().initialize(_context);
+    await store.firstWriteStarted.future.timeout(const Duration(seconds: 1));
+    await firstInitialization.timeout(const Duration(seconds: 1));
+
+    await datadogFlags.enable(
+      configuration: _configuration(
+        httpClient: MockClient((_) async {
+          return http.Response(
+            jsonEncode(_assignmentsResponse(booleanValue: false)),
+            200,
+          );
+        }),
+        store: store,
+        initializationTimeout: const Duration(milliseconds: 5),
+      ),
+    );
+    final secondClient = datadogFlags.sharedClient();
+    await secondClient.initialize(_context).timeout(const Duration(seconds: 1));
+    expect(
+      secondClient
+          .getBooleanDetails(key: 'show-paywall', defaultValue: true)
+          .value,
+      isFalse,
+    );
+
+    store.allowFirstWrite.complete();
+    await store.firstWriteCompleted.future.timeout(const Duration(seconds: 1));
+    await store.secondWriteCompleted.future.timeout(const Duration(seconds: 1));
+
+    expect(
+      store.data?.flags['show-paywall']?.variationValue,
+      isFalse,
+      reason: 'An older lifecycle must not overwrite newer stored assignments.',
+    );
+  });
 }
 
 const _context = FlagsEvaluationContext(targetingKey: 'user-123');
@@ -607,6 +663,41 @@ class _DelayedWriteStore implements DatadogFlagsStore {
   @override
   Future<void> delete(String clientName) {
     return _delegate.delete(clientName);
+  }
+}
+
+class _CrossLifecycleStore implements DatadogFlagsStore {
+  final Completer<void> firstWriteStarted = Completer<void>();
+  final Completer<void> allowFirstWrite = Completer<void>();
+  final Completer<void> firstWriteCompleted = Completer<void>();
+  final Completer<void> secondWriteCompleted = Completer<void>();
+
+  FlagsData? data;
+  var _writeCount = 0;
+
+  @override
+  Future<FlagsData?> read(String clientName) async => data;
+
+  @override
+  Future<void> write(String clientName, FlagsData value) async {
+    _writeCount += 1;
+    final writeNumber = _writeCount;
+    if (writeNumber == 1) {
+      firstWriteStarted.complete();
+      await allowFirstWrite.future;
+    }
+
+    data = value;
+    if (writeNumber == 1) {
+      firstWriteCompleted.complete();
+    } else if (writeNumber == 2) {
+      secondWriteCompleted.complete();
+    }
+  }
+
+  @override
+  Future<void> delete(String clientName) async {
+    data = null;
   }
 }
 

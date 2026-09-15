@@ -16,6 +16,12 @@ import 'json_value.dart';
 class FlagsRepository {
   static const defaultStoreReadTimeout = Duration(milliseconds: 100);
 
+  // Keep late writes ordered when SDK reconfiguration replaces a repository.
+  // Expando keeps the queue scoped to the store identity without retaining it.
+  static final Expando<Map<String, _CacheOperationQueue>>
+      _cacheOperationQueues =
+      Expando<Map<String, _CacheOperationQueue>>('flags cache operations');
+
   @visibleForTesting
   final Duration storeReadTimeout;
 
@@ -24,13 +30,13 @@ class FlagsRepository {
   final DatadogFlagsStore? store;
   final DateTime Function() dateProvider;
   final Duration? initializationTimeout;
+  final _CacheOperationQueue _cacheOperations;
 
   @visibleForTesting
   final Timer Function(Duration, void Function()) scheduleInitializationTimeout;
 
   FlagsData? _state;
   _CancelToken? _currentToken;
-  Future<void> _cacheOperation = Future<void>.value();
   bool _didStartInitialization = false;
 
   FlagsRepository({
@@ -41,7 +47,7 @@ class FlagsRepository {
     this.initializationTimeout,
     this.storeReadTimeout = defaultStoreReadTimeout,
     this.scheduleInitializationTimeout = _scheduleInitializationTimeout,
-  });
+  }) : _cacheOperations = _cacheOperationQueue(store, clientName);
 
   FlagsEvaluationContext? get context => _state?.context;
 
@@ -121,6 +127,19 @@ class FlagsRepository {
     return Timer(timeout, action);
   }
 
+  static _CacheOperationQueue _cacheOperationQueue(
+    DatadogFlagsStore? store,
+    String clientName,
+  ) {
+    if (store == null) {
+      return _CacheOperationQueue();
+    }
+
+    final queues =
+        _cacheOperationQueues[store] ??= <String, _CacheOperationQueue>{};
+    return queues.putIfAbsent(clientName, _CacheOperationQueue.new);
+  }
+
   bool _hasCurrentStateForContext(FlagsEvaluationContext context) {
     final current = _state;
     return current != null && _contextsMatch(current.context, context);
@@ -154,7 +173,7 @@ class FlagsRepository {
   }
 
   Future<void> _writeCached(FlagsData data) async {
-    await _enqueueCacheOperation(() async {
+    await _cacheOperations.enqueue(() async {
       try {
         await store?.write(clientName, data);
       } catch (_) {
@@ -164,7 +183,7 @@ class FlagsRepository {
   }
 
   Future<void> _deleteCached() async {
-    await _enqueueCacheOperation(() async {
+    await _cacheOperations.enqueue(() async {
       try {
         await store?.delete(clientName);
       } catch (_) {
@@ -172,10 +191,14 @@ class FlagsRepository {
       }
     });
   }
+}
 
-  Future<void> _enqueueCacheOperation(Future<void> Function() operation) {
-    final next = _cacheOperation.then((_) => operation());
-    _cacheOperation = next.catchError((_) {});
+class _CacheOperationQueue {
+  Future<void> _operation = Future<void>.value();
+
+  Future<void> enqueue(Future<void> Function() operation) {
+    final next = _operation.then((_) => operation());
+    _operation = next.catchError((_) {});
     return next;
   }
 }
