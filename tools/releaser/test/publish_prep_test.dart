@@ -63,12 +63,13 @@ let package = Package(
 
       await pinIosSpmVersion(file, '3.16.0', logger, false);
 
-      expect(
-        file.readAsStringSync(),
-        contains(
-          '.package(url: "https://github.com/Datadog/dd-sdk-ios.git", exact: "3.16.0")',
-        ),
-      );
+      expect(file.readAsStringSync(), '''
+let package = Package(
+    dependencies: [
+        .package(url: "https://github.com/Datadog/dd-sdk-ios.git", exact: "3.16.0")
+    ]
+)
+''');
     },
   );
 
@@ -82,7 +83,11 @@ buildscript {
 
     await pinAndroidGradleVersion(file, '3.13.1', logger, false);
 
-    expect(file.readAsStringSync(), contains('ext.datadog_version = "3.13.1"'));
+    expect(file.readAsStringSync(), '''
+buildscript {
+    ext.datadog_version = "3.13.1"
+}
+''');
   });
 
   test('pubspecHasDependencyOverrides detects a committed override', () {

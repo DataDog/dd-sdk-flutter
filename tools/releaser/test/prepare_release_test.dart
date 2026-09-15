@@ -117,6 +117,20 @@ void main() {
       expect(manifest.packages, hasLength(1));
       expect(manifest.packages.single.package, 'datadog_dio');
 
+      // Both commit messages carry a body listing what's shipping, so
+      // `git log` on either commit alone shows the packages/versions
+      // involved without needing the other commit for context.
+      final publishPrepSha = publishPrepCommitLine.split(' ').first;
+      for (final sha in [contentSha, publishPrepSha]) {
+        final commitBody = await gitDir.runCommand([
+          'show',
+          '--format=%b',
+          '--no-patch',
+          sha,
+        ]);
+        expect(commitBody.stdout as String, contains('datadog_dio'));
+      }
+
       final changelogFile = await gitDir.runCommand([
         'show',
         'HEAD~1:packages/datadog_dio/CHANGELOG.md',
@@ -201,6 +215,89 @@ dependency_overrides:
       // doesn't leave a half-prepared `release-prep/*` branch behind.
       final branchAfter = (await gitDir.currentBranch()).branchName;
       expect(branchAfter, branchBefore);
+    },
+  );
+
+  test(
+    'fails loudly if a releasing package depends on another workspace '
+    'package with no pubspec_overrides.yaml (melos bootstrap not run)',
+    () async {
+      fixture.writeFile('packages/datadog_dio/pubspec.yaml', '''
+name: datadog_dio
+version: 2.3.0
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  datadog_flutter_plugin: ^3.0.0
+''');
+      await fixture.commit('chore: declare a workspace dependency');
+
+      final gitDir = await fixture.gitDir;
+
+      expect(
+        () => prepareRelease(
+          RunContext(
+            repoRoot: fixture.root.path,
+            trigger: TriggerContext.mainline,
+            currentBranch: 'develop',
+            requestedPackages: ['datadog_dio'],
+          ),
+          gitDir: gitDir,
+          github: GithubCommandWrapper(fixture.root.path),
+          aiGatewayClient: _NeverCalledAiGatewayClient(),
+          dryRun: true,
+          skipPublishValidation: true,
+          publishedVersions: _neverPublished,
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('melos bootstrap'),
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'proceeds when a workspace dependency has a pubspec_overrides.yaml',
+    () async {
+      fixture.writeFile('packages/datadog_dio/pubspec.yaml', '''
+name: datadog_dio
+version: 2.3.0
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  datadog_flutter_plugin: ^3.0.0
+''');
+      fixture.writeFile('packages/datadog_dio/pubspec_overrides.yaml', '''
+dependency_overrides:
+  datadog_flutter_plugin:
+    path: ../datadog_flutter_plugin/datadog_flutter_plugin
+''');
+      await fixture.commit('chore: declare a workspace dependency');
+
+      final gitDir = await fixture.gitDir;
+
+      // Doesn't throw the melos-bootstrap error; the run still stops at
+      // --dry-run before push/PR.
+      await prepareRelease(
+        RunContext(
+          repoRoot: fixture.root.path,
+          trigger: TriggerContext.mainline,
+          currentBranch: 'develop',
+          requestedPackages: ['datadog_dio'],
+        ),
+        gitDir: gitDir,
+        github: GithubCommandWrapper(fixture.root.path),
+        aiGatewayClient: _NeverCalledAiGatewayClient(),
+        dryRun: true,
+        skipPublishValidation: true,
+        publishedVersions: _neverPublished,
+      );
     },
   );
 

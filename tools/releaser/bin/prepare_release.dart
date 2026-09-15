@@ -226,6 +226,27 @@ class _ReleaseTarget {
   }
 }
 
+/// Whether [pkg] depends on another package in this workspace -- `melos
+/// bootstrap` always writes such a dependency a local-path override, so
+/// this is what determines whether [pkg] should have one at all.
+bool _dependsOnWorkspacePackage(
+  DiscoveredPackage pkg,
+  String repoRoot,
+  Set<String> workspaceNames,
+) {
+  final pubspecFile = File(p.join(pkg.absolutePath(repoRoot), 'pubspec.yaml'));
+  return pubspecFile.readAsLinesSync().any(
+    (line) => workspaceNames.any(
+      (name) => name != pkg.name && line.trim().startsWith('$name:'),
+    ),
+  );
+}
+
+/// Whether `melos bootstrap` has written [pkg] a `pubspec_overrides.yaml`.
+bool _melosBootstrapped(DiscoveredPackage pkg, String repoRoot) => File(
+  p.join(pkg.absolutePath(repoRoot), 'pubspec_overrides.yaml'),
+).existsSync();
+
 /// The full apply/commit/(push/PR) run.
 Future<void> prepareRelease(
   RunContext ctx, {
@@ -256,15 +277,20 @@ Future<void> prepareRelease(
     return;
   }
 
+  final allGroups = await discoverPackages(ctx.repoRoot);
+
   // Cheap, purely-local checks run before anything is mutated -- a branch
   // created or a commit made here can't be cleanly undone once
   // `_applyPublishPrep` (which used to run this same check) has already
   // produced commit A, leaving a half-prepared `release-prep/*` branch
   // behind on failure.
+  final workspaceNames = allGroups
+      .expand((g) => g.members)
+      .map((m) => m.name)
+      .toSet();
   for (final packagePlan in plan.packages) {
-    final pubspecFile = File(
-      p.join(packagePlan.package.absolutePath(ctx.repoRoot), 'pubspec.yaml'),
-    );
+    final pkg = packagePlan.package;
+    final pubspecFile = File(p.join(pkg.absolutePath(ctx.repoRoot), 'pubspec.yaml'));
     if (pubspecHasDependencyOverrides(pubspecFile)) {
       throw StateError(
         '${pubspecFile.path} has a committed dependency_overrides block. '
@@ -272,9 +298,16 @@ Future<void> prepareRelease(
         're-running.',
       );
     }
+
+    if (_dependsOnWorkspacePackage(pkg, ctx.repoRoot, workspaceNames) &&
+        !_melosBootstrapped(pkg, ctx.repoRoot)) {
+      throw StateError(
+        '${pkg.name} depends on another package in this workspace but has '
+        'no pubspec_overrides.yaml -- run `melos bootstrap` first.',
+      );
+    }
   }
 
-  final allGroups = await discoverPackages(ctx.repoRoot);
   final target = _ReleaseTarget.forTrigger(ctx);
 
   if (target.createsNewBranch) {
@@ -297,6 +330,8 @@ Future<void> prepareRelease(
     );
   }
 
+  final versionSummary = _versionSummary(plan.packages);
+
   // `null` for patch -- see the file-level comment above.
   final String? contentCommit = ctx.trigger == TriggerContext.patch
       ? null
@@ -304,17 +339,33 @@ Future<void> prepareRelease(
           gitDir,
           'chore(release): update changelog and bump versions',
           _log,
+          body: versionSummary,
         );
 
   // -- Commit B: publish-prep -- see the file-level comment above.
+  //
+  // Podfile overrides are stripped from every workspace package's example
+  // apps, not just the ones releasing this run: an override floats a Pod on
+  // dd-sdk-ios's `develop` branch, and a release-prep branch needs the
+  // whole workspace to build in a stable, reproducible state, whether or
+  // not a given package is part of this release.
+  for (final pkg in allGroups.expand((g) => g.members)) {
+    final packageRoot = pkg.absolutePath(ctx.repoRoot);
+    for (final exampleDir in const [
+      'example',
+      'integration_test_app',
+      'e2e_test_app',
+    ]) {
+      final podfile = File(p.join(packageRoot, exampleDir, 'ios', 'Podfile'));
+      if (podfile.existsSync()) {
+        await removePodfileOverrides(podfile, _log, false);
+      }
+    }
+  }
+
   final manifestEntries = <ManifestPackageEntry>[];
   for (final packagePlan in plan.packages) {
-    await _applyPublishPrep(
-      packagePlan,
-      ctx,
-      manifestEntries: manifestEntries,
-      skipPublishValidation: skipPublishValidation,
-    );
+    await _applyPublishPrep(packagePlan, ctx, manifestEntries: manifestEntries);
   }
 
   await writeManifest(
@@ -328,8 +379,27 @@ Future<void> prepareRelease(
         ? 'chore(release): prepare patch release'
         : 'chore(release): publish-prep',
     _log,
+    body: versionSummary,
   );
   _log.info('✅ Prepared release on ${target.workingBranch} ($finalCommit)');
+
+  // Validated only now, against the committed tree above -- running this
+  // before Commit B existed meant `flutter pub publish --dry-run` always
+  // saw the native SDK pin it's about to check as an uncommitted, "modified
+  // in git" change and failed on that alone, regardless of whether the
+  // package was actually publishable.
+  if (!skipPublishValidation) {
+    for (final packagePlan in plan.packages) {
+      final pkg = packagePlan.package;
+      final ok = await runPublishDryRun(pkg.absolutePath(ctx.repoRoot), _log);
+      if (!ok) {
+        throw StateError(
+          'flutter pub publish --dry-run failed for ${pkg.name}. Fix the '
+          'reported errors before re-running.',
+        );
+      }
+    }
+  }
 
   costTracker.printSummary(_log);
   for (final warning in staleConsumerWarnings) {
@@ -487,25 +557,8 @@ Future<void> _applyPublishPrep(
   PackagePlan packagePlan,
   RunContext ctx, {
   required List<ManifestPackageEntry> manifestEntries,
-  required bool skipPublishValidation,
 }) async {
   final pkg = packagePlan.package;
-  final packageRoot = pkg.absolutePath(ctx.repoRoot);
-
-  // Example apps' Podfiles do still carry a real, intentional override --
-  // pinning dd-sdk-ios's `develop` branch via git rather than the
-  // podspec's semver constraint, so the example floats between releases.
-  // Strip them out before releasing
-  for (final exampleDir in const [
-    'example',
-    'integration_test_app',
-    'e2e_test_app',
-  ]) {
-    final podfile = File(p.join(packageRoot, exampleDir, 'ios', 'Podfile'));
-    if (podfile.existsSync()) {
-      await removePodfileOverrides(podfile, _log, false);
-    }
-  }
 
   for (final delta in packagePlan.nativeSdkDeltas) {
     final targetVersion = delta.targetVersion;
@@ -532,16 +585,6 @@ Future<void> _applyPublishPrep(
     }
   }
 
-  if (!skipPublishValidation) {
-    final ok = await runPublishDryRun(packageRoot, _log);
-    if (!ok) {
-      throw StateError(
-        'flutter pub publish --dry-run failed for ${pkg.name}. Fix the '
-        'reported errors before re-running.',
-      );
-    }
-  }
-
   manifestEntries.add(
     ManifestPackageEntry(
       package: pkg.name,
@@ -560,6 +603,17 @@ String _prTitle(List<PackagePlan> packages) {
   }
   return 'release: ${packages.length} packages';
 }
+
+/// Plain-text "what's shipping" list shared by both Commit A and Commit
+/// B's commit messages, so `git log` on either one shows the packages and
+/// versions it belongs to without needing the other commit for context.
+String _versionSummary(List<PackagePlan> packages) => packages
+    .map((p) {
+      final bump = p.bumpLevel?.name ?? 'first release';
+      return '- ${p.package.name}: ${p.currentVersion} -> ${p.newVersion} '
+          '($bump)';
+    })
+    .join('\n');
 
 String _prBody(
   List<PackagePlan> packages,

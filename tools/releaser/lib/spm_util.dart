@@ -21,7 +21,7 @@ final packageDependencyPattern = RegExp(
 /// wants to be permissive, a rewriter has to reproduce exactly what it
 /// matched.
 final _iosSpmDependencyRewritePattern = RegExp(
-  r'(?<prefix>\.package\(url:\s*"[^"]*dd-sdk-ios[^"]*",\s*)(?<versionArg>[^)]+)(?<suffix>\).*)',
+  r'^(?<indent>\s*)(?<prefix>\.package\(url:\s*"[^"]*dd-sdk-ios[^"]*",\s*)(?<versionArg>[^)]+)(?<suffix>\).*)',
   caseSensitive: false,
 );
 
@@ -42,8 +42,8 @@ Future<void> pinIosSpmVersion(
   await transformFile(packageSwiftFile, logger, dryRun, (line) {
     final match = _iosSpmDependencyRewritePattern.firstMatch(line);
     if (match == null) return line;
-    return '${match.namedGroup('prefix')}exact: "$targetVersion"'
-        '${match.namedGroup('suffix')}';
+    return '${match.namedGroup('indent')}${match.namedGroup('prefix')}'
+        'exact: "$targetVersion"${match.namedGroup('suffix')}';
   });
 }
 

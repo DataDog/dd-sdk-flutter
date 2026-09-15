@@ -8,7 +8,7 @@ import 'helpers.dart';
 /// mirrors `native_sdk.dart`'s private matcher of the same shape, kept
 /// separate deliberately (see `cocoapod_util.dart`'s equivalent note).
 final _androidGradleVersionRewritePattern = RegExp(
-  r'(?<prefix>ext\.datadog_version\s*=\s*")(?<version>[^"]+)(?<suffix>".*)',
+  r'^(?<indent>\s*)(?<prefix>ext\.datadog_version\s*=\s*")(?<version>[^"]+)(?<suffix>".*)',
 );
 
 /// Rewrites [gradleFile]'s `ext.datadog_version` assignment to pin at
@@ -27,7 +27,7 @@ Future<void> pinAndroidGradleVersion(
   await transformFile(gradleFile, logger, dryRun, (line) {
     final match = _androidGradleVersionRewritePattern.firstMatch(line);
     if (match == null) return line;
-    return '${match.namedGroup('prefix')}$targetVersion'
-        '${match.namedGroup('suffix')}';
+    return '${match.namedGroup('indent')}${match.namedGroup('prefix')}'
+        '$targetVersion${match.namedGroup('suffix')}';
   });
 }
