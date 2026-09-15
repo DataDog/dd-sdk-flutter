@@ -128,9 +128,9 @@ DatadogFlagsConfiguration(
 
 - `trackExposures` enables exposure events for assignments marked `doLog`.
 - `trackEvaluations` enables aggregated flag evaluation events.
-- `initializationTimeout` is the maximum time that the app waits for the first
-  context initialization. The default is five seconds. Set it to `null`, zero,
-  or a negative value to disable it.
+- `initializationTimeout` is the wall-clock budget for the first context
+  initialization. The default is five seconds. The SDK does not limit how large
+  this value can be. Set it to `null`, zero, or a negative value to disable it.
 - `evaluationFlushInterval` controls periodic flag evaluation uploads and is
   bounded to 1-60 seconds.
 - `store` is optional last-known assignment storage.
@@ -140,10 +140,16 @@ DatadogFlagsConfiguration(
 The initialization timeout is one wall-clock budget for the complete operation.
 The SDK does not restart the budget for each initialization stage. The budget
 covers stored assignment loading, request encoding, the network response and
-body, JSON decoding, assignment storage, and state publication. It does not
+body, JSON decoding, state publication, and assignment storage. It does not
 change the HTTP client timeout or cancel the assignment operation. A late
 successful response still makes assignments available. Later context changes do
 not use the initialization timeout.
+
+If initialization is still active, the SDK stops waiting when Dart runs the
+timeout timer. Synchronous work can block the Dart isolate. Therefore, the wait
+can be longer than the configured budget. The timeout completes `initialize()`
+without an error. Evaluations without assignments return the caller-provided
+default with `FlagEvaluationError.providerNotReady`.
 
 If `enable()` is called without a `datadogConfig`, the SDK creates no live
 provider. Evaluations still return the caller-provided default with

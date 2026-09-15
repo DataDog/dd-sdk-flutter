@@ -53,30 +53,27 @@ class FlagsRepository {
     _currentToken = token;
 
     final timeout = _takeInitializationTimeout();
-    final deadline = timeout == null
-        ? null
-        : _InitializationDeadline(timeout, scheduleInitializationTimeout);
-    final operation = _initialize(context, token, deadline);
-    if (deadline == null) {
-      return operation;
+    if (timeout == null) {
+      return _initialize(context, token);
     }
-    deadline.observe(operation);
-    return deadline.future;
+
+    final timeoutCompletion = Completer<void>();
+    final timer = scheduleInitializationTimeout(
+      timeout,
+      timeoutCompletion.complete,
+    );
+    final operation = _initialize(context, token);
+    return Future.any<void>([
+      operation,
+      timeoutCompletion.future,
+    ]).whenComplete(timer.cancel);
   }
 
   Future<void> _initialize(
     FlagsEvaluationContext context,
     _CancelToken token,
-    _InitializationDeadline? deadline,
   ) async {
     final cached = store == null ? null : await _readCached();
-    if (token.isCanceled) {
-      return;
-    }
-    final cacheDeadlineYield = _yieldAfterExpiredDeadline(deadline);
-    if (cacheDeadlineYield != null) {
-      await cacheDeadlineYield;
-    }
     if (token.isCanceled) {
       return;
     }
@@ -94,30 +91,13 @@ class FlagsRepository {
       if (token.isCanceled) {
         return;
       }
-      final fetchDeadlineYield = _yieldAfterExpiredDeadline(deadline);
-      if (fetchDeadlineYield != null) {
-        await fetchDeadlineYield;
-      }
-      if (token.isCanceled) {
-        return;
-      }
       final data = FlagsData(
         flags: assignments.flags,
         context: context,
         date: dateProvider(),
       );
-      await _writeCached(data);
-      if (token.isCanceled) {
-        return;
-      }
-      final publicationDeadlineYield = _yieldAfterExpiredDeadline(deadline);
-      if (publicationDeadlineYield != null) {
-        await publicationDeadlineYield;
-      }
-      if (token.isCanceled) {
-        return;
-      }
       _state = data;
+      await _writeCached(data);
     } catch (_) {
       if (!token.isCanceled && matchingCached == null) {
         _state = null;
@@ -139,15 +119,6 @@ class FlagsRepository {
     void Function() action,
   ) {
     return Timer(timeout, action);
-  }
-
-  static Future<void>? _yieldAfterExpiredDeadline(
-    _InitializationDeadline? deadline,
-  ) {
-    if (deadline?.expireIfNeeded() ?? false) {
-      return Future<void>.delayed(Duration.zero);
-    }
-    return null;
   }
 
   bool _hasCurrentStateForContext(FlagsEvaluationContext context) {
@@ -206,72 +177,6 @@ class FlagsRepository {
     final next = _cacheOperation.then((_) => operation());
     _cacheOperation = next.catchError((_) {});
     return next;
-  }
-}
-
-class _InitializationDeadline {
-  // Dart timers cannot run while synchronous encoding or decoding blocks the
-  // isolate. The stopwatch checks enforce the wall-clock deadline before the
-  // operation can publish assignments or win the completion race.
-  final Duration timeout;
-  final Completer<void> _completion = Completer<void>();
-  final Stopwatch _stopwatch = Stopwatch()..start();
-  Timer? _timer;
-  var _expired = false;
-
-  _InitializationDeadline(
-    this.timeout,
-    Timer Function(Duration, void Function()) schedule,
-  ) {
-    _timer = schedule(timeout, _expire);
-    if (_expired) {
-      _timer?.cancel();
-    }
-  }
-
-  Future<void> get future => _completion.future;
-
-  bool expireIfNeeded() {
-    if (!_expired && _stopwatch.elapsed >= timeout) {
-      _expire();
-    }
-    return _expired;
-  }
-
-  void observe(Future<void> operation) {
-    expireIfNeeded();
-    operation.then<void>(
-      (_) => _completeOperation(),
-      onError: _completeOperationWithError,
-    );
-  }
-
-  void _expire() {
-    if (_completion.isCompleted) {
-      return;
-    }
-    _expired = true;
-    _stopwatch.stop();
-    _timer?.cancel();
-    _completion.complete();
-  }
-
-  void _completeOperation() {
-    if (expireIfNeeded()) {
-      return;
-    }
-    _stopwatch.stop();
-    _timer?.cancel();
-    _completion.complete();
-  }
-
-  void _completeOperationWithError(Object error, StackTrace stackTrace) {
-    if (expireIfNeeded()) {
-      return;
-    }
-    _stopwatch.stop();
-    _timer?.cancel();
-    _completion.completeError(error, stackTrace);
   }
 }
 

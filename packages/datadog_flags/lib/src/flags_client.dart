@@ -19,7 +19,10 @@ abstract interface class DatadogFlagsClient {
   ///
   /// The first call completes when initialization finishes or the configured
   /// initialization timeout expires. A timeout does not cancel the assignment
-  /// operation. A late successful response still makes assignments available.
+  /// operation or complete this future with an error. A late successful
+  /// response still makes assignments available.
+  /// Synchronous work can block the Dart isolate, so the timeout can complete
+  /// later than its configured wall-clock budget.
   /// If a later call supersedes the first call, the first call remains bounded
   /// by its original deadline. The later call does not use this timeout.
   ///
