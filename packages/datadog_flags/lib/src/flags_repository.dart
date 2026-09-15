@@ -10,6 +10,7 @@ import 'package:meta/meta.dart';
 import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flag_assignments_fetcher.dart';
+import 'flags_error.dart';
 import 'flags_store.dart';
 import 'json_value.dart';
 
@@ -66,7 +67,13 @@ class FlagsRepository {
     final timeoutCompletion = Completer<void>();
     final timer = scheduleInitializationTimeout(
       timeout,
-      timeoutCompletion.complete,
+      () => timeoutCompletion.completeError(
+        FlagsInitializationTimeoutException(
+          clientName: clientName,
+          timeout: timeout,
+        ),
+        StackTrace.current,
+      ),
     );
     final operation = _initialize(context, token);
     return Future.any<void>([

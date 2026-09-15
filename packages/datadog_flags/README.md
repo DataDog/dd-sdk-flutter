@@ -56,15 +56,19 @@ await datadogFlags.enable(
 );
 
 final flags = datadogFlags.sharedClient();
-await flags.initialize(
-  const FlagsEvaluationContext(
-    targetingKey: 'user-123',
-    attributes: {
-      'plan': 'pro',
-      'companyId': 'company-456',
-    },
-  ),
-);
+try {
+  await flags.initialize(
+    const FlagsEvaluationContext(
+      targetingKey: 'user-123',
+      attributes: {
+        'plan': 'pro',
+        'companyId': 'company-456',
+      },
+    ),
+  );
+} on FlagsInitializationTimeoutException {
+  // Continue startup with stored assignments or evaluation defaults.
+}
 
 final details = flags.getBooleanDetails(
   key: 'checkout.enabled',
@@ -148,8 +152,10 @@ not use the initialization timeout.
 If initialization is still active, the SDK stops waiting when Dart runs the
 timeout timer. Synchronous work can block the Dart isolate. Therefore, the wait
 can be longer than the configured budget. The timeout completes `initialize()`
-without an error. Evaluations without assignments return the caller-provided
-default with `FlagEvaluationError.providerNotReady`.
+with `FlagsInitializationTimeoutException`. The assignment operation continues
+in the background. Matching stored assignments remain available. Evaluations
+without assignments return the caller-provided default with
+`FlagEvaluationError.providerNotReady`.
 
 If `enable()` is called without a `datadogConfig`, the SDK creates no live
 provider. Evaluations still return the caller-provided default with

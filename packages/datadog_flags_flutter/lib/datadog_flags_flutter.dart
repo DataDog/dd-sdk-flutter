@@ -12,6 +12,7 @@ export 'package:datadog_flags/datadog_flags.dart'
         DatadogFlagsStore,
         FlagDetails,
         FlagEvaluationError,
+        FlagsInitializationTimeoutException,
         FlagsData,
         FlagsEvaluationContext;
 

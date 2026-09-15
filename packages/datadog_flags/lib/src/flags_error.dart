@@ -21,6 +21,33 @@ enum FlagEvaluationError {
   const FlagEvaluationError(this.code);
 }
 
+/// Indicates that the first evaluation context exceeded its initialization
+/// timeout.
+///
+/// The assignment operation continues after this exception and can make
+/// assignments available later. Matching stored assignments also remain
+/// available for evaluation.
+final class FlagsInitializationTimeoutException implements Exception {
+  /// Name of the client whose initialization exceeded the timeout.
+  final String clientName;
+
+  /// Configured initialization timeout.
+  final Duration timeout;
+
+  /// Creates an initialization timeout exception.
+  const FlagsInitializationTimeoutException({
+    required this.clientName,
+    required this.timeout,
+  });
+
+  /// Customer-readable description of the timeout.
+  String get message => 'Flags client "$clientName" did not initialize within '
+      '${timeout.inMilliseconds} ms.';
+
+  @override
+  String toString() => 'FlagsInitializationTimeoutException: $message';
+}
+
 enum FlagsErrorType {
   networkError,
   invalidResponse,

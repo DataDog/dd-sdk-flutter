@@ -99,24 +99,29 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
       _status = 'loading';
     });
 
+    var status = 'ready';
     try {
       await client.initialize(
         const FlagsEvaluationContext(targetingKey: _targetingKey),
       );
-      final details = client.getBooleanDetails(
-        key: _flagKey,
-        defaultValue: false,
-      );
-      setState(() {
-        _details = details;
-        _status = 'ready';
-      });
+    } on FlagsInitializationTimeoutException catch (error) {
+      status = 'using stored assignments or defaults: ${error.message}';
     } catch (error) {
       setState(() {
         _details = null;
         _status = 'using defaults: $error';
       });
+      return;
     }
+
+    final details = client.getBooleanDetails(
+      key: _flagKey,
+      defaultValue: false,
+    );
+    setState(() {
+      _details = details;
+      _status = status;
+    });
   }
 
   @override

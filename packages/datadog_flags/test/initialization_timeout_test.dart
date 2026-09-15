@@ -98,7 +98,7 @@ void main() {
   });
 
   test(
-    'returns at the total budget while the network response is loading',
+    'throws at the total budget while the network response is loading',
     () async {
       final httpClient = _ControlledResponseBodyClient();
       final datadogFlags = DatadogFlags();
@@ -116,7 +116,10 @@ void main() {
 
       final initialization = client.initialize(_context);
       await httpClient.requestStarted.future;
-      await initialization.timeout(const Duration(seconds: 1));
+      await expectLater(
+        initialization.timeout(const Duration(seconds: 1)),
+        _throwsInitializationTimeout(const Duration(milliseconds: 5)),
+      );
 
       expect(httpClient.bodyCompleted, isFalse);
       expect(
@@ -143,7 +146,7 @@ void main() {
   );
 
   test(
-    'returns at the total budget while persistent assignments are loading',
+    'throws at the total budget while persistent assignments are loading',
     () async {
       const budget = Duration(seconds: 5);
       void Function()? timeoutAction;
@@ -173,7 +176,10 @@ void main() {
       await store.readStarted.future;
       expect(scheduledTimeout, budget);
       timeoutAction!();
-      await initialization.timeout(const Duration(seconds: 1));
+      await expectLater(
+        initialization.timeout(const Duration(seconds: 1)),
+        _throwsInitializationTimeout(budget),
+      );
 
       expect(repository.flagAssignment('show-paywall'), isNull);
       expect(timer.cancelCount, 1);
@@ -205,7 +211,10 @@ void main() {
         initializationTimeout: const Duration(milliseconds: 1),
       );
 
-      await repository.initialize(_context).timeout(const Duration(seconds: 1));
+      await expectLater(
+        repository.initialize(_context).timeout(const Duration(seconds: 1)),
+        _throwsInitializationTimeout(const Duration(milliseconds: 1)),
+      );
 
       expect(
         repository.flagAssignment('show-paywall')?.variationValue,
@@ -237,7 +246,10 @@ void main() {
       );
       final client = datadogFlags.sharedClient();
 
-      await client.initialize(_context).timeout(const Duration(seconds: 1));
+      await expectLater(
+        client.initialize(_context).timeout(const Duration(seconds: 1)),
+        _throwsInitializationTimeout(const Duration(milliseconds: 5)),
+      );
 
       expect(
         client
@@ -310,7 +322,10 @@ void main() {
       );
       final client = datadogFlags.sharedClient();
 
-      await client.initialize(_context).timeout(const Duration(seconds: 1));
+      await expectLater(
+        client.initialize(_context).timeout(const Duration(seconds: 1)),
+        _throwsInitializationTimeout(const Duration(milliseconds: 5)),
+      );
 
       var secondCompleted = false;
       final second = client
@@ -374,7 +389,10 @@ void main() {
 
       expect(scheduleCount, 1);
       timeoutAction!();
-      await first.timeout(const Duration(seconds: 1));
+      await expectLater(
+        first.timeout(const Duration(seconds: 1)),
+        _throwsInitializationTimeout(const Duration(seconds: 5)),
+      );
       await Future<void>.delayed(Duration.zero);
       expect(secondCompleted, isFalse);
       expect(repository.context, isNull);
@@ -456,7 +474,10 @@ void main() {
     final firstInitialization =
         datadogFlags.sharedClient().initialize(_context);
     await store.firstWriteStarted.future.timeout(const Duration(seconds: 1));
-    await firstInitialization.timeout(const Duration(seconds: 1));
+    await expectLater(
+      firstInitialization.timeout(const Duration(seconds: 1)),
+      _throwsInitializationTimeout(const Duration(milliseconds: 5)),
+    );
 
     await datadogFlags.enable(
       configuration: _configuration(
@@ -471,7 +492,10 @@ void main() {
       ),
     );
     final secondClient = datadogFlags.sharedClient();
-    await secondClient.initialize(_context).timeout(const Duration(seconds: 1));
+    await expectLater(
+      secondClient.initialize(_context).timeout(const Duration(seconds: 1)),
+      _throwsInitializationTimeout(const Duration(milliseconds: 5)),
+    );
     expect(
       secondClient
           .getBooleanDetails(key: 'show-paywall', defaultValue: true)
@@ -492,6 +516,18 @@ void main() {
 }
 
 const _context = FlagsEvaluationContext(targetingKey: 'user-123');
+
+Matcher _throwsInitializationTimeout(Duration timeout) {
+  return throwsA(
+    isA<FlagsInitializationTimeoutException>()
+        .having(
+          (error) => error.clientName,
+          'clientName',
+          DatadogFlags.defaultClientName,
+        )
+        .having((error) => error.timeout, 'timeout', timeout),
+  );
+}
 
 const _datadogConfig = DatadogFlagsConfig(
   clientToken: 'client-token',

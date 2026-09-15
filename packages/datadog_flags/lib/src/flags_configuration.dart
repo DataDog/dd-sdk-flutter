@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 
 import 'datadog_flags_config.dart';
 import 'flags_client.dart';
+import 'flags_error.dart';
 import 'flags_store.dart';
 
 /// Runtime configuration for Datadog feature flag clients.
@@ -35,7 +36,9 @@ final class DatadogFlagsConfiguration {
   ///
   /// If initialization is still active, the SDK stops waiting when Dart runs
   /// the timeout timer. Synchronous work can block the Dart isolate, so the
-  /// wait can be longer than this value.
+  /// wait can be longer than this value. [DatadogFlagsClient.initialize]
+  /// completes with [FlagsInitializationTimeoutException] when the timeout
+  /// expires.
   ///
   /// This value is one budget for the complete initialization operation. The
   /// SDK does not restart it for each stage. It includes loading stored
