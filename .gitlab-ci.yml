@@ -264,8 +264,7 @@ notify-pipeline-succeeded:
   image: "$BUILDENV_REGISTRY/docker:24.0.4-jammy"
   when: on_success
   except:
-    - schedules
-    - develop
+    - schedules    
   script:
     - echo "Pipeline did succeed"
 
