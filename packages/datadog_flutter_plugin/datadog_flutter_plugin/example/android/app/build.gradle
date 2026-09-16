@@ -5,6 +5,10 @@
  */
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+buildscript {
+    ext.datadog_version = "3+"
+}
+
 plugins {
     id "com.android.application"
     id "dev.flutter.flutter-gradle-plugin"
@@ -76,6 +80,8 @@ kotlin {
 }
 
 dependencies {
+    implementation "com.datadoghq:dd-sdk-android-rum:$datadog_version"
+
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.work:work-runtime-ktx:2.8.0'
 }
