@@ -214,7 +214,12 @@ class DdRumWeb extends DdRumPlatform {
   ) {
     if (sourceType != 'browser+wasm') return null;
 
-    return webWasmModuleUrls(stackTrace)
+    final moduleUrls = webWasmModuleUrls(stackTrace);
+    if (moduleUrls.isEmpty) {
+      moduleUrls.add(flutterWasmModuleUrl());
+    }
+
+    return moduleUrls
         .map(
           (url) => RumWebWasmModule(
             url: url,

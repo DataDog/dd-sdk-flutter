@@ -6,6 +6,7 @@ import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
 import 'package:flutter/foundation.dart';
+import 'package:web/web.dart';
 
 import '../datadog_flutter_plugin.dart';
 
@@ -144,6 +145,35 @@ List<String> webWasmModuleUrls(StackTrace? stackTrace) {
       .map((match) => match.group(0)!)
       .toSet()
       .toList();
+}
+
+/// Returns the URL of Flutter's primary WebAssembly application module.
+///
+/// Prefer the browser's resource timing entry so custom base paths and asset
+/// locations are preserved. Flutter's default module location is used as a
+/// fallback when resource timing entries are unavailable.
+String findFlutterWasmModuleUrl(
+  Iterable<String> resourceUrls, {
+  Uri? baseUri,
+}) {
+  for (final resourceUrl in resourceUrls) {
+    final resourceUri = Uri.tryParse(resourceUrl);
+    if (resourceUri != null &&
+        resourceUri.pathSegments.isNotEmpty &&
+        resourceUri.pathSegments.last == 'main.dart.wasm') {
+      return resourceUrl;
+    }
+  }
+
+  return (baseUri ?? Uri.base).resolve('main.dart.wasm').toString();
+}
+
+String flutterWasmModuleUrl() {
+  final resourceUrls = window.performance
+      .getEntriesByType('resource')
+      .toDart
+      .map((entry) => entry.name);
+  return findFlutterWasmModuleUrl(resourceUrls);
 }
 
 extension TrackingConsentWebValue on TrackingConsent {

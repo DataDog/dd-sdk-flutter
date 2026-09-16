@@ -172,5 +172,29 @@ void main() {
         'https://cdn.example.com/vendor.wasm?hash=abc',
       ]);
     });
+
+    test('finds the Flutter module in browser resource URLs', () {
+      expect(
+        findFlutterWasmModuleUrl(
+          [
+            'https://example.com/flutter.js',
+            'https://cdn.example.com/assets/main.dart.wasm?version=123',
+          ],
+          baseUri: Uri.parse('https://example.com/app/'),
+        ),
+        'https://cdn.example.com/assets/main.dart.wasm?version=123',
+      );
+    });
+
+    test('uses the application base URL when no resource entry is available',
+        () {
+      expect(
+        findFlutterWasmModuleUrl(
+          const [],
+          baseUri: Uri.parse('https://example.com/app/'),
+        ),
+        'https://example.com/app/main.dart.wasm',
+      );
+    });
   });
 }
