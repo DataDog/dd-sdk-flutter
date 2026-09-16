@@ -45,6 +45,12 @@ class ResourceFeature(
                 maxBatchSize = 10 * 1024 * 1024
             )
 
-        internal const val SESSION_REPLAY_RESOURCES_FEATURE_NAME = "session-replay-resources"
+        /**
+         * Deliberately not the native module's `session-replay-resources`: features are keyed by
+         * name in the core and the last registration wins, so sharing the name would evict the
+         * native resources feature in a hybrid app. See
+         * `DefaultFlutterSessionReplayFeature.FLUTTER_SESSION_REPLAY_FEATURE_NAME`.
+         */
+        internal const val SESSION_REPLAY_RESOURCES_FEATURE_NAME = "flutter-session-replay-resources"
     }
 }

@@ -40,6 +40,139 @@ import 'dart:core' as core$_;
 import 'package:jni/_internal.dart' as jni$_;
 import 'package:jni/jni.dart' as jni$_;
 
+/// from: `com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge$Companion`
+class FlutterSessionReplayBridge$Companion extends jni$_.JObject {
+  @jni$_.internal
+  @core$_.override
+  final jni$_.JObjType<FlutterSessionReplayBridge$Companion> $type;
+
+  @jni$_.internal
+  FlutterSessionReplayBridge$Companion.fromReference(
+    jni$_.JReference reference,
+  )   : $type = type,
+        super.fromReference(reference);
+
+  static final _class = jni$_.JClass.forName(
+      r'com/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$Companion');
+
+  /// The type which includes information such as the signature of this class.
+  static const nullableType =
+      $FlutterSessionReplayBridge$Companion$NullableType();
+  static const type = $FlutterSessionReplayBridge$Companion$Type();
+  static final _id_new$ = _class.constructorId(
+    r'(Lkotlin/jvm/internal/DefaultConstructorMarker;)V',
+  );
+
+  static final _new$ = jni$_.ProtectedJniExtensions.lookup<
+              jni$_.NativeFunction<
+                  jni$_.JniResult Function(
+                      jni$_.Pointer<jni$_.Void>,
+                      jni$_.JMethodIDPtr,
+                      jni$_.VarArgs<(jni$_.Pointer<jni$_.Void>,)>)>>(
+          'globalEnv_NewObject')
+      .asFunction<
+          jni$_.JniResult Function(jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr, jni$_.Pointer<jni$_.Void>)>();
+
+  /// from: `synthetic public void <init>(kotlin.jvm.internal.DefaultConstructorMarker defaultConstructorMarker)`
+  /// The returned object must be released after use, by calling the [release] method.
+  factory FlutterSessionReplayBridge$Companion(
+    jni$_.JObject? defaultConstructorMarker,
+  ) {
+    final _$defaultConstructorMarker =
+        defaultConstructorMarker?.reference ?? jni$_.jNullReference;
+    return FlutterSessionReplayBridge$Companion.fromReference(_new$(
+            _class.reference.pointer,
+            _id_new$ as jni$_.JMethodIDPtr,
+            _$defaultConstructorMarker.pointer)
+        .reference);
+  }
+}
+
+final class $FlutterSessionReplayBridge$Companion$NullableType
+    extends jni$_.JObjType<FlutterSessionReplayBridge$Companion?> {
+  @jni$_.internal
+  const $FlutterSessionReplayBridge$Companion$NullableType();
+
+  @jni$_.internal
+  @core$_.override
+  String get signature =>
+      r'Lcom/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$Companion;';
+
+  @jni$_.internal
+  @core$_.override
+  FlutterSessionReplayBridge$Companion? fromReference(
+          jni$_.JReference reference) =>
+      reference.isNull
+          ? null
+          : FlutterSessionReplayBridge$Companion.fromReference(
+              reference,
+            );
+  @jni$_.internal
+  @core$_.override
+  jni$_.JObjType get superType => const jni$_.JObjectType();
+
+  @jni$_.internal
+  @core$_.override
+  jni$_.JObjType<FlutterSessionReplayBridge$Companion?> get nullableType =>
+      this;
+
+  @jni$_.internal
+  @core$_.override
+  final superCount = 1;
+
+  @core$_.override
+  int get hashCode =>
+      ($FlutterSessionReplayBridge$Companion$NullableType).hashCode;
+
+  @core$_.override
+  bool operator ==(Object other) {
+    return other.runtimeType ==
+            ($FlutterSessionReplayBridge$Companion$NullableType) &&
+        other is $FlutterSessionReplayBridge$Companion$NullableType;
+  }
+}
+
+final class $FlutterSessionReplayBridge$Companion$Type
+    extends jni$_.JObjType<FlutterSessionReplayBridge$Companion> {
+  @jni$_.internal
+  const $FlutterSessionReplayBridge$Companion$Type();
+
+  @jni$_.internal
+  @core$_.override
+  String get signature =>
+      r'Lcom/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$Companion;';
+
+  @jni$_.internal
+  @core$_.override
+  FlutterSessionReplayBridge$Companion fromReference(
+          jni$_.JReference reference) =>
+      FlutterSessionReplayBridge$Companion.fromReference(
+        reference,
+      );
+  @jni$_.internal
+  @core$_.override
+  jni$_.JObjType get superType => const jni$_.JObjectType();
+
+  @jni$_.internal
+  @core$_.override
+  jni$_.JObjType<FlutterSessionReplayBridge$Companion?> get nullableType =>
+      const $FlutterSessionReplayBridge$Companion$NullableType();
+
+  @jni$_.internal
+  @core$_.override
+  final superCount = 1;
+
+  @core$_.override
+  int get hashCode => ($FlutterSessionReplayBridge$Companion$Type).hashCode;
+
+  @core$_.override
+  bool operator ==(Object other) {
+    return other.runtimeType == ($FlutterSessionReplayBridge$Companion$Type) &&
+        other is $FlutterSessionReplayBridge$Companion$Type;
+  }
+}
+
 /// from: `com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge$Configuration`
 class FlutterSessionReplayBridge$Configuration extends jni$_.JObject {
   @jni$_.internal
@@ -1179,6 +1312,112 @@ final class $FlutterSessionReplayBridge$RumContext$Type
   }
 }
 
+/// from: `com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge$WhenMappings`
+class FlutterSessionReplayBridge$WhenMappings extends jni$_.JObject {
+  @jni$_.internal
+  @core$_.override
+  final jni$_.JObjType<FlutterSessionReplayBridge$WhenMappings> $type;
+
+  @jni$_.internal
+  FlutterSessionReplayBridge$WhenMappings.fromReference(
+    jni$_.JReference reference,
+  )   : $type = type,
+        super.fromReference(reference);
+
+  static final _class = jni$_.JClass.forName(
+      r'com/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$WhenMappings');
+
+  /// The type which includes information such as the signature of this class.
+  static const nullableType =
+      $FlutterSessionReplayBridge$WhenMappings$NullableType();
+  static const type = $FlutterSessionReplayBridge$WhenMappings$Type();
+}
+
+final class $FlutterSessionReplayBridge$WhenMappings$NullableType
+    extends jni$_.JObjType<FlutterSessionReplayBridge$WhenMappings?> {
+  @jni$_.internal
+  const $FlutterSessionReplayBridge$WhenMappings$NullableType();
+
+  @jni$_.internal
+  @core$_.override
+  String get signature =>
+      r'Lcom/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$WhenMappings;';
+
+  @jni$_.internal
+  @core$_.override
+  FlutterSessionReplayBridge$WhenMappings? fromReference(
+          jni$_.JReference reference) =>
+      reference.isNull
+          ? null
+          : FlutterSessionReplayBridge$WhenMappings.fromReference(
+              reference,
+            );
+  @jni$_.internal
+  @core$_.override
+  jni$_.JObjType get superType => const jni$_.JObjectNullableType();
+
+  @jni$_.internal
+  @core$_.override
+  jni$_.JObjType<FlutterSessionReplayBridge$WhenMappings?> get nullableType =>
+      this;
+
+  @jni$_.internal
+  @core$_.override
+  final superCount = 1;
+
+  @core$_.override
+  int get hashCode =>
+      ($FlutterSessionReplayBridge$WhenMappings$NullableType).hashCode;
+
+  @core$_.override
+  bool operator ==(Object other) {
+    return other.runtimeType ==
+            ($FlutterSessionReplayBridge$WhenMappings$NullableType) &&
+        other is $FlutterSessionReplayBridge$WhenMappings$NullableType;
+  }
+}
+
+final class $FlutterSessionReplayBridge$WhenMappings$Type
+    extends jni$_.JObjType<FlutterSessionReplayBridge$WhenMappings> {
+  @jni$_.internal
+  const $FlutterSessionReplayBridge$WhenMappings$Type();
+
+  @jni$_.internal
+  @core$_.override
+  String get signature =>
+      r'Lcom/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$WhenMappings;';
+
+  @jni$_.internal
+  @core$_.override
+  FlutterSessionReplayBridge$WhenMappings fromReference(
+          jni$_.JReference reference) =>
+      FlutterSessionReplayBridge$WhenMappings.fromReference(
+        reference,
+      );
+  @jni$_.internal
+  @core$_.override
+  jni$_.JObjType get superType => const jni$_.JObjectNullableType();
+
+  @jni$_.internal
+  @core$_.override
+  jni$_.JObjType<FlutterSessionReplayBridge$WhenMappings?> get nullableType =>
+      const $FlutterSessionReplayBridge$WhenMappings$NullableType();
+
+  @jni$_.internal
+  @core$_.override
+  final superCount = 1;
+
+  @core$_.override
+  int get hashCode => ($FlutterSessionReplayBridge$WhenMappings$Type).hashCode;
+
+  @core$_.override
+  bool operator ==(Object other) {
+    return other.runtimeType ==
+            ($FlutterSessionReplayBridge$WhenMappings$Type) &&
+        other is $FlutterSessionReplayBridge$WhenMappings$Type;
+  }
+}
+
 /// from: `com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge`
 class FlutterSessionReplayBridge extends jni$_.JObject {
   @jni$_.internal
@@ -1197,22 +1436,48 @@ class FlutterSessionReplayBridge extends jni$_.JObject {
   /// The type which includes information such as the signature of this class.
   static const nullableType = $FlutterSessionReplayBridge$NullableType();
   static const type = $FlutterSessionReplayBridge$Type();
-  static final _id_INSTANCE = _class.staticFieldId(
-    r'INSTANCE',
-    r'Lcom/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge;',
+  static final _id_Companion = _class.staticFieldId(
+    r'Companion',
+    r'Lcom/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$Companion;',
   );
 
-  /// from: `static public final com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge INSTANCE`
+  /// from: `static public final com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge$Companion Companion`
   /// The returned object must be released after use, by calling the [release] method.
-  static FlutterSessionReplayBridge get INSTANCE =>
-      _id_INSTANCE.get(_class, const $FlutterSessionReplayBridge$Type());
+  static FlutterSessionReplayBridge$Companion get Companion => _id_Companion
+      .get(_class, const $FlutterSessionReplayBridge$Companion$Type());
 
-  static final _id_getContextListener = _class.instanceMethodId(
-    r'getContextListener',
-    r'()Lcom/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$ContextListener;',
+  /// from: `static public final int MAX_PENDING_SEGMENTS`
+  static const MAX_PENDING_SEGMENTS = 20;
+  static final _id_new$ = _class.constructorId(
+    r'()V',
   );
 
-  static final _getContextListener = jni$_.ProtectedJniExtensions.lookup<
+  static final _new$ = jni$_.ProtectedJniExtensions.lookup<
+          jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+              )>>('globalEnv_NewObject')
+      .asFunction<
+          jni$_.JniResult Function(
+            jni$_.Pointer<jni$_.Void>,
+            jni$_.JMethodIDPtr,
+          )>();
+
+  /// from: `public void <init>()`
+  /// The returned object must be released after use, by calling the [release] method.
+  factory FlutterSessionReplayBridge() {
+    return FlutterSessionReplayBridge.fromReference(
+        _new$(_class.reference.pointer, _id_new$ as jni$_.JMethodIDPtr)
+            .reference);
+  }
+
+  static final _id_getEngineToken = _class.instanceMethodId(
+    r'getEngineToken',
+    r'()Ljava/lang/String;',
+  );
+
+  static final _getEngineToken = jni$_.ProtectedJniExtensions.lookup<
           jni$_.NativeFunction<
               jni$_.JniResult Function(
                 jni$_.Pointer<jni$_.Void>,
@@ -1224,21 +1489,20 @@ class FlutterSessionReplayBridge extends jni$_.JObject {
             jni$_.JMethodIDPtr,
           )>();
 
-  /// from: `public final com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge$ContextListener getContextListener()`
+  /// from: `public final java.lang.String getEngineToken()`
   /// The returned object must be released after use, by calling the [release] method.
-  FlutterSessionReplayBridge$ContextListener? getContextListener() {
-    return _getContextListener(
-            reference.pointer, _id_getContextListener as jni$_.JMethodIDPtr)
-        .object<FlutterSessionReplayBridge$ContextListener?>(
-            const $FlutterSessionReplayBridge$ContextListener$NullableType());
+  jni$_.JString getEngineToken() {
+    return _getEngineToken(
+            reference.pointer, _id_getEngineToken as jni$_.JMethodIDPtr)
+        .object<jni$_.JString>(const jni$_.JStringType());
   }
 
-  static final _id_setContextListener = _class.instanceMethodId(
-    r'setContextListener',
-    r'(Lcom/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$ContextListener;)V',
+  static final _id_receive = _class.instanceMethodId(
+    r'receive',
+    r'(Lcom/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$RumContext;)V',
   );
 
-  static final _setContextListener = jni$_.ProtectedJniExtensions.lookup<
+  static final _receive = jni$_.ProtectedJniExtensions.lookup<
               jni$_.NativeFunction<
                   jni$_.JThrowablePtr Function(
                       jni$_.Pointer<jni$_.Void>,
@@ -1249,68 +1513,62 @@ class FlutterSessionReplayBridge extends jni$_.JObject {
           jni$_.JThrowablePtr Function(jni$_.Pointer<jni$_.Void>,
               jni$_.JMethodIDPtr, jni$_.Pointer<jni$_.Void>)>();
 
-  /// from: `public final void setContextListener(com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge$ContextListener contextListener)`
-  void setContextListener(
-    FlutterSessionReplayBridge$ContextListener? contextListener,
+  /// from: `public final void receive(com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge$RumContext rumContext)`
+  void receive(
+    FlutterSessionReplayBridge$RumContext? rumContext,
   ) {
-    final _$contextListener =
-        contextListener?.reference ?? jni$_.jNullReference;
-    _setContextListener(
-            reference.pointer,
-            _id_setContextListener as jni$_.JMethodIDPtr,
-            _$contextListener.pointer)
+    final _$rumContext = rumContext?.reference ?? jni$_.jNullReference;
+    _receive(reference.pointer, _id_receive as jni$_.JMethodIDPtr,
+            _$rumContext.pointer)
         .check();
   }
 
-  static final _id_getFeature = _class.instanceMethodId(
-    r'getFeature',
-    r'()Lcom/datadoghq/flutter/sessionreplay/feature/DefaultFlutterSessionReplayFeature;',
+  static final _id_bind = _class.instanceMethodId(
+    r'bind',
+    r'(Lio/flutter/plugin/common/BinaryMessenger;)V',
   );
 
-  static final _getFeature = jni$_.ProtectedJniExtensions.lookup<
+  static final _bind = jni$_.ProtectedJniExtensions.lookup<
+              jni$_.NativeFunction<
+                  jni$_.JThrowablePtr Function(
+                      jni$_.Pointer<jni$_.Void>,
+                      jni$_.JMethodIDPtr,
+                      jni$_.VarArgs<(jni$_.Pointer<jni$_.Void>,)>)>>(
+          'globalEnv_CallVoidMethod')
+      .asFunction<
+          jni$_.JThrowablePtr Function(jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr, jni$_.Pointer<jni$_.Void>)>();
+
+  /// from: `public final void bind(io.flutter.plugin.common.BinaryMessenger binaryMessenger)`
+  void bind(
+    jni$_.JObject binaryMessenger,
+  ) {
+    final _$binaryMessenger = binaryMessenger.reference;
+    _bind(reference.pointer, _id_bind as jni$_.JMethodIDPtr,
+            _$binaryMessenger.pointer)
+        .check();
+  }
+
+  static final _id_detach = _class.instanceMethodId(
+    r'detach',
+    r'()V',
+  );
+
+  static final _detach = jni$_.ProtectedJniExtensions.lookup<
           jni$_.NativeFunction<
-              jni$_.JniResult Function(
+              jni$_.JThrowablePtr Function(
                 jni$_.Pointer<jni$_.Void>,
                 jni$_.JMethodIDPtr,
-              )>>('globalEnv_CallObjectMethod')
+              )>>('globalEnv_CallVoidMethod')
       .asFunction<
-          jni$_.JniResult Function(
+          jni$_.JThrowablePtr Function(
             jni$_.Pointer<jni$_.Void>,
             jni$_.JMethodIDPtr,
           )>();
 
-  /// from: `public final com.datadoghq.flutter.sessionreplay.feature.DefaultFlutterSessionReplayFeature getFeature()`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JObject? getFeature() {
-    return _getFeature(reference.pointer, _id_getFeature as jni$_.JMethodIDPtr)
-        .object<jni$_.JObject?>(const jni$_.JObjectNullableType());
-  }
-
-  static final _id_setFeature = _class.instanceMethodId(
-    r'setFeature',
-    r'(Lcom/datadoghq/flutter/sessionreplay/feature/DefaultFlutterSessionReplayFeature;)V',
-  );
-
-  static final _setFeature = jni$_.ProtectedJniExtensions.lookup<
-              jni$_.NativeFunction<
-                  jni$_.JThrowablePtr Function(
-                      jni$_.Pointer<jni$_.Void>,
-                      jni$_.JMethodIDPtr,
-                      jni$_.VarArgs<(jni$_.Pointer<jni$_.Void>,)>)>>(
-          'globalEnv_CallVoidMethod')
-      .asFunction<
-          jni$_.JThrowablePtr Function(jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr, jni$_.Pointer<jni$_.Void>)>();
-
-  /// from: `public final void setFeature(com.datadoghq.flutter.sessionreplay.feature.DefaultFlutterSessionReplayFeature defaultFlutterSessionReplayFeature)`
-  void setFeature(
-    jni$_.JObject? defaultFlutterSessionReplayFeature,
-  ) {
-    final _$defaultFlutterSessionReplayFeature =
-        defaultFlutterSessionReplayFeature?.reference ?? jni$_.jNullReference;
-    _setFeature(reference.pointer, _id_setFeature as jni$_.JMethodIDPtr,
-            _$defaultFlutterSessionReplayFeature.pointer)
-        .check();
+  /// from: `public final void detach()`
+  void detach() {
+    _detach(reference.pointer, _id_detach as jni$_.JMethodIDPtr).check();
   }
 
   static final _id_enable = _class.instanceMethodId(
@@ -1401,6 +1659,30 @@ class FlutterSessionReplayBridge extends jni$_.JObject {
     final _$string = string.reference;
     _setRecordCount(reference.pointer, _id_setRecordCount as jni$_.JMethodIDPtr,
             _$string.pointer, i)
+        .check();
+  }
+
+  static final _id_setEmbedded = _class.instanceMethodId(
+    r'setEmbedded',
+    r'(Z)V',
+  );
+
+  static final _setEmbedded = jni$_.ProtectedJniExtensions.lookup<
+          jni$_.NativeFunction<
+              jni$_.JThrowablePtr Function(
+                  jni$_.Pointer<jni$_.Void>,
+                  jni$_.JMethodIDPtr,
+                  jni$_.VarArgs<(jni$_.Int32,)>)>>('globalEnv_CallVoidMethod')
+      .asFunction<
+          jni$_.JThrowablePtr Function(
+              jni$_.Pointer<jni$_.Void>, jni$_.JMethodIDPtr, int)>();
+
+  /// from: `public final void setEmbedded(boolean z)`
+  void setEmbedded(
+    bool z,
+  ) {
+    _setEmbedded(
+            reference.pointer, _id_setEmbedded as jni$_.JMethodIDPtr, z ? 1 : 0)
         .check();
   }
 
@@ -1556,6 +1838,45 @@ class FlutterSessionReplayBridge extends jni$_.JObject {
     return _resourceIdForKey(
             reference.pointer, _id_resourceIdForKey as jni$_.JMethodIDPtr, i)
         .object<jni$_.JString?>(const jni$_.JStringNullableType());
+  }
+
+  static final _id_new$1 = _class.constructorId(
+    r'(Lcom/datadoghq/flutter/sessionreplay/FlutterSessionReplayManager;Lkotlin/jvm/internal/DefaultConstructorMarker;)V',
+  );
+
+  static final _new$1 = jni$_.ProtectedJniExtensions.lookup<
+          jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                  jni$_.Pointer<jni$_.Void>,
+                  jni$_.JMethodIDPtr,
+                  jni$_.VarArgs<
+                      (
+                        jni$_.Pointer<jni$_.Void>,
+                        jni$_.Pointer<jni$_.Void>
+                      )>)>>('globalEnv_NewObject')
+      .asFunction<
+          jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>)>();
+
+  /// from: `synthetic public void <init>(com.datadoghq.flutter.sessionreplay.FlutterSessionReplayManager flutterSessionReplayManager, kotlin.jvm.internal.DefaultConstructorMarker defaultConstructorMarker)`
+  /// The returned object must be released after use, by calling the [release] method.
+  factory FlutterSessionReplayBridge.new$1(
+    jni$_.JObject? flutterSessionReplayManager,
+    jni$_.JObject? defaultConstructorMarker,
+  ) {
+    final _$flutterSessionReplayManager =
+        flutterSessionReplayManager?.reference ?? jni$_.jNullReference;
+    final _$defaultConstructorMarker =
+        defaultConstructorMarker?.reference ?? jni$_.jNullReference;
+    return FlutterSessionReplayBridge.fromReference(_new$1(
+            _class.reference.pointer,
+            _id_new$1 as jni$_.JMethodIDPtr,
+            _$flutterSessionReplayManager.pointer,
+            _$defaultConstructorMarker.pointer)
+        .reference);
   }
 }
 
