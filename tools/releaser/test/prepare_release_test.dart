@@ -143,6 +143,50 @@ void main() {
   );
 
   test(
+    'strips a snapshots repo from a non-releasing package\'s build.gradle',
+    () async {
+      // lonely_ios isn't part of this run's --packages, has no native SDK
+      // deltas, and isn't in the federated group -- none of which should
+      // matter for this cleanup, since it's workspace-wide.
+      fixture.writeFile('packages/lonely_ios/android/build.gradle', '''
+allprojects {
+    repositories {
+        google()
+        maven {
+            url "https://central.sonatype.com/repository/maven-snapshots/"
+        }
+    }
+}
+''');
+      await fixture.commit('chore: add an unrelated package\'s build.gradle');
+      final gitDir = await fixture.gitDir;
+
+      await prepareRelease(
+        RunContext(
+          repoRoot: fixture.root.path,
+          trigger: TriggerContext.mainline,
+          currentBranch: 'develop',
+          requestedPackages: ['datadog_dio'],
+        ),
+        gitDir: gitDir,
+        github: GithubCommandWrapper(fixture.root.path),
+        aiGatewayClient: _NeverCalledAiGatewayClient(),
+        dryRun: true,
+        skipPublishValidation: true,
+        publishedVersions: _neverPublished,
+      );
+
+      final result = await gitDir.runCommand([
+        'show',
+        'HEAD:packages/lonely_ios/android/build.gradle',
+      ]);
+      final contents = result.stdout as String;
+      expect(contents, isNot(contains('maven-snapshots')));
+      expect(contents, contains('google()'));
+    },
+  );
+
+  test(
     'never creates or pushes a branch on a --dry-run mainline run past local commits',
     () async {
       final gitDir = await fixture.gitDir;
@@ -330,6 +374,73 @@ dependency_overrides:
           ),
         ),
       );
+    },
+  );
+
+  test('refuses a mainline run from anything but develop', () async {
+    final gitDir = await fixture.gitDir;
+
+    expect(
+      () => prepareRelease(
+        RunContext(
+          repoRoot: fixture.root.path,
+          trigger: TriggerContext.mainline,
+          currentBranch: 'jward/some-feature',
+          requestedPackages: ['datadog_dio'],
+        ),
+        gitDir: gitDir,
+        github: GithubCommandWrapper(fixture.root.path),
+        aiGatewayClient: _NeverCalledAiGatewayClient(),
+        dryRun: true,
+        skipPublishValidation: true,
+        publishedVersions: _neverPublished,
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('must run from `develop`'),
+        ),
+      ),
+    );
+  });
+
+  test(
+    'refuses a pre-release run from develop, main, or a patch branch',
+    () async {
+      final gitDir = await fixture.gitDir;
+
+      for (final badBranch in [
+        'develop',
+        'main',
+        'release/datadog_dio/v1.1.x',
+      ]) {
+        expect(
+          () => prepareRelease(
+            RunContext(
+              repoRoot: fixture.root.path,
+              trigger: TriggerContext.preRelease,
+              currentBranch: badBranch,
+              requestedPackages: ['datadog_dio'],
+              prereleaseLabel: 'beta',
+            ),
+            gitDir: gitDir,
+            github: GithubCommandWrapper(fixture.root.path),
+            aiGatewayClient: _NeverCalledAiGatewayClient(),
+            dryRun: true,
+            skipPublishValidation: true,
+            publishedVersions: _neverPublished,
+          ),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains('dedicated long-lived pre-release branch'),
+            ),
+          ),
+          reason: 'expected a refusal for branch "$badBranch"',
+        );
+      }
     },
   );
 

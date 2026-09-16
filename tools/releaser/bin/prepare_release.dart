@@ -273,6 +273,34 @@ Future<void> prepareRelease(
   bool skipPublishValidation = false,
   PublishedVersionsGateway? publishedVersions,
 }) async {
+  // Mainline always PRs into `main`; running it from anywhere but `develop`
+  // -- e.g. an ordinary feature branch, if `--trigger=auto` resolved to
+  // mainline by default -- would carry every unmerged commit on that
+  // branch into the release-prep branch and, from there, into the release
+  // PR. Restores the branch check the legacy validator had.
+  if (ctx.trigger == TriggerContext.mainline &&
+      ctx.currentBranch != 'develop') {
+    throw StateError(
+      'Mainline releases must run from `develop` (current branch: '
+      '${ctx.currentBranch}). Refusing to build a release-prep branch off '
+      'a branch that could carry unmerged, unrelated commits into `main`.',
+    );
+  }
+  // No committed whitelist of approved pre-release branches exists in this
+  // tool -- by design, that list is meant to live in `.gitlab-ci.yml`'s
+  // `rules:` once wired up (see `.plans/new-release-process.md`), not
+  // duplicated here where it could drift out of sync. This only rules out
+  // the branches a pre-release run obviously shouldn't come from.
+  if (ctx.trigger == TriggerContext.preRelease &&
+      (ctx.currentBranch == 'develop' ||
+          ctx.currentBranch == 'main' ||
+          packageNameFromPatchBranch(ctx.currentBranch) != null)) {
+    throw StateError(
+      'Pre-release releases must run from a dedicated long-lived '
+      'pre-release branch (e.g. `v4`), not `${ctx.currentBranch}`.',
+    );
+  }
+
   if (!await isWorkingTreeClean(gitDir, _log)) {
     throw StateError(
       'Working tree at ${gitDir.path} has uncommitted changes -- '
@@ -363,14 +391,21 @@ Future<void> prepareRelease(
   // -- Commit B: publish-prep -- see the file-level comment above.
   //
   // Podfile overrides and snapshot maven repositories are stripped from
-  // every workspace package's example apps, not just the ones releasing
-  // this run: an override floats a Pod on dd-sdk-ios's `develop` branch,
-  // and a snapshots repo lets Gradle silently resolve a newer, unreleased
-  // dd-sdk-android build -- a release-prep branch needs the whole workspace
-  // to build in a stable, reproducible state, whether or not a given
-  // package is part of this release.
+  // every workspace package -- its own `android/build.gradle` and its
+  // example apps -- not just the ones releasing this run: an override
+  // floats a Pod on dd-sdk-ios's `develop` branch, and a snapshots repo lets
+  // Gradle silently resolve a newer, unreleased dd-sdk-android build -- a
+  // release-prep branch needs the whole workspace to build in a stable,
+  // reproducible state, whether or not a given package is part of this
+  // release.
   for (final pkg in allGroups.expand((g) => g.members)) {
     final packageRoot = pkg.absolutePath(ctx.repoRoot);
+
+    final ownGradle = File(p.join(packageRoot, 'android', 'build.gradle'));
+    if (ownGradle.existsSync()) {
+      await removeSnapshotsMavenRepository(ownGradle, _log, false);
+    }
+
     for (final exampleDir in const [
       'example',
       'integration_test_app',
@@ -607,12 +642,6 @@ Future<void> _applyPublishPrep(
           break;
         case NativeSdk.android:
           await pinAndroidGradleVersion(file, targetVersion, _log, false);
-          // The package's own build.gradle can inject a snapshots repo into
-          // every consuming app's build via `rootProject.allprojects` --
-          // fine for day-to-day development against an unreleased
-          // dd-sdk-android build, but a release must not ship pinned to an
-          // exact version while still willing to resolve a newer snapshot.
-          await removeSnapshotsMavenRepository(file, _log, false);
           break;
         case NativeSdk.cpp:
           final targetSha = delta.targetSha;
