@@ -10,6 +10,8 @@ import 'package:test/test.dart';
 
 import 'package:releaser/cmake_util.dart';
 
+import 'support/test_temp.dart';
+
 const _sha = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
 
 void main() {
@@ -17,7 +19,7 @@ void main() {
   final logger = Logger('cmake_util_test');
 
   setUp(() async {
-    root = await Directory.systemTemp.createTemp('cmake_util_test_');
+    root = await createTestTempDir('cmake_util_test_');
   });
 
   tearDown(() => root.delete(recursive: true));

@@ -95,13 +95,20 @@ Future<GroupedPrs> runGroupedPrsPrompt(
 
 Future<ChangelogEntryList> runChangelogEntryListPrompt(
   AiGatewayClient client,
+  String packageName,
   String groupLabel,
   List<PrDetails> groupPrs, {
+  bool isFirstRelease = false,
   LlmCostTracker? costTracker,
 }) {
   return runStructuredPrompt(
     client,
-    changelogEntryListPrompt(groupLabel, groupPrs),
+    changelogEntryListPrompt(
+      packageName,
+      groupLabel,
+      groupPrs,
+      isFirstRelease: isFirstRelease,
+    ),
     costTracker: costTracker,
     costLabel: 'ChangelogEntryList($groupLabel)',
   );
@@ -111,12 +118,14 @@ Future<ChangelogEntryList> runChangelogEntryListPrompt(
 
 Future<ChangelogEntryList> runCleanupPrompt(
   AiGatewayClient client,
+  String packageName,
   ChangelogEntryList changelog, {
+  bool isFirstRelease = false,
   LlmCostTracker? costTracker,
 }) {
   return runStructuredPrompt(
     client,
-    cleanupPrompt(changelog),
+    cleanupPrompt(packageName, changelog, isFirstRelease: isFirstRelease),
     costTracker: costTracker,
     costLabel: 'Cleanup',
   );
@@ -198,7 +207,13 @@ Future<List<NativeSdkChangelogContext>> resolveNativeSdkChangelogContexts(
 /// Runs the PR pipeline (group -> synthesize -> cleanup/dedup) against
 /// [prs] -- the significant subset of PRs for one package's release --
 /// then appends one entry per [nativeSdkContexts] (see
-/// [resolveNativeSdkChangelogContexts]). Native SDK entries deliberately
+/// [resolveNativeSdkChangelogContexts]). [packageName] is passed to every
+/// synthesis/cleanup prompt so the LLM only includes impact actually
+/// visible to that package's own users -- a PR can touch [packageName]'s
+/// files as a side effect of a change whose real user-visible impact is in
+/// a different package (e.g. updating an internal call site to match a
+/// renamed parameter), and that PR's entry belongs in the other package's
+/// changelog, not this one. Native SDK entries deliberately
 /// skip the cleanup pass: their exact wording and link are built in Dart
 /// (see [buildNativeSdkUpdateEntry]), and routing them through another LLM
 /// call risks the cleanup pass paraphrasing away the link or flattening
@@ -213,8 +228,10 @@ Future<List<NativeSdkChangelogContext>> resolveNativeSdkChangelogContexts(
 /// nothing to summarize.
 Future<ChangelogEntryList> generateChangelogEntries(
   AiGatewayClient client,
+  String packageName,
   List<PrDetails> prs, {
   List<NativeSdkChangelogContext> nativeSdkContexts = const [],
+  bool isFirstRelease = false,
   LlmCostTracker? costTracker,
   void Function(String warning)? onWarning,
 }) async {
@@ -237,8 +254,10 @@ Future<ChangelogEntryList> generateChangelogEntries(
       final groupPrs = prs.where((pr) => numbers.contains(pr.number)).toList();
       final entries = await runChangelogEntryListPrompt(
         client,
+        packageName,
         group.label,
         groupPrs,
+        isFirstRelease: isFirstRelease,
         costTracker: costTracker,
       );
       changelog = changelog.mergedWith(entries);
@@ -246,7 +265,9 @@ Future<ChangelogEntryList> generateChangelogEntries(
 
     changelog = await runCleanupPrompt(
       client,
+      packageName,
       changelog,
+      isFirstRelease: isFirstRelease,
       costTracker: costTracker,
     );
   }
@@ -301,8 +322,10 @@ Future<ChangelogEntryList> generateChangelogForPackage(
 
   return generateChangelogEntries(
     client,
+    packagePlan.package.name,
     prDetails,
     nativeSdkContexts: nativeSdkContexts,
+    isFirstRelease: packagePlan.isFirstRelease,
     costTracker: costTracker,
     onWarning: (w) => logger.warning('⚠️ $w'),
   );

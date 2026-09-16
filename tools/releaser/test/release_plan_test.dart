@@ -1008,6 +1008,31 @@ void main() {
 
       expect(result.packages.single.warnings, isEmpty);
     });
+
+    test(
+      'warns about the entire history when no published version has a tag '
+      'at all',
+      () async {
+        // No `datadog_dio/v*` tag exists anywhere in the fixture repo.
+        fixture.writeFile('packages/datadog_dio/CHANGES', 'work');
+        await fixture.commit('fix: something');
+
+        final result = await plan(
+          mainlineCtx(requestedPackages: ['datadog_dio']),
+          published: {
+            'datadog_dio': ['2.2.0'],
+          },
+        );
+
+        expect(
+          result.packages.single.warnings.single,
+          allOf(
+            contains('No tag could be found'),
+            contains('entire history'),
+          ),
+        );
+      },
+    );
   });
 
   group('patch branch', () {

@@ -7,6 +7,8 @@ import 'dart:io';
 import 'package:git/git.dart';
 import 'package:path/path.dart' as p;
 
+import 'test_temp.dart';
+
 /// A throwaway pubspec.yaml tree, mirroring the shapes that matter in
 /// dd-sdk-flutter's real `packages/` layout (a federated group, several
 /// singletons, an intentionally-unpublished support package, an example
@@ -24,7 +26,7 @@ class FixtureRepo {
   FixtureRepo._(this.root);
 
   static Future<FixtureRepo> create({bool withGit = true}) async {
-    final root = await Directory.systemTemp.createTemp('releaser_test_');
+    final root = await createTestTempDir('releaser_test_');
     final repo = FixtureRepo._(root);
 
     repo._writePubspec(

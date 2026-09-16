@@ -113,12 +113,25 @@ ${pr.body}
 </body>
 </pr>''';
 
-String _synthesizeText(String groupLabel, List<PrDetails> groupPrs) {
+String _synthesizeText(
+  String packageName,
+  String groupLabel,
+  List<PrDetails> groupPrs, {
+  required bool isFirstRelease,
+}) {
   final prText = groupPrs.map(_formatPr).join('\n');
+  final firstReleaseNote = isFirstRelease
+      ? '\n\nThis is the first-ever release of `$packageName` -- there is no '
+            'prior public API or documented behavior to break, so nothing '
+            'qualifies as a breaking change here. Categorize what would '
+            'otherwise be a breaking change as a feature (new capability) '
+            'or a fix (corrects something that only ever existed in '
+            'pre-release/unpublished form), never as breaking_changes.'
+      : '';
   return '''
-You are writing a customer-facing changelog for a Flutter package. You have been given a group of related pull requests that together represent a single logical change.
+You are writing a customer-facing changelog for `$packageName`, a Flutter package. You have been given a group of related pull requests that together represent a single logical change.
 
-Your task: synthesize 0 or more changelog entries describing the user-visible impact of this change on developers who use the package as a library dependency.
+Your task: synthesize 0 or more changelog entries describing the user-visible impact of this change on developers who use `$packageName` itself as a library dependency.$firstReleaseNote
 
 Include an entry for:
 - New or modified public APIs: functions, types, configuration options, or constants added, changed, or removed
@@ -130,13 +143,14 @@ Omit entries for:
 - Changes to private implementation details that are not reachable through the public API and whose effects are not observable to library consumers
 - chore work with no user-visible effect
 - Sub-changes that are already fully captured by another entry in this group
+- A change whose user-visible impact is only observable in a *different* package, even if a PR in this group happens to touch files under `$packageName` as a side effect (e.g. updating an internal call site to match a renamed parameter in another package this one depends on). That belongs in the other package's own changelog, not `$packageName`'s -- if you cannot articulate a concrete, `$packageName`-specific effect a developer using only `$packageName` would notice, omit the entry.
 
 If every change in the group falls into the omit list, return empty lists for all three categories. An empty response is correct and preferred over producing a thin or redundant entry.
 
 A group may produce multiple entries only when it contains genuinely distinct user-facing changes that each deserve to be called out separately. When in doubt, prefer a single consolidated entry over splitting.
 
 Categorize each entry as exactly one of:
-- breaking_changes: removes or incompatibly alters a public API or previously-documented behavior, requiring users to update their code on upgrade. When an entry qualifies as both a breaking change and a feature or fix, categorize it as a breaking change.
+- breaking_changes: removes or incompatibly alters a public API or previously-documented behavior, requiring users to update their code on upgrade. When an entry qualifies as both a breaking change and a feature or fix, categorize it as a breaking change. Never used on a first release -- see above.
 - features: adds new capability, APIs, or configuration options without breaking existing usage.
 - fixes: corrects incorrect behavior, data, or crashes without breaking existing usage.
 
@@ -156,12 +170,21 @@ $prText
 </group>''';
 }
 
-/// Synthesizes 0 or more changelog entries for one group of related PRs.
+/// Synthesizes 0 or more changelog entries for one group of related PRs,
+/// scoped to [packageName]'s own changelog -- see `_synthesizeText`'s
+/// relevance guidance for why the package matters here, not just the PRs.
 Prompt<ChangelogEntryList> changelogEntryListPrompt(
+  String packageName,
   String groupLabel,
-  List<PrDetails> groupPrs,
-) => Prompt(
-  text: _synthesizeText(groupLabel, groupPrs),
+  List<PrDetails> groupPrs, {
+  bool isFirstRelease = false,
+}) => Prompt(
+  text: _synthesizeText(
+    packageName,
+    groupLabel,
+    groupPrs,
+    isFirstRelease: isFirstRelease,
+  ),
   schema: _schema,
   fromJson: ChangelogEntryList.fromJson,
 );
@@ -171,22 +194,37 @@ String _formatEntries(List<ChangelogEntry> entries) {
   return entries.mapIndexed((i, e) => '${i + 1}. ${e.text}').join('\n');
 }
 
-String _cleanupText(ChangelogEntryList changelog) =>
-    '''
-You are performing a final editorial pass on a draft changelog for a Flutter package. The entries below were generated independently for each group of related PRs and then merged; as a result, they may contain redundancies, inconsistencies in tone or style, or suboptimal ordering.
+String _cleanupText(
+  String packageName,
+  ChangelogEntryList changelog, {
+  required bool isFirstRelease,
+}) {
+  final firstReleaseNote = isFirstRelease
+      ? '\n\nThis is the first-ever release of `$packageName` -- there is no '
+            'prior public API or documented behavior to break. Recategorize '
+            'any breaking_changes entry as a feature or fix instead; '
+            'breaking_changes must be empty in your output.'
+      : '';
+  return '''
+You are performing a final editorial pass on a draft changelog for `$packageName`, a Flutter package. The entries below were generated independently for each group of related PRs and then merged; as a result, they may contain redundancies, inconsistencies in tone or style, or suboptimal ordering.$firstReleaseNote
 
 Your tasks:
 
 1. Deduplicate. Remove or merge entries that describe the same user-visible change. Pay particular attention to cross-category duplication: if a breaking_changes entry already captures a change, remove the corresponding feature or fix entry rather than keeping both. If two entries partially overlap, consolidate them into one entry in whichever category is most appropriate.
+${isFirstRelease ? '''
+1b. Ensure the output includes one features entry that says this is the initial release, e.g. "Initial release of `$packageName`." Add it if none of the input entries already say so; do not duplicate it if one already does.
+''' : ''}
 
-2. Normalize tone and style. All entries should:
+2. Remove any entry whose described impact is not actually specific to `$packageName` -- for example, an entry that only makes sense from the perspective of a different package in the same monorepo. Each remaining entry must describe something a developer using `$packageName` itself would notice.
+
+3. Normalize tone and style. All entries should:
    - Be written from the user's perspective — describe the impact, not the implementation.
    - Use present tense: e.g. "X now does Y."
    - Be concise: one sentence is almost always sufficient.
    - Use inline `code` only for public API identifiers.
    - Not reference PR numbers, branch names, or internal type names.
 
-3. Sort entries within each category. Order primarily by importance: the most significant and impactful changes first. As a secondary concern, place related entries adjacent to one another.
+4. Sort entries within each category. Order primarily by importance: the most significant and impactful changes first. As a secondary concern, place related entries adjacent to one another.
 
 Do not invent entries that were not present in the input. Produce output in the same three-category schema. If an entry contains a markdown link (e.g. a link to a native SDK's own changelog), preserve that link verbatim in whichever entry it ends up in -- never drop or paraphrase it away.
 
@@ -202,12 +240,16 @@ ${_formatEntries(changelog.features)}
 
 ### Fixes
 ${_formatEntries(changelog.fixes)}''';
+}
 
 /// Deduplicates, normalizes, and orders a draft changelog assembled from
-/// independently-synthesized groups.
-Prompt<ChangelogEntryList> cleanupPrompt(ChangelogEntryList changelog) =>
-    Prompt(
-      text: _cleanupText(changelog),
-      schema: _schema,
-      fromJson: ChangelogEntryList.fromJson,
-    );
+/// independently-synthesized groups, for [packageName]'s own changelog.
+Prompt<ChangelogEntryList> cleanupPrompt(
+  String packageName,
+  ChangelogEntryList changelog, {
+  bool isFirstRelease = false,
+}) => Prompt(
+  text: _cleanupText(packageName, changelog, isFirstRelease: isFirstRelease),
+  schema: _schema,
+  fromJson: ChangelogEntryList.fromJson,
+);

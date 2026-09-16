@@ -211,4 +211,9 @@ class HttpAiGatewayClient implements AiGatewayClient {
       ),
     );
   }
+
+  /// Closes the underlying [HttpClient]'s keep-alive connections. Leaving
+  /// this uncalled doesn't corrupt anything, but a lingering socket can
+  /// keep a short-lived CLI process (or a CI job) from exiting.
+  void close() => _httpClient.close();
 }

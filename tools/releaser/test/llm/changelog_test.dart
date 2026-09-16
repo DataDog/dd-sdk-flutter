@@ -167,14 +167,37 @@ void main() {
         },
       ]);
 
-      final result = await runChangelogEntryListPrompt(client, 'a group', [
-        const PrDetails(number: 1, title: 't', body: 'b'),
-      ]);
+      final result = await runChangelogEntryListPrompt(
+        client,
+        'datadog_dio',
+        'a group',
+        [const PrDetails(number: 1, title: 't', body: 'b')],
+      );
 
       expect(result.breakingChanges.single.text, 'Removed the old thing.');
       expect(result.features.single.text, 'Added a new thing.');
       expect(result.fixes, isEmpty);
     });
+
+    test(
+      'tells the model which package it is writing for, and to omit '
+      'changes only visible in a different package',
+      () async {
+        final client = FakeAiGatewayClient([_emptyEntryList]);
+
+        await runChangelogEntryListPrompt(client, 'datadog_dio', 'a group', [
+          const PrDetails(number: 1, title: 't', body: 'b'),
+        ]);
+
+        expect(
+          client.prompts.single,
+          allOf(
+            contains('`datadog_dio`'),
+            contains('a *different* package'),
+          ),
+        );
+      },
+    );
   });
 
   group('runCleanupPrompt', () {
@@ -190,6 +213,7 @@ void main() {
 
       final result = await runCleanupPrompt(
         client,
+        'datadog_dio',
         const ChangelogEntryList(
           fixes: [ChangelogEntry('Fixed a bug (duplicated).')],
         ),
@@ -197,6 +221,24 @@ void main() {
 
       expect(result.fixes.single.text, 'Fixed a bug.');
     });
+
+    test(
+      'tells the model which package it is finalizing, and to drop '
+      'entries not specific to it',
+      () async {
+        final client = FakeAiGatewayClient([_emptyEntryList]);
+
+        await runCleanupPrompt(client, 'datadog_dio', const ChangelogEntryList());
+
+        expect(
+          client.prompts.single,
+          allOf(
+            contains('`datadog_dio`'),
+            contains('not actually specific to `datadog_dio`'),
+          ),
+        );
+      },
+    );
   });
 
   group('ChangelogEntryList', () {
@@ -226,7 +268,11 @@ void main() {
     test('short-circuits with no LLM calls for an empty PR list', () async {
       final client = FakeAiGatewayClient([]);
 
-      final result = await generateChangelogEntries(client, []);
+      final result = await generateChangelogEntries(
+        client,
+        'datadog_dio',
+        [],
+      );
 
       expect(result.isEmpty, isTrue);
       expect(client.prompts, isEmpty);
@@ -282,7 +328,11 @@ void main() {
         },
       ]);
 
-      final result = await generateChangelogEntries(client, prs);
+      final result = await generateChangelogEntries(
+        client,
+        'datadog_dio',
+        prs,
+      );
 
       expect(result.features.single.text, 'Adds a thing.');
       expect(result.fixes.single.text, 'Fixes a bug.');
@@ -441,6 +491,7 @@ void main() {
 
         final result = await generateChangelogEntries(
           client,
+          'datadog_dio',
           [],
           nativeSdkContexts: [context],
         );
@@ -470,6 +521,7 @@ void main() {
 
       final result = await generateChangelogEntries(
         client,
+        'datadog_dio',
         [],
         nativeSdkContexts: [majorContext],
       );
@@ -515,6 +567,7 @@ void main() {
 
       final result = await generateChangelogEntries(
         client,
+        'datadog_dio',
         [const PrDetails(number: 1, title: 'feat: add a thing', body: '')],
         nativeSdkContexts: [context],
       );

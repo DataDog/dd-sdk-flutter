@@ -11,6 +11,8 @@ import 'package:releaser/native_sdk.dart';
 import 'package:releaser/trigger_context.dart';
 import 'package:releaser/version_bump.dart';
 
+import 'support/test_temp.dart';
+
 const _iosPodspec = '''
 Pod::Spec.new do |s|
   s.name             = 'datadog_flutter_plugin_ios'
@@ -54,7 +56,7 @@ void main() {
     late Directory root;
 
     setUp(() async {
-      root = await Directory.systemTemp.createTemp('native_sdk_test_');
+      root = await createTestTempDir('native_sdk_test_');
     });
 
     tearDown(() => root.delete(recursive: true));

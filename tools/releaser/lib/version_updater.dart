@@ -4,95 +4,198 @@
 
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
-import 'package:version/version.dart';
 
-import 'command.dart';
 import 'helpers.dart';
 
-enum VersionBumpType { major, minor, rev, prerelease }
+/// Adds (or, if already present, leaves alone) a row to [nativeSdkVersionsFile]
+/// recording [packageVersion] against the native SDK versions it was built
+/// against -- the discovery-driven equivalent of `_updateNativeSDKVersions`,
+/// usable directly against a [File] without the legacy
+/// `CommandArguments`/`PackageRelease` coupling. Any of [iosVersion]/
+/// [androidVersion]/[cppVersion] may be null when this package doesn't
+/// wrap that SDK.
+const _nativeSdkColumns = ['Flutter', 'iOS SDK', 'Android SDK', 'C++ SDK'];
 
-class UpdateVersionsCommand extends Command {
-  @override
-  Future<bool> run(CommandArguments args, Logger logger) async {
-    for (final package in args.packages) {
-      final packageRoot = getPackageRoot(args, package);
-      if (!await updateVersions(
-        packageRoot,
-        package.version,
-        logger,
-        args.dryRun,
-      )) {
-        return false;
-      }
+String _renderMdTableRow(List<String> values) => '| ${values.join(' | ')} |';
+
+String _renderMdSeparatorRow(List<String> columns) =>
+    '|${columns.map((c) => '-' * (c.length + 2)).join('|')}|';
+
+Future<void> updateNativeSdkVersionsMd(
+  File nativeSdkVersionsFile,
+  String packageVersion,
+  Logger logger,
+  bool dryRun, {
+  String? iosVersion,
+  String? androidVersion,
+  String? cppVersion,
+}) async {
+  final newValues = {
+    'Flutter': packageVersion,
+    'iOS SDK': iosVersion,
+    'Android SDK': androidVersion,
+    'C++ SDK': cppVersion,
+  };
+
+  if (!nativeSdkVersionsFile.existsSync()) {
+    // Only the platform(s) this package actually ships -- a brand-new file
+    // is always a single-platform package's own (post-4.0, per-platform)
+    // NATIVE_SDK_VERSIONS.md, never the app-facing package's aggregate
+    // table, so there's no reason for it to carry other platforms' columns
+    // filled with '-'.
+    final columns = [
+      for (final c in _nativeSdkColumns)
+        if (c == 'Flutter' || newValues[c] != null) c,
+    ];
+    if (columns.length == 1) {
+      // Nothing but 'Flutter' -- this package ships no native SDK at all,
+      // so it shouldn't have a NATIVE_SDK_VERSIONS.md in the first place.
+      return;
     }
-
-    final corePackage = args.packages.firstWhereOrNull(
-      (e) => e.name == 'datadog_flutter_plugin',
+    logger.warning(
+      '⚠️ ${nativeSdkVersionsFile.path} does not exist, creating it now.',
     );
-
-    if (corePackage != null) {
-      if (!await _updateReadmeVersions(args, corePackage, logger)) {
-        return false;
-      }
-
-      if (!await _updateNativeSDKVersions(args, corePackage, logger)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-}
-
-class BumpVersionCommand extends Command {
-  final VersionBumpType bumpType;
-
-  BumpVersionCommand(this.bumpType);
-
-  @override
-  Future<bool> run(CommandArguments args, Logger logger) async {
-    bool success = true;
-    for (final package in args.packages) {
-      final version = Version.parse(package.version);
-      Version newVersion;
-      switch (bumpType) {
-        case VersionBumpType.major:
-          newVersion = version.incrementMajor();
-          break;
-        case VersionBumpType.minor:
-          newVersion = version.incrementMinor();
-          break;
-        case VersionBumpType.rev:
-          newVersion = version.incrementPatch();
-          break;
-        case VersionBumpType.prerelease:
-          try {
-            newVersion = version.incrementPreRelease();
-          } catch (e) {
-            logger.shout(
-              '❌ Failed to increment the pre-release version of $version. Is it not a pre-release?',
-            );
-            return false;
-          }
-          break;
-      }
-
-      logger.info('🔀 Bumping version to $newVersion');
-      success &= await updateVersions(
-        getPackageRoot(args, package),
-        newVersion.toString(),
-        logger,
-        args.dryRun,
+    if (!dryRun) {
+      final header = _renderMdTableRow(columns);
+      final separator = _renderMdSeparatorRow(columns);
+      final row = _renderMdTableRow(
+        columns.map((c) => newValues[c] ?? '-').toList(),
+      );
+      await nativeSdkVersionsFile.writeAsString(
+        '$header\n$separator\n$row\n',
       );
     }
-    return success;
+    return;
+  }
+
+  final lines = await nativeSdkVersionsFile.readAsLines();
+  final headerIndex = lines.indexWhere((l) => l.trimLeft().startsWith('|'));
+  if (headerIndex == -1 || headerIndex + 1 >= lines.length) {
+    logger.warning(
+      '⚠️ Could not find a markdown table header in '
+      '${nativeSdkVersionsFile.path}, skipping.',
+    );
+    return;
+  }
+  final separatorIndex = headerIndex + 1;
+  final bodyStartIndex = separatorIndex + 1;
+
+  final existingColumns = lines[headerIndex]
+      .split('|')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
+
+  for (final line in lines.skip(bodyStartIndex)) {
+    if (!line.trimLeft().startsWith('|')) continue;
+    final parts = line.split('|').map((s) => s.trim()).toList();
+    if (parts.length > 1 && parts[1] == packageVersion) {
+      logger.info(
+        '✅ Version $packageVersion already exists in '
+        '${nativeSdkVersionsFile.path}, skipping.',
+      );
+      return;
+    }
+  }
+
+  // The column set only ever grows -- e.g. a package's first release that
+  // wraps a C++ SDK -- so existing rows are backfilled with '-' for any
+  // newly-added column rather than left narrower than the new header.
+  final columns = [
+    for (final c in _nativeSdkColumns)
+      if (existingColumns.contains(c) ||
+          (c != 'Flutter' && newValues[c] != null))
+        c,
+  ];
+  final columnGrew = columns.length != existingColumns.length;
+
+  if (!dryRun) {
+    final newLines = <String>[
+      ...lines.take(headerIndex),
+      _renderMdTableRow(columns),
+      _renderMdSeparatorRow(columns),
+      // New entries go at the top of the body, newest-first, matching the
+      // existing convention.
+      _renderMdTableRow(columns.map((c) => newValues[c] ?? '-').toList()),
+    ];
+
+    for (final line in lines.skip(bodyStartIndex)) {
+      if (!line.trimLeft().startsWith('|') || !columnGrew) {
+        newLines.add(line);
+        continue;
+      }
+      final parts = line
+          .split('|')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      final byColumn = {
+        for (var i = 0; i < existingColumns.length && i < parts.length; i++)
+          existingColumns[i]: parts[i],
+      };
+      newLines.add(
+        _renderMdTableRow(columns.map((c) => byColumn[c] ?? '-').toList()),
+      );
+    }
+
+    await nativeSdkVersionsFile.writeAsString('${newLines.join('\n')}\n');
+    logger.info(' ✏️ Wrote ${nativeSdkVersionsFile.path}');
   }
 }
 
-final _versionCapture = RegExp(r'^version\: (?<version>.*)');
+const _sdkTableStartMarker = '[//]: # (SDK Table)';
+const _sdkTableEndMarker = '[//]: # (End SDK Table)';
+
+/// Rewrites the `[//]: # (SDK Table)` ... `[//]: # (End SDK Table)` block
+/// in [readmeFile] to the current SDK versions -- only the app-facing
+/// package of a federated group carries this table, so this is a no-op
+/// (not an error) if the markers aren't found. Browser SDK isn't tracked
+/// by this tool, so it's carried over as a fixed "7.x.x", matching prior
+/// behavior. Any of [iosVersion]/[androidVersion]/[cppVersion] may be
+/// null when this package doesn't wrap that SDK.
+Future<void> updateReadmeSdkTable(
+  File readmeFile,
+  Logger logger,
+  bool dryRun, {
+  String? iosVersion,
+  String? androidVersion,
+  String? cppVersion,
+}) async {
+  if (!readmeFile.existsSync()) return;
+
+  final newTable =
+      '$_sdkTableStartMarker\n\n'
+      '| iOS SDK | Android SDK | C++ SDK | Browser SDK |\n'
+      '| :-----: | :---------: | :-----: | :---------: |\n'
+      '| ${iosVersion ?? '-'} | ${androidVersion ?? '-'} '
+      '| ${cppVersion ?? '-'} | 7.x.x |\n\n'
+      '$_sdkTableEndMarker';
+
+  var inTable = false;
+  var foundTable = false;
+  await transformFile(readmeFile, logger, dryRun, (line) {
+    if (inTable) {
+      if (line.trim() == _sdkTableEndMarker) {
+        inTable = false;
+        return newTable;
+      }
+      return null;
+    } else if (line.trim() == _sdkTableStartMarker) {
+      inTable = true;
+      foundTable = true;
+      return null;
+    }
+    return line;
+  });
+
+  if (!foundTable) {
+    logger.fine('No SDK table markers in ${readmeFile.path}, skipping.');
+  }
+}
+
+final _versionCapture = RegExp(r'^version:\s*(?<version>.*)');
 
 Future<bool> updateVersions(
   String packageRoot,
@@ -121,9 +224,11 @@ Future<bool> _updatePackagePubspec(
     return false;
   }
 
+  var foundVersionLine = false;
   await transformFile(pubspecFile, logger, dryRun, (element) {
     final match = _versionCapture.firstMatch(element);
     if (match != null) {
+      foundVersionLine = true;
       final oldVersion = match.namedGroup('version');
       logger.info(
         ' - 🔀 Replacing version $oldVersion with $version in pubspec',
@@ -132,6 +237,13 @@ Future<bool> _updatePackagePubspec(
     }
     return element;
   });
+
+  if (!foundVersionLine) {
+    logger.shout(
+      '⁉️ Could not find a "version:" line in ${pubspecFile.path}',
+    );
+    return false;
+  }
 
   return true;
 }
@@ -154,97 +266,6 @@ Future<bool> _updateVersionDartFile(
       element = "const ddPackageVersion = '$version';";
     }
     return element;
-  });
-
-  return true;
-}
-
-Future<bool> _updateReadmeVersions(
-  CommandArguments args,
-  PackageRelease package,
-  Logger logger,
-) async {
-  final packageRoot = getPackageRoot(args, package);
-  final changelogFile = File(path.join(packageRoot, 'README.md'));
-  if (!changelogFile.existsSync()) {
-    logger.shout('⁉️ Could not find README.md at ${changelogFile.path}');
-    return false;
-  }
-
-  var inVersionTable = false;
-  await transformFile(changelogFile, logger, args.dryRun, (line) {
-    if (inVersionTable) {
-      if (line.startsWith('[//]: #')) {
-        inVersionTable = false;
-
-        // Write the new version table:
-        line =
-            '''[//]: # (SDK Table)
-
-| iOS SDK | Android SDK | Browser SDK |
-| :-----: | :---------: | :---------: |
-| ${args.iOSRelease} | ${args.androidRelease} | 7.x.x |
-
-[//]: # (End SDK Table)''';
-        return line;
-      }
-
-      // Return no lines for the entire version table.
-      return null;
-    } else if (line == '[//]: # (SDK Table)') {
-      inVersionTable = true;
-      return null;
-    }
-
-    return line;
-  });
-
-  return true;
-}
-
-Future<bool> _updateNativeSDKVersions(
-  CommandArguments args,
-  PackageRelease package,
-  Logger logger,
-) async {
-  final packageRoot = getPackageRoot(args, package);
-  final nativeSDKVersionsFile = File(
-    path.join(packageRoot, 'NATIVE_SDK_VERSIONS.md'),
-  );
-  final newVersionEntry =
-      '| ${package.version} | ${args.iOSRelease} | ${args.androidRelease} |';
-  final header = '| Flutter | iOS SDK | Android SDK |';
-  final separator = '|---------|---------|-------------|';
-
-  if (!nativeSDKVersionsFile.existsSync()) {
-    logger.warning(
-      '⚠️ NATIVE_SDK_VERSIONS.md does not exist, creating it now.',
-    );
-    await nativeSDKVersionsFile.writeAsString(
-      '$header\n$separator\n$newVersionEntry',
-    );
-    return true;
-  }
-
-  final lines = await nativeSDKVersionsFile.readAsLines();
-  for (final line in lines) {
-    if (!line.startsWith('|')) continue;
-
-    final parts = line.split('|').map((s) => s.trim()).toList();
-    if (parts.length > 1 && parts[1] == package.version) {
-      logger.info(
-        '✅ Version ${package.version} already exists in NATIVE_SDK_VERSIONS.md, skipping.',
-      );
-      return true;
-    }
-  }
-
-  await transformFile(nativeSDKVersionsFile, logger, args.dryRun, (line) {
-    if (line.startsWith('|-')) {
-      return '$separator\n$newVersionEntry';
-    }
-
-    return line;
   });
 
   return true;

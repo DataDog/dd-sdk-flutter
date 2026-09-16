@@ -13,6 +13,7 @@ import 'package:git/git.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 import 'package:releaser/cocoapod_util.dart';
+import 'package:releaser/git/git_dir.dart';
 import 'package:releaser/helpers.dart';
 import 'package:releaser/spm_util.dart';
 
