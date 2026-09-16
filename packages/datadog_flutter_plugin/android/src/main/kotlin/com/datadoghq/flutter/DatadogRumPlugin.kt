@@ -615,12 +615,14 @@ fun RumConfiguration.Builder.withEncoded(encoded: Map<String, Any?>): RumConfigu
         builder = _RumInternalProxy.setAdditionalConfiguration(builder, it)
     }
     (encoded["timeseries"] as? Map<String, Any?>)?.let { timeseries ->
-        var timeseriesBuilder = TimeseriesConfiguration.Builder()
-        (timeseries["collectTypes"] as? List<*>)?.let { collectTypes ->
-            val types = collectTypes.mapNotNull { (it as? String)?.let { type -> parseTimeseriesType(type) } }
-            timeseriesBuilder = timeseriesBuilder.collectOnly(*types.toTypedArray())
+        val collectTypesArg = timeseries["collectTypes"] as? List<*>
+        val timeseriesConfiguration = if (collectTypesArg != null) {
+            val types = collectTypesArg.mapNotNull { (it as? String)?.let { type -> parseTimeseriesType(type) } }.toSet()
+            TimeseriesConfiguration(types)
+        } else {
+            TimeseriesConfiguration.DEFAULT
         }
-        builder = builder.setTimeseriesConfiguration(timeseriesBuilder.build())
+        builder = builder.setTimeseriesConfiguration(timeseriesConfiguration)
     }
 
     return builder
