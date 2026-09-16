@@ -157,4 +157,154 @@ end
 
     expect(file.readAsStringSync(), original);
   });
+
+  test(
+    'removeSnapshotsMavenRepository strips only the snapshots block',
+    () async {
+      final file = File(p.join(root.path, 'build.gradle'))
+        ..writeAsStringSync('''
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url "https://central.sonatype.com/repository/maven-snapshots/"
+        }
+    }
+}
+''');
+
+      await removeSnapshotsMavenRepository(file, logger, false);
+
+      final contents = file.readAsStringSync();
+      expect(contents, isNot(contains('maven-snapshots')));
+      expect(contents, contains('google()'));
+      expect(contents, contains('mavenCentral()'));
+    },
+  );
+
+  test(
+    'removeSnapshotsMavenRepository leaves other maven blocks alone',
+    () async {
+      const original = '''
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+}
+''';
+      final file = File(p.join(root.path, 'build.gradle'))
+        ..writeAsStringSync(original);
+
+      await removeSnapshotsMavenRepository(file, logger, false);
+
+      expect(file.readAsStringSync(), original);
+    },
+  );
+
+  test(
+    'removeSnapshotsMavenRepository strips a single-line snapshots block',
+    () async {
+      final file = File(p.join(root.path, 'build.gradle'))
+        ..writeAsStringSync('''
+allprojects {
+    repositories {
+        google()
+        maven { url "https://central.sonatype.com/repository/maven-snapshots/" }
+    }
+}
+''');
+
+      await removeSnapshotsMavenRepository(file, logger, false);
+
+      final contents = file.readAsStringSync();
+      expect(contents, isNot(contains('maven-snapshots')));
+      expect(contents, contains('google()'));
+    },
+  );
+
+  test(
+    'removeSnapshotsMavenRepository is a no-op with no maven block',
+    () async {
+      const original = '''
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+''';
+      final file = File(p.join(root.path, 'build.gradle'))
+        ..writeAsStringSync(original);
+
+      await removeSnapshotsMavenRepository(file, logger, false);
+
+      expect(file.readAsStringSync(), original);
+    },
+  );
+
+  test('removeSnapshotsMavenRepository does not mistake a nested block\'s '
+      'closing brace for the maven block\'s own -- e.g. a JitPack entry\'s '
+      'content { includeGroup ... }', () async {
+    final file = File(p.join(root.path, 'build.gradle'))
+      ..writeAsStringSync('''
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+             url("https://jitpack.io")
+             content {
+                includeGroup "com.github.xgouchet.Elmyr"
+             }
+        }
+        maven {
+            url "https://central.sonatype.com/repository/maven-snapshots/"
+        }
+    }
+}
+''');
+
+    await removeSnapshotsMavenRepository(file, logger, false);
+
+    final contents = file.readAsStringSync();
+    expect(contents, isNot(contains('maven-snapshots')));
+    expect(contents, contains('url("https://jitpack.io")'));
+    expect(contents, contains('includeGroup "com.github.xgouchet.Elmyr"'));
+    // The JitPack block's own closing braces must both survive --
+    // content's and maven's -- not just the ones the naive first-`}`
+    // approach would have kept.
+    expect('{'.allMatches(contents).length, '}'.allMatches(contents).length);
+  });
+
+  test('pinning an Android SDK version also strips a snapshots block in the '
+      'same file, in one pass', () async {
+    final file = File(p.join(root.path, 'build.gradle'))
+      ..writeAsStringSync('''
+buildscript {
+    ext.datadog_version = "3+"
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        maven {
+            url "https://central.sonatype.com/repository/maven-snapshots/"
+        }
+    }
+}
+''');
+
+    await pinAndroidGradleVersion(file, '3.14.0', logger, false);
+    await removeSnapshotsMavenRepository(file, logger, false);
+
+    final contents = file.readAsStringSync();
+    expect(contents, contains('ext.datadog_version = "3.14.0"'));
+    expect(contents, isNot(contains('maven-snapshots')));
+    expect(contents, contains('google()'));
+  });
 }

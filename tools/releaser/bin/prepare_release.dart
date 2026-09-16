@@ -306,7 +306,9 @@ Future<void> prepareRelease(
       .toSet();
   for (final packagePlan in plan.packages) {
     final pkg = packagePlan.package;
-    final pubspecFile = File(p.join(pkg.absolutePath(ctx.repoRoot), 'pubspec.yaml'));
+    final pubspecFile = File(
+      p.join(pkg.absolutePath(ctx.repoRoot), 'pubspec.yaml'),
+    );
     if (pubspecHasDependencyOverrides(pubspecFile)) {
       throw StateError(
         '${pubspecFile.path} has a committed dependency_overrides block. '
@@ -360,11 +362,13 @@ Future<void> prepareRelease(
 
   // -- Commit B: publish-prep -- see the file-level comment above.
   //
-  // Podfile overrides are stripped from every workspace package's example
-  // apps, not just the ones releasing this run: an override floats a Pod on
-  // dd-sdk-ios's `develop` branch, and a release-prep branch needs the
-  // whole workspace to build in a stable, reproducible state, whether or
-  // not a given package is part of this release.
+  // Podfile overrides and snapshot maven repositories are stripped from
+  // every workspace package's example apps, not just the ones releasing
+  // this run: an override floats a Pod on dd-sdk-ios's `develop` branch,
+  // and a snapshots repo lets Gradle silently resolve a newer, unreleased
+  // dd-sdk-android build -- a release-prep branch needs the whole workspace
+  // to build in a stable, reproducible state, whether or not a given
+  // package is part of this release.
   for (final pkg in allGroups.expand((g) => g.members)) {
     final packageRoot = pkg.absolutePath(ctx.repoRoot);
     for (final exampleDir in const [
@@ -375,6 +379,13 @@ Future<void> prepareRelease(
       final podfile = File(p.join(packageRoot, exampleDir, 'ios', 'Podfile'));
       if (podfile.existsSync()) {
         await removePodfileOverrides(podfile, _log, false);
+      }
+
+      final exampleGradle = File(
+        p.join(packageRoot, exampleDir, 'android', 'build.gradle'),
+      );
+      if (exampleGradle.existsSync()) {
+        await removeSnapshotsMavenRepository(exampleGradle, _log, false);
       }
     }
   }
@@ -596,6 +607,12 @@ Future<void> _applyPublishPrep(
           break;
         case NativeSdk.android:
           await pinAndroidGradleVersion(file, targetVersion, _log, false);
+          // The package's own build.gradle can inject a snapshots repo into
+          // every consuming app's build via `rootProject.allprojects` --
+          // fine for day-to-day development against an unreleased
+          // dd-sdk-android build, but a release must not ship pinned to an
+          // exact version while still willing to resolve a newer snapshot.
+          await removeSnapshotsMavenRepository(file, _log, false);
           break;
         case NativeSdk.cpp:
           final targetSha = delta.targetSha;
