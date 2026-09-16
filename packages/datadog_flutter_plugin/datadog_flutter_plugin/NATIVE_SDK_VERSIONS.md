@@ -1,3 +1,9 @@
+> [!NOTE]
+> Starting with version 4.0, this package no longer bundles native SDK code directly.
+> Each platform package (`datadog_flutter_plugin_ios`, `datadog_flutter_plugin_android`,
+> `datadog_flutter_plugin_desktop`) ships its own native SDK and tracks them in its own
+> `NATIVE_SDK_VERSIONS.md`. The table below is for historical reference.
+
 | Flutter | iOS SDK | Android SDK |
 |---------|---------|-------------|
 | 3.5.0 | 3.15.0 | 3.12.1 |

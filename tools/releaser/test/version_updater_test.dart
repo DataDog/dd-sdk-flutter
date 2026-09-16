@@ -43,13 +43,40 @@ void main() {
     );
   });
 
-  test('renders a dash for any SDK not provided', () async {
-    final file = File(p.join(root.path, 'NATIVE_SDK_VERSIONS.md'));
+  test(
+    'omits columns for platforms this package does not ship, rather than '
+    'padding them with a dash -- a brand-new file is always a single '
+    'platform package\'s own, never the app-facing aggregate',
+    () async {
+      final file = File(p.join(root.path, 'NATIVE_SDK_VERSIONS.md'));
 
-    await updateNativeSdkVersionsMd(file, '1.0.0', logger, false);
+      await updateNativeSdkVersionsMd(
+        file,
+        '1.0.0',
+        logger,
+        false,
+        iosVersion: '3.15.0',
+      );
 
-    expect(file.readAsStringSync(), contains('| 1.0.0 | - | - | - |'));
-  });
+      expect(
+        file.readAsStringSync(),
+        '| Flutter | iOS SDK |\n'
+        '|---------|---------|\n'
+        '| 1.0.0 | 3.15.0 |\n',
+      );
+    },
+  );
+
+  test(
+    'does not create the file at all for a package shipping no native SDK',
+    () async {
+      final file = File(p.join(root.path, 'NATIVE_SDK_VERSIONS.md'));
+
+      await updateNativeSdkVersionsMd(file, '1.0.0', logger, false);
+
+      expect(file.existsSync(), isFalse);
+    },
+  );
 
   test('inserts a new row newest-first, leaving existing rows alone', () async {
     final file = File(p.join(root.path, 'NATIVE_SDK_VERSIONS.md'))

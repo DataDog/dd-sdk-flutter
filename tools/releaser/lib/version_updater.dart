@@ -40,10 +40,23 @@ Future<void> updateNativeSdkVersionsMd(
   };
 
   if (!nativeSdkVersionsFile.existsSync()) {
+    // Only the platform(s) this package actually ships -- a brand-new file
+    // is always a single-platform package's own (post-4.0, per-platform)
+    // NATIVE_SDK_VERSIONS.md, never the app-facing package's aggregate
+    // table, so there's no reason for it to carry other platforms' columns
+    // filled with '-'.
+    final columns = [
+      for (final c in _nativeSdkColumns)
+        if (c == 'Flutter' || newValues[c] != null) c,
+    ];
+    if (columns.length == 1) {
+      // Nothing but 'Flutter' -- this package ships no native SDK at all,
+      // so it shouldn't have a NATIVE_SDK_VERSIONS.md in the first place.
+      return;
+    }
     logger.warning(
       '⚠️ ${nativeSdkVersionsFile.path} does not exist, creating it now.',
     );
-    final columns = _nativeSdkColumns;
     if (!dryRun) {
       final header = _renderMdTableRow(columns);
       final separator = _renderMdSeparatorRow(columns);
