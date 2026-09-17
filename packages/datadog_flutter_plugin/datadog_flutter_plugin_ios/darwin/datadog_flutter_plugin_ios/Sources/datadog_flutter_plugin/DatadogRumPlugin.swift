@@ -69,12 +69,13 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
     public static func register(with registrar: FlutterPluginRegistrar) {}
 
     func attachToEngine(registrar: FlutterPluginRegistrar) {
-		#if os(iOS)
+        #if os(iOS)
         let messenger = registrar.messenger()
         #else
         let messenger = registrar.messenger
         #endif
-        methodChannel = FlutterMethodChannel(name: "datadog_sdk_flutter.rum", binaryMessenger: messenger)
+        let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.rum", binaryMessenger: messenger)
+        methodChannel = channel
         registrar.addMethodCallDelegate(self, channel: channel)
     }
 

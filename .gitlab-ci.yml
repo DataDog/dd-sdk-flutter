@@ -176,7 +176,7 @@ build-macos-spm:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
-    - macos:sonoma
+    - macos:sequoia
     - specific:true
   script:
     - !reference [.pre, script]
@@ -316,7 +316,7 @@ macos-integration-test:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
-    - macos:sonoma
+    - macos:sequoia
     - specific:true
   script:
     - !reference [.pre, script]
