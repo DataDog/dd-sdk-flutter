@@ -289,9 +289,7 @@ class DdRumWeb extends DdRumPlatform {
   Future<void> addViewAttributes(Map<String, Object?> attributes) async {
     for (final attr in attributes.entries) {
       DD_RUM?.setViewContextProperty(
-        attr.key,
-        valueToJs(attr.value, 'attribute[${attr.key}]'),
-      );
+          attr.key, valueToJs(attr.value, 'attribute[${attr.key}]'));
     }
   }
 
@@ -334,7 +332,10 @@ class DdRumWeb extends DdRumPlatform {
     final context = attributesToJs(attributes, 'attributes');
     DD_RUM?.startAction(
       name,
-      _ActionOptions(type: actionTypeToJs(type), context: context),
+      _ActionOptions(
+        type: actionTypeToJs(type),
+        context: context,
+      ),
     );
   }
 
@@ -402,7 +403,10 @@ class DdRumWeb extends DdRumPlatform {
 
     DD_RUM?.stopResource(
       key,
-      _ResourceStopOptions(context: context, resourceKey: key),
+      _ResourceStopOptions(
+        context: context,
+        resourceKey: key,
+      ),
     );
 
     final epochTime = timestamp.millisecondsSinceEpoch;
@@ -439,7 +443,10 @@ class DdRumWeb extends DdRumPlatform {
     final context = attributesToJs(attributes, 'attributes');
     DD_RUM?.stopAction(
       name,
-      _ActionOptions(type: actionTypeToJs(type), context: context),
+      _ActionOptions(
+        type: actionTypeToJs(type),
+        context: context,
+      ),
     );
   }
 
@@ -463,46 +470,46 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
-  Future<void> startFeatureOperation(
-    DateTime timestamp,
-    String name,
-    String? operationKey,
-    Map<String, Object?> attributes,
-  ) async {
+  Future<void> startFeatureOperation(DateTime timestamp, String name,
+      String? operationKey, Map<String, Object?> attributes) async {
     final context = attributesToJs(attributes, 'attributes');
     DD_RUM?.startFeatureOperation(
       name,
-      _FeatureOperationOptions(operationKey: operationKey, context: context),
+      _FeatureOperationOptions(
+        operationKey: operationKey,
+        context: context,
+      ),
     );
   }
 
   @override
-  Future<void> succeedFeatureOperation(
-    DateTime timestamp,
-    String name,
-    String? operationKey,
-    Map<String, Object?> attributes,
-  ) async {
+  Future<void> succeedFeatureOperation(DateTime timestamp, String name,
+      String? operationKey, Map<String, Object?> attributes) async {
     final context = attributesToJs(attributes, 'attributes');
     DD_RUM?.succeedFeatureOperation(
       name,
-      _FeatureOperationOptions(operationKey: operationKey, context: context),
+      _FeatureOperationOptions(
+        operationKey: operationKey,
+        context: context,
+      ),
     );
   }
 
   @override
   Future<void> failFeatureOperation(
-    DateTime timestamp,
-    String name,
-    String? operationKey,
-    RumFeatureOperationFailureReason failureReason,
-    Map<String, Object?> attributes,
-  ) async {
+      DateTime timestamp,
+      String name,
+      String? operationKey,
+      RumFeatureOperationFailureReason failureReason,
+      Map<String, Object?> attributes) async {
     final context = attributesToJs(attributes, 'attributes');
     DD_RUM?.failFeatureOperation(
       name,
       failureReason.webValue(),
-      _FeatureOperationOptions(operationKey: operationKey, context: context),
+      _FeatureOperationOptions(
+        operationKey: operationKey,
+        context: context,
+      ),
     );
   }
 
@@ -735,18 +742,11 @@ extension type _DdRum._(JSObject _) implements JSObject {
   external void clearAccount();
   external void setTrackingConsent(String consent);
   external void startFeatureOperation(
-    String name,
-    _FeatureOperationOptions options,
-  );
+      String name, _FeatureOperationOptions options);
   external void succeedFeatureOperation(
-    String name,
-    _FeatureOperationOptions options,
-  );
+      String name, _FeatureOperationOptions options);
   external void failFeatureOperation(
-    String name,
-    String failureReason,
-    _FeatureOperationOptions options,
-  );
+      String name, String failureReason, _FeatureOperationOptions options);
   external void startAction(String name, _ActionOptions? options);
   external void stopAction(String name, _ActionOptions? options);
   external void startResource(String url, _ResourceStartOptions? options);
