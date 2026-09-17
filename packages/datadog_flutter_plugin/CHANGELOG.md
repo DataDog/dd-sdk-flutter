@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.5.2
+
+* [Web] Avoid createJSInteropWrapper crash in wasm dry-run.
+
 ## 3.5.1
 
 * [Web] Use JS types in TracingUrl closure. See [#1127](https://github.com/DataDog/dd-sdk-flutter/issues/1127)
