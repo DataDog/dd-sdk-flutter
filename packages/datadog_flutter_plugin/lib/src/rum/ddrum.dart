@@ -271,6 +271,20 @@ class DatadogRum {
     });
   }
 
+  /// Marks the moment when the UI of the app is considered fully displayed.
+  /// The duration between the launch of the app and this call is reported as
+  /// the time to full display (TTFD) of the app launch.
+  ///
+  /// Only the first call to this method has any effect for a given RUM
+  /// session.
+  ///
+  /// *Note*: This API is experimental and may change in the future.
+  void reportAppFullyDisplayed() {
+    wrap('rum.reportAppFullyDisplayed', logger, null, () {
+      return _platform.reportAppFullyDisplayed();
+    });
+  }
+
   /// Notifies that the Exception or Error [error] occurred in currently
   /// presented View, with an origin of [source]. You can optionally set
   /// additional [attributes] for this error, an [errorType] and a

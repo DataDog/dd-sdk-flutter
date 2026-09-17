@@ -203,6 +203,14 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
+  Future<void> reportAppFullyDisplayed() {
+    return methodChannel.invokeMethod(
+      'reportAppFullyDisplayed',
+      <String, Object?>{},
+    );
+  }
+
+  @override
   Future<void> addErrorInfo(
     DateTime timestamp,
     String message,
