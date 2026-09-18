@@ -2,17 +2,21 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../datadog_flutter_plugin.dart';
 import '../../datadog_internal.dart';
 
-/// Information about a View that will be passed to [DdRum.startView]
+/// Information about a View that will be passed to [DatadogRum.startView]
 class RumViewInfo {
-  /// The name of the view
+  /// The name of the view, reported as `view.name` in the RUM explorer.
   final String name;
 
-  /// A path to the view
+  /// An optional path or URL for the view, reported as `view.url`. When this
+  /// contains a query string (for example `/products?category=shoes`), Datadog
+  /// derives the standard `@view.url_query.*` facets from it server-side. When
+  /// `null`, [name] is used as the view key.
   final String? path;
 
   /// Any attributes to be associated with this view
@@ -23,30 +27,70 @@ class RumViewInfo {
     this.path,
     this.attributes = const {},
   });
+
+  /// The key that identifies this view to RUM, reported as `view.url`. Prefers
+  /// [path] (which may include a query string, so the backend can derive
+  /// `@view.url_query.*`) and falls back to [name].
+  String get viewKey => path ?? name;
+
+  /// The display name passed to [DatadogRum.startView]. Returns `null` when no
+  /// distinct [path] is provided, so the view key is used as the name.
+  String? get viewName => path != null ? name : null;
 }
 
 /// A function that can be used to supply custom information to
-/// [DdRum.startView].
+/// [DatadogRum.startView].
 ///
 /// Returning `null` from this function will prevent the call
-/// to [DdRum.startView].
+/// to [DatadogRum.startView].
 ///
 /// See [DatadogNavigationObserver.viewInfoExtractor].
 typedef ViewInfoExtractor = RumViewInfo? Function(Route<dynamic> route);
 
 /// The function that provides the default route naming behavior for
-/// [DatadogNavigationObserver]. If the supplied route is a PageRoute and contains
-/// a name, it returns a [RumViewInfo] with the supplied name. Otherwise it returns
-/// `null`.
+/// [DatadogNavigationObserver]. If the supplied route contains a name, it
+/// returns a [RumViewInfo] built from that name via [rumViewInfoFromRouteName].
+/// Otherwise it returns `null`.
 RumViewInfo? defaultViewInfoExtractor(Route<dynamic> route) {
-  if (route is PageRoute) {
-    var name = route.settings.name;
-    if (name != null) {
-      return RumViewInfo(name: name);
-    }
+  final name = route.settings.name;
+  if (name == null) {
+    return null;
   }
 
-  return null;
+  return rumViewInfoFromRouteName(name);
+}
+
+/// Builds a [RumViewInfo] from a raw route name, parsing any URL query string
+/// it contains.
+///
+/// When [routeName] includes a query string (for example
+/// `/products?category=shoes&id=123`) the `view.url` will carry the full path +
+/// query string, which Datadog will add to its standard `@view.url_query.*` facets.
+///
+/// Routes without a query string use the name as-is and add no extra attributes.
+RumViewInfo rumViewInfoFromRouteName(String routeName) {
+  if (!routeName.contains('?')) {
+    return RumViewInfo(name: routeName);
+  }
+
+  final Uri uri;
+  try {
+    uri = Uri.parse(routeName);
+  } on FormatException {
+    return RumViewInfo(name: routeName);
+  }
+
+  if (uri.queryParameters.isEmpty) {
+    return RumViewInfo(name: routeName);
+  }
+
+  // The path without the query string, used as the human-readable view name.
+  final viewName = uri.path.isNotEmpty ? uri.path : routeName.split('?').first;
+
+  return RumViewInfo(
+    name: viewName.isNotEmpty ? viewName : routeName,
+    path: routeName,
+  );
 }
 
 /// This class can be added to a MaterialApp to automatically start and stop RUM
@@ -93,6 +137,7 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
+      default:
         if (_currentView != null) {
           _pendingView = _currentView;
           _stopView(_currentView);
@@ -102,13 +147,35 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
   }
 
   void _startView(RumViewInfo? viewInfo) {
-    if (ambiguate(WidgetsBinding.instance)?.lifecycleState !=
-        AppLifecycleState.resumed) {
+    // For platforms that don't support app lifecycle state (lifecycleState is null)
+    // assume that the application is foregrounded.
+    final lifecycleState = ambiguate(WidgetsBinding.instance)?.lifecycleState ??
+        AppLifecycleState.resumed;
+    if (lifecycleState != AppLifecycleState.resumed) {
       _pendingView = viewInfo;
     } else {
       _currentView = viewInfo;
       if (viewInfo != null) {
-        datadogSdk.rum?.startView(viewInfo.name, null, viewInfo.attributes);
+        if (kIsWeb) {
+          // On web, Flutter is informing us of the change in Route before the
+          // browser has had a chance to update the `location`. Wait a frame so
+          // the Browser SDK can properly capture the location. Because of this wait,
+          // we don't track "First Build Complete" on web, as it would be skewed
+          // by this wait.
+          Future.delayed(const Duration(milliseconds: 1)).then((_) {
+            // Make sure the view wasn't overwritten in the last ~1ms
+            if (_currentView == viewInfo) {
+              datadogSdk.rum
+                  ?.startView(viewInfo.name, null, viewInfo.attributes);
+            }
+          });
+        } else {
+          datadogSdk.rum?.startView(
+              viewInfo.viewKey, viewInfo.viewName, viewInfo.attributes);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            datadogSdk.rum?.markViewFirstBuildComplete(viewInfo.viewKey);
+          });
+        }
       } else {
         _pendingView = viewInfo;
       }
@@ -117,7 +184,7 @@ class DatadogNavigationObserver extends RouteObserver<ModalRoute<dynamic>>
 
   void _stopView(RumViewInfo? viewInfo) {
     if (viewInfo != null) {
-      datadogSdk.rum?.stopView(viewInfo.name);
+      datadogSdk.rum?.stopView(viewInfo.viewKey);
     }
     _currentView = null;
   }
@@ -208,7 +275,7 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
         if (route.settings.name == null) {
           _routeObserver?.subscribe(this, route);
         } else {
-          DatadogSdk.instance.internalLogger.info(
+          DatadogSdk.instance.internalLogger.debug(
               '$DatadogRouteAwareMixin for ${rumViewInfo.name} (on widget $T) '
               'will be ignored because it is part of a named route ${route.settings.name}');
         }
@@ -257,15 +324,20 @@ mixin DatadogRouteAwareMixin<T extends StatefulWidget> on State<T>, RouteAware {
   void _startView() {
     if (_routeObserver != null) {
       final info = rumViewInfo;
-      _routeObserver?.datadogSdk.rum
-          ?.startView(info.name, null, info.attributes);
+      final rum = _routeObserver?.datadogSdk.rum;
+      if (rum != null) {
+        rum.startView(info.viewKey, info.viewName, info.attributes);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          rum.markViewFirstBuildComplete(info.viewKey);
+        });
+      }
     }
   }
 
   void _stopView() {
     if (_routeObserver != null) {
       final info = rumViewInfo;
-      _routeObserver?.datadogSdk.rum?.stopView(info.name);
+      _routeObserver?.datadogSdk.rum?.stopView(info.viewKey);
     }
   }
 }
@@ -295,10 +367,10 @@ class DatadogNavigationObserverProvider extends InheritedWidget {
   final DatadogNavigationObserver navObserver;
 
   const DatadogNavigationObserverProvider({
-    Key? key,
+    super.key,
     required this.navObserver,
-    required Widget child,
-  }) : super(key: key, child: child);
+    required super.child,
+  });
 
   @override
   bool updateShouldNotify(

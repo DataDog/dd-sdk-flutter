@@ -9,17 +9,19 @@ buildscript {
     }
 
     dependencies {
-        classpath "org.jlleitschuh.gradle:ktlint-gradle:10.2.0"
+        classpath "org.jlleitschuh.gradle:ktlint-gradle:11.6.0"
     }
 }
 
 plugins {
-    id 'com.android.application' version '7.3.0' apply false
-    id 'com.android.library' version '7.3.0' apply false
-    id 'org.jetbrains.kotlin.android' version '1.7.10' apply false
+    id 'com.android.application' version '8.9.1' apply false
+    id 'com.android.library' version '8.9.1' apply false
+    id 'org.jetbrains.kotlin.android' version '2.2.20' apply false
 }
 
 subprojects {
-    apply from: "${project.rootDir}/buildscripts/ktlint.gradle"
+    if (project.projectDir.canonicalPath.startsWith(rootProject.projectDir.canonicalPath)) {
+        apply from: "${project.rootDir}/buildscripts/ktlint.gradle"
+    }
 }
 

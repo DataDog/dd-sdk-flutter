@@ -1,8 +1,57 @@
 # Changelog
 
-## Unreleased
+## 3.2.0
 
+* Capture HTTP request and response headers for RUM resources.
 
+## 3.1.0
+
+* Add RUM resource size tracking for chunked / streamed responses.
+
+## 3.0.1
+
+* Properly depend on Datadog 3.0.
+
+## 3.0.0
+
+* Support automatic `dart:io` network tracking from background isolates.
+* Support RUM context in trace headers.
+* Support consistent sampling based on session ID.
+* Update Kotlin version to 2.1.0.
+* [Android] Fix `compileSdk` to be 35 on main package.
+* Upgrade Android min versions for v3.
+* [Web] Fix conversion of `List` to `JSArray` for Flutter Web.
+* Support manual resource tracking on web.
+* Support deterministic sampling decisions on distributed traces.
+* Upgrade Android projects to AGP 8.6.0.
+
+## 2.3.0
+
+* Fix ignored URLs throwing an exception with a `clientListener`. See [#716](https://github.com/DataDog/dd-sdk-flutter/issues/716)
+* Fix distributed tracing for Web.
+* Upgrade Android build to SDK 34. See [#639](https://github.com/DataDog/dd-sdk-flutter/issues/639)
+* Add the ability to ignore tracking on specific url patterns with `ignoreUrlPatterns` when using the attach configuration.
+* Add support for `TraceContextInjection` configuration.
+
+## 2.2.0
+
+* Support 128-bit trace ids in distributed tracing.
+
+## 2.1.2
+
+* Constrain compatible `datadog_flutter_plugin` to <2.5.0
+
+## 2.1.1
+
+* Fix `_TypeError` when request URL is matched `ignoreUrlPatterns`. See [#590] (Thanks [@ronnnnn][])
+
+## 2.1.0
+
+* Add the ability to ignore tracking on specific url patterns with `ignoreUrlPatterns`.
+
+## 2.0.0
+
+* Update to v2.0 of Datadog SDKs
 
 ## 1.4.0
 
@@ -68,3 +117,5 @@
 
 [#355]: https://github.com/DataDog/dd-sdk-flutter/issues/355
 [#424]: https://github.com/DataDog/dd-sdk-flutter/issues/424
+[#590]: https://github.com/DataDog/dd-sdk-flutter/pull/590
+[@ronnnnn]: https://github.com/ronnnnn

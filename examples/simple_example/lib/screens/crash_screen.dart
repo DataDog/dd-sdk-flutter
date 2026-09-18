@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 class CrashTestScreen extends StatelessWidget {
   final methodChannel = const MethodChannel('com.datadog.crash_channel');
 
-  const CrashTestScreen({Key? key}) : super(key: key);
+  const CrashTestScreen({super.key});
 
   void _onThrow() {
     throw UnsupportedError('Tapping that button was unsupported');

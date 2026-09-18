@@ -5,12 +5,15 @@
 import 'dart:async';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../main.dart';
 
 const fakeRootUrl = 'https://fake_url';
+const onboardingFeatureOperation = 'Onboarding';
+const firstDownloadFeatureOperation = 'First Screen Download';
 
 class RumManualInstrumentationScenario extends StatefulWidget {
   const RumManualInstrumentationScenario({Key? key}) : super(key: key);
@@ -61,6 +64,13 @@ class _RumManualInstrumentationScenarioState
   @override
   void didPush() {
     DatadogSdk.instance.rum?.startView(_viewKey);
+    DatadogSdk.instance.rum?.startFeatureOperation(
+      onboardingFeatureOperation,
+      operationKey: 'key_a',
+      attributes: {
+        'start_state': 1,
+      },
+    );
   }
 
   @override
@@ -94,26 +104,37 @@ class _RumManualInstrumentationScenarioState
   Future<void> _fakeLoading() async {
     await Future<void>.delayed(const Duration(milliseconds: 50));
     DatadogSdk.instance.rum?.addTiming('content-ready');
+    DatadogSdk.instance.rum?.addViewLoadingTime();
+
+    DatadogSdk.instance.setUserInfo(
+        id: 'fake-id',
+        name: 'Johnny Silverhand',
+        email: 'fake@datadoghq.com',
+        extraInfo: {'type': 'customer', 'profession': 'rocker'});
   }
 
   void _simulateResourceDownload() async {
     final rum = DatadogSdk.instance.rum;
+    rum?.startFeatureOperation(firstDownloadFeatureOperation);
 
     rum?.addTiming('first-interaction');
-    rum?.addUserAction(RumUserActionType.tap, 'Tapped Download');
+    rum?.addAction(RumActionType.tap, 'Tapped Download');
 
     var simulatedResourceKey1 = '/resource/1';
     var simulatedResourceKey2 = '/resource/2';
 
-    rum?.startResourceLoading(simulatedResourceKey1, RumHttpMethod.get,
+    rum?.startResource(simulatedResourceKey1, RumHttpMethod.get,
         '$fakeRootUrl$simulatedResourceKey1');
-    rum?.startResourceLoading(simulatedResourceKey2, RumHttpMethod.get,
+    rum?.startResource(simulatedResourceKey2, RumHttpMethod.get,
         '$fakeRootUrl$simulatedResourceKey2');
 
     await Future<void>.delayed(const Duration(milliseconds: 100));
-    rum?.stopResourceLoading(simulatedResourceKey1, 200, RumResourceType.image);
-    rum?.stopResourceLoadingWithErrorInfo(
+    rum?.stopResource(simulatedResourceKey1, 200, RumResourceType.image, 2048);
+    rum?.stopResourceWithErrorInfo(
         simulatedResourceKey2, 'Status code 400', 'ErrorLoading');
+
+    rum?.failFeatureOperation(
+        firstDownloadFeatureOperation, RumFeatureOperationFailureReason.error);
 
     setState(() {
       _contentReady = true;
@@ -121,8 +142,7 @@ class _RumManualInstrumentationScenarioState
   }
 
   Future<void> _onNextTapped() async {
-    DatadogSdk.instance.rum
-        ?.addUserAction(RumUserActionType.tap, 'Next Screen');
+    DatadogSdk.instance.rum?.addAction(RumActionType.tap, 'Next Screen');
     unawaited(Navigator.push(
       context,
       MaterialPageRoute(
@@ -181,6 +201,11 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
   void didPush() {
     DatadogSdk.instance.rum?.startView(_viewKey, _viewName);
 
+    DatadogSdk.instance.rum
+        ?.addViewAttribute('view_attribute', 'view_attribute_value');
+
+    _simulateResourceDownload();
+
     DatadogSdk.instance.rum?.addFeatureFlagEvaluation('mock_flag_a', false);
     DatadogSdk.instance.rum
         ?.addFeatureFlagEvaluation('mock_flag_b', 'mock_value');
@@ -214,6 +239,18 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
     );
   }
 
+  void _simulateResourceDownload() async {
+    final rum = DatadogSdk.instance.rum;
+
+    var simulatedResourceKey1 = '/tns-resource/1';
+
+    rum?.startResource(simulatedResourceKey1, RumHttpMethod.get,
+        '$fakeRootUrl$simulatedResourceKey1');
+
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    rum?.stopResource(simulatedResourceKey1, 200, RumResourceType.image);
+  }
+
   Future<void> _simulateActions() async {
     await Future<void>.delayed(const Duration(seconds: 1));
     DatadogSdk.instance.rum?.addErrorInfo(
@@ -221,13 +258,14 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
       RumErrorSource.source,
       attributes: {
         'custom_attribute': 'my_attribute',
+        DatadogAttributes.errorFingerprint: 'custom-fingerprint',
       },
     );
     DatadogSdk.instance.rum
-        ?.startUserAction(RumUserActionType.scroll, 'User Scrolling');
+        ?.startAction(RumActionType.scroll, 'User Scrolling');
     await Future<void>.delayed(const Duration(seconds: 2));
-    DatadogSdk.instance.rum?.stopUserAction(
-        RumUserActionType.scroll, 'User Scrolling', {'scroll_distance': 12.2});
+    DatadogSdk.instance.rum?.stopAction(
+        RumActionType.scroll, 'User Scrolling', {'scroll_distance': 12.2});
 
     setState(() {
       _longTaskReady = true;
@@ -235,7 +273,7 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
   }
 
   void _triggerLongTask() {
-    final doneTime = DateTime.now().add(const Duration(milliseconds: 200));
+    final doneTime = DateTime.now().add(const Duration(milliseconds: 500));
     while (DateTime.now().compareTo(doneTime) < 0) {}
     setState(() {
       _nextReady = true;
@@ -243,8 +281,9 @@ class _RumManualInstrumentation2State extends State<RumManualInstrumentation2>
   }
 
   void _onNextTapped() {
-    DatadogSdk.instance.rum
-        ?.addUserAction(RumUserActionType.tap, 'Next Screen');
+    DatadogSdk.instance.rum?.addAction(RumActionType.tap, 'Next Screen');
+    DatadogSdk.instance.rum?.succeedFeatureOperation(onboardingFeatureOperation,
+        operationKey: 'key_a');
     Navigator.push<void>(
       context,
       MaterialPageRoute(

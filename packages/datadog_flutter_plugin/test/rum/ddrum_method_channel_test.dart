@@ -1,15 +1,17 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-Present Datadog, Inc.
-
+@TestOn('vm')
 import 'dart:async';
 import 'dart:math';
 
+import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
-import 'package:datadog_flutter_plugin/src/rum/ddrum.dart';
 import 'package:datadog_flutter_plugin/src/rum/ddrum_method_channel.dart';
+import 'package:datadog_flutter_plugin/src/rum/rum.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 class MockType {
   final int value;
@@ -22,11 +24,18 @@ class MockType {
   }
 }
 
+class MockTimeProvider extends Mock implements DatadogTimeProvider {}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late DdRumMethodChannel ddRumPlatform;
   final List<MethodCall> log = [];
+
+  final random = Random();
+  DateTime randomTimestamp() {
+    return DateTime.fromMillisecondsSinceEpoch(random.nextInt(1 << 32));
+  }
 
   setUp(() {
     ddRumPlatform = DdRumMethodChannel();
@@ -34,6 +43,9 @@ void main() {
         ?.defaultBinaryMessenger
         .setMockMethodCallHandler(ddRumPlatform.methodChannel, (message) {
       log.add(message);
+      if (message.method == 'getCurrentSessionId') {
+        return Future.value('fake-session-id');
+      }
       return null;
     });
   });
@@ -42,104 +54,225 @@ void main() {
     log.clear();
   });
 
+  test('getCurrentSessionId calls to platform', () async {
+    var sessionId = await ddRumPlatform.getCurrentSessionId();
+
+    expect(sessionId, 'fake-session-id');
+    expect(log, [isMethodCall('getCurrentSessionId', arguments: {})]);
+  });
+
+  test('cachedSessionId starts null', () async {
+    var cachedSessionId = ddRumPlatform.cachedSessionId;
+
+    // Then
+    expect(cachedSessionId, isNull);
+  });
+
+  test('getCurrentSessionId sets cached sessionId', () async {
+    var _ = await ddRumPlatform.getCurrentSessionId();
+    var cachedSessionId = ddRumPlatform.cachedSessionId;
+
+    // Then
+    expect(cachedSessionId, 'fake-session-id');
+  });
+
+  test('onSessionChanged sets cachedSessionId', () async {
+    // Given
+    final sessionId = randomString();
+
+    // When
+    await ddRumPlatform.handleMethodCall(
+      MethodCall('onSessionChanged', {
+        'sessionId': sessionId,
+        'discarded': randomBool(),
+      }),
+    );
+
+    // Then
+    expect(ddRumPlatform.cachedSessionId, sessionId);
+  });
+
   test('startView calls to platform', () async {
-    await ddRumPlatform.startView('my_key', 'my_name', {'attribute': 'value'});
+    final timestamp = randomTimestamp();
+    await ddRumPlatform.startView(timestamp, 'my_key', 'my_name', {
+      'attribute': 'value',
+    });
 
     expect(log, [
-      isMethodCall('startView', arguments: {
-        'key': 'my_key',
-        'name': 'my_name',
-        'attributes': {'attribute': 'value'}
-      })
+      isMethodCall(
+        'startView',
+        arguments: {
+          'key': 'my_key',
+          'name': 'my_name',
+          'attributes': {
+            'attribute': 'value',
+            '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+          },
+        },
+      ),
     ]);
   });
 
   test('stopView calls to platform', () async {
-    await ddRumPlatform.stopView('my_key', {'stop_attribute': 'my_value'});
+    final timestamp = randomTimestamp();
+    await ddRumPlatform.stopView(timestamp, 'my_key', {
+      'stop_attribute': 'my_value',
+    });
 
     expect(log, [
-      isMethodCall('stopView', arguments: {
-        'key': 'my_key',
-        'attributes': {'stop_attribute': 'my_value'}
-      })
+      isMethodCall(
+        'stopView',
+        arguments: {
+          'key': 'my_key',
+          'attributes': {
+            'stop_attribute': 'my_value',
+            '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+          },
+        },
+      ),
     ]);
   });
 
   test('addTiming calls to platform', () async {
-    await ddRumPlatform.addTiming('my timing name');
+    final timestamp = randomTimestamp();
+    await ddRumPlatform.addTiming(timestamp, 'my timing name');
 
     expect(log, [
-      isMethodCall('addTiming', arguments: {'name': 'my timing name'})
+      isMethodCall('addTiming', arguments: {'name': 'my timing name'}),
     ]);
   });
 
-  test('startResourceLoading calls to platform', () async {
-    await ddRumPlatform.startResourceLoading('resource_key', RumHttpMethod.get,
-        'https://fakeresource.com/url', {'attribute_key': 'attribute_value'});
+  test('addViewLoadingTime calls to platform', () async {
+    await ddRumPlatform.addViewLoadingTime(true);
 
     expect(log, [
-      isMethodCall('startResourceLoading', arguments: {
-        'key': 'resource_key',
-        'httpMethod': 'RumHttpMethod.get',
-        'url': 'https://fakeresource.com/url',
-        'attributes': {'attribute_key': 'attribute_value'}
-      })
+      isMethodCall('addViewLoadingTime', arguments: {'overwrite': true}),
     ]);
   });
 
-  test('stopResourceLoading calls to platform', () async {
-    await ddRumPlatform.stopResourceLoading('resource_key', 202,
-        RumResourceType.image, 41123, {'attribute_key': 'attribute_value'});
+  test('startResource calls to platform', () async {
+    final timestamp = randomTimestamp();
+    await ddRumPlatform.startResource(
+      timestamp,
+      'resource_key',
+      RumHttpMethod.get,
+      'https://fakeresource.com/url',
+      {'attribute_key': 'attribute_value'},
+    );
 
     expect(log, [
-      isMethodCall('stopResourceLoading', arguments: {
-        'key': 'resource_key',
-        'statusCode': 202,
-        'kind': 'RumResourceType.image',
-        'size': 41123,
-        'attributes': {'attribute_key': 'attribute_value'}
-      })
+      isMethodCall(
+        'startResource',
+        arguments: {
+          'key': 'resource_key',
+          'httpMethod': 'RumHttpMethod.get',
+          'url': 'https://fakeresource.com/url',
+          'attributes': {
+            'attribute_key': 'attribute_value',
+            '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+          },
+        },
+      ),
     ]);
   });
 
-  test('stopResourceLoadingWithError calls to platform with info', () async {
+  test('stopResource calls to platform', () async {
+    final timestamp = randomTimestamp();
+    await ddRumPlatform.stopResource(
+      timestamp,
+      'resource_key',
+      202,
+      RumResourceType.image,
+      41123,
+      {'attribute_key': 'attribute_value'},
+    );
+
+    expect(log, [
+      isMethodCall(
+        'stopResource',
+        arguments: {
+          'key': 'resource_key',
+          'statusCode': 202,
+          'kind': 'RumResourceType.image',
+          'size': 41123,
+          'attributes': {
+            'attribute_key': 'attribute_value',
+            '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+          },
+        },
+      ),
+    ]);
+  });
+
+  test('stopResourceWithError calls to platform with info', () async {
+    final timestamp = randomTimestamp();
     final exception = TimeoutException(
-        'Timeout retrieving resource', const Duration(seconds: 5));
-    await ddRumPlatform.stopResourceLoadingWithError(
-        'resource_key', exception, {'attribute_key': 'attribute_value'});
+      'Timeout retrieving resource',
+      const Duration(seconds: 5),
+    );
+    await ddRumPlatform.stopResourceWithError(
+      timestamp,
+      'resource_key',
+      exception,
+      {'attribute_key': 'attribute_value'},
+    );
 
     expect(log, [
-      isMethodCall('stopResourceLoadingWithError', arguments: {
-        'key': 'resource_key',
-        'message': exception.toString(),
-        'type': exception.runtimeType.toString(),
-        'attributes': {'attribute_key': 'attribute_value'}
-      })
+      isMethodCall(
+        'stopResourceWithError',
+        arguments: {
+          'key': 'resource_key',
+          'message': exception.toString(),
+          'type': exception.runtimeType.toString(),
+          'attributes': {
+            'attribute_key': 'attribute_value',
+            '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+          },
+        },
+      ),
     ]);
   });
 
-  test('stopResourceLoadingWithErrorInfo calls to platform', () async {
-    await ddRumPlatform.stopResourceLoadingWithErrorInfo(
-        'resource_key',
-        'Exception message',
-        'Exception type',
-        {'attribute_key': 'attribute_value'});
+  test('stopResourceWithErrorInfo calls to platform', () async {
+    final timestamp = randomTimestamp();
+    await ddRumPlatform.stopResourceWithErrorInfo(
+      timestamp,
+      'resource_key',
+      'Exception message',
+      'Exception type',
+      {'attribute_key': 'attribute_value'},
+    );
 
     expect(log, [
-      isMethodCall('stopResourceLoadingWithError', arguments: {
-        'key': 'resource_key',
-        'message': 'Exception message',
-        'type': 'Exception type',
-        'attributes': {'attribute_key': 'attribute_value'}
-      })
+      isMethodCall(
+        'stopResourceWithError',
+        arguments: {
+          'key': 'resource_key',
+          'message': 'Exception message',
+          'type': 'Exception type',
+          'attributes': {
+            'attribute_key': 'attribute_value',
+            '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+          },
+        },
+      ),
     ]);
   });
 
   test('addError calls to platform with info', () async {
+    final timestamp = randomTimestamp();
     final exception = TimeoutException(
-        'Timeout retrieving resource', const Duration(seconds: 5));
-    await ddRumPlatform.addError(exception, RumErrorSource.source, null,
-        'error_type', {'attribute_key': 'attribute_value'});
+      'Timeout retrieving resource',
+      const Duration(seconds: 5),
+    );
+    await ddRumPlatform.addError(
+      timestamp,
+      exception,
+      RumErrorSource.source,
+      null,
+      'error_type',
+      {'attribute_key': 'attribute_value'},
+    );
 
     expect(log.length, 1);
     final call = log.first;
@@ -149,14 +282,21 @@ void main() {
     expect(call.arguments['stackTrace'], isNull);
     expect(call.arguments['errorType'], 'error_type');
     expect(call.arguments['attributes'], {
-      // '_dd.error.source_type': 'flutter'
-      'attribute_key': 'attribute_value'
+      'attribute_key': 'attribute_value',
+      '_dd.timestamp': timestamp.millisecondsSinceEpoch,
     });
   });
 
   test('addErrorInfo calls to platform with info', () async {
-    await ddRumPlatform.addErrorInfo('Exception message', RumErrorSource.source,
-        null, 'error_type', {'attribute_key': 'attribute_value'});
+    final timestamp = randomTimestamp();
+    await ddRumPlatform.addErrorInfo(
+      timestamp,
+      'Exception message',
+      RumErrorSource.source,
+      null,
+      'error_type',
+      {'attribute_key': 'attribute_value'},
+    );
 
     expect(log.length, 1);
     final call = log.first;
@@ -166,17 +306,26 @@ void main() {
     expect(call.arguments['stackTrace'], isNull);
     expect(call.arguments['errorType'], 'error_type');
     expect(call.arguments['attributes'], {
-      // '_dd.error.source_type': 'flutter'
-      'attribute_key': 'attribute_value'
+      'attribute_key': 'attribute_value',
+      '_dd.timestamp': timestamp.millisecondsSinceEpoch,
     });
   });
 
   test('addError passes stack trace string', () async {
+    final timestamp = randomTimestamp();
     final stackTrace = StackTrace.current;
     final exception = TimeoutException(
-        'Timeout retrieving resource', const Duration(seconds: 5));
-    await ddRumPlatform.addError(exception, RumErrorSource.source, stackTrace,
-        null, {'attribute_key': 'attribute_value'});
+      'Timeout retrieving resource',
+      const Duration(seconds: 5),
+    );
+    await ddRumPlatform.addError(
+      timestamp,
+      exception,
+      RumErrorSource.source,
+      stackTrace,
+      null,
+      {'attribute_key': 'attribute_value'},
+    );
 
     expect(log.length, 1);
     final call = log.first;
@@ -186,15 +335,22 @@ void main() {
     expect(call.arguments['stackTrace'], stackTrace.toString());
     expect(call.arguments['errorType'], isNull);
     expect(call.arguments['attributes'], {
-      // '_dd.error.source_type': 'flutter'
-      'attribute_key': 'attribute_value'
+      'attribute_key': 'attribute_value',
+      '_dd.timestamp': timestamp.millisecondsSinceEpoch,
     });
   });
 
   test('addErrorInfo passes stack trace string', () async {
+    final timestamp = randomTimestamp();
     final stackTrace = StackTrace.current;
-    await ddRumPlatform.addErrorInfo('Exception message', RumErrorSource.source,
-        stackTrace, 'error_type', {'attribute_key': 'attribute_value'});
+    await ddRumPlatform.addErrorInfo(
+      timestamp,
+      'Exception message',
+      RumErrorSource.source,
+      stackTrace,
+      'error_type',
+      {'attribute_key': 'attribute_value'},
+    );
 
     expect(log.length, 1);
     final call = log.first;
@@ -204,49 +360,80 @@ void main() {
     expect(call.arguments['stackTrace'], stackTrace.toString());
     expect(call.arguments['errorType'], 'error_type');
     expect(call.arguments['attributes'], {
-      // '_dd.error.source_type': 'flutter'
-      'attribute_key': 'attribute_value'
+      'attribute_key': 'attribute_value',
+      '_dd.timestamp': timestamp.millisecondsSinceEpoch,
     });
   });
 
-  test('addUserAction calls to platform', () async {
-    await ddRumPlatform
-        .addUserAction(RumUserActionType.tap, 'fake_user_action', {
-      'attribute_name': 'attribute_value',
-    });
+  test('addAction calls to platform', () async {
+    final timestamp = randomTimestamp();
+    await ddRumPlatform.addAction(
+      timestamp,
+      RumActionType.tap,
+      'fake_user_action',
+      {'attribute_name': 'attribute_value'},
+    );
 
     expect(log, [
-      isMethodCall('addUserAction', arguments: {
-        'type': 'RumUserActionType.tap',
-        'name': 'fake_user_action',
-        'attributes': {'attribute_name': 'attribute_value'}
-      })
+      isMethodCall(
+        'addAction',
+        arguments: {
+          'type': 'RumActionType.tap',
+          'name': 'fake_user_action',
+          'attributes': {
+            'attribute_name': 'attribute_value',
+            '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+          },
+        },
+      ),
     ]);
   });
 
-  test('startUserAction calls to platform', () async {
-    await ddRumPlatform.startUserAction(RumUserActionType.scroll,
-        'user_action_scroll', {'attribute_name': 'attribute_value'});
+  test('startAction calls to platform', () async {
+    final timestamp = randomTimestamp();
+    await ddRumPlatform.startAction(
+      timestamp,
+      RumActionType.scroll,
+      'user_action_scroll',
+      {'attribute_name': 'attribute_value'},
+    );
 
     expect(log, [
-      isMethodCall('startUserAction', arguments: {
-        'type': 'RumUserActionType.scroll',
-        'name': 'user_action_scroll',
-        'attributes': {'attribute_name': 'attribute_value'}
-      })
+      isMethodCall(
+        'startAction',
+        arguments: {
+          'type': 'RumActionType.scroll',
+          'name': 'user_action_scroll',
+          'attributes': {
+            'attribute_name': 'attribute_value',
+            '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+          },
+        },
+      ),
     ]);
   });
 
-  test('stopUserAction calls to platform', () async {
-    await ddRumPlatform.stopUserAction(RumUserActionType.swipe,
-        'user_action_swipe', {'attribute_name': 'attribute_value'});
+  test('stopAction calls to platform', () async {
+    final timestamp = randomTimestamp();
+    await ddRumPlatform.stopAction(
+      timestamp,
+      RumActionType.swipe,
+      'user_action_swipe',
+      {'attribute_name': 'attribute_value'},
+    );
 
     expect(log, [
-      isMethodCall('stopUserAction', arguments: {
-        'type': 'RumUserActionType.swipe',
-        'name': 'user_action_swipe',
-        'attributes': {'attribute_name': 'attribute_value'}
-      })
+      isMethodCall(
+        'stopAction',
+        arguments: {
+          'type': 'RumActionType.swipe',
+          'name': 'user_action_swipe',
+          'attributes': {
+            'attribute_name': 'attribute_value',
+            '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+          },
+        },
+      ),
     ]);
   });
 
@@ -254,8 +441,10 @@ void main() {
     await ddRumPlatform.addAttribute('attribute_key', 'my attribute value');
 
     expect(log, [
-      isMethodCall('addAttribute',
-          arguments: {'key': 'attribute_key', 'value': 'my attribute value'})
+      isMethodCall(
+        'addAttribute',
+        arguments: {'key': 'attribute_key', 'value': 'my attribute value'},
+      ),
     ]);
   });
 
@@ -263,7 +452,60 @@ void main() {
     await ddRumPlatform.removeAttribute('attribute_key');
 
     expect(log, [
-      isMethodCall('removeAttribute', arguments: {'key': 'attribute_key'})
+      isMethodCall('removeAttribute', arguments: {'key': 'attribute_key'}),
+    ]);
+  });
+
+  test('addViewAttribute calls to platform', () async {
+    await ddRumPlatform.addViewAttribute(
+        'view_attribute_key', 'my view attribute value');
+
+    expect(log, [
+      isMethodCall(
+        'addViewAttributes',
+        arguments: {
+          'attributes': {
+            'view_attribute_key': 'my view attribute value',
+          },
+        },
+      ),
+    ]);
+  });
+
+  test('removeViewAttribute calls to platform', () async {
+    await ddRumPlatform.removeViewAttribute('view_attribute_key');
+
+    expect(log, [
+      isMethodCall('removeViewAttributes', arguments: {
+        'keys': ['view_attribute_key']
+      }),
+    ]);
+  });
+
+  test('addViewAttributes calls to platform', () async {
+    await ddRumPlatform.addViewAttributes(
+        {'key_1': 'my view attribute value', 'key_2': 'view attribute 2'});
+
+    expect(log, [
+      isMethodCall(
+        'addViewAttributes',
+        arguments: {
+          'attributes': {
+            'key_1': 'my view attribute value',
+            'key_2': 'view attribute 2',
+          },
+        },
+      ),
+    ]);
+  });
+
+  test('removeViewAttributes calls to platform', () async {
+    await ddRumPlatform.removeViewAttributes(['key_1', 'key_2']);
+
+    expect(log, [
+      isMethodCall('removeViewAttributes', arguments: {
+        'keys': ['key_1', 'key_2']
+      }),
     ]);
   });
 
@@ -271,10 +513,10 @@ void main() {
     await ddRumPlatform.addFeatureFlagEvaluation('key_name', 'key_value');
 
     expect(log, [
-      isMethodCall('addFeatureFlagEvaluation', arguments: {
-        'name': 'key_name',
-        'value': 'key_value',
-      })
+      isMethodCall(
+        'addFeatureFlagEvaluation',
+        arguments: {'name': 'key_name', 'value': 'key_value'},
+      ),
     ]);
   });
 
@@ -284,6 +526,77 @@ void main() {
     expect(log, [isMethodCall('stopSession', arguments: <String, Object?>{})]);
   });
 
+  test('startFeatureOperation calls to platform', () async {
+    final timestamp = randomTimestamp();
+    final name = randomString();
+    final operationKey = randomString();
+    await ddRumPlatform.startFeatureOperation(
+      timestamp,
+      name,
+      operationKey,
+      {'attribute_name': 'attribute_value'},
+    );
+
+    expect(log, [
+      isMethodCall('startFeatureOperation', arguments: {
+        'name': name,
+        'operationKey': operationKey,
+        'attributes': {
+          'attribute_name': 'attribute_value',
+          '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+        },
+      })
+    ]);
+  });
+
+  test('succeedFeatureOperation calls to platform', () async {
+    final timestamp = randomTimestamp();
+    final name = randomString();
+    final operationKey = randomString();
+    await ddRumPlatform.succeedFeatureOperation(
+      timestamp,
+      name,
+      operationKey,
+      {'attribute_name': 'attribute_value'},
+    );
+
+    expect(log, [
+      isMethodCall('succeedFeatureOperation', arguments: {
+        'name': name,
+        'operationKey': operationKey,
+        'attributes': {
+          'attribute_name': 'attribute_value',
+          '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+        },
+      })
+    ]);
+  });
+
+  test('failFeatureOperation calls to platform', () async {
+    final timestamp = randomTimestamp();
+    final name = randomString();
+    final operationKey = randomString();
+    await ddRumPlatform.failFeatureOperation(
+      timestamp,
+      name,
+      operationKey,
+      RumFeatureOperationFailureReason.abandoned,
+      {'attribute_name': 'attribute_value'},
+    );
+
+    expect(log, [
+      isMethodCall('failFeatureOperation', arguments: {
+        'name': name,
+        'operationKey': operationKey,
+        'failureReason': 'RumFeatureOperationFailureReason.abandoned',
+        'attributes': {
+          'attribute_name': 'attribute_value',
+          '_dd.timestamp': timestamp.millisecondsSinceEpoch,
+        },
+      })
+    ]);
+  });
+
   test('reportLongTask calls to platform', () async {
     final now = DateTime.now();
     final duration = Random().nextInt(1000) + 100;
@@ -291,10 +604,10 @@ void main() {
     await ddRumPlatform.reportLongTask(now, duration);
 
     expect(log, [
-      isMethodCall('reportLongTask', arguments: {
-        'at': now.millisecondsSinceEpoch,
-        'duration': duration,
-      }),
+      isMethodCall(
+        'reportLongTask',
+        arguments: {'at': now.millisecondsSinceEpoch, 'duration': duration},
+      ),
     ]);
   });
 
@@ -302,10 +615,13 @@ void main() {
     await ddRumPlatform.updatePerformanceMetrics([0.2, 0.3], [0.11, 0.25]);
 
     expect(log, [
-      isMethodCall('updatePerformanceMetrics', arguments: {
-        'buildTimes': [0.2, 0.3],
-        'rasterTimes': [0.11, 0.25],
-      }),
+      isMethodCall(
+        'updatePerformanceMetrics',
+        arguments: {
+          'buildTimes': [0.2, 0.3],
+          'rasterTimes': [0.11, 0.25],
+        },
+      ),
     ]);
   });
 }

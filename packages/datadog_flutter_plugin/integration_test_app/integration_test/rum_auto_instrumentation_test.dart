@@ -5,6 +5,7 @@
 import 'dart:convert';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:datadog_common_test/widget_tester_extensions.dart';
 import 'package:datadog_integration_test_app/auto_integration_scenarios/scenario_runner.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,12 +72,14 @@ void main() {
       // Web doesn't support performance metrics
       expect(view1.viewEvents.last.flutterBuildTime, isNotNull);
       expect(view1.viewEvents.last.flutterRasterTime, isNotNull);
-
-      // Web doesn't support action tracking from Flutter
-      var actionEvent = view1.actionEvents.last;
-      expect(actionEvent.actionType, 'tap');
-      expect(actionEvent.actionName, 'InkWell(Item 0)');
+      expect(view1.viewEvents.last.performance?.fbc, isNotNull);
+      // Should not have INV as no interaction led here
+      expect(view1.viewEvents.last.inv, isNull);
     }
+
+    var actionEvent = view1.actionEvents.last;
+    expect(actionEvent.actionType, 'tap');
+    expect(actionEvent.actionName, 'InkWell(Item 0)');
 
     final view2 = session.visits[1];
     expect(view2.name, 'rum_second_screen');
@@ -88,11 +91,19 @@ void main() {
       expect(view2.viewEvents.last.flutterBuildTime, isNotNull);
       expect(view2.viewEvents.last.flutterRasterTime, isNotNull);
 
-      // Web doesn't support action tracking from Flutter
-      var actionEvent = view2.actionEvents[0];
-      expect(actionEvent.actionType, 'tap');
-      expect(actionEvent.actionName, 'Button(Next Page)');
+      // Second screen build time should delay
+      final firstBuildComplete = view2.viewEvents.last.performance?.fbc;
+      final tenMsInNs = const Duration(milliseconds: 10).inNanoseconds;
+      expect(firstBuildComplete, greaterThan(tenMsInNs));
+
+      // INV should be at least 10 milliseconds later, as the tap action also takes up 10 ms
+      expect(view2.viewEvents.last.inv,
+          greaterThan(firstBuildComplete! + tenMsInNs));
     }
+
+    var actionEvent2 = view2.actionEvents[0];
+    expect(actionEvent2.actionType, 'tap');
+    expect(actionEvent2.actionName, 'Button(Next Page)');
 
     // Check last view name
     final view3 = session.visits[2];

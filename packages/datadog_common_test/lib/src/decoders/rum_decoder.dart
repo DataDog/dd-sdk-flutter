@@ -6,6 +6,22 @@ import 'dart:io';
 
 import '../../datadog_common_test.dart';
 
+class RumUser {
+  Map<String, Object?> raw;
+  String? email;
+  String? id;
+  String? name;
+
+  RumUser(this.raw, this.email, this.id, this.name);
+
+  static RumUser fromJson(Map<String, dynamic> json) {
+    final email = json['email'] is String ? json['email'] as String : null;
+    final id = json['id'] is String ? json['id'] as String : null;
+    final name = json['name'] is String ? json['name'] as String : null;
+    return RumUser(json, email, id, name);
+  }
+}
+
 class RumSessionDecoder {
   final List<RumViewVisit> visits;
 
@@ -65,6 +81,11 @@ class RumSessionDecoder {
           final longTaskEvent = RumLongTaskEventDecoder(e.rumEvent);
           visit.longTaskEvents.add(longTaskEvent);
           break;
+        case 'vital':
+          final operationStepEvent =
+              RumVitalOperationStepEventDecoder(e.rumEvent);
+          visit.vitalStepEvents.add(operationStepEvent);
+          break;
       }
     }
 
@@ -87,20 +108,21 @@ class RumViewVisit {
   final List<RumResourceEventDecoder> resourceEvents = [];
   final List<RumErrorEventDecoder> errorEvents = [];
   final List<RumLongTaskEventDecoder> longTaskEvents = [];
+  final List<RumVitalOperationStepEventDecoder> vitalStepEvents = [];
 
   RumViewVisit(this.id, this.name, this.path);
 }
 
 class Dd {
-  final Map<String, dynamic> rawData;
+  final Map<String, dynamic>? rawData;
 
   Dd(this.rawData);
 
-  String? get traceId => rawData['trace_id'];
-  String? get spanId => rawData['span_id'];
+  String? get traceId => rawData?['trace_id'];
+  String? get spanId => rawData?['span_id'];
   int? get plan {
-    final session = rawData['session'] as Map<String, dynamic>;
-    return session['plan'];
+    final session = rawData?['session'] as Map<String, dynamic>?;
+    return session?['plan'];
   }
 }
 
@@ -109,12 +131,18 @@ class RumEventDecoder {
   final RumViewInfoDecoder? viewInfo;
   final Dd dd;
 
-  String get eventType => rumEvent['type'] as String;
+  String? get eventType => rumEvent['type'] as String?;
   String get service {
     if (!kManualIsWeb) {
       if (Platform.isIOS) return rumEvent['service'];
     }
     return rumEvent['service'];
+  }
+
+  RumUser? get user {
+    final usr = rumEvent['usr'];
+    if (usr == null) return null;
+    return RumUser.fromJson(usr);
   }
 
   int get date => rumEvent['date'] as int;
@@ -123,7 +151,25 @@ class RumEventDecoder {
       rumEvent['telemetry']?['configuration'];
 
   Map<String, dynamic>? get context => rumEvent['context'];
-  Map<String, dynamic>? get featureFlags => rumEvent['feature_flags'];
+  Map<String, dynamic>? get featureFlags =>
+      rumEvent['feature_flags'] ?? <String, dynamic>{};
+
+  Map<String, String> get ddtags {
+    final tagMap = <String, String>{};
+    final rawTags = rumEvent['ddtags'] as String?;
+    if (rawTags == null) return tagMap;
+
+    for (var tag in rawTags.split(',')) {
+      var colon = tag.indexOf(':');
+      if (colon == -1) {
+        tagMap[tag] = '';
+      } else {
+        tagMap[tag.substring(0, colon)] = tag.substring(colon + 1);
+      }
+    }
+
+    return tagMap;
+  }
 
   RumEventDecoder(this.rumEvent)
       : viewInfo = RumViewInfoDecoder(rumEvent['view']),
@@ -148,6 +194,22 @@ class Vital {
     required this.maxTime,
     required this.avgTime,
   });
+}
+
+class Performance {
+  final Map<String, Object?> encoded;
+
+  int? get fbc {
+    final fbcObj = encoded['fbc'];
+    if (fbcObj is Map<String, Object?>) {
+      final fbcTimeStamp = fbcObj['timestamp'];
+      if (fbcTimeStamp is int) return fbcTimeStamp;
+    }
+
+    return null;
+  }
+
+  Performance(this.encoded);
 }
 
 class RumViewEventDecoder extends RumEventDecoder {
@@ -180,6 +242,19 @@ class RumViewEventDecoder extends RumEventDecoder {
     return null;
   }
 
+  int? get inv {
+    final invValue = rumEvent['view']['interaction_to_next_view_time'];
+    return invValue as int?;
+  }
+
+  Performance? get performance {
+    final perf = rumEvent['view']['performance'] as Map<String, Object?>?;
+    if (perf != null) {
+      return Performance(perf);
+    }
+    return null;
+  }
+
   RumViewEventDecoder(Map<String, dynamic> rumEvent)
       : view = RumViewDecoder(rumEvent['view']),
         super(rumEvent);
@@ -201,6 +276,23 @@ class RumResourceEventDecoder extends RumEventDecoder {
   String? get resourceType => rumEvent['resource']['type'];
   int? get duration => rumEvent['resource']['duration'];
   String? get method => rumEvent['resource']['method'];
+  int? get size => rumEvent['resource']['size'];
+
+  Map<String, String>? get requestHeaders {
+    final raw = rumEvent['resource']?['request']?['headers'];
+    if (raw is Map) {
+      return raw.map((k, v) => MapEntry(k.toString(), v.toString()));
+    }
+    return null;
+  }
+
+  Map<String, String>? get responseHeaders {
+    final raw = rumEvent['resource']?['response']?['headers'];
+    if (raw is Map) {
+      return raw.map((k, v) => MapEntry(k.toString(), v.toString()));
+    }
+    return null;
+  }
 }
 
 class RumErrorEventDecoder extends RumEventDecoder {
@@ -211,6 +303,7 @@ class RumErrorEventDecoder extends RumEventDecoder {
   String get stack => rumEvent['error']['stack'];
   String get source => rumEvent['error']['source'];
   String get sourceType => rumEvent['error']['source_type'];
+  String get fingerprint => rumEvent['error']['fingerprint'];
 
   String? get resourceUrl => rumEvent['error']['resource']?['url'];
   String? get resourceMethod => rumEvent['error']['resource']?['method'];
@@ -235,6 +328,8 @@ class RumViewDecoder {
   int get resourceCount => viewData['resource']['count'] as int;
   int get errorCount => viewData['error']['count'] as int;
   int get longTaskCount => viewData['long_task']['count'] as int;
+  int? get loadingTime => viewData['loading_time'] as int?;
+  int? get networkSettledTime => viewData['network_settled_time'] as int?;
 
   Map<String, int> get customTimings =>
       (viewData['custom_timings'] as Map<String, Object?>)
@@ -252,4 +347,17 @@ class RumViewInfoDecoder {
   String? get path => viewData?['url'] as String?;
 
   RumViewInfoDecoder(this.viewData);
+}
+
+class RumVitalOperationStepEventDecoder extends RumEventDecoder {
+  RumVitalOperationStepEventDecoder(super.rumEvent);
+
+  RumViewInfoDecoder get view => RumViewInfoDecoder(rumEvent['view']);
+
+  String get vitalName => rumEvent['vital']['name'] as String;
+  String? get vitalOperationKey =>
+      rumEvent['vital']['operation_key'] as String?;
+  String? get vitalFailureReason =>
+      rumEvent['vital']['failure_reason'] as String?;
+  String get stepType => rumEvent['vital']['step_type'] as String;
 }

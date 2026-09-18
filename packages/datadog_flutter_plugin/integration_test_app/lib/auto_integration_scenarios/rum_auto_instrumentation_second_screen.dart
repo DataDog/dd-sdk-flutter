@@ -62,6 +62,10 @@ class _RumAutoInstrumentationSecondScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Deliberately delay this build
+    final delayEnd = DateTime.now().add(const Duration(milliseconds: 10));
+    while (DateTime.now().isBefore(delayEnd)) {}
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Secondary Screen'),

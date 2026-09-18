@@ -24,4 +24,14 @@ class DatadogPlatformAttributeKey {
   /// language or platform of the RUM error stack trace, so the SCI backend
   /// knows how to symbolize it. Expects `String` value.
   static const errorSourceType = '_dd.error.source_type';
+
+  /// Event timestamp
+  static const timestamp = '_dd.timestamp';
+}
+
+/// Attributes that can be added to calls that have special properies in Datadog.
+class DatadogAttributes {
+  /// Add a custom fingerprint to an error.
+  /// The value of this attribute must be a `String`.
+  static const errorFingerprint = '_dd.error.fingerprint';
 }

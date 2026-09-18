@@ -13,17 +13,20 @@ import 'helpers.dart';
 class RemoveDependencyOverridesCommand extends Command {
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
-    final pubspecFile = File(path.join(args.packageRoot, 'pubspec.yaml'));
-    if (!pubspecFile.existsSync()) {
-      logger.shout('⁉️ Could not find pubspec.yaml at ${pubspecFile.path}');
-      return false;
-    }
+    for (final package in args.packages) {
+      final packageRoot = getPackageRoot(args, package);
+      final pubspecFile = File(path.join(packageRoot, 'pubspec.yaml'));
+      if (!pubspecFile.existsSync()) {
+        logger.shout('⁉️ Could not find pubspec.yaml at ${pubspecFile.path}');
+        return false;
+      }
 
-    await _removeDependencyOverrides(logger, pubspecFile, args.dryRun);
-    final examplePubspec =
-        File(path.join(args.packageRoot, 'example', 'pubspec.yaml'));
-    if (await examplePubspec.exists()) {
-      await _removeDependencyOverrides(logger, examplePubspec, args.dryRun);
+      await _removeDependencyOverrides(logger, pubspecFile, args.dryRun);
+      final examplePubspec =
+          File(path.join(packageRoot, 'example', 'pubspec.yaml'));
+      if (await examplePubspec.exists()) {
+        await _removeDependencyOverrides(logger, examplePubspec, args.dryRun);
+      }
     }
 
     return true;

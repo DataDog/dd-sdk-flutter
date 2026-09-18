@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 
 class UnnamedScreen extends StatelessWidget {
-  const UnnamedScreen({Key? key}) : super(key: key);
+  const UnnamedScreen({super.key});
 
   void _onPressed() {
     throw Exception('I had an exception. :(');

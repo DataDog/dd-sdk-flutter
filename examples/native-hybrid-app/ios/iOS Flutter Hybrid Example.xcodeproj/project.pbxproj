@@ -110,6 +110,7 @@
 				49F3454D28F5E230008EB083 /* Resources */,
 				1A036191597E5021BA90C17E /* [CP] Embed Pods Frameworks */,
 				FE901215F67FA56A76FD4733 /* [CP-User] Embed Flutter Build flutter_module Script */,
+				178D103D09C041C87DDA24F6 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -168,6 +169,23 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		178D103D09C041C87DDA24F6 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-iOS Flutter Hybrid Example/Pods-iOS Flutter Hybrid Example-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-iOS Flutter Hybrid Example/Pods-iOS Flutter Hybrid Example-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-iOS Flutter Hybrid Example/Pods-iOS Flutter Hybrid Example-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 		1A036191597E5021BA90C17E /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;

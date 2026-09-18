@@ -4,14 +4,14 @@ This example covers how to use the Datadog Flutter SDK in conjunction with an al
 
 ## Native app is primary and Datadog is already initialized -  `attachToExisting`
 
-If you are using an application that is already using the native Datadog iOS or Datadog Android SDKs, the Flutter SDK can attach to these using the same parameters. In your `main` function, after calling `WidgetsFlutterBinding.ensureInitialized`, call `DatadogSdk.instance.attachToExisting`. You can optionally add a `LoggingConfiguraiton` to this call, which automatically creates a global logger and attaches it to `DatadogSdk.logs`.
+If you are using an application that is already using the native Datadog iOS or Datadog Android SDKs, the Flutter SDK can attach to these using the same parameters. In your `main` function, after calling `WidgetsFlutterBinding.ensureInitialized`, call `DatadogSdk.instance.attachToExisting`.
 
 ```dart
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final config = DdSdkExistingConfiguration(
-    loggingConfiguration: LoggingConfiguration()
+  final config = DatadogAttachConfiguration(
+    reportFlutterPerformance: true,
   );
 
   await DatadogSdk.instance.attachToExisting(config);
@@ -26,7 +26,7 @@ Additional options for `DdSdkExistingConfiguration` are documented in the [API r
 
 Depending on your settings, the automatic view tracking in the native iOS and Android SDKs will automatically track the presentation of the `FlutterViewController` and `FlutterActivity`/`FlutterFragment` when they appear, and then immediately show a view load for your tracked Flutter view. To avoid seeing the extra `FlutterViewController` and `FlutterActivity` views in your sessions, add a view predicate to filter them.
 
-On iOS, create a `UIKitRUMViewsPredicate` to check if the view controller is an instance of `FlutterViewController`. On iOS 13+, return `nil` from this function and the RUM iOS SDK stops tracking the `FlutterViewController` and lets the Flutter SDK take over, provided `isModalInPresentation` is set to true. If you are targeting iOS version lower than 13, or `isModalInPresentation` is not set to true, instead return a `RUMView` with the `isUntrackedModal` property set to `true`. This ensures that your previous view is properly restarted. An example of this predicate can be found in the example code in [AppDelegate.swift](ios/iOS%20Flutter%20Hybrid%20Example/AppDelegate.swift)
+On iOS, create a `UIKitRUMViewsPredicate` to check if the view controller is an instance of `FlutterViewController`. Return `nil` from this function and the RUM iOS SDK stops tracking the `FlutterViewController` and lets the Flutter SDK take over. An example of this predicate can be found in the example code in [AppDelegate.swift](ios/iOS%20Flutter%20Hybrid%20Example/AppDelegate.swift)
 
 On Android, create a `ComponentPredicate` to check if the Activity is an instance of `FlutterActivity`. If so, return false from this function to avoid tracking the Activity and let Flutter SDK take over.  An example of this predicate can be found in the example code in [HybridApplication.kt](android/app/src/main/java/com/datadoghq/hybrid_flutter_example/HybridApplication.kt)
 

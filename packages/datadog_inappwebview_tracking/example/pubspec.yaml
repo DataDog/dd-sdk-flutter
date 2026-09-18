@@ -1,0 +1,33 @@
+name: datadog_inappwebview_tracking_example
+description: "Demonstrates how to use the datadog_inappwebview_tracking plugin."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+environment:
+  sdk: ^3.5.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  flutter_dotenv: ^5.2.1
+  flutter_inappwebview: ^6.1.0
+  go_router: ^14.5.0
+  datadog_flutter_plugin: ^3.0.0
+  datadog_inappwebview_tracking:
+    path: ../
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  integration_test:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  datadog_common_test:
+    path: ../../datadog_common_test
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env

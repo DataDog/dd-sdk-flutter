@@ -27,4 +27,3 @@
 .dart_tool/
 .packages
 build/
-lib/src/**.g.dart

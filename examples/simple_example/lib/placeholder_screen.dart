@@ -7,8 +7,7 @@ import 'package:flutter/material.dart';
 class PlaceholderScreen extends StatelessWidget {
   final String screenName;
 
-  const PlaceholderScreen({Key? key, required this.screenName})
-      : super(key: key);
+  const PlaceholderScreen({super.key, required this.screenName});
 
   @override
   Widget build(BuildContext context) {

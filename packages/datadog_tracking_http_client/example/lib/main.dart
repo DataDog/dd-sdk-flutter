@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -19,8 +20,32 @@ import 'scenario_select_screen.dart';
 // auto-instrumentation added to an existing app gives us the expected results.
 TestingConfiguration? testingConfiguration;
 
+class ClientListener extends DatadogTrackingHttpClientListener {
+  @override
+  void requestStarted(
+      {required Object resourceKey,
+      required HttpClientRequest request,
+      required Map<String, Object?> userAttributes}) {
+    if (kDebugMode) {
+      print('($resourceKey) Request started');
+    }
+  }
+
+  @override
+  void responseFinished(
+      {required Object resourceKey,
+      required HttpClientResponse response,
+      required Map<String, Object?> userAttributes,
+      Object? error}) {
+    if (kDebugMode) {
+      print('($resourceKey) Request finished');
+    }
+  }
+}
+
 Future<void> main() async {
-  await dotenv.load(mergeWith: Platform.environment);
+  final merge = kIsWeb ? <String, String>{} : Platform.environment;
+  await dotenv.load(mergeWith: merge);
 
   var clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
@@ -43,37 +68,59 @@ Future<void> main() async {
     firstPartyHosts.addAll(testingConfiguration!.firstPartyHosts);
   }
 
-  DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
+  DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
 
-  final configuration = DdSdkConfiguration(
+  final configuration = DatadogConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
     site: DatadogSite.us1,
-    trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,
     firstPartyHosts: firstPartyHosts,
-    customLogsEndpoint: customEndpoint,
-    loggingConfiguration: LoggingConfiguration(
-      sendNetworkInfo: true,
-      printLogsToConsole: true,
+    loggingConfiguration: DatadogLoggingConfiguration(
+      customEndpoint: customEndpoint,
     ),
     rumConfiguration: applicationId != null
-        ? RumConfiguration(
+        ? DatadogRumConfiguration(
             detectLongTasks: false,
             applicationId: applicationId,
-            tracingSamplingRate: 100,
+            traceSampleRate: 100,
             customEndpoint: customEndpoint,
+            trackResourceHeaders: ResourceHeadersExtractor(
+              captureHeaders: [
+                'accept-ranges',
+                'content-disposition',
+                'server',
+                'user-agent',
+                'via',
+                'x-cache-hits',
+                'x-served-by',
+                'x-datadog-trace-id',
+                'x-datadog-parent-id',
+                'x-datadog-origin',
+                'traceparent',
+              ],
+            ),
           )
         : null,
   );
-
-  if (RumAutoInstrumentationScenarioConfig.instance.enableIoHttpTracking) {
-    configuration.enableHttpTracking();
+  if (testingConfiguration != null) {
+    // Add clear text if we're running an actual test.
+    configuration.additionalConfig['_dd.needsClearTextHttp'] = true;
   }
 
-  await DatadogSdk.runApp(configuration, () async {
+  if (RumAutoInstrumentationScenarioConfig.instance.enableIoHttpTracking) {
+    configuration.enableHttpTracking(
+      clientListener: ClientListener(),
+    );
+  }
+
+  await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
+    // User for testing baggage headers
+    DatadogSdk.instance.setUserInfo(id: 'integration_test_user');
+    DatadogSdk.instance.setAccountInfo(id: 'integration_test_account');
+
     runApp(const DatadogAutoIntegrationTestApp());
   });
 }

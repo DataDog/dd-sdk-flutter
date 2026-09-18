@@ -1,0 +1,24 @@
+android_sdk_config:
+  android_example: 'example/'
+  add_gradle_deps: true
+
+preamble: |
+  // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+  // This product includes software developed at Datadog (https://www.datadoghq.com/).
+  // Copyright 2025-Present Datadog, Inc.
+  
+output:
+  dart:
+    path: lib/src/android/datadog_android_bridge.dart
+    structure: single_file
+source_path:
+  - 'android/src/main/kotlin'
+classes:
+  - 'com.datadoghq.flutter.DatadogRumEventMapper'
+  - 'com.datadoghq.flutter.DatadogRumPlugin'
+  - 'com.datadoghq.flutter.DatadogLogsPlugin'
+  - 'com.datadoghq.flutter.DatadogLogEventMapper'
+  - 'com.datadoghq.flutter.DatadogSdkPlugin'
+  - 'com.datadog.android.api.context.DatadogContext'
+  - 'com.datadog.android.api.context.UserInfo'
+  - 'com.datadog.android.api.context.AccountInfo'

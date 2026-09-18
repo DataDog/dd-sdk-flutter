@@ -25,7 +25,7 @@ fun <T : Any> T.invokeMethod(
         params[it]?.javaClass
     }
 
-    val method = getDeclaredMethodRecursively(methodName, true, declarationParams)
+    val method = getDeclaredMethodRecursively(methodName, false, declarationParams)
     val wasAccessible = method.isAccessible
 
     val output: Any?

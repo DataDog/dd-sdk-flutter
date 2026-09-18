@@ -13,7 +13,7 @@ dependencyResolutionManagement {
         mavenCentral()
         maven { url "https://storage.googleapis.com/download.flutter.io" }
         maven {
-            url "https://oss.sonatype.org/content/repositories/snapshots/"
+            url "https://central.sonatype.com/repository/maven-snapshots/"
         }
     }    
 }

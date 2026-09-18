@@ -19,6 +19,10 @@
         "titleBar.inactiveForeground": "#e7e7e799",
         "commandCenter.border": "#e7e7e799"
     },
+    "dart.analysisExcludedFolders": [
+        ".fvm",
+        ".dart_tool"
+    ],
     "peacock.color": "#7f757f",
     "rewrap.wrappingColumn": 80,
     "cSpell.words": [

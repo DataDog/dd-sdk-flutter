@@ -1,0 +1,52 @@
+import com.android.Version
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    id "com.android.application"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def agpMajor = Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0] as int
+def builtInKotlin = agpMajor >= 9 &&
+    project.findProperty('android.builtInKotlin')?.toString() != 'false'
+if (!builtInKotlin) {
+    apply plugin: 'kotlin-android'
+}
+
+android {
+    namespace = "com.datadoghq.flutter.inappwebviewtracking.example"
+    compileSdk = 36
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {        
+        applicationId = "com.datadoghq.flutter.inappwebviewtracking.example"
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    buildTypes {
+        release {
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
+            signingConfig = signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_1_8
+    }
+}

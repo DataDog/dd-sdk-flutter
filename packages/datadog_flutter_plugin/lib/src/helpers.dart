@@ -27,7 +27,7 @@ bool _handleError(Object error, StackTrace stackTrace, String methodName,
     logger.error(
         'This may be a bug in the Datadog SDK. Please report it to Datadog.');
     logger.sendToDatadog(
-      'Platform exception caught by wrap(): ${error.toString()}',
+      'Platform exception caught by wrap($methodName): ${error.toString()}',
       stackTrace,
       'PlatformException',
     );
@@ -160,3 +160,13 @@ InvalidAttributeInfo? findInvalidAttribute(Map<String, Object?> attributes,
 /// We use this so that APIs that have become non-nullable can still be used
 /// with `!` and `?` to support older versions of Flutter.
 T? ambiguate<T>(T? value) => value;
+
+extension DurationHelpers on Duration {
+  /// The number of whole nanoseconds spanned by this [Duration].
+  ///
+  /// Note, Dart only has precision up to the microsecond level, so the last
+  /// digits of this value will always be zero.
+  int get inNanoseconds {
+    return inMicroseconds * 1000;
+  }
+}

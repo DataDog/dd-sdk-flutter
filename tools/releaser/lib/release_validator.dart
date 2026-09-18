@@ -2,16 +2,14 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:git/git.dart';
-import 'package:github/github.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
-import 'package:version/version.dart';
 
 import 'command.dart';
+import 'github_cmd_wrapper.dart';
+import 'helpers.dart';
+import 'process_helper.dart';
 
 final versionHeadingRegEx = RegExp(r'\s*#');
 final changeItemRegEx = RegExp(r'\s*\*');
@@ -21,8 +19,6 @@ class ValidateReleaseCommand extends Command {
   Future<bool> run(CommandArguments args, Logger logger) async {
     final gitRoot = args.gitDir.path;
     logger.finest(' -- Monorepo root is $gitRoot');
-    final packagePath = path.join(gitRoot, 'packages', args.packageName);
-    logger.finest(' -- Package root is $packagePath');
 
     if (!args.dryRun && !args.skipGitChecks) {
       if (!await _validateBranchState(args.gitDir, logger)) {
@@ -32,35 +28,20 @@ class ValidateReleaseCommand extends Command {
 
     // From here on out, we can validate multiple rules before returning.
     bool isValid = true;
-
-    isValid &= _validateVersionNumber(args.version, logger);
-    isValid &= await _validateChangeLog(packagePath, logger);
-
-    if (isValid) {
-      // The only package that as a dependency on the iOS SDK version is datadog_flutter_plugin,
-      // so only check / pin if that's the package we're releasing.
-      if (args.packageName == 'datadog_flutter_plugin') {
+    for (final release in args.packages) {
+      final packagePath = path.join(gitRoot, 'packages', release.name);
+      logger.finest(' -- Checking valid native releases for ${release.name}');
+      if (hasNativeDependency(release.name)) {
         if (!await _validateiOSRelease(packagePath, args, logger)) {
-          return false;
+          isValid = false;
         }
         if (!await _validateAndroidRelease(packagePath, args, logger)) {
-          return false;
+          isValid = false;
         }
       }
     }
 
     return isValid;
-  }
-
-  bool _validateVersionNumber(String versionNumber, Logger logger) {
-    try {
-      final _ = Version.parse(versionNumber);
-      return true;
-    } on FormatException {
-      logger.shout(
-          '❌ Version $versionNumber does not parse properly as a semantic version');
-    }
-    return false;
   }
 
   Future<bool> _validateBranchState(GitDir gitDir, Logger logger) async {
@@ -83,93 +64,39 @@ class ValidateReleaseCommand extends Command {
     return true;
   }
 
-  Future<bool> _validateChangeLog(String packagePath, Logger logger) async {
-    bool isValid = true;
-
-    // Check the changelog for changes
-    logger.fine('Checking CHANGELOG.md at $packagePath for changes...');
-    final changeLogPath = path.join(packagePath, 'CHANGELOG.md');
-    final changeLogFile = File(changeLogPath);
-    if (!await changeLogFile.exists()) {
-      logger.shout('Could not find a CHANGELOG.md at $changeLogPath');
-      isValid = false;
-    } else {
-      var unreleasedLine = -1;
-      var changes = 0;
-      var lines = await changeLogFile.readAsLines();
-      for (int i = 0; i < lines.length; ++i) {
-        final line = lines[i];
-        if (unreleasedLine < 0) {
-          if (line.startsWith('## Unreleased')) {
-            unreleasedLine = i;
-          }
-        } else if (unreleasedLine > 0) {
-          // Assume the next heading is a released version
-          if (line.startsWith(versionHeadingRegEx)) {
-            break;
-          } else if (line.startsWith(changeItemRegEx)) {
-            changes++;
-          }
-        }
-      }
-      if (unreleasedLine < 0) {
-        logger.shout('❌ No heading for an unreleased version found.');
-        isValid = false;
-      } else if (changes == 0) {
-        logger.shout(
-            '❌ No changes listed in the changelog for the unreleased version.');
-        isValid = false;
-      }
-    }
-
-    return isValid;
-  }
-
   Future<bool> _validateiOSRelease(
       String packagePath, CommandArguments args, Logger logger) async {
-    const githubOrganization = 'DataDog';
-    const repoName = 'dd-sdk-ios';
-    final repoSlug = RepositorySlug(githubOrganization, repoName);
-
-    args.iOSRelease =
-        await _validateReleaseVersion(repoSlug, 'iOS', args.iOSRelease, logger);
+    args.iOSRelease = await _validateReleaseVersion(
+        args, 'DataDog/dd-sdk-ios', 'iOS', args.iOSRelease, logger);
     return args.iOSRelease != null;
   }
 
   Future<bool> _validateAndroidRelease(
       String packagePath, CommandArguments args, Logger logger) async {
-    const githubOrganization = 'DataDog';
-    const repoName = 'dd-sdk-android';
-    final repoSlug = RepositorySlug(githubOrganization, repoName);
-
     args.androidRelease = await _validateReleaseVersion(
-        repoSlug, 'Android', args.androidRelease, logger);
+        args, 'DataDog/dd-sdk-android', 'Android', args.androidRelease, logger);
 
     return args.androidRelease != null;
   }
 
   Future<String?> _validateReleaseVersion(
-    RepositorySlug repoSlug,
+    CommandArguments args,
+    String repoName,
     String platform,
     String? release,
     Logger logger,
   ) async {
-    final githubToken = Platform.environment['GITHUB_TOKEN'];
-    final github = GitHub(auth: Authentication.withToken(githubToken));
-
     // If we didn't specify a version get the current latest release from github.
     // If we did specify a release, check that it actually exists.
+    final gh = GithubCommandWrapper(args.gitDir.path);
     if (release == null) {
       logger.fine('🌎 Fetching latest $platform release from github... ');
-      final latestRelease =
-          await github.repositories.getLatestRelease(repoSlug);
+      final latestRelease = await gh.getLatestRelease(logger, repoName);
       logger.fine('ℹ️ Latest $platform release is ${latestRelease.name}');
       release = latestRelease.tagName;
     } else {
-      try {
-        final _ =
-            await github.repositories.getReleaseByTagName(repoSlug, release);
-      } on RepositoryNotFound {
+      final ghRelease = await gh.getReleaseByTagName(logger, repoName, release);
+      if (ghRelease == null) {
         logger.shout(
             '❌ Could not find target $platform release $release. Please check the tag name');
         return null;
@@ -178,46 +105,6 @@ class ValidateReleaseCommand extends Command {
 
     logger.info('ℹ️ Releasing with $platform version $release.');
 
-    logger.fine('🌎 Getting the difference between "$release" and "develop"');
-    final compare =
-        await github.repositories.compareCommits(repoSlug, release!, 'develop');
-
-    while (true) {
-      print(
-          'Current $platform code on develop is ahead of $release by ${compare.aheadBy} commits.');
-      print('Are you okay with this? ([Y]es, [N]o, [S]ee Changes: ');
-
-      final input = stdin.readLineSync();
-      if (input != null && input.isNotEmpty) {
-        final firstChar = input[0].toLowerCase();
-        if (firstChar == 'y') {
-          break;
-        } else if (firstChar == 'n') {
-          logger.shout('😳 Oh, I\'m glad we stopped then!');
-          return null;
-        } else if (firstChar == 's') {
-          if (compare.commits != null) {
-            final nonMergeCommits = compare.commits!.where((commit) {
-              final message = commit.commit?.message;
-              return message != null && !message.startsWith('Merge');
-            });
-
-            if (nonMergeCommits.isNotEmpty) {
-              for (final commit in nonMergeCommits) {
-                var firstLine = commit.commit!.message!.split('\n').first;
-                print('- $firstLine by ${commit.commit?.author?.name}');
-              }
-            } else {
-              print('There are only merge commits.');
-            }
-          } else {
-            print('There are no commits to see?');
-          }
-        }
-      }
-    }
-
-    logger.fine('✅ Confirmed okay shipping with $platform release $release');
     return release;
   }
 }
@@ -225,37 +112,26 @@ class ValidateReleaseCommand extends Command {
 class ValidatePublishDryRun extends Command {
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
-    if (args.dryRun) {
-      logger.info(
-          '⚠️ Skipping `dart pub publish --dry-run` step due to --dry-run');
-      return true;
+    var finalResult = true;
+    for (final package in args.packages) {
+      final packageRoot = getPackageRoot(args, package);
+      logger.info('ℹ️ Running `flutter pub publish --dry-run` in $packageRoot');
+      final exitCode = await runProcess(
+        'flutter',
+        ['pub', 'publish', '--dry-run'],
+        workingDirectory: packageRoot,
+        stdout: (line) => logger.fine(line),
+        stderr: (line) => logger.shout(line),
+      );
+      if (exitCode != 0) {
+        logger.info('❌ Publish exited with code $exitCode.');
+        logger.info('Fix the above errors and try again.');
+        return finalResult = false;
+      } else {
+        logger.info('✅ Publish dry-run went fine.');
+      }
     }
 
-    logger.info('ℹ️ Running `dart pub publish --dry-run`');
-    var process = await Process.start('dart', ['pub', 'publish', '--dry-run'],
-        workingDirectory: args.packageRoot);
-    process.stdout
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen((event) {
-      logger.fine(event);
-    });
-    process.stderr
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen((event) {
-      logger.shout(event);
-    });
-
-    var exitCode = await process.exitCode;
-    if (exitCode != 0) {
-      logger.info('❌ Publish exited with code $exitCode.');
-      logger.info('Fix the above errors and try again.');
-      return false;
-    } else {
-      logger.info('✅ Publish dry-run went fine.');
-    }
-
-    return true;
+    return finalResult;
   }
 }

@@ -5,6 +5,7 @@
 import 'dart:convert';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:datadog_common_test/widget_tester_extensions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

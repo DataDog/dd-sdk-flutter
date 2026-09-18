@@ -19,7 +19,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       find.byWidgetPredicate(
-        (Widget widget) => widget is Text && widget.data!.startsWith('Single'),
+        (Widget widget) =>
+            widget is Text && widget.data!.startsWith('Debug Log'),
       ),
       findsOneWidget,
     );

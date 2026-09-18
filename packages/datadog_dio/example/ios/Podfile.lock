@@ -1,0 +1,63 @@
+PODS:
+  - datadog_flutter_plugin (0.0.1):
+    - DatadogCore (~> 2)
+    - DatadogCrashReporting (~> 2)
+    - DatadogInternal (~> 2)
+    - DatadogLogs (~> 2)
+    - DatadogRUM (~> 2)
+    - DictionaryCoder (= 1.2.0)
+    - Flutter
+  - DatadogCore (2.30.2):
+    - DatadogInternal (= 2.30.2)
+  - DatadogCrashReporting (2.30.2):
+    - DatadogInternal (= 2.30.2)
+    - PLCrashReporter (~> 1.12.0)
+  - DatadogInternal (2.30.2)
+  - DatadogLogs (2.30.2):
+    - DatadogInternal (= 2.30.2)
+  - DatadogRUM (2.30.2):
+    - DatadogInternal (= 2.30.2)
+  - DictionaryCoder (1.2.0)
+  - Flutter (1.0.0)
+  - integration_test (0.0.1):
+    - Flutter
+  - PLCrashReporter (1.12.0)
+
+DEPENDENCIES:
+  - datadog_flutter_plugin (from `.symlinks/plugins/datadog_flutter_plugin/ios`)
+  - Flutter (from `Flutter`)
+  - integration_test (from `.symlinks/plugins/integration_test/ios`)
+
+SPEC REPOS:
+  trunk:
+    - DatadogCore
+    - DatadogCrashReporting
+    - DatadogInternal
+    - DatadogLogs
+    - DatadogRUM
+    - DictionaryCoder
+    - PLCrashReporter
+
+EXTERNAL SOURCES:
+  datadog_flutter_plugin:
+    :path: ".symlinks/plugins/datadog_flutter_plugin/ios"
+  Flutter:
+    :path: Flutter
+  integration_test:
+    :path: ".symlinks/plugins/integration_test/ios"
+
+SPEC CHECKSUMS:
+  datadog_flutter_plugin: dae31b2f0e5755d091601d8c8108fe86528085fd
+  DatadogCore: 8e50ad6cb68343f701707f7eeca16e0acb52ed8c
+  DatadogCrashReporting: 34763d4276d4fce286c7e8729cfcd2ac04dca43b
+  DatadogInternal: bd8672d506a7e67936ed5f7ca612169e49029b44
+  DatadogLogs: d683aa9e0c9339f5ae679ead70bbdbe41cdc32f6
+  DatadogRUM: 8b794aa458e6323ea9b1cef3f820fd3d092cbe27
+  DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
+  PLCrashReporter: db59ef96fa3d25f3650040d02ec2798cffee75f2
+
+PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
+
+COCOAPODS: 1.16.2

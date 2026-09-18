@@ -4,6 +4,8 @@ include: package:flutter_lints/flutter.yaml
 # https://dart.dev/guides/language/analysis-options
 
 analyzer:
+  errors:
+    library_annotations: ignore
   exclude:
     - "**/*.mocks.dart"
     - "**/*.g.dart"

@@ -16,7 +16,14 @@ export 'src/datadog_sdk_platform_interface.dart';
 export 'src/helpers.dart';
 export 'src/internal_logger.dart';
 export 'src/rum/attributes.dart';
+export 'src/time_provider.dart';
+export 'src/tracing/baggage_helpers.dart';
 export 'src/tracing/tracing_headers.dart';
+
+// Because resource tracking is in a separate package, but web needs resource
+// initialization during initialization, we put the configuration value in
+// additionalConfig under this key.
+const String trackResourcesConfigKey = '_dd.track_web_resources';
 
 /// A set of properties that Flutter can configure "late", meaning after the
 /// first call to [DatadogSdk.initialize].
@@ -44,7 +51,7 @@ enum LateConfigurationProperty {
   /// Whether native views are being tracked. Currently unused.
   trackNativeViews,
 
-  /// Whether [DdSdkConfiguration.reportFlutterPerformance] was set to true
+  /// Whether [DatadogRumConfiguration.reportFlutterPerformance] was set to true
   trackFlutterPerformance,
 }
 
@@ -55,6 +62,23 @@ extension DatadogInternal on DatadogSdk {
   }
 }
 
+String? sanitizeHost(String host, InternalLogger internalLogger) {
+  final uri = Uri.tryParse(host);
+  if (uri != null) {
+    if (uri.hasScheme) {
+      internalLogger.warn(
+        '$host is a url and will be sanitized to: ${uri.host}.',
+      );
+      host = uri.host;
+    }
+
+    return host;
+  }
+
+  internalLogger.warn('$host is a not a valid url and will be dropped');
+  return null;
+}
+
 /// Used to attach a first party host name to what headers should be
 /// automatically attached by RUM Http Tracking
 @immutable
@@ -62,20 +86,22 @@ class FirstPartyHost {
   final String hostName;
   final Set<TracingHeaderType> headerTypes;
 
-  final RegExp _regExp;
+  final RegExp regExp;
 
   FirstPartyHost._(this.hostName, this.headerTypes)
-      : _regExp = RegExp('^(.*\\.)*${RegExp.escape(hostName)}\$');
+      : regExp = RegExp('^(.*\\.)*${RegExp.escape(hostName)}\$');
 
   bool matches(Uri uri) {
-    return _regExp.hasMatch(uri.host.toString());
+    return regExp.hasMatch(uri.host.toString());
   }
 
   static List<FirstPartyHost> createSanitized(
-      Map<String, Set<TracingHeaderType>> hosts, InternalLogger logger) {
+    Map<String, Set<TracingHeaderType>> hosts,
+    InternalLogger logger,
+  ) {
     var firstPartyHosts = <FirstPartyHost>[];
     for (var entry in hosts.entries) {
-      var sanitizedHost = _sanitizeHost(entry.key, logger);
+      var sanitizedHost = sanitizeHost(entry.key, logger);
       if (sanitizedHost != null) {
         firstPartyHosts.add(FirstPartyHost._(sanitizedHost, entry.value));
       }
@@ -83,20 +109,8 @@ class FirstPartyHost {
 
     return firstPartyHosts;
   }
+}
 
-  static String? _sanitizeHost(String host, InternalLogger internalLogger) {
-    final uri = Uri.tryParse(host);
-    if (uri != null) {
-      if (uri.hasScheme) {
-        internalLogger
-            .warn('$host is a url and will be sanitized to: ${uri.host}.');
-        host = uri.host;
-      }
-
-      return host;
-    }
-
-    internalLogger.warn('$host is a not a valid url and will be dropped');
-    return null;
-  }
+extension DatadogRumInternal on DatadogRum {
+  TraceContextInjection get contextInjectionSetting => traceContextInjection;
 }

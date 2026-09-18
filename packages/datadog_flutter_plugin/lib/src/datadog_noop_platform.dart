@@ -2,18 +2,28 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
+import '../datadog_flutter_plugin.dart';
 import '../datadog_internal.dart';
-import 'datadog_configuration.dart';
 
 class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
+  @override
+  DatadogContext? getContext() => null;
+
   @override
   Future<void> addUserExtraInfo(Map<String, Object?> extraInfo) {
     return Future.value();
   }
 
   @override
-  Future<AttachResponse?> attachToExisting() async {
-    return AttachResponse(rumEnabled: false);
+  Future<AttachResponse?> attachToExisting(
+    DatadogAttachConfiguration attachConfig,
+  ) async {
+    return AttachResponse(loggingEnabled: false, rumEnabled: false);
+  }
+
+  @override
+  Future<void> flush() {
+    return Future.value();
   }
 
   @override
@@ -22,9 +32,13 @@ class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
   }
 
   @override
-  Future<void> initialize(DdSdkConfiguration configuration,
-      {LogCallback? logCallback, required InternalLogger internalLogger}) {
-    return Future.value();
+  Future<PlatformInitializationResult> initialize(
+    DatadogConfiguration configuration,
+    TrackingConsent trackingConsent, {
+    LogCallback? logCallback,
+    required InternalLogger internalLogger,
+  }) async {
+    return const PlatformInitializationResult(logs: false, rum: false);
   }
 
   @override
@@ -38,7 +52,7 @@ class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
   }
 
   @override
-  Future<void> setSdkVerbosity(Verbosity verbosity) {
+  Future<void> setSdkVerbosity(CoreLoggerLevel verbosity) {
     return Future.value();
   }
 
@@ -49,12 +63,50 @@ class DatadogSdkNoOpPlatform extends DatadogSdkPlatform {
 
   @override
   Future<void> setUserInfo(
-      String? id, String? name, String? email, Map<String, Object?> extraInfo) {
+    String? id,
+    String? name,
+    String? email,
+    Map<String, Object?> extraInfo,
+  ) {
     return Future.value();
   }
 
   @override
   Future<void> updateTelemetryConfiguration(String property, bool value) {
     return Future.value();
+  }
+
+  @override
+  Future<void> clearAllData() {
+    return Future.value();
+  }
+
+  @override
+  Future<void> addAccountExtraInfo(Map<String, Object?> extraInfo) {
+    return Future.value();
+  }
+
+  @override
+  Future<void> clearAccountInfo() {
+    return Future.value();
+  }
+
+  @override
+  Future<void> clearUserInfo() {
+    return Future.value();
+  }
+
+  @override
+  Future<void> setAccountInfo(
+    String id,
+    String? name,
+    Map<String, Object?> extraInfo,
+  ) {
+    return Future.value();
+  }
+
+  @override
+  Future<IsolateAttachResponse?> attachToIsolate() {
+    return Future.value(null);
   }
 }

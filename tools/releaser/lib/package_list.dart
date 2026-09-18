@@ -8,7 +8,9 @@ final podfileList = [
   'packages/datadog_flutter_plugin/example/ios/Podfile',
   'packages/datadog_flutter_plugin/integration_test_app/ios/Podfile',
   'packages/datadog_tracking_http_client/example/ios/Podfile',
-  'packages/datadog_webview_tracking/example/ios/Podfile'
+  'packages/datadog_webview_tracking/example/ios/Podfile',
+  'packages/datadog_inappwebview_tracking/example/ios/Podfile',
+  'packages/datadog_session_replay/example/ios/Podfile',
 ];
 
 // Location of gradle files
@@ -17,5 +19,7 @@ final gradleList = [
   'packages/datadog_flutter_plugin/example/android/app/build.gradle',
   'packages/datadog_flutter_plugin/integration_test_app/android/app/build.gradle',
   'packages/datadog_webview_tracking/android/build.gradle',
-  'examples/native-hybrid-app/android/app/build.gradle'
+  'packages/datadog_inappwebview_tracking/android/build.gradle',
+  'packages/datadog_session_replay/android/build.gradle',
+  'examples/native-hybrid-app/android/app/build.gradle',
 ];

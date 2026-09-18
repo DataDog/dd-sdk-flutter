@@ -1,0 +1,65 @@
+{
+  "name": "all-types-success",
+  "description": "Successful precomputed assignments for all supported Flutter value types.",
+  "context": {
+    "targetingKey": "precomputed-user",
+    "attributes": {
+      "plan": "pro",
+      "platform": "flutter"
+    }
+  },
+  "response": {
+    "data": {
+      "attributes": {
+        "flags": {
+          "flutter.fixture.enabled": {
+            "allocationKey": "allocation-success",
+            "variationKey": "enabled",
+            "variationType": "boolean",
+            "variationValue": true,
+            "reason": "TARGETING_MATCH",
+            "doLog": true
+          },
+          "flutter.fixture.title": {
+            "allocationKey": "allocation-success",
+            "variationKey": "copy-a",
+            "variationType": "string",
+            "variationValue": "Datadog Flags",
+            "reason": "TARGETING_MATCH",
+            "doLog": true
+          },
+          "flutter.fixture.limit": {
+            "allocationKey": "allocation-success",
+            "variationKey": "limit-five",
+            "variationType": "number",
+            "variationValue": 5,
+            "reason": "TARGETING_MATCH",
+            "doLog": true
+          },
+          "flutter.fixture.ratio": {
+            "allocationKey": "allocation-success",
+            "variationKey": "half",
+            "variationType": "number",
+            "variationValue": 0.5,
+            "reason": "TARGETING_MATCH",
+            "doLog": true
+          },
+          "flutter.fixture.config": {
+            "allocationKey": "allocation-success",
+            "variationKey": "object-a",
+            "variationType": "object",
+            "variationValue": {
+              "showBanner": true,
+              "colors": [
+                "blue",
+                "green"
+              ]
+            },
+            "reason": "TARGETING_MATCH",
+            "doLog": true
+          }
+        }
+      }
+    }
+  }
+}

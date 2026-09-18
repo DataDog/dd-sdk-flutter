@@ -13,6 +13,8 @@ declare -a dirs=(
     "packages/datadog_tracking_http_client"
     "packages/datadog_tracking_http_client/example"
     "packages/datadog_grpc_interceptor"
+    "packages/datadog_session_replay"
+    "packages/datadog_session_replay/example"
 )
 
 for i in "${dirs[@]}"

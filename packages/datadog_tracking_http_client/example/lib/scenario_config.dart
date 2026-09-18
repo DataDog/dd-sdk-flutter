@@ -2,7 +2,11 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
 
+import 'package:flutter/foundation.dart';
+
+@immutable
 class RumAutoInstrumentationScenarioConfig {
+  final List<String> imageUrls;
   final List<String> firstPartyHosts;
   final String firstPartyGetUrl;
   final String? firstPartyPostUrl;
@@ -11,7 +15,11 @@ class RumAutoInstrumentationScenarioConfig {
   final String thirdPartyPostUrl;
   final bool enableIoHttpTracking;
 
-  RumAutoInstrumentationScenarioConfig({
+  const RumAutoInstrumentationScenarioConfig({
+    this.imageUrls = const [
+      'https://picsum.photos/200',
+      'https://placehold.co/200x200.png',
+    ],
     this.firstPartyHosts = const ['foo.bar'],
     this.firstPartyGetUrl = 'https://status.datadoghq.com',
     this.firstPartyPostUrl,
@@ -23,7 +31,7 @@ class RumAutoInstrumentationScenarioConfig {
 
   static RumAutoInstrumentationScenarioConfig? _instance;
   static RumAutoInstrumentationScenarioConfig get instance {
-    _instance ??= RumAutoInstrumentationScenarioConfig();
+    _instance ??= const RumAutoInstrumentationScenarioConfig();
     return _instance!;
   }
 

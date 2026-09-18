@@ -5,33 +5,26 @@
 import UIKit
 import Flutter
 import FlutterPluginRegistrant
-import Datadog
 
 class FirstViewController: UIViewController {
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // Do any additional setup after loading the view.
-    }
-    
+
     @IBAction func openFlutterView(_ sender: Any) {
         let flutterEngine = (UIApplication.shared.delegate as! AppDelegate).flutterEngine
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
         flutterViewController.isModalInPresentation = true
         flutterViewController.modalPresentationStyle = .overFullScreen
         flutterViewController.pushRoute("/")
-        
+
         present(flutterViewController, animated: true, completion: nil)
     }
-    
+
     @IBAction func openSecondFlutterView(_ sender: Any) {
         let flutterEngine = (UIApplication.shared.delegate as! AppDelegate).flutterEngine
         let flutterViewController = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
         flutterViewController.isModalInPresentation = true
         flutterViewController.modalPresentationStyle = .fullScreen
         flutterViewController.pushRoute("/page2")
-        
+
         present(flutterViewController, animated: true, completion: nil)
     }
 }
-

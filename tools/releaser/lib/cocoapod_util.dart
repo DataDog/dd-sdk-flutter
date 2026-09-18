@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
@@ -9,31 +10,35 @@ import 'package_list.dart';
 
 final overridesStartPattern = RegExp(r'\s+# Datadog Pod Overrides');
 final overridesEndPattern = RegExp(r'\s+# End Datadog Pod Overrides');
-final specDependencyPattern =
-    RegExp(r"\s+s\.dependency\s+'(?<dependency>Datadog.+)', '.+");
+final specDependencyPattern = RegExp(
+  r"\s+s\.dependency\s+'(?<dependency>Datadog.+)', '.+",
+);
 
-class RemovePodOverridesCommand extends Command {
-  final podspecLocation = 'ios/datadog_flutter_plugin.podspec';
-
+class PinCocoapodsVersionCommand extends Command {
   @override
   Future<bool> run(CommandArguments args, Logger logger) async {
     if (!await _removePodfileOverrides(args, logger)) {
       return false;
     }
 
-    if (!await _pinPodspecVersion(args, logger)) {
-      return false;
+    // Other packages can keep looser version constraints
+    final pinedPackage = args.packages
+        .firstWhereOrNull((e) => e.name == 'datadog_flutter_plugin');
+    if (pinedPackage != null) {
+      if (!await _pinPodspecVersion(args, pinedPackage, logger)) {
+        return false;
+      }
     }
 
     return true;
   }
 
   Future<bool> _removePodfileOverrides(
-      CommandArguments args, Logger logger) async {
+    CommandArguments args,
+    Logger logger,
+  ) async {
     logger.info('ℹ️ Removing overrides from Podfiles.');
-    // Only modify files in the package we're shipping
-    for (var filePath
-        in podfileList.where((e) => e.contains(args.packageName))) {
+    for (var filePath in podfileList) {
       final file = File(path.join(args.gitDir.path, filePath));
       if (!file.existsSync()) {
         logger.shout('❌ Could not find file $filePath');
@@ -58,13 +63,21 @@ class RemovePodOverridesCommand extends Command {
     return true;
   }
 
-  Future<bool> _pinPodspecVersion(CommandArguments args, Logger logger) async {
-    final file = File(path.join(
-        args.gitDir.path, 'packages/${args.packageName}', podspecLocation));
+  Future<bool> _pinPodspecVersion(
+      CommandArguments args, PackageRelease package, Logger logger) async {
+    final podspecLocation = 'ios/${package.name}.podspec';
+
+    final file = File(
+      path.join(
+        getPackageRoot(args, package),
+        podspecLocation,
+      ),
+    );
 
     if (!file.existsSync()) {
       logger.warning(
-          '⚠️ Could not find file $file. This is expected for non-core packages');
+        '⚠️ Could not find file $file. This is expected for non-core packages',
+      );
       return true;
     }
 

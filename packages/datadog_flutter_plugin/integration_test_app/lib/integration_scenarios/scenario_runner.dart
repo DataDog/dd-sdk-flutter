@@ -14,7 +14,7 @@ const mappedInstrumentationScenarioName =
 
 RumViewEvent mapRumViewEvent(RumViewEvent event) {
   if (event.view.name == 'ThirdManualRumView') {
-    event.view.name = 'ThirdView';
+    event.view.url = 'ThirdView';
   }
 
   return event;
@@ -45,6 +45,9 @@ RumErrorEvent? mapRumErrorEvent(RumErrorEvent event) {
     event.error.resource?.url =
         event.error.resource!.url.replaceAll('fake_url', 'my_url');
   }
+  if (event.error.fingerprint == 'custom-fingerprint') {
+    event.error.fingerprint = 'mapped fingerprint';
+  }
 
   return event;
 }
@@ -54,10 +57,6 @@ RumLongTaskEvent? mapRumLongTaskEvent(RumLongTaskEvent event) {
   if (event.longTask.duration <
       const Duration(milliseconds: 200).inNanoseconds) {
     return null;
-  }
-
-  if (event.view.name == 'ThirdManualRumView') {
-    event.view.name = 'ThirdView';
   }
 
   return event;
@@ -74,33 +73,31 @@ Future<void> runScenario({
     firstPartyHosts.addAll(testingConfiguration.firstPartyHosts);
   }
 
-  final configuration = DdSdkConfiguration(
+  final configuration = DatadogConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
-    serviceName: 'com.datadoghq.flutter.integration',
+    service: 'com.datadoghq.flutter.integration',
     version: '1.2.3+555',
     flavor: 'integration',
     site: DatadogSite.us1,
-    trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,
     firstPartyHosts: firstPartyHosts,
-    customLogsEndpoint: customEndpoint,
-    telemetrySampleRate: 100,
-    logEventMapper: (event) => _mapLogEvent(event),
-    loggingConfiguration: LoggingConfiguration(
-      sendNetworkInfo: true,
-      printLogsToConsole: true,
+    loggingConfiguration: DatadogLoggingConfiguration(
+      eventMapper: _mapLogEvent,
+      customEndpoint: customEndpoint,
     ),
     rumConfiguration: applicationId != null
-        ? RumConfiguration(
+        ? DatadogRumConfiguration(
             applicationId: applicationId,
             reportFlutterPerformance: true,
             customEndpoint: customEndpoint,
+            telemetrySampleRate: 100,
+            additionalConfig: testingConfiguration?.additionalConfig ?? {},
           )
         : null,
-  );
+  )..additionalConfig['_dd.needsClearTextHttp'] = true;
   if (testingConfiguration?.additionalConfig != null) {
     configuration.additionalConfig
         .addAll(testingConfiguration!.additionalConfig);
@@ -108,16 +105,14 @@ Future<void> runScenario({
 
   if (testingConfiguration?.scenario == mappedInstrumentationScenarioName) {
     // Add mapping to rum configuration
-    configuration.rumConfiguration?.rumViewEventMapper = mapRumViewEvent;
-    configuration.rumConfiguration?.rumActionEventMapper = mapRumActionEvent;
-    configuration.rumConfiguration?.rumResourceEventMapper =
-        mapRumResourceEvent;
-    configuration.rumConfiguration?.rumErrorEventMapper = mapRumErrorEvent;
-    configuration.rumConfiguration?.rumLongTaskEventMapper =
-        mapRumLongTaskEvent;
+    configuration.rumConfiguration?.viewEventMapper = mapRumViewEvent;
+    configuration.rumConfiguration?.actionEventMapper = mapRumActionEvent;
+    configuration.rumConfiguration?.resourceEventMapper = mapRumResourceEvent;
+    configuration.rumConfiguration?.errorEventMapper = mapRumErrorEvent;
+    configuration.rumConfiguration?.longTaskEventMapper = mapRumLongTaskEvent;
   }
 
-  await DatadogSdk.runApp(configuration, () async {
+  await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
     runApp(const DatadogIntegrationTestApp());
   });
 }
@@ -125,8 +120,11 @@ Future<void> runScenario({
 LogEvent? _mapLogEvent(LogEvent event) {
   event.attributes.remove('logger-attribute2');
 
-  if (event.logger.name == 'second_logger' && event.status == LogStatus.info) {
-    return null;
+  if (event.logger.name == 'second_logger') {
+    if (event.status == LogStatus.info) {
+      return null;
+    }
+    event.error?.fingerprint = 'mapped print';
   }
 
   event.message = event.message.replaceAll('message', 'xxxxxxxx');

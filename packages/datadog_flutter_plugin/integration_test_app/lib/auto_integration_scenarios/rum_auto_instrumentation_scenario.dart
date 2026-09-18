@@ -18,8 +18,8 @@ class RumAutoInstrumentationScenario extends StatefulWidget {
 class _RumAutoInstrumentationScenarioState
     extends State<RumAutoInstrumentationScenario> {
   final images = [
-    'https://imgix.datadoghq.com/img/about/presskit/kit/press_kit.png',
-    'https://imgix.datadoghq.com/img/about/presskit/kit/press_kit.png'
+    'https://placehold.co/75x75.png',
+    'https://placehold.co/75x75.png'
   ];
 
   @override
@@ -28,6 +28,10 @@ class _RumAutoInstrumentationScenarioState
   }
 
   void _onTap(int index) {
+    // Deliberately delay cause a delay
+    final delayEnd = DateTime.now().add(const Duration(milliseconds: 10));
+    while (DateTime.now().isBefore(delayEnd)) {}
+
     switch (index) {
       case 0:
         Navigator.push<void>(

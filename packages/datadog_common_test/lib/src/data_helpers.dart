@@ -3,6 +3,8 @@
 // Copyright 2019-Present Datadog, Inc.
 import 'dart:math';
 
+import 'package:collection/collection.dart';
+
 final _random = Random();
 const _alphas = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const _numerics = '0123456789';
@@ -15,6 +17,18 @@ String randomString({int length = 10}) {
   ));
 
   return result;
+}
+
+bool randomBool() {
+  return _random.nextBool();
+}
+
+int randomInt({int min = 0, int max = 1 << 16}) {
+  return _random.nextInt(max - min) + min;
+}
+
+double randomDouble({double min = -1000000, double max = 100000}) {
+  return min + ((max - min) * _random.nextDouble());
 }
 
 extension RandomExtension<T> on List<T> {
@@ -32,4 +46,18 @@ extension DurationHelpers on Duration {
   int get inNanoseconds {
     return inMicroseconds * 1000;
   }
+}
+
+Map<String, String> getDdTraceState(String header) {
+  final list = header.split(',');
+  final ddTraceState =
+      list.firstWhereOrNull((e) => e.startsWith('dd='))?.substring(3);
+  if (ddTraceState == null) return {};
+
+  return ddTraceState.split(';').fold<Map<String, String>>({},
+      (Map<String, String> value, element) {
+    final split = element.split(':');
+    value[split[0]] = split[1];
+    return value;
+  });
 }

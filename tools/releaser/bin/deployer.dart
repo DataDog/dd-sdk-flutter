@@ -5,9 +5,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:git/git.dart';
-import 'package:github/github.dart';
 import 'package:logging/logging.dart';
+import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/helpers.dart';
 
 class ReleaseInfo {
@@ -30,26 +31,55 @@ void main(List<String> arguments) async {
     print(event.message);
   });
 
-  if (arguments.isEmpty) {
+  final argParser = ArgParser()
+    ..addOption('repo-root', help: 'The root of the repo to release from')
+    ..addFlag('verbose', defaultsTo: false)
+    ..addFlag(
+      'help',
+      abbr: 'h',
+      help: 'Print the help',
+      negatable: false,
+      defaultsTo: false,
+    );
+
+  ArgResults argResults;
+  try {
+    argResults = argParser.parse(arguments);
+  } on FormatException catch (e) {
+    print('❌ ${e.message}');
+    _printUsage(argParser);
+    return;
+  }
+
+  if (argResults['verbose']) {
+    Logger.root.level = Level.FINEST;
+  }
+
+  if (argResults['help']) {
+    _printUsage(argParser);
+    return;
+  }
+
+  if (argResults.rest.isEmpty) {
     Logger.root.shout('❌ Package name to deploy is required.');
     exit(1);
   }
 
-  final githubToken = Platform.environment['GITHUB_TOKEN'];
-  if (githubToken == null) {
-    Logger.root.shout(
-        '❌ Must have the environment variable GITHUB_TOKEN set to deploy.');
-    exit(1);
-  }
-
-  var packageName = arguments.first;
-
-  final gitDir = await getGitDir();
+  final root = argResults['repo-root'];
+  final gitDir = await getGitDir(root);
   if (gitDir == null) {
     Logger.root.shout('💥 Could not establish your current git directory.');
     exit(1);
   }
 
+  final github = GithubCommandWrapper(gitDir.path);
+  if (!await github.checkAuth(Logger.root)) {
+    Logger.root
+        .shout('❌ Could not auth with `gh` command. Run `gh auth login`.');
+    exit(1);
+  }
+
+  var packageName = arguments.first;
   if (!(await _validateBranchState(gitDir))) exit(1);
 
   final releaseInfo = await _getReleaseInfo(gitDir, packageName);
@@ -58,16 +88,13 @@ void main(List<String> arguments) async {
     exit(1);
   }
 
-  if (!await _performGitHubRelease(gitDir, releaseInfo, githubToken)) {
+  if (!await _performGitHubRelease(gitDir, releaseInfo)) {
     exit(1);
   }
 }
 
 Future<bool> _performGitHubRelease(
-    GitDir gitDir, ReleaseInfo releaseInfo, String githubToken) async {
-  const githubOrganization = 'DataDog';
-  const repoName = 'dd-sdk-flutter';
-
+    GitDir gitDir, ReleaseInfo releaseInfo) async {
   final tag = '${releaseInfo.package}/v${releaseInfo.version}';
   Logger.root.fine('ℹ️ Creating tag $tag');
   await gitDir.runCommand(
@@ -75,20 +102,17 @@ Future<bool> _performGitHubRelease(
   Logger.root.fine('ℹ️ Pushing to origin');
   await gitDir.runCommand(['push', 'origin', tag]);
 
-  var github = GitHub(auth: Authentication.withToken(githubToken));
+  var github = GithubCommandWrapper(gitDir.path);
 
   Logger.root.fine('ℹ️ Creating github release for $tag');
   try {
-    var createRelease = CreateRelease.from(
-      tagName: tag,
-      name: '${releaseInfo.package} ${releaseInfo.version}',
-      targetCommitish: releaseInfo.commitSha,
-      body: releaseInfo.changeLog,
-      isDraft: true,
-      isPrerelease: releaseInfo.version.contains('-'),
+    await github.createRelease(
+      Logger.root,
+      tag,
+      '${releaseInfo.package} ${releaseInfo.version}',
+      releaseInfo.changeLog,
+      releaseInfo.version.contains('-'),
     );
-    await github.repositories.createRelease(
-        RepositorySlug(githubOrganization, repoName), createRelease);
   } catch (e) {
     Logger.root.shout('❌ Failed to create release: ${e.toString()}');
     return false;
@@ -177,4 +201,9 @@ Future<ReleaseInfo?> _getReleaseInfo(GitDir gitDir, String packageName) async {
     pubspecVersion!,
     changeLog.toString(),
   );
+}
+
+void _printUsage(ArgParser argParser) {
+  print('\nUsage: releaser.dart [package] [options]');
+  print('\n${argParser.usage}');
 }

@@ -8,7 +8,6 @@
     package="com.datadoghq.flutter.integrationtestapp">
    <application
         android:label="integration_test_app"
-        android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:networkSecurityConfig="@xml/network_security_config">
         <activity

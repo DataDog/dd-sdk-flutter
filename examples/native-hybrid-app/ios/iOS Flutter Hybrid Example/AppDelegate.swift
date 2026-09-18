@@ -3,22 +3,21 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import UIKit
-import Datadog
+import DatadogCore
+import DatadogCrashReporting
+import DatadogLogs
+import DatadogRUM
 import Flutter
 import FlutterPluginRegistrant
 
 class FlutterExcludingRumViewsPredicate: UIKitRUMViewsPredicate {
     let defaultViewsPredicate = DefaultUIKitRUMViewsPredicate()
-    
+
     func rumView(for viewController: UIViewController) -> RUMView? {
-        if (viewController is FlutterViewController) {
-            if #available(iOS 13, *) {
-                return nil
-            } else {
-                return .init(name: "FLutterViewController", isUntrackedModal: true)
-            }
+        if viewController is FlutterViewController {
+            return nil
         }
-        
+
         return defaultViewsPredicate.rumView(for: viewController)
     }
 }
@@ -27,12 +26,12 @@ class FlutterExcludingRumViewsPredicate: UIKitRUMViewsPredicate {
 class AppDelegate: UIResponder, UIApplicationDelegate {
     lazy var flutterEngine = FlutterEngine(name: "my flutter engine")
     var dismissMethodChannel: FlutterMethodChannel!
-    
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        
+
         var clientToken = ""
         var rumApplicationId = ""
-        
+
         if let configFile = Bundle.main.path(forResource: "ddog_config", ofType: "plist"),
            let dataodogKeys = NSDictionary(contentsOfFile: configFile) {
             clientToken = dataodogKeys["client_token"] as? String ?? ""
@@ -41,40 +40,45 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             print("Failed to find client token and application in ddog_config.plist." +
                   " Did you run './generate_env'?")
         }
-        
+
+        // If you are adding Flutter to an existing iOS application, you should
+        // ensure Datadog is fully initialized on the iOS side before
+        // initializing Flutter and calling `DatadogSdk.attachToExisting`.
+        // For more information about how to setup Datadog in iOS, see the official
+        // documentation:
+        // https://docs.datadoghq.com/real_user_monitoring/mobile_and_tv_monitoring/ios/setup/
+        let coreConfig = Datadog.Configuration(
+            clientToken: clientToken,
+            env: "prod")
         Datadog.verbosityLevel = .debug
-        Datadog.initialize(
-            appContext: .init(),
-            trackingConsent: .granted,
-            configuration: Datadog.Configuration
-                .builderUsing(
-                    rumApplicationID: rumApplicationId,
-                    clientToken: clientToken,
-                    environment: "prod"
-                )
-                .set(endpoint: .us1)
-                .trackUIKitRUMViews(using: FlutterExcludingRumViewsPredicate())
-                .trackUIKitRUMActions()
-                .trackURLSession()
-                .build()
-        )
-        Global.rum = RUMMonitor.initialize()
-        
-        // Note: Datadog needs to be initialized before flutterEngine.run(), as this will call
-        // main() which will look for an existing Datadog instance to attach to.
-        flutterEngine.run();
-        GeneratedPluginRegistrant.register(with: self.flutterEngine);
-        
+        Datadog.initialize(with: coreConfig, trackingConsent: TrackingConsent.granted)
+
+        // All components you want to use in Flutter must be initialized on iOS first. 
+        // This includes Logs...
+        Logs.enable()
+
+        // ... RUM...
+        let rumConfig = RUM.Configuration(applicationID: rumApplicationId, uiKitViewsPredicate: FlutterExcludingRumViewsPredicate())
+        RUM.enable(with: rumConfig)
+
+        // ... and CrashReporting.
+        CrashReporting.enable()
+
+        // Once Datadog is fully initialized, you can run `flutterEngine.run()`.
+        // This calls Flutter's `main` method, which will look for an existing Datadog instance to attach to.
+        flutterEngine.run()
+        GeneratedPluginRegistrant.register(with: self.flutterEngine)
+
         return true
     }
-    
+
     // MARK: UISceneSession Lifecycle
-    
+
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         return UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
     }
-    
+
     func application(_ application: UIApplication, didDiscardSceneSessions sceneSessions: Set<UISceneSession>) {
-        
+
     }
 }

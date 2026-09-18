@@ -1,0 +1,124 @@
+// Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2025-Present Datadog, Inc.
+
+import Foundation
+import DatadogInternal
+
+/// Passthrough core mocks feature-scope allowing recording events in **sync**.
+///
+/// This mock it will always provide a `FeatureScope` for any registered feature with the current
+/// context and a `writer` that will store all events in the `events` property.
+///
+/// Usage:
+///
+///     let core = PassthroughCoreMock()
+///     try core.register(CustomFeature.self)
+///     core.scope(for: CustomFeature.self)?.eventWriteContext { context, writer in
+///         // will always open a scope
+///     }
+///
+open class PassthroughCoreMock: DatadogCoreProtocol, FeatureScope, @unchecked Sendable {
+    /// Counts references to `PassthroughCoreMock` instances, so we can prevent memory
+    /// leaks of SDK core in `DatadogTestsObserver`.
+    public private(set) static var referenceCount = 0
+
+    public internal(set) var registeredFeatures: [DatadogFeature] = []
+
+    /// Current context that will be passed to feature-scopes.
+    @ReadWriteLock
+    public var context: DatadogContext {
+        didSet { send(message: .context(context)) }
+    }
+
+    let writer = FileWriterMock()
+
+    /// Callback called when `eventWriteContext` closure is executed.
+    public var onEventWriteContext: ((Bool) -> Void)?
+
+    /// Creates a Passthrough core mock.
+    ///
+    /// - Parameters:
+    ///   - context: The testing context.
+
+    public required init(
+        context: DatadogContext = .mockAny(),
+        dataStore: DataStore = NOPDataStore(),
+        messageReceiver: FeatureMessageReceiver = NOPFeatureMessageReceiver()
+    ) {
+        self.context = context
+        self.dataStore = dataStore
+
+        messageReceiver.receive(message: .context(context), from: self)
+
+        PassthroughCoreMock.referenceCount += 1
+    }
+
+    deinit {
+        PassthroughCoreMock.referenceCount -= 1
+    }
+
+    /// no-op
+    public func register<T>(feature: T) throws where T: DatadogFeature {
+        registeredFeatures.append(feature)
+    }
+    /// no-op
+    public func feature<T>(named name: String, type: T.Type) -> T? {
+        return registeredFeatures.first(where: { $0 is T}) as? T
+    }
+
+    /// Always returns a feature-scope.
+    public func scope<T>(for featureType: T.Type) -> FeatureScope where T: DatadogFeature {
+        self
+    }
+
+    public func set<Context>(context: @escaping () -> Context?) where Context: AdditionalContext {
+        self.context.set(additionalContext: context())
+    }
+
+    /// Every message passed to `send(message:else:)`, in order, so tests can assert on what a
+    /// feature posted to the message bus.
+    public var sentMessages: [FeatureMessage] = []
+
+    public func send(message: FeatureMessage, else fallback: () -> Void) {
+        sentMessages.append(message)
+        for feature in registeredFeatures where !feature.messageReceiver.receive(message: message, from: self) {
+            fallback()
+        }
+    }
+
+    /// no-op
+    public func set(anonymousId: String?) { }
+
+    /// Execute `block` with the current context and a `writer` to record events.
+    ///
+    /// - Parameter block: The block to execute.
+    public func eventWriteContext(bypassConsent: Bool, _ block: @escaping (DatadogContext, Writer) -> Void) {
+        block(context, writer)
+        onEventWriteContext?(bypassConsent)
+    }
+
+    public func context(_ block: @escaping (DatadogContext) -> Void) {
+        block(context)
+    }
+
+    public var dataStore: DataStore
+
+    /// Recorded events from feature scopes.
+    ///
+    /// Invoking the `writer` from the `eventWriteContext` will add
+    /// events to this stack.
+    public var events: [Encodable] { writer.events }
+
+    /// Returns all events of the given type.
+    ///
+    /// - Parameter type: The event type to retrieve.
+    /// - Returns: A list of event of the give type.
+    public func events<T>(ofType type: T.Type = T.self) -> [T] where T: Encodable {
+        writer.events(ofType: type)
+    }
+
+    public func mostRecentModifiedFileAt(before: Date) throws -> Date? {
+        return nil
+    }
+}

@@ -7,7 +7,23 @@ import 'package:flutter/material.dart';
 import '../datadog_flutter_plugin.dart';
 
 abstract class DatadogPluginConfiguration {
+  const DatadogPluginConfiguration();
+
   DatadogPlugin create(DatadogSdk datadogInstance);
+
+  /// Indicate that this plugin can be used from and initialized from background
+  /// isolates when [DatadogSdk.attachToBackgroundIsolate] is called. Plugins
+  /// that have this set to `true` will have
+  /// [DatadogPlugin.initializeFromBackgroundIsolate] called when background
+  /// isolate is attached, which by default calls [DatadogPlugin.initialize].
+  ///
+  /// Any subclass that has this flag set to `true` must also be marked as
+  /// [immutable] so that the configuration can be sent to the background isolate.
+  ///
+  /// If this flag is set to `false` (the default), no initialization of the
+  /// plugin will occur when Datadog is attached to a background isolate, which
+  /// may mean the features of this plugin will not be available.
+  bool get supportsBackgroundIsolates => false;
 }
 
 abstract class DatadogPlugin {
@@ -17,5 +33,9 @@ abstract class DatadogPlugin {
   DatadogPlugin(this.instance);
 
   void initialize();
+  void initializeFromBackgroundIsolate() {
+    initialize();
+  }
+
   void shutdown() {}
 }

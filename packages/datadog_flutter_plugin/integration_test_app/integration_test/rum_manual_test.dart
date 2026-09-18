@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:datadog_common_test/widget_tester_extensions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -81,16 +82,16 @@ void main() {
     const expectedContextValue = 1;
 
     for (var log in requestLog) {
-      verifyCommonTags(
+      verifyCommonRequestTags(log);
+    }
+
+    for (var log in rumLog) {
+      verifyCommonEventTags(
         log,
         'com.datadoghq.flutter.integration',
         '1.2.3-555',
         'integration',
       );
-    }
-
-    for (var log in rumLog) {
-      expect(log.dd.plan, 1);
     }
 
     final session = RumSessionDecoder.fromEvents(rumLog);
@@ -114,58 +115,95 @@ void main() {
     }
     expect(view1.viewEvents.last.view.actionCount, actionCount);
 
-    if (!kIsWeb) {
-      // Manual resources on web don't work (the error is a resource loading error)
-      expect(view1.viewEvents.last.view.resourceCount, 1);
-      expect(view1.viewEvents.last.view.errorCount, 1);
-    }
+    expect(
+        view1.viewEvents.last.view.resourceCount, view1.resourceEvents.length);
+    expect(view1.viewEvents.last.view.errorCount, 1);
     expect(view1.viewEvents.last.context![contextKey], expectedContextValue);
     expect(view1.viewEvents.last.featureFlags?.isEmpty, isTrue);
 
-    expect(view1.actionEvents[baseAction + 0].actionType,
-        kIsWeb ? 'custom' : 'tap');
+    expect(view1.actionEvents[baseAction + 0].actionType, 'tap');
     expect(view1.actionEvents[baseAction + 0].actionName, 'Tapped Download');
     expect(view1.actionEvents[baseAction + 0].context![contextKey],
         expectedContextValue);
-    expect(view1.actionEvents[baseAction + 1].actionType,
-        kIsWeb ? 'custom' : 'tap');
+    expect(view1.actionEvents[baseAction + 1].actionType, 'tap');
     expect(view1.actionEvents[baseAction + 1].actionName, 'Next Screen');
     expect(view1.actionEvents[baseAction + 1].context![contextKey],
         expectedContextValue);
 
     final contentReadyTiming =
         view1.viewEvents.last.view.customTimings['content-ready'];
+    final viewLoadingTiming = view1.viewEvents.last.view.loadingTime;
     final firstInteractionTiming =
         view1.viewEvents.last.view.customTimings['first-interaction'];
     expect(contentReadyTiming, isNotNull);
     expect(contentReadyTiming, greaterThanOrEqualTo(50 * 1000 * 1000));
     // TODO: Figure out why occasionally these have really high values
     // expect(contentReadyTiming, lessThan(200 * 1000 * 100));
+    if (!kIsWeb) {
+      expect(viewLoadingTiming, isNotNull);
+      expect(viewLoadingTiming,
+          closeTo(contentReadyTiming!, 10000000)); // Within 10ms
+    }
     expect(firstInteractionTiming, isNotNull);
     expect(firstInteractionTiming, greaterThanOrEqualTo(contentReadyTiming!));
     // TODO: Figure out why occasionally these have really high values
     // expect(firstInteractionTiming, lessThan(800 * 1000 * 1000));
 
-    // Manual resource loading calls are ignored on Web.
-    if (!kIsWeb) {
-      expect(view1.resourceEvents[0].url, 'https://fake_url/resource/1');
-      expect(view1.resourceEvents[0].statusCode, 200);
-      expect(view1.resourceEvents[0].resourceType, 'image');
-      expect(view1.resourceEvents[0].duration,
-          greaterThan((90 * 1000 * 1000) - 1)); // 90ms
-      // TODO: Figure out why occasionally these have really high values
-      // expect(view1.resourceEvents[0].duration,
-      //     lessThan(10 * 1000 * 1000 * 1000)); // 10s
-      expect(
-          view1.resourceEvents[0].context![contextKey], expectedContextValue);
-
-      expect(view1.errorEvents.length, 1);
-      expect(view1.errorEvents[0].resourceUrl, 'https://fake_url/resource/2');
-      expect(view1.errorEvents[0].message, 'Status code 400');
-      expect(view1.errorEvents[0].errorType, 'ErrorLoading');
-      expect(view1.errorEvents[0].source, 'network');
-      expect(view1.errorEvents[0].context![contextKey], expectedContextValue);
+    {
+      final manualResourceEvents = view1.resourceEvents
+          .where((e) => e.url == 'https://fake_url/resource/1')
+          .toList();
+      expect(manualResourceEvents.length, 1);
+      expect(manualResourceEvents[0].statusCode, 200);
+      expect(manualResourceEvents[0].resourceType, 'image');
+      final resourceDuration = manualResourceEvents[0].duration;
+      expect(resourceDuration,
+          greaterThan(const Duration(milliseconds: 90).inNanoseconds - 1));
+      expect(resourceDuration,
+          lessThan(const Duration(seconds: 10).inNanoseconds));
+      expect(manualResourceEvents[0].size, 2048);
     }
+
+    expect(view1.errorEvents.length, 1);
+    expect(view1.errorEvents[0].resourceUrl, 'https://fake_url/resource/2');
+    expect(view1.errorEvents[0].message, 'Status code 400');
+    expect(view1.errorEvents[0].errorType, 'ErrorLoading');
+    expect(view1.errorEvents[0].source, 'network');
+    expect(view1.errorEvents[0].context![contextKey], expectedContextValue);
+
+    expect(view1.vitalStepEvents.length, 3);
+    expect(view1.vitalStepEvents[0].vitalName, 'Onboarding');
+    expect(view1.vitalStepEvents[0].stepType, 'start');
+    expect(view1.vitalStepEvents[0].vitalOperationKey, 'key_a');
+    expect(view1.vitalStepEvents[0].vitalFailureReason, isNull);
+
+    expect(view1.vitalStepEvents[1].vitalName, 'First Screen Download');
+    expect(view1.vitalStepEvents[1].stepType, 'start');
+    expect(view1.vitalStepEvents[1].vitalOperationKey, isNull);
+    expect(view1.vitalStepEvents[1].vitalFailureReason, isNull);
+
+    expect(view1.vitalStepEvents[2].vitalName, 'First Screen Download');
+    expect(view1.vitalStepEvents[2].stepType, 'end');
+    expect(view1.vitalStepEvents[2].vitalOperationKey, isNull);
+    expect(view1.vitalStepEvents[2].vitalFailureReason, 'error');
+
+    // Verify user in all events, except for the first view event
+    for (final viewEvent in view1.viewEvents.sublist(1)) {
+      verifyUser(viewEvent);
+    }
+    for (final actionEvent in view1.actionEvents) {
+      verifyUser(actionEvent);
+    }
+    for (final resourceEvent in view1.resourceEvents) {
+      verifyUser(resourceEvent);
+    }
+    for (final errorEvent in view1.errorEvents) {
+      verifyUser(errorEvent);
+    }
+    for (final vitalEvent in view1.vitalStepEvents.sublist(1)) {
+      verifyUser(vitalEvent);
+    }
+
     expect(view1, becameInactive);
 
     final view2 = session.visits[1];
@@ -178,13 +216,19 @@ void main() {
       expect(view2.path, 'RumManualInstrumentation2');
     }
     expect(view2.viewEvents.last.view.errorCount, 1);
-    expect(view2.viewEvents.last.view.actionCount, kIsWeb ? 1 : 2);
+    expect(view2.viewEvents.last.view.actionCount, 2);
     // We can have multiple long tasks
     expect(view2.viewEvents.last.view.longTaskCount, greaterThanOrEqualTo(1));
-    if (!kIsWeb) {
-      // Web can download extra resources
-      expect(view2.viewEvents.last.view.resourceCount, 0);
+    expect(
+        view2.viewEvents.last.view.resourceCount, view2.resourceEvents.length);
+
+    // All view events in view2 should have the view attribute supplied (web may miss
+    // the first update).
+    for (int i = 1; i < view2.viewEvents.length; ++i) {
+      final viewEvent = view2.viewEvents[i];
+      expect(viewEvent.context!['view_attribute'], 'view_attribute_value');
     }
+
     if (!kIsWeb) {
       // The removal of this key happens at a weird point for web, so
       // let's not check it for now.
@@ -193,12 +237,40 @@ void main() {
     expect(view2.viewEvents.last.featureFlags?['mock_flag_a'], false);
     expect(view2.viewEvents.last.featureFlags?['mock_flag_b'], 'mock_value');
 
-    const errorMessage =
-        kIsWeb ? 'Provided "Simulated view error"' : 'Simulated view error';
-    expect(view2.errorEvents[0].message, errorMessage);
-    expect(view2.errorEvents[0].source, kIsWeb ? 'custom' : 'source');
+    {
+      final viewStart = view2.viewEvents.first.date;
+      final manualResourceEvents = view2.resourceEvents
+          .where((e) => e.url == 'https://fake_url/tns-resource/1')
+          .toList();
+      expect(manualResourceEvents.length, 1);
+
+      final resourceStart = manualResourceEvents[0].date;
+      expect(manualResourceEvents[0].url, 'https://fake_url/tns-resource/1');
+      expect(manualResourceEvents[0].statusCode, 200);
+      expect(manualResourceEvents[0].resourceType, 'image');
+      final resourceDuration = manualResourceEvents[0].duration;
+      expect(resourceDuration,
+          greaterThan(const Duration(milliseconds: 90).inNanoseconds - 1));
+      expect(resourceDuration,
+          lessThan(const Duration(seconds: 10).inNanoseconds));
+
+      // TNS is not calculated on web
+      if (!kIsWeb) {
+        final tns =
+            Duration(milliseconds: resourceStart - viewStart).inNanoseconds +
+                resourceDuration!;
+        expect(view2.viewEvents.last.view.networkSettledTime,
+            closeTo(tns, const Duration(milliseconds: 100).inNanoseconds));
+      }
+    }
+
+    expect(view2.errorEvents[0].message, 'Simulated view error');
+    expect(view2.errorEvents[0].source, 'source');
     expect(view2.errorEvents[0].context![contextKey], expectedContextValue);
     expect(view2.errorEvents[0].context!['custom_attribute'], 'my_attribute');
+    expect(view2.errorEvents[0].context!['view_attribute'],
+        'view_attribute_value');
+    expect(view2.errorEvents[0].fingerprint, 'custom-fingerprint');
 
     // Check all long tasks are over 100 ms (the default) and that one is greater
     // than 200 ms (triggered by the tapping of the button)
@@ -220,25 +292,26 @@ void main() {
     }
     expect(over200, greaterThanOrEqualTo(1));
 
-    // Web doesn't support start/stopUserAction
-    RumActionEventDecoder tapAction;
-    if (!kIsWeb) {
-      expect(view2.actionEvents[0].actionType, 'scroll');
-      expect(view2.actionEvents[0].actionName, 'User Scrolling');
+    expect(view2.actionEvents[0].actionType, 'scroll');
+    expect(view2.actionEvents[0].actionName, 'User Scrolling');
 
-      expect(view2.actionEvents[0].loadingTime,
-          greaterThan(1800 * 1000 * 1000)); // 1.8s
-      // TODO: Figure out why occasionally these have really high values
-      // expect(view1.actionEvents[0].loadingTime,
-      //     lessThan(3 * 1000 * 1000 * 1000)); // 3s
-      expect(view2.actionEvents[0].context![contextKey], expectedContextValue);
-      tapAction = view2.actionEvents[1];
-    } else {
-      tapAction = view2.actionEvents[0];
-    }
+    // start/stop action is supported on web via the start_stop_action experimental feature
+    expect(view2.actionEvents[0].loadingTime,
+        greaterThan(1800 * 1000 * 1000)); // 1.8s
+    // TODO: Figure out why occasionally these have really high values
+    // expect(view1.actionEvents[0].loadingTime,
+    //     lessThan(3 * 1000 * 1000 * 1000)); // 3s
+    expect(view2.actionEvents[0].context![contextKey], expectedContextValue);
+    final tapAction = view2.actionEvents[1];
 
     expect(tapAction.actionName, 'Next Screen');
     expect(tapAction.context![contextKey], expectedContextValue);
+
+    expect(view2.vitalStepEvents.length, 1);
+    expect(view2.vitalStepEvents[0].vitalName, 'Onboarding');
+    expect(view2.vitalStepEvents[0].stepType, 'end');
+    expect(view2.vitalStepEvents[0].vitalOperationKey, 'key_a');
+    expect(view2.vitalStepEvents[0].vitalFailureReason, isNull);
 
     expect(view2, becameInactive);
 
@@ -249,6 +322,11 @@ void main() {
       expect(view3.path, startsWith('http://localhost'));
     } else {
       expect(view3.path, 'screen3-widget');
+    }
+
+    // All view3 should not have the view attribute supplied
+    for (final viewEvent in view3.viewEvents) {
+      expect(viewEvent.context?['view_attribute'], isNull);
     }
 
     // There seems to be a weird race condition around when this context
@@ -298,4 +376,4 @@ class _BecameInactiveMatcher extends Matcher {
 }
 
 const becameInactive = _BecameInactiveMatcher();
-// 
+//

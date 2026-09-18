@@ -1,0 +1,11 @@
+-keep class com.datadog.android.api.context.* { *; }
+-keep class com.datadoghq.flutter.DatadogSdkPlugin { *; }
+-keep class com.datadoghq.flutter.DatadogSdkPlugin$Companion { *; }
+-keep class com.datadoghq.flutter.DatadogLogsPlugin { *; }
+-keep class com.datadoghq.flutter.DatadogLogsPlugin$Companion { *; }
+-keep class com.datadoghq.flutter.DatadogLogEventMapper { *; }
+-keep class com.datadoghq.flutter.DatadogLogEventMapper$EventMapper { *; }
+-keep class com.datadoghq.flutter.DatadogRumPlugin { *; }
+-keep class com.datadoghq.flutter.DatadogRumPlugin$Companion { *; }
+-keep class com.datadoghq.flutter.DatadogRumEventMapper { *; }
+-keep class com.datadoghq.flutter.DatadogRumEventMapper$EventMapper { *; }

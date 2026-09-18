@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'unnamed_screen.dart';
 
 class NamedScreen extends StatefulWidget {
-  const NamedScreen({Key? key}) : super(key: key);
+  const NamedScreen({super.key});
 
   @override
   State<NamedScreen> createState() => _NamedScreenState();

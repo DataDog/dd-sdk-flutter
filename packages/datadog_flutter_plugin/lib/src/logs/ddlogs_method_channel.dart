@@ -5,16 +5,63 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../datadog_configuration.dart';
+import '../../datadog_flutter_plugin.dart';
+import '../../datadog_internal.dart';
 import 'ddlogs_platform_interface.dart';
+import 'log_mapper_proxy_stub.dart'
+    if (dart.library.io) 'log_mapper_proxy.dart';
 
 class DdLogsMethodChannel extends DdLogsPlatform {
   @visibleForTesting
-  final MethodChannel methodChannel =
-      const MethodChannel('datadog_sdk_flutter.logs');
+  final MethodChannel methodChannel = const MethodChannel(
+    'datadog_sdk_flutter.logs',
+  );
+
+  // ignore: unused_field
+  DatadogSdk? _core;
+  // ignore: unused_field
+  LogMapperProxy? _mapperProxy;
+
+  DdLogsMethodChannel();
 
   @override
-  Future<void> createLogger(String loggerHandle, LoggingConfiguration config) {
+  Future<void> enable(DatadogSdk core, DatadogLoggingConfiguration config) {
+    // NOTE: This will break when / if we move to multiple Datadog SDK instances
+    _core = core;
+    _mapperProxy = LogMapperProxy.fromConfiguration(
+      config,
+      core.internalLogger,
+    );
+
+    return methodChannel.invokeMethod('enable', {
+      'configuration': config.encode(),
+    });
+  }
+
+  @override
+  Future<void> addGlobalAttribute(String key, Object value) {
+    return methodChannel.invokeMethod('addGlobalAttribute', {
+      'key': key,
+      'value': value,
+    });
+  }
+
+  @override
+  Future<void> removeGlobalAttribute(String key) {
+    return methodChannel.invokeMethod('removeGlobalAttribute', {'key': key});
+  }
+
+  @override
+  Future<void> deinitialize() {
+    _core = null;
+    return methodChannel.invokeMethod('deinitialize', {});
+  }
+
+  @override
+  Future<void> createLogger(
+    String loggerHandle,
+    DatadogLoggerConfiguration config,
+  ) {
     return methodChannel.invokeMethod('createLogger', {
       'loggerHandle': loggerHandle,
       'configuration': config.encode(),
@@ -22,14 +69,29 @@ class DdLogsMethodChannel extends DdLogsPlatform {
   }
 
   @override
+  Future<void> destroyLogger(String loggerHandle) {
+    return methodChannel.invokeMethod('destroyLogger', {
+      'loggerHandle': loggerHandle,
+    });
+  }
+
+  @override
   Future<void> log(
-      String loggerHandle,
-      LogLevel level,
-      String message,
-      String? errorMessage,
-      String? errorKind,
-      StackTrace? errorStackTrace,
-      Map<String, Object?> attributes) {
+    String loggerHandle,
+    LogLevel level,
+    String message,
+    String? errorMessage,
+    String? errorKind,
+    StackTrace? errorStackTrace,
+    Map<String, Object?> attributes,
+  ) {
+    if (errorStackTrace != null) {
+      // Modify context to supply the source_type
+      attributes = {
+        ...attributes,
+        DatadogPlatformAttributeKey.errorSourceType: 'flutter',
+      };
+    }
     return methodChannel.invokeMethod('log', {
       'loggerHandle': loggerHandle,
       'logLevel': level.toString(),

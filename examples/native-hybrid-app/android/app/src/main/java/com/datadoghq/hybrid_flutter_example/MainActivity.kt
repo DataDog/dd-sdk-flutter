@@ -11,7 +11,6 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.datadoghq.hybrid_flutter_example.databinding.ActivityMainBinding
 import io.flutter.embedding.android.FlutterActivity
-import io.flutter.embedding.engine.FlutterEngineCache
 
 class MainActivity : AppCompatActivity() {
 

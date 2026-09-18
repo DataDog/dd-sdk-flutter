@@ -4,12 +4,14 @@
 
 import Foundation
 import XCTest
+import Flutter
 @testable import datadog_flutter_plugin
 
 enum SupportedContractType {
     case string
     case int
     case int64
+    case bool
     case map
     case list
 
@@ -18,8 +20,9 @@ enum SupportedContractType {
         case .string: return "fake string"
         case .int: return 1_234
         case .int64: return 1_223_455_123
+        case .bool: return false
         case .map: return ["key to": "value"]
-        case .list: return []
+        case .list: return [] as [Any]
         }
     }
 }
@@ -27,11 +30,6 @@ enum SupportedContractType {
 struct Contract {
     let methodName: String
     let requiredParameters: [String: SupportedContractType]
-
-    init(methodName: String, requiredParameters: [String: SupportedContractType]) {
-        self.methodName = methodName
-        self.requiredParameters = requiredParameters
-    }
 
     func createContractArguments(excluding: String?, additionalArguments: [String: Any]? = nil) -> [String: Any] {
         var arguments: [String: Any] = [:]
@@ -65,7 +63,10 @@ func testContracts(contracts: [Contract], plugin: FlutterPlugin, additionalArgum
         switch result {
         case .called(let value):
             let error = value as? FlutterError
-            XCTAssertNotEqual(value as? NSObject, FlutterMethodNotImplemented)
+            XCTAssertNotEqual(
+                value as? NSObject,
+                FlutterMethodNotImplemented, "\(contract.methodName) returned NotImplemented"
+            )
             XCTAssertNil(error, "\(contract.methodName) returned result \(String(describing: error)) on valid call")
 
         case .notCalled:

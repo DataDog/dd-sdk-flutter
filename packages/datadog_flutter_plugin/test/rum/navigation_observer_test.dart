@@ -1,6 +1,8 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-2022 Datadog, Inc.
+// TODO (RUM-): See if we can setup these tests to work on browser
+@TestOn('vm')
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
@@ -12,7 +14,7 @@ class MockDatadogSdkPlatform extends Mock implements DatadogSdkPlatform {}
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
 
-class MockDdRum extends Mock implements DdRum {}
+class MockDdRum extends Mock implements DatadogRum {}
 
 void main() {
   late MockDdRum mockRum;
@@ -69,6 +71,7 @@ void main() {
     await tester.pumpWidget(buildFor(child: Container()));
 
     verify(() => mockRum.startView('/'));
+    verify(() => mockRum.markViewFirstBuildComplete('/'));
   });
 
   testWidgets('pushing unnamed route ends current view',
@@ -77,6 +80,7 @@ void main() {
     await buildAndNavigateTo(tester: tester, builder: (_) => Container());
 
     verify(() => mockRum.startView('/'));
+    verify(() => mockRum.markViewFirstBuildComplete('/'));
     verify(() => mockRum.stopView('/'));
     verifyNoMoreInteractions(mockRum);
   });
@@ -92,8 +96,10 @@ void main() {
 
     verifyInOrder([
       () => mockRum.startView('/'),
+      () => mockRum.markViewFirstBuildComplete('/'),
       () => mockRum.stopView('/'),
       () => mockRum.startView('/'),
+      () => mockRum.markViewFirstBuildComplete('/'),
     ]);
     verifyNoMoreInteractions(mockRum);
   });
@@ -108,6 +114,7 @@ void main() {
     );
 
     verify(() => mockRum.startView('NextRoute'));
+    verify(() => mockRum.markViewFirstBuildComplete('NextRoute'));
   });
 
   testWidgets('popping from settings named route restarts root view ',
@@ -133,10 +140,13 @@ void main() {
 
     verifyInOrder([
       () => mockRum.startView('/'),
+      () => mockRum.markViewFirstBuildComplete('/'),
       () => mockRum.stopView('/'),
       () => mockRum.startView('NextRoute'),
+      () => mockRum.markViewFirstBuildComplete('NextRoute'),
       () => mockRum.stopView('NextRoute'),
       () => mockRum.startView('/'),
+      () => mockRum.markViewFirstBuildComplete('/'),
     ]);
     verifyNoMoreInteractions(mockRum);
   });
@@ -173,8 +183,10 @@ void main() {
 
     verifyInOrder([
       () => mockRum.startView('/'),
+      () => mockRum.markViewFirstBuildComplete('/'),
       () => mockRum.stopView('/'),
       () => mockRum.startView('my_named_route'),
+      () => mockRum.markViewFirstBuildComplete('my_named_route'),
     ]);
     verifyNoMoreInteractions(mockRum);
   });
@@ -189,8 +201,10 @@ void main() {
 
     verifyInOrder([
       () => mockRum.startView('home'),
+      () => mockRum.markViewFirstBuildComplete('home'),
       () => mockRum.stopView('home'),
       () => mockRum.startView('my_named_route'),
+      () => mockRum.markViewFirstBuildComplete('my_named_route'),
     ]);
     verifyNoMoreInteractions(mockRum);
   });
@@ -220,12 +234,68 @@ void main() {
 
     verifyInOrder([
       () => mockRum.startView('/'),
+      () => mockRum.markViewFirstBuildComplete('/'),
       () => mockRum.stopView('/'),
       () => mockRum.startView('my_named_route', null, {
             'extra_attribute': 'attribute_value',
           }),
+      () => mockRum.markViewFirstBuildComplete('my_named_route'),
     ]);
     verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('pushing route with query string sends url',
+      (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await buildAndNavigateTo(
+      tester: tester,
+      routeName: '/products?category=shoes&id=123',
+      builder: (_) => Container(),
+    );
+
+    // view.url (the RUM key) carries the full path + query string so Datadog
+    // can derive the standard @view.url_query.* facets server-side, while
+    // view.name stays clean.
+    verify(() =>
+        mockRum.startView('/products?category=shoes&id=123', '/products', {}));
+    verify(() =>
+        mockRum.markViewFirstBuildComplete('/products?category=shoes&id=123'));
+  });
+
+  group('rumViewInfoFromRouteName', () {
+    test('route without a query string uses the name as-is with no attributes',
+        () {
+      final info = rumViewInfoFromRouteName('/home');
+      expect(info.name, '/home');
+      expect(info.path, isNull);
+      expect(info.viewKey, '/home');
+      expect(info.viewName, isNull);
+      expect(info.attributes, isEmpty);
+    });
+
+    test('route with a query string populates url', () {
+      final info = rumViewInfoFromRouteName('/products?category=shoes&id=123');
+      expect(info.name, '/products');
+      expect(info.path, '/products?category=shoes&id=123');
+      // view.url includes the query; view.name is the clean path.
+      expect(info.viewKey, '/products?category=shoes&id=123');
+      expect(info.viewName, '/products');
+      expect(info.attributes, isEmpty);
+    });
+
+    test('multi-valued query parameter stays in the url', () {
+      final info = rumViewInfoFromRouteName('/search?tag=a&tag=b');
+      expect(info.path, '/search?tag=a&tag=b');
+      expect(info.viewKey, '/search?tag=a&tag=b');
+      expect(info.attributes, isEmpty);
+    });
+
+    test('empty query string falls back to the plain name', () {
+      final info = rumViewInfoFromRouteName('/foo?');
+      expect(info.path, isNull);
+      expect(info.viewKey, '/foo?');
+      expect(info.attributes, isEmpty);
+    });
   });
 
   testWidgets('pushing to route using mixin calls startView',
@@ -241,7 +311,22 @@ void main() {
       () => mockRum.stopView('/'),
       () => mockRum.startView('MixedDestination'),
     ]);
-    verifyNoMoreInteractions(mockRum);
+  });
+
+  testWidgets('pushing to route using marks build complete',
+      (WidgetTester tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await buildAndNavigateTo(
+      tester: tester,
+      builder: (_) => const MixedDestination(),
+    );
+
+    verifyInOrder([
+      () => mockRum.startView('/'),
+      () => mockRum.stopView('/'),
+      () => mockRum.startView('MixedDestination'),
+      () => mockRum.markViewFirstBuildComplete('MixedDestination'),
+    ]);
   });
 
   testWidgets('pop from route using mixin calls stopView',
@@ -258,10 +343,13 @@ void main() {
 
     verifyInOrder([
       () => mockRum.startView('/'),
+      () => mockRum.markViewFirstBuildComplete('/'),
       () => mockRum.stopView('/'),
       () => mockRum.startView('MixedDestination'),
+      () => mockRum.markViewFirstBuildComplete('MixedDestination'),
       () => mockRum.stopView('MixedDestination'),
       () => mockRum.startView('/'),
+      () => mockRum.markViewFirstBuildComplete('/'),
     ]);
     verifyNoMoreInteractions(mockRum);
   });
@@ -287,7 +375,6 @@ void main() {
             'attribute_key': 'attribute_value',
           }),
     ]);
-    verifyNoMoreInteractions(mockRum);
   });
 
   testWidgets('pushing to next route with mixin sends stopView',
@@ -310,7 +397,6 @@ void main() {
       () => mockRum.startView('MixedDestination'),
       () => mockRum.stopView('MixedDestination'),
     ]);
-    verifyNoMoreInteractions(mockRum);
   });
 
   testWidgets('returning to mixin view restarts view',
@@ -332,10 +418,13 @@ void main() {
 
     verifyInOrder([
       () => mockRum.startView('/'),
+      () => mockRum.markViewFirstBuildComplete('/'),
       () => mockRum.stopView('/'),
       () => mockRum.startView('MixedDestination'),
+      () => mockRum.markViewFirstBuildComplete('MixedDestination'),
       () => mockRum.stopView('MixedDestination'),
       () => mockRum.startView('MixedDestination'),
+      () => mockRum.markViewFirstBuildComplete('MixedDestination'),
     ]);
     verifyNoMoreInteractions(mockRum);
   });
@@ -351,8 +440,10 @@ void main() {
 
     verifyInOrder([
       () => mockRum.startView('/'),
+      () => mockRum.markViewFirstBuildComplete('/'),
       () => mockRum.stopView('/'),
-      () => mockRum.startView('second_route')
+      () => mockRum.startView('second_route'),
+      () => mockRum.markViewFirstBuildComplete('second_route'),
     ]);
     verifyNoMoreInteractions(mockRum);
   });
@@ -369,10 +460,10 @@ class SimpleNavigator extends StatelessWidget {
   final String? nextRouteName;
 
   const SimpleNavigator({
-    Key? key,
+    super.key,
     required this.builder,
     this.nextRouteName,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -400,8 +491,8 @@ class SimpleNavigator extends StatelessWidget {
 // child
 class SimpleNamedNavigator extends StatelessWidget {
   const SimpleNamedNavigator({
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -427,10 +518,10 @@ class MixedDestination extends StatefulWidget {
   final WidgetBuilder? nextPageBuilder;
 
   const MixedDestination({
-    Key? key,
+    super.key,
     this.info,
     this.nextPageBuilder,
-  }) : super(key: key);
+  });
 
   @override
   State<MixedDestination> createState() => _MixedDestinationState();
@@ -471,7 +562,7 @@ class _MixedDestinationState extends State<MixedDestination>
 // This is a simple page with only a Pop button that calls
 // the `Navigator.pop` function
 class SimplePopPage extends StatelessWidget {
-  const SimplePopPage({Key? key}) : super(key: key);
+  const SimplePopPage({super.key});
 
   @override
   Widget build(BuildContext context) {

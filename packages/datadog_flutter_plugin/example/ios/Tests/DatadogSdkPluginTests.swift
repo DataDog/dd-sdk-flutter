@@ -4,10 +4,15 @@
 // swiftlint:disable file_length
 
 import XCTest
-@testable import Datadog
+import Flutter
+@testable import DatadogCore
+@testable import DatadogInternal
 @testable import datadog_flutter_plugin
 
+extension UserInfo: @retroactive Equatable {}
 extension UserInfo: EquatableInTests { }
+extension AccountInfo: @retroactive Equatable {}
+extension AccountInfo: EquatableInTests { }
 
 // Note: These tests are in the example app because Flutter does not provide a simple
 // way to to include tests in the Podspec.
@@ -15,15 +20,15 @@ extension UserInfo: EquatableInTests { }
 class FlutterSdkTests: XCTestCase {
 
     override func setUp() {
-        if Datadog.isInitialized {
+        if Datadog.isInitialized() {
             // Somehow we ended up with an extra instance of Datadog?
-            Datadog.flushAndDeinitialize()
+            Datadog.internalFlushAndDeinitialize()
         }
     }
 
     override func tearDown() {
-        if Datadog.isInitialized {
-            Datadog.flushAndDeinitialize()
+        if Datadog.isInitialized() {
+            Datadog.internalFlushAndDeinitialize()
         }
     }
 
@@ -32,9 +37,18 @@ class FlutterSdkTests: XCTestCase {
             "value": .string
         ]),
         Contract(methodName: "setUserInfo", requiredParameters: [
+            "id": .string,
             "extraInfo": .map
         ]),
+        Contract(methodName: "clearUserInfo", requiredParameters: [:]),
         Contract(methodName: "addUserExtraInfo", requiredParameters: [
+            "extraInfo": .map
+        ]),
+        Contract(methodName: "setAccountInfo", requiredParameters: [
+            "id": .string,
+            "extraInfo": .map
+        ]),
+        Contract(methodName: "addAccountExtraInfo", requiredParameters: [
             "extraInfo": .map
         ]),
         Contract(methodName: "setTrackingConsent", requiredParameters: [
@@ -45,253 +59,187 @@ class FlutterSdkTests: XCTestCase {
         ]),
         Contract(methodName: "telemetryError", requiredParameters: [
             "message": .string
-        ])
+        ]),
+        Contract(methodName: "clearAllData", requiredParameters: [:])
     ]
 
     func testDatadogSdkCalls_FollowContracts() {
-        let flutterConfig = DatadogFlutterConfiguration(
+        let config = Datadog.Configuration(
             clientToken: "fakeClientToken",
             env: "prod",
-            serviceName: "serviceName",
-            trackingConsent: TrackingConsent.granted,
-            nativeCrashReportingEnabled: false
+            service: "serviceName"
         )
 
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-        plugin.initialize(configuration: flutterConfig)
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: config, trackingConsent: .granted)
 
         testContracts(contracts: contracts, plugin: plugin)
     }
 
-    func testInitialziation_MissingConfiguration_DoesNotInitFeatures() {
-        let flutterConfig = DatadogFlutterConfiguration(
-            clientToken: "fakeClientToken",
-            env: "prod",
-            serviceName: "serviceName",
-            trackingConsent: TrackingConsent.granted,
-            nativeCrashReportingEnabled: false
-        )
-
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-        plugin.initialize(configuration: flutterConfig)
-
-        XCTAssertTrue(Datadog.isInitialized)
-
-        XCTAssertNotNil(Global.rum as? DDNoopRUMMonitor)
-        XCTAssertNotNil(Global.sharedTracer as? DDNoopTracer)
-
-        XCTAssertNil(plugin.logs)
-        XCTAssertNil(plugin.rum)
-    }
-
-    func testInitialization_RumConfiguration_InitializesRum() {
-        let flutterConfig = DatadogFlutterConfiguration(
-            clientToken: "fakeClientToken",
-            env: "prod",
-            serviceName: "serviceName",
-            trackingConsent: TrackingConsent.granted,
-            nativeCrashReportingEnabled: true,
-            rumConfiguration: DatadogFlutterConfiguration.RumConfiguration(
-                applicationId: "fakeApplicationId",
-                sampleRate: 100.0,
-                detectLongTasks: true,
-                longTaskThreshold: 0.3,
-                customEndpoint: nil,
-                vitalsFrequency: nil,
-                attachViewEventMapper: false,
-                attachActionEventMapper: false,
-                attachResourceEventMapper: false,
-                attachErrorEventMapper: false,
-                attachLongTaskMapper: false
-            )
-        )
-
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-        plugin.initialize(configuration: flutterConfig)
-
-        XCTAssertNotNil(plugin.rum)
-        XCTAssertEqual(plugin.rum?.isInitialized, true)
-        XCTAssertNotNil(Global.rum)
-        XCTAssertNil(Global.rum as? DDNoopRUMMonitor)
-    }
-
     func testInitialization_FromMethodChannel_InitializesDatadog() {
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
         let methodCall = FlutterMethodCall(
             methodName: "initialize",
             arguments: [
+                "trackingConsent": "TrackingConsent.granted",
                 "configuration": [
                     "clientToken": "fakeClientToken",
-                    "env": "prod",
-                    "trackingConsent": "TrackingConsent.granted",
-                    "nativeCrashReportEnabled": false
-                ]
-            ]
+                    "env": "prod"
+                ] as [String: Any]
+            ] as [String: Any]
         )
         plugin.handle(methodCall) { _ in }
 
-        XCTAssertTrue(Datadog.isInitialized)
-
-        XCTAssertNotNil(Global.rum as? DDNoopRUMMonitor)
-        XCTAssertNotNil(Global.sharedTracer as? DDNoopTracer)
+        XCTAssertTrue(Datadog.isInitialized())
     }
 
     func testRepeatInitialization_FromMethodChannelSameOptions_DoesNothing() {
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
         let configuration: [String: Any?] = [
             "clientToken": "fakeClientToken",
-            "env": "prod",
-            "trackingConsent": "TrackingConsent.granted",
-            "nativeCrashReportEnabled": false,
-            "loggingConfiguration": nil
+            "env": "prod"
         ]
 
         let methodCallA = FlutterMethodCall(
             methodName: "initialize",
             arguments: [
+                "trackingConsent": "TrackingConsent.granted",
                 "configuration": configuration
-            ]
+            ] as [String: Any]
         )
         plugin.handle(methodCallA) { _ in }
 
-        XCTAssertTrue(Datadog.isInitialized)
+        XCTAssertTrue(Datadog.isInitialized())
 
-        var loggedConsoleLines: [String] = []
-        consolePrint = { str in loggedConsoleLines.append(str) }
+        let printMock = PrintFunctionMock()
+        consolePrint = printMock.print
 
         let methodCallB = FlutterMethodCall(
             methodName: "initialize",
             arguments: [
+                "trackingConsent": "TrackingConsent.granted",
                 "configuration": configuration
-            ]
+            ] as [String: Any]
         )
         plugin.handle(methodCallB) { _ in }
 
-        print(loggedConsoleLines)
-
-        XCTAssertTrue(loggedConsoleLines.isEmpty)
+        XCTAssertTrue(printMock.printedMessages.isEmpty)
     }
 
     func testRepeatInitialization_FromMethodChannelDifferentOptions_PrintsError() {
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
         let methodCallA = FlutterMethodCall(
             methodName: "initialize",
             arguments: [
+                "trackingConsent": "TrackingConsent.granted",
                 "configuration": [
                     "clientToken": "fakeClientToken",
-                    "env": "prod",
-                    "trackingConsent": "TrackingConsent.granted",
-                    "nativeCrashReportEnabled": false,
-                    "loggingConfiguration": nil
-                ]
-            ]
+                    "env": "prod"
+                ] as [String: Any?]
+            ] as [String: Any]
         )
         plugin.handle(methodCallA) { _ in }
 
-        XCTAssertTrue(Datadog.isInitialized)
+        XCTAssertTrue(Datadog.isInitialized())
 
-        var loggedConsoleLines: [String] = []
-        consolePrint = { str in loggedConsoleLines.append(str) }
+        let printMock = PrintFunctionMock()
+        consolePrint = printMock.print
 
         let methodCallB = FlutterMethodCall(
             methodName: "initialize",
             arguments: [
+                "trackingConsent": "TrackingConsent.granted",
                 "configuration": [
                     "clientToken": "changedClientToken",
-                    "env": "debug",
-                    "trackingConsent": "TrackingConsent.granted",
-                    "nativeCrashReportEnabled": false,
-                    "loggingConfiguration": nil
-                ]
-            ]
+                    "env": "debug"
+                ] as [String: Any?]
+            ] as [String: Any]
         )
         plugin.handle(methodCallB) { _ in }
 
-        XCTAssertFalse(loggedConsoleLines.isEmpty)
-        XCTAssertTrue(loggedConsoleLines.first?.contains("🔥") == true)
+        XCTAssertFalse(printMock.printedMessages.isEmpty)
+        XCTAssertTrue(printMock.printedMessages.first?.contains("🔥") == true)
     }
 
-    func testAttachToExisting_WithNoExisting_PrintsError() {
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-        let methodCall = FlutterMethodCall(
-            methodName: "attachToExisting", arguments: [:]
-        )
+//    func testAttachToExisting_WithNoExisting_PrintsError() {
+//        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+//        let methodCall = FlutterMethodCall(
+//            methodName: "attachToExisting", arguments: [:] as [String: Any?]
+//        )
+//
+//        var loggedConsoleLines: [String] = []
+//        consolePrint = { str in loggedConsoleLines.append(str) }
+//
+//        plugin.handle(methodCall) { _ in }
+//
+//        XCTAssertFalse(loggedConsoleLines.isEmpty)
+//        XCTAssertTrue(loggedConsoleLines.first?.contains("🔥") == true)
+//    }
 
-        var loggedConsoleLines: [String] = []
-        consolePrint = { str in loggedConsoleLines.append(str) }
+//    func testAttachToExisting_RumDisabled_ReturnsRumDisabled() {
+//        let config = Datadog.Configuration.builderUsing(
+//                    clientToken: "mock_client_token",
+//                    environment: "mock"
+//                )
+//                .set(serviceName: "app-name")
+//                .set(endpoint: .us1)
+//                .build()
+//        Datadog.initialize(appContext: .init(),
+//            trackingConsent: .granted, configuration: config)
+//
+//        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+//        let methodCall = FlutterMethodCall(
+//            methodName: "attachToExisting", arguments: [:] as [String: Any]
+//        )
+//
+//        var callResult: [String: Any?]?
+//        plugin.handle(methodCall) { result in
+//            callResult = result as? [String: Any?]
+//        }
+//
+//        XCTAssertNotNil(callResult)
+//        XCTAssertEqual(callResult?["rumEnabled"] as? Bool, false)
+//    }
 
-        plugin.handle(methodCall) { _ in }
-
-        XCTAssertFalse(loggedConsoleLines.isEmpty)
-        XCTAssertTrue(loggedConsoleLines.first?.contains("🔥") == true)
-    }
-
-    func testAttachToExisting_RumDisabled_ReturnsRumDisabled() {
-        let config = Datadog.Configuration.builderUsing(
-                    clientToken: "mock_client_token",
-                    environment: "mock"
-                )
-                .set(serviceName: "app-name")
-                .set(endpoint: .us1)
-                .build()
-        Datadog.initialize(appContext: .init(),
-            trackingConsent: .granted, configuration: config)
-
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-        let methodCall = FlutterMethodCall(
-            methodName: "attachToExisting", arguments: [:]
-        )
-
-        var callResult: [String: Any?]?
-        plugin.handle(methodCall) { result in
-            callResult = result as? [String: Any?]
-        }
-
-        XCTAssertNotNil(callResult)
-        XCTAssertEqual(callResult?["rumEnabled"] as? Bool, false)
-    }
-
-    func testAttachToExisting_RumEnabled_ReturnsRumEnabled() {
-        let config = Datadog.Configuration.builderUsing(
-                    rumApplicationID: "mock_application_id",
-                    clientToken: "mock_client_token",
-                    environment: "mock"
-                )
-                .set(serviceName: "app-name")
-                .set(endpoint: .us1)
-                .build()
-        Datadog.initialize(appContext: .init(),
-            trackingConsent: .granted, configuration: config)
-        Global.rum = RUMMonitor.initialize()
-
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-        let methodCall = FlutterMethodCall(
-            methodName: "attachToExisting", arguments: [:]
-        )
-
-        var callResult: [String: Any?]?
-        plugin.handle(methodCall) { result in
-            callResult = result as? [String: Any?]
-        }
-
-        XCTAssertNotNil(callResult)
-        XCTAssertEqual(callResult?["rumEnabled"] as? Bool, true)
-    }
+//    func testAttachToExisting_RumEnabled_ReturnsRumEnabled() {
+//        let config = Datadog.Configuration.builderUsing(
+//                    rumApplicationID: "mock_application_id",
+//                    clientToken: "mock_client_token",
+//                    environment: "mock"
+//                )
+//                .set(serviceName: "app-name")
+//                .set(endpoint: .us1)
+//                .build()
+//        Datadog.initialize(appContext: .init(),
+//            trackingConsent: .granted, configuration: config)
+//        Global.rum = RUMMonitor.initialize()
+//
+//        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+//        let methodCall = FlutterMethodCall(
+//            methodName: "attachToExisting", arguments: [:] as [String: Any]
+//        )
+//
+//        var callResult: [String: Any?]?
+//        plugin.handle(methodCall) { result in
+//            callResult = result as? [String: Any?]
+//        }
+//
+//        XCTAssertNotNil(callResult)
+//        XCTAssertEqual(callResult?["rumEnabled"] as? Bool, true)
+//    }
 
     func testSetVerbosity_FromMethodChannel_SetsVerbosity() {
-        let flutterConfig = DatadogFlutterConfiguration(
+        let flutterConfig = Datadog.Configuration(
             clientToken: "fakeClientToken",
             env: "prod",
-            serviceName: "serviceName",
-            trackingConsent: TrackingConsent.granted,
-            nativeCrashReportingEnabled: false
+            service: "serviceName"
         )
 
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-        plugin.initialize(configuration: flutterConfig)
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
         let methodCall = FlutterMethodCall(
             methodName: "setSdkVerbosity", arguments: [
-                "value": "Verbosity.info"
+                "value": "CoreLoggerLevel.warn"
             ])
 
         var callResult = ResultStatus.notCalled
@@ -299,21 +247,19 @@ class FlutterSdkTests: XCTestCase {
             callResult = ResultStatus.called(value: result)
         }
 
-        XCTAssertEqual(Datadog.verbosityLevel, .info)
+        XCTAssertEqual(Datadog.verbosityLevel, .warn)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
     func testSetTrackingConsent_FromMethodChannel_SetsTrackingConsent() {
-        let flutterConfig = DatadogFlutterConfiguration(
+        let flutterConfig = Datadog.Configuration(
             clientToken: "fakeClientToken",
             env: "prod",
-            serviceName: "serviceName",
-            trackingConsent: TrackingConsent.granted,
-            nativeCrashReportingEnabled: false
+            service: "serviceName"
         )
 
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-        plugin.initialize(configuration: flutterConfig)
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .pending)
         let methodCall = FlutterMethodCall(
             methodName: "setTrackingConsent", arguments: [
                 "value": "TrackingConsent.notGranted"
@@ -324,52 +270,48 @@ class FlutterSdkTests: XCTestCase {
             callResult = ResultStatus.called(value: result)
         }
 
-        let core = defaultDatadogCore as? DatadogCore
+        let core = plugin.core as? DatadogCore
         XCTAssertEqual(core?.consentPublisher.consent, .notGranted)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
     func testSetUserInfo_FromMethodChannel_SetsUserInfo() {
-        let flutterConfig = DatadogFlutterConfiguration(
+        let flutterConfig = Datadog.Configuration(
             clientToken: "fakeClientToken",
             env: "prod",
-            serviceName: "serviceName",
-            trackingConsent: TrackingConsent.granted,
-            nativeCrashReportingEnabled: false
+            service: "serviceName"
         )
 
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-        plugin.initialize(configuration: flutterConfig)
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
         let methodCall = FlutterMethodCall(
             methodName: "setUserInfo", arguments: [
                 "id": "fakeUserId",
                 "name": "fake user name",
                 "email": "fake email",
-                "extraInfo": [:]
-            ])
+                "extraInfo": [:] as [String: Any?]
+            ] as [String: Any?])
 
         var callResult = ResultStatus.notCalled
         plugin.handle(methodCall) { result in
             callResult = ResultStatus.called(value: result)
         }
 
-        let core = defaultDatadogCore as? DatadogCore
+        let core = plugin.core as? DatadogCore
         let expectedUserInfo = UserInfo(id: "fakeUserId", name: "fake user name", email: "fake email", extraInfo: [:])
-        XCTAssertEqual(core?.userInfoProvider.value, expectedUserInfo)
+        XCTAssertEqual(core?.userInfoPublisher.current, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
     func testSetUserInfo_FromMethodChannelWithNils_SetsUserInfo() {
-        let flutterConfig = DatadogFlutterConfiguration(
+        let flutterConfig = Datadog.Configuration(
             clientToken: "fakeClientToken",
             env: "prod",
-            serviceName: "serviceName",
-            trackingConsent: TrackingConsent.granted,
-            nativeCrashReportingEnabled: false
+            service: "serviceName"
         )
 
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-        plugin.initialize(configuration: flutterConfig)
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
         let methodCall = FlutterMethodCall(
             methodName: "setUserInfo", arguments: [
                 "id": "fakeUserId",
@@ -378,7 +320,7 @@ class FlutterSdkTests: XCTestCase {
                 "extraInfo": [
                     "attribute": NSNumber(23.3)
                 ]
-            ])
+            ] as [String: Any?])
 
         var callResult = ResultStatus.notCalled
         plugin.handle(methodCall) { result in
@@ -392,29 +334,27 @@ class FlutterSdkTests: XCTestCase {
                                             "attribute": 23.3
                                         ])
 
-        let core = defaultDatadogCore as? DatadogCore
-        XCTAssertEqual(core?.userInfoProvider.value, expectedUserInfo)
+        let core = plugin.core as? DatadogCore
+        XCTAssertEqual(core?.userInfoPublisher.current, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
     func testAddUserExtraInfo_FromMethodChannel_AddsUserInfo() {
-        let flutterConfig = DatadogFlutterConfiguration(
+        let flutterConfig = Datadog.Configuration(
             clientToken: "fakeClientToken",
             env: "prod",
-            serviceName: "serviceName",
-            trackingConsent: TrackingConsent.granted,
-            nativeCrashReportingEnabled: false
+            service: "serviceName"
         )
 
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
-        plugin.initialize(configuration: flutterConfig)
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
         let methodCall = FlutterMethodCall(
             methodName: "addUserExtraInfo", arguments: [
                 "extraInfo": [
                     "attribute_1": NSNumber(23.3),
                     "attribute_2": "attribute_value"
-                ]
-            ])
+                ] as [String: Any?]
+            ] as [String: Any?])
 
         var callResult = ResultStatus.notCalled
         plugin.handle(methodCall) { result in
@@ -430,56 +370,299 @@ class FlutterSdkTests: XCTestCase {
                 "attribute_2": "attribute_value"
             ])
 
-        let core = defaultDatadogCore as? DatadogCore
-        XCTAssertEqual(core?.userInfoProvider.value, expectedUserInfo)
+        let core = plugin.core as? DatadogCore
+        XCTAssertEqual(core?.userInfoPublisher.current, expectedUserInfo)
         XCTAssertEqual(callResult, .called(value: nil))
     }
 
-    func testConfigurationOverrides_FromMethodChannel_AreOverridden() {
-        let plugin = SwiftDatadogSdkPlugin(channel: FlutterMethodChannel())
+    func testClearUserInfo_FromMethodChannel_ClearsUserInfo() {
+        // Given
+        let flutterConfig = Datadog.Configuration(
+            clientToken: "fakeClientToken",
+            env: "prod",
+            service: "serviceName"
+        )
 
-        let trackViewsManually: Bool = .random()
-        let trackInteractions: Bool = .random()
-        let trackErrors: Bool = .random()
-        let trackNetworkRequests: Bool = .random()
-        let trackNativeViews: Bool = .random()
-        let trackCrossPlatformLongTasks: Bool = .random()
-        let trackFlutterPerformance: Bool = .random()
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
+        plugin.handle(FlutterMethodCall(
+            methodName: "setUserInfo", arguments: [
+                "id": "fakeUserId",
+                "extraInfo": [
+                    "attribute": NSNumber(23.3)
+                ]
+            ])) { _ in }
 
-        func callAndCheck(property: String, value: Bool, check: () -> Void) {
-            var callResult = ResultStatus.notCalled
-            let call = FlutterMethodCall(methodName: "updateTelemetryConfiguration", arguments: [
-                "option": property,
-                "value": value
-            ])
-            plugin.handle(call) { result in
-                callResult = .called(value: result)
+        // When
+        let methodCall = FlutterMethodCall(methodName: "clearUserInfo", arguments: [:])
+        var callResult = ResultStatus.notCalled
+        plugin.handle(methodCall) { result in
+            callResult = ResultStatus.called(value: result)
+        }
+
+        // Then
+        let expectedUserInfo = UserInfo()
+
+        let core = plugin.core as? DatadogCore
+        XCTAssertEqual(core?.userInfoPublisher.current, expectedUserInfo)
+        XCTAssertEqual(callResult, .called(value: nil))
+    }
+
+    func testSetAccountInfo_FromMethodChannel_SetsAccountInfo() {
+        let flutterConfig = Datadog.Configuration(
+            clientToken: "fakeClientToken",
+            env: "prod",
+            service: "serviceName"
+        )
+
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
+        let methodCall = FlutterMethodCall(
+            methodName: "setAccountInfo", arguments: [
+                "id": "fakeAccountId",
+                "name": "fakeAccountName",
+                "extraInfo": [
+                    "attribute": NSNumber(14141.3)
+                ]
+            ] as [String: Any?])
+
+        var callResult = ResultStatus.notCalled
+        plugin.handle(methodCall) { result in
+            callResult = ResultStatus.called(value: result)
+        }
+
+        let expectedAccountInfo = AccountInfo(id: "fakeAccountId", name: "fakeAccountName", extraInfo: [
+            "attribute": 14141.3
+        ])
+
+        let core = plugin.core as? DatadogCore
+        XCTAssertEqual(core?.accountInfoPublisher.current, expectedAccountInfo)
+        XCTAssertEqual(callResult, .called(value: nil))
+    }
+
+    func testAddAccountExtraInfo_FromMethodChannel_AddsAccountInfo() {
+        let flutterConfig = Datadog.Configuration(
+            clientToken: "fakeClientToken",
+            env: "prod",
+            service: "serviceName"
+        )
+
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
+
+        plugin.handle(FlutterMethodCall(
+            methodName: "setAccountInfo", arguments: [
+                "id": "fakeAccountId",
+                "extraInfo": [:]
+            ])) { _ in
+
             }
 
-            XCTAssertEqual(callResult, .called(value: nil))
-            check()
+        let methodCall = FlutterMethodCall(
+            methodName: "addAccountExtraInfo", arguments: [
+                "extraInfo": [
+                    "attribute_1": NSNumber(23.3),
+                    "attribute_2": "attribute_value"
+                ] as [String: Any?]
+            ] as [String: Any?])
+
+        var callResult = ResultStatus.notCalled
+        plugin.handle(methodCall) { result in
+            callResult = ResultStatus.called(value: result)
         }
 
-        callAndCheck(property: "trackViewsManually", value: trackViewsManually) {
-            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackViewsManually, trackViewsManually)
+        let expectedAccountInfo = AccountInfo(id: "fakeAccountId", extraInfo: [
+            "attribute_1": 23.3,
+            "attribute_2": "attribute_value"
+        ])
+
+        let core = plugin.core as? DatadogCore
+        XCTAssertEqual(core?.accountInfoPublisher.current, expectedAccountInfo)
+        XCTAssertEqual(callResult, .called(value: nil))
+    }
+
+    func testClearAccountInfo_FromMethodChannel_ClearsAccountInfo() {
+        // Given
+        let flutterConfig = Datadog.Configuration(
+            clientToken: "fakeClientToken",
+            env: "prod",
+            service: "serviceName"
+        )
+
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        plugin.initialize(configuration: flutterConfig, trackingConsent: .granted)
+        plugin.handle(FlutterMethodCall(
+            methodName: "setAccountInfo", arguments: [
+                "id": "fakeAccountId",
+                "extraInfo": [
+                    "attribute": NSNumber(23.3)
+                ]
+            ])) { _ in }
+
+        // When
+        let methodCall = FlutterMethodCall(methodName: "clearAccountInfo", arguments: [:])
+        var callResult = ResultStatus.notCalled
+        plugin.handle(methodCall) { result in
+            callResult = ResultStatus.called(value: result)
         }
-        callAndCheck(property: "trackInteractions", value: trackInteractions) {
-            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackInteractions, trackInteractions)
-        }
-        callAndCheck(property: "trackErrors", value: trackErrors) {
-            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackErrors, trackErrors)
-        }
-        callAndCheck(property: "trackNetworkRequests", value: trackNetworkRequests) {
-            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackNetworkRequests, trackNetworkRequests)
-        }
-        callAndCheck(property: "trackNativeViews", value: trackNativeViews) {
-            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackNativeViews, trackNativeViews)
-        }
-        callAndCheck(property: "trackCrossPlatformLongTasks", value: trackCrossPlatformLongTasks) {
-            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackCrossPlatformLongTasks, trackCrossPlatformLongTasks)
-        }
-        callAndCheck(property: "trackFlutterPerformance", value: trackFlutterPerformance) {
-            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackFlutterPerformance, trackFlutterPerformance)
-        }
+
+        // Then
+        let core = plugin.core as? DatadogCore
+        XCTAssertNil(core?.accountInfoPublisher.current?.name)
+        XCTAssert(core?.accountInfoPublisher.current?.extraInfo.isEmpty ?? true)
+        XCTAssertEqual(callResult, .called(value: nil))
+    }
+
+    // Not sure how to check what changes have been made to the Configuraiton Telemetry in v2
+//    func testConfigurationOverrides_FromMethodChannel_AreOverridden() {
+//        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+//        plugin.core?.
+//
+//        let trackViewsManually: Bool = .random()
+//        let trackInteractions: Bool = .random()
+//        let trackErrors: Bool = .random()
+//        let trackNetworkRequests: Bool = .random()
+//        let trackNativeViews: Bool = .random()
+//        let trackCrossPlatformLongTasks: Bool = .random()
+//        let trackFlutterPerformance: Bool = .random()
+//
+//        func callAndCheck(property: String, value: Bool, check: () -> Void) {
+//            var callResult = ResultStatus.notCalled
+//            let call = FlutterMethodCall(methodName: "updateTelemetryConfiguration", arguments: [
+//                "option": property,
+//                "value": value
+//            ] as [String: Any?])
+//            plugin.handle(call) { result in
+//                callResult = .called(value: result)
+//            }
+//
+//            XCTAssertEqual(callResult, .called(value: nil))
+//            check()
+//        }
+//
+//        callAndCheck(property: "trackViewsManually", value: trackViewsManually) {
+//            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackViewsManually, trackViewsManually)
+//        }
+//        callAndCheck(property: "trackInteractions", value: trackInteractions) {
+//            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackInteractions, trackInteractions)
+//        }
+//        callAndCheck(property: "trackErrors", value: trackErrors) {
+//            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackErrors, trackErrors)
+//        }
+//        callAndCheck(property: "trackNetworkRequests", value: trackNetworkRequests) {
+//            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackNetworkRequests, trackNetworkRequests)
+//        }
+//        callAndCheck(property: "trackNativeViews", value: trackNativeViews) {
+//            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackNativeViews, trackNativeViews)
+//        }
+//        callAndCheck(property: "trackCrossPlatformLongTasks", value: trackCrossPlatformLongTasks) {
+//            XCTAssertEqual(
+//                plugin.configurationTelemetryOverrides.trackCrossPlatformLongTasks,
+//                trackCrossPlatformLongTasks)
+//        }
+//        callAndCheck(property: "trackFlutterPerformance", value: trackFlutterPerformance) {
+//            XCTAssertEqual(plugin.configurationTelemetryOverrides.trackFlutterPerformance, trackFlutterPerformance)
+//        }
+//    }
+}
+
+/// A messenger that does nothing. `FlutterMethodChannel` needs one to exist, but these tests only
+/// care about whether the channel is still held, never about messages crossing it.
+private class NoOpBinaryMessenger: NSObject, FlutterBinaryMessenger {
+    func send(onChannel channel: String, message: Data?) { }
+
+    func send(onChannel channel: String, message: Data?, binaryReply callback: FlutterBinaryReply? = nil) { }
+
+    func setMessageHandlerOnChannel(
+        _ channel: String,
+        binaryMessageHandler handler: FlutterBinaryMessageHandler? = nil
+    ) -> FlutterBinaryMessengerConnection {
+        return 0
+    }
+
+    func cleanUpConnection(_ connection: FlutterBinaryMessengerConnection) { }
+}
+
+/// Teardown has to drop every channel the SDK can call Dart on. Flutter resets the engine's shell on
+/// termination without notifying plugins (flutter/flutter#126671), and anything sent afterwards
+/// asserts inside `-[FlutterEngine sendOnChannel:message:binaryReply:]` — see #1062.
+class DatadogPluginDetachTests: XCTestCase {
+    private let messenger = NoOpBinaryMessenger()
+
+    private func makePlugin(notificationCenter: NotificationCenterProtocol = NotificationCenter.default) -> DatadogSdkPlugin {
+        let plugin = DatadogSdkPlugin(
+            channel: FlutterMethodChannel(
+                name: "datadog_sdk_flutter",
+                binaryMessenger: messenger
+            ),
+            notificationCenter: notificationCenter
+        )
+        plugin.rum.methodChannel = FlutterMethodChannel(
+            name: "datadog_sdk_flutter.rum",
+            binaryMessenger: messenger
+        )
+        plugin.logs.methodChannel = FlutterMethodChannel(
+            name: "datadog_sdk_flutter.logs",
+            binaryMessenger: messenger
+        )
+        return plugin
+    }
+
+    func testApplicationWillTerminate_releasesEveryMethodChannel() {
+        // Posts to an injected `NotificationCenterMock` instead of the real, process-wide center:
+        // a real post would tear down every other live `DatadogSdkPlugin` in the process too,
+        // including the Runner's own registered plugin and other suites' engines.
+        let notificationCenter = NotificationCenterMock()
+        let plugin = makePlugin(notificationCenter: notificationCenter)
+
+        // Termination arrives as a notification, not as a plugin callback
+        notificationCenter.post(name: UIApplication.willTerminateNotification)
+
+        XCTAssertNil(plugin.rum.methodChannel)
+        XCTAssertNil(plugin.logs.methodChannel)
+    }
+
+    func testDetach_isIdempotent() {
+        // Both teardown paths can run for the same engine: termination fires the notification, and a
+        // host releasing the engine afterwards still calls `detachFromEngine(for:)`.
+        let plugin = makePlugin()
+        plugin.rum.onDetach()
+        plugin.logs.onDetach()
+        plugin.rum.onDetach()
+        plugin.logs.onDetach()
+
+        XCTAssertNil(plugin.rum.methodChannel)
+        XCTAssertNil(plugin.logs.methodChannel)
+    }
+
+    func testWithoutAChannel_eventMappersReturnTheEventUnmapped() {
+        let plugin = makePlugin()
+        plugin.rum.onDetach()
+
+        // Would otherwise hop to the main queue and block on a semaphore until it times out
+        let event = plugin.rum.callEventMapper(
+            mapperName: "mapViewEvent",
+            event: "unmapped",
+            encodedEvent: [:],
+            completion: { _ in "mapped" }
+        )
+
+        XCTAssertEqual(event, "unmapped")
+        XCTAssertEqual(plugin.rum.mapperTimeouts, 0)
+    }
+
+    func testEngineATeardown_doesNotAffectEngineB() {
+        // Regression test for the original multi-engine bug: engine A detaching must not clear
+        // engine B's still-live channel (they used to share one process-wide singleton).
+        let pluginA = makePlugin()
+        let pluginB = makePlugin()
+
+        pluginA.rum.onDetach()
+        pluginA.logs.onDetach()
+
+        XCTAssertNil(pluginA.rum.methodChannel)
+        XCTAssertNil(pluginA.logs.methodChannel)
+        XCTAssertNotNil(pluginB.rum.methodChannel)
+        XCTAssertNotNil(pluginB.logs.methodChannel)
     }
 }

@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
+import 'package:flutter/foundation.dart';
 
 import '../datadog_tracking_http_client.dart';
 
@@ -21,6 +22,14 @@ import '../datadog_tracking_http_client.dart';
 /// [responseFinished] are the same map, and it is possible to inspect and
 /// modify attributes between the two calls. Only the attributes remaining after
 /// [responseFinished] is called will be sent to Datadog.
+///
+/// If you are performing network calls from background isolates, Flutter will
+/// attempts to serialize and recreate this class on the background isolate
+/// during your call to [DatadogSdk.attachToBackgroundIsolate], and any state
+/// changed in the listener from the main isolate from that point forward will
+/// not be reflected in the background isolate. It is generally best practice to
+/// set any state variables in this listener to `final` (or not use any at all)
+/// to avoid unexpected value discrepancies between isolates.
 abstract class DatadogTrackingHttpClientListener {
   /// Called when an HttpClientRequest is started.
   ///
@@ -28,8 +37,8 @@ abstract class DatadogTrackingHttpClientListener {
   /// connect to other user operations.
   void requestStarted({
     required Object resourceKey,
-    HttpClientRequest request,
-    Map<String, Object?> userAttributes,
+    required HttpClientRequest request,
+    required Map<String, Object?> userAttributes,
   });
 
   /// Called when an HttpClientResponse is finished.
@@ -38,16 +47,24 @@ abstract class DatadogTrackingHttpClientListener {
   /// connect to other user operations.
   void responseFinished({
     required Object resourceKey,
-    HttpClientResponse response,
-    Map<String, Object?> userAttributes,
+    required HttpClientResponse response,
+    required Map<String, Object?> userAttributes,
     Object? error,
   });
 }
 
+@immutable
 class DdHttpTrackingPluginConfiguration extends DatadogPluginConfiguration {
-  DatadogTrackingHttpClientListener? clientListener;
+  final DatadogTrackingHttpClientListener? clientListener;
+  final List<RegExp> ignoreUrlPatterns;
 
-  DdHttpTrackingPluginConfiguration({this.clientListener});
+  @override
+  bool get supportsBackgroundIsolates => true;
+
+  DdHttpTrackingPluginConfiguration({
+    this.clientListener,
+    this.ignoreUrlPatterns = const [],
+  });
 
   @override
   DatadogPlugin create(DatadogSdk datadogInstance) {
@@ -65,13 +82,22 @@ class _DdHttpTrackingPlugin extends DatadogPlugin {
 
   @override
   void initialize() {
+    _setHttpOverrides();
+    instance.updateConfigurationInfo(
+        LateConfigurationProperty.trackNetworkRequests, true);
+  }
+
+  @override
+  void initializeFromBackgroundIsolate() {
+    _setHttpOverrides();
+  }
+
+  void _setHttpOverrides() {
     final existingOverrides = HttpOverrides.current;
     HttpOverrides.global = DatadogTrackingHttpOverrides(
       instance,
       configuration,
       existingOverrides,
     );
-    instance.updateConfigurationInfo(
-        LateConfigurationProperty.trackNetworkRequests, true);
   }
 }

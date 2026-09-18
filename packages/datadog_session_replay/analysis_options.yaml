@@ -1,0 +1,17 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - "**/*.mocks.dart"
+    - "**/*.g.dart"
+    # specifically exclude the FFI generated file
+    - "lib/src/ios/datadog_session_replay_bridge_ios.dart"
+  language:
+    strict-raw-types: true
+
+linter:
+  rules:
+    directives_ordering: true
+    prefer_single_quotes: true
+    prefer_relative_imports: true
+    unawaited_futures: true

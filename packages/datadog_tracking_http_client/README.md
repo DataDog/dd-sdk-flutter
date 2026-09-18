@@ -10,7 +10,7 @@ To use this plugin, enable it during configuration of your SDK. In order to enab
 ```dart
 import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
 
-final configuration = DdSdkConfiguration(
+final configuration = DatadogConfiguration(
   // configuration
   firstPartyHosts: ['example.com'],
 )..enableHttpTracking()
@@ -33,7 +33,7 @@ To use the `DatadogClient`, create and compose the `Client` from the `http` pack
 import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
 import 'package:http/http.dart' as http;
 
-final configuration = DdSdkConfiguration(
+final configuration = DatadogConfiguration(
   // specifying firstPartyHosts is still necessary to
   // enable distributed tracing
   firstPartyHosts: ['example.com'],

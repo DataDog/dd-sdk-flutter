@@ -1,9 +1,6 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
-@Skip(
-    "Android webviews don't load in integration tests. See https://github.com/flutter/flutter/issues/122888")
-
 import 'dart:async';
 import 'dart:convert';
 
@@ -48,6 +45,7 @@ void main() {
         widget is Text && (widget.data?.startsWith('Open WebView') ?? false));
     await tester.tap(button);
     await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 3));
 
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
@@ -63,8 +61,7 @@ void main() {
             }
           });
         }
-        final session = RumSessionDecoder.fromEvents(rumLog,
-            shouldDiscardApplicationLaunch: false);
+        final session = RumSessionDecoder.fromEvents(rumLog);
         return session.visits.length >= 2;
       },
     );

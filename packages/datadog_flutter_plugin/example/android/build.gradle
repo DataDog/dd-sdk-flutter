@@ -5,8 +5,6 @@
  */
 
 buildscript {
-    ext.kotlin_version = '1.6.21'
-
     repositories {
         google()
         mavenCentral()
@@ -16,9 +14,9 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:7.4.1'
+        classpath 'com.android.tools.build:gradle:8.9.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath "org.jlleitschuh.gradle:ktlint-gradle:10.2.0"
+        classpath "org.jlleitschuh.gradle:ktlint-gradle:11.6.0"
         classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.19.0"
     }
 }
@@ -28,18 +26,21 @@ allprojects {
         google()
         mavenCentral()
         maven {
-            url "https://oss.sonatype.org/content/repositories/snapshots/"
+            url "https://central.sonatype.com/repository/maven-snapshots/"
         }
     }
 }
 
 rootProject.buildDir = '../build'
+
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
     project.evaluationDependsOn(':app')
 
-    apply from: "${project.rootDir}/buildscripts/ktlint.gradle"
-    apply from: "${project.rootDir}/buildscripts/detekt.gradle"
+    if (project.projectDir.canonicalPath.startsWith(rootProject.projectDir.canonicalPath)) {
+        apply from: "${project.rootDir}/buildscripts/ktlint.gradle"
+        apply from: "${project.rootDir}/buildscripts/detekt.gradle"
+    }
 }
 
 tasks.register("clean", Delete) {

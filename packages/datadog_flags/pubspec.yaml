@@ -1,0 +1,25 @@
+name: datadog_flags
+description: Datadog Feature Flags and Experimentation SDK for client applications.
+version: 1.1.0
+repository: https://github.com/DataDog/dd-sdk-flutter
+homepage: https://datadoghq.com
+issue_tracker: https://github.com/DataDog/dd-sdk-flutter/issues
+topics:
+  - datadog
+  - feature-flags
+  - experimentation
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+
+dependencies:
+  http: ^1.0.0
+  json_annotation: ^4.9.0
+  meta: ^1.0.0
+  uuid: ^4.0.0
+
+dev_dependencies:
+  build_runner: 2.4.15
+  json_serializable: 6.9.5
+  lints: '>=5.0.0'
+  test: ^1.25.0

@@ -7,6 +7,8 @@ package com.datadoghq.flutter
 
 import android.util.Log
 import com.datadog.android.log.Logger
+import com.datadog.android.log.Logs
+import com.datadog.android.log.LogsConfiguration
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -15,8 +17,8 @@ import java.lang.NullPointerException
 import org.json.JSONArray
 import org.json.JSONObject
 
-class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
-    companion object LogParameterNames {
+class DatadogLogsPlugin internal constructor() : MethodChannel.MethodCallHandler {
+    companion object {
         const val LOG_LEVEL = "logLevel"
         const val LOG_MESSAGE = "message"
         const val LOG_CONTEXT = "context"
@@ -26,6 +28,22 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         const val LOG_KEY = "key"
         const val LOG_TAG = "tag"
         const val LOG_VALUE = "value"
+
+        // See DatadogSdkPlugin's description of this same member
+        private var previousConfiguration: Map<String, Any?>? = null
+
+        // Static instance of the event mapper
+        private val eventMapper: DatadogLogEventMapper = DatadogLogEventMapper()
+
+        @JvmStatic
+        fun setLogsEventMapper(mapper: DatadogLogEventMapper.EventMapper) {
+            eventMapper.eventMapper = mapper
+        }
+
+        // For testing purposes only
+        internal fun resetConfig() {
+            previousConfiguration = null
+        }
     }
 
     private lateinit var channel: MethodChannel
@@ -53,6 +71,10 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        if (handleGlobalMethod(call, result)) {
+            return
+        }
+
         val loggerHandle = call.argument<String>("loggerHandle")
         if (loggerHandle == null) {
             result.missingParameter(call.method)
@@ -62,7 +84,7 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         if (call.method == "createLogger") {
             val encodedConfig = call.argument<Map<String, Any?>>("configuration")
             if (encodedConfig != null) {
-                createLogger(loggerHandle, LoggingConfiguration(encodedConfig))
+                createLogger(loggerHandle, encodedConfig)
                 result.success(null)
             } else {
                 result.invalidOperation("Bad logging configuration creating a logger")
@@ -72,10 +94,16 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
 
         getLogger(loggerHandle)?.let { logger ->
             try {
-                callLoggingMethod(logger, call, result)
+                if (call.method == "destroyLogger") {
+                    loggerRegistry.remove(loggerHandle)
+                    result.success(null)
+                } else {
+                    callLoggerMethod(logger, call, result)
+                }
             } catch (e: ClassCastException) {
                 result.error(
-                    DatadogSdkPlugin.CONTRACT_VIOLATION, e.toString(),
+                    DatadogSdkPlugin.CONTRACT_VIOLATION,
+                    e.toString(),
                     mapOf(
                         "methodName" to call.method
                     )
@@ -84,8 +112,68 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         }
     }
 
+    private fun handleGlobalMethod(call: MethodCall, result: MethodChannel.Result): Boolean {
+        if (call.method == "enable") {
+            enable(call, result)
+            return true
+        } else if (call.method == "deinitialize") {
+            deinitialize(call, result)
+            return true
+        } else if (call.method == "addGlobalAttribute") {
+            val key = call.argument<String>(LOG_KEY)
+            val value = call.argument<Any>(LOG_VALUE)
+            if (key != null && value != null) {
+                Logs.addAttribute(key, value)
+                result.success(null)
+            } else {
+                result.missingParameter(call.method)
+            }
+            return true
+        } else if (call.method == "removeGlobalAttribute") {
+            val key = call.argument<String>(LOG_KEY)
+            if (key != null) {
+                Logs.removeAttribute(key)
+                result.success(null)
+            } else {
+                result.missingParameter(call.method)
+            }
+            return true
+        }
+
+        return false
+    }
+
+    private fun enable(call: MethodCall, result: MethodChannel.Result) {
+        val encodedConfig = call.argument<Map<String, Any?>>("configuration")
+        if (previousConfiguration == null) {
+            if (encodedConfig != null) {
+                val config = LogsConfiguration.Builder()
+                    .withEncoded(encodedConfig)
+
+                val attachLogMeapper = (encodedConfig["attachLogMapper"] as? Boolean) ?: false
+                if (attachLogMeapper) {
+                    eventMapper.attachMapper(config)
+                }
+
+                Logs.enable(config.build())
+                previousConfiguration = encodedConfig
+                result.success(null)
+            } else {
+                result.invalidOperation("Bad configuration when enabling logging feature")
+            }
+        } else if (previousConfiguration != encodedConfig) {
+            // Maybe use DevLogger instead?
+            Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_LOGGER_REINITIALIZATION)
+        }
+    }
+
+    private fun deinitialize(call: MethodCall, result: MethodChannel.Result) {
+        previousConfiguration = null
+        result.success(null)
+    }
+
     @Suppress("LongMethod", "ComplexMethod", "NestedBlockDepth")
-    private fun callLoggingMethod(logger: Logger, call: MethodCall, result: MethodChannel.Result) {
+    private fun callLoggerMethod(logger: Logger, call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "log" -> {
                 internalLog(logger, call, result)
@@ -147,16 +235,10 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
         }
     }
 
-    private fun createLogger(loggerHandle: String, configuration: LoggingConfiguration) {
+    private fun createLogger(loggerHandle: String, configuration: Map<String, Any?>) {
         val logBuilder = Logger.Builder()
-            .setDatadogLogsEnabled(configuration.sendLogsToDatadog)
-            .setLogcatLogsEnabled(configuration.printLogsToConsole)
-            .setNetworkInfoEnabled(configuration.sendNetworkInfo)
-            .setBundleWithRumEnabled(configuration.bundleWithRum)
+            .withEncoded(configuration)
 
-        configuration.loggerName?.let {
-            logBuilder.setLoggerName(it)
-        }
         val logger = logBuilder.build()
         loggerRegistry[loggerHandle] = logger
     }
@@ -206,6 +288,36 @@ class DatadogLogsPlugin : MethodChannel.MethodCallHandler {
     }
 }
 
+fun LogsConfiguration.Builder.withEncoded(encoded: Map<String, Any?>): LogsConfiguration.Builder {
+    var builder = this
+
+    (encoded["customEndpoint"] as? String)?.let {
+        builder = builder.useCustomEndpoint(it)
+    }
+    return builder
+}
+
+fun Logger.Builder.withEncoded(encoded: Map<String, Any?>): Logger.Builder {
+    var builder = this
+    (encoded["service"] as? String)?.let {
+        builder = builder.setService(it)
+    }
+    (encoded["name"] as? String)?.let {
+        builder = builder.setName(it)
+    }
+    (encoded["networkInfoEnabled"] as? Boolean)?.let {
+        builder = builder.setNetworkInfoEnabled(it)
+    }
+    (encoded["bundleWithRumEnabled"] as? Boolean)?.let {
+        builder = builder.setBundleWithRumEnabled(it)
+    }
+    (encoded["bundleWithTraceEnabled"] as? Boolean)?.let {
+        builder = builder.setBundleWithTraceEnabled(it)
+    }
+
+    return builder
+}
+
 internal fun parseLogLevel(logLevel: String): Int {
     return when (logLevel) {
         "LogLevel.debug" -> Log.DEBUG
@@ -219,3 +331,7 @@ internal fun parseLogLevel(logLevel: String): Int {
         else -> Log.INFO
     }
 }
+
+internal const val MESSAGE_INVALID_LOGGER_REINITIALIZATION =
+    "🔥 Re-enabling the Datadog Logging with different options is not supported, even after a" +
+        " hot restart. Cold restart your application to change your current configuration."

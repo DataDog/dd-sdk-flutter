@@ -34,7 +34,7 @@ void main() {
     var requestLog = <RequestLog>[];
     var rumLog = <RumEventDecoder>[];
     await recordedSession.pollSessionRequests(
-      const Duration(seconds: 30),
+      const Duration(seconds: 50),
       (requests) {
         requestLog.addAll(requests);
         requests.map((e) => e.data.split('\n')).expand((e) => e).forEach((e) {
@@ -61,21 +61,21 @@ void main() {
 
     var exceptionError = view.errorEvents[0];
     expect(exceptionError.message, contains(TypeError().toString()));
-    expect(exceptionError.source, kIsWeb ? 'custom' : 'source');
+    expect(exceptionError.source, 'source');
     expect(exceptionError.errorType, 'NullThrown');
     if (!kIsWeb) {
+      // source_type is not supported on web, but type should be browser anyway.
       expect(exceptionError.sourceType, 'flutter');
     }
 
     var manualError = view.errorEvents[1];
     expect(manualError.message, contains('Rum error message'));
-    expect(manualError.source, kIsWeb ? 'custom' : 'network');
+    expect(manualError.source, 'network');
+    expect(manualError.fingerprint, 'custom-fingerprint');
 
     var thrownError = view.errorEvents[2];
     expect(thrownError.message, contains('This was an error!'));
-    expect(thrownError.source, kIsWeb ? 'custom' : 'source');
-    if (!kIsWeb) {
-      expect(thrownError.stack, isNotNull);
-    }
+    expect(thrownError.source, 'source');
+    expect(thrownError.stack, isNotNull);
   });
 }

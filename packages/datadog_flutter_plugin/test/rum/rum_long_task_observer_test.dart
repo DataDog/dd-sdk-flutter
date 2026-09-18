@@ -1,6 +1,7 @@
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
+@TestOn('vm')
 
 import 'dart:async';
 
@@ -10,7 +11,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockDdRum extends Mock implements DdRum {}
+class MockDdRum extends Mock implements DatadogRum {}
 
 // These tests need to use testWidgets because the RumLongTaskObserver
 // automatically registers itself to the WidgetsBindingInterface during init
@@ -140,15 +141,15 @@ void main() {
 
     observer.didChangeAppLifecycleState(AppLifecycleState.inactive);
     await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
     });
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 300));
 
     observer.didChangeAppLifecycleState(AppLifecycleState.resumed);
     await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
     });
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 300));
 
     verify(() => mockRum.reportLongTask(any())).called(1);
 

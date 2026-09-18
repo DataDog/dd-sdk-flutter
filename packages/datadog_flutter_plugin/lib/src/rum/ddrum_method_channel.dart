@@ -6,106 +6,179 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../../datadog_flutter_plugin.dart';
-import '../internal_logger.dart';
+import '../../datadog_internal.dart';
 import 'ddrum_platform_interface.dart';
+import 'rum_mapper_proxy_stub.dart'
+    if (dart.library.io) 'rum_mapper_proxy.dart';
 
 class DdRumMethodChannel extends DdRumPlatform {
   @visibleForTesting
-  final MethodChannel methodChannel =
-      const MethodChannel('datadog_sdk_flutter.rum');
+  final MethodChannel methodChannel = const MethodChannel(
+    'datadog_sdk_flutter.rum',
+  );
+
+  // ignore: unused_field
+  RumMapperProxy? _mapperProxy;
+
+  String? _cachedSessionId;
+  @override
+  String? get cachedSessionId => _cachedSessionId;
 
   @override
-  Future<void> initialize(
-      RumConfiguration configuration, InternalLogger internalLogger) async {
-    final callbackHandler = MethodCallHandler(
-      viewEventMapper: configuration.rumViewEventMapper,
-      actionEventMapper: configuration.rumActionEventMapper,
-      resourceEventMapper: configuration.rumResourceEventMapper,
-      errorEventMapper: configuration.rumErrorEventMapper,
-      longTaskEventMapper: configuration.rumLongTaskEventMapper,
-      internalLogger: internalLogger,
+  Future<void> enable(
+    DatadogSdk core,
+    DatadogRumConfiguration configuration,
+  ) async {
+    _mapperProxy = RumMapperProxy.fromConfiguration(
+      configuration,
+      core.internalLogger,
     );
 
-    methodChannel.setMethodCallHandler(callbackHandler.handleMethodCall);
+    if (ServicesBinding.rootIsolateToken != null) {
+      methodChannel.setMethodCallHandler(handleMethodCall);
+    }
+
+    await methodChannel.invokeMethod('enable', {
+      'configuration': configuration.encode(),
+    });
   }
 
   @override
-  Future<void> addTiming(String name) {
-    return methodChannel.invokeMethod(
-      'addTiming',
-      {'name': name},
+  Future<void> deinitialize() {
+    return methodChannel.invokeMethod('deinitialize', {});
+  }
+
+  @override
+  Future<String?> getCurrentSessionId() async {
+    final sessionId = await methodChannel.invokeMethod<String>(
+      'getCurrentSessionId',
+      {},
     );
+    // Pulling this directly means this is the most up to date it can be.
+    _cachedSessionId = sessionId;
+    return sessionId;
+  }
+
+  @override
+  Future<void> addTiming(DateTime timestamp, String name) {
+    return methodChannel.invokeMethod('addTiming', {'name': name});
   }
 
   @override
   Future<void> startView(
-      String key, String name, Map<String, Object?> attributes) {
-    return methodChannel.invokeMethod(
-      'startView',
-      {'key': key, 'name': name, 'attributes': attributes},
-    );
+    DateTime timestamp,
+    String key,
+    String name,
+    Map<String, Object?> attributes,
+  ) {
+    final timestampMs = timestamp.millisecondsSinceEpoch;
+    return methodChannel.invokeMethod('startView', {
+      'key': key,
+      'name': name,
+      'attributes': {
+        ...attributes,
+        DatadogPlatformAttributeKey.timestamp: timestampMs,
+      },
+    });
   }
 
   @override
-  Future<void> stopView(String key, Map<String, Object?> attributes) {
-    return methodChannel.invokeMethod(
-      'stopView',
-      {'key': key, 'attributes': attributes},
-    );
+  Future<void> stopView(
+    DateTime timestamp,
+    String key,
+    Map<String, Object?> attributes,
+  ) {
+    final timestampMs = timestamp.millisecondsSinceEpoch;
+    return methodChannel.invokeMethod('stopView', {
+      'key': key,
+      'attributes': {
+        ...attributes,
+        DatadogPlatformAttributeKey.timestamp: timestampMs,
+      },
+    });
   }
 
   @override
-  Future<void> startResourceLoading(
+  Future<void> startResource(
+    DateTime timestamp,
     String key,
     RumHttpMethod httpMethod,
     String url, [
     Map<String, Object?> attributes = const {},
   ]) {
-    return methodChannel.invokeMethod('startResourceLoading', {
+    final timestampMs = timestamp.millisecondsSinceEpoch;
+    return methodChannel.invokeMethod('startResource', {
       'key': key,
       'httpMethod': httpMethod.toString(),
       'url': url,
-      'attributes': attributes
+      'attributes': {
+        ...attributes,
+        DatadogPlatformAttributeKey.timestamp: timestampMs,
+      },
     });
   }
 
   @override
-  Future<void> stopResourceLoading(
-      String key, int? statusCode, RumResourceType kind,
-      [int? size, Map<String, Object?>? attributes = const {}]) {
-    return methodChannel.invokeMethod('stopResourceLoading', {
+  Future<void> stopResource(
+    DateTime timestamp,
+    String key,
+    int? statusCode,
+    RumResourceType kind, [
+    int? size,
+    Map<String, Object?> attributes = const {},
+  ]) {
+    final timestampMs = timestamp.millisecondsSinceEpoch;
+    return methodChannel.invokeMethod('stopResource', {
       'key': key,
       'statusCode': statusCode,
       'kind': kind.toString(),
       'size': size,
-      'attributes': attributes
+      'attributes': {
+        ...attributes,
+        DatadogPlatformAttributeKey.timestamp: timestampMs,
+      },
     });
   }
 
   @override
-  Future<void> stopResourceLoadingWithError(String key, Exception error,
-      [Map<String, Object?> attributes = const {}]) {
-    return stopResourceLoadingWithErrorInfo(
-        key, error.toString(), error.runtimeType.toString(), attributes);
+  Future<void> stopResourceWithError(
+    DateTime timestamp,
+    String key,
+    Exception error, [
+    Map<String, Object?> attributes = const {},
+  ]) {
+    return stopResourceWithErrorInfo(
+      timestamp,
+      key,
+      error.toString(),
+      error.runtimeType.toString(),
+      attributes,
+    );
   }
 
   @override
-  Future<void> stopResourceLoadingWithErrorInfo(
+  Future<void> stopResourceWithErrorInfo(
+    DateTime timestamp,
     String key,
     String message,
     String type, [
     Map<String, Object?> attributes = const {},
   ]) {
-    return methodChannel.invokeMethod('stopResourceLoadingWithError', {
+    final timestampMs = timestamp.millisecondsSinceEpoch;
+    return methodChannel.invokeMethod('stopResourceWithError', {
       'key': key,
       'message': message,
       'type': type,
-      'attributes': attributes,
+      'attributes': {
+        ...attributes,
+        DatadogPlatformAttributeKey.timestamp: timestampMs,
+      },
     });
   }
 
   @override
   Future<void> addError(
+    DateTime timestamp,
     Object error,
     RumErrorSource source,
     StackTrace? stackTrace,
@@ -113,58 +186,143 @@ class DdRumMethodChannel extends DdRumPlatform {
     Map<String, Object?> attributes,
   ) {
     return addErrorInfo(
-        error.toString(), source, stackTrace, errorType, attributes);
+      timestamp,
+      error.toString(),
+      source,
+      stackTrace,
+      errorType,
+      attributes,
+    );
+  }
+
+  @override
+  Future<void> addViewLoadingTime(bool overwrite) {
+    return methodChannel.invokeMethod('addViewLoadingTime', {
+      'overwrite': overwrite,
+    });
   }
 
   @override
   Future<void> addErrorInfo(
-      String message,
-      RumErrorSource source,
-      StackTrace? stackTrace,
-      String? errorType,
-      Map<String, Object?> attributes) {
+    DateTime timestamp,
+    String message,
+    RumErrorSource source,
+    StackTrace? stackTrace,
+    String? errorType,
+    Map<String, Object?> attributes,
+  ) {
+    final timestampMs = timestamp.millisecondsSinceEpoch;
     return methodChannel.invokeMethod('addError', {
       'message': message,
       'source': source.toString(),
       'stackTrace': stackTrace?.toString(),
       'errorType': errorType,
-      'attributes': attributes
+      'attributes': {
+        ...attributes,
+        DatadogPlatformAttributeKey.timestamp: timestampMs,
+      },
     });
   }
 
   @override
-  Future<void> addUserAction(
-      RumUserActionType type, String? name, Map<String, Object?> attributes) {
-    return methodChannel.invokeMethod('addUserAction', {
+  Future<void> addAction(
+    DateTime timestamp,
+    RumActionType type,
+    String? name,
+    Map<String, Object?> attributes,
+  ) {
+    final timestampMs = timestamp.millisecondsSinceEpoch;
+    return methodChannel.invokeMethod('addAction', {
       'type': type.toString(),
       'name': name,
-      'attributes': attributes,
+      'attributes': {
+        ...attributes,
+        DatadogPlatformAttributeKey.timestamp: timestampMs,
+      },
     });
   }
 
   @override
-  Future<void> startUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes) {
-    return methodChannel.invokeMethod('startUserAction',
-        {'type': type.toString(), 'name': name, 'attributes': attributes});
+  Future<void> startAction(
+    DateTime timestamp,
+    RumActionType type,
+    String name,
+    Map<String, Object?> attributes,
+  ) {
+    final timestampMs = timestamp.millisecondsSinceEpoch;
+    return methodChannel.invokeMethod('startAction', {
+      'type': type.toString(),
+      'name': name,
+      'attributes': {
+        ...attributes,
+        DatadogPlatformAttributeKey.timestamp: timestampMs,
+      },
+    });
   }
 
   @override
-  Future<void> stopUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes) {
-    return methodChannel.invokeMethod('stopUserAction',
-        {'type': type.toString(), 'name': name, 'attributes': attributes});
+  Future<void> stopAction(
+    DateTime timestamp,
+    RumActionType type,
+    String name,
+    Map<String, Object?> attributes,
+  ) {
+    final timestampMs = timestamp.millisecondsSinceEpoch;
+    return methodChannel.invokeMethod('stopAction', {
+      'type': type.toString(),
+      'name': name,
+      'attributes': {
+        ...attributes,
+        DatadogPlatformAttributeKey.timestamp: timestampMs,
+      },
+    });
   }
 
   @override
   Future<void> addAttribute(String key, Object? value) {
-    return methodChannel
-        .invokeMethod('addAttribute', {'key': key, 'value': value});
+    return methodChannel.invokeMethod('addAttribute', {
+      'key': key,
+      'value': value,
+    });
+  }
+
+  @override
+  Future<void> setInternalViewAttribute(String key, Object value) {
+    return methodChannel.invokeMethod('setInternalViewAttribute', {
+      'key': key,
+      'value': value,
+    });
   }
 
   @override
   Future<void> removeAttribute(String key) {
     return methodChannel.invokeMethod('removeAttribute', {'key': key});
+  }
+
+  @override
+  Future<void> addViewAttribute(String key, Object value) {
+    return methodChannel.invokeMethod('addViewAttributes', {
+      'attributes': {key: value},
+    });
+  }
+
+  @override
+  Future<void> removeViewAttribute(String key) {
+    return methodChannel.invokeMethod('removeViewAttributes', {
+      'keys': [key]
+    });
+  }
+
+  @override
+  Future<void> addViewAttributes(Map<String, Object?> attributes) {
+    return methodChannel.invokeMethod('addViewAttributes', {
+      'attributes': attributes,
+    });
+  }
+
+  @override
+  Future<void> removeViewAttributes(List<String> keys) {
+    return methodChannel.invokeMethod('removeViewAttributes', {'keys': keys});
   }
 
   @override
@@ -177,6 +335,7 @@ class DdRumMethodChannel extends DdRumPlatform {
 
   @override
   Future<void> stopSession() {
+    _cachedSessionId = null;
     return methodChannel.invokeMethod('stopSession', <String, Object?>{});
   }
 
@@ -189,148 +348,94 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
+  Future<void> startFeatureOperation(
+    DateTime at,
+    String name,
+    String? operationKey,
+    Map<String, Object?> attributes,
+  ) {
+    final timestampMs = at.millisecondsSinceEpoch;
+    return methodChannel.invokeMethod('startFeatureOperation', {
+      'name': name,
+      'operationKey': operationKey,
+      'attributes': {
+        ...attributes,
+        DatadogPlatformAttributeKey.timestamp: timestampMs,
+      },
+    });
+  }
+
+  @override
+  Future<void> succeedFeatureOperation(
+    DateTime at,
+    String name,
+    String? operationKey,
+    Map<String, Object?> attributes,
+  ) {
+    final timestampMs = at.millisecondsSinceEpoch;
+    return methodChannel.invokeMethod('succeedFeatureOperation', {
+      'name': name,
+      'operationKey': operationKey,
+      'attributes': {
+        ...attributes,
+        DatadogPlatformAttributeKey.timestamp: timestampMs,
+      },
+    });
+  }
+
+  @override
+  Future<void> failFeatureOperation(
+    DateTime at,
+    String name,
+    String? operationKey,
+    RumFeatureOperationFailureReason failureReason,
+    Map<String, Object?> attributes,
+  ) {
+    final timestampMs = at.millisecondsSinceEpoch;
+    return methodChannel.invokeMethod('failFeatureOperation', {
+      'name': name,
+      'operationKey': operationKey,
+      'failureReason': failureReason.toString(),
+      'attributes': {
+        ...attributes,
+        DatadogPlatformAttributeKey.timestamp: timestampMs,
+      },
+    });
+  }
+
+  @override
   Future<void> updatePerformanceMetrics(
-      List<double> buildTimes, List<double> rasterTimes) {
+    List<double> buildTimes,
+    List<double> rasterTimes,
+  ) {
     return methodChannel.invokeMethod('updatePerformanceMetrics', {
       'buildTimes': buildTimes,
       'rasterTimes': rasterTimes,
     });
   }
-}
 
-class MethodCallHandler {
-  static const mapperError = {'_dd.mapper_error': 'mapper error'};
+  void _onSessionChanged(MethodCall call) {
+    if (call.arguments case final Map<dynamic, dynamic> arguments?) {
+      final sessionId = arguments['sessionId'];
+      if (sessionId is String) {
+        _cachedSessionId = sessionId;
+      }
+    }
+  }
 
-  final RumViewEventMapper? viewEventMapper;
-  final RumActionEventMapper? actionEventMapper;
-  final RumResourceEventMapper? resourceEventMapper;
-  final RumErrorEventMapper? errorEventMapper;
-  final RumLongTaskEventMapper? longTaskEventMapper;
-
-  final InternalLogger internalLogger;
-
-  MethodCallHandler({
-    this.viewEventMapper,
-    this.actionEventMapper,
-    this.resourceEventMapper,
-    this.errorEventMapper,
-    this.longTaskEventMapper,
-    required this.internalLogger,
-  });
-
+  @visibleForTesting
   Future<dynamic> handleMethodCall(MethodCall call) async {
+    if (call.method.startsWith('map')) {
+      if (_mapperProxy case final RumMethodChannelMapperProxy mapper) {
+        return mapper.handleMethodCall(call);
+      }
+    }
     switch (call.method) {
-      case 'mapViewEvent':
-        return _mapViewEvent(call);
-      case 'mapActionEvent':
-        return _mapActionEvent(call);
-      case 'mapResourceEvent':
-        return _mapResourceEvent(call);
-      case 'mapErrorEvent':
-        return _mapErrorEvent(call);
-      case 'mapLongTaskEvent':
-        return _mapLongTaskEvent(call);
+      case 'onSessionChanged':
+        return _onSessionChanged(call);
     }
-
     throw MissingPluginException(
-        'Could not find a method to call for ${call.method}');
-  }
-
-  Map<String, Object?>? _callMapper<T>(
-    String mapperName,
-    Map<dynamic, dynamic> encoded,
-    T? Function(T)? mapper,
-    Map<String, dynamic> Function(T) encode,
-    T Function(Map<dynamic, dynamic>) decode,
-  ) {
-    try {
-      if (mapper == null) {
-        final st = StackTrace.current;
-        internalLogger.sendToDatadog(
-            '$mapperName called but no $mapperName is set,',
-            st,
-            'InternalDatadogError');
-        return mapperError;
-      }
-
-      final event = decode(encoded);
-
-      T? mappedEvent = event;
-      try {
-        mappedEvent = mapper(event);
-        if (mappedEvent == null) {
-          return null;
-        }
-      } catch (e) {
-        internalLogger.error(
-            '$mapperName threw an exception: ${e.toString()}.\nReturning unmapped event.');
-        return mapperError;
-      }
-
-      final mappedJson = encode(mappedEvent);
-      return mappedJson;
-    } catch (e, st) {
-      internalLogger.sendToDatadog('Error mapping view event: ${e.toString()}',
-          st, e.runtimeType.toString());
-    }
-
-    // Return a special map which will indicate to native code something went wrong, and
-    // we should send the unmodified event.
-    return mapperError;
-  }
-
-  Map<Object, Object?>? _mapViewEvent(MethodCall call) {
-    final viewEventJson = call.arguments['event'] as Map;
-    return _callMapper<RumViewEvent>(
-      'mapViewEvent',
-      viewEventJson,
-      viewEventMapper,
-      (e) => e.toJson(),
-      RumViewEvent.fromJson,
-    );
-  }
-
-  Map<Object, Object?>? _mapActionEvent(MethodCall call) {
-    final eventJson = call.arguments['event'] as Map;
-    return _callMapper<RumActionEvent>(
-      'mapActionEvent',
-      eventJson,
-      actionEventMapper,
-      (e) => e.toJson(),
-      RumActionEvent.fromJson,
-    );
-  }
-
-  Map<Object, Object?>? _mapResourceEvent(MethodCall call) {
-    final eventJson = call.arguments['event'] as Map;
-    return _callMapper<RumResourceEvent>(
-      'mapResourceEvent',
-      eventJson,
-      resourceEventMapper,
-      (e) => e.toJson(),
-      RumResourceEvent.fromJson,
-    );
-  }
-
-  Map<Object, Object?>? _mapErrorEvent(MethodCall call) {
-    final eventJson = call.arguments['event'] as Map;
-    return _callMapper<RumErrorEvent>(
-      'mapErrorEvent',
-      eventJson,
-      errorEventMapper,
-      (e) => e.toJson(),
-      RumErrorEvent.fromJson,
-    );
-  }
-
-  Map<Object, Object?>? _mapLongTaskEvent(MethodCall call) {
-    final eventJson = call.arguments['event'] as Map;
-    return _callMapper<RumLongTaskEvent>(
-      'mapLongTaskEvent',
-      eventJson,
-      longTaskEventMapper,
-      (e) => e.toJson(),
-      RumLongTaskEvent.fromJson,
+      'Could not find a method to call for ${call.method}',
     );
   }
 }

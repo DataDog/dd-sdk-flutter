@@ -18,12 +18,40 @@ class MockDdLogsPlatform extends Mock
     with MockPlatformInterfaceMixin
     implements DdLogsPlatform {}
 
-class FakeDdSdkConfiguration extends Fake implements DdSdkConfiguration {}
+class FakeDatadogConfiguration extends Fake implements DatadogConfiguration {}
 
 class MockDatadogPluginConfiguration extends Mock
     implements DatadogPluginConfiguration {}
 
 class MockDatadogPlugin extends Mock implements DatadogPlugin {}
+
+class CapturingDatadogPluginConfiguration extends DatadogPluginConfiguration {
+  DatadogConfiguration? configurationOnInitialize;
+
+  @override
+  DatadogPlugin create(DatadogSdk datadogInstance) {
+    return CapturingDatadogPlugin(
+      datadogInstance,
+      onInitialize: (configuration) {
+        configurationOnInitialize = configuration;
+      },
+    );
+  }
+}
+
+class CapturingDatadogPlugin extends DatadogPlugin {
+  final void Function(DatadogConfiguration?) onInitialize;
+
+  CapturingDatadogPlugin(
+    super.instance, {
+    required this.onInitialize,
+  });
+
+  @override
+  void initialize() {
+    onInitialize(instance.configuration);
+  }
+}
 
 class MockRumPlatform extends Mock
     with MockPlatformInterfaceMixin
@@ -36,48 +64,93 @@ void main() {
   late MockRumPlatform mockRumPlatform;
 
   setUpAll(() {
-    registerFallbackValue(FakeDdSdkConfiguration());
     registerFallbackValue(TrackingConsent.granted);
-    registerFallbackValue(LoggingConfiguration());
+    registerFallbackValue(FakeDatadogConfiguration());
+    registerFallbackValue(DatadogLoggingConfiguration());
+    registerFallbackValue(DatadogLoggerConfiguration());
+    registerFallbackValue(DatadogAttachConfiguration());
     registerFallbackValue(LateConfigurationProperty.trackErrors);
-    registerFallbackValue(Verbosity.verbose);
     registerFallbackValue(InternalLogger());
-    registerFallbackValue(RumConfiguration(applicationId: ''));
+    registerFallbackValue(CoreLoggerLevel.error);
+    registerFallbackValue(DatadogRumConfiguration(applicationId: ''));
+    registerFallbackValue(DatadogSdk.instance);
   });
 
   setUp(() {
     mockPlatform = MockDatadogSdkPlatform();
-    when(() => mockPlatform.initialize(
-          any(),
-          internalLogger: any(named: 'internalLogger'),
-          logCallback: any(named: 'logCallback'),
-        )).thenAnswer((_) => Future<void>.value());
-    when(() => mockPlatform.attachToExisting())
-        .thenAnswer((_) => Future<AttachResponse?>.value(AttachResponse(
-              rumEnabled: false,
-            )));
-    when(() => mockPlatform.setSdkVerbosity(any()))
-        .thenAnswer((invocation) => Future<void>.value());
+    when(
+      () => mockPlatform.initialize(
+        any(),
+        any(),
+        internalLogger: any(named: 'internalLogger'),
+        logCallback: any(named: 'logCallback'),
+      ),
+    ).thenAnswer(
+      (_) => Future<PlatformInitializationResult>.value(
+        const PlatformInitializationResult(logs: true, rum: true),
+      ),
+    );
+    when(() => mockPlatform.attachToExisting(any())).thenAnswer(
+      (_) => Future<AttachResponse?>.value(
+        AttachResponse(loggingEnabled: false, rumEnabled: false),
+      ),
+    );
+    when(
+      () => mockPlatform.setSdkVerbosity(any()),
+    ).thenAnswer((invocation) => Future<void>.value());
 
-    when(() => mockPlatform.setUserInfo(any(), any(), any(), any()))
-        .thenAnswer((_) => Future<void>.value());
-    when(() => mockPlatform.addUserExtraInfo((any())))
-        .thenAnswer((_) => Future<void>.value());
-    when(() => mockPlatform.setTrackingConsent(any()))
-        .thenAnswer((_) => Future<void>.value());
-    when(() => mockPlatform.flushAndDeinitialize())
-        .thenAnswer((_) => Future<void>.value());
-    when(() => mockPlatform.updateTelemetryConfiguration(any(), any()))
-        .thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockPlatform.setUserInfo(any(), any(), any(), any()),
+    ).thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockPlatform.addUserExtraInfo((any())),
+    ).thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockPlatform.clearUserInfo(),
+    ).thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockPlatform.setAccountInfo(any(), any(), any()),
+    ).thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockPlatform.addAccountExtraInfo((any())),
+    ).thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockPlatform.clearAccountInfo(),
+    ).thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockPlatform.setTrackingConsent(any()),
+    ).thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockPlatform.flushAndDeinitialize(),
+    ).thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockPlatform.updateTelemetryConfiguration(any(), any()),
+    ).thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockPlatform.clearAllData(),
+    ).thenAnswer((_) => Future<void>.value());
     DatadogSdkPlatform.instance = mockPlatform;
     datadogSdk = DatadogSdk.instance;
 
     mockLogsPlatform = MockDdLogsPlatform();
     DdLogsPlatform.instance = mockLogsPlatform;
+    when(
+      () => mockLogsPlatform.enable(any(), any()),
+    ).thenAnswer((_) => Future.value());
+    when(
+      () => mockLogsPlatform.deinitialize(),
+    ).thenAnswer((_) => Future.value());
+    when(
+      () => mockLogsPlatform.destroyLogger(any()),
+    ).thenAnswer((_) => Future.value());
 
     mockRumPlatform = MockRumPlatform();
-    when(() => mockRumPlatform.initialize(any(), any()))
-        .thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockRumPlatform.enable(any(), any()),
+    ).thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockRumPlatform.deinitialize(),
+    ).thenAnswer((_) => Future.value());
     DdRumPlatform.instance = mockRumPlatform;
   });
 
@@ -86,96 +159,93 @@ void main() {
   });
 
   test('initialize passes configuration to platform', () async {
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
     );
-    await datadogSdk.initialize(configuration);
+    await datadogSdk.initialize(configuration, TrackingConsent.granted);
 
-    verify(() => mockPlatform.initialize(
-          configuration,
-          internalLogger: any(named: 'internalLogger'),
-          logCallback: any(named: 'logCallback'),
-        ));
+    verify(
+      () => mockPlatform.initialize(
+        configuration,
+        TrackingConsent.granted,
+        internalLogger: any(named: 'internalLogger'),
+        logCallback: any(named: 'logCallback'),
+      ),
+    );
+  });
+
+  test('initialize makes configuration available to plugins', () async {
+    final pluginConfiguration = CapturingDatadogPluginConfiguration();
+    final configuration = DatadogConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+    )..addPlugin(pluginConfiguration);
+
+    await datadogSdk.initialize(configuration, TrackingConsent.granted);
+
+    expect(datadogSdk.configuration, same(configuration));
+    expect(pluginConfiguration.configurationOnInitialize, same(configuration));
   });
 
   test('encode base configuration', () {
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'fake-client-token',
       env: 'prod',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
     );
     final encoded = configuration.encode();
     expect(encoded, {
       'clientToken': 'fake-client-token',
       'env': 'prod',
       'site': 'DatadogSite.us1',
-      'serviceName': null,
       'nativeCrashReportEnabled': false,
-      'trackingConsent': 'TrackingConsent.pending',
-      'telemetrySampleRate': null,
-      'customLogsEndpoint': null,
+      'service': null,
       'batchSize': null,
       'uploadFrequency': null,
-      'firstPartyHosts': <String>[],
-      'rumConfiguration': null,
+      'batchProcessingLevel': null,
       'additionalConfig': <String, Object?>{},
-      'attachLogMapper': false,
     });
   });
 
   test('initialize encoding serializes enums correctly', () {
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'fakeClientToken',
       env: 'environment',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.granted,
     )
       ..batchSize = BatchSize.small
       ..uploadFrequency = UploadFrequency.frequent
+      ..batchProcessingLevel = BatchProcessingLevel.low
       ..site = DatadogSite.eu1;
 
     final encoded = configuration.encode();
     expect(encoded['batchSize'], 'BatchSize.small');
     expect(encoded['uploadFrequency'], 'UploadFrequency.frequent');
+    expect(encoded['batchProcessingLevel'], 'BatchProcessingLevel.low');
     expect(encoded['site'], 'DatadogSite.eu1');
   });
 
-  test('configuration encodes telemetrySampleRate', () {
-    final configuration = DdSdkConfiguration(
-      clientToken: 'fake-client-token',
-      env: 'prod',
-      site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
-      telemetrySampleRate: 21.0,
-    );
-    final encoded = configuration.encode();
-    expect(encoded['telemetrySampleRate'], 21.0);
-  });
-
-  test('configuration encodes serviceName', () {
-    final configuration = DdSdkConfiguration(
+  test('configuration encodes service name', () {
+    final configuration = DatadogConfiguration(
       clientToken: 'fakeClientToken',
       env: 'fake-env',
-      serviceName: 'com.servicename',
+      service: 'com.servicename',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.notGranted,
     );
 
     final encoded = configuration.encode();
     // Logging configuration is purposefully not encoded
-    expect(encoded['serviceName'], 'com.servicename');
+    expect(encoded['service'], 'com.servicename');
   });
 
   test('version added to additionalConfiguration', () {
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'fakeClientToken',
       env: 'fake-env',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.notGranted,
       version: '1.9.8+123',
     );
 
@@ -186,11 +256,10 @@ void main() {
   });
 
   test('flavor added to additionalConfiguration', () {
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'fakeClientToken',
       env: 'fake-env',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.notGranted,
       flavor: 'strawberry',
     );
 
@@ -200,311 +269,277 @@ void main() {
     expect(additionalConfig[DatadogConfigKey.variant], 'strawberry');
   });
 
-  test('configuration encodes default sub-configuration', () {
-    final configuration = DdSdkConfiguration(
-      clientToken: 'fakeClientToken',
-      env: 'fake-env',
-      site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.notGranted,
-      loggingConfiguration: LoggingConfiguration(),
-      rumConfiguration: RumConfiguration(
-        applicationId: 'fake-application-id',
-        vitalUpdateFrequency: VitalsFrequency.frequent,
-      ),
-    );
+  test('initialize with logging configuration creates logs', () async {
+    when(
+      () => mockLogsPlatform.createLogger(any(), any()),
+    ).thenAnswer((_) => Future<void>.value());
 
-    final encoded = configuration.encode();
-    // Logging configuration is purposefully not encoded
-    expect(encoded['loggingConfiguration'], isNull);
-    expect(
-        encoded['rumConfiguration'], configuration.rumConfiguration?.encode());
-  });
-
-  test('configuration with mapper sets attach*Mapper', () async {
-    final configuration = DdSdkConfiguration(
-      clientToken: 'fakeClientToken',
-      env: 'fake-env',
-      site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.notGranted,
-      loggingConfiguration: LoggingConfiguration(),
-      rumConfiguration: RumConfiguration(
-        applicationId: 'fake-application-id',
-        rumViewEventMapper: (event) => event,
-        rumActionEventMapper: (event) => event,
-        rumResourceEventMapper: (event) => event,
-        rumErrorEventMapper: (event) => event,
-        rumLongTaskEventMapper: (event) => event,
-      ),
-    );
-
-    final encoded = configuration.encode();
-    final encodedRumConfiguration =
-        encoded['rumConfiguration'] as Map<String, Object?>;
-    expect(encodedRumConfiguration['attachViewEventMapper'], isTrue);
-    expect(encodedRumConfiguration['attachActionEventMapper'], isTrue);
-    expect(encodedRumConfiguration['attachResourceEventMapper'], isTrue);
-    expect(encodedRumConfiguration['attachErrorEventMapper'], isTrue);
-    expect(encodedRumConfiguration['attachLongTaskEventMapper'], isTrue);
-  });
-
-  test('initialize with logging configuration creates logger', () async {
-    when(() => mockLogsPlatform.createLogger(any(), any()))
-        .thenAnswer((_) => Future<void>.value());
-
-    final loggingConfiguration = LoggingConfiguration();
-    final configuration = DdSdkConfiguration(
+    final loggingConfiguration = DatadogLoggingConfiguration();
+    final configuration = DatadogConfiguration(
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
       loggingConfiguration: loggingConfiguration,
     );
-    await datadogSdk.initialize(configuration);
+    await datadogSdk.initialize(configuration, TrackingConsent.pending);
 
-    final logger = datadogSdk.logs;
+    final logs = datadogSdk.logs;
 
-    expect(logger, isNotNull);
-    verify(() => mockLogsPlatform.createLogger(
-        logger!.loggerHandle, loggingConfiguration));
+    expect(logs, isNotNull);
+    verify(() => mockLogsPlatform.enable(datadogSdk, loggingConfiguration));
   });
 
-  test('attachToExisting calls out to platform', () async {
-    await datadogSdk.attachToExisting(DdSdkExistingConfiguration());
-
-    verify(() => mockPlatform.attachToExisting());
-    expect(datadogSdk.rum, isNull);
-    expect(datadogSdk.logs, isNull);
-  });
-
-  test('attachToExisting forwards creation firstPartyHosts', () async {
-    when(() => mockPlatform.attachToExisting()).thenAnswer(
-        (invocation) => Future<AttachResponse?>.value(AttachResponse(
-              rumEnabled: false,
-            )));
-
-    await datadogSdk.attachToExisting(DdSdkExistingConfiguration(
-      firstPartyHosts: ['example.com', 'datadoghq.com'],
-    ));
-
-    expect(datadogSdk.firstPartyHosts.length, 2);
-    expect(datadogSdk.firstPartyHosts[0].hostName, 'example.com');
-    expect(datadogSdk.firstPartyHosts[1].hostName, 'datadoghq.com');
-  });
-
-  test('attachToExisting with loggingConfiguration creates default logger',
-      () async {
-    when(() => mockPlatform.attachToExisting()).thenAnswer(
-        (invocation) => Future<AttachResponse?>.value(AttachResponse(
-              rumEnabled: false,
-            )));
-    when(() => mockLogsPlatform.createLogger(any(), any()))
-        .thenAnswer((_) => Future<void>.value());
-    final logConfig = LoggingConfiguration();
-
-    await datadogSdk.attachToExisting(
-      DdSdkExistingConfiguration(
-        loggingConfiguration: logConfig,
-        detectLongTasks: false,
+  test('initialize with rum configuration creates RUM', () async {
+    when(
+      () => mockPlatform.initialize(
+        any(),
+        any(),
+        internalLogger: any(named: 'internalLogger'),
+        logCallback: any(named: 'logCallback'),
+      ),
+    ).thenAnswer(
+      (_) => Future<PlatformInitializationResult>.value(
+        const PlatformInitializationResult(logs: true, rum: false),
       ),
     );
 
-    expect(datadogSdk.logs, isNotNull);
-    verify(() => mockLogsPlatform.createLogger(any(), logConfig));
+    final rumConfiguration = DatadogRumConfiguration(
+      applicationId: 'fake-application-id',
+      vitalUpdateFrequency: VitalsFrequency.frequent,
+      detectLongTasks: false,
+    );
+    final configuration = DatadogConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+      rumConfiguration: rumConfiguration,
+    );
+    await datadogSdk.initialize(configuration, TrackingConsent.pending);
+
+    final rum = datadogSdk.rum;
+    expect(rum, isNotNull);
+    verify(() => mockRumPlatform.enable(datadogSdk, rumConfiguration));
   });
 
-  test('attachToExisting without loggingConfiguration does not create logger',
-      () async {
-    when(() => mockPlatform.attachToExisting()).thenAnswer(
-        (invocation) => Future<AttachResponse?>.value(AttachResponse(
-              rumEnabled: false,
-            )));
+  test('attachToExisting calls out to platform', () async {
+    await datadogSdk.attachToExisting(DatadogAttachConfiguration());
 
-    await datadogSdk.attachToExisting(DdSdkExistingConfiguration(
-      detectLongTasks: false,
-    ));
-    expect(datadogSdk.logs, null);
+    verify(() => mockPlatform.attachToExisting(any()));
+    expect(datadogSdk.logs, isNull);
+    expect(datadogSdk.rum, isNull);
+  });
+
+  test('attachToExisting forwards creation firstPartyHosts', () async {
+    await datadogSdk.attachToExisting(
+      DatadogAttachConfiguration(
+        firstPartyHosts: ['example.com', 'datadoghq.com'],
+      ),
+    );
+
+    expect(datadogSdk.firstPartyHosts.length, 2);
+    expect(datadogSdk.firstPartyHosts[0].hostName, 'example.com');
+    expect(datadogSdk.firstPartyHosts[0].headerTypes, {
+      TracingHeaderType.datadog,
+      TracingHeaderType.tracecontext,
+    });
+    expect(datadogSdk.firstPartyHosts[1].hostName, 'datadoghq.com');
+    expect(datadogSdk.firstPartyHosts[1].headerTypes, {
+      TracingHeaderType.datadog,
+      TracingHeaderType.tracecontext,
+    });
+  });
+
+  test('attachToExisting with loggingEnabled creates Logging bridge', () async {
+    when(() => mockPlatform.attachToExisting(any())).thenAnswer(
+      (invocation) => Future<AttachResponse?>.value(
+        AttachResponse(loggingEnabled: true, rumEnabled: false),
+      ),
+    );
+
+    await datadogSdk.attachToExisting(
+      DatadogAttachConfiguration(detectLongTasks: false),
+    );
+    expect(datadogSdk.logs, isNotNull);
   });
 
   test('attachToExisting with rumEnabled creates RUM bridge', () async {
-    when(() => mockPlatform.attachToExisting()).thenAnswer(
-        (invocation) => Future<AttachResponse?>.value(AttachResponse(
-              rumEnabled: true,
-            )));
+    when(() => mockPlatform.attachToExisting(any())).thenAnswer(
+      (invocation) => Future<AttachResponse?>.value(
+        AttachResponse(loggingEnabled: false, rumEnabled: true),
+      ),
+    );
 
-    await datadogSdk.attachToExisting(DdSdkExistingConfiguration(
-      detectLongTasks: false,
-    ));
+    await datadogSdk.attachToExisting(
+      DatadogAttachConfiguration(detectLongTasks: false),
+    );
     expect(datadogSdk.rum, isNotNull);
   });
 
   test('attachToExisting with rumEnabled forwards RUM parameters', () async {
-    when(() => mockPlatform.attachToExisting()).thenAnswer(
-        (invocation) => Future<AttachResponse?>.value(AttachResponse(
-              rumEnabled: true,
-            )));
+    when(() => mockPlatform.attachToExisting(any())).thenAnswer(
+      (invocation) => Future<AttachResponse?>.value(
+        AttachResponse(loggingEnabled: false, rumEnabled: true),
+      ),
+    );
 
-    await datadogSdk.attachToExisting(DdSdkExistingConfiguration(
-      longTaskThreshold: 0.5,
-      tracingSamplingRate: 100.0,
-      detectLongTasks: false,
-    ));
+    await datadogSdk.attachToExisting(
+      DatadogAttachConfiguration(
+        longTaskThreshold: 0.5,
+        traceSampleRate: 100.0,
+        detectLongTasks: false,
+      ),
+    );
 
-    expect(datadogSdk.rum?.configuration.longTaskThreshold, 0.5);
-    expect(datadogSdk.rum?.configuration.tracingSamplingRate, 100.0);
+    expect(datadogSdk.rum?.traceSampleRate, 100.0);
   });
 
   test('first party hosts get set to sdk', () async {
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
       firstPartyHosts: ['example.com', 'datadoghq.com'],
     );
-    await datadogSdk.initialize(configuration);
+    await datadogSdk.initialize(configuration, TrackingConsent.granted);
 
     expect(datadogSdk.firstPartyHosts.length, 2);
     expect(datadogSdk.firstPartyHosts[0].hostName, 'example.com');
-    expect(
-        datadogSdk.firstPartyHosts[0].headerTypes, {TracingHeaderType.datadog});
+    expect(datadogSdk.firstPartyHosts[0].headerTypes, {
+      TracingHeaderType.datadog,
+      TracingHeaderType.tracecontext,
+    });
     expect(datadogSdk.firstPartyHosts[1].hostName, 'datadoghq.com');
-    expect(
-        datadogSdk.firstPartyHosts[1].headerTypes, {TracingHeaderType.datadog});
+    expect(datadogSdk.firstPartyHosts[1].headerTypes, {
+      TracingHeaderType.datadog,
+      TracingHeaderType.tracecontext,
+    });
   });
 
   test('first party hosts with tracing headers set to sdk', () async {
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
       firstPartyHostsWithTracingHeaders: {
         'example.com': {TracingHeaderType.b3},
         'datadoghq.com': {TracingHeaderType.datadog},
       },
     );
-    await datadogSdk.initialize(configuration);
+    await datadogSdk.initialize(configuration, TrackingConsent.pending);
 
     expect(datadogSdk.firstPartyHosts.length, 2);
     expect(datadogSdk.firstPartyHosts[0].hostName, 'example.com');
     expect(datadogSdk.firstPartyHosts[0].headerTypes, {TracingHeaderType.b3});
     expect(datadogSdk.firstPartyHosts[1].hostName, 'datadoghq.com');
-    expect(
-        datadogSdk.firstPartyHosts[1].headerTypes, {TracingHeaderType.datadog});
+    expect(datadogSdk.firstPartyHosts[1].headerTypes, {
+      TracingHeaderType.datadog,
+    });
   });
 
   test('first party hosts combined tracing headers set to sdk', () async {
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
       firstPartyHosts: ['datadoghq.com'],
       firstPartyHostsWithTracingHeaders: {
         'example.com': {TracingHeaderType.b3},
       },
     );
-    await datadogSdk.initialize(configuration);
+    await datadogSdk.initialize(configuration, TrackingConsent.granted);
 
     expect(datadogSdk.firstPartyHosts.length, 2);
     expect(datadogSdk.firstPartyHosts[0].hostName, 'example.com');
     expect(datadogSdk.firstPartyHosts[0].headerTypes, {TracingHeaderType.b3});
     expect(datadogSdk.firstPartyHosts[1].hostName, 'datadoghq.com');
-    expect(
-        datadogSdk.firstPartyHosts[1].headerTypes, {TracingHeaderType.datadog});
-  });
-
-  test('first party hosts are encoded', () async {
-    var firstPartyHosts = ['example.com', 'datadoghq.com'];
-
-    final configuration = DdSdkConfiguration(
-      clientToken: 'clientToken',
-      env: 'env',
-      site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
-      firstPartyHosts: firstPartyHosts,
-    );
-
-    final encoded = configuration.encode();
-    expect(encoded['firstPartyHosts'], firstPartyHosts);
+    expect(datadogSdk.firstPartyHosts[1].headerTypes, {
+      TracingHeaderType.datadog,
+      TracingHeaderType.tracecontext,
+    });
   });
 
   test('headerTypesForHost with no hosts returns empty set', () async {
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
     );
-    await datadogSdk.initialize(configuration);
+    await datadogSdk.initialize(configuration, TrackingConsent.granted);
 
     var uri = Uri.parse('https://first_party');
     expect(datadogSdk.headerTypesForHost(uri), isEmpty);
   });
 
-  test('headerTypesForHost with matching host returns datadog by default',
-      () async {
-    var firstPartyHosts = ['example.com', 'datadoghq.com'];
+  test(
+    'headerTypesForHost with matching host returns datadog by default',
+    () async {
+      var firstPartyHosts = ['example.com', 'datadoghq.com'];
 
-    final configuration = DdSdkConfiguration(
-      clientToken: 'clientToken',
-      env: 'env',
-      site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
-      firstPartyHosts: firstPartyHosts,
-    );
-    await datadogSdk.initialize(configuration);
+      final configuration = DatadogConfiguration(
+        clientToken: 'clientToken',
+        env: 'env',
+        site: DatadogSite.us1,
+        firstPartyHosts: firstPartyHosts,
+      );
+      await datadogSdk.initialize(configuration, TrackingConsent.pending);
 
-    var uri = Uri.parse('https://datadoghq.com/path');
-    expect(datadogSdk.headerTypesForHost(uri), {TracingHeaderType.datadog});
-  });
+      var uri = Uri.parse('https://datadoghq.com/path');
+      expect(datadogSdk.headerTypesForHost(uri), {
+        TracingHeaderType.datadog,
+        TracingHeaderType.tracecontext,
+      });
+    },
+  );
 
   test(
-      'headerTypesForHost with matching host with subdomain returns header type',
-      () async {
-    var firstPartyHosts = ['example.com', 'datadoghq.com'];
+    'headerTypesForHost with matching host with subdomain returns header type',
+    () async {
+      var firstPartyHosts = ['example.com', 'datadoghq.com'];
 
-    final configuration = DdSdkConfiguration(
-      clientToken: 'clientToken',
-      env: 'env',
-      site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
-      firstPartyHosts: firstPartyHosts,
-    );
-    await datadogSdk.initialize(configuration);
+      final configuration = DatadogConfiguration(
+        clientToken: 'clientToken',
+        env: 'env',
+        site: DatadogSite.us1,
+        firstPartyHosts: firstPartyHosts,
+      );
+      await datadogSdk.initialize(configuration, TrackingConsent.pending);
 
-    var uri = Uri.parse('https://test.datadoghq.com/path');
-    expect(datadogSdk.headerTypesForHost(uri), {TracingHeaderType.datadog});
-  });
+      var uri = Uri.parse('https://test.datadoghq.com/path');
+      expect(datadogSdk.headerTypesForHost(uri), {
+        TracingHeaderType.datadog,
+        TracingHeaderType.tracecontext,
+      });
+    },
+  );
 
-  test('headerTypesForHost with matching subdomain does not match root',
-      () async {
-    var firstPartyHosts = ['example.com', 'test.datadoghq.com'];
+  test(
+    'headerTypesForHost with matching subdomain does not match root',
+    () async {
+      var firstPartyHosts = ['example.com', 'test.datadoghq.com'];
 
-    final configuration = DdSdkConfiguration(
-      clientToken: 'clientToken',
-      env: 'env',
-      site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
-      firstPartyHosts: firstPartyHosts,
-    );
-    await datadogSdk.initialize(configuration);
+      final configuration = DatadogConfiguration(
+        clientToken: 'clientToken',
+        env: 'env',
+        site: DatadogSite.us1,
+        firstPartyHosts: firstPartyHosts,
+      );
+      await datadogSdk.initialize(configuration, TrackingConsent.granted);
 
-    var uri = Uri.parse('https://datadoghq.com/path');
-    expect(datadogSdk.headerTypesForHost(uri), isEmpty);
-  });
+      var uri = Uri.parse('https://datadoghq.com/path');
+      expect(datadogSdk.headerTypesForHost(uri), isEmpty);
+    },
+  );
 
   test('headerTypesForHost escapes special characters in hosts', () async {
     var firstPartyHosts = ['test.datadoghq.com'];
 
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
       firstPartyHosts: firstPartyHosts,
     );
-    await datadogSdk.initialize(configuration);
+    await datadogSdk.initialize(configuration, TrackingConsent.pending);
 
     var uri = Uri.parse('https://testdatadoghq.com/path');
     expect(datadogSdk.headerTypesForHost(uri), isEmpty);
@@ -516,18 +551,19 @@ void main() {
       'test.datadoghq.com': {TracingHeaderType.b3},
     };
 
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
       firstPartyHostsWithTracingHeaders: firstPartyHosts,
     );
-    await datadogSdk.initialize(configuration);
+    await datadogSdk.initialize(configuration, TrackingConsent.granted);
 
     var uri = Uri.parse('https://test.datadoghq.com/path');
-    expect(datadogSdk.headerTypesForHost(uri),
-        {TracingHeaderType.datadog, TracingHeaderType.b3});
+    expect(datadogSdk.headerTypesForHost(uri), {
+      TracingHeaderType.datadog,
+      TracingHeaderType.b3,
+    });
   });
 
   test('firstPartyHosts sanitizes schemas', () async {
@@ -537,32 +573,37 @@ void main() {
       'ws://ws.datadoghq.com': {TracingHeaderType.b3multi},
     };
 
-    final configuration = DdSdkConfiguration(
+    final configuration = DatadogConfiguration(
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
       firstPartyHostsWithTracingHeaders: firstPartyHosts,
     );
-    await datadogSdk.initialize(configuration);
+    await datadogSdk.initialize(configuration, TrackingConsent.granted);
 
     expect(datadogSdk.firstPartyHosts.length, 3);
     expect(datadogSdk.firstPartyHosts[0].hostName, 'datadoghq.com');
-    expect(
-        datadogSdk.firstPartyHosts[0].headerTypes, {TracingHeaderType.datadog});
+    expect(datadogSdk.firstPartyHosts[0].headerTypes, {
+      TracingHeaderType.datadog,
+    });
     expect(datadogSdk.firstPartyHosts[1].hostName, 'test.datadoghq.com');
     expect(datadogSdk.firstPartyHosts[1].headerTypes, {TracingHeaderType.b3});
     expect(datadogSdk.firstPartyHosts[2].hostName, 'ws.datadoghq.com');
-    expect(
-        datadogSdk.firstPartyHosts[2].headerTypes, {TracingHeaderType.b3multi});
+    expect(datadogSdk.firstPartyHosts[2].headerTypes, {
+      TracingHeaderType.b3multi,
+    });
   });
 
   test('set user info calls into platform', () {
     datadogSdk.setUserInfo(
-        id: 'fake_id', name: 'fake_name', email: 'fake_email');
+      id: 'fake_id',
+      name: 'fake_name',
+      email: 'fake_email',
+    );
 
-    verify(() =>
-        mockPlatform.setUserInfo('fake_id', 'fake_name', 'fake_email', {}));
+    verify(
+      () => mockPlatform.setUserInfo('fake_id', 'fake_name', 'fake_email', {}),
+    );
   });
 
   test('set user info calls into platform passing extraInfo', () {
@@ -573,30 +614,71 @@ void main() {
       extraInfo: {'attribute': 32.0},
     );
 
-    verify(() => mockPlatform.setUserInfo(
-          'fake_id',
-          'fake_name',
-          'fake_email',
-          {'attribute': 32.0},
-        ));
-  });
-
-  test('set user info calls into platform passing null values', () {
-    datadogSdk.setUserInfo(id: null, name: null, email: null);
-
-    verify(() => mockPlatform.setUserInfo(null, null, null, {}));
+    verify(
+      () => mockPlatform.setUserInfo('fake_id', 'fake_name', 'fake_email', {
+        'attribute': 32.0,
+      }),
+    );
   });
 
   test('addUserExtraInfo passes through to platform', () {
-    datadogSdk.addUserExtraInfo({
-      'example_1': 'test',
-      'example_2': null,
-    });
+    datadogSdk.addUserExtraInfo({'example_1': 'test', 'example_2': null});
 
-    verify(() => mockPlatform.addUserExtraInfo({
-          'example_1': 'test',
-          'example_2': null,
-        }));
+    verify(
+      () => mockPlatform.addUserExtraInfo({
+        'example_1': 'test',
+        'example_2': null,
+      }),
+    );
+  });
+
+  test('clearUserInfo passes through to platform', () {
+    datadogSdk.clearUserInfo();
+
+    verify(() => mockPlatform.clearUserInfo());
+  });
+
+  test('set user info calls into platform', () {
+    datadogSdk.setUserInfo(
+      id: 'fake_id',
+      name: 'fake_name',
+      email: 'fake_email',
+    );
+
+    verify(
+      () => mockPlatform.setUserInfo('fake_id', 'fake_name', 'fake_email', {}),
+    );
+  });
+
+  test('setAccountInfo calls into platform passing extraInfo', () {
+    datadogSdk.setAccountInfo(
+      id: 'fake_id',
+      name: 'fake_name',
+      extraInfo: {'attribute': 32.0},
+    );
+
+    verify(
+      () => mockPlatform.setAccountInfo('fake_id', 'fake_name', {
+        'attribute': 32.0,
+      }),
+    );
+  });
+
+  test('addAccountExtraInfo passes through to platform', () {
+    datadogSdk.addAccountExtraInfo({'example_1': 'test', 'example_2': null});
+
+    verify(
+      () => mockPlatform.addAccountExtraInfo({
+        'example_1': 'test',
+        'example_2': null,
+      }),
+    );
+  });
+
+  test('clearAccountInfo passes through to platform', () {
+    datadogSdk.clearAccountInfo();
+
+    verify(() => mockPlatform.clearAccountInfo());
   });
 
   test('set tracking consent calls into platform', () {
@@ -605,76 +687,116 @@ void main() {
     verify(() => mockPlatform.setTrackingConsent(TrackingConsent.notGranted));
   });
 
-  test('createLogger calls into logs platform', () {
-    when(() => mockLogsPlatform.createLogger(any(), any()))
-        .thenAnswer((_) => Future<void>.value());
-    final config = LoggingConfiguration(loggerName: 'test_logger');
+  test('createLogger calls into logs platform', () async {
+    when(
+      () => mockLogsPlatform.createLogger(any(), any()),
+    ).thenAnswer((_) => Future<void>.value());
 
-    final logger = datadogSdk.createLogger(config);
-
-    expect(logger, isNotNull);
-    verify(() => mockLogsPlatform.createLogger(logger.loggerHandle, config));
-  });
-
-  test('plugin added to configuration is created during initialization',
-      () async {
-    final mockPluginConfig = MockDatadogPluginConfiguration();
-    final mockPlugin = MockDatadogPlugin();
-    when(() => mockPluginConfig.create(datadogSdk))
-        .thenAnswer((_) => mockPlugin);
-
-    final config = DdSdkConfiguration(
-      clientToken: 'fake_token',
-      env: 'env',
-      trackingConsent: TrackingConsent.granted,
-      site: DatadogSite.us1,
-    )..addPlugin(mockPluginConfig);
-
-    await datadogSdk.initialize(config);
-
-    verify(() => mockPluginConfig.create(datadogSdk));
-    verify(() => mockPlugin.initialize());
-    expect(datadogSdk.getPlugin<MockDatadogPlugin>(), mockPlugin);
-  });
-
-  test('plugin added to configuration is created during attachToExisting',
-      () async {
-    when(() => mockPlatform.attachToExisting()).thenAnswer(
-        (invocation) => Future<AttachResponse?>.value(AttachResponse(
-              rumEnabled: false,
-            )));
-
-    final mockPluginConfig = MockDatadogPluginConfiguration();
-    final mockPlugin = MockDatadogPlugin();
-    when(() => mockPluginConfig.create(datadogSdk))
-        .thenAnswer((_) => mockPlugin);
-
-    final config = DdSdkExistingConfiguration()..addPlugin(mockPluginConfig);
-
-    await datadogSdk.attachToExisting(config);
-
-    verify(() => mockPluginConfig.create(datadogSdk));
-    verify(() => mockPlugin.initialize());
-    expect(datadogSdk.getPlugin<MockDatadogPlugin>(), mockPlugin);
-  });
-
-  test('updateConfigurationInfo calls to platform', () async {
-    final configuration = DdSdkConfiguration(
+    final loggingConfig = DatadogLoggingConfiguration();
+    final configuration = DatadogConfiguration(
       clientToken: 'clientToken',
       env: 'env',
       site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.pending,
+      loggingConfiguration: loggingConfig,
     );
-    await datadogSdk.initialize(configuration);
+    await datadogSdk.initialize(configuration, TrackingConsent.granted);
+    final logConfig = DatadogLoggerConfiguration(name: 'test_logger');
+
+    final logger = datadogSdk.logs?.createLogger(logConfig);
+
+    expect(logger, isNotNull);
+    verify(
+      () => mockLogsPlatform.createLogger(logger!.loggerHandle, logConfig),
+    );
+  });
+
+  test(
+    'plugin added to configuration is created during initialization',
+    () async {
+      final mockPluginConfig = MockDatadogPluginConfiguration();
+      final mockPlugin = MockDatadogPlugin();
+      when(
+        () => mockPluginConfig.create(datadogSdk),
+      ).thenAnswer((_) => mockPlugin);
+
+      final config = DatadogConfiguration(
+        clientToken: 'fake_token',
+        env: 'env',
+        site: DatadogSite.us1,
+      )..addPlugin(mockPluginConfig);
+
+      await datadogSdk.initialize(config, TrackingConsent.pending);
+
+      verify(() => mockPluginConfig.create(datadogSdk));
+      verify(() => mockPlugin.initialize());
+      expect(datadogSdk.getPlugin<MockDatadogPlugin>(), mockPlugin);
+    },
+  );
+
+  test(
+    'plugin added to configuration is created during attachToExisting',
+    () async {
+      when(() => mockPlatform.attachToExisting(any())).thenAnswer(
+        (invocation) => Future<AttachResponse?>.value(
+          AttachResponse(loggingEnabled: false, rumEnabled: false),
+        ),
+      );
+
+      final mockPluginConfig = MockDatadogPluginConfiguration();
+      final mockPlugin = MockDatadogPlugin();
+      when(
+        () => mockPluginConfig.create(datadogSdk),
+      ).thenAnswer((_) => mockPlugin);
+
+      final config = DatadogAttachConfiguration()..addPlugin(mockPluginConfig);
+
+      await datadogSdk.attachToExisting(config);
+
+      verify(() => mockPluginConfig.create(datadogSdk));
+      verify(() => mockPlugin.initialize());
+      expect(datadogSdk.getPlugin<MockDatadogPlugin>(), mockPlugin);
+    },
+  );
+
+  test('updateConfigurationInfo calls to platform', () async {
+    final configuration = DatadogConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+    );
+    await datadogSdk.initialize(configuration, TrackingConsent.pending);
 
     datadogSdk.updateConfigurationInfo(
-        LateConfigurationProperty.trackInteractions, true);
+      LateConfigurationProperty.trackInteractions,
+      true,
+    );
     datadogSdk.updateConfigurationInfo(
-        LateConfigurationProperty.trackViewsManually, false);
+      LateConfigurationProperty.trackViewsManually,
+      false,
+    );
 
-    verify(() =>
-        mockPlatform.updateTelemetryConfiguration('trackInteractions', true));
-    verify(() =>
-        mockPlatform.updateTelemetryConfiguration('trackViewsManually', false));
+    verify(
+      () =>
+          mockPlatform.updateTelemetryConfiguration('trackInteractions', true),
+    );
+    verify(
+      () => mockPlatform.updateTelemetryConfiguration(
+        'trackViewsManually',
+        false,
+      ),
+    );
+  });
+
+  test('clearAllData calls to platform', () async {
+    final configuration = DatadogConfiguration(
+      clientToken: 'clientToken',
+      env: 'env',
+      site: DatadogSite.us1,
+    );
+    await datadogSdk.initialize(configuration, TrackingConsent.pending);
+
+    datadogSdk.clearAllData();
+
+    verify(() => mockPlatform.clearAllData());
   });
 }

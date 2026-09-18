@@ -7,11 +7,12 @@ import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
 import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.Configuration
-import com.datadog.android.core.configuration.Credentials
 import com.datadog.android.core.configuration.UploadFrequency
+import com.datadog.android.log.Logs
+import com.datadog.android.log.LogsConfiguration
 import com.datadog.android.privacy.TrackingConsent
-import com.datadog.android.rum.GlobalRum
-import com.datadog.android.rum.RumMonitor
+import com.datadog.android.rum.Rum
+import com.datadog.android.rum.RumConfiguration
 import com.datadog.android.rum.tracking.AcceptAllActivities
 import com.datadog.android.rum.tracking.ActivityViewTrackingStrategy
 import com.datadog.android.rum.tracking.ComponentPredicate
@@ -21,7 +22,11 @@ import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.embedding.engine.dart.DartExecutor
 import org.json.JSONObject
 
-class FlutterExcludingComponentPredicate: ComponentPredicate<Activity> {
+/**
+ * This [ComponentPredicate] excludes all [FlutterActivity]s from being tracked by RUM, so that
+ * the Flutter SDK can handle them instead.
+ */
+class FlutterExcludingComponentPredicate : ComponentPredicate<Activity> {
     val innerPredicate = AcceptAllActivities()
 
     override fun accept(component: Activity): Boolean {
@@ -64,35 +69,51 @@ class HybridApplication : Application() {
 
         Datadog.setVerbosity(Log.VERBOSE)
 
+        // If you are adding Flutter to an existing Android application, you should
+        // ensure Datadog is fully initialized on the Android side before
+        // initializing Flutter and calling `DatadogSdk.attachToExisting`.
+        // For more information about how to setup Datadog in Android, see the official
+        // documentation:
+        // https://docs.datadoghq.com/real_user_monitoring/mobile_and_tv_monitoring/android/setup
         val datadogConfig = Configuration.Builder(
-            logsEnabled = true,
-            tracesEnabled = true,
-            crashReportsEnabled = true,
-            rumEnabled = true,
+            clientToken,
+            "prod",
+            "release"
         )
             .setBatchSize(BatchSize.SMALL)
             .setUploadFrequency(UploadFrequency.FREQUENT)
             .useSite(DatadogSite.US1)
-            .trackInteractions()
-            .trackLongTasks()
-            .useViewTrackingStrategy(ActivityViewTrackingStrategy(
-                trackExtras = false,
-                componentPredicate = FlutterExcludingComponentPredicate()
-            ))
             .build()
-
-        val datadogCredentials = Credentials(clientToken, "prod", "release", applicationId)
 
         Datadog.initialize(
             this,
-            credentials = datadogCredentials,
             configuration = datadogConfig,
             TrackingConsent.GRANTED
         )
 
-        val monitor = RumMonitor.Builder().build()
-        GlobalRum.registerIfAbsent(monitor)
+        // All components you want to use in Flutter must be initialized on iOS first.
+        // This includes Logs...
+        val logsConfiguration = LogsConfiguration.Builder()
+            .build()
+        Logs.enable(logsConfiguration)
 
+        // ... RUM...
+        val rumConfiguration = RumConfiguration.Builder(applicationId)
+            .trackLongTasks()
+            .trackUserInteractions()
+            .useViewTrackingStrategy(
+                ActivityViewTrackingStrategy(
+                    trackExtras = false,
+                    componentPredicate = FlutterExcludingComponentPredicate()
+                )
+            )
+        Rum.enable(rumConfiguration.build())
+
+        // ... and NDK crash reporting (this is optional. See documentation for more details).
+        // https://docs.datadoghq.com/real_user_monitoring/mobile_and_tv_monitoring/android/error_tracking
+        // NdkCrashReporting.enable()
+        // Once Datadog is fully initialized, you can run `flutterEngine.run()`.
+        // This calls Flutter's `main` method, which will look for an existing Datadog instance to attach to.
         flutterEngine = FlutterEngine(this)
         flutterEngine.dartExecutor.executeDartEntrypoint(
             DartExecutor.DartEntrypoint.createDefault()

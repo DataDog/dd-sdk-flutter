@@ -3,45 +3,84 @@
 // Copyright 2019-Present Datadog, Inc.
 // ignore_for_file: unused_element, library_private_types_in_public_api
 
-@JS('DD_LOGS')
-library ddlogs_flutter_web;
+import 'dart:js_interop';
 
-import 'package:js/js.dart';
+import 'package:meta/meta.dart';
 
 import '../../datadog_flutter_plugin.dart';
+import '../../datadog_flutter_plugin_web.dart';
+import '../../datadog_internal.dart';
 import '../web_helpers.dart';
 import 'ddlogs_platform_interface.dart';
+import 'ddweb_helpers.dart';
 
 class DdLogsWeb extends DdLogsPlatform {
   final Map<String, Logger> _activeLoggers = {};
 
-  static void initLogs(DdSdkConfiguration configuration) {
-    init(_LogInitOptions(
-      clientToken: configuration.clientToken,
-      env: configuration.env,
-      site: siteStringForSite(configuration.site),
-      proxyUrl: configuration.customLogsEndpoint,
-      service: configuration.serviceName,
-      version: configuration.versionTag,
-    ));
+  static void initLogs(
+    DatadogConfiguration configuration,
+    TrackingConsent trackingConsent,
+  ) {
+    DD_LOGS?.init(
+      _LogInitOptions(
+        clientToken: configuration.clientToken,
+        env: configuration.env,
+        proxy: configuration.loggingConfiguration?.customEndpoint,
+        sdkVersion: DatadogSdk.sdkVersion,
+        service: configuration.service,
+        sessionPersistence:
+            configuration.sessionPersistence?.webValue() ?? 'cookie',
+        site: siteStringForSite(configuration.site),
+        source: 'flutter',
+        storeContextsAcrossPages: configuration.storeContextAcrossPages,
+        trackAnonymousUser:
+            configuration.rumConfiguration?.trackAnonymousUser ?? true,
+        trackSessionAcrossSubdomains:
+            configuration.trackSessionsAcrossSubdomains,
+        usePartitionedCrossSiteSessionCookie:
+            configuration.usePartitionedCrossSiteSessionCookie,
+        useSecureSessionCookie: configuration.useSecureSessionCookie,
+        version: configuration.versionTag,
+        variant: configuration.flavor,
+        trackingConsent: trackingConsent.webValue(),
+      ),
+    );
   }
 
   @override
+  Future<void> enable(
+    DatadogSdk core,
+    DatadogLoggingConfiguration config,
+  ) async {}
+
+  @override
+  Future<void> addGlobalAttribute(String key, Object value) async {
+    DD_LOGS?.setGlobalContextProperty(key, valueToJs(value, 'value'));
+  }
+
+  @override
+  Future<void> removeGlobalAttribute(String key) async {
+    DD_LOGS?.removeGlobalContextProperty(key);
+  }
+
+  @override
+  Future<void> deinitialize() async {}
+
+  @override
   Future<void> createLogger(
-      String loggerHandle, LoggingConfiguration config) async {
-    var loggerHandlers = [
-      if (config.sendLogsToDatadog) 'http',
-      if (config.printLogsToConsole) 'console'
-    ];
-    var logger = _createLogger(
-      config.loggerName ?? 'default',
+    String loggerHandle,
+    DatadogLoggerConfiguration config,
+  ) async {
+    var loggerHandlers = ['http'.toJS];
+    var logger = DD_LOGS?.createLogger(
+      config.name ?? 'default',
       _JsLoggerConfiguration(),
     );
     if (logger != null) {
       if (loggerHandlers.isNotEmpty) {
-        logger.setHandler(loggerHandlers);
+        logger.setHandler(loggerHandlers.toJS);
       } else {
-        logger.setHandler(['silent']);
+        logger.setHandler(['silent'.toJS].toJS);
       }
 
       _activeLoggers[loggerHandle] = logger;
@@ -49,54 +88,42 @@ class DdLogsWeb extends DdLogsPlatform {
   }
 
   @override
-  Future<void> addAttribute(
-      String loggerHandle, String key, Object value) async {
-    final logger = _activeLoggers[loggerHandle];
-    logger?.addContext(key, valueToJs(value, 'value'));
+  Future<void> destroyLogger(String loggerHandle) async {
+    _activeLoggers.remove(loggerHandle);
   }
 
   @override
-  Future<void> addTag(String loggerHandle, String tag, [String? value]) async {}
+  Future<void> addAttribute(
+    String loggerHandle,
+    String key,
+    Object value,
+  ) async {
+    final logger = _activeLoggers[loggerHandle];
+    logger?.setContextProperty(key, valueToJs(value, 'value'));
+  }
 
-  // @override
-  // Future<void> debug(String loggerHandle, String message,
-  //     [Map<String, Object?> context = const {}]) async {
-  //   final logger = _activeLoggers[loggerHandle];
-  //   logger?.debug(message, valueToJs(context, 'context'));
-  // }
-
-  // @override
-  // Future<void> error(String loggerHandle, String message,
-  //     [Map<String, Object?> context = const {}]) async {
-  //   final logger = _activeLoggers[loggerHandle];
-  //   logger?.error(message, valueToJs(context, 'context'));
-  // }
-
-  // @override
-  // Future<void> info(String loggerHandle, String message,
-  //     [Map<String, Object?> context = const {}]) async {
-  //   final logger = _activeLoggers[loggerHandle];
-  //   logger?.info(message, valueToJs(context, 'context'));
-  // }
-
-  // @override
-  // Future<void> warn(String loggerHandle, String message,
-  //     [Map<String, Object?> context = const {}]) async {
-  //   final logger = _activeLoggers[loggerHandle];
-  //   logger?.warn(message, valueToJs(context, 'context'));
-  // }
+  @override
+  Future<void> addTag(String loggerHandle, String tag, [String? value]) async {
+    final logger = _activeLoggers[loggerHandle];
+    logger?.addTag(tag, value);
+  }
 
   @override
   Future<void> removeAttribute(String loggerHandle, String key) async {
     final logger = _activeLoggers[loggerHandle];
-    logger?.removeContext(key);
+    logger?.removeContextProperty(key);
   }
 
   @override
-  Future<void> removeTag(String loggerHandle, String tag) async {}
+  Future<void> removeTag(String loggerHandle, String tag) {
+    return removeTagWithKey(loggerHandle, tag);
+  }
 
   @override
-  Future<void> removeTagWithKey(String loggerHandle, String key) async {}
+  Future<void> removeTagWithKey(String loggerHandle, String key) async {
+    final logger = _activeLoggers[loggerHandle];
+    logger?.removeTagsWithKey(key);
+  }
 
   @override
   Future<void> log(
@@ -110,7 +137,27 @@ class DdLogsWeb extends DdLogsPlatform {
   ) async {
     final logger = _activeLoggers[loggerHandle];
     final webLogLevel = _toWebLogLevel(level);
-    logger?.log(message, valueToJs(attributes, 'attributes'), webLogLevel);
+    JSError? error;
+    if (errorMessage != null || errorKind != null) {
+      error = JSError();
+      error.stack = convertWebStackTrace(errorStackTrace);
+      error.message = errorMessage;
+      error.name = errorKind ?? 'Error';
+
+      // Move error fingerprint to its proper location
+      final fingerprint = attributes[DatadogAttributes.errorFingerprint];
+      if (fingerprint != null) {
+        attributes = Map.from(attributes)
+          ..remove(DatadogAttributes.errorFingerprint)
+          ..putIfAbsent('error.fingerprint', () => fingerprint);
+      }
+    }
+    logger?.log(
+      message,
+      valueToJs(attributes, 'attributes'),
+      webLogLevel,
+      error,
+    );
   }
 }
 
@@ -121,70 +168,99 @@ String _toWebLogLevel(LogLevel level) {
     case LogLevel.info:
       return 'info';
     case LogLevel.notice:
-      return 'notice';
+      return 'warn';
     case LogLevel.warning:
-      return 'warning';
+      return 'warn';
     case LogLevel.error:
       return 'error';
     case LogLevel.critical:
-      return 'critical';
+      return 'error';
     case LogLevel.alert:
-      return 'alert';
+      return 'error';
     case LogLevel.emergency:
-      return 'emergency';
+      return 'error';
   }
 }
 
-@JS()
 @anonymous
-class _LogInitOptions {
-  external String get clientToken;
-  external String get site;
-  external String get env;
-  external String? get proxyUrl;
-  external String? get service;
-  external String? get version;
-
+extension type _LogInitOptions._(JSObject _) implements JSObject {
   external factory _LogInitOptions({
     String clientToken,
-    String site,
     String env,
+    String? proxy,
+    String? sdkVersion,
     String? service,
-    String? proxyUrl,
+    String? sessionPersistence,
+    String site,
+    String? source,
+    bool? storeContextsAcrossPages,
+    bool? trackAnonymousUser,
+    String? trackingConsent,
+    bool? trackSessionAcrossSubdomains,
+    bool? usePartitionedCrossSiteSessionCookie,
+    bool? useSecureSessionCookie,
+    String? variant,
     String? version,
   });
 }
 
-@JS()
 @anonymous
-class _JsLoggerConfiguration {
+extension type _JsLoggerConfiguration._(JSObject _) implements JSObject {
   external String? get level;
   external String? get handler;
-  external dynamic get context;
+  external JSObject get context;
 
   external factory _JsLoggerConfiguration({
+    // ignore: unused_element_parameter
     String? level,
+    // ignore: unused_element_parameter
     String? handler,
-    dynamic context,
+    // ignore: unused_element_parameter
+    JSObject context,
   });
 }
 
-@JS('Logger')
-class Logger {
-  external void log(String message, dynamic messageContext, String status);
+extension type _DdLogs._(JSObject _) implements JSObject {
+  external void init(_LogInitOptions options);
 
-  external void addContext(String key, dynamic value);
-  external void removeContext(String key);
+  external Logger? getLogger(String name);
 
-  external void setHandler(List<String> handler);
+  external void setUser(JsUser userInfo);
+  external void setUserProperty(String key, JSAny? value);
+  external void clearUser();
+
+  external void setAccount(JsAccount userInfo);
+  external void setAccountProperty(String key, JSAny? value);
+  external void clearAccount();
+
+  @internal
+  external Logger? createLogger(
+    String name,
+    _JsLoggerConfiguration? configuration,
+  );
+
+  external void setGlobalContextProperty(String key, JSAny? property);
+  external void removeGlobalContextProperty(String key);
+  external void setTrackingConsent(String consent);
 }
 
 @JS()
-external void init(_LogInitOptions options);
+// ignore: non_constant_identifier_names
+external _DdLogs? DD_LOGS;
 
-@JS()
-external Logger? getLogger(String name);
+extension type Logger._(JSObject _) implements JSObject {
+  external void log(
+    String message,
+    JSAny? messageContext,
+    String status,
+    JSError? error,
+  );
 
-@JS('createLogger')
-external Logger? _createLogger(
-    String name, _JsLoggerConfiguration? configuration);
+  external void addTag(String key, String? value);
+  external void removeTagsWithKey(String key);
+
+  external void setContextProperty(String key, JSAny? value);
+  external void removeContextProperty(String key);
+
+  external void setHandler(JSArray handler);
+}

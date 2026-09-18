@@ -39,8 +39,9 @@ void main() {
 
     final mockWebiewPlatform = MockWebviewPlatform();
     final mockAndroidController = MockAndroidWebViewController();
-    when(() => mockWebiewPlatform.createPlatformWebViewController(any()))
-        .thenReturn(mockAndroidController);
+    when(
+      () => mockWebiewPlatform.createPlatformWebViewController(any()),
+    ).thenReturn(mockAndroidController);
     when(() => mockAndroidController.webViewIdentifier).thenReturn(148221);
     WebViewPlatform.instance = mockWebiewPlatform;
 
@@ -49,17 +50,20 @@ void main() {
     ambiguate(TestDefaultBinaryMessengerBinding.instance)
         ?.defaultBinaryMessenger
         .setMockMethodCallHandler(methodChannel, (message) {
-      log.add(message);
-      return null;
-    });
+          log.add(message);
+          return null;
+        });
 
     WebViewController().trackDatadogEvents(mockDatadog, ['host_a', 'host_b']);
 
     expect(log, [
-      isMethodCall('initWebView', arguments: {
-        'webViewIdentifier': 148221,
-        'allowedHosts': ['host_a', 'host_b']
-      })
+      isMethodCall(
+        'initWebView',
+        arguments: {
+          'webViewIdentifier': 148221,
+          'allowedHosts': ['host_a', 'host_b'],
+        },
+      ),
     ]);
   });
 }

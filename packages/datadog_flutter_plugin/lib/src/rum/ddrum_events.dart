@@ -4,8 +4,8 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
-import '../../datadog_flutter_plugin.dart';
 import '../json_helpers.dart';
+import 'ddrum_enums.dart';
 
 part 'ddrum_events.g.dart';
 
@@ -353,7 +353,7 @@ class RumActionEvent {
   Map<String, dynamic> toJson() => _$RumActionEventToJson(this);
 }
 
-enum RumActionType {
+enum RumActionTypeInternal {
   custom,
   click,
   tap,
@@ -374,7 +374,7 @@ class RumAction {
   final RumCount? longTask;
   final RumCount? resource;
   final RumActionTarget? target;
-  final RumActionType type;
+  final RumActionTypeInternal type;
 
   RumAction({
     this.crash,
@@ -599,6 +599,7 @@ class RumError {
   final String? sourceType;
   String? stack;
   final String? type;
+  String? fingerprint;
 
   RumError({
     required this.causes,
@@ -612,6 +613,7 @@ class RumError {
     this.sourceType,
     this.stack,
     this.type,
+    this.fingerprint,
   });
 
   factory RumError.fromJson(Map<String, dynamic> json) =>
@@ -706,4 +708,104 @@ class RumLongTask {
   factory RumLongTask.fromJson(Map<String, dynamic> json) =>
       _$RumLongTaskFromJson(json);
   Map<String, dynamic> toJson() => _$RumLongTaskToJson(this);
+}
+
+@commonJsonOptions
+class RumContainerView {
+  final String id;
+
+  RumContainerView({
+    required this.id,
+  });
+
+  factory RumContainerView.fromJson(Map<String, dynamic> json) =>
+      _$RumContainerViewFromJson(json);
+  Map<String, dynamic> toJson() => _$RumContainerViewToJson(this);
+}
+
+@commonJsonOptions
+class RumVitalOperationStepContainer {
+  final RumContainerView view;
+
+  RumVitalOperationStepContainer({
+    required this.view,
+  });
+
+  factory RumVitalOperationStepContainer.fromJson(Map<String, dynamic> json) =>
+      _$RumVitalOperationStepContainerFromJson(json);
+  Map<String, dynamic> toJson() => _$RumVitalOperationStepContainerToJson(this);
+}
+
+@commonJsonOptions
+class RumVital {
+  final String id;
+  final String? name;
+  final String? description;
+  final String? operationKey;
+  final String stepType;
+  final String failureReason;
+
+  RumVital({
+    required this.id,
+    this.name,
+    this.description,
+    this.operationKey,
+    required this.stepType,
+    required this.failureReason,
+  });
+
+  factory RumVital.fromJson(Map<String, dynamic> json) =>
+      _$RumVitalFromJson(json);
+  Map<String, dynamic> toJson() => _$RumVitalToJson(this);
+}
+
+// Excluded:
+//  - ciTest
+//  - dd
+//  - display
+//  - source
+//  - synthetics
+@commonJsonOptions
+class RumVitalOperationStepEvent {
+  final RumApplication application;
+  final String? buildVersion;
+  final String? buildId;
+  final RumConnectivity? connectivity;
+  final RumVitalOperationStepContainer? container;
+  final int date;
+  final String? ddtags;
+  final RumDevice? device;
+  final RumOperatingSystem? os;
+  final String? service;
+  final RumSession session;
+  final RumUser? usr;
+  final String? version;
+  final RumViewSummary view;
+  final RumVital vital;
+
+  @JsonKey(fromJson: attributesFromJson)
+  final Map<String, Object?> context;
+
+  RumVitalOperationStepEvent({
+    required this.application,
+    this.buildVersion,
+    this.buildId,
+    this.connectivity,
+    this.container,
+    required this.date,
+    this.ddtags,
+    this.device,
+    this.os,
+    this.service,
+    required this.session,
+    this.usr,
+    this.version,
+    required this.view,
+    required this.vital,
+    required this.context,
+  });
+
+  factory RumVitalOperationStepEvent.fromJson(Map<String, dynamic> json) =>
+      _$RumVitalOperationStepEventFromJson(json);
+  Map<String, dynamic> toJson() => _$RumVitalOperationStepEventToJson(this);
 }

@@ -14,24 +14,30 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 import 'package:releaser/cocoapod_util.dart';
 import 'package:releaser/helpers.dart';
-import 'package:releaser/package_list.dart';
+import 'package:releaser/spm_util.dart';
 
-void main(List<String> arguments) async {
+Future<int> main(List<String> arguments) async {
   Logger.root.level = Level.INFO;
   Logger.root.onRecord.listen((event) {
     print(event.message);
   });
 
-  final argParser = ArgParser()
-    ..addOption('version', abbr: 'v')
-    ..addOption('platform',
-        abbr: 'p', allowed: ['ios', 'android'], mandatory: true)
-    ..addFlag(
-      'remove',
-      abbr: 'r',
-      help: 'Remove the version pin and set back to develop / snapshots',
-      negatable: false,
-    );
+  final argParser =
+      ArgParser()
+        ..addOption('version', abbr: 'v')
+        ..addOption(
+          'platform',
+          abbr: 'p',
+          allowed: ['ios', 'android'],
+          mandatory: true,
+        )
+        ..addOption('package', mandatory: true)
+        ..addFlag(
+          'remove',
+          abbr: 'r',
+          help: 'Remove the version pin and set back to develop / snapshots',
+          negatable: false,
+        );
 
   ArgResults argResults;
   try {
@@ -39,29 +45,31 @@ void main(List<String> arguments) async {
   } on FormatException catch (e) {
     Logger.root.shout('❌ ${e.message}');
     _printUsage(argParser);
-    return;
+    exit(1);
   }
 
   if (argResults['remove'] != true && argResults['version'] == null) {
     Logger.root.shout('❌ Must specify a version or set --remove.');
-    return;
+    exit(1);
   }
 
-  final gitDir = await getGitDir();
+  final gitDir = await getGitDir(path.current);
   if (gitDir == null) {
     Logger.root.shout('💥 Could not establish your current git directory.');
     exit(1);
   }
 
   final version = argResults['version'] as String?;
+  final package = argResults['package'] as String;
   switch (argResults['platform']) {
     case 'ios':
-      _pinIOS(gitDir, version);
-      break;
+      return await _pinIOS(gitDir, package, version);
     case 'android':
-      _pinAndroid(gitDir, version);
-      break;
+      return await _pinAndroid(gitDir, package, version);
   }
+
+  Logger.root.shout('💥 Unknown platform!');
+  return 1;
 }
 
 void _printUsage(ArgParser argParser) {
@@ -69,63 +77,78 @@ void _printUsage(ArgParser argParser) {
   print('\n${argParser.usage}');
 }
 
-void _pinIOS(GitDir gitDir, String? version) async {
+Future<int> _pinIOS(GitDir gitDir, String package, String? version) async {
   final specDependencyPattern = RegExp(
-      r"(?<ws>\s+)pod '(?<dependency>.+)', :git => '(?<git>[^']*?)', :(?<overrideType>\w+) => '(?<override>[^']*?)'");
+    r"(?<ws>\s+)pod '(?<dependency>.+)', :git => '(?<git>[^']*?)', :(?<overrideType>\w+) => '(?<override>[^']*?)'",
+  );
 
-  final versionString =
+  final podVersionString =
       version != null ? ":tag => '$version'" : ":branch => 'develop'";
+  final podFile = 'packages/$package/example/ios/Podfile';
 
-  for (final podfile in podfileList) {
-    final file = File(path.join(gitDir.path, podfile));
-    if (!file.existsSync()) {
-      Logger.root.shout('❌ Could not find file $podfile');
-      return;
+  final file = File(path.join(gitDir.path, podFile));
+  if (!file.existsSync()) {
+    Logger.root.shout('❌ Could not find file $podFile');
+    return 1;
+  }
+
+  bool inOverride = false;
+  await transformFile(file, Logger.root, false, (line) {
+    if (inOverride) {
+      if (line.startsWith(overridesEndPattern)) {
+        inOverride = false;
+      } else {
+        final match = specDependencyPattern.firstMatch(line);
+        if (match != null) {
+          line =
+              "${match.namedGroup('ws')}pod '${match.namedGroup('dependency')}', :git => '${match.namedGroup('git')}', $podVersionString";
+        }
+      }
+    } else if (line.startsWith(overridesStartPattern)) {
+      inOverride = true;
     }
 
-    bool inOverride = false;
-    await transformFile(file, Logger.root, false, (line) {
-      if (inOverride) {
-        if (line.startsWith(overridesEndPattern)) {
-          inOverride = false;
-        } else {
-          final match = specDependencyPattern.firstMatch(line);
-          if (match != null) {
-            line =
-                "${match.namedGroup('ws')}pod '${match.namedGroup('dependency')}', :git => '${match.namedGroup('git')}', $versionString";
-          }
-        }
-      } else if (line.startsWith(overridesStartPattern)) {
-        inOverride = true;
-      }
+    return line;
+  });
 
-      return line;
-    });
-  }
+  final spmVersionString =
+      version != null ? 'exact: "$version"' : 'branch: "develop"';
+  await PinSwiftPackageVersion.pinSpmVersion(
+    gitDir.path,
+    package,
+    spmVersionString,
+    false,
+    Logger.root,
+  );
+
+  return 0;
 }
 
-void _pinAndroid(GitDir gitDir, String? version) async {
+Future<int> _pinAndroid(GitDir gitDir, String package, String? version) async {
   const versionPrefix = 'ext.datadog_version';
   final versionRegex = RegExp('$versionPrefix = "(.*)"');
 
+  final gradleFile = '$package/android/build.gradle';
   final versionString = version ?? '1+';
 
-  for (final filePath in gradleList) {
-    final file = File(path.join(gitDir.path, filePath));
-    if (!file.existsSync()) {
-      Logger.root.shout('❌ Could not find file $filePath');
-      return;
+  final file = File(path.join(gitDir.path, gradleFile));
+  if (!file.existsSync()) {
+    Logger.root.shout('❌ Could not find file $gradleFile');
+    return 1;
+  }
+
+  await transformFile(file, Logger.root, false, (line) {
+    final versionMatch = versionRegex.firstMatch(line);
+    if (versionMatch != null) {
+      final oldVersion = versionMatch.group(1);
+      line = line.replaceFirst(
+        '$versionPrefix = "$oldVersion"',
+        '$versionPrefix = "$versionString"',
+      );
     }
 
-    await transformFile(file, Logger.root, false, (line) {
-      final versionMatch = versionRegex.firstMatch(line);
-      if (versionMatch != null) {
-        final oldVersion = versionMatch.group(1);
-        line = line.replaceFirst('$versionPrefix = "$oldVersion"',
-            '$versionPrefix = "$versionString"');
-      }
+    return line;
+  });
 
-      return line;
-    });
-  }
+  return 0;
 }

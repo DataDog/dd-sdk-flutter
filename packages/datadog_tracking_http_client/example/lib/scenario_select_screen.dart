@@ -2,10 +2,15 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2022-Present Datadog, Inc.
 
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
 import 'package:flutter/material.dart';
 
-import 'http/rum_http_instrumentation_scenario.dart';
-import 'io_http_client/rum_http_client_instrumentation_scenario.dart';
+import 'clients/dio_client.dart';
+import 'clients/http_package_client.dart';
+import 'clients/io_client.dart';
+import 'screens/background_isolate_screen.dart';
+import 'screens/instrumentation_scenario.dart';
 
 class ScenarioSelectScreen extends StatelessWidget {
   const ScenarioSelectScreen({Key? key}) : super(key: key);
@@ -13,15 +18,33 @@ class ScenarioSelectScreen extends StatelessWidget {
   void _onSelectHttpClient(BuildContext context) {
     Navigator.of(context).push(MaterialPageRoute(
       settings: const RouteSettings(name: 'rum_io_instrumentation'),
-      builder: (context) => const RumHttpClientInstrumentationScenario(),
+      builder: (context) => InstrumentationScenario(client: IoClient()),
     ));
   }
 
   void _onSelectHttp(BuildContext context) {
     Navigator.of(context).push(MaterialPageRoute(
       settings: const RouteSettings(name: 'rum_http_instrumentation'),
-      builder: (context) => const RumHttpInstrumentationScenario(),
+      builder: (context) {
+        DatadogClient client = DatadogClient(datadogSdk: DatadogSdk.instance);
+        return InstrumentationScenario(client: HttpPackageClient(client));
+      },
     ));
+  }
+
+  void _onSelectDio(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
+      settings: const RouteSettings(name: 'rum_dio_instrumentation'),
+      builder: (context) => InstrumentationScenario(client: DioClient()),
+    ));
+  }
+
+  void _onSelectBackgroundIsolate(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+          settings: const RouteSettings(name: 'rum_io_background_isolate'),
+          builder: (context) => const BackgroundIsolateScreen()),
+    );
   }
 
   @override
@@ -41,6 +64,14 @@ class ScenarioSelectScreen extends StatelessWidget {
               title: const Text('http.Client Override'),
               onTap: () => _onSelectHttp(context),
             ),
+            ListTile(
+              title: const Text('Dio Usage'),
+              onTap: () => _onSelectDio(context),
+            ),
+            ListTile(
+              title: const Text('Background Isolate Fetch'),
+              onTap: () => _onSelectBackgroundIsolate(context),
+            )
           ],
         ),
       ),

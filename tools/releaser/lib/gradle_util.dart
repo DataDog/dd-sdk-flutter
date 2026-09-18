@@ -21,8 +21,7 @@ class UpdateGradleFilesCommand extends Command {
   }
 
   Future<bool> _updateGradleFiles(CommandArguments args, Logger logger) async {
-    for (var filePath
-        in gradleList.where((e) => e.contains(args.packageName))) {
+    for (var filePath in gradleList) {
       final file = File(path.join(args.gitDir.path, filePath));
       if (!file.existsSync()) {
         logger.shout('❌ Could not find file $filePath');
@@ -35,11 +34,16 @@ class UpdateGradleFilesCommand extends Command {
       bool inMavenBlock = false;
       bool writeMavenBlock = true;
       await transformFile(file, logger, args.dryRun, (line) {
-        final versionMatch = versionRegex.firstMatch(line);
-        if (versionMatch != null) {
-          final oldVersion = versionMatch.group(1);
-          line = line.replaceFirst('$versionPrefix = "$oldVersion"',
-              '$versionPrefix = "${args.androidRelease}"');
+        // For the datadog_flutter_plugin, use a tighter constraint
+        if (file.path.contains('datadog_flutter_plugin')) {
+          final versionMatch = versionRegex.firstMatch(line);
+          if (versionMatch != null) {
+            final oldVersion = versionMatch.group(1);
+            line = line.replaceFirst(
+              '$versionPrefix = "$oldVersion"',
+              '$versionPrefix = "${args.androidRelease}"',
+            );
+          }
         }
 
         // Remove requests for external gradle files
@@ -51,23 +55,22 @@ class UpdateGradleFilesCommand extends Command {
 
         if (inMavenBlock) {
           mavenBlock.writeln(line);
-          if (line.contains('url') && line.contains('/snapshots/')) {
+          if (line.contains('url') && line.contains('/maven-snapshots/')) {
             // this is a request for a snapshots maven repo. Don't write it to the final file
             writeMavenBlock = false;
           }
           if (line.contains('}')) {
+            String? returnLine;
             inMavenBlock = false;
             if (writeMavenBlock) {
-              line = mavenBlock.toString();
-            } else {
-              line = '';
+              returnLine = mavenBlock.toString();
             }
 
             // Reset to default values
             mavenBlock.clear();
             writeMavenBlock = true;
 
-            return line;
+            return returnLine;
           }
           return null;
         }

@@ -19,11 +19,12 @@ void main() {
 
   // This is the same test as rum_manual_test.dart, but with the following
   // mappers:
-  //  * viewMapper renames ThirdManualRumView to ThirdView
+  //  * viewMapper renames ThirdManualRumView URL to ThirdView
   //  * actionMapper changes 'Tapped Download' to 'Download'
-  //  * actionMapper discards the 'Next Page' tap
+  //  * actionMapper discards the 'Next Screen' tap
   //  * actionMapper discards 'User Scrolling' events
   //  * resourceMapper and errorMapper rewite the urls to replace 'fake_url' with 'my_url'
+  //  * errorMapper changes 'custom-fingerprint' to 'mapped fingerprint'
   //  * longTask mapper discards all long tasks less than 200 ms
   //  * longTask mapper renames ThirdManualRumView to ThirdView
   testWidgets('test instrumentation with mappers', (WidgetTester tester) async {
@@ -85,13 +86,10 @@ void main() {
               const Duration(milliseconds: 200).inNanoseconds));
     }
 
-    final view3 = session.visits[2];
-    expect(view3.name, 'ThirdView');
+    expect(view2.errorEvents[0].fingerprint, 'mapped fingerprint');
 
-    if (view3.longTaskEvents.isNotEmpty) {
-      for (var event in view3.longTaskEvents) {
-        expect(event.viewName, 'ThirdView');
-      }
-    }
+    final view3 = session.visits[2];
+    expect(view3.name, 'ThirdManualRumView');
+    expect(view3.viewEvents.first.view.viewData['url'], 'ThirdView');
   });
 }

@@ -7,6 +7,8 @@ import 'dart:io';
 
 import 'package:json_annotation/json_annotation.dart';
 
+import '../datadog_common_test.dart';
+
 part 'request_log.g.dart';
 
 @JsonSerializable()
@@ -20,12 +22,15 @@ class RequestLog {
 
   Map<String, String> get tags {
     var tagMap = <String, String>{};
-    for (var tag in queryParameters['ddtags']!.split(',')) {
-      var colon = tag.indexOf(':');
-      if (colon == -1) {
-        tagMap[tag] = '';
-      } else {
-        tagMap[tag.substring(0, colon)] = tag.substring(colon + 1);
+    final queryTags = queryParameters['ddtags'];
+    if (queryTags != null) {
+      for (var tag in queryTags.split(',')) {
+        var colon = tag.indexOf(':');
+        if (colon == -1) {
+          tagMap[tag] = '';
+        } else {
+          tagMap[tag.substring(0, colon)] = tag.substring(colon + 1);
+        }
       }
     }
     return tagMap;
@@ -65,7 +70,7 @@ class RequestLog {
         (contentEncoding.contains('deflate') ||
             contentEncoding.contains('gzip'));
     if (isZipped) {
-      decoded = await utf8.fuse(gzip).decoder.bind(request).single;
+      decoded = await utf8.fuse(gzip).decoder.bind(request).join();
     } else {
       decoded = await utf8.decodeStream(request);
     }
@@ -77,5 +82,27 @@ class RequestLog {
       requestHeaders: headers,
       data: decoded,
     );
+  }
+
+  List<LogDecoder>? asLogs() {
+    List<dynamic>? logJson;
+    try {
+      if (jsonData is List) {
+        logJson = jsonData as List;
+      } else if (jsonData is Map) {
+        logJson = [jsonData];
+      } else {
+        throw const FormatException();
+      }
+    } on FormatException {
+      // Web sends as newline separated
+      logJson = data.split('\n').map((e) => json.decode(e)).toList();
+      // ignore: empty_catches
+    } on TypeError {}
+    return logJson
+        ?.whereType<Map<String, Object?>>()
+        .where((e) => e.containsKey('message') && e['type'] != 'telemetry')
+        .map((e) => LogDecoder(e))
+        .toList();
   }
 }

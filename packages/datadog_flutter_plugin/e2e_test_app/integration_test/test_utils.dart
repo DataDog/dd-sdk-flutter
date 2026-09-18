@@ -11,12 +11,17 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 typedef AsyncVoidCallback = FutureOr<void> Function();
-typedef DatadogConfigCallback = void Function(DdSdkConfiguration config);
+typedef DatadogConfigCallback = void Function(DatadogConfiguration config);
 
-Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
+DatadogLogger? logger;
+
+Future<void> initializeDatadog({
+  DatadogConfigCallback? configCallback,
+  TrackingConsent trackingConsent = TrackingConsent.granted,
+}) async {
   await dotenv.load();
 
-  DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
+  DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
 
   var applicationId = dotenv.get('DD_APPLICATION_ID');
   var clientToken = dotenv.get('DD_CLIENT_TOKEN');
@@ -24,23 +29,24 @@ Future<void> initializeDatadog([DatadogConfigCallback? configCallback]) async {
       ? 'instrumentation'
       : 'debug';
 
-  final configuration = DdSdkConfiguration(
-      clientToken: clientToken,
-      env: env,
-      site: DatadogSite.us1,
-      trackingConsent: TrackingConsent.granted)
-    ..loggingConfiguration = LoggingConfiguration()
-    ..rumConfiguration = RumConfiguration(
+  final configuration = DatadogConfiguration(
+    clientToken: clientToken,
+    env: env,
+    site: DatadogSite.us1,
+  )
+    ..loggingConfiguration = DatadogLoggingConfiguration()
+    ..rumConfiguration = DatadogRumConfiguration(
       applicationId: applicationId,
       detectLongTasks: false,
     )
-    ..serviceName = 'com.datadog.flutter.nightly';
+    ..service = 'com.datadog.flutter.nightly';
 
   if (configCallback != null) {
     configCallback(configuration);
   }
 
-  await DatadogSdk.instance.initialize(configuration);
+  await DatadogSdk.instance.initialize(configuration, trackingConsent);
+  logger = DatadogSdk.instance.logs?.createLogger(DatadogLoggerConfiguration());
 }
 
 Future<void> measure(String resourceName, AsyncVoidCallback callback,
@@ -53,7 +59,7 @@ Future<void> measure(String resourceName, AsyncVoidCallback callback,
   final elapsedSeconds = stopwatch.elapsedMicroseconds / 1000000.0;
   // TODO: Determine best way to monitor this moving forward
   if (elapsedSeconds > targetSeconds) {
-    DatadogSdk.instance.logs?.error(
+    logger?.error(
         'PERF ERROR: `$resourceName` took ${elapsedSeconds.toStringAsFixed(3)} (targeting ${targetSeconds.toStringAsFixed(3)})');
   }
 }
@@ -65,12 +71,12 @@ Map<String, Object> e2eAttributes(WidgetTester tester) {
   };
 }
 
-void sendRandomLog(WidgetTester tester) {
+void sendRandomLog(DatadogLogger? logger, WidgetTester tester) {
   var methods = [
-    DatadogSdk.instance.logs?.debug,
-    DatadogSdk.instance.logs?.info,
-    DatadogSdk.instance.logs?.warn,
-    DatadogSdk.instance.logs?.error,
+    logger?.debug,
+    logger?.info,
+    logger?.warn,
+    logger?.error,
   ];
 
   var method = methods.randomElement();

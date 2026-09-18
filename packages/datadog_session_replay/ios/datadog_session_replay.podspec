@@ -1,0 +1,24 @@
+#
+# To learn more about a Podspec see http://guides.cocoapods.org/syntax/podspec.html.
+# Run `pod lib lint datadog_session_replay.podspec` to validate before publishing.
+#
+Pod::Spec.new do |s|
+  s.name             = 'datadog_session_replay'
+  s.version          = '0.0.1'
+  s.summary          = 'Support for Datadog Session Replay in Flutter.'
+  s.description      = <<-DESC
+Support for Datadog Session Replay in Flutter.
+                       DESC
+  s.homepage         = 'https://datadoghq.com'
+  s.license          = { :file => '../LICENSE' }
+  s.author           = { 'Datadog' => 'info@datadoghq.com' }
+  s.source           = { :path => '.' }
+  s.source_files = 'datadog_session_replay/Sources/**/*'
+  s.dependency 'Flutter'
+  s.dependency 'DatadogCore', '~> 3'
+  s.platform = :ios, '13.0'
+
+  # Flutter.framework does not contain a i386 slice.
+  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
+  s.swift_version = '5.0'
+end

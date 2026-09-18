@@ -8,11 +8,11 @@ import '../custom_card.dart';
 
 class NetworkScreen extends StatelessWidget {
   static const images = [
-    'https://placekitten.com/300/300',
-    'https://imgix.datadoghq.com/img/about/presskit/kit/press_kit.png'
+    'https://picsum.photos/200',
+    'https://placehold.co/200x200.png'
   ];
 
-  const NetworkScreen({Key? key}) : super(key: key);
+  const NetworkScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

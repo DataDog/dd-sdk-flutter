@@ -71,11 +71,13 @@ class LogEventError {
   final String? kind;
   final String? message;
   final String? stack;
+  String? fingerprint;
 
   LogEventError({
     this.kind,
     this.message,
     this.stack,
+    this.fingerprint,
   });
 
   factory LogEventError.fromJson(Map<dynamic, dynamic> json) =>

@@ -1,9 +1,445 @@
 # Changelog
 
-## Unreleased
+## 3.5.1
 
+* [Web] Use JS types in TracingUrl closure. See [#1127](https://github.com/DataDog/dd-sdk-flutter/issues/1127)
+* [Android] Prevent retaining a potentially GC'd Companion object. See [#1133](https://github.com/DataDog/dd-sdk-flutter/issues/1133)
+
+## 3.5.0
+
+* [Android] Prevent native crash when reading RUM context for tracing. See [#1106](https://github.com/DataDog/dd-sdk-flutter/issues/1106)
+* [iOS] Attempt to avoid crashes caused by forced app termination. See [#1062](https://github.com/DataDog/dd-sdk-flutter/issues/1062)
+* Prefer a widget's own tooltip over subtree content for action descriptions.
+* Update Kotlin versions to 2.2.20.
+* Recognize FloatingActionButton in `RumUserActionDetector`.
+* Use Tooltip message as fallback action description in `RumUserActionDetector`.
+* Add `trackWatchdogTerminations` to `DatadogRumConfiguration`.
+* Upgrade iOS SDK to 3.15.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md).
+  * Bump KSCrash to 2.5.1.
+  * Merge WebView RUM `ddtags` by key to avoid duplicate keys.
+  * `onSessionStart` is now called only after sampling information used by WebView Tracking is in place, avoiding missing traces in early requests.
+* Upgrade Android SDK to 3.12.1. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md).
+  * Fix clock mismatch in `DefaultAppStartTimeProvider` app start time computation.
+  * Fix R8 failures due to missing `SourceLines` annotation.
+
+## 3.4.1
+
+* Properly pin Android SDK version to 3.11.0.
+
+## 3.4.0
+
+* Parse route query string into view.url, which allows for searching for query parameters in Datadog with `@view.url_query.*`.
+* Guard against apps using AGP 9 with `buildInKotlin` set to false.
+* Update all gradle files to support AGP 9. See [#1059](https://github.com/DataDog/dd-sdk-flutter/issues/1059)
+* Upgrade iOS SDK to 3.13.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md).
+  * Fix several instances where misaligned memory could be loaded without proper checking. 
+* Upgrade Android SDK to 3.11.0. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md).
+  * Report carrier info on Android API 24+.
+  * Optimize `isMainProcess` detection.
+  * Remove regex usage in `MemoryVitalReader`.
+  * Enforce schema character set on `vital.name` in Operation APIs.
+  * Write `CUSTOM` RUM actions immediately.
+  * Move broadcast-receiver dispatch off the main thread to reduce ANRs.
+  * Catch exception on the battery level query.
+  * Atomically write NDK crash logs and catch `NumberFormatException`.
+  * Catch `IllegalArgumentException` when reading trace input stream for last fatal ANR.
+
+## 3.3.1
+
+* Properly pin Android SDK version to 3.10.0.
+
+## 3.3.0
+
+* Capture HTTP request and response headers for RUM resources, including Flutter Web.
+* Upgrade iOS SDK to 3.12.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md).
+  * Instrumented Web Views now have their tracing decision consistent with the native SDK.
+  * Align public RUM session IDs with event formatting.
+  * Prevent a crash from `VitalCPUReader` when the CPU tick counter rolls over.
+  * Prevent crash misattribution when an inactive RUM view emits a terminal event after `stopResource()`.
+* Upgrade Android SDK to 3.10.0. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md).
+  * Use rebased `sessionReplaySampleRate` for deterministic Session Replay sampling.
+  * Fix GraphQL errors extraction for streaming responses.
+  * Move broadcast-receiver dispatch off the main thread to fix ANRs.
+
+## 3.2.2
+
+* Properly pin Android SDK to 3.8.0.
+
+## 3.2.1
+
+* Prevent stripping of iOS context methods. See [#990](https://github.com/DataDog/dd-sdk-flutter/issues/990)
+
+## 3.2.0
+
+* [Web] Add support for long custom actions (`startAction` / `stopAction`).
+* [Web] Correctly correlate Actions with Resources, Errors, and Long Tasks
+* Upgrade iOS SDK to 3.8.3. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md).
+  * Fix crash context C-string conversion in KSCrash injection.
+* Upgrade Android SDK to 3.8.0. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md).
+  * Support interstitial Activities case for TTID reporting.
+  * Fix memory corruption in NDK module.
+  * Propagate trace and session replay sample rates to RUM `ViewEvent`s.
+  * Reduce .so file size.
+  * Downgrade androidx-core to 1.15.0 in order to preserve Android compileSdk 35 compatibility.
+
+## 3.1.3
+
+* Properly pin Android SDK to 3.6.0.
+
+## 3.1.2
+
+* [iOS] Prevent stripping of iOS context methods. See [#990](https://github.com/DataDog/dd-sdk-flutter/issues/990).
+
+## 3.1.1
+
+* [iOS] Fix stripped C symbol for getting context. See [#979](https://github.com/DataDog/dd-sdk-flutter/issues/979).
+
+## 3.1.0
+
+* Improve precedence handling for nested `GestureDetector` and `InkWell`.
+* Update iOS SDK to 3.7.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md).
+  * Report time to initial display (TTID).
+  * Add public API to report time to full display (TTFD)
+  * Remove application_start action from ApplicationLaunch.
+  * Track Slow Frames (view hitches) by default.
+  * Replace PLCrashReporter by KSCrash as `DatadogCrashReporting plugin.
+  * Prevent crashes related to swapping the __cxa_throw function. 
+  * Skip malformed Logs attributes individually instead of dropping the entire event, and log clear error messages.
+  * Propagate feature flags to RUM error and view events for crashes, fatal app hangs, and watchdog terminations
+* Update Android SDK to 3.6.0. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md).
+  * Mark fatal ANR as processed before RUM events are written.
+
+## 3.0.2
+
+* Properly pin Android SDK version to 3.5.0.
+
+## 3.0.1
+
+* Add missing Proguard rules for Android. See [#932](https://github.com/DataDog/dd-sdk-flutter/issues/932)
+
+## 3.0.0
+
+* Switch to merged vital event mapper in Android.
+* Set trace sampling rate to default to 100%.
+* Support automatic `dart:io` network tracking from background isolates.
+* Support getting context from background isolates.
+* Support view attributes.
+* Fix issue re-initializing platform channel platform.
+* Add support for Feature Operations.
+* [Web] Support additional web only configuration options. See [#866](https://github.com/DataDog/dd-sdk-flutter/issues/866)
+* Support background isolate tracking. See [#869](https://github.com/DataDog/dd-sdk-flutter/issues/869) [#828](https://github.com/DataDog/dd-sdk-flutter/issues/828) [#580](https://github.com/DataDog/dd-sdk-flutter/issues/580)
+* Support RUM context in trace headers.
+* Support consistent sampling based on session ID.
+* Support event mappers through JNI on Android.
+* Update Kotlin version to 2.1.0.
+* Support mandatory user and account info.
+* [Web] Support `source`, `variant`, and `sdkVersion`.
+* [Web] Use UUID for resource key over ID.
+* Upgrade Android min versions for v3.
+* Update plugin APIs to v3 to avoid compiler errors.
+* Support manual resource tracking on web.
+* Support deterministic sampling decisions on distributed traces.
+* Change `TraceContextInjection` default to `sampled`.
+* Update iOS SDK to 3.4.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md).
+  * Improve Memory vital collected using phys_footprint.
+  * Align attribute propagation mechanism.
+  * Stop reporting App hangs and Watchdog terminations for iOS widgets.
+  * Align os and device attributes across all product features.
+  * Remove fatal errors from Logs.
+  * Introduce new category for network errors.
+  * Add opt-out API to disable tracking memory warnings as RUM Errors.
+  * Adds start and end Feature Operations APIs.
+  * Sends accessibility attributes in View Updates.
+  * Adds ddtags to RUM events.
+  * Fixes `LogEvent` device types.
+  * Adds missing `versionMajor` property.
+  * Fix Logger race condition.
+  * Fix typos in internal accessibility implementation.
+  * Add `service` and `sdk_version` tags to log requests.
+* Update Android SDK to 3.5.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md).
+  * RUM: Create view attributes update methods.
+  * Core: Resolve batch file only during the actual write call.
+  * Introduce event processing thread.
+  * RUM: Update RUM feature context only after event processing completion.
+  * RUM: Align attribute propagation mechanism.
+  * Custom endpoint URL are taken as is
+  * Logs: Don't send fatal errors to Logs, only send them to RUM.
+  * Core: Monitor backpressure of context executor.
+  * Core: Remove default value for the `addAccountExtraInfo` call.
+  * Move session properties to `ddtags` over query parameters.
+  * Bump minSdk version to 23.
+  * RUM: Feature Operations public API.
+  * Bump language and API versions to 1.8.
+  * Move session properties to `ddtags` over query parameters.
+  * Support sending anonymous user ids in logs.
+  * Add internal `disableJankStats` config option.
+  * Fix crash in `KronosTimeProvider`.
+  * Handle potential `StackOverflowError`.
+  * Add service name to `ddtags` of `LogEvent`.
+  * Enable UI slow frames by default.
+  * Fix service handling in `ddtags` of `LogEvent`.
+
+## 2.16.1
+
+* Pin `DictionaryCoder` to exact version 1.2.0 for iOS 12 compatibility.
+
+## 2.16.0
+
+* [Web] Add tracking consent support.
+
+## 2.15.0
+
+* [Web] Add extra user info support. See [#852](https://github.com/DataDog/dd-sdk-flutter/issues/852)
+
+## 2.14.0
+
+* [WEB] Fix `valueToJs` for WASM builds. See [#820](https://github.com/DataDog/dd-sdk-flutter/issues/820).
+* Update iOS SDK to 2.30.1.
+  * Add ddtags to RUM events.
+* Update Android SDK to 2.25.1.
+  * Add ddtags to RUM events.
+
+## 2.13.2
+
+* Fix compileSdk to be 35 on main package. See [#834](https://github.com/DataDog/dd-sdk-flutter/issues/834)
+
+## 2.13.1
+
+* Add back in import of meta package. See [#815](https://github.com/DataDog/dd-sdk-flutter/issues/815)
+
+## 2.13.0
+
+* Don't attempt to get size of `RenderBox`es that don't have size. See [#809](https://github.com/DataDog/dd-sdk-flutter/issues/809)
+* Add `trackBackgroundEvents` to RUM. See [#795](https://github.com/DataDog/dd-sdk-flutter/issues/795)
+* [WEB] Support user info in logs. See [#781](https://github.com/DataDog/dd-sdk-flutter/issues/781)
+* [WEB] Fix conversion of Dart `List`s to `JSArray`s.
+
+## 2.12.0
+
+* Support spm in all packages. See [#776](https://github.com/DataDog/dd-sdk-flutter/issues/776)
+* Restrict `json_serializable` package version.
+* Add support for ap2 datacenter.
+* Support basic capture of text fields.
+* Support Flutter overhead for Session Replay.
+* Fix random trace id generation on web. See [#744](https://github.com/DataDog/dd-sdk-flutter/issues/744)
+* Update iOS SDK to 2.30.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#2300--28-07-2025).
+  * Fix Fatal App Hang Duplicates.
+  * Propagate RUM session ID in request headers.
+  * Improve feature-to-feature communication performances.
+  * Increase RUM batch maximum age to 24hrs.
+  * Add support for AP2 Datacenter. You can configure it setting DatadogSite.ap2 on Datadog.Configuration.site.
+  * Add Clear User Info API.
+  * Collect battery and locale attributes.
+* Update Android SDK to 2.25.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#2250--2025-07-28).
+  * Remove the noisy warning log as for some views it is normal to not have ITV.
+  * RUM: Fix background session start reason.
+  * Catch exceptions during the Power or Battery broadcast intents processing.
+  * Add public APIs for set account information.
+  * Report resource with size 0.
+  * Create a new RumViewScope when the session is renewed.
+  * Add Clear User Info API. 
+
+## 2.11.0
+
+* Fix an issue where nested gesture detectors would always use the topmost. See [#738](https://github.com/DataDog/dd-sdk-flutter/issues/738)
+* Add configuration option for anonymous user tracking.
+* Upgrade gson to 2.12.1. See [#725](https://github.com/DataDog/dd-sdk-flutter/issues/725)
+* Upgrade Android projects to AGP 8.6.0.
+* Add custom "Interaction To Next View" metric for Flutter.
+* Add "First Build Complete" vital attribute.
+* Fix cast exception when reporting long task duration.
+* Ignore warnings for stricter Dart analyzer.
+* Support configuration of TNS.
+* Use Flutter timestamps for RUM actions.
+* Support `InAppWebView`. See [#624](https://github.com/DataDog/dd-sdk-flutter/issues/624)
+* Allow `RumUserActionAnnotation` in subtrees.
+* Update iOS SDK to 2.25.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#2250--03-04-2025).
+  * Fix sporadic file overwrite during consent change, ensuring event data integrity.
+  * Fix memory leak in Session Replay where privacy overrides retained UIViews.
+  * Add `addAttributes` and `removeAttributes` APIs.
+  * Adds anonymous identifier configuration for RUM Sessions linking.
+  * Fix view drop in SwiftUI modal navigation.
+  * Calculate Hang rate and Hitch rate in RUM.
+* Update Android SDK to 2.20.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#2200--2025-04-07).
+  * Don't warn about missing views on `PerformanceMetric` events.  
+  * Add warning log when initializing the SDK outside of the main process.
+  * Implement the basic logic for `time-to-network-settle` view metric.
+  * Implement the basic logic for `interaction-to-next-view-metric`.
+  * Fix `_dd.rule_psr` attribute calculation for RUM.
+  * Improve `updateFeatureContext` performances.
+  * RUM: Avoid logging initial `null` `viewLoadingTime` on first call to `addViewLoadingTime`.
+  * Support Flutter's FBC and custom INV values.
+  * Add missing builder function for anonymous user tracking.
+
+## 2.10.2
+
+* Add missing `AP1` support to Flutter Web.
+
+## 2.10.1
+
+* Fix iOS compilation for Flutter 3.29
+
+## 2.10.0
+
+* Support for `datadog_inappwebview_tracking`. See [#624](https://github.com/DataDog/dd-sdk-flutter/issues/624).
+* Update Android SDK to 2.16.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#2160--2024-11-20).
+  * Add warning log when initializing the SDK outside the main process.
+  * Update Gradle to version 8.10.2.
+
+## 2.9.0
+
+* Add ability to add custom gesture detectors to `RumUserActionDetector`.
+* Add ability to add custom attributes to `RumUserActionAnnotation`.
+* Extract route names from any base `Route`.
+* Fix distributed tracing for Web.
+* Fix WebView tracking on Android.
+* Update iOS SDK to 2.20.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#2200--14-11-2024).
+  * Fix race condition during consent change, preventing loss of events recorded on the current thread.
+* Update Android SDK to 2.15.1. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#2151--2024-11-04).
+  * Use Java 11 bytecode for public modules.
+  * Fix the regression for the `TelemetryErrorEvent` with throwable.
+
+## 2.8.0
+
+* Add `DialogRoute` handling to the `defaultViewInfoExtractor`.
+* Add experimental `addViewLoadingTime` API to RUM.
+* Increase timeout for mappers on Android. See [#652]
+* Fix an issue where incorrect method channels were called for mappers in cases where multiple channels exist on Android. See [#652]
+* Update iOS SDK to 2.18.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#2180--25-09-2024).
+  * Ignore network reachability on watchOS.
+  * Send retry information with network requests.
+* Update Android SDK to 2.14.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#2140--2024-09-25).
+  * Use NO_EXPORT_FLAG for BroadcastReceiver on API above 26.
+  * Update OkHttp to 4.12.0.
+  * Update Gradle to 8.9 and AGP to 8.5.2.
+  * Make sure user properties are immutable when setUserInfo.
+
+## 2.7.0
+
+* Support selective injection of trace contexts with TraceContextInjection configuration item.
+* Bump minimum Dart version to 3.3.0 (Flutter 3.19.0).
+* Add WASM support by removing references to `dart:html` and `package:js`
+* Wait to start views on Flutter Web to avoid location mismatch.
+* Upgrade Android to `compileSdkVersion` 34 to prevent issues with Flutter 3.24. See [#639].
+* Add an option to support detection of non-fatal ANRs on Android.
+* Add an option for detecting non-fatal app hangs within a givin threshold on iOS.
+* Update iOS SDK to 2.15.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#2150--25-07-2024)
+  * Send memory warnings as RUM errors
+  * Inject backtrace reporter into Logs feature.
+  * Use `#fileID` over `#filePath` as the default argument in errors.
+* Update Android SDK to 2.12.1
+  * InternalMetrics: Add sampling rate to internal metrics.
+  * Core: Increase retry delay on DNS error.
+  * Reduce Method Call Sample Rate and limit total telemetry events sent per session
+
+## 2.6.0
+
+* Remove use of singletons for RUM / Logs plugins to fix "No Implementation Found" errors. See [#596]
+* Upgrade iOS SDK to 2.13.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#2130--13-06-2024)
+  * Bump IPHONEOS_DEPLOYMENT_TARGET and TVOS_DEPLOYMENT_TARGET from 11 to 12.
+  * Fix compilation issues on Xcode 16 beta.
+  * Crash errors now include up-to-date global RUM attributes.
+* Update Android SDK to 2.11.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#2110--2024-06-20)
+  * Global: Fix thread safety warnings
+  * Limit total telemetry events sent per session.
+  * Add Method Call Telemetry.
+  * RUM: Flag critical events in custom persistence.
+  
+## 2.5.0
+
+* Support 128-bit trace ids in distributed tracing.
+* Update iOS to 2.11.0. For a full list of changes, see the [iOS changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#2110--08-05-2024).
+  * Add fatal app hang tracking in RUM.
+  * Solve false-positive privacy manifest warnings on Required Reason API usage.
+  * Call RUM's `errorEventMapper` for crashes.
+  * Support calling log event mapper for crashes.
+  * Start sending data immediately after SDK is initialized.
+* Update Android to 2.9.0. For a full list of changes see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#290--2024-05-02)
+  * Call RUM's `errorEventMapper` for crashes.
+  * Start sending batches immediately after feature is initialized.
+
+## 2.4.0
+
+* Add `error.source_type` to logs when a stack trace is provided.
+* Fix default console print functions. See [#575] and [#574]
+* Loosen the restriction on the `js` package to allow `<0.8`. See [#572]
+* Add support for global attributes for logs.
+* Passing `null` to `addAttribute` now calls `removeAttribute` instead of silently failing.
+* Add support for custom error fingerprints with `DatadogAttributes.errorFingerprint`.
+* Upgrade iOS SDK to 2.8.1. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#280--19-03-2024)
+  * Add global log attributes
+  * Add Device's Brand, Name, and Model in LogEvent.
+  * Add source_type when sent from cross platform logs.
+  * Allow setting custom fingerprints on errors
+* Update Android SDK to 2.7.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#270--2024-03-21)
+  * Add source_type when sent from cross platform logs.
+  * Add support for global attributes on logs.
+  * Allow setting custom fingerprints on errors.
+  * Set source_type on native crashes to ndk.
+  * Do not update RUM View global properties after the view is stopped.
+  * Make a copy of attributes before passing them to RUM event.
+  * RUM\Logs: Report all threads in case of crash.
+  * Fix crash in frame rate vital detection.
+
+## 2.3.0
+
+* Add `batchProcessingLevel` configuration option.
+* Add `clearAllData` method.
+* Fix `firstPartyHosts` not working for Flutter Web. See [#554]
+* Fix an issue where initializing the Datadog SDK from multiple engines would crash on iOS. This does not provide multiple engine support.
+* Fix an issue where Trace Id generation would throw a range error on Flutter web. See [#558]
+* Update iOS SDK to 2.7.1. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#270--25-01-2024)
+  * Fix `view.time_spent` in RUM view events
+  * Add privacy manifest to `DatadogCore`
+  * Link crashes sent as Log events to RUM session
+* Update Android SDK to 2.5.1. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#251--2024-01-24)
+  * Prevent a crash due to concurrent modification of custom attributes.
+
+
+## 2.2.0
+
+* Add an accessor for current session Id.
+* Fix OTel trace and span ids to be lower hex. See [#543]
+* Update iOS SDK to 2.6.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#260--09-01-2024)
+* Update the Android SDK to 2.5.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#250--2024-01-15)
+  * RUM: Better handling of event write errors in RUM. 
+  * RUM: Safe serialization of user-provided attributes.
+  * RUM: Add additional status codes as retryable.
+
+## 2.1.1
+
+* Update iOS SDK to 2.5.1. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#251--20-12-2023)
+  * Fix `view.time_spent` being not reported correctly in RUM views.
+
+## 2.1.0
+
+* `DatadogLogger` will no longer leak its reference to its native Logger.
+* Fix debug output from native `DatadogSdk` on iOS.
+* Fix `LogLevel` being private. See [#518]
+* Make `DatadogRumPlugin` a singleton on Android to avoid losing its connection to the `RUMMonitor` during backgrounding.
+* Update iOS SDK to 2.5.0. For a full list of changes, see the [iOS Changelog](https://github.com/DataDog/dd-sdk-ios/blob/develop/CHANGELOG.md#250--08-11-2023)
+* Update Android SDK to 2.3.0. For a full list of changes, see the [Android Changelog](https://github.com/DataDog/dd-sdk-android/blob/develop/CHANGELOG.md#230--2023-11-21)
+  * Make NDK stack traces more standard.
+  * Make sure we use try-locks in our NDK signal catcher.
+
+## 2.0.0
+
+Release 2.0 introduces breaking changes. Follow the [Migration Guide](MIGRATING.md) to upgrade from 1.x
+
+* Update to v2.0 of Datadog SDKs.
+* Update UUID to ^4.0. See [#472]
+* Change default tracing headers for first party hosts to use both Datadog headers and W3C tracecontext headers.
+* Fix automatic resource tracking for Flutter Web
+
+## 1.6.0
+
+* Fix an issue where failing to load Datadog modules on Web threw an error (and potentially broke application loading).
 * Add the ability to specify a sampling rate for loggers.
 * Add a "NoOp" platform, usable when performing headless Flutter widget tests.
+* Update iOS SDK to 1.23.0
+  * RUM payloads are now optimised by including less view updates
+  * Prevent attributes from propagating from Errors and LongTasks to Views
+* Added support for Gradle 8 from @wrbl606. See [#462]
 
 ## 1.5.1
 
@@ -188,3 +624,15 @@
 [#390]: https://github.com/DataDog/dd-sdk-flutter/issues/390
 [#414]: https://github.com/DataDog/dd-sdk-flutter/issues/414
 [#416]: https://github.com/DataDog/dd-sdk-flutter/issues/416
+[#462]: https://github.com/DataDog/dd-sdk-flutter/issues/462
+[#472]: https://github.com/DataDog/dd-sdk-flutter/issues/472
+[#518]: https://github.com/DataDog/dd-sdk-flutter/issues/518
+[#543]: https://github.com/DataDog/dd-sdk-flutter/pull/543
+[#554]: https://github.com/DataDog/dd-sdk-flutter/pull/554
+[#558]: https://github.com/DataDog/dd-sdk-flutter/issues/558
+[#572]: https://github.com/DataDog/dd-sdk-flutter/issues/572
+[#574]: https://github.com/DataDog/dd-sdk-flutter/issues/574
+[#575]: https://github.com/DataDog/dd-sdk-flutter/issues/575
+[#596]: https://github.com/DataDog/dd-sdk-flutter/issues/596
+[#639]: https://github.com/DataDog/dd-sdk-flutter/issues/639
+[#652]: https://github.com/DataDog/dd-sdk-flutter/issues/652

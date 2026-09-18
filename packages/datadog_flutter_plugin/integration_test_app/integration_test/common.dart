@@ -4,7 +4,6 @@
 
 import 'dart:async';
 
-import 'package:collection/src/iterable_extensions.dart';
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_integration_test_app/main.dart' as app;
@@ -88,44 +87,29 @@ Future<RecordingServerClient> openTestScenario(
   return client;
 }
 
-extension Waiter on WidgetTester {
-  Future<bool> waitFor(
-    Finder finder,
-    Duration timeout,
-    bool Function(Element e) predicate,
-  ) async {
-    var endTime = DateTime.now().add(timeout);
-    bool wasFound = false;
-    while (DateTime.now().isBefore(endTime) && !wasFound) {
-      final element = finder.evaluate().firstOrNull;
-      if (element != null) {
-        wasFound = predicate(element);
-      }
-      await pumpAndSettle();
-    }
+void verifyCommonEventTags(
+    RumEventDecoder log, String service, String version, String? variant) {
+  final tags = log.ddtags;
+  // Likely telemetry
+  if (tags.isEmpty) return;
 
-    return wasFound;
-  }
+  final sdkVersion = tags['sdk_version'];
+  expect(sdkVersion, DatadogSdk.sdkVersion);
+  expect(tags['service'], service);
+  expect(tags['version'], version);
+  expect(tags['variant'], variant);
 }
 
-void verifyCommonTags(
-    RequestLog request, String service, String version, String? variant) {
-  final sdkVersion = request.tags['sdk_version'];
-  if (kIsWeb) {
-    // Returning the browser version of the SDK.
-    expect(sdkVersion?.startsWith('4.'), true);
-  } else {
-    expect(sdkVersion, DatadogSdk.sdkVersion);
-  }
+void verifyCommonRequestTags(RequestLog log) {
+  expect(log.queryParameters['ddsource'], 'flutter');
+}
 
-  expect(request.tags['service'], service);
-
-  if (!kIsWeb) {
-    // Currently coming back as 'browser' on web
-    expect(request.queryParameters['ddsource'], 'flutter');
-
-    // Not sent as a tag on web
-    expect(request.tags['version'], version);
-    expect(request.tags['variant'], variant);
-  }
+void verifyUser(RumEventDecoder decoder) {
+  final user = decoder.user;
+  expect(user, isNotNull);
+  expect(user?.email, 'fake@datadoghq.com');
+  expect(user?.id, 'fake-id');
+  expect(user?.name, 'Johnny Silverhand');
+  expect(user?.raw['type'], 'customer');
+  expect(user?.raw['profession'], 'rocker');
 }

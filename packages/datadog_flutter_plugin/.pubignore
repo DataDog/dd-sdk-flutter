@@ -1,3 +1,5 @@
 # Ignore integration and e2e test apps, they're not part of the pub package
 e2e_test_app/
 integration_test_app/
+# Ignore Gradle Wrapper
+example/android/gradle/wrapper/*

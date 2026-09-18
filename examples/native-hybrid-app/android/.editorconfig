@@ -1,0 +1,3 @@
+[*.kt]
+# Package name hybrid_flutter_example uses underscores per existing convention
+ktlint_disabled_rules = package-name

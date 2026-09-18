@@ -1,0 +1,24 @@
+name: datadog_session_replay_bridge
+
+preamble: |
+  // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+  // This product includes software developed at Datadog (https://www.datadoghq.com/).
+  // Copyright 2025-Present Datadog, Inc.
+  
+language: objc
+output: 
+  bindings: 'lib/src/ios/datadog_session_replay_bridge_ios.dart'
+  objc-bindings: 'ios/datadog_session_replay/Sources/ObjC/datadog_session_replay_bridge.dart.m'
+headers:
+  entry-points:
+    - 'ios/datadog_session_replay/Sources/ObjC/include/datadog_session_replay_bridge.h'
+exclude-all-by-default: true
+functions:
+  leaf:
+    include:
+      - '.*'
+objc-interfaces:
+  include:
+    - FlutterRUMCoreContext
+    - FlutterSessionReplay
+    - FlutterSessionReplayConfiguration

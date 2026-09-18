@@ -52,32 +52,33 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
     final rumKey = uuid.v1();
     final headerTypes = _datadog.headerTypesForHost(Uri.parse(fullPath));
 
-    var addedHeaders = <String, String>{};
+    // Copy metadata to make it mutable
+    final mergedHeaders = Map<String, String>.from(options.metadata);
 
     if (rum != null) {
       var attributes = <String, Object?>{
         'grpc.method': method.path,
       };
       TracingContext? tracingContext;
-      bool shouldSample = rum.shouldSampleTrace();
       if (headerTypes.isNotEmpty) {
-        tracingContext = generateTracingContext(shouldSample);
+        tracingContext = generateTracingContext(_datadog, rum);
 
         attributes[DatadogRumPlatformAttributeKey.rulePsr] =
-            rum.tracingSamplingRate / 100.0;
+            rum.traceSampleRate / 100.0;
         if (tracingContext.sampled) {
           attributes[DatadogRumPlatformAttributeKey.traceID] =
-              tracingContext.traceId.asString(TraceIdRepresentation.decimal);
+              tracingContext.traceId.asString(TracingIdRepresentation.hex);
           attributes[DatadogRumPlatformAttributeKey.spanID] =
-              tracingContext.spanId.asString(TraceIdRepresentation.decimal);
+              tracingContext.spanId.asString(TracingIdRepresentation.decimal);
         }
 
         for (final tracingType in headerTypes) {
-          addedHeaders.addAll(getTracingHeaders(tracingContext, tracingType));
+          injectTracingHeaders(tracingContext, tracingType, mergedHeaders,
+              contextInjection: rum.contextInjectionSetting);
         }
       }
 
-      _datadog.rum?.startResourceLoading(
+      _datadog.rum?.startResource(
         rumKey,
         RumHttpMethod.get,
         fullPath,
@@ -85,13 +86,13 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
       );
     }
 
-    options = options.mergedWith(CallOptions(metadata: addedHeaders));
+    options = options.mergedWith(CallOptions(metadata: mergedHeaders));
 
     final future = invoker(method, request, options);
     future.then((v) {
-      _datadog.rum?.stopResourceLoading(rumKey, 200, RumResourceType.native);
+      _datadog.rum?.stopResource(rumKey, 200, RumResourceType.native);
     }, onError: (Object e, StackTrace? st) {
-      _datadog.rum?.stopResourceLoadingWithErrorInfo(
+      _datadog.rum?.stopResourceWithErrorInfo(
           rumKey, e.toString(), e.runtimeType.toString());
     });
     return future;

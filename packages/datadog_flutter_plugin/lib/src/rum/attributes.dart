@@ -16,4 +16,18 @@ class DatadogRumPlatformAttributeKey {
   /// configured at the SDK level. This gets displayed on APM's traffic ingestion control page.
   /// Expects `double` value between `0.0` and `1.0`.
   static const rulePsr = '_dd.rule_psr';
+
+  /// Internal attribute that specifies with the first build of a Flutter view is complete.
+  static const firstBuildComplete = '_dd.performance.first_build_complete';
+
+  /// Internal view attribute that specifies the "Interaction To Next View" timing.
+  static const customInvValue = '_dd.view.custom_inv_value';
+
+  /// Captured HTTP request headers. Used in RUM resources created by automatic
+  /// resource tracking. Expects `Map<String, String>` value.
+  static const requestHeaders = '_dd.request_headers';
+
+  /// Captured HTTP response headers. Used in RUM resources created by automatic
+  /// resource tracking. Expects `Map<String, String>` value.
+  static const responseHeaders = '_dd.response_headers';
 }

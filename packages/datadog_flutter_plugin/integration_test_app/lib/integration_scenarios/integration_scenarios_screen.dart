@@ -5,8 +5,10 @@
 import 'package:flutter/material.dart';
 
 import '../auto_integration_scenarios/rum_auto_instrumentation_scenario.dart';
+import 'isolate_tracking_scenario.dart';
 import 'kiosk_integration_scenario.dart';
 import 'logging_scenario.dart';
+import 'logging_user_account_scenario.dart';
 import 'rum_manual_error_reporting_scenario.dart';
 import 'rum_manual_instrumentation_scenario.dart';
 
@@ -32,6 +34,9 @@ class _IntegrationScenariosScreenState
   final items = <ScenarioItem>[
     ScenarioItem(label: 'Logging Scenario', navItem: LoggingScenario.new),
     ScenarioItem(
+        label: 'Logging User & Account Scenario',
+        navItem: LoggingUserAccountScenario.new),
+    ScenarioItem(
       label: 'Manual RUM Scenario',
       navItem: RumManualInstrumentationScenario.new,
     ),
@@ -46,7 +51,10 @@ class _IntegrationScenariosScreenState
     ScenarioItem(
       label: 'Kiosk RUM Scenario',
       navItem: KioskIntegrationScenario.new,
-    )
+    ),
+    ScenarioItem(
+        label: 'Isolate Tracking Scenario',
+        navItem: IsolateTrackingScenario.new)
   ];
 
   @override

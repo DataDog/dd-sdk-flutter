@@ -2,32 +2,43 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 
-import '../datadog_configuration.dart';
-import '../internal_logger.dart';
-import 'ddrum.dart';
+import '../../datadog_flutter_plugin.dart';
 import 'ddrum_platform_interface.dart';
 
 class DdNoOpRumPlatform extends DdRumPlatform {
   @override
-  Future<void> addAttribute(String key, value) => Future.value();
+  String? get cachedSessionId => null;
+
+  @override
+  Future<String?> getCurrentSessionId() => Future.value(null);
+
+  @override
+  Future<void> addAttribute(String key, Object value) => Future.value();
+
+  @override
+  Future<void> setInternalViewAttribute(String key, value) => Future.value();
 
   @override
   Future<void> addError(
-      Object error,
-      RumErrorSource source,
-      StackTrace? stackTrace,
-      String? errorType,
-      Map<String, Object?> attributes) {
+    DateTime timestamp,
+    Object error,
+    RumErrorSource source,
+    StackTrace? stackTrace,
+    String? errorType,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 
   @override
   Future<void> addErrorInfo(
-      String message,
-      RumErrorSource source,
-      StackTrace? stackTrace,
-      String? errorType,
-      Map<String, Object?> attributes) {
+    DateTime timestamp,
+    String message,
+    RumErrorSource source,
+    StackTrace? stackTrace,
+    String? errorType,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 
@@ -37,19 +48,32 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   }
 
   @override
-  Future<void> addTiming(String name) {
+  Future<void> addTiming(DateTime timestamp, String name) {
     return Future.value();
   }
 
   @override
-  Future<void> addUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes) {
+  Future<void> addViewLoadingTime(bool overwrite) {
     return Future.value();
   }
 
   @override
-  Future<void> initialize(
-      RumConfiguration configuration, InternalLogger internalLogger) {
+  Future<void> addAction(
+    DateTime timestamp,
+    RumActionType type,
+    String name,
+    Map<String, Object?> attributes,
+  ) {
+    return Future.value();
+  }
+
+  @override
+  Future<void> enable(DatadogSdk core, DatadogRumConfiguration configuration) {
+    return Future.value();
+  }
+
+  @override
+  Future<void> deinitialize() {
     return Future.value();
   }
 
@@ -57,43 +81,84 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   Future<void> removeAttribute(String key) => Future.value();
 
   @override
+  Future<void> addViewAttribute(String key, Object value) => Future.value();
+
+  @override
+  Future<void> removeViewAttribute(String key) => Future.value();
+
+  @override
+  Future<void> addViewAttributes(Map<String, Object?> attributes) =>
+      Future.value();
+
+  @override
+  Future<void> removeViewAttributes(List<String> key) => Future.value();
+
+  @override
   Future<void> reportLongTask(DateTime at, int durationMs) {
     return Future.value();
   }
 
   @override
-  Future<void> startResourceLoading(String key, RumHttpMethod httpMethod,
-      String url, Map<String, Object?> attributes) {
+  Future<void> startResource(
+    DateTime timestamp,
+    String key,
+    RumHttpMethod httpMethod,
+    String url,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 
   @override
-  Future<void> startUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes) {
+  Future<void> startAction(
+    DateTime timestamp,
+    RumActionType type,
+    String name,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 
   @override
   Future<void> startView(
-      String key, String name, Map<String, Object?> attributes) {
+    DateTime timestamp,
+    String key,
+    String name,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 
   @override
-  Future<void> stopResourceLoading(String key, int? statusCode,
-      RumResourceType kind, int? size, Map<String, Object?> attributes) {
+  Future<void> stopResource(
+    DateTime timestamp,
+    String key,
+    int? statusCode,
+    RumResourceType kind,
+    int? size,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 
   @override
-  Future<void> stopResourceLoadingWithError(
-      String key, Exception error, Map<String, Object?> attributes) {
+  Future<void> stopResourceWithError(
+    DateTime timestamp,
+    String key,
+    Exception error,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 
   @override
-  Future<void> stopResourceLoadingWithErrorInfo(String key, String message,
-      String type, Map<String, Object?> attributes) {
+  Future<void> stopResourceWithErrorInfo(
+    DateTime timestamp,
+    String key,
+    String message,
+    String type,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 
@@ -101,19 +166,51 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   Future<void> stopSession() => Future.value();
 
   @override
-  Future<void> stopUserAction(
-      RumUserActionType type, String name, Map<String, Object?> attributes) {
+  Future<void> stopAction(
+    DateTime timestamp,
+    RumActionType type,
+    String name,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 
   @override
-  Future<void> stopView(String key, Map<String, Object?> attributes) {
+  Future<void> stopView(
+    DateTime timestamp,
+    String key,
+    Map<String, Object?> attributes,
+  ) {
     return Future.value();
   }
 
   @override
   Future<void> updatePerformanceMetrics(
-      List<double> buildTimes, List<double> rasterTimes) {
+    List<double> buildTimes,
+    List<double> rasterTimes,
+  ) {
+    return Future.value();
+  }
+
+  @override
+  Future<void> failFeatureOperation(
+      DateTime timestamp,
+      String name,
+      String? operationKey,
+      RumFeatureOperationFailureReason failureReason,
+      Map<String, Object?> attributes) {
+    return Future.value();
+  }
+
+  @override
+  Future<void> startFeatureOperation(DateTime timestamp, String name,
+      String? operationKey, Map<String, Object?> attributes) {
+    return Future.value();
+  }
+
+  @override
+  Future<void> succeedFeatureOperation(DateTime timestamp, String name,
+      String? operationKey, Map<String, Object?> attributes) {
     return Future.value();
   }
 }

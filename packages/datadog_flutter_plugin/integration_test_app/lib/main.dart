@@ -40,33 +40,39 @@ Future<void> runScenario({
   }
 
   // Default runner
-  final configuration = DdSdkConfiguration(
+  DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
+  final configuration = DatadogConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
-    serviceName: 'com.datadoghq.flutter.integration',
+    service: 'com.datadoghq.flutter.integration',
     version: '1.2.3+555',
     flavor: 'integration',
     site: DatadogSite.us1,
-    trackingConsent: TrackingConsent.granted,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,
-    customEndpoint: customEndpoint,
-    loggingConfiguration: LoggingConfiguration(
-      sendNetworkInfo: true,
-      printLogsToConsole: true,
+    loggingConfiguration: DatadogLoggingConfiguration(
+      customEndpoint: customEndpoint,
     ),
     rumConfiguration: applicationId != null
-        ? RumConfiguration(applicationId: applicationId)
+        ? DatadogRumConfiguration(
+            applicationId: applicationId,
+            customEndpoint: customEndpoint,
+            telemetrySampleRate: 100,
+            additionalConfig: testingConfiguration?.additionalConfig ?? {},
+            actionEventMapper: (event) => event,
+            viewEventMapper: (event) => event,
+            resourceEventMapper: (event) => event,
+          )
         : null,
-  );
+  )..additionalConfig['_dd.needsClearTextHttp'] = true;
   if (testingConfiguration?.additionalConfig != null) {
     configuration.additionalConfig
         .addAll(testingConfiguration!.additionalConfig);
   }
 
-  await DatadogSdk.instance.initialize(configuration);
-  DatadogSdk.instance.sdkVerbosity = Verbosity.verbose;
+  await DatadogSdk.instance.initialize(configuration, TrackingConsent.granted);
+  DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
 
   runApp(const DatadogIntegrationTestApp());
 }
@@ -92,6 +98,7 @@ Future<void> main() async {
     }
   }
 
+  DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
   await runScenario(
     clientToken: clientToken,
     applicationId: applicationId,

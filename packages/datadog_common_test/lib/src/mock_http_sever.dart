@@ -11,14 +11,18 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
-import 'request_log.dart';
+import '../datadog_common_test.dart';
 
 typedef RequestHandler = bool Function(List<RequestLog> requests);
+typedef LogHandler = bool Function(List<LogDecoder> logs);
 
 const uuid = Uuid();
 
 const int _bindingPort = 2228;
 String get _endpoint => 'http://localhost:$_bindingPort';
+const _imagePaths = ['/test-image-1.png', '/test-image-2.png'];
+const _transparentPng =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
 class RecordingHttpServer {
   late HttpServer server;
@@ -37,13 +41,27 @@ class RecordingHttpServer {
         ..add(HttpHeaders.accessControlAllowOriginHeader, '*')
         ..add(HttpHeaders.accessControlAllowHeadersHeader, '*')
         ..add(HttpHeaders.accessControlAllowMethodsHeader, 'GET, POST');
-      if (request.requestedUri.path.endsWith('session')) {
+      if (_imagePaths.contains(request.requestedUri.path)) {
+        return _respondToImageRequest(request);
+      } else if (request.requestedUri.path.endsWith('session')) {
         return _respondToSessionRequest(request);
       } else {
         return _logRequest(request);
       }
     }));
     print('Server started, listening on port $_bindingPort');
+  }
+
+  Future<void> _respondToImageRequest(HttpRequest request) async {
+    if (request.method == 'GET') {
+      request.response.headers.contentType = ContentType('image', 'png');
+      request.response.add(base64Decode(_transparentPng));
+    } else if (request.method == 'OPTIONS') {
+      request.response.statusCode = HttpStatus.noContent;
+    } else {
+      request.response.statusCode = HttpStatus.methodNotAllowed;
+    }
+    return request.response.close();
   }
 
   Future<dynamic> _logRequest(HttpRequest request) async {
@@ -60,17 +78,19 @@ class RecordingHttpServer {
       _recordedRequests[session]!.add(parsed);
       if (serializeSessions) {
         final sessionFile = File('$session.session');
-        await sessionFile.writeAsString(parsed.data,
+        await sessionFile.writeAsString('${parsed.data}\n',
             mode: FileMode.append, flush: true);
       }
       if (printRequests) {
         print('---- BEGIN REQUEST ----');
         print('Requested URL: ${parsed.requestedUrl}');
+        print('Request Headers: ${request.headers}');
         print(parsed.data);
         print('---- END REQUEST ----');
       }
-    } catch (e) {
+    } catch (e, st) {
       print('Failed parsing request: $e');
+      print(st.toString());
     }
 
     request.response.write('Hello, world!');
@@ -113,6 +133,8 @@ abstract class RecordingServerClient {
   var currentSession = '';
 
   String get sessionEndpoint => '$_endpoint/$currentSession/';
+  List<String> get imageUrls =>
+      _imagePaths.map((path) => '$_endpoint$path').toList();
 
   Future<String> startNewSession();
   Future<List<RequestLog>> fetchRequests(String sessionId);
@@ -144,6 +166,20 @@ abstract class RecordingServerClient {
         await Future<void>.delayed(const Duration(milliseconds: 1000));
       }
     } while (!stopPolling && timeoutTime.isAfter(DateTime.now()));
+  }
+
+  /// Call [pollForSession] specifically pulling out requets for Logs only.
+  Future<void> pollForLogs(Duration timeout, LogHandler handler) async {
+    final logs = <LogDecoder>[];
+    await pollSessionRequests(timeout, (requests) {
+      final newLogs = requests
+          .map((e) => e.asLogs())
+          .whereType<List<LogDecoder>>()
+          .expand((e) => e)
+          .toList();
+      logs.addAll(newLogs);
+      return handler(logs);
+    });
   }
 }
 

@@ -1,0 +1,504 @@
+//// Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2025-Present Datadog, Inc.
+
+import Foundation
+
+@testable import DatadogInternal
+@testable import datadog_session_replay
+
+extension DatadogContext: AnyMockable, RandomMockable {
+    public static func mockAny() -> DatadogContext { mockWith() }
+
+    public static func mockWith(
+        site: DatadogSite = .mockAny(),
+        clientToken: String = .mockAny(),
+        service: String = .mockAny(),
+        env: String = .mockAny(),
+        version: String = .mockAny(),
+        buildNumber: String = .mockAny(),
+        buildId: String? = nil,
+        variant: String? = nil,
+        source: String = .mockAny(),
+        sdkVersion: String = .mockAny(),
+        ciAppOrigin: String? = .mockAny(),
+        serverTimeOffset: TimeInterval = .zero,
+        applicationName: String = .mockAny(),
+        applicationBundleIdentifier: String = .mockAny(),
+        applicationBundleType: BundleType = .mockAny(),
+        sdkInitDate: Date = Date(),
+        nativeSourceOverride: String? = nil,
+        device: DeviceInfo = .mockAny(),
+        os: OperatingSystem = .mockAny(),
+        localeInfo: LocaleInfo = .mockAny(),
+        userInfo: UserInfo = .mockAny(),
+        trackingConsent: TrackingConsent = .pending,
+        launchInfo: LaunchInfo = .mockAny(),
+        applicationStateHistory: AppStateHistory = .mockAny(),
+        networkConnectionInfo: NetworkConnectionInfo? = .mockWith(reachability: .yes),
+        carrierInfo: CarrierInfo? = .mockAny(),
+        batteryStatus: BatteryStatus? = .mockAny(),
+        isLowPowerModeEnabled: Bool = false
+    ) -> DatadogContext {
+        .init(
+            site: site,
+            clientToken: clientToken,
+            service: service,
+            env: env,
+            version: version,
+            buildNumber: buildNumber,
+            buildId: buildId,
+            variant: variant,
+            source: source,
+            sdkVersion: sdkVersion,
+            ciAppOrigin: ciAppOrigin,
+            serverTimeOffset: serverTimeOffset,
+            applicationName: applicationName,
+            applicationBundleIdentifier: applicationBundleIdentifier,
+            applicationBundleType: applicationBundleType,
+            sdkInitDate: sdkInitDate,
+            device: device,
+            os: os,
+            localeInfo: localeInfo,
+            nativeSourceOverride: nativeSourceOverride,
+            userInfo: userInfo,
+            trackingConsent: trackingConsent,
+            launchInfo: launchInfo,
+            applicationStateHistory: applicationStateHistory,
+            networkConnectionInfo: networkConnectionInfo,
+            carrierInfo: carrierInfo,
+            batteryStatus: batteryStatus,
+            isLowPowerModeEnabled: isLowPowerModeEnabled
+        )
+    }
+
+    public static func mockRandom() -> DatadogContext {
+        .init(
+            site: .mockRandom(),
+            clientToken: .mockRandom(),
+            service: .mockRandom(),
+            env: .mockRandom(),
+            version: .mockRandom(),
+            buildNumber: .mockRandom(),
+            buildId: .mockRandom(),
+            variant: .mockRandom(),
+            source: .mockAnySource(),
+            sdkVersion: .mockRandom(),
+            ciAppOrigin: .mockRandom(),
+            serverTimeOffset: .mockRandomInThePast(),
+            applicationName: .mockRandom(),
+            applicationBundleIdentifier: .mockRandom(),
+            applicationBundleType: .mockRandom(),
+            sdkInitDate: .mockRandomInThePast(),
+            device: .mockRandom(),
+            os: .mockRandom(),
+            localeInfo: .mockRandom(),
+            userInfo: .mockRandom(),
+            trackingConsent: .mockRandom(),
+            launchInfo: .mockRandom(),
+            applicationStateHistory: .mockRandom(),
+            networkConnectionInfo: .mockRandom(),
+            carrierInfo: .mockRandom(),
+            batteryStatus: nil,
+            isLowPowerModeEnabled: .mockRandom()
+        )
+    }
+}
+
+extension DeterministicSampler {
+    /// Returns a sampler that always samples (100% rate, seed=0).
+    public static func mockKeepAll() -> DeterministicSampler {
+        return .init(seed: 0, samplingRate: 100)
+    }
+
+    /// Returns a sampler that never samples (0% rate, seed=0).
+    public static func mockRejectAll() -> DeterministicSampler {
+        return .init(seed: 0, samplingRate: 0)
+    }
+}
+
+extension RUMCoreContext: RandomMockable {
+    public static func mockRandom() -> Self {
+        return RUMCoreContext.init(
+            applicationID: .mockRandom(),
+            sessionID: .mockRandom(),
+            sessionSampler: .mockKeepAll(),
+            viewID: .mockRandom(),
+            viewServerTimeOffset: nil
+        )
+    }
+
+    public static func mockWith(
+        applicationID: String = .mockAny(),
+        sessionID: String = .mockAny(),
+        sessionSampler: DeterministicSampler = .mockKeepAll(),
+        viewID: String? = .mockAny(),
+        viewServerTimeOffset: TimeInterval? = nil
+    ) -> Self {
+        return RUMCoreContext(
+            applicationID: applicationID,
+            sessionID: sessionID,
+            sessionSampler: sessionSampler,
+            viewID: viewID,
+            viewServerTimeOffset: viewServerTimeOffset
+        )
+    }
+}
+
+extension DatadogSite: AnyMockable, RandomMockable {
+    public static func mockAny() -> Self {
+        return .us1
+    }
+
+    public static func mockRandom() -> Self {
+        return [.us1, .us3, .us5, .eu1, .ap1, .ap2, .us1_fed].randomElement()!
+    }
+}
+
+extension BundleType: AnyMockable, RandomMockable {
+    public static func mockAny() -> Self {
+        return .iOSApp
+    }
+
+    public static func mockRandom() -> Self {
+        return [.iOSApp, .iOSAppExtension].randomElement()!
+    }
+}
+
+extension LocaleInfo: AnyMockable, RandomMockable {
+    public static func mockAny() -> LocaleInfo {
+        return .mockWith()
+    }
+
+    public static func mockWith(
+        locales: [String] = ["en"],
+        currentLocale: Locale = Locale(identifier: "en-US"),
+        timeZone: TimeZone = TimeZone(identifier: "Europe/Paris")!
+    ) -> LocaleInfo {
+        return .init(
+            locales: locales,
+            currentLocale: currentLocale,
+            timeZone: timeZone
+        )
+    }
+
+    public static func mockRandom() -> LocaleInfo {
+        return .init(
+            locales: .mockRandom(),
+            currentLocale: Locale(identifier: .mockRandom()),
+            timeZone: TimeZone(identifier: .mockRandom()) ?? TimeZone.current
+        )
+    }
+}
+
+extension DeviceInfo: AnyMockable, RandomMockable {
+    public static func mockAny() -> DeviceInfo {
+        return .mockWith()
+    }
+
+    public static func mockWith(
+        name: String = "iPhone",
+        model: String = "iPhone10,1",
+        osName: String = "iOS",
+        osVersion: String = "15.4.1",
+        osBuildNumber: String = "13D20",
+        architecture: String = "arm64e",
+        isSimulator: Bool = true,
+        vendorId: String? = "xyz",
+        isDebugging: Bool = false,
+        systemBootTime: TimeInterval = Date.timeIntervalSinceReferenceDate,
+        logicalCpuCount: Double? = nil,
+        totalRam: Double? = nil
+    ) -> DeviceInfo {
+        return .init(
+            name: name,
+            model: model,
+            osName: osBuildNumber,
+            architecture: architecture,
+            isSimulator: isSimulator,
+            vendorId: vendorId,
+            isDebugging: isDebugging,
+            systemBootTime: systemBootTime,
+            logicalCpuCount: logicalCpuCount,
+            totalRam: totalRam
+        )
+    }
+
+    public static func mockRandom() -> DeviceInfo {
+        return .init(
+            name: .mockRandom(),
+            model: .mockRandom(),
+            osName: .mockRandom(),
+            architecture: .mockRandom(),
+            isSimulator: .mockRandom(),
+            vendorId: .mockRandom(),
+            isDebugging: .mockRandom(),
+            systemBootTime: .mockRandom(),
+            logicalCpuCount: .mockRandom(),
+            totalRam: .mockRandom()
+        )
+    }
+}
+
+extension UserInfo: AnyMockable, RandomMockable {
+    public static func mockAny() -> UserInfo {
+        return mockEmpty()
+    }
+
+    public static func mockEmpty() -> UserInfo {
+        return UserInfo(id: nil, name: nil, email: nil, extraInfo: [:])
+    }
+
+    public static func mockRandom() -> UserInfo {
+        return .init(
+            id: .mockRandom(),
+            name: .mockRandom(),
+            email: .mockRandom(),
+            extraInfo: [:]
+        )
+    }
+}
+
+extension OperatingSystem: AnyMockable, RandomMockable {
+    public static func mockAny() -> OperatingSystem {
+        return .mockWith()
+    }
+
+    public static func mockWith(
+        name: String = "iOS",
+        version: String = "18.2.1",
+        build: String = "4SDM23"
+    ) -> OperatingSystem {
+        return .init(name: name, version: version, build: build)
+    }
+
+    public static func mockRandom() -> OperatingSystem {
+        return .init(
+            name: .mockRandom(length: 5),
+            version: .mockRandom(among: .decimalDigits, length: 2),
+            build: .mockRandom()
+        )
+    }
+}
+
+extension LaunchInfo.Raw: AnyMockable, RandomMockable {
+    public static func mockAny() -> LaunchInfo.Raw {
+        return .init(taskPolicyRole: .mockAny(), isPrewarmed: false)
+    }
+
+    public static func mockRandom() -> LaunchInfo.Raw {
+        return .init(taskPolicyRole: .mockRandom(), isPrewarmed: .mockRandom())
+    }
+}
+
+extension LaunchReason: AnyMockable, RandomMockable {
+    public static func mockAny() -> LaunchReason { .userLaunch }
+
+    public static func mockRandom() -> LaunchReason {
+        return [.userLaunch, .backgroundLaunch, .prewarming, .uncertain].randomElement()!
+    }
+}
+
+extension LaunchInfo: AnyMockable, RandomMockable {
+    public static func mockAny() -> LaunchInfo {
+        return .init(
+            launchReason: .mockAny(),
+            processLaunchDate: .mockAny(),
+            runtimeLoadDate: .mockAny(),
+            runtimePreMainDate: .mockAny(),
+            raw: .mockAny()
+        )
+    }
+
+    public static func mockWith(
+        launchReason: LaunchReason = .mockAny(),
+        processLaunchDate: Date = Date(),
+        runtimeLoadDate: Date = Date(),
+        runtimePreMainDate: Date = Date(),
+        didFinishLaunchingDate: Date? = nil,
+        didBecomeActiveDate: Date? = nil,
+        raw: LaunchInfo.Raw = .mockAny()
+    ) -> LaunchInfo {
+        return .init(
+            launchReason: launchReason,
+            processLaunchDate: processLaunchDate,
+            runtimeLoadDate: runtimeLoadDate,
+            runtimePreMainDate: runtimePreMainDate,
+            didFinishLaunchingDate: didFinishLaunchingDate,
+            didBecomeActiveDate: didBecomeActiveDate,
+            raw: raw
+        )
+    }
+
+    public static func mockRandom() -> LaunchInfo {
+        return .init(
+            launchReason: .mockRandom(),
+            processLaunchDate: .mockRandom(),
+            runtimeLoadDate: .mockRandom(),
+            runtimePreMainDate: .mockRandom(),
+            didFinishLaunchingDate: .mockRandom(),
+            didBecomeActiveDate: .mockRandom(),
+            raw: .mockRandom()
+        )
+    }
+}
+
+extension AppState: AnyMockable, RandomMockable {
+    public static func mockAny() -> AppState {
+        return .active
+    }
+
+    public static func mockRandom() -> AppState {
+        return [.active, .inactive, .background].randomElement()!
+    }
+
+    public static func mockRandom(runningInForeground: Bool) -> AppState {
+        return runningInForeground ? [.active, .inactive].randomElement()! : .background
+    }
+}
+
+extension AppStateHistory: AnyMockable {
+    public static func mockAny() -> Self {
+        return mockAppInForeground(since: .mockDecember15th2019At10AMUTC())
+    }
+
+    public static func mockAppInForeground(since date: Date = Date()) -> Self {
+        return .init(initialState: .active, date: date)
+    }
+
+    public static func mockAppInBackground(since date: Date = Date()) -> Self {
+        return .init(initialState: .background, date: date)
+    }
+
+    public static func mockRandom(since date: Date = Date()) -> Self {
+        return Bool.random() ? mockAppInForeground(since: date) : mockAppInBackground(since: date)
+    }
+}
+
+extension NetworkConnectionInfo: AnyMockable, RandomMockable {
+    public static func mockAny() -> NetworkConnectionInfo {
+        return mockWith()
+    }
+
+    public static func mockWith(
+        reachability: NetworkConnectionInfo.Reachability = .mockAny(),
+        availableInterfaces: [NetworkConnectionInfo.Interface] = [.wifi],
+        supportsIPv4: Bool = true,
+        supportsIPv6: Bool = true,
+        isExpensive: Bool = true,
+        isConstrained: Bool = true
+    ) -> NetworkConnectionInfo {
+        return NetworkConnectionInfo(
+            reachability: reachability,
+            availableInterfaces: availableInterfaces,
+            supportsIPv4: supportsIPv4,
+            supportsIPv6: supportsIPv6,
+            isExpensive: isExpensive,
+            isConstrained: isConstrained
+        )
+    }
+
+    public static func mockRandom() -> NetworkConnectionInfo {
+        return NetworkConnectionInfo(
+            reachability: .mockRandom(),
+            availableInterfaces: [],
+            supportsIPv4: .random(),
+            supportsIPv6: .random(),
+            isExpensive: .random(),
+            isConstrained: .random()
+        )
+    }
+}
+
+extension NetworkConnectionInfo.Interface: RandomMockable {
+    public static func mockRandom() -> NetworkConnectionInfo.Interface {
+        return allCases.randomElement()!
+    }
+}
+
+extension CarrierInfo: AnyMockable, RandomMockable {
+    public static func mockAny() -> CarrierInfo {
+        return mockWith()
+    }
+
+    public static func mockWith(
+        carrierName: String? = .mockAny(),
+        carrierISOCountryCode: String? = .mockAny(),
+        carrierAllowsVOIP: Bool = .mockAny(),
+        radioAccessTechnology: CarrierInfo.RadioAccessTechnology = .mockAny()
+    ) -> CarrierInfo {
+        return CarrierInfo(
+            carrierName: carrierName,
+            carrierISOCountryCode: carrierISOCountryCode,
+            carrierAllowsVOIP: carrierAllowsVOIP,
+            radioAccessTechnology: radioAccessTechnology
+        )
+    }
+
+    public static func mockRandom() -> CarrierInfo {
+        return CarrierInfo(
+            carrierName: .mockRandom(),
+            carrierISOCountryCode: .mockRandom(),
+            carrierAllowsVOIP: .random(),
+            radioAccessTechnology: .mockRandom()
+        )
+    }
+}
+
+extension CarrierInfo.RadioAccessTechnology: AnyMockable, RandomMockable {
+    public static func mockAny() -> CarrierInfo.RadioAccessTechnology { .LTE }
+
+    public static func mockRandom() -> CarrierInfo.RadioAccessTechnology {
+        return allCases.randomElement()!
+    }
+}
+
+extension BatteryStatus: AnyMockable {
+    public static func mockAny() -> BatteryStatus {
+        return mockWith()
+    }
+
+    public static func mockWith(
+        state: State = .charging,
+        level: Float = 0.5
+    ) -> BatteryStatus {
+        return BatteryStatus(state: state, level: level)
+    }
+}
+
+extension TrackingConsent: RandomMockable {
+    public static func mockRandom() -> TrackingConsent {
+        return [.granted, .notGranted, .pending].randomElement()!
+    }
+
+    public static func mockRandom(otherThan consent: TrackingConsent? = nil) -> TrackingConsent {
+        while true {
+            let randomConsent: TrackingConsent = .mockRandom()
+            if randomConsent != consent {
+                return randomConsent
+            }
+        }
+    }
+}
+
+extension String {
+    public static func mockAnySource() -> String {
+        return ["ios", "android", "browser", "ios", "react-native", "flutter", "unity", "kotlin-multiplatform"].randomElement()!
+    }
+
+    public static func mockAnySourceType() -> String {
+        return ["ios", "android", "browser", "react-native", "flutter", "roku", "ndk", "ios+il2cpp", "ndk+il2cpp"].randomElement()!
+    }
+}
+
+extension NetworkConnectionInfo.Reachability: AnyMockable {
+    public static func mockAny() -> NetworkConnectionInfo.Reachability {
+        return .maybe
+    }
+
+    public static func mockRandom(
+        within cases: [NetworkConnectionInfo.Reachability] = [.yes, .no, .maybe]
+    ) -> NetworkConnectionInfo.Reachability {
+        return cases.randomElement()!
+    }
+}
