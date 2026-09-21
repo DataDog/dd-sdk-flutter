@@ -8,12 +8,19 @@ import 'package:logging/logging.dart';
 
 import 'helpers.dart';
 
+final _headingPattern = RegExp(r'^##\s+(.*?)\s*$');
+
 /// Inserts a new `## {version}` section at the top of [changelogFile]'s
 /// entries -- this repo's `CHANGELOG.md` convention has no `## Unreleased`
 /// placeholder to replace, unlike the legacy `generate_changelog.dart` path,
 /// so there's nothing to remove first. A leading `# Changelog` title (and any
 /// blank lines around it) is preserved above the new section rather than
 /// pushed below it.
+///
+/// If the topmost existing section is already headed `## $version` -- e.g. a
+/// prior release-prep run wrote it but the release never actually shipped,
+/// so pub.dev's latest is still behind it -- [body] is merged underneath
+/// that existing heading instead of prepending a second, duplicate one.
 ///
 /// [body] is the section's content (see `llm/changelog.dart`'s
 /// `renderChangelogSection`) without the heading itself.
@@ -60,6 +67,16 @@ Future<void> prependChangelogSection(
     }
 
     wrote = true;
+    final existingHeading = _headingPattern.firstMatch(line)?.group(1);
+    if (existingHeading == version) {
+      logger.warning(
+        '⚠️ $version already has a section in ${changelogFile.path} -- '
+        'merging into it rather than adding a duplicate heading. This '
+        'usually means that version was prepared before but never '
+        'actually published.',
+      );
+      return '$line\n\n$body';
+    }
     return '## $version\n\n$body\n\n$line';
   });
 

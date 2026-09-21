@@ -40,6 +40,32 @@ void main() {
     expect(contents, contains('* Old entry.'));
   });
 
+  test(
+    'merges into an existing section instead of duplicating the heading',
+    () async {
+      final file = File(p.join(root.path, 'CHANGELOG.md'))
+        ..writeAsStringSync(
+          '## 2.1.0\n\n* Support grpc 5.x.\n\n## 2.0.0\n\n* Old entry.\n',
+        );
+
+      await prependChangelogSection(
+        file,
+        '2.1.0',
+        '### Features\n\n- New thing.',
+        logger,
+        false,
+      );
+
+      final contents = file.readAsStringSync();
+      expect(
+        contents,
+        '## 2.1.0\n\n### Features\n\n- New thing.\n\n'
+        '* Support grpc 5.x.\n\n## 2.0.0\n\n* Old entry.\n',
+      );
+      expect('## 2.1.0'.allMatches(contents).length, 1);
+    },
+  );
+
   test('inserts a new section below a leading # title', () async {
     final file = File(p.join(root.path, 'CHANGELOG.md'))
       ..writeAsStringSync('# Changelog\n\n## 2.2.0\n\n* Old entry.\n');
