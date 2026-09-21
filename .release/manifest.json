@@ -1,0 +1,12 @@
+{
+  "contentCommit": "63eee7c27c6aa0bcfb8ac0a98e949d10d423697e",
+  "packages": [
+    {
+      "package": "datadog_grpc_interceptor",
+      "from_version": "2.0.0",
+      "to_version": "2.1.0",
+      "source_branch": "develop",
+      "prerelease": false
+    }
+  ]
+}
