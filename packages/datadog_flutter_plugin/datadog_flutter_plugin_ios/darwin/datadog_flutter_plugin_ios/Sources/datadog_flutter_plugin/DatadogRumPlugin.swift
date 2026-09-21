@@ -59,11 +59,11 @@ public extension RUM.Configuration {
         }
 
         if let timeseriesDict = encoded["timeseries"] as? [String: Any?] {
-            var timeseriesConfig = RUM.Configuration.Timeseries()
+            var collectTypes = RUM.Configuration.Timeseries.default.collectTypes
             if let collectTypesArg = timeseriesDict["collectTypes"] as? [String] {
-                timeseriesConfig.collectTypes = collectTypesArg.compactMap { RUM.Configuration.TimeseriesType.parseFromFlutter($0) }
+                collectTypes = Set(collectTypesArg.compactMap { RUM.Configuration.TimeseriesType.parseFromFlutter($0) })
             }
-            timeseries = timeseriesConfig
+            timeseries = RUM.Configuration.Timeseries(collectTypes: collectTypes)
         }
     }
 }

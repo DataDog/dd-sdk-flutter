@@ -300,7 +300,7 @@ class DatadogRumPluginTests: XCTestCase {
 
         let config = RUM.Configuration.init(fromEncoded: encoded)
         XCTAssertNotNil(config?.timeseries)
-        XCTAssertNil(config?.timeseries?.collectTypes)
+        XCTAssertEqual(config?.timeseries?.collectTypes, [.memory, .cpu])
     }
 
     func testRepeatEnable_FromMethodChannelSameOptions_DoesNothing() {
