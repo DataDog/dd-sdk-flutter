@@ -487,8 +487,13 @@ scripts:
       concurrency: 1
     run: flutter pub get
 
-  pod_update:
-    run: cd example/ios && pod update --repo-update
+  # Deletes the committed Podfile.lock so Flutter's own `pod install` (run as part of
+  # `flutter build`/`flutter test`) resolves git-branch pods (e.g. dd-sdk-ios @ develop) against
+  # their current HEAD instead of a stale pinned commit. A standalone `pod update` here instead
+  # would leave CocoaPods state installed before Flutter's own SPM integration runs, which breaks
+  # resolution of local SPM packages (e.g. FlutterFramework) declared by some plugins.
+  remove_podfile_lock:
+    run: cd example/ios && rm -f Podfile.lock
     exec:
       concurrency: 1
     packageFilters:

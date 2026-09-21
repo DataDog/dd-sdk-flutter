@@ -13,15 +13,13 @@ let package = Package(
         .library(name: "datadog-session-replay", targets: ["datadog_session_replay", "datadog_session_replay_objc"])
     ],
     dependencies: [
-        .package(url: "https://github.com/Datadog/dd-sdk-ios.git", from: "3.0.0"),
-        .package(name: "FlutterFramework", path: "../FlutterFramework")
+        .package(url: "https://github.com/Datadog/dd-sdk-ios.git", from: "3.0.0")
     ],
     targets: [
         .target(
             name: "datadog_session_replay",
             dependencies: [
-                .product(name: "DatadogCore", package: "dd-sdk-ios"),
-                .product(name: "FlutterFramework", package: "FlutterFramework")
+                .product(name: "DatadogCore", package: "dd-sdk-ios")
             ],
             path: "Sources/Swift",
             resources: [],

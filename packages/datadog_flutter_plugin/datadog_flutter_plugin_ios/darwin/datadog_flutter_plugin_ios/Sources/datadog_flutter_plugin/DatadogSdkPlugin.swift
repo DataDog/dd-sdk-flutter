@@ -159,6 +159,9 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         let instance = DatadogSdkPlugin(channel: channel)
         registrar.addMethodCallDelegate(instance, channel: channel)
         registrar.publish(instance)
+        #if os(macOS)
+        registrar.addApplicationDelegate(instance)
+        #endif
 
         instance.logs.attachToEngine(registrar: registrar)
         instance.rum.attachToEngine(registrar: registrar)
@@ -440,14 +443,17 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     ///
     /// Observed directly rather than via `registrar.addApplicationDelegate(self)`, which forwards app
     /// lifecycle events only when `UIApplication`'s delegate conforms to `FlutterAppLifeCycleProvider`
-    /// — true for `FlutterAppDelegate`, often false for a native host embedding Flutter.
+    /// — true for `FlutterAppDelegate`, often false for a native host embedding Flutter. On macOS,
+    /// termination is instead observed via the `FlutterAppLifecycleDelegate` conformance below.
     private func observeEngineTeardown() {
+        #if os(iOS)
         notificationCenter.addObserver(
             self,
             selector: #selector(engineWillTearDown),
             name: UIApplication.willTerminateNotification,
             object: nil
         )
+        #endif
     }
 
     @objc
