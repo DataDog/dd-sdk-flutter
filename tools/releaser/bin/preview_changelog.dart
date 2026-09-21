@@ -70,6 +70,7 @@ Future<void> main(List<String> arguments) async {
       aiGatewayClient,
       packagePlan,
       github: GithubCommandWrapper(gitDir.path),
+      gitDir: gitDir,
       logger: _log,
       costTracker: costTracker,
     );

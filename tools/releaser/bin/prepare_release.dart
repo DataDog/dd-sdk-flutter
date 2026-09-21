@@ -370,6 +370,7 @@ Future<void> prepareRelease(
       ctx,
       allGroups,
       github: github,
+      gitDir: gitDir,
       aiGatewayClient: aiGatewayClient,
       costTracker: costTracker,
       staleConsumerWarnings: staleConsumerWarnings,
@@ -510,6 +511,7 @@ Future<void> _applyContentChanges(
   RunContext ctx,
   List<PackageGroup> allGroups, {
   required GithubCommandWrapper github,
+  required GitDir gitDir,
   required AiGatewayClient aiGatewayClient,
   required LlmCostTracker costTracker,
   required List<StaleConsumerWarning> staleConsumerWarnings,
@@ -521,6 +523,7 @@ Future<void> _applyContentChanges(
     aiGatewayClient,
     packagePlan,
     github: github,
+    gitDir: gitDir,
     logger: _log,
     costTracker: costTracker,
   );

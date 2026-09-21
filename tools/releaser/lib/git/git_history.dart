@@ -96,3 +96,30 @@ Future<List<CommitRecord>> commitsSince(
       })
       .toList();
 }
+
+/// Repo-root-relative paths [sha] touched under [pathspec] -- names only, no
+/// diff content. Used to give the changelog LLM concrete evidence that a
+/// multi-package PR actually touched a given package, rather than relying
+/// solely on the PR's title/body prose, which may describe the change too
+/// generically to name every package it affects (see `llm/changelog.dart`).
+Future<List<String>> filesChangedInCommit(
+  GitDir gitDir, {
+  required String sha,
+  required String pathspec,
+}) async {
+  final result = await gitDir.runCommand([
+    'diff-tree',
+    '--no-commit-id',
+    '--name-only',
+    '-r',
+    sha,
+    '--',
+    pathspec,
+  ]);
+
+  return (result.stdout as String)
+      .split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .toList();
+}

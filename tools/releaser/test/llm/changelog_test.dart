@@ -198,6 +198,52 @@ void main() {
         );
       },
     );
+
+    test(
+      'includes a PR\'s touched files, and tells the model a touched '
+      'pubspec.yaml means the PR affects this package regardless of what '
+      'the PR body says',
+      () async {
+        final client = FakeAiGatewayClient([_emptyEntryList]);
+
+        await runChangelogEntryListPrompt(client, 'datadog_dio', 'a group', [
+          const PrDetails(
+            number: 1,
+            title: 'feat: loosen constraints repo-wide',
+            body: 'Loosens constraints on most packages.',
+            touchedFiles: ['pubspec.yaml'],
+          ),
+        ]);
+
+        expect(
+          client.prompts.single,
+          allOf(
+            contains('<files_touched_in_datadog_dio>'),
+            contains('pubspec.yaml'),
+            contains('do not omit an entry for it'),
+          ),
+        );
+      },
+    );
+
+    test(
+      'omits the touched-files tag from the PR block when nothing is known',
+      () async {
+        final client = FakeAiGatewayClient([_emptyEntryList]);
+
+        await runChangelogEntryListPrompt(client, 'datadog_dio', 'a group', [
+          const PrDetails(number: 1, title: 't', body: 'b'),
+        ]);
+
+        // The general instructions mention the tag once, by name, to explain
+        // it -- but the PR block itself (after its </body>) shouldn't emit
+        // one when this PR has no known touched files.
+        expect(
+          client.prompts.single,
+          isNot(contains('</body>\n<files_touched_in_datadog_dio>')),
+        );
+      },
+    );
   });
 
   group('runCleanupPrompt', () {

@@ -91,4 +91,37 @@ void main() {
       },
     );
   });
+
+  group('filesChangedInCommit', () {
+    test('lists only the files a commit touched under pathspec', () async {
+      final gitDir = await fixture.gitDir;
+      fixture.writeFile('packages/datadog_dio/lib/foo.dart', 'unrelated');
+      fixture.writeFile('packages/lonely_ios/pubspec.yaml', 'name: changed');
+      await fixture.commit('feat: touch two packages at once');
+
+      final sha = (await commitsSince(gitDir, pathspec: '.')).first.sha;
+      final files = await filesChangedInCommit(
+        gitDir,
+        sha: sha,
+        pathspec: 'packages/datadog_dio',
+      );
+
+      expect(files, unorderedEquals(['packages/datadog_dio/lib/foo.dart']));
+    });
+
+    test('is empty when the commit did not touch pathspec at all', () async {
+      final gitDir = await fixture.gitDir;
+      fixture.writeFile('packages/lonely_ios/pubspec.yaml', 'name: changed');
+      await fixture.commit('feat: only touch lonely_ios');
+
+      final sha = (await commitsSince(gitDir, pathspec: '.')).first.sha;
+      final files = await filesChangedInCommit(
+        gitDir,
+        sha: sha,
+        pathspec: 'packages/datadog_dio',
+      );
+
+      expect(files, isEmpty);
+    });
+  });
 }

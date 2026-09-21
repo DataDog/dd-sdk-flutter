@@ -3,9 +3,12 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'package:collection/collection.dart';
+import 'package:git/git.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
 
 import '../github_cmd_wrapper.dart';
+import '../git/git_history.dart';
 import '../native_sdk.dart';
 import '../native_sdk_changelog.dart';
 import '../pr_resolution.dart';
@@ -289,17 +292,55 @@ Future<ChangelogEntryList> generateChangelogEntries(
 
 /// Resolves everything [generateChangelogEntries] needs directly from
 /// [packagePlan] -- each contributing commit's PR, that PR's full title and
-/// body, and native SDK changelog contexts from [packagePlan]'s native SDK
-/// deltas -- then runs the pipeline. The one call a caller holding a
-/// [PackagePlan] needs.
+/// body, which of the package's own files that PR's commit(s) touched, and
+/// native SDK changelog contexts from [packagePlan]'s native SDK deltas --
+/// then runs the pipeline. The one call a caller holding a [PackagePlan]
+/// needs.
+/// [PrDetails] for [number], with [PrDetails.touchedFiles] filled in from
+/// [shas] -- every one of that PR's contributing commits, unioned and made
+/// relative to [packagePath] -- rather than left for the LLM to guess at
+/// from prose alone (see `prompts/changelog_entry_list_prompt.dart`).
+Future<PrDetails> _prDetailsWithTouchedFiles(
+  GithubCommandWrapper github,
+  GitDir gitDir,
+  Logger logger, {
+  required int number,
+  required Set<String> shas,
+  required String packagePath,
+}) async {
+  final details = await github.fetchPrDetails(logger, number);
+
+  final touchedFiles = <String>{};
+  for (final sha in shas) {
+    final files = await filesChangedInCommit(
+      gitDir,
+      sha: sha,
+      pathspec: packagePath,
+    );
+    touchedFiles.addAll(files.map((f) => p.relative(f, from: packagePath)));
+  }
+
+  return PrDetails(
+    number: details.number,
+    title: details.title,
+    body: details.body,
+    touchedFiles: touchedFiles.toList()..sort(),
+  );
+}
+
 Future<ChangelogEntryList> generateChangelogForPackage(
   AiGatewayClient client,
   PackagePlan packagePlan, {
   required GithubCommandWrapper github,
+  required GitDir gitDir,
   required Logger logger,
   LlmCostTracker? costTracker,
 }) async {
-  final prNumbers = <int>{};
+  // A PR can land through more than one contributing commit (e.g. a fixup
+  // pushed to the same branch before merge), so this tracks every SHA that
+  // resolved to a given PR number -- all of them get checked for touched
+  // files, not just the first.
+  final shasByPrNumber = <int, Set<String>>{};
   for (final commit in packagePlan.contributingCommits) {
     if (commit.sha == null) continue;
     final resolved = await resolvePr(
@@ -307,11 +348,22 @@ Future<ChangelogEntryList> generateChangelogForPackage(
       commit.description,
       (sha) => github.searchMergedPrBySha(logger, sha),
     );
-    if (resolved != null) prNumbers.add(resolved.number);
+    if (resolved != null) {
+      shasByPrNumber.putIfAbsent(resolved.number, () => {}).add(commit.sha!);
+    }
   }
 
+  final packagePath = packagePlan.package.relativePath;
   final prDetails = [
-    for (final number in prNumbers) await github.fetchPrDetails(logger, number),
+    for (final entry in shasByPrNumber.entries)
+      await _prDetailsWithTouchedFiles(
+        github,
+        gitDir,
+        logger,
+        number: entry.key,
+        shas: entry.value,
+        packagePath: packagePath,
+      ),
   ];
 
   final nativeSdkContexts = await resolveNativeSdkChangelogContexts(

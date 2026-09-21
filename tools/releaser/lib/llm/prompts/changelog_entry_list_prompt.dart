@@ -104,14 +104,20 @@ final _schema = {
   'additionalProperties': false,
 };
 
-String _formatPr(PrDetails pr) =>
-    '''
+String _formatPr(String packageName, PrDetails pr) {
+  final touchedFilesTag = pr.touchedFiles.isEmpty
+      ? ''
+      : '\n<files_touched_in_$packageName>\n'
+            '${pr.touchedFiles.join('\n')}\n'
+            '</files_touched_in_$packageName>';
+  return '''
 <pr number="${pr.number}">
 <title>${pr.title}</title>
 <body>
 ${pr.body}
-</body>
+</body>$touchedFilesTag
 </pr>''';
+}
 
 String _synthesizeText(
   String packageName,
@@ -119,7 +125,7 @@ String _synthesizeText(
   List<PrDetails> groupPrs, {
   required bool isFirstRelease,
 }) {
-  final prText = groupPrs.map(_formatPr).join('\n');
+  final prText = groupPrs.map((pr) => _formatPr(packageName, pr)).join('\n');
   final firstReleaseNote = isFirstRelease
       ? '\n\nThis is the first-ever release of `$packageName` -- there is no '
             'prior public API or documented behavior to break, so nothing '
@@ -146,6 +152,8 @@ Omit entries for:
 - A change whose user-visible impact is only observable in a *different* package, even if a PR in this group happens to touch files under `$packageName` as a side effect (e.g. updating an internal call site to match a renamed parameter in another package this one depends on). That belongs in the other package's own changelog, not `$packageName`'s -- if you cannot articulate a concrete, `$packageName`-specific effect a developer using only `$packageName` would notice, omit the entry.
 
 If every change in the group falls into the omit list, return empty lists for all three categories. An empty response is correct and preferred over producing a thin or redundant entry.
+
+A PR may include a `<files_touched_in_$packageName>` tag listing which of $packageName's own files its commit(s) changed. Treat this as ground truth, not a suggestion: if `pubspec.yaml` is listed, this PR changed $packageName's own dependency constraints or version and does affect $packageName's users -- do not omit an entry for it just because the PR's title/body describes the change generically (e.g. "loosens constraints on most packages") without naming $packageName by name. Describe the constraint change using whatever the title/body says about it.
 
 A group may produce multiple entries only when it contains genuinely distinct user-facing changes that each deserve to be called out separately. When in doubt, prefer a single consolidated entry over splitting.
 
