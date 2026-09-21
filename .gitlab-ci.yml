@@ -29,7 +29,8 @@ stages:
   - build
   - integration-test
   - version-test
-  - e2e-test  
+  - e2e-test
+  - prepare-release
   - post
   - post-nightly
 
@@ -241,7 +242,7 @@ build-linux:
 
 # Windows shell-executor runners don't support the `image:` keyword, so unlike the
 # Linux jobs (build-android/build-web), the toolchain image has to be run explicitly
-# via `docker run` on the bare host - same pattern as dd-sdk-cpp's build-windows.
+# via `docker run` on the bare host.
 build-windows:
   stage: build
   except: [ schedules ]
@@ -360,6 +361,9 @@ linux-integration-test:
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
+# Windows integration tests require an AMI that can run UI, which is currently unavailable.
+# Add this back if CIEXE-2284 is solved.
+# 
 # windows-integration-test:
 #   stage: integration-test
 #   except: [ schedules ]
@@ -381,6 +385,84 @@ linux-integration-test:
 #     expire_in: "30 days"
 #     reports:
 #       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+# Release
+#
+# Manual job only -- never runs automatically off a plain branch push. The three
+# `rules:` clauses below are the mainline/patch/pre-release trigger contexts;
+# each sets RELEASE_TRIGGER so the script passes the right --trigger value
+# instead of relying on prepare_release.dart's own branch auto-detection
+# (which doesn't know about the pre-release whitelist).
+#
+# Pre-release branches are a manually-maintained whitelist here, not a
+# pattern match -- add/remove an `if:` clause per active effort (see `v4`
+# below). Keep in sync with .github/chainguard/self.prepare-release.sts.yaml's
+# subject_pattern, which grants this job's GitHub token and is scoped to the
+# same branch set.
+prepare-release:
+  stage: prepare-release
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      variables:
+        RELEASE_TRIGGER: "mainline"
+    - if: '$CI_COMMIT_BRANCH =~ /^release\/.+\/v\d+\.\d+\.x$/'
+      when: manual
+      variables:
+        RELEASE_TRIGGER: "patch"
+    - if: '$CI_COMMIT_BRANCH == "v4"' # pre-release whitelist -- see comment above
+      when: manual
+      variables:
+        RELEASE_TRIGGER: "prerelease"
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+    PACKAGES: ""
+    IOS_SDK_VERSION: ""
+    ANDROID_SDK_VERSION: ""
+    CPP_VERSION: ""
+    BUMP_TYPE: ""
+    PRERELEASE_LABEL: ""
+  id_tokens:
+    DDOCTOSTS_ID_TOKEN:
+      aud: dd-octo-sts
+  tags:
+    - macos:sequoia
+    - specific:true
+  before_script:
+    # We need a short-lived GitHub token to push commits and open PRs; see
+    # .github/chainguard/self.prepare-release.sts.yaml.
+    - dd-octo-sts --disable-tracing debug --scope DataDog/dd-sdk-flutter --policy self.prepare-release
+    - dd-octo-sts --disable-tracing token --scope DataDog/dd-sdk-flutter --policy self.prepare-release > /tmp/gh-token.txt
+  script:
+    - !reference [.pre, script]
+    # The `gh` CLI (github_cmd_wrapper.dart) picks up GITHUB_TOKEN automatically;
+    # for `git` push/PR-base operations we point origin at GitHub using the same
+    # token, and configure the dd-octo-sts bot identity for the release commits.
+    - export GITHUB_TOKEN=$(cat /tmp/gh-token.txt)
+    - git config user.name "dd-octo-sts[bot]"
+    - git config user.email "200755185+dd-octo-sts[bot]@users.noreply.github.com"
+    - git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/DataDog/dd-sdk-flutter.git"
+    # This repo requires signed commits (see CONTRIBUTING.md), so the
+    # release-prep commits need commit-headless too.
+    - commit-headless version
+    # AI Gateway token for LLM changelog generation, via authanywhere;
+    # ai_gateway.dart reads this env var directly (see
+    # HttpAiGatewayClient.fromEnvironment).
+    - export AI_GATEWAY_TOKEN=$(authanywhere --audience rapid-ai-platform --raw --dc us1.ddbuild.io)
+    - pushd tools/releaser && dart pub get && popd
+    - >
+      dart run tools/releaser/bin/prepare_release.dart
+      --repo-root=$CI_PROJECT_DIR
+      --trigger=$RELEASE_TRIGGER
+      ${PACKAGES:+--packages=$PACKAGES}
+      ${BUMP_TYPE:+--bump-type=$BUMP_TYPE}
+      ${IOS_SDK_VERSION:+--ios-sdk-version=$IOS_SDK_VERSION}
+      ${ANDROID_SDK_VERSION:+--android-sdk-version=$ANDROID_SDK_VERSION}
+      ${CPP_VERSION:+--cpp-version=$CPP_VERSION}
+      ${PRERELEASE_LABEL:+--prerelease-label=$PRERELEASE_LABEL}
+  after_script:
+    # Revoke the dd-octo-sts-provided GitHub token unconditionally once finished.
+    - dd-octo-sts --disable-tracing revoke --token "$(cat /tmp/gh-token.txt)"
 
 # Notify
 
