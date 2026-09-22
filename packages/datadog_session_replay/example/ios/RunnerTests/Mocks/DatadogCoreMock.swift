@@ -59,6 +59,9 @@ open class PassthroughCoreMock: DatadogCoreProtocol, FeatureScope, @unchecked Se
     }
 
     /// no-op
+    public var remoteConfiguration: RemoteConfiguration?
+
+    /// no-op
     public func register<T>(feature: T) throws where T: DatadogFeature {
         registeredFeatures.append(feature)
     }
