@@ -252,8 +252,8 @@ Future<ChangelogEntryList> generateChangelogEntries(
       costTracker: costTracker,
       onWarning: onWarning,
     )).groups;
-    onGroups?.call(groups);
 
+    final nonEmptyGroups = <PrGroup>[];
     for (final group in groups) {
       final numbers = group.prs.map((pr) => pr.number).toSet();
       final groupPrs = prs.where((pr) => numbers.contains(pr.number)).toList();
@@ -265,8 +265,10 @@ Future<ChangelogEntryList> generateChangelogEntries(
         isFirstRelease: isFirstRelease,
         costTracker: costTracker,
       );
+      if (!entries.isEmpty) nonEmptyGroups.add(group);
       changelog = changelog.mergedWith(entries);
     }
+    onGroups?.call(nonEmptyGroups);
 
     changelog = await runCleanupPrompt(
       client,
@@ -325,13 +327,16 @@ Future<PrDetails> _prDetailsWithTouchedFiles(
 }
 
 /// [generateChangelogForPackage]'s result: the entries themselves, plus the
-/// PR groups ([PrGroup], from `runGroupedPrsPrompt`'s pass 1) that produced
-/// them -- empty when there were no PR-derived entries at all (e.g. a
-/// native-SDK-only or first release). Surfaced separately from
-/// [ChangelogEntryList] because the release PR body renders a per-group
-/// "what shipped and why" summary (mirroring dd-sdk-cpp's `prepare-release`
-/// PR body) that the flattened, cleaned-up entry list can no longer be
-/// traced back to groups from.
+/// PR groups ([PrGroup], from `runGroupedPrsPrompt`'s pass 1) that actually
+/// produced at least one of them -- pass 1 partitions every input PR into a
+/// group, including chores and PRs whose real impact is a different
+/// package, so a group whose pass-2 synthesis came back empty is dropped
+/// here rather than surfaced as a "changes in this release" entry with
+/// nothing to back it up. Surfaced separately from [ChangelogEntryList]
+/// because the release PR body renders a per-group "what shipped and why"
+/// summary (mirroring dd-sdk-cpp's `prepare-release` PR body) that the
+/// flattened, cleaned-up entry list can no longer be traced back to groups
+/// from.
 class PackageChangelog {
   final ChangelogEntryList entries;
   final List<PrGroup> groups;
