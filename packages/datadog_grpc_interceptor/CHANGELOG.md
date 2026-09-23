@@ -2,6 +2,11 @@
 
 ## 2.1.0
 
+### Features
+
+- The constraint on `grpc` has been widened to `>=3.0.2 <6.0.0`, allowing apps that require `grpc` 5.x (e.g. those using `protobuf` 6) to resolve dependencies without needing `dependency_overrides`.
+- The version constraint on `datadog_flutter_plugin` has been loosened to allow v4, so projects upgrading to `datadog_flutter_plugin` v4 no longer need a dependency override.
+
 * Support grpc 5.x. See [#1150](https://github.com/DataDog/dd-sdk-flutter/issues/1150).
 
 ## 2.0.0
