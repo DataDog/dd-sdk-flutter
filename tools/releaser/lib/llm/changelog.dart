@@ -327,16 +327,13 @@ Future<PrDetails> _prDetailsWithTouchedFiles(
 }
 
 /// [generateChangelogForPackage]'s result: the entries themselves, plus the
-/// PR groups ([PrGroup], from `runGroupedPrsPrompt`'s pass 1) that actually
-/// produced at least one of them -- pass 1 partitions every input PR into a
-/// group, including chores and PRs whose real impact is a different
-/// package, so a group whose pass-2 synthesis came back empty is dropped
-/// here rather than surfaced as a "changes in this release" entry with
-/// nothing to back it up. Surfaced separately from [ChangelogEntryList]
-/// because the release PR body renders a per-group "what shipped and why"
-/// summary (mirroring dd-sdk-cpp's `prepare-release` PR body) that the
-/// flattened, cleaned-up entry list can no longer be traced back to groups
-/// from.
+/// PR groups ([PrGroup]) that actually produced at least one entry -- a
+/// group whose synthesis came back empty (e.g. a chore, or a PR whose real
+/// impact is a different package) is excluded, never surfaced as a "changes
+/// in this release" item with nothing behind it. Kept separate from
+/// [ChangelogEntryList] because the release PR body renders a per-group
+/// summary that the flattened, cleaned-up entry list can't be traced back
+/// to groups from.
 class PackageChangelog {
   final ChangelogEntryList entries;
   final List<PrGroup> groups;

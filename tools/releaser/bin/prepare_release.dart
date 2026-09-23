@@ -499,7 +499,9 @@ Future<void> prepareRelease(
     staleConsumerWarnings,
     publishValidationSkipped: skipPublishValidation,
     repoSlug: await github.repoSlug(_log),
-    changelogBranch: target.workingBranch,
+    // Never null here -- the only trigger with a null contentCommit is
+    // patch, whose prBase is always null too, so it never reaches this call.
+    changelogRef: contentCommit!,
     groupsByPackage: groupsByPackage,
   );
   final prUrl = await github.createPullRequest(

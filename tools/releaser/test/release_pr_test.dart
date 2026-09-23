@@ -74,13 +74,13 @@ void main() {
 
   group('prBody', () {
     test('adds a heading and PR-group summary per package, linking its '
-        'CHANGELOG.md on the release branch', () {
+        "CHANGELOG.md at commit A's SHA, not a branch name", () {
       final body = prBody(
         [_plan('datadog_grpc_interceptor', newVersion: '2.1.0')],
         const [],
         publishValidationSkipped: false,
         repoSlug: 'DataDog/dd-sdk-flutter',
-        changelogBranch: 'release-prep/20260921-4210b',
+        changelogRef: 'f43de240829820cc4e9562e4e33914956550dd0',
         groupsByPackage: {
           'datadog_grpc_interceptor': [
             const PrGroup(
@@ -96,8 +96,8 @@ void main() {
         body,
         contains(
           'https://github.com/DataDog/dd-sdk-flutter/blob/'
-          'release-prep/20260921-4210b/packages/datadog_grpc_interceptor/'
-          'CHANGELOG.md',
+          'f43de240829820cc4e9562e4e33914956550dd0/packages/'
+          'datadog_grpc_interceptor/CHANGELOG.md',
         ),
       );
       expect(body, contains('#### Dependency version constraint updates'));
@@ -111,7 +111,7 @@ void main() {
         const [],
         publishValidationSkipped: false,
         repoSlug: 'DataDog/dd-sdk-flutter',
-        changelogBranch: 'release-prep/20260921-4210b',
+        changelogRef: 'f43de240829820cc4e9562e4e33914956550dd0',
         groupsByPackage: const {},
       );
 
@@ -125,7 +125,7 @@ void main() {
         const [],
         publishValidationSkipped: true,
         repoSlug: 'DataDog/dd-sdk-flutter',
-        changelogBranch: 'release-prep/20260921-4210b',
+        changelogRef: 'f43de240829820cc4e9562e4e33914956550dd0',
         groupsByPackage: const {},
       );
 
