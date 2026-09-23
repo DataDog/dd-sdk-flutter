@@ -1,3 +1,9 @@
+## 2.1.0
+
+### Features
+
+- The version constraint on `datadog_flutter_plugin` has been loosened to allow both v3 and v4.
+
 ## 2.0.0
 
 * Update Kotlin version to 2.1.0.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.0
+
+### Features
+
+- The version constraint on `datadog_flutter_plugin` has been loosened to allow compatibility with both v3 and v4.
+
+### Fixes
+
+- GraphQL error properties that are absent (null) are now omitted from the serialized error attributes, preventing deserialization failures on Android where JSON `null` values were not handled correctly.
+
 ## 2.1.0
 
 * Add HTTP request and response header capture for RUM resources.
