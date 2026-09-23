@@ -45,6 +45,7 @@ import 'package:releaser/manifest.dart';
 import 'package:releaser/native_sdk.dart';
 import 'package:releaser/package_discovery.dart';
 import 'package:releaser/release_plan.dart';
+import 'package:releaser/release_pr.dart';
 import 'package:releaser/release_validator.dart';
 import 'package:releaser/spm_util.dart';
 import 'package:releaser/version_updater.dart';
@@ -362,10 +363,11 @@ Future<void> prepareRelease(
 
   final costTracker = LlmCostTracker();
   final staleConsumerWarnings = <StaleConsumerWarning>[];
+  final groupsByPackage = <String, List<PrGroup>>{};
 
   // -- Commit A: content -- see the file-level comment above.
   for (final packagePlan in plan.packages) {
-    await _applyContentChanges(
+    final groups = await _applyContentChanges(
       packagePlan,
       ctx,
       allGroups,
@@ -375,9 +377,10 @@ Future<void> prepareRelease(
       costTracker: costTracker,
       staleConsumerWarnings: staleConsumerWarnings,
     );
+    groupsByPackage[packagePlan.package.name] = groups;
   }
 
-  final versionSummary = _versionSummary(plan.packages);
+  final versionSummaryText = versionSummary(plan.packages);
 
   // `null` for patch -- see the file-level comment above.
   final String? contentCommit = ctx.trigger == TriggerContext.patch
@@ -386,7 +389,7 @@ Future<void> prepareRelease(
           gitDir,
           'chore(release): update changelog and bump versions',
           _log,
-          body: versionSummary,
+          body: versionSummaryText,
         );
 
   // -- Commit B: publish-prep -- see the file-level comment above.
@@ -442,7 +445,7 @@ Future<void> prepareRelease(
         ? 'chore(release): prepare patch release'
         : 'chore(release): publish-prep',
     _log,
-    body: versionSummary,
+    body: versionSummaryText,
   );
   _log.info('✅ Prepared release on ${target.workingBranch} ($finalCommit)');
 
@@ -490,11 +493,14 @@ Future<void> prepareRelease(
     return;
   }
 
-  final title = _prTitle(plan.packages);
-  final body = _prBody(
+  final title = prTitle(plan.packages);
+  final body = prBody(
     plan.packages,
     staleConsumerWarnings,
     publishValidationSkipped: skipPublishValidation,
+    repoSlug: await github.repoSlug(_log),
+    changelogBranch: target.workingBranch,
+    groupsByPackage: groupsByPackage,
   );
   final prUrl = await github.createPullRequest(
     _log,
@@ -506,7 +512,10 @@ Future<void> prepareRelease(
   _log.info('✅ Opened release PR: $prUrl');
 }
 
-Future<void> _applyContentChanges(
+/// Applies commit A's changes for [packagePlan] and returns the PR groups
+/// its changelog entries came from (see `release_pr.dart`'s `prBody`) --
+/// empty for a release with no PR-derived entries at all.
+Future<List<PrGroup>> _applyContentChanges(
   PackagePlan packagePlan,
   RunContext ctx,
   List<PackageGroup> allGroups, {
@@ -519,7 +528,7 @@ Future<void> _applyContentChanges(
   final pkg = packagePlan.package;
   final packageRoot = pkg.absolutePath(ctx.repoRoot);
 
-  final entries = await generateChangelogForPackage(
+  final changelog = await generateChangelogForPackage(
     aiGatewayClient,
     packagePlan,
     github: github,
@@ -530,7 +539,7 @@ Future<void> _applyContentChanges(
   await prependChangelogSection(
     File(p.join(packageRoot, 'CHANGELOG.md')),
     packagePlan.newVersion,
-    renderChangelogSection(entries),
+    renderChangelogSection(changelog.entries),
     _log,
     false,
   );
@@ -605,6 +614,8 @@ Future<void> _applyContentChanges(
       cppVersion: cppVersion,
     );
   }
+
+  return changelog.groups;
 }
 
 extension NativeSdkDeltaResolution on Iterable<NativeSdkDelta> {
@@ -664,84 +675,4 @@ Future<void> _applyPublishPrep(
       prerelease: packagePlan.bumpLevel == VersionBumpType.prerelease,
     ),
   );
-}
-
-String _prTitle(List<PackagePlan> packages) {
-  if (packages.length == 1) {
-    final p = packages.single;
-    return 'release: ${p.package.name} ${p.newVersion}';
-  }
-  return 'release: ${packages.length} packages';
-}
-
-/// Plain-text "what's shipping" list shared by both Commit A and Commit
-/// B's commit messages, so `git log` on either one shows the packages and
-/// versions it belongs to without needing the other commit for context.
-String _versionSummary(List<PackagePlan> packages) => packages
-    .map((p) {
-      final bump = p.bumpLevel?.name ?? 'first release';
-      return '- ${p.package.name}: ${p.currentVersion} -> ${p.newVersion} '
-          '($bump)';
-    })
-    .join('\n');
-
-String _prBody(
-  List<PackagePlan> packages,
-  List<StaleConsumerWarning> staleConsumerWarnings, {
-  required bool publishValidationSkipped,
-}) {
-  final buffer = StringBuffer();
-
-  buffer.writeln('## Versions');
-  buffer.writeln();
-  buffer.writeln('| Package | Current | New | Bump |');
-  buffer.writeln('|---|---|---|---|');
-  for (final p in packages) {
-    final bump = p.bumpLevel?.name ?? 'first release';
-    buffer.writeln(
-      '| ${p.package.name} | ${p.currentVersion} | ${p.newVersion} | $bump |',
-    );
-  }
-
-  final nativeDeltas = packages.expand(
-    (p) => p.nativeSdkDeltas.where((d) => d.targetVersion != null),
-  );
-  if (nativeDeltas.isNotEmpty) {
-    buffer.writeln();
-    buffer.writeln('## Native SDK deltas');
-    buffer.writeln();
-    for (final delta in nativeDeltas) {
-      buffer.writeln('- $delta');
-    }
-  }
-
-  if (staleConsumerWarnings.isNotEmpty) {
-    buffer.writeln();
-    buffer.writeln('## ⚠️ Stale consumer constraints');
-    buffer.writeln();
-    for (final warning in staleConsumerWarnings) {
-      buffer.writeln('- $warning');
-    }
-  }
-
-  final allWarnings = packages.expand((p) => p.warnings);
-  if (allWarnings.isNotEmpty) {
-    buffer.writeln();
-    buffer.writeln('## ⚠️ Warnings');
-    buffer.writeln();
-    for (final warning in allWarnings) {
-      buffer.writeln('- $warning');
-    }
-  }
-
-  buffer.writeln();
-  buffer.writeln(
-    publishValidationSkipped
-        ? '⚠️ `flutter pub publish --dry-run` was skipped '
-              '(--skip-publish-validation) -- not verified for any package '
-              'above.'
-        : '`flutter pub publish --dry-run` passed for every package above.',
-  );
-
-  return buffer.toString();
 }

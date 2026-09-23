@@ -66,7 +66,7 @@ Future<void> main(List<String> arguments) async {
   final costTracker = LlmCostTracker();
   final aiGatewayClient = HttpAiGatewayClient.fromEnvironment();
   try {
-    final entries = await generateChangelogForPackage(
+    final changelog = await generateChangelogForPackage(
       aiGatewayClient,
       packagePlan,
       github: GithubCommandWrapper(gitDir.path),
@@ -76,7 +76,7 @@ Future<void> main(List<String> arguments) async {
     );
 
     print('## ${packagePlan.newVersion}\n');
-    print(renderChangelogSection(entries));
+    print(renderChangelogSection(changelog.entries));
 
     print('\n--- LLM cost summary ---\n');
     costTracker.printSummary(_log);
