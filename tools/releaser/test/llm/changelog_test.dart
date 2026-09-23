@@ -364,6 +364,63 @@ void main() {
       expect(result.fixes.single.text, 'Fixes a bug.');
       expect(client.prompts, hasLength(4));
     });
+
+    test(
+      'onGroups only reports groups whose synthesis produced an entry',
+      () async {
+        final prs = [
+          const PrDetails(number: 1, title: 'feat: add a thing', body: 'b1'),
+          const PrDetails(number: 2, title: 'chore: tidy up', body: 'b2'),
+        ];
+
+        final client = FakeAiGatewayClient([
+          // Pass 1: group -- every PR must appear in some group, including
+          // the chore.
+          {
+            'groups': [
+              {
+                'label': 'thing',
+                'prs': [
+                  {'number': 1, 'title': 'feat: add a thing'},
+                ],
+              },
+              {
+                'label': 'tidy up',
+                'prs': [
+                  {'number': 2, 'title': 'chore: tidy up'},
+                ],
+              },
+            ],
+          },
+          // Pass 2, group "thing"
+          {
+            ..._emptyEntryList,
+            'features': [
+              {'text': 'Adds a thing.'},
+            ],
+          },
+          // Pass 2, group "tidy up" -- correctly omitted, no entries.
+          _emptyEntryList,
+          // Pass 3: cleanup
+          {
+            ..._emptyEntryList,
+            'features': [
+              {'text': 'Adds a thing.'},
+            ],
+          },
+        ]);
+
+        List<PrGroup>? reportedGroups;
+        await generateChangelogEntries(
+          client,
+          'datadog_dio',
+          prs,
+          onGroups: (groups) => reportedGroups = groups,
+        );
+
+        expect(reportedGroups!.map((g) => g.label), ['thing']);
+      },
+    );
   });
 
   group('synthesizeNativeSdkSubEntries', () {
