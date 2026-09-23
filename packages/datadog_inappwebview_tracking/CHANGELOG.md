@@ -1,3 +1,9 @@
+## 2.1.0
+
+### Features
+
+- The version constraint on `datadog_flutter_plugin` has been loosened to allow v4, so `datadog_inappwebview_tracking` can now be used alongside either v3 or v4 of the core plugin.
+
 ## 2.0.0
 
 * Update Kotlin version to 2.1.0.
