@@ -237,6 +237,7 @@ Future<ChangelogEntryList> generateChangelogEntries(
   bool isFirstRelease = false,
   LlmCostTracker? costTracker,
   void Function(String warning)? onWarning,
+  void Function(List<PrGroup> groups)? onGroups,
 }) async {
   if (prs.isEmpty && nativeSdkContexts.isEmpty) {
     return const ChangelogEntryList();
@@ -251,6 +252,7 @@ Future<ChangelogEntryList> generateChangelogEntries(
       costTracker: costTracker,
       onWarning: onWarning,
     )).groups;
+    onGroups?.call(groups);
 
     for (final group in groups) {
       final numbers = group.prs.map((pr) => pr.number).toSet();
@@ -290,12 +292,6 @@ Future<ChangelogEntryList> generateChangelogEntries(
   return changelog;
 }
 
-/// Resolves everything [generateChangelogEntries] needs directly from
-/// [packagePlan] -- each contributing commit's PR, that PR's full title and
-/// body, which of the package's own files that PR's commit(s) touched, and
-/// native SDK changelog contexts from [packagePlan]'s native SDK deltas --
-/// then runs the pipeline. The one call a caller holding a [PackagePlan]
-/// needs.
 /// [PrDetails] for [number], with [PrDetails.touchedFiles] filled in from
 /// [shas] -- every one of that PR's contributing commits, unioned and made
 /// relative to [packagePath] -- rather than left for the LLM to guess at
@@ -328,7 +324,28 @@ Future<PrDetails> _prDetailsWithTouchedFiles(
   );
 }
 
-Future<ChangelogEntryList> generateChangelogForPackage(
+/// [generateChangelogForPackage]'s result: the entries themselves, plus the
+/// PR groups ([PrGroup], from `runGroupedPrsPrompt`'s pass 1) that produced
+/// them -- empty when there were no PR-derived entries at all (e.g. a
+/// native-SDK-only or first release). Surfaced separately from
+/// [ChangelogEntryList] because the release PR body renders a per-group
+/// "what shipped and why" summary (mirroring dd-sdk-cpp's `prepare-release`
+/// PR body) that the flattened, cleaned-up entry list can no longer be
+/// traced back to groups from.
+class PackageChangelog {
+  final ChangelogEntryList entries;
+  final List<PrGroup> groups;
+
+  const PackageChangelog({required this.entries, this.groups = const []});
+}
+
+/// Resolves everything [generateChangelogEntries] needs directly from
+/// [packagePlan] -- each contributing commit's PR, that PR's full title and
+/// body, which of the package's own files that PR's commit(s) touched, and
+/// native SDK changelog contexts from [packagePlan]'s native SDK deltas --
+/// then runs the pipeline. The one call a caller holding a [PackagePlan]
+/// needs.
+Future<PackageChangelog> generateChangelogForPackage(
   AiGatewayClient client,
   PackagePlan packagePlan, {
   required GithubCommandWrapper github,
@@ -372,7 +389,8 @@ Future<ChangelogEntryList> generateChangelogForPackage(
     onWarning: (w) => logger.warning('⚠️ $w'),
   );
 
-  return generateChangelogEntries(
+  var groups = const <PrGroup>[];
+  final entries = await generateChangelogEntries(
     client,
     packagePlan.package.name,
     prDetails,
@@ -380,7 +398,10 @@ Future<ChangelogEntryList> generateChangelogForPackage(
     isFirstRelease: packagePlan.isFirstRelease,
     costTracker: costTracker,
     onWarning: (w) => logger.warning('⚠️ $w'),
+    onGroups: (g) => groups = g,
   );
+
+  return PackageChangelog(entries: entries, groups: groups);
 }
 
 /// Renders [entries] as grouped-subsection markdown: `### Breaking Changes`/

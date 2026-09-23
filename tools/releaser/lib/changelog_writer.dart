@@ -37,9 +37,7 @@ Future<void> prependChangelogSection(
   // a package with no CHANGELOG.md yet should get one created, not crash
   // the whole run.
   if (!changelogFile.existsSync()) {
-    logger.warning(
-      '⚠️ ${changelogFile.path} does not exist, creating it now.',
-    );
+    logger.warning('⚠️ ${changelogFile.path} does not exist, creating it now.');
     if (!dryRun) {
       await changelogFile.writeAsString('## $version\n\n$body\n');
     }
