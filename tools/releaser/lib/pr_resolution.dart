@@ -24,10 +24,18 @@ class PrDetails {
   final String title;
   final String body;
 
+  /// Package-relative paths this PR's contributing commit(s) touched under
+  /// the package this changelog is being written for -- not a full diff,
+  /// just names (see `git/git_history.dart`'s `filesChangedInCommit`). Empty
+  /// when nothing is known (e.g. in tests that construct [PrDetails]
+  /// directly rather than through `generateChangelogForPackage`).
+  final List<String> touchedFiles;
+
   const PrDetails({
     required this.number,
     required this.title,
     required this.body,
+    this.touchedFiles = const [],
   });
 }
 

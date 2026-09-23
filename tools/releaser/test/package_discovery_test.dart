@@ -9,6 +9,7 @@ import 'package:test/test.dart';
 
 import 'package:releaser/package_discovery.dart';
 import 'support/fixture_repo.dart';
+import 'support/test_temp.dart';
 
 void main() {
   late FixtureRepo fixture;
@@ -105,7 +106,7 @@ void main() {
   test(
     'a publishable package with no version in its pubspec is an error, not a silent 0.0.0',
     () async {
-      final root = await Directory.systemTemp.createTemp('releaser_test_');
+      final root = await createTestTempDir('releaser_test_');
       addTearDown(() => root.delete(recursive: true));
 
       final packageDir = Directory(p.join(root.path, 'packages', 'no_version'))

@@ -11,7 +11,7 @@ import 'package:path/path.dart' as p;
 import 'package:version/version.dart';
 
 import 'conventional_commits.dart';
-import 'git_history.dart';
+import 'git/git_history.dart';
 import 'github_cmd_wrapper.dart';
 import 'native_sdk.dart';
 import 'package_discovery.dart';
@@ -111,6 +111,11 @@ class PackagePlan {
   /// a published version whose tag is missing, which widens the commit range.
   final List<String> warnings;
 
+  /// True when pub.dev has never seen this package before -- the changelog
+  /// should say so instead of reading like an update to something that
+  /// already shipped.
+  final bool isFirstRelease;
+
   PackagePlan({
     required this.package,
     required this.currentVersion,
@@ -120,6 +125,7 @@ class PackagePlan {
     this.nativeSdkDeltas = const [],
     this.nativeDependencyChanges = const [],
     this.warnings = const [],
+    this.isFirstRelease = false,
   });
 }
 
@@ -652,6 +658,7 @@ PackagePlan _computeMainlinePlan(
       nativeSdkDeltas: nativeSdkDeltas,
       nativeDependencyChanges: nativeDependencyChanges,
       warnings: warnings,
+      isFirstRelease: true,
     );
   }
 
@@ -780,6 +787,7 @@ PackagePlan _computePrereleasePlan(
     nativeSdkDeltas: nativeSdkDeltas,
     nativeDependencyChanges: nativeDependencyChanges,
     warnings: warnings,
+    isFirstRelease: published.isEmpty,
   );
 }
 

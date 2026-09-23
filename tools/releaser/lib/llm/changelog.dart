@@ -3,9 +3,12 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'package:collection/collection.dart';
+import 'package:git/git.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
 
 import '../github_cmd_wrapper.dart';
+import '../git/git_history.dart';
 import '../native_sdk.dart';
 import '../native_sdk_changelog.dart';
 import '../pr_resolution.dart';
@@ -95,13 +98,20 @@ Future<GroupedPrs> runGroupedPrsPrompt(
 
 Future<ChangelogEntryList> runChangelogEntryListPrompt(
   AiGatewayClient client,
+  String packageName,
   String groupLabel,
   List<PrDetails> groupPrs, {
+  bool isFirstRelease = false,
   LlmCostTracker? costTracker,
 }) {
   return runStructuredPrompt(
     client,
-    changelogEntryListPrompt(groupLabel, groupPrs),
+    changelogEntryListPrompt(
+      packageName,
+      groupLabel,
+      groupPrs,
+      isFirstRelease: isFirstRelease,
+    ),
     costTracker: costTracker,
     costLabel: 'ChangelogEntryList($groupLabel)',
   );
@@ -111,12 +121,14 @@ Future<ChangelogEntryList> runChangelogEntryListPrompt(
 
 Future<ChangelogEntryList> runCleanupPrompt(
   AiGatewayClient client,
+  String packageName,
   ChangelogEntryList changelog, {
+  bool isFirstRelease = false,
   LlmCostTracker? costTracker,
 }) {
   return runStructuredPrompt(
     client,
-    cleanupPrompt(changelog),
+    cleanupPrompt(packageName, changelog, isFirstRelease: isFirstRelease),
     costTracker: costTracker,
     costLabel: 'Cleanup',
   );
@@ -198,7 +210,13 @@ Future<List<NativeSdkChangelogContext>> resolveNativeSdkChangelogContexts(
 /// Runs the PR pipeline (group -> synthesize -> cleanup/dedup) against
 /// [prs] -- the significant subset of PRs for one package's release --
 /// then appends one entry per [nativeSdkContexts] (see
-/// [resolveNativeSdkChangelogContexts]). Native SDK entries deliberately
+/// [resolveNativeSdkChangelogContexts]). [packageName] is passed to every
+/// synthesis/cleanup prompt so the LLM only includes impact actually
+/// visible to that package's own users -- a PR can touch [packageName]'s
+/// files as a side effect of a change whose real user-visible impact is in
+/// a different package (e.g. updating an internal call site to match a
+/// renamed parameter), and that PR's entry belongs in the other package's
+/// changelog, not this one. Native SDK entries deliberately
 /// skip the cleanup pass: their exact wording and link are built in Dart
 /// (see [buildNativeSdkUpdateEntry]), and routing them through another LLM
 /// call risks the cleanup pass paraphrasing away the link or flattening
@@ -213,8 +231,10 @@ Future<List<NativeSdkChangelogContext>> resolveNativeSdkChangelogContexts(
 /// nothing to summarize.
 Future<ChangelogEntryList> generateChangelogEntries(
   AiGatewayClient client,
+  String packageName,
   List<PrDetails> prs, {
   List<NativeSdkChangelogContext> nativeSdkContexts = const [],
+  bool isFirstRelease = false,
   LlmCostTracker? costTracker,
   void Function(String warning)? onWarning,
 }) async {
@@ -237,8 +257,10 @@ Future<ChangelogEntryList> generateChangelogEntries(
       final groupPrs = prs.where((pr) => numbers.contains(pr.number)).toList();
       final entries = await runChangelogEntryListPrompt(
         client,
+        packageName,
         group.label,
         groupPrs,
+        isFirstRelease: isFirstRelease,
         costTracker: costTracker,
       );
       changelog = changelog.mergedWith(entries);
@@ -246,7 +268,9 @@ Future<ChangelogEntryList> generateChangelogEntries(
 
     changelog = await runCleanupPrompt(
       client,
+      packageName,
       changelog,
+      isFirstRelease: isFirstRelease,
       costTracker: costTracker,
     );
   }
@@ -268,17 +292,55 @@ Future<ChangelogEntryList> generateChangelogEntries(
 
 /// Resolves everything [generateChangelogEntries] needs directly from
 /// [packagePlan] -- each contributing commit's PR, that PR's full title and
-/// body, and native SDK changelog contexts from [packagePlan]'s native SDK
-/// deltas -- then runs the pipeline. The one call a caller holding a
-/// [PackagePlan] needs.
+/// body, which of the package's own files that PR's commit(s) touched, and
+/// native SDK changelog contexts from [packagePlan]'s native SDK deltas --
+/// then runs the pipeline. The one call a caller holding a [PackagePlan]
+/// needs.
+/// [PrDetails] for [number], with [PrDetails.touchedFiles] filled in from
+/// [shas] -- every one of that PR's contributing commits, unioned and made
+/// relative to [packagePath] -- rather than left for the LLM to guess at
+/// from prose alone (see `prompts/changelog_entry_list_prompt.dart`).
+Future<PrDetails> _prDetailsWithTouchedFiles(
+  GithubCommandWrapper github,
+  GitDir gitDir,
+  Logger logger, {
+  required int number,
+  required Set<String> shas,
+  required String packagePath,
+}) async {
+  final details = await github.fetchPrDetails(logger, number);
+
+  final touchedFiles = <String>{};
+  for (final sha in shas) {
+    final files = await filesChangedInCommit(
+      gitDir,
+      sha: sha,
+      pathspec: packagePath,
+    );
+    touchedFiles.addAll(files.map((f) => p.relative(f, from: packagePath)));
+  }
+
+  return PrDetails(
+    number: details.number,
+    title: details.title,
+    body: details.body,
+    touchedFiles: touchedFiles.toList()..sort(),
+  );
+}
+
 Future<ChangelogEntryList> generateChangelogForPackage(
   AiGatewayClient client,
   PackagePlan packagePlan, {
   required GithubCommandWrapper github,
+  required GitDir gitDir,
   required Logger logger,
   LlmCostTracker? costTracker,
 }) async {
-  final prNumbers = <int>{};
+  // A PR can land through more than one contributing commit (e.g. a fixup
+  // pushed to the same branch before merge), so this tracks every SHA that
+  // resolved to a given PR number -- all of them get checked for touched
+  // files, not just the first.
+  final shasByPrNumber = <int, Set<String>>{};
   for (final commit in packagePlan.contributingCommits) {
     if (commit.sha == null) continue;
     final resolved = await resolvePr(
@@ -286,11 +348,22 @@ Future<ChangelogEntryList> generateChangelogForPackage(
       commit.description,
       (sha) => github.searchMergedPrBySha(logger, sha),
     );
-    if (resolved != null) prNumbers.add(resolved.number);
+    if (resolved != null) {
+      shasByPrNumber.putIfAbsent(resolved.number, () => {}).add(commit.sha!);
+    }
   }
 
+  final packagePath = packagePlan.package.relativePath;
   final prDetails = [
-    for (final number in prNumbers) await github.fetchPrDetails(logger, number),
+    for (final entry in shasByPrNumber.entries)
+      await _prDetailsWithTouchedFiles(
+        github,
+        gitDir,
+        logger,
+        number: entry.key,
+        shas: entry.value,
+        packagePath: packagePath,
+      ),
   ];
 
   final nativeSdkContexts = await resolveNativeSdkChangelogContexts(
@@ -301,8 +374,10 @@ Future<ChangelogEntryList> generateChangelogForPackage(
 
   return generateChangelogEntries(
     client,
+    packagePlan.package.name,
     prDetails,
     nativeSdkContexts: nativeSdkContexts,
+    isFirstRelease: packagePlan.isFirstRelease,
     costTracker: costTracker,
     onWarning: (w) => logger.warning('⚠️ $w'),
   );

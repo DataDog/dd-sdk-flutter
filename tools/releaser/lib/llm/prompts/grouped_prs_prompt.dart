@@ -97,6 +97,8 @@ You are preparing to write a customer-facing changelog for an SDK. Below is a li
 
 Your task: group these PRs so that closely-related PRs can be considered together. A group should capture a coherent user-visible change: for example, several PRs that together implement one feature, or a fix that directly relates to a feature in the same release. PRs with no clear relationship to others should each be their own group.
 
+Every PR listed below must appear in exactly one group in your response -- including PRs that will not end up in the changelog (chores, routine merge commits such as "Merge develop into vX", dependency bumps, CI/tooling changes, etc.). Merge commits and other non-user-facing PRs of that kind can be grouped together into a single group rather than duplicating a label per PR; the important thing is that no PR number is missing from your response. A later step decides which groups are actually worth a changelog entry, so do not drop a PR here just because it looks unlikely to need one.
+
 Your response will be a JSON array where each element is an object representing a related group of one or more PRs. This JSON value will adhere to the provided schema. Your response will include no prose or formatting.
 
 Use only the data provided below. Do not consult external sources.
