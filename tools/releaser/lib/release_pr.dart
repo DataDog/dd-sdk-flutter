@@ -27,10 +27,15 @@ String versionSummary(List<PackagePlan> packages) => packages
     .join('\n');
 
 /// The release PR's body: versions table, native SDK/warning call-outs,
-/// then one section per package linking to its `CHANGELOG.md` on
-/// [changelogBranch] with the same PR-group summary (label + PR numbers)
+/// then one section per package linking to its `CHANGELOG.md` at
+/// [changelogRef] with the same PR-group summary (label + PR numbers)
 /// `runGroupedPrsPrompt` produced for that changelog -- mirrors dd-sdk-cpp's
 /// PR #346, extended to cover several packages in one PR.
+///
+/// [changelogRef] must be a commit SHA (the content commit), never a branch
+/// or tag name -- a SHA stays resolvable and pinned to the exact content as
+/// long as it's reachable from any ref, which it always is here (the
+/// release-prep branch pre-merge, then `develop` once backported).
 ///
 /// [groupsByPackage] is keyed by package name; missing/empty means no group
 /// summary under that heading (e.g. a native-SDK-only release).
@@ -39,7 +44,7 @@ String prBody(
   List<StaleConsumerWarning> staleConsumerWarnings, {
   required bool publishValidationSkipped,
   required String repoSlug,
-  required String changelogBranch,
+  required String changelogRef,
   required Map<String, List<PrGroup>> groupsByPackage,
 }) {
   final buffer = StringBuffer();
@@ -93,7 +98,7 @@ String prBody(
     );
     buffer.writeln();
     final changelogUrl =
-        'https://github.com/$repoSlug/blob/$changelogBranch/'
+        'https://github.com/$repoSlug/blob/$changelogRef/'
         '${p.package.relativePath}/CHANGELOG.md';
     buffer.writeln(
       'See [CHANGELOG.md]($changelogUrl) for the full list of user-facing '
