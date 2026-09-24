@@ -21,6 +21,7 @@ export 'src/flags_client.dart'
         DatadogFlagsClientStatus,
         FlagDetails;
 export 'src/flags_configuration.dart' show DatadogFlagsConfiguration;
-export 'src/flags_error.dart' show FlagEvaluationError;
+export 'src/flags_error.dart'
+    show FlagEvaluationError, FlagsInitializationTimeoutException;
 export 'src/flags_store.dart' show DatadogFlagsStore, FlagsData;
 export 'src/evaluation_context.dart' show FlagsEvaluationContext;

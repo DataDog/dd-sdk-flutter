@@ -7,7 +7,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
-import 'package:datadog_flags/src/assignment.dart';
 import 'package:datadog_flags/src/flag_assignments_fetcher.dart';
 import 'package:datadog_flags/src/flags_repository.dart';
 import 'package:datadog_flags/src/flags_store.dart';
@@ -60,18 +59,8 @@ void main() {
       final httpClient = MockClient((_) async {
         return http.Response(jsonEncode(_assignmentsResponse()), 200);
       });
-      final configuration = _configuration(
+      final repository = _repository(
         httpClient: httpClient,
-        initializationTimeout: timeout,
-      );
-      final repository = FlagsRepository(
-        clientName: DatadogFlags.defaultClientName,
-        fetcher: FlagAssignmentsFetcher(
-          datadogConfig: _datadogConfig,
-          configuration: configuration,
-          httpClient: httpClient,
-        ),
-        dateProvider: DateTime.now,
         initializationTimeout: timeout,
         scheduleInitializationTimeout: (_, __) {
           scheduleCount += 1;
@@ -86,8 +75,30 @@ void main() {
     }
   });
 
+  test('cancels the initialization timer when initialization finishes',
+      () async {
+    final timers = <_TestTimer>[];
+    final httpClient = MockClient((_) async {
+      return http.Response(jsonEncode(_assignmentsResponse()), 200);
+    });
+    final repository = _repository(
+      httpClient: httpClient,
+      initializationTimeout: const Duration(seconds: 30),
+      scheduleInitializationTimeout: (_, __) {
+        final timer = _TestTimer();
+        timers.add(timer);
+        return timer;
+      },
+    );
+
+    await repository.initialize(_context).timeout(const Duration(seconds: 1));
+
+    expect(repository.flagAssignment('show-paywall'), isNotNull);
+    expect(timers.single.cancelCount, 1);
+  });
+
   test(
-    'times out while downloading the response body and recovers later',
+    'throws at the total budget while the network response is loading',
     () async {
       final httpClient = _ControlledResponseBodyClient();
       final datadogFlags = DatadogFlags();
@@ -111,7 +122,10 @@ void main() {
 
       final initialization = client.initialize(_context);
       await httpClient.requestStarted.future;
-      await initialization.timeout(const Duration(seconds: 1));
+      await expectLater(
+        initialization.timeout(const Duration(seconds: 1)),
+        _throwsInitializationTimeout(const Duration(milliseconds: 5)),
+      );
 
       expect(httpClient.bodyCompleted, isFalse);
       expect(
@@ -136,6 +150,84 @@ void main() {
         isTrue,
       );
       expect(statusChanges, [DatadogFlagsClientStatus.ready]);
+    },
+  );
+
+  test(
+    'throws at the total budget while persistent assignments are loading',
+    () async {
+      const budget = Duration(seconds: 5);
+      void Function()? timeoutAction;
+      Duration? scheduledTimeout;
+      final timer = _TestTimer();
+      final store = _DelayedReadStore();
+      addTearDown(() {
+        if (!store.allowRead.isCompleted) {
+          store.allowRead.complete();
+        }
+      });
+      final httpClient = MockClient((_) async {
+        return http.Response(jsonEncode(_assignmentsResponse()), 200);
+      });
+      final repository = _repository(
+        httpClient: httpClient,
+        store: store,
+        initializationTimeout: budget,
+        scheduleInitializationTimeout: (duration, action) {
+          scheduledTimeout = duration;
+          timeoutAction = action;
+          return timer;
+        },
+      );
+
+      final initialization = repository.initialize(_context);
+      await store.readStarted.future;
+      expect(scheduledTimeout, budget);
+      timeoutAction!();
+      await expectLater(
+        initialization.timeout(const Duration(seconds: 1)),
+        _throwsInitializationTimeout(budget),
+      );
+
+      expect(repository.flagAssignment('show-paywall'), isNull);
+      expect(timer.cancelCount, 1);
+
+      store.allowRead.complete();
+      await _waitUntil(() => repository.flagAssignment('show-paywall') != null);
+    },
+  );
+
+  test(
+    'publishes matching stored assignments before an overdue timer runs',
+    () async {
+      final response = Completer<http.Response>();
+      addTearDown(() {
+        if (!response.isCompleted) {
+          response.complete(
+            http.Response(jsonEncode(_assignmentsResponse()), 200),
+          );
+        }
+      });
+      final store = _BlockingReadStore(
+        data: _storedAssignments(_context, value: true),
+        delay: const Duration(milliseconds: 10),
+      );
+      final httpClient = MockClient((_) => response.future);
+      final repository = _repository(
+        httpClient: httpClient,
+        store: store,
+        initializationTimeout: const Duration(milliseconds: 1),
+      );
+
+      await expectLater(
+        repository.initialize(_context).timeout(const Duration(seconds: 1)),
+        _throwsInitializationTimeout(const Duration(milliseconds: 1)),
+      );
+
+      expect(
+        repository.flagAssignment('show-paywall')?.variationValue,
+        isTrue,
+      );
     },
   );
 
@@ -168,7 +260,10 @@ void main() {
       );
       addTearDown(statusSubscription.cancel);
 
-      await client.initialize(_context).timeout(const Duration(seconds: 1));
+      await expectLater(
+        client.initialize(_context).timeout(const Duration(seconds: 1)),
+        _throwsInitializationTimeout(const Duration(milliseconds: 5)),
+      );
 
       expect(
         client
@@ -192,42 +287,40 @@ void main() {
     },
   );
 
-  test('includes assignment storage before publishing ready state', () async {
+  test('publishes assignments while persistent storage remains in progress',
+      () async {
     final store = _DelayedWriteStore();
-    final datadogFlags = DatadogFlags();
-    addTearDown(() async {
+    addTearDown(() {
       if (!store.allowWrite.isCompleted) {
         store.allowWrite.complete();
       }
-      await datadogFlags.disable();
     });
-    await datadogFlags.enable(
-      configuration: _configuration(
-        httpClient: MockClient((_) async {
-          return http.Response(jsonEncode(_assignmentsResponse()), 200);
-        }),
-        store: store,
-        initializationTimeout: const Duration(milliseconds: 5),
-      ),
+    final httpClient = MockClient((_) async {
+      return http.Response(jsonEncode(_assignmentsResponse()), 200);
+    });
+    final repository = _repository(
+      httpClient: httpClient,
+      store: store,
+      initializationTimeout: null,
     );
-    final client = datadogFlags.sharedClient();
 
-    final initialization = client.initialize(_context);
+    var initializationCompleted = false;
+    final initialization = repository
+        .initialize(_context)
+        .whenComplete(() => initializationCompleted = true);
     await store.writeStarted.future;
-    await initialization.timeout(const Duration(seconds: 1));
 
     expect(
-      client.getBooleanDetails(key: 'show-paywall', defaultValue: false).error,
-      FlagEvaluationError.providerNotReady,
+      repository.flagAssignment('show-paywall')?.variationValue,
+      isTrue,
     );
+    expect(initializationCompleted, isFalse);
 
     store.allowWrite.complete();
-    await _waitUntil(() {
-      return client
-              .getBooleanDetails(key: 'show-paywall', defaultValue: false)
-              .error ==
-          null;
-    });
+    await initialization.timeout(const Duration(seconds: 1));
+
+    expect(initializationCompleted, isTrue);
+    expect(await store.read(DatadogFlags.defaultClientName), isNotNull);
   });
 
   test(
@@ -248,7 +341,10 @@ void main() {
       );
       final client = datadogFlags.sharedClient();
 
-      await client.initialize(_context).timeout(const Duration(seconds: 1));
+      await expectLater(
+        client.initialize(_context).timeout(const Duration(seconds: 1)),
+        _throwsInitializationTimeout(const Duration(milliseconds: 5)),
+      );
 
       var secondCompleted = false;
       final second = client
@@ -288,19 +384,9 @@ void main() {
         responses.add(response);
         return response.future;
       });
-      final configuration = _configuration(
+      final repository = _repository(
         httpClient: httpClient,
         initializationTimeout: const Duration(seconds: 5),
-      );
-      final repository = FlagsRepository(
-        clientName: DatadogFlags.defaultClientName,
-        fetcher: FlagAssignmentsFetcher(
-          datadogConfig: _datadogConfig,
-          configuration: configuration,
-          httpClient: httpClient,
-        ),
-        dateProvider: DateTime.now,
-        initializationTimeout: configuration.initializationTimeout,
         scheduleInitializationTimeout: (_, action) {
           scheduleCount += 1;
           timeoutAction = action;
@@ -322,7 +408,10 @@ void main() {
 
       expect(scheduleCount, 1);
       timeoutAction!();
-      await first.timeout(const Duration(seconds: 1));
+      await expectLater(
+        first.timeout(const Duration(seconds: 1)),
+        _throwsInitializationTimeout(const Duration(seconds: 5)),
+      );
       await Future<void>.delayed(Duration.zero);
       expect(secondCompleted, isFalse);
       expect(repository.context, isNull);
@@ -353,74 +442,111 @@ void main() {
     },
   );
 
-  test('keeps the deadline active through response JSON decoding', () async {
-    void Function()? timeoutAction;
-    final fetcher = FlagAssignmentsFetcher(
-      datadogConfig: _datadogConfig,
-      configuration: _configuration(
-        httpClient: MockClient((_) async {
-          return http.Response('{}', 200);
-        }),
-      ),
-      httpClient: MockClient((_) async {
-        return http.Response('{}', 200);
-      }),
-      responseDecoder: (_) {
-        timeoutAction!();
-        return PrecomputedAssignments(
-          flags: {'show-paywall': _assignment(value: true)},
-        );
-      },
-    );
-    final repository = FlagsRepository(
-      clientName: DatadogFlags.defaultClientName,
-      fetcher: fetcher,
-      dateProvider: DateTime.now,
-      initializationTimeout: const Duration(seconds: 5),
-      scheduleInitializationTimeout: (_, action) {
-        timeoutAction = action;
+  test('starts the timeout before synchronous request encoding', () async {
+    var timerScheduled = false;
+    final response = Completer<http.Response>();
+    final httpClient = MockClient((_) => response.future);
+    final repository = _repository(
+      httpClient: httpClient,
+      initializationTimeout: const Duration(milliseconds: 1),
+      scheduleInitializationTimeout: (_, __) {
+        timerScheduled = true;
         return _TestTimer();
       },
     );
-
-    await repository.initialize(_context);
-
-    expect(repository.flagAssignment('show-paywall'), isNull);
-    await _waitUntil(() => repository.flagAssignment('show-paywall') != null);
-  });
-
-  test('counts synchronous request encoding against the deadline', () async {
-    final response = Completer<http.Response>();
-    final httpClient = MockClient((_) => response.future);
-    final configuration = _configuration(
-      httpClient: httpClient,
-      initializationTimeout: const Duration(milliseconds: 1),
-    );
-    final repository = FlagsRepository(
-      clientName: DatadogFlags.defaultClientName,
-      fetcher: FlagAssignmentsFetcher(
-        datadogConfig: _datadogConfig,
-        configuration: configuration,
-        httpClient: httpClient,
-      ),
-      dateProvider: DateTime.now,
-      initializationTimeout: configuration.initializationTimeout,
-      scheduleInitializationTimeout: (_, __) => _TestTimer(),
-    );
     final context = FlagsEvaluationContext(
       targetingKey: 'user-123',
-      attributes: {'slow': _SlowIterable(const Duration(milliseconds: 10))},
+      attributes: {
+        'observed': _CallbackIterable(
+          () => expect(timerScheduled, isTrue),
+        ),
+      },
     );
 
-    await repository.initialize(context).timeout(const Duration(seconds: 1));
+    final initialization = repository.initialize(context);
 
-    expect(repository.flagAssignment('show-paywall'), isNull);
+    expect(timerScheduled, isTrue);
     response.complete(http.Response(jsonEncode(_assignmentsResponse()), 200));
-    await _waitUntil(() => repository.flagAssignment('show-paywall') != null);
+    await initialization.timeout(const Duration(seconds: 1));
+    expect(repository.flagAssignment('show-paywall'), isNotNull);
+  });
+
+  test('preserves store write order across SDK reconfiguration', () async {
+    final store = _CrossLifecycleStore();
+    final datadogFlags = DatadogFlags();
+    addTearDown(() async {
+      if (!store.allowFirstWrite.isCompleted) {
+        store.allowFirstWrite.complete();
+      }
+      await datadogFlags.disable();
+    });
+
+    await datadogFlags.enable(
+      configuration: _configuration(
+        httpClient: MockClient((_) async {
+          return http.Response(jsonEncode(_assignmentsResponse()), 200);
+        }),
+        store: store,
+        initializationTimeout: const Duration(milliseconds: 5),
+      ),
+    );
+    final firstInitialization =
+        datadogFlags.sharedClient().initialize(_context);
+    await store.firstWriteStarted.future.timeout(const Duration(seconds: 1));
+    await expectLater(
+      firstInitialization.timeout(const Duration(seconds: 1)),
+      _throwsInitializationTimeout(const Duration(milliseconds: 5)),
+    );
+
+    await datadogFlags.enable(
+      configuration: _configuration(
+        httpClient: MockClient((_) async {
+          return http.Response(
+            jsonEncode(_assignmentsResponse(booleanValue: false)),
+            200,
+          );
+        }),
+        store: store,
+        initializationTimeout: const Duration(milliseconds: 5),
+      ),
+    );
+    final secondClient = datadogFlags.sharedClient();
+    await expectLater(
+      secondClient.initialize(_context).timeout(const Duration(seconds: 1)),
+      _throwsInitializationTimeout(const Duration(milliseconds: 5)),
+    );
+    expect(
+      secondClient
+          .getBooleanDetails(key: 'show-paywall', defaultValue: true)
+          .value,
+      isFalse,
+    );
+
+    store.allowFirstWrite.complete();
+    await store.firstWriteCompleted.future.timeout(const Duration(seconds: 1));
+    await store.secondWriteCompleted.future.timeout(const Duration(seconds: 1));
+
+    expect(
+      store.data?.flags['show-paywall']?.variationValue,
+      isFalse,
+      reason: 'An older lifecycle must not overwrite newer stored assignments.',
+    );
   });
 }
 
 const _context = FlagsEvaluationContext(targetingKey: 'user-123');
+
+Matcher _throwsInitializationTimeout(Duration timeout) {
+  return throwsA(
+    isA<FlagsInitializationTimeoutException>()
+        .having(
+          (error) => error.clientName,
+          'clientName',
+          DatadogFlags.defaultClientName,
+        )
+        .having((error) => error.timeout, 'timeout', timeout),
+  );
+}
 
 const _datadogConfig = DatadogFlagsConfig(
   clientToken: 'client-token',
@@ -444,6 +570,37 @@ DatadogFlagsConfiguration _configuration({
   );
 }
 
+FlagsRepository _repository({
+  required http.Client httpClient,
+  Duration? initializationTimeout =
+      DatadogFlagsConfiguration.defaultInitializationTimeout,
+  DatadogFlagsStore? store,
+  Timer Function(Duration, void Function()) scheduleInitializationTimeout =
+      _scheduleTimer,
+}) {
+  final configuration = _configuration(
+    httpClient: httpClient,
+    initializationTimeout: initializationTimeout,
+    store: store,
+  );
+  return FlagsRepository(
+    clientName: DatadogFlags.defaultClientName,
+    fetcher: FlagAssignmentsFetcher(
+      datadogConfig: _datadogConfig,
+      configuration: configuration,
+      httpClient: httpClient,
+    ),
+    store: store,
+    dateProvider: DateTime.now,
+    initializationTimeout: initializationTimeout,
+    scheduleInitializationTimeout: scheduleInitializationTimeout,
+  );
+}
+
+Timer _scheduleTimer(Duration duration, void Function() action) {
+  return Timer(duration, action);
+}
+
 Map<String, Object?> _assignmentsResponse({bool booleanValue = true}) {
   return {
     'data': {
@@ -452,10 +609,6 @@ Map<String, Object?> _assignmentsResponse({bool booleanValue = true}) {
       },
     },
   };
-}
-
-FlagAssignment _assignment({required bool value}) {
-  return FlagAssignment.fromJson(_assignmentJson(value: value));
 }
 
 Map<String, Object?> _assignmentJson({required bool value}) {
@@ -493,6 +646,11 @@ Future<void> _waitUntil(
   }
 }
 
+void _blockFor(Duration duration) {
+  final stopwatch = Stopwatch()..start();
+  while (stopwatch.elapsed < duration) {}
+}
+
 class _ControlledResponseBodyClient extends http.BaseClient {
   final StreamController<List<int>> _body = StreamController<List<int>>();
   final Completer<void> requestStarted = Completer<void>();
@@ -510,6 +668,31 @@ class _ControlledResponseBodyClient extends http.BaseClient {
     bodyCompleted = true;
     _body.add(utf8.encode(jsonEncode(body)));
     await _body.close();
+  }
+}
+
+class _DelayedReadStore implements DatadogFlagsStore {
+  final InMemoryDatadogFlagsStore _delegate = InMemoryDatadogFlagsStore();
+  final Completer<void> readStarted = Completer<void>();
+  final Completer<void> allowRead = Completer<void>();
+
+  @override
+  Future<FlagsData?> read(String clientName) async {
+    if (!readStarted.isCompleted) {
+      readStarted.complete();
+    }
+    await allowRead.future;
+    return _delegate.read(clientName);
+  }
+
+  @override
+  Future<void> write(String clientName, FlagsData data) {
+    return _delegate.write(clientName, data);
+  }
+
+  @override
+  Future<void> delete(String clientName) {
+    return _delegate.delete(clientName);
   }
 }
 
@@ -538,8 +721,63 @@ class _DelayedWriteStore implements DatadogFlagsStore {
   }
 }
 
+class _CrossLifecycleStore implements DatadogFlagsStore {
+  final Completer<void> firstWriteStarted = Completer<void>();
+  final Completer<void> allowFirstWrite = Completer<void>();
+  final Completer<void> firstWriteCompleted = Completer<void>();
+  final Completer<void> secondWriteCompleted = Completer<void>();
+
+  FlagsData? data;
+  var _writeCount = 0;
+
+  @override
+  Future<FlagsData?> read(String clientName) async => data;
+
+  @override
+  Future<void> write(String clientName, FlagsData value) async {
+    _writeCount += 1;
+    final writeNumber = _writeCount;
+    if (writeNumber == 1) {
+      firstWriteStarted.complete();
+      await allowFirstWrite.future;
+    }
+
+    data = value;
+    if (writeNumber == 1) {
+      firstWriteCompleted.complete();
+    } else if (writeNumber == 2) {
+      secondWriteCompleted.complete();
+    }
+  }
+
+  @override
+  Future<void> delete(String clientName) async {
+    data = null;
+  }
+}
+
+class _BlockingReadStore implements DatadogFlagsStore {
+  final FlagsData data;
+  final Duration delay;
+
+  _BlockingReadStore({required this.data, required this.delay});
+
+  @override
+  Future<FlagsData?> read(String clientName) {
+    _blockFor(delay);
+    return Future<FlagsData?>.value(data);
+  }
+
+  @override
+  Future<void> write(String clientName, FlagsData data) async {}
+
+  @override
+  Future<void> delete(String clientName) async {}
+}
+
 class _TestTimer implements Timer {
   var _isActive = true;
+  var cancelCount = 0;
 
   @override
   bool get isActive => _isActive;
@@ -549,19 +787,19 @@ class _TestTimer implements Timer {
 
   @override
   void cancel() {
+    cancelCount += 1;
     _isActive = false;
   }
 }
 
-class _SlowIterable extends Iterable<Object?> {
-  final Duration delay;
+class _CallbackIterable extends Iterable<Object?> {
+  final void Function() onIterate;
 
-  _SlowIterable(this.delay);
+  _CallbackIterable(this.onIterate);
 
   @override
   Iterator<Object?> get iterator {
-    final stopwatch = Stopwatch()..start();
-    while (stopwatch.elapsed < delay) {}
+    onIterate();
     return <Object?>[true].iterator;
   }
 }

@@ -6,7 +6,6 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:meta/meta.dart';
 
 import 'assignment.dart';
 import 'datadog_flags_config.dart';
@@ -21,14 +20,10 @@ class FlagAssignmentsFetcher {
   final DatadogFlagsConfiguration configuration;
   final http.Client httpClient;
 
-  @visibleForTesting
-  final PrecomputedAssignments Function(String) responseDecoder;
-
   FlagAssignmentsFetcher({
     required this.datadogConfig,
     required this.configuration,
     required this.httpClient,
-    this.responseDecoder = _decodeAssignments,
   });
 
   Future<PrecomputedAssignments> fetch(
@@ -62,7 +57,15 @@ class FlagAssignmentsFetcher {
     }
 
     try {
-      return responseDecoder(response.body);
+      final decoded = PrecomputeResponse.fromJson(
+        _asObject(jsonDecode(response.body), 'response'),
+      );
+      final attributes = decoded.data.attributes;
+      return PrecomputedAssignments(
+        flags: attributes.flags,
+        createdAt: attributes.createdAt,
+        environment: attributes.environment,
+      );
     } catch (error) {
       throw FlagsException.invalidResponse(
         'Failed to decode flag assignments response: $error',
@@ -80,18 +83,6 @@ class FlagAssignmentsFetcher {
       ...?configuration.customFlagsHeaders,
     };
   }
-}
-
-PrecomputedAssignments _decodeAssignments(String body) {
-  final decoded = PrecomputeResponse.fromJson(
-    _asObject(jsonDecode(body), 'response'),
-  );
-  final attributes = decoded.data.attributes;
-  return PrecomputedAssignments(
-    flags: attributes.flags,
-    createdAt: attributes.createdAt,
-    environment: attributes.environment,
-  );
 }
 
 Map<String, Object?> _asObject(Object? value, String name) {

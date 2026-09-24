@@ -11,11 +11,18 @@ import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flag_assignments_fetcher.dart';
 import 'flags_client.dart';
+import 'flags_error.dart';
 import 'flags_store.dart';
 import 'json_value.dart';
 
 class FlagsRepository {
   static const defaultStoreReadTimeout = Duration(milliseconds: 100);
+
+  // Keep late writes ordered when SDK reconfiguration replaces a repository.
+  // Expando keeps the queue scoped to the store identity without retaining it.
+  static final Expando<Map<String, _CacheOperationQueue>>
+      _cacheOperationQueues =
+      Expando<Map<String, _CacheOperationQueue>>('flags cache operations');
 
   @visibleForTesting
   final Duration storeReadTimeout;
@@ -25,6 +32,7 @@ class FlagsRepository {
   final DatadogFlagsStore? store;
   final DateTime Function() dateProvider;
   final Duration? initializationTimeout;
+  final _CacheOperationQueue _cacheOperations;
 
   @visibleForTesting
   final Timer Function(Duration, void Function()) scheduleInitializationTimeout;
@@ -34,7 +42,6 @@ class FlagsRepository {
   final StreamController<DatadogFlagsClientStatus> _statusChanges =
       StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
   _CancelToken? _currentToken;
-  Future<void> _cacheOperation = Future<void>.value();
   bool _didStartInitialization = false;
 
   FlagsRepository({
@@ -45,7 +52,7 @@ class FlagsRepository {
     this.initializationTimeout,
     this.storeReadTimeout = defaultStoreReadTimeout,
     this.scheduleInitializationTimeout = _scheduleInitializationTimeout,
-  });
+  }) : _cacheOperations = _cacheOperationQueue(store, clientName);
 
   FlagsEvaluationContext? get context => _state?.context;
 
@@ -61,30 +68,33 @@ class FlagsRepository {
     _currentToken = token;
 
     final timeout = _takeInitializationTimeout();
-    final deadline = timeout == null
-        ? null
-        : _InitializationDeadline(timeout, scheduleInitializationTimeout);
-    final operation = _initialize(context, token, deadline);
-    if (deadline == null) {
-      return operation;
+    if (timeout == null) {
+      return _initialize(context, token);
     }
-    deadline.observe(operation);
-    return deadline.future;
+
+    final timeoutCompletion = Completer<void>();
+    final timer = scheduleInitializationTimeout(
+      timeout,
+      () => timeoutCompletion.completeError(
+        FlagsInitializationTimeoutException(
+          clientName: clientName,
+          timeout: timeout,
+        ),
+        StackTrace.current,
+      ),
+    );
+    final operation = _initialize(context, token);
+    return Future.any<void>([
+      operation,
+      timeoutCompletion.future,
+    ]).whenComplete(timer.cancel);
   }
 
   Future<void> _initialize(
     FlagsEvaluationContext context,
     _CancelToken token,
-    _InitializationDeadline? deadline,
   ) async {
     final cached = store == null ? null : await _readCached();
-    if (token.isCanceled) {
-      return;
-    }
-    final cacheDeadlineYield = _yieldAfterExpiredDeadline(deadline);
-    if (cacheDeadlineYield != null) {
-      await cacheDeadlineYield;
-    }
     if (token.isCanceled) {
       return;
     }
@@ -108,19 +118,9 @@ class FlagsRepository {
         context: context,
         date: dateProvider(),
       );
-      await _writeCached(data);
-      if (token.isCanceled) {
-        return;
-      }
-      final publicationDeadlineYield = _yieldAfterExpiredDeadline(deadline);
-      if (publicationDeadlineYield != null) {
-        await publicationDeadlineYield;
-      }
-      if (token.isCanceled) {
-        return;
-      }
       _state = data;
       _setStatus(DatadogFlagsClientStatus.ready);
+      await _writeCached(data);
     } catch (_) {
       if (!token.isCanceled && matchingCached == null) {
         _state = null;
@@ -147,13 +147,17 @@ class FlagsRepository {
     return Timer(timeout, action);
   }
 
-  static Future<void>? _yieldAfterExpiredDeadline(
-    _InitializationDeadline? deadline,
+  static _CacheOperationQueue _cacheOperationQueue(
+    DatadogFlagsStore? store,
+    String clientName,
   ) {
-    if (deadline?.expireIfNeeded() ?? false) {
-      return Future<void>.delayed(Duration.zero);
+    if (store == null) {
+      return _CacheOperationQueue();
     }
-    return null;
+
+    final queues =
+        _cacheOperationQueues[store] ??= <String, _CacheOperationQueue>{};
+    return queues.putIfAbsent(clientName, _CacheOperationQueue.new);
   }
 
   bool _hasCurrentStateForContext(FlagsEvaluationContext context) {
@@ -206,7 +210,7 @@ class FlagsRepository {
   }
 
   Future<void> _writeCached(FlagsData data) async {
-    await _enqueueCacheOperation(() async {
+    await _cacheOperations.enqueue(() async {
       try {
         await store?.write(clientName, data);
       } catch (_) {
@@ -216,7 +220,7 @@ class FlagsRepository {
   }
 
   Future<void> _deleteCached() async {
-    await _enqueueCacheOperation(() async {
+    await _cacheOperations.enqueue(() async {
       try {
         await store?.delete(clientName);
       } catch (_) {
@@ -224,74 +228,15 @@ class FlagsRepository {
       }
     });
   }
-
-  Future<void> _enqueueCacheOperation(Future<void> Function() operation) {
-    final next = _cacheOperation.then((_) => operation());
-    _cacheOperation = next.catchError((_) {});
-    return next;
-  }
 }
 
-class _InitializationDeadline {
-  final Duration timeout;
-  final Completer<void> _completion = Completer<void>();
-  final Stopwatch _stopwatch = Stopwatch()..start();
-  Timer? _timer;
-  var _expired = false;
+class _CacheOperationQueue {
+  Future<void> _operation = Future<void>.value();
 
-  _InitializationDeadline(
-    this.timeout,
-    Timer Function(Duration, void Function()) schedule,
-  ) {
-    _timer = schedule(timeout, _expire);
-    if (_expired) {
-      _timer?.cancel();
-    }
-  }
-
-  Future<void> get future => _completion.future;
-
-  bool expireIfNeeded() {
-    if (!_expired && _stopwatch.elapsed >= timeout) {
-      _expire();
-    }
-    return _expired;
-  }
-
-  void observe(Future<void> operation) {
-    expireIfNeeded();
-    operation.then<void>(
-      (_) => _completeOperation(),
-      onError: _completeOperationWithError,
-    );
-  }
-
-  void _expire() {
-    if (_completion.isCompleted) {
-      return;
-    }
-    _expired = true;
-    _stopwatch.stop();
-    _timer?.cancel();
-    _completion.complete();
-  }
-
-  void _completeOperation() {
-    if (expireIfNeeded()) {
-      return;
-    }
-    _stopwatch.stop();
-    _timer?.cancel();
-    _completion.complete();
-  }
-
-  void _completeOperationWithError(Object error, StackTrace stackTrace) {
-    if (expireIfNeeded()) {
-      return;
-    }
-    _stopwatch.stop();
-    _timer?.cancel();
-    _completion.completeError(error, stackTrace);
+  Future<void> enqueue(Future<void> Function() operation) {
+    final next = _operation.then((_) => operation());
+    _operation = next.catchError((_) {});
+    return next;
   }
 }
 

@@ -8,12 +8,13 @@ import 'package:meta/meta.dart';
 
 import 'datadog_flags_config.dart';
 import 'flags_client.dart';
+import 'flags_error.dart';
 import 'flags_store.dart';
 
 /// Runtime configuration for Datadog feature flag clients.
 @immutable
 final class DatadogFlagsConfiguration {
-  /// Default maximum time to wait for the first evaluation context.
+  /// Default wall-clock budget for the first evaluation context.
   static const defaultInitializationTimeout = Duration(seconds: 5);
 
   /// Default interval for aggregating and sending flag evaluation telemetry.
@@ -31,14 +32,23 @@ final class DatadogFlagsConfiguration {
   /// Additional headers sent with precompute assignment requests.
   final Map<String, String>? customFlagsHeaders;
 
-  /// Maximum time to wait for initialization of the first evaluation context.
+  /// Wall-clock budget for the first evaluation context.
   ///
-  /// This timeout covers the complete initialization operation. It includes
-  /// loading stored assignments, encoding the request, fetching assignments,
-  /// reading the response body, decoding JSON, storing assignments, and making
-  /// the assignments available for evaluation. It does not change the HTTP
-  /// client's timeout. The assignment operation continues after this timeout
-  /// and can make assignments available when it completes.
+  /// If initialization is still active, the SDK stops waiting when Dart runs
+  /// the timeout timer. Synchronous work can block the Dart isolate, so the
+  /// wait can be longer than this value. [DatadogFlagsClient.initialize]
+  /// completes with [FlagsInitializationTimeoutException] when the timeout
+  /// expires.
+  ///
+  /// This value is one budget for the complete initialization operation. The
+  /// SDK does not restart it for each stage. It includes loading stored
+  /// assignments, encoding the request, fetching assignments, reading the
+  /// response body, decoding JSON, making assignments available for evaluation,
+  /// and storing assignments. It does not change the HTTP client's timeout. The
+  /// assignment operation continues after this timeout and can make assignments
+  /// available when it completes.
+  ///
+  /// The SDK does not limit how large this value can be.
   ///
   /// The timeout applies only to the first
   /// [DatadogFlagsClient.initialize] call for each client. A `null`, zero, or

@@ -71,6 +71,38 @@ repo. Using this script requires you have both
 [Swiftlint](https://github.com/realm/SwiftLint) and [Bitrise
 CLI](https://app.bitrise.io/cli) available on your path
 
+## Commit messages
+
+Before requesting review, include at least one non-merge commit that uses the
+[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format:
+
+```text
+<type>[optional scope][!]: <description>
+```
+
+For example, use `feat(flags): add initialization timeout` or
+`fix(web): avoid duplicate requests`.
+
+For features and bug fixes, use a `feat:` or `fix:` commit that changes the
+relevant package. The release tooling creates one changelog entry for each such
+commit. An empty commit does not appear in the package history used by the
+release tooling. Use types such as `docs:` or `chore:` for changes that do not
+need changelog entries.
+
+Review follow-up commits can use descriptive subjects without this format.
+The Conventional Commit does not need to be the last commit. Avoid adding
+`feat:` or `fix:` only to label review fixes for the same change, because this
+can create duplicate changelog entries. Do not rewrite pushed history only to
+repair a commit subject.
+
+For squash merges, ensure that the resulting commit subject also uses this
+format. A Conventional Commit pull request title can supply that subject.
+A pull request title does not change commit subjects preserved by merge or
+rebase.
+
+Do not add changelog entries in a pull request. The release tooling generates
+the changelog from the Conventional Commit subjects.
+
 ## Tests
 
 There are three types of tests in this repo

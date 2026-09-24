@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.5.1
+
+* [Web] Use JS types in TracingUrl closure. See [#1127](https://github.com/DataDog/dd-sdk-flutter/issues/1127)
+* [Android] Prevent retaining a potentially GC'd Companion object. See [#1133](https://github.com/DataDog/dd-sdk-flutter/issues/1133)
+
 ## 3.5.0
 
 * [Android] Prevent native crash when reading RUM context for tracing. See [#1106](https://github.com/DataDog/dd-sdk-flutter/issues/1106)
