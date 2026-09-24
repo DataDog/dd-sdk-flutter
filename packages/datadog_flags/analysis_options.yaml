@@ -4,6 +4,9 @@ include: package:lints/recommended.yaml
 # https://dart.dev/guides/language/analysis-options
 
 analyzer:
+  errors:
+    # Internal compatibility code remains until the next major release.
+    deprecated_member_use_from_same_package: ignore
   language:
     strict-raw-types: true
 

@@ -31,6 +31,8 @@ with programmatic defaults.
 
 The Datadog Flutter SDK initializes separately for RUM, Logs, and Traces. The
 OpenFeature provider owns the Flags runtime and its assignment lifecycle.
+`DatadogRumHook` associates successful evaluations with the active RUM view.
+The Refresh button calls the provider refresh method.
 
 To test feature flags in your own organization, customize the generated `.env`
 file:
@@ -45,3 +47,17 @@ FLAGS_INTEGER_KEYS=checkout.limit
 FLAGS_DOUBLE_KEYS=checkout.ratio
 FLAGS_OBJECT_KEYS=checkout.config
 ```
+
+## Simulator validation
+
+Use Flutter 3.38 or later. Create `.env` with `../../generate_env.sh` first.
+Run the same test on an Android emulator and an iOS simulator:
+
+```sh
+flutter test integration_test/openfeature_test.dart -d <device-id>
+```
+
+The test starts this example app with the real Datadog provider and controlled
+HTTP responses. It checks typed evaluations, defaults, refresh, identity
+changes, telemetry requests, and shutdown. Native RUM consent is not granted
+for this fixture run. The test does not prove live Datadog connectivity.

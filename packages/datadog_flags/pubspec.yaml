@@ -1,6 +1,8 @@
 name: datadog_flags
 description: Datadog Feature Flags and Experimentation SDK for client applications.
 version: 1.2.0
+# Remove only after a Dart 3.10-compatible OpenFeature release is validated.
+publish_to: none
 repository: https://github.com/DataDog/dd-sdk-flutter
 homepage: https://datadoghq.com
 issue_tracker: https://github.com/DataDog/dd-sdk-flutter/issues
@@ -10,16 +12,25 @@ topics:
   - experimentation
 
 environment:
-  sdk: ">=3.6.0 <4.0.0"
+  sdk: ">=3.10.0 <4.0.0"
 
 dependencies:
   http: ^1.0.0
   json_annotation: ^4.9.0
   meta: ^1.0.0
-  openfeature_dart_client_sdk: ^0.0.1-beta.1
+  openfeature_dart_client_sdk:
+    git:
+      url: https://github.com/open-feature/dart-sdk.git
+      ref: 82c5dcd7229cdfcc7c4b151a7b8bac2aeb4dd3ea
+      path: packages/openfeature_dart_client_sdk
   uuid: ^4.0.0
 
 dev_dependencies:
+  openfeature_client_provider_contract:
+    git:
+      url: https://github.com/open-feature/dart-sdk.git
+      ref: 82c5dcd7229cdfcc7c4b151a7b8bac2aeb4dd3ea
+      path: conformance/client_provider_contract
   build_runner: 2.4.15
   json_serializable: 6.9.5
   lints: '>=5.0.0'

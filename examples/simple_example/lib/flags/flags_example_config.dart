@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 const _stagingRumEndpoint = 'https://browser-intake-datad0g.com/api/v2/rum';
@@ -75,6 +76,7 @@ final class FlagsExampleConfig {
     required String env,
     required DatadogFlagsSite site,
     required String? applicationId,
+    http.Client? httpClient,
   }) {
     final datadogConfig = _datadogConfig(
       clientToken: clientToken,
@@ -84,10 +86,15 @@ final class FlagsExampleConfig {
     );
 
     return FlagsExampleConfig._(
-      configuration: DatadogFlagsConfiguration(datadogConfig: datadogConfig),
+      configuration: DatadogFlagsConfiguration(
+        datadogConfig: datadogConfig,
+        httpClient: httpClient,
+      ),
       evaluationContext: EvaluationContext(
-        targetingKey:
-            dotenv.get('FLAGS_TARGETING_KEY', fallback: 'test_subject4'),
+        targetingKey: dotenv.get(
+          'FLAGS_TARGETING_KEY',
+          fallback: 'test_subject4',
+        ),
         attributes: _attributesFromJson(
           dotenv.get(
             'FLAGS_TARGETING_ATTRIBUTES_JSON',
@@ -181,6 +188,8 @@ DatadogSite _datadogSiteForName(String? siteName) {
   }
 }
 
+// Mirrors datadogFlagsSiteFor in datadog_flags_flutter. Keep both mappings
+// consistent when adding a Datadog site.
 DatadogFlagsSite? _datadogFlagsSiteFor(DatadogSite site) {
   return switch (site) {
     DatadogSite.us1 => DatadogFlagsSite.us1,

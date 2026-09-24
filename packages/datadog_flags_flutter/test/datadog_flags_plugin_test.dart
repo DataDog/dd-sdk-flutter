@@ -1,3 +1,6 @@
+// Legacy API compatibility until the next major release.
+// ignore_for_file: deprecated_member_use
+
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
@@ -20,6 +23,70 @@ class MockDatadogFlagsLifecycleClient extends Mock
     implements DatadogFlagsClient, DatadogFlagsClientLifecycle {}
 
 void main() {
+  test('overlapping lifecycle calls resolve and subscribe once', () async {
+    const context = FlagsEvaluationContext(targetingKey: 'a');
+    final delegate = MockDatadogFlagsLifecycleClient();
+    final upstream = StreamController<DatadogFlagsClientStatus>.broadcast(
+      sync: true,
+    );
+    addTearDown(upstream.close);
+    when(() => delegate.initialize(context)).thenAnswer((_) async {});
+    when(() => delegate.reset()).thenAnswer((_) async {});
+    when(() => delegate.shutdown()).thenAnswer((_) async {});
+    when(() => delegate.statusChanges).thenAnswer((_) => upstream.stream);
+    final gate = Completer<void>();
+    var resolves = 0;
+    final client = DatadogFlutterFlagsClient(
+      name: 'default',
+      resolveDelegate: () async {
+        resolves++;
+        await gate.future;
+        return delegate;
+      },
+      addRumFeatureFlagEvaluation: null,
+    );
+    final statuses = <DatadogFlagsClientStatus>[];
+    final subscription = client.statusChanges.listen(statuses.add);
+    addTearDown(subscription.cancel);
+    final initializing = client.initialize(context);
+    final resetting = client.reset();
+    gate.complete();
+    await Future.wait([initializing, resetting]);
+    upstream.add(DatadogFlagsClientStatus.ready);
+    expect(resolves, 1);
+    expect(statuses, [DatadogFlagsClientStatus.ready]);
+    await client.shutdown();
+    upstream.add(DatadogFlagsClientStatus.stale);
+    expect(statuses, [DatadogFlagsClientStatus.ready]);
+  });
+
+  test(
+    'shutdown returns before pending resolve and retires the late delegate',
+    () async {
+      const context = FlagsEvaluationContext(targetingKey: 'a');
+      final delegate = MockDatadogFlagsLifecycleClient();
+      when(() => delegate.shutdown()).thenAnswer((_) async {});
+      final gate = Completer<DatadogFlagsClient>();
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () => gate.future,
+        addRumFeatureFlagEvaluation: null,
+      );
+      final statuses = <DatadogFlagsClientStatus>[];
+      final subscription = client.statusChanges.listen(statuses.add);
+      addTearDown(subscription.cancel);
+      final initializing = client.initialize(context);
+      await client.shutdown().timeout(const Duration(seconds: 1));
+      gate.complete(delegate);
+      await initializing;
+      expect(statuses, isEmpty);
+      verify(() => delegate.shutdown()).called(1);
+      verifyNever(() => delegate.statusChanges);
+      verifyNever(() => delegate.initialize(context));
+      await expectLater(client.initialize(context), throwsStateError);
+    },
+  );
+
   late MockDatadogSdk mockSdk;
 
   setUpAll(() {
@@ -43,9 +110,11 @@ void main() {
 
   test('creates flags configuration from Datadog SDK configuration', () async {
     DatadogFlagsConfiguration? capturedConfiguration;
-    final flags = _mockFlags(onEnable: (configuration) {
-      capturedConfiguration = configuration;
-    });
+    final flags = _mockFlags(
+      onEnable: (configuration) {
+        capturedConfiguration = configuration;
+      },
+    );
     final configuration = DatadogConfiguration(
       clientToken: 'client-token',
       env: 'prod',
@@ -73,9 +142,11 @@ void main() {
 
   test('keeps standalone flags configuration overrides', () async {
     DatadogFlagsConfiguration? capturedConfiguration;
-    final flags = _mockFlags(onEnable: (configuration) {
-      capturedConfiguration = configuration;
-    });
+    final flags = _mockFlags(
+      onEnable: (configuration) {
+        capturedConfiguration = configuration;
+      },
+    );
     final date = DateTime.utc(2026);
     final flagsDatadogConfig = DatadogFlagsConfig(
       clientToken: 'flags-token',
@@ -156,9 +227,7 @@ void main() {
 
     verifyNever(
       () => flags.enable(
-        configuration: any<DatadogFlagsConfiguration>(
-          named: 'configuration',
-        ),
+        configuration: any<DatadogFlagsConfiguration>(named: 'configuration'),
       ),
     );
   });
@@ -194,9 +263,9 @@ void main() {
       delegateStatusChanges.add(DatadogFlagsClientStatus.ready);
     });
     when(() => delegate.status).thenReturn(DatadogFlagsClientStatus.ready);
-    when(() => delegate.statusChanges).thenAnswer(
-      (_) => delegateStatusChanges.stream,
-    );
+    when(
+      () => delegate.statusChanges,
+    ).thenAnswer((_) => delegateStatusChanges.stream);
     when(() => delegate.evaluationContext).thenReturn(context);
     final client = DatadogFlutterFlagsClient(
       name: 'default',
@@ -225,11 +294,7 @@ void main() {
         defaultValue: any<bool>(named: 'defaultValue'),
       ),
     ).thenReturn(
-      const FlagDetails(
-        key: 'checkout.enabled',
-        value: true,
-        variant: 'on',
-      ),
+      const FlagDetails(key: 'checkout.enabled', value: true, variant: 'on'),
     );
     final rumEvaluations = <MapEntry<String, Object>>[];
     final client = DatadogFlutterFlagsClient(
@@ -284,38 +349,31 @@ void main() {
     },
   );
 
-  test(
-    'accepts a null RUM integration callback',
-    () async {
-      final delegate = _mockClient();
-      when(
-        () => delegate.getBooleanDetails(
-          key: any<String>(named: 'key'),
-          defaultValue: any<bool>(named: 'defaultValue'),
-        ),
-      ).thenReturn(
-        const FlagDetails(
-          key: 'checkout.enabled',
-          value: true,
-          variant: 'on',
-        ),
-      );
-      final client = DatadogFlutterFlagsClient(
-        name: 'default',
-        resolveDelegate: () async => delegate,
-        addRumFeatureFlagEvaluation: null,
-      );
+  test('accepts a null RUM integration callback', () async {
+    final delegate = _mockClient();
+    when(
+      () => delegate.getBooleanDetails(
+        key: any<String>(named: 'key'),
+        defaultValue: any<bool>(named: 'defaultValue'),
+      ),
+    ).thenReturn(
+      const FlagDetails(key: 'checkout.enabled', value: true, variant: 'on'),
+    );
+    final client = DatadogFlutterFlagsClient(
+      name: 'default',
+      resolveDelegate: () async => delegate,
+      addRumFeatureFlagEvaluation: null,
+    );
 
-      await client.initialize(FlagsEvaluationContext.empty);
-      final details = client.getBooleanDetails(
-        key: 'checkout.enabled',
-        defaultValue: false,
-      );
+    await client.initialize(FlagsEvaluationContext.empty);
+    final details = client.getBooleanDetails(
+      key: 'checkout.enabled',
+      defaultValue: false,
+    );
 
-      expect(details.value, isTrue);
-      expect(details.variant, 'on');
-    },
-  );
+    expect(details.value, isTrue);
+    expect(details.variant, 'on');
+  });
 
   test('returns providerNotReady before client initialization', () {
     final client = DatadogFlutterFlagsClient(
@@ -366,9 +424,7 @@ MockDatadogFlags _mockFlags({
   final flags = MockDatadogFlags();
   when(
     () => flags.enable(
-      configuration: any<DatadogFlagsConfiguration>(
-        named: 'configuration',
-      ),
+      configuration: any<DatadogFlagsConfiguration>(named: 'configuration'),
     ),
   ).thenAnswer((invocation) async {
     onEnable?.call(

@@ -5,9 +5,8 @@
 
 /// Native Dart client for Datadog Feature Flags and Experimentation.
 ///
-/// Use [DatadogFlags] to configure the SDK, create named
-/// [DatadogFlagsClient] instances, and evaluate precomputed flag assignments
-/// for a [FlagsEvaluationContext].
+/// Register [DatadogOpenFeatureProvider] with OpenFeatureAPI and evaluate flags
+/// through OpenFeatureClient. The legacy Datadog evaluation API is deprecated.
 library;
 
 export 'src/datadog_flags_config.dart'

@@ -27,11 +27,11 @@ integrations. It is the canonical customer integration.
 | Application | Evaluation API | Package |
 | --- | --- | --- |
 | Dart or Flutter | OpenFeature (recommended) | [`datadog_flags`](packages/datadog_flags/) |
-| Dart with low-level lifecycle control | Datadog | [`datadog_flags`](packages/datadog_flags/) |
-| Flutter with automatic RUM view association | Datadog | [`datadog_flags_flutter`](packages/datadog_flags_flutter/) |
+| Flutter with RUM view association | OpenFeature and `DatadogRumHook` | [`datadog_flags_flutter`](packages/datadog_flags_flutter/) |
 
-The provider is part of the public `datadog_flags` API. It does not use
-`datadog_flags_flutter` or add evaluations to the active Flutter RUM view.
+The provider is part of `datadog_flags`. Add `DatadogRumHook` from
+`datadog_flags_flutter` for RUM association. The legacy Datadog evaluation API is
+deprecated and is scheduled for removal in the next major version.
 
 # Contributing
 

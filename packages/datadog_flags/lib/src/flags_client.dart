@@ -8,6 +8,9 @@ import 'dart:async';
 import 'evaluation_context.dart';
 import 'flags_error.dart';
 
+const datadogAllocationKeyMetadata = 'datadog.allocation_key';
+const datadogSerialIdMetadata = 'datadog.serial_id';
+
 /// Current assignment availability for a Datadog feature flags client.
 enum DatadogFlagsClientStatus {
   /// No assignments are available for evaluation.
@@ -16,7 +19,7 @@ enum DatadogFlagsClientStatus {
   /// Fresh assignments are available for evaluation.
   ready,
 
-  /// Cached assignments are available because the latest refresh failed.
+  /// Assignments are available, but fresh assignments are not.
   stale,
 
   /// No assignments are available because initialization failed.
@@ -28,6 +31,9 @@ enum DatadogFlagsClientStatus {
 /// Create separate clients for separate mobile subjects, such as logged-out and
 /// logged-in users. Clients are local to the Dart isolate where they are
 /// created and must be recreated in background isolates.
+@Deprecated(
+  'Use OpenFeatureClient. Removal is planned for the next major version.',
+)
 abstract interface class DatadogFlagsClient {
   /// Stable name assigned by [DatadogFlags.sharedClient].
   String get name;
@@ -102,6 +108,9 @@ abstract interface class DatadogFlagsClientLifecycle {
 }
 
 /// Result of a typed flag evaluation.
+@Deprecated(
+  'Use FlagEvaluationDetails. Removal is planned for the next major version.',
+)
 class FlagDetails<T> {
   /// Flag key that was evaluated.
   final String key;

@@ -14,11 +14,13 @@ import '../flags/flags_example_config.dart';
 class FlagsScreen extends StatefulWidget {
   final FlagsExampleConfig config;
   final OpenFeatureClient client;
+  final Future<void> Function() refresh;
 
   const FlagsScreen({
     super.key,
     required this.config,
     required this.client,
+    required this.refresh,
   });
 
   @override
@@ -52,9 +54,7 @@ class _FlagsScreenState extends State<FlagsScreen> {
       _status = 'loading';
     });
     try {
-      await OpenFeatureAPI.instance.setEvaluationContextAndWait(
-        widget.config.evaluationContext,
-      );
+      await widget.refresh();
       if (!mounted) {
         return;
       }
@@ -96,26 +96,17 @@ class _FlagsScreenState extends State<FlagsScreen> {
   FlagEvaluationDetails<dynamic> _detailsFor(FlagsExampleFlag flag) {
     final client = widget.client;
     return switch (flag.type) {
-      FlagsExampleFlagType.boolean => client.getBooleanDetails(
-          flag.key,
-          false,
-        ),
+      FlagsExampleFlagType.boolean => client.getBooleanDetails(flag.key, false),
       FlagsExampleFlagType.string => client.getStringDetails(
-          flag.key,
-          'Fallback title',
-        ),
-      FlagsExampleFlagType.integer => client.getIntegerDetails(
-          flag.key,
-          0,
-        ),
-      FlagsExampleFlagType.float => client.getDoubleDetails(
-          flag.key,
-          0.0,
-        ),
+        flag.key,
+        'Fallback title',
+      ),
+      FlagsExampleFlagType.integer => client.getIntegerDetails(flag.key, 0),
+      FlagsExampleFlagType.float => client.getDoubleDetails(flag.key, 0.0),
       FlagsExampleFlagType.object => client.getStructureDetails(
-          flag.key,
-          const {},
-        ),
+        flag.key,
+        const {},
+      ),
     };
   }
 
@@ -197,10 +188,7 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(width: 12),
           Expanded(child: Text(value)),
         ],
@@ -254,10 +242,7 @@ class _FlagDetailsRow extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 if (error != null)
-                  Text(
-                    error,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  Text(error, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
           ),

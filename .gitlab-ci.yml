@@ -110,11 +110,14 @@ build-flutter:
     - melos dartfmt_check
     - melos run analyze:dart
     - melos run unit_test:flutter
-    - melos run publish_dry_run:flags
+    - python3 tools/ci/run_openfeature_contract.py --platform vm
+    - python3 tools/ci/check_openfeature_dependency.py
     - melos run golden_test:flutter
   artifacts:
     when: always
     expire_in: "30 days"
+    paths:
+      - .build/openfeature-evidence/
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
@@ -183,9 +186,12 @@ build-web:
     - melos run build:web
     - melos run unit_test:web
     - melos run unit_test:openfeature-web
+    - python3 tools/ci/run_openfeature_contract.py --platform chrome
   artifacts:
     when: always
     expire_in: "30 days"
+    paths:
+      - .build/openfeature-evidence/
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
@@ -205,6 +211,7 @@ android-integration-test:
     - !reference [.pre-android, script]
     - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform android --sdk $ANDROID_EMULATOR_SDK
     - melos run integration_test:android
+    - python3 "$CI_PROJECT_DIR/tools/ci/test_openfeature_example.py" --platform android
   artifacts:
     when: always
     expire_in: "30 days"
@@ -212,6 +219,7 @@ android-integration-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
+      - .build/openfeature-example-android.log
 
 ios-integration-test:
   stage: integration-test
@@ -229,9 +237,12 @@ ios-integration-test:
     - melos pub:get
     - melos pod_update --no-select
     - melos run integration_test:ios
+    - python3 "$CI_PROJECT_DIR/tools/ci/test_openfeature_example.py" --platform ios
   artifacts:
     when: always
     expire_in: "30 days"
+    paths:
+      - .build/openfeature-example-ios.log
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
@@ -377,9 +388,12 @@ nightly-beta-test-web:
     - melos run build:web
     - melos run unit_test:web
     - melos run unit_test:openfeature-web
+    - python3 tools/ci/run_openfeature_contract.py --platform chrome
   artifacts:
     when: always
     expire_in: "30 days"
+    paths:
+      - .build/openfeature-evidence/
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
@@ -417,3 +431,15 @@ nightly-android:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
+
+# Validate the advertised Dart floor independently of the Flutter SDK image.
+openfeature-dart-minimum:
+  stage: build
+  image: dart:3.10.0
+  tags: ["arch:amd64"]
+  script:
+    - cd packages/datadog_flags
+    - dart --version
+    - dart pub get
+    - dart analyze .
+    - dart test --reporter expanded

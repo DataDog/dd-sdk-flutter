@@ -20,6 +20,9 @@ import 'no_op_flags_client.dart';
 /// `DatadogFlags` state is local to the current Dart isolate. Background
 /// isolates must use their own [DatadogFlags] instance, create any clients they
 /// need, and initialize each client before evaluating flags.
+@Deprecated(
+  'Use OpenFeatureAPI with DatadogOpenFeatureProvider. Removal is planned for the next major version.',
+)
 class DatadogFlags {
   /// Name used for the shared client when no explicit client name is provided.
   static const defaultClientName = 'default';
@@ -100,7 +103,8 @@ class DatadogFlags {
 
   DatadogFlagsClient _client(String name) {
     final existing = _clients[name];
-    if (existing != null) {
+    if (existing != null &&
+        !(existing is DefaultDatadogFlagsClient && existing.isShutdown)) {
       return existing;
     }
 

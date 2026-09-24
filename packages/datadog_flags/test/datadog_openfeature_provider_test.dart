@@ -23,6 +23,99 @@ void main() {
 
   tearDown(() => api.shutdown());
 
+  test('shutdown releases timers and ignores a pending refresh', () async {
+    final timers = <Timer>[];
+    await runZoned(
+      () async {
+        final response = Completer<http.Response>();
+        var assignmentRequests = 0;
+        final provider = DatadogOpenFeatureProvider(
+          configuration: _configuration(
+            MockClient((request) {
+              if (request.url.path != '/precompute-assignments') {
+                return Future.value(http.Response('{}', 202));
+              }
+              if (++assignmentRequests == 1) {
+                return Future.value(
+                  http.Response(jsonEncode(_assignmentsResponse()), 200),
+                );
+              }
+              return response.future;
+            }),
+            trackTelemetry: true,
+          ),
+        );
+        await provider.initialize(EvaluationContext(targetingKey: 'subject'));
+        expect(timers.any((timer) => timer.isActive), isTrue);
+        final refreshing = provider.refresh();
+        await _waitUntil(() => assignmentRequests == 2);
+        await provider.shutdown();
+        await provider.shutdown();
+        expect(timers.every((timer) => !timer.isActive), isTrue);
+        final details = provider.resolveBooleanValue(
+          'show-paywall',
+          false,
+          EvaluationContext.empty,
+        );
+        expect(
+          details.errorMessage,
+          'The Datadog provider has not loaded assignments.',
+        );
+        response.complete(
+          http.Response(jsonEncode(_assignmentsResponse()), 200),
+        );
+        await refreshing;
+        expect(timers.every((timer) => !timer.isActive), isTrue);
+      },
+      zoneSpecification: ZoneSpecification(
+        createPeriodicTimer: (self, parent, zone, duration, callback) {
+          final timer = parent.createPeriodicTimer(zone, duration, callback);
+          timers.add(timer);
+          return timer;
+        },
+      ),
+    );
+  });
+
+  test(
+    'cached reconciliation stays stale after OpenFeature commits the context',
+    () async {
+      final store = _MemoryStore();
+      var fail = false;
+      final provider = DatadogOpenFeatureProvider(
+        configuration: _configuration(
+          MockClient(
+            (_) async => fail
+                ? http.Response('offline', 503)
+                : http.Response(jsonEncode(_assignmentsResponse()), 200),
+          ),
+          store: store,
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'first'),
+      );
+      await api.setProviderAndWait(provider);
+      await store.write(
+        'default',
+        FlagsData.fromJson({
+          'flags': {'show-paywall': _assignment(variationValue: false)},
+          'context': const FlagsEvaluationContext(
+            targetingKey: 'second',
+          ).toJson(),
+          'date': DateTime.utc(2026).toIso8601String(),
+        }),
+      );
+      fail = true;
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'second'),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(api.getClient().providerStatus, ProviderStatus.stale);
+      expect(api.getClient().getBooleanValue('show-paywall', true), isFalse);
+    },
+  );
+
   test('maps typed details, errors, and Datadog metadata', () async {
     final requests = <http.Request>[];
     final provider = DatadogOpenFeatureProvider(
@@ -233,7 +326,7 @@ void main() {
           assignmentRequestCount += 1;
           return assignmentResponse.future;
         }),
-        initializationTimeout: const Duration(milliseconds: 5),
+        initializationTimeout: const Duration(milliseconds: 100),
       ),
     );
     provider.events.listen((event) => providerEvents.add(event.type));
@@ -277,7 +370,7 @@ void main() {
             }
             return nextContextResponse.future;
           }),
-          initializationTimeout: const Duration(milliseconds: 5),
+          initializationTimeout: const Duration(milliseconds: 100),
         ),
       );
 
@@ -405,6 +498,205 @@ void main() {
 
     expect(api.getClient().providerStatus, ProviderStatus.error);
   });
+  test(
+    'published assignments survive a store write that never finishes',
+    () async {
+      final store = _BlockedWriteStore();
+      final provider = DatadogOpenFeatureProvider(
+        configuration: _configuration(
+          MockClient(
+            (request) async => _responseFor(request, _assignmentsResponse()),
+          ),
+          store: store,
+          initializationTimeout: const Duration(milliseconds: 100),
+        ),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().providerStatus, ProviderStatus.ready);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      expect(store.writes, 1);
+      await api.shutdown();
+      store.release.complete();
+    },
+  );
+
+  test(
+    'cached timeout reports stale until the pending request succeeds',
+    () async {
+      final store = _MemoryStore();
+      await store.write(
+        'default',
+        FlagsData.fromJson({
+          'flags': {'show-paywall': _assignment(variationValue: true)},
+          'context': const FlagsEvaluationContext(
+            targetingKey: 'cached',
+          ).toJson(),
+          'date': DateTime.utc(2026).toIso8601String(),
+        }),
+      );
+      final response = Completer<http.Response>();
+      final events = <ProviderEvent>[];
+      final provider = DatadogOpenFeatureProvider(
+        configuration: _configuration(
+          MockClient((_) => response.future),
+          store: store,
+          initializationTimeout: const Duration(milliseconds: 100),
+        ),
+      );
+      provider.events.listen(events.add);
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'cached'),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().providerStatus, ProviderStatus.stale);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      expect(events.last.message, isNot(contains('failed')));
+      response.complete(
+        http.Response(
+          jsonEncode(_assignmentsResponse(booleanValue: false)),
+          200,
+        ),
+      );
+      await _waitUntil(
+        () => api.getClient().providerStatus == ProviderStatus.ready,
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', true), isFalse);
+    },
+  );
+
+  for (final timeout in [
+    null,
+    Duration.zero,
+    const Duration(seconds: -1),
+    const Duration(seconds: 21),
+  ]) {
+    test(
+      'rejects unsafe lifecycle budget $timeout before starting HTTP',
+      () async {
+        var requests = 0;
+        final provider = DatadogOpenFeatureProvider(
+          configuration: _configuration(
+            MockClient((_) async {
+              requests++;
+              return http.Response('', 500);
+            }),
+            initializationTimeout: timeout,
+          ),
+        );
+        await expectLater(
+          api.setProviderAndWait(provider),
+          throwsA(isA<OpenFeatureException>()),
+        );
+        expect(requests, 0);
+        expect(api.getClient().providerStatus, ProviderStatus.error);
+      },
+    );
+  }
+
+  test('direct context races cannot publish a superseded response', () async {
+    final first = Completer<http.Response>();
+    var requests = 0;
+    final events = <ProviderEventType>[];
+    final provider = DatadogOpenFeatureProvider(
+      configuration: _configuration(
+        MockClient((request) {
+          requests++;
+          if (requests == 1) return first.future;
+          return Future.value(
+            http.Response(
+              jsonEncode(_assignmentsResponse(booleanValue: false)),
+              200,
+            ),
+          );
+        }),
+      ),
+    );
+    provider.events.listen((event) => events.add(event.type));
+    addTearDown(provider.shutdown);
+    final old = provider.initialize(EvaluationContext(targetingKey: 'old'));
+    await _waitUntil(() => requests == 1);
+    await provider.onContextChanged(
+      EvaluationContext(targetingKey: 'old'),
+      EvaluationContext(targetingKey: 'new'),
+    );
+    first.complete(http.Response(jsonEncode(_assignmentsResponse()), 200));
+    await old;
+    expect(events, [
+      ProviderEventType.reconciling,
+      ProviderEventType.contextChanged,
+    ]);
+    expect(
+      provider
+          .resolveBooleanValue('show-paywall', true, EvaluationContext.empty)
+          .value,
+      isFalse,
+    );
+  });
+
+  test('sign-out retires private flags when anonymous loading fails', () async {
+    var requests = 0;
+    final provider = DatadogOpenFeatureProvider(
+      configuration: _configuration(
+        MockClient(
+          (_) async => ++requests == 1
+              ? http.Response(jsonEncode(_assignmentsResponse()), 200)
+              : http.Response('offline', 503),
+        ),
+      ),
+    );
+    await api.setEvaluationContextAndWait(
+      EvaluationContext(targetingKey: 'private-user'),
+    );
+    await api.setProviderAndWait(provider);
+    await expectLater(
+      api.setEvaluationContextAndWait(EvaluationContext.empty),
+      throwsA(isA<OpenFeatureException>()),
+    );
+    expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+  });
+
+  for (var offset = 0; offset < 7; offset++) {
+    test(
+      'shutdown fences direct initialization at microtask $offset',
+      () async {
+        final response = Completer<http.Response>();
+        final events = <ProviderEvent>[];
+        final store = _MemoryStore();
+        final provider = DatadogOpenFeatureProvider(
+          configuration: _configuration(
+            MockClient((_) => response.future),
+            store: store,
+          ),
+        );
+        provider.events.listen(events.add);
+        final initializing = provider.initialize(
+          EvaluationContext(targetingKey: 'retired'),
+        );
+        for (var i = 0; i < offset; i++) {
+          await Future<void>.value();
+        }
+        await provider.shutdown();
+        await provider.shutdown();
+        final count = events.length;
+        response.complete(
+          http.Response(jsonEncode(_assignmentsResponse()), 200),
+        );
+        await initializing;
+        expect(events, hasLength(count));
+        expect(await store.read('default'), isNull);
+        expect(
+          provider
+              .resolveBooleanValue(
+                'show-paywall',
+                false,
+                EvaluationContext.empty,
+              )
+              .errorCode,
+          ErrorCode.providerNotReady,
+        );
+      },
+    );
+  }
 }
 
 DatadogFlagsConfiguration _configuration(
@@ -500,7 +792,7 @@ Map<String, Object?> _assignment({
     'variationValue': variationValue,
     'reason': 'TARGETING_MATCH',
     'doLog': true,
-    if (serialId != null) 'serialId': serialId,
+    'serialId': ?serialId,
   };
 }
 
@@ -511,7 +803,7 @@ Map<String, Object?> _subject(Map<String, Object?> request) {
 }
 
 Future<void> _waitUntil(bool Function() condition) async {
-  for (var attempt = 0; attempt < 100; attempt += 1) {
+  for (var attempt = 0; attempt < 2000; attempt += 1) {
     if (condition()) {
       return;
     }
@@ -535,4 +827,19 @@ final class _MemoryStore implements DatadogFlagsStore {
   Future<void> write(String clientName, FlagsData data) async {
     _values[clientName] = data;
   }
+}
+
+final class _BlockedWriteStore implements DatadogFlagsStore {
+  final release = Completer<void>();
+  int writes = 0;
+  @override
+  Future<FlagsData?> read(String clientName) async => null;
+  @override
+  Future<void> write(String clientName, FlagsData data) {
+    writes++;
+    return release.future;
+  }
+
+  @override
+  Future<void> delete(String clientName) async {}
 }

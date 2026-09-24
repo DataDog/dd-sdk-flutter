@@ -16,6 +16,7 @@ import 'flags_repository.dart';
 class DefaultDatadogFlagsClient
     implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
   static final Object _typeMismatch = Object();
+  bool isShutdown = false;
 
   @override
   final String name;
@@ -28,9 +29,9 @@ class DefaultDatadogFlagsClient
     required FlagsRepository repository,
     required ExposureLogger exposureLogger,
     required EvaluationAggregator evaluationAggregator,
-  })  : _repository = repository,
-        _exposureLogger = exposureLogger,
-        _evaluationAggregator = evaluationAggregator;
+  }) : _repository = repository,
+       _exposureLogger = exposureLogger,
+       _evaluationAggregator = evaluationAggregator;
 
   @override
   DatadogFlagsClientStatus get status => _repository.status;
@@ -44,6 +45,9 @@ class DefaultDatadogFlagsClient
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
+    if (isShutdown) {
+      throw StateError('This client is shut down. Create a new client.');
+    }
     await _repository.initialize(context);
   }
 
@@ -121,11 +125,12 @@ class DefaultDatadogFlagsClient
 
   @override
   Future<void> shutdown() async {
+    isShutdown = true;
+    await _repository.dispose();
     await Future.wait([
       _evaluationAggregator.shutdown(),
       _exposureLogger.shutdown(),
     ]);
-    await _repository.dispose();
   }
 
   @override
@@ -139,6 +144,13 @@ class DefaultDatadogFlagsClient
     required FlagVariationType requestedType,
     bool Function(Object?)? valueGuard,
   }) {
+    if (isShutdown) {
+      return FlagDetails(
+        key: key,
+        value: defaultValue,
+        error: FlagEvaluationError.providerNotReady,
+      );
+    }
     final context = _repository.context;
     if (context == null) {
       _evaluationAggregator.recordEvaluation(
@@ -228,9 +240,8 @@ class DefaultDatadogFlagsClient
       variant: assignment.variationKey,
       reason: assignment.reason,
       flagMetadata: {
-        'datadog.allocation_key': assignment.allocationKey,
-        if (assignment.serialId case final serialId?)
-          'datadog.serial_id': serialId,
+        datadogAllocationKeyMetadata: assignment.allocationKey,
+        datadogSerialIdMetadata: ?assignment.serialId,
       },
     );
   }

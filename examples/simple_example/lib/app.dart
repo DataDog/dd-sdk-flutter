@@ -20,12 +20,14 @@ class MyApp extends StatefulWidget {
   final GraphQLClient graphQLClient;
   final FlagsExampleConfig flagsConfig;
   final OpenFeatureClient flagsClient;
+  final Future<void> Function() refreshFlags;
 
   const MyApp({
     super.key,
     required this.graphQLClient,
     required this.flagsConfig,
     required this.flagsClient,
+    required this.refreshFlags,
   });
 
   @override
@@ -74,6 +76,7 @@ class _MyAppState extends State<MyApp> {
           return FlagsScreen(
             config: widget.flagsConfig,
             client: widget.flagsClient,
+            refresh: widget.refreshFlags,
           );
         },
       ),

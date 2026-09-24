@@ -143,9 +143,7 @@ class EvaluationAggregator {
     await _uploadPendingEvaluations(rescheduleOnFailure: rescheduleOnFailure);
   }
 
-  Future<bool> _uploadPendingEvaluations({
-    required bool rescheduleOnFailure,
-  }) {
+  Future<bool> _uploadPendingEvaluations({required bool rescheduleOnFailure}) {
     final configuration = runtime.configuration;
     if (!configuration.trackEvaluations || _aggregations.isEmpty) {
       return Future.value(true);
@@ -155,14 +153,15 @@ class EvaluationAggregator {
     _aggregations.clear();
 
     late final Future<bool> uploadOperation;
-    uploadOperation = _sendEvaluations(
-      evaluations,
-      rescheduleOnFailure: rescheduleOnFailure,
-    ).whenComplete(() {
-      if (identical(_uploadInFlight, uploadOperation)) {
-        _uploadInFlight = null;
-      }
-    });
+    uploadOperation =
+        _sendEvaluations(
+          evaluations,
+          rescheduleOnFailure: rescheduleOnFailure,
+        ).whenComplete(() {
+          if (identical(_uploadInFlight, uploadOperation)) {
+            _uploadInFlight = null;
+          }
+        });
     _uploadInFlight = uploadOperation;
     return uploadOperation;
   }
@@ -184,11 +183,7 @@ class EvaluationAggregator {
 
     try {
       final response = await runtime.httpClient
-          .post(
-            request.endpoint,
-            headers: request.headers,
-            body: request.body,
-          )
+          .post(request.endpoint, headers: request.headers, body: request.body)
           .timeout(uploadTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (shouldRetryFlagsUpload(response.statusCode)) {
@@ -221,12 +216,12 @@ class EvaluationAggregator {
 
       existing.firstEvaluation =
           existing.firstEvaluation < evaluation.firstEvaluation
-              ? existing.firstEvaluation
-              : evaluation.firstEvaluation;
+          ? existing.firstEvaluation
+          : evaluation.firstEvaluation;
       existing.lastEvaluation =
           existing.lastEvaluation > evaluation.lastEvaluation
-              ? existing.lastEvaluation
-              : evaluation.lastEvaluation;
+          ? existing.lastEvaluation
+          : evaluation.lastEvaluation;
       existing.evaluationCount += evaluation.evaluationCount;
     }
 
@@ -351,8 +346,11 @@ class _AggregatedEvaluation {
 
 Map<String, Object?> _removeNullValues(Map<String, Object?> input) {
   return Map.fromEntries(
-    input.entries.where((entry) => entry.value != null).map(
-        (entry) => MapEntry(entry.key, _removeNestedNullValues(entry.value))),
+    input.entries
+        .where((entry) => entry.value != null)
+        .map(
+          (entry) => MapEntry(entry.key, _removeNestedNullValues(entry.value)),
+        ),
   );
 }
 

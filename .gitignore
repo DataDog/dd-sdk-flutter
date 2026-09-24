@@ -10,8 +10,6 @@ build/
 
 pubspec.lock
 **/pubspec_overrides.yaml
-!packages/datadog_flags/pubspec_overrides.yaml
-!packages/datadog_flags/example/pubspec_overrides.yaml
 
 .bitrise.secrets.yml
 *flutter_junit_test_results.xml
@@ -39,3 +37,5 @@ tools/ci/.tmp
 .fvmrc
 .plans
 .prompts/
+
+**/.kotlin/
