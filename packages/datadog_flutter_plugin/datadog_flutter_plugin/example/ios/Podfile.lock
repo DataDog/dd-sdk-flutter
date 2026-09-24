@@ -1,12 +1,4 @@
 PODS:
-  - datadog_flutter_plugin_ios (0.0.1):
-    - DatadogCore (~> 3)
-    - DatadogCrashReporting (~> 3)
-    - DatadogInternal (~> 3)
-    - DatadogLogs (~> 3)
-    - DatadogRUM (~> 3)
-    - DictionaryCoder (= 1.2.0)
-    - Flutter
   - DatadogCore (3.12.0):
     - DatadogInternal (= 3.12.0)
   - DatadogCrashReporting (3.12.0):
@@ -18,7 +10,6 @@ PODS:
     - DatadogInternal (= 3.12.0)
   - DatadogRUM (3.12.0):
     - DatadogInternal (= 3.12.0)
-  - DictionaryCoder (1.2.0)
   - Flutter (1.0.0)
   - KSCrash/Core (2.5.0)
   - KSCrash/Filters (2.5.0):
@@ -33,7 +24,6 @@ PODS:
     - KSCrash/Core
 
 DEPENDENCIES:
-  - datadog_flutter_plugin_ios (from `.symlinks/plugins/datadog_flutter_plugin_ios/ios`)
   - DatadogCore (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - DatadogCrashReporting (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - DatadogInternal (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
@@ -43,12 +33,9 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
-    - DictionaryCoder
     - KSCrash
 
 EXTERNAL SOURCES:
-  datadog_flutter_plugin_ios:
-    :path: ".symlinks/plugins/datadog_flutter_plugin_ios/ios"
   DatadogCore:
     :branch: develop
     :git: https://github.com/DataDog/dd-sdk-ios
@@ -85,16 +72,14 @@ CHECKOUT OPTIONS:
     :git: https://github.com/DataDog/dd-sdk-ios
 
 SPEC CHECKSUMS:
-  datadog_flutter_plugin_ios: 10996273528b840f9bbb30b4c14f364e38fbe126
   DatadogCore: 21027a92b720b7860c0b450cde4dec2e7d06c42a
   DatadogCrashReporting: 34fccdac1b5df7b2173d10017270c25d050e3a19
   DatadogInternal: acde40825dbe79faac53ba54d8ca742e07b88cdd
   DatadogLogs: 804ccdfdc7e854645fd7b5997b7c961bbd6f5916
   DatadogRUM: 2aaf4f410dde48d28d9150deff807fa6339b197d
-  DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
-  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
 
-PODFILE CHECKSUM: 68224f0433e9c33250822299f34c81a161859823
+PODFILE CHECKSUM: db7dc27c8eec2882a07d13d3e54cb4eaedfb90ad
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.17.0

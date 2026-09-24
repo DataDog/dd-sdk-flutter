@@ -1,29 +1,17 @@
 PODS:
-  - datadog_flutter_plugin_ios (0.0.1):
-    - DatadogCore (~> 3)
-    - DatadogCrashReporting (~> 3)
-    - DatadogInternal (~> 3)
-    - DatadogLogs (~> 3)
-    - DatadogRUM (~> 3)
-    - DictionaryCoder (= 1.2.0)
-    - Flutter
-  - datadog_inappwebview_tracking (0.0.1):
-    - DatadogCore (~> 3.0)
-    - Flutter
-  - DatadogCore (3.13.0):
-    - DatadogInternal (= 3.13.0)
-  - DatadogCrashReporting (3.13.0):
-    - DatadogInternal (= 3.13.0)
-    - KSCrash/Filters (= 2.5.0)
-    - KSCrash/Recording (= 2.5.0)
-  - DatadogInternal (3.13.0)
-  - DatadogLogs (3.13.0):
-    - DatadogInternal (= 3.13.0)
-  - DatadogRUM (3.13.0):
-    - DatadogInternal (= 3.13.0)
-  - DatadogWebViewTracking (3.13.0):
-    - DatadogInternal (= 3.13.0)
-  - DictionaryCoder (1.2.0)
+  - DatadogCore (3.17.0):
+    - DatadogInternal (= 3.17.0)
+  - DatadogCrashReporting (3.17.0):
+    - DatadogInternal (= 3.17.0)
+    - KSCrash/Filters (= 2.5.1)
+    - KSCrash/Recording (= 2.5.1)
+  - DatadogInternal (3.17.0)
+  - DatadogLogs (3.17.0):
+    - DatadogInternal (= 3.17.0)
+  - DatadogRUM (3.17.0):
+    - DatadogInternal (= 3.17.0)
+  - DatadogWebViewTracking (3.17.0):
+    - DatadogInternal (= 3.17.0)
   - Flutter (1.0.0)
   - flutter_inappwebview_ios (0.0.1):
     - Flutter
@@ -32,24 +20,20 @@ PODS:
   - flutter_inappwebview_ios/Core (0.0.1):
     - Flutter
     - OrderedSet (~> 6.0.3)
-  - integration_test (0.0.1):
-    - Flutter
-  - KSCrash/Core (2.5.0)
-  - KSCrash/Filters (2.5.0):
+  - KSCrash/Core (2.5.1)
+  - KSCrash/Filters (2.5.1):
     - KSCrash/Recording
     - KSCrash/RecordingCore
     - KSCrash/ReportingCore
-  - KSCrash/Recording (2.5.0):
+  - KSCrash/Recording (2.5.1):
     - KSCrash/RecordingCore
-  - KSCrash/RecordingCore (2.5.0):
+  - KSCrash/RecordingCore (2.5.1):
     - KSCrash/Core
-  - KSCrash/ReportingCore (2.5.0):
+  - KSCrash/ReportingCore (2.5.1):
     - KSCrash/Core
   - OrderedSet (6.0.3)
 
 DEPENDENCIES:
-  - datadog_flutter_plugin_ios (from `.symlinks/plugins/datadog_flutter_plugin_ios/ios`)
-  - datadog_inappwebview_tracking (from `.symlinks/plugins/datadog_inappwebview_tracking/ios`)
   - DatadogCore (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - DatadogCrashReporting (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - DatadogInternal (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
@@ -58,19 +42,13 @@ DEPENDENCIES:
   - DatadogWebViewTracking (from `https://github.com/DataDog/dd-sdk-ios`, branch `develop`)
   - Flutter (from `Flutter`)
   - flutter_inappwebview_ios (from `.symlinks/plugins/flutter_inappwebview_ios/ios`)
-  - integration_test (from `.symlinks/plugins/integration_test/ios`)
 
 SPEC REPOS:
   trunk:
-    - DictionaryCoder
     - KSCrash
     - OrderedSet
 
 EXTERNAL SOURCES:
-  datadog_flutter_plugin_ios:
-    :path: ".symlinks/plugins/datadog_flutter_plugin_ios/ios"
-  datadog_inappwebview_tracking:
-    :path: ".symlinks/plugins/datadog_inappwebview_tracking/ios"
   DatadogCore:
     :branch: develop
     :git: https://github.com/DataDog/dd-sdk-ios
@@ -93,45 +71,39 @@ EXTERNAL SOURCES:
     :path: Flutter
   flutter_inappwebview_ios:
     :path: ".symlinks/plugins/flutter_inappwebview_ios/ios"
-  integration_test:
-    :path: ".symlinks/plugins/integration_test/ios"
 
 CHECKOUT OPTIONS:
   DatadogCore:
-    :commit: 21c76c6325410d176f20001c75cbf8c892ede782
+    :commit: 9a8a66c3da7859437fcb3139455b51e07bd150c7
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogCrashReporting:
-    :commit: 21c76c6325410d176f20001c75cbf8c892ede782
+    :commit: 9a8a66c3da7859437fcb3139455b51e07bd150c7
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogInternal:
-    :commit: 21c76c6325410d176f20001c75cbf8c892ede782
+    :commit: 9a8a66c3da7859437fcb3139455b51e07bd150c7
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogLogs:
-    :commit: 21c76c6325410d176f20001c75cbf8c892ede782
+    :commit: 9a8a66c3da7859437fcb3139455b51e07bd150c7
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogRUM:
-    :commit: 21c76c6325410d176f20001c75cbf8c892ede782
+    :commit: 9a8a66c3da7859437fcb3139455b51e07bd150c7
     :git: https://github.com/DataDog/dd-sdk-ios
   DatadogWebViewTracking:
-    :commit: 21c76c6325410d176f20001c75cbf8c892ede782
+    :commit: 9a8a66c3da7859437fcb3139455b51e07bd150c7
     :git: https://github.com/DataDog/dd-sdk-ios
 
 SPEC CHECKSUMS:
-  datadog_flutter_plugin_ios: 10996273528b840f9bbb30b4c14f364e38fbe126
-  datadog_inappwebview_tracking: 55c689c03785deda5368fc56f7d2d8e9d846d9f4
-  DatadogCore: 4b879d0b6b7bf72b056c39c8b7ac7df43becc7eb
-  DatadogCrashReporting: a9b04b60410dda4750b76bdd900861180935c969
-  DatadogInternal: f6d36f2da4e99f59867451ce856643bf26c7397e
-  DatadogLogs: 76783e105aef243902cf76b1700fd8315c50651c
-  DatadogRUM: 79a44c630667748ba1ea0110589bf4b541266bab
-  DatadogWebViewTracking: ec4b5b78c76ced4a49364c1411606014346fa21c
-  DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
-  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  DatadogCore: e2fadbba978370f56fe861ebc1e07c4d7be0449c
+  DatadogCrashReporting: bc57b765956053d99862ee5f7420b91ec881f971
+  DatadogInternal: 71064dddf89dd1799cc86668efab2b1ad1bc5133
+  DatadogLogs: cbdf7b4da6e53474525d4c402b0298e0f9d71c68
+  DatadogRUM: cbc60301bee178b2d2c46f056209e72a14d41483
+  DatadogWebViewTracking: fb153779d1147ad340f9f9b771558830d98077b4
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   flutter_inappwebview_ios: 6f63631e2c62a7c350263b13fa5427aedefe81d4
-  integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
-  KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
+  KSCrash: 8c4464fd5da7de520f2ce4a00fdf63f169a80f18
   OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
 
-PODFILE CHECKSUM: c7234c3204d48a32aea8d181706275804db59412
+PODFILE CHECKSUM: 8ad3f748849b6e96835db1cad9eb9a1ffd2f5d24
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.17.0

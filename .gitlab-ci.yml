@@ -70,6 +70,11 @@ stages:
     - xcodebuild -downloadPlatform iOS
     - pushd tools/ci && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR && popd
 
+.pre-macos:
+  script:
+    - xcode-select -p
+    - xcodebuild -runFirstLaunch
+
 .pre-android:
   script:
     - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;36.0.0" "platform-tools" "platforms;android-36" || true
@@ -163,6 +168,25 @@ build-ios-spm:
     - melos run build:ios
     - melos run unit_test:ios
 
+# dd-sdk-ios's CocoaPods podspecs don't declare macOS support (SPM-only for now), so
+# macOS can only build via Swift Package Manager until that's fixed upstream.
+build-macos-spm:
+  stage: build
+  except: [ schedules ]
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  tags:
+    - macos:sequoia
+    - specific:true
+  script:
+    - !reference [.pre, script]
+    - !reference [.pre-macos, script]
+    - flutter config --enable-swift-package-manager
+    - melos remove_cocoapods
+    - melos pub:get
+    - melos run build:macos
+    - melos run unit_test:macos
+
 build-ios:
   stage: build
   except: [ schedules ]
@@ -176,7 +200,7 @@ build-ios:
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
-    - melos pod_update --no-select
+    - melos remove_podfile_lock --no-select
     - melos run analyze:ios
     - melos run build:ios
     - melos run unit_test:ios
@@ -277,8 +301,30 @@ ios-integration-test:
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
-    - melos pod_update --no-select
+    - melos remove_podfile_lock --no-select
     - melos run integration_test:ios
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+macos-integration-test:
+  stage: integration-test
+  except: [ schedules ]
+  needs: [ build-macos-spm ]
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  tags:
+    - macos:sequoia
+    - specific:true
+  script:
+    - !reference [.pre, script]
+    - !reference [.pre-macos, script]
+    - flutter config --enable-swift-package-manager
+    - melos remove_cocoapods
+    - melos pub:get
+    - melos run integration_test:macos
   artifacts:
     when: always
     expire_in: "30 days"
@@ -433,7 +479,7 @@ nightly-beta-test:
     - pod repo update    
     - flutter doctor
     - fvm exec melos pub:get
-    - fvm exec melos pod_update --no-select
+    - fvm exec melos remove_podfile_lock --no-select
     - fvm exec melos run analyze
     - fvm exec melos run build
     - fvm exec melos run unit_test:flutter
@@ -481,7 +527,7 @@ nightly-ios:
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
-    - melos pod_update --no-select
+    - melos remove_podfile_lock --no-select
     - melos run e2e_tests:ios
   artifacts:
     when: always
