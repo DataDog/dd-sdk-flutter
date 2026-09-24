@@ -435,9 +435,13 @@ nightly-android:
 # Validate the advertised Dart floor independently of the Flutter SDK image.
 openfeature-dart-minimum:
   stage: build
-  image: dart:3.10.0
+  image: $CI_IMAGE_DOCKER
   tags: ["arch:amd64"]
   script:
+    - mkdir -p .build/dart-minimum
+    - curl --fail --location --retry 3 https://storage.googleapis.com/dart-archive/channels/stable/release/3.10.0/sdk/dartsdk-linux-x64-release.zip -o .build/dart-minimum/sdk.zip
+    - unzip -q .build/dart-minimum/sdk.zip -d .build/dart-minimum
+    - export PATH="$CI_PROJECT_DIR/.build/dart-minimum/dart-sdk/bin:$PATH"
     - cd packages/datadog_flags
     - dart --version
     - dart pub get
