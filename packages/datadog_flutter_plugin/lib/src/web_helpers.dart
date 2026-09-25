@@ -6,6 +6,7 @@ import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
 import 'package:flutter/foundation.dart';
+import 'package:web/web.dart';
 
 import '../datadog_flutter_plugin.dart';
 
@@ -88,6 +89,20 @@ final _dartLineRegex = RegExp(
   r'(?<file>.+) (?<location>\d+:\d+)\s*(?<function>.+)',
 );
 
+// Recognizes the WebAssembly stack-frame formats emitted by major browsers,
+// including wasm-function frames, internal wasm URLs, and module URLs.
+final _wasmStackFrameRegex = RegExp(
+  r'wasm-function(?:\[|@)|\[wasm code\]|wasm:\/\/|\.wasm(?=$|[:@)\s]|[?#])',
+  caseSensitive: false,
+);
+
+// Extracts absolute HTTP(S) or blob URLs for .wasm modules from stack frames,
+// while excluding trailing frame locations such as `:wasm-function[42]`.
+final _wasmModuleUrlRegex = RegExp(
+  r'(?:(?:https?|blob):\/\/)[^\s()]+?\.wasm(?:[?#][^\s():)]*)?',
+  caseSensitive: false,
+);
+
 @JS('RegExp')
 extension type JSRegExp._(JSObject _) implements JSObject {
   external factory JSRegExp([String? pattern, String? flags]);
@@ -116,6 +131,53 @@ String? convertWebStackTrace(StackTrace? stackTrace) {
   }
 
   return stackTraceString;
+}
+
+String webErrorSourceType(StackTrace? stackTrace) {
+  if (stackTrace != null &&
+      _wasmStackFrameRegex.hasMatch(stackTrace.toString())) {
+    return 'browser+wasm';
+  }
+  return 'browser';
+}
+
+List<String> webWasmModuleUrls(StackTrace? stackTrace) {
+  if (stackTrace == null) return const [];
+
+  return _wasmModuleUrlRegex
+      .allMatches(stackTrace.toString())
+      .map((match) => match.group(0)!)
+      .toSet()
+      .toList();
+}
+
+/// Returns the URL of Flutter's primary WebAssembly application module.
+///
+/// Prefer the browser's resource timing entry so custom base paths and asset
+/// locations are preserved. Flutter's default module location is used as a
+/// fallback when resource timing entries are unavailable.
+String findFlutterWasmModuleUrl(
+  Iterable<String> resourceUrls, {
+  Uri? baseUri,
+}) {
+  for (final resourceUrl in resourceUrls) {
+    final resourceUri = Uri.tryParse(resourceUrl);
+    if (resourceUri != null &&
+        resourceUri.pathSegments.isNotEmpty &&
+        resourceUri.pathSegments.last == 'main.dart.wasm') {
+      return resourceUrl;
+    }
+  }
+
+  return (baseUri ?? Uri.base).resolve('main.dart.wasm').toString();
+}
+
+String flutterWasmModuleUrl() {
+  final resourceUrls = window.performance
+      .getEntriesByType('resource')
+      .toDart
+      .map((entry) => entry.name);
+  return findFlutterWasmModuleUrl(resourceUrls);
 }
 
 extension TrackingConsentWebValue on TrackingConsent {

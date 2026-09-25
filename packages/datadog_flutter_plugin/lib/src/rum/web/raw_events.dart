@@ -45,6 +45,20 @@ extension type RumWebRawErrorResource._(JSObject _) implements JSObject {
   });
 }
 
+extension type RumWebWasmModule._(JSObject _) implements JSObject {
+  external String url;
+  @JS('build_id')
+  external String buildId;
+  @JS('debug_info_type')
+  external String debugInfoType;
+
+  external factory RumWebWasmModule({
+    required String url,
+    required String build_id,
+    required String debug_info_type,
+  });
+}
+
 extension type RumWebRawErrorData.__(JSObject __) implements JSObject {
   external String id;
   external String? type;
@@ -59,6 +73,8 @@ extension type RumWebRawErrorData.__(JSObject __) implements JSObject {
   external String? handling;
   @JS('source_type')
   external String sourceType;
+  @JS('wasm_modules')
+  external JSArray<RumWebWasmModule>? wasmModules;
   external RumWebRawErrorResource? resource;
 
   factory RumWebRawErrorData({
@@ -72,6 +88,7 @@ extension type RumWebRawErrorData.__(JSObject __) implements JSObject {
     required String message,
     String? handling,
     String source_type = 'browser',
+    JSArray<RumWebWasmModule>? wasm_modules,
     RumWebRawErrorResource? resource,
   }) =>
       RumWebRawErrorData._(
@@ -85,6 +102,7 @@ extension type RumWebRawErrorData.__(JSObject __) implements JSObject {
         source: source,
         handling: handling,
         source_type: source_type,
+        wasm_modules: wasm_modules,
         resource: resource,
       );
 
@@ -99,6 +117,7 @@ extension type RumWebRawErrorData.__(JSObject __) implements JSObject {
     required String message,
     String? handling,
     String source_type,
+    JSArray<RumWebWasmModule>? wasm_modules,
     RumWebRawErrorResource? resource,
   });
 }
