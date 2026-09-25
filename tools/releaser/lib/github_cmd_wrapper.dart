@@ -329,26 +329,119 @@ class GithubCommandWrapper {
     return buffer.toString().trim();
   }
 
+  /// `gh release create` for a package that just published. [latest]
+  /// controls `--latest`/`--latest=false` -- a patch on an old minor line,
+  /// or a pre-release, should never claim "latest" over a newer mainline
+  /// release. [prerelease] adds `--prerelease`. [notes] goes via a temp
+  /// file, like [createPullRequest]'s body -- a changelog section is
+  /// long-form markdown, not safe as a single CLI argument.
   Future<void> createRelease(
+    Logger logger, {
+    required String tag,
+    required String title,
+    required String notes,
+    required bool latest,
+    required bool prerelease,
+  }) async {
+    final tempFile = await File(
+      '${Directory.systemTemp.path}/dart_releaser_release_notes_'
+      '${DateTime.now().microsecondsSinceEpoch}.tmp',
+    ).create();
+    await tempFile.writeAsString(notes);
+
+    try {
+      final exitCode = await runProcess(
+        'gh',
+        [
+          'release',
+          'create',
+          tag,
+          '--title',
+          title,
+          '--notes-file',
+          tempFile.path,
+          latest ? '--latest' : '--latest=false',
+          if (prerelease) '--prerelease',
+        ],
+        workingDirectory: cwd,
+        stdout: (line) => logger.info(line),
+        stderr: (line) => logger.shout(line),
+      );
+
+      if (exitCode != 0) {
+        throw Exception('gh returned exit code $exitCode.');
+      }
+    } finally {
+      await tempFile.delete();
+    }
+  }
+
+  /// Whether [context]'s status is `success` for [sha] -- the authenticity
+  /// check `publish_release.dart` runs before doing anything else, since a
+  /// `release-trigger/*` tag isn't branch-protected and this is what
+  /// actually proves GitLab's pipeline passed for this exact commit.
+  ///
+  /// `per_page=100` is explicit rather than relying on `gh api --paginate`:
+  /// that flag only auto-follows `Link`-header pagination for endpoints
+  /// that return a JSON array at the top level, and this one returns a
+  /// single object with a nested `statuses` array, so `--paginate` would
+  /// not merge multiple pages of it anyway. 100 (the API's max) comfortably
+  /// covers this repo's ~20-30 status contexts in one page.
+  Future<bool> commitStatusIsSuccess(
     Logger logger,
-    String tag,
-    String name,
-    String changelog,
-    bool isPrerelease,
+    String repoSlug,
+    String sha,
+    String context,
   ) async {
     final buffer = StringBuffer();
     final exitCode = await runProcess(
       'gh',
       [
-        'release',
-        'create',
-        tag,
-        '--title',
-        name,
-        '--notes',
-        changelog,
-        '--draft',
-        if (isPrerelease) '--prerelease',
+        'api',
+        'repos/$repoSlug/commits/$sha/status',
+        '-f',
+        'per_page=100',
+      ],
+      workingDirectory: cwd,
+      stdout: (line) => buffer.writeln(line),
+      stderr: (line) => logger.shout(line),
+    );
+
+    if (exitCode != 0) {
+      throw Exception('gh returned exit code $exitCode.');
+    }
+
+    final json = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+    return commitStatusStateIsSuccess(json, context);
+  }
+
+  /// The most recent `gh run list` entry for [workflow] triggered by
+  /// [tagRef], or `null` if none exists yet. `status` is
+  /// `'completed'`/`'in_progress'`/`'queued'`; `conclusion` is only
+  /// meaningful once `status == 'completed'`. Used to poll a
+  /// `publish-package.yml` run to a terminal state before moving on to the
+  /// next package, which is what preserves topological order across a
+  /// federated group's packages.
+  Future<WorkflowRunState?> latestWorkflowRun(
+    Logger logger,
+    String repoSlug,
+    String workflow,
+    String tagRef,
+  ) async {
+    final buffer = StringBuffer();
+    final exitCode = await runProcess(
+      'gh',
+      [
+        'run',
+        'list',
+        '--repo',
+        repoSlug,
+        '--workflow',
+        workflow,
+        '--json',
+        'headBranch,status,conclusion,createdAt,url',
+        '--limit',
+        '20',
       ],
       workingDirectory: cwd,
       stdout: (line) => buffer.write(line),
@@ -358,5 +451,166 @@ class GithubCommandWrapper {
     if (exitCode != 0) {
       throw Exception('gh returned exit code $exitCode.');
     }
+
+    final json = jsonDecode(buffer.toString()) as List;
+    return selectLatestWorkflowRun(json, tagRef);
   }
+
+  /// The commit SHA [tagName] currently points to on [remote], or `null` if
+  /// the tag doesn't exist there. Used before pushing a package's version
+  /// tag so a re-run after a partial failure can tell "already pushed,
+  /// nothing to do" apart from "would overwrite a different commit" --
+  /// `git push` alone refuses an already-existing tag either way, which
+  /// makes every retry after a partial failure a manual-cleanup incident.
+  Future<String?> remoteTagCommitSha(
+    Logger logger,
+    String tagName, {
+    String remote = 'origin',
+  }) async {
+    final buffer = StringBuffer();
+    final exitCode = await runProcess(
+      'git',
+      ['ls-remote', remote, 'refs/tags/$tagName^{}'],
+      workingDirectory: cwd,
+      stdout: (line) => buffer.writeln(line),
+      stderr: (line) => logger.shout(line),
+    );
+
+    if (exitCode != 0) {
+      throw Exception('git ls-remote returned exit code $exitCode.');
+    }
+
+    final line = buffer.toString().trim();
+    if (line.isEmpty) return null;
+    // `<sha>\trefs/tags/<name>^{}` -- take the SHA.
+    return line.split(RegExp(r'\s+')).first;
+  }
+
+  /// The number of an open PR from [head] into [base], or `null` if none
+  /// exists. Used before opening the commit-A backport PR so a re-run
+  /// after a partial failure (tag/PR already created, something later
+  /// failed) doesn't hit `gh pr create`'s "a pull request already exists"
+  /// error.
+  Future<int?> findOpenPullRequest(
+    Logger logger, {
+    required String head,
+    required String base,
+  }) async {
+    final buffer = StringBuffer();
+    final exitCode = await runProcess(
+      'gh',
+      [
+        'pr',
+        'list',
+        '--head',
+        head,
+        '--base',
+        base,
+        '--state',
+        'open',
+        '--json',
+        'number',
+        '--limit',
+        '1',
+      ],
+      workingDirectory: cwd,
+      stdout: (line) => buffer.write(line),
+      stderr: (line) => logger.shout(line),
+    );
+
+    if (exitCode != 0) {
+      throw Exception('gh returned exit code $exitCode.');
+    }
+
+    final json = jsonDecode(buffer.toString()) as List;
+    if (json.isEmpty) return null;
+    return (json.first as Map<String, dynamic>)['number'] as int;
+  }
+
+  /// `gh pr merge {number} --auto --merge` -- queues [prNumber] for
+  /// GitHub's native auto-merge using the `merge` strategy specifically,
+  /// never squash/rebase, since Phase 2's backport PR needs commit A's
+  /// original SHA to land on the dev-line branch, not a re-authored
+  /// duplicate. Still subject to the branch's required review/status
+  /// checks -- this only queues it, a human still has to approve.
+  Future<void> enableAutoMergeWithMergeCommit(
+    Logger logger,
+    int prNumber,
+  ) async {
+    final exitCode = await runProcess(
+      'gh',
+      ['pr', 'merge', '$prNumber', '--auto', '--merge'],
+      workingDirectory: cwd,
+      stdout: (line) => logger.info(line),
+      stderr: (line) => logger.shout(line),
+    );
+
+    if (exitCode != 0) {
+      throw Exception('gh returned exit code $exitCode.');
+    }
+  }
+}
+
+/// A `publish-package.yml` run's state, as read from `gh run list`. See
+/// [GithubCommandWrapper.latestWorkflowRun].
+class WorkflowRunState {
+  final String status;
+  final String? conclusion;
+  final String url;
+
+  WorkflowRunState({
+    required this.status,
+    required this.conclusion,
+    required this.url,
+  });
+
+  bool get isComplete => status == 'completed';
+  bool get succeeded => isComplete && conclusion == 'success';
+}
+
+/// Pulled out of [GithubCommandWrapper.commitStatusIsSuccess] so it's
+/// directly testable against a fabricated response, without a live `gh`
+/// call. [statusResponse] is the decoded JSON body of `GET
+/// /repos/{repo}/commits/{sha}/status`.
+///
+/// Takes the *first* entry in `.statuses` matching [context] rather than
+/// checking whether every entry matching it says `success` -- the API
+/// returns entries newest-first, and a context can legitimately appear
+/// more than once if it was posted multiple times (e.g. a retried GitLab
+/// job); only the newest posting for that context is the current state.
+bool commitStatusStateIsSuccess(
+  Map<String, dynamic> statusResponse,
+  String context,
+) {
+  final statuses = (statusResponse['statuses'] as List?) ?? const [];
+  for (final entry in statuses) {
+    final map = entry as Map<String, dynamic>;
+    if (map['context'] == context) {
+      return map['state'] == 'success';
+    }
+  }
+  return false;
+}
+
+/// Pulled out of [GithubCommandWrapper.latestWorkflowRun] so it's directly
+/// testable against a fabricated response, without a live `gh` call.
+/// [runs] is the decoded JSON array from `gh run list --json
+/// headBranch,status,conclusion,createdAt,url`.
+WorkflowRunState? selectLatestWorkflowRun(List<dynamic> runs, String tagRef) {
+  final matches =
+      runs.cast<Map<String, dynamic>>().where(
+        (e) => e['headBranch'] == tagRef,
+      ).toList()
+        ..sort(
+          (a, b) =>
+              (b['createdAt'] as String).compareTo(a['createdAt'] as String),
+        );
+  if (matches.isEmpty) return null;
+
+  final entry = matches.first;
+  return WorkflowRunState(
+    status: entry['status'] as String,
+    conclusion: entry['conclusion'] as String?,
+    url: entry['url'] as String,
+  );
 }

@@ -1,0 +1,71 @@
+name: Publish release (Phase 2)
+
+# Orchestrates Phase 2 once a release-prep PR's content has passed real CI.
+#
+# Triggered by a `release-trigger/*` tag -- pushed by a GitLab CI job
+# (.gitlab-ci.yml's push-release-trigger-tag) only once its own pipeline has
+# actually succeeded for this commit. First real step
+# is a security check: it verifies a successful
+# `dd-gitlab/notify-pipeline-succeeded` GitHub commit status on this exact
+# commit before doing anything else -- and, since that status alone doesn't
+# prove the commit came from a legitimate release branch, that the commit is
+# also reachable from the same branch whitelist push-release-trigger-tag and
+# self.tag-push.sts.yaml use (main/v4-main/a patch branch).
+on:
+  push:
+    tags:
+      - 'release-trigger/**'
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  statuses: read
+
+# Two release-trigger tags landing close together (e.g. two release-prep PRs
+# merged back-to-back) would otherwise run two orchestrators concurrently,
+# both pushing package tags and racing the same backport -- serialize them.
+# Never cancel a run that's already publishing real packages.
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Generous, but not unbounded.
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch every branch (dev-line + release-content/*)
+        run: git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
+      - uses: dart-lang/setup-dart@v1
+      - name: dart pub get
+        working-directory: tools/releaser
+        run: dart pub get
+      # RELEASE_TAG_PUSH_TOKEN must be a real PAT or GitHub App installation token with at least 
+      # `contents: write` to avoid triggering recursion protections
+      - name: Configure git identity and remote for tag pushes
+        env:
+          RELEASE_TAG_PUSH_TOKEN: ${{ secrets.RELEASE_TAG_PUSH_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${RELEASE_TAG_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
+      - name: Publish release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dart run tools/releaser/bin/publish_release.dart --repo-root="$GITHUB_WORKSPACE"
+      - name: Notify Slack on Failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL_DD_SDK_FLUTTER }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "❌ Release publish failed for ${{ github.repository }} at `${{ github.sha }}`: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }

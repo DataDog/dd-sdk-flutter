@@ -74,11 +74,11 @@ void main() {
         'HEAD',
       ])).stdout.toString().trim();
 
-      await pushTag(gitDir, 'release-content/test-tag', sha, logger);
+      await pushTag(gitDir, 'datadog_dio/v1.0.0-test', sha, logger);
 
       final result = await Process.run('git', [
         'rev-parse',
-        'release-content/test-tag^{commit}',
+        'datadog_dio/v1.0.0-test^{commit}',
       ], workingDirectory: bareRemote.path);
       expect((result.stdout as String).trim(), sha);
     });
@@ -93,13 +93,109 @@ void main() {
 
       await fixture.commit('chore: a second commit');
 
-      await pushTag(gitDir, 'release-content/test-tag', firstSha, logger);
+      await pushTag(gitDir, 'datadog_dio/v1.0.0-test', firstSha, logger);
 
       final result = await Process.run('git', [
         'rev-parse',
-        'release-content/test-tag^{commit}',
+        'datadog_dio/v1.0.0-test^{commit}',
       ], workingDirectory: bareRemote.path);
       expect((result.stdout as String).trim(), firstSha);
+    });
+  });
+
+  group('pushBranchAt', () {
+    late Directory bareRemote;
+
+    setUp(() async {
+      bareRemote = await createTestTempDir('release_git_test_remote_');
+      await Process.run('git', [
+        'init',
+        '-q',
+        '--bare',
+        bareRemote.path,
+      ]);
+      await Process.run('git', [
+        'remote',
+        'add',
+        'origin',
+        bareRemote.path,
+      ], workingDirectory: fixture.root.path);
+    });
+
+    tearDown(() => bareRemote.delete(recursive: true));
+
+    test('pushes the given commit as a new branch, not the current tip',
+        () async {
+      final gitDir = await fixture.gitDir;
+      final firstSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      await fixture.commit('chore: a second commit');
+
+      await pushBranchAt(gitDir, 'release-content/test-branch', firstSha, logger);
+
+      final result = await Process.run('git', [
+        'rev-parse',
+        'release-content/test-branch',
+      ], workingDirectory: bareRemote.path);
+      expect((result.stdout as String).trim(), firstSha);
+    });
+
+    test('force-moves an existing branch to a new commit', () async {
+      final gitDir = await fixture.gitDir;
+      final firstSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      await pushBranchAt(gitDir, 'release-content/test-branch', firstSha, logger);
+
+      await fixture.commit('chore: amended content');
+      final secondSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      await pushBranchAt(
+        gitDir,
+        'release-content/test-branch',
+        secondSha,
+        logger,
+        force: true,
+      );
+
+      final result = await Process.run('git', [
+        'rev-parse',
+        'release-content/test-branch',
+      ], workingDirectory: bareRemote.path);
+      expect((result.stdout as String).trim(), secondSha);
+    });
+  });
+
+  group('isAncestor', () {
+    test('is true for HEAD~1 relative to HEAD', () async {
+      final gitDir = await fixture.gitDir;
+      final firstSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      await fixture.commit('chore: a second commit');
+
+      expect(await isAncestor(gitDir, firstSha, 'HEAD', logger), isTrue);
+    });
+
+    test('is false for a commit not reachable from ref', () async {
+      final gitDir = await fixture.gitDir;
+      await fixture.commit('chore: a second commit');
+      final secondSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      await gitDir.runCommand(['checkout', '-b', 'side-branch', 'HEAD~1']);
+      await fixture.commit('chore: a divergent commit');
+
+      expect(await isAncestor(gitDir, secondSha, 'HEAD', logger), isFalse);
     });
   });
 }
