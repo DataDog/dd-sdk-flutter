@@ -16,12 +16,19 @@ class ManifestPackageEntry {
   final String sourceBranch;
   final bool prerelease;
 
+  /// [DiscoveredPackage.relativePath] at prepare time -- carried here so
+  /// `publish_release.dart` can find this package's `CHANGELOG.md` (for the
+  /// GitHub Release notes) without re-running package discovery against the
+  /// tagged commit.
+  final String relativePath;
+
   ManifestPackageEntry({
     required this.package,
     required this.fromVersion,
     required this.toVersion,
     required this.sourceBranch,
     required this.prerelease,
+    required this.relativePath,
   });
 
   factory ManifestPackageEntry.fromJson(Map<String, dynamic> json) =>
@@ -31,6 +38,7 @@ class ManifestPackageEntry {
         toVersion: json['to_version'] as String,
         sourceBranch: json['source_branch'] as String,
         prerelease: json['prerelease'] as bool,
+        relativePath: json['relative_path'] as String,
       );
 
   Map<String, dynamic> toJson() => {
@@ -39,24 +47,29 @@ class ManifestPackageEntry {
     'to_version': toVersion,
     'source_branch': sourceBranch,
     'prerelease': prerelease,
+    'relative_path': relativePath,
   };
 }
 
 /// The canonical record of what one `prepare_release.dart` run did, written
 /// to `.release/manifest.json` as part of the publish-prep commit (commit
 /// B). Phase 2 reads this instead of diffing, and reads [contentCommit] to
-/// know exactly what to cherry-pick when it backports the content commit
-/// into the dev-line branch afterwards.
+/// know exactly which commit to backport into the dev-line branch afterwards --
+/// via a reviewed, auto-merged PR from the `release-content/*` branch
+/// (merged with the `merge` strategy specifically, never squash/rebase, so
+/// commit A's original SHA lands intact rather than being replayed as a
+/// content-identical duplicate).
 ///
 /// Deliberately confined to the disposable `main`/`{effort}-main` lines:
 /// nothing here is ever backported, so it never needs to be merged with
 /// anything and never accumulates across branches.
 class ReleaseManifest {
-  /// Commit A's SHA (mainline/pre-release), safe to cherry-pick into the
-  /// dev-line branch. `null` on a patch trigger -- patch doesn't split
-  /// commits, so there is no commit here that's safe to backport that way;
-  /// Phase 2 uses `changelog_backport.dart` for patch instead, and reads
-  /// this field being `null` as the enforced signal not to cherry-pick.
+  /// Commit A's SHA (mainline/pre-release), backported into the dev-line
+  /// branch by Phase 2 via `release-content/*`. `null` on a patch trigger -- patch
+  /// doesn't split commits, so there is no commit here that's safe to
+  /// backport that way; Phase 2 uses `changelog_backport.dart` for patch
+  /// instead, and reads this field being `null` as the enforced signal not
+  /// to attempt it.
   final String? contentCommit;
   final List<ManifestPackageEntry> packages;
 

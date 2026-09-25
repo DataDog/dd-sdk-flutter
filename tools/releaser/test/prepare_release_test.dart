@@ -3,12 +3,16 @@
 // Copyright 2019-Present Datadog, Inc.
 
 // End-to-end coverage of the commit-A/commit-B split: runs
-// `prepareRelease` for real against a `FixtureRepo`, with
+// `prepareRelease` for real against a `FixtureRepo`, mostly with
 // `dryRun: true` (stops short of push/PR -- no real remote or `gh` in
-// this environment) and `skipPublishValidation: true` (no real Flutter
+// this environment; one test pushes to a local bare remote to cover the
+// release-content branch push specifically, tolerating the `gh` call after
+// it failing fast) and `skipPublishValidation: true` (no real Flutter
 // toolchain here). The package under test is requested explicitly with
 // zero qualifying commits, so the changelog pipeline's PR-resolution path
 // is never exercised (no `gh` calls) -- see `_applyContentChanges`.
+
+import 'dart:io';
 
 import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/llm/ai_gateway.dart';
@@ -19,6 +23,7 @@ import 'package:test/test.dart';
 
 import '../bin/prepare_release.dart';
 import 'support/fixture_repo.dart';
+import 'support/test_temp.dart';
 
 // Stands in for `fetchPublishedVersions`'s real pub.dev lookup -- this suite
 // runs against a `FixtureRepo` with no network access, and `datadog_dio`'s
@@ -99,8 +104,8 @@ void main() {
       final contentSha = contentCommitLine.split(' ').first;
 
       // Commit A's diff must never touch dependency_overrides, native
-      // pinning, or the manifest -- that's what makes a cherry-pick of it
-      // safe to backport (Phase 2 step 6).
+      // pinning, or the manifest -- that's what makes backing it into the
+      // dev-line branch safe (Phase 2's commit-A backport).
       final contentDiff = await gitDir.runCommand([
         'show',
         '--stat',
@@ -140,6 +145,80 @@ void main() {
         contains('Maintenance release; no significant changes.'),
       );
     },
+  );
+
+  test(
+    'pushes the release-content branch at commit A\'s exact SHA on a real '
+    '(non-dry-run) mainline run',
+    () async {
+      // A real push needs a real remote -- a local bare repo, same pattern
+      // as release_git_test.dart. `prepareRelease` still goes on afterwards
+      // to call `github.repoSlug()`/`createPullRequest()`, which fail fast
+      // here (this remote has no GitHub owner/repo to resolve, so `gh`
+      // never gets far enough to touch the network) -- expected, and fine:
+      // both branch pushes already landed by that point, which is what
+      // this test is actually checking.
+      final gitDir = await fixture.gitDir;
+      final bareRemote = await createTestTempDir(
+        'prepare_release_test_remote_',
+      );
+      await Process.run('git', ['init', '-q', '--bare', bareRemote.path]);
+      await Process.run('git', [
+        'remote',
+        'add',
+        'origin',
+        bareRemote.path,
+      ], workingDirectory: fixture.root.path);
+
+      try {
+        await expectLater(
+          prepareRelease(
+            RunContext(
+              repoRoot: fixture.root.path,
+              trigger: TriggerContext.mainline,
+              currentBranch: 'develop',
+              requestedPackages: ['datadog_dio'],
+            ),
+            gitDir: gitDir,
+            github: GithubCommandWrapper(fixture.root.path),
+            aiGatewayClient: _NeverCalledAiGatewayClient(),
+            dryRun: false,
+            skipPublishValidation: true,
+            publishedVersions: _neverPublished,
+          ),
+          throwsA(anything),
+        );
+
+        final branches = await Process.run('git', [
+          'for-each-ref',
+          '--format=%(refname:short)',
+          'refs/heads/release-content',
+        ], workingDirectory: bareRemote.path);
+        final contentBranch = (branches.stdout as String)
+            .split('\n')
+            .map((l) => l.trim())
+            .firstWhere((l) => l.startsWith('release-content/'));
+
+        final localContentSha = await gitDir.runCommand([
+          'log',
+          '--all',
+          '--format=%H',
+          '--grep=changelog',
+          '-n',
+          '1',
+        ]);
+        final expectedSha = (localContentSha.stdout as String).trim();
+
+        final remoteSha = await Process.run('git', [
+          'rev-parse',
+          '$contentBranch^{commit}',
+        ], workingDirectory: bareRemote.path);
+        expect((remoteSha.stdout as String).trim(), expectedSha);
+      } finally {
+        await bareRemote.delete(recursive: true);
+      }
+    },
+    timeout: const Timeout(Duration(seconds: 30)),
   );
 
   test(

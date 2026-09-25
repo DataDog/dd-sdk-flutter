@@ -1,0 +1,25 @@
+# Trust policy allowing dd-octo-sts to grant our push-release-trigger-tag CI
+# job a GitHub token. Deliberately narrower than self.prepare-release.sts.yaml:
+# this job only ever pushes a tag, so it gets contents:write and nothing else
+# (no pull_requests scope) -- least privilege for a job that runs
+# automatically, not `when: manual`.
+#
+# Covers main (mainline), the pre-release `-main` whitelist (currently just
+# v4-main -- add/remove an entry per active effort, never a `.+-main`
+# wildcard -- the same branch set push-release-trigger-tag's `rules:` in 
+# .gitlab-ci.yml fires on.
+issuer: https://gitlab.ddbuild.io
+
+subject_pattern: "project_path:DataDog/dd-sdk-flutter:ref_type:branch:ref:(main|v4-main|release/.+/v\\d+\\.\\d+\\.x)"
+
+claim_pattern:
+  project_path: "DataDog/dd-sdk-flutter"
+  ref: "^(main|v4-main|release/.+/v\\d+\\.\\d+\\.x)$"
+  ref_type: "branch"
+  ref_path: "^refs/heads/(main|v4-main|release/.+/v\\d+\\.\\d+\\.x)$"
+  ci_config_ref_uri: 'gitlab\.ddbuild\.io/DataDog/dd-sdk-flutter//\.gitlab-ci\.yml@refs/heads/(main|v4-main|release/.+/v\d+\.\d+\.x)'
+  pipeline_source: "push"
+
+# Tag-push only -- no pull_requests scope, unlike self.prepare-release.
+permissions:
+  contents: write

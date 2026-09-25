@@ -84,3 +84,39 @@ Future<void> prependChangelogSection(
     await changelogFile.writeAsString('## $version\n\n$body\n');
   }
 }
+
+/// The body of [changelogFile]'s `## {version}` section (heading not
+/// included), or `null` if that heading isn't present. The mirror-image
+/// read of [prependChangelogSection] -- used by `publish_release.dart` to
+/// source a `gh release create` body from the same section a reviewer
+/// already read and approved in the release PR, rather than just linking
+/// back to it.
+String? extractChangelogSection(File changelogFile, String version) {
+  if (!changelogFile.existsSync()) return null;
+
+  final lines = changelogFile.readAsLinesSync();
+  final startIndex = lines.indexWhere(
+    (line) => _headingPattern.firstMatch(line)?.group(1) == version,
+  );
+  if (startIndex == -1) return null;
+
+  final endIndex = lines.skip(startIndex + 1).toList().indexWhere(
+    (line) => _headingPattern.hasMatch(line),
+  );
+  final sectionLines = endIndex == -1
+      ? lines.sublist(startIndex + 1)
+      : lines.sublist(startIndex + 1, startIndex + 1 + endIndex);
+
+  // Trim leading/trailing blank lines the heading/next-heading spacing
+  // leaves behind, but keep blank lines within the body itself.
+  var start = 0;
+  var end = sectionLines.length;
+  while (start < end && sectionLines[start].trim().isEmpty) {
+    start++;
+  }
+  while (end > start && sectionLines[end - 1].trim().isEmpty) {
+    end--;
+  }
+
+  return sectionLines.sublist(start, end).join('\n');
+}
