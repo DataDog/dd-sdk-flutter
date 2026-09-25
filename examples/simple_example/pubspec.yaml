@@ -4,7 +4,7 @@ publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.6.0 <4.0.0"
+  sdk: ">=3.10.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -12,6 +12,7 @@ dependencies:
   flutter_web_plugins:
     sdk: flutter
 
+  http: ^1.0.0
   cupertino_icons: ^1.0.2
   datadog_flutter_plugin:
     path: ../../packages/datadog_flutter_plugin
@@ -23,8 +24,15 @@ dependencies:
     path: ../../packages/datadog_gql_link
   datadog_session_replay:
     path: ../../packages/datadog_session_replay
+  datadog_flags:
+    path: ../../packages/datadog_flags
   datadog_flags_flutter:
     path: ../../packages/datadog_flags_flutter
+  openfeature_dart_client_sdk:
+    git:
+      url: https://github.com/open-feature/dart-sdk.git
+      ref: c57c285590ab87088cdc116cdb804adf6acab2a4
+      path: packages/openfeature_dart_client_sdk
 
   go_router: ^14.7.0
   path_provider: ^2.1.0
@@ -35,12 +43,14 @@ dependencies:
 dependency_overrides:
   datadog_flutter_plugin:
     path: ../../packages/datadog_flutter_plugin
-  datadog_flags_flutter:
-    path: ../../packages/datadog_flags_flutter
   datadog_flags:
     path: ../../packages/datadog_flags
+  datadog_flags_flutter:
+    path: ../../packages/datadog_flags_flutter
 
 dev_dependencies:
+  integration_test:
+    sdk: flutter
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0

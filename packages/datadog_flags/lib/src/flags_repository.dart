@@ -10,6 +10,7 @@ import 'package:meta/meta.dart';
 import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flag_assignments_fetcher.dart';
+import 'flags_client.dart';
 import 'flags_error.dart';
 import 'flags_store.dart';
 import 'json_value.dart';
@@ -20,8 +21,9 @@ class FlagsRepository {
   // Keep late writes ordered when SDK reconfiguration replaces a repository.
   // Expando keeps the queue scoped to the store identity without retaining it.
   static final Expando<Map<String, _CacheOperationQueue>>
-      _cacheOperationQueues =
-      Expando<Map<String, _CacheOperationQueue>>('flags cache operations');
+  _cacheOperationQueues = Expando<Map<String, _CacheOperationQueue>>(
+    'flags cache operations',
+  );
 
   @visibleForTesting
   final Duration storeReadTimeout;
@@ -37,6 +39,9 @@ class FlagsRepository {
   final Timer Function(Duration, void Function()) scheduleInitializationTimeout;
 
   FlagsData? _state;
+  DatadogFlagsClientStatus _status = DatadogFlagsClientStatus.notReady;
+  final StreamController<DatadogFlagsClientStatus> _statusChanges =
+      StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
   _CancelToken? _currentToken;
   bool _didStartInitialization = false;
 
@@ -51,6 +56,10 @@ class FlagsRepository {
   }) : _cacheOperations = _cacheOperationQueue(store, clientName);
 
   FlagsEvaluationContext? get context => _state?.context;
+
+  DatadogFlagsClientStatus get status => _status;
+
+  Stream<DatadogFlagsClientStatus> get statusChanges => _statusChanges.stream;
 
   FlagAssignment? flagAssignment(String key) => _state?.flags[key];
 
@@ -93,10 +102,11 @@ class FlagsRepository {
 
     final matchingCached =
         cached != null && _contextsMatch(cached.context, context)
-            ? cached
-            : null;
+        ? cached
+        : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
       _state = matchingCached;
+      _setStatus(DatadogFlagsClientStatus.stale);
     }
 
     try {
@@ -110,10 +120,14 @@ class FlagsRepository {
         date: dateProvider(),
       );
       _state = data;
+      _setStatus(DatadogFlagsClientStatus.ready);
       await _writeCached(data);
     } catch (_) {
       if (!token.isCanceled && matchingCached == null) {
         _state = null;
+        _setStatus(DatadogFlagsClientStatus.error);
+      } else if (!token.isCanceled) {
+        _setStatus(DatadogFlagsClientStatus.stale);
       }
     }
   }
@@ -142,8 +156,8 @@ class FlagsRepository {
       return _CacheOperationQueue();
     }
 
-    final queues =
-        _cacheOperationQueues[store] ??= <String, _CacheOperationQueue>{};
+    final queues = _cacheOperationQueues[store] ??=
+        <String, _CacheOperationQueue>{};
     return queues.putIfAbsent(clientName, _CacheOperationQueue.new);
   }
 
@@ -156,11 +170,29 @@ class FlagsRepository {
     _currentToken?.cancel();
     _currentToken = null;
     _state = null;
+    _setStatus(DatadogFlagsClientStatus.notReady);
+  }
+
+  Future<void> dispose() async {
+    await clearMemory();
+    if (!_statusChanges.isClosed) {
+      await _statusChanges.close();
+    }
   }
 
   Future<void> reset() async {
     await clearMemory();
     await _deleteCached();
+  }
+
+  void _setStatus(DatadogFlagsClientStatus status) {
+    if (_status == status) {
+      return;
+    }
+    _status = status;
+    if (!_statusChanges.isClosed) {
+      _statusChanges.add(status);
+    }
   }
 
   Future<FlagsData?> _readCached() async {
@@ -170,10 +202,9 @@ class FlagsRepository {
     }
 
     try {
-      return await store.read(clientName).timeout(
-            storeReadTimeout,
-            onTimeout: () => null,
-          );
+      return await store
+          .read(clientName)
+          .timeout(storeReadTimeout, onTimeout: () => null);
     } catch (_) {
       return null;
     }

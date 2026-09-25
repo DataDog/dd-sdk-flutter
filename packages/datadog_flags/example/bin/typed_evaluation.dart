@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:datadog_flags/datadog_flags.dart';
+import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 Future<void> main(List<String> arguments) async {
   final parser = _argumentParser();
@@ -31,48 +32,44 @@ Future<void> main(List<String> arguments) async {
   );
   final flagKey = results.option('flag-key')!;
   final flagType = results.option('flag-type')!;
-  final datadogFlags = DatadogFlags.instance;
-
-  await datadogFlags.enable(
-    configuration: DatadogFlagsConfiguration(
-      datadogConfig: DatadogFlagsConfig(
-        clientToken: Platform.environment['DD_CLIENT_TOKEN'] ?? '',
-        env: results.option('env')!,
-        site: _siteFromOption(results.option('site')!),
-        applicationId: Platform.environment['DD_APPLICATION_ID'],
-      ),
+  final api = OpenFeatureAPI.instance;
+  await api.setEvaluationContextAndWait(
+    EvaluationContext(
+      targetingKey: results.option('targeting-key'),
+      attributes: attributes,
     ),
   );
-
-  final flags = datadogFlags.sharedClient();
   try {
-    await flags.initialize(
-      FlagsEvaluationContext(
-        targetingKey: results.option('targeting-key'),
-        attributes: attributes,
+    await api.setProviderAndWait(
+      DatadogOpenFeatureProvider(
+        configuration: DatadogFlagsConfiguration(
+          datadogConfig: DatadogFlagsConfig(
+            clientToken: Platform.environment['DD_CLIENT_TOKEN'] ?? '',
+            env: results.option('env')!,
+            site: _siteFromOption(results.option('site')!),
+            applicationId: Platform.environment['DD_APPLICATION_ID'],
+          ),
+        ),
       ),
     );
-  } on FlagsInitializationTimeoutException catch (error) {
+  } on OpenFeatureException catch (error) {
     stderr.writeln(error.message);
   }
+  final flags = api.getClient();
 
   final details = _evaluate(flags, flagKey, flagType);
-  stdout.writeln('key: ${details.key}');
+  stdout.writeln('key: ${details.flagKey}');
   stdout.writeln('value: ${jsonEncode(details.value)}');
   stdout.writeln('variant: ${details.variant ?? '(none)'}');
   stdout.writeln('reason: ${details.reason ?? '(none)'}');
-  stdout.writeln('error: ${details.error?.name ?? '(none)'}');
+  stdout.writeln('error: ${details.errorCode?.name ?? '(none)'}');
 
-  await datadogFlags.disable();
+  await api.shutdown();
 }
 
 ArgParser _argumentParser() {
   return ArgParser()
-    ..addOption(
-      'env',
-      defaultsTo: 'staging',
-      help: 'Datadog environment name.',
-    )
+    ..addOption('env', defaultsTo: 'staging', help: 'Datadog environment name.')
     ..addOption(
       'site',
       defaultsTo: 'us1',
@@ -98,44 +95,21 @@ ArgParser _argumentParser() {
       'targeting-attributes',
       help: 'Optional JSON object with targeting attributes.',
     )
-    ..addFlag(
-      'help',
-      abbr: 'h',
-      negatable: false,
-      help: 'Print usage.',
-    );
+    ..addFlag('help', abbr: 'h', negatable: false, help: 'Print usage.');
 }
 
-FlagDetails<Object?> _evaluate(
-  DatadogFlagsClient flags,
+FlagEvaluationDetails<Object> _evaluate(
+  OpenFeatureClient flags,
   String flagKey,
   String flagType,
 ) {
   return switch (flagType) {
-    'boolean' => flags.getBooleanDetails(
-        key: flagKey,
-        defaultValue: false,
-      ),
-    'string' => flags.getStringDetails(
-        key: flagKey,
-        defaultValue: '',
-      ),
-    'integer' => flags.getIntegerDetails(
-        key: flagKey,
-        defaultValue: 0,
-      ),
-    'double' || 'float' => flags.getDoubleDetails(
-        key: flagKey,
-        defaultValue: 0,
-      ),
-    'json' => flags.getObjectDetails(
-        key: flagKey,
-        defaultValue: null,
-      ),
-    _ => flags.getBooleanDetails(
-        key: flagKey,
-        defaultValue: false,
-      ),
+    'boolean' => flags.getBooleanDetails(flagKey, false),
+    'string' => flags.getStringDetails(flagKey, ''),
+    'integer' => flags.getIntegerDetails(flagKey, 0),
+    'double' || 'float' => flags.getDoubleDetails(flagKey, 0),
+    'json' => flags.getStructureDetails(flagKey, const {}),
+    _ => flags.getBooleanDetails(flagKey, false),
   };
 }
 

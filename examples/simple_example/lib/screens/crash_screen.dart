@@ -20,9 +20,7 @@ class CrashTestScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Crash Test Screen'),
-      ),
+      appBar: AppBar(title: const Text('Crash Test Screen')),
       body: Center(
         child: Column(
           children: [

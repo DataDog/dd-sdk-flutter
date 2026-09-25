@@ -14,15 +14,16 @@ PrecomputeResponse _$PrecomputeResponseFromJson(Map<String, dynamic> json) =>
 PrecomputeData _$PrecomputeDataFromJson(Map<String, dynamic> json) =>
     PrecomputeData(
       attributes: PrecomputeAttributes.fromJson(
-          json['attributes'] as Map<String, dynamic>),
+        json['attributes'] as Map<String, dynamic>,
+      ),
     );
 
 PrecomputeAttributes _$PrecomputeAttributesFromJson(
-        Map<String, dynamic> json) =>
-    PrecomputeAttributes(
-      createdAt: json['createdAt'] == null
-          ? null
-          : DateTime.parse(json['createdAt'] as String),
-      environment: _environmentFromJson(json['environment']),
-      flags: _flagsFromJson(json['flags'] as Map<String, dynamic>),
-    );
+  Map<String, dynamic> json,
+) => PrecomputeAttributes(
+  createdAt: json['createdAt'] == null
+      ? null
+      : DateTime.parse(json['createdAt'] as String),
+  environment: _environmentFromJson(json['environment']),
+  flags: _flagsFromJson(json['flags'] as Map<String, dynamic>),
+);

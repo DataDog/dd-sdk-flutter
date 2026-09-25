@@ -204,50 +204,40 @@ void main() {
       );
     });
 
-    test(
-      'keeps canonical number variation names from the server',
-      () async {
-        final requests = <http.Request>[];
-        final fetcher = FlagAssignmentsFetcher(
-          datadogConfig: _contextFor(DatadogFlagsSite.us1),
-          configuration: const DatadogFlagsConfiguration(),
-          httpClient: _jsonClient(requests, {
-            'data': {
-              'attributes': {
-                'flags': {
-                  'enabled': _assignment('boolean', true),
-                  'title': _assignment('string', 'Hello'),
-                  'integer': _assignment('number', 12),
-                  'float': _assignment('number', 0.25),
-                  'object': _assignment('object', {
-                    'nested': ['value'],
-                  }),
-                },
+    test('keeps canonical number variation names from the server', () async {
+      final requests = <http.Request>[];
+      final fetcher = FlagAssignmentsFetcher(
+        datadogConfig: _contextFor(DatadogFlagsSite.us1),
+        configuration: const DatadogFlagsConfiguration(),
+        httpClient: _jsonClient(requests, {
+          'data': {
+            'attributes': {
+              'flags': {
+                'enabled': _assignment('boolean', true),
+                'title': _assignment('string', 'Hello'),
+                'integer': _assignment('number', 12),
+                'float': _assignment('number', 0.25),
+                'object': _assignment('object', {
+                  'nested': ['value'],
+                }),
               },
             },
-          }),
-        );
+          },
+        }),
+      );
 
-        final assignments = (await fetcher.fetch(
-          const FlagsEvaluationContext(targetingKey: 'subject'),
-        ))
-            .flags;
+      final assignments = (await fetcher.fetch(
+        const FlagsEvaluationContext(targetingKey: 'subject'),
+      )).flags;
 
-        expect(
-          assignments['enabled']!.variationType,
-          FlagVariationType.boolean,
-        );
-        expect(assignments['title']!.variationType, FlagVariationType.string);
-        expect(
-          assignments['integer']!.variationType,
-          FlagVariationType.number,
-        );
-        expect(assignments['float']!.variationType, FlagVariationType.number);
-        expect(assignments['object']!.variationType, FlagVariationType.object);
-        expect(assignments['integer']!.variationValue, 12);
-        expect(assignments['float']!.variationValue, 0.25);
-      },
-    );
+      expect(assignments['enabled']!.variationType, FlagVariationType.boolean);
+      expect(assignments['title']!.variationType, FlagVariationType.string);
+      expect(assignments['integer']!.variationType, FlagVariationType.number);
+      expect(assignments['float']!.variationType, FlagVariationType.number);
+      expect(assignments['object']!.variationType, FlagVariationType.object);
+      expect(assignments['integer']!.variationValue, 12);
+      expect(assignments['float']!.variationValue, 0.25);
+    });
 
     test(
       'ignores malformed flag entries without dropping valid assignments',
@@ -273,8 +263,7 @@ void main() {
 
         final assignments = (await fetcher.fetch(
           const FlagsEvaluationContext(targetingKey: 'subject'),
-        ))
-            .flags;
+        )).flags;
 
         expect(assignments.keys, ['valid']);
       },
@@ -290,9 +279,7 @@ void main() {
             'attributes': {
               'createdAt': '2026-06-04T12:00:00.000Z',
               'environment': 'prod',
-              'flags': {
-                'valid': _assignment('boolean', true),
-              },
+              'flags': {'valid': _assignment('boolean', true)},
             },
           },
         }),
@@ -317,9 +304,7 @@ void main() {
             'attributes': {
               'createdAt': '2026-06-23T21:04:41.025844773Z',
               'environment': {'name': 'Development - Local or Hash'},
-              'flags': {
-                'valid': _assignment('boolean', true),
-              },
+              'flags': {'valid': _assignment('boolean', true)},
             },
           },
         }),
@@ -386,9 +371,7 @@ void main() {
       );
 
       await expectLater(
-        fetcher.fetch(
-          const FlagsEvaluationContext(targetingKey: 'subject'),
-        ),
+        fetcher.fetch(const FlagsEvaluationContext(targetingKey: 'subject')),
         throwsA(
           isA<FlagsException>().having(
             (error) => error.type,

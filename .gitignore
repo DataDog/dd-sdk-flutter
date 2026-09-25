@@ -38,3 +38,4 @@ tools/ci/.tmp
 .plans
 .prompts/
 
+**/.kotlin/

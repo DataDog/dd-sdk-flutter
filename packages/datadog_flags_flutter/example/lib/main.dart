@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
+import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 const _clientToken = String.fromEnvironment('DD_CLIENT_TOKEN');
 const _applicationId = String.fromEnvironment('DD_APPLICATION_ID');
@@ -34,7 +35,7 @@ Future<void> main() async {
       rumConfiguration: _applicationId.isEmpty
           ? null
           : DatadogRumConfiguration(applicationId: _applicationId),
-    )..addPlugin(const DatadogFlagsPluginConfiguration());
+    );
 
     await DatadogSdk.instance.initialize(
       configuration,
@@ -42,6 +43,32 @@ Future<void> main() async {
     );
   }
 
+  final api = OpenFeatureAPI.instance;
+  final client = api.getClient();
+  client.addHooks([DatadogRumHook()]);
+  await api.setEvaluationContextAndWait(
+    EvaluationContext(targetingKey: _targetingKey),
+  );
+  if (isConfigured) {
+    try {
+      await api.setProviderAndWait(
+        DatadogOpenFeatureProvider(
+          configuration: DatadogFlagsConfiguration(
+            datadogConfig: DatadogFlagsConfig(
+              clientToken: _clientToken,
+              env: _env,
+              site:
+                  datadogFlagsSiteFor(_datadogSiteFor(_site)) ??
+                  DatadogFlagsSite.us1,
+              applicationId: _applicationId.isEmpty ? null : _applicationId,
+            ),
+          ),
+        ),
+      );
+    } on OpenFeatureException {
+      // The app can use defaults and recover when initial assignments arrive.
+    }
+  }
   runApp(FlagsExampleApp(isConfigured: isConfigured));
 }
 
@@ -60,10 +87,7 @@ DatadogSite _datadogSiteFor(String site) {
 class FlagsExampleApp extends StatefulWidget {
   final bool isConfigured;
 
-  const FlagsExampleApp({
-    super.key,
-    required this.isConfigured,
-  });
+  const FlagsExampleApp({super.key, required this.isConfigured});
 
   @override
   State<FlagsExampleApp> createState() => _FlagsExampleAppState();
@@ -71,7 +95,7 @@ class FlagsExampleApp extends StatefulWidget {
 
 class _FlagsExampleAppState extends State<FlagsExampleApp> {
   String _status = 'idle';
-  FlagDetails<bool>? _details;
+  FlagEvaluationDetails<bool>? _details;
 
   @override
   void initState() {
@@ -87,37 +111,9 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
       return;
     }
 
-    final client = DatadogSdk.instance.flags?.sharedClient();
-    if (client == null) {
-      setState(() {
-        _status = 'Flags plugin is not configured.';
-      });
-      return;
-    }
-
-    setState(() {
-      _status = 'loading';
-    });
-
-    var status = 'ready';
-    try {
-      await client.initialize(
-        const FlagsEvaluationContext(targetingKey: _targetingKey),
-      );
-    } on FlagsInitializationTimeoutException catch (error) {
-      status = 'using stored assignments or defaults: ${error.message}';
-    } catch (error) {
-      setState(() {
-        _details = null;
-        _status = 'using defaults: $error';
-      });
-      return;
-    }
-
-    final details = client.getBooleanDetails(
-      key: _flagKey,
-      defaultValue: false,
-    );
+    final client = OpenFeatureAPI.instance.getClient();
+    final status = client.providerStatus.name;
+    final details = client.getBooleanDetails(_flagKey, false);
     setState(() {
       _details = details;
       _status = status;
@@ -143,13 +139,10 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
               label: 'Value',
               value: details == null ? '(none)' : details.value.toString(),
             ),
-            _InfoRow(
-              label: 'Variant',
-              value: details?.variant ?? '(none)',
-            ),
+            _InfoRow(label: 'Variant', value: details?.variant ?? '(none)'),
             _InfoRow(
               label: 'Error',
-              value: details?.error?.name ?? '(none)',
+              value: details?.errorCode?.name ?? '(none)',
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -167,10 +160,7 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {

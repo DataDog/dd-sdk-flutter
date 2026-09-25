@@ -108,14 +108,10 @@ class ExposureLogger {
       return;
     }
 
-    await _uploadPendingExposures(
-      rescheduleOnFailure: rescheduleOnFailure,
-    );
+    await _uploadPendingExposures(rescheduleOnFailure: rescheduleOnFailure);
   }
 
-  Future<bool> _uploadPendingExposures({
-    required bool rescheduleOnFailure,
-  }) {
+  Future<bool> _uploadPendingExposures({required bool rescheduleOnFailure}) {
     final activeUpload = _uploadInFlight;
     if (activeUpload != null) {
       return activeUpload;
@@ -129,14 +125,15 @@ class ExposureLogger {
     _pendingExposures.clear();
 
     late final Future<bool> uploadOperation;
-    uploadOperation = _sendExposures(
-      exposures,
-      rescheduleOnFailure: rescheduleOnFailure,
-    ).whenComplete(() {
-      if (identical(_uploadInFlight, uploadOperation)) {
-        _uploadInFlight = null;
-      }
-    });
+    uploadOperation =
+        _sendExposures(
+          exposures,
+          rescheduleOnFailure: rescheduleOnFailure,
+        ).whenComplete(() {
+          if (identical(_uploadInFlight, uploadOperation)) {
+            _uploadInFlight = null;
+          }
+        });
     _uploadInFlight = uploadOperation;
     return uploadOperation;
   }
@@ -155,11 +152,7 @@ class ExposureLogger {
     );
     try {
       final response = await runtime.httpClient
-          .post(
-            request.endpoint,
-            headers: request.headers,
-            body: request.body,
-          )
+          .post(request.endpoint, headers: request.headers, body: request.body)
           .timeout(uploadTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (shouldRetryFlagsUpload(response.statusCode)) {
@@ -190,7 +183,7 @@ class ExposureLogger {
       'allocation': {'key': assignment.allocationKey},
       'flag': {'key': flagKey},
       'variant': {'key': assignment.variationKey},
-      if (serialId != null) 'serial_id': serialId,
+      'serial_id': ?serialId,
       'subject': subject,
     };
   }
@@ -238,10 +231,7 @@ final class _ExposureCacheKey {
   final String? targetingKey;
   final String flagKey;
 
-  const _ExposureCacheKey({
-    required this.targetingKey,
-    required this.flagKey,
-  });
+  const _ExposureCacheKey({required this.targetingKey, required this.flagKey});
 
   @override
   bool operator ==(Object other) {

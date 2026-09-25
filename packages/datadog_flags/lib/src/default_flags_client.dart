@@ -3,6 +3,8 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
+
 import 'assignment.dart';
 import 'evaluation_aggregator.dart';
 import 'evaluation_context.dart';
@@ -11,8 +13,10 @@ import 'flags_client.dart';
 import 'flags_error.dart';
 import 'flags_repository.dart';
 
-class DefaultDatadogFlagsClient implements DatadogFlagsClient {
+class DefaultDatadogFlagsClient
+    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
   static final Object _typeMismatch = Object();
+  bool isShutdown = false;
 
   @override
   final String name;
@@ -25,12 +29,25 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
     required FlagsRepository repository,
     required ExposureLogger exposureLogger,
     required EvaluationAggregator evaluationAggregator,
-  })  : _repository = repository,
-        _exposureLogger = exposureLogger,
-        _evaluationAggregator = evaluationAggregator;
+  }) : _repository = repository,
+       _exposureLogger = exposureLogger,
+       _evaluationAggregator = evaluationAggregator;
+
+  @override
+  DatadogFlagsClientStatus get status => _repository.status;
+
+  @override
+  Stream<DatadogFlagsClientStatus> get statusChanges =>
+      _repository.statusChanges;
+
+  @override
+  FlagsEvaluationContext? get evaluationContext => _repository.context;
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
+    if (isShutdown) {
+      throw StateError('This client is shut down. Create a new client.');
+    }
     await _repository.initialize(context);
   }
 
@@ -94,13 +111,26 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
     );
   }
 
+  FlagDetails<Map<String, Object?>> getStructureDetails({
+    required String key,
+    required Map<String, Object?> defaultValue,
+  }) {
+    return getDetails(
+      key: key,
+      defaultValue: defaultValue,
+      requestedType: FlagVariationType.object,
+      valueGuard: (value) => value is Map<String, Object?>,
+    );
+  }
+
   @override
   Future<void> shutdown() async {
+    isShutdown = true;
+    await _repository.dispose();
     await Future.wait([
       _evaluationAggregator.shutdown(),
       _exposureLogger.shutdown(),
     ]);
-    await _repository.clearMemory();
   }
 
   @override
@@ -112,7 +142,15 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
     required String key,
     required T defaultValue,
     required FlagVariationType requestedType,
+    bool Function(Object?)? valueGuard,
   }) {
+    if (isShutdown) {
+      return FlagDetails(
+        key: key,
+        value: defaultValue,
+        error: FlagEvaluationError.providerNotReady,
+      );
+    }
     final context = _repository.context;
     if (context == null) {
       _evaluationAggregator.recordEvaluation(
@@ -168,7 +206,8 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
       _ => _typeMismatch,
     };
 
-    if (identical(resolvedValue, _typeMismatch)) {
+    if (identical(resolvedValue, _typeMismatch) ||
+        (valueGuard != null && !valueGuard(resolvedValue))) {
       _evaluationAggregator.recordEvaluation(
         flagKey: key,
         assignment: assignment,
@@ -200,6 +239,10 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
       value: resolvedValue as T,
       variant: assignment.variationKey,
       reason: assignment.reason,
+      flagMetadata: {
+        datadogAllocationKeyMetadata: assignment.allocationKey,
+        datadogSerialIdMetadata: ?assignment.serialId,
+      },
     );
   }
 }

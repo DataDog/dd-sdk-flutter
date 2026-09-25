@@ -9,7 +9,7 @@ import '../custom_card.dart';
 class NetworkScreen extends StatelessWidget {
   static const images = [
     'https://picsum.photos/200',
-    'https://placehold.co/200x200.png'
+    'https://placehold.co/200x200.png',
   ];
 
   const NetworkScreen({super.key});
@@ -17,18 +17,12 @@ class NetworkScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Network'),
-      ),
+      appBar: AppBar(title: const Text('Network')),
       body: SingleChildScrollView(
         child: Column(
           children: [
             for (int i = 0; i < images.length; ++i)
-              CustomCard(
-                image: images[i],
-                text: 'Item $i',
-                onTap: null,
-              ),
+              CustomCard(image: images[i], text: 'Item $i', onTap: null),
           ],
         ),
       ),

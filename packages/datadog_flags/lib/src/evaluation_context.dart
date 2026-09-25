@@ -13,6 +13,9 @@ part 'evaluation_context.g.dart';
 /// Subject and attributes used to evaluate feature flags.
 @immutable
 @JsonSerializable()
+@Deprecated(
+  'Use OpenFeature EvaluationContext for evaluations. Removal is planned for the next major version.',
+)
 final class FlagsEvaluationContext {
   /// Empty context used when an application has no targeting data yet.
   static const empty = FlagsEvaluationContext();
@@ -26,10 +29,7 @@ final class FlagsEvaluationContext {
   final Map<String, Object?> attributes;
 
   /// Creates an evaluation context for assignment requests.
-  const FlagsEvaluationContext({
-    this.targetingKey,
-    this.attributes = const {},
-  });
+  const FlagsEvaluationContext({this.targetingKey, this.attributes = const {}});
 
   /// Creates an evaluation context from a JSON map.
   factory FlagsEvaluationContext.fromJson(Map<String, Object?> json) =>

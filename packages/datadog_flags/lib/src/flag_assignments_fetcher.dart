@@ -29,7 +29,8 @@ class FlagAssignmentsFetcher {
   Future<PrecomputedAssignments> fetch(
     FlagsEvaluationContext evaluationContext,
   ) async {
-    final endpoint = configuration.customFlagsEndpoint ??
+    final endpoint =
+        configuration.customFlagsEndpoint ??
         datadogConfig.flagsEndpoint().replace(path: '/precompute-assignments');
     final http.Response response;
     try {
@@ -78,8 +79,7 @@ class FlagAssignmentsFetcher {
     return {
       'Content-Type': 'application/vnd.api+json',
       'dd-client-token': datadogConfig.clientToken,
-      if (datadogConfig.applicationId case final applicationId?)
-        'dd-application-id': applicationId,
+      'dd-application-id': ?datadogConfig.applicationId,
       ...?configuration.customFlagsHeaders,
     };
   }

@@ -3,9 +3,14 @@ description: Command line examples for the Datadog Feature Flags SDK.
 publish_to: none
 
 environment:
-  sdk: ">=3.6.0 <4.0.0"
+  sdk: ">=3.10.0 <4.0.0"
 
 dependencies:
+  openfeature_dart_client_sdk:
+    git:
+      url: https://github.com/open-feature/dart-sdk.git
+      ref: c57c285590ab87088cdc116cdb804adf6acab2a4
+      path: packages/openfeature_dart_client_sdk
   args: ^2.5.0
   datadog_flags:
     path: ..

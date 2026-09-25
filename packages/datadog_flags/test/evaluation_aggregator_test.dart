@@ -41,10 +41,7 @@ void main() {
       assignment: _assignment(),
       evaluationContext: const FlagsEvaluationContext(
         targetingKey: 'user-123',
-        attributes: {
-          'companyId': '1',
-          'plan': 'pro',
-        },
+        attributes: {'companyId': '1', 'plan': 'pro'},
       ),
       error: null,
     );
@@ -53,10 +50,7 @@ void main() {
       assignment: _assignment(),
       evaluationContext: const FlagsEvaluationContext(
         targetingKey: 'user-123',
-        attributes: {
-          'plan': 'pro',
-          'companyId': '1',
-        },
+        attributes: {'plan': 'pro', 'companyId': '1'},
       ),
       error: null,
     );
@@ -75,10 +69,7 @@ void main() {
     expect(evaluation['last_evaluation'], 2000);
     expect(evaluation['evaluation_count'], 2);
     expect(evaluation['context'], {
-      'evaluation': {
-        'companyId': '1',
-        'plan': 'pro',
-      },
+      'evaluation': {'companyId': '1', 'plan': 'pro'},
       if (isWebFlagsIntake)
         'dd': {
           'env': 'staging',
@@ -100,17 +91,13 @@ void main() {
     aggregator.recordEvaluation(
       flagKey: 'checkout.enabled',
       assignment: _assignment(reason: 'DEFAULT'),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'user-123'),
       error: null,
     );
     aggregator.recordEvaluation(
       flagKey: 'checkout.enabled',
       assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'user-123'),
       error: FlagEvaluationError.typeMismatch.code,
     );
 
@@ -128,45 +115,48 @@ void main() {
     );
   });
 
-  test('restores failed uploads and merges matching later evaluations',
-      () async {
-    final requests = <http.Request>[];
-    var attempt = 0;
-    final aggregator = _aggregator(
-      requests: requests,
-      httpClient: MockClient((request) async {
-        requests.add(request);
-        attempt += 1;
-        return http.Response('{"ok":true}', attempt == 1 ? 500 : 200);
-      }),
-    );
-    addTearDown(aggregator.shutdown);
+  test(
+    'restores failed uploads and merges matching later evaluations',
+    () async {
+      final requests = <http.Request>[];
+      var attempt = 0;
+      final aggregator = _aggregator(
+        requests: requests,
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          attempt += 1;
+          return http.Response('{"ok":true}', attempt == 1 ? 500 : 200);
+        }),
+      );
+      addTearDown(aggregator.shutdown);
 
-    aggregator.recordEvaluation(
-      flagKey: 'checkout.enabled',
-      assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
-      error: null,
-    );
-    await aggregator.flush();
+      aggregator.recordEvaluation(
+        flagKey: 'checkout.enabled',
+        assignment: _assignment(),
+        evaluationContext: const FlagsEvaluationContext(
+          targetingKey: 'user-123',
+        ),
+        error: null,
+      );
+      await aggregator.flush();
 
-    aggregator.recordEvaluation(
-      flagKey: 'checkout.enabled',
-      assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
-      error: null,
-    );
-    await aggregator.flush();
+      aggregator.recordEvaluation(
+        flagKey: 'checkout.enabled',
+        assignment: _assignment(),
+        evaluationContext: const FlagsEvaluationContext(
+          targetingKey: 'user-123',
+        ),
+        error: null,
+      );
+      await aggregator.flush();
 
-    expect(_evaluationRequests(requests), hasLength(2));
-    final resentEvaluation =
-        _flagEvaluations(_evaluationRequests(requests).last).single;
-    expect(resentEvaluation['evaluation_count'], 2);
-  });
+      expect(_evaluationRequests(requests), hasLength(2));
+      final resentEvaluation = _flagEvaluations(
+        _evaluationRequests(requests).last,
+      ).single;
+      expect(resentEvaluation['evaluation_count'], 2);
+    },
+  );
 
   test('drops non-retryable client error uploads', () async {
     final requests = <http.Request>[];
@@ -182,9 +172,7 @@ void main() {
     aggregator.recordEvaluation(
       flagKey: 'checkout.enabled',
       assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'user-123'),
       error: null,
     );
     await aggregator.flush();
@@ -203,9 +191,7 @@ void main() {
     aggregator.recordEvaluation(
       flagKey: 'checkout.enabled',
       assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'user-123'),
       error: null,
     );
 
@@ -214,18 +200,13 @@ void main() {
 
   test('does not send evaluations when tracking is disabled', () async {
     final requests = <http.Request>[];
-    final aggregator = _aggregator(
-      requests: requests,
-      trackEvaluations: false,
-    );
+    final aggregator = _aggregator(requests: requests, trackEvaluations: false);
     addTearDown(aggregator.shutdown);
 
     aggregator.recordEvaluation(
       flagKey: 'checkout.enabled',
       assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'user-123'),
       error: null,
     );
     await aggregator.flush();
@@ -249,9 +230,7 @@ void main() {
     aggregator.recordEvaluation(
       flagKey: 'checkout.enabled',
       assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'user-123'),
       error: null,
     );
 
@@ -359,10 +338,7 @@ void _expectIntakeMetadata(
   expect(request.headers['Content-Type'], nativeContentType);
   expect(request.headers['DD-API-KEY'], 'client-token');
   expect(request.headers['DD-EVP-ORIGIN'], datadogFlagsSource);
-  expect(
-    request.headers['DD-EVP-ORIGIN-VERSION'],
-    datadogFlagsSdkVersion,
-  );
+  expect(request.headers['DD-EVP-ORIGIN-VERSION'], datadogFlagsSdkVersion);
   expect(request.headers['DD-REQUEST-ID'], isNotEmpty);
 }
 
