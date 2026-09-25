@@ -129,11 +129,13 @@ Future<void> pushBranch(
   );
 }
 
-/// Tags [commitSha] as [tagName] and pushes it -- used to keep commit A
-/// fetchable by SHA after its `release-prep/*` branch is gone (this repo
-/// auto-deletes a PR's head branch on merge), so Phase 2's backport can
-/// still `git merge` it into the dev-line branch later regardless of which
-/// merge strategy landed the release-prep PR.
+/// Tags [commitSha] as [tagName] and pushes it -- used for each package's
+/// pub.dev-trust tag (this repo's pre-existing `<package>/v<version>`
+/// convention), where an actual tag (not a branch) is what pub.dev's OIDC
+/// trust and `publish-package.yml`'s trigger need. The `release-trigger/*`
+/// marker tag is a separate case, pushed by raw `git tag`/`git push` from
+/// `.gitlab-ci.yml`'s `push-release-trigger-tag` job, not through this
+/// function.
 Future<void> pushTag(
   GitDir gitDir,
   String tagName,
@@ -156,5 +158,70 @@ Future<void> pushTag(
     ['push', remote, tagName],
     logger,
     'Failed to push tag $tagName',
+  );
+}
+
+/// Pushes [commitSha] as the tip of [branchName] on [remote], without
+/// needing a local branch or checkout: `git push {remote} {sha}:refs/heads/
+/// {branchName}`. Used for `release-content/*`: it has to point at commit A
+/// specifically, which is no longer `HEAD` by the time commit B (and
+/// possibly more) have landed on top of it.
+///
+/// [force] is for moving an already-pushed branch to a new commit; the
+/// first push (from `prepare_release.dart`) never needs it, since the
+/// branch doesn't exist yet.
+Future<void> pushBranchAt(
+  GitDir gitDir,
+  String branchName,
+  String commitSha,
+  Logger logger, {
+  String remote = 'origin',
+  bool force = false,
+}) async {
+  logger.info('ℹ️ Pushing $commitSha as $branchName');
+  await _run(
+    gitDir,
+    [
+      'push',
+      if (force) '--force',
+      remote,
+      '$commitSha:refs/heads/$branchName',
+    ],
+    logger,
+    'Failed to push $branchName at $commitSha',
+  );
+}
+
+/// Whether [ancestorSha] is already reachable from [ref] -- `git merge-base
+/// --is-ancestor`. Used as the backport's idempotency check: if commit A is
+/// already an ancestor of `develop`/`v4`, a prior run already backported it
+/// and `publish-release.yml` shouldn't open a second PR.
+///
+/// Returns `false` (not an error) for "no, not an ancestor" -- that's the
+/// expected, common result, not a failure; only a genuine git error (e.g.
+/// [ref] doesn't exist locally) throws.
+Future<bool> isAncestor(
+  GitDir gitDir,
+  String ancestorSha,
+  String ref,
+  Logger logger,
+) async {
+  // `GitDir.runCommand` throws on any non-zero exit code, but `--is-ancestor`
+  // uses exit code 1 to mean "no" -- a normal result, not a failure -- so
+  // this has to shell out directly rather than go through `_run`/
+  // `runCommand`, to see that exit code instead of an exception.
+  final result = await Process.run('git', [
+    'merge-base',
+    '--is-ancestor',
+    ancestorSha,
+    ref,
+  ], workingDirectory: gitDir.path);
+  if (result.exitCode == 0) return true;
+  if (result.exitCode == 1) return false;
+  logger.shout(
+    '❌ Failed to check ancestry of $ancestorSha in $ref: ${result.stderr}',
+  );
+  throw GitReleaseActionError(
+    'Failed to check ancestry of $ancestorSha in $ref: ${result.stderr}',
   );
 }

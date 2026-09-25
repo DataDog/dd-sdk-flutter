@@ -7,9 +7,9 @@
 // generates the AI changelog, applies every change, and opens the release
 // PR. See `_ReleaseTarget.forTrigger` for where each trigger's PR targets.
 
-// Release-prep output is deliberately split into two commits, so that a
-// later cherry-pick back onto a dev-line branch (`develop`, or a
-// pre-release branch like `v4`) can take one without the other:
+// Release-prep output is deliberately split into two commits, so that
+// backing commit A alone into a dev-line branch (`develop`, or a
+// pre-release branch like `v4`) later doesn't also drag commit B along:
 //   - Commit A ("content"): changelog, version bumps, dependent
 //     constraints, NATIVE_SDK_VERSIONS.md. Safe to eventually land on a
 //     dev-line branch -- that branch still needs its own changelog/version
@@ -30,7 +30,7 @@ import 'package:args/args.dart';
 import 'package:git/git.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
-import 'package:releaser/changelog_writer.dart';
+import 'package:releaser/changelog_util.dart';
 import 'package:releaser/cmake_util.dart';
 import 'package:releaser/cocoapod_util.dart';
 import 'package:releaser/dependency_constraints.dart';
@@ -185,21 +185,20 @@ class _ReleaseTarget {
 
   final bool createsNewBranch;
 
-  /// Tag to push at commit A's SHA, or null on patch (no commit A exists to
-  /// protect -- patch never splits). This repo auto-deletes a PR's head
-  /// branch on merge and allows squash/rebase, either of which would
-  /// otherwise strand commit A's original commit object once
-  /// `release-prep/*` is gone; the tag keeps it fetchable by SHA regardless
-  /// of which merge strategy lands the release-prep PR, so Phase 2's
-  /// backport can still `git merge` that exact commit into the dev-line
-  /// branch afterwards. See `.plans/new-release-process.md` step 1g.
-  final String? contentTagName;
+  /// Branch to push at commit A's SHA, or null on patch (no commit A exists to
+  /// protect -- patch never splits). This repo auto-deletes a PR's head branch
+  /// on merge and allows squash/rebase, either of which would otherwise strand
+  /// commit A's original commit object once `release-prep/*` is gone; this
+  /// dedicated branch keeps it fetchable by SHA regardless of which merge
+  /// strategy lands the release-prep PR. `publish-release.yml` opens a PR with
+  /// this as `--head` to backport commit A into the dev-line branch.
+  final String? contentBranchName;
 
   _ReleaseTarget({
     required this.workingBranch,
     required this.prBase,
     required this.createsNewBranch,
-    required this.contentTagName,
+    required this.contentBranchName,
   });
 
   factory _ReleaseTarget.forTrigger(RunContext ctx) {
@@ -210,7 +209,7 @@ class _ReleaseTarget {
           workingBranch: 'release-prep/$id',
           prBase: 'main',
           createsNewBranch: true,
-          contentTagName: 'release-content/$id',
+          contentBranchName: 'release-content/$id',
         );
       case TriggerContext.preRelease:
         final id = _dateId();
@@ -221,14 +220,14 @@ class _ReleaseTarget {
           // PRs onto the pre-release branch itself.
           prBase: '${ctx.currentBranch}-main',
           createsNewBranch: true,
-          contentTagName: 'release-content/$id',
+          contentBranchName: 'release-content/$id',
         );
       case TriggerContext.patch:
         return _ReleaseTarget(
           workingBranch: ctx.currentBranch,
           prBase: null,
           createsNewBranch: false,
-          contentTagName: null,
+          contentBranchName: null,
         );
     }
   }
@@ -288,10 +287,10 @@ Future<void> prepareRelease(
     );
   }
   // No committed whitelist of approved pre-release branches exists in this
-  // tool -- by design, that list is meant to live in `.gitlab-ci.yml`'s
-  // `rules:` once wired up (see `.plans/new-release-process.md`), not
-  // duplicated here where it could drift out of sync. This only rules out
-  // the branches a pre-release run obviously shouldn't come from.
+  // tool -- by design, that list lives in `.gitlab-ci.yml`'s `rules:`
+  // instead, not duplicated here where it could drift out of sync. This
+  // only rules out the branches a pre-release run obviously shouldn't come
+  // from.
   if (ctx.trigger == TriggerContext.preRelease &&
       (ctx.currentBranch == 'develop' ||
           ctx.currentBranch == 'main' ||
@@ -482,9 +481,9 @@ Future<void> prepareRelease(
 
   await pushBranch(gitDir, target.workingBranch, _log);
 
-  final contentTagName = target.contentTagName;
-  if (contentTagName != null && contentCommit != null) {
-    await pushTag(gitDir, contentTagName, contentCommit, _log);
+  final contentBranchName = target.contentBranchName;
+  if (contentBranchName != null && contentCommit != null) {
+    await pushBranchAt(gitDir, contentBranchName, contentCommit, _log);
   }
 
   final prBase = target.prBase;
@@ -675,6 +674,7 @@ Future<void> _applyPublishPrep(
       toVersion: packagePlan.newVersion,
       sourceBranch: ctx.currentBranch,
       prerelease: packagePlan.bumpLevel == VersionBumpType.prerelease,
+      relativePath: pkg.relativePath,
     ),
   );
 }

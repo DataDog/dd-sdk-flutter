@@ -32,6 +32,7 @@ stages:
   - e2e-test
   - prepare-release
   - post
+  - release-trigger
   - post-nightly
 
 # Prebuild - install necessary tools
@@ -462,6 +463,44 @@ prepare-release:
       ${PRERELEASE_LABEL:+--prerelease-label=$PRERELEASE_LABEL}
   after_script:
     # Revoke the dd-octo-sts-provided GitHub token unconditionally once finished.
+    - dd-octo-sts --disable-tracing revoke --token "$(cat /tmp/gh-token.txt)"
+
+# Phase 2 trigger
+#
+# Pushes the `release-trigger/*` tag that GitHub Actions' publish-release.yml
+# watches for -- only after this exact commit's pipeline has already
+# succeeded 
+#
+# Pre-release `-main` branches are a manually-maintained whitelist, same discipline as 
+# prepare-release's `v4` whitelist above. 
+push-release-trigger-tag:
+  stage: release-trigger
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "v4-main" || $CI_COMMIT_BRANCH =~ /^release\/.+\/v\d+\.\d+\.x$/)'
+      changes:
+        - ".release/manifest.json"
+  # Same runner as prepare-release as 
+  # dd-octo-sts/git/gh all need to be present
+  tags:
+    - macos:sequoia
+    - specific:true
+  id_tokens:
+    DDOCTOSTS_ID_TOKEN:
+      aud: dd-octo-sts
+  before_script:
+    # Narrower scope than prepare-release's policy -- tag-push only, never
+    # PR/branch. See .github/chainguard/self.tag-push.sts.yaml.
+    - dd-octo-sts --disable-tracing debug --scope DataDog/dd-sdk-flutter --policy self.tag-push
+    - dd-octo-sts --disable-tracing token --scope DataDog/dd-sdk-flutter --policy self.tag-push > /tmp/gh-token.txt
+  script:
+    - export GITHUB_TOKEN=$(cat /tmp/gh-token.txt)
+    - git config user.name "dd-octo-sts[bot]"
+    - git config user.email "200755185+dd-octo-sts[bot]@users.noreply.github.com"
+    - git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/DataDog/dd-sdk-flutter.git"
+    - TAG_NAME="release-trigger/$(date -u +%Y-%m-%d)-${CI_COMMIT_SHORT_SHA}"
+    - git tag -a -m "$TAG_NAME" "$TAG_NAME" "$CI_COMMIT_SHA"
+    - git push origin "$TAG_NAME"
+  after_script:
     - dd-octo-sts --disable-tracing revoke --token "$(cat /tmp/gh-token.txt)"
 
 # Notify
