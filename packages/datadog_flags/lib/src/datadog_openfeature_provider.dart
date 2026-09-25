@@ -471,29 +471,17 @@ final class DatadogOpenFeatureProvider
             : openfeature.ProviderEventType.contextChanged,
       ),
     );
-    if (status == datadog.DatadogFlagsClientStatus.stale) {
-      void emitStale() {
-        if (!_isCurrent(runtime, revision) ||
-            runtime.client.status != datadog.DatadogFlagsClientStatus.stale) {
-          return;
-        }
-        _events.add(
-          openfeature.ProviderEvent(
-            type: openfeature.ProviderEventType.stale,
-            message:
-                'Using existing Datadog assignments. Fresh assignments '
-                'are not available.',
-          ),
-        );
-      }
-
-      if (isInitialization) {
-        emitStale();
-      } else {
-        // The SDK commits contextChanged after this callback completes. A stale
-        // event emitted now would be overwritten by that delayed ready state.
-        unawaited(Future<void>.delayed(Duration.zero, emitStale));
-      }
+    if (status == datadog.DatadogFlagsClientStatus.stale &&
+        _isCurrent(runtime, revision) &&
+        runtime.client.status == datadog.DatadogFlagsClientStatus.stale) {
+      _events.add(
+        openfeature.ProviderEvent(
+          type: openfeature.ProviderEventType.stale,
+          message:
+              'Using existing Datadog assignments. Fresh assignments '
+              'are not available.',
+        ),
+      );
     }
     if (previous != null && !identical(previous, runtime)) {
       _retire(previous);

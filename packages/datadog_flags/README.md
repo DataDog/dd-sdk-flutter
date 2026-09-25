@@ -12,7 +12,8 @@ deprecated and is scheduled for removal in the next major version.
 
 This development integration requires **Dart 3.10 or later**. The OpenFeature SDK
 and shared provider contract are pinned to development commit
-`82c5dcd7229cdfcc7c4b151a7b8bac2aeb4dd3ea`. This commit includes upstream #168.
+`c57c285590ab87088cdc116cdb804adf6acab2a4`. This commit includes the Dart 3.10 minimum (#168), reconciliation event ordering
+(#192), and provider contract v2 (#193).
 
 Use the checked-out package and its example while validation is in progress:
 

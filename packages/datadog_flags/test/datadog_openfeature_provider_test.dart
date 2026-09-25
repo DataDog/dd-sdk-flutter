@@ -110,7 +110,6 @@ void main() {
       await api.setEvaluationContextAndWait(
         EvaluationContext(targetingKey: 'second'),
       );
-      await Future<void>.delayed(Duration.zero);
       expect(api.getClient().providerStatus, ProviderStatus.stale);
       expect(api.getClient().getBooleanValue('show-paywall', true), isFalse);
     },

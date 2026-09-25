@@ -21,7 +21,7 @@ dependencies:
   openfeature_dart_client_sdk:
     git:
       url: https://github.com/open-feature/dart-sdk.git
-      ref: 82c5dcd7229cdfcc7c4b151a7b8bac2aeb4dd3ea
+      ref: c57c285590ab87088cdc116cdb804adf6acab2a4
       path: packages/openfeature_dart_client_sdk
   uuid: ^4.0.0
 
@@ -29,7 +29,7 @@ dev_dependencies:
   openfeature_client_provider_contract:
     git:
       url: https://github.com/open-feature/dart-sdk.git
-      ref: 82c5dcd7229cdfcc7c4b151a7b8bac2aeb4dd3ea
+      ref: c57c285590ab87088cdc116cdb804adf6acab2a4
       path: conformance/client_provider_contract
   build_runner: 2.4.15
   json_serializable: 6.9.5
