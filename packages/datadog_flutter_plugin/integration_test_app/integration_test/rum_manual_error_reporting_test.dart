@@ -64,7 +64,6 @@ void main() {
     expect(exceptionError.source, 'source');
     expect(exceptionError.errorType, 'NullThrown');
     if (!kIsWeb) {
-      // source_type is not supported on web, but type should be browser anyway.
       expect(exceptionError.sourceType, 'flutter');
     }
 
@@ -77,5 +76,21 @@ void main() {
     expect(thrownError.message, contains('This was an error!'));
     expect(thrownError.source, 'source');
     expect(thrownError.stack, isNotNull);
+    if (kIsWeb) {
+      expect(
+        thrownError.sourceType,
+        kIsWasm ? 'browser+wasm' : 'browser',
+      );
+    }
+    if (kIsWasm) {
+      final wasmModules =
+          thrownError.rumEvent['error']['wasm_modules'] as List<dynamic>;
+      expect(wasmModules, hasLength(1));
+
+      final wasmModule = wasmModules.single as Map<String, dynamic>;
+      expect(wasmModule['url'], contains('main.dart.wasm'));
+      expect(wasmModule['build_id'], isEmpty);
+      expect(wasmModule['debug_info_type'], 'sourcemap');
+    }
   });
 }

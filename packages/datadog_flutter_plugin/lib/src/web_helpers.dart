@@ -89,11 +89,15 @@ final _dartLineRegex = RegExp(
   r'(?<file>.+) (?<location>\d+:\d+)\s*(?<function>.+)',
 );
 
+// Recognizes the WebAssembly stack-frame formats emitted by major browsers,
+// including wasm-function frames, internal wasm URLs, and module URLs.
 final _wasmStackFrameRegex = RegExp(
   r'wasm-function(?:\[|@)|\[wasm code\]|wasm:\/\/|\.wasm(?=$|[:@)\s]|[?#])',
   caseSensitive: false,
 );
 
+// Extracts absolute HTTP(S) or blob URLs for .wasm modules from stack frames,
+// while excluding trailing frame locations such as `:wasm-function[42]`.
 final _wasmModuleUrlRegex = RegExp(
   r'(?:(?:https?|blob):\/\/)[^\s()]+?\.wasm(?:[?#][^\s():)]*)?',
   caseSensitive: false,
