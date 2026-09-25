@@ -272,7 +272,7 @@ class DatadogRumPluginTests: XCTestCase {
         let encoded: [String: Any?] = [
             "applicationId": "fake-application-id",
             "timeseries": [
-                "collectTypes": ["DdTimeseriesType.memory", "DdTimeseriesType.cpu"]
+                "collectTypes": ["TimeseriesType.memory", "TimeseriesType.cpu"]
             ]
         ]
 
@@ -284,7 +284,7 @@ class DatadogRumPluginTests: XCTestCase {
         let encoded: [String: Any?] = [
             "applicationId": "fake-application-id",
             "timeseries": [
-                "collectTypes": ["DdTimeseriesType.memory"]
+                "collectTypes": ["TimeseriesType.memory"]
             ]
         ]
 

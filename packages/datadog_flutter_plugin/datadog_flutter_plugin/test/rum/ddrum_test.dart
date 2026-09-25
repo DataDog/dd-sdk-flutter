@@ -157,21 +157,21 @@ void main() {
   test('configuration encodes timeseries when set', () {
     final configuration = DatadogRumConfiguration(
       applicationId: 'fake-app-id',
-      timeseries: const DdTimeseriesConfiguration(
-        collectTypes: [DdTimeseriesType.memory, DdTimeseriesType.cpu],
+      timeseries: const TimeseriesConfiguration(
+        collectTypes: [TimeseriesType.memory, TimeseriesType.cpu],
       ),
     );
 
     final encoded = configuration.encode();
     final encodedTimeseries = encoded['timeseries'] as Map<String, Object?>;
     expect(encodedTimeseries['collectTypes'], [
-      'DdTimeseriesType.memory',
-      'DdTimeseriesType.cpu',
+      'TimeseriesType.memory',
+      'TimeseriesType.cpu',
     ]);
   });
 
   test('timeseries configuration omits collectTypes when not set', () {
-    const timeseriesConfiguration = DdTimeseriesConfiguration();
+    const timeseriesConfiguration = TimeseriesConfiguration();
 
     final encoded = timeseriesConfiguration.encode();
     expect(encoded.containsKey('collectTypes'), false);

@@ -1010,8 +1010,8 @@ public extension RUM.Configuration.VitalsFrequency {
 public extension RUM.Configuration.TimeseriesType {
     static func parseFromFlutter(_ value: String) -> RUM.Configuration.TimeseriesType? {
         switch value {
-        case "DdTimeseriesType.memory": return .memory
-        case "DdTimeseriesType.cpu": return .cpu
+        case "TimeseriesType.memory": return .memory
+        case "TimeseriesType.cpu": return .cpu
         default: return nil
         }
     }

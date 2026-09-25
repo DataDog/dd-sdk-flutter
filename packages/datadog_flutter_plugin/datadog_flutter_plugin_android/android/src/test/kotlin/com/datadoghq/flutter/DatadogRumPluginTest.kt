@@ -246,7 +246,7 @@ class DatadogRumPluginTest {
         // GIVEN
         val configArg = mapOf(
             "timeseries" to mapOf(
-                "collectTypes" to listOf("DdTimeseriesType.memory", "DdTimeseriesType.cpu")
+                "collectTypes" to listOf("TimeseriesType.memory", "TimeseriesType.cpu")
             )
         )
 
@@ -272,7 +272,7 @@ class DatadogRumPluginTest {
         // GIVEN
         val configArg = mapOf(
             "timeseries" to mapOf(
-                "collectTypes" to listOf("DdTimeseriesType.memory")
+                "collectTypes" to listOf("TimeseriesType.memory")
             )
         )
 

@@ -70,7 +70,7 @@ typedef RumVitalOperationEventMapper =
 /// Timeseries RUM feature.
 ///
 /// *Note*: This API is experimental and may change in the future.
-enum DdTimeseriesType {
+enum TimeseriesType {
   /// Memory footprint and percentage of total device RAM.
   memory,
 
@@ -83,20 +83,19 @@ enum DdTimeseriesType {
 /// independent of view lifecycle.
 ///
 /// *Note*: This API is experimental and may change in the future.
-class DdTimeseriesConfiguration {
+class TimeseriesConfiguration {
   /// The specific timeseries types to collect.
   ///
   /// If not set, all available timeseries types are collected.
-  final List<DdTimeseriesType>? collectTypes;
+  final List<TimeseriesType>? collectTypes;
 
-  const DdTimeseriesConfiguration({
+  const TimeseriesConfiguration({
     this.collectTypes,
   });
 
   Map<String, Object?> encode() {
     return {
-      if (collectTypes != null)
-        'collectTypes': collectTypes!.map((e) => e.toString()).toList(),
+      'collectTypes': ?collectTypes?.map((e) => e.toString()).toList(),
     };
   }
 }
@@ -285,7 +284,7 @@ class DatadogRumConfiguration {
   /// Assign to `null` (the default) to disable timeseries collection.
   ///
   /// *Note*: This API is experimental and may change in the future.
-  DdTimeseriesConfiguration? timeseries;
+  TimeseriesConfiguration? timeseries;
 
   DatadogRumConfiguration({
     required this.applicationId,
@@ -343,7 +342,7 @@ class DatadogRumConfiguration {
       'attachVitalOperationStepEventMapper':
           vitalOperationStepEventMapper != null,
       'additionalConfig': additionalConfig,
-      if (timeseries != null) 'timeseries': timeseries!.encode(),
+      'timeseries': ?timeseries?.encode(),
     };
   }
 }

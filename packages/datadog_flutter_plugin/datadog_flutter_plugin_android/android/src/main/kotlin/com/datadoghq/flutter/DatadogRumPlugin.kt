@@ -716,8 +716,8 @@ internal fun parseVitalsFrequency(vitalsFrequency: String): VitalsUpdateFrequenc
 
 internal fun parseTimeseriesType(timeseriesType: String): TimeseriesType? {
     return when (timeseriesType) {
-        "DdTimeseriesType.memory" -> TimeseriesType.MEMORY
-        "DdTimeseriesType.cpu" -> TimeseriesType.CPU
+        "TimeseriesType.memory" -> TimeseriesType.MEMORY
+        "TimeseriesType.cpu" -> TimeseriesType.CPU
         else -> null
     }
 }
