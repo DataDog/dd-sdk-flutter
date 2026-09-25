@@ -14,6 +14,9 @@ variables:
   IS_ON_CI: $CI
   SLACK_CHANNEL: "#mobile-sdk-ops"
   FLUTTER_MIN_VERSION: '3.27.0'
+  # Magic Mirror Depot proxy for the Java ecosystem (see
+  # tools/ci/gradle/init.d/depot-mirror.init.gradle).
+  DEPOT_JAVA_MAVEN_URL: "https://depot-read-api-java.us1.ddbuild.io/magicmirror/magicmirror/@current/"
 
   KUBERNETES_MEMORY_REQUEST: "32Gi"
   KUBERNETES_MEMORY_LIMIT: "48Gi"
@@ -66,6 +69,8 @@ stages:
 
 .pre-android:
   script:
+    - mkdir -p $HOME/.gradle/init.d
+    - cp $CI_PROJECT_DIR/tools/ci/gradle/init.d/depot-mirror.init.gradle $HOME/.gradle/init.d/
     - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;36.0.0" "platform-tools" "platforms;android-36" || true
     - yes | flutter doctor --android-licenses || true
     # Kill all active emulators
@@ -124,6 +129,7 @@ build-android:
   tags: ["arch:amd64"]
   script:
     - !reference [.pre, script]
+    - !reference [.pre-android, script]
     - melos run analyze:android
     - melos run build:android
     - melos run unit_test:android
