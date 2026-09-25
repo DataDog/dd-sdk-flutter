@@ -6,6 +6,11 @@ packages:
   - packages/*/integration_test_app
   - packages/*/e2e_test_app
 
+command:
+  bootstrap:
+    # These packages share a Git dependency cache. Concurrent fetches race on refs.
+    runPubGetInParallel: false
+
 scripts:
   build:
     run: melos build:ios && melos build:android && melos build:web
