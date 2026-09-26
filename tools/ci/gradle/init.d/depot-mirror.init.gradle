@@ -21,12 +21,11 @@ if (proxyUrl) {
     // Dynamic selectors make Gradle inspect metadata in every eligible
     // repository. Adding Depot first is therefore insufficient: a later
     // google() or mavenCentral() declaration can still make the build contact
-    // the public upstream and fail with a 429. Disable all content on those
-    // direct repositories so their declarations remain harmless and Depot is
-    // the only eligible source for artifacts routed through those upstreams.
-    // configureEach also covers repositories declared after this init script.
-    def disableDirectMirroredRepositories = { repositories ->
-        repositories.configureEach { repository ->
+    // the public upstream and fail with a 429. Remove those repositories as
+    // they are declared, then add Depot as their only replacement. all {}
+    // covers repositories declared both before and after this callback.
+    def useDepotMirror = { repositories ->
+        repositories.all { repository ->
             if (repository instanceof MavenArtifactRepository &&
                 repository.url.host in [
                     'dl.google.com',
@@ -34,11 +33,10 @@ if (proxyUrl) {
                     'repo.maven.apache.org',
                     'repo1.maven.org'
                 ]) {
-                repository.content {
-                    excludeGroupByRegex('.*')
-                }
+                repositories.remove(repository)
             }
         }
+        repositories.maven { url = proxyUrl }
     }
 
     // Reset per Settings instance this init script is applied against — the
@@ -60,8 +58,7 @@ if (proxyUrl) {
         // whatever Depot hasn't mirrored yet.
         settings.pluginManagement {
             repositories {
-                disableDirectMirroredRepositories(delegate)
-                maven { url = proxyUrl }
+                useDepotMirror(delegate)
                 gradlePluginPortal()
             }
         }
@@ -70,8 +67,7 @@ if (proxyUrl) {
         // FAIL_ON_PROJECT_REPOS below.
         settings.dependencyResolutionManagement {
             repositories {
-                disableDirectMirroredRepositories(delegate)
-                maven { url = proxyUrl }
+                useDepotMirror(delegate)
             }
         }
     }
@@ -91,8 +87,7 @@ if (proxyUrl) {
         // needs the proxy added directly.
         buildscript {
             repositories {
-                disableDirectMirroredRepositories(delegate)
-                maven { url = proxyUrl }
+                useDepotMirror(delegate)
             }
         }
 
@@ -101,23 +96,7 @@ if (proxyUrl) {
         // and declaring a repository here too would violate that mode.
         if (!repositoriesCentralized) {
             repositories {
-                disableDirectMirroredRepositories(delegate)
-                maven { url = proxyUrl }
-            }
-        }
-    }
-}
-
-// TEMP DEBUG — remove once we've confirmed whether Depot is actually being
-// queried in real CI. Dumps the env var and effective repo list for
-// :integration_test so we can see this in the job trace directly.
-println "TEMP DEBUG: DEPOT_JAVA_MAVEN_URL=${System.getenv('DEPOT_JAVA_MAVEN_URL')}"
-gradle.projectsEvaluated {
-    rootProject.allprojects { p ->
-        if (p.name == 'integration_test') {
-            println "TEMP DEBUG: repo order for ${p.path}:"
-            p.repositories.each { r ->
-                try { println "TEMP DEBUG:   - ${r.name}: ${r.url}" } catch (e) { println "TEMP DEBUG:   - ${r.name}" }
+                useDepotMirror(delegate)
             }
         }
     }
