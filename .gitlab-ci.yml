@@ -67,10 +67,14 @@ stages:
     - xcodebuild -downloadPlatform iOS
     - pushd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR && popd
 
-.pre-android:
+.install-gradle-mirror:
   script:
     - mkdir -p $HOME/.gradle/init.d
     - cp $CI_PROJECT_DIR/tools/ci/gradle/init.d/depot-mirror.init.gradle $HOME/.gradle/init.d/
+
+.pre-android:
+  script:
+    - !reference [.install-gradle-mirror, script]
     - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;36.0.0" "platform-tools" "platforms;android-36" || true
     - yes | flutter doctor --android-licenses || true
     # Kill all active emulators
@@ -337,6 +341,7 @@ nightly-beta-test:
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
+    - !reference [.install-gradle-mirror, script]
     - fvm destroy
     - fvm install beta
     - fvm use beta
