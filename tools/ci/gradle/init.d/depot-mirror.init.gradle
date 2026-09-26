@@ -1,3 +1,4 @@
+import org.gradle.api.initialization.resolve.RepositoriesMode
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 
 // Routes Gradle plugin and dependency resolution through Datadog's internal
@@ -5,26 +6,98 @@ import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 // (see .gitlab-ci.yml) — never touches files that ship with the published
 // packages.
 //
+// Adding the proxy to dependencyResolutionManagement.repositories (a
+// settings-level container) rather than unconditionally to
+// allprojects.repositories is what makes this compatible with settings
+// files that declare
+// `repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS` — notably the
+// Flutter SDK's own flutter_tools/gradle included build, used to resolve the
+// dev.flutter.flutter-plugin-loader plugin. Adding a repo at the project
+// level there throws "Build was configured to prefer settings repositories
+// over project repositories...".
 def proxyUrl = System.getenv('DEPOT_JAVA_MAVEN_URL')
 
 if (proxyUrl) {
-    // Follow Gradle's EnterpriseRepositoryPlugin example: enforce the mirror
-    // directly on every project's repository container. all {} handles both
-    // existing repositories and repositories declared later by build scripts.
-    allprojects { project ->
-        project.repositories {
-            all { repository ->
-                if (repository instanceof MavenArtifactRepository &&
-                    repository.url.host in [
-                        'dl.google.com',
-                        'maven.google.com',
-                        'repo.maven.apache.org',
-                        'repo1.maven.org'
-                    ]) {
-                    remove(repository)
-                }
+    // Dynamic selectors make Gradle inspect metadata in every eligible
+    // repository. Adding Depot first is therefore insufficient: a later
+    // google() or mavenCentral() declaration can still make the build contact
+    // the public upstream and fail with a 429. Remove those repositories as
+    // they are declared, then add Depot as their only replacement. all {}
+    // covers repositories declared both before and after this callback.
+    def useDepotMirror = { repositories ->
+        repositories.all { repository ->
+            if (repository instanceof MavenArtifactRepository &&
+                repository.url.host in [
+                    'dl.google.com',
+                    'maven.google.com',
+                    'repo.maven.apache.org',
+                    'repo1.maven.org'
+                ]) {
+                repositories.remove(repository)
             }
-            maven { url = proxyUrl }
+        }
+        repositories.maven { url = proxyUrl }
+    }
+
+    // Reset per Settings instance this init script is applied against — the
+    // root build and each includeBuild() participant get their own
+    // evaluation of this file, so this doesn't leak state between them.
+    def repositoriesCentralized = false
+
+    beforeSettings { settings ->
+        // Plugin resolution: the `plugins { ... }` block in settings.gradle,
+        // normally served by google() / gradlePluginPortal(). pluginManagement
+        // has no FAIL_ON_PROJECT_REPOS-equivalent mode, so adding here is
+        // always safe.
+        //
+        // gradlePluginPortal() must be re-added explicitly alongside the
+        // proxy: if a settings file declares no pluginManagement repositories
+        // of its own, Gradle implicitly falls back to the plugin portal —
+        // but that implicit fallback disables itself the moment *anything*
+        // is added to the container, leaving only our proxy with no route to
+        // whatever Depot hasn't mirrored yet.
+        settings.pluginManagement {
+            repositories {
+                useDepotMirror(delegate)
+                gradlePluginPortal()
+            }
+        }
+        // The blessed place to add a settings-level repo for regular
+        // dependency resolution — safe whether or not the project also sets
+        // FAIL_ON_PROJECT_REPOS below.
+        settings.dependencyResolutionManagement {
+            repositories {
+                useDepotMirror(delegate)
+            }
+        }
+    }
+
+    // beforeSettings runs before the settings script body, so a project's own
+    // repositoriesMode.set(FAIL_ON_PROJECT_REPOS) call (if any) isn't visible
+    // yet at that point. settingsEvaluated runs after, once it is.
+    settingsEvaluated { settings ->
+        repositoriesCentralized =
+            settings.dependencyResolutionManagement.repositoriesMode.orNull == RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    }
+
+    allprojects {
+        // Legacy buildscript {} classpath resolution (old-style root
+        // build.gradle, still used by several packages/examples here) isn't
+        // covered by dependencyResolutionManagement at all, so it always
+        // needs the proxy added directly.
+        buildscript {
+            repositories {
+                useDepotMirror(delegate)
+            }
+        }
+
+        // Skip projects governed by FAIL_ON_PROJECT_REPOS: the
+        // dependencyResolutionManagement block above already covers them,
+        // and declaring a repository here too would violate that mode.
+        if (!repositoriesCentralized) {
+            repositories {
+                useDepotMirror(delegate)
+            }
         }
     }
 }
