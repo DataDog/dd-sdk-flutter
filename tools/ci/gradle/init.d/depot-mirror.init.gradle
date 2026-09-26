@@ -1,4 +1,5 @@
 import org.gradle.api.initialization.resolve.RepositoriesMode
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 
 // Routes Gradle plugin and dependency resolution through Datadog's internal
 // Depot mirror during CI. Only installed into $GRADLE_USER_HOME/init.d/ by CI
@@ -17,6 +18,23 @@ import org.gradle.api.initialization.resolve.RepositoriesMode
 def proxyUrl = System.getenv('DEPOT_JAVA_MAVEN_URL')
 
 if (proxyUrl) {
+    // Dynamic selectors make Gradle inspect metadata in every repository that
+    // may contain the requested group. AndroidX is published by Google's Maven
+    // repository (and routed there by Depot), so querying Maven Central can
+    // only produce a miss -- or, in CI, fail the build with a 429. Attach the
+    // filter with configureEach so it also applies to repositories declared by
+    // settings.gradle/build.gradle after this init script runs.
+    def excludeAndroidxFromMavenCentral = { repositories ->
+        repositories.configureEach { repository ->
+            if (repository instanceof MavenArtifactRepository &&
+                repository.url.host in ['repo.maven.apache.org', 'repo1.maven.org']) {
+                repository.content {
+                    excludeGroupByRegex('androidx(\\..*)?')
+                }
+            }
+        }
+    }
+
     // Reset per Settings instance this init script is applied against — the
     // root build and each includeBuild() participant get their own
     // evaluation of this file, so this doesn't leak state between them.
@@ -36,6 +54,7 @@ if (proxyUrl) {
         // whatever Depot hasn't mirrored yet.
         settings.pluginManagement {
             repositories {
+                excludeAndroidxFromMavenCentral(delegate)
                 maven { url = proxyUrl }
                 gradlePluginPortal()
             }
@@ -45,6 +64,7 @@ if (proxyUrl) {
         // FAIL_ON_PROJECT_REPOS below.
         settings.dependencyResolutionManagement {
             repositories {
+                excludeAndroidxFromMavenCentral(delegate)
                 maven { url = proxyUrl }
             }
         }
@@ -65,6 +85,7 @@ if (proxyUrl) {
         // needs the proxy added directly.
         buildscript {
             repositories {
+                excludeAndroidxFromMavenCentral(delegate)
                 maven { url = proxyUrl }
             }
         }
@@ -74,6 +95,7 @@ if (proxyUrl) {
         // and declaring a repository here too would violate that mode.
         if (!repositoriesCentralized) {
             repositories {
+                excludeAndroidxFromMavenCentral(delegate)
                 maven { url = proxyUrl }
             }
         }
