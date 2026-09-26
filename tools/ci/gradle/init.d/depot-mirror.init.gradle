@@ -18,18 +18,24 @@ import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 def proxyUrl = System.getenv('DEPOT_JAVA_MAVEN_URL')
 
 if (proxyUrl) {
-    // Dynamic selectors make Gradle inspect metadata in every repository that
-    // may contain the requested group. AndroidX is published by Google's Maven
-    // repository (and routed there by Depot), so querying Maven Central can
-    // only produce a miss -- or, in CI, fail the build with a 429. Attach the
-    // filter with configureEach so it also applies to repositories declared by
-    // settings.gradle/build.gradle after this init script runs.
-    def excludeAndroidxFromMavenCentral = { repositories ->
+    // Dynamic selectors make Gradle inspect metadata in every eligible
+    // repository. Adding Depot first is therefore insufficient: a later
+    // google() or mavenCentral() declaration can still make the build contact
+    // the public upstream and fail with a 429. Disable all content on those
+    // direct repositories so their declarations remain harmless and Depot is
+    // the only eligible source for artifacts routed through those upstreams.
+    // configureEach also covers repositories declared after this init script.
+    def disableDirectMirroredRepositories = { repositories ->
         repositories.configureEach { repository ->
             if (repository instanceof MavenArtifactRepository &&
-                repository.url.host in ['repo.maven.apache.org', 'repo1.maven.org']) {
+                repository.url.host in [
+                    'dl.google.com',
+                    'maven.google.com',
+                    'repo.maven.apache.org',
+                    'repo1.maven.org'
+                ]) {
                 repository.content {
-                    excludeGroupByRegex('androidx(\\..*)?')
+                    excludeGroupByRegex('.*')
                 }
             }
         }
@@ -54,7 +60,7 @@ if (proxyUrl) {
         // whatever Depot hasn't mirrored yet.
         settings.pluginManagement {
             repositories {
-                excludeAndroidxFromMavenCentral(delegate)
+                disableDirectMirroredRepositories(delegate)
                 maven { url = proxyUrl }
                 gradlePluginPortal()
             }
@@ -64,7 +70,7 @@ if (proxyUrl) {
         // FAIL_ON_PROJECT_REPOS below.
         settings.dependencyResolutionManagement {
             repositories {
-                excludeAndroidxFromMavenCentral(delegate)
+                disableDirectMirroredRepositories(delegate)
                 maven { url = proxyUrl }
             }
         }
@@ -85,7 +91,7 @@ if (proxyUrl) {
         // needs the proxy added directly.
         buildscript {
             repositories {
-                excludeAndroidxFromMavenCentral(delegate)
+                disableDirectMirroredRepositories(delegate)
                 maven { url = proxyUrl }
             }
         }
@@ -95,7 +101,7 @@ if (proxyUrl) {
         // and declaring a repository here too would violate that mode.
         if (!repositoriesCentralized) {
             repositories {
-                excludeAndroidxFromMavenCentral(delegate)
+                disableDirectMirroredRepositories(delegate)
                 maven { url = proxyUrl }
             }
         }
