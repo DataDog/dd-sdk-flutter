@@ -54,7 +54,10 @@ internal class DatadogSessionReplayExtensionsTest {
             // Then - records can no longer target the stale slot
             assertThat(FlutterSessionReplayManager.shared.slotId(messenger)).isNull()
         } finally {
-            FlutterSessionReplayManager.shared.detach(messenger)
+            // This is the only test that touches the process-wide `.shared` singleton rather than an
+            // isolated instance, so cleanup has to reset everything it could have set — not just the
+            // slot detach() would cover — or state bleeds into whichever test runs next in this JVM.
+            FlutterSessionReplayManager.shared.shutdown()
         }
     }
 }

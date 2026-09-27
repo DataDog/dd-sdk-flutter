@@ -7,13 +7,18 @@
 package com.datadoghq.flutter.sessionreplay.embedded
 
 import assertk.assertThat
-import assertk.assertions.containsExactly
 import assertk.assertions.hasSize
 import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
+import com.datadoghq.flutter.sessionreplay.forge.SRForgeConfigurator
+import com.datadoghq.flutter.sessionreplay.models.EnrichedRecord
+import fr.xgouchet.elmyr.Forge
+import fr.xgouchet.elmyr.junit5.ForgeConfiguration
+import fr.xgouchet.elmyr.junit5.ForgeExtension
 import kotlin.test.Test
+import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 
@@ -23,26 +28,29 @@ import org.junit.jupiter.params.provider.ValueSource
  * This has no iOS counterpart: iOS hands the records over already decoded, while Gson collapses
  * every JSON number into one `Number` type and so needs the integral ones recovered by hand.
  */
+@ExtendWith(ForgeExtension::class)
+@ForgeConfiguration(SRForgeConfigurator::class)
 internal class SegmentParserTest {
     private val segmentParser = SegmentParser()
 
     @Test
-    fun `M return the records and view id W parse`() {
+    fun `M return the records and view id W parse`(forge: Forge) {
         // Given
-        val segment = """
-            {
-              "records": [{"type": 1}, {"type": 2}],
-              "viewID": "view-id"
-            }
-        """.trimIndent()
+        val fakeEnrichedRecord = forge.getForgery<EnrichedRecord>()
 
         // When
-        val parsed = segmentParser.parse(segment)
+        val parsed = segmentParser.parse(fakeEnrichedRecord.toJson())
 
         // Then
         assertThat(parsed).isNotNull()
-        assertThat(parsed!!.viewId).isEqualTo("view-id")
-        assertThat(parsed.records.map { it["type"] }).containsExactly(1L, 2L)
+        assertThat(parsed!!.viewId).isEqualTo(fakeEnrichedRecord.viewId)
+        assertThat(parsed.records).hasSize(fakeEnrichedRecord.records.size())
+        parsed.records.forEachIndexed { index, record ->
+            val expected = fakeEnrichedRecord.records[index].asJsonObject
+            expected.entrySet().forEach { (key, value) ->
+                assertThat(record[key]).isEqualTo(value.asString)
+            }
+        }
     }
 
     @Test

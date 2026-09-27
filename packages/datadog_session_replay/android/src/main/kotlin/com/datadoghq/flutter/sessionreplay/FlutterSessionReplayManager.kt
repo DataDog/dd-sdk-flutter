@@ -61,9 +61,20 @@ internal class FlutterSessionReplayManager(
     /**
      * Whether Flutter is embedded in a native host, and therefore whether resources belong to the
      * native Session Replay rather than the Flutter resources feature.
+     *
+     * Derived from whether any engine currently *has* a registered slot, rather than a sticky flag,
+     * so this falls back to the Flutter resources feature again once every host detaches instead of
+     * staying pinned to the native path for the rest of the process.
+     *
+     * Deliberately keyed on [slotsByMessenger] having an entry at all — not on that entry's [View]
+     * being non-null. [unregisterSlot] clears the view but keeps the entry (with its slot ID) so a
+     * replacement view can continue the same slot; a resource resolved for the first time in that
+     * gap (e.g. a fragment recreated on a configuration change) still belongs to the native path,
+     * and because resources are deduplicated by content hash and never retried, reading this as
+     * `false` during that transient gap would misroute that resource permanently, not just once.
      */
-    @Volatile
-    private var isEmbedded = false
+    private val isEmbedded: Boolean
+        get() = synchronized(lock) { slotsByMessenger.isNotEmpty() }
 
     /**
      * Every live engine bridge, weakly held. The single context listener fans out to all of them
@@ -81,6 +92,25 @@ internal class FlutterSessionReplayManager(
      */
     private val bridgesByMessenger =
         WeakHashMap<BinaryMessenger, WeakReference<FlutterSessionReplayBridge>>()
+
+    /**
+     * Messengers [detach] found nothing bound to yet — i.e. a `registerEngine` round trip for that
+     * messenger may still be in flight.
+     *
+     * That round trip can land *after* [detach] already ran for the same messenger, too late for
+     * [detach] to have found anything in [bridgesByMessenger] to tear down. Recording the messenger
+     * here lets [bind] recognize this and undo itself instead of binding a bridge to a messenger
+     * nothing renders into any more.
+     *
+     * Consumed on read by [bind] — an entry is only ever meant to catch the one round trip pending
+     * when it was added, not to blacklist the messenger going forward. Leaving it in place after
+     * that would block a later, legitimate re-attach of the same still-live engine (e.g. a cached
+     * engine whose plugin is removed and re-added without destroying the engine, so the same
+     * messenger comes back). Weakly held, like the other per-messenger registries, so a messenger
+     * this was never checked against does not linger either.
+     */
+    private val detachedMessengers: MutableSet<BinaryMessenger> =
+        Collections.newSetFromMap(WeakHashMap())
 
     /**
      * Maps each engine's messenger to the slot registered for its embedded Flutter view.
@@ -136,19 +166,33 @@ internal class FlutterSessionReplayManager(
      * Pairs the bridge holding [engineToken] with the engine [messenger] belongs to.
      *
      * Called from the engine method channel, so it runs once per engine, after that engine's bridge
-     * has registered.
+     * has registered. If [messenger] already detached by the time this lands — see
+     * [detachedMessengers] — the bridge is torn down instead of bound to a dead messenger.
      */
     fun bind(engineToken: String, messenger: BinaryMessenger) {
+        var abandoned: FlutterSessionReplayBridge? = null
         val binding = synchronized(lock) {
             val match = engines.firstOrNull { it.engineToken == engineToken }
                 ?: return@synchronized null
+
+            // Consumed on read: this is only meant to catch the one stale round trip detach()
+            // anticipated when it found nothing to tear down, not to blacklist the messenger for
+            // every bind after it — a later, legitimate re-attach of the same still-live engine
+            // must be free to bind again.
+            if (detachedMessengers.remove(messenger)) {
+                engines.remove(match)
+                abandoned = match
+                return@synchronized null
+            }
+
             val previous = bridgesByMessenger.put(messenger, WeakReference(match))?.get()
                 ?.takeUnless { it === match }
             previous?.let { engines.remove(it) }
             match to previous
-        } ?: return
+        }
 
-        val (bridge, previous) = binding
+        abandoned?.detach()
+        val (bridge, previous) = binding ?: return
         previous?.detach()
 
         // The bridge needs the messenger too — it resolves this engine's slot ID through it on
@@ -164,6 +208,13 @@ internal class FlutterSessionReplayManager(
      * clear these entries eventually; doing it here closes the window where the bridge outlives its
      * isolate.
      *
+     * When there was nothing to tear down — [bridgesByMessenger] had no entry yet — marks
+     * [messenger] in [detachedMessengers] instead, so a `registerEngine` round trip that lands
+     * after this, too late to have found anything here, is still recognized by [bind] and undone
+     * instead of silently binding a bridge that can no longer be torn down. Not marked when a
+     * bridge WAS found and torn down here, since that leaves nothing pending to guard against, and
+     * marking it anyway would block a later, legitimate re-attach of the same still-live engine.
+     *
      * Only ever affects the detaching engine, so a secondary engine closing cannot disturb a live one.
      */
     fun detach(messenger: BinaryMessenger) {
@@ -172,6 +223,8 @@ internal class FlutterSessionReplayManager(
             val existing = bridgesByMessenger.remove(messenger)?.get()
             if (existing != null) {
                 engines.remove(existing)
+            } else {
+                detachedMessengers.add(messenger)
             }
             slotView = slotsByMessenger.remove(messenger)?.view
             existing
@@ -200,15 +253,24 @@ internal class FlutterSessionReplayManager(
     /**
      * Registers the shared Session Replay feature in [sdkCore]. Subsequent calls reuse the
      * already-registered feature: every engine calls this, but only one feature exists.
+     *
+     * Returns `null` — logging via telemetry instead of crashing — if [sdkCore] is not supplied
+     * and the process-wide Datadog instance turns out not to be a [FeatureSdkCore]; see
+     * [defaultSdkCore]. Session Replay simply does not enable for this engine in that case.
+     *
+     * The whole check-construct-register sequence runs under [lock], not just the [feature]
+     * assignment — otherwise two engines calling this at once could both pass the null-check
+     * before either writes, each registering a competing feature and silently overwriting the
+     * other's in the core (which keys registered features by name).
      */
     fun enableFeature(
         sdkCore: FeatureSdkCore?,
         customEndpointUrl: String?
-    ): DefaultFlutterSessionReplayFeature {
-        val featureSdkCore = sdkCore ?: Datadog.getInstance() as FeatureSdkCore
+    ): DefaultFlutterSessionReplayFeature? = synchronized(lock) {
+        val featureSdkCore = sdkCore ?: defaultSdkCore() ?: return@synchronized null
         core = featureSdkCore
 
-        feature?.let { return it }
+        feature?.let { return@synchronized it }
 
         val newFeature = DefaultFlutterSessionReplayFeature(
             sdkCore = featureSdkCore,
@@ -222,8 +284,22 @@ internal class FlutterSessionReplayManager(
         )
         featureSdkCore.registerFeature(newFeature)
         feature = newFeature
-        return newFeature
+        newFeature
     }
+
+    /**
+     * The core to register against when the caller does not supply one — the current process-wide
+     * Datadog instance, if it happens to also be a [FeatureSdkCore].
+     *
+     * Every [com.datadog.android.api.SdkCore] this SDK actually returns today — the real core and
+     * its no-op fallback alike — is also a [FeatureSdkCore], but that is an internal implementation
+     * detail, not a contract [Datadog.getInstance] promises. A future version that broke it should
+     * degrade Session Replay for this engine, not crash the host app over a forced cast. Not worth
+     * telemetry beyond that: the only way this ever returns `null` is a change to that SDK's own
+     * internal type hierarchy, not anything a customer's app or its dependency versions control —
+     * exactly the kind of break its own test suite should catch before release, not this one.
+     */
+    private fun defaultSdkCore(): FeatureSdkCore? = Datadog.getInstance() as? FeatureSdkCore
 
     // endregion
 
@@ -244,25 +320,27 @@ internal class FlutterSessionReplayManager(
      * the UI thread, as [EmbeddedSessionReplay.setSlotId] tags the view.
      */
     fun registerSlot(view: View, messenger: BinaryMessenger) {
-        isEmbedded = true
-
         var bridge: FlutterSessionReplayBridge? = null
+        var previousView: View? = null
         val registration = synchronized(lock) {
             val existing = slotsByMessenger[messenger]
             if (existing != null && existing.view === view) {
                 return@synchronized null
             }
-            // A previous view for this engine is being replaced — clear its tag so the native
-            // registry stops tracking a slot nothing renders into any more.
-            existing?.view?.let { embeddedSessionReplay.setSlotId(it, null) }
+            previousView = existing?.view
 
             bridge = bridgesByMessenger[messenger]?.get()
             val slotId = existing?.slotId ?: UUID.randomUUID().toString()
             SlotRegistration(slotId, view).also { slotsByMessenger[messenger] = it }
         } ?: return
 
+        // A previous view for this engine is being replaced — clear its tag so the native
+        // registry stops tracking a slot nothing renders into any more. Done outside the lock,
+        // like the equivalent calls in detach()/unregisterSlot(), so a native call in flight here
+        // cannot block a segment/resource flush resolving another engine's slot via slotId().
+        previousView?.let { embeddedSessionReplay.setSlotId(it, null) }
         embeddedSessionReplay.setSlotId(view, registration.slotId)
-        
+
         bridge?.onSlotRegistered()
     }
 
@@ -328,28 +406,32 @@ internal class FlutterSessionReplayManager(
      * Hands a resource to the native Session Replay, so it is deduplicated against the host's own
      * resources and that deduplication survives app launches.
      *
-     * Returns `false` when Flutter is not embedded — or the native module is absent — so the caller
-     * writes to the Flutter resources feature instead.
+     * Returns `false` when Flutter is not embedded, the native module is absent, or the resource
+     * did not actually reach it — e.g. a version skew discovered on this very call — so the caller
+     * writes to the Flutter resources feature instead rather than losing the resource.
      */
     fun sendToNative(identifier: String, data: ByteArray, mimeType: String): Boolean {
         val sdkCore = core
         if (!isEmbedded || sdkCore == null || !embeddedSessionReplay.isAvailable) {
             return false
         }
-        embeddedSessionReplay.addResource(identifier, data, mimeType, sdkCore)
-        return true
+        return embeddedSessionReplay.addResource(identifier, data, mimeType, sdkCore)
     }
 
     // endregion
 
-    /** Only used in testing. */
+    /**
+     * Resets every registry, for the rare test that has to exercise [shared] itself rather than an
+     * isolated instance — see [DatadogSessionReplayExtensionsTest] — so it doesn't leak state into
+     * whichever test runs next in the same JVM.
+     */
     fun shutdown() {
         synchronized(lock) {
             feature = null
             core = null
-            isEmbedded = false
             engines.clear()
             bridgesByMessenger.clear()
+            detachedMessengers.clear()
             slotsByMessenger.clear()
         }
     }

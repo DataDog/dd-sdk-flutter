@@ -110,9 +110,11 @@ internal class FlutterSessionReplayBridgeTest {
         val bridge = FlutterSessionReplayBridge.create(manager)
 
         // When
-        val feature = bridge.enable(
-            FlutterSessionReplayBridge.Configuration(onContextChanged = mockk(relaxed = true)),
-            core = mockCore
+        val feature = checkNotNull(
+            bridge.enable(
+                FlutterSessionReplayBridge.Configuration(onContextChanged = mockk(relaxed = true)),
+                core = mockCore
+            )
         )
 
         // Then
@@ -348,6 +350,38 @@ internal class FlutterSessionReplayBridgeTest {
     }
 
     @Test
+    fun `M publish the pending call W setEmbedded resolves to standalone after setHasReplay`(
+        @StringForgery viewId: String,
+        @BoolForgery hasReplay: Boolean
+    ) {
+        // Given - a call arrives before Dart declares the embedding, as when the native RUM view
+        // is primed straight from enable()
+        enable()
+        bridge.setHasReplay(viewId, hasReplay)
+
+        // When
+        bridge.setEmbedded(false)
+
+        // Then - the call that would otherwise have been lost is published once resolved
+        verify { mockFeature.setHasReplay(viewId, hasReplay) }
+    }
+
+    @Test
+    fun `M drop the pending call W setEmbedded resolves to embedded after setHasReplay`(
+        @StringForgery viewId: String
+    ) {
+        // Given
+        enable()
+        bridge.setHasReplay(viewId, true)
+
+        // When - the native Session Replay owns this key when embedded
+        bridge.setEmbedded(true)
+
+        // Then
+        verify(exactly = 0) { mockFeature.setHasReplay(any(), any()) }
+    }
+
+    @Test
     fun `M publish to the feature W setRecordCount when standalone`(
         @StringForgery viewId: String,
         @IntForgery(min = 0, max = 1000) recordCount: Int
@@ -376,6 +410,38 @@ internal class FlutterSessionReplayBridgeTest {
         bridge.setRecordCount(viewId, recordCount)
 
         // Then - the native embedded-content receiver counts our records instead
+        verify(exactly = 0) { mockFeature.setRecordCount(any(), any()) }
+    }
+
+    @Test
+    fun `M publish the pending call W setEmbedded resolves to standalone after setRecordCount`(
+        @StringForgery viewId: String,
+        @IntForgery(min = 0, max = 1000) recordCount: Int
+    ) {
+        // Given - a call arrives before Dart declares the embedding
+        enable()
+        bridge.setRecordCount(viewId, recordCount)
+
+        // When
+        bridge.setEmbedded(false)
+
+        // Then - the call that would otherwise have been lost is published once resolved
+        verify { mockFeature.setRecordCount(viewId, recordCount) }
+    }
+
+    @Test
+    fun `M drop the pending call W setEmbedded resolves to embedded after setRecordCount`(
+        @StringForgery viewId: String,
+        @IntForgery(min = 0, max = 1000) recordCount: Int
+    ) {
+        // Given
+        enable()
+        bridge.setRecordCount(viewId, recordCount)
+
+        // When - the native embedded-content receiver counts our records instead
+        bridge.setEmbedded(true)
+
+        // Then
         verify(exactly = 0) { mockFeature.setRecordCount(any(), any()) }
     }
 

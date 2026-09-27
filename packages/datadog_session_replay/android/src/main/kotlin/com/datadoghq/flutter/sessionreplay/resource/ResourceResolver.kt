@@ -103,16 +103,31 @@ internal class DefaultResourceResolver(
             height,
             resourceBytes = resourceBytes
         )
-        // computeIfAbsent rather than getOrPut: two engines enabling at once would otherwise each
-        // build a map and one would be dropped, taking whatever the loser had already added.
-        @Suppress("UnsafeThirdPartyFunctionCall") // map is initialized empty
-        val engineResources = resourcesByEngine.computeIfAbsent(engineToken) { ConcurrentHashMap() }
+        val engineResources = resourcesFor(engineToken)
         engineResources[resourceKey] = entry
         return entry
     }
 
     override fun releaseEngine(engineToken: String) {
         resourcesByEngine.remove(engineToken)
+    }
+
+    /**
+     * The resource map for [engineToken], creating and racing it into [resourcesByEngine] if this
+     * is the first resource seen for that engine.
+     *
+     * Equivalent to `resourcesByEngine.computeIfAbsent(engineToken) { ConcurrentHashMap() }`, but
+     * written with [ConcurrentHashMap.putIfAbsent] instead — `computeIfAbsent` needs API 24, and
+     * this module's minSdk is 21. Two engines racing this only costs the loser a throwaway map;
+     * [putIfAbsent] is still what decides which one is actually stored.
+     */
+    @Suppress("UnsafeThirdPartyFunctionCall") // map is initialized empty
+    private fun resourcesFor(
+        engineToken: String
+    ): MutableMap<Int, ResourceResolver.ResourceEntry> {
+        resourcesByEngine[engineToken]?.let { return it }
+        val created = ConcurrentHashMap<Int, ResourceResolver.ResourceEntry>()
+        return resourcesByEngine.putIfAbsent(engineToken, created) ?: created
     }
 
     override fun resolveResource(engineToken: String, resourceKey: Int): String? {

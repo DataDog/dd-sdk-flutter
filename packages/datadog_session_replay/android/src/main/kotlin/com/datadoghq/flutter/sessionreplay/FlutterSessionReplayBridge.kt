@@ -34,7 +34,8 @@ internal class FlutterSessionReplayBridge private constructor(
          * Cap on [pendingSegments], so an engine that never becomes resolvable — a host that
          * configured `isEmbedded: true` but never called `dd.enableSessionReplay()` — drops the
          * oldest segments rather than growing without bound. Two seconds of capture at the default
-         * 100ms cadence.
+         * 100ms cadence. See [writeSegment] for the telemetry emitted when this triggers, so the
+         * drop is diagnosable rather than silent.
          */
         internal const val MAX_PENDING_SEGMENTS = 20
 
@@ -116,6 +117,24 @@ internal class FlutterSessionReplayBridge private constructor(
     private val pendingSegments = ArrayDeque<String>()
 
     /**
+     * The latest [setHasReplay]/[setRecordCount] call made while [embeddingState] was still
+     * [EmbeddingState.UNKNOWN], so it can be published once [setEmbedded] resolves the state
+     * instead of being lost — the native RUM view priming in [enable] means a call can arrive
+     * before Dart's own `setEmbedded` even runs. Only the latest of each matters, since both are
+     * "current value" signals, not an ordered log like segments.
+     */
+    private var pendingHasReplay: Pair<String, Boolean>? = null
+    private var pendingRecordCount: Pair<String, Int>? = null
+
+    /**
+     * Whether [writeSegment] has already reported dropping a segment to the [MAX_PENDING_SEGMENTS]
+     * cap. A permanently-unresolvable engine (see [MAX_PENDING_SEGMENTS]) hits that cap on every
+     * single write for the rest of its life; latched so it is reported once per engine lifetime
+     * rather than on every one of those writes.
+     */
+    private var hasReportedSegmentOverflow = false
+
+    /**
      * Guards everything the segment path touches. Segments arrive from the Dart processor isolate
      * over JNI, while binding and embedding state are set from the platform thread.
      */
@@ -160,6 +179,9 @@ internal class FlutterSessionReplayBridge private constructor(
             boundMessenger = null
             embeddingState = EmbeddingState.UNKNOWN
             pendingSegments.clear()
+            pendingHasReplay = null
+            pendingRecordCount = null
+            hasReportedSegmentOverflow = false
         }
     }
 
@@ -168,7 +190,7 @@ internal class FlutterSessionReplayBridge private constructor(
     fun enable(
         configuration: Configuration,
         core: FeatureSdkCore? = null
-    ): DefaultFlutterSessionReplayFeature {
+    ): DefaultFlutterSessionReplayFeature? {
         // Register this engine for live RUM context fan-out before anything else, so it receives
         // updates even if the feature was already registered by another engine. Always replaces the
         // context listener, which also covers a Hot Restart, where the previously created listener
@@ -189,28 +211,45 @@ internal class FlutterSessionReplayBridge private constructor(
     // region Replay state
 
     /**
-     * Whether this engine should publish replay state (`has_replay`, record counts) to the core.
+     * Only the standalone path publishes replay state (`has_replay`, record counts) to the core:
+     * when embedded, the native Session Replay publishes both — its embedded-content receiver
+     * counts our records — and publishing from here too would have the two fight over the same
+     * core-context keys, making the value RUM reads depend on which wrote last.
      *
-     * Only the standalone path may: when embedded, the native Session Replay publishes both — its
-     * embedded-content receiver counts our records — and publishing from here too would have the
-     * two fight over the same core-context keys, making the value RUM reads depend on which wrote
-     * last.
+     * While [embeddingState] is still [EmbeddingState.UNKNOWN], the call is remembered instead of
+     * dropped — see [pendingHasReplay]/[pendingRecordCount] — and published if [setEmbedded]
+     * resolves it to standalone.
      */
-    private val publishesReplayState: Boolean
-        get() = synchronized(lock) { embeddingState == EmbeddingState.STANDALONE }
-
     fun setHasReplay(viewId: String, hasReplay: Boolean) {
-        if (!publishesReplayState) {
-            return
+        val shouldPublish = synchronized(lock) {
+            when (embeddingState) {
+                EmbeddingState.UNKNOWN -> {
+                    pendingHasReplay = viewId to hasReplay
+                    false
+                }
+                EmbeddingState.STANDALONE -> true
+                EmbeddingState.EMBEDDED -> false
+            }
         }
-        manager.feature?.setHasReplay(viewId, hasReplay)
+        if (shouldPublish) {
+            manager.feature?.setHasReplay(viewId, hasReplay)
+        }
     }
 
     fun setRecordCount(viewId: String, recordCount: Int) {
-        if (!publishesReplayState) {
-            return
+        val shouldPublish = synchronized(lock) {
+            when (embeddingState) {
+                EmbeddingState.UNKNOWN -> {
+                    pendingRecordCount = viewId to recordCount
+                    false
+                }
+                EmbeddingState.STANDALONE -> true
+                EmbeddingState.EMBEDDED -> false
+            }
         }
-        manager.feature?.setRecordCount(viewId, recordCount)
+        if (shouldPublish) {
+            manager.feature?.setRecordCount(viewId, recordCount)
+        }
     }
 
     // endregion
@@ -220,20 +259,52 @@ internal class FlutterSessionReplayBridge private constructor(
     /**
      * Declares which recording path this engine writes to. Called once by Dart, straight after
      * [enable], from the `isEmbedded` it was configured with.
+     *
+     * Also publishes whatever [setHasReplay]/[setRecordCount] call arrived too early to publish
+     * itself, if this resolves to standalone — see [pendingHasReplay]/[pendingRecordCount].
      */
     fun setEmbedded(isEmbedded: Boolean) {
-        synchronized(lock) {
+        val (hasReplay, recordCount) = synchronized(lock) {
             embeddingState = if (isEmbedded) EmbeddingState.EMBEDDED else EmbeddingState.STANDALONE
+            if (embeddingState == EmbeddingState.STANDALONE) {
+                val flushed = pendingHasReplay to pendingRecordCount
+                pendingHasReplay = null
+                pendingRecordCount = null
+                flushed
+            } else {
+                null to null
+            }
         }
+
+        hasReplay?.let { (viewId, value) -> manager.feature?.setHasReplay(viewId, value) }
+        recordCount?.let { (viewId, value) -> manager.feature?.setRecordCount(viewId, value) }
+
         flushPendingSegments()
     }
 
     fun writeSegment(segment: String) {
+        var droppedCount = 0
+        var shouldReport = false
         synchronized(lock) {
             pendingSegments.addLast(segment)
             while (pendingSegments.size > MAX_PENDING_SEGMENTS) {
                 pendingSegments.removeFirst()
+                droppedCount++
             }
+            // Latched: a permanently-unresolvable engine hits this on every single write for the
+            // rest of its life, so only the first drop is reported — not necessarily a stuck engine
+            // (flushPendingSegments retries on every write, so a slot or embedding state that
+            // resolves moments later would have drained these anyway), but worth surfacing once.
+            if (droppedCount > 0 && !hasReportedSegmentOverflow) {
+                hasReportedSegmentOverflow = true
+                shouldReport = true
+            }
+        }
+        if (shouldReport) {
+            telemetryDebug(
+                "FlutterSessionReplayBridge dropped $droppedCount buffered segment(s): still " +
+                    "unresolvable after $MAX_PENDING_SEGMENTS pending"
+            )
         }
         flushPendingSegments()
     }
@@ -249,19 +320,20 @@ internal class FlutterSessionReplayBridge private constructor(
      * against the Dart thread appending the next segment.
      */
     private fun flushPendingSegments() {
-        var slotId: String? = null
-
-        val drained = synchronized(lock) {
+        val (resolvedSlotId, drained) = synchronized(lock) {
             if (pendingSegments.isEmpty()) {
                 return
             }
 
-            when (embeddingState) {
+            // An expression, not a statement, so the compiler forces every branch to be handled if
+            // EmbeddingState ever grows a case — a statement `when` here would instead compile
+            // silently and fall through to the STANDALONE write path for anything unhandled.
+            val slotId: String? = when (embeddingState) {
                 // Dart has not declared the embedding state yet.
                 EmbeddingState.UNKNOWN -> return
 
                 // Flutter is the host app — write directly to the Flutter SR feature scope.
-                EmbeddingState.STANDALONE -> Unit
+                EmbeddingState.STANDALONE -> null
 
                 // Flutter is embedded — hand the records to the native recording so the player can
                 // composite them into the host's embedded-content placeholder.
@@ -269,14 +341,13 @@ internal class FlutterSessionReplayBridge private constructor(
                     val messenger = boundMessenger?.get()
                     // Either `registerEngine` has not landed yet, or the host has not registered
                     // this engine's view. Keep buffering and retry on the next segment.
-                    slotId = messenger?.let { manager.slotId(it) } ?: return
+                    messenger?.let { manager.slotId(it) } ?: return
                 }
             }
 
-            pendingSegments.toList().also { pendingSegments.clear() }
+            slotId to pendingSegments.toList().also { pendingSegments.clear() }
         }
 
-        val resolvedSlotId = slotId
         if (resolvedSlotId == null) {
             drained.forEach { manager.feature?.writeSegment(it) }
         } else {

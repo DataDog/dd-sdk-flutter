@@ -130,7 +130,7 @@ internal class DefaultFlutterSessionReplayFeature(
     // Both of these stay on [Feature.SESSION_REPLAY_FEATURE_NAME], unlike the registration above:
     // that context is where RUM reads `has_replay` and the record counts from, regardless of which
     // feature wrote them. Only the standalone path reaches here, so there is no native Session
-    // Replay to contend with — see `FlutterSessionReplayBridge.publishesReplayState`.
+    // Replay to contend with — see `FlutterSessionReplayBridge.setHasReplay`/`setRecordCount`.
     override fun setHasReplay(viewId: String, hasReplay: Boolean) {
         sdkCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME) {
             @Suppress("UNCHECKED_CAST")

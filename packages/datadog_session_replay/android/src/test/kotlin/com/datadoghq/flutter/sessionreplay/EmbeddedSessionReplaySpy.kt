@@ -18,7 +18,9 @@ import com.datadoghq.flutter.sessionreplay.embedded.EmbeddedSessionReplay
  * SDK's to verify, not ours. What matters here is *what* we send it and *when*.
  */
 internal class EmbeddedSessionReplaySpy(
-    override var isAvailable: Boolean = true
+    override var isAvailable: Boolean = true,
+    /** What [addResource] returns — settable to simulate a version skew discovered mid-call. */
+    var addResourceSucceeds: Boolean = true
 ) : EmbeddedSessionReplay {
     data class RecordBatch(
         val records: List<Map<String, Any?>>,
@@ -76,7 +78,11 @@ internal class EmbeddedSessionReplaySpy(
         data: ByteArray,
         mimeType: String,
         sdkCore: SdkCore
-    ) {
+    ): Boolean {
+        if (!addResourceSucceeds) {
+            return false
+        }
         resources.add(Resource(identifier, data, mimeType))
+        return true
     }
 }
