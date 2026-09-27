@@ -24,6 +24,8 @@ import org.junit.jupiter.params.provider.ValueSource
  * every JSON number into one `Number` type and so needs the integral ones recovered by hand.
  */
 internal class SegmentParserTest {
+    private val segmentParser = SegmentParser()
+
     @Test
     fun `M return the records and view id W parse`() {
         // Given
@@ -35,7 +37,7 @@ internal class SegmentParserTest {
         """.trimIndent()
 
         // When
-        val parsed = SegmentParser.parse(segment)
+        val parsed = segmentParser.parse(segment)
 
         // Then
         assertThat(parsed).isNotNull()
@@ -50,7 +52,7 @@ internal class SegmentParserTest {
         val segment = """{"records":[{"timestamp":$timestamp}],"viewID":"view-id"}"""
 
         // When
-        val parsed = SegmentParser.parse(segment)
+        val parsed = segmentParser.parse(segment)
 
         // Then - read as a Double this would re-serialize in exponent form and lose precision past
         // 2^53; the player reads record timestamps as integers
@@ -65,7 +67,7 @@ internal class SegmentParserTest {
         val segment = """{"records":[{"x":12.5,"y":1e3}],"viewID":"view-id"}"""
 
         // When
-        val record = SegmentParser.parse(segment)?.records?.first()
+        val record = segmentParser.parse(segment)?.records?.first()
 
         // Then
         assertThat(record?.get("x")).isEqualTo(12.5)
@@ -85,7 +87,7 @@ internal class SegmentParserTest {
         """.trimIndent()
 
         // When
-        val record = SegmentParser.parse(segment)?.records?.first()
+        val record = segmentParser.parse(segment)?.records?.first()
 
         // Then
         @Suppress("UNCHECKED_CAST")
@@ -119,6 +121,6 @@ internal class SegmentParserTest {
     fun `M return null W parse a segment that could not be delivered`(segment: String) {
         // Then - the native receiver would drop these anyway, and returning null keeps the caller
         // from treating a dud segment as delivered
-        assertThat(SegmentParser.parse(segment)).isNull()
+        assertThat(segmentParser.parse(segment)).isNull()
     }
 }

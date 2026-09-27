@@ -56,7 +56,7 @@ internal interface EmbeddedSessionReplay {
  * [isAvailable] resolves the class once up front so the common path is a boolean check, and each
  * call is still guarded — the class resolving does not by itself prove every member links.
  */
-internal object DefaultEmbeddedSessionReplay : EmbeddedSessionReplay {
+internal class DefaultEmbeddedSessionReplay : EmbeddedSessionReplay {
     private val isProxyClassAvailable: Boolean by lazy {
         try {
             Class.forName(PROXY_CLASS_NAME)

@@ -29,8 +29,8 @@ internal data class ParsedSegment(
  * a missing `viewID`, or no records. The native receiver would drop those anyway, and stopping here
  * keeps the caller's buffering logic from treating a dud segment as delivered.
  */
-internal object SegmentParser {
-    
+internal class SegmentParser {
+
     private val gson = GsonBuilder()
         .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
         .create()

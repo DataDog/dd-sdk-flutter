@@ -40,7 +40,8 @@ import java.util.WeakHashMap
 @Suppress("TooManyFunctions")
 internal class FlutterSessionReplayManager(
     feature: DefaultFlutterSessionReplayFeature? = null,
-    private val embeddedSessionReplay: EmbeddedSessionReplay = DefaultEmbeddedSessionReplay
+    private val embeddedSessionReplay: EmbeddedSessionReplay = DefaultEmbeddedSessionReplay(),
+    private val segmentParser: SegmentParser = SegmentParser()
 ) {
     companion object {
         val shared = FlutterSessionReplayManager()
@@ -315,7 +316,7 @@ internal class FlutterSessionReplayManager(
      */
     fun sendToNative(segment: String, slotId: String) {
         val sdkCore = core ?: return
-        val parsed = SegmentParser.parse(segment) ?: return
+        val parsed = segmentParser.parse(segment) ?: return
         embeddedSessionReplay.addRecords(parsed.records, slotId, parsed.viewId, sdkCore)
     }
 
