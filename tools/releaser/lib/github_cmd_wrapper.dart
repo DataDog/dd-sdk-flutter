@@ -533,6 +533,87 @@ class GithubCommandWrapper {
     return (json.first as Map<String, dynamic>)['number'] as int;
   }
 
+  /// The open PR (if any) whose head is [head], regardless of base --
+  /// `amend_release_changelog.dart` uses this to find and edit a
+  /// release-prep PR's body without needing to know its base branch.
+  ///
+  /// Throws if more than one open PR shares [head] -- this repo auto-deletes
+  /// a merged PR's head branch, so that should never actually happen, but
+  /// picking one arbitrarily (as `--limit 1` alone would) risks editing the
+  /// wrong PR's body silently.
+  Future<OpenPullRequest?> findOpenPullRequestByHead(
+    Logger logger,
+    String head,
+  ) async {
+    final buffer = StringBuffer();
+    final exitCode = await runProcess(
+      'gh',
+      [
+        'pr',
+        'list',
+        '--head',
+        head,
+        '--state',
+        'open',
+        '--json',
+        'number,body',
+        '--limit',
+        '2',
+      ],
+      workingDirectory: cwd,
+      stdout: (line) => buffer.write(line),
+      stderr: (line) => logger.shout(line),
+    );
+
+    if (exitCode != 0) {
+      throw Exception('gh returned exit code $exitCode.');
+    }
+
+    final json = jsonDecode(buffer.toString()) as List;
+    if (json.isEmpty) return null;
+    if (json.length > 1) {
+      throw StateError(
+        'More than one open PR has head $head -- expected at most one.',
+      );
+    }
+    final entry = json.first as Map<String, dynamic>;
+    return OpenPullRequest(
+      number: entry['number'] as int,
+      body: entry['body'] as String? ?? '',
+    );
+  }
+
+  /// `gh pr edit {number} --body-file` -- used to rewrite a release-prep
+  /// PR's body after `amend_release_changelog.dart` gives commit A a new
+  /// SHA, so the PR's changelog links stay valid.
+  Future<void> editPullRequestBody(
+    Logger logger,
+    int number,
+    String body,
+  ) async {
+    final tempFile = await File(
+      '${Directory.systemTemp.path}/dart_releaser_pr_body_edit_'
+      '${DateTime.now().microsecondsSinceEpoch}.tmp',
+    ).create();
+    await tempFile.writeAsString(body);
+
+    try {
+      final exitCode = await runProcess(
+        'gh',
+        ['pr', 'edit', '$number', '--body-file', tempFile.path],
+        workingDirectory: cwd,
+        stdout: (line) => logger.info(line),
+        stderr: (line) => logger.shout(line),
+      );
+
+      if (exitCode != 0) {
+        throw Exception('gh returned exit code $exitCode.');
+      }
+    } finally {
+      await tempFile.delete();
+    }
+  }
+
   /// `gh pr merge {number} --auto --merge` -- queues [prNumber] for
   /// GitHub's native auto-merge using the `merge` strategy specifically,
   /// never squash/rebase, since Phase 2's backport PR needs commit A's
@@ -555,6 +636,15 @@ class GithubCommandWrapper {
       throw Exception('gh returned exit code $exitCode.');
     }
   }
+}
+
+/// An open PR's number and body. See
+/// [GithubCommandWrapper.findOpenPullRequestByHead].
+class OpenPullRequest {
+  final int number;
+  final String body;
+
+  OpenPullRequest({required this.number, required this.body});
 }
 
 /// A `publish-package.yml` run's state, as read from `gh run list`. See
