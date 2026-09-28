@@ -37,4 +37,6 @@ tools/ci/.tmp
 .fvmrc
 .plans
 .prompts/
+
 **/Package.resolved
+/.envrc.local

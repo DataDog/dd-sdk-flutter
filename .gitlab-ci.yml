@@ -19,6 +19,9 @@ variables:
   IS_ON_CI: $CI
   SLACK_CHANNEL: "#mobile-sdk-ops"
   FLUTTER_MIN_VERSION: '3.38.0'
+  # Magic Mirror Depot pro for the Java ecosystem (see
+  # tools/ci/gradle/init.d/depot-mirror.init.gradle).
+  DEPOT_JAVA_MAVEN_URL: "https://depot-read-api-java.us1.ddbuild.io/magicmirror/magicmirror/@current/"
 
   KUBERNETES_MEMORY_REQUEST: "32Gi"
   KUBERNETES_MEMORY_LIMIT: "48Gi"
@@ -29,7 +32,7 @@ stages:
   - build
   - integration-test
   - version-test
-  - e2e-test  
+  - e2e-test
   - post
   - post-nightly
 
@@ -75,22 +78,37 @@ stages:
     - xcode-select -p
     - xcodebuild -runFirstLaunch
 
+.install-gradle-mirror:
+  script:
+    - mkdir -p $HOME/.gradle/init.d
+    - cp $CI_PROJECT_DIR/tools/ci/gradle/init.d/depot-mirror.init.gradle $HOME/.gradle/init.d/
+
 .pre-android:
   script:
+    - !reference [.install-gradle-mirror, script]
     - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;36.0.0" "platform-tools" "platforms;android-36" || true
     - yes | flutter doctor --android-licenses || true
     # Kill all active emulators
-    - pushd tools/ci 
+    - pushd tools/ci
     - dart pub get && dart run ci_helpers stop_emu
     - popd
     - melos pub:get
     - flutter doctor
 
+.pre-web:
+  script:
+    - pushd tools/ci && dart pub get && dart run ci_helpers chrome_driver --extract && popd
+    - ./tools/ci/.tmp/chromedriver-linux64/chromedriver --version
+    - ./tools/ci/.tmp/chrome-linux64/chrome --version
+    - export CHROME_EXECUTABLE=${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/chrome
+    - export PATH="$PATH:${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/"
+    - echo $CHROME_EXECUTABLE
+
 ci-image:
   when: manual
   stage: ci-image
-  except: [ tags, schedules ]
-  tags: [ "arch:amd64" ]
+  except: [tags, schedules]
+  tags: ["arch:amd64"]
   image: "$BUILDENV_REGISTRY/docker:24.0.4-jammy"
   script:
     - DIGEST_FILE=$(mktemp)
@@ -119,7 +137,7 @@ ci-image-windows:
 
 build-flutter:
   stage: build
-  except: [ schedules ]
+  except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
@@ -140,19 +158,26 @@ build-flutter:
 
 build-android:
   stage: build
-  except: [ schedules ]
+  except: [schedules]
   image: $CI_IMAGE_DOCKER
-  tags: [ "arch:amd64" ]
+  tags: ["arch:amd64"]
   script:
     - !reference [.pre, script]
+    - !reference [.pre-android, script]
     - melos run analyze:android
-    - melos run build:android  
+    - melos run build:android
     - melos run unit_test:android
     - melos run verify:jni_bindings
     
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    paths:
+      - "$CI_PROJECT_DIR/**/reports/detekt/*"
+
 build-ios-spm:
   stage: build
-  except: [ schedules ]
+  except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
@@ -161,7 +186,7 @@ build-ios-spm:
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
-    - flutter config --enable-swift-package-manager    
+    - flutter config --enable-swift-package-manager
     - melos remove_cocoapods
     - melos pub:get
     - melos run analyze:ios
@@ -189,7 +214,7 @@ build-macos-spm:
 
 build-ios:
   stage: build
-  except: [ schedules ]
+  except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
@@ -208,10 +233,10 @@ build-ios:
 
 build-web:
   stage: build
-  except: [ schedules ]
+  except: [schedules]
   image: $CI_IMAGE_DOCKER
   tags:
-    [ "arch:amd64" ]
+    - "arch:amd64"
   script:
     - !reference [.pre, script]
     - !reference [.pre-web, script]
@@ -267,11 +292,11 @@ build-windows:
 
 android-integration-test:
   stage: integration-test
-  except: [ schedules ]
-  needs: [ build-android ]
+  except: [schedules]
+  needs: [build-android]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags: 
+  tags:
     - macos:sequoia
     - specific:true
   script:
@@ -289,8 +314,8 @@ android-integration-test:
 
 ios-integration-test:
   stage: integration-test
-  except: [ schedules ]
-  needs: [ build-ios ]
+  except: [schedules]
+  needs: [build-ios]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
@@ -333,11 +358,11 @@ macos-integration-test:
 
 web-integration-test:
   stage: integration-test
-  except: [ schedules ]
-  needs: [ build-web ]
+  except: [schedules]
+  needs: [build-web]
   image: $CI_IMAGE_DOCKER
   tags:
-    [ "arch:amd64" ]
+    - "arch:amd64"
   script:
     - !reference [.pre, script]
     - !reference [.pre-web, script]
@@ -397,11 +422,11 @@ notify-publish-develop-failure:
 
 notify-pipeline-succeeded:
   stage: post
-  tags: [ "arch:amd64" ]
+  tags: ["arch:amd64"]
   image: "$BUILDENV_REGISTRY/docker:24.0.4-jammy"
   when: on_success
   except:
-    - schedules    
+    - schedules
   script:
     - echo "Pipeline did succeed"
 
@@ -426,7 +451,7 @@ notify-nightly-failed:
     - export DD_E2E_APPLICATION_ID=$(vault kv get -field=application_id kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
 
 .nightly:
-  only: [ schedules ]
+  only: [schedules]
   when: always
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
@@ -450,13 +475,12 @@ nightly-min-version-test:
     - fvm exec dart pub global activate melos
     - export MELOS_PACKAGES="datadog_flutter_plugin"
     - fvm exec melos pub:get
-    - fvm exec melos analyze:dart    
+    - fvm exec melos analyze:dart
   artifacts:
     when: always
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
-  
 
 nightly-beta-test:
   extends: .nightly
@@ -469,13 +493,14 @@ nightly-beta-test:
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
+    - !reference [.install-gradle-mirror, script]
     - fvm destroy
     - fvm install beta
     - fvm use beta
     - fvm flutter upgrade --force
     - fvm flutter precache --ios
     - fvm exec dart pub global activate melos
-    - pod repo update    
+    - pod repo update
     - flutter doctor
     - fvm exec melos pub:get
     - fvm exec melos remove_podfile_lock --no-select
@@ -497,7 +522,7 @@ nightly-beta-test-web:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   image: $CI_IMAGE_DOCKER
   tags:
-    [ "arch:amd64" ]
+    - "arch:amd64"
   script:
     - !reference [.pre, script]
     - !reference [.pre-web, script]
@@ -509,13 +534,12 @@ nightly-beta-test-web:
     - melos pub:get
     - melos run analyze:dart
     - melos run build:web
-    - melos run unit_test:web    
+    - melos run unit_test:web
   artifacts:
     when: always
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
-
 
 nightly-ios:
   extends: .nightly
@@ -550,5 +574,3 @@ nightly-android:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
-
-
