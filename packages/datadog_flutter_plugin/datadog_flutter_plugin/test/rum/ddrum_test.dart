@@ -158,7 +158,7 @@ void main() {
     final configuration = DatadogRumConfiguration(
       applicationId: 'fake-app-id',
       timeseries: const TimeseriesConfiguration(
-        collectTypes: [TimeseriesType.memory, TimeseriesType.cpu],
+        collectTypes: {TimeseriesType.memory, TimeseriesType.cpu},
       ),
     );
 
