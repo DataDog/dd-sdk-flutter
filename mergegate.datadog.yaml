@@ -1,0 +1,10 @@
+schema-version: v1
+kind: mergegate
+name: dd-sdk-flutter-main
+# `main` isn't this repo's default branch (`develop` is), so MergeGate
+# wouldn't otherwise evaluate pull requests targeting it. `devflow/mergegate`
+# is already a required status check on `main` (see this repo's
+# `dd-protected-branches` GitHub ruleset) -- without this, that check would
+# never post and no PR into `main` could ever satisfy it.
+additional_target_branches:
+  - main

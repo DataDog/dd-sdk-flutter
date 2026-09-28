@@ -44,6 +44,7 @@ void main() {
         : null;
 
     final scenarioConfig = RumAutoInstrumentationScenarioConfig(
+      imageUrls: sessionRecorder.imageUrls,
       firstPartyHosts: [(sessionRecorder.sessionEndpoint)],
       firstPartyGetUrl: '${sessionRecorder.sessionEndpoint}/integration_get',
       firstPartyPostUrl: '${sessionRecorder.sessionEndpoint}/integration_post',

@@ -242,6 +242,7 @@ internal class ResourceDataStoreManagerTest {
         override fun getServerOffsetNanos(): Long = 0L
         override fun getServerOffsetMillis(): Long = 0L
         override fun getDeviceElapsedRealtimeMillis(): Long = 0L
+        override fun getDeviceUptimeMillis(): Long = 0L
     }
 
     /** Fake that always fails to read, to exercise the `onFetchFailure` path of `init`. */
