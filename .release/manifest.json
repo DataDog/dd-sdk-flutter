@@ -1,0 +1,47 @@
+{
+  "contentCommit": "91f65405e111a131fc182ada65dfb93415cff0e9",
+  "packages": [
+    {
+      "package": "datadog_inappwebview_tracking",
+      "from_version": "2.0.0",
+      "to_version": "2.1.0",
+      "source_branch": "develop",
+      "prerelease": false
+    },
+    {
+      "package": "datadog_tracking_http_client",
+      "from_version": "3.2.0",
+      "to_version": "3.3.0",
+      "source_branch": "develop",
+      "prerelease": false
+    },
+    {
+      "package": "datadog_grpc_interceptor",
+      "from_version": "2.0.0",
+      "to_version": "2.1.0",
+      "source_branch": "develop",
+      "prerelease": false
+    },
+    {
+      "package": "datadog_dio",
+      "from_version": "2.2.0",
+      "to_version": "2.3.0",
+      "source_branch": "develop",
+      "prerelease": false
+    },
+    {
+      "package": "datadog_gql_link",
+      "from_version": "2.1.0",
+      "to_version": "2.2.0",
+      "source_branch": "develop",
+      "prerelease": false
+    },
+    {
+      "package": "datadog_webview_tracking",
+      "from_version": "3.1.0",
+      "to_version": "3.2.0",
+      "source_branch": "develop",
+      "prerelease": false
+    }
+  ]
+}
