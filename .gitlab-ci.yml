@@ -446,6 +446,9 @@ prepare-release:
       variables:
         RELEASE_TRIGGER: "prerelease"
   variables:
+    # Full history + tags -- release planning walks back to old release
+    # tags, which a shallow clone may not have.
+    GIT_DEPTH: "0"
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
     PACKAGES: ""
     IOS_SDK_VERSION: ""
@@ -488,12 +491,12 @@ prepare-release:
       dart run tools/releaser/bin/prepare_release.dart
       --repo-root=$CI_PROJECT_DIR
       --trigger=$RELEASE_TRIGGER
-      ${PACKAGES:+--packages=$PACKAGES}
-      ${BUMP_TYPE:+--bump-type=$BUMP_TYPE}
-      ${IOS_SDK_VERSION:+--ios-sdk-version=$IOS_SDK_VERSION}
-      ${ANDROID_SDK_VERSION:+--android-sdk-version=$ANDROID_SDK_VERSION}
-      ${CPP_VERSION:+--cpp-version=$CPP_VERSION}
-      ${PRERELEASE_LABEL:+--prerelease-label=$PRERELEASE_LABEL}
+      ${PACKAGES:+"--packages=$PACKAGES"}
+      ${BUMP_TYPE:+"--bump-type=$BUMP_TYPE"}
+      ${IOS_SDK_VERSION:+"--ios-sdk-version=$IOS_SDK_VERSION"}
+      ${ANDROID_SDK_VERSION:+"--android-sdk-version=$ANDROID_SDK_VERSION"}
+      ${CPP_VERSION:+"--cpp-version=$CPP_VERSION"}
+      ${PRERELEASE_LABEL:+"--prerelease-label=$PRERELEASE_LABEL"}
   after_script:
     # Revoke the dd-octo-sts-provided GitHub token unconditionally once finished.
     - dd-octo-sts --disable-tracing revoke --token "$(cat /tmp/gh-token.txt)"
