@@ -427,16 +427,22 @@ linux-integration-test:
 prepare-release:
   stage: prepare-release
   rules:
-    - if: '$CI_COMMIT_BRANCH == "develop"'
+    # push-only: matches self.prepare-release.sts.yaml's trust policy.
+    # allow_failure: true: `when: manual` under `rules:` defaults to
+    # blocking, which would hold up `post`/`post-nightly` on every push.
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
       when: manual
+      allow_failure: true
       variables:
         RELEASE_TRIGGER: "mainline"
-    - if: '$CI_COMMIT_BRANCH =~ /^release\/.+\/v\d+\.\d+\.x$/'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/.+\/v\d+\.\d+\.x$/'
       when: manual
+      allow_failure: true
       variables:
         RELEASE_TRIGGER: "patch"
-    - if: '$CI_COMMIT_BRANCH == "v4"' # pre-release whitelist -- see comment above
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "v4"' # pre-release whitelist -- see comment above
       when: manual
+      allow_failure: true
       variables:
         RELEASE_TRIGGER: "prerelease"
   variables:
@@ -460,6 +466,9 @@ prepare-release:
     - dd-octo-sts --disable-tracing token --scope DataDog/dd-sdk-flutter --policy self.prepare-release > /tmp/gh-token.txt
   script:
     - !reference [.pre, script]
+    # Runner checks out $CI_COMMIT_SHA detached; prepare_release.dart needs
+    # a real branch checkout.
+    - git checkout "$CI_COMMIT_BRANCH"
     # The `gh` CLI (github_cmd_wrapper.dart) picks up GITHUB_TOKEN automatically;
     # for `git` push/PR-base operations we point origin at GitHub using the same
     # token, and configure the dd-octo-sts bot identity for the release commits.
