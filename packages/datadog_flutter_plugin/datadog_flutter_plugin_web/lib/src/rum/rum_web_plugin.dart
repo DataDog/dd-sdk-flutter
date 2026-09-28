@@ -72,7 +72,7 @@ extension type _RumWebPluginJs._(JSObject _) implements JSObject {
 }
 
 JSObject createRumWebPluginJs(RumWebPluginImpl plugin) => _RumWebPluginJs(
-      name: plugin.name,
-      getConfigurationTelemetry: plugin.getConfigurationTelemetry.toJS,
-      onRumStart: plugin.onRumStart.toJS,
-    );
+  name: plugin.name,
+  getConfigurationTelemetry: plugin.getConfigurationTelemetry.toJS,
+  onRumStart: plugin.onRumStart.toJS,
+);

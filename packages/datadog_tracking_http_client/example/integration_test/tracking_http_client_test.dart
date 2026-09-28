@@ -93,8 +93,9 @@ void main() {
     final view1 = session.visits[1];
     expect(view1.viewEvents.last.view.resourceCount, 2);
     for (final imageUrl in scenarioConfig.imageUrls) {
-      final imageResource = view1.resourceEvents
-          .firstWhereOrNull((resource) => resource.url == imageUrl);
+      final imageResource = view1.resourceEvents.firstWhereOrNull(
+        (resource) => resource.url == imageUrl,
+      );
       expect(imageResource, isNotNull);
       expect(imageResource!.statusCode, 200);
       expect(imageResource.resourceType, 'image');

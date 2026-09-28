@@ -41,7 +41,8 @@ final class FlagsInitializationTimeoutException implements Exception {
   });
 
   /// Customer-readable description of the timeout.
-  String get message => 'Flags client "$clientName" did not initialize within '
+  String get message =>
+      'Flags client "$clientName" did not initialize within '
       '${timeout.inMilliseconds} ms.';
 
   @override

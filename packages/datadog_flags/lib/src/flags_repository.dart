@@ -20,8 +20,9 @@ class FlagsRepository {
   // Keep late writes ordered when SDK reconfiguration replaces a repository.
   // Expando keeps the queue scoped to the store identity without retaining it.
   static final Expando<Map<String, _CacheOperationQueue>>
-      _cacheOperationQueues =
-      Expando<Map<String, _CacheOperationQueue>>('flags cache operations');
+  _cacheOperationQueues = Expando<Map<String, _CacheOperationQueue>>(
+    'flags cache operations',
+  );
 
   @visibleForTesting
   final Duration storeReadTimeout;
@@ -142,8 +143,8 @@ class FlagsRepository {
       return _CacheOperationQueue();
     }
 
-    final queues =
-        _cacheOperationQueues[store] ??= <String, _CacheOperationQueue>{};
+    final queues = _cacheOperationQueues[store] ??=
+        <String, _CacheOperationQueue>{};
     return queues.putIfAbsent(clientName, _CacheOperationQueue.new);
   }
 

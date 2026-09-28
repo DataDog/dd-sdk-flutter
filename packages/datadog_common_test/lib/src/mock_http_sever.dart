@@ -36,19 +36,21 @@ class RecordingHttpServer {
 
   Future<void> start() async {
     server = await HttpServer.bind(InternetAddress.anyIPv4, _bindingPort);
-    unawaited(server.forEach((HttpRequest request) async {
-      request.response.headers
-        ..add(HttpHeaders.accessControlAllowOriginHeader, '*')
-        ..add(HttpHeaders.accessControlAllowHeadersHeader, '*')
-        ..add(HttpHeaders.accessControlAllowMethodsHeader, 'GET, POST');
-      if (_imagePaths.contains(request.requestedUri.path)) {
-        return _respondToImageRequest(request);
-      } else if (request.requestedUri.path.endsWith('session')) {
-        return _respondToSessionRequest(request);
-      } else {
-        return _logRequest(request);
-      }
-    }));
+    unawaited(
+      server.forEach((HttpRequest request) async {
+        request.response.headers
+          ..add(HttpHeaders.accessControlAllowOriginHeader, '*')
+          ..add(HttpHeaders.accessControlAllowHeadersHeader, '*')
+          ..add(HttpHeaders.accessControlAllowMethodsHeader, 'GET, POST');
+        if (_imagePaths.contains(request.requestedUri.path)) {
+          return _respondToImageRequest(request);
+        } else if (request.requestedUri.path.endsWith('session')) {
+          return _respondToSessionRequest(request);
+        } else {
+          return _logRequest(request);
+        }
+      }),
+    );
     print('Server started, listening on port $_bindingPort');
   }
 

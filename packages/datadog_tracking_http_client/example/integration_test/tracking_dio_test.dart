@@ -102,8 +102,9 @@ void main() {
     );
 
     for (final imageUrl in scenarioConfig.imageUrls) {
-      final imageResource = view1.resourceEvents
-          .firstWhereOrNull((resource) => resource.url == imageUrl);
+      final imageResource = view1.resourceEvents.firstWhereOrNull(
+        (resource) => resource.url == imageUrl,
+      );
       expect(imageResource, isNotNull);
       expect(imageResource!.statusCode, 200);
       expect(imageResource.resourceType, kIsWeb ? 'xhr' : 'image');
