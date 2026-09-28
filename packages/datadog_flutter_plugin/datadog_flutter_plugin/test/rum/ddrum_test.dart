@@ -170,11 +170,16 @@ void main() {
     ]);
   });
 
-  test('timeseries configuration omits collectTypes when not set', () {
-    const timeseriesConfiguration = TimeseriesConfiguration();
+  test('TimeseriesConfiguration.defaultCollectTypes collects all types', () {
+    const timeseriesConfiguration = TimeseriesConfiguration(
+      collectTypes: TimeseriesConfiguration.defaultCollectTypes,
+    );
 
     final encoded = timeseriesConfiguration.encode();
-    expect(encoded.containsKey('collectTypes'), false);
+    expect(encoded['collectTypes'], [
+      'TimeseriesType.memory',
+      'TimeseriesType.cpu',
+    ]);
   });
 
   test('configuration with mapper sets attach*Mapper', () {

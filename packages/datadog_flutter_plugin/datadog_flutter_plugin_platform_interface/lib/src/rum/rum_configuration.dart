@@ -84,18 +84,19 @@ enum TimeseriesType {
 ///
 /// *Note*: This API is experimental and may change in the future.
 class TimeseriesConfiguration {
+  /// The default timeseries types to collect: memory and CPU.
+  static const defaultCollectTypes = [TimeseriesType.memory, TimeseriesType.cpu];
+
   /// The specific timeseries types to collect.
-  ///
-  /// If not set, all available timeseries types are collected.
-  final List<TimeseriesType>? collectTypes;
+  final List<TimeseriesType> collectTypes;
 
   const TimeseriesConfiguration({
-    this.collectTypes,
+    required this.collectTypes,
   });
 
   Map<String, Object?> encode() {
     return {
-      'collectTypes': ?collectTypes?.map((e) => e.toString()).toList(),
+      'collectTypes': collectTypes.map((e) => e.toString()).toList(),
     };
   }
 }
