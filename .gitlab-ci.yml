@@ -470,8 +470,10 @@ prepare-release:
   script:
     - !reference [.pre, script]
     # Runner checks out $CI_COMMIT_SHA detached; prepare_release.dart needs
-    # a real branch checkout.
-    - git checkout "$CI_COMMIT_BRANCH"
+    # a real branch checkout. -B (not plain checkout) resets the branch to
+    # $CI_COMMIT_SHA even if this runner is reused and already has a local
+    # ref for it from a prior run.
+    - git checkout -B "$CI_COMMIT_BRANCH" "$CI_COMMIT_SHA"
     # The `gh` CLI (github_cmd_wrapper.dart) picks up GITHUB_TOKEN automatically;
     # for `git` push/PR-base operations we point origin at GitHub using the same
     # token, and configure the dd-octo-sts bot identity for the release commits.
