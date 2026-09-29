@@ -3522,7 +3522,7 @@ extension type DatadogContext._(jni$_.JObject _$this) implements jni$_.JObject {
   /// The type which includes information such as the signature of this class.
   static const jni$_.JType<DatadogContext> type = $DatadogContext$Type$();
   static final _id_new$ = _class.constructorId(
-    r'(Lcom/datadog/android/DatadogSite;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/datadog/android/api/context/TimeInfo;Lcom/datadog/android/api/context/ProcessInfo;Lcom/datadog/android/api/context/NetworkInfo;Lcom/datadog/android/api/context/DeviceInfo;Lcom/datadog/android/api/context/UserInfo;Lcom/datadog/android/api/context/AccountInfo;Lcom/datadog/android/privacy/TrackingConsent;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)V',
+    r'(Lcom/datadog/android/DatadogSite;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/datadog/android/api/context/TimeInfo;Lcom/datadog/android/api/context/ProcessInfo;Lcom/datadog/android/api/context/NetworkInfo;Lcom/datadog/android/api/context/DeviceInfo;Lcom/datadog/android/api/context/UserInfo;Lcom/datadog/android/api/context/AccountInfo;Lcom/datadog/android/privacy/TrackingConsent;Ljava/lang/String;Ljava/util/Map;)V',
   );
 
   static final _new$ =
@@ -3539,7 +3539,6 @@ extension type DatadogContext._(jni$_.JObject _$this) implements jni$_.JObject {
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Int32,
-                    jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
@@ -3579,11 +3578,10 @@ extension type DatadogContext._(jni$_.JObject _$this) implements jni$_.JObject {
               jni$_.Pointer<jni$_.Void>,
               jni$_.Pointer<jni$_.Void>,
               jni$_.Pointer<jni$_.Void>,
-              jni$_.Pointer<jni$_.Void>,
             )
           >();
 
-  /// from: `public void <init>(com.datadog.android.DatadogSite datadogSite, java.lang.String string, java.lang.String string1, java.lang.String string2, java.lang.String string3, int i, java.lang.String string4, java.lang.String string5, java.lang.String string6, com.datadog.android.api.context.TimeInfo timeInfo, com.datadog.android.api.context.ProcessInfo processInfo, com.datadog.android.api.context.NetworkInfo networkInfo, com.datadog.android.api.context.DeviceInfo deviceInfo, com.datadog.android.api.context.UserInfo userInfo, com.datadog.android.api.context.AccountInfo accountInfo, com.datadog.android.privacy.TrackingConsent trackingConsent, java.lang.String string7, java.lang.String string8, java.util.Map<java.lang.String, ? extends java.util.Map> map)`
+  /// from: `public void <init>(com.datadog.android.DatadogSite datadogSite, java.lang.String string, java.lang.String string1, java.lang.String string2, java.lang.String string3, int i, java.lang.String string4, java.lang.String string5, java.lang.String string6, com.datadog.android.api.context.TimeInfo timeInfo, com.datadog.android.api.context.ProcessInfo processInfo, com.datadog.android.api.context.NetworkInfo networkInfo, com.datadog.android.api.context.DeviceInfo deviceInfo, com.datadog.android.api.context.UserInfo userInfo, com.datadog.android.api.context.AccountInfo accountInfo, com.datadog.android.privacy.TrackingConsent trackingConsent, java.lang.String string7, java.util.Map<java.lang.String, ? extends java.util.Map> map)`
   /// The returned object must be released after use, by calling the [release] method.
   factory DatadogContext(
     DatadogSite datadogSite,
@@ -3603,7 +3601,6 @@ extension type DatadogContext._(jni$_.JObject _$this) implements jni$_.JObject {
     AccountInfo? accountInfo,
     TrackingConsent trackingConsent,
     jni$_.JString? string7,
-    jni$_.JString? string8,
     jni$_.JMap<jni$_.JString, jni$_.JMap<jni$_.JString, jni$_.JObject?>> map,
   ) {
     final _$$classRef = _class.reference;
@@ -3623,7 +3620,6 @@ extension type DatadogContext._(jni$_.JObject _$this) implements jni$_.JObject {
     final _$accountInfo = accountInfo?.reference ?? jni$_.jNullReference;
     final _$trackingConsent = trackingConsent.reference;
     final _$string7 = string7?.reference ?? jni$_.jNullReference;
-    final _$string8 = string8?.reference ?? jni$_.jNullReference;
     final _$map = map.reference;
     return _new$(
       _$$classRef.pointer,
@@ -3645,7 +3641,6 @@ extension type DatadogContext._(jni$_.JObject _$this) implements jni$_.JObject {
       _$accountInfo.pointer,
       _$trackingConsent.pointer,
       _$string7.pointer,
-      _$string8.pointer,
       _$map.pointer,
     ).object<DatadogContext>();
   }
@@ -4175,35 +4170,6 @@ extension DatadogContext$$Methods on DatadogContext {
     return _get$appBuildId(
       _$$selfRef.pointer,
       _id_get$appBuildId.pointer,
-    ).object<jni$_.JString?>();
-  }
-
-  static final _id_get$remoteConfigurationId = DatadogContext._class
-      .instanceMethodId(r'getRemoteConfigurationId', r'()Ljava/lang/String;');
-
-  static final _get$remoteConfigurationId =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public final java.lang.String getRemoteConfigurationId()`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JString? get remoteConfigurationId {
-    final _$$selfRef = reference;
-    return _get$remoteConfigurationId(
-      _$$selfRef.pointer,
-      _id_get$remoteConfigurationId.pointer,
     ).object<jni$_.JString?>();
   }
 
@@ -4767,7 +4733,7 @@ extension DatadogContext$$Methods on DatadogContext {
 
   static final _id_component18 = DatadogContext._class.instanceMethodId(
     r'component18',
-    r'()Ljava/lang/String;',
+    r'()Ljava/util/Map;',
   );
 
   static final _component18 =
@@ -4786,43 +4752,12 @@ extension DatadogContext$$Methods on DatadogContext {
             )
           >();
 
-  /// from: `public operator fun component18(): kotlin.String?`
-  /// The returned object must be released after use, by calling the [release] method.
-  jni$_.JString? component18() {
-    final _$$selfRef = reference;
-    return _component18(
-      _$$selfRef.pointer,
-      _id_component18.pointer,
-    ).object<jni$_.JString?>();
-  }
-
-  static final _id_component19 = DatadogContext._class.instanceMethodId(
-    r'component19',
-    r'()Ljava/util/Map;',
-  );
-
-  static final _component19 =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-              )
-            >
-          >('globalEnv_CallObjectMethod')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-            )
-          >();
-
-  /// from: `public operator fun component19(): kotlin.collections.Map<kotlin.String, kotlin.collections.Map<kotlin.String, kotlin.Any?>>`
+  /// from: `public operator fun component18(): kotlin.collections.Map<kotlin.String, kotlin.collections.Map<kotlin.String, kotlin.Any?>>`
   /// The returned object must be released after use, by calling the [release] method.
   jni$_.JMap<jni$_.JString, jni$_.JMap<jni$_.JString, jni$_.JObject?>>
-  component19() {
+  component18() {
     final _$$selfRef = reference;
-    return _component19(_$$selfRef.pointer, _id_component19.pointer)
+    return _component18(_$$selfRef.pointer, _id_component18.pointer)
         .object<
           jni$_.JMap<jni$_.JString, jni$_.JMap<jni$_.JString, jni$_.JObject?>>
         >();
@@ -4830,7 +4765,7 @@ extension DatadogContext$$Methods on DatadogContext {
 
   static final _id_copy = DatadogContext._class.instanceMethodId(
     r'copy',
-    r'(Lcom/datadog/android/DatadogSite;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/datadog/android/api/context/TimeInfo;Lcom/datadog/android/api/context/ProcessInfo;Lcom/datadog/android/api/context/NetworkInfo;Lcom/datadog/android/api/context/DeviceInfo;Lcom/datadog/android/api/context/UserInfo;Lcom/datadog/android/api/context/AccountInfo;Lcom/datadog/android/privacy/TrackingConsent;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)Lcom/datadog/android/api/context/DatadogContext;',
+    r'(Lcom/datadog/android/DatadogSite;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/datadog/android/api/context/TimeInfo;Lcom/datadog/android/api/context/ProcessInfo;Lcom/datadog/android/api/context/NetworkInfo;Lcom/datadog/android/api/context/DeviceInfo;Lcom/datadog/android/api/context/UserInfo;Lcom/datadog/android/api/context/AccountInfo;Lcom/datadog/android/privacy/TrackingConsent;Ljava/lang/String;Ljava/util/Map;)Lcom/datadog/android/api/context/DatadogContext;',
   );
 
   static final _copy =
@@ -4847,7 +4782,6 @@ extension DatadogContext$$Methods on DatadogContext {
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Int32,
-                    jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
@@ -4887,11 +4821,10 @@ extension DatadogContext$$Methods on DatadogContext {
               jni$_.Pointer<jni$_.Void>,
               jni$_.Pointer<jni$_.Void>,
               jni$_.Pointer<jni$_.Void>,
-              jni$_.Pointer<jni$_.Void>,
             )
           >();
 
-  /// from: `public fun copy(site: com.datadog.android.DatadogSite, clientToken: kotlin.String, service: kotlin.String, env: kotlin.String, version: kotlin.String, versionCode: kotlin.Int, variant: kotlin.String, source: kotlin.String, sdkVersion: kotlin.String, time: com.datadog.android.api.context.TimeInfo, processInfo: com.datadog.android.api.context.ProcessInfo, networkInfo: com.datadog.android.api.context.NetworkInfo, deviceInfo: com.datadog.android.api.context.DeviceInfo, userInfo: com.datadog.android.api.context.UserInfo, accountInfo: com.datadog.android.api.context.AccountInfo?, trackingConsent: com.datadog.android.privacy.TrackingConsent, appBuildId: kotlin.String?, remoteConfigurationId: kotlin.String?, featuresContext: kotlin.collections.Map<kotlin.String, kotlin.collections.Map<kotlin.String, kotlin.Any?>>): com.datadog.android.api.context.DatadogContext`
+  /// from: `public fun copy(site: com.datadog.android.DatadogSite, clientToken: kotlin.String, service: kotlin.String, env: kotlin.String, version: kotlin.String, versionCode: kotlin.Int, variant: kotlin.String, source: kotlin.String, sdkVersion: kotlin.String, time: com.datadog.android.api.context.TimeInfo, processInfo: com.datadog.android.api.context.ProcessInfo, networkInfo: com.datadog.android.api.context.NetworkInfo, deviceInfo: com.datadog.android.api.context.DeviceInfo, userInfo: com.datadog.android.api.context.UserInfo, accountInfo: com.datadog.android.api.context.AccountInfo?, trackingConsent: com.datadog.android.privacy.TrackingConsent, appBuildId: kotlin.String?, featuresContext: kotlin.collections.Map<kotlin.String, kotlin.collections.Map<kotlin.String, kotlin.Any?>>): com.datadog.android.api.context.DatadogContext`
   /// The returned object must be released after use, by calling the [release] method.
   DatadogContext copy(
     DatadogSite datadogSite,
@@ -4911,7 +4844,6 @@ extension DatadogContext$$Methods on DatadogContext {
     AccountInfo? accountInfo,
     TrackingConsent trackingConsent,
     jni$_.JString? string7,
-    jni$_.JString? string8,
     jni$_.JMap<jni$_.JString, jni$_.JMap<jni$_.JString, jni$_.JObject?>> map,
   ) {
     final _$$selfRef = reference;
@@ -4931,7 +4863,6 @@ extension DatadogContext$$Methods on DatadogContext {
     final _$accountInfo = accountInfo?.reference ?? jni$_.jNullReference;
     final _$trackingConsent = trackingConsent.reference;
     final _$string7 = string7?.reference ?? jni$_.jNullReference;
-    final _$string8 = string8?.reference ?? jni$_.jNullReference;
     final _$map = map.reference;
     return _copy(
       _$$selfRef.pointer,
@@ -4953,7 +4884,6 @@ extension DatadogContext$$Methods on DatadogContext {
       _$accountInfo.pointer,
       _$trackingConsent.pointer,
       _$string7.pointer,
-      _$string8.pointer,
       _$map.pointer,
     ).object<DatadogContext>();
   }

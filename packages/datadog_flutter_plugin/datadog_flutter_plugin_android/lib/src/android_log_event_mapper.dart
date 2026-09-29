@@ -27,6 +27,9 @@ class AndroidLogEventMapper extends LogMapperProxy {
       ),
     );
 
-    DatadogLogsPlugin.Companion.logsEventMapper = listener;
+    // Deliberately calling the static overload, not
+    // `DatadogLogsPlugin.Companion.logsEventMapper = listener` to avoid
+    // potentially retaining a GC'd Companion object
+    DatadogLogsPlugin.logsEventMapper = listener;
   }
 }

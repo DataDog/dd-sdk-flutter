@@ -129,6 +129,7 @@ class DatadogFlags {
       fetcher: fetcher,
       store: configuration.store,
       dateProvider: configuration.dateProvider,
+      initializationTimeout: configuration.initializationTimeout,
     );
 
     final client = DefaultDatadogFlagsClient(

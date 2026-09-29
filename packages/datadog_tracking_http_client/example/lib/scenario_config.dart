@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 @immutable
 class RumAutoInstrumentationScenarioConfig {
+  final List<String> imageUrls;
   final List<String> firstPartyHosts;
   final String firstPartyGetUrl;
   final String? firstPartyPostUrl;
@@ -15,6 +16,10 @@ class RumAutoInstrumentationScenarioConfig {
   final bool enableIoHttpTracking;
 
   const RumAutoInstrumentationScenarioConfig({
+    this.imageUrls = const [
+      'https://picsum.photos/200',
+      'https://placehold.co/200x200.png',
+    ],
     this.firstPartyHosts = const ['foo.bar'],
     this.firstPartyGetUrl = 'https://status.datadoghq.com',
     this.firstPartyPostUrl,
