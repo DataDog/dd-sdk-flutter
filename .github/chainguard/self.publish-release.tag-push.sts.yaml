@@ -15,7 +15,7 @@ subject_pattern: "repo:DataDog/dd-sdk-flutter:ref:refs/tags/release-trigger/.+"
 
 claim_pattern:
   event_name: "push"
-  job_workflow_ref: 'DataDog/dd-sdk-flutter/\.github/workflows/publish-release\.yml@.+'
+  workflow_ref: 'DataDog/dd-sdk-flutter/\.github/workflows/publish-release\.yml@.+'
   ref: "refs/tags/release-trigger/.+"
   repository: "DataDog/dd-sdk-flutter"
 
