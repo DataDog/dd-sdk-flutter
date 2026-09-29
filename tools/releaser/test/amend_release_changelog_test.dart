@@ -260,6 +260,122 @@ void main() {
     );
   });
 
+  test('refuses when the remote release-prep branch moved since this '
+      'checkout was made', () async {
+    final gitDir = await fixture.gitDir;
+    fixture.writeFile(
+      'packages/datadog_dio/CHANGELOG.md',
+      '## 2.4.0\n- Fixed entry.\n',
+    );
+
+    // Simulate another actor pushing to workingBranch on the remote,
+    // without touching this checkout.
+    final otherClone = await createTestTempDir(
+      'amend_release_changelog_test_other_clone_',
+    );
+    await Process.run('git', [
+      'clone',
+      '-q',
+      '-b',
+      workingBranch,
+      bareRemote.path,
+      otherClone.path,
+    ]);
+    await Process.run('git', [
+      'commit',
+      '--allow-empty',
+      '-m',
+      'chore: someone else pushed this',
+    ], workingDirectory: otherClone.path);
+    await Process.run('git', [
+      'push',
+      'origin',
+      workingBranch,
+    ], workingDirectory: otherClone.path);
+
+    try {
+      await expectLater(
+        amendReleaseChangelog(
+          gitDir: gitDir,
+          github: GithubCommandWrapper(fixture.root.path),
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('someone else pushed'),
+          ),
+        ),
+      );
+
+      final head = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      expect(head, commitB);
+    } finally {
+      await otherClone.delete(recursive: true);
+    }
+  });
+
+  test('refuses when the remote release-content branch was already moved '
+      'by another amend run', () async {
+    final gitDir = await fixture.gitDir;
+    fixture.writeFile(
+      'packages/datadog_dio/CHANGELOG.md',
+      '## 2.4.0\n- Fixed entry.\n',
+    );
+
+    // Simulate a concurrent amend run that already moved the content
+    // branch, without touching this checkout or its manifest.
+    final otherClone = await createTestTempDir(
+      'amend_release_changelog_test_other_clone_',
+    );
+    await Process.run('git', [
+      'clone',
+      '-q',
+      '-b',
+      contentBranchName,
+      bareRemote.path,
+      otherClone.path,
+    ]);
+    await Process.run('git', [
+      'commit',
+      '--allow-empty',
+      '-m',
+      'chore: a concurrent amend run',
+    ], workingDirectory: otherClone.path);
+    await Process.run('git', [
+      'push',
+      'origin',
+      contentBranchName,
+    ], workingDirectory: otherClone.path);
+
+    try {
+      await expectLater(
+        amendReleaseChangelog(
+          gitDir: gitDir,
+          github: GithubCommandWrapper(fixture.root.path),
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('another amend run already moved it'),
+          ),
+        ),
+      );
+
+      final head = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      expect(head, commitB);
+    } finally {
+      await otherClone.delete(recursive: true);
+    }
+  });
+
   test('refuses with no working tree changes at all', () async {
     final gitDir = await fixture.gitDir;
 

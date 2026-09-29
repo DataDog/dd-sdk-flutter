@@ -450,6 +450,52 @@ Future<void> forcePushBranch(
   );
 }
 
+/// One ref update for [forcePushRefsAtomic]: move [branchName] to
+/// [commitSha] on the remote, leased against [expectedTip].
+class LeasedRefUpdate {
+  final String branchName;
+  final String commitSha;
+  final String expectedTip;
+
+  LeasedRefUpdate({
+    required this.branchName,
+    required this.commitSha,
+    required this.expectedTip,
+  });
+}
+
+/// `git push --atomic` for several branches at once, each leased against
+/// its own [LeasedRefUpdate.expectedTip] -- either every ref in [updates]
+/// moves, or (if any one lease is stale, or the push otherwise fails) none
+/// of them do. Used where two refs must always advance together (e.g.
+/// `amend_release_changelog.dart`'s release-prep branch and its paired
+/// `release-content/*`), so two overlapping runs can't interleave into a
+/// state where one ref reflects this run and the other reflects a
+/// concurrent one.
+Future<void> forcePushRefsAtomic(
+  GitDir gitDir,
+  List<LeasedRefUpdate> updates,
+  Logger logger, {
+  String remote = 'origin',
+}) async {
+  final branchNames = updates.map((u) => u.branchName).join(', ');
+  logger.info('ℹ️ Atomically force-pushing $branchNames to $remote');
+  await _run(
+    gitDir,
+    [
+      'push',
+      '--atomic',
+      for (final update in updates)
+        '--force-with-lease=${update.branchName}:${update.expectedTip}',
+      remote,
+      for (final update in updates)
+        '${update.commitSha}:refs/heads/${update.branchName}',
+    ],
+    logger,
+    'Failed to atomically force-push $branchNames',
+  );
+}
+
 /// Best-effort `git rebase --abort` -- swallows the error `git` raises when
 /// there's nothing to abort, so callers can call this unconditionally from a
 /// catch block without checking `.git/rebase-*` state themselves first.

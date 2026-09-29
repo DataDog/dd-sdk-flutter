@@ -357,6 +357,105 @@ void main() {
     });
   });
 
+  group('forcePushRefsAtomic', () {
+    late Directory bareRemote;
+
+    setUp(() async {
+      bareRemote = await createTestTempDir('release_git_test_remote_');
+      await Process.run('git', ['init', '-q', '--bare', bareRemote.path]);
+      await Process.run('git', [
+        'remote',
+        'add',
+        'origin',
+        bareRemote.path,
+      ], workingDirectory: fixture.root.path);
+    });
+
+    tearDown(() => bareRemote.delete(recursive: true));
+
+    test('moves every ref when every lease matches', () async {
+      final gitDir = await fixture.gitDir;
+      await pushBranch(gitDir, 'main', logger);
+      final mainTip = await remoteTipFor(gitDir, 'main', logger);
+      await pushBranchAt(gitDir, 'side', mainTip, logger);
+      final sideTip = await remoteTipFor(gitDir, 'side', logger);
+
+      await fixture.commit('chore: amended locally');
+      final newSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      await forcePushRefsAtomic(gitDir, [
+        LeasedRefUpdate(
+          branchName: 'main',
+          commitSha: newSha,
+          expectedTip: mainTip,
+        ),
+        LeasedRefUpdate(
+          branchName: 'side',
+          commitSha: newSha,
+          expectedTip: sideTip,
+        ),
+      ], logger);
+
+      for (final branch in ['main', 'side']) {
+        final result = await Process.run('git', [
+          'rev-parse',
+          branch,
+        ], workingDirectory: bareRemote.path);
+        expect((result.stdout as String).trim(), newSha);
+      }
+    });
+
+    test('moves neither ref when one lease is stale', () async {
+      final gitDir = await fixture.gitDir;
+      await pushBranch(gitDir, 'main', logger);
+      final mainTip = await remoteTipFor(gitDir, 'main', logger);
+      await pushBranchAt(gitDir, 'side', mainTip, logger);
+      final staleSideTip = await remoteTipFor(gitDir, 'side', logger);
+
+      // Simulate a concurrent run moving `side` after this run captured its
+      // lease.
+      await fixture.commit('chore: a concurrent run moved side');
+      final concurrentSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      await pushBranchAt(gitDir, 'side', concurrentSha, logger, force: true);
+
+      await fixture.commit('chore: amended locally, unaware of the above');
+      final newSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      await expectLater(
+        forcePushRefsAtomic(gitDir, [
+          LeasedRefUpdate(
+            branchName: 'main',
+            commitSha: newSha,
+            expectedTip: mainTip,
+          ),
+          LeasedRefUpdate(
+            branchName: 'side',
+            commitSha: newSha,
+            expectedTip: staleSideTip,
+          ),
+        ], logger),
+        throwsA(isA<ProcessException>()),
+      );
+
+      // `main`'s lease was fine, but the atomic transaction still refused
+      // to move it because `side`'s lease was stale.
+      final result = await Process.run('git', [
+        'rev-parse',
+        'main',
+      ], workingDirectory: bareRemote.path);
+      expect((result.stdout as String).trim(), mainTip);
+    });
+  });
+
   group('isAncestor', () {
     test('is true for HEAD~1 relative to HEAD', () async {
       final gitDir = await fixture.gitDir;

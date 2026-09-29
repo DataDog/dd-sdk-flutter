@@ -9,15 +9,19 @@
 //
 // Does, in order:
 //   1. Refuses if the working tree's diff touches anything other than a
-//      workspace package's CHANGELOG.md, HEAD isn't exactly one commit (B)
-//      past commit A, or the release-prep PR this run would edit doesn't
-//      exist yet -- all checked before anything is mutated, so a refusal
-//      never leaves a half-amended branch behind.
+//      package in this release's CHANGELOG.md, HEAD isn't exactly one commit
+//      (B) past commit A, the release-prep PR this run would edit doesn't
+//      exist yet, or either remote ref has moved past what's checked out
+//      here (another reviewer's push, or a concurrent amend run) -- all
+//      checked before anything is mutated, so a refusal never leaves a
+//      half-amended branch behind.
 //   2. Amends commit A in place with the hand-edit, then replays commit B on
 //      top of the amended commit and rewrites its manifest.json
 //      `contentCommit` to match.
-//   3. Force-moves the `release-content/*` branch to the new commit A, and
-//      force-pushes the release-prep branch itself.
+//   3. Atomically force-moves the `release-content/*` branch and the
+//      release-prep branch together, each leased against the tip captured in
+//      step 1 -- so a concurrent amend run can't interleave into a state
+//      where one ref reflects this run and the other reflects the other run.
 //   4. Rewrites the open release-prep PR's body, swapping every occurrence
 //      of the old commit A SHA for the new one.
 
@@ -86,7 +90,9 @@ Future<void> amendReleaseChangelog({
   required GitDir gitDir,
   required GithubCommandWrapper github,
 }) async {
-  final workingBranch = (await gitDir.currentBranch()).branchName;
+  final currentBranch = await gitDir.currentBranch();
+  final workingBranch = currentBranch.branchName;
+  final localHead = currentBranch.sha;
 
   final manifest = await readManifest(gitDir.path);
   final originalContentCommit = manifest.contentCommit;
@@ -115,10 +121,32 @@ Future<void> amendReleaseChangelog({
 
   await _checkEligibleFiles(gitDir, manifest);
 
-  // Captured now, before any local rewriting, so the force-push lease below
-  // is checked against the remote as it was when this run started rather
-  // than being silently refreshed to whatever it's drifted to by push time.
+  // Captured now, before any local rewriting, so the force-push leases below
+  // are checked against the remote as it was when this run started rather
+  // than being silently refreshed to whatever they've drifted to by push
+  // time. If the remote has already moved past what's checked out here,
+  // refuse rather than let a stale rewrite authorize overwriting it.
   final expectedRemoteTip = await remoteTipFor(gitDir, workingBranch, _log);
+  if (expectedRemoteTip != localHead) {
+    throw StateError(
+      '$workingBranch is at $expectedRemoteTip on origin, but this checkout '
+      'is at $localHead -- someone else pushed to it since this checkout '
+      'was made. Pull and re-run rather than risk overwriting their commit.',
+    );
+  }
+  final expectedContentTip = await remoteTipFor(
+    gitDir,
+    contentBranchName,
+    _log,
+  );
+  if (expectedContentTip != originalContentCommit) {
+    throw StateError(
+      '$contentBranchName is at $expectedContentTip on origin, not the '
+      'commit A this manifest expects ($originalContentCommit) -- another '
+      'amend run already moved it. Re-run against the current state rather '
+      'than risk overwriting it.',
+    );
+  }
 
   // Everything below mutates something -- from here on a failure should
   // either be cleanly retryable or leave a clear recovery path, never a
@@ -166,19 +194,19 @@ Future<void> amendReleaseChangelog({
     'commit B on top.',
   );
 
-  await pushBranchAt(
-    gitDir,
-    contentBranchName,
-    newContentCommit,
-    _log,
-    force: true,
-  );
-  await forcePushBranch(
-    gitDir,
-    workingBranch,
-    _log,
-    expectedTip: expectedRemoteTip,
-  );
+  final newHead = (await gitDir.currentBranch()).sha;
+  await forcePushRefsAtomic(gitDir, [
+    LeasedRefUpdate(
+      branchName: contentBranchName,
+      commitSha: newContentCommit,
+      expectedTip: expectedContentTip,
+    ),
+    LeasedRefUpdate(
+      branchName: workingBranch,
+      commitSha: newHead,
+      expectedTip: expectedRemoteTip,
+    ),
+  ], _log);
 
   // The one step past this point that isn't itself retryable by re-running
   // the tool (the working tree is clean again by now, so a second run would
