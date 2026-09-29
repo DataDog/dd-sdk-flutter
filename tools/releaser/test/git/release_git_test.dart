@@ -321,6 +321,7 @@ void main() {
     test('moves an already-pushed branch to its new local tip', () async {
       final gitDir = await fixture.gitDir;
       await pushBranch(gitDir, 'main', logger);
+      final originalSha = await remoteTipFor(gitDir, 'main', logger);
 
       await fixture.commit('chore: amended locally');
       final newSha = (await gitDir.runCommand([
@@ -328,13 +329,31 @@ void main() {
         'HEAD',
       ])).stdout.toString().trim();
 
-      await forcePushBranch(gitDir, 'main', logger);
+      await forcePushBranch(gitDir, 'main', logger, expectedTip: originalSha);
 
       final result = await Process.run('git', [
         'rev-parse',
         'main',
       ], workingDirectory: bareRemote.path);
       expect((result.stdout as String).trim(), newSha);
+    });
+
+    test('refuses when the remote moved past expectedTip', () async {
+      final gitDir = await fixture.gitDir;
+      await pushBranch(gitDir, 'main', logger);
+      final originalSha = await remoteTipFor(gitDir, 'main', logger);
+
+      // Simulate another actor updating the remote after expectedTip was
+      // captured.
+      await fixture.commit('chore: someone else pushed this');
+      await pushBranch(gitDir, 'main', logger);
+
+      await fixture.commit('chore: amended locally, unaware of the above');
+
+      await expectLater(
+        forcePushBranch(gitDir, 'main', logger, expectedTip: originalSha),
+        throwsA(isA<ProcessException>()),
+      );
     });
   });
 

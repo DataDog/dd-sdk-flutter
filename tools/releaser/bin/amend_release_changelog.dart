@@ -32,7 +32,6 @@ import 'package:releaser/git/git_dir.dart';
 import 'package:releaser/git/release_git.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/manifest.dart';
-import 'package:releaser/package_discovery.dart';
 
 final _log = Logger('amend_release_changelog');
 
@@ -114,7 +113,12 @@ Future<void> amendReleaseChangelog({
     );
   }
 
-  await _checkEligibleFiles(gitDir);
+  await _checkEligibleFiles(gitDir, manifest);
+
+  // Captured now, before any local rewriting, so the force-push lease below
+  // is checked against the remote as it was when this run started rather
+  // than being silently refreshed to whatever it's drifted to by push time.
+  final expectedRemoteTip = await remoteTipFor(gitDir, workingBranch, _log);
 
   // Everything below mutates something -- from here on a failure should
   // either be cleanly retryable or leave a clear recovery path, never a
@@ -169,7 +173,12 @@ Future<void> amendReleaseChangelog({
     _log,
     force: true,
   );
-  await forcePushBranch(gitDir, workingBranch, _log);
+  await forcePushBranch(
+    gitDir,
+    workingBranch,
+    _log,
+    expectedTip: expectedRemoteTip,
+  );
 
   // The one step past this point that isn't itself retryable by re-running
   // the tool (the working tree is clean again by now, so a second run would
@@ -195,14 +204,21 @@ Future<void> amendReleaseChangelog({
   );
 }
 
-/// Refuses if the working tree's diff touches anything other than a real
-/// workspace package's `CHANGELOG.md` -- checked by basename *and* by
-/// directory, so a same-named file elsewhere in the repo (this tool's own
-/// `CHANGELOG.md`, if it had one) can't slip through, and so can every other
-/// commit-A file (`pubspec.yaml`, `NATIVE_SDK_VERSIONS.md`, ...) even though
-/// they're legitimately part of commit A -- this tool is deliberately
-/// changelog-only.
-Future<void> _checkEligibleFiles(GitDir gitDir) async {
+/// Refuses if the working tree's diff touches anything other than the
+/// `CHANGELOG.md` of a package that's actually part of this release --
+/// checked by basename *and* by directory, so a same-named file elsewhere in
+/// the repo (this tool's own `CHANGELOG.md`, if it had one) can't slip
+/// through, and so can every other commit-A file (`pubspec.yaml`,
+/// `NATIVE_SDK_VERSIONS.md`, ...) even though they're legitimately part of
+/// commit A -- this tool is deliberately changelog-only. Restricted to
+/// [manifest]'s packages rather than every workspace package, since a
+/// hand-edit to an unreleased package's changelog would otherwise get folded
+/// in, force-pushed, and backported despite that package being absent from
+/// the manifest, versions table, and publish set.
+Future<void> _checkEligibleFiles(
+  GitDir gitDir,
+  ReleaseManifest manifest,
+) async {
   final changedFiles = await changedFilesAgainst(gitDir, 'HEAD', _log);
   if (changedFiles.isEmpty) {
     throw StateError(
@@ -211,11 +227,7 @@ Future<void> _checkEligibleFiles(GitDir gitDir) async {
     );
   }
 
-  final groups = await discoverPackages(gitDir.path);
-  final packagePaths = groups
-      .expand((g) => g.members)
-      .map((m) => m.relativePath)
-      .toSet();
+  final packagePaths = manifest.packages.map((e) => e.relativePath).toSet();
 
   final ineligible = changedFiles.where((f) {
     if (p.basename(f) != _eligibleBasename) return true;

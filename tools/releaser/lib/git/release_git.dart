@@ -396,12 +396,12 @@ Future<int> commitCountBetween(
   return int.parse((result.stdout as String).trim());
 }
 
-/// `git push --force-with-lease` for [branchName]'s current tip -- refuses
-/// if the remote moved since our last fetch, unlike a plain `--force`.
-/// Fetches [branchName] immediately beforehand so the lease is actually
-/// checked against the remote's current tip, not a possibly-stale
-/// remote-tracking ref left over from an earlier fetch.
-Future<void> forcePushBranch(
+/// `git fetch`es [branchName] and returns its current tip on [remote] --
+/// call this *before* any local rewriting starts, then hand the result to
+/// [forcePushBranch] as `expectedTip` so the lease it checks reflects the
+/// remote as it was when the caller began, not whatever it's drifted to by
+/// the time the push actually happens.
+Future<String> remoteTipFor(
   GitDir gitDir,
   String branchName,
   Logger logger, {
@@ -411,12 +411,40 @@ Future<void> forcePushBranch(
     gitDir,
     ['fetch', remote, branchName],
     logger,
-    'Failed to fetch $branchName before force-pushing',
+    'Failed to fetch $branchName',
   );
+  final result = await _run(
+    gitDir,
+    ['rev-parse', 'FETCH_HEAD'],
+    logger,
+    'Failed to resolve fetched $branchName',
+  );
+  return (result.stdout as String).trim();
+}
+
+/// `git push --force-with-lease` for [branchName]'s current tip, refusing if
+/// [remote]'s copy of [branchName] is no longer at [expectedTip] -- unlike a
+/// plain `--force`. [expectedTip] is checked directly against the remote's
+/// actual value at push time, so, unlike re-fetching right before pushing,
+/// it can't be defeated by another update landing on [branchName] between
+/// when the caller captured [expectedTip] (via [remoteTipFor], before doing
+/// any local rewriting) and when this push happens.
+Future<void> forcePushBranch(
+  GitDir gitDir,
+  String branchName,
+  Logger logger, {
+  required String expectedTip,
+  String remote = 'origin',
+}) async {
   logger.info('ℹ️ Force-pushing $branchName to $remote');
   await _run(
     gitDir,
-    ['push', '--force-with-lease', remote, branchName],
+    [
+      'push',
+      '--force-with-lease=$branchName:$expectedTip',
+      remote,
+      branchName,
+    ],
     logger,
     'Failed to force-push $branchName',
   );

@@ -223,6 +223,29 @@ void main() {
     );
   });
 
+  test('refuses a CHANGELOG.md edit to a real workspace package that is not '
+      'part of this release', () async {
+    final gitDir = await fixture.gitDir;
+    fixture.writeFile(
+      'packages/datadog_flutter_plugin/CHANGELOG.md',
+      '## 2.4.0\n- Sneaked in.\n',
+    );
+
+    await expectLater(
+      amendReleaseChangelog(
+        gitDir: gitDir,
+        github: GithubCommandWrapper(fixture.root.path),
+      ),
+      throwsStateError,
+    );
+
+    final head = (await gitDir.runCommand([
+      'rev-parse',
+      'HEAD',
+    ])).stdout.toString().trim();
+    expect(head, commitB);
+  });
+
   test('refuses a same-named CHANGELOG.md outside any workspace package '
       "(basename alone isn't enough)", () async {
     final gitDir = await fixture.gitDir;
