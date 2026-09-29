@@ -40,6 +40,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Otherwise the default GITHUB_TOKEN lingers and overrides the STS
+          # token configured below for tag pushes.
+          persist-credentials: false
       - name: Fetch every branch (dev-line + release-content/*)
         run: git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
       - uses: dart-lang/setup-dart@v1
