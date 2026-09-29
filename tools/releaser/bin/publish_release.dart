@@ -230,6 +230,16 @@ Future<void> _publishPackage(
 
   final published = await fetchPublishedVersions(entry.package);
   if (published.versions.contains(targetVersion)) {
+    // No push -- just confirm the tag points at `sha`. `--verify-tag` below
+    // only checks it exists, not where it points.
+    final existingSha = await github.remoteTagCommitSha(_log, tagName);
+    if (existingSha != sha) {
+      throw StateError(
+        '${entry.package} $targetVersion is already on pub.dev, but '
+        '$tagName points at $existingSha, not $sha -- refusing to create a '
+        'release against the wrong commit.',
+      );
+    }
     _log.info(
       'ℹ️ ${entry.package} $targetVersion is already on pub.dev -- '
       'skipping tag-push/publish (idempotent re-run).',
