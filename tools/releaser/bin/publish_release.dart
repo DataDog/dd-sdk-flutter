@@ -217,12 +217,6 @@ Future<void> publishRelease({
 /// prior run could have published successfully but died before (or during)
 /// `gh release create`, and a re-run has to still create that release
 /// rather than treating "already on pub.dev" as "nothing left to do here".
-///
-/// [_ensureTagPushed] always runs, even when pub.dev already has this
-/// version -- a published version with a missing tag is a real, documented
-/// recovery scenario, and `createRelease` needs the tag to already exist
-/// and point at [sha] before it's ever called; only the wait for
-/// `publish-package.yml` to run is skippable once pub.dev already has it.
 Future<void> _publishPackage(
   ManifestPackageEntry entry, {
   required GitDir gitDir,
@@ -235,16 +229,14 @@ Future<void> _publishPackage(
   final tagName = '${entry.package}/v${entry.toVersion}';
 
   final published = await fetchPublishedVersions(entry.package);
-  final alreadyPublished = published.versions.contains(targetVersion);
-
-  await _ensureTagPushed(github, gitDir, tagName, sha);
-
-  if (alreadyPublished) {
+  if (published.versions.contains(targetVersion)) {
     _log.info(
       'ℹ️ ${entry.package} $targetVersion is already on pub.dev -- '
-      'skipping the publish-workflow wait (idempotent re-run).',
+      'skipping tag-push/publish (idempotent re-run).',
     );
   } else {
+    await _ensureTagPushed(github, gitDir, tagName, sha);
+
     final run = await _waitForWorkflowRun(
       github,
       repoSlug,
