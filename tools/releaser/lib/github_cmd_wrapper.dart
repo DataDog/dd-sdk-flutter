@@ -356,6 +356,8 @@ class GithubCommandWrapper {
           'release',
           'create',
           tag,
+          // Fail if the tag doesn't already exist, rather than auto-creating one.
+          '--verify-tag',
           '--title',
           title,
           '--notes-file',
@@ -398,6 +400,10 @@ class GithubCommandWrapper {
       'gh',
       [
         'api',
+        // `-f` adds a request parameter, which makes `gh api` default to
+        // POST -- this endpoint is read-only, so that must be overridden.
+        '--method',
+        'GET',
         'repos/$repoSlug/commits/$sha/status',
         '-f',
         'per_page=100',
@@ -598,9 +604,10 @@ bool commitStatusStateIsSuccess(
 /// headBranch,status,conclusion,createdAt,url`.
 WorkflowRunState? selectLatestWorkflowRun(List<dynamic> runs, String tagRef) {
   final matches =
-      runs.cast<Map<String, dynamic>>().where(
-        (e) => e['headBranch'] == tagRef,
-      ).toList()
+      runs
+          .cast<Map<String, dynamic>>()
+          .where((e) => e['headBranch'] == tagRef)
+          .toList()
         ..sort(
           (a, b) =>
               (b['createdAt'] as String).compareTo(a['createdAt'] as String),

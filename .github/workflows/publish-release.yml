@@ -21,6 +21,7 @@ permissions:
   pull-requests: write
   actions: read
   statuses: read
+  id-token: write # needed to federate a token via dd-octo-sts-action
 
 # Two release-trigger tags landing close together (e.g. two release-prep PRs
 # merged back-to-back) would otherwise run two orchestrators concurrently,
@@ -45,15 +46,22 @@ jobs:
       - name: dart pub get
         working-directory: tools/releaser
         run: dart pub get
-      # RELEASE_TAG_PUSH_TOKEN must be a real PAT or GitHub App installation token with at least 
-      # `contents: write` to avoid triggering recursion protections
+      # A short-lived token, not the default GITHUB_TOKEN -- the default is
+      # blocked from triggering other workflow runs, which the tag pushes
+      # below need to do (publish-package.yml's own tag trigger). See
+      # .github/chainguard/self.publish-release.tag-push.sts.yaml.
+      - uses: DataDog/dd-octo-sts-action@c85802a58e202b7e764b5441e4378c76043c8108 # v1.0.5
+        id: octo-sts
+        with:
+          scope: DataDog/dd-sdk-flutter
+          policy: self.publish-release.tag-push
       - name: Configure git identity and remote for tag pushes
         env:
-          RELEASE_TAG_PUSH_TOKEN: ${{ secrets.RELEASE_TAG_PUSH_TOKEN }}
+          TAG_PUSH_TOKEN: ${{ steps.octo-sts.outputs.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${RELEASE_TAG_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
+          git remote set-url origin "https://x-access-token:${TAG_PUSH_TOKEN}@github.com/${{ github.repository }}.git"
       - name: Publish release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
