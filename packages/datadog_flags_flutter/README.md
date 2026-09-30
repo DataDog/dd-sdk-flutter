@@ -42,9 +42,13 @@ Evaluate flags with the same typed API as `datadog_flags`:
 final flags = DatadogSdk.instance.flags;
 final client = flags?.sharedClient();
 
-await client?.initialize(
-  const FlagsEvaluationContext(targetingKey: 'user-123'),
-);
+try {
+  await client?.initialize(
+    const FlagsEvaluationContext(targetingKey: 'user-123'),
+  );
+} on FlagsInitializationTimeoutException {
+  // Continue startup with stored assignments or evaluation defaults.
+}
 
 final details = client?.getBooleanDetails(
   key: 'checkout.enabled',
@@ -80,6 +84,7 @@ application ID, service, and version from `DatadogConfiguration`. Pass a
 ```dart
 DatadogFlagsPluginConfiguration(
   flagsConfiguration: DatadogFlagsConfiguration(
+    initializationTimeout: const Duration(seconds: 5),
     datadogConfig: DatadogFlagsConfig(
       clientToken: '<CLIENT_TOKEN>',
       env: '<ENV_NAME>',
@@ -88,6 +93,15 @@ DatadogFlagsPluginConfiguration(
   ),
 );
 ```
+
+The Flutter integration preserves the core `datadog_flags` initialization
+timeout. Set it to the wall-clock budget for the first context. The budget
+covers stored assignment loading, network work, JSON decoding, state
+publication, and assignment storage. Synchronous work can block the Dart
+isolate, so the wait can be longer than this value. The SDK does not limit how
+large this value can be. The timeout completes `initialize()` with
+`FlagsInitializationTimeoutException`. The assignment operation continues in
+the background, and matching stored assignments remain available.
 
 Use `package:datadog_flags/datadog_flags.dart` directly for pure Dart apps or
 Flutter apps that need full lifecycle control without Datadog Flutter SDK

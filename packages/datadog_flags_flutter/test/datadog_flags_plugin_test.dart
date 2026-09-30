@@ -93,6 +93,7 @@ void main() {
       flagsConfiguration: DatadogFlagsConfiguration(
         customFlagsEndpoint: Uri.parse('https://flags.example.com'),
         customFlagsHeaders: const {'x-test': 'true'},
+        initializationTimeout: const Duration(milliseconds: 2500),
         customExposureEndpoint: Uri.parse('https://exposure.example.com'),
         trackExposures: false,
         customEvaluationEndpoint: Uri.parse('https://eval.example.com'),
@@ -113,6 +114,10 @@ void main() {
       Uri.parse('https://flags.example.com'),
     );
     expect(flagsConfiguration.customFlagsHeaders, const {'x-test': 'true'});
+    expect(
+      flagsConfiguration.initializationTimeout,
+      const Duration(milliseconds: 2500),
+    );
     expect(
       flagsConfiguration.customExposureEndpoint,
       Uri.parse('https://exposure.example.com'),

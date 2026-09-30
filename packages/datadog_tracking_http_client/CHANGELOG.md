@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.3.0
+
+### Features
+
+- The version constraint on `datadog_flutter_plugin` has been loosened to allow v4 in addition to v3.
+
 ## 3.2.0
 
 * Capture HTTP request and response headers for RUM resources.

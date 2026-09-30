@@ -45,12 +45,16 @@ Future<void> main(List<String> arguments) async {
   );
 
   final flags = datadogFlags.sharedClient();
-  await flags.initialize(
-    FlagsEvaluationContext(
-      targetingKey: results.option('targeting-key'),
-      attributes: attributes,
-    ),
-  );
+  try {
+    await flags.initialize(
+      FlagsEvaluationContext(
+        targetingKey: results.option('targeting-key'),
+        attributes: attributes,
+      ),
+    );
+  } on FlagsInitializationTimeoutException catch (error) {
+    stderr.writeln(error.message);
+  }
 
   final details = _evaluate(flags, flagKey, flagType);
   stdout.writeln('key: ${details.key}');
