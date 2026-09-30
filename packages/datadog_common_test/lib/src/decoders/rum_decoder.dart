@@ -4,6 +4,8 @@
 
 import 'dart:io';
 
+import 'package:collection/collection.dart';
+
 import '../../datadog_common_test.dart';
 
 class RumUser {
@@ -43,19 +45,41 @@ class RumSessionDecoder {
       return comp;
     });
 
-    final viewVisitsById = <String, RumViewVisit>{};
-    for (var e in events.where((e) => e.eventType == 'view')) {
-      final viewEvent = RumViewEventDecoder(e.rumEvent);
-      var visit = viewVisitsById[viewEvent.view.id];
-      if (visit == null) {
-        visit = RumViewVisit(
-            viewEvent.view.id, viewEvent.view.name, viewEvent.view.path);
-        viewVisitsById[viewEvent.view.id] = visit;
-      }
-      visit.viewEvents.add(viewEvent);
+    final viewEventsById = <String, List<RumEventDecoder>>{};
+    for (var e in events.where(_isViewEvent)) {
+      final viewId = e.viewInfo?.id;
+      if (viewId == null) continue;
+      viewEventsById.putIfAbsent(viewId, () => []).add(e);
     }
 
-    for (var e in events.where((e) => e.eventType != 'view')) {
+    final viewVisitsById = <String, RumViewVisit>{};
+    for (final entry in viewEventsById.entries) {
+      final viewEvents = entry.value;
+      mergeSort(viewEvents,
+          compare: (a, b) => a.documentVersion.compareTo(b.documentVersion));
+
+      RumViewVisit? visit;
+      Map<String, dynamic>? state;
+      for (final e in viewEvents) {
+        if (e.eventType == 'view') {
+          state = e.rumEvent;
+        } else if (state != null) {
+          state = _applyViewUpdate(state, e.rumEvent);
+        } else {
+          // No baseline received (yet) to apply this delta to
+          continue;
+        }
+        final viewEvent = RumViewEventDecoder(state);
+        visit ??= RumViewVisit(
+            viewEvent.view.id, viewEvent.view.name, viewEvent.view.path);
+        visit.viewEvents.add(viewEvent);
+      }
+      if (visit != null) {
+        viewVisitsById[entry.key] = visit;
+      }
+    }
+
+    for (var e in events.where((e) => !_isViewEvent(e))) {
       var viewId = e.viewInfo?.id;
       if (viewId == null) {
         continue;
@@ -95,6 +119,38 @@ class RumSessionDecoder {
     }
 
     return RumSessionDecoder(viewVisitsById.values.toList());
+  }
+
+  static bool _isViewEvent(RumEventDecoder e) =>
+      e.eventType == 'view' || e.eventType == 'view_update';
+
+  // `view_update` events only contain changed fields. `view` and
+  // `view.accessibility` are diffed per field, everything else is sent whole.
+  static Map<String, dynamic> _applyViewUpdate(
+      Map<String, dynamic> base, Map<String, dynamic> update) {
+    final merged = Map<String, dynamic>.of(base);
+    for (final entry in update.entries) {
+      if (entry.key == 'type') continue;
+      if (entry.key == 'view') {
+        final view = Map<String, dynamic>.of(base['view']);
+        final viewUpdate = entry.value as Map<String, dynamic>;
+        for (final viewEntry in viewUpdate.entries) {
+          if (viewEntry.key == 'accessibility' &&
+              view['accessibility'] is Map<String, dynamic>) {
+            view['accessibility'] = {
+              ...view['accessibility'] as Map<String, dynamic>,
+              ...viewEntry.value as Map<String, dynamic>,
+            };
+          } else {
+            view[viewEntry.key] = viewEntry.value;
+          }
+        }
+        merged['view'] = view;
+      } else {
+        merged[entry.key] = entry.value;
+      }
+    }
+    return merged;
   }
 }
 
@@ -146,6 +202,8 @@ class RumEventDecoder {
   }
 
   int get date => rumEvent['date'] as int;
+  int get documentVersion =>
+      (rumEvent['_dd']?['document_version'] as int?) ?? 0;
   String get version => rumEvent['version'] as String;
   Map<String, dynamic>? get telemetryConfiguration =>
       rumEvent['telemetry']?['configuration'];
