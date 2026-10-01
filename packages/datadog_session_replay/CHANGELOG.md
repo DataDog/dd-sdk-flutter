@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0-preview.16
+
+- Maintenance release; no significant changes.
+
+
 ## 1.0.0-preview.15
 
 ### Features
