@@ -122,4 +122,66 @@ void main() {
       expect('another_flag', (flagsArray[1] as JSString).toDart);
     });
   });
+
+  group('WebAssembly stack metadata', () {
+    test('classifies stacks containing WebAssembly frames', () {
+      final stackTrace = StackTrace.fromString(
+        'RuntimeError: unreachable\n'
+        '  at foo (https://example.com/flutter/main.dart.wasm:'
+        'wasm-function[42]:0x10)',
+      );
+
+      expect(webErrorSourceType(stackTrace), 'browser+wasm');
+    });
+
+    test('keeps regular browser stacks classified as browser', () {
+      final stackTrace = StackTrace.fromString(
+        'Error: failure\n  at foo (https://example.com/main.dart.js:1:2)',
+      );
+
+      expect(webErrorSourceType(stackTrace), 'browser');
+      expect(webWasmModuleUrls(stackTrace), isEmpty);
+    });
+
+    test('extracts each unique WebAssembly module URL', () {
+      final stackTrace = StackTrace.fromString(
+        'RuntimeError: unreachable\n'
+        '  at foo (https://example.com/flutter/main.dart.wasm:'
+        'wasm-function[42]:0x10)\n'
+        '  at bar (https://cdn.example.com/vendor.wasm?hash=abc:'
+        'wasm-function[7]:0x20)\n'
+        '  at foo (https://example.com/flutter/main.dart.wasm:'
+        'wasm-function[42]:0x10)',
+      );
+
+      expect(webWasmModuleUrls(stackTrace), [
+        'https://example.com/flutter/main.dart.wasm',
+        'https://cdn.example.com/vendor.wasm?hash=abc',
+      ]);
+    });
+
+    test('finds the Flutter module in browser resource URLs', () {
+      expect(
+        findFlutterWasmModuleUrl(
+          [
+            'https://example.com/flutter.js',
+            'https://cdn.example.com/assets/main.dart.wasm?version=123',
+          ],
+          baseUri: Uri.parse('https://example.com/app/'),
+        ),
+        'https://cdn.example.com/assets/main.dart.wasm?version=123',
+      );
+    });
+
+    test('uses the application base URL when no resource entry is available',
+        () {
+      expect(
+        findFlutterWasmModuleUrl(
+          const [],
+          baseUri: Uri.parse('https://example.com/app/'),
+        ),
+        'https://example.com/app/main.dart.wasm',
+      );
+    });
+  });
 }

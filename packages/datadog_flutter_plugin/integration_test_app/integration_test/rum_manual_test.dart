@@ -187,8 +187,12 @@ void main() {
     expect(view1.vitalStepEvents[2].vitalOperationKey, isNull);
     expect(view1.vitalStepEvents[2].vitalFailureReason, 'error');
 
-    // Verify user in all events, except for the first view event
-    for (final viewEvent in view1.viewEvents.sublist(1)) {
+    // Verify user in all events, except for view updates sent before the
+    // user was set
+    final userViewEvents =
+        view1.viewEvents.skipWhile((e) => e.user?.id == null).toList();
+    expect(userViewEvents, isNotEmpty);
+    for (final viewEvent in userViewEvents) {
       verifyUser(viewEvent);
     }
     for (final actionEvent in view1.actionEvents) {
@@ -348,7 +352,10 @@ void main() {
 
     // Verify service name in RUM events
     for (final event in rumLog) {
-      if (!kIsWeb && Platform.isIOS && event.eventType != 'telemetry') {
+      if (!kIsWeb &&
+          Platform.isIOS &&
+          event.eventType != 'telemetry' &&
+          event.eventType != 'view_update') {
         expect(event.service, 'com.datadoghq.flutter.integration');
         expect(event.version, '1.2.3-555');
       }

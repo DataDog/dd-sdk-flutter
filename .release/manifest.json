@@ -1,13 +1,13 @@
 {
-  "contentCommit": "11084c91a060afc884391efb9c7402726b476467",
+  "contentCommit": "5c3fd2f5744d8d9b78e7b2f013a48b6b62afdcbe",
   "packages": [
     {
-      "package": "datadog_session_replay",
-      "from_version": "1.0.0-preview.14",
-      "to_version": "1.0.0-preview.15",
+      "package": "datadog_flutter_plugin",
+      "from_version": "3.5.2",
+      "to_version": "3.6.0",
       "source_branch": "develop",
-      "prerelease": true,
-      "relative_path": "packages/datadog_session_replay"
+      "prerelease": false,
+      "relative_path": "packages/datadog_flutter_plugin"
     }
   ]
 }
