@@ -30,19 +30,20 @@ final class DatadogFlagsConfiguration {
   /// Called once per client after its first accepted cache or network install.
   ///
   /// Register before [DatadogFlags.enable] creates the default client. Each
-  /// client captures this callback independently. The callback receives only
-  /// the event; applications own any captured context and client references.
+  /// client captures this callback independently. The callback receives the
+  /// registered public client, ready for immediate evaluation, and the event.
+  /// Flutter integration supplies its public RUM-integrated client wrapper.
   ///
   /// Delivery runs in a microtask after installation without waiting for
   /// initialization or persistence completion, so it may run before the
-  /// Future returned by initialize completes. Assign any captured client
-  /// reference before starting initialization. Delivery is not synchronous
-  /// with callback registration or client creation.
+  /// Future returned by initialize completes. Use the supplied client directly;
+  /// no application-owned client reference handoff is required. Delivery is not
+  /// synchronous with callback registration or client creation.
   ///
-  /// Reset and context changes do not
-  /// rearm it or revoke a captured event. Synchronous callback errors are
-  /// isolated from SDK operations. This callback is not awaited.
-  final void Function(FlagsClientEvent)? onFirstFlags;
+  /// Reset and context changes do not rearm it or revoke a captured event.
+  /// Synchronous callback errors are isolated from SDK operations. This
+  /// callback is not awaited; applications own asynchronous work and errors.
+  final void Function(DatadogFlagsClient, FlagsClientEvent)? onFirstFlags;
 
   /// Overrides the precompute assignments endpoint.
   final Uri? customFlagsEndpoint;

@@ -32,13 +32,12 @@ Future<void> main(List<String> arguments) async {
   final flagKey = results.option('flag-key')!;
   final flagType = results.option('flag-type')!;
   final datadogFlags = DatadogFlags.instance;
-  late final DatadogFlagsClient flags;
 
   await datadogFlags.enable(
     configuration: DatadogFlagsConfiguration(
-      onFirstFlags: (event) {
+      onFirstFlags: (client, event) {
         stdout.writeln('First installed flags: ${event.flagsChanged}');
-        _printDetails(_evaluate(flags, flagKey, flagType));
+        _printDetails(_evaluate(client, flagKey, flagType));
       },
       datadogConfig: DatadogFlagsConfig(
         clientToken: Platform.environment['DD_CLIENT_TOKEN'] ?? '',
@@ -49,8 +48,7 @@ Future<void> main(List<String> arguments) async {
     ),
   );
 
-  // Own the client reference before starting assignment initialization.
-  flags = datadogFlags.sharedClient();
+  final flags = datadogFlags.sharedClient();
   try {
     await flags.initialize(
       FlagsEvaluationContext(
