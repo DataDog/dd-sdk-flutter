@@ -121,3 +121,27 @@ Pull requests are welcome. For more information, read the
 ## License
 
 [Apache License, v2.0](LICENSE)
+
+## First installed flags
+
+Configure `flagsConfiguration.onFirstFlags` before SDK initialization. The
+callback is the core Dart `void Function(FlagsClientEvent)?` function; it receives
+only the event. Applications own any captured client reference.
+
+The [example app](example/lib/main.dart) assigns its client before the widget
+initializes the targeting context. Its callback logs the supplied key list
+directly, evaluates the existing
+`DD_FLAG_KEY` (default `checkout.enabled`) and displays the result in the
+“First flags value” row, alongside the existing post-initialization evaluation.
+
+The example's fixture integration tests run its actual entry point with a
+nonempty test token, a fixture HTTP client, and the SDK's no-op native platform:
+
+```sh
+cd example
+flutter test --dart-define=DD_CLIENT_TOKEN=test-token
+```
+
+These tests are skipped without the define because the app intentionally leaves
+Flags disabled when no token is configured. They do not contact Datadog or test a
+native device.

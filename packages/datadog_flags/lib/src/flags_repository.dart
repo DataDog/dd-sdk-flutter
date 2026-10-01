@@ -11,6 +11,7 @@ import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flag_assignments_fetcher.dart';
 import 'flags_error.dart';
+import 'flags_client_event.dart';
 import 'flags_store.dart';
 import 'json_value.dart';
 
@@ -36,19 +37,23 @@ class FlagsRepository {
   @visibleForTesting
   final Timer Function(Duration, void Function()) scheduleInitializationTimeout;
 
+  void Function(FlagsClientEvent)? _onFirstFlags;
+
   FlagsData? _state;
   _CancelToken? _currentToken;
   bool _didStartInitialization = false;
 
   FlagsRepository({
     required this.clientName,
+    void Function(FlagsClientEvent)? onFirstFlags,
     required this.fetcher,
     this.store,
     required this.dateProvider,
     this.initializationTimeout,
     this.storeReadTimeout = defaultStoreReadTimeout,
     this.scheduleInitializationTimeout = _scheduleInitializationTimeout,
-  }) : _cacheOperations = _cacheOperationQueue(store, clientName);
+  })  : _onFirstFlags = onFirstFlags,
+        _cacheOperations = _cacheOperationQueue(store, clientName);
 
   FlagsEvaluationContext? get context => _state?.context;
 
@@ -96,7 +101,7 @@ class FlagsRepository {
             ? cached
             : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
-      _state = matchingCached;
+      _install(matchingCached);
     }
 
     try {
@@ -109,13 +114,32 @@ class FlagsRepository {
         context: context,
         date: dateProvider(),
       );
-      _state = data;
+      _install(data);
       await _writeCached(data);
     } catch (_) {
       if (!token.isCanceled && matchingCached == null) {
         _state = null;
       }
     }
+  }
+
+  void _install(FlagsData data) {
+    _state = data;
+    final callback = _onFirstFlags;
+    _onFirstFlags = null;
+    if (callback == null) return;
+    final event = FlagsClientEvent(
+      type: FlagsClientEventType.configurationChanged,
+      flagsChanged: data.flags.keys.toList(),
+    );
+    // Finish installation bookkeeping before allowing application reentrancy.
+    scheduleMicrotask(() {
+      try {
+        callback(event);
+      } catch (_) {
+        // Application callback failures must not change SDK state or readiness.
+      }
+    });
   }
 
   Duration? _takeInitializationTimeout() {

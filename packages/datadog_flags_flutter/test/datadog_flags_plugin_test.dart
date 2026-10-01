@@ -67,6 +67,7 @@ void main() {
   });
 
   test('keeps standalone flags configuration overrides', () async {
+    void onFirstFlags(FlagsClientEvent event) {}
     DatadogFlagsConfiguration? capturedConfiguration;
     final flags = _mockFlags(onEnable: (configuration) {
       capturedConfiguration = configuration;
@@ -91,6 +92,7 @@ void main() {
       mockSdk,
       flags: flags,
       flagsConfiguration: DatadogFlagsConfiguration(
+        onFirstFlags: onFirstFlags,
         customFlagsEndpoint: Uri.parse('https://flags.example.com'),
         customFlagsHeaders: const {'x-test': 'true'},
         initializationTimeout: const Duration(milliseconds: 2500),
@@ -108,6 +110,7 @@ void main() {
     await plugin.ready;
 
     final flagsConfiguration = capturedConfiguration!;
+    expect(flagsConfiguration.onFirstFlags, same(onFirstFlags));
     expect(flagsConfiguration.datadogConfig, same(flagsDatadogConfig));
     expect(
       flagsConfiguration.customFlagsEndpoint,

@@ -14,6 +14,8 @@ export 'src/datadog_flags_config.dart'
     show DatadogFlagsConfig, DatadogFlagsSite;
 export 'src/datadog_flags.dart' show DatadogFlags;
 export 'src/flags_client.dart' show DatadogFlagsClient, FlagDetails;
+export 'src/flags_client_event.dart'
+    show FlagsClientEvent, FlagsClientEventType;
 export 'src/flags_configuration.dart' show DatadogFlagsConfiguration;
 export 'src/flags_error.dart'
     show FlagEvaluationError, FlagsInitializationTimeoutException;

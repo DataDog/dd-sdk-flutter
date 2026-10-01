@@ -5,6 +5,8 @@
 
 export 'package:datadog_flags/datadog_flags.dart'
     show
+        FlagsClientEvent,
+        FlagsClientEventType,
         DatadogFlagsConfig,
         DatadogFlagsClient,
         DatadogFlagsConfiguration,

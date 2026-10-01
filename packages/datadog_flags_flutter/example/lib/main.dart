@@ -25,6 +25,8 @@ const _flagKey = String.fromEnvironment(
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final firstFlagsDetails = ValueNotifier<FlagDetails<bool>?>(null);
+  late final DatadogFlutterFlagsClient flagsClient;
   final isConfigured = _clientToken.isNotEmpty;
   if (isConfigured) {
     final configuration = DatadogConfiguration(
@@ -34,15 +36,30 @@ Future<void> main() async {
       rumConfiguration: _applicationId.isEmpty
           ? null
           : DatadogRumConfiguration(applicationId: _applicationId),
-    )..addPlugin(const DatadogFlagsPluginConfiguration());
+    )..addPlugin(DatadogFlagsPluginConfiguration(
+        flagsConfiguration: DatadogFlagsConfiguration(
+          onFirstFlags: (event) {
+            debugPrint('First installed flags: ${event.flagsChanged}');
+            firstFlagsDetails.value = flagsClient.getBooleanDetails(
+              key: _flagKey,
+              defaultValue: false,
+            );
+          },
+        ),
+      ));
 
     await DatadogSdk.instance.initialize(
       configuration,
       TrackingConsent.granted,
     );
+    // Own the client reference before the widget starts assignment initialization.
+    flagsClient = DatadogSdk.instance.flags!.sharedClient();
   }
 
-  runApp(FlagsExampleApp(isConfigured: isConfigured));
+  runApp(FlagsExampleApp(
+    isConfigured: isConfigured,
+    firstFlagsDetails: firstFlagsDetails,
+  ));
 }
 
 DatadogSite _datadogSiteFor(String site) {
@@ -59,10 +76,12 @@ DatadogSite _datadogSiteFor(String site) {
 
 class FlagsExampleApp extends StatefulWidget {
   final bool isConfigured;
+  final ValueNotifier<FlagDetails<bool>?> firstFlagsDetails;
 
   const FlagsExampleApp({
     super.key,
     required this.isConfigured,
+    required this.firstFlagsDetails,
   });
 
   @override
@@ -139,6 +158,13 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
             _InfoRow(label: 'Targeting key', value: _targetingKey),
             const Divider(height: 32),
             _InfoRow(label: 'Flag key', value: _flagKey),
+            ValueListenableBuilder<FlagDetails<bool>?>(
+              valueListenable: widget.firstFlagsDetails,
+              builder: (context, firstDetails, child) => _InfoRow(
+                label: 'First flags value',
+                value: firstDetails?.value.toString() ?? '(waiting)',
+              ),
+            ),
             _InfoRow(
               label: 'Value',
               value: details == null ? '(none)' : details.value.toString(),

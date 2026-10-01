@@ -144,6 +144,7 @@ class DatadogFlagsPlugin extends DatadogPlugin {
         );
 
     return DatadogFlagsConfiguration(
+      onFirstFlags: _flagsConfiguration.onFirstFlags,
       customFlagsEndpoint: _flagsConfiguration.customFlagsEndpoint,
       customFlagsHeaders: _flagsConfiguration.customFlagsHeaders,
       initializationTimeout: _flagsConfiguration.initializationTimeout,

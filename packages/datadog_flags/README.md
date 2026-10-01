@@ -359,3 +359,46 @@ dart run datadog_flags_example:typed_evaluation \
 The repository also includes a Flutter example screen in `examples/simple_example`
 that can initialize the SDK, refresh assignments, and evaluate multiple flag
 types.
+
+## Event data
+
+`FlagsClientEvent` is an immutable data value with two fields: required `type`
+and optional `flagsChanged`. Omitted keys default to `null`; an explicitly
+supplied empty list remains empty. Supplied lists are copied and cannot be
+mutated through the event.
+
+```dart
+final event = FlagsClientEvent(
+  type: FlagsClientEventType.configurationChanged,
+  flagsChanged: ['checkout.enabled'],
+);
+```
+
+The implemented enum currently contains only
+`FlagsClientEventType.configurationChanged`, whose `code` is
+`CONFIGURATION_CHANGED`.
+
+Constructing this value does not change client state or evaluate flags. The
+shape itself does not infer a first-installation meaning for the key list.
+
+## First installed flags
+
+Set `onFirstFlags` in `DatadogFlagsConfiguration` before calling `enable`, which
+creates the default client. Its type is `void Function(FlagsClientEvent)?`.
+The callback receives only the event; applications capture their own context.
+Each client captures the configured callback independently and invokes it at
+most once after its first accepted cache or network installation. The event
+contains the complete first key list, including `[]` for an accepted empty map.
+
+Delivery runs in a microtask after installation, without waiting for network
+initialization or persistence. Reset and context changes do not rearm the hook.
+A captured event is not revoked by subsequent reset, context change, or shutdown.
+Existing admission checks still reject obsolete results before installation.
+Synchronous callback exceptions are isolated. The callback is not awaited;
+applications own any asynchronous work and errors. The notification does not
+perform evaluations or change readiness or evaluation reasons.
+
+The [typed evaluation example](example/bin/typed_evaluation.dart) evaluates its
+existing `--flag-key` from this callback, logs `event.flagsChanged` directly,
+and prints the usual typed details.
+It assigns its application-owned client reference before calling `initialize`.

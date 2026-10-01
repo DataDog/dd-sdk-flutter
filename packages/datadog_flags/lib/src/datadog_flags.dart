@@ -126,6 +126,7 @@ class DatadogFlags {
 
     final repository = FlagsRepository(
       clientName: name,
+      onFirstFlags: configuration.onFirstFlags,
       fetcher: fetcher,
       store: configuration.store,
       dateProvider: configuration.dateProvider,

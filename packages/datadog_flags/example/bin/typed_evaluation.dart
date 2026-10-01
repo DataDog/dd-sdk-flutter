@@ -32,9 +32,14 @@ Future<void> main(List<String> arguments) async {
   final flagKey = results.option('flag-key')!;
   final flagType = results.option('flag-type')!;
   final datadogFlags = DatadogFlags.instance;
+  late final DatadogFlagsClient flags;
 
   await datadogFlags.enable(
     configuration: DatadogFlagsConfiguration(
+      onFirstFlags: (event) {
+        stdout.writeln('First installed flags: ${event.flagsChanged}');
+        _printDetails(_evaluate(flags, flagKey, flagType));
+      },
       datadogConfig: DatadogFlagsConfig(
         clientToken: Platform.environment['DD_CLIENT_TOKEN'] ?? '',
         env: results.option('env')!,
@@ -44,7 +49,8 @@ Future<void> main(List<String> arguments) async {
     ),
   );
 
-  final flags = datadogFlags.sharedClient();
+  // Own the client reference before starting assignment initialization.
+  flags = datadogFlags.sharedClient();
   try {
     await flags.initialize(
       FlagsEvaluationContext(
@@ -56,14 +62,17 @@ Future<void> main(List<String> arguments) async {
     stderr.writeln(error.message);
   }
 
-  final details = _evaluate(flags, flagKey, flagType);
+  _printDetails(_evaluate(flags, flagKey, flagType));
+
+  await datadogFlags.disable();
+}
+
+void _printDetails(FlagDetails<Object?> details) {
   stdout.writeln('key: ${details.key}');
   stdout.writeln('value: ${jsonEncode(details.value)}');
   stdout.writeln('variant: ${details.variant ?? '(none)'}');
   stdout.writeln('reason: ${details.reason ?? '(none)'}');
   stdout.writeln('error: ${details.error?.name ?? '(none)'}');
-
-  await datadogFlags.disable();
 }
 
 ArgParser _argumentParser() {
