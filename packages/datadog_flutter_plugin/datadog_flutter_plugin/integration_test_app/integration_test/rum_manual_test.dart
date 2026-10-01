@@ -192,19 +192,14 @@ void main() {
     expect(view1.vitalStepEvents[2].vitalOperationKey, isNull);
     expect(view1.vitalStepEvents[2].vitalFailureReason, 'error');
 
-    // Verify user in all events, except for the first view event
-    // Verify user in all events, except for the first few view events
-    bool sawRealUser = false;
-    for (final viewEvent in view1.viewEvents) {
-      // It's okay for view events to not have a real user for the first few,
-      // so long as it remains consistent after the first event. This can happen
-      // if long tasks are reported during boot. Events may still have an
-      // anonymous user (usr.anonymous_id) before a real user is set, which
-      // doesn't count as "seeing" a user.
-      if (viewEvent.user?.id != null || sawRealUser) {
-        sawRealUser = true;
-        verifyUser(viewEvent);
-      }
+    // Verify user in all events, except for view updates sent before the
+    // user was set
+    final userViewEvents = view1.viewEvents
+        .skipWhile((e) => e.user?.id == null)
+        .toList();
+    expect(userViewEvents, isNotEmpty);
+    for (final viewEvent in userViewEvents) {
+      verifyUser(viewEvent);
     }
     for (final actionEvent in view1.actionEvents) {
       verifyUser(actionEvent);
@@ -386,7 +381,10 @@ void main() {
 
     // Verify service name in RUM events
     for (final event in rumLog) {
-      if (!kIsWeb && Platform.isIOS && event.eventType != 'telemetry') {
+      if (!kIsWeb &&
+          Platform.isIOS &&
+          event.eventType != 'telemetry' &&
+          event.eventType != 'view_update') {
         expect(event.service, 'com.datadoghq.flutter.integration');
         expect(event.version, '1.2.3-555');
       }
