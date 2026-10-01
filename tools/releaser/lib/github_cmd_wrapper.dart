@@ -194,6 +194,28 @@ class GithubCommandWrapper {
     return buffer.toString();
   }
 
+  /// This repo's `owner/name` slug, via `gh repo view` -- so the release PR
+  /// body can link straight to a package's `CHANGELOG.md` on the
+  /// release-prep branch (see `release_pr.dart`) without hardcoding the
+  /// slug or trying to derive it from `git remote` output.
+  Future<String> repoSlug(Logger logger) async {
+    final buffer = StringBuffer();
+    final exitCode = await runProcess(
+      'gh',
+      ['repo', 'view', '--json', 'nameWithOwner'],
+      workingDirectory: cwd,
+      stdout: (line) => buffer.write(line),
+      stderr: (line) => logger.shout(line),
+    );
+
+    if (exitCode != 0) {
+      throw Exception('gh returned exit code $exitCode.');
+    }
+
+    final json = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+    return json['nameWithOwner'] as String;
+  }
+
   /// `gh pr view {number}`'s title + body -- the richer LLM input
   /// `llm/changelog.dart`'s changelog pass needs, beyond what
   /// [searchMergedPrBySha]/the squash-merge suffix already gives
