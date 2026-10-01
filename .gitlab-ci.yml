@@ -116,6 +116,7 @@ build-flutter:
     - specific:true
   script:
     - !reference [.pre, script]
+    - (cd tools/releaser && dart pub get && dart run bin/check_flags_version.dart && dart test)
     - melos dartfmt_check
     - melos run analyze:dart
     - melos run unit_test:flutter

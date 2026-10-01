@@ -30,6 +30,17 @@ It performs the following actions:
 Still TODO:
 * Opens a PR on your behalf into `develop` (or branch specified with `--branch`)
 
+## Flags request version
+
+The release tool generates `datadog_flags/lib/src/version.dart` from that package's `pubspec.yaml`.
+Do not edit the generated constant. The Precompute request uses this version for Dart and Flutter clients.
+The Flutter wrapper does not substitute its version or the application's version.
+CI and the publication dry run reject missing or stale generated metadata.
+
+From this directory, run `dart run bin/check_flags_version.dart` to check the current metadata.
+Run `dart test` to test release updates and the actual request serializer.
+The serializer test also uses Node.js to execute compiled Dart JavaScript.
+
 ## Post review
 
 After the release branch is finished building, you can deploy it with:
