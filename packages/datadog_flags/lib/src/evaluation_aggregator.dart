@@ -247,7 +247,9 @@ class EvaluationAggregator {
       Map<String, Object?> context => Map<String, Object?>.from(context),
       _ => <String, Object?>{},
     };
-    final datadogContext = _datadogContext();
+    // The individual evaluation schema only accepts service and RUM metadata.
+    final datadogContext = _datadogContext()
+      ..removeWhere((key, _) => key != 'service' && key != 'rum');
     if (datadogContext.isNotEmpty) {
       eventContext['dd'] = datadogContext;
       event['context'] = eventContext;

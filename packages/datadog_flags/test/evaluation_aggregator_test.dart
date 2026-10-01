@@ -81,14 +81,23 @@ void main() {
       },
       if (isWebFlagsIntake)
         'dd': {
-          'env': 'staging',
           'service': 'shopping-cart',
-          'version': '1.2.3',
           'rum': {
             'application': {'id': 'application-id'},
           },
         },
     });
+    if (!isWebFlagsIntake) {
+      final body = jsonDecode(request.body) as Map<String, Object?>;
+      expect(body['context'], {
+        'env': 'staging',
+        'service': 'shopping-cart',
+        'version': '1.2.3',
+        'rum': {
+          'application': {'id': 'application-id'},
+        },
+      });
+    }
     expect(evaluation.containsKey('runtime_default_used'), isFalse);
   });
 
