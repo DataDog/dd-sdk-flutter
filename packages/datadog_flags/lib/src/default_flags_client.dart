@@ -3,11 +3,14 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
+
 import 'assignment.dart';
 import 'evaluation_aggregator.dart';
 import 'evaluation_context.dart';
 import 'exposure_logger.dart';
 import 'flags_client.dart';
+import 'flags_client_event.dart';
 import 'flags_error.dart';
 import 'flags_repository.dart';
 
@@ -16,18 +19,41 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
 
   @override
   final String name;
+  OnFirstFlags? _onFirstFlags;
+  bool _firstFlagsClosed = false;
   final FlagsRepository _repository;
   final ExposureLogger _exposureLogger;
   final EvaluationAggregator _evaluationAggregator;
 
   DefaultDatadogFlagsClient({
     required this.name,
+    OnFirstFlags? onFirstFlags,
     required FlagsRepository repository,
     required ExposureLogger exposureLogger,
     required EvaluationAggregator evaluationAggregator,
-  })  : _repository = repository,
+  })  : _onFirstFlags = onFirstFlags,
+        _repository = repository,
         _exposureLogger = exposureLogger,
         _evaluationAggregator = evaluationAggregator;
+
+  void notifyFirstFlags(List<String> keys) {
+    final callback = _onFirstFlags;
+    _onFirstFlags = null;
+    if (callback == null || _firstFlagsClosed) return;
+    final event = FlagsClientEvent(
+      type: FlagsClientEventType.configurationChanged,
+      providerName: 'Datadog',
+      flagsChanged: keys,
+    );
+    scheduleMicrotask(() {
+      if (_firstFlagsClosed) return;
+      // Keep application failures out of the repository fetch/failure path.
+      unawaited(Future<void>.sync(() => callback(this, event)).then<void>(
+        (_) {},
+        onError: (Object error, StackTrace stack) {},
+      ));
+    });
+  }
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
@@ -96,6 +122,8 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
 
   @override
   Future<void> shutdown() async {
+    _firstFlagsClosed = true;
+    _onFirstFlags = null;
     await Future.wait([
       _evaluationAggregator.shutdown(),
       _exposureLogger.shutdown(),

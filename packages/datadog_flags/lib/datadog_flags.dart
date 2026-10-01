@@ -19,3 +19,10 @@ export 'src/flags_error.dart'
     show FlagEvaluationError, FlagsInitializationTimeoutException;
 export 'src/flags_store.dart' show DatadogFlagsStore, FlagsData;
 export 'src/evaluation_context.dart' show FlagsEvaluationContext;
+
+export 'src/flags_client_event.dart'
+    show
+        OnFirstFlags,
+        FlagsClientEvent,
+        FlagsClientEventType,
+        FlagsClientErrorCode;

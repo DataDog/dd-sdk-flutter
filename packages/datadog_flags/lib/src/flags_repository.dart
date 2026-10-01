@@ -36,12 +36,16 @@ class FlagsRepository {
   @visibleForTesting
   final Timer Function(Duration, void Function()) scheduleInitializationTimeout;
 
+  final void Function(List<String>)? onFirstInstallation;
+  bool _didInstall = false;
+
   FlagsData? _state;
   _CancelToken? _currentToken;
   bool _didStartInitialization = false;
 
   FlagsRepository({
     required this.clientName,
+    this.onFirstInstallation,
     required this.fetcher,
     this.store,
     required this.dateProvider,
@@ -96,7 +100,7 @@ class FlagsRepository {
             ? cached
             : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
-      _state = matchingCached;
+      _install(matchingCached);
     }
 
     try {
@@ -109,13 +113,22 @@ class FlagsRepository {
         context: context,
         date: dateProvider(),
       );
-      _state = data;
+      _install(data);
       await _writeCached(data);
     } catch (_) {
       if (!token.isCanceled && matchingCached == null) {
         _state = null;
       }
     }
+  }
+
+  // Called only after existing context/generation admission. Dart isolate
+  // execution makes installation and the once-only claim indivisible.
+  void _install(FlagsData data) {
+    _state = data;
+    if (_didInstall) return;
+    _didInstall = true;
+    onFirstInstallation?.call(List<String>.unmodifiable(data.flags.keys));
   }
 
   Duration? _takeInitializationTimeout() {

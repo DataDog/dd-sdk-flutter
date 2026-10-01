@@ -121,3 +121,47 @@ Pull requests are welcome. For more information, read the
 ## License
 
 [Apache License, v2.0](LICENSE)
+
+## Observe the first installed flags
+
+Register `onFirstFlags` before initialization to use assignments as soon as the
+first matching cache or network configuration is installed. This is independent
+of the initialization Future and is not a READY event.
+
+```dart
+final configuration = DatadogConfiguration(
+  clientToken: '<CLIENT_TOKEN>', env: 'production', site: DatadogSite.us1,
+)..addPlugin(DatadogFlagsPluginConfiguration(
+  flagsConfiguration: DatadogFlagsConfiguration(
+    onFirstFlags: (client, event) {
+      // This is the public Flutter client; evaluations retain RUM integration.
+      // Use client directly, without relying on a variable assigned after init.
+    },
+  ),
+));
+await DatadogSdk.instance.initialize(configuration, TrackingConsent.granted);
+final client = DatadogSdk.instance.flags!.sharedClient();
+await client.initialize(const FlagsEvaluationContext(targetingKey: 'user-123'));
+```
+
+The default client is created eagerly during SDK setup, so its callback must be
+supplied in `DatadogFlagsConfiguration`. The configuration callback is captured
+independently for each client. `sharedClient(name: 'other', onFirstFlags: ...)`
+replaces that callback only when creating a new named client. Looking up an
+existing client ignores the supplied callback; it does not register or replay it.
+
+Delivery runs in a microtask on the client's Dart isolate, after accepted
+installation and without waiting for persistence or network completion. It occurs
+at most once per client instance lifetime. Reset and context changes do not rearm
+it; a newly constructed client has a new hook. Shutdown suppresses delivery that
+has not started; an already running callback may finish. Callback failures,
+including errors from a returned Future, do not affect SDK initialization.
+
+The immutable `FlagsClientEvent` has type `configurationChanged`, provider name
+`Datadog`, and a detached complete key list in `flagsChanged`. An accepted empty
+configuration supplies `[]`. Missing, invalid, mismatched, superseded, or timed-out
+cache reads do not count as installations. Metadata is empty, and message and
+error code are absent. No source indicator or readiness transition is implied.
+Keys describe the first installation; the live client may contain newer values
+when read. Collecting the keys performs no evaluations or telemetry; application
+evaluations retain normal exposure, evaluation, and RUM behavior.

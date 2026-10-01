@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 
 import 'datadog_flags_config.dart';
 import 'flags_client.dart';
+import 'flags_client_event.dart';
 import 'flags_error.dart';
 import 'flags_store.dart';
 
@@ -25,6 +26,18 @@ final class DatadogFlagsConfiguration {
 
   /// Largest supported flag evaluation telemetry flush interval.
   static const maxEvaluationFlushInterval = Duration(seconds: 60);
+
+  /// Callback captured independently by each newly created client.
+  ///
+  /// Set this before enabling the SDK to observe the eagerly created default
+  /// client. A callback supplied when creating a named client replaces this one.
+  /// Existing client lookups cannot register, replace, or replay a callback.
+  ///
+  /// Runs in a microtask after the first accepted cache or network installation,
+  /// at most once per client instance. Reset and context changes do not rearm it.
+  /// Shutdown suppresses delivery that has not started. This is not a readiness
+  /// event and does not wait for persistence or initialization completion.
+  final OnFirstFlags? onFirstFlags;
 
   /// Overrides the precompute assignments endpoint.
   final Uri? customFlagsEndpoint;
@@ -86,6 +99,7 @@ final class DatadogFlagsConfiguration {
 
   /// Creates SDK runtime configuration.
   const DatadogFlagsConfiguration({
+    this.onFirstFlags,
     this.customFlagsEndpoint,
     this.customFlagsHeaders,
     this.initializationTimeout = defaultInitializationTimeout,

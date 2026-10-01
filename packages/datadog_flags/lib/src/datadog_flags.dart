@@ -10,6 +10,7 @@ import 'evaluation_aggregator.dart';
 import 'exposure_logger.dart';
 import 'flag_assignments_fetcher.dart';
 import 'flags_client.dart';
+import 'flags_client_event.dart';
 import 'flags_configuration.dart';
 import 'flags_repository.dart';
 import 'flags_runtime.dart';
@@ -74,8 +75,11 @@ class DatadogFlags {
   ///
   /// Use different client names for independent subjects, such as logged-out
   /// device context and logged-in user context.
-  DatadogFlagsClient sharedClient({String name = defaultClientName}) {
-    return _client(name);
+  /// [onFirstFlags] replaces the configuration callback only for a newly created
+  /// named client. Existing clients (including the eager default) ignore it.
+  DatadogFlagsClient sharedClient(
+      {String name = defaultClientName, OnFirstFlags? onFirstFlags}) {
+    return _client(name, onFirstFlags);
   }
 
   /// Clears in-memory and stored assignments for all clients.
@@ -98,7 +102,7 @@ class DatadogFlags {
     _configuration = null;
   }
 
-  DatadogFlagsClient _client(String name) {
+  DatadogFlagsClient _client(String name, OnFirstFlags? onFirstFlags) {
     final existing = _clients[name];
     if (existing != null) {
       return existing;
@@ -124,15 +128,18 @@ class DatadogFlags {
       httpClient: httpClient,
     );
 
+    late final DefaultDatadogFlagsClient client;
     final repository = FlagsRepository(
       clientName: name,
+      onFirstInstallation: (keys) => client.notifyFirstFlags(keys),
       fetcher: fetcher,
       store: configuration.store,
       dateProvider: configuration.dateProvider,
       initializationTimeout: configuration.initializationTimeout,
     );
 
-    final client = DefaultDatadogFlagsClient(
+    client = DefaultDatadogFlagsClient(
+      onFirstFlags: onFirstFlags ?? configuration.onFirstFlags,
       name: name,
       repository: repository,
       exposureLogger: ExposureLogger(runtime),

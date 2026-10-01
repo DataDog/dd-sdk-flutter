@@ -5,6 +5,10 @@
 
 export 'package:datadog_flags/datadog_flags.dart'
     show
+        OnFirstFlags,
+        FlagsClientEvent,
+        FlagsClientEventType,
+        FlagsClientErrorCode,
         DatadogFlagsConfig,
         DatadogFlagsClient,
         DatadogFlagsConfiguration,

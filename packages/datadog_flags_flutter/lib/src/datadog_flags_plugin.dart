@@ -59,6 +59,8 @@ class DatadogFlagsPlugin extends DatadogPlugin {
   final DatadogFlags _flags;
   final Map<String, DatadogFlutterFlagsClient> _clients = {};
 
+  int _generation = 0;
+
   Future<void> _ready = Future<void>.value();
 
   /// Creates a Flutter flags integration plugin.
@@ -84,21 +86,39 @@ class DatadogFlagsPlugin extends DatadogPlugin {
   /// Call [DatadogFlutterFlagsClient.initialize] before evaluating flags for a
   /// subject. The client waits for this plugin's [ready] future before fetching
   /// assignments.
+  /// [onFirstFlags] replaces the configuration callback only when creating a
+  /// named core client. Existing clients, including the eager default, ignore it.
+  /// Configure the default hook before initialization via flagsConfiguration.
   DatadogFlutterFlagsClient sharedClient({
     String name = DatadogFlags.defaultClientName,
+    OnFirstFlags? onFirstFlags,
   }) {
-    return _clients.putIfAbsent(
-      name,
-      () => DatadogFlutterFlagsClient(
+    return _clients.putIfAbsent(name, () {
+      final generation = _generation;
+      late final DatadogFlutterFlagsClient client;
+      client = DatadogFlutterFlagsClient(
         name: name,
         resolveDelegate: () async {
           await ready;
-          return _flags.sharedClient(name: name);
+          return _flags.sharedClient(
+            name: name,
+            onFirstFlags: onFirstFlags == null
+                ? null
+                : (delegate, event) {
+                    if (generation != _generation) return null;
+                    return client._notifyFirstFlags(
+                      delegate,
+                      event,
+                      onFirstFlags,
+                    );
+                  },
+          );
         },
         addRumFeatureFlagEvaluation:
             _rumIntegrationEnabled ? _addRumFeatureFlagEvaluation : null,
-      ),
-    );
+      );
+      return client;
+    });
   }
 
   /// Clears in-memory and stored assignments for all integrated clients.
@@ -106,6 +126,7 @@ class DatadogFlagsPlugin extends DatadogPlugin {
 
   @override
   void shutdown() {
+    _generation++;
     _clients.clear();
     unawaited(_flags.disable());
   }
@@ -143,7 +164,16 @@ class DatadogFlagsPlugin extends DatadogPlugin {
           version: datadogConfiguration.versionTag,
         );
 
+    final generation = _generation;
+    final onFirstFlags = _flagsConfiguration.onFirstFlags;
     return DatadogFlagsConfiguration(
+      onFirstFlags: onFirstFlags == null
+          ? null
+          : (delegate, event) {
+              if (generation != _generation) return null;
+              return sharedClient(name: delegate.name)
+                  ._notifyFirstFlags(delegate, event, onFirstFlags);
+            },
       customFlagsEndpoint: _flagsConfiguration.customFlagsEndpoint,
       customFlagsHeaders: _flagsConfiguration.customFlagsHeaders,
       initializationTimeout: _flagsConfiguration.initializationTimeout,
@@ -170,6 +200,7 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
   final void Function(String key, Object value)? _addRumFeatureFlagEvaluation;
 
   DatadogFlagsClient? _delegate;
+  bool _firstFlagsClosed = false;
 
   @override
   final String name;
@@ -183,6 +214,16 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
         addRumFeatureFlagEvaluation,
   })  : _resolveDelegate = resolveDelegate,
         _addRumFeatureFlagEvaluation = addRumFeatureFlagEvaluation;
+
+  FutureOr<void> _notifyFirstFlags(
+    DatadogFlagsClient delegate,
+    FlagsClientEvent event,
+    OnFirstFlags callback,
+  ) {
+    if (_firstFlagsClosed) return null;
+    _delegate = delegate;
+    return callback(this, event);
+  }
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
@@ -268,6 +309,7 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
 
   @override
   Future<void> shutdown() async {
+    _firstFlagsClosed = true;
     final delegate = _delegate;
     if (delegate == null) {
       return;
