@@ -65,6 +65,7 @@ class FlagAssignmentsFetcher {
         flags: attributes.flags,
         createdAt: attributes.createdAt,
         environment: attributes.environment,
+        obfuscation: attributes.obfuscation,
       );
     } catch (error) {
       throw FlagsException.invalidResponse(

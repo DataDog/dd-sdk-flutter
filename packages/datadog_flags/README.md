@@ -14,6 +14,18 @@ configure the provider, initialize a client for an evaluation context, evaluate
 typed details with a programmatic default, and shut the client down when the app
 no longer needs it.
 
+The SDK automatically supports responses with `flag-key-sha256-v1` keys.
+Applications continue to evaluate flags with their original keys.
+Flag values and telemetry identifiers do not change.
+Unknown or invalid encoding metadata follows the normal initialization failure
+path. Valid assignments for the same context remain available.
+
+Storage adapters must preserve the complete `FlagsData.toJson()` result.
+Encoded snapshots use `encodedFlags` and store their encoding descriptor.
+Existing plaintext snapshots remain readable.
+Older SDKs cannot use an encoded snapshot after a downgrade. They return defaults
+until a normal plaintext network response provides assignments.
+
 ## Installation
 
 For Dart:

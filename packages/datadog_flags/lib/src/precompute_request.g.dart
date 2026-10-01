@@ -24,6 +24,7 @@ Map<String, dynamic> _$PrecomputeRequestAttributesToJson(
       'env': instance.env.toJson(),
       'source': instance.source.toJson(),
       'subject': instance.subject.toJson(),
+      'supported_capabilities': instance.supportedCapabilities,
     };
 
 Map<String, dynamic> _$PrecomputeRequestEnvToJson(

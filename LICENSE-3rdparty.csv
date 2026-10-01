@@ -1,4 +1,6 @@
 Component,Origin,License,Copyright
+import,crypto,BSD-3-Clause,"Copyright 2015, the Dart project authors."
+import,typed_data,BSD-3-Clause,"Copyright 2015, the Dart project authors."
 import,dd-sdk-android,Apache-2.0,Copyright 2019 Datadog
 import,dd-sdk-ios,Apache-2.0,Copyright 2019 Datadog
 import,flutter,BSD 3-Clause,Copyright 2014 The Flutter Authors
