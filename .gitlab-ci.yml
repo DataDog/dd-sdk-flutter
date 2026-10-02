@@ -106,6 +106,11 @@ stages:
     - export PATH="$PATH:${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/"
     - echo $CHROME_EXECUTABLE
 
+.tart-runner:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/ci-platform-machine-images/tart-vm:dd-sdk-flutter-sequoia-latest
+  tags:
+    - macos:tart
+
 ci-image:
   when: manual
   stage: ci-image
@@ -138,13 +143,11 @@ ci-image-windows:
 # Build (And Analyze) Stage
 
 build-flutter:
+  extends: .tart-runner
   stage: build
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - pushd tools/releaser && dart pub get && dart test && popd
@@ -178,13 +181,11 @@ build-android:
       - "$CI_PROJECT_DIR/**/reports/detekt/*"
 
 build-ios-spm:
+  extends: .tart-runner
   stage: build
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -215,13 +216,11 @@ build-macos-spm:
     - melos run unit_test:macos
 
 build-ios:
+  extends: .tart-runner
   stage: build
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -315,14 +314,12 @@ android-integration-test:
       - tools/ci/logcat.txt
 
 ios-integration-test:
+  extends: .tart-runner
   stage: integration-test
   except: [schedules]
   needs: [build-ios]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -595,13 +592,10 @@ notify-nightly-failed:
     - specific:true
 
 nightly-min-version-test:
-  extends: .nightly
+  extends: [.nightly, .tart-runner]
   stage: version-test
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -618,13 +612,10 @@ nightly-min-version-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 nightly-beta-test:
-  extends: .nightly
+  extends: [.nightly, .tart-runner]
   stage: version-test
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -677,7 +668,7 @@ nightly-beta-test-web:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 nightly-ios:
-  extends: .nightly
+  extends: [.nightly, .tart-runner]
   stage: e2e-test
   script:
     - !reference [.nightly-vars, script]
