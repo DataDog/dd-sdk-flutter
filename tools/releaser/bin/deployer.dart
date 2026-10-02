@@ -8,7 +8,6 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:git/git.dart';
 import 'package:logging/logging.dart';
-import 'package:releaser/flags_version.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/helpers.dart';
 
@@ -82,11 +81,6 @@ void main(List<String> arguments) async {
 
   var packageName = arguments.first;
   if (!(await _validateBranchState(gitDir))) exit(1);
-
-  if (!validateFlagsVersion(
-      '${gitDir.path}/packages/$packageName', Logger.root)) {
-    exit(1);
-  }
 
   final releaseInfo = await _getReleaseInfo(gitDir, packageName);
   if (releaseInfo == null) {

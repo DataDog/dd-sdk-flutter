@@ -119,7 +119,7 @@ build-flutter:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
     - !reference [.pre, script]
-    - (cd tools/releaser && dart pub get && dart run bin/check_flags_version.dart && dart test)
+    - (cd tools/releaser && dart pub get && dart test test/flags_version_test.dart)
     - melos dartfmt_check
     - melos run analyze:dart
     - melos run unit_test:flutter

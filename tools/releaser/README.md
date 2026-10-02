@@ -33,8 +33,8 @@ Still TODO:
 ## Flags version check
 
 The existing version updater keeps `datadog_flags/lib/src/version.dart` in sync with its `pubspec.yaml`.
-CI, release preparation, and the GitHub deployment command reject missing or mismatched Flags versions.
-Run `dart run bin/check_flags_version.dart` from this directory to check without changing files.
+The existing publish validation rejects a missing or mismatched Flags version.
+Run `dart test test/flags_version_test.dart` from this directory to check the package and release updater. CI runs the same tests.
 
 ## Post review
 
