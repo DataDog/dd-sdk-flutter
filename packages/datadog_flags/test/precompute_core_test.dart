@@ -66,6 +66,9 @@ void main() {
                 'sdk_name': 'dd-sdk-dart',
                 'sdk_version': datadogFlagsSdkVersion,
               },
+              'supported_capabilities': {
+                'assignment_encodings': ['flag-key-sha256-v1'],
+              },
               'subject': {
                 'targeting_key': 'precomputed-user',
                 'targeting_attributes': {'plan': 'pro', 'platform': 'flutter'},
@@ -125,6 +128,9 @@ void main() {
             'source': {
               'sdk_name': 'dd-sdk-dart',
               'sdk_version': datadogFlagsSdkVersion,
+            },
+            'supported_capabilities': {
+              'assignment_encodings': ['flag-key-sha256-v1'],
             },
             'subject': {
               'targeting_key': '',

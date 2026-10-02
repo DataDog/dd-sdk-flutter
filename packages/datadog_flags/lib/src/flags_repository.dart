@@ -52,7 +52,13 @@ class FlagsRepository {
 
   FlagsEvaluationContext? get context => _state?.context;
 
-  FlagAssignment? flagAssignment(String key) => _state?.flags[key];
+  FlagAssignment? flagAssignment(String key) {
+    final state = _state;
+    if (state == null) return null;
+    final encoding = state.obfuscation;
+    final lookupKey = encoding == null ? key : encoding.encodeKey(key);
+    return lookupKey == null ? null : state.flags[lookupKey];
+  }
 
   Future<void> initialize(FlagsEvaluationContext context) {
     _currentToken?.cancel();
@@ -108,11 +114,14 @@ class FlagsRepository {
         flags: assignments.flags,
         context: context,
         date: dateProvider(),
+        obfuscation: assignments.obfuscation,
       );
       _state = data;
       await _writeCached(data);
     } catch (_) {
-      if (!token.isCanceled && matchingCached == null) {
+      if (!token.isCanceled &&
+          matchingCached == null &&
+          !_hasCurrentStateForContext(context)) {
         _state = null;
       }
     }
@@ -170,10 +179,13 @@ class FlagsRepository {
     }
 
     try {
-      return await store.read(clientName).timeout(
+      final data = await store.read(clientName).timeout(
             storeReadTimeout,
             onTimeout: () => null,
           );
+      // Custom stores can return constructed snapshots without JSON decoding.
+      // Validate and copy the complete snapshot before making it available.
+      return data == null ? null : FlagsData.fromJson(data.toJson());
     } catch (_) {
       return null;
     }
