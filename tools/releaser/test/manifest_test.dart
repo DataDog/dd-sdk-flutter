@@ -30,6 +30,7 @@ void main() {
           toVersion: '2.3.0',
           sourceBranch: 'develop',
           prerelease: false,
+          relativePath: 'packages/datadog_dio',
         ),
         ManifestPackageEntry(
           package: 'datadog_flutter_plugin_ios',
@@ -37,6 +38,7 @@ void main() {
           toVersion: '2.0.0-beta.1',
           sourceBranch: 'v4',
           prerelease: true,
+          relativePath: 'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios',
         ),
       ],
     );
@@ -67,6 +69,7 @@ void main() {
             toVersion: '2.2.1',
             sourceBranch: 'release/datadog_dio/v2.2.x',
             prerelease: false,
+            relativePath: 'packages/datadog_dio',
           ),
         ],
       );
