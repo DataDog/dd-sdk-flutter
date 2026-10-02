@@ -55,3 +55,23 @@ recorded until it calls `startRecording()`:
 Switch between the two tabs and the status at the top of each screen follows
 `DatadogSessionReplay.instance?.isCapturing`. In the replay, the Private screen
 does not appear, and recording resumes when you return to the Recorded screen.
+
+## Sampling test
+
+`scripts/run_sampling_test.sh` checks Session Replay sampling end to end on
+an iOS simulator. It launches the app many times (100 by default). In each
+launch the app taps through its screens for about 10 seconds, then logs its
+RUM session ID, whether that session should get a replay, and whether Session
+Replay captured. It doesn't use the host mouse or keyboard.
+
+```bash
+scripts/run_sampling_test.sh -b              # build, install, run 100 launches
+scripts/run_sampling_test.sh -n 50 -r my-run # 50 launches with a custom run ID
+```
+
+At the end it prints a summary and writes the exact list of sessions that
+should have a replay to `/tmp/sr_sampling/<run id>/`. To compare with
+Datadog, filter RUM sessions on `@sr_test_run:<run id>`.
+
+The test mode lives in `lib/auto_interact.dart` and does nothing unless the
+script enables it, so the app behaves normally otherwise.

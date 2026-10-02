@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'app.dart';
+import 'auto_interact.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +16,7 @@ void main() async {
 
   DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
 
+  const rumSampleRate = 50.0;
   final replaySampleRate = double.parse(
     dotenv.get('DD_SESSION_REPLAY_SAMPLE_RATE', fallback: '50'),
   );
@@ -26,7 +28,7 @@ void main() async {
     rumConfiguration: DatadogRumConfiguration(
       applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
       // Session Replay can only record sessions that RUM tracks.
-      sessionSamplingRate: 50.0,
+      sessionSamplingRate: rumSampleRate,
     ),
   )..enableSessionReplay(
       DatadogSessionReplayConfiguration(
@@ -45,5 +47,10 @@ void main() async {
 
   await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
     runApp(ExampleApp(replaySampleRate: replaySampleRate));
+    // Test-only: does nothing unless scripts/run_sampling_test.sh enabled it.
+    AutoInteract.startIfRequested(
+      rumSampleRate: rumSampleRate,
+      replaySampleRate: replaySampleRate,
+    );
   });
 }
