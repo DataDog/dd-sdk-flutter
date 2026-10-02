@@ -125,3 +125,40 @@ Pull requests are welcome. For more information, read the
 Successful evaluation details report `CACHED` when the installed assignments
 were restored from the configured store, including an in-memory store. Once a
 network response replaces them, details report the response reason.
+
+## First installed flags
+
+Call `client.onFirstFlags((event) { ... })` after obtaining a shared client. It
+returns an ordinary unregister function; there is no subscription object. The
+callback receives only `FlagsClientEvent` and always runs in a microtask,
+including when the first event is already retained. The wrapper resolves its
+existing core delegate before forwarding registration, without initializing a
+context or starting an assignment fetch. Callback evaluations use the existing
+RUM-integrated wrapper and current assignments.
+
+Unregister immediately releases the app callback and prevents delivery not yet
+started, even while the delegate is resolving or a callback microtask is queued.
+After forwarding, unregister invokes the core cancellation function. Each
+registration forwards once to its resolved core; resolver failure does not
+fabricate success or retry. Reacquire `sharedClient` after SDK re-enable; old
+wrappers have no new lifecycle guarantee and registrations do not migrate.
+
+The [actual example app](example/lib/main.dart) registers once in `initState`,
+logs `event.flagsChanged`, evaluates its existing `DD_FLAG_KEY`, displays the
+first result, and unregisters in `dispose`. Its initialization/context flow
+remains explicit. Run fixture app tests from `example` with
+`flutter test --dart-define=DD_CLIENT_TOKEN=test-token`. They use fixture HTTP
+and the SDK's no-op native platform, not a live service or device.
+
+Run the VM-only capture-release proof with
+`flutter test --enable-vmservice test_vm/first_flags_capture_test.dart`.
+
+### Coordinated release requirement
+
+Adding the method breaks external `implements DatadogFlagsClient` classes and
+fakes. The repository releaser assigns an explicit release version; this change
+does not select one. Before publishing the integration, publish the coordinated
+core containing this API and update its minimum dependency accordingly. The
+current `^1.1.0` constraint alone does not ensure this method exists. Local path
+overrides validate the companion source only and are not registry compatibility
+proof. No package publication is part of this change.

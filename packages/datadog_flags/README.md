@@ -363,3 +363,50 @@ types.
 Successful evaluation details report `CACHED` when the installed assignments
 were restored from the configured store, including an in-memory store. Once a
 network response replaces them, details report the response reason.
+
+## First installed flags
+
+Register after obtaining the client, before or after initializing its context:
+
+```dart
+final client = DatadogFlags.instance.sharedClient();
+final unregister = client.onFirstFlags((event) {
+  print('First installed flags: ${event.flagsChanged}');
+  final details = client.getBooleanDetails(
+    key: 'checkout.enabled',
+    defaultValue: false,
+  );
+  print(details.value);
+});
+// Call unregister() when the application no longer needs this notification.
+```
+
+Each registration receives the retained first accepted cache/network event once,
+including an empty installation. Missing, invalid, mismatched or rejected data
+never fabricates completion. Multiple registrations are independent. Delivery
+always runs in a microtask, including late registration; it does not wait for
+initialization or persistence to complete and does not initialize the client.
+Use the existing `initialize(context)` method and context/error behavior.
+
+`FlagsClientEvent` has only `type` and nullable `flagsChanged`. The implemented
+type is `FlagsClientEventType.configurationChanged` (`CONFIGURATION_CHANGED`).
+Supplied key lists are copied and unmodifiable; null and empty remain distinct.
+First-install events contain all installed keys, including `[]`. Evaluations
+read current assignments, not an assignment snapshot pinned to the event.
+
+The returned `void Function()` unregisters only its registration. It is
+idempotent, releases pending callback captures and suppresses queued delivery
+that has not started. It cannot interrupt a running callback or cancel
+initialization. Reset does not clear or rearm the retained first event.
+Synchronous callback exceptions are isolated; applications own any asynchronous
+work and errors started by a void callback. Pending callbacks remain until an
+accepted install or unregistration. Reacquire a shared client after SDK re-enable;
+registrations do not migrate between core clients.
+
+See the actual [typed CLI example](example/bin/typed_evaluation.dart). This API
+adds a method to the public client interface, so custom implementations/fakes
+must be updated. The release version is coordinated separately.
+
+VM-only capture-release checks use actual garbage collection through the local
+VM service: `dart test test_vm/first_flags_capture_test.dart`, or
+`flutter test --enable-vmservice test_vm/first_flags_capture_test.dart`.

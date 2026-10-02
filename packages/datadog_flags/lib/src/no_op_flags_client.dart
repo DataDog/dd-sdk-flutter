@@ -6,12 +6,17 @@
 import 'evaluation_context.dart';
 import 'flags_client.dart';
 import 'flags_error.dart';
+import 'flags_client_event.dart';
 
 class NoOpDatadogFlagsClient implements DatadogFlagsClient {
   @override
   final String name;
 
   const NoOpDatadogFlagsClient({required this.name});
+
+  @override
+  void Function() onFirstFlags(void Function(FlagsClientEvent) callback) =>
+      () {};
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {}

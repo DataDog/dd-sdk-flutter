@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+* Add `onFirstFlags` to `DatadogFlagsClient`. External implementations and test fakes must implement the new method, which returns an unregister function. Coordinate the core and Flutter integration release before publishing; this source change does not assign a release version.
+
+### Features
+
+* Retain the first accepted flag-installation event for early and late registrations. Every active registration is delivered once in a microtask; its unregister function suppresses delivery not yet started.
+
 ## 1.1.0
 
 * Add `DatadogFlagsConfiguration.initializationTimeout` for the first context initialization. The default is five seconds. Set it to `null`, zero, or a negative duration to disable it.
