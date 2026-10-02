@@ -72,11 +72,30 @@ class FlagsExampleApp extends StatefulWidget {
 class _FlagsExampleAppState extends State<FlagsExampleApp> {
   String _status = 'idle';
   FlagDetails<bool>? _details;
+  FlagDetails<bool>? _firstDetails;
+  void Function()? _unregisterFirstFlags;
 
   @override
   void initState() {
     super.initState();
+    final client = DatadogSdk.instance.flags?.sharedClient();
+    if (widget.isConfigured && client != null) {
+      _unregisterFirstFlags = client.onFirstFlags((event) {
+        debugPrint('First installed flags: ${event.flagsChanged}');
+        final details = client.getBooleanDetails(
+          key: _flagKey,
+          defaultValue: false,
+        );
+        if (mounted) setState(() => _firstDetails = details);
+      });
+    }
     unawaited(_evaluate());
+  }
+
+  @override
+  void dispose() {
+    _unregisterFirstFlags?.call();
+    super.dispose();
   }
 
   Future<void> _evaluate() async {
@@ -139,6 +158,9 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
             _InfoRow(label: 'Targeting key', value: _targetingKey),
             const Divider(height: 32),
             _InfoRow(label: 'Flag key', value: _flagKey),
+            _InfoRow(
+                label: 'First flags value',
+                value: _firstDetails?.value.toString() ?? '(waiting)'),
             _InfoRow(
               label: 'Value',
               value: details == null ? '(none)' : details.value.toString(),

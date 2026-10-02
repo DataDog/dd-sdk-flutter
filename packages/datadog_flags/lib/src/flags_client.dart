@@ -5,6 +5,7 @@
 
 import 'evaluation_context.dart';
 import 'flags_error.dart';
+import 'flags_client_event.dart';
 
 /// Evaluates feature flags for one current evaluation context.
 ///
@@ -14,6 +15,25 @@ import 'flags_error.dart';
 abstract interface class DatadogFlagsClient {
   /// Stable name assigned by [DatadogFlags.sharedClient].
   String get name;
+
+  /// Registers [callback] for this client's first accepted cache or network
+  /// installation, including an empty configuration. Every registration receives
+  /// the retained first event once, even if registered after later updates.
+  /// Missing, invalid or rejected data does not complete this notification.
+  ///
+  /// Delivery always runs in a microtask, including late registrations. It does
+  /// not wait for initialization or persistence to complete. Evaluations in the
+  /// callback read current assignments, not a snapshot pinned to the event.
+  /// Synchronous callback exceptions are isolated; asynchronous work and errors
+  /// started by the callback belong to the application.
+  ///
+  /// Returns an idempotent unregister function. It releases the callback and
+  /// suppresses delivery that has not started, including an already queued
+  /// microtask. It cannot interrupt a running callback, clear the retained event
+  /// or cancel initialization. Reset does not rearm or erase the first event.
+  /// Pending callbacks remain until installation or explicit unregistration.
+  /// Reacquire a shared client after SDK re-enable; registrations do not migrate.
+  void Function() onFirstFlags(void Function(FlagsClientEvent) callback);
 
   /// Fetches assignments for [context] and makes them available to evaluations.
   ///
@@ -26,7 +46,7 @@ abstract interface class DatadogFlagsClient {
   /// If a later call supersedes the first call, the first call remains bounded
   /// by its original deadline. The later call does not use this timeout.
   ///
-  /// Evaluations made before initialization completes return their provided
+  /// Evaluations made before assignments are available return their provided
   /// default value with a `providerNotReady` error.
   Future<void> initialize(
     FlagsEvaluationContext context,

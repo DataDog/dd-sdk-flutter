@@ -184,6 +184,31 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
   })  : _resolveDelegate = resolveDelegate,
         _addRumFeatureFlagEvaluation = addRumFeatureFlagEvaluation;
 
+  /// Always delivers in a microtask after binding the existing core delegate.
+  /// Cancellation works immediately, including while that delegate is resolving.
+  /// Each registration forwards once to its resolved core; there is no retry or
+  /// migration across re-enable. Reacquire a shared client after re-enable.
+  @override
+  void Function() onFirstFlags(void Function(FlagsClientEvent) callback) {
+    final registration = _FlutterFirstFlagsRegistration(callback);
+    unawaited(_forwardFirstFlags(registration));
+    return registration.cancel;
+  }
+
+  Future<void> _forwardFirstFlags(
+    _FlutterFirstFlagsRegistration registration,
+  ) async {
+    try {
+      final delegate = await _delegateOrResolve();
+      if (!registration.isActive) return;
+      final unregister = delegate.onFirstFlags(registration.schedule);
+      registration.attach(unregister);
+    } catch (_) {
+      // Registration is best effort; initialization retains its own error path.
+      registration.cancel();
+    }
+  }
+
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
     final delegate = await _delegateOrResolve();
@@ -320,4 +345,53 @@ DatadogFlagsSite? datadogFlagsSiteFor(DatadogSite site) {
     DatadogSite.ap2 => DatadogFlagsSite.ap2,
     DatadogSite.us1Fed => null,
   };
+}
+
+// The resolver and downstream callback capture this record, never the app
+// callback directly. Terminal transitions release both callback and token.
+class _FlutterFirstFlagsRegistration {
+  void Function(FlagsClientEvent)? _callback;
+  void Function()? _unregister;
+
+  _FlutterFirstFlagsRegistration(this._callback);
+
+  bool get isActive => _callback != null;
+
+  void attach(void Function() unregister) {
+    if (isActive) {
+      _unregister = unregister;
+    } else {
+      _tryUnregister(unregister);
+    }
+  }
+
+  void cancel() {
+    _callback = null;
+    final unregister = _unregister;
+    _unregister = null;
+    if (unregister != null) _tryUnregister(unregister);
+  }
+
+  void schedule(FlagsClientEvent event) {
+    if (!isActive) return;
+    scheduleMicrotask(() {
+      final callback = _callback;
+      _callback = null;
+      _unregister = null;
+      if (callback == null) return;
+      try {
+        callback(event);
+      } catch (_) {
+        // Keep app errors out of the core delivery and SDK-owned Future chains.
+      }
+    });
+  }
+
+  static void _tryUnregister(void Function() unregister) {
+    try {
+      unregister();
+    } catch (_) {
+      // A custom delegate must not turn cancellation into an unhandled failure.
+    }
+  }
 }
