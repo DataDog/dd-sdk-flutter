@@ -3,6 +3,7 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -32,13 +33,11 @@ Future<void> main(List<String> arguments) async {
   final flagKey = results.option('flag-key')!;
   final flagType = results.option('flag-type')!;
   final datadogFlags = DatadogFlags.instance;
+  final firstFlags = Completer<FlagsClientEvent>();
 
   await datadogFlags.enable(
     configuration: DatadogFlagsConfiguration(
-      onFirstFlags: (client, event) {
-        stdout.writeln('First installed flags: ${event.flagsChanged}');
-        _printDetails(_evaluate(client, flagKey, flagType));
-      },
+      onFirstFlags: firstFlags.complete,
       datadogConfig: DatadogFlagsConfig(
         clientToken: Platform.environment['DD_CLIENT_TOKEN'] ?? '',
         env: results.option('env')!,
@@ -49,6 +48,11 @@ Future<void> main(List<String> arguments) async {
   );
 
   final flags = datadogFlags.sharedClient();
+  // A completed Future retains an early event until this client is available.
+  unawaited(firstFlags.future.then((event) {
+    stdout.writeln('First installed flags: ${event.flagsChanged}');
+    _printDetails(_evaluate(flags, flagKey, flagType));
+  }));
   try {
     await flags.initialize(
       FlagsEvaluationContext(

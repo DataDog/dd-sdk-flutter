@@ -384,9 +384,8 @@ shape itself does not infer a first-installation meaning for the key list.
 ## First installed flags
 
 Set `onFirstFlags` in `DatadogFlagsConfiguration` before calling `enable`, which
-creates the default client. Its type is
-`void Function(DatadogFlagsClient, FlagsClientEvent)?`. The callback receives the
-registered public client, ready for immediate evaluation, and the event.
+creates the default client. Its type is `void Function(FlagsClientEvent)?`.
+The callback receives only the event; applications capture their own context.
 Each client captures the configured callback independently and invokes it at
 most once after its first accepted cache or network installation. The event
 contains the complete first key list, including `[]` for an accepted empty map.
@@ -402,6 +401,7 @@ perform evaluations or change readiness or evaluation reasons.
 The [typed evaluation example](example/bin/typed_evaluation.dart) evaluates its
 existing `--flag-key` from this callback, logs `event.flagsChanged` directly,
 and prints the usual typed details.
-It evaluates directly through the supplied callback client; no application
-reference handoff is needed. Evaluations read the client's current assignments,
-not a snapshot pinned to the event.
+It completes an application-owned event Future in the callback and attaches an
+evaluation continuation after obtaining its client. An event arriving before
+continuation registration is retained; construction never waits for the event.
+Reads use current installed assignments, not a snapshot pinned to the event.

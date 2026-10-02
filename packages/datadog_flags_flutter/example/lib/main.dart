@@ -26,6 +26,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final firstFlagsDetails = ValueNotifier<FlagDetails<bool>?>(null);
+  final firstFlags = Completer<FlagsClientEvent>();
   final isConfigured = _clientToken.isNotEmpty;
   if (isConfigured) {
     final configuration = DatadogConfiguration(
@@ -37,13 +38,7 @@ Future<void> main() async {
           : DatadogRumConfiguration(applicationId: _applicationId),
     )..addPlugin(DatadogFlagsPluginConfiguration(
         flagsConfiguration: DatadogFlagsConfiguration(
-          onFirstFlags: (client, event) {
-            debugPrint('First installed flags: ${event.flagsChanged}');
-            firstFlagsDetails.value = client.getBooleanDetails(
-              key: _flagKey,
-              defaultValue: false,
-            );
-          },
+          onFirstFlags: firstFlags.complete,
         ),
       ));
 
@@ -51,6 +46,15 @@ Future<void> main() async {
       configuration,
       TrackingConsent.granted,
     );
+    final flagsClient = DatadogSdk.instance.flags!.sharedClient();
+    // Retain an early event without blocking SDK or client construction.
+    unawaited(firstFlags.future.then((event) {
+      debugPrint('First installed flags: ${event.flagsChanged}');
+      firstFlagsDetails.value = flagsClient.getBooleanDetails(
+        key: _flagKey,
+        defaultValue: false,
+      );
+    }));
   }
 
   runApp(FlagsExampleApp(

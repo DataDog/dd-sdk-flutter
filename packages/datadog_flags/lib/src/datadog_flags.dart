@@ -124,19 +124,16 @@ class DatadogFlags {
       httpClient: httpClient,
     );
 
-    late final DatadogFlagsClient client;
-    final callback = configuration.onFirstFlags;
     final repository = FlagsRepository(
       clientName: name,
-      onFirstFlags:
-          callback == null ? null : (event) => callback(client, event),
+      onFirstFlags: configuration.onFirstFlags,
       fetcher: fetcher,
       store: configuration.store,
       dateProvider: configuration.dateProvider,
       initializationTimeout: configuration.initializationTimeout,
     );
 
-    client = DefaultDatadogFlagsClient(
+    final client = DefaultDatadogFlagsClient(
       name: name,
       repository: repository,
       exposureLogger: ExposureLogger(runtime),

@@ -24,11 +24,7 @@ class DatadogFlagsPluginConfiguration extends DatadogPluginConfiguration {
   /// Optional Flags SDK configuration overrides.
   ///
   /// When [DatadogFlagsConfiguration.datadogConfig] is omitted, the plugin
-  /// derives it from [DatadogConfiguration]. The configured onFirstFlags callback
-  /// receives the registered [DatadogFlutterFlagsClient] through its public
-  /// [DatadogFlagsClient] interface, with its delegate bound for immediate
-  /// evaluation and RUM integration. It may run before flag initialization
-  /// completes; applications can evaluate directly through the supplied client.
+  /// derives it from [DatadogConfiguration].
   final DatadogFlagsConfiguration flagsConfiguration;
 
   /// Whether successful flag evaluations should be added to the active RUM
@@ -61,7 +57,7 @@ class DatadogFlagsPlugin extends DatadogPlugin {
   final DatadogFlagsConfiguration _flagsConfiguration;
   final bool _rumIntegrationEnabled;
   final DatadogFlags _flags;
-  Map<String, DatadogFlutterFlagsClient> _clients = {};
+  final Map<String, DatadogFlutterFlagsClient> _clients = {};
 
   Future<void> _ready = Future<void>.value();
 
@@ -90,14 +86,8 @@ class DatadogFlagsPlugin extends DatadogPlugin {
   /// assignments.
   DatadogFlutterFlagsClient sharedClient({
     String name = DatadogFlags.defaultClientName,
-  }) =>
-      _sharedClient(name, _clients);
-
-  DatadogFlutterFlagsClient _sharedClient(
-    String name,
-    Map<String, DatadogFlutterFlagsClient> clients,
-  ) {
-    return clients.putIfAbsent(
+  }) {
+    return _clients.putIfAbsent(
       name,
       () => DatadogFlutterFlagsClient(
         name: name,
@@ -116,8 +106,7 @@ class DatadogFlagsPlugin extends DatadogPlugin {
 
   @override
   void shutdown() {
-    // Pending accepted events retain their originating clients, not replacements.
-    _clients = {};
+    _clients.clear();
     unawaited(_flags.disable());
   }
 
@@ -154,16 +143,8 @@ class DatadogFlagsPlugin extends DatadogPlugin {
           version: datadogConfiguration.versionTag,
         );
 
-    final clients = _clients;
     return DatadogFlagsConfiguration(
-      onFirstFlags: _flagsConfiguration.onFirstFlags == null
-          ? null
-          : (client, event) {
-              final integrated = _sharedClient(client.name, clients);
-              // Bind before app code can evaluate or reenter through the wrapper.
-              integrated._delegate = client;
-              _flagsConfiguration.onFirstFlags!(integrated, event);
-            },
+      onFirstFlags: _flagsConfiguration.onFirstFlags,
       customFlagsEndpoint: _flagsConfiguration.customFlagsEndpoint,
       customFlagsHeaders: _flagsConfiguration.customFlagsHeaders,
       initializationTimeout: _flagsConfiguration.initializationTimeout,

@@ -57,7 +57,7 @@ class _Store implements DatadogFlagsStore {
 }
 
 Future<DatadogFlags> _owner({
-  required void Function(DatadogFlagsClient, FlagsClientEvent) callback,
+  required void Function(FlagsClientEvent) callback,
   DatadogFlagsStore? store,
   Future<http.Response> Function(http.Request)? request,
   Duration? timeout,
@@ -88,9 +88,8 @@ void main() {
     final flags = await _owner(
         store: _Store(() async => _cached()),
         request: (_) => network.future,
-        callback: (callbackClient, event) {
-          expect(callbackClient, same(client));
-          early = callbackClient.getBooleanDetails(
+        callback: (event) {
+          early = client.getBooleanDetails(
               key: 'checkout.enabled', defaultValue: true);
           events.add(event);
           delivered.complete();
@@ -118,7 +117,7 @@ void main() {
         () async {
       final events = <FlagsClientEvent>[];
       final flags = await _owner(
-          callback: (_, event) => events.add(event),
+          callback: events.add,
           store: fromCache ? _Store(() async => _cached(empty: true)) : null,
           request: (_) async => _response({}));
       await flags.sharedClient().initialize(_context);
@@ -138,7 +137,7 @@ void main() {
         return null;
       });
       final flags = await _owner(
-          callback: (_, event) => events.add(event),
+          callback: events.add,
           store: store,
           request: (_) async => _response({'network-only': true}));
       await flags.sharedClient().initialize(_context);
@@ -151,7 +150,7 @@ void main() {
   test('failed initialization without installation does not notify', () async {
     final events = <FlagsClientEvent>[];
     final flags = await _owner(
-        callback: (_, event) => events.add(event),
+        callback: events.add,
         store: _Store(() async => throw FormatException('invalid cache')),
         request: (_) async => throw StateError('offline'));
     await flags.sharedClient().initialize(_context);
@@ -164,7 +163,7 @@ void main() {
     final events = <FlagsClientEvent>[];
     var requests = 0;
     final flags = await _owner(
-        callback: (_, event) => events.add(event),
+        callback: events.add,
         request: (_) => ++requests == 1
             ? oldResponse.future
             : Future.value(_response({'current': true})));
@@ -182,9 +181,9 @@ void main() {
     var calls = 0;
     late DatadogFlagsClient client;
     Future<void>? refresh;
-    final flags = await _owner(callback: (callbackClient, _) {
+    final flags = await _owner(callback: (_) {
       calls++;
-      refresh = callbackClient.reset().then((_) => callbackClient
+      refresh = client.reset().then((_) => client
           .initialize(const FlagsEvaluationContext(targetingKey: 'new-user')));
     });
     client = flags.sharedClient();
@@ -197,7 +196,7 @@ void main() {
       'synchronous callback exception does not clear assignments or fail initialization',
       () async {
     var calls = 0;
-    final flags = await _owner(callback: (callbackClient, _) {
+    final flags = await _owner(callback: (_) {
       calls++;
       throw StateError('app');
     });
@@ -214,17 +213,11 @@ void main() {
 
   test('each client independently captures the configured function', () async {
     final events = <FlagsClientEvent>[];
-    final clients = <DatadogFlagsClient>[];
-    final flags = await _owner(callback: (client, event) {
-      clients.add(client);
-      events.add(event);
-    });
+    final flags = await _owner(callback: events.add);
     await flags.sharedClient().initialize(_context);
     await flags.sharedClient().initialize(_context);
     await flags.sharedClient(name: 'other').initialize(_context);
     expect(events, hasLength(2));
-    expect(clients[0], same(flags.sharedClient()));
-    expect(clients[1], same(flags.sharedClient(name: 'other')));
   });
 
   test('notification does not wait for persistence or emit telemetry',
@@ -235,7 +228,7 @@ void main() {
     final store = _Store(() async => null)..save = (_) => saved.future;
     final flags = await _owner(
         store: store,
-        callback: (_, event) => delivered.complete(),
+        callback: (_) => delivered.complete(),
         request: (request) async {
           requests.add(request.url);
           return _response();
@@ -258,7 +251,7 @@ void main() {
     final delivered = Completer<void>();
     final flags = await _owner(
         timeout: const Duration(milliseconds: 1),
-        callback: (_, event) => delivered.complete(),
+        callback: (_) => delivered.complete(),
         request: (_) => response.future);
     await expectLater(flags.sharedClient().initialize(_context),
         throwsA(isA<FlagsInitializationTimeoutException>()));

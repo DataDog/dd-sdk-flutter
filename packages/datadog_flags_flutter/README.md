@@ -124,18 +124,16 @@ Pull requests are welcome. For more information, read the
 
 ## First installed flags
 
-Configure `flagsConfiguration.onFirstFlags` before SDK initialization. Its type
-is `void Function(DatadogFlagsClient, FlagsClientEvent)?`. Flutter supplies the
-registered `DatadogFlutterFlagsClient` through the shared public client interface,
-with its delegate already bound so immediate evaluations include RUM integration.
-Delivery may precede initialization completion; apps use the supplied client
-without arranging their own client-reference handoff.
+Configure `flagsConfiguration.onFirstFlags` before SDK initialization. The
+callback is the core Dart `void Function(FlagsClientEvent)?` function; it receives
+only the event. Applications own any captured client reference.
 
-The [example app](example/lib/main.dart) logs `event.flagsChanged` directly,
-evaluates its existing `DD_FLAG_KEY` (default `checkout.enabled`) through the
-callback client, and displays the result in the “First flags value” row alongside
-the existing post-initialization evaluation. Reads use current installed
-assignments, not a snapshot pinned to the event.
+The [example app](example/lib/main.dart) completes an application-owned event
+Future in the callback, then attaches a continuation after obtaining its client.
+The continuation logs `event.flagsChanged` directly, evaluates the existing
+`DD_FLAG_KEY` (default `checkout.enabled`), and displays “First flags value”
+alongside the existing result. An early event is retained without blocking
+construction. Reads use current assignments, not an event-pinned snapshot.
 
 The example's fixture integration tests run its actual entry point with a
 nonempty test token, a fixture HTTP client, and the SDK's no-op native platform:
