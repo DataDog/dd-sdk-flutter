@@ -219,6 +219,7 @@ android-integration-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
+      - .build/test-results/*_android_integration.jsonl
 
 ios-integration-test:
   stage: integration-test
