@@ -18,7 +18,7 @@ Session Replay for Flutter requires using the [Datadog Flutter Plugin](https://p
 To use Datadog Session Replay for Flutter, first add the package to your `pubspec.yaml`:
 
 ```yaml
-packages:
+dependencies:
   # other packages
   datadog_flutter_plugin: ^x.x.x
   datadog_session_replay: ^x.x.x
@@ -32,25 +32,40 @@ import 'package:datadog_session_replay/datadog_session_replay.dart';
 // ....
 final configuration = DatadogConfiguration(
     // Normal Datadog configuration
-    clientToken: 'client-token',
+    clientToken: '<client-token>',
+    env: '<env-name>',
+    site: DatadogSite.us1,
     // RUM is required to use Datadog Session Replay
-    rumConfiguration: RumConfiguration(
-        applicationId: '<application-id'>
+    rumConfiguration: DatadogRumConfiguration(
+        applicationId: '<application-id>',
     ),
 )..enableSessionReplay(
     DatadogSessionReplayConfiguration(
         // Setup default text, image, and touch privacy
         textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskSensitiveInputs,
         touchPrivacyLevel: TouchPrivacyLevel.show,
-        // Setup session replay sample rate.
+        // Percentage (0-100) of RUM sessions that get a replay. 1.0 records 1%.
         replaySampleRate: 1.0,
     ),
 );
 ```
 
+### Sampling
+
+`replaySampleRate` is the percentage of RUM sessions that get a replay. It applies on top of the RUM `sessionSamplingRate`, because Session Replay can only record sessions that RUM tracks. For example, with RUM at 50% and Session Replay at 20%, about 10% of all sessions have a replay.
+
+The decision is made for each RUM session, from its session ID:
+
+* It is deterministic: the same session ID always gets the same decision, matching the other Datadog SDKs. In a hybrid app, Flutter and the native host agree on which sessions are recorded.
+* It is made again whenever a new RUM session starts during the same app launch, for example after 15 minutes of inactivity or after a session reaches 4 hours.
+
+When Flutter is embedded in a native host app (`isEmbedded: true`), `replaySampleRate` is ignored: the native Session Replay's sample rate decides which sessions are recorded.
+
 ### Manual start and stop
 
 By default, Session Replay starts recording when it initializes. To start recording manually, set `startRecordingImmediately: false` on `DatadogSessionReplayConfiguration`. Then, call `DatadogSessionReplay.instance!.startRecording()` to begin recording and `DatadogSessionReplay.instance!.stopRecording()` to pause it. The background processor isolate stays running while recording is stopped, so resuming is fast.
+
+Recording only happens while the current RUM session is selected by `replaySampleRate`. If you call `startRecording()` during a session that was not selected, nothing is captured until a selected session starts, and recording then begins on its own. `stopRecording()` stays in effect across session changes. `DatadogSessionReplay.instance!.isCapturing` tells you whether capture is running right now.
 
 Calling `stopRecording()` also stops pointer capture (touch and gesture events). Both resume on the next `startRecording()` call.
 
@@ -61,6 +76,8 @@ DatadogSessionReplay.instance!.startRecording();
 // Pause capture (for example, before showing a sensitive screen)
 DatadogSessionReplay.instance!.stopRecording();
 ```
+
+For a complete app that uses sampling and manual start and stop, see the [Session Replay example](../../examples/session_replay_example).
 
 Last, add a SessionReplayCapture widget to the root of your Widget tree, above your MaterialApp or similar application widget:
 

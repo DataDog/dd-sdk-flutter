@@ -58,15 +58,18 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
 
     final contextChangedListener =
         ObjCBlock_ffiVoid_FlutterRUMCoreContext.listener((context) {
-      RUMContext? dartContext;
-      if (context != null) {
-        dartContext = RUMContext(
-          applicationId: context.applicationID.toDartString(),
-          sessionId: context.sessionID.toDartString(),
-          viewId: context.viewID?.toDartString(),
-        );
-        onContextChanged(dartContext);
-      }
+      // A nil context means there is no sampled RUM session. Forward it as a
+      // context without a session (as Android does) so replay stops instead
+      // of continuing against the previous session.
+      onContextChanged(
+        context == null
+            ? const RUMContext(applicationId: '', sessionId: '')
+            : RUMContext(
+                applicationId: context.applicationID.toDartString(),
+                sessionId: context.sessionID.toDartString(),
+                viewId: context.viewID?.toDartString(),
+              ),
+      );
     });
 
     final iOsConfiguration = FlutterSessionReplayConfiguration.alloc()
