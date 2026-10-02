@@ -426,6 +426,11 @@ Future<void> prepareRelease(
     await _applyPublishPrep(packagePlan, ctx, manifestEntries: manifestEntries);
   }
 
+  // Keeps the eligible group's native SDK pinned to a real version even on
+  // a run that ships none of its members -- see
+  // ReleasePlan.unshippedNativeSdkPins.
+  await _pinNativeSdkDeltas(plan.unshippedNativeSdkPins);
+
   await writeManifest(
     ctx.repoRoot,
     ReleaseManifest(contentCommit: contentCommit, packages: manifestEntries),
@@ -628,14 +633,8 @@ extension NativeSdkDeltaResolution on Iterable<NativeSdkDelta> {
   }
 }
 
-Future<void> _applyPublishPrep(
-  PackagePlan packagePlan,
-  RunContext ctx, {
-  required List<ManifestPackageEntry> manifestEntries,
-}) async {
-  final pkg = packagePlan.package;
-
-  for (final delta in packagePlan.nativeSdkDeltas) {
+Future<void> _pinNativeSdkDeltas(List<NativeSdkDelta> deltas) async {
+  for (final delta in deltas) {
     final targetVersion = delta.targetVersion;
     if (targetVersion == null) continue;
 
@@ -659,6 +658,16 @@ Future<void> _applyPublishPrep(
       }
     }
   }
+}
+
+Future<void> _applyPublishPrep(
+  PackagePlan packagePlan,
+  RunContext ctx, {
+  required List<ManifestPackageEntry> manifestEntries,
+}) async {
+  final pkg = packagePlan.package;
+
+  await _pinNativeSdkDeltas(packagePlan.nativeSdkDeltas);
 
   manifestEntries.add(
     ManifestPackageEntry(

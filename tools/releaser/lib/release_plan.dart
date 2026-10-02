@@ -150,7 +150,18 @@ class ReleasePlan {
   final TriggerContext trigger;
   final List<PackagePlan> packages;
 
-  ReleasePlan({required this.trigger, required this.packages});
+  /// Native SDK deltas resolved for a [_nativeSdkEligibleGroupKey] member
+  /// that isn't shipping this run -- `prepare_release.dart` still pins
+  /// these, so the eligible group never sits on a floating native SDK
+  /// declaration just because nothing else gave one of its members a
+  /// reason to ship. Empty on a patch run (see [resolveNativeSdkTarget]).
+  final List<NativeSdkDelta> unshippedNativeSdkPins;
+
+  ReleasePlan({
+    required this.trigger,
+    required this.packages,
+    this.unshippedNativeSdkPins = const [],
+  });
 }
 
 /// Computes what a release run would do, without writing anything. Shared
@@ -181,6 +192,7 @@ Future<ReleasePlan> computeReleasePlan(
   // Collected across every package so an `--all` run reports every stale pubspec
   // at once instead of dying on the first.
   final targetConflicts = <String>[];
+  final unshippedNativeSdkPins = <NativeSdkDelta>[];
 
   final plans = <PackagePlan>[];
   for (final pkg in selected) {
@@ -192,8 +204,33 @@ Future<ReleasePlan> computeReleasePlan(
       await published(pkg.name),
       isExplicitlyRequested: ctx.requestedPackages.contains(pkg.name),
       targetConflicts: targetConflicts,
+      unshippedNativeSdkPins: unshippedNativeSdkPins,
     );
     if (plan != null) plans.add(plan);
+  }
+
+  // Second sweep: a package whose plan was never computed (not selected
+  // this run) may still need its native SDK pin resolved.
+  if (ctx.trigger != TriggerContext.patch) {
+    final visited = selected.map((pkg) => pkg.name).toSet();
+    for (final pkg in groups.expand((g) => g.members)) {
+      if (pkg.groupKey != _nativeSdkEligibleGroupKey ||
+          visited.contains(pkg.name)) {
+        continue;
+      }
+      final files = resolveNativeDependencyFiles(pkg.absolutePath(ctx.repoRoot));
+      unshippedNativeSdkPins.addAll(
+        await _computeNativeSdkDeltas(
+          pkg,
+          files,
+          ctx,
+          resolvedGitDir,
+          null,
+          gateways,
+          <String>[],
+        ),
+      );
+    }
   }
 
   if (targetConflicts.isNotEmpty) {
@@ -204,7 +241,11 @@ Future<ReleasePlan> computeReleasePlan(
     );
   }
 
-  return ReleasePlan(trigger: ctx.trigger, packages: plans);
+  return ReleasePlan(
+    trigger: ctx.trigger,
+    packages: plans,
+    unshippedNativeSdkPins: unshippedNativeSdkPins,
+  );
 }
 
 /// [NativeSdkGateways] backed by real `gh` calls.
@@ -290,6 +331,7 @@ Future<PackagePlan?> _computePackagePlan(
   PublishedVersions published, {
   required bool isExplicitlyRequested,
   required List<String> targetConflicts,
+  required List<NativeSdkDelta> unshippedNativeSdkPins,
 }) async {
   // Two questions, answered separately because on a pre-release line they
   // have different answers:
@@ -388,16 +430,35 @@ Future<PackagePlan?> _computePackagePlan(
 
   final commits = await commitsSince(commitBase);
 
-  // Whether this package releases at all is decided before anything touches
-  // the network -- resolving native SDK targets for a package with nothing to
-  // ship is pure waste.
+  // Resolved ahead of the eligibility gate below, regardless of this
+  // package's own commits, so a delta alone can qualify it -- see the gate.
+  final nativeSdkDeltas = isNativeSdkEligible
+      ? await _computeNativeSdkDeltas(
+          pkg,
+          files,
+          ctx,
+          gitDir,
+          commitBase,
+          gateways,
+          warnings,
+        )
+      : const <NativeSdkDelta>[];
+
+  // Whether this package releases at all is decided here -- a genuine native
+  // SDK delta on its own (resolved above) is as much a reason to ship as a
+  // qualifying commit.
   //
   // A patch run is exempt: its single package comes from the branch name, and
   // a patch branch exists precisely because something needs shipping from it.
   if (ctx.trigger != TriggerContext.patch &&
       aggregateBumpLevel(commits) == null &&
+      nativeSdkAggregateBump(nativeSdkDeltas) == null &&
       !isExplicitlyRequested &&
       !(isNativeSdkEligible && _hasForcedNativeUpdate(files, ctx))) {
+    // Not shipping, but still resolved above -- keeps the eligible group
+    // pinned to a real version even when nothing gave it its own reason to
+    // ship. See [ReleasePlan.unshippedNativeSdkPins].
+    unshippedNativeSdkPins.addAll(nativeSdkDeltas);
     return null;
   }
 
@@ -411,18 +472,6 @@ Future<PackagePlan?> _computePackagePlan(
       return null;
     }
   }
-
-  final nativeSdkDeltas = isNativeSdkEligible
-      ? await _computeNativeSdkDeltas(
-          pkg,
-          files,
-          ctx,
-          gitDir,
-          commitBase,
-          gateways,
-          warnings,
-        )
-      : const <NativeSdkDelta>[];
 
   final nativeDependencyChanges = isNativeSdkEligible
       ? const <NativeDependencyChange>[]

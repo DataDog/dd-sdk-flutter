@@ -534,7 +534,11 @@ void main() {
       await fixture.commit('chore: add CMakeLists fixture');
 
       // Stubbed for this exact repo and ref: resolving anything else is
-      // unstubbed, and so fails the test.
+      // unstubbed, and so fails the test. `fetchLatest('...dd-sdk-ios')` is
+      // the one exception -- the group `setUp` above floats
+      // datadog_flutter_plugin_ios's podspec, so it's resolved too (for
+      // pinning only, via ReleasePlan.unshippedNativeSdkPins) even though
+      // this run only requested the desktop package.
       final gateways = MockNativeSdkGateways();
       when(
         () => gateways.releaseExists(any(), any()),
@@ -542,6 +546,9 @@ void main() {
       when(
         () => gateways.resolveCommitSha('DataDog/dd-sdk-cpp', 'v1.4.0'),
       ).thenAnswer((_) async => 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2');
+      when(
+        () => gateways.fetchLatest('DataDog/dd-sdk-ios'),
+      ).thenAnswer((_) async => '3.13.0');
 
       final result = await plan(
         mainlineCtx(
@@ -631,6 +638,112 @@ void main() {
       expect(packagePlan.bumpLevel, VersionBumpType.minor);
       expect(packagePlan.newVersion, '3.11.0');
     });
+
+    test('an --all run ships a package whose only reason to ship is a '
+        'native SDK delta, with no commits and without being requested', () async {
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+            'datadog_flutter_plugin_ios.podspec',
+        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+      );
+      await fixture.commit('chore: pin for the 3.10.0 release');
+      await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
+
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+        'datadog_flutter_plugin_ios.podspec',
+        _iosPodspecWithDatadogDependency, // floats again, back to '~> 3'
+      );
+      await fixture.commit('chore: float the constraint again post-release');
+
+      final gateways = MockNativeSdkGateways();
+      when(() => gateways.fetchLatest(any())).thenAnswer((_) async => '3.13.0');
+
+      final result = await plan(
+        mainlineCtx(), // --all, nothing named explicitly
+        published: {
+          'datadog_flutter_plugin_ios': ['3.10.0'],
+        },
+        gateways: gateways,
+      );
+
+      final packagePlan = result.packages.singleWhere(
+        (p) => p.package.name == 'datadog_flutter_plugin_ios',
+      );
+      expect(packagePlan.bumpLevel, VersionBumpType.minor);
+      expect(packagePlan.newVersion, '3.11.0');
+    });
+
+    test(
+      'shipping only an unrelated package still resolves the eligible '
+      "group's native SDK pin, for prepare_release.dart to apply",
+      () async {
+        await fixture.tag('datadog_dio/v2.2.0');
+        fixture.writeFile('packages/datadog_dio/CHANGES', 'work');
+        await fixture.commit('feat: something new in dio');
+
+        // Still pinned at exactly what it last shipped -- no delta, so
+        // this package has no reason of its own to ship, but its pin still
+        // needs resolving (and, via prepare_release.dart, re-applying).
+        fixture.writeFile(
+          'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+              'datadog_flutter_plugin_ios.podspec',
+          "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+        );
+        await fixture.commit('chore: pin for the 3.10.0 release');
+        await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
+
+        final result = await plan(
+          mainlineCtx(), // --all, nothing named explicitly
+          published: {
+            'datadog_dio': ['2.1.0', '2.2.0'],
+            'datadog_flutter_plugin_ios': ['3.10.0'],
+          },
+          // Nothing stubbed: a resolved-but-unchanged pin never asks
+          // gateways.fetchLatest about anything.
+        );
+
+        expect(
+          result.packages.map((p) => p.package.name),
+          ['datadog_dio'],
+        );
+        expect(result.unshippedNativeSdkPins, hasLength(1));
+        expect(
+          result.unshippedNativeSdkPins.single.targetVersion,
+          '3.10.0',
+        );
+      },
+    );
+
+    test(
+      'an --all run leaves a package out when its existing pin already '
+      'matches what it last shipped, with no qualifying commits',
+      () async {
+        const iosPackage =
+            'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios';
+
+        fixture.writeFile(
+          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
+          "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+        );
+        await fixture.commit('chore: pin for the 3.10.0 release');
+        await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
+
+        // Still pinned at exactly what was last shipped -- nothing for
+        // resolveNativeSdkTarget to even ask gateways.fetchLatest about.
+        final result = await plan(
+          mainlineCtx(),
+          published: {
+            'datadog_flutter_plugin_ios': ['3.10.0'],
+          },
+        );
+
+        expect(
+          result.packages.map((p) => p.package.name),
+          isNot(contains('datadog_flutter_plugin_ios')),
+        );
+      },
+    );
 
     test('a pin in the working tree is honoured without asking what is '
         'newest, and still counts as a change', () async {
