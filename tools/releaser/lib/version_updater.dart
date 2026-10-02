@@ -10,6 +10,7 @@ import 'package:path/path.dart' as path;
 import 'package:version/version.dart';
 
 import 'command.dart';
+import 'flags_version.dart';
 import 'helpers.dart';
 
 enum VersionBumpType { major, minor, rev, prerelease }
@@ -92,7 +93,7 @@ Future<bool> updateVersions(
 
   await _updateVersionDartFile(packageRoot, version, logger, dryRun);
 
-  return true;
+  return dryRun || validateFlagsVersion(packageRoot, logger);
 }
 
 Future<bool> _updatePackagePubspec(

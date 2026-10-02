@@ -30,6 +30,12 @@ It performs the following actions:
 Still TODO:
 * Opens a PR on your behalf into `develop` (or branch specified with `--branch`)
 
+## Flags version check
+
+The existing version updater keeps `datadog_flags/lib/src/version.dart` in sync with its `pubspec.yaml`.
+CI, release preparation, and the GitHub deployment command reject missing or mismatched Flags versions.
+Run `dart run bin/check_flags_version.dart` from this directory to check without changing files.
+
 ## Post review
 
 After the release branch is finished building, you can deploy it with:
