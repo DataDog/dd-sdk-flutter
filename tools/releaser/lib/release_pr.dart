@@ -49,6 +49,13 @@ String prBody(
 }) {
   final buffer = StringBuffer();
 
+  buffer.writeln(
+    '> If you need to modify this changelog, check out this branch locally, '
+    'edit CHANGELOG.md, then run '
+    '`dart run tools/releaser/bin/amend_release_changelog.dart` -- rather '
+    'than pushing directly or using GitHub\'s suggestion UI.',
+  );
+  buffer.writeln();
   buffer.writeln('## Versions');
   buffer.writeln();
   buffer.writeln('| Package | Current | New | Bump |');

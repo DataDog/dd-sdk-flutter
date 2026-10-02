@@ -35,6 +35,7 @@ import 'package:git/git.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:releaser/changelog_util.dart';
+import 'package:releaser/cli_logging.dart';
 import 'package:releaser/git/git_dir.dart';
 import 'package:releaser/git/release_git.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
@@ -49,14 +50,7 @@ const _ciStatusContext = 'dd-gitlab/notify-pipeline-succeeded';
 const _publishWorkflowFile = 'publish-package.yml';
 
 Future<void> main(List<String> arguments) async {
-  Logger.root.onRecord.listen((record) {
-    if (record.level >= Level.WARNING) {
-      stderr.writeln(record.message);
-    } else {
-      print(record.message);
-    }
-  });
-  Logger.root.level = Level.FINE;
+  configureCliLogging();
 
   final argParser = ArgParser()
     ..addOption(

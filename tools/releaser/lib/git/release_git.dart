@@ -71,6 +71,12 @@ Future<void> createAndCheckoutBranch(
   );
 }
 
+/// Stages everything under [gitDir] without committing -- used to fold a
+/// working-tree edit into an `amendCommit` call rather than a fresh commit.
+Future<void> stageAll(GitDir gitDir, Logger logger) async {
+  await _run(gitDir, ['add', '.'], logger, 'Failed to stage changes');
+}
+
 /// Stages everything under [gitDir] and commits, returning the new
 /// commit's full SHA -- callers need this both to record
 /// [ReleaseManifest.contentCommit] and, in tests, to assert the two-commit
@@ -181,15 +187,347 @@ Future<void> pushBranchAt(
   logger.info('ℹ️ Pushing $commitSha as $branchName');
   await _run(
     gitDir,
-    [
-      'push',
-      if (force) '--force',
-      remote,
-      '$commitSha:refs/heads/$branchName',
-    ],
+    ['push', if (force) '--force', remote, '$commitSha:refs/heads/$branchName'],
     logger,
     'Failed to push $branchName at $commitSha',
   );
+}
+
+/// Derives a `release-content/{id}` branch name from its paired
+/// `release-prep/{id}` branch -- shared by `prepare_release.dart` (which
+/// creates it) and `amend_release_changelog.dart` (which force-moves it via
+/// [pushBranchAt] after a changelog fixup), so the naming stays in one
+/// place.
+String contentBranchNameFor(String workingBranch) {
+  const prefix = 'release-prep/';
+  if (!workingBranch.startsWith(prefix)) {
+    throw StateError(
+      '$workingBranch is not a release-prep branch -- it has no paired '
+      'release-content branch.',
+    );
+  }
+  return 'release-content/${workingBranch.substring(prefix.length)}';
+}
+
+/// Repo-relative paths that differ from [ref] in the working tree, staged
+/// or not, plus any untracked file -- used by `amend_release_changelog.dart`
+/// to check a hand-edit's diff stays within commit A's eligible files
+/// before folding it in.
+Future<List<String>> changedFilesAgainst(
+  GitDir gitDir,
+  String ref,
+  Logger logger,
+) async {
+  final tracked = await _run(
+    gitDir,
+    ['diff', '--name-only', ref],
+    logger,
+    'Failed to diff working tree against $ref',
+  );
+  final untracked = await _run(
+    gitDir,
+    ['ls-files', '--others', '--exclude-standard'],
+    logger,
+    'Failed to list untracked files',
+  );
+  return {
+    ...(tracked.stdout as String).split('\n').where((l) => l.isNotEmpty),
+    ...(untracked.stdout as String).split('\n').where((l) => l.isNotEmpty),
+  }.toList();
+}
+
+/// `git stash push -u`, returning the created stash's commit SHA (not a
+/// `stash@{n}` index, which shifts under concurrent stash activity) so
+/// [stashApply]/[stashDrop] can re-find it later by content rather than by
+/// position.
+Future<String> stashPush(GitDir gitDir, Logger logger, String message) async {
+  await _run(
+    gitDir,
+    ['stash', 'push', '-u', '-m', message],
+    logger,
+    'Failed to stash working tree changes',
+  );
+  return _findStash(gitDir, logger, message);
+}
+
+Future<String> _findStash(GitDir gitDir, Logger logger, String message) async {
+  final list = await _run(
+    gitDir,
+    ['stash', 'list', '--format=%H %gs'],
+    logger,
+    'Failed to list stashes',
+  );
+  final line = (list.stdout as String)
+      .split('\n')
+      .firstWhere((l) => l.contains(message), orElse: () => '');
+  if (line.isEmpty) {
+    throw GitReleaseActionError('No stash entry found for "$message".');
+  }
+  return line.split(' ').first;
+}
+
+/// Applies (not pops) the stash at [stashSha] -- directly by its commit SHA
+/// (which `git stash apply`, unlike `git stash drop`, accepts), so this
+/// never has to resolve a `stash@{n}` index that a concurrent `git stash
+/// push` elsewhere could shift out from under it.
+Future<void> stashApply(GitDir gitDir, Logger logger, String stashSha) async {
+  await _run(
+    gitDir,
+    ['stash', 'apply', stashSha],
+    logger,
+    'Failed to apply stash $stashSha',
+  );
+}
+
+/// Drops the stash at [stashSha]. A no-op if it's already gone.
+///
+/// `git stash drop` (unlike [stashApply]) only accepts a `stash@{n}` index,
+/// not a raw SHA, so this still has to resolve one -- but re-verifies the
+/// resolved index still points at [stashSha] immediately before dropping it,
+/// so a concurrent `git stash push` that shifted the stack in between causes
+/// a loud failure instead of silently dropping the wrong entry.
+Future<void> stashDrop(GitDir gitDir, Logger logger, String stashSha) async {
+  final ref = await _stashRefFor(
+    gitDir,
+    logger,
+    stashSha,
+    ifMissing: () => null,
+  );
+  if (ref == null) return;
+
+  final resolved = await _run(
+    gitDir,
+    ['rev-parse', '$ref^{commit}'],
+    logger,
+    'Failed to resolve $ref before dropping it',
+  );
+  if ((resolved.stdout as String).trim() != stashSha) {
+    throw GitReleaseActionError(
+      '$ref no longer points at $stashSha (something else changed the '
+      'stash stack) -- refusing to drop it.',
+    );
+  }
+
+  await _run(
+    gitDir,
+    ['stash', 'drop', ref],
+    logger,
+    'Failed to drop stash $ref',
+  );
+}
+
+Future<String?> _stashRefFor(
+  GitDir gitDir,
+  Logger logger,
+  String stashSha, {
+  String? Function()? ifMissing,
+}) async {
+  final list = await _run(
+    gitDir,
+    ['stash', 'list', '--format=%H %gd'],
+    logger,
+    'Failed to list stashes',
+  );
+  final line = (list.stdout as String)
+      .split('\n')
+      .firstWhere((l) => l.startsWith(stashSha), orElse: () => '');
+  if (line.isEmpty) {
+    if (ifMissing != null) return ifMissing();
+    throw GitReleaseActionError('Stash $stashSha no longer exists.');
+  }
+  return line.split(' ').last;
+}
+
+/// Checks out [ref] directly (detached, if [ref] is a SHA) -- used to move
+/// onto commit A before amending it.
+Future<void> checkoutRef(GitDir gitDir, String ref, Logger logger) async {
+  await _run(gitDir, ['checkout', ref], logger, 'Failed to checkout $ref');
+}
+
+/// `git commit --amend --no-edit`, returning the amended commit's new SHA.
+Future<String> amendCommit(GitDir gitDir, Logger logger) async {
+  await _run(
+    gitDir,
+    ['commit', '--amend', '--no-edit'],
+    logger,
+    'Failed to amend commit',
+  );
+  final result = await _run(
+    gitDir,
+    ['rev-parse', 'HEAD'],
+    logger,
+    'Failed to resolve HEAD after amend',
+  );
+  return (result.stdout as String).trim();
+}
+
+/// `git rebase --onto newBase oldBase branch` -- replays [branch]'s commits
+/// after [oldBase] onto [newBase], moving [branch]'s ref and leaving it
+/// checked out. Used to replay commit B onto an amended commit A.
+Future<void> rebaseOnto(
+  GitDir gitDir,
+  String newBase,
+  String oldBase,
+  String branch,
+  Logger logger,
+) async {
+  await _run(
+    gitDir,
+    ['rebase', '--onto', newBase, oldBase, branch],
+    logger,
+    'Failed to rebase $branch onto $newBase',
+  );
+}
+
+/// Number of commits reachable from [to] but not [from] -- `git rev-list
+/// --count from..to`.
+Future<int> commitCountBetween(
+  GitDir gitDir,
+  String from,
+  String to,
+  Logger logger,
+) async {
+  final result = await _run(
+    gitDir,
+    ['rev-list', '--count', '$from..$to'],
+    logger,
+    'Failed to count commits between $from and $to',
+  );
+  return int.parse((result.stdout as String).trim());
+}
+
+/// `git fetch`es [branchName] and returns its current tip on [remote] --
+/// call this *before* any local rewriting starts, then hand the result to
+/// [forcePushBranch] as `expectedTip` so the lease it checks reflects the
+/// remote as it was when the caller began, not whatever it's drifted to by
+/// the time the push actually happens.
+Future<String> remoteTipFor(
+  GitDir gitDir,
+  String branchName,
+  Logger logger, {
+  String remote = 'origin',
+}) async {
+  await _run(
+    gitDir,
+    ['fetch', remote, branchName],
+    logger,
+    'Failed to fetch $branchName',
+  );
+  final result = await _run(
+    gitDir,
+    ['rev-parse', 'FETCH_HEAD'],
+    logger,
+    'Failed to resolve fetched $branchName',
+  );
+  return (result.stdout as String).trim();
+}
+
+/// `git push --force-with-lease` for [branchName]'s current tip, refusing if
+/// [remote]'s copy of [branchName] is no longer at [expectedTip] -- unlike a
+/// plain `--force`. [expectedTip] is checked directly against the remote's
+/// actual value at push time, so, unlike re-fetching right before pushing,
+/// it can't be defeated by another update landing on [branchName] between
+/// when the caller captured [expectedTip] (via [remoteTipFor], before doing
+/// any local rewriting) and when this push happens.
+Future<void> forcePushBranch(
+  GitDir gitDir,
+  String branchName,
+  Logger logger, {
+  required String expectedTip,
+  String remote = 'origin',
+}) async {
+  logger.info('ℹ️ Force-pushing $branchName to $remote');
+  await _run(
+    gitDir,
+    [
+      'push',
+      '--force-with-lease=$branchName:$expectedTip',
+      remote,
+      branchName,
+    ],
+    logger,
+    'Failed to force-push $branchName',
+  );
+}
+
+/// One ref update for [forcePushRefsAtomic]: move [branchName] to
+/// [commitSha] on the remote, leased against [expectedTip].
+class LeasedRefUpdate {
+  final String branchName;
+  final String commitSha;
+  final String expectedTip;
+
+  LeasedRefUpdate({
+    required this.branchName,
+    required this.commitSha,
+    required this.expectedTip,
+  });
+}
+
+/// `git push --atomic` for several branches at once, each leased against
+/// its own [LeasedRefUpdate.expectedTip] -- either every ref in [updates]
+/// moves, or (if any one lease is stale, or the push otherwise fails) none
+/// of them do. Used where two refs must always advance together (e.g.
+/// `amend_release_changelog.dart`'s release-prep branch and its paired
+/// `release-content/*`), so two overlapping runs can't interleave into a
+/// state where one ref reflects this run and the other reflects a
+/// concurrent one.
+Future<void> forcePushRefsAtomic(
+  GitDir gitDir,
+  List<LeasedRefUpdate> updates,
+  Logger logger, {
+  String remote = 'origin',
+}) async {
+  final branchNames = updates.map((u) => u.branchName).join(', ');
+  logger.info('ℹ️ Atomically force-pushing $branchNames to $remote');
+  await _run(
+    gitDir,
+    [
+      'push',
+      '--atomic',
+      for (final update in updates)
+        '--force-with-lease=${update.branchName}:${update.expectedTip}',
+      remote,
+      for (final update in updates)
+        '${update.commitSha}:refs/heads/${update.branchName}',
+    ],
+    logger,
+    'Failed to atomically force-push $branchNames',
+  );
+}
+
+/// Best-effort `git rebase --abort` -- swallows the error `git` raises when
+/// there's nothing to abort, so callers can call this unconditionally from a
+/// catch block without checking `.git/rebase-*` state themselves first.
+Future<void> abortRebaseIfInProgress(GitDir gitDir, Logger logger) async {
+  final result = await Process.run('git', [
+    'rebase',
+    '--abort',
+  ], workingDirectory: gitDir.path);
+  if (result.exitCode != 0) {
+    logger.fine('ℹ️ Nothing to abort: ${result.stderr}');
+  }
+}
+
+/// Best-effort `git checkout [branch]` -- used to try to leave a reviewer
+/// back on their working branch after a failure partway through detached-HEAD
+/// surgery; swallows its own error since the caller is already mid-failure
+/// and a clearer message about the original error matters more than this.
+Future<void> tryCheckoutBranch(
+  GitDir gitDir,
+  String branch,
+  Logger logger,
+) async {
+  final result = await Process.run('git', [
+    'checkout',
+    branch,
+  ], workingDirectory: gitDir.path);
+  if (result.exitCode != 0) {
+    logger.shout(
+      '⚠️ Also failed to switch back to $branch -- you are left on a '
+      'detached HEAD: ${result.stderr}',
+    );
+  }
 }
 
 /// Whether [ancestorSha] is already reachable from [ref] -- `git merge-base

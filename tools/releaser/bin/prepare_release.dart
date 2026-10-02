@@ -31,6 +31,7 @@ import 'package:git/git.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:releaser/changelog_util.dart';
+import 'package:releaser/cli_logging.dart';
 import 'package:releaser/cmake_util.dart';
 import 'package:releaser/cocoapod_util.dart';
 import 'package:releaser/dependency_constraints.dart';
@@ -54,13 +55,7 @@ import 'package:releaser/yaml_util.dart';
 final _log = Logger('prepare_release');
 
 Future<void> main(List<String> arguments) async {
-  Logger.root.onRecord.listen((record) {
-    if (record.level >= Level.WARNING) {
-      stderr.writeln(record.message);
-    } else {
-      print(record.message);
-    }
-  });
+  configureCliLogging();
 
   final argParser = ArgParser()
     ..addOption(
@@ -116,8 +111,6 @@ Future<void> main(List<String> arguments) async {
     print(argParser.usage);
     return;
   }
-
-  Logger.root.level = Level.FINE;
 
   final gitDir = await getGitDir(args['repo-root'] as String?);
   if (gitDir == null) {
@@ -204,23 +197,23 @@ class _ReleaseTarget {
   factory _ReleaseTarget.forTrigger(RunContext ctx) {
     switch (ctx.trigger) {
       case TriggerContext.mainline:
-        final id = _dateId();
+        final workingBranch = 'release-prep/${_dateId()}';
         return _ReleaseTarget(
-          workingBranch: 'release-prep/$id',
+          workingBranch: workingBranch,
           prBase: 'main',
           createsNewBranch: true,
-          contentBranchName: 'release-content/$id',
+          contentBranchName: contentBranchNameFor(workingBranch),
         );
       case TriggerContext.preRelease:
-        final id = _dateId();
+        final workingBranch = 'release-prep/${_dateId()}';
         return _ReleaseTarget(
-          workingBranch: 'release-prep/$id',
+          workingBranch: workingBranch,
           // Every whitelisted pre-release branch is paired with its own
           // disposable `{branch}-main` -- release-prep never commits or
           // PRs onto the pre-release branch itself.
           prBase: '${ctx.currentBranch}-main',
           createsNewBranch: true,
-          contentBranchName: 'release-content/$id',
+          contentBranchName: contentBranchNameFor(workingBranch),
         );
       case TriggerContext.patch:
         return _ReleaseTarget(
