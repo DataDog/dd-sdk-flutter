@@ -121,3 +121,7 @@ Pull requests are welcome. For more information, read the
 ## License
 
 [Apache License, v2.0](LICENSE)
+
+Successful evaluation details report `CACHED` when the installed assignments
+were restored from the configured store, including an in-memory store. Once a
+network response replaces them, details report the response reason.

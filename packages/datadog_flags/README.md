@@ -359,3 +359,7 @@ dart run datadog_flags_example:typed_evaluation \
 The repository also includes a Flutter example screen in `examples/simple_example`
 that can initialize the SDK, refresh assignments, and evaluate multiple flag
 types.
+
+Successful evaluation details report `CACHED` when the installed assignments
+were restored from the configured store, including an in-memory store. Once a
+network response replaces them, details report the response reason.

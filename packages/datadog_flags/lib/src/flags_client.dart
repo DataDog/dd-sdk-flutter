@@ -81,6 +81,9 @@ class FlagDetails<T> {
   final String? variant;
 
   /// Provider-specific evaluation reason, when available.
+  ///
+  /// Returns `CACHED` for a successful evaluation from an
+  /// installed store snapshot until a network response replaces it.
   final String? reason;
 
   /// Programmatic error describing why the default value was returned.
