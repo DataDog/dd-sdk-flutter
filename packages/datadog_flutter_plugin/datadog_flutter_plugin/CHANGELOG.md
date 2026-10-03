@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.6.0
+
+### Features
+
+- Adds source-map symbolication support for WebAssembly-based Flutter web apps. Errors containing WebAssembly stack frames report `error.source_type: browser+wasm`. They also include `error.wasm_modules` metadata with `debug_info_type: sourcemap` for each unique `.wasm` module URL.
+- Update to iOS SDK 3.16.0. For a complete list of changes, see the [iOS SDK CHANGELOG](https://github.com/DataDog/dd-sdk-ios/blob/HEAD/CHANGELOG.md).
+  - Adds `disallowList` to `RUM.Configuration.URLSessionTracking` to exclude URLs from automatic RUM resource tracking, with `*` wildcard support.
+  - Fixes an `EXC_BREAKPOINT` crash that could occur when a log or RUM attribute's `encode(to:)` throws after partially encoding a value.
+- Update to Android SDK 3.13.1. For a complete list of changes, see the [Android SDK CHANGELOG](https://github.com/DataDog/dd-sdk-android/blob/HEAD/CHANGELOG.md).
+  - Fixes a bug where `view` was no longer required in RUM events, restoring the correct requirement.
+  - Adds widget support for `timeseries` in dashboard/graph configurations.
+  - Fixes long task duration computation producing incorrect values.
+  - Fixes a potential deadlock/ANR in `DatadogRumMonitor.handleEvent` during JVM crashes.
+  - Prevents inactive views from overwriting `last_view_event`.
+  - Fixes a `RuntimeException` that could occur in `SystemSettingsWrapper`.
+  - Guards `featureContext.clear()` calls in `DatadogCore` to prevent crashes.
+  - Always applies the configured app launch sample rate in the Profiling feature.
+  - `DdTags` are now mixed into web view events for richer metadata.
+  - Updates several hardcoded data limits to more permissive values.
+  - Improves telemetry for reading errors on dropped events.
+
 ## 3.5.1
 
 * [Web] Use JS types in TracingUrl closure. See [#1127](https://github.com/DataDog/dd-sdk-flutter/issues/1127)

@@ -243,9 +243,13 @@ scripts:
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd integration_test_app
 
+      # Full verbose output goes to a file; the job log only gets lines that start
+      # with non-whitespace plus errors, which drops xcodebuild's per-file build noise
+      # (it overflows GitLab's 4MB log limit during the first build otherwise).
       bash -c 'set -euxo pipefail; \
-      flutter test integration_test --machine -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
-      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_ios_integration.xml"'
+      flutter test integration_test -v --machine -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID 2>&1 \
+      | tee "$MELOS_ROOT_PATH/.build/ios_integration_verbose.log" \
+      | grep --line-buffered -E "^[^[:space:]]|error:|Failed|FAILED"'
     packageFilters:
       scope: 'datadog_flutter_plugin'
 

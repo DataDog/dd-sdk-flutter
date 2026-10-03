@@ -7,6 +7,7 @@ import 'dart:js_interop_unsafe';
 
 import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart';
 import 'package:flutter/foundation.dart';
+import 'package:web/web.dart';
 
 @JS('Error')
 @staticInterop
@@ -101,6 +102,23 @@ final _dartLineRegex = RegExp(
   r'(?<file>.+) (?<location>\d+:\d+)\s*(?<function>.+)',
 );
 
+// Recognizes WebAssembly stack-frame forms emitted by major browsers:
+// - V8: `at foo (https://host/main.dart.wasm:wasm-function[42]:0x10)`
+// - Firefox: `foo@https://host/main.dart.wasm:wasm-function[42]:0x10`
+// - Safari: `foo.wasm-function[42]@[wasm code]`
+// - anonymous V8 modules: `wasm://wasm/<hash>:wasm-function[42]:0x10`
+final _wasmStackFrameRegex = RegExp(
+  r'wasm-function(?:\[|@)|\[wasm code\]|wasm:\/\/|\.wasm(?=$|[:@)\s]|[?#])',
+  caseSensitive: false,
+);
+
+// Extracts the `(http|https|blob)://.../<module>.wasm[?<query>|#<fragment>]`
+// portion of a URL-backed frame, excluding `:wasm-function[42]:0x10`.
+final _wasmModuleUrlRegex = RegExp(
+  r'(?:(?:https?|blob):\/\/)[^\s()]+?\.wasm(?:[?#][^\s():)]*)?',
+  caseSensitive: false,
+);
+
 @JS('RegExp')
 extension type JSRegExp._(JSObject _) implements JSObject {
   external factory JSRegExp([String? pattern, String? flags]);
@@ -129,6 +147,50 @@ String? convertWebStackTrace(StackTrace? stackTrace) {
   }
 
   return stackTraceString;
+}
+
+String webErrorSourceType(StackTrace? stackTrace) {
+  if (stackTrace != null &&
+      _wasmStackFrameRegex.hasMatch(stackTrace.toString())) {
+    return 'browser+wasm';
+  }
+  return 'browser';
+}
+
+List<String> webWasmModuleUrls(StackTrace? stackTrace) {
+  if (stackTrace == null) return const [];
+
+  return _wasmModuleUrlRegex
+      .allMatches(stackTrace.toString())
+      .map((match) => match.group(0)!)
+      .toSet()
+      .toList();
+}
+
+/// Returns the URL of Flutter's primary WebAssembly application module.
+///
+/// Prefer the browser's resource timing entry so custom base paths and asset
+/// locations are preserved. Flutter's default module location is used as a
+/// fallback when resource timing entries are unavailable.
+String findFlutterWasmModuleUrl(Iterable<String> resourceUrls, {Uri? baseUri}) {
+  for (final resourceUrl in resourceUrls) {
+    final resourceUri = Uri.tryParse(resourceUrl);
+    if (resourceUri != null &&
+        resourceUri.pathSegments.isNotEmpty &&
+        resourceUri.pathSegments.last == 'main.dart.wasm') {
+      return resourceUrl;
+    }
+  }
+
+  return (baseUri ?? Uri.base).resolve('main.dart.wasm').toString();
+}
+
+String flutterWasmModuleUrl() {
+  final resourceUrls = window.performance
+      .getEntriesByType('resource')
+      .toDart
+      .map((entry) => entry.name);
+  return findFlutterWasmModuleUrl(resourceUrls);
 }
 
 extension TrackingConsentWebValue on TrackingConsent {
