@@ -41,6 +41,29 @@ hash, and runtime files against the release. It separately identifies the Git
 contract checkout and provider tree, dependency paths, and C01–C13 outcomes.
 CI archives these receipts and native example logs under `.build/`.
 
+## Hosted beta.2 results
+
+The core and browser runs below use provider commit
+`34136500a3721886b809169180684804b6d70cf6`, after merging `main` at
+`331f08b6638ad39203d6de16941b723b88495a9d` and `develop` at
+`29ddec14c3792a9ec197a398ad000b683a6ab759`.
+
+| Surface | Result | Scope |
+| --- | --- | --- |
+| Dart 3.10.0 VM | 116 tests passed; analysis and formatting passed | Full core suite, including randomized order with seed 1134 |
+| Chrome JavaScript on Dart 3.10.0 | 47 tests passed | Provider, C01–C13, and web evaluation metadata |
+| Chrome WebAssembly on Dart 3.10.0 | 47 tests passed | Same provider, contract, and telemetry tests |
+| Shared contract receipts | C01–C13 passed on VM and Chrome | Clean provider/contract trees; hosted archive and release runtime verified |
+| Flutter 3.44.0 wrapper | 16 tests passed; analysis passed | RUM hook, duplicate resolution, late initialization, and shutdown |
+| Consumer examples | Dependency resolution passed | Dart CLI and both Flutter examples use hosted beta.2 without an OpenFeature override |
+| Hosted dependency helpers | 10 tests passed | Archive/source checks, runtime comparison, and Melos-generated override handling |
+
+The previously order-sensitive failed-reconciliation test also passes alone and
+in the 27-test provider suite shuffled with seed 2993. The shared Flutter example
+passes analysis with a local credential-free `.env` asset. These are local tests
+with controlled transport; Android/iOS runtime and live-service validation were
+not repeated for this update. Package publishing remains disabled.
+
 ## Earlier source-pin results
 
 These results predate the hosted beta.2 update and used SDK/contract commit
