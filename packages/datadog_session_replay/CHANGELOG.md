@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.0-preview.15
+
+### Features
+
+- Session Replay now supports hybrid (add-to-app) scenarios on both iOS and Android, allowing Flutter UI to be recorded into the host application's replay session rather than as a standalone session.
+- Session Replay now caches sent resource identifiers across sessions using the SDK's DataStore, preventing the same image from being re-uploaded to the resource endpoint after it has already been sent.
+
+### Fixes
+
+- Fixed a potential crash or stale-state issue on Android where the native bridge reference held by the background processing isolate could become dangling after the root isolate was killed or released its reference.
+
 ## 1.0.0-preview.13
 
 * Guard against non-finite (NaN/Infinity) values during recording.
