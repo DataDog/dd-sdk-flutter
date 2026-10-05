@@ -318,8 +318,11 @@ ios-integration-test:
   stage: integration-test
   except: [schedules]
   needs: [build-ios]
+  timeout: 1h
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
+    # Leaves time before the job timeout to upload the verbose test logs
+    RUNNER_SCRIPT_TIMEOUT: 45m
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -330,8 +333,8 @@ ios-integration-test:
   artifacts:
     when: always
     expire_in: "30 days"
-    reports:
-      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-logs/
 
 macos-integration-test:
   stage: integration-test
