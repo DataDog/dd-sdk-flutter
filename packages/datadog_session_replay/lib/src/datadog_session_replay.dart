@@ -36,9 +36,9 @@ class DatadogSessionReplay {
 
   final TouchPrivacyLevel defaultTouchPrivacyLevel;
 
-  // RUM session sample rate, combined with the replay sample rate to decide
-  // which sessions are recorded.
-  final double _rumSampleRate;
+  // Decides which RUM sessions are recorded: the RUM session sample rate
+  // combined with the replay sample rate, applied to each session ID.
+  final DeterministicSampler _sessionSampler;
 
   int _errorCounter = 0;
   bool _newFrameBuilt = true;
@@ -74,8 +74,10 @@ class DatadogSessionReplay {
   DatadogSessionReplay._(
     this._configuration,
     this.internalLogger,
-    this._rumSampleRate,
-  )   : defaultTouchPrivacyLevel = _configuration.touchPrivacyLevel,
+    double rumSampleRate,
+  )   : _sessionSampler = DeterministicSampler(rumSampleRate)
+            .combined(_configuration.replaySampleRate),
+        defaultTouchPrivacyLevel = _configuration.touchPrivacyLevel,
         _recorder = SessionReplayRecorder(
           defaultCapturePrivacy: TreeCapturePrivacy(
             textAndInputPrivacyLevel: _configuration.textAndInputPrivacyLevel,
@@ -124,9 +126,7 @@ class DatadogSessionReplay {
     // replay to.
     if (sessionId.replaceAll(RegExp('[0-]'), '').isEmpty) return false;
 
-    return DeterministicSampler.fromUuid(sessionId, _rumSampleRate)
-        .combined(_configuration.replaySampleRate)
-        .sample();
+    return _sessionSampler.sampleUuid(sessionId);
   }
 
   /// Requests periodic Session Replay tree capture. Capture runs while the

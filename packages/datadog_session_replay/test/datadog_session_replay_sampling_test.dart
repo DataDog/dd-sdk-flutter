@@ -30,11 +30,11 @@ final sessionIds = List.generate(1000, (i) {
 /// make for the same session ID, so Session Replay must match it exactly.
 Set<String> sampledSessions(double rumSampleRate, [double? childSampleRate]) {
   return sessionIds.where((id) {
-    final rumSampler = DeterministicSampler.fromUuid(id, rumSampleRate);
+    final rumSampler = DeterministicSampler(rumSampleRate);
     final sampler = childSampleRate == null
         ? rumSampler
         : rumSampler.combined(childSampleRate);
-    return sampler.sample();
+    return sampler.sampleUuid(id);
   }).toSet();
 }
 
@@ -46,6 +46,13 @@ RUMContext sessionContext(String sessionId) =>
 /// What native sends when there is no sampled RUM session (iOS sends nil,
 /// which the iOS platform forwards as this; Android sends empty IDs).
 const noSessionContext = RUMContext(applicationId: '', sessionId: '');
+
+/// What Android sends when there is no active RUM session: its `NULL_UUID`
+/// (`RumSessionConstants.EMPTY_RUM_SESSION_ID`) for both IDs.
+const androidNoSessionContext = RUMContext(
+  applicationId: '00000000-0000-0000-0000-000000000000',
+  sessionId: '00000000-0000-0000-0000-000000000000',
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -241,6 +248,31 @@ void main() {
       deliverRumContext!(sessionContext(sampled));
 
       deliverRumContext!(noSessionContext);
+
+      expect(sessionReplay.isCapturing, isFalse);
+    });
+
+    test("Android's all-zero session ID is treated as no session", () async {
+      // At 100% every real session records, and the all-zero ID hashes to 0,
+      // which the sampler accepts at any rate. Only the no-session check keeps
+      // it from recording.
+      final sessionReplay =
+          await startSessionReplay(rumSampleRate: 100, replaySampleRate: 100);
+
+      deliverRumContext!(androidNoSessionContext);
+
+      expect(sessionReplay.isCapturing, isFalse);
+      expect(viewsWithReplay, isEmpty);
+    });
+
+    test('losing the RUM session on Android (all-zero ID) stops recording',
+        () async {
+      final sessionReplay =
+          await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
+      deliverRumContext!(sessionContext(sampled));
+      expect(sessionReplay.isCapturing, isTrue);
+
+      deliverRumContext!(androidNoSessionContext);
 
       expect(sessionReplay.isCapturing, isFalse);
     });

@@ -1,29 +1,29 @@
-# Datadog Flutter Plugin - Session Replay Example
+# Datadog Flutter Plugin: Session Replay example
 
 This example shows two Session Replay features:
 
-* **Sampling with `replaySampleRate`**: only a percentage of RUM sessions get a
+* **Sampling with `replaySampleRate`**: Only a percentage of RUM sessions get a
   replay.
-* **Manual start and stop**: record only the screens you choose, using
+* **Manual start and stop**: Recording covers only the screens you choose, with
   `startRecordingImmediately: false`, `startRecording()`, and `stopRecording()`.
 
 ## Setup
 
-Generate the local `.env` file before running this example:
+Generate the local `.env` file, then run this example:
 
 ```bash
 ../../generate_env.sh
 flutter run
 ```
 
-Runtime credentials come from `.env`, which is ignored by git. Do not commit
+Runtime credentials come from `.env`, which is ignored by Git. Do not commit
 real client tokens or application IDs.
 
 ## Sampling
 
 `replaySampleRate` is the percentage of RUM sessions that get a replay. The
 decision is made for each RUM session from its ID, so it is re-evaluated when
-a new session starts during the same launch (after 15 minutes of inactivity,
+a new session starts during the same launch (after 15 minutes of inactivity
 or after 4 hours). The same session ID always gets the same decision, on every
 Datadog SDK.
 
@@ -59,17 +59,23 @@ does not appear, and recording resumes when you return to the Recorded screen.
 ## Sampling test
 
 `scripts/run_sampling_test.sh` checks Session Replay sampling end to end on
-an iOS simulator. It launches the app many times (100 by default). In each
-launch the app taps through its screens for about 10 seconds, then logs its
-RUM session ID, whether that session should get a replay, and whether Session
-Replay captured. It doesn't use the host mouse or keyboard.
+an iOS simulator or an Android emulator. It launches the app many times (100
+by default). In each launch, the app taps through its screens for about 10
+seconds, then logs its RUM session ID, whether that session should get a
+replay, and whether Session Replay captured. It doesn't use the host mouse or
+keyboard, and starts the simulator or emulator headless if it isn't running.
 
 ```bash
-scripts/run_sampling_test.sh -b              # build, install, run 100 launches
+scripts/run_sampling_test.sh -b              # iOS: build, install, run 100 launches
+scripts/run_sampling_test.sh -p android -b   # Android: same, on an emulator
 scripts/run_sampling_test.sh -n 50 -r my-run # 50 launches with a custom run ID
 ```
 
-At the end it prints a summary and writes the exact list of sessions that
+For Android, the script finds the SDK through `ANDROID_HOME` (or
+`~/Library/Android/sdk`) and uses the first running device, or else boots the
+first AVD.
+
+At the end, it prints a summary and writes the exact list of sessions that
 should have a replay to `/tmp/sr_sampling/<run id>/`. To compare with
 Datadog, filter RUM sessions on `@sr_test_run:<run id>`.
 

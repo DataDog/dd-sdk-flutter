@@ -83,9 +83,9 @@ class AutoInteract {
   ) async {
     final sessionId = await DatadogSdk.instance.rum?.getCurrentSessionId();
     final expected = sessionId != null &&
-        DeterministicSampler.fromUuid(sessionId, rumSampleRate)
+        DeterministicSampler(rumSampleRate)
             .combined(replaySampleRate)
-            .sample();
+            .sampleUuid(sessionId);
     final capturing = DatadogSessionReplay.instance?.isCapturing ?? false;
     debugPrint(
       'SR_TEST session=$sessionId expectedReplay=$expected capturing=$capturing',
