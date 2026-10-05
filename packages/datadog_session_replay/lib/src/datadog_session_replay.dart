@@ -20,6 +20,9 @@ class DatadogSessionReplay {
   // The minimum amount of time that needs to pass before we perform another
   // tree capture.
   static const minCaptureTiming = Duration(milliseconds: 100);
+  // What native sends as the session ID when there is no RUM session (Android
+  // uses it; iOS sends no context, forwarded as an empty ID).
+  static const _nilUuid = '00000000-0000-0000-0000-000000000000';
   // The number of times in quick succession thar SR capture can throw before
   // we shut it down completely.
   static const errorTollerance = 10;
@@ -122,9 +125,9 @@ class DatadogSessionReplay {
     // When embedded, the native host's Session Replay owns the sampling
     // decision; sampling here too would let the two disagree.
     if (_configuration.isEmbedded) return true;
-    // An empty or all-zero ID means there is no RUM session to attach a
+    // An empty ID or the nil UUID means there is no RUM session to attach a
     // replay to.
-    if (sessionId.replaceAll(RegExp('[0-]'), '').isEmpty) return false;
+    if (sessionId.isEmpty || sessionId == _nilUuid) return false;
 
     return _sessionSampler.sampleUuid(sessionId);
   }
