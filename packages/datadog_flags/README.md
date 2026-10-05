@@ -334,9 +334,7 @@ storage mechanism.
 
 ## Cached Evaluation Reasons
 
-Successful evaluation details report `CACHED` when the installed assignments
-were restored from the configured store, including an in-memory store. Once a
-network response replaces them, details report the response reason.
+For successful evaluations, details report `CACHED` when the installed assignments were restored from the configured store, including an in-memory store. After a network response replaces those assignments, details report the response reason.
 
 ## Reset and Disable
 
