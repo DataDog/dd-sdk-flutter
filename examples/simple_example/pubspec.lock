@@ -115,7 +115,7 @@ packages:
       path: "../../packages/datadog_session_replay"
       relative: true
     source: path
-    version: "1.1.0"
+    version: "1.0.0-preview.15"
   datadog_tracking_http_client:
     dependency: "direct main"
     description:
@@ -443,12 +443,11 @@ packages:
   openfeature_dart_client_sdk:
     dependency: "direct main"
     description:
-      path: "packages/openfeature_dart_client_sdk"
-      ref: c57c285590ab87088cdc116cdb804adf6acab2a4
-      resolved-ref: c57c285590ab87088cdc116cdb804adf6acab2a4
-      url: "https://github.com/open-feature/dart-sdk.git"
-    source: git
-    version: "0.0.1-beta.1"
+      name: openfeature_dart_client_sdk
+      sha256: "42503e804c1ef4b34e1ed5551330886a40d72037a069817743e7fd7ebcf13eee"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.1-beta.2"
   package_config:
     dependency: transitive
     description:

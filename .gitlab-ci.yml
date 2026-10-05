@@ -121,6 +121,7 @@ build-flutter:
     - melos run unit_test:flutter
     - python3 tools/ci/run_openfeature_contract.py --platform vm
     - python3 tools/ci/check_openfeature_dependency.py
+    - python3 -m unittest discover -s tools/ci -p test_openfeature_ci.py
     - melos run golden_test:flutter
   artifacts:
     when: always
@@ -451,6 +452,7 @@ openfeature-dart-minimum:
     - curl --fail --location --retry 3 https://storage.googleapis.com/dart-archive/channels/stable/release/3.10.0/sdk/dartsdk-linux-x64-release.zip -o .build/dart-minimum/sdk.zip
     - unzip -q .build/dart-minimum/sdk.zip -d .build/dart-minimum
     - export PATH="$CI_PROJECT_DIR/.build/dart-minimum/dart-sdk/bin:$PATH"
+    - python3 -m unittest discover -s tools/ci -p test_openfeature_ci.py
     - cd packages/datadog_flags
     - dart --version
     - dart pub get

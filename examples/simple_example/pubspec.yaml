@@ -28,11 +28,7 @@ dependencies:
     path: ../../packages/datadog_flags
   datadog_flags_flutter:
     path: ../../packages/datadog_flags_flutter
-  openfeature_dart_client_sdk:
-    git:
-      url: https://github.com/open-feature/dart-sdk.git
-      ref: c57c285590ab87088cdc116cdb804adf6acab2a4
-      path: packages/openfeature_dart_client_sdk
+  openfeature_dart_client_sdk: ^0.0.1-beta.2
 
   go_router: ^14.7.0
   path_provider: ^2.1.0

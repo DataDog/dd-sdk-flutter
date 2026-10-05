@@ -8,12 +8,14 @@ Android Flags SDKs.
 Use OpenFeature as the application API. The legacy Datadog evaluation API is
 deprecated and is scheduled for removal in the next major version.
 
-## Development dependency
+## OpenFeature dependency
 
-This development integration requires **Dart 3.10 or later**. The OpenFeature SDK
-and shared provider contract are pinned to development commit
-`c57c285590ab87088cdc116cdb804adf6acab2a4`. This commit includes the Dart 3.10 minimum (#168), reconciliation event ordering
-(#192), and provider contract v2 (#193).
+This integration requires **Dart 3.10 or later** and depends on the published
+`openfeature_dart_client_sdk: ^0.0.1-beta.2` package. The shared provider contract
+is a development-only dependency pinned to that release's commit,
+`bd1ed8ae6a8560bd36360f913b363264d5306930`. A test-only override makes the
+unpublished harness use the hosted SDK instead of its relative source dependency.
+Package consumers do not inherit that override or the Git harness dependency.
 
 Use the checked-out package and its example while validation is in progress:
 
@@ -23,10 +25,10 @@ dart pub get
 dart run datadog_flags_example:typed_evaluation --help
 ```
 
-Both Flags packages have `publish_to: none`. Before release, replace the Git
-SDK dependency with a compatible hosted release. Validate it on Dart 3.10
-without dependency overrides, then remove the publication blocks. The
-`publish_dry_run:flags` command rejects the development configuration.
+Both Flags packages retain `publish_to: none` until release preparation and
+approval. Before release, validate the examples as consumers of the hosted SDK
+without an OpenFeature override, then remove the publication blocks. The
+`publish_dry_run:flags` command rejects packages with publishing still disabled.
 
 ## Initialize and evaluate
 

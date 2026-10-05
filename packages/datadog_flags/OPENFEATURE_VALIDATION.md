@@ -7,11 +7,15 @@ with deprecation notices until the next major version.
 
 ## Source and reproduction
 
-- Base: `develop` at `c9d88cfa1843b316b72d668e86057d908f095322`.
-- SDK and contract: `open-feature/dart-sdk` at `c57c285590ab87088cdc116cdb804adf6acab2a4`.
-- The immutable `development` pin includes the Dart 3.10 minimum (#168),
-  reconciliation event ordering (#192), and provider contract v2 (#193).
-  At validation time, `main` at `5c774eca8f644c9282747ebf37ad35e6404b7d70` still lacks #192 and #193.
+- SDK: published `openfeature_dart_client_sdk` version `0.0.1-beta.2` from pub.dev.
+- SDK archive SHA-256: `42503e804c1ef4b34e1ed5551330886a40d72037a069817743e7fd7ebcf13eee`.
+- Shared contract: `open-feature/dart-sdk` at the beta.2 release commit,
+  `bd1ed8ae6a8560bd36360f913b363264d5306930`.
+- The hosted runtime matches the release's `lib/` sources and includes the Dart
+  3.10 minimum (#168), reconciliation event ordering (#192), and contract v2 (#193).
+- The unpublished contract harness has a relative SDK dependency. The core
+  package overrides that dependency to the exact hosted beta for testing only.
+  The examples resolve the hosted SDK without an OpenFeature override.
 - Provider commit and tree: recorded by the receipt command below. Run it from a clean checkout after committing changes.
 
 From the repository root, run:
@@ -32,11 +36,16 @@ python3 tools/ci/test_openfeature_example.py --platform ios
 
 Use Dart 3.10.0 for the minimum-version run. Set `CHROME_EXECUTABLE` if Chrome is
 not discoverable. Boot one simulator for each native command, or pass `--device`.
-The receipt helper uses the Git checkout that Dart actually resolved. It records
-the SDK, contract, provider identity, dependency paths, and C01–C13 outcomes.
+The receipt helper checks the resolved SDK's hosted source, version, archive
+hash, and runtime files against the release. It separately identifies the Git
+contract checkout and provider tree, dependency paths, and C01–C13 outcomes.
 CI archives these receipts and native example logs under `.build/`.
 
-## Local results
+## Earlier source-pin results
+
+These results predate the hosted beta.2 update and used SDK/contract commit
+`c57c285590ab87088cdc116cdb804adf6acab2a4`. They are retained as historical evidence,
+not as new native-platform validation of the hosted release.
 
 | Surface | Result | Scope |
 | --- | --- | --- |
@@ -60,7 +69,7 @@ The RUM hook has a separate unit test. These local results do not replace CI.
 | Keep the provider deadline below the SDK lifecycle timeout | Reject null, disabled, and greater-than-20-second budgets before transport starts |
 | Describe stale state accurately | Document pending or failed refresh; preserve usable cached assignments |
 | Fence shutdown and superseded work | Check context revisions after asynchronous setup and cleanup; test direct races and repeated shutdown |
-| Replace mutable dependency overrides and false publication evidence | Pin SDK and contract to one full commit; block publication until a hosted release is validated |
+| Replace mutable dependency overrides and false publication evidence | Use hosted beta.2 for runtime and tests; verify its archive and runtime sources; pin only the development harness to the release commit |
 | Add missing cache, timer, and event regressions | Cover cached timeout, pending refresh cleanup, status deduplication, and late result rejection |
 | Remove the fragile 5 ms reconciliation deadline | Use a larger controlled deadline and bounded condition waits |
 | Prevent reuse of a client with a closed status stream | Make legacy shutdown terminal; `sharedClient()` returns a new client |
@@ -79,7 +88,7 @@ because the standalone provider and native Flutter plugin use different enums.
 ## Feedback for the OpenFeature maintainers
 
 1. Datadog can run all thirteen shared v2 scenarios with its real provider and controlled transport.
-   VM and Chrome receipts provide the exact source identities and package paths.
+   VM and Chrome receipts identify the hosted SDK, contract checkout, and package paths.
    The fixture declares same-instance reinitialization support.
    Separate native tests exercise the application on Android and iOS.
 2. Cached context reconciliation exposed an event-ordering issue in the previous SDK pin.
@@ -91,8 +100,9 @@ because the standalone provider and native Flutter plugin use different enums.
    provider shutdown, uninitialized evaluation state, and status-transition checks.
    Datadog retains separate tests for timer cleanup, direct context races, and late responses.
 4. `HookAdapter` supports the RUM integration without API changes.
-5. Validate a hosted release with these fixes and the Dart 3.10 floor before publishing Datadog's integration.
-   Both Flags packages currently use `publish_to: none` and the immutable Git pin.
+5. Runtime dependencies now use the published beta.2 release with these fixes
+   and the Dart 3.10 floor. Both Flags packages retain `publish_to: none` pending
+   release preparation and approval; only the development harness uses a Git pin.
 
 No upstream acceptance is implied. The receipt deliberately leaves
 `independent_provider_gate_satisfied` false until maintainers review provenance,
