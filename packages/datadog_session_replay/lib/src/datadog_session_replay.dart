@@ -36,9 +36,19 @@ class DatadogSessionReplay {
 
   final TouchPrivacyLevel defaultTouchPrivacyLevel;
 
+  // Decides which RUM sessions are recorded: the RUM session sample rate
+  // combined with the replay sample rate, applied to each session ID.
+  final DeterministicSampler _sessionSampler;
+
   int _errorCounter = 0;
   bool _newFrameBuilt = true;
   Timer? _captureTimer; // When null is idle, otherwise is active
+
+  // Capture runs only while the app wants recording (startRecording /
+  // stopRecording) and the current RUM session is sampled for replay.
+  bool _recordingRequested = false;
+  bool _sessionSampled = false;
+  String? _currentSessionId;
 
   /// Whether Session Replay is recording.
   bool get isCapturing => _captureTimer != null;
@@ -47,9 +57,10 @@ class DatadogSessionReplay {
   static Future<DatadogSessionReplay> init(
     DatadogSessionReplayConfiguration configuration,
     InternalLogger logger, {
+    double rumSampleRate = 100.0,
     DatadogTimeProvider timeProvider = const DefaultTimeProvider(),
   }) async {
-    _instance = DatadogSessionReplay._(configuration, logger);
+    _instance = DatadogSessionReplay._(configuration, logger, rumSampleRate);
     await _instance!._start();
     return _instance!;
   }
@@ -60,8 +71,13 @@ class DatadogSessionReplay {
     _instance = null;
   }
 
-  DatadogSessionReplay._(this._configuration, this.internalLogger)
-      : defaultTouchPrivacyLevel = _configuration.touchPrivacyLevel,
+  DatadogSessionReplay._(
+    this._configuration,
+    this.internalLogger,
+    double rumSampleRate,
+  )   : _sessionSampler = DeterministicSampler(rumSampleRate)
+            .combined(_configuration.replaySampleRate),
+        defaultTouchPrivacyLevel = _configuration.touchPrivacyLevel,
         _recorder = SessionReplayRecorder(
           defaultCapturePrivacy: TreeCapturePrivacy(
             textAndInputPrivacyLevel: _configuration.textAndInputPrivacyLevel,
@@ -81,25 +97,65 @@ class DatadogSessionReplay {
   }
 
   void _onContextChanged(RUMContext context) {
-    _recorder.onContextChanged(context);
+    if (context.sessionId != _currentSessionId) {
+      _currentSessionId = context.sessionId;
+      _sessionSampled = _isSessionSampled(context.sessionId);
+      if (!_sessionSampled) {
+        internalLogger.debug(
+          'Flutter Session Replay was not selected by replaySampleRate for '
+          'session ${context.sessionId}',
+        );
+      }
+    }
+
+    // Unsampled sessions must not report has_replay or receive records.
+    if (_sessionSampled) {
+      _recorder.onContextChanged(context);
+    }
+    _evaluateRecording();
   }
 
-  /// Begins periodic Session Replay tree capture. Has no effect if recording
-  /// is already in progress.
+  /// Samples [sessionId] deterministically, as the native SDKs do: the same
+  /// session ID hash RUM sampled with, at the RUM rate combined with
+  /// [DatadogSessionReplayConfiguration.replaySampleRate].
+  bool _isSessionSampled(String sessionId) {
+    // When embedded, the native host's Session Replay owns the sampling
+    // decision; sampling here too would let the two disagree.
+    if (_configuration.isEmbedded) return true;
+    // An empty or all-zero ID means there is no RUM session to attach a
+    // replay to.
+    if (sessionId.replaceAll(RegExp('[0-]'), '').isEmpty) return false;
+
+    return _sessionSampler.sampleUuid(sessionId);
+  }
+
+  /// Requests periodic Session Replay tree capture. Capture runs while the
+  /// current RUM session is sampled for replay, and starts automatically when
+  /// a later session is.
   void startRecording() {
-    if (_captureTimer != null) return;
-    _startPeriodicCapture();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Let capture know that a new element tree is available for capture.
-      _newFrameBuilt = true;
-    });
+    _recordingRequested = true;
+    _evaluateRecording();
   }
 
   /// Stops periodic Session Replay recording . The processor isolate keeps
   /// running so that [startRecording] can resume without re-initialization.
   void stopRecording() {
-    _captureTimer?.cancel();
-    _captureTimer = null;
+    _recordingRequested = false;
+    _evaluateRecording();
+  }
+
+  void _evaluateRecording() {
+    if (_recordingRequested && _sessionSampled) {
+      if (_captureTimer != null) return;
+      _startPeriodicCapture();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Let capture know that a new element tree is available for capture.
+        _newFrameBuilt = true;
+      });
+    } else {
+      _captureTimer?.cancel();
+      _captureTimer = null;
+    }
   }
 
   Future<void> _start() async {
@@ -155,6 +211,9 @@ class DatadogSessionReplay {
             // another post frame callback
             timer.cancel();
             _captureTimer = null;
+            // Clear the request too, so a later context change doesn't
+            // restart capture; only an explicit startRecording() does.
+            _recordingRequested = false;
             shouldWatchForNextFrame = false;
           }
         }

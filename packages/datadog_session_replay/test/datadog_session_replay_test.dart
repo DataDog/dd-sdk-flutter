@@ -6,6 +6,7 @@ import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_interface.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_noop.dart';
+import 'package:datadog_session_replay/src/rum_context.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -74,11 +75,30 @@ void main() {
         startRecordingImmediately: false,
       );
 
+      // Native delivers RUM contexts through the callback passed to enable().
+      void Function(RUMContext)? deliverRumContext;
+
+      // Capture only runs during a RUM session sampled for replay, which a
+      // 100% replay rate (and RUM rate) always is.
+      void enterSampledSession() {
+        deliverRumContext!(
+          const RUMContext(
+            applicationId: 'app',
+            sessionId: 'aaaaaaaa-bbbb-4ccc-8ddd-0123456789ab',
+            viewId: 'view',
+          ),
+        );
+      }
+
       setUp(() {
         // Returning false avoids spawning the processor isolate in tests
         when(
           () => mockPlatform.enable(any(), any()),
-        ).thenAnswer((_) => Future.value(false));
+        ).thenAnswer((invocation) {
+          deliverRumContext =
+              invocation.positionalArguments[1] as void Function(RUMContext);
+          return Future.value(false);
+        });
       });
 
       tearDown(() {
@@ -98,6 +118,7 @@ void main() {
         // Given
         final sr =
             await DatadogSessionReplay.init(defaultConfig, mockInternalLogger);
+        enterSampledSession();
 
         // When
         sr.startRecording();
@@ -123,6 +144,7 @@ void main() {
         // Given
         final sr =
             await DatadogSessionReplay.init(defaultConfig, mockInternalLogger);
+        enterSampledSession();
         sr.startRecording();
 
         // When
@@ -136,6 +158,7 @@ void main() {
         // Given
         final sr =
             await DatadogSessionReplay.init(defaultConfig, mockInternalLogger);
+        enterSampledSession();
 
         // When
         sr.startRecording();
@@ -160,8 +183,11 @@ void main() {
           'isCapturing is true after init with startRecordingImmediately: true',
           () async {
         // Given — enable() must return true so _start() reaches startRecording()
-        when(() => mockPlatform.enable(any(), any()))
-            .thenAnswer((_) => Future.value(true));
+        when(() => mockPlatform.enable(any(), any())).thenAnswer((invocation) {
+          deliverRumContext =
+              invocation.positionalArguments[1] as void Function(RUMContext);
+          return Future.value(true);
+        });
         when(() => mockPlatform.isolateToken).thenReturn(null);
 
         final config = DatadogSessionReplayConfiguration(
@@ -171,6 +197,7 @@ void main() {
 
         // When
         final sr = await DatadogSessionReplay.init(config, mockInternalLogger);
+        enterSampledSession();
 
         // Then
         expect(sr.isCapturing, true);

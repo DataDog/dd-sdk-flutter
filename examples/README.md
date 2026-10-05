@@ -6,6 +6,7 @@ This includes:
 
 * [Simple Example](./simple_example) - Includes examples of GoRouter integration, distributed tracing, interaction tracking, error/crash reporting, and Datadog Flags.
 * [Add-to-App / Hybrid Native + Flutter](./native-hybrid-app)
+* [Session Replay Example](./session_replay_example) - Includes examples of Session Replay sampling with `replaySampleRate` and recording only selected screens with `startRecordingImmediately: false` and `startRecording` / `stopRecording`.
 
 
 If you have other scenarios that are not covered in this list, please reach out to Datadog.
