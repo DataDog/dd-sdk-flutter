@@ -57,10 +57,6 @@ class _ViewInfo {
   const _ViewInfo(this.viewKey, this.viewName, this.viewStart);
 }
 
-// Used to take the low 64 bits of a trace id for trace sampling. We're avoiding
-// literals in these cases to ensure compatibility with Web.
-final BigInt _maxTraceId = (BigInt.one << 64) - BigInt.one;
-
 class DatadogRum {
   static DdRumPlatform get _platform {
     return DdRumPlatform.instance;
@@ -641,22 +637,11 @@ class DatadogRum {
     if (traceSampleRate >= 100) return true;
     if (traceSampleRate <= 0) return false;
 
-    // Offer consistent sampling for the same trace id across different
-    // environments, with the same deterministic sampler as the other SDKs.
-    //
-    // We use the low 48 bits from the session id if it exists, or the low bits of the trace id if it doesn't
-    BigInt? lowBits;
-
     if (sessionId != null) {
-      final uuidParts = sessionId.split('-');
-      if (uuidParts.length == 5) {
-        lowBits = BigInt.tryParse(uuidParts[4], radix: 16);
-      }
+      return _traceSampler.sampleUuid(sessionId);
     }
 
-    lowBits ??= traceId.value & _maxTraceId;
-
-    return _traceSampler.sample(lowBits);
+    return _traceSampler.sampleTrace(traceId);
   }
 
   @internal

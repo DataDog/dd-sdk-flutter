@@ -4,6 +4,8 @@
 
 import 'dart:math';
 
+import '../datadog_internal.dart';
+
 class RateBasedSampler {
   final double sampleRate;
   late final Random random;
@@ -54,6 +56,12 @@ class DeterministicSampler {
   /// [samplingRate]. See [seedFromUuid].
   bool sampleUuid(String uuid) => sample(seedFromUuid(uuid));
 
+  /// Whether a trace should be sampled based on its Trace Id.
+  bool sampleTrace(TracingId traceId) {
+    final lowBits = traceId.value & _maxUint64;
+    return sample(lowBits);
+  }
+
   /// The seed for a UUID string: its last 48 bits (the last 12 hex digits), as
   /// the native SDKs use.
   ///
@@ -74,7 +82,7 @@ class DeterministicSampler {
   /// sampled by this one.
   DeterministicSampler combined(double childRate) {
     return DeterministicSampler(
-      samplingRate * childRate.clamp(0.0, 100.0) / 100.0,
+      samplingRate * (childRate.clamp(0.0, 100.0) / 100.0),
     );
   }
 
