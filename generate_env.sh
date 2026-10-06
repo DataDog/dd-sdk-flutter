@@ -87,3 +87,28 @@ tee ./ddog_config.plist > /dev/null << END
 </plist>
 END
 popd
+
+pushd examples/hybrid_session_replay_example/android/app/src/main/res/
+mkdir -p raw
+tee ./raw/dd_config.json > /dev/null << END
+{
+  "client_token": "$DD_CLIENT_TOKEN",
+  "application_id": "$DD_APPLICATION_ID"
+}
+END
+popd
+
+pushd examples/hybrid_session_replay_example/ios/HybridSessionReplayExample
+tee ./ddog_config.plist > /dev/null << END
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>client_token</key>
+	<string>$DD_CLIENT_TOKEN</string>
+	<key>application_id</key>
+	<string>$DD_APPLICATION_ID</string>
+</dict>
+</plist>
+END
+popd

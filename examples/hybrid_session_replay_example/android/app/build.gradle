@@ -1,0 +1,60 @@
+import com.android.Version
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+buildscript {
+    // Hybrid Session Replay needs dd-sdk-android 3.13.0 or later.
+    ext.datadog_version = "3.13.1"
+}
+
+plugins {
+    id 'com.android.application'
+    id("com.datadoghq.dd-sdk-android-gradle-plugin") version "1.24.0"
+}
+
+def agpMajor = Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0] as int
+if (agpMajor < 9) {
+    apply plugin: 'kotlin-android'
+}
+
+android {
+    namespace 'com.datadoghq.hybrid_session_replay_example'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.datadoghq.hybrid_session_replay_example"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_1_8
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.7.0'
+    implementation 'androidx.appcompat:appcompat:1.4.1'
+    implementation 'com.google.android.material:material:1.5.0-alpha04'
+    implementation "com.datadoghq:dd-sdk-android-rum:$datadog_version"
+    implementation "com.datadoghq:dd-sdk-android-logs:$datadog_version"
+    implementation "com.datadoghq:dd-sdk-android-session-replay:$datadog_version"
+    implementation project(':flutter')
+}

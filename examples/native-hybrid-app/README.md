@@ -2,6 +2,8 @@
 
 This example covers how to use the Datadog Flutter SDK in conjunction with an already existing native application. This assumes you already have a native iOS or Android application that is sending data to Datadog, and you have added Flutter to it following Flutter's [Add-to-app documentation](https://docs.flutter.dev/development/add-to-app).
 
+For Session Replay in a hybrid app, see the [Hybrid Session Replay example](../hybrid_session_replay_example).
+
 ## Native app is primary and Datadog is already initialized -  `attachToExisting`
 
 If you are using an application that is already using the native Datadog iOS or Datadog Android SDKs, the Flutter SDK can attach to these using the same parameters. In your `main` function, after calling `WidgetsFlutterBinding.ensureInitialized`, call `DatadogSdk.instance.attachToExisting`.
@@ -29,6 +31,8 @@ Depending on your settings, the automatic view tracking in the native iOS and An
 On iOS, create a `UIKitRUMViewsPredicate` to check if the view controller is an instance of `FlutterViewController`. Return `nil` from this function and the RUM iOS SDK stops tracking the `FlutterViewController` and lets the Flutter SDK take over. An example of this predicate can be found in the example code in [AppDelegate.swift](ios/iOS%20Flutter%20Hybrid%20Example/AppDelegate.swift)
 
 On Android, create a `ComponentPredicate` to check if the Activity is an instance of `FlutterActivity`. If so, return false from this function to avoid tracking the Activity and let Flutter SDK take over.  An example of this predicate can be found in the example code in [HybridApplication.kt](android/app/src/main/java/com/datadoghq/hybrid_flutter_example/HybridApplication.kt)
+
+If you use Session Replay in your hybrid app, don't add these predicates. Flutter's replay records are attached to the native RUM view on screen, so a full screen Flutter view needs its own native view. See the [Hybrid Session Replay example](../hybrid_session_replay_example#rum-views).
 
 ### Caveats
 
