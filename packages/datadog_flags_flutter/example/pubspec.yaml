@@ -7,7 +7,7 @@ environment:
   flutter: ">=3.38.0"
 
 dependencies:
-  openfeature_dart_client_sdk: ^0.0.1-beta.2
+  openfeature_dart_client_sdk: ^0.0.1
   flutter:
     sdk: flutter
   datadog_flags_flutter:

@@ -39,9 +39,11 @@ class HostedSdkTest(unittest.TestCase):
                     verify_hosted_sdk(self.config, self.dependencies, self.lock)
 
     def test_rejects_other_version(self):
-        self.dependencies['packages'][0]['version'] = '0.0.1-beta.1'
-        with self.assertRaises(ValueError):
-            verify_hosted_sdk(self.config, self.dependencies, self.lock)
+        for version in ['0.0.1-beta.1', '0.0.1-beta.2']:
+            with self.subTest(version=version):
+                self.dependencies['packages'][0]['version'] = version
+                with self.assertRaises(ValueError):
+                    verify_hosted_sdk(self.config, self.dependencies, self.lock)
 
     def test_rejects_wrong_archive(self):
         with self.assertRaises(ValueError):
@@ -99,7 +101,7 @@ class HostedSdkTest(unittest.TestCase):
         prefix = f'# melos_managed_dependency_overrides: {SDK_NAME}\ndependency_overrides:\n'
         override.write_text(prefix + f'  {SDK_NAME}: {SDK_VERSION}\n')
         check_manifests(self.root)
-        for value in ['0.0.1-beta.1', '\n    path: ../sdk', '\n    git: https://example.org/sdk']:
+        for value in ['0.0.1-beta.1', '0.0.1-beta.2', '\n    path: ../sdk', '\n    git: https://example.org/sdk']:
             with self.subTest(value=value):
                 override.write_text(prefix + f'  {SDK_NAME}: {value}\n')
                 with self.assertRaises(ValueError):

@@ -1,8 +1,6 @@
 name: datadog_flags
 description: Datadog Feature Flags and Experimentation SDK for client applications.
 version: 1.2.0
-# Release preparation removes this after provider validation and approval.
-publish_to: none
 repository: https://github.com/DataDog/dd-sdk-flutter
 homepage: https://datadoghq.com
 issue_tracker: https://github.com/DataDog/dd-sdk-flutter/issues
@@ -18,14 +16,14 @@ dependencies:
   http: ^1.0.0
   json_annotation: ^4.9.0
   meta: ^1.0.0
-  openfeature_dart_client_sdk: ^0.0.1-beta.2
+  openfeature_dart_client_sdk: ^0.0.1
   uuid: ^4.0.0
 
 dev_dependencies:
   openfeature_client_provider_contract:
     git:
       url: https://github.com/open-feature/dart-sdk.git
-      ref: bd1ed8ae6a8560bd36360f913b363264d5306930
+      ref: f8068cd5c71c6f644e1f69e171918de771e621c3
       path: conformance/client_provider_contract
   build_runner: 2.4.15
   json_serializable: 6.9.5
@@ -35,4 +33,4 @@ dev_dependencies:
 # The unpublished contract harness has a relative SDK dependency. Test against
 # the hosted release instead; overrides are not inherited by package consumers.
 dependency_overrides:
-  openfeature_dart_client_sdk: 0.0.1-beta.2
+  openfeature_dart_client_sdk: 0.0.1

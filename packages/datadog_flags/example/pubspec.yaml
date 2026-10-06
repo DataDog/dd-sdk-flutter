@@ -6,7 +6,7 @@ environment:
   sdk: ">=3.10.0 <4.0.0"
 
 dependencies:
-  openfeature_dart_client_sdk: ^0.0.1-beta.2
+  openfeature_dart_client_sdk: ^0.0.1
   args: ^2.5.0
   datadog_flags:
     path: ..

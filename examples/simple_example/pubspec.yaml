@@ -28,7 +28,7 @@ dependencies:
     path: ../../packages/datadog_flags
   datadog_flags_flutter:
     path: ../../packages/datadog_flags_flutter
-  openfeature_dart_client_sdk: ^0.0.1-beta.2
+  openfeature_dart_client_sdk: ^0.0.1
 
   go_router: ^14.7.0
   path_provider: ^2.1.0

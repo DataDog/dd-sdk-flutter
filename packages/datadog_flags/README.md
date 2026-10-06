@@ -11,9 +11,9 @@ deprecated and is scheduled for removal in the next major version.
 ## OpenFeature dependency
 
 This integration requires **Dart 3.10 or later** and depends on the published
-`openfeature_dart_client_sdk: ^0.0.1-beta.2` package. The shared provider contract
+`openfeature_dart_client_sdk: ^0.0.1` package. The shared provider contract
 is a development-only dependency pinned to that release's commit,
-`bd1ed8ae6a8560bd36360f913b363264d5306930`. A test-only override makes the
+`f8068cd5c71c6f644e1f69e171918de771e621c3`. A test-only override makes the
 unpublished harness use the hosted SDK instead of its relative source dependency.
 Package consumers do not inherit that override or the Git harness dependency.
 
@@ -25,10 +25,12 @@ dart pub get
 dart run datadog_flags_example:typed_evaluation --help
 ```
 
-Both Flags packages retain `publish_to: none` until release preparation and
-approval. Before release, validate the examples as consumers of the hosted SDK
-without an OpenFeature override, then remove the publication blocks. The
-`publish_dry_run:flags` command rejects packages with publishing still disabled.
+The Flags packages are prepared for publication through the normal release
+process. Publish `datadog_flags` 1.2.0 before `datadog_flags_flutter` 1.2.0,
+which depends on it. Run `publish_dry_run:flags` for the core, then
+`publish_dry_run:flags_flutter` after the core release is available on pub.dev.
+The shared example requires Dart 3.10; this does not raise the
+`datadog_flutter_plugin` package's minimum Dart version.
 
 ## Initialize and evaluate
 

@@ -3,6 +3,9 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+// These tests preserve compatibility with the deprecated Datadog API.
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 import 'dart:convert';
 

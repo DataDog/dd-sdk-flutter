@@ -8,9 +8,9 @@ from urllib.parse import urljoin, urlparse, unquote
 
 ROOT = Path(__file__).resolve().parents[2]
 CORE = ROOT / 'packages/datadog_flags/pubspec.yaml'
-SDK_VERSION = '0.0.1-beta.2'
-SDK_ARCHIVE_SHA256 = '42503e804c1ef4b34e1ed5551330886a40d72037a069817743e7fd7ebcf13eee'
-CONTRACT_REF = 'bd1ed8ae6a8560bd36360f913b363264d5306930'
+SDK_VERSION = '0.0.1'
+SDK_ARCHIVE_SHA256 = 'f94267788a0c1e1970c0d399f7e8066fe606f526dafb6e283e72e0f260b7f295'
+CONTRACT_REF = 'f8068cd5c71c6f644e1f69e171918de771e621c3'
 SDK_NAME = 'openfeature_dart_client_sdk'
 
 
@@ -38,7 +38,7 @@ def verify_hosted_sdk(config_path, dependencies, lock_text):
     block = re.search(rf'^  {SDK_NAME}:\n((?:    .*\n)+)', lock_text, re.M)
     if not block or not re.search(
             rf'^      sha256: "?{SDK_ARCHIVE_SHA256}"?$', block.group(1), re.M):
-        raise ValueError('OpenFeature lockfile must identify the published beta.2 archive')
+        raise ValueError('OpenFeature lockfile must identify the published 0.0.1 archive')
     if not re.search(r'^    source: hosted$', block.group(1), re.M):
         raise ValueError('OpenFeature lockfile must use the hosted source')
     if not re.search(r'^      url: "?https://pub.dev"?$', block.group(1), re.M):
@@ -73,7 +73,7 @@ def check_manifests(root=ROOT):
                 raise ValueError(f'Local override must not replace hosted OpenFeature: {relative}')
     core = (root / paths[0]).read_text()
     if re.findall(r'^      ref: (.+)$', core, re.M) != [CONTRACT_REF]:
-        raise ValueError('Pin the development-only contract to the beta.2 release commit')
+        raise ValueError('Pin the development-only contract to the 0.0.1 release commit')
 
 
 def main():

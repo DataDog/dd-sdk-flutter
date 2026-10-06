@@ -24,7 +24,7 @@ def runtime_files(root):
 def verify_runtime(sdk_path, checkout):
     actual = runtime_files(sdk_path)
     if not actual or actual != runtime_files(checkout / 'packages/openfeature_dart_client_sdk'):
-        raise ValueError('Resolved SDK runtime differs from the beta.2 release source')
+        raise ValueError('Resolved SDK runtime differs from the 0.0.1 release source')
 
 
 def main():
@@ -44,7 +44,7 @@ def main():
     revision = subprocess.check_output(
         ['git', '-C', str(checkout), 'rev-parse', 'HEAD'], encoding='utf-8').strip()
     if revision != CONTRACT_REF:
-        raise ValueError('Contract checkout is not pinned to the beta.2 release commit')
+        raise ValueError('Contract checkout is not pinned to the 0.0.1 release commit')
     if subprocess.check_output(
             ['git', '-C', str(checkout), 'status', '--porcelain'], encoding='utf-8').strip():
         raise ValueError('Contract checkout must be clean')

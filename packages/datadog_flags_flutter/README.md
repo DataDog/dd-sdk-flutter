@@ -4,10 +4,10 @@ Use OpenFeature to evaluate Datadog feature flags in Flutter applications.
 `datadog_flags` supplies `DatadogOpenFeatureProvider`. This package supplies
 `DatadogRumHook` to associate successful evaluations with the active RUM view.
 
-The development integration requires Dart 3.10 and Flutter 3.38 or later.
-It uses the published OpenFeature `0.0.1-beta.2` dependency described in the
-[core package](../datadog_flags/). Publication remains disabled pending release
-preparation and approval.
+This integration requires Dart 3.10 and Flutter 3.38 or later.
+It uses the published OpenFeature `0.0.1` dependency described in the
+[core package](../datadog_flags/). Release `datadog_flags` 1.2.0 first, then
+validate and publish this package through the normal release process.
 
 ## OpenFeature with RUM
 

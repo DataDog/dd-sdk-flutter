@@ -32,6 +32,8 @@ def main():
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
         subprocess.run(['flutter', 'pub', 'get'], cwd=EXAMPLE, check=True)
+        subprocess.run(['flutter', 'test', 'test', '--reporter', 'expanded'],
+                       cwd=EXAMPLE, check=True)
         with output.open('w') as log:
             result = subprocess.run([
                 'flutter', 'test', 'integration_test/openfeature_test.dart',

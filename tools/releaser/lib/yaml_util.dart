@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
+import 'package:yaml/yaml.dart';
 
 import 'command.dart';
 import 'helpers.dart';
@@ -39,6 +40,23 @@ class RemoveDependencyOverridesCommand extends Command {
   ) async {
     logger.info('🔀 Removing dependency_overrides from ${pubspecFile.path}');
 
+    // The upstream contract harness depends on its SDK checkout. Keep only the
+    // exact hosted version already required by datadog_flags so release tests
+    // continue to exercise the published SDK. Consumers never inherit overrides.
+    final manifest = loadYaml(await pubspecFile.readAsString()) as YamlMap;
+    const sdk = 'openfeature_dart_client_sdk';
+    final dependencies = manifest['dependencies'];
+    final devDependencies = manifest['dev_dependencies'];
+    final overrides = manifest['dependency_overrides'];
+    final version = overrides is YamlMap ? overrides[sdk] : null;
+    final preserveContractSdk = manifest['name'] == 'datadog_flags' &&
+        devDependencies is YamlMap &&
+        devDependencies.containsKey('openfeature_client_provider_contract') &&
+        dependencies is YamlMap &&
+        version is String &&
+        RegExp(r'^\d+\.\d+\.\d+$').hasMatch(version) &&
+        dependencies[sdk] == '^$version';
+
     var inDependencyOverrides = false;
     await transformFile(pubspecFile, logger, dryRun, (element) {
       if (inDependencyOverrides) {
@@ -49,6 +67,9 @@ class RemoveDependencyOverridesCommand extends Command {
         }
       } else if (element == 'dependency_overrides:') {
         inDependencyOverrides = true;
+        if (preserveContractSdk) {
+          return 'dependency_overrides:\n  $sdk: $version';
+        }
       }
 
       return inDependencyOverrides ? null : element;

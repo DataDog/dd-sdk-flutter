@@ -549,6 +549,10 @@ void main() {
       await api.setProviderAndWait(provider);
       expect(api.getClient().providerStatus, ProviderStatus.stale);
       expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      expect(
+        api.getClient().getBooleanDetails('show-paywall', false).reason,
+        'CACHED',
+      );
       expect(events.last.message, isNot(contains('failed')));
       response.complete(
         http.Response(
@@ -560,6 +564,10 @@ void main() {
         () => api.getClient().providerStatus == ProviderStatus.ready,
       );
       expect(api.getClient().getBooleanValue('show-paywall', true), isFalse);
+      expect(
+        api.getClient().getBooleanDetails('show-paywall', true).reason,
+        'TARGETING_MATCH',
+      );
     },
   );
 

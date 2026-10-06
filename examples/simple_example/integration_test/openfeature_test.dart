@@ -104,7 +104,8 @@ FLAGS_TARGETING_KEY=simulator-user
       ElevatedButton,
       'Refresh assignments',
     );
-    await tester.ensureVisible(refreshButton);
+    // ListView may not have built this row on smaller devices yet.
+    await tester.scrollUntilVisible(refreshButton, 300);
     await tester.tap(refreshButton);
     await tester.pumpAndSettle();
     expect(client.getBooleanValue('checkout.enabled', true), isFalse);
