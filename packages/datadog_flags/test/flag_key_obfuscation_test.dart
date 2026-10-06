@@ -37,6 +37,26 @@ const _vectors = {
 };
 
 void main() {
+  test('bounds lookup hashes and keeps descriptors separate', () {
+    final encoding = FlagKeyObfuscation.fromSnapshot(_metadata)!;
+    final other = FlagKeyObfuscation.fromSnapshot({
+      'obfuscated': true,
+      'obfuscation': {'scheme': FlagKeyObfuscation.scheme, 'salt': 'f' * 32},
+    })!;
+    final first = encoding.encodeKey('flag');
+    expect(encoding.encodeKey('flag'), same(first));
+    expect(other.encodeKey('flag'), isNot(first));
+    expect(encoding.encodeKey('flag'), same(first));
+    expect(encoding.encodeKey('café'), isNot(encoding.encodeKey('cafe\u0301')));
+    for (var index = 0; index < 1024; index++) {
+      encoding.encodeKey('flag-$index');
+    }
+    final afterEviction = encoding.encodeKey('flag');
+    expect(afterEviction, first);
+    // JavaScript strings have value identity. The VM can also check eviction by identity.
+    if (!isWebFlagsIntake) expect(afterEviction, isNot(same(first)));
+  });
+
   for (final vector in _vectors.entries) {
     test('matches the shared digest for ${jsonEncode(vector.key)}', () async {
       final encoding = FlagKeyObfuscation.fromSnapshot(_metadata)!;
@@ -282,18 +302,62 @@ void main() {
         throwsFormatException);
   });
 
-  test('keeps valid same-context memory after an invalid response', () async {
-    final harness = await _Harness.create(
-        _response({_vectors['flag']!: _assignment('boolean', true)}));
-    await harness.client.initialize(_context);
-    harness.response = _response({}, metadata: {'obfuscated': true});
+  for (final invalid in [
+    _response({}, metadata: {'obfuscated': true}),
+    <String, Object?>{
+      'data': {
+        'attributes': {'flags': null}
+      }
+    },
+    _response({}, metadata: {..._metadata, 'createdAt': 'not-a-date'}),
+    <String, Object?>{},
+  ]) {
+    test('keeps valid same-context memory after ${jsonEncode(invalid)}',
+        () async {
+      final harness = await _Harness.create(
+          _response({_vectors['flag']!: _assignment('boolean', true)}));
+      await harness.client.initialize(_context);
+      harness.response = invalid;
+      await harness.client.initialize(_context);
+      expect(
+          harness.client
+              .getBooleanDetails(key: 'flag', defaultValue: false)
+              .value,
+          isTrue);
+      expect(harness.assignmentRequests, hasLength(2));
+    });
+  }
+
+  test('accepts new keys and fields and isolates unknown variant types',
+      () async {
+    final encoding = FlagKeyObfuscation.fromSnapshot(_metadata)!;
+    final harness = await _Harness.create(_response({
+      _vectors['flag']!: _assignment('boolean', true),
+      encoding.encodeKey('new-flag')!: {
+        ..._assignment('boolean', true),
+        'future-field': true,
+      },
+      encoding.encodeKey('future')!: _assignment('future-type', true),
+    }, metadata: {
+      ..._metadata,
+      'future-field': true
+    }));
     await harness.client.initialize(_context);
     expect(
         harness.client
             .getBooleanDetails(key: 'flag', defaultValue: false)
             .value,
         isTrue);
-    expect(harness.assignmentRequests, hasLength(2));
+    expect(
+        harness.client
+            .getBooleanDetails(key: 'new-flag', defaultValue: false)
+            .value,
+        isTrue);
+    expect(
+        harness.client
+            .getBooleanDetails(key: 'future', defaultValue: false)
+            .error,
+        FlagEvaluationError.flagNotFound);
   });
 
   test(

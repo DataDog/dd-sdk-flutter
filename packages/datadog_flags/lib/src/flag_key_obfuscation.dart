@@ -17,8 +17,10 @@ final class FlagKeyObfuscation {
   static final _domain = utf8.encode('datadog.feature-flags.flag-key.v1\u0000');
 
   final String salt;
+  final _lookupKeys = <String, String>{};
+  static const _lookupCacheLimit = 1024;
 
-  const FlagKeyObfuscation._(this.salt);
+  FlagKeyObfuscation._(this.salt);
 
   /// Validates the wire fields, including explicitly null fields.
   static FlagKeyObfuscation? fromSnapshot(Map<String, Object?> json) {
@@ -55,6 +57,8 @@ final class FlagKeyObfuscation {
 
   /// Returns null for malformed Unicode instead of hashing a replacement rune.
   String? encodeKey(String key) {
+    final cached = _lookupKeys[key];
+    if (cached != null) return cached;
     for (var index = 0; index < key.length; index++) {
       final unit = key.codeUnitAt(index);
       if (unit >= 0xd800 && unit <= 0xdbff) {
@@ -69,8 +73,11 @@ final class FlagKeyObfuscation {
       for (var index = 0; index < salt.length; index += 2)
         int.parse(salt.substring(index, index + 2), radix: 16),
     ];
-    return sha256
+    final digest = sha256
         .convert([..._domain, ...saltBytes, ...utf8.encode(key)]).toString();
+    if (_lookupKeys.length >= _lookupCacheLimit) _lookupKeys.clear();
+    _lookupKeys[key] = digest;
+    return digest;
   }
 }
 

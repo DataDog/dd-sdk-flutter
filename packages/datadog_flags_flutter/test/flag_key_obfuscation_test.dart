@@ -69,8 +69,8 @@ void main() {
     expect(rum.single.value, 'variant');
     final attributes = jsonDecode(requests.single.body)['data']['attributes'];
     expect(attributes['source']['sdk_name'], 'dd-sdk-dart');
-    expect(attributes['supported_capabilities'], {
-      'assignment_encodings': ['flag-key-sha256-v1']
-    });
+    expect(attributes.containsKey('supported_capabilities'), isFalse);
+    expect(requests.single.headers['X-DD-FEATURE-FLAGS-CAPABILITIES'],
+        'assignment-encoding-flag-key-256-v1');
   });
 }

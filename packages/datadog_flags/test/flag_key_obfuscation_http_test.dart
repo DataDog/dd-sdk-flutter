@@ -99,6 +99,28 @@ void main() {
             .keys
             .every((key) => (key as String).length == 64),
         isTrue);
+    response = {
+      'data': {
+        'attributes': {
+          'obfuscated': true,
+          'obfuscation': {
+            'scheme': 'flag-key-sha256-v1',
+            'salt': 'ffffffffffffffffffffffffffffffff',
+          },
+          'flags': {
+            'e9da87d1d051b4e9ae47e00e97c87a11d939a8746280eed92f475a9fb495ae18':
+                _assignment('boolean', false),
+          },
+        },
+      },
+    };
+    await client.initialize(context);
+    expect(client.getBooleanDetails(key: 'flag', defaultValue: true).value,
+        isFalse);
+    final latest = jsonDecode(await store.file.readAsString()) as Map;
+    expect(latest['obfuscation']['salt'], 'ffffffffffffffffffffffffffffffff');
+    expect((latest['encodedFlags'] as Map).values.single['variationValue'],
+        isFalse);
     await sdk.disable();
 
     response = {
@@ -113,10 +135,10 @@ void main() {
     expect(
         restored
             .sharedClient()
-            .getBooleanDetails(key: 'flag', defaultValue: false)
+            .getBooleanDetails(key: 'flag', defaultValue: true)
             .value,
-        isTrue);
-    expect(bodies, hasLength(2));
+        isFalse);
+    expect(bodies, hasLength(3));
   });
 }
 
