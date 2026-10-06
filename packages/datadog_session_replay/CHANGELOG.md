@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0
+
+### Fixes
+
+- `replaySampleRate` in `DatadogSessionReplayConfiguration` is now actually applied; sessions are deterministically sampled as a whole (matching iOS and Android native SDKs), with re-evaluation when the RUM session changes, and `replaySampleRate` is ignored when `isEmbedded` is true.
+
 ## 1.0.0-preview.15
 
 ### Features
