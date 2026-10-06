@@ -1,0 +1,13 @@
+{
+  "contentCommit": "6c4b6f06954c3a16ffcddbfedb1ec455269d9941",
+  "packages": [
+    {
+      "package": "datadog_flutter_plugin",
+      "from_version": "3.6.0",
+      "to_version": "3.7.0",
+      "source_branch": "develop",
+      "prerelease": false,
+      "relative_path": "packages/datadog_flutter_plugin"
+    }
+  ]
+}
