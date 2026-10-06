@@ -193,3 +193,9 @@ python3 tools/ci/run_openfeature_contract.py --platform chrome
 
 Receipts are written to `.build/openfeature-evidence`. Controlled transport
 results do not establish live Datadog connectivity or maintainer acceptance.
+
+## Cached Evaluation Reasons
+
+For successful evaluations, details report `CACHED` when the installed assignments
+were restored from the configured store, including an in-memory store. After a
+network response replaces those assignments, details report the response reason.

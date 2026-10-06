@@ -218,161 +218,224 @@ void main() {
     }
   });
 
-  test('Low sampling rate returns samples less often', () async {
-    final rumConfiguration = DatadogRumConfiguration(
-      applicationId: 'applicationId',
-      traceSampleRate: 23,
-      detectLongTasks: false,
-    );
-    final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
-
-    var sampleCount = 0;
-    var noSampleCount = 0;
-    for (int i = 0; i < numSamples; ++i) {
-      final trace = TracingId.traceId();
-      final sessionId = UuidV4().toString();
-      if (rum!.shouldSampleTrace(sessionId, trace)) {
-        sampleCount++;
-      } else {
-        noSampleCount++;
-      }
-    }
-
-    expect(noSampleCount, greaterThanOrEqualTo(sampleCount));
-    expect(sampleCount, greaterThanOrEqualTo(1));
-  });
-
-  test('High sampling rate returns samples more often', () async {
-    final rumConfiguration = DatadogRumConfiguration(
-      applicationId: 'applicationId',
-      traceSampleRate: 85,
-      detectLongTasks: false,
-    );
-    final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
-
-    var sampleCount = 0;
-    var noSampleCount = 0;
-    for (int i = 0; i < numSamples; ++i) {
-      final trace = TracingId.traceId();
-      final sessionId = UuidV4().toString();
-      if (rum!.shouldSampleTrace(sessionId, trace)) {
-        sampleCount++;
-      } else {
-        noSampleCount++;
-      }
-    }
-
-    expect(sampleCount, greaterThanOrEqualTo(noSampleCount));
-    expect(noSampleCount, greaterThanOrEqualTo(1));
-  });
-
-  test('Sampling decisions are deterministic for traceId', () async {
-    // Generated using the dd-trace-go implementation with the following program: https://go.dev/play/p/CUrDJtze8E_e
-    final inputs = <(BigInt, double, bool)>[
-      (BigInt.parse('5577006791947779410'), 94.0509, true),
-      (BigInt.parse('15352856648520921629'), 43.7714, true),
-      (BigInt.parse('3916589616287113937'), 68.6823, true),
-      (BigInt.parse('894385949183117216'), 30.0912, true),
-      (BigInt.parse('12156940908066221323'), 46.889, true),
-      (BigInt.parse('9828766684487745566'), 15.6519, false),
-      (BigInt.parse('4751997750760398084'), 81.364, false),
-      (BigInt.parse('11199607447739267382'), 38.0657, false),
-      (BigInt.parse('6263450610539110790'), 21.8553, false),
-      (BigInt.parse('1874068156324778273'), 36.0871, false),
-    ];
-
-    for (final (identifier, sampleRate, expected) in inputs) {
+  group('null session trace sampling', () {
+    test('Low sampling rate returns samples less often', () async {
       final rumConfiguration = DatadogRumConfiguration(
         applicationId: 'applicationId',
-        traceSampleRate: sampleRate,
+        traceSampleRate: 23,
         detectLongTasks: false,
       );
       final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
-      final tracingId = TracingId(identifier);
-      bool shouldSample = rum!.shouldSampleTrace(null, tracingId);
-      expect(shouldSample, expected);
-    }
-  });
 
-  test('Sampling decisions are deterministic for sessionId', () async {
-    // The numbers used in the session UUID are the same numbers truncated to 48 bits,
-    // which sometimes results in a different sampling decision. Created using this program:
-    // https://go.dev/play/p/lUl2SiOHxfZ
-    final inputs = <(String, BigInt, double, bool)>[
-      (
-        '11111111-2222-3333-4444-822107fcfd52',
-        BigInt.parse('5577006791947779410'),
-        94.050909,
-        true,
-      ),
-      (
-        '11111111-2222-3333-4444-4dc76695721d',
-        BigInt.parse('15352856648520921629'),
-        43.771419,
-        true,
-      ),
-      (
-        '11111111-2222-3333-4444-858149c6e2d1',
-        BigInt.parse('3916589616287113937'),
-        68.682307,
-        true,
-      ),
-      (
-        '11111111-2222-3333-4444-cb397916001e',
-        BigInt.parse('9828766684487745566'),
-        15.651925,
-        false,
-      ),
-      (
-        '11111111-2222-3333-4444-7f48392907a0',
-        BigInt.parse('894385949183117216'),
-        30.091186,
-        true,
-      ),
-      (
-        '11111111-2222-3333-4444-7cc6f3875d04',
-        BigInt.parse('4751997750760398084'),
-        81.363996,
-        true,
-      ),
-      (
-        '11111111-2222-3333-4444-ffa2ba517936',
-        BigInt.parse('11199607447739267382'),
-        38.065719,
-        true,
-      ),
-      (
-        '11111111-2222-3333-4444-21587cb3ad0b',
-        BigInt.parse('12156940908066221323'),
-        46.888984,
-        false,
-      ),
-      (
-        '11111111-2222-3333-4444-768b7c4e0b68',
-        BigInt.parse('11833901312327420776'),
-        29.310186,
-        false,
-      ),
-      (
-        '11111111-2222-3333-4444-3f2525632186',
-        BigInt.parse('6263450610539110790'),
-        21.855305,
-        false,
-      ),
-    ];
+      var sampleCount = 0;
+      var noSampleCount = 0;
+      for (int i = 0; i < numSamples; ++i) {
+        final trace = TracingId.traceId();
+        if (rum!.shouldSampleTrace(null, trace)) {
+          sampleCount++;
+        } else {
+          noSampleCount++;
+        }
+      }
 
-    for (final (sessionId, identifier, sampleRate, expected) in inputs) {
+      expect(noSampleCount, greaterThanOrEqualTo(sampleCount));
+      expect(sampleCount, greaterThanOrEqualTo(1));
+    });
+
+    test('High sampling rate returns samples more often', () async {
       final rumConfiguration = DatadogRumConfiguration(
         applicationId: 'applicationId',
-        traceSampleRate: sampleRate,
+        traceSampleRate: 85,
         detectLongTasks: false,
       );
       final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
-      final tracingId = TracingId(identifier);
-      bool shouldSample = rum!.shouldSampleTrace(sessionId, tracingId);
-      expect(shouldSample, expected);
-    }
+
+      var sampleCount = 0;
+      var noSampleCount = 0;
+      for (int i = 0; i < numSamples; ++i) {
+        final trace = TracingId.traceId();
+        if (rum!.shouldSampleTrace(null, trace)) {
+          sampleCount++;
+        } else {
+          noSampleCount++;
+        }
+      }
+
+      expect(sampleCount, greaterThanOrEqualTo(noSampleCount));
+      expect(noSampleCount, greaterThanOrEqualTo(1));
+    });
+
+    test('Sampling decisions are deterministic for traceId', () async {
+      // Generated using the dd-trace-go implementation with the following program: https://go.dev/play/p/CUrDJtze8E_e
+      final inputs = <(BigInt, double, bool)>[
+        (BigInt.parse('5577006791947779410'), 94.0509, true),
+        (BigInt.parse('15352856648520921629'), 43.7714, true),
+        (BigInt.parse('3916589616287113937'), 68.6823, true),
+        (BigInt.parse('894385949183117216'), 30.0912, true),
+        (BigInt.parse('12156940908066221323'), 46.889, true),
+        (BigInt.parse('9828766684487745566'), 15.6519, false),
+        (BigInt.parse('4751997750760398084'), 81.364, false),
+        (BigInt.parse('11199607447739267382'), 38.0657, false),
+        (BigInt.parse('6263450610539110790'), 21.8553, false),
+        (BigInt.parse('1874068156324778273'), 36.0871, false),
+      ];
+
+      for (final (identifier, sampleRate, expected) in inputs) {
+        final rumConfiguration = DatadogRumConfiguration(
+          applicationId: 'applicationId',
+          traceSampleRate: sampleRate,
+          detectLongTasks: false,
+        );
+        final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
+        final tracingId = TracingId(identifier);
+        bool shouldSample = rum!.shouldSampleTrace(null, tracingId);
+        expect(shouldSample, expected);
+      }
+    });
   });
+
+  /// TODO(RUM-18828): Deterministic sampling is currently set up so that
+  /// Sessions essentially make their sampling decision *once* for
+  /// all trace. If a session is in the trace sampling percent,
+  /// all of its traces are sampled in.
+  group('Session Id based sampling', () {
+    final sessionId = '11111111-2222-3333-4444-21587cb3ad0b';
+
+    test('Sampled in session samples in all traces', () async {
+      final rumConfiguration = DatadogRumConfiguration(
+        applicationId: 'applicationId',
+        traceSampleRate: 84,
+        detectLongTasks: false,
+      );
+      final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
+
+      var sampleCount = 0;
+      var noSampleCount = 0;
+      for (int i = 0; i < numSamples; ++i) {
+        final trace = TracingId.traceId();
+        if (rum!.shouldSampleTrace(sessionId, trace)) {
+          sampleCount++;
+        } else {
+          noSampleCount++;
+        }
+      }
+
+      expect(sampleCount, numSamples);
+      expect(noSampleCount, 0);
+    });
+
+    test('Sampled out session samples out all traces', () async {
+      final rumConfiguration = DatadogRumConfiguration(
+        applicationId: 'applicationId',
+        traceSampleRate: 49,
+        detectLongTasks: false,
+      );
+      final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
+
+      var sampleCount = 0;
+      var noSampleCount = 0;
+      for (int i = 0; i < numSamples; ++i) {
+        final trace = TracingId.traceId();
+        if (rum!.shouldSampleTrace(sessionId, trace)) {
+          sampleCount++;
+        } else {
+          noSampleCount++;
+        }
+      }
+
+      expect(sampleCount, 0);
+      expect(noSampleCount, numSamples);
+    });
+  });
+
+  // TODO(RUM-18828): This is the proper functionality for a combined session /
+  // trace sample rate.
+  // group('Combined session / trace sampling', () {
+  //   test('Sampling decisions are deterministic for sessionId', () async {
+  //     // Hash positions (percent of the 64-bit range):
+  //     //   session 0x000000000469: 0.357%     trace 15352856648520921629: 8.204%
+  //     //   session 0x000000000015: 26.490%    trace 4751997750760398084: 89.610%
+  //     //   session 0xd860b2b9437a: 68.673%
+  //     //   session 0x000000000053: 99.938%
+  //     final inputs = <(String, double, BigInt, double, bool)>[
+  //       // Combined 25% keeps the low-hash session.
+  //       (
+  //         '00000000-0000-0000-0000-000000000469',
+  //         50,
+  //         BigInt.parse('4751997750760398084'),
+  //         50,
+  //         true,
+  //       ),
+  //       // Combined 25% drops the high-hash session.
+  //       (
+  //         '00000000-0000-0000-0000-000000000053',
+  //         50,
+  //         BigInt.parse('15352856648520921629'),
+  //         50,
+  //         false,
+  //       ),
+  //       // Combined 25% drops this session, though the raw 50% trace rate would keep it.
+  //       (
+  //         '00000000-0000-0000-0000-000000000015',
+  //         50,
+  //         BigInt.parse('15352856648520921629'),
+  //         50,
+  //         false,
+  //       ),
+  //       // A 100% session rate leaves the trace rate unchanged.
+  //       (
+  //         '00000000-0000-0000-0000-000000000015',
+  //         100,
+  //         BigInt.parse('4751997750760398084'),
+  //         50,
+  //         true,
+  //       ),
+  //       // A 0% session rate drops everything, even at a 100% trace rate.
+  //       (
+  //         '00000000-0000-0000-0000-000000000469',
+  //         0,
+  //         BigInt.parse('15352856648520921629'),
+  //         100,
+  //         false,
+  //       ),
+  //       // A 0% trace rate drops everything, even at a 100% session rate.
+  //       (
+  //         '00000000-0000-0000-0000-000000000469',
+  //         100,
+  //         BigInt.parse('15352856648520921629'),
+  //         0,
+  //         false,
+  //       ),
+  //       // Combined 40% drops this session, though the raw 80% trace rate would keep it.
+  //       (
+  //         'a1b2c3d4-e5f6-7890-abcd-d860b2b9437a',
+  //         50,
+  //         BigInt.parse('15352856648520921629'),
+  //         80,
+  //         false,
+  //       ),
+  //     ];
+
+  //     for (final (
+  //           sessionId,
+  //           sessionSampleRate,
+  //           identifier,
+  //           traceSampleRate,
+  //           expected
+  //         ) in inputs) {
+  //       final rumConfiguration = DatadogRumConfiguration(
+  //         applicationId: 'applicationId',
+  //         sessionSamplingRate: sessionSampleRate,
+  //         traceSampleRate: traceSampleRate,
+  //         detectLongTasks: false,
+  //       );
+  //       final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
+  //       final tracingId = TracingId(identifier);
+  //       bool shouldSample = rum!.shouldSampleTrace(sessionId, tracingId);
+  //       expect(shouldSample, expected);
+  //     }
+  //   });
+  // });
 
   test('getCurrentSessionId returns id from platform', () async {
     // Given

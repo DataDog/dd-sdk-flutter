@@ -84,3 +84,9 @@ separate pure-Dart OpenFeature provider in that isolate.
 ## Contributing
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md). Licensed under [Apache 2.0](LICENSE).
+
+## Cached Evaluation Reasons
+
+For successful evaluations, details report `CACHED` when the installed assignments
+were restored from the configured store, including an in-memory store. After a
+network response replaces those assignments, details report the response reason.

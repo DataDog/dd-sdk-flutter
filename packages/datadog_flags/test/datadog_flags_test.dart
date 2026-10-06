@@ -1306,11 +1306,28 @@ void main() {
       isTrue,
     );
 
+    for (final details in [
+      restored.getBooleanDetails(key: 'show-paywall', defaultValue: false),
+      restored.getStringDetails(key: 'theme', defaultValue: ''),
+      restored.getIntegerDetails(key: 'max-items', defaultValue: 0),
+      restored.getDoubleDetails(key: 'ratio', defaultValue: 0),
+      restored.getObjectDetails(key: 'config', defaultValue: null),
+    ]) {
+      expect(details.reason, 'CACHED');
+      expect(details.error, isNull);
+    }
+
     refreshResponse.complete(
       http.Response(jsonEncode(_assignmentsResponse(booleanValue: false)), 200),
     );
     await refresh;
     expect(lifecycle.status, DatadogFlagsClientStatus.ready);
+    expect(
+      restored
+          .getBooleanDetails(key: 'show-paywall', defaultValue: false)
+          .reason,
+      'TARGETING_MATCH',
+    );
     expect(
       restored.getBooleanDetails(key: 'show-paywall', defaultValue: true).value,
       isFalse,
@@ -1373,6 +1390,12 @@ void main() {
 
       final refresh = client.initialize(context);
       await _waitUntil(() => requests.length == 2);
+      expect(
+        client
+            .getBooleanDetails(key: 'show-paywall', defaultValue: false)
+            .reason,
+        'TARGETING_MATCH',
+      );
       expect(
         client
             .getBooleanDetails(key: 'show-paywall', defaultValue: false)
