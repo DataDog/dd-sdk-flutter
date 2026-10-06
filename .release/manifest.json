@@ -1,0 +1,13 @@
+{
+  "contentCommit": "e453d8619c4e4fb8a275287b8a9a6062e35ee2ff",
+  "packages": [
+    {
+      "package": "datadog_session_replay",
+      "from_version": "1.0.0-preview.15",
+      "to_version": "1.0.0",
+      "source_branch": "develop",
+      "prerelease": false,
+      "relative_path": "packages/datadog_session_replay"
+    }
+  ]
+}
