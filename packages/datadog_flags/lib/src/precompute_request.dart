@@ -8,7 +8,6 @@ import 'package:meta/meta.dart';
 
 import 'datadog_flags_config.dart';
 import 'evaluation_context.dart';
-import 'flag_key_obfuscation.dart';
 import 'json_value.dart';
 import 'sdk_metadata.dart';
 
@@ -65,10 +64,6 @@ final class PrecomputeRequestAttributes {
   final PrecomputeRequestEnv env;
   final PrecomputeRequestSource source;
   final PrecomputeRequestSubject subject;
-  @JsonKey(name: 'supported_capabilities')
-  Map<String, Object?> get supportedCapabilities => const {
-        'assignment_encodings': supportedAssignmentEncodings,
-      };
 
   const PrecomputeRequestAttributes({
     required this.env,

@@ -11,6 +11,7 @@ import 'assignment.dart';
 import 'datadog_flags_config.dart';
 import 'flags_configuration.dart';
 import 'evaluation_context.dart';
+import 'flag_key_obfuscation.dart';
 import 'flags_error.dart';
 import 'precompute_request.dart';
 import 'precompute_response.dart';
@@ -78,6 +79,8 @@ class FlagAssignmentsFetcher {
   Map<String, String> _headers() {
     return {
       'Content-Type': 'application/vnd.api+json',
+      'X-DD-FEATURE-FLAGS-CAPABILITIES':
+          (supportedFlagsCapabilities.toList()..sort()).join(','),
       'dd-client-token': datadogConfig.clientToken,
       if (datadogConfig.applicationId case final applicationId?)
         'dd-application-id': applicationId,

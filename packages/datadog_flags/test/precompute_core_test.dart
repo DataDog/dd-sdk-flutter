@@ -54,6 +54,8 @@ void main() {
           ),
         );
         expect(request.headers['Content-Type'], 'application/vnd.api+json');
+        expect(request.headers['X-DD-FEATURE-FLAGS-CAPABILITIES'],
+            'assignment-encoding-flag-key-256-v1');
         expect(request.headers['dd-client-token'], 'client-token');
         expect(request.headers['dd-application-id'], 'application-id');
         expect(request.headers.containsKey('X-Use-Cache'), isFalse);
@@ -65,9 +67,6 @@ void main() {
               'source': {
                 'sdk_name': 'dd-sdk-dart',
                 'sdk_version': datadogFlagsSdkVersion,
-              },
-              'supported_capabilities': {
-                'assignment_encodings': ['flag-key-sha256-v1'],
               },
               'subject': {
                 'targeting_key': 'precomputed-user',
@@ -128,9 +127,6 @@ void main() {
             'source': {
               'sdk_name': 'dd-sdk-dart',
               'sdk_version': datadogFlagsSdkVersion,
-            },
-            'supported_capabilities': {
-              'assignment_encodings': ['flag-key-sha256-v1'],
             },
             'subject': {
               'targeting_key': '',

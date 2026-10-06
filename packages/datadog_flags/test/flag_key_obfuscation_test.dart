@@ -347,9 +347,11 @@ void main() {
             ['attributes'];
     expect(attributes['source'],
         {'sdk_name': 'dd-sdk-dart', 'sdk_version': ddPackageVersion});
-    expect(attributes['supported_capabilities'], {
-      'assignment_encodings': ['flag-key-sha256-v1']
-    });
+    expect(attributes.containsKey('supported_capabilities'), isFalse);
+    expect(
+        harness.assignmentRequests.single
+            .headers['X-DD-FEATURE-FLAGS-CAPABILITIES'],
+        'assignment-encoding-flag-key-256-v1');
   });
 }
 

@@ -25,6 +25,7 @@ void main() {
     });
     final store = _FileStore(File('${directory.path}/assignments.json'));
     final bodies = <Map<String, dynamic>>[];
+    final capabilities = <String?>[];
     var response = <String, Object?>{
       'data': {
         'attributes': {
@@ -51,6 +52,8 @@ void main() {
       }
     };
     server.listen((request) async {
+      capabilities
+          .add(request.headers.value('X-DD-FEATURE-FLAGS-CAPABILITIES'));
       bodies.add(jsonDecode(await utf8.decoder.bind(request).join())
           as Map<String, dynamic>);
       request.response.headers.contentType = ContentType.json;
@@ -82,9 +85,11 @@ void main() {
         client.getObjectDetails(key: 'cafe\u0301', defaultValue: null).value, {
       'visible': [42, true]
     });
-    expect(bodies.single['data']['attributes']['supported_capabilities'], {
-      'assignment_encodings': ['flag-key-sha256-v1']
-    });
+    expect(
+        bodies.single['data']['attributes']
+            .containsKey('supported_capabilities'),
+        isFalse);
+    expect(capabilities.single, 'assignment-encoding-flag-key-256-v1');
     expect(bodies.single['data']['attributes']['source']['sdk_name'],
         'dd-sdk-dart');
     final disk = jsonDecode(await store.file.readAsString()) as Map;

@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:meta/meta.dart';
 
-const supportedAssignmentEncodings = ['flag-key-sha256-v1'];
+const supportedFlagsCapabilities = ['assignment-encoding-flag-key-256-v1'];
 
 /// Encoding metadata that belongs to one assignment snapshot.
 @immutable
