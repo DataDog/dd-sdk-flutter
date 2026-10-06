@@ -321,20 +321,28 @@ ios-integration-test:
   timeout: 1h
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-    # Leaves time before the job timeout to upload the verbose test logs
+    # Leaves time before the job timeout to capture diagnostics and upload the verbose test logs
     RUNNER_SCRIPT_TIMEOUT: 45m
+    RUNNER_AFTER_SCRIPT_TIMEOUT: 8m
   script:
     - !reference [.pre, script]
+    - nohup tools/ci/scripts/ios_test_watchdog.sh watch $$ .build/test-logs .build/ios-diagnostics > /dev/null 2>&1 &
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
     - melos remove_podfile_lock --no-select
     - melos run integration_test:ios
+  after_script:
+    - |
+      if [ "$CI_JOB_STATUS" != "success" ]; then
+        tools/ci/scripts/ios_test_watchdog.sh snapshot after-script .build/ios-diagnostics
+      fi
   artifacts:
     when: always
     expire_in: "30 days"
     paths:
       - .build/test-logs/
+      - .build/ios-diagnostics/
 
 macos-integration-test:
   stage: integration-test

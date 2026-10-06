@@ -61,6 +61,10 @@ Future<bool> launchIosSimulator(String sdk, String? deviceName) async {
 
       print('Launching $deviceName');
       await _xcrun('simctl boot ${device.udid}');
+      // `simctl boot` returns before the device finishes booting, and
+      // launching an app on a partially booted device can hang indefinitely.
+      print('Waiting for ${device.name} to finish booting');
+      await _xcrun('simctl bootstatus ${device.udid} -b');
       return true;
     } else {
       print('Found no devices matching $deviceName');
