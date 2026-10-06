@@ -176,7 +176,7 @@ class EvaluationAggregator {
       clientToken: runtime.datadogConfig.clientToken,
       nativeContentType: 'application/json',
       nativeBodyBuilder: () => jsonEncode({
-        'context': _datadogContext(),
+        'context': _batchDatadogContext(),
         'flagEvaluations': evaluations.map((e) => e.toJson()).toList(),
       }),
       webBodyBuilder: () => evaluations.map(_webEvaluationJson).join('\n'),
@@ -247,7 +247,7 @@ class EvaluationAggregator {
       Map<String, Object?> context => Map<String, Object?>.from(context),
       _ => <String, Object?>{},
     };
-    final datadogContext = _datadogContext();
+    final datadogContext = _evaluationDatadogContext();
     if (datadogContext.isNotEmpty) {
       eventContext['dd'] = datadogContext;
       event['context'] = eventContext;
@@ -255,12 +255,18 @@ class EvaluationAggregator {
     return jsonEncode(event);
   }
 
-  Map<String, Object?> _datadogContext() {
+  Map<String, Object?> _batchDatadogContext() {
+    return _removeNullValues({
+      ..._evaluationDatadogContext(),
+      'env': runtime.datadogConfig.env,
+      'version': runtime.datadogConfig.version,
+    });
+  }
+
+  Map<String, Object?> _evaluationDatadogContext() {
     final applicationId = runtime.datadogConfig.applicationId;
     return _removeNullValues({
-      'env': runtime.datadogConfig.env,
       'service': runtime.datadogConfig.service,
-      'version': runtime.datadogConfig.version,
       'rum': applicationId == null
           ? null
           : {

@@ -17,6 +17,7 @@ dotEnvFiles=(
   "packages/datadog_tracking_http_client/example/.env"
   "packages/datadog_webview_tracking/example/.env"
   "examples/simple_example/.env"
+  "examples/session_replay_example/.env"
   "test_apps/stress_test/.env"
 )
 
