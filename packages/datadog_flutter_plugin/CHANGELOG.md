@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.7.0
+
+### Features
+
+- `DeterministicSampler` is now available, using Knuth hashing on session IDs to produce consistent sampling decisions across SDKs.
+
 ## 3.6.0
 
 ### Features
