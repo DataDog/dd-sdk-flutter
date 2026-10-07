@@ -65,6 +65,10 @@ void main() {
           clientToken: 'test-token', env: 'test', site: DatadogFlagsSite.us1),
       customFlagsEndpoint:
           Uri.parse('http://127.0.0.1:${server.port}/precompute-assignments'),
+      customFlagsHeaders: const {
+        'X-DD-FEATURE-FLAGS-CAPABILITIES':
+            'assignment-encoding-flag-key-256-v1',
+      },
       trackExposures: false,
       trackEvaluations: false,
       store: store,

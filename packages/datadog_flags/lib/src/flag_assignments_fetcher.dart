@@ -79,8 +79,10 @@ class FlagAssignmentsFetcher {
   Map<String, String> _headers() {
     return {
       'Content-Type': 'application/vnd.api+json',
-      'X-DD-FEATURE-FLAGS-CAPABILITIES':
-          (supportedFlagsCapabilities.toList()..sort()).join(','),
+      // Avoid adding a header that a web proxy's CORS policy may reject.
+      if (configuration.customFlagsEndpoint == null)
+        'X-DD-FEATURE-FLAGS-CAPABILITIES':
+            (supportedFlagsCapabilities.toList()..sort()).join(','),
       'dd-client-token': datadogConfig.clientToken,
       if (datadogConfig.applicationId case final applicationId?)
         'dd-application-id': applicationId,
