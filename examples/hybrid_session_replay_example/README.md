@@ -39,7 +39,17 @@ DD_CLIENT_TOKEN=<client token> DD_APPLICATION_ID=<application id> ./generate_env
 
 Do not commit real client tokens or application IDs. Without credentials, the
 native SDK doesn't initialize, Flutter can't attach to it, and the Flutter
-views show a null check error.
+views show this error:
+
+```
+Null check operator used on a null value
+```
+
+The Flutter logs also show:
+
+```
+[Datadog 🐶🔥 ] Failed to attach to an existing native instance of the Datadog SDK.
+```
 
 Then fetch the Flutter module's dependencies. This also generates the
 `.ios` and `.android` folders that the host apps build against:
@@ -70,7 +80,8 @@ cd android
 ./gradlew installDebug
 ```
 
-Hybrid Session Replay needs dd-sdk-android 3.13.0 or later.
+Hybrid Session Replay needs dd-sdk-android 3.13.0 or later. The example uses
+3.13.1, the version that `datadog_flutter_plugin` pins.
 
 ## How it works
 
@@ -106,9 +117,13 @@ The native `replaySampleRate` decides which sessions get a replay. When
 `isEmbedded` is `true`, the Flutter `replaySampleRate` is ignored.
 
 Privacy levels are not shared between the native and Flutter SDKs, so this
-example sets the same ones on both sides (`maskSensitiveInputs`, `maskNone`,
-`show`). The password field on the full-screen Flutter view is masked in the
-replay.
+example sets the same ones on both sides:
+
+* **Text and input privacy**: `maskSensitiveInputs`
+* **Image privacy**: `maskNone`
+* **Touch privacy**: `show`
+
+The password field on the full-screen Flutter view is masked in the replay.
 
 ### RUM views
 
