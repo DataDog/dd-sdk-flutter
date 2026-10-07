@@ -146,8 +146,8 @@ case "${1:-}" in
     OUTPUT_DIR=$3
     mkdir -p "$OUTPUT_DIR"
     snapshot "$2"
-    bounded 120 "$OUTPUT_DIR/$2/simulator.log" \
-      xcrun simctl spawn booted log show --last 50m --style compact
+    bounded 60 "$OUTPUT_DIR/$2/simulator.log" \
+      xcrun simctl spawn booted log show --last 15m --style compact
     gzip -f "$OUTPUT_DIR/$2/simulator.log"
     ;;
   *)
