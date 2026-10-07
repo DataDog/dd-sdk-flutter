@@ -107,6 +107,10 @@ Use `package:datadog_flags/datadog_flags.dart` directly for pure Dart apps or
 Flutter apps that need full lifecycle control without Datadog Flutter SDK
 integration.
 
+## Cached Evaluation Reasons
+
+For successful evaluations, details report `CACHED` when the installed assignments were restored from the configured store, including an in-memory store. After a network response replaces those assignments, details report the response reason.
+
 ## Background Isolates
 
 `datadog_flags_flutter` does not support evaluation from background

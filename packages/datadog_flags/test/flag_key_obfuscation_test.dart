@@ -253,6 +253,11 @@ void main() {
             .getBooleanDetails(key: 'flag', defaultValue: false)
             .value,
         isTrue);
+    expect(
+        offline.client
+            .getBooleanDetails(key: 'flag', defaultValue: false)
+            .reason,
+        'CACHED');
     await offline.client
         .initialize(const FlagsEvaluationContext(targetingKey: 'other'));
     expect(

@@ -93,6 +93,11 @@ stages:
     - export PATH="$PATH:${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/"
     - echo $CHROME_EXECUTABLE
 
+.tart-runner:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/ci-platform-machine-images/tart-vm:dd-sdk-flutter-sequoia-latest
+  tags:
+    - macos:tart
+
 ci-image:
   when: manual
   stage: ci-image
@@ -107,13 +112,11 @@ ci-image:
 # Build (And Analyze) Stage
 
 build-flutter:
+  extends: .tart-runner
   stage: build
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - melos dartfmt_check
@@ -144,13 +147,11 @@ build-android:
       - "$CI_PROJECT_DIR/**/reports/detekt/*"
 
 build-ios-spm:
+  extends: .tart-runner
   stage: build
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -162,13 +163,11 @@ build-ios-spm:
     - melos run unit_test:ios
 
 build-ios:
+  extends: .tart-runner
   stage: build
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -222,14 +221,12 @@ android-integration-test:
       - .build/test-results/*_android_integration.jsonl
 
 ios-integration-test:
+  extends: .tart-runner
   stage: integration-test
   except: [schedules]
   needs: [build-ios]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -295,6 +292,12 @@ notify-nightly-failed:
 
 .nightly-vars:
   script:
+    # Tart VMs obtain AWS credentials through the AWS CLI config rather than env vars, which `vault login -method=aws` needs
+    - |
+      if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+        aws_env="$(aws configure export-credentials --format env)"
+        eval "$aws_env"
+      fi
     - vault login -method=aws -no-print
     - export DD_E2E_CLIENT_TOKEN=$(vault kv get -field=client_token kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
     - export DD_E2E_APPLICATION_ID=$(vault kv get -field=application_id kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
@@ -309,13 +312,10 @@ notify-nightly-failed:
     - specific:true
 
 nightly-min-version-test:
-  extends: .nightly
+  extends: [.nightly, .tart-runner]
   stage: version-test
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -332,13 +332,10 @@ nightly-min-version-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 nightly-beta-test:
-  extends: .nightly
+  extends: [.nightly, .tart-runner]
   stage: version-test
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -391,7 +388,7 @@ nightly-beta-test-web:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 nightly-ios:
-  extends: .nightly
+  extends: [.nightly, .tart-runner]
   stage: e2e-test
   script:
     - !reference [.nightly-vars, script]

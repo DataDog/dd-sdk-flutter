@@ -344,6 +344,10 @@ This package does not choose a disk location or ship a Flutter-specific disk
 store. Flutter apps can implement `DatadogFlagsStore` with their preferred app
 storage mechanism.
 
+## Cached Evaluation Reasons
+
+For successful evaluations, details report `CACHED` when the installed assignments were restored from the configured store, including an in-memory store. After a network response replaces those assignments, details report the response reason.
+
 ## Reset and Disable
 
 `DatadogFlags.instance.reset()` clears all clients' in-memory assignment state

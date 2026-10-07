@@ -30,6 +30,9 @@ class _SessionReplayPlugin extends DatadogPlugin {
 
   @override
   Future<void> initialize() async {
+    // Always set up Session Replay: the session ID changes during a launch
+    // (after 15 minutes idle or 4 hours), and DatadogSessionReplay decides on
+    // every new session whether it is sampled for replay.
     initSessionReplayPlatform();
 
     await wrapAsync(
@@ -37,7 +40,13 @@ class _SessionReplayPlugin extends DatadogPlugin {
       instance.internalLogger,
       null,
       () async {
-        await DatadogSessionReplay.init(configuration, instance.internalLogger);
+        await DatadogSessionReplay.init(
+          configuration,
+          instance.internalLogger,
+          rumSampleRate:
+              instance.configuration?.rumConfiguration?.sessionSamplingRate ??
+                  100.0,
+        );
         instance.internalLogger.debug('Flutter Session Replay Enabled');
       },
     );
