@@ -291,6 +291,12 @@ notify-nightly-failed:
 
 .nightly-vars:
   script:
+    # Tart VMs obtain AWS credentials through the AWS CLI config rather than env vars, which `vault login -method=aws` needs
+    - |
+      if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+        aws_env="$(aws configure export-credentials --format env)"
+        eval "$aws_env"
+      fi
     - vault login -method=aws -no-print
     - export DD_E2E_CLIENT_TOKEN=$(vault kv get -field=client_token kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
     - export DD_E2E_APPLICATION_ID=$(vault kv get -field=application_id kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
