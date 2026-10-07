@@ -32,7 +32,7 @@ On iOS, create a `UIKitRUMViewsPredicate` to check if the view controller is an 
 
 On Android, create a `ComponentPredicate` to check if the Activity is an instance of `FlutterActivity`. If so, return false from this function to avoid tracking the Activity and let Flutter SDK take over.  An example of this predicate can be found in the example code in [HybridApplication.kt](android/app/src/main/java/com/datadoghq/hybrid_flutter_example/HybridApplication.kt)
 
-If you use Session Replay in your hybrid app, don't add these predicates. Flutter's replay records are attached to the native RUM view on screen, so a full screen Flutter view needs its own native view. See the [Hybrid Session Replay example](../hybrid_session_replay_example#rum-views).
+If you use Session Replay in your hybrid app, don't add these predicates. Flutter's replay records are attached to the native RUM view on screen, so a full-screen Flutter view needs its own native view. See the [Hybrid Session Replay example](../hybrid_session_replay_example#rum-views).
 
 ### Caveats
 

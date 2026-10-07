@@ -7,9 +7,9 @@ on screen.
 
 It covers two common ways to embed Flutter:
 
-* **An embedded panel**: a Flutter view in the middle of a native screen,
+* **An embedded panel**: A Flutter view in the middle of a native screen,
   between native controls (`embeddedMain` entrypoint).
-* **A full screen view**: a Flutter screen pushed on top of the native screen
+* **A full-screen view**: A Flutter screen pushed on top of the native screen
   (`main` entrypoint).
 
 Each one runs in its own Flutter engine.
@@ -37,12 +37,12 @@ Generate the credential files from the repository root. This writes
 DD_CLIENT_TOKEN=<client token> DD_APPLICATION_ID=<application id> ./generate_env.sh
 ```
 
-Do not commit real client tokens or application IDs. Without credentials the
+Do not commit real client tokens or application IDs. Without credentials, the
 native SDK doesn't initialize, Flutter can't attach to it, and the Flutter
 views show a null check error.
 
-Then fetch the Flutter module's dependencies, which also generates the
-`.ios` and `.android` folders the host apps build against:
+Then fetch the Flutter module's dependencies. This also generates the
+`.ios` and `.android` folders that the host apps build against:
 
 ```bash
 cd flutter_module
@@ -63,7 +63,7 @@ dd-sdk-ios 3.16.0 or later.
 ### Android
 
 Open the `android` folder in Android Studio and run the `app` configuration,
-or from the command line:
+or build from the command line:
 
 ```bash
 cd android
@@ -76,7 +76,7 @@ Hybrid Session Replay needs dd-sdk-android 3.13.0 or later.
 
 ### Native side
 
-The native app initializes Datadog, RUM and Session Replay before any Flutter
+The native app initializes Datadog, RUM, and Session Replay before any Flutter
 engine runs (`AppDelegate.swift`, `HybridApplication.kt`). Then it opts each
 Flutter view in to Session Replay:
 
@@ -107,13 +107,13 @@ The native `replaySampleRate` decides which sessions get a replay. When
 
 Privacy levels are not shared between the native and Flutter SDKs, so this
 example sets the same ones on both sides (`maskSensitiveInputs`, `maskNone`,
-`show`). The password field on the full screen Flutter view is masked in the
+`show`). The password field on the full-screen Flutter view is masked in the
 replay.
 
 ### RUM views
 
 Both host apps use the default RUM view tracking, so each Flutter view
-controller or activity is its own RUM view. The full screen Flutter view gets
+controller or activity is its own RUM view. The full-screen Flutter view gets
 its own view in the replay, and the embedded panel is part of the native
 screen's view.
 
@@ -121,5 +121,5 @@ The [Add-to-App example](../native-hybrid-app) does the opposite: it filters
 `FlutterViewController` and `FlutterActivity` out of native view tracking and
 lets Flutter track its own views. Don't use that filter with hybrid Session
 Replay. Flutter records are attached to the native RUM view on screen, so
-without a native view for a full screen Flutter view, its replay merges into
+without a native view for a full-screen Flutter view, its replay merges into
 the native screen underneath.
