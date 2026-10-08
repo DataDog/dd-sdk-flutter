@@ -7,23 +7,28 @@
 // instead of leaving it to drift from what `publish_release.dart` later
 // backports.
 //
-// Does, in order:
-//   1. Refuses if the working tree's diff touches anything other than a
-//      package in this release's CHANGELOG.md, HEAD isn't exactly one commit
-//      (B) past commit A, the release-prep PR this run would edit doesn't
-//      exist yet, or either remote ref has moved past what's checked out
-//      here (another reviewer's push, or a concurrent amend run) -- all
-//      checked before anything is mutated, so a refusal never leaves a
-//      half-amended branch behind.
-//   2. Amends commit A in place with the hand-edit, then replays commit B on
-//      top of the amended commit and rewrites its manifest.json
-//      `contentCommit` to match.
-//   3. Atomically force-moves the `release-content/*` branch and the
+// Does, in order -- cheap, purely local checks before anything that touches
+// the network, so a plain mistake (wrong branch, wrong file, no changes at
+// all) never costs a `gh` round-trip:
+//   1. Refuses if run from a support branch (no content commit to amend
+//      there), if the working tree's diff is empty, or if it touches
+//      anything other than a real workspace package's CHANGELOG.md.
+//   2. Refuses if the release-prep PR this run would edit doesn't exist
+//      yet, its body has no "Content commit" line (see `manifest.dart`),
+//      HEAD isn't exactly one commit (B) past that commit, a touched
+//      package isn't actually part of this release per the PR's versions
+//      table, or either remote ref has moved past what's checked out here
+//      (another reviewer's push, or a concurrent amend run) -- all still
+//      checked before anything is mutated.
+//   3. Amends commit A in place with the hand-edit, then replays commit B
+//      on top of the amended commit.
+//   4. Atomically force-moves the `release-content/*` branch and the
 //      release-prep branch together, each leased against the tip captured in
-//      step 1 -- so a concurrent amend run can't interleave into a state
+//      step 2 -- so a concurrent amend run can't interleave into a state
 //      where one ref reflects this run and the other reflects the other run.
-//   4. Rewrites the open release-prep PR's body, swapping every occurrence
-//      of the old commit A SHA for the new one.
+//   5. Rewrites the open release-prep PR's body, swapping every occurrence
+//      of the old commit A SHA for the new one (including the "Content
+//      commit" line itself).
 
 import 'dart:io';
 
@@ -36,6 +41,8 @@ import 'package:releaser/git/git_dir.dart';
 import 'package:releaser/git/release_git.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/manifest.dart';
+import 'package:releaser/package_discovery.dart';
+import 'package:releaser/publish_rules.dart';
 
 final _log = Logger('amend_release_changelog');
 
@@ -94,13 +101,30 @@ Future<void> amendReleaseChangelog({
   final workingBranch = currentBranch.branchName;
   final localHead = currentBranch.sha;
 
-  final manifest = await readManifest(gitDir.path);
-  final originalContentCommit = manifest.contentCommit;
+  if (isPatchReleaseBranch(workingBranch)) {
+    throw StateError(
+      'This release has no content commit to amend (support-branch releases '
+      'never split commit A from commit B) -- fix CHANGELOG.md directly and '
+      'amend the single commit yourself.',
+    );
+  }
+
+  // Local-only checks, run before any network call.
+  final changedFiles = await _checkChangedFilesAreRealChangelogs(gitDir);
+
+  // The release-prep PR for this branch.
+  final pr = await github.findOpenPullRequestByHead(_log, workingBranch);
+  if (pr == null) {
+    throw StateError(
+      'No open PR found with head $workingBranch -- expected the '
+      'release-prep PR to already be open before amending anything.',
+    );
+  }
+  final originalContentCommit = parseContentCommit(pr.body);
   if (originalContentCommit == null) {
     throw StateError(
-      'This release has no content commit to amend (patch releases never '
-      'split commit A from commit B) -- fix CHANGELOG.md directly and amend '
-      'the single commit yourself.',
+      'PR #${pr.number}\'s body has no "Content commit" line -- not a '
+      'release-prep PR for a mainline/pre-release run?',
     );
   }
   final contentBranchName = contentBranchNameFor(workingBranch);
@@ -119,13 +143,9 @@ Future<void> amendReleaseChangelog({
     );
   }
 
-  await _checkEligibleFiles(gitDir, manifest);
+  await _checkChangelogsAreReleasing(gitDir, changedFiles, pr.body);
 
-  // Captured now, before any local rewriting, so the force-push leases below
-  // are checked against the remote as it was when this run started rather
-  // than being silently refreshed to whatever they've drifted to by push
-  // time. If the remote has already moved past what's checked out here,
-  // refuse rather than let a stale rewrite authorize overwriting it.
+  // The remote tip to lease the force-push below against.
   final expectedRemoteTip = await remoteTipFor(gitDir, workingBranch, _log);
   if (expectedRemoteTip != localHead) {
     throw StateError(
@@ -148,46 +168,17 @@ Future<void> amendReleaseChangelog({
     );
   }
 
-  // Everything below mutates something -- from here on a failure should
-  // either be cleanly retryable or leave a clear recovery path, never a
-  // silent half-amended state. Confirming the PR we'll edit at the very end
-  // actually exists *now*, before any git surgery, means we never force-move
-  // real branches only to discover afterwards there's nothing to update
-  // their PR link to.
-  final pr = await github.findOpenPullRequestByHead(_log, workingBranch);
-  if (pr == null) {
-    throw StateError(
-      'No open PR found with head $workingBranch -- expected the '
-      'release-prep PR to already be open before amending anything.',
-    );
-  }
+  // Count of the content-commit SHA's occurrences in the PR body, for the
+  // final log message.
   final occurrences = RegExp(
     RegExp.escape(originalContentCommit),
   ).allMatches(pr.body).length;
-  if (occurrences == 0) {
-    throw StateError(
-      'PR #${pr.number}\'s body does not contain $originalContentCommit '
-      'anywhere -- either it was already amended, or this is not the PR '
-      '`release_pr.dart` wrote for this branch. Refusing rather than risk '
-      'editing the wrong body.',
-    );
-  }
 
   final newContentCommit = await _amendContentCommit(
     gitDir,
     workingBranch: workingBranch,
     originalContentCommit: originalContentCommit,
   );
-
-  await writeManifest(
-    gitDir.path,
-    ReleaseManifest(
-      contentCommit: newContentCommit,
-      packages: manifest.packages,
-    ),
-  );
-  await stageAll(gitDir, _log);
-  await amendCommit(gitDir, _log);
 
   _log.info(
     'ℹ️ Commit A: $originalContentCommit -> $newContentCommit. Replayed '
@@ -208,11 +199,8 @@ Future<void> amendReleaseChangelog({
     ),
   ], _log);
 
-  // The one step past this point that isn't itself retryable by re-running
-  // the tool (the working tree is clean again by now, so a second run would
-  // just refuse with "nothing to amend") -- if this fails, both branches are
-  // already correct on the remote and only the PR body is stale; fix it by
-  // hand with the SHA logged below.
+  // Swaps the old content-commit SHA for the new one everywhere in the PR
+  // body, including the "Content commit" line itself.
   final newBody = pr.body.replaceAll(originalContentCommit, newContentCommit);
   try {
     await github.editPullRequestBody(_log, pr.number, newBody);
@@ -232,21 +220,11 @@ Future<void> amendReleaseChangelog({
   );
 }
 
-/// Refuses if the working tree's diff touches anything other than the
-/// `CHANGELOG.md` of a package that's actually part of this release --
-/// checked by basename *and* by directory, so a same-named file elsewhere in
-/// the repo (this tool's own `CHANGELOG.md`, if it had one) can't slip
-/// through, and so can every other commit-A file (`pubspec.yaml`,
-/// `NATIVE_SDK_VERSIONS.md`, ...) even though they're legitimately part of
-/// commit A -- this tool is deliberately changelog-only. Restricted to
-/// [manifest]'s packages rather than every workspace package, since a
-/// hand-edit to an unreleased package's changelog would otherwise get folded
-/// in, force-pushed, and backported despite that package being absent from
-/// the manifest, versions table, and publish set.
-Future<void> _checkEligibleFiles(
-  GitDir gitDir,
-  ReleaseManifest manifest,
-) async {
+/// Refuses if the working tree's diff is empty, or touches anything other
+/// than the `CHANGELOG.md` of a real workspace package. Doesn't check
+/// whether a touched package is part of *this* release; see
+/// [_checkChangelogsAreReleasing] for that. Returns the changed files.
+Future<List<String>> _checkChangedFilesAreRealChangelogs(GitDir gitDir) async {
   final changedFiles = await changedFilesAgainst(gitDir, 'HEAD', _log);
   if (changedFiles.isEmpty) {
     throw StateError(
@@ -255,12 +233,14 @@ Future<void> _checkEligibleFiles(
     );
   }
 
-  final packagePaths = manifest.packages.map((e) => e.relativePath).toSet();
+  final allPackagePaths = (await discoverPackages(
+    gitDir.path,
+  )).expand((g) => g.members).map((pkg) => pkg.relativePath).toSet();
 
   final ineligible = changedFiles.where((f) {
     if (p.basename(f) != _eligibleBasename) return true;
     final dir = p.dirname(f);
-    return !packagePaths.any((pkgPath) => p.equals(dir, pkgPath));
+    return !allPackagePaths.any((pkgPath) => p.equals(dir, pkgPath));
   }).toList();
 
   if (ineligible.isNotEmpty) {
@@ -268,6 +248,37 @@ Future<void> _checkEligibleFiles(
       'Refusing to amend -- this tool only amends a workspace package\'s '
       '$_eligibleBasename. These changed files are outside that: '
       '${ineligible.join(', ')}',
+    );
+  }
+
+  return changedFiles;
+}
+
+/// Refuses if any of [changedFiles] belongs to a package that isn't part of
+/// this release, per [prBody]'s versions table.
+Future<void> _checkChangelogsAreReleasing(
+  GitDir gitDir,
+  List<String> changedFiles,
+  String prBody,
+) async {
+  final releasingPackages = parseVersionsTable(
+    prBody,
+  ).map((row) => row.package).toSet();
+  final releasingPackagePaths = (await discoverPackages(gitDir.path))
+      .expand((g) => g.members)
+      .where((pkg) => releasingPackages.contains(pkg.name))
+      .map((pkg) => pkg.relativePath)
+      .toSet();
+
+  final ineligible = changedFiles.where((f) {
+    final dir = p.dirname(f);
+    return !releasingPackagePaths.any((pkgPath) => p.equals(dir, pkgPath));
+  }).toList();
+
+  if (ineligible.isNotEmpty) {
+    throw StateError(
+      'Refusing to amend -- these changed files belong to a package that '
+      'is not part of this release: ${ineligible.join(', ')}',
     );
   }
 }

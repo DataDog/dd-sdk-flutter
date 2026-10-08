@@ -86,6 +86,12 @@ Future<String> commitAll(
   String message,
   Logger logger, {
   String? body,
+  // `prepare_release.dart`'s publish-prep commit needs this: a run with no
+  // native SDK deltas to pin has nothing to stage, and a plain `git commit`
+  // would fail with "nothing to commit" -- but the two-commit release-prep
+  // shape (`amend_release_changelog.dart`, the backport, ...) still needs
+  // that second commit to exist.
+  bool allowEmpty = false,
 }) async {
   await _run(gitDir, ['add', '.'], logger, 'Failed to stage changes');
 
@@ -100,7 +106,7 @@ Future<String> commitAll(
     try {
       await _run(
         gitDir,
-        ['commit', '-F', tempFile.path],
+        ['commit', if (allowEmpty) '--allow-empty', '-F', tempFile.path],
         logger,
         'Failed to commit',
       );
@@ -108,7 +114,12 @@ Future<String> commitAll(
       await tempFile.delete();
     }
   } else {
-    await _run(gitDir, ['commit', '-m', message], logger, 'Failed to commit');
+    await _run(
+      gitDir,
+      ['commit', if (allowEmpty) '--allow-empty', '-m', message],
+      logger,
+      'Failed to commit',
+    );
   }
 
   final result = await _run(
@@ -139,7 +150,7 @@ Future<void> pushBranch(
 /// pub.dev-trust tag (this repo's pre-existing `<package>/v<version>`
 /// convention), where an actual tag (not a branch) is what pub.dev's OIDC
 /// trust and `publish-package.yml`'s trigger need. The `release-trigger/*`
-/// marker tag is a separate case, pushed by raw `git tag`/`git push` from
+/// marker tag is a separate case, created and pushed by
 /// `.gitlab-ci.yml`'s `push-release-trigger-tag` job, not through this
 /// function.
 Future<void> pushTag(

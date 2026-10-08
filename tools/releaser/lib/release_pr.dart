@@ -58,6 +58,12 @@ String prBody(
   buffer.writeln();
   buffer.writeln('## Versions');
   buffer.writeln();
+  // `publish_release.dart` parses this back out (see `manifest.dart`'s
+  // `parseContentCommit`). `amend_release_changelog.dart`'s whole-body SHA
+  // replace already rewrites this line for free when commit A gets a new
+  // SHA.
+  buffer.writeln('_Content commit: `$changelogRef`_');
+  buffer.writeln();
   buffer.writeln('| Package | Current | New | Bump |');
   buffer.writeln('|---|---|---|---|');
   for (final p in packages) {

@@ -3,6 +3,7 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'package:releaser/llm/prompts/grouped_prs_prompt.dart';
+import 'package:releaser/manifest.dart';
 import 'package:releaser/package_discovery.dart';
 import 'package:releaser/release_plan.dart';
 import 'package:releaser/release_pr.dart';
@@ -102,6 +103,22 @@ void main() {
       );
       expect(body, contains('#### Dependency version constraint updates'));
       expect(body, contains('- #1150'));
+    });
+
+    test('includes a labeled content-commit line, parseable by '
+        "manifest.dart's parseContentCommit", () {
+      const sha = 'af43de240829820cc4e9562e4e33914956550dd0';
+      final body = prBody(
+        [_plan('datadog_dio')],
+        const [],
+        publishValidationSkipped: false,
+        repoSlug: 'DataDog/dd-sdk-flutter',
+        changelogRef: sha,
+        groupsByPackage: const {},
+      );
+
+      expect(body, contains('_Content commit: `$sha`_'));
+      expect(parseContentCommit(body), sha);
     });
 
     test('renders a package heading with no group summary underneath it '

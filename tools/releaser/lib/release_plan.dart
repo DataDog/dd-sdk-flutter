@@ -218,7 +218,9 @@ Future<ReleasePlan> computeReleasePlan(
           visited.contains(pkg.name)) {
         continue;
       }
-      final files = resolveNativeDependencyFiles(pkg.absolutePath(ctx.repoRoot));
+      final files = resolveNativeDependencyFiles(
+        pkg.absolutePath(ctx.repoRoot),
+      );
       unshippedNativeSdkPins.addAll(
         await _computeNativeSdkDeltas(
           pkg,
@@ -280,10 +282,10 @@ class GithubSdkGateways extends NativeSdkGateways {
 /// Rejects per-run overrides the run has no coherent way to honour, rather
 /// than accepting and silently reinterpreting them.
 ///
-/// Only the mainline path derives a bump level at all: a patch branch forces
-/// `patch` by definition, and a pre-release branch's version comes from the
-/// prerelease counter. A `BUMP_TYPE` on either would read as "this release is
-/// a major" and quietly not be.
+/// Only the mainline path derives a bump level at all: a support branch
+/// fixes the bump (patch on `vX.Y.x`, minor on `vX.x`), and a pre-release
+/// branch's version comes from the prerelease counter. A `BUMP_TYPE` on
+/// either would read as "this release is a major" and quietly not be.
 ///
 /// Even on mainline it requires an explicit `PACKAGES`. "Override the computed
 /// bump" is only meaningful about packages the caller named: combined with
@@ -308,10 +310,10 @@ void _validateTriggerInputs(RunContext ctx) {
       return;
     case TriggerContext.patch:
       throw StateError(
-        'BUMP_TYPE="$bumpType" does not apply on a patch branch -- a patch '
-        'release always increments the patch level of its release line, and '
-        'a commit that would justify anything more is rejected outright. '
-        'Clear BUMP_TYPE, or release from develop instead.',
+        'BUMP_TYPE="$bumpType" does not apply on a support branch -- the '
+        'branch fixes the bump (`vX.Y.x` releases a patch, `vX.x` a minor), '
+        'and a commit that would justify anything more is rejected '
+        'outright. Clear BUMP_TYPE, or release from develop instead.',
       );
     case TriggerContext.preRelease:
       throw StateError(
@@ -380,14 +382,17 @@ Future<PackagePlan?> _computePackagePlan(
       }
     case TriggerContext.patch:
       final (major, minor) = _releaseLineFromPatchBranch(ctx.currentBranch);
-      versionBase = commitBase = published.latestOn(major, minor);
+      versionBase = commitBase = minor == null
+          ? published.latestOnMajor(major)
+          : published.latestOn(major, minor);
       if (versionBase == null) {
+        final line = minor == null ? '$major' : '$major.$minor';
         throw StateError(
-          'Branch "${ctx.currentBranch}" patches the $major.$minor.x line of '
-          '"${pkg.name}", but no $major.$minor release of it has been '
-          'published. A patch branch builds on an existing release; there is '
-          'nothing here to patch. Check the branch name, or release '
-          '$major.$minor.0 from develop first.',
+          'Branch "${ctx.currentBranch}" releases from the $line.x line of '
+          '"${pkg.name}", but no $line release of it has been published. A '
+          'support branch builds on an existing release; there is nothing '
+          'here to ${minor == null ? 'release' : 'patch'}. Check the branch '
+          'name, or release $line.0 from develop first.',
         );
       }
     case TriggerContext.preRelease:
@@ -448,8 +453,9 @@ Future<PackagePlan?> _computePackagePlan(
   // SDK delta on its own (resolved above) is as much a reason to ship as a
   // qualifying commit.
   //
-  // A patch run is exempt: its single package comes from the branch name, and
-  // a patch branch exists precisely because something needs shipping from it.
+  // A support-branch run is exempt: its single package comes from the branch
+  // name, and a support branch exists precisely because something needs
+  // shipping from it.
   if (ctx.trigger != TriggerContext.patch &&
       aggregateBumpLevel(commits) == null &&
       nativeSdkAggregateBump(nativeSdkDeltas) == null &&
@@ -505,6 +511,7 @@ Future<PackagePlan?> _computePackagePlan(
       nativeSdkDeltas,
       nativeDependencyChanges,
       warnings,
+      majorLine: _releaseLineFromPatchBranch(ctx.currentBranch).$2 == null,
     ),
     TriggerContext.preRelease => _computePrereleasePlan(
       pkg,
@@ -645,31 +652,40 @@ PackagePlan _computePatchPlan(
   Version versionBase,
   List<NativeSdkDelta> nativeSdkDeltas,
   List<NativeDependencyChange> nativeDependencyChanges,
-  List<String> warnings,
-) {
+  List<String> warnings, {
+  required bool majorLine,
+}) {
+  // A patch branch only ships fixes, so it releases a patch. A major-line
+  // branch ships fixes and features, so it always releases a minor. Anything
+  // larger belongs on develop.
+  final releaseBump = majorLine ? VersionBumpType.minor : VersionBumpType.patch;
+  final where = majorLine ? 'a major-line support branch' : 'a patch branch';
+  final allowed = majorLine ? 'fixes and features' : 'fixes';
+
   for (final commit in commits) {
     final bump = commit.bumpType;
-    if (bump == VersionBumpType.major || bump == VersionBumpType.minor) {
+    if (bump != null && bump.severity > releaseBump.severity) {
       throw StateError(
-        'Commit looks like a ${bump!.name} change, which does not belong on '
-        'a patch branch (only fixes are allowed here):\n'
+        'Commit looks like a ${bump.name} change, which does not belong on '
+        '$where (only $allowed are allowed here):\n'
         '${commit.type}: ${commit.description}',
       );
     }
   }
 
   // The same rejection, for the other way a change of that size can arrive.
-  // A patch branch's pins are left alone by default, so this is only
+  // A support branch's pins are left alone by default, so this is only
   // reachable through an explicit override -- someone asking to jump the
-  // native SDK a minor or major on a line that can only ship patches.
+  // native SDK further than this branch can ship.
   for (final delta in nativeSdkDeltas) {
     final bump = delta.getImpliedBump();
-    if (bump == VersionBumpType.major || bump == VersionBumpType.minor) {
+    if (bump != null && bump.severity > releaseBump.severity) {
       throw StateError(
         '${delta.sdk.displayName} SDK ${delta.currentDeclaration} -> '
-        '${delta.targetVersion} is a ${bump!.name} change, which does not '
-        'belong on a patch branch (only fixes are allowed here). Release it '
-        'from develop instead, or pick a patch-level version of the SDK.',
+        '${delta.targetVersion} is a ${bump.name} change, which does not '
+        'belong on $where (only $allowed are allowed here). '
+        'Release it from develop instead, or pick a version of the SDK that '
+        'is at most a ${releaseBump.name} change.',
       );
     }
   }
@@ -677,8 +693,12 @@ PackagePlan _computePatchPlan(
   return PackagePlan(
     package: pkg,
     currentVersion: currentVersion,
-    newVersion: versionBase.incrementPatch().toString(),
-    bumpLevel: VersionBumpType.patch,
+    newVersion:
+        (majorLine
+                ? versionBase.incrementMinor()
+                : versionBase.incrementPatch())
+            .toString(),
+    bumpLevel: releaseBump,
     contributingCommits: commits,
     nativeSdkDeltas: nativeSdkDeltas,
     nativeDependencyChanges: nativeDependencyChanges,
@@ -1155,18 +1175,21 @@ Future<List<ConventionalCommit>> _conventionalCommitsSince(
 }
 
 final _patchBranchPattern = RegExp(
-  r'^release/(?<package>[^/]+)/v(?<major>\d+)\.(?<minor>\d+)\.x$',
+  r'^release/(?<package>[^/]+)/v(?<major>\d+)(?:\.(?<minor>\d+))?\.x$',
 );
 
-/// Extracts the package name from a `release/{package}/v{major}.{minor}.x`
-/// patch-branch name, or null if [branch] doesn't match that convention.
+/// Extracts the package name from a support-branch name --
+/// `release/{package}/v{major}.{minor}.x` (patch releases of one minor line)
+/// or `release/{package}/v{major}.x` (minor releases of a whole major line)
+/// -- or null if [branch] matches neither.
 String? packageNameFromPatchBranch(String branch) =>
     _patchBranchPattern.firstMatch(branch)?.namedGroup('package');
 
 /// Auto-detects a run's trigger context from [currentBranch] where that's
 /// unambiguous, and defaults to mainline otherwise.
 ///
-/// Patch is recognised unconditionally by branch-name convention. Pre-release
+/// A support branch (the patch trigger) is recognised unconditionally by
+/// branch-name convention. Pre-release
 /// is deliberately *not* guessed here. To preview a pre-release run with an
 /// explicit `--trigger=prerelease` instead.
 TriggerContext resolveTriggerContext(String currentBranch) {
@@ -1176,14 +1199,16 @@ TriggerContext resolveTriggerContext(String currentBranch) {
   return TriggerContext.mainline;
 }
 
-/// The `{major}.{minor}` release line a patch branch is confined to. Only
-/// called once [_resolveGroups] has validated the branch matches the
+/// The release line a support branch is confined to: `{major}.{minor}` for a
+/// patch branch, or `{major}` alone (a null minor) for a major-line branch.
+/// Only called once [_resolveGroups] has validated the branch matches the
 /// convention, so a non-match here would be a bug in that validation.
-(int major, int minor) _releaseLineFromPatchBranch(String branch) {
+(int major, int? minor) _releaseLineFromPatchBranch(String branch) {
   final match = _patchBranchPattern.firstMatch(branch)!;
+  final minor = match.namedGroup('minor');
   return (
     int.parse(match.namedGroup('major')!),
-    int.parse(match.namedGroup('minor')!),
+    minor == null ? null : int.parse(minor),
   );
 }
 
@@ -1200,8 +1225,9 @@ Future<List<PackageGroup>> _resolveGroups(RunContext ctx) async {
   final packageName = packageNameFromPatchBranch(ctx.currentBranch);
   if (packageName == null) {
     throw StateError(
-      'Branch "${ctx.currentBranch}" does not match the '
-      'release/{package}/v{major}.{minor}.x patch-branch convention.',
+      'Branch "${ctx.currentBranch}" does not match the support-branch '
+      'convention (release/{package}/v{major}.{minor}.x or '
+      'release/{package}/v{major}.x).',
     );
   }
 
@@ -1211,7 +1237,7 @@ Future<List<PackageGroup>> _resolveGroups(RunContext ctx) async {
       .firstOrNull;
   if (pkg == null) {
     throw StateError(
-      'No discovered package named "$packageName" (from patch branch '
+      'No discovered package named "$packageName" (from support branch '
       '"${ctx.currentBranch}").',
     );
   }

@@ -16,7 +16,6 @@ import 'dart:io';
 
 import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/llm/ai_gateway.dart';
-import 'package:releaser/manifest.dart';
 import 'package:releaser/native_sdk.dart';
 import 'package:releaser/release_plan.dart';
 import 'package:test/test.dart';
@@ -103,9 +102,9 @@ void main() {
 
       final contentSha = contentCommitLine.split(' ').first;
 
-      // Commit A's diff must never touch dependency_overrides, native
-      // pinning, or the manifest -- that's what makes backing it into the
-      // dev-line branch safe (Phase 2's commit-A backport).
+      // Commit A's diff must never touch dependency_overrides or native
+      // pinning -- that's what makes backing it into the dev-line branch
+      // safe (Phase 2's commit-A backport).
       final contentDiff = await gitDir.runCommand([
         'show',
         '--stat',
@@ -114,13 +113,8 @@ void main() {
       ]);
       expect(
         contentDiff.stdout as String,
-        isNot(contains('.release/manifest.json')),
+        isNot(contains('dependency_overrides')),
       );
-
-      final manifest = await readManifest(fixture.root.path);
-      expect(manifest.contentCommit, contentSha);
-      expect(manifest.packages, hasLength(1));
-      expect(manifest.packages.single.package, 'datadog_dio');
 
       // Both commit messages carry a body listing what's shipping, so
       // `git log` on either commit alone shows the packages/versions
@@ -485,15 +479,11 @@ dependency_overrides:
   });
 
   test(
-    'refuses a pre-release run from develop, main, or a patch branch',
+    'refuses a pre-release run from main or a patch branch',
     () async {
       final gitDir = await fixture.gitDir;
 
-      for (final badBranch in [
-        'develop',
-        'main',
-        'release/datadog_dio/v1.1.x',
-      ]) {
+      for (final badBranch in ['main', 'release/datadog_dio/v1.1.x']) {
         expect(
           () => prepareRelease(
             RunContext(
@@ -522,6 +512,30 @@ dependency_overrides:
       }
     },
   );
+
+  test('allows a pre-release run from develop', () async {
+    final gitDir = await fixture.gitDir;
+
+    // Doesn't throw the "dedicated pre-release branch" refusal -- develop
+    // is a valid pre-release source, same as `v4`; it just PRs into `main`
+    // (see expectedIntegrationBranch) instead of a `{branch}-main` pairing.
+    // The run still stops at --dry-run before push/PR.
+    await prepareRelease(
+      RunContext(
+        repoRoot: fixture.root.path,
+        trigger: TriggerContext.preRelease,
+        currentBranch: 'develop',
+        requestedPackages: ['datadog_dio'],
+        prereleaseLabel: 'beta',
+      ),
+      gitDir: gitDir,
+      github: GithubCommandWrapper(fixture.root.path),
+      aiGatewayClient: _NeverCalledAiGatewayClient(),
+      dryRun: true,
+      skipPublishValidation: true,
+      publishedVersions: _neverPublished,
+    );
+  });
 
   group('firstOrNullResolvedVersion', () {
     // The NATIVE_SDK_VERSIONS.md row this run's package/SDK combination

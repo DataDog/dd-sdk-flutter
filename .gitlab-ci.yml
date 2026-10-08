@@ -413,9 +413,11 @@ linux-integration-test:
 #
 # Manual job only -- never runs automatically off a plain branch push. The three
 # `rules:` clauses below are the mainline/patch/pre-release trigger contexts;
-# each sets RELEASE_TRIGGER so the script passes the right --trigger value
-# instead of relying on prepare_release.dart's own branch auto-detection
-# (which doesn't know about the pre-release whitelist).
+# RELEASE_TRIGGER carries the matching --trigger value to the script, because
+# prepare_release.dart's own branch auto-detection doesn't know about the
+# pre-release whitelist. It defaults to `mainline`; the `develop` clause leaves
+# that default alone so a manual run can set RELEASE_TRIGGER=prerelease to cut
+# a pre-release from `develop`.
 #
 # Pre-release branches are a manually-maintained whitelist here, not a
 # pattern match -- add/remove an `if:` clause per active effort (see `v4`
@@ -431,9 +433,7 @@ prepare-release:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
       when: manual
       allow_failure: true
-      variables:
-        RELEASE_TRIGGER: "mainline"
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/.+\/v\d+\.\d+\.x$/'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/.+\/v\d+(\.\d+)?\.x$/'
       when: manual
       allow_failure: true
       variables:
@@ -448,6 +448,7 @@ prepare-release:
     # tags, which a shallow clone may not have.
     GIT_DEPTH: "0"
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
+    RELEASE_TRIGGER: "mainline"
     PACKAGES: ""
     IOS_SDK_VERSION: ""
     ANDROID_SDK_VERSION: ""
@@ -505,17 +506,24 @@ prepare-release:
 #
 # Pushes the `release-trigger/*` tag that GitHub Actions' publish-release.yml
 # watches for -- only after this exact commit's pipeline has already
-# succeeded 
+# succeeded
 #
-# Pre-release `-main` branches are a manually-maintained whitelist, same discipline as 
-# prepare-release's `v4` whitelist above. 
+# Pre-release `-main` branches are a manually-maintained whitelist, same discipline as
+# prepare-release's `v4` whitelist above.
+#
+# `main`/`v4-main` should never receive anything but a release-prep PR merge
+# (branch protection requires a PR, and nothing else ever opens one against
+# them), so every push there is a release -- no further gate needed. A
+# support branch is different: ordinary cherry-picked fixes land there too,
+# so that rule needs a positive signal -- `prepare_release.dart`'s own
+# support-release commit message, the one thing that's unambiguously *not*
+# an ordinary fix commit.
 push-release-trigger-tag:
   stage: release-trigger
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "v4-main" || $CI_COMMIT_BRANCH =~ /^release\/.+\/v\d+\.\d+\.x$/)'
-      changes:
-        - ".release/manifest.json"
-  # Same runner as prepare-release as 
+    - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "v4-main")'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/.+\/v\d+(\.\d+)?\.x$/ && $CI_COMMIT_MESSAGE =~ /^chore\(release\): prepare support release/'
+  # Same runner as prepare-release as
   # dd-octo-sts/git/gh all need to be present
   tags:
     - macos:sequoia
