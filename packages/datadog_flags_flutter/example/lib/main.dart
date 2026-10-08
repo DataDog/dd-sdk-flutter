@@ -8,22 +8,19 @@ import 'dart:async';
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-const _clientToken = String.fromEnvironment('DD_CLIENT_TOKEN');
-const _applicationId = String.fromEnvironment('DD_APPLICATION_ID');
-const _env = String.fromEnvironment('DD_ENV', defaultValue: 'dev');
-const _site = String.fromEnvironment('DD_SITE', defaultValue: 'us1');
-const _targetingKey = String.fromEnvironment(
-  'DD_TARGETING_KEY',
-  defaultValue: 'example-user',
-);
-const _flagKey = String.fromEnvironment(
-  'DD_FLAG_KEY',
-  defaultValue: 'checkout.enabled',
-);
+String get _clientToken => dotenv.get('DD_CLIENT_TOKEN', fallback: '');
+String get _applicationId => dotenv.get('DD_APPLICATION_ID', fallback: '');
+String get _env => dotenv.get('DD_ENV', fallback: 'dev');
+String get _site => dotenv.get('DD_SITE', fallback: 'us1');
+String get _targetingKey =>
+    dotenv.get('DD_TARGETING_KEY', fallback: 'example-user');
+String get _flagKey => dotenv.get('DD_FLAG_KEY', fallback: 'checkout.enabled');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load();
 
   final isConfigured = _clientToken.isNotEmpty;
   if (isConfigured) {
@@ -72,17 +69,36 @@ class FlagsExampleApp extends StatefulWidget {
 class _FlagsExampleAppState extends State<FlagsExampleApp> {
   String _status = 'idle';
   FlagDetails<bool>? _details;
+  FlagDetails<bool>? _firstDetails;
+  void Function()? _unregisterFirstFlags;
 
   @override
   void initState() {
     super.initState();
+    final client = DatadogSdk.instance.flags?.sharedClient();
+    if (widget.isConfigured && client != null) {
+      _unregisterFirstFlags = client.onFirstFlags((event) {
+        debugPrint('First installed flags: ${event.flagsChanged}');
+        final details = client.getBooleanDetails(
+          key: _flagKey,
+          defaultValue: false,
+        );
+        if (mounted) setState(() => _firstDetails = details);
+      });
+    }
     unawaited(_evaluate());
+  }
+
+  @override
+  void dispose() {
+    _unregisterFirstFlags?.call();
+    super.dispose();
   }
 
   Future<void> _evaluate() async {
     if (!widget.isConfigured) {
       setState(() {
-        _status = 'Set DD_CLIENT_TOKEN with --dart-define to evaluate flags.';
+        _status = 'Set DD_CLIENT_TOKEN in .env to evaluate flags.';
       });
       return;
     }
@@ -102,7 +118,7 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
     var status = 'ready';
     try {
       await client.initialize(
-        const FlagsEvaluationContext(targetingKey: _targetingKey),
+        FlagsEvaluationContext(targetingKey: _targetingKey),
       );
     } on FlagsInitializationTimeoutException catch (error) {
       status = 'using stored assignments or defaults: ${error.message}';
@@ -139,6 +155,9 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
             _InfoRow(label: 'Targeting key', value: _targetingKey),
             const Divider(height: 32),
             _InfoRow(label: 'Flag key', value: _flagKey),
+            _InfoRow(
+                label: 'First flags value',
+                value: _firstDetails?.value.toString() ?? '(waiting)'),
             _InfoRow(
               label: 'Value',
               value: details == null ? '(none)' : details.value.toString(),

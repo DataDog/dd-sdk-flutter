@@ -9,6 +9,7 @@ import 'evaluation_context.dart';
 import 'exposure_logger.dart';
 import 'flags_client.dart';
 import 'flags_error.dart';
+import 'flags_client_event.dart';
 import 'flags_repository.dart';
 
 class DefaultDatadogFlagsClient implements DatadogFlagsClient {
@@ -28,6 +29,11 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
   })  : _repository = repository,
         _exposureLogger = exposureLogger,
         _evaluationAggregator = evaluationAggregator;
+
+  @override
+  void Function() onFirstFlags(
+          void Function(FlagsClientEvent event) listener) =>
+      _repository.onFirstFlags(listener);
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
