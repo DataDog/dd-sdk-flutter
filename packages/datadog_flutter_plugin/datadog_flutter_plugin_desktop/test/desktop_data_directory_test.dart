@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025-Present Datadog, Inc.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin_desktop/src/desktop_data_directory.dart';
@@ -9,6 +10,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// A literal backslash, spelled out to avoid escaping noise in Windows paths.
 final _bs = String.fromCharCode(0x5C);
+
+/// A CJK character: 3 UTF-8 bytes, 1 UTF-16 code unit.
+final _cjk = String.fromCharCode(0x4E2D);
+
+/// A character outside the BMP: 4 UTF-8 bytes, 2 UTF-16 code units.
+final _astral = String.fromCharCode(0x1D11E);
 
 void main() {
   group('sanitizePathComponent', () {
@@ -107,17 +114,46 @@ void main() {
     });
 
     test('rejects paths longer than the SDK limit', () {
-      final ok = '/${'a' * (maxStoragePathLength - 1)}';
-      final tooLong = '/${'a' * maxStoragePathLength}';
+      // Segments stay under the per-name limit; only the total length varies.
+      String pathOfLength(int length) =>
+          '/${'a' * 200}/${'a' * 200}/${'a' * (length - 403)}';
+      final ok = pathOfLength(maxStoragePathLength);
+      final tooLong = pathOfLength(maxStoragePathLength + 1);
+      expect(utf8.encode(ok).length, maxStoragePathLength);
       expect(validateStoragePath(ok, windows: false), isNull);
       expect(validateStoragePath(tooLong, windows: false), isNotNull);
     });
 
     test('counts length in bytes', () {
       // Each 'é' is two bytes in UTF-8.
-      final tooLong = '/${'é' * 256}';
+      final segment = 'é' * 100;
+      final tooLong = '/$segment/$segment/$segment';
       expect(tooLong.length, lessThan(maxStoragePathLength));
       expect(validateStoragePath(tooLong, windows: false), isNotNull);
+    });
+
+    test('rejects directory names that are too long for the platform', () {
+      final longName = 'a' * (maxPathComponentLength + 1);
+      expect(
+        validateStoragePath('/home/me/$longName', windows: false),
+        contains('longer than'),
+      );
+      expect(
+        validateStoragePath(['C:', 'Users', longName].join(_bs), windows: true),
+        contains('longer than'),
+      );
+    });
+
+    test('measures directory name length per platform', () {
+      final cjkName = _cjk * 100; // 300 UTF-8 bytes, 100 UTF-16 units
+      expect(
+        validateStoragePath('/home/me/$cjkName', windows: false),
+        contains('longer than'),
+      );
+      expect(
+        validateStoragePath(['C:', 'Users', cjkName].join(_bs), windows: true),
+        isNull,
+      );
     });
   });
 
@@ -209,7 +245,7 @@ void main() {
       );
     });
 
-    test('returns null when the application name component is too long', () {
+    test('limits the application name component to 255 bytes on Linux', () {
       final env = {'HOME': '/home/me'};
       expect(
         suggestDesktopDataDirectory(
@@ -227,6 +263,32 @@ void main() {
         ),
         isNull,
       );
+      // 100 CJK characters are 300 UTF-8 bytes.
+      expect(
+        suggestDesktopDataDirectory(
+          _cjk * 100,
+          windows: false,
+          environment: env,
+        ),
+        isNull,
+      );
+    });
+
+    test('limits the application name component to 255 UTF-16 units on '
+        'Windows', () {
+      String? suggest(String name) => suggestDesktopDataDirectory(
+        name,
+        windows: true,
+        environment: {},
+        localAppData: () => 'C:$_bs', // A drive root leaves the most room.
+      );
+      expect(suggest('a' * maxPathComponentLength), isNotNull);
+      expect(suggest('a' * (maxPathComponentLength + 1)), isNull);
+      // 100 CJK characters are 100 UTF-16 units, so they fit on NTFS.
+      expect(suggest(_cjk * 100), isNotNull);
+      // Characters outside the BMP are two UTF-16 units each.
+      expect(suggest(_astral * 127), isNotNull);
+      expect(suggest(_astral * 128), isNull);
     });
 
     test('returns null when the result is longer than the SDK limit', () {

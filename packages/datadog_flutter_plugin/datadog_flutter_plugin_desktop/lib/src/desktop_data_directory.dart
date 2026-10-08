@@ -13,8 +13,8 @@ import 'package:path/path.dart' as p;
 /// C++ SDK (`DATADOG_MAX_APPLICATION_STORAGE_PATH_LEN`).
 const int maxStoragePathLength = 511;
 
-/// Maximum length, in bytes, of a single directory name accepted by common
-/// filesystems (NTFS, ext4, APFS).
+/// Maximum length of a single directory name. NTFS measures this in UTF-16
+/// code units; Linux filesystems (e.g. ext4) measure it in UTF-8 bytes.
 const int maxPathComponentLength = 255;
 
 const _windowsInvalidChars = '<>:"/\\|?*';
@@ -22,6 +22,14 @@ final _windowsReservedName = RegExp(
   r'^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$',
   caseSensitive: false,
 );
+
+/// Returns `true` if [name] is longer than a single directory name can be on
+/// the target platform's filesystem.
+bool isPathComponentTooLong(String name, {required bool windows}) {
+  // Dart strings are UTF-16, so `length` counts UTF-16 code units.
+  final length = windows ? name.length : utf8.encode(name).length;
+  return length > maxPathComponentLength;
+}
 
 bool _isControl(int codeUnit) => codeUnit < 0x20 || codeUnit == 0x7F;
 
@@ -81,6 +89,10 @@ String? validateStoragePath(String path, {required bool windows}) {
     if (sanitized != part) {
       return 'the path contains an invalid directory name: "$part"';
     }
+    if (isPathComponentTooLong(part, windows: windows)) {
+      return 'the path contains a directory name longer than '
+          '$maxPathComponentLength characters: "$part"';
+    }
   }
   if (path.codeUnits.any((u) => u == 0 || (windows && _isControl(u)))) {
     return 'the path contains invalid characters';
@@ -115,7 +127,7 @@ String? suggestDesktopDataDirectory(
     final context = windows ? p.windows : p.posix;
 
     final name = sanitizePathComponent(applicationName, windows: windows);
-    if (name == null || utf8.encode(name).length > maxPathComponentLength) {
+    if (name == null || isPathComponentTooLong(name, windows: windows)) {
       return null;
     }
 
