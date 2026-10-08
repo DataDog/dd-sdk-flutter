@@ -29,6 +29,9 @@ Future<void> runScenario({
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
     service: 'com.datadoghq.flutter.integration',
+    desktopDataDirectory: DatadogConfiguration.getSuggestedDesktopDataDirectory(
+      'com.datadoghq.flutter.integration',
+    ),
     site: DatadogSite.us1,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,

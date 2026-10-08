@@ -3,6 +3,7 @@
 // Copyright 2019-2022 Datadog, Inc.
 
 import 'attributes.dart';
+import 'datadog_sdk_platform_interface.dart';
 import 'logs/log_configuration.dart';
 import 'rum/resource_headers_extractor.dart';
 import 'rum/rum_configuration.dart';
@@ -173,6 +174,21 @@ class DatadogConfiguration {
   /// Sets the level of batch processing
   BatchProcessingLevel? batchProcessingLevel;
 
+  /// The directory the Datadog SDK uses to store data on Windows and Linux.
+  /// This value is ignored on all other platforms.
+  ///
+  /// The path must be absolute and valid for the current platform. If it is
+  /// not, the SDK logs an error and fails to initialize. The directory is
+  /// created if it does not exist, and the SDK assumes exclusive ownership of
+  /// the files it places in it.
+  ///
+  /// If this is `null`, the SDK stores data in a `.datadog` directory inside the
+  /// current working directory of the process and logs a warning. That
+  /// location is only suitable for development. Applications you ship should
+  /// set this value, and can use [getSuggestedDesktopDataDirectory] to choose
+  /// a conventional location.
+  String? desktopDataDirectory;
+
   /// [Web Only] Which storage strategy to use for persisting sessions.
   ///
   /// Defaults to [WebSessionPersistence.cookie].
@@ -298,6 +314,7 @@ class DatadogConfiguration {
     this.uploadFrequency,
     this.batchSize,
     this.batchProcessingLevel,
+    this.desktopDataDirectory,
     this.version,
     this.flavor,
     this.sessionPersistence,
@@ -331,6 +348,21 @@ class DatadogConfiguration {
       }
     }
   }
+
+  /// Returns a conventional, absolute location for storing Datadog data on
+  /// Windows and Linux, suitable for [desktopDataDirectory].
+  ///
+  /// The location is derived from the platform's user data directory
+  /// (`%LOCALAPPDATA%` on Windows, `$XDG_DATA_HOME` or `~/.local/share` on
+  /// Linux) and [applicationName]. Characters in [applicationName] that are
+  /// not valid in a directory name are replaced.
+  ///
+  /// Returns `null` if [applicationName] is empty, if the location cannot be
+  /// determined, or on platforms that do not need a data directory.
+  static String? getSuggestedDesktopDataDirectory(String applicationName) =>
+      DatadogSdkPlatform.instance.getSuggestedDesktopDataDirectory(
+        applicationName,
+      );
 
   void addPlugin(DatadogPluginConfiguration pluginConfiguration) =>
       additionalPlugins.add(pluginConfiguration);
