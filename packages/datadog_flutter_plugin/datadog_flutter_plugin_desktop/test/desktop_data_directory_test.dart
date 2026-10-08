@@ -5,8 +5,10 @@
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin_desktop/src/desktop_data_directory.dart';
-import 'package:datadog_flutter_plugin_desktop/src/native_directories.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+/// A literal backslash, spelled out to avoid escaping noise in Windows paths.
+final _bs = String.fromCharCode(0x5C);
 
 void main() {
   group('sanitizePathComponent', () {
@@ -153,38 +155,108 @@ void main() {
       );
     });
 
-    test('falls back to the password database on Linux', () {
+    test('returns null on Linux when HOME is not set', () {
       expect(
-        suggestDesktopDataDirectory(
-          'myapp',
-          windows: false,
-          environment: {},
-          passwdHome: () => '/home/passwd',
-        ),
-        '/home/passwd/.local/share/myapp',
+        suggestDesktopDataDirectory('myapp', windows: false, environment: {}),
+        isNull,
       );
     });
 
-    test('returns null on Linux when no home can be found', () {
+    test('returns null on Linux when HOME is relative', () {
       expect(
         suggestDesktopDataDirectory(
           'myapp',
           windows: false,
-          environment: {},
-          passwdHome: () => null,
+          environment: {'HOME': 'relative/home'},
         ),
         isNull,
       );
     });
 
-    test('returns an absolute path for a relative XDG_DATA_HOME', () {
-      final result = suggestDesktopDataDirectory(
-        'myapp',
-        windows: false,
-        environment: {'XDG_DATA_HOME': 'relative/data'},
-        currentDirectory: '/work',
+    test('ignores a relative XDG_DATA_HOME on Linux', () {
+      expect(
+        suggestDesktopDataDirectory(
+          'myapp',
+          windows: false,
+          environment: {'XDG_DATA_HOME': 'relative/data', 'HOME': '/home/me'},
+        ),
+        '/home/me/.local/share/myapp',
       );
-      expect(result, '/work/relative/data/myapp');
+    });
+
+    test('returns null on Linux for a relative XDG_DATA_HOME without HOME', () {
+      expect(
+        suggestDesktopDataDirectory(
+          'myapp',
+          windows: false,
+          environment: {'XDG_DATA_HOME': 'relative/data'},
+        ),
+        isNull,
+      );
+    });
+
+    test('returns null on Windows for a relative LOCALAPPDATA', () {
+      expect(
+        suggestDesktopDataDirectory(
+          'myapp',
+          windows: true,
+          environment: {
+            'LOCALAPPDATA': ['relative', 'data'].join(_bs),
+          },
+          localAppData: () => null,
+        ),
+        isNull,
+      );
+    });
+
+    test('returns null when the application name component is too long', () {
+      final env = {'HOME': '/home/me'};
+      expect(
+        suggestDesktopDataDirectory(
+          'a' * maxPathComponentLength,
+          windows: false,
+          environment: env,
+        ),
+        isNotNull,
+      );
+      expect(
+        suggestDesktopDataDirectory(
+          'a' * (maxPathComponentLength + 1),
+          windows: false,
+          environment: env,
+        ),
+        isNull,
+      );
+    });
+
+    test('returns null when the result is longer than the SDK limit', () {
+      final longHome = '/${'a' * 200}/${'b' * 200}';
+      expect(
+        suggestDesktopDataDirectory(
+          'c' * 150,
+          windows: false,
+          environment: {'HOME': longHome},
+        ),
+        isNull,
+      );
+      expect(
+        suggestDesktopDataDirectory(
+          'myapp',
+          windows: false,
+          environment: {'HOME': longHome},
+        ),
+        isNotNull,
+      );
+    });
+
+    test('only returns paths that pass validateStoragePath', () {
+      final result = suggestDesktopDataDirectory(
+        'com.datadoghq.app',
+        windows: true,
+        environment: {},
+        localAppData: () => ['C:', 'Users', 'me', 'AppData', 'Local'].join(_bs),
+      );
+      expect(validateStoragePath(result!, windows: true), isNull);
     });
 
     test('uses the known folder on Windows', () {
@@ -285,10 +357,10 @@ void main() {
   });
 
   group('native lookups', () {
-    test('passwd home directory is absolute', () {
-      final home = posixPasswdHomeDirectory();
-      expect(home, isNotNull);
-      expect(home, startsWith('/'));
-    }, skip: Platform.isLinux ? false : 'Linux only');
+    test('Windows local app data directory is absolute', () {
+      final dir = windowsLocalAppDataDirectory();
+      expect(dir, isNotNull);
+      expect(validateStoragePath(dir!, windows: true), isNull);
+    }, skip: Platform.isWindows ? false : 'Windows only');
   });
 }

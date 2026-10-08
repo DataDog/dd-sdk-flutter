@@ -3,15 +3,19 @@
 // Copyright 2025-Present Datadog, Inc.
 
 import 'dart:convert';
+import 'dart:ffi' as ffi;
 import 'dart:io';
 
+import 'package:ffi/ffi.dart';
 import 'package:path/path.dart' as p;
-
-import 'native_directories.dart';
 
 /// Maximum length, in bytes, of the application storage path accepted by the
 /// C++ SDK (`DATADOG_MAX_APPLICATION_STORAGE_PATH_LEN`).
 const int maxStoragePathLength = 511;
+
+/// Maximum length, in bytes, of a single directory name accepted by common
+/// filesystems (NTFS, ext4, APFS).
+const int maxPathComponentLength = 255;
 
 const _windowsInvalidChars = '<>:"/\\|?*';
 final _windowsReservedName = RegExp(
@@ -97,25 +101,21 @@ String? createStorageDirectory(String path) {
 }
 
 /// Returns an absolute path for [applicationName] inside the current user's
-/// data directory, or `null` if it can't be determined. Never throws.
+/// data directory, or `null` if it can't be determined or the result couldn't
+/// be used as a storage path. Never throws.
 String? suggestDesktopDataDirectory(
   String applicationName, {
   bool? windows,
   Map<String, String>? environment,
   String? Function()? localAppData,
-  String? Function()? passwdHome,
-  String? currentDirectory,
 }) {
   try {
     windows ??= Platform.isWindows;
     environment ??= Platform.environment;
-    final context = p.Context(
-      style: windows ? p.Style.windows : p.Style.posix,
-      current: currentDirectory ?? Directory.current.path,
-    );
+    final context = windows ? p.windows : p.posix;
 
     final name = sanitizePathComponent(applicationName, windows: windows);
-    if (name == null) {
+    if (name == null || utf8.encode(name).length > maxPathComponentLength) {
       return null;
     }
 
@@ -125,32 +125,101 @@ String? suggestDesktopDataDirectory(
           _nonEmpty((localAppData ?? windowsLocalAppDataDirectory)()) ??
           _nonEmpty(environment['LOCALAPPDATA']);
     } else {
-      base =
-          _nonEmpty(environment['XDG_DATA_HOME']) ??
-          _posixHomeBase(environment, passwdHome ?? posixPasswdHomeDirectory);
+      // The XDG spec says relative paths in these variables must be ignored.
+      final xdgDataHome = _nonEmpty(environment['XDG_DATA_HOME']);
+      final home = _nonEmpty(environment['HOME']);
+      base = xdgDataHome != null && context.isAbsolute(xdgDataHome)
+          ? xdgDataHome
+          : home == null
+          ? null
+          : context.join(home, '.local', 'share');
     }
-    if (base == null) {
+    // Never anchor to the working directory, which is the development-only
+    // location this helper exists to avoid.
+    if (base == null || !context.isAbsolute(base)) {
       return null;
     }
 
-    final absoluteBase = context.normalize(context.absolute(base));
-    if (!context.isAbsolute(absoluteBase)) {
+    final result = context.join(context.normalize(base), name);
+    if (!context.isWithin(base, result) ||
+        validateStoragePath(result, windows: windows) != null) {
       return null;
     }
-    final result = context.join(absoluteBase, name);
-    return context.isWithin(absoluteBase, result) ? result : null;
+    return result;
   } catch (_) {
     return null;
   }
 }
 
-String? _posixHomeBase(
-  Map<String, String> environment,
-  String? Function() passwdHome,
-) {
-  final home = _nonEmpty(environment['HOME']) ?? _nonEmpty(passwdHome());
-  return home == null ? null : p.posix.join(home, '.local', 'share');
-}
-
 String? _nonEmpty(String? value) =>
     (value == null || value.isEmpty) ? null : value;
+
+// FOLDERID_LocalAppData {F1B32785-6FBA-4FCF-9D55-7B8E7F157091}
+final class _Guid extends ffi.Struct {
+  @ffi.Uint32()
+  external int data1;
+  @ffi.Uint16()
+  external int data2;
+  @ffi.Uint16()
+  external int data3;
+  @ffi.Array(8)
+  external ffi.Array<ffi.Uint8> data4;
+}
+
+typedef _GetKnownFolderPathNative =
+    ffi.Int32 Function(
+      ffi.Pointer<_Guid>,
+      ffi.Uint32,
+      ffi.IntPtr,
+      ffi.Pointer<ffi.Pointer<Utf16>>,
+    );
+typedef _GetKnownFolderPathDart =
+    int Function(ffi.Pointer<_Guid>, int, int, ffi.Pointer<ffi.Pointer<Utf16>>);
+
+typedef _CoTaskMemFreeNative = ffi.Void Function(ffi.Pointer<ffi.Void>);
+typedef _CoTaskMemFreeDart = void Function(ffi.Pointer<ffi.Void>);
+
+/// Returns the current user's local application data folder (the value of
+/// `FOLDERID_LocalAppData`), or `null` if it can't be determined.
+String? windowsLocalAppDataDirectory() {
+  try {
+    final shell32 = ffi.DynamicLibrary.open('shell32.dll');
+    final ole32 = ffi.DynamicLibrary.open('ole32.dll');
+    final getKnownFolderPath = shell32
+        .lookupFunction<_GetKnownFolderPathNative, _GetKnownFolderPathDart>(
+          'SHGetKnownFolderPath',
+        );
+    final coTaskMemFree = ole32
+        .lookupFunction<_CoTaskMemFreeNative, _CoTaskMemFreeDart>(
+          'CoTaskMemFree',
+        );
+
+    return using((arena) {
+      final folderId = arena<_Guid>();
+      folderId.ref.data1 = 0xF1B32785;
+      folderId.ref.data2 = 0x6FBA;
+      folderId.ref.data3 = 0x4FCF;
+      const data4 = [0x9D, 0x55, 0x7B, 0x8E, 0x7F, 0x15, 0x70, 0x91];
+      for (var i = 0; i < data4.length; ++i) {
+        folderId.ref.data4[i] = data4[i];
+      }
+
+      final outPath = arena<ffi.Pointer<Utf16>>();
+      final result = getKnownFolderPath(folderId, 0, 0, outPath);
+      final pathPtr = outPath.value;
+      try {
+        if (result != 0 || pathPtr == ffi.nullptr) {
+          return null;
+        }
+        return pathPtr.toDartString();
+      } finally {
+        // The shell allocates the buffer even on some failures.
+        if (pathPtr != ffi.nullptr) {
+          coTaskMemFree(pathPtr.cast());
+        }
+      }
+    });
+  } catch (_) {
+    return null;
+  }
+}
