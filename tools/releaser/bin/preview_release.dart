@@ -67,7 +67,10 @@ Future<void> main(List<String> arguments) async {
       defaultsTo: 'auto',
       help:
           'Which trigger context to plan for. "auto" detects patch from '
-          'the current branch name, defaulting to mainline otherwise.',
+          'the current branch name, defaulting to mainline otherwise -- it '
+          'never auto-selects "prerelease", so pass that explicitly to '
+          'preview a pre-release from the current branch (develop, v4, or '
+          'another whitelisted pre-release branch).',
     )
     ..addOption(
       'repo-root',

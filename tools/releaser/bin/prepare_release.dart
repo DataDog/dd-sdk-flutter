@@ -15,14 +15,18 @@
 //     dev-line branch -- that branch still needs its own changelog/version
 //     history, just not what's below.
 //   - Commit B ("publish-prep"): dependency_overrides checks, native SDK
-//     pinning, dry-run validation, `.release/manifest.json`. Must never
-//     reach a dev-line branch -- it pins things a dev line needs to keep
-//     floating (native SDKs on `develop`, for example) and its manifest is
-//     meaningless there.
-// Patch is the exception: it doesn't split, since nothing else ever
-// develops on a patch branch, so there's no dev-line commit B could leak
-// into. `manifest.contentCommit` is `null` on patch for exactly this
-// reason -- see its doc comment in `manifest.dart`.
+//     pinning, dry-run validation. Must never reach a dev-line branch -- it
+//     pins things a dev line needs to keep floating (native SDKs on
+//     `develop`, for example).
+// A support-branch release (the patch trigger: `release/{package}/vX.Y.x`
+// for a patch, `release/{package}/vX.x` for a minor) is the exception: it
+// doesn't split, since nothing else ever develops on a support branch, so
+// there's no dev-line commit B could leak into.
+//
+// `publish_release.dart` reconstructs what it needs from the release PR's
+// body (mainline/pre-release) or the support-release commit's own message
+// (patch). See `ReleaseManifest`'s doc comment in `manifest.dart` for the
+// shape of that data.
 
 import 'dart:io';
 
@@ -42,9 +46,9 @@ import 'package:releaser/gradle_util.dart';
 import 'package:releaser/llm/ai_gateway.dart';
 import 'package:releaser/llm/changelog.dart';
 import 'package:releaser/llm/costs.dart';
-import 'package:releaser/manifest.dart';
 import 'package:releaser/native_sdk.dart';
 import 'package:releaser/package_discovery.dart';
+import 'package:releaser/publish_rules.dart';
 import 'package:releaser/release_plan.dart';
 import 'package:releaser/release_pr.dart';
 import 'package:releaser/release_validator.dart';
@@ -62,7 +66,7 @@ Future<void> main(List<String> arguments) async {
       'packages',
       help:
           'Comma-separated package names. Omit for --all behaviour: every '
-          'package with pending commits. Not accepted on a patch branch.',
+          'package with pending commits. Not accepted on a support branch.',
     )
     ..addFlag(
       'include-federated',
@@ -78,6 +82,12 @@ Future<void> main(List<String> arguments) async {
       'trigger',
       allowed: ['auto', 'mainline', 'patch', 'prerelease'],
       defaultsTo: 'auto',
+      help:
+          'Which trigger context to run. "auto" detects patch from the '
+          'current branch name, defaulting to mainline otherwise -- it '
+          'never auto-selects "prerelease", so pass that explicitly to cut '
+          'a pre-release from the current branch (develop, v4, or another '
+          'whitelisted pre-release branch).',
     )
     ..addOption(
       'repo-root',
@@ -206,12 +216,22 @@ class _ReleaseTarget {
         );
       case TriggerContext.preRelease:
         final workingBranch = 'release-prep/${_dateId()}';
+        // `develop` PRs into `main`, the same base mainline uses; `v4` PRs
+        // into `v4-main`. A new pre-release effort needs an entry in
+        // `expectedIntegrationBranch` and `sourceBranchFor`, since Phase 2
+        // maps this PR's base back to the source branch it backports
+        // commit A into.
+        final prBase = expectedIntegrationBranch(ctx.currentBranch);
+        if (prBase == null) {
+          throw StateError(
+            '"${ctx.currentBranch}" is not a recognized pre-release source '
+            'branch (develop, v4, ...) -- refusing to guess where its '
+            'release-prep PR should merge into.',
+          );
+        }
         return _ReleaseTarget(
           workingBranch: workingBranch,
-          // Every whitelisted pre-release branch is paired with its own
-          // disposable `{branch}-main` -- release-prep never commits or
-          // PRs onto the pre-release branch itself.
-          prBase: '${ctx.currentBranch}-main',
+          prBase: prBase,
           createsNewBranch: true,
           contentBranchName: contentBranchNameFor(workingBranch),
         );
@@ -279,18 +299,18 @@ Future<void> prepareRelease(
       'a branch that could carry unmerged, unrelated commits into `main`.',
     );
   }
-  // No committed whitelist of approved pre-release branches exists in this
-  // tool -- by design, that list lives in `.gitlab-ci.yml`'s `rules:`
-  // instead, not duplicated here where it could drift out of sync. This
-  // only rules out the branches a pre-release run obviously shouldn't come
-  // from.
+  // Only rules out the branches a pre-release run obviously shouldn't come
+  // from; a branch `expectedIntegrationBranch` doesn't map is rejected later,
+  // in `_ReleaseTarget.forTrigger`. `develop` is allowed -- a pre-release cut
+  // from `develop` PRs into `main`, the same base mainline uses, and just
+  // carries a prerelease version instead of a stable one.
   if (ctx.trigger == TriggerContext.preRelease &&
-      (ctx.currentBranch == 'develop' ||
-          ctx.currentBranch == 'main' ||
+      (ctx.currentBranch == 'main' ||
           packageNameFromPatchBranch(ctx.currentBranch) != null)) {
     throw StateError(
-      'Pre-release releases must run from a dedicated long-lived '
-      'pre-release branch (e.g. `v4`), not `${ctx.currentBranch}`.',
+      'Pre-release releases must run from `develop` or a dedicated '
+      'long-lived pre-release branch (e.g. `v4`), not '
+      '`${ctx.currentBranch}`.',
     );
   }
 
@@ -421,9 +441,8 @@ Future<void> prepareRelease(
     }
   }
 
-  final manifestEntries = <ManifestPackageEntry>[];
   for (final packagePlan in plan.packages) {
-    await _applyPublishPrep(packagePlan, ctx, manifestEntries: manifestEntries);
+    await _applyPublishPrep(packagePlan);
   }
 
   // Keeps the eligible group's native SDK pinned to a real version even on
@@ -431,18 +450,18 @@ Future<void> prepareRelease(
   // ReleasePlan.unshippedNativeSdkPins.
   await _pinNativeSdkDeltas(plan.unshippedNativeSdkPins);
 
-  await writeManifest(
-    ctx.repoRoot,
-    ReleaseManifest(contentCommit: contentCommit, packages: manifestEntries),
-  );
-
   final finalCommit = await commitAll(
     gitDir,
     ctx.trigger == TriggerContext.patch
-        ? 'chore(release): prepare patch release'
+        ? 'chore(release): prepare support release'
         : 'chore(release): publish-prep',
     _log,
     body: versionSummaryText,
+    // Only for commit B (mainline/pre-release): a run with no native SDK
+    // deltas to pin has nothing to stage here. Patch never splits, so its
+    // one commit always has the real changelog/version-bump content from
+    // above and should never need this.
+    allowEmpty: ctx.trigger != TriggerContext.patch,
   );
   _log.info('✅ Prepared release on ${target.workingBranch} ($finalCommit)');
 
@@ -660,23 +679,6 @@ Future<void> _pinNativeSdkDeltas(List<NativeSdkDelta> deltas) async {
   }
 }
 
-Future<void> _applyPublishPrep(
-  PackagePlan packagePlan,
-  RunContext ctx, {
-  required List<ManifestPackageEntry> manifestEntries,
-}) async {
-  final pkg = packagePlan.package;
-
+Future<void> _applyPublishPrep(PackagePlan packagePlan) async {
   await _pinNativeSdkDeltas(packagePlan.nativeSdkDeltas);
-
-  manifestEntries.add(
-    ManifestPackageEntry(
-      package: pkg.name,
-      fromVersion: packagePlan.currentVersion,
-      toVersion: packagePlan.newVersion,
-      sourceBranch: ctx.currentBranch,
-      prerelease: packagePlan.bumpLevel == VersionBumpType.prerelease,
-      relativePath: pkg.relativePath,
-    ),
-  );
 }

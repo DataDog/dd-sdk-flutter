@@ -4,13 +4,8 @@ name: Publish release (Phase 2)
 #
 # Triggered by a `release-trigger/*` tag -- pushed by a GitLab CI job
 # (.gitlab-ci.yml's push-release-trigger-tag) only once its own pipeline has
-# actually succeeded for this commit. First real step
-# is a security check: it verifies a successful
-# `dd-gitlab/notify-pipeline-succeeded` GitHub commit status on this exact
-# commit before doing anything else -- and, since that status alone doesn't
-# prove the commit came from a legitimate release branch, that the commit is
-# also reachable from the same branch whitelist push-release-trigger-tag and
-# self.tag-push.sts.yaml use (main/v4-main/a patch branch).
+# actually succeeded for this commit. See publish_release.dart's own
+# file-level doc comment for what it checks and does from here.
 on:
   push:
     tags:

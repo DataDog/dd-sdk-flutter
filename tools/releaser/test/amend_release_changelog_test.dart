@@ -7,7 +7,6 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:releaser/git/release_git.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
-import 'package:releaser/manifest.dart';
 import 'package:test/test.dart';
 
 import '../bin/amend_release_changelog.dart';
@@ -41,6 +40,33 @@ class _FakeGithub extends GithubCommandWrapper {
   }
 }
 
+/// A release PR body shaped like `release_pr.dart`'s real output -- just
+/// enough for `amend_release_changelog.dart` to parse a content commit and
+/// a versions table out of, plus a CHANGELOG.md link so the successful-run
+/// test can assert on rewriting more than just the one labeled line.
+String _prBody(
+  String contentCommit, {
+  List<String> packages = const ['datadog_dio'],
+}) {
+  final buffer = StringBuffer()
+    ..writeln('## Versions')
+    ..writeln()
+    ..writeln('_Content commit: `$contentCommit`_')
+    ..writeln()
+    ..writeln('| Package | Current | New | Bump |')
+    ..writeln('|---|---|---|---|');
+  for (final package in packages) {
+    buffer.writeln('| $package | 2.3.0 | 2.4.0 | minor |');
+  }
+  buffer
+    ..writeln()
+    ..writeln(
+      'See [CHANGELOG.md](https://github.com/x/y/blob/$contentCommit/'
+      'packages/datadog_dio/CHANGELOG.md) for changes.',
+    );
+  return buffer.toString();
+}
+
 void main() {
   late FixtureRepo fixture;
   late Directory bareRemote;
@@ -65,20 +91,6 @@ void main() {
       'HEAD',
     ])).stdout.toString().trim();
 
-    final manifest = ReleaseManifest(
-      contentCommit: commitA,
-      packages: [
-        ManifestPackageEntry(
-          package: 'datadog_dio',
-          fromVersion: '2.3.0',
-          toVersion: '2.4.0',
-          sourceBranch: 'develop',
-          prerelease: false,
-          relativePath: 'packages/datadog_dio',
-        ),
-      ],
-    );
-    await writeManifest(fixture.root.path, manifest);
     await fixture.commit('chore(release): publish-prep');
     commitB = (await gitDir.runCommand([
       'rev-parse',
@@ -113,13 +125,7 @@ void main() {
     );
     final github = _FakeGithub(
       fixture.root.path,
-      OpenPullRequest(
-        number: 42,
-        body:
-            'See [CHANGELOG.md](https://github.com/x/y/blob/$commitA/'
-            'packages/datadog_dio/CHANGELOG.md) for changes.\n'
-            'Also see $commitA again.',
-      ),
+      OpenPullRequest(number: 42, body: _prBody(commitA)),
     );
 
     await amendReleaseChangelog(gitDir: gitDir, github: github);
@@ -148,9 +154,6 @@ void main() {
     );
     expect(changelog.readAsStringSync(), contains('Fixed entry'));
 
-    final manifest = await readManifest(fixture.root.path);
-    expect(manifest.contentCommit, newContentCommit);
-
     final remoteContentSha = await Process.run('git', [
       'rev-parse',
       '$contentBranchName^{commit}',
@@ -165,8 +168,8 @@ void main() {
 
     expect(github.editedNumber, 42);
     expect(github.editedBody, isNot(contains(commitA)));
-    // Both occurrences of the old SHA were rewritten, including the one
-    // outside the CHANGELOG.md link.
+    // Both occurrences of the old SHA were rewritten: the "Content commit"
+    // line and the CHANGELOG.md link.
     expect(
       RegExp(
         RegExp.escape(newContentCommit),
@@ -183,7 +186,8 @@ void main() {
     );
     // Any non-CHANGELOG.md file is ineligible, but pubspec_overrides.yaml
     // specifically is also never part of commit A at all -- it's a
-    // melos-bootstrap artifact.
+    // melos-bootstrap artifact. A purely local check, so a real (unstubbed)
+    // GithubCommandWrapper never actually gets called.
     fixture.writeFile(
       'packages/datadog_dio/pubspec_overrides.yaml',
       'dependency_overrides:\n  datadog_common_test:\n    path: ../datadog_common_test\n',
@@ -230,12 +234,17 @@ void main() {
       'packages/datadog_flutter_plugin/CHANGELOG.md',
       '## 2.4.0\n- Sneaked in.\n',
     );
+    // Passes the local-only "is this a real package's CHANGELOG.md" check;
+    // the package-is-releasing check (against `_prBody`'s default,
+    // datadog_dio-only table) needs the PR, so it can't be a real
+    // GithubCommandWrapper.
+    final github = _FakeGithub(
+      fixture.root.path,
+      OpenPullRequest(number: 42, body: _prBody(commitA)),
+    );
 
     await expectLater(
-      amendReleaseChangelog(
-        gitDir: gitDir,
-        github: GithubCommandWrapper(fixture.root.path),
-      ),
+      amendReleaseChangelog(gitDir: gitDir, github: github),
       throwsStateError,
     );
 
@@ -267,6 +276,12 @@ void main() {
       'packages/datadog_dio/CHANGELOG.md',
       '## 2.4.0\n- Fixed entry.\n',
     );
+    // Reaches the PR fetch, so it needs a working stub rather than a real
+    // GithubCommandWrapper.
+    final github = _FakeGithub(
+      fixture.root.path,
+      OpenPullRequest(number: 42, body: _prBody(commitA)),
+    );
 
     // Simulate another actor pushing to workingBranch on the remote,
     // without touching this checkout.
@@ -295,10 +310,7 @@ void main() {
 
     try {
       await expectLater(
-        amendReleaseChangelog(
-          gitDir: gitDir,
-          github: GithubCommandWrapper(fixture.root.path),
-        ),
+        amendReleaseChangelog(gitDir: gitDir, github: github),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -325,9 +337,13 @@ void main() {
       'packages/datadog_dio/CHANGELOG.md',
       '## 2.4.0\n- Fixed entry.\n',
     );
+    final github = _FakeGithub(
+      fixture.root.path,
+      OpenPullRequest(number: 42, body: _prBody(commitA)),
+    );
 
     // Simulate a concurrent amend run that already moved the content
-    // branch, without touching this checkout or its manifest.
+    // branch, without touching this checkout or its PR.
     final otherClone = await createTestTempDir(
       'amend_release_changelog_test_other_clone_',
     );
@@ -353,10 +369,7 @@ void main() {
 
     try {
       await expectLater(
-        amendReleaseChangelog(
-          gitDir: gitDir,
-          github: GithubCommandWrapper(fixture.root.path),
-        ),
+        amendReleaseChangelog(gitDir: gitDir, github: github),
         throwsA(
           isA<StateError>().having(
             (e) => e.message,
@@ -411,8 +424,8 @@ void main() {
     },
   );
 
-  test('refuses before touching anything when the PR body has no trace of '
-      'commit A', () async {
+  test('refuses before touching anything when the PR body has no "Content '
+      'commit" line', () async {
     final gitDir = await fixture.gitDir;
     fixture.writeFile(
       'packages/datadog_dio/CHANGELOG.md',
@@ -439,12 +452,17 @@ void main() {
   test('refuses when HEAD is more than one commit past commit A', () async {
     final gitDir = await fixture.gitDir;
     await fixture.commit('chore: an unexpected extra commit');
+    final github = _FakeGithub(
+      fixture.root.path,
+      OpenPullRequest(number: 42, body: _prBody(commitA)),
+    );
+    fixture.writeFile(
+      'packages/datadog_dio/CHANGELOG.md',
+      '## 2.4.0\n- Fixed entry.\n',
+    );
 
     await expectLater(
-      amendReleaseChangelog(
-        gitDir: gitDir,
-        github: GithubCommandWrapper(fixture.root.path),
-      ),
+      amendReleaseChangelog(gitDir: gitDir, github: github),
       throwsStateError,
     );
   });
@@ -458,26 +476,12 @@ void main() {
       'packages/datadog_dio/CHANGELOG.md',
       '## 2.3.1\n- A patch entry.\n',
     );
-    await writeManifest(
-      patchFixture.root.path,
-      ReleaseManifest(
-        contentCommit: null,
-        packages: [
-          ManifestPackageEntry(
-            package: 'datadog_dio',
-            fromVersion: '2.3.0',
-            toVersion: '2.3.1',
-            sourceBranch: patchBranch,
-            prerelease: false,
-            relativePath: 'packages/datadog_dio',
-          ),
-        ],
-      ),
-    );
-    await patchFixture.commit('chore(release): prepare patch release');
+    await patchFixture.commit('chore(release): prepare support release');
     final patchGitDir = await patchFixture.gitDir;
 
     try {
+      // Purely a branch-name check, so a real (unstubbed)
+      // GithubCommandWrapper never actually gets called.
       await expectLater(
         amendReleaseChangelog(
           gitDir: patchGitDir,
@@ -487,7 +491,7 @@ void main() {
           isA<StateError>().having(
             (e) => e.message,
             'message',
-            contains('patch releases never split'),
+            contains('support-branch releases never split'),
           ),
         ),
       );

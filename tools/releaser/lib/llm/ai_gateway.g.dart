@@ -18,7 +18,10 @@ AnthropicMessageResponse _$AnthropicMessageResponseFromJson(
 
 AnthropicContentBlock _$AnthropicContentBlockFromJson(
   Map<String, dynamic> json,
-) => AnthropicContentBlock(text: json['text'] as String);
+) => AnthropicContentBlock(
+  type: json['type'] as String,
+  text: json['text'] as String?,
+);
 
 AnthropicUsage _$AnthropicUsageFromJson(Map<String, dynamic> json) =>
     AnthropicUsage(
