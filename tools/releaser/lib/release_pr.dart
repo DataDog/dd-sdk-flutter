@@ -32,8 +32,8 @@ String versionSummary(List<PackagePlan> packages) => packages
 /// `runGroupedPrsPrompt` produced for that changelog -- mirrors dd-sdk-cpp's
 /// PR #346, extended to cover several packages in one PR.
 ///
-/// [changelogRef] must be a commit SHA (the content commit), never a branch
-/// or tag name -- a SHA stays resolvable and pinned to the exact content as
+/// [changelogRef] must be a commit SHA (the content commit, or the release's
+/// one commit on a support release), never a branch or tag name -- a SHA stays resolvable and pinned to the exact content as
 /// long as it's reachable from any ref, which it always is here (the
 /// release-prep branch pre-merge, then `develop` once backported).
 ///
@@ -45,25 +45,31 @@ String prBody(
   required bool publishValidationSkipped,
   required String repoSlug,
   required String changelogRef,
+  String? contentCommit,
   required Map<String, List<PrGroup>> groupsByPackage,
 }) {
   final buffer = StringBuffer();
 
   buffer.writeln(
-    '> If you need to modify this changelog, check out this branch locally, '
-    'edit CHANGELOG.md, then run '
-    '`dart run tools/releaser/bin/amend_release_changelog.dart` -- rather '
-    'than pushing directly or using GitHub\'s suggestion UI.',
+    contentCommit == null
+        ? '> If you need to modify this changelog, edit CHANGELOG.md on this '
+              'branch before merging.'
+        : '> If you need to modify this changelog, check out this branch '
+              'locally, edit CHANGELOG.md, then run '
+              '`dart run tools/releaser/bin/amend_release_changelog.dart` -- '
+              'rather than pushing directly or using GitHub\'s suggestion UI.',
   );
   buffer.writeln();
   buffer.writeln('## Versions');
   buffer.writeln();
-  // `publish_release.dart` parses this back out (see `manifest.dart`'s
-  // `parseContentCommit`). `amend_release_changelog.dart`'s whole-body SHA
-  // replace already rewrites this line for free when commit A gets a new
-  // SHA.
-  buffer.writeln('_Content commit: `$changelogRef`_');
-  buffer.writeln();
+  if (contentCommit != null) {
+    // `publish_release.dart` parses this back out (see `manifest.dart`'s
+    // `parseContentCommit`). `amend_release_changelog.dart`'s whole-body SHA
+    // replace already rewrites this line for free when commit A gets a new
+    // SHA.
+    buffer.writeln('_Content commit: `$contentCommit`_');
+    buffer.writeln();
+  }
   buffer.writeln('| Package | Current | New | Bump |');
   buffer.writeln('|---|---|---|---|');
   for (final p in packages) {

@@ -13,20 +13,29 @@
 //   - Commit A ("content"): changelog, version bumps, dependent
 //     constraints, NATIVE_SDK_VERSIONS.md. Safe to eventually land on a
 //     dev-line branch -- that branch still needs its own changelog/version
-//     history, just not what's below.
+//     history, just not what's below. Built on `release-content/*`.
 //   - Commit B ("publish-prep"): dependency_overrides checks, native SDK
 //     pinning, dry-run validation. Must never reach a dev-line branch -- it
 //     pins things a dev line needs to keep floating (native SDKs on
 //     `develop`, for example).
-// A support-branch release (the patch trigger: `release/{package}/vX.Y.x`
-// for a patch, `release/{package}/vX.x` for a minor) is the exception: it
-// doesn't split, since nothing else ever develops on a support branch, so
-// there's no dev-line commit B could leak into.
+// `release-prep/*` is forked from commit A, then has the PR's target branch
+// (`main`/`vN-main`) merged in, then gets commit B on top. That merge is what
+// lets commit B's pins change from one release to the next without
+// conflicting with the previous release's pins, which live on the target
+// branch but never on the dev line -- and it happens before commit B, so
+// commit A's own history stays free of them.
+// A support-branch release (`release/{package}/vX.Y.x` for a patch,
+// `release/{package}/vX.x` for a minor) doesn't split: nothing else ever
+// develops on a support branch, so there's no dev-line commit B could leak
+// into. Its release-prep PR targets the support branch itself.
 //
 // `publish_release.dart` reconstructs what it needs from the release PR's
-// body (mainline/pre-release) or the support-release commit's own message
-// (patch). See `ReleaseManifest`'s doc comment in `manifest.dart` for the
-// shape of that data.
+// body. See `ReleaseManifest`'s doc comment in `manifest.dart` for the shape
+// of that data.
+//
+// `--commit-headless` makes the pushes go through `commit-headless` and
+// GitHub's merges API, since a CI runner can't sign commits itself. A local
+// run leaves it off: plain git, with commits signed by the user's git config.
 
 import 'dart:io';
 
@@ -41,6 +50,7 @@ import 'package:releaser/cocoapod_util.dart';
 import 'package:releaser/dependency_constraints.dart';
 import 'package:releaser/git/git_dir.dart';
 import 'package:releaser/git/release_git.dart';
+import 'package:releaser/git/release_publisher.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/gradle_util.dart';
 import 'package:releaser/llm/ai_gateway.dart';
@@ -70,7 +80,7 @@ Future<void> main(List<String> arguments) async {
     )
     ..addFlag(
       'include-federated',
-      defaultsTo: false,
+      defaultsTo: true,
       help: 'See preview_release.dart -- same meaning here.',
     )
     ..addOption('bump-type', help: 'Override the computed bump.')
@@ -80,10 +90,10 @@ Future<void> main(List<String> arguments) async {
     ..addOption('prerelease-label')
     ..addOption(
       'trigger',
-      allowed: ['auto', 'mainline', 'patch', 'prerelease'],
+      allowed: ['auto', 'mainline', 'support', 'prerelease'],
       defaultsTo: 'auto',
       help:
-          'Which trigger context to run. "auto" detects patch from the '
+          'Which trigger context to run. "auto" detects support from the '
           'current branch name, defaulting to mainline otherwise -- it '
           'never auto-selects "prerelease", so pass that explicitly to cut '
           'a pre-release from the current branch (develop, v4, or another '
@@ -100,6 +110,15 @@ Future<void> main(List<String> arguments) async {
           'Apply every change and create both commits locally, but stop '
           'before pushing or opening a PR -- for local/CI verification '
           'without side effects visible outside this checkout.',
+    )
+    ..addFlag(
+      'commit-headless',
+      defaultsTo: false,
+      help:
+          'Push through commit-headless and merge through the GitHub API, so '
+          'GitHub signs the commits. For CI; needs HEADLESS_TOKEN or '
+          'GITHUB_TOKEN plus the commit-headless and gh binaries. Leave off '
+          'for a local run, where git signs with its own config.',
     )
     ..addFlag(
       'skip-publish-validation',
@@ -162,6 +181,7 @@ Future<void> main(List<String> arguments) async {
       github: GithubCommandWrapper(gitDir.path),
       aiGatewayClient: aiGatewayClient,
       dryRun: args['dry-run'] as bool,
+      commitHeadless: args['commit-headless'] as bool,
       skipPublishValidation: args['skip-publish-validation'] as bool,
     );
   } catch (e) {
@@ -173,73 +193,59 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-/// Where a trigger's release-prep output lands -- both which branch to
-/// build it on and which branch its PR (if any) targets.
+/// Where a trigger's release-prep output lands.
 class _ReleaseTarget {
-  /// Branch to check out and build both commits on. For mainline/
-  /// pre-release this is a brand new `release-prep/*` branch off
-  /// [ctxCurrentBranch]; for patch it's the patch branch itself -- nothing
-  /// else ever develops there, so there's no need for a separate branch.
+  /// The new `release-prep/*` branch the PR is opened from.
   final String workingBranch;
 
-  /// The branch to PR into, or null when this trigger pushes directly
-  /// with no PR (patch's primary path).
-  final String? prBase;
+  /// The branch the PR merges into.
+  final String prBase;
 
-  final bool createsNewBranch;
-
-  /// Branch to push at commit A's SHA, or null on patch (no commit A exists to
-  /// protect -- patch never splits). This repo auto-deletes a PR's head branch
-  /// on merge and allows squash/rebase, either of which would otherwise strand
-  /// commit A's original commit object once `release-prep/*` is gone; this
-  /// dedicated branch keeps it fetchable by SHA regardless of which merge
-  /// strategy lands the release-prep PR. `publish-release.yml` opens a PR with
-  /// this as `--head` to backport commit A into the dev-line branch.
+  /// Branch carrying commit A alone, or null on a support release (no commit
+  /// A exists). This repo auto-deletes a PR's head branch on merge and allows
+  /// squash/rebase, either of which would otherwise strand commit A's
+  /// original commit object once `release-prep/*` is gone; this dedicated
+  /// branch keeps it fetchable by SHA regardless of which merge strategy
+  /// lands the release-prep PR. `publish-release.yml` opens a PR with this
+  /// as `--head` to backport commit A into the dev-line branch.
   final String? contentBranchName;
 
   _ReleaseTarget({
     required this.workingBranch,
     required this.prBase,
-    required this.createsNewBranch,
     required this.contentBranchName,
   });
 
   factory _ReleaseTarget.forTrigger(RunContext ctx) {
+    final workingBranch = 'release-prep/${_dateId()}';
     switch (ctx.trigger) {
       case TriggerContext.mainline:
-        final workingBranch = 'release-prep/${_dateId()}';
         return _ReleaseTarget(
           workingBranch: workingBranch,
           prBase: 'main',
-          createsNewBranch: true,
           contentBranchName: contentBranchNameFor(workingBranch),
         );
       case TriggerContext.preRelease:
-        final workingBranch = 'release-prep/${_dateId()}';
-        // `develop` PRs into `main`, the same base mainline uses; `v4` PRs
-        // into `v4-main`. A new pre-release effort needs an entry in
-        // `expectedIntegrationBranch` and `sourceBranchFor`, since Phase 2
-        // maps this PR's base back to the source branch it backports
-        // commit A into.
+        // `develop` PRs into `main`, the same base mainline uses; `vN` PRs
+        // into `vN-main`. Phase 2 maps this PR's base back to the source
+        // branch it backports commit A into.
         final prBase = expectedIntegrationBranch(ctx.currentBranch);
         if (prBase == null) {
           throw StateError(
             '"${ctx.currentBranch}" is not a recognized pre-release source '
-            'branch (develop, v4, ...) -- refusing to guess where its '
+            'branch (develop, vN, ...) -- refusing to guess where its '
             'release-prep PR should merge into.',
           );
         }
         return _ReleaseTarget(
           workingBranch: workingBranch,
           prBase: prBase,
-          createsNewBranch: true,
           contentBranchName: contentBranchNameFor(workingBranch),
         );
-      case TriggerContext.patch:
+      case TriggerContext.support:
         return _ReleaseTarget(
-          workingBranch: ctx.currentBranch,
-          prBase: null,
-          createsNewBranch: false,
+          workingBranch: workingBranch,
+          prBase: ctx.currentBranch,
           contentBranchName: null,
         );
     }
@@ -283,6 +289,7 @@ Future<void> prepareRelease(
   required GithubCommandWrapper github,
   required AiGatewayClient aiGatewayClient,
   bool dryRun = false,
+  bool commitHeadless = false,
   bool skipPublishValidation = false,
   PublishedVersionsGateway? publishedVersions,
 }) async {
@@ -368,10 +375,23 @@ Future<void> prepareRelease(
   }
 
   final target = _ReleaseTarget.forTrigger(ctx);
+  final contentBranch = target.contentBranchName;
+  final publisher = ReleasePublisher(
+    commitHeadless: commitHeadless,
+    repoSlug: commitHeadless ? await github.repoSlug(_log) : null,
+  );
 
-  if (target.createsNewBranch) {
-    await createAndCheckoutBranch(gitDir, target.workingBranch, _log);
-  }
+  await _fetchRemoteState(gitDir, [
+    ctx.currentBranch,
+    target.prBase,
+  ], required: !dryRun);
+
+  final forkPoint = await _headSha(gitDir);
+  await createAndCheckoutBranch(
+    gitDir,
+    contentBranch ?? target.workingBranch,
+    _log,
+  );
 
   final costTracker = LlmCostTracker();
   final staleConsumerWarnings = <StaleConsumerWarning>[];
@@ -394,15 +414,25 @@ Future<void> prepareRelease(
 
   final versionSummaryText = versionSummary(plan.packages);
 
-  // `null` for patch -- see the file-level comment above.
-  final String? contentCommit = ctx.trigger == TriggerContext.patch
-      ? null
-      : await commitAll(
-          gitDir,
-          'chore(release): update changelog and bump versions',
-          _log,
-          body: versionSummaryText,
-        );
+  String? contentCommit;
+  if (contentBranch != null) {
+    contentCommit = await commitAll(
+      gitDir,
+      'chore(release): update changelog and bump versions',
+      _log,
+      body: versionSummaryText,
+    );
+    if (!dryRun) {
+      contentCommit = await publisher.pushNewBranch(
+        gitDir,
+        contentBranch,
+        forkPoint,
+        _log,
+      );
+    }
+    await createAndCheckoutBranch(gitDir, target.workingBranch, _log);
+    await _mergeTargetBranch(gitDir, publisher, target, dryRun: dryRun);
+  }
 
   // -- Commit B: publish-prep -- see the file-level comment above.
   //
@@ -452,16 +482,15 @@ Future<void> prepareRelease(
 
   final finalCommit = await commitAll(
     gitDir,
-    ctx.trigger == TriggerContext.patch
+    ctx.trigger == TriggerContext.support
         ? 'chore(release): prepare support release'
         : 'chore(release): publish-prep',
     _log,
     body: versionSummaryText,
-    // Only for commit B (mainline/pre-release): a run with no native SDK
-    // deltas to pin has nothing to stage here. Patch never splits, so its
-    // one commit always has the real changelog/version-bump content from
-    // above and should never need this.
-    allowEmpty: ctx.trigger != TriggerContext.patch,
+    // Only for commit B: a run with no native SDK deltas to pin has nothing
+    // to stage here. A support release's one commit always has the real
+    // changelog/version-bump content from above and should never need this.
+    allowEmpty: ctx.trigger != TriggerContext.support,
   );
   _log.info('✅ Prepared release on ${target.workingBranch} ($finalCommit)');
 
@@ -496,18 +525,14 @@ Future<void> prepareRelease(
     return;
   }
 
-  await pushBranch(gitDir, target.workingBranch, _log);
-
-  final contentBranchName = target.contentBranchName;
-  if (contentBranchName != null && contentCommit != null) {
-    await pushBranchAt(gitDir, contentBranchName, contentCommit, _log);
-  }
-
-  final prBase = target.prBase;
-  if (prBase == null) {
-    _log.info('✅ Pushed ${target.workingBranch}.');
-    return;
-  }
+  final tip = contentBranch == null
+      ? await publisher.pushNewBranch(
+          gitDir,
+          target.workingBranch,
+          forkPoint,
+          _log,
+        )
+      : await publisher.pushCommits(gitDir, target.workingBranch, _log);
 
   final title = prTitle(plan.packages);
   final body = prBody(
@@ -515,19 +540,87 @@ Future<void> prepareRelease(
     staleConsumerWarnings,
     publishValidationSkipped: skipPublishValidation,
     repoSlug: await github.repoSlug(_log),
-    // Never null here -- the only trigger with a null contentCommit is
-    // patch, whose prBase is always null too, so it never reaches this call.
-    changelogRef: contentCommit!,
+    changelogRef: contentCommit ?? tip,
+    contentCommit: contentCommit,
     groupsByPackage: groupsByPackage,
   );
   final prUrl = await github.createPullRequest(
     _log,
-    base: prBase,
+    base: target.prBase,
     head: target.workingBranch,
     title: title,
     body: body,
   );
   _log.info('✅ Opened release PR: $prUrl');
+}
+
+Future<String> _headSha(GitDir gitDir) async =>
+    (await gitDir.currentBranch()).sha;
+
+/// Fetches [branches] from `origin` so the target-branch merge below sees the
+/// remote's current state. A local `--dry-run` has no obligation to reach the
+/// remote, so a failure there is only a warning.
+Future<void> _fetchRemoteState(
+  GitDir gitDir,
+  List<String> branches, {
+  required bool required,
+}) async {
+  final result = await Process.run('git', [
+    'fetch',
+    'origin',
+    for (final branch in branches.toSet())
+      '+refs/heads/$branch:refs/remotes/origin/$branch',
+  ], workingDirectory: gitDir.path);
+  if (result.exitCode == 0) return;
+  if (required) {
+    throw StateError('git fetch origin failed: ${result.stderr}');
+  }
+  _log.warning(
+    '⚠️ Could not fetch origin (${(result.stderr as String).trim()}) -- '
+    'continuing from whatever this checkout already has.',
+  );
+}
+
+/// Merges the PR's target branch into the release-prep branch, between commit
+/// A and commit B. Nothing to merge on a support release, which targets the
+/// branch it was cut from.
+Future<void> _mergeTargetBranch(
+  GitDir gitDir,
+  ReleasePublisher publisher,
+  _ReleaseTarget target, {
+  required bool dryRun,
+}) async {
+  final hasTarget =
+      (await Process.run('git', [
+        'rev-parse',
+        '--verify',
+        '--quiet',
+        'origin/${target.prBase}',
+      ], workingDirectory: gitDir.path)).exitCode ==
+      0;
+  if (!hasTarget) {
+    if (!dryRun) {
+      throw StateError('origin/${target.prBase} does not exist.');
+    }
+    _log.warning(
+      '⚠️ origin/${target.prBase} is not available locally -- skipping its '
+      'merge into ${target.workingBranch}.',
+    );
+    return;
+  }
+  if (dryRun && publisher.commitHeadless) {
+    _log.info(
+      'ℹ️ --dry-run: skipping the GitHub API merge of ${target.prBase} (it needs '
+      'the branch on the remote).',
+    );
+    return;
+  }
+  await publisher.mergeRemoteBranchInto(
+    gitDir,
+    target.workingBranch,
+    target.prBase,
+    _log,
+  );
 }
 
 /// Applies commit A's changes for [packagePlan] and returns the PR groups
@@ -575,10 +668,10 @@ Future<List<PrGroup>> _applyContentChanges(
   }
 
   // Raise the app-facing package's lower bound on this package, if it's a
-  // releasing federated sibling. Not applicable on patch branches (patch
+  // releasing federated sibling. Not applicable on support branches (patch
   // versions stay within existing caret ranges) or to a group's own
   // app-facing package (nothing depends on itself).
-  if (ctx.trigger != TriggerContext.patch &&
+  if (ctx.trigger != TriggerContext.support &&
       pkg.role != PackageRole.appFacing) {
     final group = allGroups.firstWhere((g) => g.key == pkg.groupKey);
     final appFacing = group.members.firstWhere(
@@ -593,7 +686,7 @@ Future<List<PrGroup>> _applyContentChanges(
     );
   }
 
-  if (ctx.trigger != TriggerContext.patch) {
+  if (ctx.trigger != TriggerContext.support) {
     staleConsumerWarnings.addAll(
       await findStaleConsumerWarnings(
         allGroups: allGroups,

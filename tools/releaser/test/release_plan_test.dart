@@ -4,11 +4,8 @@
 
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
-import 'package:releaser/manifest.dart';
 import 'package:releaser/native_sdk.dart';
-import 'package:releaser/publish_rules.dart';
 import 'package:releaser/release_plan.dart';
-import 'package:releaser/release_pr.dart';
 import 'package:test/test.dart';
 import 'package:version/version.dart';
 
@@ -895,7 +892,7 @@ void main() {
         final result = await plan(
           RunContext(
             repoRoot: fixture.root.path,
-            trigger: TriggerContext.patch,
+            trigger: TriggerContext.support,
             currentBranch: 'release/datadog_flutter_plugin_ios/v3.10.x',
           ),
           published: {
@@ -930,7 +927,7 @@ void main() {
         plan(
           RunContext(
             repoRoot: fixture.root.path,
-            trigger: TriggerContext.patch,
+            trigger: TriggerContext.support,
             currentBranch: 'release/datadog_flutter_plugin_ios/v3.10.x',
             iosSdkVersionOverride: '3.16.0',
           ),
@@ -973,7 +970,7 @@ void main() {
         plan(
           RunContext(
             repoRoot: fixture.root.path,
-            trigger: TriggerContext.patch,
+            trigger: TriggerContext.support,
             currentBranch: 'release/datadog_flutter_plugin_ios/v3.10.x',
           ),
           published: {
@@ -1014,7 +1011,7 @@ void main() {
         final result = await plan(
           RunContext(
             repoRoot: fixture.root.path,
-            trigger: TriggerContext.patch,
+            trigger: TriggerContext.support,
             currentBranch: 'release/datadog_flutter_plugin_ios/v3.10.x',
             iosSdkVersionOverride: '3.10.4',
           ),
@@ -1138,7 +1135,7 @@ void main() {
   group('patch branch', () {
     RunContext patchCtx(String branch) => RunContext(
       repoRoot: fixture.root.path,
-      trigger: TriggerContext.patch,
+      trigger: TriggerContext.support,
       currentBranch: branch,
     );
 
@@ -1188,29 +1185,6 @@ void main() {
       },
     );
 
-    test('its version summary maps back to its own branch', () async {
-      await fixture.tag('datadog_dio/v2.1.2');
-      fixture.writeFile('packages/datadog_dio/CHANGES', 'a fix');
-      await fixture.commit('fix: a cherry-picked fix');
-
-      final result = await plan(
-        patchCtx('release/datadog_dio/v2.1.x'),
-        published: {
-          'datadog_dio': ['2.1.2'],
-        },
-      );
-
-      final row = parsePatchVersionSummary(versionSummary(result.packages))!;
-      expect(
-        expectedPatchBranchFor(
-          package: row.package,
-          toVersion: row.toVersion,
-          bump: row.bump,
-        ),
-        'release/datadog_dio/v2.1.x',
-      );
-    });
-
     test('fails loudly if a feat commit snuck onto the patch branch', () async {
       await fixture.tag('datadog_dio/v2.1.2');
       fixture.writeFile('packages/datadog_dio/CHANGES', 'a feature');
@@ -1232,7 +1206,7 @@ void main() {
         plan(
           RunContext(
             repoRoot: fixture.root.path,
-            trigger: TriggerContext.patch,
+            trigger: TriggerContext.support,
             currentBranch: 'release/datadog_dio/v2.1.x',
             bumpTypeOverride: 'major',
           ),
@@ -1297,29 +1271,6 @@ void main() {
         expect(result.packages.single.newVersion, '3.6.0');
         expect(result.packages.single.bumpLevel, VersionBumpType.minor);
         expect(result.packages.single.currentVersion, '3.5.0');
-      });
-
-      test('its version summary maps back to its own branch', () async {
-        await fixture.tag('datadog_dio/v3.5.0');
-        fixture.writeFile('packages/datadog_dio/CHANGES', 'a feature');
-        await fixture.commit('feat: a feature for the support line');
-
-        final result = await plan(
-          patchCtx('release/datadog_dio/v3.x'),
-          published: {
-            'datadog_dio': ['3.5.0'],
-          },
-        );
-
-        final row = parsePatchVersionSummary(versionSummary(result.packages))!;
-        expect(
-          expectedPatchBranchFor(
-            package: row.package,
-            toVersion: row.toVersion,
-            bump: row.bump,
-          ),
-          'release/datadog_dio/v3.x',
-        );
       });
 
       test('a fix-only branch still releases a minor, never a patch', () async {
@@ -1406,7 +1357,7 @@ void main() {
         final result = await plan(
           RunContext(
             repoRoot: fixture.root.path,
-            trigger: TriggerContext.patch,
+            trigger: TriggerContext.support,
             currentBranch: iosBranch,
             iosSdkVersionOverride: '3.11.0',
           ),
@@ -1432,7 +1383,7 @@ void main() {
           plan(
             RunContext(
               repoRoot: fixture.root.path,
-              trigger: TriggerContext.patch,
+              trigger: TriggerContext.support,
               currentBranch: iosBranch,
               iosSdkVersionOverride: '4.0.0',
             ),
@@ -1837,7 +1788,7 @@ void main() {
     test('a patch branch name is recognised unconditionally', () {
       expect(
         resolveTriggerContext('release/datadog_dio/v1.1.x'),
-        TriggerContext.patch,
+        TriggerContext.support,
       );
     });
 

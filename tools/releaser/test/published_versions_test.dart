@@ -41,6 +41,16 @@ void main() {
       expect(history.latestOn(9, 9), isNull);
     });
 
+    test('latestOn and latestOnMajor skip pre-releases', () {
+      final withBeta = of(['3.7.1', '3.7.2-beta.1', '3.8.0-beta.1']);
+
+      expect(withBeta.latestOn(3, 7), Version.parse('3.7.1'));
+      expect(withBeta.latestOnMajor(3), Version.parse('3.7.1'));
+      // A line that only has pre-releases has no release to build on.
+      expect(of(['4.0.0-beta.1']).latestOn(4, 0), isNull);
+      expect(of(['4.0.0-beta.1']).latestOnMajor(4), isNull);
+    });
+
     test('prereleasesAt finds the counter for a target', () {
       expect(history.prereleasesAt(Version.parse('4.0.0')), [
         Version.parse('4.0.0-beta.1'),

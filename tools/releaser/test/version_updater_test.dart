@@ -43,29 +43,26 @@ void main() {
     );
   });
 
-  test(
-    'omits columns for platforms this package does not ship, rather than '
-    'padding them with a dash -- a brand-new file is always a single '
-    'platform package\'s own, never the app-facing aggregate',
-    () async {
-      final file = File(p.join(root.path, 'NATIVE_SDK_VERSIONS.md'));
+  test('omits columns for platforms this package does not ship, rather than '
+      'padding them with a dash -- a brand-new file is always a single '
+      'platform package\'s own, never the app-facing aggregate', () async {
+    final file = File(p.join(root.path, 'NATIVE_SDK_VERSIONS.md'));
 
-      await updateNativeSdkVersionsMd(
-        file,
-        '1.0.0',
-        logger,
-        false,
-        iosVersion: '3.15.0',
-      );
+    await updateNativeSdkVersionsMd(
+      file,
+      '1.0.0',
+      logger,
+      false,
+      iosVersion: '3.15.0',
+    );
 
-      expect(
-        file.readAsStringSync(),
-        '| Flutter | iOS SDK |\n'
-        '|---------|---------|\n'
-        '| 1.0.0 | 3.15.0 |\n',
-      );
-    },
-  );
+    expect(
+      file.readAsStringSync(),
+      '| Flutter | iOS SDK |\n'
+      '|---------|---------|\n'
+      '| 1.0.0 | 3.15.0 |\n',
+    );
+  });
 
   test(
     'does not create the file at all for a package shipping no native SDK',
@@ -198,9 +195,7 @@ void main() {
     });
 
     test('fails when pubspec.yaml has no version line', () async {
-      File(
-        p.join(root.path, 'pubspec.yaml'),
-      ).writeAsStringSync('name: foo\n');
+      File(p.join(root.path, 'pubspec.yaml')).writeAsStringSync('name: foo\n');
 
       final result = await updateVersions(root.path, '1.1.0', logger, false);
 

@@ -63,7 +63,7 @@ class RunContext {
     required this.trigger,
     required this.currentBranch,
     this.requestedPackages = const [],
-    this.includeFederated = false,
+    this.includeFederated = true,
     this.bumpTypeOverride,
     this.prereleaseLabel,
     this.iosSdkVersionOverride,
@@ -211,7 +211,7 @@ Future<ReleasePlan> computeReleasePlan(
 
   // Second sweep: a package whose plan was never computed (not selected
   // this run) may still need its native SDK pin resolved.
-  if (ctx.trigger != TriggerContext.patch) {
+  if (ctx.trigger != TriggerContext.support) {
     final visited = selected.map((pkg) => pkg.name).toSet();
     for (final pkg in groups.expand((g) => g.members)) {
       if (pkg.groupKey != _nativeSdkEligibleGroupKey ||
@@ -308,7 +308,7 @@ void _validateTriggerInputs(RunContext ctx) {
       }
       // Otherwise parsed (and rejected if unrecognized) where it's applied.
       return;
-    case TriggerContext.patch:
+    case TriggerContext.support:
       throw StateError(
         'BUMP_TYPE="$bumpType" does not apply on a support branch -- the '
         'branch fixes the bump (`vX.Y.x` releases a patch, `vX.x` a minor), '
@@ -380,7 +380,7 @@ Future<PackagePlan?> _computePackagePlan(
       } else {
         versionBase = commitBase = null;
       }
-    case TriggerContext.patch:
+    case TriggerContext.support:
       final (major, minor) = _releaseLineFromPatchBranch(ctx.currentBranch);
       versionBase = commitBase = minor == null
           ? published.latestOnMajor(major)
@@ -456,7 +456,7 @@ Future<PackagePlan?> _computePackagePlan(
   // A support-branch run is exempt: its single package comes from the branch
   // name, and a support branch exists precisely because something needs
   // shipping from it.
-  if (ctx.trigger != TriggerContext.patch &&
+  if (ctx.trigger != TriggerContext.support &&
       aggregateBumpLevel(commits) == null &&
       nativeSdkAggregateBump(nativeSdkDeltas) == null &&
       !isExplicitlyRequested &&
@@ -501,7 +501,7 @@ Future<PackagePlan?> _computePackagePlan(
   }
 
   return switch (ctx.trigger) {
-    TriggerContext.patch => _computePatchPlan(
+    TriggerContext.support => _computePatchPlan(
       pkg,
       currentVersion,
       commits,
@@ -1188,13 +1188,13 @@ String? packageNameFromPatchBranch(String branch) =>
 /// Auto-detects a run's trigger context from [currentBranch] where that's
 /// unambiguous, and defaults to mainline otherwise.
 ///
-/// A support branch (the patch trigger) is recognised unconditionally by
+/// A support branch is recognised unconditionally by
 /// branch-name convention. Pre-release
 /// is deliberately *not* guessed here. To preview a pre-release run with an
 /// explicit `--trigger=prerelease` instead.
 TriggerContext resolveTriggerContext(String currentBranch) {
   if (packageNameFromPatchBranch(currentBranch) != null) {
-    return TriggerContext.patch;
+    return TriggerContext.support;
   }
   return TriggerContext.mainline;
 }
@@ -1215,7 +1215,7 @@ TriggerContext resolveTriggerContext(String currentBranch) {
 Future<List<PackageGroup>> _resolveGroups(RunContext ctx) async {
   final allGroups = await discoverPackages(ctx.repoRoot);
 
-  if (ctx.trigger != TriggerContext.patch) {
+  if (ctx.trigger != TriggerContext.support) {
     return allGroups;
   }
 
@@ -1258,7 +1258,7 @@ List<DiscoveredPackage> _selectPackages(
 
   if (ctx.requestedPackages.isEmpty) return all;
 
-  if (ctx.trigger == TriggerContext.patch) {
+  if (ctx.trigger == TriggerContext.support) {
     // A patch run's single package is already implied by currentBranch (see
     // _resolveGroups) -- an inherited --packages/PACKAGES filter shouldn't
     // be able to narrow or wipe that out, so it doesn't apply here.
