@@ -583,6 +583,28 @@ private class NoOpBinaryMessenger: NSObject, FlutterBinaryMessenger {
     func cleanUpConnection(_ connection: FlutterBinaryMessengerConnection) { }
 }
 
+/// A messenger that records which channels were sent on, for asserting that nothing reached Dart.
+private class RecordingBinaryMessenger: NSObject, FlutterBinaryMessenger {
+    private(set) var sentChannels: [String] = []
+
+    func send(onChannel channel: String, message: Data?) {
+        sentChannels.append(channel)
+    }
+
+    func send(onChannel channel: String, message: Data?, binaryReply callback: FlutterBinaryReply? = nil) {
+        sentChannels.append(channel)
+    }
+
+    func setMessageHandlerOnChannel(
+        _ channel: String,
+        binaryMessageHandler handler: FlutterBinaryMessageHandler? = nil
+    ) -> FlutterBinaryMessengerConnection {
+        return 0
+    }
+
+    func cleanUpConnection(_ connection: FlutterBinaryMessengerConnection) { }
+}
+
 /// Teardown has to drop every channel the SDK can call Dart on. Flutter resets the engine's shell on
 /// termination without notifying plugins (flutter/flutter#126671), and anything sent afterwards
 /// asserts inside `-[FlutterEngine sendOnChannel:message:binaryReply:]` — see #1062.
@@ -620,6 +642,44 @@ class DatadogPluginDetachTests: XCTestCase {
 
         XCTAssertNil(plugin.rum.methodChannel)
         XCTAssertNil(plugin.logs.methodChannel)
+    }
+
+    func testLogCallbackQueuedBeforeTermination_isDropped() {
+        // The SDK can log from any thread right before termination: `callLogCallback` hops to main,
+        // and by the time that block runs the engine's shell is gone. The guard must not depend on
+        // finding the engine through `keyWindow`, which is nil under the UIScene lifecycle.
+        let messenger = RecordingBinaryMessenger()
+        let notificationCenter = NotificationCenterMock()
+        let plugin = DatadogSdkPlugin(
+            channel: FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: messenger),
+            notificationCenter: notificationCenter
+        )
+
+        plugin.callLogCallback("queued before termination")
+        notificationCenter.post(name: UIApplication.willTerminateNotification)
+        drainMainQueue()
+
+        XCTAssertEqual(messenger.sentChannels, [])
+    }
+
+    func testLogCallback_withoutTeardown_isSent() {
+        let messenger = RecordingBinaryMessenger()
+        let plugin = DatadogSdkPlugin(
+            channel: FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: messenger),
+            notificationCenter: NotificationCenterMock()
+        )
+
+        plugin.callLogCallback("regular log line")
+        drainMainQueue()
+
+        XCTAssertEqual(messenger.sentChannels, ["datadog_sdk_flutter"])
+    }
+
+    /// Lets every block already queued on main (e.g. by `callLogCallback`) run before asserting.
+    private func drainMainQueue() {
+        let drained = expectation(description: "main queue drained")
+        DispatchQueue.main.async { drained.fulfill() }
+        wait(for: [drained], timeout: 1)
     }
 
     func testDetach_isIdempotent() {

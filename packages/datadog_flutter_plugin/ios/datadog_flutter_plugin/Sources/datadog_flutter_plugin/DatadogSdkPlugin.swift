@@ -123,6 +123,9 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     var core: DatadogCoreProtocol?
     var oldConsolePrint: ((String, CoreLoggerLevel) -> Void)?
 
+    /// Set by `_onDetach()` once this engine is torn down. Read and written on the main thread only.
+    private var isDetached = false
+
     internal let rum = DatadogRumPlugin()
     internal let logs = DatadogLogsPlugin()
 
@@ -448,6 +451,8 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     }
 
     private func _onDetach() {
+        isDetached = true
+
         // Reset consolePrint during detach - any other methodChannel callbacks will
         // also need to be cleared as well
         if let oldConsolePrint = oldConsolePrint {
@@ -482,15 +487,16 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     }
 
     // This is a way to work around https://github.com/flutter/flutter/issues/126671
-    private func callLogCallback(_ value: String) {
+    internal func callLogCallback(_ value: String) {
         // Dispatch to the main thread. This is partially to combat Flutter shutdown
         // occuring while we're still processing events
         DispatchQueue.main.async {
-            // Second, check that the engine hasn't been destroyed, this is the
-            // other work around for https://github.com/flutter/flutter/issues/126671
-            if let flutterViewController =
-                UIApplication.shared.keyWindow?.rootViewController as? FlutterViewController,
-                let engine = flutterViewController.engine as FlutterEngine?, engine.isolateId == nil {
+            // Second, drop anything queued after the engine was torn down, this is the
+            // other work around for https://github.com/flutter/flutter/issues/126671.
+            // Uses this plugin's own teardown signal rather than finding the engine through
+            // `UIApplication.shared.keyWindow`, which is unreliable under the UIScene lifecycle
+            // and may belong to another engine.
+            guard !self.isDetached else {
                 return
             }
 
