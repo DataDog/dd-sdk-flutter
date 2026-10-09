@@ -77,14 +77,15 @@ final configuration = DatadogConfiguration(
 );
 ```
 
-If you don't set `desktopDataDirectory`, the SDK logs a warning and uses a `.datadog` directory in the process's current working directory, which is only suitable for development. If the path you set is invalid, the SDK logs an error and does not initialize.
+If you don't set `desktopDataDirectory`, the SDK logs a warning and uses a `.datadog` directory in the process's current working directory, which is suitable only for development. If the path you set is invalid, the SDK logs an error and does not initialize.
 
-The following are not currently supported on Windows and Linux:
+The following are not supported on Windows and Linux:
 
-* `DatadogSdk.attachToExisting` / `DatadogAttachConfiguration`.
-* Changing `DatadogSdk.sdkVerbosity` after initialization.
-* `DatadogRum.getCurrentSessionId` (always returns `null`), and `DatadogRum.addTiming`, `DatadogRum.addViewLoadingTime`, and `DatadogRum.addFeatureFlagEvaluation`, which do nothing on these platforms.
-* Frame build and raster performance metrics.
+* `DatadogSdk.attachToExisting` and `DatadogAttachConfiguration`
+* Changing `DatadogSdk.sdkVerbosity` after initialization
+* `DatadogRum.getCurrentSessionId`, which always returns `null`
+* `DatadogRum.addTiming`, `DatadogRum.addViewLoadingTime`, and `DatadogRum.addFeatureFlagEvaluation`, which have no effect
+* Frame build and raster performance metrics
 
 ## Setup
 
