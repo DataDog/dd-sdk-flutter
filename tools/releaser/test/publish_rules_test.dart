@@ -156,4 +156,41 @@ void main() {
       expect(() => sourceBranchFor('develop'), throwsStateError);
     });
   });
+
+  group('expectedSupportBranchFor', () {
+    test('a patch bump stays on its exact minor line', () {
+      expect(
+        expectedSupportBranchFor(
+          package: 'datadog_dio',
+          toVersion: '2.2.1',
+          bump: 'patch',
+        ),
+        'release/datadog_dio/v2.2.x',
+      );
+    });
+
+    test('a minor bump comes from the major-line branch', () {
+      expect(
+        expectedSupportBranchFor(
+          package: 'datadog_dio',
+          toVersion: '3.5.0',
+          bump: 'minor',
+        ),
+        'release/datadog_dio/v3.x',
+      );
+    });
+
+    test('throws for a bump a support branch never produces', () {
+      for (final bump in ['major', 'prerelease', 'first release']) {
+        expect(
+          () => expectedSupportBranchFor(
+            package: 'datadog_dio',
+            toVersion: '3.0.0',
+            bump: bump,
+          ),
+          throwsStateError,
+        );
+      }
+    });
+  });
 }

@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'package:version/version.dart';
+
 import 'release_plan.dart' show packageNameFromPatchBranch;
 
 // Pure decision logic for the release tooling, kept in `lib/` so it's
@@ -70,4 +72,30 @@ String sourceBranchFor(String integrationBranch) {
     '"$integrationBranch" is not a recognized release integration branch '
     '(main, a whitelisted pre-release `-main`, or a support branch).',
   );
+}
+
+/// The support branch a support release of [package] to [toVersion] with
+/// [bump] has to come from: a `patch` release from its exact
+/// `{major}.{minor}` line's branch, a `minor` release from the `{major}`
+/// line's branch.
+///
+/// Throws for any other [bump] (`major`/`prerelease`/`first release`), none of
+/// which a support branch produces.
+String expectedSupportBranchFor({
+  required String package,
+  required String toVersion,
+  required String bump,
+}) {
+  final version = Version.parse(toVersion);
+  switch (bump) {
+    case 'patch':
+      return 'release/$package/v${version.major}.${version.minor}.x';
+    case 'minor':
+      return 'release/$package/v${version.major}.x';
+    default:
+      throw StateError(
+        '"$bump" is not a bump a support branch produces (expected patch or '
+        'minor).',
+      );
+  }
 }

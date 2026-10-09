@@ -111,12 +111,17 @@ void main() {
   Future<String> git(List<String> args) async =>
       ((await (await fixture.gitDir).runCommand(args)).stdout as String).trim();
 
-  String body({String? contentCommit, String version = '2.3.0'}) =>
+  String body({
+    String? contentCommit,
+    String version = '2.3.0',
+    String bump = 'minor',
+    List<String> packages = const ['datadog_dio'],
+  }) =>
       '## Versions\n\n'
       '${contentCommit == null ? '' : '_Content commit: `$contentCommit`_\n\n'}'
       '| Package | Current | New | Bump |\n'
       '|---|---|---|---|\n'
-      '| datadog_dio | 2.2.0 | $version | minor |\n';
+      '${packages.map((p) => '| $p | 2.2.0 | $version | $bump |\n').join()}';
 
   MergedPullRequest pullRequest({
     String? body_,
@@ -176,11 +181,13 @@ void main() {
     await git(['update-ref', 'refs/remotes/origin/main', merge]);
     await git(['update-ref', 'refs/remotes/origin/develop', base]);
     await git(['update-ref', 'refs/remotes/origin/release-content/x', commitA]);
-    await git([
-      'update-ref',
-      'refs/remotes/origin/release/datadog_dio/v2.3.x',
-      merge,
-    ]);
+    for (final branch in [
+      'release/datadog_dio/v2.3.x',
+      'release/datadog_dio/v2.x',
+      'release/lonely_ios/v2.x',
+    ]) {
+      await git(['update-ref', 'refs/remotes/origin/$branch', merge]);
+    }
 
     github.pr = pullRequest();
     github.tagSha = merge;
@@ -303,6 +310,61 @@ void main() {
       },
     );
 
+    group('a support release whose table does not belong to its branch', () {
+      Future<void> expectRefused(MergedPullRequest pr, String message) async {
+        github.pr = pr;
+        await expectLater(
+          publish(),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains(message),
+            ),
+          ),
+        );
+        expect(github.createdReleases, isEmpty);
+      }
+
+      test('names a different package', () async {
+        await expectRefused(
+          pullRequest(
+            body_: body(packages: ['datadog_dio']),
+            baseRef: 'release/lonely_ios/v2.x',
+          ),
+          'comes from release/datadog_dio/v2.x',
+        );
+      });
+
+      test('names a version from a different line', () async {
+        // 2.3.0 (minor) belongs on the major-line branch, not a patch line.
+        await expectRefused(
+          pullRequest(body_: body(), baseRef: 'release/datadog_dio/v2.3.x'),
+          'comes from release/datadog_dio/v2.x',
+        );
+      });
+
+      test('names a bump a support branch never produces', () async {
+        await expectRefused(
+          pullRequest(
+            body_: body(bump: 'major'),
+            baseRef: 'release/datadog_dio/v2.x',
+          ),
+          'not a bump a support branch produces',
+        );
+      });
+
+      test('lists more than one package', () async {
+        await expectRefused(
+          pullRequest(
+            body_: body(packages: ['datadog_dio', 'lonely_ios']),
+            baseRef: 'release/datadog_dio/v2.x',
+          ),
+          'lists 2 packages',
+        );
+      });
+    });
+
     test('a commit that is not on the PR\'s base branch', () async {
       await git(['update-ref', 'refs/remotes/origin/main', commitA]);
 
@@ -327,7 +389,7 @@ void main() {
     test('a support release without a backport', () async {
       github.pr = pullRequest(
         body_: body(),
-        baseRef: 'release/datadog_dio/v2.3.x',
+        baseRef: 'release/datadog_dio/v2.x',
       );
 
       await publish();

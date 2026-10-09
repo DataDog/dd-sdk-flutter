@@ -238,8 +238,10 @@ Future<(ReleaseManifest, String?)> _manifestFromReleasePr(
     );
   }
 
+  final rows = parseVersionsTable(pr.body);
+  if (isSupport) _checkSupportRows(rows, pr);
   final packages = await manifestPackagesFor(
-    parseVersionsTable(pr.body),
+    rows,
     repoRoot: gitDir.path,
     isSupport: isSupport,
   );
@@ -257,6 +259,32 @@ Future<(ReleaseManifest, String?)> _manifestFromReleasePr(
     ),
     isSupport ? null : sourceBranch,
   );
+}
+
+/// A support release is one package, from the branch its PR merged into. The
+/// body's rows are editable, but the base branch is GitHub's own record, so a
+/// row only counts if it names the package that branch is for and a version
+/// and bump that belong to its line.
+void _checkSupportRows(List<ParsedVersionRow> rows, MergedPullRequest pr) {
+  if (rows.length != 1) {
+    throw StateError(
+      'PR #${pr.number} merged into ${pr.baseRef} but lists ${rows.length} '
+      'packages -- a support release is exactly one. Refusing to publish.',
+    );
+  }
+  final row = rows.single;
+  final expected = expectedSupportBranchFor(
+    package: row.package,
+    toVersion: row.toVersion,
+    bump: row.bump,
+  );
+  if (expected != pr.baseRef) {
+    throw StateError(
+      'PR #${pr.number} merged into ${pr.baseRef}, but its table says '
+      '${row.package} ${row.toVersion} (${row.bump}), which comes from '
+      '$expected. Refusing to publish.',
+    );
+  }
 }
 
 /// The PR body is editable by anyone with write access, so the versions it
