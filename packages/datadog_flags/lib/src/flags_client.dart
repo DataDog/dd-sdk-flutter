@@ -5,6 +5,7 @@
 
 import 'evaluation_context.dart';
 import 'flags_error.dart';
+import 'flags_client_event.dart';
 
 /// Evaluates feature flags for one current evaluation context.
 ///
@@ -14,6 +15,23 @@ import 'flags_error.dart';
 abstract interface class DatadogFlagsClient {
   /// Stable name assigned by [DatadogFlags.sharedClient].
   String get name;
+
+  /// Calls [listener] once with the first accepted cache or network configuration.
+  /// The event contains its flag keys, including an empty list for an empty
+  /// configuration. Later registrations receive the same retained event.
+  /// If no usable configuration is installed, the callback remains pending.
+  ///
+  /// Delivery runs in a later microtask in the registration zone. The callback
+  /// can evaluate current flag values and start asynchronous work. Synchronous
+  /// exceptions are caught; the application handles errors from its async work.
+  /// Registration does not fetch flags or wait for initialization to complete.
+  ///
+  /// Returns an unregister function that prevents delivery until the callback
+  /// starts. Calling it repeatedly is safe. Reset preserves the retained event;
+  /// obtain a new shared client after SDK re-enable.
+  void Function() onFirstFlags(
+    void Function(FlagsClientEvent event) listener,
+  );
 
   /// Fetches assignments for [context] and makes them available to evaluations.
   ///
@@ -26,7 +44,7 @@ abstract interface class DatadogFlagsClient {
   /// If a later call supersedes the first call, the first call remains bounded
   /// by its original deadline. The later call does not use this timeout.
   ///
-  /// Evaluations made before initialization completes return their provided
+  /// Evaluations made before assignments are available return their provided
   /// default value with a `providerNotReady` error.
   Future<void> initialize(
     FlagsEvaluationContext context,
