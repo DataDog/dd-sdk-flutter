@@ -1,8 +1,8 @@
-
 import com.android.Version
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 buildscript {
+    // Hybrid Session Replay needs dd-sdk-android 3.13.0 or later.
     ext.datadog_version = "3.13.1"
 }
 
@@ -17,11 +17,11 @@ if (agpMajor < 9) {
 }
 
 android {
-    namespace 'com.datadoghq.hybrid_flutter_example'
+    namespace 'com.datadoghq.hybrid_session_replay_example'
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.datadoghq.hybrid_flutter_example"
+        applicationId "com.datadoghq.hybrid_session_replay_example"
         minSdk 24
         targetSdk 35
         versionCode 1
@@ -41,9 +41,6 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-    buildFeatures {
-        viewBinding true
-    }
 }
 
 kotlin {
@@ -56,15 +53,8 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.7.0'
     implementation 'androidx.appcompat:appcompat:1.4.1'
     implementation 'com.google.android.material:material:1.5.0-alpha04'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
-    implementation 'androidx.navigation:navigation-fragment-ktx:2.4.1'
-    implementation 'androidx.navigation:navigation-ui-ktx:2.4.1'
     implementation "com.datadoghq:dd-sdk-android-rum:$datadog_version"
     implementation "com.datadoghq:dd-sdk-android-logs:$datadog_version"
-    implementation "com.datadoghq:dd-sdk-android-trace:$datadog_version"
-    implementation "com.datadoghq:dd-sdk-android-ndk:$datadog_version"
+    implementation "com.datadoghq:dd-sdk-android-session-replay:$datadog_version"
     implementation project(':flutter')
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 }

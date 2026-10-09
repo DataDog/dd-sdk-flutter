@@ -1,3 +1,4 @@
 Pods/
-xcuserData
-iOS Flutter Hybrid Example/ddog_config.plist
+xcuserdata
+Podfile.lock
+HybridSessionReplayExample/ddog_config.plist
