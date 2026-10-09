@@ -419,11 +419,12 @@ linux-integration-test:
 # that default alone so a manual run can set RELEASE_TRIGGER=prerelease to cut
 # a pre-release from `develop`.
 #
-# Pre-release branches are a manually-maintained whitelist here, not a
-# pattern match -- add/remove an `if:` clause per active effort (see `v4`
-# below). Keep in sync with .github/chainguard/self.prepare-release.sts.yaml's
-# subject_pattern, which grants this job's GitHub token and is scoped to the
-# same branch set.
+# Pre-release branches are a manually-maintained whitelist, not a pattern
+# match -- add/remove an `if:` clause per active effort (see `v4` below); its
+# release-prep PR targets `<branch>-main`. Keep in sync with
+# .github/chainguard/self.prepare-release.sts.yaml's subject_pattern, which
+# grants this job's GitHub token and is scoped to the same branch set, and
+# with `preReleaseBranches` in tools/releaser/lib/publish_rules.dart.
 prepare-release:
   stage: prepare-release
   rules:
@@ -433,11 +434,11 @@ prepare-release:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
       when: manual
       allow_failure: true
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/.+\/v\d+(\.\d+)?\.x$/'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/[^\/]+\/v\d+(\.\d+)?\.x$/'
       when: manual
       allow_failure: true
       variables:
-        RELEASE_TRIGGER: "patch"
+        RELEASE_TRIGGER: "support"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "v4"' # pre-release whitelist -- see comment above
       when: manual
       allow_failure: true
@@ -450,6 +451,9 @@ prepare-release:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
     RELEASE_TRIGGER: "mainline"
     PACKAGES: ""
+    # "false" releases only the packages named in PACKAGES; otherwise naming
+    # a member of a federated group also considers its siblings.
+    INCLUDE_FEDERATED: "true"
     IOS_SDK_VERSION: ""
     ANDROID_SDK_VERSION: ""
     CPP_VERSION: ""
@@ -488,10 +492,18 @@ prepare-release:
     # HttpAiGatewayClient.fromEnvironment).
     - export AI_GATEWAY_TOKEN=$(authanywhere --audience rapid-ai-platform --raw --dc us1.ddbuild.io)
     - pushd tools/releaser && dart pub get && popd
+    - |
+      if [ "$INCLUDE_FEDERATED" = "false" ]; then
+        FEDERATED_FLAG="--no-include-federated"
+      else
+        FEDERATED_FLAG="--include-federated"
+      fi
     - >
       dart run tools/releaser/bin/prepare_release.dart
       --repo-root=$CI_PROJECT_DIR
       --trigger=$RELEASE_TRIGGER
+      --commit-headless
+      $FEDERATED_FLAG
       ${PACKAGES:+"--packages=$PACKAGES"}
       ${BUMP_TYPE:+"--bump-type=$BUMP_TYPE"}
       ${IOS_SDK_VERSION:+"--ios-sdk-version=$IOS_SDK_VERSION"}
@@ -506,23 +518,19 @@ prepare-release:
 #
 # Pushes the `release-trigger/*` tag that GitHub Actions' publish-release.yml
 # watches for -- only after this exact commit's pipeline has already
-# succeeded
+# succeeded.
 #
-# Pre-release `-main` branches are a manually-maintained whitelist, same discipline as
-# prepare-release's `v4` whitelist above.
-#
-# `main`/`v4-main` should never receive anything but a release-prep PR merge
-# (branch protection requires a PR, and nothing else ever opens one against
-# them), so every push there is a release -- no further gate needed. A
-# support branch is different: ordinary cherry-picked fixes land there too,
-# so that rule needs a positive signal -- `prepare_release.dart`'s own
-# support-release commit message, the one thing that's unambiguously *not*
-# an ordinary fix commit.
+# Fires on every push to a release branch: `main`, a whitelisted pre-release
+# `-main` branch (currently just `v4-main`, mirroring prepare-release's own
+# `v4` whitelist -- never a wildcard), or a support branch. Most pushes to a support branch are ordinary cherry-picked
+# fixes rather than releases, so the trigger can't tell them apart here;
+# publish_release.dart does, by requiring the commit to be the merge of a
+# `release-prep/*` PR, and exits without doing anything otherwise.
 push-release-trigger-tag:
   stage: release-trigger
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "v4-main")'
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/.+\/v\d+(\.\d+)?\.x$/ && $CI_COMMIT_MESSAGE =~ /^chore\(release\): prepare support release/'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/[^\/]+\/v\d+(\.\d+)?\.x$/'
   # Same runner as prepare-release as
   # dd-octo-sts/git/gh all need to be present
   tags:

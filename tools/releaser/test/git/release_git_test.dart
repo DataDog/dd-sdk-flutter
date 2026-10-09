@@ -261,30 +261,75 @@ void main() {
     });
   });
 
-  group('rebaseOnto', () {
-    test('replays commit B onto an amended commit A', () async {
+  group('cherryPick', () {
+    test(
+      're-applies a commit onto another base, keeping its message',
+      () async {
+        final gitDir = await fixture.gitDir;
+        final base = (await gitDir.runCommand([
+          'rev-parse',
+          'HEAD',
+        ])).stdout.toString().trim();
+        fixture.writeFile('packages/datadog_dio/CHANGELOG.md', '# B\n');
+        await fixture.commit('chore: commit B');
+        final commitB = (await gitDir.runCommand([
+          'rev-parse',
+          'HEAD',
+        ])).stdout.toString().trim();
+
+        await checkoutRef(gitDir, base, logger);
+        fixture.writeFile('packages/datadog_dio/OTHER', 'x');
+        await fixture.commit('chore: other base');
+        await cherryPick(gitDir, commitB, logger);
+
+        final subject = (await gitDir.runCommand([
+          'log',
+          '-1',
+          '--format=%s',
+        ])).stdout.toString().trim();
+        expect(subject, 'chore: commit B');
+        expect(
+          File(
+            p.join(fixture.root.path, 'packages/datadog_dio/CHANGELOG.md'),
+          ).readAsStringSync(),
+          '# B\n',
+        );
+      },
+    );
+
+    test('keeps a commit that is empty on the new base', () async {
       final gitDir = await fixture.gitDir;
-      final commitA = (await gitDir.runCommand([
+      await gitDir.runCommand(['commit', '--allow-empty', '-m', 'chore: B']);
+      final commitB = (await gitDir.runCommand([
         'rev-parse',
         'HEAD',
       ])).stdout.toString().trim();
-      await fixture.commit('chore: commit B');
-      final workingBranch = (await gitDir.currentBranch()).branchName;
+      await gitDir.runCommand(['reset', '--hard', 'HEAD~1']);
 
-      await checkoutRef(gitDir, commitA, logger);
-      fixture.writeFile('packages/datadog_dio/CHANGELOG.md', '# Fixed\n');
-      await stageAll(gitDir, logger);
-      final amendedA = await amendCommit(gitDir, logger);
+      await cherryPick(gitDir, commitB, logger);
 
-      await rebaseOnto(gitDir, amendedA, commitA, workingBranch, logger);
+      expect(await commitCountBetween(gitDir, 'HEAD~1', 'HEAD', logger), 1);
+    });
+  });
 
-      expect((await gitDir.currentBranch()).branchName, workingBranch);
-      expect(await isAncestor(gitDir, amendedA, 'HEAD', logger), isTrue);
-      expect(await commitCountBetween(gitDir, amendedA, 'HEAD', logger), 1);
-      final changelog = File(
-        p.join(fixture.root.path, 'packages/datadog_dio/CHANGELOG.md'),
-      );
-      expect(changelog.readAsStringSync(), '# Fixed\n');
+  group('isMergeCommit', () {
+    test('is true only for a commit with two parents', () async {
+      final gitDir = await fixture.gitDir;
+      final base = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      expect(await isMergeCommit(gitDir, base), isFalse);
+
+      await gitDir.runCommand(['checkout', '-b', 'side']);
+      fixture.writeFile('side.txt', 'x');
+      await fixture.commit('chore: side');
+      await gitDir.runCommand(['checkout', '-']);
+      fixture.writeFile('main.txt', 'x');
+      await fixture.commit('chore: main');
+      await gitDir.runCommand(['merge', '--no-edit', 'side']);
+
+      expect(await isMergeCommit(gitDir, 'HEAD'), isTrue);
     });
   });
 

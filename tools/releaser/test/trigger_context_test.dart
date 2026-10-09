@@ -9,7 +9,7 @@ void main() {
   group('TriggerContext.parse', () {
     test('parses each named context', () {
       expect(TriggerContext.parse('mainline'), TriggerContext.mainline);
-      expect(TriggerContext.parse('patch'), TriggerContext.patch);
+      expect(TriggerContext.parse('support'), TriggerContext.support);
       expect(TriggerContext.parse('prerelease'), TriggerContext.preRelease);
     });
 

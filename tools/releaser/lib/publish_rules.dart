@@ -2,8 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-import 'package:version/version.dart';
-
 import 'release_plan.dart' show packageNameFromPatchBranch;
 
 // Pure decision logic for the release tooling, kept in `lib/` so it's
@@ -13,7 +11,7 @@ import 'release_plan.dart' show packageNameFromPatchBranch;
 /// Whether [sourceBranch] is a standing support branch: a patch line such as
 /// `release/datadog_dio/v2.2.x`, or a major line such as
 /// `release/datadog_dio/v3.x`.
-bool isPatchReleaseBranch(String sourceBranch) =>
+bool isSupportBranch(String sourceBranch) =>
     packageNameFromPatchBranch(sourceBranch) != null;
 
 /// The only package whose GitHub Release is ever allowed to claim
@@ -30,25 +28,31 @@ const mainPackage = 'datadog_flutter_plugin';
 bool shouldMarkReleaseLatest({
   required String package,
   required bool prerelease,
-  required bool isPatch,
-}) => package == mainPackage && !prerelease && !isPatch;
+  required bool isSupport,
+}) => package == mainPackage && !prerelease && !isSupport;
+
+/// The whitelisted pre-release branches, each paired with a disposable
+/// `<branch>-main` publish target. Add an entry when a major pre-release
+/// effort opens and remove it when the effort ships; keep it in sync with
+/// `prepare-release`'s rules in `.gitlab-ci.yml` and the `self.*.sts.yaml`
+/// trust policies.
+const preReleaseBranches = ['v4'];
 
 /// The branch the release-prep PR for a `prepare-release` run on
-/// [sourceBranch] merges into. Mirrors the same branch whitelist as
-/// `push-release-trigger-tag`'s `rules:` in `.gitlab-ci.yml` and
-/// `self.tag-push.sts.yaml`'s `claim_pattern` -- keep all three in sync.
+/// [sourceBranch] merges into: `main` for `develop`, `<branch>-main` for a
+/// whitelisted pre-release branch, and a support branch merges into itself.
 ///
 /// Returns `null` for a branch this mapping doesn't recognize, which the
 /// caller should treat as a rejection, not a pass-through.
 String? expectedIntegrationBranch(String sourceBranch) {
   if (sourceBranch == 'develop') return 'main';
-  if (sourceBranch == 'v4') return 'v4-main';
-  if (isPatchReleaseBranch(sourceBranch)) return sourceBranch;
+  if (preReleaseBranches.contains(sourceBranch)) return '$sourceBranch-main';
+  if (isSupportBranch(sourceBranch)) return sourceBranch;
   return null;
 }
 
 /// The inverse of [expectedIntegrationBranch]: the `prepare-release` source
-/// branch (`develop`/`v4`/that same support branch) whose release-prep PR
+/// branch (`develop`/a pre-release branch/that same support branch) whose release-prep PR
 /// merges into [integrationBranch] (`main`/`v4-main`/a support branch). Phase 2
 /// backports commit A into that source branch.
 ///
@@ -58,36 +62,12 @@ String? expectedIntegrationBranch(String sourceBranch) {
 /// pass-through.
 String sourceBranchFor(String integrationBranch) {
   if (integrationBranch == 'main') return 'develop';
-  if (integrationBranch == 'v4-main') return 'v4';
-  if (isPatchReleaseBranch(integrationBranch)) return integrationBranch;
+  for (final branch in preReleaseBranches) {
+    if (integrationBranch == '$branch-main') return branch;
+  }
+  if (isSupportBranch(integrationBranch)) return integrationBranch;
   throw StateError(
     '"$integrationBranch" is not a recognized release integration branch '
-    '(main, v4-main, or a support branch).',
+    '(main, a whitelisted pre-release `-main`, or a support branch).',
   );
-}
-
-/// The support branch a support-branch release's [bump] implies for
-/// [package] at [toVersion]: a `patch` release comes from its exact
-/// `{major}.{minor}` line's branch, and a `minor` release from the
-/// `{major}` line's branch. Patches never ship from a major-line branch.
-///
-/// Throws for any other [bump] (`major`/`prerelease`/`first release`),
-/// none of which a support branch should ever produce.
-String expectedPatchBranchFor({
-  required String package,
-  required String toVersion,
-  required String bump,
-}) {
-  final version = Version.parse(toVersion);
-  switch (bump) {
-    case 'patch':
-      return 'release/$package/v${version.major}.${version.minor}.x';
-    case 'minor':
-      return 'release/$package/v${version.major}.x';
-    default:
-      throw StateError(
-        '"$bump" is not a bump a support branch should produce '
-        '(expected patch or minor).',
-      );
-  }
 }
