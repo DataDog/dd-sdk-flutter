@@ -158,6 +158,10 @@ abstract class DatadogSdkPlatform extends PlatformInterface {
   Future<void> clearAllData();
 
   Future<void> updateTelemetryConfiguration(String property, bool value);
+
+  /// See [DatadogConfiguration.getSuggestedDesktopDataDirectory]. Platforms
+  /// that do not need a data directory return `null`.
+  String? getSuggestedDesktopDataDirectory(String applicationName) => null;
 }
 
 String? sanitizeHost(String host, InternalLogger internalLogger) {

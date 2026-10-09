@@ -79,6 +79,9 @@ Future<void> runScenario({
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
     service: 'com.datadoghq.flutter.integration',
+    desktopDataDirectory: DatadogConfiguration.getSuggestedDesktopDataDirectory(
+      'com.datadoghq.flutter.integration',
+    ),
     version: '1.2.3+555',
     flavor: 'integration',
     site: DatadogSite.us1,

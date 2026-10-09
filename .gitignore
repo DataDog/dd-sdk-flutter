@@ -8,6 +8,9 @@
 build/
 **/.env
 
+# Datadog C SDK fallback data directory (desktop, when no data directory is set)
+**/.datadog/
+
 pubspec.lock
 **/pubspec_overrides.yaml
 

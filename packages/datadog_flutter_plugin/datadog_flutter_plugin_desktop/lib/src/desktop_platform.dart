@@ -11,8 +11,10 @@ import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin
 import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 
 import 'attribute_builder.dart';
+import 'desktop_data_directory.dart';
 import 'ffi_bindings.dart';
 import 'logs_desktop_platform.dart';
 import 'native_char.dart';
@@ -57,6 +59,10 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
 
   DatadogDesktopPlatform(this._sdk);
 
+  @override
+  String? getSuggestedDesktopDataDirectory(String applicationName) =>
+      suggestDesktopDataDirectory(applicationName);
+
   ffi.DynamicLibrary? _pluginLib;
 
   @override
@@ -67,6 +73,33 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
     required InternalLogger internalLogger,
   }) async {
     _internalLogger = internalLogger;
+
+    String? storagePath;
+    if (configuration.desktopDataDirectory case final dataDirectory?) {
+      final error = validateStoragePath(
+        dataDirectory,
+        windows: Platform.isWindows,
+      );
+      final normalized = error == null
+          ? (Platform.isWindows ? p.windows : p.posix).normalize(dataDirectory)
+          : null;
+      // The C SDK creates directories beneath the data directory, not the
+      // data directory itself.
+      final failure =
+          error ??
+          (normalized == null ? null : createStorageDirectory(normalized));
+      if (failure != null) {
+        final message =
+            'Invalid desktopDataDirectory "$dataDirectory": $failure. '
+            'Datadog was not initialized.';
+        internalLogger.error(message);
+        internalLogger.sendToDatadog(message, null, 'InvalidDataDirectory');
+        _core = null;
+        return const PlatformInitializationResult(logs: false, rum: false);
+      }
+      storagePath = normalized;
+    }
+
     _core = using((arena) {
       final cfg = arena<dd_core_config>();
       _sdk.dd_core_config_init(
@@ -120,12 +153,12 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
 
       _sdk.dd_core_config_set_site(cfg, _siteToC(configuration.site));
 
-      final storagePath = _storagePath(configuration.service);
-      Directory(storagePath).createSync(recursive: true);
-      _sdk.dd_core_config_set_application_storage_path(
-        cfg,
-        storagePath.toNativeChar(allocator: arena),
-      );
+      if (storagePath != null) {
+        _sdk.dd_core_config_set_application_storage_path(
+          cfg,
+          storagePath.toNativeChar(allocator: arena),
+        );
+      }
 
       final additionalConfig = configuration.additionalConfig;
 
@@ -478,15 +511,6 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
       base = base.substring(0, base.length - 1);
     }
     return base;
-  }
-
-  String _storagePath(String service) {
-    if (Platform.isWindows) {
-      final base = Platform.environment['LOCALAPPDATA'] ?? '.';
-      return '$base\\Datadog\\$service';
-    }
-    final home = Platform.environment['HOME'] ?? '.';
-    return '$home/.local/share/datadog/$service';
   }
 
   int _verbosityToC(CoreLoggerLevel verbosity) {

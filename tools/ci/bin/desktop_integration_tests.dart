@@ -27,27 +27,41 @@ String currentDevice() {
   );
 }
 
-// Must match the `service` configured in lib/main.dart and
-// lib/integration_scenarios/scenario_runner.dart.
-const _dataStorageService = 'com.datadoghq.flutter.integration';
+// Must match the application name the integration app passes to
+// DatadogConfiguration.getSuggestedDesktopDataDirectory.
+const _dataStorageApplicationName = 'com.datadoghq.flutter.integration';
 
 final packageName = Platform.environment['MELOS_PACKAGE_NAME'] ?? 'desktop';
 
-// Mirrors DesktopPlatform._storagePath in datadog_flutter_plugin_desktop.
+// Mirrors DatadogConfiguration.getSuggestedDesktopDataDirectory in
+// datadog_flutter_plugin.
 Directory _dataStorageDirectory() {
   if (Platform.isWindows) {
     final base = Platform.environment['LOCALAPPDATA'] ?? '.';
-    return Directory('$base\\Datadog\\$_dataStorageService');
+    return Directory('$base\\$_dataStorageApplicationName');
+  }
+  final xdgDataHome = Platform.environment['XDG_DATA_HOME'];
+  if (xdgDataHome != null && xdgDataHome.isNotEmpty) {
+    return Directory('$xdgDataHome/$_dataStorageApplicationName');
   }
   final home = Platform.environment['HOME'] ?? '.';
-  return Directory('$home/.local/share/datadog/$_dataStorageService');
+  return Directory('$home/.local/share/$_dataStorageApplicationName');
 }
 
 // The C SDK's on-disk storage persists across app runs so it can recover
 // from an abandoned process. That means a previous test file's session/batch
 // data can otherwise leak into the next test file's run.
+//
+// Apps that set an explicit data directory store data in
+// `_dataStorageDirectory()`; apps that don't fall back to `.datadog/` in the
+// current working directory (the package's example directory).
 void _deleteStaleDatadogData() {
-  final dir = _dataStorageDirectory();
+  for (final dir in [_dataStorageDirectory(), Directory('.datadog')]) {
+    _deleteDirectory(dir);
+  }
+}
+
+void _deleteDirectory(Directory dir) {
   if (!dir.existsSync()) {
     return;
   }
