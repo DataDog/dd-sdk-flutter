@@ -8,6 +8,8 @@ export 'package:datadog_flags/datadog_flags.dart'
         DatadogFlagsConfig,
         DatadogFlagsClient,
         DatadogFlagsConfiguration,
+        FlagsClientEvent,
+        FlagsClientEventType,
         DatadogFlagsSite,
         DatadogFlagsStore,
         FlagDetails,

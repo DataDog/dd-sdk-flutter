@@ -184,6 +184,28 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
   })  : _resolveDelegate = resolveDelegate,
         _addRumFeatureFlagEvaluation = addRumFeatureFlagEvaluation;
 
+  /// Forwards registration to the core client once it is available.
+  /// The core owns asynchronous delivery and registration-zone handling.
+  /// Cancellation works while the delegate is resolving and before delivery.
+  @override
+  void Function() onFirstFlags(void Function(FlagsClientEvent) callback) {
+    final registration = _FlutterFirstFlagsRegistration(callback);
+    unawaited(_forwardFirstFlags(registration));
+    return registration.cancel;
+  }
+
+  Future<void> _forwardFirstFlags(
+    _FlutterFirstFlagsRegistration registration,
+  ) async {
+    try {
+      final delegate = await _delegateOrResolve();
+      registration.forwardTo(delegate);
+    } catch (_) {
+      // Registration is best effort; initialization retains its own error path.
+      registration.cancel();
+    }
+  }
+
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
     final delegate = await _delegateOrResolve();
@@ -320,4 +342,38 @@ DatadogFlagsSite? datadogFlagsSiteFor(DatadogSite site) {
     DatadogSite.ap2 => DatadogFlagsSite.ap2,
     DatadogSite.us1Fed => null,
   };
+}
+
+// Pending resolution and core delivery retain this record. Canceling clears
+// its application callback even while the resolver is still pending.
+class _FlutterFirstFlagsRegistration {
+  void Function(FlagsClientEvent)? _callback;
+  void Function()? _unregister;
+
+  _FlutterFirstFlagsRegistration(this._callback);
+
+  void forwardTo(DatadogFlagsClient delegate) {
+    if (_callback == null) return;
+    _unregister = delegate.onFirstFlags(_deliver);
+  }
+
+  void cancel() {
+    _callback = null;
+    final unregister = _unregister;
+    _unregister = null;
+    try {
+      unregister?.call();
+    } catch (_) {
+      // Cancellation must not throw into application cleanup.
+    }
+  }
+
+  void _deliver(FlagsClientEvent event) {
+    final callback = _callback;
+    _callback = null;
+    _unregister = null;
+    // A conforming core invokes this once, asynchronously in the registration
+    // zone, and isolates synchronous listener errors.
+    callback?.call(event);
+  }
 }

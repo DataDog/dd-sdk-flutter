@@ -363,3 +363,30 @@ dart run datadog_flags_example:typed_evaluation \
 The repository also includes a Flutter example screen in `examples/simple_example`
 that can initialize the SDK, refresh assignments, and evaluate multiple flag
 types.
+
+## First installed flags
+
+Register after obtaining the client, before or after initializing its context:
+
+```dart
+final client = DatadogFlags.instance.sharedClient();
+final unregister = client.onFirstFlags((event) {
+  print('First installed flags: ${event.flagsChanged}');
+  final details = client.getBooleanDetails(
+    key: 'checkout.enabled',
+    defaultValue: false,
+  );
+  print(details.value);
+});
+// Call unregister() when the application no longer needs this notification.
+```
+
+The callback receives the keys from the first accepted cache or network
+configuration, including an empty list for an empty configuration. Late
+registrations receive the same event. Delivery runs in a later microtask;
+evaluations in the callback read current flag values. If no usable configuration
+is installed, the callback remains pending until you unregister it.
+
+Call the returned function to cancel delivery before the callback starts.
+See the [typed CLI example](example/bin/typed_evaluation.dart) and
+`DatadogFlagsClient.onFirstFlags` API documentation for details.
