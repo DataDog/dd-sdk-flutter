@@ -1,52 +1,129 @@
-# "Add-To-App" or Hybrid Native + Flutter Applciation Example
+# Datadog Flutter Plugin: Hybrid Session Replay example
 
-This example covers how to use the Datadog Flutter SDK in conjunction with an already existing native application. This assumes you already have a native iOS or Android application that is sending data to Datadog, and you have added Flutter to it following Flutter's [Add-to-app documentation](https://docs.flutter.dev/development/add-to-app).
+This example shows Session Replay in a hybrid (add-to-app) app: a native iOS or
+Android app that embeds Flutter content. The native Session Replay records the
+whole app, and the Flutter content shows up in the same replay, where it sits
+on screen.
 
-For Session Replay in a hybrid app, see the [Hybrid Session Replay example](../hybrid_session_replay_example).
+It covers two common ways to embed Flutter:
 
-## Native app is primary and Datadog is already initialized -  `attachToExisting`
+* **An embedded panel**: A Flutter view in the middle of a native screen,
+  between native controls (`embeddedMain` entrypoint).
+* **A full-screen view**: A Flutter screen pushed on top of the native screen
+  (`main` entrypoint).
 
-If you are using an application that is already using the native Datadog iOS or Datadog Android SDKs, the Flutter SDK can attach to these using the same parameters. In your `main` function, after calling `WidgetsFlutterBinding.ensureInitialized`, call `DatadogSdk.instance.attachToExisting`.
+Each one runs in its own Flutter engine.
 
-```dart
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+## Layout
 
-  final config = DatadogAttachConfiguration(
-    reportFlutterPerformance: true,
-  );
-
-  await DatadogSdk.instance.attachToExisting(config);
-
-  runApp(MyApp());
-}
+```
+native-hybrid-app/
+├── flutter_module/   # The Flutter content, shared by both host apps
+├── ios/              # Native iOS host app (UIKit, CocoaPods)
+└── android/          # Native Android host app (Kotlin, Gradle)
 ```
 
-Additional options for `DdSdkExistingConfiguration` are documented in the [API reference](https://pub.dev/documentation/datadog_flutter_plugin/latest/datadog_flutter_plugin/datadog_flutter_plugin-library.html). Note that options in this class need to be re-specified even if they are already passed during Native SDK initialization.
+## Setup
 
-### Avoiding "FlutterViewController" and "FlutterActivity" views
+Generate the credential files from the repository root. This writes
+`android/app/src/main/res/raw/dd_config.json` and
+`ios/HybridSessionReplayExample/ddog_config.plist`, which are ignored by Git:
 
-Depending on your settings, the automatic view tracking in the native iOS and Android SDKs will automatically track the presentation of the `FlutterViewController` and `FlutterActivity`/`FlutterFragment` when they appear, and then immediately show a view load for your tracked Flutter view. To avoid seeing the extra `FlutterViewController` and `FlutterActivity` views in your sessions, add a view predicate to filter them.
+```bash
+DD_CLIENT_TOKEN=<client token> DD_APPLICATION_ID=<application id> ./generate_env.sh
+```
 
-On iOS, create a `UIKitRUMViewsPredicate` to check if the view controller is an instance of `FlutterViewController`. Return `nil` from this function and the RUM iOS SDK stops tracking the `FlutterViewController` and lets the Flutter SDK take over. An example of this predicate can be found in the example code in [AppDelegate.swift](ios/iOS%20Flutter%20Hybrid%20Example/AppDelegate.swift)
+Do not commit real client tokens or application IDs. Without credentials, the
+native SDK doesn't initialize, Flutter can't attach to it, and the Flutter
+views show this error:
 
-On Android, create a `ComponentPredicate` to check if the Activity is an instance of `FlutterActivity`. If so, return false from this function to avoid tracking the Activity and let Flutter SDK take over.  An example of this predicate can be found in the example code in [HybridApplication.kt](android/app/src/main/java/com/datadoghq/hybrid_flutter_example/HybridApplication.kt)
+```
+Null check operator used on a null value
+```
 
-If you use Session Replay in your hybrid app, don't add these predicates. Flutter's replay records are attached to the native RUM view on screen, so a full-screen Flutter view needs its own native view. See the [Hybrid Session Replay example](../hybrid_session_replay_example#rum-views).
+The Flutter logs also show:
 
-### Caveats
+```
+[Datadog 🐶🔥 ] Failed to attach to an existing native instance of the Datadog SDK.
+```
 
-* The `source` of the data coming from these Hybrid apps is always the Native platform, no matter whether the event was sent from the Native SDK or the Flutter SDK.
-* Currently, you can only embed your Flutter app using Cocoapods, documented as "Option A" in [Flutter's documentation](https://docs.flutter.dev/add-to-app/ios/project-setup#option-a---embed-with-cocoapods-and-the-flutter-sdk). Using `.xcframeworks` (Options B and C) will generate compiler errors, especially if you are already using Datadog in your native project. See our [Github Issue](https://github.com/DataDog/dd-sdk-flutter/issues/443) for more details.
+Then fetch the Flutter module's dependencies. This also generates the
+`.ios` and `.android` folders that the host apps build against:
 
-## Flutter app is primary - use Datadog as normal
+```bash
+cd flutter_module
+flutter pub get
+```
 
-If you are primarily using Flutter and only occasionally need to access the Native Datadog SDK from a few views, you can assume Datadog has already been initialized and use some of its functionality without issue
+### iOS
 
-/// TODO - Example
+```bash
+cd ios
+pod install
+open HybridSessionReplayExample.xcworkspace
+```
 
-### Caveats
+Run the `HybridSessionReplayExample` scheme. Hybrid Session Replay needs
+dd-sdk-ios 3.16.0 or later.
 
-* The Datadog Flutter SDK uses its own View, User Action and Resource tracking, so these are disabled when Flutter performs the initialization. You must manually track views and user actions in this scenario.
+### Android
 
-// TODO - iOS and Android Example
+Open the `android` folder in Android Studio and run the `app` configuration,
+or build from the command line:
+
+```bash
+cd android
+./gradlew installDebug
+```
+
+Hybrid Session Replay needs dd-sdk-android 3.13.0 or later. The example uses
+3.13.1, the version that `datadog_flutter_plugin` pins.
+
+## How it works
+
+### Native side
+
+The native app initializes Datadog, RUM, and Session Replay before any Flutter
+engine runs (`AppDelegate.swift`, `HybridApplication.kt`). Then it opts each
+Flutter view in to Session Replay:
+
+```swift
+// iOS
+let flutterViewController = FlutterViewController(engine: engine, nibName: nil, bundle: nil)
+flutterViewController.dd.enableSessionReplay()
+```
+
+```kotlin
+// Android
+flutterFragment.enableSessionReplay()   // FlutterFragment
+enableSessionReplay()                   // inside a FlutterActivity
+```
+
+### Flutter side
+
+Each engine attaches to the native SDK with `attachToExisting` and enables
+Session Replay with `isEmbedded: true` (`flutter_module/lib/main.dart`).
+Records are then handed to the native Session Replay instead of being
+uploaded from Flutter. As in any Flutter app, a `SessionReplayCapture` widget
+sits above `MaterialApp`.
+
+### Sampling and privacy
+
+The native `replaySampleRate` decides which sessions get a replay. When
+`isEmbedded` is `true`, the Flutter `replaySampleRate` is ignored.
+
+Privacy levels are not shared between the native and Flutter SDKs, so this
+example sets the same ones on both sides:
+
+* **Text and input privacy**: `maskSensitiveInputs`
+* **Image privacy**: `maskNone`
+* **Touch privacy**: `show`
+
+The password field on the full-screen Flutter view is masked in the replay.
+
+### RUM views
+
+Both host apps use the default RUM view tracking, so each Flutter view
+controller or activity is its own RUM view. The full-screen Flutter view gets
+its own view in the replay, and the embedded panel is part of the native
+screen's view.
