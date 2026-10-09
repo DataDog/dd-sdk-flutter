@@ -11,8 +11,8 @@ your `pubspec.yaml` as usual.
 
 ## Data directory
 
-The SDK stores data on disk until it is uploaded. Set `DatadogConfiguration.desktopDataDirectory`
-to an absolute path to choose where. If you don't, the SDK logs a warning and uses a `.datadog`
+The SDK stores data on disk until it is uploaded. To choose where it is uploaded, 
+set `DatadogConfiguration.desktopDataDirectory`. If you don't choose the upload location, the SDK logs a warning and uses a `.datadog`
 directory in the process's current working directory, which is only suitable for development.
 If the path you set is invalid, the SDK logs an error and does not initialize. This setting
 is ignored on other platforms.
