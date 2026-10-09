@@ -10,6 +10,7 @@ import 'package:path/path.dart' as path;
 import 'package:version/version.dart';
 
 import 'command.dart';
+import 'flags_version.dart';
 import 'helpers.dart';
 
 enum VersionBumpType { major, minor, rev, prerelease }
@@ -92,7 +93,9 @@ Future<bool> updateVersions(
 
   await _updateVersionDartFile(packageRoot, version, logger, dryRun);
 
-  return true;
+  // Regenerate Flags metadata from the canonical manifest. A missing generated
+  // file must not silently leave a release with an incorrect request version.
+  return dryRun || syncFlagsVersion(packageRoot, logger);
 }
 
 Future<bool> _updatePackagePubspec(
