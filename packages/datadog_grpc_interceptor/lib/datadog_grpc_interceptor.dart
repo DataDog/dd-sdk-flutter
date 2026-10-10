@@ -2,6 +2,4 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-library datadog_grpc_interceptor;
-
 export 'src/datadog_grpc_interceptor.dart';

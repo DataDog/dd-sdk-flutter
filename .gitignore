@@ -8,6 +8,9 @@
 build/
 **/.env
 
+# Datadog C SDK fallback data directory (desktop, when no data directory is set)
+**/.datadog/
+
 pubspec.lock
 **/pubspec_overrides.yaml
 
@@ -27,8 +30,6 @@ ndk_crash_reports_v2/
 ndk_crash_reports_intermediary_v2/
 .fvm/
 packages/datadog_flutter_plugin/integration_test_app/ios/Podfile.lock
-packages/datadog_flutter_plugin/e2e_test_app/pubspec.lock
-packages/datadog_flutter_plugin/example/pubspec.lock
 packages/datadog_tracking_http_client/example/ios/Podfile.lock
 examples/native-hybrid-app/ios/Podfile.lock
 packages/datadog_flutter_plugin/example/ios/Podfile.lock
@@ -37,5 +38,6 @@ tools/ci/.tmp
 .fvmrc
 .plans
 .prompts/
-**/.kotlin/
+
+**/Package.resolved
 /.envrc.local

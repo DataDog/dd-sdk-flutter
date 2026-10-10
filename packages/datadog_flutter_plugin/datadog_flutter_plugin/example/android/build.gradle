@@ -1,0 +1,57 @@
+/*
+ * Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+ * This product includes software developed at Datadog (https://www.datadoghq.com/).
+ * Copyright 2016-Present Datadog, Inc.
+ */
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.9.1'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jlleitschuh.gradle:ktlint-gradle:11.6.0"
+        classpath "io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.19.0"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()        
+    }
+}
+
+rootProject.buildDir = '../build'
+
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    project.evaluationDependsOn(':app')
+
+    if (project.projectDir.canonicalPath.startsWith(rootProject.projectDir.canonicalPath)) {
+        apply from: "${project.rootDir}/buildscripts/ktlint.gradle"
+        apply from: "${project.rootDir}/buildscripts/detekt.gradle"
+    }
+}
+
+// The jni package skips applying the legacy `kotlin-android` plugin under AGP 9,
+// assuming AGP's built-in Kotlin support will provide the `kotlin {}` extension it
+// calls unconditionally. Our gradle.properties disables built-in Kotlin
+// (android.builtInKotlin=false) to work around a separate conflict with Flutter's
+// bundled integration_test plugin, so apply kotlin-android to jni ourselves instead.
+// TODO(RUM-17789): remove once jni ships a fix (dart-lang/native#3497).
+subprojects {
+    if (project.name == 'jni') {
+        pluginManager.apply('kotlin-android')
+    }
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}

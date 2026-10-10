@@ -27,9 +27,7 @@ SimpleTestCapture captureSwitch(
     key: Key('key'),
     recorder: recorder,
     child: MaterialApp(
-      home: Scaffold(
-        body: Center(child: switchWidget),
-      ),
+      home: Scaffold(body: Center(child: switchWidget)),
     ),
   );
 }
@@ -40,10 +38,7 @@ void main() {
 
   setUp(() {
     recorder = SessionReplayRecorder.withCustomRecorders(
-      [
-        SwitchRecorder(KeyGenerator()),
-        CupertinoSwitchRecorder(KeyGenerator()),
-      ],
+      [SwitchRecorder(KeyGenerator()), CupertinoSwitchRecorder(KeyGenerator())],
       defaultCapturePrivacy: TreeCapturePrivacy(
         textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskSensitiveInputs,
         imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
@@ -103,9 +98,13 @@ void main() {
         () => captureSwitch(recorder, Switch(value: true, onChanged: (_) {})),
         () => captureSwitch(recorder, Switch(value: false, onChanged: (_) {})),
         () => captureSwitch(
-            recorder, CupertinoSwitch(value: true, onChanged: (_) {})),
+          recorder,
+          CupertinoSwitch(value: true, onChanged: (_) {}),
+        ),
         () => captureSwitch(
-            recorder, CupertinoSwitch(value: false, onChanged: (_) {})),
+          recorder,
+          CupertinoSwitch(value: false, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -118,7 +117,9 @@ void main() {
       [
         () => captureSwitch(recorder, Switch(value: true, onChanged: null)),
         () => captureSwitch(
-            recorder, CupertinoSwitch(value: true, onChanged: null)),
+          recorder,
+          CupertinoSwitch(value: true, onChanged: null),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -131,7 +132,9 @@ void main() {
       [
         () => captureSwitch(recorder, Switch(value: true, onChanged: (_) {})),
         () => captureSwitch(
-            recorder, CupertinoSwitch(value: true, onChanged: (_) {})),
+          recorder,
+          CupertinoSwitch(value: true, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -142,25 +145,27 @@ void main() {
 
   group('layout and size', () {
     testWidgets(
-        'material M3 switch track is 54x34 (52x32 logical + 2px outline at center stroke align)',
-        (tester) async {
-      // M3 default outline width is 2.0 with strokeAlignCenter — adds 2px to each dimension.
-      final tree = captureSwitch(
-        recorder,
-        Theme(
-          data: ThemeData(useMaterial3: true),
-          child: Switch(value: false, onChanged: (_) {}),
-        ),
-      );
-      await tester.pumpWidget(tree);
-      final capture = await recorder.performCapture();
-      expect(capture, isNotNull);
-      expect(trackOf(capture).width, 54);
-      expect(trackOf(capture).height, 34);
-    });
+      'material M3 switch track is 54x34 (52x32 logical + 2px outline at center stroke align)',
+      (tester) async {
+        // M3 default outline width is 2.0 with strokeAlignCenter — adds 2px to each dimension.
+        final tree = captureSwitch(
+          recorder,
+          Theme(
+            data: ThemeData(useMaterial3: true),
+            child: Switch(value: false, onChanged: (_) {}),
+          ),
+        );
+        await tester.pumpWidget(tree);
+        final capture = await recorder.performCapture();
+        expect(capture, isNotNull);
+        expect(trackOf(capture).width, 54);
+        expect(trackOf(capture).height, 34);
+      },
+    );
 
-    testWidgets('material M2 switch track is 33x14 (no outline by default)',
-        (tester) async {
+    testWidgets('material M2 switch track is 33x14 (no outline by default)', (
+      tester,
+    ) async {
       final tree = captureSwitch(
         recorder,
         Theme(
@@ -179,9 +184,13 @@ void main() {
       'Cupertino-style switch and CupertinoSwitch track is 51x31',
       [
         () => captureSwitch(
-            recorder, CupertinoSwitch(value: false, onChanged: (_) {})),
+          recorder,
+          CupertinoSwitch(value: false, onChanged: (_) {}),
+        ),
         () => captureSwitch(
-            recorder, Switch.adaptive(value: false, onChanged: (_) {})),
+          recorder,
+          Switch.adaptive(value: false, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -198,18 +207,24 @@ void main() {
       'selected track uses activeTrackColor',
       [
         () => captureSwitch(
-            recorder,
-            Switch(
-                value: true, onChanged: (_) {}, activeTrackColor: Colors.red)),
+          recorder,
+          Switch(value: true, onChanged: (_) {}, activeTrackColor: Colors.red),
+        ),
         () => captureSwitch(
-            recorder,
-            CupertinoSwitch(
-                value: true, onChanged: (_) {}, activeTrackColor: Colors.red)),
+          recorder,
+          CupertinoSwitch(
+            value: true,
+            onChanged: (_) {},
+            activeTrackColor: Colors.red,
+          ),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
-        expect(trackOf(capture).shapeStyle!.backgroundColor,
-            Colors.red.toHexString());
+        expect(
+          trackOf(capture).shapeStyle!.backgroundColor,
+          Colors.red.toHexString(),
+        );
       },
     );
 
@@ -217,43 +232,52 @@ void main() {
       'unselected track uses inactiveTrackColor',
       [
         () => captureSwitch(
-            recorder,
-            Switch(
-                value: false,
-                onChanged: (_) {},
-                inactiveTrackColor: Colors.blue)),
+          recorder,
+          Switch(
+            value: false,
+            onChanged: (_) {},
+            inactiveTrackColor: Colors.blue,
+          ),
+        ),
         () => captureSwitch(
-            recorder,
-            CupertinoSwitch(
-                value: false,
-                onChanged: (_) {},
-                inactiveTrackColor: Colors.blue)),
+          recorder,
+          CupertinoSwitch(
+            value: false,
+            onChanged: (_) {},
+            inactiveTrackColor: Colors.blue,
+          ),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
-        expect(trackOf(capture).shapeStyle!.backgroundColor,
-            Colors.blue.toHexString());
+        expect(
+          trackOf(capture).shapeStyle!.backgroundColor,
+          Colors.blue.toHexString(),
+        );
       },
     );
 
     testWidgets(
-        'material switch trackColor WidgetStateProperty is resolved per state',
-        (tester) async {
-      final trackColor = WidgetStateProperty.resolveWith<Color?>((states) {
-        return states.contains(WidgetState.selected)
-            ? Colors.green
-            : Colors.yellow;
-      });
-      final tree = captureSwitch(
-        recorder,
-        Switch(value: true, onChanged: (_) {}, trackColor: trackColor),
-      );
-      await tester.pumpWidget(tree);
-      final capture = await recorder.performCapture();
-      expect(capture, isNotNull);
-      expect(trackOf(capture).shapeStyle!.backgroundColor,
-          Colors.green.toHexString());
-    });
+      'material switch trackColor WidgetStateProperty is resolved per state',
+      (tester) async {
+        final trackColor = WidgetStateProperty.resolveWith<Color?>((states) {
+          return states.contains(WidgetState.selected)
+              ? Colors.green
+              : Colors.yellow;
+        });
+        final tree = captureSwitch(
+          recorder,
+          Switch(value: true, onChanged: (_) {}, trackColor: trackColor),
+        );
+        await tester.pumpWidget(tree);
+        final capture = await recorder.performCapture();
+        expect(capture, isNotNull);
+        expect(
+          trackOf(capture).shapeStyle!.backgroundColor,
+          Colors.green.toHexString(),
+        );
+      },
+    );
   });
 
   group('thumb color', () {
@@ -261,18 +285,24 @@ void main() {
       'selected thumb uses the active thumb color',
       [
         () => captureSwitch(
-            recorder,
-            Switch(
-                value: true, onChanged: (_) {}, activeThumbColor: Colors.red)),
+          recorder,
+          Switch(value: true, onChanged: (_) {}, activeThumbColor: Colors.red),
+        ),
         () => captureSwitch(
-            recorder,
-            CupertinoSwitch(
-                value: true, onChanged: (_) {}, thumbColor: Colors.red)),
+          recorder,
+          CupertinoSwitch(
+            value: true,
+            onChanged: (_) {},
+            thumbColor: Colors.red,
+          ),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
-        expect(thumbOf(capture).shapeStyle!.backgroundColor,
-            Colors.red.toHexString());
+        expect(
+          thumbOf(capture).shapeStyle!.backgroundColor,
+          Colors.red.toHexString(),
+        );
       },
     );
 
@@ -280,40 +310,52 @@ void main() {
       'unselected thumb uses the inactive thumb color',
       [
         () => captureSwitch(
-            recorder,
-            Switch(
-                value: false,
-                onChanged: (_) {},
-                inactiveThumbColor: Colors.blue)),
+          recorder,
+          Switch(
+            value: false,
+            onChanged: (_) {},
+            inactiveThumbColor: Colors.blue,
+          ),
+        ),
         () => captureSwitch(
-            recorder,
-            CupertinoSwitch(
-                value: false,
-                onChanged: (_) {},
-                inactiveThumbColor: Colors.blue)),
+          recorder,
+          CupertinoSwitch(
+            value: false,
+            onChanged: (_) {},
+            inactiveThumbColor: Colors.blue,
+          ),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
-        expect(thumbOf(capture).shapeStyle!.backgroundColor,
-            Colors.blue.toHexString());
+        expect(
+          thumbOf(capture).shapeStyle!.backgroundColor,
+          Colors.blue.toHexString(),
+        );
       },
     );
 
     testWidgets(
-        'CupertinoSwitch unselected thumb falls back to thumbColor when inactiveThumbColor is null',
-        (tester) async {
-      // Flutter's effectiveInactiveThumbColor = inactiveThumbColor ?? effectiveActiveThumbColor.
-      final tree = captureSwitch(
-        recorder,
-        CupertinoSwitch(
-            value: false, onChanged: (_) {}, thumbColor: Colors.blue),
-      );
-      await tester.pumpWidget(tree);
-      final capture = await recorder.performCapture();
-      expect(capture, isNotNull);
-      expect(thumbOf(capture).shapeStyle!.backgroundColor,
-          Colors.blue.toHexString());
-    });
+      'CupertinoSwitch unselected thumb falls back to thumbColor when inactiveThumbColor is null',
+      (tester) async {
+        // Flutter's effectiveInactiveThumbColor = inactiveThumbColor ?? effectiveActiveThumbColor.
+        final tree = captureSwitch(
+          recorder,
+          CupertinoSwitch(
+            value: false,
+            onChanged: (_) {},
+            thumbColor: Colors.blue,
+          ),
+        );
+        await tester.pumpWidget(tree);
+        final capture = await recorder.performCapture();
+        expect(capture, isNotNull);
+        expect(
+          thumbOf(capture).shapeStyle!.backgroundColor,
+          Colors.blue.toHexString(),
+        );
+      },
+    );
   });
 
   group('thumb position', () {
@@ -322,14 +364,18 @@ void main() {
       [
         () => captureSwitch(recorder, Switch(value: true, onChanged: (_) {})),
         () => captureSwitch(
-            recorder, CupertinoSwitch(value: true, onChanged: (_) {})),
+          recorder,
+          CupertinoSwitch(value: true, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
         final track = trackOf(capture);
         final thumb = thumbOf(capture);
         expect(
-            thumb.x + thumb.width / 2, greaterThan(track.x + track.width / 2));
+          thumb.x + thumb.width / 2,
+          greaterThan(track.x + track.width / 2),
+        );
       },
     );
 
@@ -338,7 +384,9 @@ void main() {
       [
         () => captureSwitch(recorder, Switch(value: false, onChanged: (_) {})),
         () => captureSwitch(
-            recorder, CupertinoSwitch(value: false, onChanged: (_) {})),
+          recorder,
+          CupertinoSwitch(value: false, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -354,17 +402,21 @@ void main() {
       'trackOutlineColor is applied with default width 2.0',
       [
         () => captureSwitch(
-            recorder,
-            Switch(
-                value: false,
-                onChanged: (_) {},
-                trackOutlineColor: WidgetStateProperty.all(Colors.red))),
+          recorder,
+          Switch(
+            value: false,
+            onChanged: (_) {},
+            trackOutlineColor: WidgetStateProperty.all(Colors.red),
+          ),
+        ),
         () => captureSwitch(
-            recorder,
-            CupertinoSwitch(
-                value: false,
-                onChanged: (_) {},
-                trackOutlineColor: WidgetStateProperty.all(Colors.red))),
+          recorder,
+          CupertinoSwitch(
+            value: false,
+            onChanged: (_) {},
+            trackOutlineColor: WidgetStateProperty.all(Colors.red),
+          ),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -377,19 +429,23 @@ void main() {
       'custom trackOutlineWidth is applied',
       [
         () => captureSwitch(
-            recorder,
-            Switch(
-                value: false,
-                onChanged: (_) {},
-                trackOutlineColor: WidgetStateProperty.all(Colors.green),
-                trackOutlineWidth: WidgetStateProperty.all(4.0))),
+          recorder,
+          Switch(
+            value: false,
+            onChanged: (_) {},
+            trackOutlineColor: WidgetStateProperty.all(Colors.green),
+            trackOutlineWidth: WidgetStateProperty.all(4.0),
+          ),
+        ),
         () => captureSwitch(
-            recorder,
-            CupertinoSwitch(
-                value: false,
-                onChanged: (_) {},
-                trackOutlineColor: WidgetStateProperty.all(Colors.green),
-                trackOutlineWidth: WidgetStateProperty.all(4.0))),
+          recorder,
+          CupertinoSwitch(
+            value: false,
+            onChanged: (_) {},
+            trackOutlineColor: WidgetStateProperty.all(Colors.green),
+            trackOutlineWidth: WidgetStateProperty.all(4.0),
+          ),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -398,8 +454,9 @@ void main() {
       },
     );
 
-    testWidgets('material M3 unselected switch has outline border by default',
-        (tester) async {
+    testWidgets('material M3 unselected switch has outline border by default', (
+      tester,
+    ) async {
       const outlineColor = Color(0xFF112233);
       final tree = captureSwitch(
         recorder,
@@ -422,18 +479,23 @@ void main() {
       'selected switch has transparent border by default',
       [
         () => captureSwitch(
-            recorder,
-            Theme(
-              data: ThemeData(useMaterial3: true),
-              child: Switch(value: true, onChanged: (_) {}),
-            )),
+          recorder,
+          Theme(
+            data: ThemeData(useMaterial3: true),
+            child: Switch(value: true, onChanged: (_) {}),
+          ),
+        ),
         () => captureSwitch(
-            recorder, CupertinoSwitch(value: true, onChanged: (_) {})),
+          recorder,
+          CupertinoSwitch(value: true, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
         expect(
-            trackOf(capture).border!.color, Colors.transparent.toHexString());
+          trackOf(capture).border!.color,
+          Colors.transparent.toHexString(),
+        );
       },
     );
   });
@@ -443,17 +505,29 @@ void main() {
       'Cupertino-style disabled switch applies 50% opacity to track color regardless of state',
       [
         () => captureSwitch(
-            recorder,
-            CupertinoSwitch(
-                value: true, onChanged: null, activeTrackColor: Colors.red)),
+          recorder,
+          CupertinoSwitch(
+            value: true,
+            onChanged: null,
+            activeTrackColor: Colors.red,
+          ),
+        ),
         () => captureSwitch(
-            recorder,
-            CupertinoSwitch(
-                value: false, onChanged: null, inactiveTrackColor: Colors.red)),
+          recorder,
+          CupertinoSwitch(
+            value: false,
+            onChanged: null,
+            inactiveTrackColor: Colors.red,
+          ),
+        ),
         () => captureSwitch(
-            recorder,
-            Switch.adaptive(
-                value: true, onChanged: null, activeTrackColor: Colors.red)),
+          recorder,
+          Switch.adaptive(
+            value: true,
+            onChanged: null,
+            activeTrackColor: Colors.red,
+          ),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -470,13 +544,21 @@ void main() {
       'Cupertino-style disabled switch applies 50% opacity to thumb color',
       [
         () => captureSwitch(
-            recorder,
-            CupertinoSwitch(
-                value: true, onChanged: null, thumbColor: Colors.white)),
+          recorder,
+          CupertinoSwitch(
+            value: true,
+            onChanged: null,
+            thumbColor: Colors.white,
+          ),
+        ),
         () => captureSwitch(
-            recorder,
-            Switch.adaptive(
-                value: true, onChanged: null, activeThumbColor: Colors.white)),
+          recorder,
+          Switch.adaptive(
+            value: true,
+            onChanged: null,
+            activeThumbColor: Colors.white,
+          ),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -495,24 +577,30 @@ void main() {
       'maskAllInputs treats selected switch as unselected (inactive track color)',
       [
         () => captureSwitch(
-            recorder,
-            Switch(
-                value: true,
-                onChanged: (_) {},
-                activeTrackColor: Colors.red,
-                inactiveTrackColor: Colors.blue)),
+          recorder,
+          Switch(
+            value: true,
+            onChanged: (_) {},
+            activeTrackColor: Colors.red,
+            inactiveTrackColor: Colors.blue,
+          ),
+        ),
         () => captureSwitch(
-            recorder,
-            CupertinoSwitch(
-                value: true,
-                onChanged: (_) {},
-                activeTrackColor: Colors.red,
-                inactiveTrackColor: Colors.blue)),
+          recorder,
+          CupertinoSwitch(
+            value: true,
+            onChanged: (_) {},
+            activeTrackColor: Colors.red,
+            inactiveTrackColor: Colors.blue,
+          ),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
-        expect(trackOf(capture).shapeStyle!.backgroundColor,
-            Colors.blue.toHexString());
+        expect(
+          trackOf(capture).shapeStyle!.backgroundColor,
+          Colors.blue.toHexString(),
+        );
       },
       beforeEach: () {
         recorder.defaultTreeCapturePrivacy = TreeCapturePrivacy(
@@ -526,24 +614,30 @@ void main() {
       'maskSensitiveInputs does not mask switch state',
       [
         () => captureSwitch(
-            recorder,
-            Switch(
-                value: true,
-                onChanged: (_) {},
-                activeTrackColor: Colors.red,
-                inactiveTrackColor: Colors.blue)),
+          recorder,
+          Switch(
+            value: true,
+            onChanged: (_) {},
+            activeTrackColor: Colors.red,
+            inactiveTrackColor: Colors.blue,
+          ),
+        ),
         () => captureSwitch(
-            recorder,
-            CupertinoSwitch(
-                value: true,
-                onChanged: (_) {},
-                activeTrackColor: Colors.red,
-                inactiveTrackColor: Colors.blue)),
+          recorder,
+          CupertinoSwitch(
+            value: true,
+            onChanged: (_) {},
+            activeTrackColor: Colors.red,
+            inactiveTrackColor: Colors.blue,
+          ),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
-        expect(trackOf(capture).shapeStyle!.backgroundColor,
-            Colors.red.toHexString());
+        expect(
+          trackOf(capture).shapeStyle!.backgroundColor,
+          Colors.red.toHexString(),
+        );
       },
       beforeEach: () {
         recorder.defaultTreeCapturePrivacy = TreeCapturePrivacy(

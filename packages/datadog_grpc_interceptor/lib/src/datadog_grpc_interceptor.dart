@@ -21,10 +21,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
 
   late String _hostPath;
 
-  DatadogGrpcInterceptor(
-    this._datadog,
-    this._channel,
-  ) {
+  DatadogGrpcInterceptor(this._datadog, this._channel) {
     final host = _channel.host;
     final scheme = _channel.options.credentials.isSecure ? 'https' : 'http';
     // Add http / https scheme. This scheme is a lie but needed to connect
@@ -43,8 +40,12 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
   }
 
   @override
-  ResponseFuture<R> interceptUnary<Q, R>(ClientMethod<Q, R> method, Q request,
-      CallOptions options, ClientUnaryInvoker<Q, R> invoker) {
+  ResponseFuture<R> interceptUnary<Q, R>(
+    ClientMethod<Q, R> method,
+    Q request,
+    CallOptions options,
+    ClientUnaryInvoker<Q, R> invoker,
+  ) {
     final path = method.path;
     final String fullPath = '$_hostPath$path';
 
@@ -56,9 +57,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
     final mergedHeaders = Map<String, String>.from(options.metadata);
 
     if (rum != null) {
-      var attributes = <String, Object?>{
-        'grpc.method': method.path,
-      };
+      var attributes = <String, Object?>{'grpc.method': method.path};
       TracingContext? tracingContext;
       if (headerTypes.isNotEmpty) {
         tracingContext = generateTracingContext(_datadog, rum);
@@ -66,15 +65,21 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
         attributes[DatadogRumPlatformAttributeKey.rulePsr] =
             rum.traceSampleRate / 100.0;
         if (tracingContext.sampled) {
-          attributes[DatadogRumPlatformAttributeKey.traceID] =
-              tracingContext.traceId.asString(TracingIdRepresentation.hex);
-          attributes[DatadogRumPlatformAttributeKey.spanID] =
-              tracingContext.spanId.asString(TracingIdRepresentation.decimal);
+          attributes[DatadogRumPlatformAttributeKey.traceID] = tracingContext
+              .traceId
+              .asString(TracingIdRepresentation.hex);
+          attributes[DatadogRumPlatformAttributeKey.spanID] = tracingContext
+              .spanId
+              .asString(TracingIdRepresentation.decimal);
         }
 
         for (final tracingType in headerTypes) {
-          injectTracingHeaders(tracingContext, tracingType, mergedHeaders,
-              contextInjection: rum.contextInjectionSetting);
+          injectTracingHeaders(
+            tracingContext,
+            tracingType,
+            mergedHeaders,
+            contextInjection: rum.contextInjectionSetting,
+          );
         }
       }
 
@@ -89,12 +94,18 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
     options = options.mergedWith(CallOptions(metadata: mergedHeaders));
 
     final future = invoker(method, request, options);
-    future.then((v) {
-      _datadog.rum?.stopResource(rumKey, 200, RumResourceType.native);
-    }, onError: (Object e, StackTrace? st) {
-      _datadog.rum?.stopResourceWithErrorInfo(
-          rumKey, e.toString(), e.runtimeType.toString());
-    });
+    future.then(
+      (v) {
+        _datadog.rum?.stopResource(rumKey, 200, RumResourceType.native);
+      },
+      onError: (Object e, StackTrace? st) {
+        _datadog.rum?.stopResourceWithErrorInfo(
+          rumKey,
+          e.toString(),
+          e.runtimeType.toString(),
+        );
+      },
+    );
     return future;
   }
 }

@@ -2,7 +2,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2024-Present Datadog, Inc.
 
-import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -11,14 +10,18 @@ import 'datadog_inappwebview_tracking_platform_interface.dart';
 const handlerName = 'datadog_inappwebivew_handler';
 
 String _createBridgeSource(
-    DatadogSdk datadog, String bridgeName, Set<String> hosts) {
+  DatadogSdk datadog,
+  String bridgeName,
+  Set<String> hosts,
+) {
   final sanitizedHosts = hosts
       // ignore: invalid_use_of_internal_member
       .map((e) => sanitizeHost(e, datadog.internalLogger))
       .whereType<String>();
   final allowedWebViewHostsString = sanitizedHosts.map((e) => '"$e"').join(',');
 
-  String bridgeSource = '''
+  String bridgeSource =
+      '''
 /* DatadogEventBridge */
 window.DatadogEventBridge = {
   cache: [],
@@ -65,9 +68,9 @@ class DatadogInAppWebViewUserScript extends UserScript {
     required Set<String> allowedHosts,
     String bridgeName = 'flutter_inappwebview',
   }) : super(
-          source: _createBridgeSource(datadog, bridgeName, allowedHosts),
-          injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
-        );
+         source: _createBridgeSource(datadog, bridgeName, allowedHosts),
+         injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+       );
 }
 
 extension DatadogInAppWebViewControllerExtension on InAppWebViewController {
@@ -82,8 +85,10 @@ extension DatadogInAppWebViewControllerExtension on InAppWebViewController {
           if (message is String) {
             // ignore: invalid_use_of_internal_member
             wrap('handleWebMessage', datadog.internalLogger, {}, () {
-              DatadogInAppWebViewTrackingPlatform.instance
-                  .sendWebViewMessage(message, logSampleRate);
+              DatadogInAppWebViewTrackingPlatform.instance.sendWebViewMessage(
+                message,
+                logSampleRate,
+              );
             });
           }
         }

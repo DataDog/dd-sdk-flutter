@@ -25,11 +25,15 @@ class DatadogTrackingHttpOverrides extends HttpOverrides {
   final HttpOverrides? existingOverrides;
 
   DatadogTrackingHttpOverrides(
-      this.datadogSdk, this.configuration, this.existingOverrides);
+    this.datadogSdk,
+    this.configuration,
+    this.existingOverrides,
+  );
 
   @override
   HttpClient createHttpClient(SecurityContext? context) {
-    var innerClient = existingOverrides?.createHttpClient(context) ??
+    var innerClient =
+        existingOverrides?.createHttpClient(context) ??
         super.createHttpClient(context);
     return DatadogTrackingHttpClient(datadogSdk, configuration, innerClient);
   }
@@ -75,7 +79,11 @@ class DatadogTrackingHttpClient implements HttpClient {
 
   @override
   Future<HttpClientRequest> open(
-      String method, String host, int port, String path) {
+    String method,
+    String host,
+    int port,
+    String path,
+  ) {
     // This implementation is copied from http_impl.dart in dart:io, essentially
     // stripping out the query from the path. All roads eventually lead to
     // _openUrl
@@ -97,8 +105,13 @@ class DatadogTrackingHttpClient implements HttpClient {
       query = path.substring(queryStart + 1, fragmentStart);
       path = path.substring(0, queryStart);
     }
-    Uri uri =
-        Uri(scheme: 'http', host: host, port: port, path: path, query: query);
+    Uri uri = Uri(
+      scheme: 'http',
+      host: host,
+      port: port,
+      path: path,
+      query: query,
+    );
     return _openUrl(method, uri);
   }
 
@@ -128,18 +141,27 @@ class DatadogTrackingHttpClient implements HttpClient {
     Map<String, Object?> userAttributes = {};
     try {
       request = await innerClient.openUrl(method, url);
-      request =
-          _DatadogTrackingHttpRequest(this, request, rumKey, userAttributes);
+      request = _DatadogTrackingHttpRequest(
+        this,
+        request,
+        rumKey,
+        userAttributes,
+      );
       if (rum != null && rumKey != null) {
         configuration.clientListener?.requestStarted(
-            resourceKey: rumKey,
-            request: request,
-            userAttributes: userAttributes);
+          resourceKey: rumKey,
+          request: request,
+          userAttributes: userAttributes,
+        );
       }
     } catch (e) {
       if (rum != null && rumKey != null) {
         rum.stopResourceWithErrorInfo(
-            rumKey, e.toString(), e.runtimeType.toString(), userAttributes);
+          rumKey,
+          e.toString(),
+          e.runtimeType.toString(),
+          userAttributes,
+        );
       }
       rethrow;
     }
@@ -159,10 +181,13 @@ class DatadogTrackingHttpClient implements HttpClient {
 
   @override
   set connectionFactory(
-          Future<ConnectionTask<Socket>> Function(
-                  Uri url, String? proxyHost, int? proxyPort)?
-              f) =>
-      innerClient.connectionFactory = f;
+    Future<ConnectionTask<Socket>> Function(
+      Uri url,
+      String? proxyHost,
+      int? proxyPort,
+    )?
+    f,
+  ) => innerClient.connectionFactory = f;
 
   @override
   set keyLog(Function(String line)? callback) => innerClient.keyLog = callback;
@@ -196,33 +221,38 @@ class DatadogTrackingHttpClient implements HttpClient {
 
   @override
   void addCredentials(
-      Uri url, String realm, HttpClientCredentials credentials) {
+    Uri url,
+    String realm,
+    HttpClientCredentials credentials,
+  ) {
     innerClient.addCredentials(url, realm, credentials);
   }
 
   @override
   void addProxyCredentials(
-      String host, int port, String realm, HttpClientCredentials credentials) {
+    String host,
+    int port,
+    String realm,
+    HttpClientCredentials credentials,
+  ) {
     innerClient.addProxyCredentials(host, port, realm, credentials);
   }
 
   @override
   set authenticate(
-          Future<bool> Function(Uri url, String scheme, String? realm)? f) =>
-      innerClient.authenticate = f;
+    Future<bool> Function(Uri url, String scheme, String? realm)? f,
+  ) => innerClient.authenticate = f;
 
   @override
   set authenticateProxy(
-          Future<bool> Function(
-                  String host, int port, String scheme, String? realm)?
-              f) =>
-      innerClient.authenticateProxy = f;
+    Future<bool> Function(String host, int port, String scheme, String? realm)?
+    f,
+  ) => innerClient.authenticateProxy = f;
 
   @override
   set badCertificateCallback(
-          bool Function(X509Certificate cert, String host, int port)?
-              callback) =>
-      innerClient.badCertificateCallback = callback;
+    bool Function(X509Certificate cert, String host, int port)? callback,
+  ) => innerClient.badCertificateCallback = callback;
 
   @override
   void close({bool force = false}) {
@@ -315,8 +345,9 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
     Future<HttpClientResponse> Function() startInner,
   ) {
     _injectHeaders();
-    final capturedRequestHeaders =
-        rumKey != null ? _captureRequestHeaders() : null;
+    final capturedRequestHeaders = rumKey != null
+        ? _captureRequestHeaders()
+        : null;
 
     return startInner().then(
       (value) => _DatadogTrackingHttpResponse(
@@ -352,8 +383,9 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
 
     final rum = client.datadogSdk.rum;
     try {
-      final tracingHeaderTypes =
-          client.datadogSdk.headerTypesForHost(innerContext.uri);
+      final tracingHeaderTypes = client.datadogSdk.headerTypesForHost(
+        innerContext.uri,
+      );
 
       if (rum != null && tracingHeaderTypes.isNotEmpty) {
         // No tracing context, generate one ourselves
@@ -375,8 +407,10 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
             // This ends up regenerating the baggage from context, but that should be fine,
             // as injecting multiple different header types would do the same thing.
             final baggageValue = headers['baggage']?.firstOrNull;
-            headers.set('baggage',
-                mergeW3CBaggageHeader(_tracingContext!, baggageValue));
+            headers.set(
+              'baggage',
+              mergeW3CBaggageHeader(_tracingContext!, baggageValue),
+            );
           } else if (headers.value(entry.key) == null) {
             headers.add(entry.key, entry.value);
           }
@@ -402,7 +436,11 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
         );
         attributes = _mergeAttributes(attributes, userAttributes);
         rum.stopResourceWithErrorInfo(
-            rumKey!, e.toString(), e.runtimeType.toString(), attributes);
+          rumKey!,
+          e.toString(),
+          e.runtimeType.toString(),
+          attributes,
+        );
       }
     } catch (e, st) {
       client.datadogSdk.internalLogger.sendToDatadog(
@@ -530,8 +568,12 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
   );
 
   @override
-  StreamSubscription<List<int>> listen(void Function(List<int> event)? onData,
-      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
+  StreamSubscription<List<int>> listen(
+    void Function(List<int> event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
     return innerResponse.listen(
       (List<int> data) {
         bytesReceived ??= 0;
@@ -553,8 +595,9 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
           onError(e);
         } else {
           client.datadogSdk.internalLogger.warn(
-              "Tracking HTTP client intercepted an error, but doesn't recognize the `onError` callback."
-              ' Expected either `void Function(Object, StackTrace)` or `void Function(Object)`.');
+            "Tracking HTTP client intercepted an error, but doesn't recognize the `onError` callback."
+            ' Expected either `void Function(Object, StackTrace)` or `void Function(Object)`.',
+          );
         }
       },
       onDone: () {
@@ -577,13 +620,18 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
         rum.traceSampleRate,
       );
       client.configuration.clientListener?.responseFinished(
-          resourceKey: rumKey!,
-          response: this,
-          userAttributes: userAttributes,
-          error: lastError);
+        resourceKey: rumKey!,
+        response: this,
+        userAttributes: userAttributes,
+        error: lastError,
+      );
       attributes = _mergeAttributes(attributes, userAttributes);
-      rum.stopResourceWithErrorInfo(rumKey!, lastError.toString(),
-          lastError.runtimeType.toString(), attributes);
+      rum.stopResourceWithErrorInfo(
+        rumKey!,
+        lastError.toString(),
+        lastError.runtimeType.toString(),
+        attributes,
+      );
     }
   }
 
@@ -599,8 +647,10 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
           var size = innerResponse.contentLength > 0
               ? innerResponse.contentLength
               : bytesReceived;
-          var attributes =
-              generateDatadogAttributes(tracingContext, rum.traceSampleRate);
+          var attributes = generateDatadogAttributes(
+            tracingContext,
+            rum.traceSampleRate,
+          );
           client.configuration.clientListener?.responseFinished(
             resourceKey: rumKey!,
             response: this,
@@ -666,8 +716,11 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
   String get reasonPhrase => innerResponse.reasonPhrase;
 
   @override
-  Future<HttpClientResponse> redirect(
-      [String? method, Uri? url, bool? followLoops]) {
+  Future<HttpClientResponse> redirect([
+    String? method,
+    Uri? url,
+    bool? followLoops,
+  ]) {
     return innerResponse.redirect(method, url, followLoops);
   }
 
@@ -679,7 +732,9 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
 }
 
 Map<String, Object?> _mergeAttributes(
-    Map<String, Object?> attrA, Map<String, Object?> attrB) {
+  Map<String, Object?> attrA,
+  Map<String, Object?> attrB,
+) {
   var result = Map.of(attrA);
   attrB.forEach((key, value) {
     result[key] = value;

@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flags/src/intake_platform.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
@@ -63,7 +64,12 @@ void main() {
           (r) => r.url.path.contains('flagevaluation'),
         );
         final events = evaluations.expand(
-          (r) => (jsonDecode(r.body) as Map)['flagEvaluations'] as List,
+          (r) => isWebFlagsIntake
+              ? r.body
+                    .split('\n')
+                    .where((line) => line.isNotEmpty)
+                    .map(jsonDecode)
+              : (jsonDecode(r.body) as Map)['flagEvaluations'] as List,
         );
         final success = events.cast<Map<String, dynamic>>().firstWhere(
           (e) => e['flag']['key'] == 'flag' && e['error'] == null,

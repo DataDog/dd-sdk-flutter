@@ -23,19 +23,12 @@ const int _labelMinWidth = 125;
 const int defaultMaxImagePixelBudget = 640000;
 
 @visibleForTesting
-enum DownscalingNeed {
-  none,
-  fitToBounds,
-  downscaling,
-}
+enum DownscalingNeed { none, fitToBounds, downscaling }
 
 const Duration _defaultDownscaleTimeout = Duration(milliseconds: 500);
 
-typedef DownscaleFunction = Future<ui.Image> Function(
-  ui.Image source,
-  int destWidth,
-  int destHeight,
-);
+typedef DownscaleFunction =
+    Future<ui.Image> Function(ui.Image source, int destWidth, int destHeight);
 
 /// Trips after consecutive downscale failures; no automatic recovery.
 @visibleForTesting
@@ -74,10 +67,9 @@ class ImageRecorder implements ElementRecorder {
     @visibleForTesting DownscaleCircuitBreaker? circuitBreaker,
     @visibleForTesting DownscaleFunction? downscaleOverride,
     @visibleForTesting Duration downscaleTimeout = _defaultDownscaleTimeout,
-  })  : _downscalingCircuitBreaker =
-            circuitBreaker ?? DownscaleCircuitBreaker(),
-        _downscale = downscaleOverride ?? _downscaleImageDefault,
-        _downscaleTimeout = downscaleTimeout;
+  }) : _downscalingCircuitBreaker = circuitBreaker ?? DownscaleCircuitBreaker(),
+       _downscale = downscaleOverride ?? _downscaleImageDefault,
+       _downscaleTimeout = downscaleTimeout;
 
   @override
   bool accepts(Widget widget) => widget is RawImage || widget is Image;
@@ -218,8 +210,11 @@ class ImageRecorder implements ElementRecorder {
 
     ui.Image? scaled;
     try {
-      scaled = await _downscale(image, scaledWidth, scaledHeight)
-          .timeout(_downscaleTimeout);
+      scaled = await _downscale(
+        image,
+        scaledWidth,
+        scaledHeight,
+      ).timeout(_downscaleTimeout);
       _downscalingCircuitBreaker.recordSuccess();
       return await _persistImageAsResourceNode(
         elementId,
@@ -301,10 +296,14 @@ class ImageRecorder implements ElementRecorder {
     double devicePixelRatio,
     int pixelBudget,
   ) {
-    final renderedPhysicalWidth =
-        math.max(1, (attributes.width * devicePixelRatio).ceil());
-    final renderedPhysicalHeight =
-        math.max(1, (attributes.height * devicePixelRatio).ceil());
+    final renderedPhysicalWidth = math.max(
+      1,
+      (attributes.width * devicePixelRatio).ceil(),
+    );
+    final renderedPhysicalHeight = math.max(
+      1,
+      (attributes.height * devicePixelRatio).ceil(),
+    );
 
     if (renderedPhysicalWidth >= sourceWidth &&
         renderedPhysicalHeight >= sourceHeight &&
@@ -315,24 +314,34 @@ class ImageRecorder implements ElementRecorder {
 
     // Shrink to rendered physical size; cap at 1.0 (no upscale beyond native).
     final fitToBoundsScale = math.min(
-      math.min(renderedPhysicalWidth / sourceWidth,
-          renderedPhysicalHeight / sourceHeight),
+      math.min(
+        renderedPhysicalWidth / sourceWidth,
+        renderedPhysicalHeight / sourceHeight,
+      ),
       1.0,
     );
-    final fitToBoundsWidth =
-        math.max(1, (sourceWidth * fitToBoundsScale).round());
-    final fitToBoundsHeight =
-        math.max(1, (sourceHeight * fitToBoundsScale).round());
+    final fitToBoundsWidth = math.max(
+      1,
+      (sourceWidth * fitToBoundsScale).round(),
+    );
+    final fitToBoundsHeight = math.max(
+      1,
+      (sourceHeight * fitToBoundsScale).round(),
+    );
     final fitToBoundsPixels = fitToBoundsWidth * fitToBoundsHeight;
     if (fitToBoundsPixels <= pixelBudget) {
       return (DownscalingNeed.fitToBounds, fitToBoundsWidth, fitToBoundsHeight);
     }
 
     final downscaling = math.sqrt(pixelBudget / fitToBoundsPixels);
-    final downscaledWidth =
-        math.max(1, (fitToBoundsWidth * downscaling).floor());
-    final downscaledHeight =
-        math.max(1, (fitToBoundsHeight * downscaling).floor());
+    final downscaledWidth = math.max(
+      1,
+      (fitToBoundsWidth * downscaling).floor(),
+    );
+    final downscaledHeight = math.max(
+      1,
+      (fitToBoundsHeight * downscaling).floor(),
+    );
     return (DownscalingNeed.downscaling, downscaledWidth, downscaledHeight);
   }
 

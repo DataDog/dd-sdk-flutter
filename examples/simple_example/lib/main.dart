@@ -13,7 +13,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
-import 'package:http/http.dart' as http;
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 import 'app.dart';
@@ -22,16 +21,9 @@ import 'url_strategy_stub.dart' if (dart.library.html) 'url_strategy_web.dart';
 
 const graphQlUrl = 'http://localhost:3000/graphql';
 
-Future<void> main() => startExample();
-
-/// Starts the example. Tests can supply a controlled flags transport.
-Future<void> startExample({
-  http.Client? flagsHttpClient,
-  TrackingConsent consent = TrackingConsent.granted,
-  bool loadEnvironment = true,
-}) async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (loadEnvironment) await dotenv.load();
+  await dotenv.load();
 
   configureUrlStrategy();
 
@@ -47,7 +39,6 @@ Future<void> startExample({
     env: env,
     site: siteConfig.flagsSite,
     applicationId: applicationId,
-    httpClient: flagsHttpClient,
   );
 
   final datadogConfig =
@@ -55,6 +46,7 @@ Future<void> startExample({
         clientToken: clientToken,
         env: env,
         site: siteConfig.datadogSite,
+        service: 'com.datadoghq.example.flutter',
         loggingConfiguration: DatadogLoggingConfiguration(
           customEndpoint: siteConfig.logsCustomEndpoint,
         ),
@@ -92,14 +84,13 @@ Future<void> startExample({
   }
 
   // await runUsingRunApp(datadogConfig, flagsConfig);
-  await runUsingAlternativeInit(datadogConfig, flagsConfig, consent: consent);
+  await runUsingAlternativeInit(datadogConfig, flagsConfig);
 }
 
 Future<void> runUsingAlternativeInit(
   DatadogConfiguration datadogConfig,
-  FlagsExampleConfig flagsConfig, {
-  TrackingConsent consent = TrackingConsent.granted,
-}) async {
+  FlagsExampleConfig flagsConfig,
+) async {
   final originalOnError = FlutterError.onError;
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
@@ -117,7 +108,7 @@ Future<void> runUsingAlternativeInit(
     return platformOriginalOnError?.call(e, st) ?? false;
   };
 
-  await DatadogSdk.instance.initialize(datadogConfig, consent);
+  await DatadogSdk.instance.initialize(datadogConfig, TrackingConsent.granted);
   final flagsIntegration = await _initializeOpenFeature(flagsConfig);
   final link = Link.from([
     DatadogGqlLink(DatadogSdk.instance, Uri.parse(graphQlUrl)),

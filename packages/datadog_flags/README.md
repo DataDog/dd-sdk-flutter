@@ -8,29 +8,10 @@ Android Flags SDKs.
 Use OpenFeature as the application API. The legacy Datadog evaluation API is
 deprecated and is scheduled for removal in the next major version.
 
-## OpenFeature dependency
+## Requirements
 
-This integration requires **Dart 3.10 or later** and depends on the published
-`openfeature_dart_client_sdk: ^0.0.1` package. The shared provider contract
-is a development-only dependency pinned to that release's commit,
-`f8068cd5c71c6f644e1f69e171918de771e621c3`. A test-only override makes the
-unpublished harness use the hosted SDK instead of its relative source dependency.
-Package consumers do not inherit that override or the Git harness dependency.
-
-Use the checked-out package and its example while validation is in progress:
-
-```sh
-cd packages/datadog_flags/example
-dart pub get
-dart run datadog_flags_example:typed_evaluation --help
-```
-
-The Flags packages are prepared for publication through the normal release
-process. Publish `datadog_flags` 1.2.0 before `datadog_flags_flutter` 1.2.0,
-which depends on it. Run `publish_dry_run:flags` for the core, then
-`publish_dry_run:flags_flutter` after the core release is available on pub.dev.
-The shared example requires Dart 3.10; this does not raise the
-`datadog_flutter_plugin` package's minimum Dart version.
+This integration requires Dart 3.10 or later and the published
+`openfeature_dart_client_sdk: ^0.0.1` package.
 
 ## Initialize and evaluate
 
@@ -77,8 +58,8 @@ scalar assignment returns the default with `ErrorCode.typeMismatch`. Failed
 evaluations do not emit exposures. Successful structure values are immutable.
 
 Details include the variant, reason, error code, and provider metadata.
-`DatadogOpenFeatureProvider.allocationKeyMetadata` and `serialIdMetadata` identify
-Datadog assignment metadata. These namespaced keys are provider-specific; they
+`DatadogOpenFeatureProvider.allocationKeyMetadata` and `serialIdMetadata` are the metadata keys for the allocation key and serial ID in the evaluation details.
+These namespaced keys are provider-specific; they
 are not part of the OpenFeature specification.
 
 ## Identity, refresh, and shutdown
@@ -100,8 +81,8 @@ A normal context change retains the previous context until the new assignments
 are usable. If reconciliation fails, OpenFeature retains the previous active
 context. The provider discards late results from that failed reconciliation.
 Sign-out retires private assignments immediately, including when anonymous
-loading fails. Register a replacement provider if the application requires the
-same immediate retirement for every identity switch.
+loading fails. If your application needs assignments cleared immediately on every
+identity switch, register a replacement provider.
 
 `refresh()` reloads the active context and emits `configurationChanged` after
 success. Refresh failure emits an error and retains usable active assignments.
@@ -123,10 +104,11 @@ The core budget covers cache loading, the request, decoding, state publication,
 and cache storage. Synchronous work can delay timer delivery. The deadline bounds
 the caller's wait; it does not cancel the underlying HTTP or store operation.
 
-The provider catches the core timeout and reports availability through
+The provider catches the initialization timeout and reports availability through
 OpenFeature events. Matching cached assignments produce `stale`. With no
-assignments, registration fails and evaluations return defaults. Initial late
-success emits `ready` and makes assignments available. State publication occurs
+assignments, registration fails and evaluations return defaults. If the initial
+request succeeds after the deadline, the provider emits `ready` and makes
+assignments available. State publication occurs
 before cache persistence, so a slow store cannot hide a successful response.
 
 `stale` means assignments are usable but fresh assignments are unavailable. It
@@ -145,17 +127,18 @@ application ID, service, and version. The environment is sent as `dd_env`.
 - `initializationTimeout` for the lifecycle budget described above.
 - `trackExposures` and `customExposureEndpoint` for exposure telemetry.
 - `trackEvaluations`, `customEvaluationEndpoint`, and `evaluationFlushInterval`
-  for evaluation telemetry. The interval is constrained to 1–60 seconds.
+  for evaluation telemetry. The interval must be between 1 and 60 seconds.
+  The default is 10 seconds.
 - `dateProvider` for application-controlled timestamps.
 
 The store loads a `FlagsData` snapshot only when its context matches the request.
 Cache writes and deletes are serialized per store instance and client name.
 A store operation that never completes can block later persistence operations.
-The application must implement store operations that eventually complete.
+Implement store operations so they always complete.
 
 Exposure telemetry follows the assignment's logging policy. Evaluation telemetry
-records successes, defaults, and errors. OpenFeature `track()` is not implemented;
-it must not be used as a replacement for Datadog exposure telemetry.
+records successes, defaults, and errors. The provider does not implement
+OpenFeature `track()`. Do not use it in place of Datadog exposure telemetry.
 
 ## Migrate the legacy API
 
@@ -177,24 +160,10 @@ For Flutter RUM, add `DatadogRumHook` from `datadog_flags_flutter` to the
 OpenFeature client. Do not initialize the deprecated plugin for the same flags.
 Each Dart isolate must create its own OpenFeature API and provider state.
 
-## Validation
+## Contributing
 
-The real provider implements the upstream shared contract with controlled HTTP
-responses. Run the package suite with `dart test`. Run the browser scenarios with:
-
-```sh
-dart test --platform chrome test/datadog_openfeature_provider_test.dart test/shared_contract_test.dart
-```
-
-From the repository root, record a reproducible upstream receipt:
-
-```sh
-python3 tools/ci/run_openfeature_contract.py --platform vm
-python3 tools/ci/run_openfeature_contract.py --platform chrome
-```
-
-Receipts are written to `.build/openfeature-evidence`. Controlled transport
-results do not establish live Datadog connectivity or maintainer acceptance.
+See the [contributing guide](../../CONTRIBUTING.md) and
+[OpenFeature validation instructions](OPENFEATURE_VALIDATION.md).
 
 ## Cached Evaluation Reasons
 

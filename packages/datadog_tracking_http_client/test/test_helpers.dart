@@ -19,8 +19,12 @@ extension HttpHeadersToMap on HttpHeaders {
   }
 }
 
-void verifyHeaders(Map<String, String> headers, TracingHeaderType type,
-    bool sampled, TraceContextInjection traceContextInjection) {
+void verifyHeaders(
+  Map<String, String> headers,
+  TracingHeaderType type,
+  bool sampled,
+  TraceContextInjection traceContextInjection,
+) {
   BigInt? traceInt;
   BigInt? spanInt;
 

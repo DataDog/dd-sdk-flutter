@@ -12,18 +12,19 @@ class SliversScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Slivers')),
       body: SafeArea(
-          child: CustomScrollView(
-        slivers: <Widget>[
-          SliverList(
-            delegate: SliverChildListDelegate(
-              List.generate(
-                25,
-                (int index) => ListTile(title: Text('Item #$index')),
+        child: CustomScrollView(
+          slivers: <Widget>[
+            SliverList(
+              delegate: SliverChildListDelegate(
+                List.generate(
+                  25,
+                  (int index) => ListTile(title: Text('Item #$index')),
+                ),
               ),
             ),
-          ),
-        ],
-      )),
+          ],
+        ),
+      ),
     );
   }
 }

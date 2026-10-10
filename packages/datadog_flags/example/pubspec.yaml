@@ -12,7 +12,7 @@ dependencies:
     path: ..
 
 dev_dependencies:
-  lints: '>=5.0.0'
+  lints: '^6.1.0'
 
 executables:
   typed_evaluation:

@@ -49,8 +49,9 @@ class TextElementRecorder implements ElementRecorder {
       );
 
       final rawFontSize = style?.fontSize;
-      final scaledSize =
-          ((rawFontSize ?? 10) * attributes.scaleX).safeRound(10);
+      final scaledSize = ((rawFontSize ?? 10) * attributes.scaleX).safeRound(
+        10,
+      );
 
       final node = TextElementCaptureNode(
         attributes,

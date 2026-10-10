@@ -28,10 +28,12 @@ class RandomString {
       'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890';
 
   static String randomAlphaNumeric(int length) {
-    return String.fromCharCodes(Iterable.generate(
-      length,
-      (_) => alphaNumeric.codeUnitAt(random.nextInt(alphaNumeric.length)),
-    ));
+    return String.fromCharCodes(
+      Iterable.generate(
+        length,
+        (_) => alphaNumeric.codeUnitAt(random.nextInt(alphaNumeric.length)),
+      ),
+    );
   }
 }
 
@@ -42,8 +44,9 @@ Map<String, Object?> generateLargeContext() {
   final properties = propertyCountRange.nextRandom();
   var content = <String, Object?>{};
   for (var i = 0; i < properties; ++i) {
-    final property =
-        RandomString.randomAlphaNumeric(_propertyNameRange.nextRandom());
+    final property = RandomString.randomAlphaNumeric(
+      _propertyNameRange.nextRandom(),
+    );
     final nestingLevel = nestingLevelRange.nextRandom();
     content[property] = generateProperty(nestingLevel);
   }
@@ -61,8 +64,9 @@ Object generateProperty(int nesting) {
   final properties = nestedPropertyRange.nextRandom();
   var content = <String, Object?>{};
   for (var i = 0; i < properties; ++i) {
-    final property =
-        RandomString.randomAlphaNumeric(_propertyNameRange.nextRandom());
+    final property = RandomString.randomAlphaNumeric(
+      _propertyNameRange.nextRandom(),
+    );
     content[property] = generateProperty(nesting - 1);
   }
 

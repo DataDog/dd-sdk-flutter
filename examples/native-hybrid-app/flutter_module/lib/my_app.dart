@@ -17,11 +17,9 @@ class MyApp extends StatelessWidget {
       GoRoute(
         path: '/page2',
         builder: (context, state) => const MySecondPage(),
-      )
+      ),
     ],
-    observers: [
-      DatadogNavigationObserver(datadogSdk: DatadogSdk.instance),
-    ],
+    observers: [DatadogNavigationObserver(datadogSdk: DatadogSdk.instance)],
   );
 
   @override
@@ -31,9 +29,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp.router(
         routerConfig: _router,
         title: 'Flutter Demo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
+        theme: ThemeData(primarySwatch: Colors.blue),
       ),
     );
   }
@@ -91,19 +87,14 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
-          IconButton(
-            onPressed: _onClose,
-            icon: const Icon(Icons.close),
-          )
+          IconButton(onPressed: _onClose, icon: const Icon(Icons.close)),
         ],
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
+            const Text('You have pushed the button this many times:'),
             Text(
               '$_counter',
               style: Theme.of(context).textTheme.headlineMedium,
@@ -145,10 +136,7 @@ class MySecondPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Second Page'),
         actions: [
-          IconButton(
-            onPressed: _onClose,
-            icon: const Icon(Icons.close),
-          )
+          IconButton(onPressed: _onClose, icon: const Icon(Icons.close)),
         ],
       ),
       body: const Center(child: Text('This is a second page')),

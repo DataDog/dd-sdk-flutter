@@ -55,13 +55,13 @@ class OperationNameVisitor extends Visitor<String?> {
 
   @override
   String? visitInputObjectTypeDefinitionNode(
-          InputObjectTypeDefinitionNode node) =>
-      null;
+    InputObjectTypeDefinitionNode node,
+  ) => null;
 
   @override
   String? visitInputObjectTypeExtensionNode(
-          InputObjectTypeExtensionNode node) =>
-      null;
+    InputObjectTypeExtensionNode node,
+  ) => null;
 
   @override
   String? visitInputValueDefinitionNode(InputValueDefinitionNode node) => null;

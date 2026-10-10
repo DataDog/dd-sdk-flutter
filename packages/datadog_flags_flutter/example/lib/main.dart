@@ -29,6 +29,7 @@ Future<void> main() async {
   final isConfigured = _clientToken.isNotEmpty;
   if (isConfigured) {
     final configuration = DatadogConfiguration(
+      service: 'com.datadoghq.flags.example',
       clientToken: _clientToken,
       env: _env,
       site: _datadogSiteFor(_site),

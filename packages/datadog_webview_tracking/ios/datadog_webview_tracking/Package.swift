@@ -6,13 +6,13 @@ import PackageDescription
 let package = Package(
     name: "datadog_webview_tracking",
     platforms: [
-        .iOS("13.0")
+        .iOS("15.0")
     ],
     products: [
         .library(name: "datadog-webview-tracking", targets: ["datadog_webview_tracking"])
     ],
     dependencies: [
-        .package(url: "https://github.com/Datadog/dd-sdk-ios.git", from: "3.0.0")
+        .package(url: "https://github.com/Datadog/dd-sdk-ios.git", branch: "develop")
     ],
     targets: [
         .target(

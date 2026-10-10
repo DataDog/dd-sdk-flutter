@@ -2,14 +2,17 @@ name: datadog_flutter
 
 packages:
   - packages/*
+  - packages/datadog_flutter_plugin/*
   - packages/*/example
   - packages/*/integration_test_app
   - packages/*/e2e_test_app
-
-command:
-  bootstrap:
-    # These packages share a Git dependency cache. Concurrent fetches race on refs.
-    runPubGetInParallel: false
+  - packages/datadog_flutter_plugin/*/example
+  - packages/datadog_flutter_plugin/*/integration_test_app
+  - packages/datadog_flutter_plugin/*/e2e_test_app
+  - examples/*
+  - examples/native-hybrid-app/flutter_module
+  - test_apps/*
+  - tools/openfeature_conformance
 
 scripts:
   build:
@@ -22,12 +25,22 @@ scripts:
     packageFilters:
       dirExists: example/ios
 
+  build:macos:
+    exec:
+      concurrency: 1
+    run: cd example && flutter clean && flutter build macos --release
+    packageFilters:
+      dirExists: example/macos
+
+  # `rm` isn't a cmd.exe builtin and the Windows toolchain image doesn't provide it;
+  # `del` isn't a bash command either, so try both and let the `||` fallback pick the
+  # one available on the current shell.
   full_clean:
     exec:
       concurrency: 1
     run:
-      flutter clean && 
-      rm pubspec.lock 
+      flutter clean &&
+      (rm pubspec.lock || del pubspec.lock)
 
   build:android:
     exec:
@@ -42,6 +55,20 @@ scripts:
     run: cd example && flutter build web
     packageFilters:
       dirExists: example/web
+
+  build:windows:
+    exec:
+      concurrency: 1
+    run: cd example && flutter build windows --release
+    packageFilters:
+      dirExists: example/windows
+
+  build:linux:
+    exec:
+      concurrency: 1
+    run: cd example && flutter build linux --release
+    packageFilters:
+      dirExists: example/linux
 
   dartfmt_check:
     exec: dart format --output=none --set-exit-if-changed .
@@ -59,7 +86,9 @@ scripts:
     description: |
       Run swiftlint --fix
     packageFilters:
-      dirExists: ios
+      dirExists:
+        - ios
+        - darwin
 
   lint_fix:android:
     exec:
@@ -79,6 +108,10 @@ scripts:
     exec: dart analyze .
     description: |
       Run `dart analyze` in all packages
+    packageFilters:
+      ignore:
+        - 'stress_test'
+        - 'test_app'
 
   analyze:android:
     exec:
@@ -87,23 +120,25 @@ scripts:
       cd example/android
       ./gradlew --console=plain ktlintCheck detekt
     packageFilters:
-      dirExists: android
-      ignore: 
+      dirExists: 'example/android/buildscripts'
+      ignore:
         - "*example*"
         - "*integration_test_app*"
         - "*e2e_test_app*"
   
   analyze:ios:
-    exec: cd ios && swiftlint
+    exec: (test -d darwin && cd darwin || cd ios) && swiftlint
     packageFilters:
-      dirExists: ios
-      ignore: 
+      dirExists:
+        - ios
+        - darwin
+      ignore:
         - "*example*"
         - "*integration_test_app*"
         - "*e2e_test_app*"
 
   unit_test:all:
-    run: melos unit_test:flutter && melos unit_test:ios && melos unit_test:android && melos unit_test:web && melos unit_test:openfeature-web
+    run: melos unit_test:flutter && melos unit_test:ios && melos unit_test:android && melos unit_test:web
 
   unit_test:flutter:
     run: 
@@ -111,6 +146,22 @@ scripts:
       melos exec -c 1 -- "set -e -o pipefail && flutter test --machine | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml\"" 
     packageFilters:
       dirExists: 'test'
+      ignore:
+        - 'datadog_flutter_plugin_web'
+
+  unit_test:windows:
+    run: melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine"
+    packageFilters:
+      dirExists: 'test'
+      ignore:
+        - 'datadog_flutter_plugin_web'
+
+  unit_test:linux:
+    run: melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine"
+    packageFilters:
+      dirExists: 'test'
+      ignore:
+        - 'datadog_flutter_plugin_web'
 
   golden_test:flutter:
     exec:
@@ -131,39 +182,18 @@ scripts:
     packageFilters:
       scope:
         - 'datadog_flutter_plugin'
+        - 'datadog_flutter_plugin_web'
 
+  # Test all browser-compatible core and conformance tests on both compilers.
   unit_test:openfeature-web:
     run:
       mkdir -p $MELOS_ROOT_PATH/.build/test-results &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome test/datadog_openfeature_provider_test.dart test/shared_contract_test.dart test/evaluation_aggregator_test.dart | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome --compiler dart2wasm test/datadog_openfeature_provider_test.dart test/shared_contract_test.dart test/evaluation_aggregator_test.dart | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'"
+      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
+      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome --compiler dart2wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'"
     packageFilters:
       scope:
         - 'datadog_flags'
-
-  compile:openfeature-web:
-    exec:
-      concurrency: 1
-    run:
-      mkdir -p "$MELOS_ROOT_PATH/.build" &&
-      dart compile js test/openfeature_web_compile_smoke.dart -o "$MELOS_ROOT_PATH/.build/datadog_flags_openfeature.js"
-    packageFilters:
-      scope: 'datadog_flags'
-
-  publish_dry_run:flags:
-    exec:
-      concurrency: 1
-    run: python3 "$MELOS_ROOT_PATH/tools/ci/check_openfeature_dependency.py" --require-hosted && dart pub publish --dry-run
-    packageFilters:
-      scope: 'datadog_flags'
-
-  # Run after datadog_flags 1.2.0 is available on pub.dev.
-  publish_dry_run:flags_flutter:
-    exec:
-      concurrency: 1
-    run: python3 "$MELOS_ROOT_PATH/tools/ci/check_openfeature_dependency.py" --require-hosted && flutter pub publish --dry-run
-    packageFilters:
-      scope: 'datadog_flags_flutter'
+        - 'datadog_openfeature_conformance'
 
   unit_test:ios:
     exec:
@@ -172,12 +202,22 @@ scripts:
       set -euxo pipefail &&
       xcodebuild test -workspace example/ios/Runner.xcworkspace -scheme Runner -destination "platform=iOS Simulator,name=$IOS_SIMULATOR,OS=latest" | xcbeautify
     packageFilters:
-      dirExists: 
-        - 'ios'
-        - 'example/ios'
+      dirExists: 'example/ios'
       # TODO: These packages should probably have platform unit tests
-      ignore:         
+      ignore:
         - 'datadog_inappwebview_tracking'
+        - 'datadog_tracking_http_client'
+        # iOS unit tests moved to datadog_flutter_plugin_ios
+        - 'datadog_flutter_plugin'
+
+  unit_test:macos:
+    exec:
+      concurrency: 1
+    run:
+      set -euxo pipefail &&
+      xcodebuild test -workspace example/macos/Runner.xcworkspace -scheme Runner -destination "platform=macOS" | xcbeautify
+    packageFilters:
+      dirExists: 'example/macos'
 
   unit_test:android:
     exec:
@@ -214,10 +254,25 @@ scripts:
     exec: |
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd integration_test_app
-      
+
       bash -c 'set -euxo pipefail; \
       flutter test integration_test --machine -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
       | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_ios_integration.xml"'
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
+  integration_test:macos:
+    run: melos integration_test:macos:main
+
+  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
+  # have a separate target just for it that is called by `integration_test:macos`.
+  # Desktop platforms can't run the whole integration_test directory in one `flutter test`
+  # invocation, so this uses tools/ci/bin/desktop_integration_tests.dart to run each
+  # test file individually, same as integration_test:windows:main.
+  integration_test:macos:main:
+    exec: |
+      cd integration_test_app
+      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
@@ -248,6 +303,128 @@ scripts:
       bash -c 'set -euxo pipefail; \
       flutter test integration_test --machine -d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
       | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.xml"'
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
+  integration_test:windows:
+    run: melos integration_test:windows:build && melos verify:ffi_bindings && melos integration_test:windows:tests
+
+  # Only exists to populate the CMake FetchContent headers that
+  # verify:ffi_bindings regenerates against. Scoped to the desktop plugin's
+  # example because that is the tree ffigen.yaml points at, and built debug
+  # rather than release: `melos build:windows` would build four examples into a
+  # separate release tree, none of which the integration tests below reuse.
+  integration_test:windows:build:
+    exec:
+      concurrency: 1
+    run: cd example && flutter build windows --debug
+    packageFilters:
+      scope: 'datadog_flutter_plugin_desktop'
+
+  integration_test:windows:tests:
+    run: melos integration_test:windows:main && melos integration_test:windows:other
+
+  # Desktop platforms can't run the whole integration_test directory in one `flutter test`
+  # invocation, so this uses tools/ci/bin/desktop_integration_tests.dart to run each
+  # test file individually, same idea as web's per-file `flutter drive` runner.
+  integration_test:windows:other:
+    exec:
+      concurrency: 1
+    run: cd example && dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
+    packageFilters:
+      dirExists:
+        - 'example/integration_test'
+        - 'example/windows'
+      ignore:
+        - 'datadog_flutter_plugin'
+
+  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
+  # have a separate target just for it that is called by `integration_test:windows``
+  integration_test:windows:main:
+    exec: cd integration_test_app && dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
+    packageFilters:
+      scope: 'datadog_flutter_plugin'
+
+  # Regenerates datadog_flutter_plugin_desktop's ffigen bindings and fails if the
+  # result differs from what is committed. dd-sdk-cpp is pulled by CMake
+  # FetchContent, so its C API can move without anything in this repo changing.
+  # Drift is not a compile error: Dart allocates sizeOf<T>() bytes and the C SDK
+  # writes sizeof(struct T) into them, so a struct that grew upstream shows up as
+  # heap corruption in an unrelated test instead. Desktop-only, and requires a
+  # desktop build to have populated the FetchContent headers first.
+  verify:ffi_bindings:
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/verify_ffi_bindings.dart
+
+  # Regenerates datadog_flutter_plugin_desktop's ffigen bindings unconditionally
+  # (see verify:ffi_bindings for why they can drift). Requires a desktop build
+  # to have populated the FetchContent headers first.
+  generate:ffi_bindings:
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/verify_ffi_bindings.dart --write
+
+  # Regenerates every package's jnigen bindings and fails if the result
+  # differs from what is committed. jnigen resolves its own Android classpath
+  # (via `flutter build apk --config-only` against each package's
+  # android_example), so unlike verify:ffi_bindings this needs no separate
+  # build step, just an Android SDK on PATH. Drift here can also mean the
+  # installed jnigen version moved out from under the checked-in output --
+  # see tools/ci/bin/verify_jni_bindings.dart for why that matters on its own.
+  verify:jni_bindings:
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/verify_jni_bindings.dart
+
+  # Regenerates every package's jnigen bindings unconditionally.
+  generate:jni_bindings:
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/verify_jni_bindings.dart --write
+
+  # Regenerates datadog_session_replay's iOS FFI bridge (a Swift-emitted
+  # bridging header, plus the ffigen bindings and Objective-C shim generated
+  # from it) and fails if the result differs from what is committed. Needs
+  # only a Swift toolchain -- `swift build` resolves its own dependencies and
+  # is expected to fail past header emission (see
+  # tools/ci/bin/verify_ios_ffi_bindings.dart), so no app build is required.
+  verify:ios_ffi_bindings:
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/verify_ios_ffi_bindings.dart
+
+  # Regenerates datadog_session_replay's iOS FFI bridge unconditionally.
+  generate:ios_ffi_bindings:
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/verify_ios_ffi_bindings.dart --write
+
+  integration_test:linux:
+    run: melos integration_test:linux:build && melos verify:ffi_bindings && melos integration_test:linux:tests
+
+  # See integration_test:windows:build -- populates the FetchContent headers for
+  # verify:ffi_bindings, nothing more.
+  integration_test:linux:build:
+    exec:
+      concurrency: 1
+    run: cd example && flutter build linux --debug
+    packageFilters:
+      scope: 'datadog_flutter_plugin_desktop'
+
+  integration_test:linux:tests:
+    run: melos integration_test:linux:main && melos integration_test:linux:other
+
+  # Desktop platforms can't run the whole integration_test directory in one `flutter test`
+  # invocation, so this uses tools/ci/bin/desktop_integration_tests.dart to run each
+  # test file individually, same idea as web's per-file `flutter drive` runner.
+  integration_test:linux:other:
+    exec:
+      concurrency: 1
+    run: |
+      cd example
+      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results --verbose
+    packageFilters:
+      dirExists:
+        - 'example/integration_test'
+        - 'example/linux'
+      ignore:
+        - 'datadog_flutter_plugin'
+
+  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
+  # have a separate target just for it that is called by `integration_test:linux``
+  integration_test:linux:main:
+    exec: |
+      cd integration_test_app
+      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results --verbose
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
@@ -293,18 +470,24 @@ scripts:
       scope: 'datadog_flutter_plugin'
 
   remove_cocoapods:
-    exec: 
+    exec:
       concurrency: 1
     run: |
-      cd example/ios
-      pod deintegrate
-      rm Podfile || true
-      rm Podfile.lock || true
+      for dir in example/ios example/macos integration_test_app/ios integration_test_app/macos; do
+        if [ -d "\$dir" ]; then
+          (cd "\$dir" && pod deintegrate; rm Podfile || true; rm Podfile.lock || true)
+        fi
+      done
     description: |
-      Remove Cocoapods support from examples.  This prevents some build failures when testing
-      spm support. This change is permanent and should not be committed to source control.
+      Remove Cocoapods support from examples and the integration test app. This prevents some
+      build failures when testing spm support. This change is permanent and should not be
+      committed to source control.
     packageFilters:
-      dirExists: 'example/ios'
+      dirExists:
+        - example/ios
+        - example/macos
+        - integration_test_app/ios
+        - integration_test_app/macos
 
   prepare:
     run: melos pub:get && melos generate_env && melos generate_env:e2e
@@ -316,8 +499,13 @@ scripts:
       concurrency: 1
     run: flutter pub get
 
-  pod_update:
-    run: cd example/ios && pod update --repo-update
+  # Deletes the committed Podfile.lock so Flutter's own `pod install` (run as part of
+  # `flutter build`/`flutter test`) resolves git-branch pods (e.g. dd-sdk-ios @ develop) against
+  # their current HEAD instead of a stale pinned commit. A standalone `pod update` here instead
+  # would leave CocoaPods state installed before Flutter's own SPM integration runs, which breaks
+  # resolution of local SPM packages (e.g. FlutterFramework) declared by some plugins.
+  remove_podfile_lock:
+    run: cd example/ios && rm -f Podfile.lock
     exec:
       concurrency: 1
     packageFilters:
@@ -331,31 +519,16 @@ scripts:
       dependsOn: build_runner
   
   generate_env:
-    exec: |
-      echo "Generating .env"
-      tee .env > /dev/null << END
-      # Edit this file with your Datadog client token, environment and application id
-      DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN
-      DD_APPLICATION_ID=$DD_APPLICATION_ID
-      DD_ENV=prod
-      END
+    exec: dart $MELOS_ROOT_PATH/tools/ci/bin/generate_env.dart
     packageFilters:
-      scope: 
+      scope:
         - "*example*"
         - "*integration_test_app*"
 
   generate_env:e2e:
-    exec: |
-      echo "Generating .env"
-      tee .env > /dev/null << END
-      # Edit this file with your Datadog client token, environment and application id
-      DD_CLIENT_TOKEN=$DD_E2E_CLIENT_TOKEN
-      DD_APPLICATION_ID=$DD_E2E_APPLICATION_ID
-      DD_E2E_IS_ON_CI=${IS_ON_CI:-false}
-      DD_ENV=prod
-      END
+    exec: dart $MELOS_ROOT_PATH/tools/ci/bin/generate_env.dart --e2e
     packageFilters:
-      scope: 
+      scope:
         - "*e2e_test_app*"
 
   pin:ios:

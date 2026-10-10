@@ -5,8 +5,16 @@ include: package:lints/recommended.yaml
 
 analyzer:
   errors:
-    # Internal compatibility code remains until the next major release.
+    # Keep the deprecated implementation available until the next major version.
     deprecated_member_use_from_same_package: ignore
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
   language:
     strict-raw-types: true
 

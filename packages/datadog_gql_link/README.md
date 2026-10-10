@@ -31,6 +31,7 @@ and APM traces may be broken. You can ignore your GraphQL endpoint by using the
 ```dart
 final datadogConfig = DatadogConfiguration(
     // Your configuration
+    service: '<SERVICE_NAME>',
   )..enableHttpTracking(
       ignoreUrlPatterns: [
         RegExp('example.com/graphql'),

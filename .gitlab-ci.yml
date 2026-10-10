@@ -2,19 +2,24 @@ include:
   - 'https://gitlab-templates.ddbuild.io/slack-notifier/v3-sdm/template.yml'
 
 variables:
-  CURRENT_CI_IMAGE: "10"
+  CURRENT_CI_IMAGE: "11"
   BUILD_STABLE_REGISTRY: 486234852809.dkr.ecr.us-east-1.amazonaws.com
+  DISTRIBUTION_REGISTRY: registry.ddbuild.io
+  # Linux CI Images
   CI_IMAGE_REPO: "ci/dd-sdk-flutter"
   CI_IMAGE_DOCKER: ${BUILD_STABLE_REGISTRY}/${CI_IMAGE_REPO}:$CURRENT_CI_IMAGE
+  # Windows CI Images
+  CURRENT_WINDOWS_CI_IMAGE: "1"
+  WINDOWS_CI_IMAGE_DOCKER: ${DISTRIBUTION_REGISTRY}/${CI_IMAGE_REPO}:windows-$CURRENT_WINDOWS_CI_IMAGE
   DD_CLIENT_TOKEN: "fake-token"
-  DD_APPLICATION_ID: "fake-application-id"
+  DD_APPLICATION_ID: "00000000-aaaa-0000-aaaa-000000000000"
   IOS_SIMULATOR: "iPhone 17 Pro"
   IOS_SDK: 'iOS-26'
   ANDROID_EMULATOR_SDK: "33"
   IS_ON_CI: $CI
   SLACK_CHANNEL: "#mobile-sdk-ops"
-  FLUTTER_MIN_VERSION: '3.27.0'
-  # Magic Mirror Depot proxy for the Java ecosystem (see
+  FLUTTER_MIN_VERSION: '3.38.0'
+  # Magic Mirror Depot pro for the Java ecosystem (see
   # tools/ci/gradle/init.d/depot-mirror.init.gradle).
   DEPOT_JAVA_MAVEN_URL: "https://depot-read-api-java.us1.ddbuild.io/magicmirror/magicmirror/@current/"
 
@@ -28,7 +33,9 @@ stages:
   - integration-test
   - version-test
   - e2e-test
+  - prepare-release
   - post
+  - release-trigger
   - post-nightly
 
 # Prebuild - install necessary tools
@@ -48,6 +55,7 @@ stages:
     - mkdir -p $CI_PROJECT_DIR/.build/test-results/
     - melos full_clean
     - melos prepare
+    - pushd tools/ci && dart pub get && popd
 
 .pre-web:
   script:
@@ -65,7 +73,12 @@ stages:
     - xcode-select -p
     - xcodebuild -runFirstLaunch
     - xcodebuild -downloadPlatform iOS
-    - pushd tools/ci && dart pub get && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR && popd
+    - pushd tools/ci && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR && popd
+
+.pre-macos:
+  script:
+    - xcode-select -p
+    - xcodebuild -runFirstLaunch
 
 .install-gradle-mirror:
   script:
@@ -106,8 +119,26 @@ ci-image:
   image: "$BUILDENV_REGISTRY/docker:24.0.4-jammy"
   script:
     - DIGEST_FILE=$(mktemp)
-    - docker buildx build --tag registry.ddbuild.io/${CI_IMAGE_REPO}:${CURRENT_CI_IMAGE} --label target=build -f Dockerfile.gitlab --push --metadata-file ${DIGEST_FILE} .
+    - docker buildx build --tag registry.ddbuild.io/${CI_IMAGE_REPO}:${CURRENT_CI_IMAGE} --label target=build -f ci/linux/Dockerfile --push --metadata-file ${DIGEST_FILE} .
     - ddsign sign registry.ddbuild.io/${CI_IMAGE_REPO}:${CURRENT_CI_IMAGE} --docker-metadata-file ${DIGEST_FILE}
+
+ci-image-windows:
+  when: manual
+  stage: ci-image
+  except: [ tags, schedules ]
+  tags: [ "windows-v2:2022" ]
+  id_tokens:
+    CI_IDENTITIES_GITLAB_ID_TOKEN:
+      aud: ci-identities
+  variables:
+    OVERRIDE_GIT_STRATEGY: clone  # Required for Windows runners
+  script:
+    - $ErrorActionPreference = "Stop"
+    - $env:WINDOWS_CI_IMAGE = "${env:DISTRIBUTION_REGISTRY}/${env:CI_IMAGE_REPO}:windows-${env:CURRENT_WINDOWS_CI_IMAGE}"
+    - docker build --tag ${env:WINDOWS_CI_IMAGE} --label target=build ./ci/windows
+    - If ($LASTEXITCODE -ne "0") { throw "docker build returned $LASTEXITCODE" }
+    - docker push ${env:WINDOWS_CI_IMAGE}
+    - If ($LASTEXITCODE -ne "0") { throw "docker push returned $LASTEXITCODE" }
 
 # Build (And Analyze) Stage
 
@@ -119,19 +150,14 @@ build-flutter:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
     - !reference [.pre, script]
+    - pushd tools/releaser && dart pub get && dart test && popd
     - melos dartfmt_check
     - melos run analyze:dart
     - melos run unit_test:flutter
-    - python3 tools/ci/run_openfeature_contract.py --platform vm
-    - python3 tools/ci/check_openfeature_dependency.py --require-hosted
-    - python3 -m unittest discover -s tools/ci -p test_openfeature_ci.py
-    - (cd tools/releaser && dart pub get && dart test test/yaml_util_test.dart)
     - melos run golden_test:flutter
   artifacts:
     when: always
     expire_in: "30 days"
-    paths:
-      - .build/openfeature-evidence/
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
@@ -146,6 +172,8 @@ build-android:
     - melos run analyze:android
     - melos run build:android
     - melos run unit_test:android
+    - melos run verify:jni_bindings
+    
   artifacts:
     when: always
     expire_in: "30 days"
@@ -168,6 +196,25 @@ build-ios-spm:
     - melos run build:ios
     - melos run unit_test:ios
 
+# dd-sdk-ios's CocoaPods podspecs don't declare macOS support (SPM-only for now), so
+# macOS can only build via Swift Package Manager until that's fixed upstream.
+build-macos-spm:
+  stage: build
+  except: [ schedules ]
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  tags:
+    - macos:sequoia
+    - specific:true
+  script:
+    - !reference [.pre, script]
+    - !reference [.pre-macos, script]
+    - flutter config --enable-swift-package-manager
+    - melos remove_cocoapods
+    - melos pub:get
+    - melos run build:macos
+    - melos run unit_test:macos
+
 build-ios:
   extends: .tart-runner
   stage: build
@@ -179,10 +226,11 @@ build-ios:
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
-    - melos pod_update --no-select
+    - melos remove_podfile_lock --no-select
     - melos run analyze:ios
     - melos run build:ios
     - melos run unit_test:ios
+    - melos run verify:ios_ffi_bindings
 
 build-web:
   stage: build
@@ -193,16 +241,52 @@ build-web:
   script:
     - !reference [.pre, script]
     - !reference [.pre-web, script]
-    - melos run compile:openfeature-web
     - melos run build:web
     - melos run unit_test:web
     - melos run unit_test:openfeature-web
-    - python3 tools/ci/run_openfeature_contract.py --platform chrome
   artifacts:
     when: always
     expire_in: "30 days"
-    paths:
-      - .build/openfeature-evidence/
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+build-linux:
+  stage: build
+  except: [ schedules ]
+  image: $CI_IMAGE_DOCKER
+  tags: [ "arch:amd64" ]
+  script:
+    - !reference [.pre, script]
+    - melos run build:linux
+    - melos run unit_test:linux
+    - melos run verify:ffi_bindings
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+# Windows shell-executor runners don't support the `image:` keyword, so unlike the
+# Linux jobs (build-android/build-web), the toolchain image has to be run explicitly
+# via `docker run` on the bare host.
+build-windows:
+  stage: build
+  except: [ schedules ]
+  tags: [ "windows-v2:2022" ]
+  variables:
+    OVERRIDE_GIT_STRATEGY: clone  # Required for Windows runners
+  script:
+    - $ErrorActionPreference = "Stop"
+    - >
+      docker run --rm
+      -v "$(Get-Location):C:\mnt"
+      -w C:\mnt
+      ${env:WINDOWS_CI_IMAGE_DOCKER}
+      powershell -File C:\mnt\ci\windows\ci-build.ps1
+    - If ($LASTEXITCODE -ne "0") { throw "docker run (build) returned $LASTEXITCODE" }
+  artifacts:
+    when: always
+    expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
@@ -222,7 +306,6 @@ android-integration-test:
     - !reference [.pre-android, script]
     - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform android --sdk $ANDROID_EMULATOR_SDK
     - melos run integration_test:android
-    - python3 "$CI_PROJECT_DIR/tools/ci/test_openfeature_example.py" --platform android
   artifacts:
     when: always
     expire_in: "30 days"
@@ -230,7 +313,6 @@ android-integration-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
-      - .build/openfeature-example-android.log
 
 ios-integration-test:
   extends: .tart-runner
@@ -244,14 +326,33 @@ ios-integration-test:
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
-    - melos pod_update --no-select
+    - melos remove_podfile_lock --no-select
     - melos run integration_test:ios
-    - python3 "$CI_PROJECT_DIR/tools/ci/test_openfeature_example.py" --platform ios
   artifacts:
     when: always
     expire_in: "30 days"
-    paths:
-      - .build/openfeature-example-ios.log
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+macos-integration-test:
+  stage: integration-test
+  except: [ schedules ]
+  needs: [ build-macos-spm ]
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  tags:
+    - macos:sequoia
+    - specific:true
+  script:
+    - !reference [.pre, script]
+    - !reference [.pre-macos, script]
+    - flutter config --enable-swift-package-manager
+    - melos remove_cocoapods
+    - melos pub:get
+    - melos run integration_test:macos
+  artifacts:
+    when: always
+    expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
@@ -267,6 +368,177 @@ web-integration-test:
     - !reference [.pre-web, script]
     - ./tools/ci/.tmp/chromedriver-linux64/chromedriver --port=4444 &
     - melos run integration_test:web
+
+linux-integration-test:
+  stage: integration-test
+  except: [ schedules ]
+  needs: [ build-linux ]
+  image: $CI_IMAGE_DOCKER
+  tags:
+    [ "arch:amd64" ]
+  script:
+    - !reference [.pre, script]
+    - xvfb-run -a dbus-run-session -- melos run integration_test:linux
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+# Windows integration tests require an AMI that can run UI, which is currently unavailable.
+# Add this back if CIEXE-2284 is solved.
+# 
+# windows-integration-test:
+#   stage: integration-test
+#   except: [ schedules ]
+#   needs: [ build-windows ]
+#   tags: [ "windows-v2:2022" ]
+#   variables:
+#     OVERRIDE_GIT_STRATEGY: clone  # Required for Windows runners
+#   script:
+#     - $ErrorActionPreference = "Stop"
+#     - >
+#       docker run --rm
+#       -v "$(Get-Location):C:\mnt"
+#       -w C:\mnt
+#       ${env:WINDOWS_CI_IMAGE_DOCKER}
+#       powershell -File C:\mnt\ci\windows\ci-integration-test.ps1 -DdClientToken ${env:DD_CLIENT_TOKEN} -DdApplicationId ${env:DD_APPLICATION_ID}
+#     - If ($LASTEXITCODE -ne "0") { throw "docker run (integration test) returned $LASTEXITCODE" }
+#   artifacts:
+#     when: always
+#     expire_in: "30 days"
+#     reports:
+#       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+# Release
+#
+# Manual job only -- never runs automatically off a plain branch push. The three
+# `rules:` clauses below are the mainline/patch/pre-release trigger contexts;
+# each sets RELEASE_TRIGGER so the script passes the right --trigger value
+# instead of relying on prepare_release.dart's own branch auto-detection
+# (which doesn't know about the pre-release whitelist).
+#
+# Pre-release branches are a manually-maintained whitelist here, not a
+# pattern match -- add/remove an `if:` clause per active effort (see `v4`
+# below). Keep in sync with .github/chainguard/self.prepare-release.sts.yaml's
+# subject_pattern, which grants this job's GitHub token and is scoped to the
+# same branch set.
+prepare-release:
+  stage: prepare-release
+  rules:
+    # push-only: matches self.prepare-release.sts.yaml's trust policy.
+    # allow_failure: true: `when: manual` under `rules:` defaults to
+    # blocking, which would hold up `post`/`post-nightly` on every push.
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      allow_failure: true
+      variables:
+        RELEASE_TRIGGER: "mainline"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/.+\/v\d+\.\d+\.x$/'
+      when: manual
+      allow_failure: true
+      variables:
+        RELEASE_TRIGGER: "patch"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "v4"' # pre-release whitelist -- see comment above
+      when: manual
+      allow_failure: true
+      variables:
+        RELEASE_TRIGGER: "prerelease"
+  variables:
+    # Full history + tags -- release planning walks back to old release
+    # tags, which a shallow clone may not have.
+    GIT_DEPTH: "0"
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+    PACKAGES: ""
+    IOS_SDK_VERSION: ""
+    ANDROID_SDK_VERSION: ""
+    CPP_VERSION: ""
+    BUMP_TYPE: ""
+    PRERELEASE_LABEL: ""
+  id_tokens:
+    DDOCTOSTS_ID_TOKEN:
+      aud: dd-octo-sts
+  tags:
+    - macos:sequoia
+    - specific:true
+  before_script:
+    # We need a short-lived GitHub token to push commits and open PRs; see
+    # .github/chainguard/self.prepare-release.sts.yaml.
+    - dd-octo-sts --disable-tracing debug --scope DataDog/dd-sdk-flutter --policy self.prepare-release
+    - dd-octo-sts --disable-tracing token --scope DataDog/dd-sdk-flutter --policy self.prepare-release > /tmp/gh-token.txt
+  script:
+    - !reference [.pre, script]
+    # Runner checks out $CI_COMMIT_SHA detached; prepare_release.dart needs
+    # a real branch checkout. -B (not plain checkout) resets the branch to
+    # $CI_COMMIT_SHA even if this runner is reused and already has a local
+    # ref for it from a prior run.
+    - git checkout -B "$CI_COMMIT_BRANCH" "$CI_COMMIT_SHA"
+    # The `gh` CLI (github_cmd_wrapper.dart) picks up GITHUB_TOKEN automatically;
+    # for `git` push/PR-base operations we point origin at GitHub using the same
+    # token, and configure the dd-octo-sts bot identity for the release commits.
+    - export GITHUB_TOKEN=$(cat /tmp/gh-token.txt)
+    - git config user.name "dd-octo-sts[bot]"
+    - git config user.email "200755185+dd-octo-sts[bot]@users.noreply.github.com"
+    - git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/DataDog/dd-sdk-flutter.git"
+    # This repo requires signed commits (see CONTRIBUTING.md), so the
+    # release-prep commits need commit-headless too.
+    - commit-headless version
+    # AI Gateway token for LLM changelog generation, via authanywhere;
+    # ai_gateway.dart reads this env var directly (see
+    # HttpAiGatewayClient.fromEnvironment).
+    - export AI_GATEWAY_TOKEN=$(authanywhere --audience rapid-ai-platform --raw --dc us1.ddbuild.io)
+    - pushd tools/releaser && dart pub get && popd
+    - >
+      dart run tools/releaser/bin/prepare_release.dart
+      --repo-root=$CI_PROJECT_DIR
+      --trigger=$RELEASE_TRIGGER
+      ${PACKAGES:+"--packages=$PACKAGES"}
+      ${BUMP_TYPE:+"--bump-type=$BUMP_TYPE"}
+      ${IOS_SDK_VERSION:+"--ios-sdk-version=$IOS_SDK_VERSION"}
+      ${ANDROID_SDK_VERSION:+"--android-sdk-version=$ANDROID_SDK_VERSION"}
+      ${CPP_VERSION:+"--cpp-version=$CPP_VERSION"}
+      ${PRERELEASE_LABEL:+"--prerelease-label=$PRERELEASE_LABEL"}
+  after_script:
+    # Revoke the dd-octo-sts-provided GitHub token unconditionally once finished.
+    - dd-octo-sts --disable-tracing revoke --token "$(cat /tmp/gh-token.txt)"
+
+# Phase 2 trigger
+#
+# Pushes the `release-trigger/*` tag that GitHub Actions' publish-release.yml
+# watches for -- only after this exact commit's pipeline has already
+# succeeded 
+#
+# Pre-release `-main` branches are a manually-maintained whitelist, same discipline as 
+# prepare-release's `v4` whitelist above. 
+push-release-trigger-tag:
+  stage: release-trigger
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "v4-main" || $CI_COMMIT_BRANCH =~ /^release\/.+\/v\d+\.\d+\.x$/)'
+      changes:
+        - ".release/manifest.json"
+  # Same runner as prepare-release as 
+  # dd-octo-sts/git/gh all need to be present
+  tags:
+    - macos:sequoia
+    - specific:true
+  id_tokens:
+    DDOCTOSTS_ID_TOKEN:
+      aud: dd-octo-sts
+  before_script:
+    # Narrower scope than prepare-release's policy -- tag-push only, never
+    # PR/branch. See .github/chainguard/self.tag-push.sts.yaml.
+    - dd-octo-sts --disable-tracing debug --scope DataDog/dd-sdk-flutter --policy self.tag-push
+    - dd-octo-sts --disable-tracing token --scope DataDog/dd-sdk-flutter --policy self.tag-push > /tmp/gh-token.txt
+  script:
+    - export GITHUB_TOKEN=$(cat /tmp/gh-token.txt)
+    - git config user.name "dd-octo-sts[bot]"
+    - git config user.email "200755185+dd-octo-sts[bot]@users.noreply.github.com"
+    - git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/DataDog/dd-sdk-flutter.git"
+    - TAG_NAME="release-trigger/$(date -u +%Y-%m-%d)-${CI_COMMIT_SHORT_SHA}"
+    - git tag -a -m "$TAG_NAME" "$TAG_NAME" "$CI_COMMIT_SHA"
+    - git push origin "$TAG_NAME"
+  after_script:
+    - dd-octo-sts --disable-tracing revoke --token "$(cat /tmp/gh-token.txt)"
 
 # Notify
 
@@ -358,7 +630,7 @@ nightly-beta-test:
     - pod repo update
     - flutter doctor
     - fvm exec melos pub:get
-    - fvm exec melos pod_update --no-select
+    - fvm exec melos remove_podfile_lock --no-select
     - fvm exec melos run analyze
     - fvm exec melos run build
     - fvm exec melos run unit_test:flutter
@@ -391,12 +663,9 @@ nightly-beta-test-web:
     - melos run build:web
     - melos run unit_test:web
     - melos run unit_test:openfeature-web
-    - python3 tools/ci/run_openfeature_contract.py --platform chrome
   artifacts:
     when: always
     expire_in: "30 days"
-    paths:
-      - .build/openfeature-evidence/
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
@@ -409,7 +678,7 @@ nightly-ios:
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
-    - melos pod_update --no-select
+    - melos remove_podfile_lock --no-select
     - melos run e2e_tests:ios
   artifacts:
     when: always
@@ -434,20 +703,22 @@ nightly-android:
     paths:
       - tools/ci/logcat.txt
 
-# Validate the advertised Dart floor independently of the Flutter SDK image.
-openfeature-dart-minimum:
+# Verify the published Dart floor with the repository's Flutter version manager.
+openfeature-min-version-test:
+  extends: .tart-runner
   stage: build
-  image: $CI_IMAGE_DOCKER
-  tags: ["arch:amd64"]
+  except: [schedules]
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - mkdir -p .build/dart-minimum
-    - curl --fail --location --retry 3 https://storage.googleapis.com/dart-archive/channels/stable/release/3.10.0/sdk/dartsdk-linux-x64-release.zip -o .build/dart-minimum/sdk.zip
-    - unzip -q .build/dart-minimum/sdk.zip -d .build/dart-minimum
-    - export PATH="$CI_PROJECT_DIR/.build/dart-minimum/dart-sdk/bin:$PATH"
-    - python3 tools/ci/check_openfeature_dependency.py --require-hosted
-    - python3 -m unittest discover -s tools/ci -p test_openfeature_ci.py
+    - !reference [.pre, script]
+    - fvm install $FLUTTER_MIN_VERSION
+    - fvm use $FLUTTER_MIN_VERSION
     - cd packages/datadog_flags
-    - dart --version
-    - dart pub get
-    - dart analyze .
-    - dart test --reporter expanded
+    - fvm exec dart pub get
+    - fvm exec dart analyze .
+    - fvm exec dart test
+    - cd ../../tools/openfeature_conformance
+    - fvm exec dart pub get
+    - fvm exec dart analyze .
+    - fvm exec dart test

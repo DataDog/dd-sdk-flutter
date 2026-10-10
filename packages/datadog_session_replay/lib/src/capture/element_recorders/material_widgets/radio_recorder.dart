@@ -51,18 +51,33 @@ class RadioRecorder implements ElementRecorder {
     final ThemeData theme = Theme.of(element);
 
     // Build the widget state set to drive theme resolution.
-    final Set<WidgetState> states =
-        getState(element: element, widget: widget, isMasked: isMasked);
+    final Set<WidgetState> states = getState(
+      element: element,
+      widget: widget,
+      isMasked: isMasked,
+    );
 
-    final Color backgroundColor =
-        _getBackgroundColor(widget: widget, states: states, theme: theme);
-    final Color fillColor =
-        _getFillColor(widget: widget, states: states, theme: theme);
+    final Color backgroundColor = _getBackgroundColor(
+      widget: widget,
+      states: states,
+      theme: theme,
+    );
+    final Color fillColor = _getFillColor(
+      widget: widget,
+      states: states,
+      theme: theme,
+    );
     final BorderSide borderSide = _getBorderSide(
-        widget: widget, states: states, theme: theme, fillColor: fillColor);
-    final double innerRadius =
-        _getInnerRadius(widget: widget, states: states, theme: theme)
-            .clamp(0.0, _outerRadius);
+      widget: widget,
+      states: states,
+      theme: theme,
+      fillColor: fillColor,
+    );
+    final double innerRadius = _getInnerRadius(
+      widget: widget,
+      states: states,
+      theme: theme,
+    ).clamp(0.0, _outerRadius);
 
     final double outerRadioVisualSize =
         _outerRadius + borderSide.width * (borderSide.strokeAlign + 1.0) / 2.0;
@@ -80,13 +95,19 @@ class RadioRecorder implements ElementRecorder {
     );
 
     final double dotRadius = getRadius(
-        attributes: attributes, radius: innerRadius * attributes.scaleX);
+      attributes: attributes,
+      radius: innerRadius * attributes.scaleX,
+    );
 
     // WireFrame keys
-    final backgroundWireframeKey =
-        keyGenerator.keyForElement(element, wireframeId: 0);
-    final foregroundWireframeKey =
-        keyGenerator.keyForElement(element, wireframeId: 1);
+    final backgroundWireframeKey = keyGenerator.keyForElement(
+      element,
+      wireframeId: 0,
+    );
+    final foregroundWireframeKey = keyGenerator.keyForElement(
+      element,
+      wireframeId: 1,
+    );
 
     final node = RadioNode(
       attributes,
@@ -126,9 +147,7 @@ class RadioRecorder implements ElementRecorder {
       // ignore: deprecated_member_use
       hasCallbacks = widget.onChanged != null || widget.groupRegistry != null;
     } else {
-      return <WidgetState>{
-        WidgetState.disabled,
-      };
+      return <WidgetState>{WidgetState.disabled};
     }
 
     bool? resolvedEnabled = enabled ?? (hasCallbacks ? true : null);
@@ -167,16 +186,18 @@ class RadioRecorder implements ElementRecorder {
         (states.contains(WidgetState.selected) ? widget.activeColor : null) ??
         theme.radioTheme.fillColor?.resolve(states) ??
         switch (theme.useMaterial3) {
-          false => states.contains(WidgetState.disabled)
-              ? theme.disabledColor
-              : states.contains(WidgetState.selected)
-                  ? theme.colorScheme.secondary
-                  : theme.unselectedWidgetColor,
-          true => states.contains(WidgetState.disabled)
-              ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
-              : states.contains(WidgetState.selected)
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
+          false =>
+            states.contains(WidgetState.disabled)
+                ? theme.disabledColor
+                : states.contains(WidgetState.selected)
+                ? theme.colorScheme.secondary
+                : theme.unselectedWidgetColor,
+          true =>
+            states.contains(WidgetState.disabled)
+                ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
+                : states.contains(WidgetState.selected)
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurfaceVariant,
         };
   }
 
@@ -281,7 +302,9 @@ class RadioNode extends CaptureNode {
         width: attributes.width,
         height: attributes.height,
         border: SRShapeBorder(
-            color: side.color.toHexString(), width: side.width.safeRound()),
+          color: side.color.toHexString(),
+          width: side.width.safeRound(),
+        ),
         shapeStyle: SRShapeStyle(
           cornerRadius: attributes.height / 2.0,
           backgroundColor: backgroundColor.toHexString(),

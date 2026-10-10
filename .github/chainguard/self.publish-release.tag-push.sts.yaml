@@ -1,0 +1,24 @@
+# Trust policy allowing dd-octo-sts-action to grant publish-release.yml a
+# short-lived GitHub token. publish-release.yml pushes each package's
+# `<package>/v<version>` tag using this token specifically because the
+# default GITHUB_TOKEN is blocked from triggering other workflow runs
+# (publish-package.yml's own tag trigger) -- a token minted here is a real
+# GitHub App installation token, which isn't subject to that restriction.
+#
+# Scoped to publish-release.yml runs triggered by pushing a
+# `release-trigger/*` tag -- the same trigger publish-release.yml itself
+# listens for.
+#
+issuer: https://token.actions.githubusercontent.com
+
+subject_pattern: "repo:DataDog/dd-sdk-flutter:ref:refs/tags/release-trigger/.+"
+
+claim_pattern:
+  event_name: "push"
+  workflow_ref: 'DataDog/dd-sdk-flutter/\.github/workflows/publish-release\.yml@.+'
+  ref: "refs/tags/release-trigger/.+"
+  repository: "DataDog/dd-sdk-flutter"
+
+# Tag-push only.
+permissions:
+  contents: write

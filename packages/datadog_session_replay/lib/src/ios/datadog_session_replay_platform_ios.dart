@@ -8,6 +8,7 @@ import 'dart:ffi' as ffi;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:objective_c/objective_c.dart';
+import 'package:objective_c/objective_c.dart' as objc;
 
 import '../../datadog_session_replay.dart';
 import '../datadog_session_replay_platform_interface.dart';
@@ -29,8 +30,8 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
     _iosBridge = FlutterSessionReplay();
   }
 
-  DatadogSessionReplayPlatformIos.fromObjCRef(ObjCObjectBase ref)
-      : _iosBridge = FlutterSessionReplay.castFrom(ref);
+  DatadogSessionReplayPlatformIos.fromObjCRef(ObjCObject ref)
+    : _iosBridge = FlutterSessionReplay.as(ref);
 
   @override
   Object? get isolateToken => _iosBridge;
@@ -58,25 +59,19 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
 
     final contextChangedListener =
         ObjCBlock_ffiVoid_FlutterRUMCoreContext.listener((context) {
-      // A nil context means there is no sampled RUM session. Forward it as a
-      // context without a session (as Android does) so replay stops instead
-      // of continuing against the previous session.
-      onContextChanged(
-        context == null
-            ? const RUMContext(applicationId: '', sessionId: '')
-            : RUMContext(
-                applicationId: context.applicationID.toDartString(),
-                sessionId: context.sessionID.toDartString(),
-                viewId: context.viewID?.toDartString(),
-              ),
-      );
-    });
+          RUMContext? dartContext;
+          if (context != null) {
+            dartContext = RUMContext(
+              applicationId: context.applicationID.toDartString(),
+              sessionId: context.sessionID.toDartString(),
+              viewId: context.viewID?.toDartString(),
+            );
+            onContextChanged(dartContext);
+          }
+        });
 
     final iOsConfiguration = FlutterSessionReplayConfiguration.alloc()
-      ..initWithCustomEndpoint(
-        url,
-        onContextChanged: contextChangedListener,
-      );
+      ..initWithCustomEndpoint(url, onContextChanged: contextChangedListener);
     _iosBridge.enableWith(iOsConfiguration);
 
     // Tell the bridge which path its segments take. Embedded records go to the native
@@ -90,8 +85,12 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
     // never sees the bridge — this call is what pairs them, which is both how the engine's
     // Dart context callback gets released on detach and how the bridge reaches the messenger
     // it resolves slotIds through. Segments captured before it lands are buffered natively.
-    unawaited(_engineChannel.invokeMethod<void>(
-        'registerEngine', _iosBridge.engineToken.toDartString()));
+    unawaited(
+      _engineChannel.invokeMethod<void>(
+        'registerEngine',
+        _iosBridge.engineToken.toDartString(),
+      ),
+    );
 
     return true;
   }
@@ -166,21 +165,22 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
       byteData.buffer.asUint8List().address.cast(),
       byteData.lengthInBytes,
     );
-    return NSData.castFromPointer(ret, retain: true, release: true);
+    return NSData.fromPointer(ret, retain: true, release: true);
   }
 }
 
 @ffi.Native<
-    ffi.Pointer<ObjCObject> Function(
-      ffi.Pointer<ObjCObject>,
-      ffi.Pointer<ObjCSelector>,
-      ffi.Pointer<ffi.Void>,
-      ffi.UnsignedLong,
-    )>(symbol: 'objc_msgSend', isLeaf: true)
+  ffi.Pointer<objc.ObjCObjectImpl> Function(
+    ffi.Pointer<objc.ObjCObjectImpl>,
+    ffi.Pointer<objc.ObjCSelector>,
+    ffi.Pointer<ffi.Void>,
+    ffi.UnsignedLong,
+  )
+>(symbol: 'objc_msgSend', isLeaf: true)
 // ignore: non_constant_identifier_names
-external ffi.Pointer<ObjCObject> objc_msgSend_3nbx5e(
-  ffi.Pointer<ObjCObject> object,
-  ffi.Pointer<ObjCSelector> selector,
+external ffi.Pointer<objc.ObjCObjectImpl> objc_msgSend_3nbx5e(
+  ffi.Pointer<objc.ObjCObjectImpl> object,
+  ffi.Pointer<objc.ObjCSelector> selector,
   ffi.Pointer<ffi.Void> a,
   int b,
 );

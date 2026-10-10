@@ -6,38 +6,18 @@
 #
 
 ########
-# This script is being moved to `melos.yaml`. Use `melos generate_env` instead.
+# .env generation for package examples has moved to `melos.yaml` (`melos generate_env`).
+# This script now only generates config for examples/native-hybrid-app and examples/simple_example
 ########
 
 set echo off
 
-dotEnvFiles=(
-  "packages/datadog_flutter_plugin/example/.env"
-  "packages/datadog_flutter_plugin/integration_test_app/.env"
-  "packages/datadog_tracking_http_client/example/.env"
-  "packages/datadog_webview_tracking/example/.env"
-  "examples/simple_example/.env"
-  "examples/session_replay_example/.env"
-  "test_apps/stress_test/.env"
-)
-
-for f in ${dotEnvFiles[@]}; do
-  echo "Generating $f"
-  tee $f > /dev/null << END
+pushd exmaples/simple_example
+tee .env > /dev/null << END
 # Edit this file with your Datadog client token, environment and application id
 DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN
 DD_APPLICATION_ID=$DD_APPLICATION_ID
 DD_ENV=prod
-END
-done
-
-flagsTargetingAttributesJson=${FLAGS_TARGETING_ATTRIBUTES_JSON:-'{"attr1":"value1","companyId":"1"}'}
-flagDotEnvFiles=(
-  "examples/simple_example/.env"
-)
-
-for f in ${flagDotEnvFiles[@]}; do
-  tee -a $f > /dev/null << END
 
 # Optional Datadog Flags example settings.
 DD_SITE=${DD_SITE:-us1}
@@ -50,18 +30,7 @@ FLAGS_DOUBLE_KEYS=${FLAGS_DOUBLE_KEYS:-checkout.ratio}
 FLAGS_OBJECT_KEYS=${FLAGS_OBJECT_KEYS:-checkout.config}
 END
 done
-
-e2eDotEnvFiles=(
-  "packages/datadog_flutter_plugin/e2e_test_app/.env"
-)
-
-for f in ${e2eDotEnvFiles[@]}; do
-  tee $f > /dev/null << END
-DD_CLIENT_TOKEN=$DD_E2E_CLIENT_TOKEN
-DD_APPLICATION_ID=$DD_E2E_APPLICATION_ID
-DD_E2E_IS_ON_CI=${IS_ON_CI:-false}
-END
-done 
+popd
 
 pushd examples/native-hybrid-app/android/app/src/main/res/
 mkdir raw

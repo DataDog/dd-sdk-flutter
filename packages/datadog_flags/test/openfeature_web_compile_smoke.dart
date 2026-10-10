@@ -5,6 +5,9 @@
 
 import 'package:datadog_flags/datadog_flags.dart';
 
+// Compile with `dart compile js test/openfeature_web_compile_smoke.dart`.
+// This checks that the public provider can compile without the test runner.
+// Browser unit tests cover runtime behavior; this is an optional build probe.
 void main() {
   final provider = DatadogOpenFeatureProvider(
     configuration: const DatadogFlagsConfiguration(

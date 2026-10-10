@@ -5,8 +5,11 @@
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Map<String, dynamic> _view(int documentVersion, Map<String, dynamic> view,
-    {Map<String, dynamic>? context}) {
+Map<String, dynamic> _view(
+  int documentVersion,
+  Map<String, dynamic> view, {
+  Map<String, dynamic>? context,
+}) {
   return {
     'type': 'view',
     'date': 1000,
@@ -14,28 +17,22 @@ Map<String, dynamic> _view(int documentVersion, Map<String, dynamic> view,
     '_dd': {'document_version': documentVersion},
     'session': {'id': 'session-id'},
     'context': context ?? {},
-    'view': {
-      'id': 'view-id',
-      'name': 'ViewName',
-      'url': 'ViewName',
-      ...view,
-    },
+    'view': {'id': 'view-id', 'name': 'ViewName', 'url': 'ViewName', ...view},
   };
 }
 
-Map<String, dynamic> _viewUpdate(int documentVersion, Map<String, dynamic> view,
-    {Map<String, dynamic>? context}) {
+Map<String, dynamic> _viewUpdate(
+  int documentVersion,
+  Map<String, dynamic> view, {
+  Map<String, dynamic>? context,
+}) {
   return {
     'type': 'view_update',
     'date': 1000,
     '_dd': {'document_version': documentVersion},
     'session': {'id': 'session-id'},
     if (context != null) 'context': context,
-    'view': {
-      'id': 'view-id',
-      'url': 'ViewName',
-      ...view,
-    },
+    'view': {'id': 'view-id', 'url': 'ViewName', ...view},
   };
 }
 
@@ -61,10 +58,11 @@ void main() {
       }),
     ].map(RumEventDecoder.new).toList();
 
-    final session = RumSessionDecoder.fromEvents(events);
+    final sessions = RumSessionDecoder.fromEvents(events);
 
-    expect(session.visits.length, 1);
-    final visit = session.visits[0];
+    expect(sessions.length, 1);
+    expect(sessions[0].visits.length, 1);
+    final visit = sessions[0].visits[0];
     expect(visit.name, 'ViewName');
     expect(visit.viewEvents.length, 3);
 
@@ -75,8 +73,10 @@ void main() {
     expect(last.view.errorCount, 1);
     expect(last.view.isActive, isFalse);
     expect(last.timeSpent, 300);
-    expect(last.rumEvent['view']['accessibility'],
-        {'bold_text_enabled': true, 'rtl_enabled': false});
+    expect(last.rumEvent['view']['accessibility'], {
+      'bold_text_enabled': true,
+      'rtl_enabled': false,
+    });
   });
 
   test('view_update replaces non-view fields wholesale', () {
@@ -85,9 +85,9 @@ void main() {
       _viewUpdate(2, {'time_spent': 200}, context: {'a': 1}),
     ].map(RumEventDecoder.new).toList();
 
-    final session = RumSessionDecoder.fromEvents(events);
+    final sessions = RumSessionDecoder.fromEvents(events);
 
-    expect(session.visits[0].viewEvents.last.context, {'a': 1});
+    expect(sessions[0].visits[0].viewEvents.last.context, {'a': 1});
   });
 
   test('view_update without a baseline view is ignored', () {
@@ -95,8 +95,8 @@ void main() {
       _viewUpdate(2, {'time_spent': 200}),
     ].map(RumEventDecoder.new).toList();
 
-    final session = RumSessionDecoder.fromEvents(events);
+    final sessions = RumSessionDecoder.fromEvents(events);
 
-    expect(session.visits, isEmpty);
+    expect(sessions, isEmpty);
   });
 }

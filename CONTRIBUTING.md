@@ -119,30 +119,3 @@ There are three types of tests in this repo
 
 Any new PR must at least include unit tests, and hopefully include changes to
 (or new tests) in the corresponding integration tests.
-
-## `develop` and `main`
-
-Development in this repo occurs on the `develop` branch. The `develop` branch
-works off of the latest code from most of the native repos (`dd-sdk-ios`, 
-`dd-sdk-android`, and `dd-sdk-cpp`) so that we can catch potential incompatibilities
-with those SDKs in real time.
-
-When any package is released, `develop` is merged to `main` and all of the native
-SDKs are pinned to the currently supported native releases.  For this reason, `main` 
-should be "Forward Only", as we do not want to bring these pins back into `develop`.
-You should not, nor should you need to, merge changes from `main` back into `develop` 
-or any development branch.
-
-## Trunk based development and patch releases
-
-This repo mostly follows a "trunk based development" style, with `develop` being the
-trunk. Minor releases are all released from `develop` and any patches and changes
-should be created and merged on `develop`.
-
-Previously, the repo put all releases on a long lived `release/` branchs, though this
-practice is being deprecated. `release/` branches should only be created when a release
-line is needed for a patch release,  such as a `release/3.6.x` line.
-
-If a change is needed for a patch release, that change should **first be made on `develop`**,
-then cherry-picked into it's release line branch. The patch release can then be made from
-this release line branch, and the changelog change cherry picked back into `develop`.

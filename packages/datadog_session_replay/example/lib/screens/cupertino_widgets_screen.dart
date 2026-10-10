@@ -128,6 +128,11 @@ class _WidgetDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(children: [Expanded(child: Text(name)), builder(context)]);
+    return Row(
+      children: [
+        Expanded(child: Text(name)),
+        builder(context),
+      ],
+    );
   }
 }

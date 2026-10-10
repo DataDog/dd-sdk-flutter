@@ -9,6 +9,13 @@ analyzer:
     deprecated_member_use_from_same_package: ignore
   exclude:
     - "**/*.mocks.dart"
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
   language:
     strict-raw-types: true
 

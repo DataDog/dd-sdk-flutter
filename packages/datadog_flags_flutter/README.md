@@ -4,15 +4,14 @@ Use OpenFeature to evaluate Datadog feature flags in Flutter applications.
 `datadog_flags` supplies `DatadogOpenFeatureProvider`. This package supplies
 `DatadogRumHook` to associate successful evaluations with the active RUM view.
 
-This integration requires Dart 3.10 and Flutter 3.38 or later.
+This integration requires Flutter 3.38 or later.
 It uses the published OpenFeature `0.0.1` dependency described in the
-[core package](../datadog_flags/). Release `datadog_flags` 1.2.0 first, then
-validate and publish this package through the normal release process.
+[core package](../datadog_flags/).
 
 ## OpenFeature with RUM
 
 Initialize the Datadog Flutter SDK for RUM, Logs, and Traces. Then configure the
-OpenFeature provider and add the RUM hook once:
+OpenFeature provider and add the RUM hook one time:
 
 ```dart
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
@@ -21,6 +20,7 @@ import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 await DatadogSdk.instance.initialize(
   DatadogConfiguration(
+    service: 'my-flutter-app',
     clientToken: '<CLIENT_TOKEN>',
     env: 'production',
     site: DatadogSite.us1,
@@ -44,17 +44,19 @@ try {
     ),
   ));
 } on OpenFeatureException {
-  // Use cached assignments or defaults while initial loading can recover.
+  // Continue with cached assignments or defaults. Initial loading can still succeed later.
 }
 final enabled = client.getBooleanValue('checkout.enabled', false);
 ```
 
-The hook records the variant when available, otherwise the evaluated value.
-It skips evaluation errors. The provider handles Datadog exposure and evaluation
-telemetry separately. It does not implement the OpenFeature tracking API.
+The hook adds the variant to the active RUM view, or the evaluated value if no
+variant is available. It skips evaluations that return errors. The provider
+handles Datadog exposure and evaluation telemetry separately. It does not
+implement the OpenFeature tracking API.
 
-Use `DatadogRumHook(sdk: instance)` when the application supplies a Datadog SDK
-instance. Without RUM, use the core provider without this hook.
+If you create your own `DatadogSdk` instance, pass it with
+`DatadogRumHook(sdk: instance)`. If you do not use RUM, use the provider from
+`datadog_flags` without this hook.
 
 ## Legacy API migration
 
@@ -76,14 +78,15 @@ that resolves after shutdown is released without initialization or subscription.
 
 - [`example`](example/) shows OpenFeature evaluation with the RUM hook.
 - [`simple_example`](../../examples/simple_example/) includes refresh, typed
-  values, lifecycle events, and Android/iOS integration tests.
+  values, and lifecycle events.
+- The SDK integration test app covers OpenFeature on Android and iOS.
 
 Flutter RUM requires the main isolate. For background evaluation, initialize a
 separate pure-Dart OpenFeature provider in that isolate.
 
 ## Contributing
 
-See [CONTRIBUTING.md](../../CONTRIBUTING.md). Licensed under [Apache 2.0](LICENSE).
+See the [contributing guide](../../CONTRIBUTING.md). Licensed under [Apache 2.0](LICENSE).
 
 ## Cached Evaluation Reasons
 

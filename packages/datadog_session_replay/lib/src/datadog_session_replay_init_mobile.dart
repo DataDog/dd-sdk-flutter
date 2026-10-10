@@ -14,7 +14,7 @@ import 'ios/datadog_session_replay_platform_ios.dart';
 void initSessionReplayPlatform() {
   if (Platform.isIOS) {
     DatadogSessionReplayPlatform.instance = DatadogSessionReplayPlatformIos();
-  } else {
+  } else if (Platform.isAndroid) {
     DatadogSessionReplayPlatform.instance =
         DatadogSessionReplayPlatformAndroid();
   }
@@ -23,7 +23,7 @@ void initSessionReplayPlatform() {
 void attachSessionReplayToIsolate(Object? isolateToken) {
   // Isolates aren't a thing on web
   if (Platform.isIOS) {
-    if (isolateToken is ObjCObjectBase) {
+    if (isolateToken is ObjCObject) {
       DatadogSessionReplayPlatform.instance =
           DatadogSessionReplayPlatformIos.fromObjCRef(isolateToken);
     }

@@ -20,9 +20,7 @@ class _ImagesScreenState extends State<ImagesScreen> {
         child: Column(
           children: [
             Image.asset('assets/dd_logo_v_rgb.png'),
-            Image.network(
-              'https://placehold.co/200x200.png',
-            ),
+            Image.network('https://placehold.co/200x200.png'),
           ],
         ),
       ),

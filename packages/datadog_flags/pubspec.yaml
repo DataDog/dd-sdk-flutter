@@ -13,24 +13,14 @@ environment:
   sdk: ">=3.10.0 <4.0.0"
 
 dependencies:
-  http: ^1.0.0
-  json_annotation: ^4.9.0
-  meta: ^1.0.0
   openfeature_dart_client_sdk: ^0.0.1
+  http: ^1.0.0
+  json_annotation: ^4.12.0
+  meta: ^1.0.0
   uuid: ^4.0.0
 
 dev_dependencies:
-  openfeature_client_provider_contract:
-    git:
-      url: https://github.com/open-feature/dart-sdk.git
-      ref: f8068cd5c71c6f644e1f69e171918de771e621c3
-      path: conformance/client_provider_contract
-  build_runner: 2.4.15
-  json_serializable: 6.9.5
-  lints: '>=5.0.0'
+  build_runner: 2.15.1
+  json_serializable: 6.14.1
+  lints: '^6.1.0'
   test: ^1.25.0
-
-# The unpublished contract harness has a relative SDK dependency. Test against
-# the hosted release instead; overrides are not inherited by package consumers.
-dependency_overrides:
-  openfeature_dart_client_sdk: 0.0.1

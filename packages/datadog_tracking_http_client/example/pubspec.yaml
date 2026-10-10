@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.15.0 <4.0.0"
+  sdk: ">=3.10.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -17,7 +17,7 @@ dependencies:
   transparent_image: ^2.0.0
 
   datadog_flutter_plugin:
-    path: ../../datadog_flutter_plugin
+    path: ../../datadog_flutter_plugin/datadog_flutter_plugin
   datadog_tracking_http_client:
     path: ../
   datadog_common_test:
@@ -29,7 +29,7 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
-  flutter_lints: ^2.0.1
+  flutter_lints: ^6.0.0
   collection: ^1.18.0
   
 flutter:
@@ -40,5 +40,5 @@ flutter:
 
 dependency_overrides:
   datadog_flutter_plugin:
-    path: ../../datadog_flutter_plugin
+    path: ../../datadog_flutter_plugin/datadog_flutter_plugin
     

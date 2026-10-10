@@ -160,6 +160,7 @@ void main() {
       clientToken: 'sdk-token',
       env: 'prod',
       site: DatadogSite.us1,
+      service: 'sdk-service',
     );
     when(() => mockSdk.configuration).thenReturn(configuration);
 
@@ -217,6 +218,7 @@ void main() {
       clientToken: 'client-token',
       env: 'prod',
       site: DatadogSite.us1Fed,
+      service: 'client-service',
     );
     when(() => mockSdk.configuration).thenReturn(configuration);
 
@@ -239,6 +241,7 @@ void main() {
       clientToken: 'client-token',
       env: 'prod',
       site: DatadogSite.us1,
+      service: 'client-service',
     );
     when(() => mockSdk.configuration).thenReturn(configuration);
 

@@ -8,12 +8,12 @@ import 'dart:async';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart'
     as openfeature;
 
-import 'datadog_flags.dart' as datadog;
-import 'default_flags_client.dart' as datadog;
-import 'evaluation_context.dart' as datadog;
-import 'flags_client.dart' as datadog;
-import 'flags_configuration.dart' as datadog;
-import 'flags_error.dart' as datadog;
+import 'datadog_flags.dart';
+import 'default_flags_client.dart';
+import 'evaluation_context.dart';
+import 'flags_client.dart';
+import 'flags_configuration.dart';
+import 'flags_error.dart';
 
 /// An OpenFeature provider backed by the pure-Dart Datadog Flags runtime.
 ///
@@ -30,10 +30,10 @@ final class DatadogOpenFeatureProvider
         openfeature.ProviderEventSource,
         openfeature.DomainScopedProvider {
   /// OpenFeature flag metadata key containing the Datadog allocation key.
-  static const allocationKeyMetadata = datadog.datadogAllocationKeyMetadata;
+  static const allocationKeyMetadata = datadogAllocationKeyMetadata;
 
   /// OpenFeature flag metadata key containing the Datadog assignment serial ID.
-  static const serialIdMetadata = datadog.datadogSerialIdMetadata;
+  static const serialIdMetadata = datadogSerialIdMetadata;
 
   /// Largest initialization budget accepted by this provider.
   ///
@@ -45,7 +45,7 @@ final class DatadogOpenFeatureProvider
   openfeature.EvaluationContext? _requestedContext;
 
   /// Datadog runtime configuration used by each context revision.
-  final datadog.DatadogFlagsConfiguration configuration;
+  final DatadogFlagsConfiguration configuration;
 
   /// Explicit Datadog client name, or `null` to derive it from the domain.
   final String? clientName;
@@ -61,7 +61,7 @@ final class DatadogOpenFeatureProvider
   ///
   /// When [clientName] is omitted, a domain binding uses its domain as the
   /// Datadog client name and the default binding uses
-  /// [datadog.DatadogFlags.defaultClientName].
+  /// [DatadogFlags.defaultClientName].
   DatadogOpenFeatureProvider({required this.configuration, this.clientName});
 
   @override
@@ -78,7 +78,7 @@ final class DatadogOpenFeatureProvider
   }) async {
     _requestedContext = context;
     _resolvedClientName =
-        clientName ?? domain ?? datadog.DatadogFlags.defaultClientName;
+        clientName ?? domain ?? DatadogFlags.defaultClientName;
     await _loadContext(context, isInitialization: true);
   }
 
@@ -220,19 +220,19 @@ final class DatadogOpenFeatureProvider
       key: flagKey,
       defaultValue: defaultValue,
     );
-    final errorCode = _errorCode(details.error);
+    final errorCode = details.error?.openFeatureCode;
     if (errorCode != null) {
       return openfeature.ResolutionDetails(
         value: defaultValue,
         errorCode: errorCode,
-        errorMessage: _errorMessage(details.error!),
+        errorMessage: details.error!.message,
         reason: 'ERROR',
         flagMetadata: details.flagMetadata,
       );
     }
 
     return openfeature.ResolutionDetails(
-      value: _immutableStructure(details.value),
+      value: _immutableJsonValue(details.value) as Map<String, Object?>,
       reason: details.reason,
       variant: details.variant,
       flagMetadata: details.flagMetadata,
@@ -269,7 +269,7 @@ final class DatadogOpenFeatureProvider
       return;
     }
 
-    final owner = datadog.DatadogFlags();
+    final owner = DatadogFlags();
     _ProviderRuntime? runtime;
     var initializationReturned = false;
     try {
@@ -279,9 +279,9 @@ final class DatadogOpenFeatureProvider
         return;
       }
       final client = owner.sharedClient(
-        name: _resolvedClientName ?? datadog.DatadogFlags.defaultClientName,
+        name: _resolvedClientName ?? DatadogFlags.defaultClientName,
       );
-      if (client is! datadog.DefaultDatadogFlagsClient) {
+      if (client is! DefaultDatadogFlagsClient) {
         await _disableOwnerQuietly(owner);
         _emitLoadError(
           'The Datadog client does not expose assignment lifecycle state.',
@@ -289,7 +289,7 @@ final class DatadogOpenFeatureProvider
         return;
       }
 
-      final lifecycle = client as datadog.DatadogFlagsClientLifecycle;
+      final lifecycle = client as DatadogFlagsClientLifecycle;
       final candidate = _ProviderRuntime(owner, client);
       runtime = candidate;
       _pendingRuntime = candidate;
@@ -307,8 +307,8 @@ final class DatadogOpenFeatureProvider
       });
 
       try {
-        await client.initialize(_datadogContext(context));
-      } on datadog.FlagsInitializationTimeoutException {
+        await client.initialize(context.datadogContext);
+      } on FlagsInitializationTimeoutException {
         // The core operation continues. Published assignments are usable even
         // when storage is still pending; initial late success can recover.
       }
@@ -340,7 +340,7 @@ final class DatadogOpenFeatureProvider
 
   Future<void> _handleCompletedInitialization(
     _ProviderRuntime runtime,
-    datadog.DatadogFlagsClientStatus status, {
+    DatadogFlagsClientStatus status, {
     required int revision,
     required bool isInitialization,
     bool isRefresh = false,
@@ -350,7 +350,7 @@ final class DatadogOpenFeatureProvider
       return;
     }
 
-    if (isRefresh && status == datadog.DatadogFlagsClientStatus.stale) {
+    if (isRefresh && status == DatadogFlagsClientStatus.stale) {
       _pendingRuntime = null;
       _retire(runtime);
       _emitLoadError('Datadog assignment refresh failed.');
@@ -364,8 +364,8 @@ final class DatadogOpenFeatureProvider
     }
 
     switch (status) {
-      case datadog.DatadogFlagsClientStatus.ready:
-      case datadog.DatadogFlagsClientStatus.stale:
+      case DatadogFlagsClientStatus.ready:
+      case DatadogFlagsClientStatus.stale:
         await _activateRuntime(
           runtime,
           status,
@@ -373,7 +373,7 @@ final class DatadogOpenFeatureProvider
           isInitialization: isInitialization,
           isRefresh: isRefresh,
         );
-      case datadog.DatadogFlagsClientStatus.notReady:
+      case DatadogFlagsClientStatus.notReady:
         if (!isInitialization) {
           // OpenFeature retains its active context when reconciliation fails.
           // A late candidate cannot silently change that context afterwards.
@@ -384,7 +384,7 @@ final class DatadogOpenFeatureProvider
           'Datadog assignments are not available before the initialization '
           'deadline.',
         );
-      case datadog.DatadogFlagsClientStatus.error:
+      case DatadogFlagsClientStatus.error:
         _pendingRuntime = null;
         await _disableQuietly(runtime);
         if (revision == _contextRevision) {
@@ -397,7 +397,7 @@ final class DatadogOpenFeatureProvider
 
   Future<void> _handleLateStatus(
     _ProviderRuntime runtime,
-    datadog.DatadogFlagsClientStatus status, {
+    DatadogFlagsClientStatus status, {
     required int revision,
     required bool isInitialization,
   }) async {
@@ -407,7 +407,7 @@ final class DatadogOpenFeatureProvider
     }
 
     if (identical(_activeRuntime, runtime)) {
-      if (status == datadog.DatadogFlagsClientStatus.ready) {
+      if (status == DatadogFlagsClientStatus.ready) {
         _events.add(
           openfeature.ProviderEvent(type: openfeature.ProviderEventType.ready),
         );
@@ -416,7 +416,7 @@ final class DatadogOpenFeatureProvider
     }
 
     if (!isInitialization) {
-      if (status != datadog.DatadogFlagsClientStatus.notReady) {
+      if (status != DatadogFlagsClientStatus.notReady) {
         _pendingRuntime = null;
         await _disableQuietly(runtime);
       }
@@ -424,25 +424,25 @@ final class DatadogOpenFeatureProvider
     }
 
     switch (status) {
-      case datadog.DatadogFlagsClientStatus.ready:
-      case datadog.DatadogFlagsClientStatus.stale:
+      case DatadogFlagsClientStatus.ready:
+      case DatadogFlagsClientStatus.stale:
         await _activateRuntime(
           runtime,
           status,
           revision: revision,
           isInitialization: true,
         );
-      case datadog.DatadogFlagsClientStatus.error:
+      case DatadogFlagsClientStatus.error:
         _pendingRuntime = null;
         await _disableQuietly(runtime);
-      case datadog.DatadogFlagsClientStatus.notReady:
+      case DatadogFlagsClientStatus.notReady:
         return;
     }
   }
 
   Future<void> _activateRuntime(
     _ProviderRuntime runtime,
-    datadog.DatadogFlagsClientStatus status, {
+    DatadogFlagsClientStatus status, {
     required int revision,
     required bool isInitialization,
     bool isRefresh = false,
@@ -471,9 +471,9 @@ final class DatadogOpenFeatureProvider
             : openfeature.ProviderEventType.contextChanged,
       ),
     );
-    if (status == datadog.DatadogFlagsClientStatus.stale &&
+    if (status == DatadogFlagsClientStatus.stale &&
         _isCurrent(runtime, revision) &&
-        runtime.client.status == datadog.DatadogFlagsClientStatus.stale) {
+        runtime.client.status == DatadogFlagsClientStatus.stale) {
       _events.add(
         openfeature.ProviderEvent(
           type: openfeature.ProviderEventType.stale,
@@ -510,7 +510,7 @@ final class DatadogOpenFeatureProvider
     }
   }
 
-  static Future<void> _disableOwnerQuietly(datadog.DatadogFlags owner) async {
+  static Future<void> _disableOwnerQuietly(DatadogFlags owner) async {
     try {
       await owner.disable();
     } on Object {
@@ -528,26 +528,15 @@ final class DatadogOpenFeatureProvider
     );
   }
 
-  static datadog.FlagsEvaluationContext _datadogContext(
-    openfeature.EvaluationContext context,
-  ) {
-    return datadog.FlagsEvaluationContext(
-      targetingKey: context.targetingKey,
-      attributes: context.attributes,
-    );
-  }
-
   static openfeature.ResolutionDetails<T> _resolution<T extends Object>(
-    datadog.FlagDetails<T> details,
+    FlagDetails<T> details,
     T defaultValue,
   ) {
-    final errorCode = _errorCode(details.error);
+    final errorCode = details.error?.openFeatureCode;
     return openfeature.ResolutionDetails(
       value: errorCode == null ? details.value : defaultValue,
       errorCode: errorCode,
-      errorMessage: details.error == null
-          ? null
-          : _errorMessage(details.error!),
+      errorMessage: details.error?.message,
       reason: errorCode == null ? details.reason : 'ERROR',
       variant: details.variant,
       flagMetadata: details.flagMetadata,
@@ -565,31 +554,11 @@ final class DatadogOpenFeatureProvider
     );
   }
 
-  static openfeature.ErrorCode? _errorCode(datadog.FlagEvaluationError? error) {
-    return switch (error) {
-      null => null,
-      datadog.FlagEvaluationError.providerNotReady =>
-        openfeature.ErrorCode.providerNotReady,
-      datadog.FlagEvaluationError.flagNotFound =>
-        openfeature.ErrorCode.flagNotFound,
-      datadog.FlagEvaluationError.typeMismatch =>
-        openfeature.ErrorCode.typeMismatch,
-    };
-  }
-
-  static String _errorMessage(datadog.FlagEvaluationError error) {
-    return 'Datadog flag evaluation failed with ${error.code}.';
-  }
-
-  static Map<String, Object?> _immutableStructure(Map<String, Object?> value) {
-    return Map<String, Object?>.unmodifiable(
-      value.map((key, child) => MapEntry(key, _immutableJsonValue(child))),
-    );
-  }
-
   static Object? _immutableJsonValue(Object? value) {
     if (value is Map<String, Object?>) {
-      return _immutableStructure(value);
+      return Map<String, Object?>.unmodifiable(
+        value.map((key, child) => MapEntry(key, _immutableJsonValue(child))),
+      );
     }
     if (value is List<Object?>) {
       return List<Object?>.unmodifiable(value.map(_immutableJsonValue));
@@ -599,9 +568,9 @@ final class DatadogOpenFeatureProvider
 }
 
 final class _ProviderRuntime {
-  final datadog.DatadogFlags owner;
-  final datadog.DefaultDatadogFlagsClient client;
-  StreamSubscription<datadog.DatadogFlagsClientStatus>? statusSubscription;
+  final DatadogFlags owner;
+  final DefaultDatadogFlagsClient client;
+  StreamSubscription<DatadogFlagsClientStatus>? statusSubscription;
   Future<void>? _disabling;
 
   _ProviderRuntime(this.owner, this.client);
@@ -612,4 +581,22 @@ final class _ProviderRuntime {
     await statusSubscription?.cancel();
     await owner.disable();
   }
+}
+
+extension _DatadogContext on openfeature.EvaluationContext {
+  FlagsEvaluationContext get datadogContext => FlagsEvaluationContext(
+    targetingKey: targetingKey,
+    attributes: attributes,
+  );
+}
+
+extension _OpenFeatureError on FlagEvaluationError {
+  openfeature.ErrorCode get openFeatureCode => switch (this) {
+    FlagEvaluationError.providerNotReady =>
+      openfeature.ErrorCode.providerNotReady,
+    FlagEvaluationError.flagNotFound => openfeature.ErrorCode.flagNotFound,
+    FlagEvaluationError.typeMismatch => openfeature.ErrorCode.typeMismatch,
+  };
+
+  String get message => 'Datadog flag evaluation failed with $code.';
 }

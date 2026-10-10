@@ -53,8 +53,9 @@ void main() {
     recorder.updateContext(context);
   });
 
-  testWidgets('font transform smart maps package font to open sans',
-      (tester) async {
+  testWidgets('font transform smart maps package font to open sans', (
+    tester,
+  ) async {
     final fixture = MaterialApp(
       home: Scaffold(
         appBar: AppBar(
@@ -83,15 +84,14 @@ void main() {
       fixture,
       fontFamilyTransform: FontFamilyTransformConfig(
         strategy: FontFamilyStrategy.smart,
-        rules: {
-          'CustomFont': test_fonts.openSans,
-        },
+        rules: {'CustomFont': test_fonts.openSans},
       ),
     );
   });
 
-  testWidgets('font transform smart drops sentinel and uses fallback rule',
-      (tester) async {
+  testWidgets('font transform smart drops sentinel and uses fallback rule', (
+    tester,
+  ) async {
     final fixture = MaterialApp(
       home: Scaffold(
         appBar: AppBar(
@@ -106,10 +106,7 @@ void main() {
             'This text uses .AppleSystemUIFont which the smart strategy '
             'drops as a Flutter sentinel. The empty-key fallback rule then '
             'maps it to OpenSans. Readable text proves sentinel handling works.',
-            style: TextStyle(
-              fontFamily: '.AppleSystemUIFont',
-              fontSize: 16,
-            ),
+            style: TextStyle(fontFamily: '.AppleSystemUIFont', fontSize: 16),
           ),
         ),
       ),
@@ -120,9 +117,7 @@ void main() {
       fixture,
       fontFamilyTransform: FontFamilyTransformConfig(
         strategy: FontFamilyStrategy.smart,
-        rules: {
-          '': test_fonts.openSans,
-        },
+        rules: {'': test_fonts.openSans},
       ),
     );
   });
@@ -143,10 +138,7 @@ void main() {
             children: [
               Text(
                 'OpenSans text stays the same font stack with fallback.',
-                style: TextStyle(
-                  fontFamily: test_fonts.openSans,
-                  fontSize: 16,
-                ),
+                style: TextStyle(fontFamily: test_fonts.openSans, fontSize: 16),
               ),
               SizedBox(height: 12),
               Text(

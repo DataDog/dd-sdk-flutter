@@ -14,8 +14,7 @@ class MockDatadogSessionReplayPlatform extends Mock
     with
         // ignore: invalid_use_of_visible_for_testing_member
         MockPlatformInterfaceMixin
-    implements
-        DatadogSessionReplayPlatform {
+    implements DatadogSessionReplayPlatform {
   Map<String, ImageData> imageCache = {};
 
   @override
