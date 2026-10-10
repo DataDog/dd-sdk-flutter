@@ -3,15 +3,27 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
+
 import 'evaluation_context.dart';
 import 'flags_client.dart';
 import 'flags_error.dart';
 
-class NoOpDatadogFlagsClient implements DatadogFlagsClient {
+class NoOpDatadogFlagsClient
+    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
   @override
   final String name;
 
   const NoOpDatadogFlagsClient({required this.name});
+
+  @override
+  DatadogFlagsClientStatus get status => DatadogFlagsClientStatus.notReady;
+
+  @override
+  Stream<DatadogFlagsClientStatus> get statusChanges => const Stream.empty();
+
+  @override
+  FlagsEvaluationContext? get evaluationContext => null;
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {}

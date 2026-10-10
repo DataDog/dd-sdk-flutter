@@ -183,7 +183,7 @@ class ExposureLogger {
       'allocation': {'key': assignment.allocationKey},
       'flag': {'key': flagKey},
       'variant': {'key': assignment.variationKey},
-      if (serialId != null) 'serial_id': serialId,
+      'serial_id': ?serialId,
       'subject': subject,
     };
   }

@@ -1,0 +1,26 @@
+name: datadog_openfeature_conformance
+description: Datadog provider tests for the upstream OpenFeature client contract.
+publish_to: none
+
+environment:
+  sdk: ">=3.10.0 <4.0.0"
+
+dependencies:
+  datadog_flags:
+    path: ../../packages/datadog_flags
+  http: ^1.0.0
+  openfeature_dart_client_sdk: ^0.0.1
+
+dev_dependencies:
+  openfeature_client_provider_contract:
+    git:
+      url: https://github.com/open-feature/dart-sdk.git
+      ref: f8068cd5c71c6f644e1f69e171918de771e621c3
+      path: conformance/client_provider_contract
+  lints: ^6.1.0
+  test: ^1.25.0
+
+# The unpublished upstream harness uses a relative SDK dependency.
+# Test the hosted SDK that customers receive instead of that source checkout.
+dependency_overrides:
+  openfeature_dart_client_sdk: 0.0.1

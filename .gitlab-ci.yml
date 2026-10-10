@@ -18,7 +18,9 @@ variables:
   ANDROID_EMULATOR_SDK: "33"
   IS_ON_CI: $CI
   SLACK_CHANNEL: "#mobile-sdk-ops"
-  FLUTTER_MIN_VERSION: '3.38.0'
+  # Flutter 3.38.0 bundles prerelease Dart; 3.38.1 includes stable Dart 3.10.
+  # https://github.com/flutter/flutter/issues/178400
+  FLUTTER_MIN_VERSION: '3.38.1'
   # Magic Mirror Depot pro for the Java ecosystem (see
   # tools/ci/gradle/init.d/depot-mirror.init.gradle).
   DEPOT_JAVA_MAVEN_URL: "https://depot-read-api-java.us1.ddbuild.io/magicmirror/magicmirror/@current/"
@@ -243,6 +245,7 @@ build-web:
     - !reference [.pre-web, script]
     - melos run build:web
     - melos run unit_test:web
+    - melos run unit_test:openfeature-web
   artifacts:
     when: always
     expire_in: "30 days"
@@ -661,6 +664,7 @@ nightly-beta-test-web:
     - melos run analyze:dart
     - melos run build:web
     - melos run unit_test:web
+    - melos run unit_test:openfeature-web
   artifacts:
     when: always
     expire_in: "30 days"
@@ -700,3 +704,23 @@ nightly-android:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
+
+# Verify the published Dart floor with the repository's Flutter version manager.
+openfeature-min-version-test:
+  extends: .tart-runner
+  stage: build
+  except: [schedules]
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  script:
+    - !reference [.pre, script]
+    - fvm install $FLUTTER_MIN_VERSION
+    - fvm use $FLUTTER_MIN_VERSION
+    - cd packages/datadog_flags
+    - fvm exec dart pub get
+    - fvm exec dart analyze .
+    - fvm exec dart test
+    - cd ../../tools/openfeature_conformance
+    - fvm exec dart pub get
+    - fvm exec dart analyze .
+    - fvm exec dart test

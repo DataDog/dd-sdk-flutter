@@ -12,6 +12,7 @@ packages:
   - examples/*
   - examples/native-hybrid-app/flutter_module
   - test_apps/*
+  - tools/openfeature_conformance
 
 scripts:
   build:
@@ -182,6 +183,17 @@ scripts:
       scope:
         - 'datadog_flutter_plugin'
         - 'datadog_flutter_plugin_web'
+
+  # Test all browser-compatible core and conformance tests on both compilers.
+  unit_test:openfeature-web:
+    run:
+      mkdir -p $MELOS_ROOT_PATH/.build/test-results &&
+      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
+      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome --compiler dart2wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'"
+    packageFilters:
+      scope:
+        - 'datadog_flags'
+        - 'datadog_openfeature_conformance'
 
   unit_test:ios:
     exec:

@@ -30,6 +30,7 @@ test,datadog_common_test,Apache-2.0,Copyright 2022 Datadog
 import,grpc,Apache-2.0,"Copyright (c) 2018, the gRPC project authors"
 build,build_runner,BSD-3-Clause,"Copyright 2016, the Dart project authors."
 import,json_annotation,BSD-3-Clause,"Copyright 2017, the Dart project authors."
+import,openfeature_dart_client_sdk,Apache-2.0,Copyright OpenFeature Authors
 build,json_serializable,BSD-3-Clause,"Copyright 2017, the Dart project authors."
 import,js,BSD-3-Clause,"Copyright 2012, the Dart project authors."
 import,fluro,MIT,Copyright 2021 Luke Pighetti

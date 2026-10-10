@@ -17,6 +17,69 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test(
+    'shutdown clients are terminal and sharedClient creates a fresh stream',
+    () async {
+      final owner = DatadogFlags();
+      addTearDown(owner.disable);
+      await owner.enable(
+        configuration: DatadogFlagsConfiguration(
+          datadogConfig: _datadogConfig(),
+          httpClient: _clientWithResponse([], _assignmentsResponse()),
+          trackExposures: false,
+          trackEvaluations: false,
+        ),
+      );
+      final first = owner.sharedClient();
+      await first.initialize(const FlagsEvaluationContext(targetingKey: 'a'));
+      await first.shutdown();
+      await expectLater(
+        first.initialize(FlagsEvaluationContext.empty),
+        throwsStateError,
+      );
+      final second = owner.sharedClient();
+      expect(identical(first, second), isFalse);
+      final lifecycle = second as DatadogFlagsClientLifecycle;
+      final statuses = <DatadogFlagsClientStatus>[];
+      final subscription = lifecycle.statusChanges.listen(statuses.add);
+      addTearDown(subscription.cancel);
+      await second.initialize(const FlagsEvaluationContext(targetingKey: 'b'));
+      expect(statuses, [DatadogFlagsClientStatus.ready]);
+    },
+  );
+
+  test('matching cache and failed refresh emit stale only once', () async {
+    final store = InMemoryDatadogFlagsStore();
+    final owner = DatadogFlags();
+    addTearDown(owner.disable);
+    var fail = false;
+    await owner.enable(
+      configuration: DatadogFlagsConfiguration(
+        datadogConfig: _datadogConfig(),
+        store: store,
+        httpClient: MockClient(
+          (_) async => fail
+              ? http.Response('', 503)
+              : http.Response(jsonEncode(_assignmentsResponse()), 200),
+        ),
+        trackExposures: false,
+        trackEvaluations: false,
+      ),
+    );
+    await owner.sharedClient().initialize(
+      const FlagsEvaluationContext(targetingKey: 'a'),
+    );
+    await owner.sharedClient().shutdown();
+    fail = true;
+    final client = owner.sharedClient();
+    final statuses = <DatadogFlagsClientStatus>[];
+    final subscription = (client as DatadogFlagsClientLifecycle).statusChanges
+        .listen(statuses.add);
+    addTearDown(subscription.cancel);
+    await client.initialize(const FlagsEvaluationContext(targetingKey: 'a'));
+    expect(statuses, [DatadogFlagsClientStatus.stale]);
+  });
+
   test('enable creates the default shared client', () async {
     final requests = <http.Request>[];
     final datadogFlags = DatadogFlags();
@@ -111,6 +174,10 @@ void main() {
       const FlagsEvaluationContext(targetingKey: 'user-123'),
     );
 
+    final lifecycle = client as DatadogFlagsClientLifecycle;
+    expect(lifecycle.status, DatadogFlagsClientStatus.ready);
+    expect(lifecycle.evaluationContext?.targetingKey, 'user-123');
+
     final booleanDetails = client.getBooleanDetails(
       key: 'show-paywall',
       defaultValue: false,
@@ -167,6 +234,9 @@ void main() {
       );
       expect(notReady.value, isFalse);
       expect(notReady.error, FlagEvaluationError.providerNotReady);
+      final lifecycle = client as DatadogFlagsClientLifecycle;
+      expect(lifecycle.status, DatadogFlagsClientStatus.notReady);
+      expect(lifecycle.evaluationContext, isNull);
 
       await client.initialize(
         const FlagsEvaluationContext(targetingKey: 'user-123'),
@@ -185,6 +255,13 @@ void main() {
       );
       expect(mismatch.value, 7);
       expect(mismatch.error, FlagEvaluationError.typeMismatch);
+      expect(mismatch.flagMetadata, isEmpty);
+
+      final success = client.getBooleanDetails(
+        key: 'show-paywall',
+        defaultValue: false,
+      );
+      expect(success.flagMetadata, {'datadog.allocation_key': 'allocation-a'});
     },
   );
 
@@ -257,6 +334,10 @@ void main() {
     await client.initialize(
       const FlagsEvaluationContext(targetingKey: 'user-123'),
     );
+
+    final lifecycle = client as DatadogFlagsClientLifecycle;
+    expect(lifecycle.status, DatadogFlagsClientStatus.error);
+    expect(lifecycle.evaluationContext, isNull);
 
     final details = client.getBooleanDetails(
       key: 'show-paywall',
@@ -1215,6 +1296,9 @@ void main() {
       ),
     );
     await _waitUntil(() => restoredRequests.length == 1);
+    final lifecycle = restored as DatadogFlagsClientLifecycle;
+    expect(lifecycle.status, DatadogFlagsClientStatus.stale);
+    expect(lifecycle.evaluationContext?.targetingKey, 'user-123');
     expect(
       restored
           .getBooleanDetails(key: 'show-paywall', defaultValue: false)
@@ -1222,10 +1306,28 @@ void main() {
       isTrue,
     );
 
+    for (final details in [
+      restored.getBooleanDetails(key: 'show-paywall', defaultValue: false),
+      restored.getStringDetails(key: 'theme', defaultValue: ''),
+      restored.getIntegerDetails(key: 'max-items', defaultValue: 0),
+      restored.getDoubleDetails(key: 'ratio', defaultValue: 0),
+      restored.getObjectDetails(key: 'config', defaultValue: null),
+    ]) {
+      expect(details.reason, 'CACHED');
+      expect(details.error, isNull);
+    }
+
     refreshResponse.complete(
       http.Response(jsonEncode(_assignmentsResponse(booleanValue: false)), 200),
     );
     await refresh;
+    expect(lifecycle.status, DatadogFlagsClientStatus.ready);
+    expect(
+      restored
+          .getBooleanDetails(key: 'show-paywall', defaultValue: false)
+          .reason,
+      'TARGETING_MATCH',
+    );
     expect(
       restored.getBooleanDetails(key: 'show-paywall', defaultValue: true).value,
       isFalse,
@@ -1288,6 +1390,12 @@ void main() {
 
       final refresh = client.initialize(context);
       await _waitUntil(() => requests.length == 2);
+      expect(
+        client
+            .getBooleanDetails(key: 'show-paywall', defaultValue: false)
+            .reason,
+        'TARGETING_MATCH',
+      );
       expect(
         client
             .getBooleanDetails(key: 'show-paywall', defaultValue: false)

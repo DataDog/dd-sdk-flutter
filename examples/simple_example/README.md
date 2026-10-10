@@ -6,7 +6,7 @@ This is a more realistic example of how you use the Datadog Flutter Plugin in a 
     * Automatic network tracing with `datadog_tracking_http_client`
     * User interaction tracking with RumUserActionDetector
     * Error/Crash handling with manually reported errors
-    * Basic feature flag initialization and typed evaluation with `datadog_flags_flutter`
+    * OpenFeature initialization and typed evaluation with the Datadog provider
 
 ## Setup
 
@@ -23,9 +23,16 @@ names, org names, or customer-owned flag keys.
 
 ## Feature Flags
 
-The `Flags` screen initializes the `datadog_flags_flutter` package, refreshes
-assignments for one evaluation context, and evaluates boolean, string, integer,
-double, and JSON flags with programmatic defaults.
+The `Flags` screen uses `openfeature_dart_client_sdk` with the
+`DatadogOpenFeatureProvider` from `datadog_flags`. This is the recommended
+integration for new Dart and Flutter applications. The app sets an OpenFeature
+evaluation context, registers the Datadog provider, and evaluates typed flags
+with programmatic defaults.
+
+The Datadog Flutter SDK initializes separately for RUM, Logs, and Traces. The
+OpenFeature provider owns the Flags runtime and its assignment lifecycle.
+`DatadogRumHook` associates successful evaluations with the active RUM view.
+The Refresh button calls `DatadogOpenFeatureProvider.refresh()`.
 
 To test feature flags in your own organization, customize the generated `.env`
 file:
@@ -40,3 +47,8 @@ FLAGS_INTEGER_KEYS=checkout.limit
 FLAGS_DOUBLE_KEYS=checkout.ratio
 FLAGS_OBJECT_KEYS=checkout.config
 ```
+
+## Integration tests
+
+OpenFeature integration tests run in the SDK's dedicated integration test app.
+See the [validation guide](../../packages/datadog_flags/OPENFEATURE_VALIDATION.md).
