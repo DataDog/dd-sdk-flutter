@@ -35,6 +35,18 @@ external ffi.Pointer<ffi.Void> _objcMsgSend(
   ffi.Pointer<ffi.Void> sel,
 );
 
+// The same symbol, typed for methods that return a double (e.g. NSNumber's
+// doubleValue). On both arm64 and x86_64, objc_msgSend returns doubles in the
+// floating point return register, so no _fpret variant is needed.
+@ffi.Native<ffi.Double Function(ffi.Pointer<ffi.Void>, ffi.Pointer<ffi.Void>)>(
+  symbol: 'objc_msgSend',
+  isLeaf: true,
+)
+external double _objcMsgSendDouble(
+  ffi.Pointer<ffi.Void> receiver,
+  ffi.Pointer<ffi.Void> sel,
+);
+
 class IosPlatformBridge {
   static DatadogContext? getContext() {
     // A single arena frees all toNativeUtf8() allocations when the block exits.
@@ -53,14 +65,33 @@ class IosPlatformBridge {
       final sessionId = _readNSString(obj, 'sessionId', arena);
       final accountId = _readNSString(obj, 'accountId', arena);
       final userId = _readNSString(obj, 'userId', arena);
+      final sessionSampleRate = _readNSNumber(obj, 'sessionSampleRate', arena);
 
       if (sessionId == null && accountId == null && userId == null) return null;
       return DatadogContext(
         sessionId: sessionId,
         userId: userId,
         accountId: accountId,
+        sessionSampleRate: sessionSampleRate,
       );
     });
+  }
+
+  static double? _readNSNumber(
+    ffi.Pointer<ffi.Void> obj,
+    String property,
+    Arena arena,
+  ) {
+    final nsNumber = _objcMsgSend(
+      obj,
+      _selRegisterName(property.toNativeUtf8(allocator: arena).cast()),
+    );
+    if (nsNumber == ffi.nullptr) return null;
+
+    return _objcMsgSendDouble(
+      nsNumber,
+      _selRegisterName('doubleValue'.toNativeUtf8(allocator: arena).cast()),
+    );
   }
 
   static String? _readNSString(

@@ -118,6 +118,38 @@ void main() {
     expect(attributes['_dd.rule_psr'], 0.3);
   });
 
+  test(
+    'Tracing context samples with the session rate the native SDK reports',
+    () {
+      // Given
+      const datadogContext = DatadogContext(
+        sessionId: '00000000-0000-0000-0000-000000000015',
+        userId: null,
+        accountId: null,
+        sessionSampleRate: 42.0,
+      );
+      when(() => mockPlatform.getContext()).thenReturn(datadogContext);
+      when(
+        () => mockRum.shouldSampleTrace(
+          any(),
+          any(),
+          sessionSampleRate: any(named: 'sessionSampleRate'),
+        ),
+      ).thenReturn(true);
+
+      // When
+      generateTracingContext(mockSdk, mockRum);
+
+      // Then
+      verify(
+        () => mockRum.shouldSampleTrace(
+          datadogContext.sessionId,
+          any(),
+          sessionSampleRate: 42.0,
+        ),
+      );
+    },
+  );
   for (final headerType in [
     TracingHeaderType.datadog,
     TracingHeaderType.tracecontext,

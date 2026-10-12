@@ -331,6 +331,7 @@ class DatadogRumConfiguration {
     return {
       'applicationId': applicationId,
       'sessionSampleRate': sessionSamplingRate,
+      'traceSampleRate': traceSampleRate,
       'detectLongTasks': detectLongTasks,
       'longTaskThreshold': longTaskThreshold,
       'trackFrustrations': trackFrustrations,

@@ -10,6 +10,8 @@ import 'datadog_android_bridge.dart' as bridge;
 class AndroidDatadogFlutterPlugin {
   static final JString _javaRumKey = 'rum'.toJString();
   static final JString _javaSessionId = 'session_id'.toJString();
+  static final JString _javaSessionSampleRate = 'session_sample_rate'
+      .toJString();
 
   static DatadogContext? getContext() {
     return using((arena) {
@@ -20,6 +22,9 @@ class AndroidDatadogFlutterPlugin {
       final featuresContext = javaContext.featuresContext..releasedBy(arena);
       final rumContext = featuresContext.get(_javaRumKey)?..releasedBy(arena);
       final javaSessionId = rumContext?.get(_javaSessionId)?..releasedBy(arena);
+      // Stored by native RUM as a Float.
+      final javaSessionSampleRate = rumContext?.get(_javaSessionSampleRate)
+        ?..releasedBy(arena);
       final accountInfo = javaContext.accountInfo?..releasedBy(arena);
       final userInfo = javaContext.userInfo..releasedBy(arena);
 
@@ -27,6 +32,7 @@ class AndroidDatadogFlutterPlugin {
         sessionId: javaSessionId?.toString(),
         accountId: accountInfo?.id.toDartString(releaseOriginal: true),
         userId: userInfo.id?.toDartString(releaseOriginal: true),
+        sessionSampleRate: (javaSessionSampleRate as JNumber?)?.doubleValue(),
       );
     });
   }

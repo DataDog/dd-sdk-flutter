@@ -22,7 +22,14 @@ public extension RUM.Configuration {
 
         self.init(applicationID: applicationId)
 
-        urlSessionTracking = .init()
+        var tracking = RUM.Configuration.URLSessionTracking()
+        if let traceSampleRate = (encoded["traceSampleRate"] as? NSNumber)?.floatValue {
+            // Flutter traces requests in Dart, not through URLSession. With no hosts, native never
+            // traces (or adds headers to) any request, but RUM still reports Flutter's trace sample
+            // rate on view events (`_dd.configuration.trace_sample_rate`).
+            tracking.firstPartyHostsTracing = .trace(hosts: [], sampleRate: traceSampleRate)
+        }
+        urlSessionTracking = tracking
         sessionSampleRate = (encoded["sessionSampleRate"] as? NSNumber)?.floatValue ?? 100.0
         longTaskThreshold = (encoded["longTaskThreshold"] as? NSNumber)?.doubleValue ?? 0.1
         trackFrustrations = (encoded["trackFrustrations"] as? NSNumber)?.boolValue ?? true
