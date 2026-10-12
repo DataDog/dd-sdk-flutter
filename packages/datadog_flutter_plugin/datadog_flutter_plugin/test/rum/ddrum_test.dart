@@ -128,6 +128,7 @@ void main() {
     final encoded = configuration.encode();
     expect(encoded['applicationId'], applicationId);
     expect(encoded['sessionSampleRate'], 12.0);
+    expect(encoded['traceSampleRate'], 50.2);
     expect(encoded['detectLongTasks'], detectLongTasks);
     expect(encoded['longTaskThreshold'], 0.3);
     expect(encoded['trackFrustrations'], trackFrustrations);
@@ -336,10 +337,9 @@ void main() {
     });
   });
 
-  /// TODO(RUM-18828): Deterministic sampling is currently set up so that
-  /// Sessions essentially make their sampling decision *once* for
-  /// all trace. If a session is in the trace sampling percent,
-  /// all of its traces are sampled in.
+  /// Sessions make their trace sampling decision *once* for all of their
+  /// traces: if a session is in the (combined) trace sampling percent, all of
+  /// its traces are sampled in.
   group('Session Id based sampling', () {
     final sessionId = '11111111-2222-3333-4444-21587cb3ad0b';
 
@@ -390,94 +390,139 @@ void main() {
     });
   });
 
-  // TODO(RUM-18828): This is the proper functionality for a combined session /
-  // trace sample rate.
-  // group('Combined session / trace sampling', () {
-  //   test('Sampling decisions are deterministic for sessionId', () async {
-  //     // Hash positions (percent of the 64-bit range):
-  //     //   session 0x000000000469: 0.357%     trace 15352856648520921629: 8.204%
-  //     //   session 0x000000000015: 26.490%    trace 4751997750760398084: 89.610%
-  //     //   session 0xd860b2b9437a: 68.673%
-  //     //   session 0x000000000053: 99.938%
-  //     final inputs = <(String, double, BigInt, double, bool)>[
-  //       // Combined 25% keeps the low-hash session.
-  //       (
-  //         '00000000-0000-0000-0000-000000000469',
-  //         50,
-  //         BigInt.parse('4751997750760398084'),
-  //         50,
-  //         true,
-  //       ),
-  //       // Combined 25% drops the high-hash session.
-  //       (
-  //         '00000000-0000-0000-0000-000000000053',
-  //         50,
-  //         BigInt.parse('15352856648520921629'),
-  //         50,
-  //         false,
-  //       ),
-  //       // Combined 25% drops this session, though the raw 50% trace rate would keep it.
-  //       (
-  //         '00000000-0000-0000-0000-000000000015',
-  //         50,
-  //         BigInt.parse('15352856648520921629'),
-  //         50,
-  //         false,
-  //       ),
-  //       // A 100% session rate leaves the trace rate unchanged.
-  //       (
-  //         '00000000-0000-0000-0000-000000000015',
-  //         100,
-  //         BigInt.parse('4751997750760398084'),
-  //         50,
-  //         true,
-  //       ),
-  //       // A 0% session rate drops everything, even at a 100% trace rate.
-  //       (
-  //         '00000000-0000-0000-0000-000000000469',
-  //         0,
-  //         BigInt.parse('15352856648520921629'),
-  //         100,
-  //         false,
-  //       ),
-  //       // A 0% trace rate drops everything, even at a 100% session rate.
-  //       (
-  //         '00000000-0000-0000-0000-000000000469',
-  //         100,
-  //         BigInt.parse('15352856648520921629'),
-  //         0,
-  //         false,
-  //       ),
-  //       // Combined 40% drops this session, though the raw 80% trace rate would keep it.
-  //       (
-  //         'a1b2c3d4-e5f6-7890-abcd-d860b2b9437a',
-  //         50,
-  //         BigInt.parse('15352856648520921629'),
-  //         80,
-  //         false,
-  //       ),
-  //     ];
+  group('Combined session / trace sampling', () {
+    test('Sampling decisions are deterministic for sessionId', () async {
+      // Hash positions (percent of the 64-bit range):
+      //   session 0x000000000469: 0.357%     trace 15352856648520921629: 8.204%
+      //   session 0x000000000015: 26.490%    trace 4751997750760398084: 89.610%
+      //   session 0xd860b2b9437a: 68.673%
+      //   session 0x000000000053: 99.938%
+      final inputs = <(String, double, BigInt, double, bool)>[
+        // Combined 25% keeps the low-hash session.
+        (
+          '00000000-0000-0000-0000-000000000469',
+          50,
+          BigInt.parse('4751997750760398084'),
+          50,
+          true,
+        ),
+        // Combined 25% drops the high-hash session.
+        (
+          '00000000-0000-0000-0000-000000000053',
+          50,
+          BigInt.parse('15352856648520921629'),
+          50,
+          false,
+        ),
+        // Combined 25% drops this session, though the raw 50% trace rate would keep it.
+        (
+          '00000000-0000-0000-0000-000000000015',
+          50,
+          BigInt.parse('15352856648520921629'),
+          50,
+          false,
+        ),
+        // A 100% session rate leaves the trace rate unchanged.
+        (
+          '00000000-0000-0000-0000-000000000015',
+          100,
+          BigInt.parse('4751997750760398084'),
+          50,
+          true,
+        ),
+        // A 0% session rate drops everything, even at a 100% trace rate.
+        (
+          '00000000-0000-0000-0000-000000000469',
+          0,
+          BigInt.parse('15352856648520921629'),
+          100,
+          false,
+        ),
+        // A 0% trace rate drops everything, even at a 100% session rate.
+        (
+          '00000000-0000-0000-0000-000000000469',
+          100,
+          BigInt.parse('15352856648520921629'),
+          0,
+          false,
+        ),
+        // Combined 40% drops this session, though the raw 80% trace rate would keep it.
+        (
+          'a1b2c3d4-e5f6-7890-abcd-d860b2b9437a',
+          50,
+          BigInt.parse('15352856648520921629'),
+          80,
+          false,
+        ),
+      ];
 
-  //     for (final (
-  //           sessionId,
-  //           sessionSampleRate,
-  //           identifier,
-  //           traceSampleRate,
-  //           expected
-  //         ) in inputs) {
-  //       final rumConfiguration = DatadogRumConfiguration(
-  //         applicationId: 'applicationId',
-  //         sessionSamplingRate: sessionSampleRate,
-  //         traceSampleRate: traceSampleRate,
-  //         detectLongTasks: false,
-  //       );
-  //       final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
-  //       final tracingId = TracingId(identifier);
-  //       bool shouldSample = rum!.shouldSampleTrace(sessionId, tracingId);
-  //       expect(shouldSample, expected);
-  //     }
-  //   });
-  // });
+      for (final (
+            sessionId,
+            sessionSampleRate,
+            identifier,
+            traceSampleRate,
+            expected,
+          )
+          in inputs) {
+        final rumConfiguration = DatadogRumConfiguration(
+          applicationId: 'applicationId',
+          sessionSamplingRate: sessionSampleRate,
+          traceSampleRate: traceSampleRate,
+          detectLongTasks: false,
+        );
+        final rum = await DatadogRum.enable(mockDatadogSdk, rumConfiguration);
+        final tracingId = TracingId(identifier);
+        bool shouldSample = rum!.shouldSampleTrace(sessionId, tracingId);
+        expect(shouldSample, expected);
+      }
+    });
+  });
+
+  group('Combined session / trace sampling, session rate from native', () {
+    const sessionId = '00000000-0000-0000-0000-000000000015';
+
+    test(
+      'the rate the native SDK reports overrides the configured one',
+      () async {
+        // Configured at 100%, which would keep this session at a 50% trace rate.
+        final rum = await DatadogRum.enable(
+          mockDatadogSdk,
+          DatadogRumConfiguration(
+            applicationId: 'applicationId',
+            sessionSamplingRate: 100,
+            traceSampleRate: 50,
+            detectLongTasks: false,
+          ),
+        );
+        final traceId = TracingId(BigInt.parse('15352856648520921629'));
+
+        expect(rum!.shouldSampleTrace(sessionId, traceId), isTrue);
+        // Native reports 50%: combined 25% drops this session.
+        expect(
+          rum.shouldSampleTrace(sessionId, traceId, sessionSampleRate: 50),
+          isFalse,
+        );
+      },
+    );
+
+    test('without a session the session rate does not apply', () async {
+      final rum = await DatadogRum.enable(
+        mockDatadogSdk,
+        DatadogRumConfiguration(
+          applicationId: 'applicationId',
+          sessionSamplingRate: 0,
+          traceSampleRate: 100,
+          detectLongTasks: false,
+        ),
+      );
+      final traceId = TracingId(BigInt.parse('15352856648520921629'));
+
+      expect(
+        rum!.shouldSampleTrace(null, traceId, sessionSampleRate: 0),
+        isTrue,
+      );
+    });
+  });
 
   test('getCurrentSessionId returns id from platform', () async {
     // Given

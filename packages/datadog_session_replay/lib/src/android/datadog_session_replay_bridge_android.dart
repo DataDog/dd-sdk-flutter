@@ -1527,6 +1527,39 @@ extension FlutterSessionReplayBridge$$Methods on FlutterSessionReplayBridge {
     ).check();
   }
 
+  static final _id_setReplayConfiguration = FlutterSessionReplayBridge._class
+      .instanceMethodId(r'setReplayConfiguration', r'(DZ)V');
+
+  static final _setReplayConfiguration =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JThrowablePtr Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<(jni$_.Double, jni$_.Int32)>,
+              )
+            >
+          >('globalEnv_CallVoidMethod')
+          .asFunction<
+            jni$_.JThrowablePtr Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              core$_.double,
+              core$_.int,
+            )
+          >();
+
+  /// from: `public fun setReplayConfiguration(sampleRate: kotlin.Double, startRecordingImmediately: kotlin.Boolean): kotlin.Unit`
+  void setReplayConfiguration(core$_.double d, core$_.bool z) {
+    final _$$selfRef = reference;
+    _setReplayConfiguration(
+      _$$selfRef.pointer,
+      _id_setReplayConfiguration.pointer,
+      d,
+      z ? 1 : 0,
+    ).check();
+  }
+
   static final _id_set$embedded = FlutterSessionReplayBridge._class
       .instanceMethodId(r'setEmbedded', r'(Z)V');
 

@@ -125,6 +125,7 @@ internal class FlutterSessionReplayBridge private constructor(
      */
     private var pendingHasReplay: Pair<String, Boolean>? = null
     private var pendingRecordCount: Pair<String, Int>? = null
+    private var pendingReplayConfiguration: Pair<Double, Boolean>? = null
 
     /**
      * Whether [writeSegment] has already reported dropping a segment to the [MAX_PENDING_SEGMENTS]
@@ -211,44 +212,51 @@ internal class FlutterSessionReplayBridge private constructor(
     // region Replay state
 
     /**
-     * Only the standalone path publishes replay state (`has_replay`, record counts) to the core:
-     * when embedded, the native Session Replay publishes both — its embedded-content receiver
-     * counts our records — and publishing from here too would have the two fight over the same
-     * core-context keys, making the value RUM reads depend on which wrote last.
+     * Whether this engine should publish replay state (`has_replay`, record counts, configuration)
+     * to the core right now.
      *
-     * While [embeddingState] is still [EmbeddingState.UNKNOWN], the call is remembered instead of
-     * dropped — see [pendingHasReplay]/[pendingRecordCount] — and published if [setEmbedded]
-     * resolves it to standalone.
+     * Only the standalone path may: when embedded, the native Session Replay publishes all of it —
+     * its embedded-content receiver counts our records — and publishing from here too would have
+     * the two fight over the same core-context keys, making the value RUM reads depend on which
+     * wrote last.
+     *
+     * While [embeddingState] is still [EmbeddingState.UNKNOWN], [rememberPending] stores the call
+     * instead of dropping it — see [pendingHasReplay]/[pendingRecordCount]/
+     * [pendingReplayConfiguration] — so [setEmbedded] can publish it if it resolves to standalone.
      */
-    fun setHasReplay(viewId: String, hasReplay: Boolean) {
-        val shouldPublish = synchronized(lock) {
-            when (embeddingState) {
-                EmbeddingState.UNKNOWN -> {
-                    pendingHasReplay = viewId to hasReplay
-                    false
-                }
-                EmbeddingState.STANDALONE -> true
-                EmbeddingState.EMBEDDED -> false
+    private fun publishesReplayState(rememberPending: () -> Unit): Boolean = synchronized(lock) {
+        when (embeddingState) {
+            EmbeddingState.UNKNOWN -> {
+                rememberPending()
+                false
             }
+            EmbeddingState.STANDALONE -> true
+            EmbeddingState.EMBEDDED -> false
         }
-        if (shouldPublish) {
+    }
+
+    fun setHasReplay(viewId: String, hasReplay: Boolean) {
+        if (publishesReplayState { pendingHasReplay = viewId to hasReplay }) {
             manager.feature?.setHasReplay(viewId, hasReplay)
         }
     }
 
     fun setRecordCount(viewId: String, recordCount: Int) {
-        val shouldPublish = synchronized(lock) {
-            when (embeddingState) {
-                EmbeddingState.UNKNOWN -> {
-                    pendingRecordCount = viewId to recordCount
-                    false
-                }
-                EmbeddingState.STANDALONE -> true
-                EmbeddingState.EMBEDDED -> false
-            }
+        if (publishesReplayState { pendingRecordCount = viewId to recordCount }) {
+            manager.feature?.setRecordCount(viewId, recordCount)
+        }
+    }
+
+    /**
+     * Publishes the Session Replay configuration RUM reports on its view events
+     * (`session_replay_sample_rate`). Called by Dart straight after [setEmbedded].
+     */
+    fun setReplayConfiguration(sampleRate: Double, startRecordingImmediately: Boolean) {
+        val shouldPublish = publishesReplayState {
+            pendingReplayConfiguration = sampleRate to startRecordingImmediately
         }
         if (shouldPublish) {
-            manager.feature?.setRecordCount(viewId, recordCount)
+            manager.feature?.setReplayConfiguration(sampleRate, startRecordingImmediately)
         }
     }
 
@@ -264,20 +272,25 @@ internal class FlutterSessionReplayBridge private constructor(
      * itself, if this resolves to standalone — see [pendingHasReplay]/[pendingRecordCount].
      */
     fun setEmbedded(isEmbedded: Boolean) {
-        val (hasReplay, recordCount) = synchronized(lock) {
+        val (pendingState, replayConfiguration) = synchronized(lock) {
             embeddingState = if (isEmbedded) EmbeddingState.EMBEDDED else EmbeddingState.STANDALONE
-            if (embeddingState == EmbeddingState.STANDALONE) {
-                val flushed = pendingHasReplay to pendingRecordCount
-                pendingHasReplay = null
-                pendingRecordCount = null
-                flushed
+            val flushed = if (embeddingState == EmbeddingState.STANDALONE) {
+                (pendingHasReplay to pendingRecordCount) to pendingReplayConfiguration
             } else {
-                null to null
+                (null to null) to null
             }
+            pendingHasReplay = null
+            pendingRecordCount = null
+            pendingReplayConfiguration = null
+            flushed
         }
+        val (hasReplay, recordCount) = pendingState
 
         hasReplay?.let { (viewId, value) -> manager.feature?.setHasReplay(viewId, value) }
         recordCount?.let { (viewId, value) -> manager.feature?.setRecordCount(viewId, value) }
+        replayConfiguration?.let { (sampleRate, startImmediately) ->
+            manager.feature?.setReplayConfiguration(sampleRate, startImmediately)
+        }
 
         flushPendingSegments()
     }
