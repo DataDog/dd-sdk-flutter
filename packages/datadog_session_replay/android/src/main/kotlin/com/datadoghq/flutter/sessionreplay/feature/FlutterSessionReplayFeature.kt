@@ -29,6 +29,7 @@ import com.datadoghq.flutter.sessionreplay.resource.RoutedResourceWriter
 internal interface FlutterSessionReplayFeature : StorageBackedFeature {
     fun setHasReplay(viewId: String, hasReplay: Boolean)
     fun setRecordCount(viewId: String, recordCount: Int)
+    fun setReplayConfiguration(sampleRate: Double, startRecordingImmediately: Boolean)
     fun writeSegment(segment: String)
     fun readCurrentContext(): DefaultFlutterSessionReplayFeature.RumContext?
 
@@ -152,6 +153,15 @@ internal class DefaultFlutterSessionReplayFeature(
         }
     }
 
+    // Same keys and types as the native Session Replay; RUM reads the sample rate for
+    // `_dd.configuration.session_replay_sample_rate` on view events.
+    override fun setReplayConfiguration(sampleRate: Double, startRecordingImmediately: Boolean) {
+        sdkCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME) {
+            it[SESSION_REPLAY_SAMPLE_RATE_KEY] = sampleRate.toLong()
+            it[SESSION_REPLAY_START_IMMEDIATE_RECORDING_KEY] = startRecordingImmediately
+        }
+    }
+
     override fun writeSegment(segment: String) {
         sdkCore.getFeature(FLUTTER_SESSION_REPLAY_FEATURE_NAME)
             ?.withWriteContext { _, writeScope ->
@@ -195,6 +205,8 @@ internal class DefaultFlutterSessionReplayFeature(
             )
 
         const val HAS_REPLAY_KEY = "has_replay"
+        const val SESSION_REPLAY_SAMPLE_RATE_KEY = "session_replay_sample_rate"
+        const val SESSION_REPLAY_START_IMMEDIATE_RECORDING_KEY = "session_replay_start_immediate_recording"
         const val VIEW_RECORDS_COUNT_KEY = "records_count"
 
         const val APPLICATION_ID_KEY = "application_id"

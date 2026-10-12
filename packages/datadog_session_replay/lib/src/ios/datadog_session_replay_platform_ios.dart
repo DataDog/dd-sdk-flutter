@@ -83,6 +83,16 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
     // registered, so Dart never has to observe its own view to keep up.
     _iosBridge.setEmbedded(configuration.isEmbedded);
 
+    // Lets native RUM report `session_replay_sample_rate` on its view events. Skipped
+    // when embedded: the host's Session Replay reports its own configuration (the
+    // bridge also ignores it natively in that case).
+    if (!configuration.isEmbedded) {
+      _iosBridge.setReplayConfigurationWithSampleRate(
+        configuration.replaySampleRate,
+        startRecordingImmediately: configuration.startRecordingImmediately,
+      );
+    }
+
     // Hand this bridge's token to the plugin instance for this engine. The bridge is
     // created over FFI and never sees a messenger, while the plugin has the messenger but
     // never sees the bridge — this call is what pairs them, which is both how the engine's

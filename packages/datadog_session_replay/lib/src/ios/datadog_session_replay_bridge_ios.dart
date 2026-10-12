@@ -327,6 +327,20 @@ extension FlutterSessionReplay$Methods on FlutterSessionReplay {
     );
   }
 
+  /// setReplayConfigurationWithSampleRate:startRecordingImmediately:
+  void setReplayConfigurationWithSampleRate(
+    double sampleRate, {
+    required bool startRecordingImmediately,
+  }) {
+    final _$$ref = object$.ref;
+    _objc_msgSend_ghxo7e(
+      _$$ref.pointer,
+      _sel_setReplayConfigurationWithSampleRate_startRecordingImmediately_,
+      sampleRate,
+      startRecordingImmediately,
+    );
+  }
+
   /// writeSegmentWithSegment:
   void writeSegmentWithSegment(objc.NSString segmentJson) {
     final _$$ref = object$.ref;
@@ -803,6 +817,25 @@ final _objc_msgSend_g5idq5 = objc.msgSendPointer
         ffi.Pointer<objc.ObjCObjectImpl>,
       )
     >();
+final _objc_msgSend_ghxo7e = objc.msgSendPointer
+    .cast<
+      ffi.NativeFunction<
+        ffi.Void Function(
+          ffi.Pointer<objc.ObjCObjectImpl>,
+          ffi.Pointer<objc.ObjCSelector>,
+          ffi.Double,
+          ffi.Bool,
+        )
+      >
+    >()
+    .asFunction<
+      void Function(
+        ffi.Pointer<objc.ObjCObjectImpl>,
+        ffi.Pointer<objc.ObjCSelector>,
+        double,
+        bool,
+      )
+    >();
 final _objc_msgSend_pfv6jd = objc.msgSendPointer
     .cast<
       ffi.NativeFunction<
@@ -927,6 +960,10 @@ late final _sel_setHasReplayWithHasReplay_ = objc.registerName(
 late final _sel_setRecordCountFor_count_ = objc.registerName(
   "setRecordCountFor:count:",
 );
+late final _sel_setReplayConfigurationWithSampleRate_startRecordingImmediately_ =
+    objc.registerName(
+      "setReplayConfigurationWithSampleRate:startRecordingImmediately:",
+    );
 late final _sel_setSessionID_ = objc.registerName("setSessionID:");
 late final _sel_setViewID_ = objc.registerName("setViewID:");
 late final _sel_viewID = objc.registerName("viewID");
