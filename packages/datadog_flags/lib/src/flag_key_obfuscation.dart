@@ -6,21 +6,41 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
-const supportedFlagsCapabilities = ['assignment-encoding-flag-key-256-v1'];
+part 'flag_key_obfuscation.g.dart';
+
+enum FlagsCapability {
+  assignmentEncodingFlagKey256V1('assignment-encoding-flag-key-256-v1');
+
+  final String wireName;
+
+  const FlagsCapability(this.wireName);
+}
+
+const supportedFlagsCapabilities = [
+  FlagsCapability.assignmentEncodingFlagKey256V1,
+];
 
 /// Encoding metadata that belongs to one assignment snapshot.
 @immutable
+@JsonSerializable(constructor: '_')
 final class FlagKeyObfuscation {
-  static const scheme = 'flag-key-sha256-v1';
+  static const supportedScheme = 'flag-key-sha256-v1';
   static final _domain = utf8.encode('datadog.feature-flags.flag-key.v1\u0000');
 
+  @JsonKey(fromJson: _schemeFromJson)
+  final String scheme;
+  @JsonKey(fromJson: _saltFromJson)
   final String salt;
   final _lookupKeys = <String, String>{};
   static const _lookupCacheLimit = 1024;
 
-  FlagKeyObfuscation._(this.salt);
+  FlagKeyObfuscation._(this.scheme, this.salt);
+
+  factory FlagKeyObfuscation.fromJson(Map<String, Object?> json) =>
+      _$FlagKeyObfuscationFromJson(json);
 
   /// Validates the wire fields, including explicitly null fields.
   static FlagKeyObfuscation? fromSnapshot(Map<String, Object?> json) {
@@ -33,16 +53,7 @@ final class FlagKeyObfuscation {
     if (obfuscated != true || descriptor is! Map) {
       throw const FormatException('Invalid flag-key obfuscation metadata');
     }
-    if (descriptor['scheme'] != scheme) {
-      throw const FormatException('Unsupported flag-key obfuscation scheme');
-    }
-    final salt = descriptor['salt'];
-    if (!_isLowercaseHex(salt, 16)) {
-      throw const FormatException(
-        'Flag-key salt must contain 32 lowercase hexadecimal characters',
-      );
-    }
-    return FlagKeyObfuscation._(salt as String);
+    return FlagKeyObfuscation.fromJson(Map<String, Object?>.from(descriptor));
   }
 
   void validateKeys(Iterable<String> keys) {
@@ -53,7 +64,7 @@ final class FlagKeyObfuscation {
     }
   }
 
-  Map<String, Object?> toJson() => {'scheme': scheme, 'salt': salt};
+  Map<String, Object?> toJson() => _$FlagKeyObfuscationToJson(this);
 
   /// Returns null for malformed Unicode instead of hashing a replacement rune.
   String? encodeKey(String key) {
@@ -79,6 +90,22 @@ final class FlagKeyObfuscation {
     _lookupKeys[key] = digest;
     return digest;
   }
+}
+
+String _schemeFromJson(Object? value) {
+  if (value != FlagKeyObfuscation.supportedScheme) {
+    throw const FormatException('Unsupported flag-key obfuscation scheme');
+  }
+  return value as String;
+}
+
+String _saltFromJson(Object? value) {
+  if (!_isLowercaseHex(value, 16)) {
+    throw const FormatException(
+      'Flag-key salt must contain 32 lowercase hexadecimal characters',
+    );
+  }
+  return value as String;
 }
 
 bool _isLowercaseHex(Object? value, int bytes) =>

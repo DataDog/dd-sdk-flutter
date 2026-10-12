@@ -81,8 +81,11 @@ class FlagAssignmentsFetcher {
       'Content-Type': 'application/vnd.api+json',
       // Avoid adding a header that a web proxy's CORS policy may reject.
       if (configuration.customFlagsEndpoint == null)
-        'X-DD-FEATURE-FLAGS-CAPABILITIES':
-            (supportedFlagsCapabilities.toList()..sort()).join(','),
+        'X-DD-FEATURE-FLAGS-CAPABILITIES': (supportedFlagsCapabilities
+                .map((capability) => capability.wireName)
+                .toList()
+              ..sort())
+            .join(','),
       'dd-client-token': datadogConfig.clientToken,
       if (datadogConfig.applicationId case final applicationId?)
         'dd-application-id': applicationId,

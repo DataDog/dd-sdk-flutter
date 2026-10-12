@@ -14,17 +14,9 @@ configure the provider, initialize a client for an evaluation context, evaluate
 typed details with a programmatic default, and shut the client down when the app
 no longer needs it.
 
-The SDK automatically supports responses with `flag-key-sha256-v1` keys.
+The SDK automatically supports assignment responses with obfuscated flag keys.
 Applications continue to evaluate flags with their original keys.
 Flag values and telemetry identifiers do not change.
-Unknown or invalid encoding metadata follows the normal initialization failure
-path. Valid assignments for the same context remain available.
-
-Storage adapters must preserve the complete `FlagsData.toJson()` result.
-Encoded snapshots use `encodedFlags` and store their encoding descriptor.
-Existing plaintext snapshots remain readable.
-Older SDKs cannot use an encoded snapshot after a downgrade. They return defaults
-until a normal plaintext network response provides assignments.
 
 ## Installation
 
@@ -339,6 +331,10 @@ class MyFlagsStore implements DatadogFlagsStore {
 Stored assignments are used only when their evaluation context matches the
 active context. A live successful fetch always moves the client to the newest
 assignment state and writes that state back to the store.
+
+Storage adapters must preserve the complete `FlagsData.toJson()` result and
+restore it with `FlagsData.fromJson()`. These methods retain the metadata needed
+to evaluate obfuscated assignments.
 
 This package does not choose a disk location or ship a Flutter-specific disk
 store. Flutter apps can implement `DatadogFlagsStore` with their preferred app

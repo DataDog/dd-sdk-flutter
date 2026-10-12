@@ -37,11 +37,47 @@ const _vectors = {
 };
 
 void main() {
+  test('serializes only encoding metadata after a lookup', () {
+    final encoding = FlagKeyObfuscation.fromJson({
+      ..._descriptor,
+      'futureField': 'ignored',
+    });
+    expect(encoding.encodeKey('flag'), _vectors['flag']);
+    expect(encoding.toJson(), _descriptor);
+
+    final restored = FlagKeyObfuscation.fromJson(
+      jsonDecode(jsonEncode(encoding.toJson())) as Map<String, Object?>,
+    );
+    expect(restored.toJson(), _descriptor);
+    expect(restored.encodeKey('flag'), _vectors['flag']);
+  });
+
+  for (final field in ['scheme', 'salt']) {
+    test('rejects a missing $field in the descriptor', () {
+      final descriptor = Map<String, Object?>.of(_descriptor)..remove(field);
+      expect(
+        () => FlagKeyObfuscation.fromJson(descriptor),
+        throwsFormatException,
+      );
+    });
+    for (final value in [null, true, 42, '', 'unsupported', [], {}]) {
+      test('rejects $field: ${jsonEncode(value)} in the descriptor', () {
+        expect(
+          () => FlagKeyObfuscation.fromJson({..._descriptor, field: value}),
+          throwsFormatException,
+        );
+      });
+    }
+  }
+
   test('bounds lookup hashes and keeps descriptors separate', () {
     final encoding = FlagKeyObfuscation.fromSnapshot(_metadata)!;
     final other = FlagKeyObfuscation.fromSnapshot({
       'obfuscated': true,
-      'obfuscation': {'scheme': FlagKeyObfuscation.scheme, 'salt': 'f' * 32},
+      'obfuscation': {
+        'scheme': FlagKeyObfuscation.supportedScheme,
+        'salt': 'f' * 32,
+      },
     })!;
     final first = encoding.encodeKey('flag');
     expect(encoding.encodeKey('flag'), same(first));
