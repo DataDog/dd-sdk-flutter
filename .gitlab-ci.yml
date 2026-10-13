@@ -18,7 +18,9 @@ variables:
   ANDROID_EMULATOR_SDK: "33"
   IS_ON_CI: $CI
   SLACK_CHANNEL: "#mobile-sdk-ops"
-  FLUTTER_MIN_VERSION: '3.38.0'
+  # Flutter 3.38.0 bundles prerelease Dart; 3.38.1 includes stable Dart 3.10.
+  # https://github.com/flutter/flutter/issues/178400
+  FLUTTER_MIN_VERSION: '3.38.1'
   # Magic Mirror Depot pro for the Java ecosystem (see
   # tools/ci/gradle/init.d/depot-mirror.init.gradle).
   DEPOT_JAVA_MAVEN_URL: "https://depot-read-api-java.us1.ddbuild.io/magicmirror/magicmirror/@current/"
