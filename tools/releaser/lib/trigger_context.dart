@@ -15,15 +15,15 @@
 /// the two.
 enum TriggerContext {
   mainline,
-  patch,
+  support,
   preRelease;
 
   static TriggerContext? parse(String raw) {
     switch (raw.toLowerCase()) {
       case 'mainline':
         return TriggerContext.mainline;
-      case 'patch':
-        return TriggerContext.patch;
+      case 'support':
+        return TriggerContext.support;
       case 'prerelease':
         return TriggerContext.preRelease;
       default:

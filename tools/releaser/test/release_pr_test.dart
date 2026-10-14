@@ -114,6 +114,7 @@ void main() {
         publishValidationSkipped: false,
         repoSlug: 'DataDog/dd-sdk-flutter',
         changelogRef: sha,
+        contentCommit: sha,
         groupsByPackage: const {},
       );
 

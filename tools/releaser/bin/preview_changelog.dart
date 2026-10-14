@@ -33,10 +33,10 @@ Future<void> main(List<String> arguments) async {
     ..addOption('package', mandatory: true)
     ..addOption(
       'trigger',
-      allowed: ['auto', 'mainline', 'patch', 'prerelease'],
+      allowed: ['auto', 'mainline', 'support', 'prerelease'],
       defaultsTo: 'auto',
       help:
-          'Which trigger context to plan for. "auto" detects patch from '
+          'Which trigger context to plan for. "auto" detects support from '
           'the current branch name, defaulting to mainline otherwise.',
     );
   final args = argParser.parse(arguments);

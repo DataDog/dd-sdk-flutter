@@ -10,27 +10,26 @@ class ManifestPackageEntry {
   final String package;
   final String toVersion;
   final bool prerelease;
-  final bool isPatch;
+  final bool isSupport;
   final String relativePath;
 
   ManifestPackageEntry({
     required this.package,
     required this.toVersion,
     required this.prerelease,
-    required this.isPatch,
+    required this.isSupport,
     required this.relativePath,
   });
 }
 
 /// What one `prepare_release.dart` run did, as `publish_release.dart`
-/// reconstructs it. A mainline/pre-release run is read from its release PR's
-/// body (see [parseVersionsTable]/[parseContentCommit]); a patch run has no
-/// PR, so it is read from its own commit message (see
-/// [parsePatchVersionSummary]).
+/// reconstructs it from the release PR's body (see
+/// [parseVersionsTable]/[parseContentCommit]).
 class ReleaseManifest {
   /// Commit A's SHA (mainline/pre-release), backported into the dev-line
-  /// branch by Phase 2 via `release-content/*`. `null` on a patch run, which
-  /// doesn't split its commits, so there is nothing for Phase 2 to backport.
+  /// branch by Phase 2 via `release-content/*`. `null` on a support release,
+  /// which doesn't split its commits, so there is nothing for Phase 2 to
+  /// backport.
   final String? contentCommit;
   final List<ManifestPackageEntry> packages;
 
@@ -38,8 +37,7 @@ class ReleaseManifest {
 }
 
 /// One package's version change as `release_pr.dart` writes it: a `## Versions`
-/// table row, or a patch commit message's `versionSummary` line. Carries no
-/// path -- [manifestPackagesFor] resolves that.
+/// table row. Carries no path -- [manifestPackagesFor] resolves that.
 class ParsedVersionRow {
   final String package;
   final String fromVersion;
@@ -106,15 +104,15 @@ final _contentCommitPattern = RegExp(r'_Content commit: `([0-9a-f]{40})`_');
 String? parseContentCommit(String prBody) =>
     _contentCommitPattern.firstMatch(prBody)?.group(1);
 
-/// Builds the [ManifestPackageEntry] list for [rows] (from either
-/// [parseVersionsTable] or [parsePatchVersionSummary]). A row carries no
+/// Builds the [ManifestPackageEntry] list for [rows] (from
+/// [parseVersionsTable]). A row carries no
 /// path, so each package's `relativePath` comes from package discovery
 /// against [repoRoot] -- the checkout is the tree the release-prep run
 /// produced, so discovery finds the same packages it did.
 Future<List<ManifestPackageEntry>> manifestPackagesFor(
   List<ParsedVersionRow> rows, {
   required String repoRoot,
-  required bool isPatch,
+  required bool isSupport,
 }) async {
   if (rows.isEmpty) return const [];
 
@@ -131,7 +129,7 @@ Future<List<ManifestPackageEntry>> manifestPackagesFor(
         package: row.package,
         toVersion: row.toVersion,
         prerelease: row.bump == 'prerelease',
-        isPatch: isPatch,
+        isSupport: isSupport,
         relativePath:
             byName[row.package]?.relativePath ??
             (throw StateError(
@@ -140,39 +138,4 @@ Future<List<ManifestPackageEntry>> manifestPackagesFor(
             )),
       ),
   ];
-}
-
-/// [manifestPackagesFor] for a release PR body's `## Versions` table.
-Future<List<ManifestPackageEntry>> manifestPackagesFromPrBody(
-  String prBody, {
-  required String repoRoot,
-}) => manifestPackagesFor(
-  parseVersionsTable(prBody),
-  repoRoot: repoRoot,
-  isPatch: false,
-);
-
-final _versionSummaryLinePattern = RegExp(
-  r'^- (\S+): (\S+) -> (\S+) \((.+)\)$',
-);
-
-/// Parses the `versionSummary` line out of a patch run's commit message body.
-/// A patch run has no PR, so its commit message carries the summary that a
-/// mainline/pre-release run puts in the PR's `## Versions` table.
-///
-/// A patch run is always exactly one package, so this takes the first
-/// matching line and ignores the rest. `null` if the message has no such
-/// line at all (not a `prepare_release.dart` patch commit).
-ParsedVersionRow? parsePatchVersionSummary(String commitMessageBody) {
-  for (final line in commitMessageBody.split('\n')) {
-    final match = _versionSummaryLinePattern.firstMatch(line.trim());
-    if (match == null) continue;
-    return ParsedVersionRow(
-      package: match.group(1)!,
-      fromVersion: match.group(2)!,
-      toVersion: match.group(3)!,
-      bump: match.group(4)!,
-    );
-  }
-  return null;
 }

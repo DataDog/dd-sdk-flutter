@@ -556,7 +556,7 @@ class GithubCommandWrapper {
         '--state',
         'open',
         '--json',
-        'number,body',
+        'number,body,baseRefName',
         '--limit',
         '2',
       ],
@@ -580,6 +580,7 @@ class GithubCommandWrapper {
     return OpenPullRequest(
       number: entry['number'] as int,
       body: entry['body'] as String? ?? '',
+      baseRef: entry['baseRefName'] as String,
     );
   }
 
@@ -661,6 +662,12 @@ class GithubCommandWrapper {
       number: entry['number'] as int,
       body: entry['body'] as String? ?? '',
       baseRef: (entry['base'] as Map<String, dynamic>)['ref'] as String,
+      headRef: (entry['head'] as Map<String, dynamic>)['ref'] as String,
+      headRepo:
+          ((entry['head'] as Map<String, dynamic>)['repo']
+                  as Map<String, dynamic>?)?['full_name']
+              as String?,
+      mergeCommitSha: entry['merge_commit_sha'] as String?,
     );
   }
 
@@ -688,13 +695,20 @@ class GithubCommandWrapper {
   }
 }
 
-/// An open PR's number and body. See
+/// An open PR's number, body, and base branch. See
 /// [GithubCommandWrapper.findOpenPullRequestByHead].
 class OpenPullRequest {
   final int number;
   final String body;
 
-  OpenPullRequest({required this.number, required this.body});
+  /// The branch this PR will merge into.
+  final String baseRef;
+
+  OpenPullRequest({
+    required this.number,
+    required this.body,
+    required this.baseRef,
+  });
 }
 
 /// A merged PR's number, body, and base branch. See
@@ -708,10 +722,26 @@ class MergedPullRequest {
   /// or the commit itself.
   final String baseRef;
 
+  /// The branch this PR was opened from (`release-prep/*` for a release).
+  final String headRef;
+
+  /// `owner/repo` the head branch lives in -- differs from the base
+  /// repository for a fork PR. Null if the head repository was deleted.
+  final String? headRepo;
+
+  /// The commit GitHub created on [baseRef] when it merged this PR. The
+  /// commit-to-PR lookup also returns PRs that merely contain a commit, so
+  /// only a PR whose merge commit is the commit in question is the one that
+  /// released it.
+  final String? mergeCommitSha;
+
   MergedPullRequest({
     required this.number,
     required this.body,
     required this.baseRef,
+    required this.headRef,
+    this.headRepo,
+    this.mergeCommitSha,
   });
 }
 

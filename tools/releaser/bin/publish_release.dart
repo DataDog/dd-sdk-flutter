@@ -11,15 +11,17 @@
 //      `success` for this exact commit -- tags aren't branch-protected, so
 //      this alone doesn't prove the commit came from a legitimate release
 //      branch (that status is posted for any branch's pipeline).
-//   2. Reconstructs what `prepare_release.dart` did, and which branch it
-//      ran against: for mainline/pre-release, from the release PR that
+//   2. Reconstructs what `prepare_release.dart` did from the release PR that
 //      merged this commit (found via GitHub's commit-to-PR association, so
-//      it works regardless of merge strategy) -- the branch is that PR's
-//      own base ref, GitHub's record of what it merged into. For patch (no
-//      PR at all), from the one commit's own message -- the branch is
-//      derived from the package/version/bump it names. Either way, this
-//      commit is then required to be reachable from that branch, closing the
-//      gap step 1 alone leaves open.
+//      it works regardless of merge strategy), and exits quietly if there is
+//      none, or it wasn't opened from `release-prep/*` -- every push to a
+//      release branch fires the trigger, and most aren't releases. The PR
+//      must have merged as exactly this commit, be a merge commit, come from
+//      this repository, name versions that match the pubspecs at this commit,
+//      and (outside a support release) name a content commit that is part of
+//      this commit's history. The branch is the PR's own base ref, GitHub's
+//      record of what it merged into; this commit is then required to be
+//      reachable from it, closing the gap step 1 alone leaves open.
 //   3. For each package, in that (already topological) order:
 //      skip if pub.dev already has that version (idempotent re-run); else
 //      push that package's `<package>/v<version>` tag (this repo's
@@ -129,6 +131,7 @@ Future<void> publishRelease({
   required String repoSlug,
   required String sha,
   required Duration runTimeout,
+  PublishedVersionsGateway publishedVersions = fetchPublishedVersions,
 }) async {
   final ciOk = await github.commitStatusIsSuccess(
     _log,
@@ -146,9 +149,39 @@ Future<void> publishRelease({
   }
 
   final pr = await github.findMergedPullRequestForCommit(_log, repoSlug, sha);
-  final (manifest, sourceBranch) = pr != null
-      ? await _manifestForMainlineOrPrerelease(gitDir, pr, sha)
-      : await _manifestForPatchRelease(gitDir, sha);
+  if (pr == null || !pr.headRef.startsWith('release-prep/')) {
+    // Every push to a release branch fires the trigger, including ones that
+    // aren't a release (a cherry-picked fix on a support branch, for one).
+    _log.info('ℹ️ $sha is not a release-prep merge -- nothing to publish.');
+    return;
+  }
+  // The lookup also returns PRs that merely contain `sha`, and a PR from a
+  // fork can reuse a `release-prep/*` branch name -- neither is a release.
+  if (pr.mergeCommitSha != sha) {
+    throw StateError(
+      'PR #${pr.number} did not merge as $sha (its merge commit is '
+      '${pr.mergeCommitSha}) -- refusing to publish.',
+    );
+  }
+  if (pr.headRepo != repoSlug) {
+    throw StateError(
+      'PR #${pr.number} was opened from ${pr.headRepo ?? 'a deleted fork'}, '
+      'not $repoSlug -- refusing to publish.',
+    );
+  }
+  if (!await isMergeCommit(gitDir, sha)) {
+    throw StateError(
+      '$sha is not a merge commit -- refusing to publish. Release-prep PRs '
+      'must be merged with "Create a merge commit": a squash or rebase '
+      'leaves the next release\'s commit range unable to tell what this '
+      'one already shipped.',
+    );
+  }
+  final (manifest, sourceBranch) = await _manifestFromReleasePr(
+    gitDir,
+    pr,
+    sha,
+  );
 
   if (manifest.packages.isEmpty) {
     throw StateError('$sha has nothing to publish.');
@@ -163,12 +196,13 @@ Future<void> publishRelease({
       repoSlug: repoSlug,
       sha: sha,
       runTimeout: runTimeout,
+      publishedVersions: publishedVersions,
     );
   }
 
   final contentCommit = manifest.contentCommit;
-  if (contentCommit == null) {
-    _log.info('ℹ️ No content commit to backport (patch trigger).');
+  if (contentCommit == null || sourceBranch == null) {
+    _log.info('ℹ️ No content commit to backport (support release).');
     return;
   }
 
@@ -183,55 +217,11 @@ Future<void> publishRelease({
   _log.info('✅ Release publish complete for $sha.');
 }
 
-/// Reconstructs a patch run's single-package manifest from [sha]'s own
-/// commit message -- a patch never opens a PR (direct commit to the
-/// standing branch, no A/B split), so there is no PR body to read this
-/// from. `contentCommit` is always `null`: a patch has no commit A, so
-/// there is nothing to backport. Also returns the branch the commit message
-/// implies, which must contain [sha] (see [_checkOnBranch]).
-Future<(ReleaseManifest, String)> _manifestForPatchRelease(
-  GitDir gitDir,
-  String sha,
-) async {
-  final body =
-      (await Process.run('git', [
-            'log',
-            '-1',
-            '--format=%b',
-            sha,
-          ], workingDirectory: gitDir.path)).stdout
-          as String;
-  final row = parsePatchVersionSummary(body);
-  if (row == null) {
-    throw StateError(
-      'No merged PR found for $sha, and its commit message has no '
-      'version-summary line either -- expected the one prepare_release.dart '
-      'writes for a support release.',
-    );
-  }
-
-  final sourceBranch = expectedPatchBranchFor(
-    package: row.package,
-    toVersion: row.toVersion,
-    bump: row.bump,
-  );
-  await _checkOnBranch(gitDir, sha, sourceBranch);
-
-  final packages = await manifestPackagesFor(
-    [row],
-    repoRoot: gitDir.path,
-    isPatch: true,
-  );
-  return (
-    ReleaseManifest(contentCommit: null, packages: packages),
-    sourceBranch,
-  );
-}
-
-/// Reconstructs a mainline/pre-release run's manifest from [pr]'s body.
-/// Also returns the dev-line branch [pr]'s own base ref maps to; [pr]'s base
-/// ref itself must contain [sha] (see [_checkOnBranch]).
-Future<(ReleaseManifest, String)> _manifestForMainlineOrPrerelease(
+/// Reconstructs a run's manifest from [pr]'s body. Also returns the branch
+/// commit A is backported into: the source branch [pr]'s base ref maps to,
+/// or `null` for a support release, which has no commit A. [pr]'s base ref
+/// itself must contain [sha] (see [_checkOnBranch]).
+Future<(ReleaseManifest, String?)> _manifestFromReleasePr(
   GitDir gitDir,
   MergedPullRequest pr,
   String sha,
@@ -239,22 +229,84 @@ Future<(ReleaseManifest, String)> _manifestForMainlineOrPrerelease(
   final sourceBranch = sourceBranchFor(pr.baseRef);
   await _checkOnBranch(gitDir, sha, pr.baseRef);
 
+  final isSupport = isSupportBranch(pr.baseRef);
   final contentCommit = parseContentCommit(pr.body);
-  if (contentCommit == null) {
+  if (!isSupport && contentCommit == null) {
     throw StateError(
       'PR #${pr.number}\'s body has no "Content commit" line -- not a '
       'release-prep PR?',
     );
   }
 
-  final packages = await manifestPackagesFromPrBody(
-    pr.body,
+  final rows = parseVersionsTable(pr.body);
+  if (isSupport) _checkSupportRows(rows, pr);
+  final packages = await manifestPackagesFor(
+    rows,
     repoRoot: gitDir.path,
+    isSupport: isSupport,
   );
+  _checkPubspecVersions(gitDir, packages);
+  if (!isSupport && !await isAncestor(gitDir, contentCommit!, sha, _log)) {
+    throw StateError(
+      'The content commit $contentCommit named in PR #${pr.number}\'s body is '
+      'not part of $sha\'s history -- refusing to publish.',
+    );
+  }
   return (
-    ReleaseManifest(contentCommit: contentCommit, packages: packages),
-    sourceBranch,
+    ReleaseManifest(
+      contentCommit: isSupport ? null : contentCommit,
+      packages: packages,
+    ),
+    isSupport ? null : sourceBranch,
   );
+}
+
+/// A support release is one package, from the branch its PR merged into. The
+/// body's rows are editable, but the base branch is GitHub's own record, so a
+/// row only counts if it names the package that branch is for and a version
+/// and bump that belong to its line.
+void _checkSupportRows(List<ParsedVersionRow> rows, MergedPullRequest pr) {
+  if (rows.length != 1) {
+    throw StateError(
+      'PR #${pr.number} merged into ${pr.baseRef} but lists ${rows.length} '
+      'packages -- a support release is exactly one. Refusing to publish.',
+    );
+  }
+  final row = rows.single;
+  final expected = expectedSupportBranchFor(
+    package: row.package,
+    toVersion: row.toVersion,
+    bump: row.bump,
+  );
+  if (expected != pr.baseRef) {
+    throw StateError(
+      'PR #${pr.number} merged into ${pr.baseRef}, but its table says '
+      '${row.package} ${row.toVersion} (${row.bump}), which comes from '
+      '$expected. Refusing to publish.',
+    );
+  }
+}
+
+/// The PR body is editable by anyone with write access, so the versions it
+/// names are only trusted once they match what the merged tree actually
+/// contains.
+void _checkPubspecVersions(GitDir gitDir, List<ManifestPackageEntry> packages) {
+  for (final entry in packages) {
+    final pubspec = File(
+      p.join(gitDir.path, entry.relativePath, 'pubspec.yaml'),
+    );
+    final declared = RegExp(
+      r'^version:\s*(\S+)',
+      multiLine: true,
+    ).firstMatch(pubspec.readAsStringSync())?.group(1);
+    if (declared != entry.toVersion) {
+      throw StateError(
+        'The release PR says ${entry.package} ${entry.toVersion}, but its '
+        'pubspec.yaml at this commit says ${declared ?? 'no version'} -- '
+        'refusing to publish.',
+      );
+    }
+  }
 }
 
 /// A green CI status alone doesn't prove [sha] came from a legitimate
@@ -288,11 +340,12 @@ Future<void> _publishPackage(
   required String repoSlug,
   required String sha,
   required Duration runTimeout,
+  required PublishedVersionsGateway publishedVersions,
 }) async {
   final targetVersion = Version.parse(entry.toVersion);
   final tagName = '${entry.package}/v${entry.toVersion}';
 
-  final published = await fetchPublishedVersions(entry.package);
+  final published = await publishedVersions(entry.package);
   if (published.versions.contains(targetVersion)) {
     // No push -- just confirm the tag points at `sha`. `--verify-tag` below
     // only checks it exists, not where it points.
@@ -356,7 +409,7 @@ Future<void> _publishPackage(
     latest: shouldMarkReleaseLatest(
       package: entry.package,
       prerelease: entry.prerelease,
-      isPatch: entry.isPatch,
+      isSupport: entry.isSupport,
     ),
     prerelease: entry.prerelease,
   );

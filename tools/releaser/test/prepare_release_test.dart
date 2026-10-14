@@ -14,11 +14,14 @@
 
 import 'dart:io';
 
+import 'package:logging/logging.dart';
+import 'package:releaser/git/release_git.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/llm/ai_gateway.dart';
 import 'package:releaser/native_sdk.dart';
 import 'package:releaser/release_plan.dart';
 import 'package:test/test.dart';
+import 'package:version/version.dart';
 
 import '../bin/prepare_release.dart';
 import 'support/fixture_repo.dart';
@@ -141,79 +144,83 @@ void main() {
     },
   );
 
-  test(
-    'pushes the release-content branch at commit A\'s exact SHA on a real '
-    '(non-dry-run) mainline run',
-    () async {
-      // A real push needs a real remote -- a local bare repo, same pattern
-      // as release_git_test.dart. `prepareRelease` still goes on afterwards
-      // to call `github.repoSlug()`/`createPullRequest()`, which fail fast
-      // here (this remote has no GitHub owner/repo to resolve, so `gh`
-      // never gets far enough to touch the network) -- expected, and fine:
-      // both branch pushes already landed by that point, which is what
-      // this test is actually checking.
-      final gitDir = await fixture.gitDir;
-      final bareRemote = await createTestTempDir(
-        'prepare_release_test_remote_',
-      );
-      await Process.run('git', ['init', '-q', '--bare', bareRemote.path]);
+  test('pushes the release-content branch at commit A\'s exact SHA on a real '
+      '(non-dry-run) mainline run', () async {
+    // A real push needs a real remote -- a local bare repo, same pattern
+    // as release_git_test.dart. `prepareRelease` still goes on afterwards
+    // to call `github.repoSlug()`/`createPullRequest()`, which fail fast
+    // here (this remote has no GitHub owner/repo to resolve, so `gh`
+    // never gets far enough to touch the network) -- expected, and fine:
+    // both branch pushes already landed by that point, which is what
+    // this test is actually checking.
+    final gitDir = await fixture.gitDir;
+    final bareRemote = await createTestTempDir('prepare_release_test_remote_');
+    await Process.run('git', ['init', '-q', '--bare', bareRemote.path]);
+    await Process.run('git', [
+      'remote',
+      'add',
+      'origin',
+      bareRemote.path,
+    ], workingDirectory: fixture.root.path);
+
+    // Both the dev line and the PR's target branch have to exist on the
+    // remote -- the release-prep branch merges the target in.
+    for (final branch in ['develop', 'main']) {
       await Process.run('git', [
-        'remote',
-        'add',
+        'push',
         'origin',
-        bareRemote.path,
+        'HEAD:refs/heads/$branch',
       ], workingDirectory: fixture.root.path);
+    }
 
-      try {
-        await expectLater(
-          prepareRelease(
-            RunContext(
-              repoRoot: fixture.root.path,
-              trigger: TriggerContext.mainline,
-              currentBranch: 'develop',
-              requestedPackages: ['datadog_dio'],
-            ),
-            gitDir: gitDir,
-            github: GithubCommandWrapper(fixture.root.path),
-            aiGatewayClient: _NeverCalledAiGatewayClient(),
-            dryRun: false,
-            skipPublishValidation: true,
-            publishedVersions: _neverPublished,
+    try {
+      await expectLater(
+        prepareRelease(
+          RunContext(
+            repoRoot: fixture.root.path,
+            trigger: TriggerContext.mainline,
+            currentBranch: 'develop',
+            requestedPackages: ['datadog_dio'],
           ),
-          throwsA(anything),
-        );
+          gitDir: gitDir,
+          github: GithubCommandWrapper(fixture.root.path),
+          aiGatewayClient: _NeverCalledAiGatewayClient(),
+          dryRun: false,
+          skipPublishValidation: true,
+          publishedVersions: _neverPublished,
+        ),
+        throwsA(anything),
+      );
 
-        final branches = await Process.run('git', [
-          'for-each-ref',
-          '--format=%(refname:short)',
-          'refs/heads/release-content',
-        ], workingDirectory: bareRemote.path);
-        final contentBranch = (branches.stdout as String)
-            .split('\n')
-            .map((l) => l.trim())
-            .firstWhere((l) => l.startsWith('release-content/'));
+      final branches = await Process.run('git', [
+        'for-each-ref',
+        '--format=%(refname:short)',
+        'refs/heads/release-content',
+      ], workingDirectory: bareRemote.path);
+      final contentBranch = (branches.stdout as String)
+          .split('\n')
+          .map((l) => l.trim())
+          .firstWhere((l) => l.startsWith('release-content/'));
 
-        final localContentSha = await gitDir.runCommand([
-          'log',
-          '--all',
-          '--format=%H',
-          '--grep=changelog',
-          '-n',
-          '1',
-        ]);
-        final expectedSha = (localContentSha.stdout as String).trim();
+      final localContentSha = await gitDir.runCommand([
+        'log',
+        '--all',
+        '--format=%H',
+        '--grep=changelog',
+        '-n',
+        '1',
+      ]);
+      final expectedSha = (localContentSha.stdout as String).trim();
 
-        final remoteSha = await Process.run('git', [
-          'rev-parse',
-          '$contentBranch^{commit}',
-        ], workingDirectory: bareRemote.path);
-        expect((remoteSha.stdout as String).trim(), expectedSha);
-      } finally {
-        await bareRemote.delete(recursive: true);
-      }
-    },
-    timeout: const Timeout(Duration(seconds: 30)),
-  );
+      final remoteSha = await Process.run('git', [
+        'rev-parse',
+        '$contentBranch^{commit}',
+      ], workingDirectory: bareRemote.path);
+      expect((remoteSha.stdout as String).trim(), expectedSha);
+    } finally {
+      await bareRemote.delete(recursive: true);
+    }
+  }, timeout: const Timeout(Duration(seconds: 30)));
 
   test(
     'strips a snapshots repo from a non-releasing package\'s build.gradle',
@@ -478,40 +485,37 @@ dependency_overrides:
     );
   });
 
-  test(
-    'refuses a pre-release run from main or a patch branch',
-    () async {
-      final gitDir = await fixture.gitDir;
+  test('refuses a pre-release run from main or a patch branch', () async {
+    final gitDir = await fixture.gitDir;
 
-      for (final badBranch in ['main', 'release/datadog_dio/v1.1.x']) {
-        expect(
-          () => prepareRelease(
-            RunContext(
-              repoRoot: fixture.root.path,
-              trigger: TriggerContext.preRelease,
-              currentBranch: badBranch,
-              requestedPackages: ['datadog_dio'],
-              prereleaseLabel: 'beta',
-            ),
-            gitDir: gitDir,
-            github: GithubCommandWrapper(fixture.root.path),
-            aiGatewayClient: _NeverCalledAiGatewayClient(),
-            dryRun: true,
-            skipPublishValidation: true,
-            publishedVersions: _neverPublished,
+    for (final badBranch in ['main', 'release/datadog_dio/v1.1.x']) {
+      expect(
+        () => prepareRelease(
+          RunContext(
+            repoRoot: fixture.root.path,
+            trigger: TriggerContext.preRelease,
+            currentBranch: badBranch,
+            requestedPackages: ['datadog_dio'],
+            prereleaseLabel: 'beta',
           ),
-          throwsA(
-            isA<StateError>().having(
-              (e) => e.message,
-              'message',
-              contains('dedicated long-lived pre-release branch'),
-            ),
+          gitDir: gitDir,
+          github: GithubCommandWrapper(fixture.root.path),
+          aiGatewayClient: _NeverCalledAiGatewayClient(),
+          dryRun: true,
+          skipPublishValidation: true,
+          publishedVersions: _neverPublished,
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('dedicated long-lived pre-release branch'),
           ),
-          reason: 'expected a refusal for branch "$badBranch"',
-        );
-      }
-    },
-  );
+        ),
+        reason: 'expected a refusal for branch "$badBranch"',
+      );
+    }
+  });
 
   test('allows a pre-release run from develop', () async {
     final gitDir = await fixture.gitDir;
@@ -535,6 +539,174 @@ dependency_overrides:
       skipPublishValidation: true,
       publishedVersions: _neverPublished,
     );
+  });
+
+  group('with a remote', () {
+    late Directory bareRemote;
+
+    setUp(() async {
+      bareRemote = await createTestTempDir('prepare_release_test_remote_');
+      await Process.run('git', ['init', '-q', '--bare', bareRemote.path]);
+      await Process.run('git', [
+        'remote',
+        'add',
+        'origin',
+        bareRemote.path,
+      ], workingDirectory: fixture.root.path);
+      for (final branch in ['develop', 'main']) {
+        await Process.run('git', [
+          'push',
+          'origin',
+          'HEAD:refs/heads/$branch',
+        ], workingDirectory: fixture.root.path);
+      }
+    });
+
+    tearDown(() => bareRemote.delete(recursive: true));
+
+    Future<void> prepare(
+      String currentBranch, {
+      TriggerContext? trigger,
+    }) async {
+      await prepareRelease(
+        RunContext(
+          repoRoot: fixture.root.path,
+          trigger: trigger ?? TriggerContext.mainline,
+          currentBranch: currentBranch,
+          requestedPackages: ['datadog_dio'],
+        ),
+        gitDir: await fixture.gitDir,
+        github: GithubCommandWrapper(fixture.root.path),
+        aiGatewayClient: _NeverCalledAiGatewayClient(),
+        dryRun: true,
+        skipPublishValidation: true,
+        publishedVersions: _neverPublished,
+      );
+    }
+
+    test('merges the target branch in between commit A and commit B, so '
+        'commit A stays free of what the target branch carries', () async {
+      final gitDir = await fixture.gitDir;
+      final developSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      // A previous release's pins, living on `main` only.
+      final scratch = await createTestTempDir('prepare_release_test_main_');
+      try {
+        await Process.run('git', [
+          'clone',
+          '-q',
+          bareRemote.path,
+          scratch.path,
+        ]);
+        await Process.run('git', [
+          'checkout',
+          '-q',
+          'main',
+        ], workingDirectory: scratch.path);
+        File(
+          '${scratch.path}/previous-release-pins.txt',
+        ).writeAsStringSync('x');
+        await Process.run('git', ['add', '.'], workingDirectory: scratch.path);
+        await Process.run('git', [
+          '-c',
+          'user.name=t',
+          '-c',
+          'user.email=t@example.com',
+          'commit',
+          '-q',
+          '-m',
+          'chore: previous release',
+        ], workingDirectory: scratch.path);
+        await Process.run('git', [
+          'push',
+          '-q',
+          'origin',
+          'main',
+        ], workingDirectory: scratch.path);
+      } finally {
+        await scratch.delete(recursive: true);
+      }
+
+      await prepare('develop');
+
+      // Commit B sits on the merge, and the merge's first parent is commit A.
+      expect(await isMergeCommit(gitDir, 'HEAD~1'), isTrue);
+      final commitA = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD~1^1',
+      ])).stdout.toString().trim();
+      expect(
+        (await gitDir.runCommand([
+          'log',
+          '-1',
+          '--format=%s',
+          commitA,
+        ])).stdout.toString(),
+        contains('changelog'),
+      );
+      expect(
+        (await gitDir.runCommand([
+          'ls-tree',
+          '-r',
+          '--name-only',
+          commitA,
+        ])).stdout.toString(),
+        isNot(contains('previous-release-pins.txt')),
+      );
+      expect(
+        File('${fixture.root.path}/previous-release-pins.txt').existsSync(),
+        isTrue,
+      );
+      expect(
+        await isAncestor(gitDir, developSha, commitA, Logger('t')),
+        isTrue,
+      );
+    });
+
+    test('a support release is one commit, with no content branch', () async {
+      final gitDir = await fixture.gitDir;
+      await fixture.tag('datadog_dio/v2.3.0');
+      await Process.run('git', [
+        'push',
+        'origin',
+        'HEAD:refs/heads/release/datadog_dio/v2.3.x',
+      ], workingDirectory: fixture.root.path);
+      await gitDir.runCommand(['checkout', '-b', 'release/datadog_dio/v2.3.x']);
+      final before = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      await prepareRelease(
+        RunContext(
+          repoRoot: fixture.root.path,
+          trigger: TriggerContext.support,
+          currentBranch: 'release/datadog_dio/v2.3.x',
+        ),
+        gitDir: gitDir,
+        github: GithubCommandWrapper(fixture.root.path),
+        aiGatewayClient: _NeverCalledAiGatewayClient(),
+        dryRun: true,
+        skipPublishValidation: true,
+        publishedVersions: (name) async =>
+            PublishedVersions([Version.parse('2.3.0')]),
+      );
+
+      expect(await commitCountBetween(gitDir, before, 'HEAD', Logger('t')), 1);
+      expect(
+        (await gitDir.currentBranch()).branchName,
+        startsWith('release-prep/'),
+      );
+      final branches = (await gitDir.runCommand([
+        'branch',
+        '--list',
+        'release-content/*',
+      ])).stdout.toString().trim();
+      expect(branches, isEmpty);
+    });
   });
 
   group('firstOrNullResolvedVersion', () {

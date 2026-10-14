@@ -1,16 +1,16 @@
 # Trust policy allowing dd-octo-sts to grant our prepare-release CI job a GitHub token.
-# This covers mainline (develop), support (release/*/vX.Y.x, release/*/vX.x), and pre-release (v4)
+# This covers mainline (develop), support (release/*/vX.Y.x, release/*/vX.x), and pre-release (the v4 whitelist)
 # trigger branches.
 issuer: https://gitlab.ddbuild.io
 
-subject_pattern: "project_path:DataDog/dd-sdk-flutter:ref_type:branch:ref:(develop|release/.+|v4)"
+subject_pattern: "project_path:DataDog/dd-sdk-flutter:ref_type:branch:ref:(develop|release/[^/]+/v\\d+(\\.\\d+)?\\.x|v4)"
 
 claim_pattern:
   project_path: "DataDog/dd-sdk-flutter"
-  ref: "^(develop|release/.+|v4)$"
+  ref: "^(develop|release/[^/]+/v\\d+(\\.\\d+)?\\.x|v4)$"
   ref_type: "branch"
-  ref_path: "^refs/heads/(develop|release/.+|v4)$"
-  ci_config_ref_uri: 'gitlab\.ddbuild\.io/DataDog/dd-sdk-flutter//\.gitlab-ci\.yml@refs/heads/(develop|release/.+|v4)'
+  ref_path: "^refs/heads/(develop|release/[^/]+/v\\d+(\\.\\d+)?\\.x|v4)$"
+  ci_config_ref_uri: 'gitlab\.ddbuild\.io/DataDog/dd-sdk-flutter//\.gitlab-ci\.yml@refs/heads/(develop|release/[^/]+/v\d+(\.\d+)?\.x|v4)'
   # Pipeline is created by a branch push; prepare-release itself is just a `when: manual`
   # job inside that pipeline, so pipeline_source is still "push" (matches dd-sdk-cpp).
   pipeline_source: "push"

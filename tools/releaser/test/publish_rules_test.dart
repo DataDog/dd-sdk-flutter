@@ -6,29 +6,29 @@ import 'package:releaser/publish_rules.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('isPatchReleaseBranch', () {
+  group('isSupportBranch', () {
     test('recognizes a standing patch-line support branch', () {
-      expect(isPatchReleaseBranch('release/datadog_dio/v2.2.x'), isTrue);
+      expect(isSupportBranch('release/datadog_dio/v2.2.x'), isTrue);
     });
 
     test('rejects develop', () {
-      expect(isPatchReleaseBranch('develop'), isFalse);
+      expect(isSupportBranch('develop'), isFalse);
     });
 
     test('rejects a pre-release branch', () {
-      expect(isPatchReleaseBranch('v4'), isFalse);
+      expect(isSupportBranch('v4'), isFalse);
     });
 
     test('rejects a release-prep branch', () {
-      expect(isPatchReleaseBranch('release-prep/20260101-abc123'), isFalse);
+      expect(isSupportBranch('release-prep/20260101-abc123'), isFalse);
     });
 
     test('recognizes a major-line support branch', () {
-      expect(isPatchReleaseBranch('release/datadog_dio/v3.x'), isTrue);
+      expect(isSupportBranch('release/datadog_dio/v3.x'), isTrue);
     });
 
     test('rejects a branch with no extractable package name', () {
-      expect(isPatchReleaseBranch('release/a/b/v1.2.x'), isFalse);
+      expect(isSupportBranch('release/a/b/v1.2.x'), isFalse);
     });
   });
 
@@ -38,7 +38,7 @@ void main() {
         shouldMarkReleaseLatest(
           package: 'datadog_flutter_plugin',
           prerelease: false,
-          isPatch: false,
+          isSupport: false,
         ),
         isTrue,
       );
@@ -49,7 +49,7 @@ void main() {
         shouldMarkReleaseLatest(
           package: 'datadog_dio',
           prerelease: false,
-          isPatch: false,
+          isSupport: false,
         ),
         isFalse,
       );
@@ -60,7 +60,7 @@ void main() {
         shouldMarkReleaseLatest(
           package: 'datadog_flutter_plugin',
           prerelease: true,
-          isPatch: false,
+          isSupport: false,
         ),
         isFalse,
       );
@@ -71,7 +71,7 @@ void main() {
         shouldMarkReleaseLatest(
           package: 'datadog_flutter_plugin',
           prerelease: false,
-          isPatch: true,
+          isSupport: true,
         ),
         isFalse,
       );
@@ -85,6 +85,10 @@ void main() {
 
     test('the v4 pre-release merges into v4-main', () {
       expect(expectedIntegrationBranch('v4'), 'v4-main');
+    });
+
+    test('a pre-release branch outside the whitelist is not recognized', () {
+      expect(expectedIntegrationBranch('v5'), isNull);
     });
 
     test('a patch-line support branch merges into itself', () {
@@ -114,6 +118,10 @@ void main() {
 
     test('v4-main implies v4', () {
       expect(sourceBranchFor('v4-main'), 'v4');
+    });
+
+    test('a -main branch outside the whitelist throws', () {
+      expect(() => sourceBranchFor('v5-main'), throwsStateError);
     });
 
     test('a patch-line support branch implies itself', () {
@@ -149,10 +157,10 @@ void main() {
     });
   });
 
-  group('expectedPatchBranchFor', () {
+  group('expectedSupportBranchFor', () {
     test('a patch bump stays on its exact minor line', () {
       expect(
-        expectedPatchBranchFor(
+        expectedSupportBranchFor(
           package: 'datadog_dio',
           toVersion: '2.2.1',
           bump: 'patch',
@@ -161,9 +169,9 @@ void main() {
       );
     });
 
-    test('a minor bump comes from the major-line support branch', () {
+    test('a minor bump comes from the major-line branch', () {
       expect(
-        expectedPatchBranchFor(
+        expectedSupportBranchFor(
           package: 'datadog_dio',
           toVersion: '3.5.0',
           bump: 'minor',
@@ -172,16 +180,17 @@ void main() {
       );
     });
 
-    test('throws for a bump a support branch should never '
-        'produce', () {
-      expect(
-        () => expectedPatchBranchFor(
-          package: 'datadog_dio',
-          toVersion: '3.0.0',
-          bump: 'major',
-        ),
-        throwsStateError,
-      );
+    test('throws for a bump a support branch never produces', () {
+      for (final bump in ['major', 'prerelease', 'first release']) {
+        expect(
+          () => expectedSupportBranchFor(
+            package: 'datadog_dio',
+            toVersion: '3.0.0',
+            bump: bump,
+          ),
+          throwsStateError,
+        );
+      }
     });
   });
 }

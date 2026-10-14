@@ -48,16 +48,19 @@ class PublishedVersions {
   Version? get latestStable =>
       versions.where((v) => !v.isPreRelease).lastOrNull;
 
-  /// The newest release on a `{major}.{minor}.x` line -- a patch branch's own
-  /// line, so a newer major/minor mainline has since cut can't be picked up.
-  Version? latestOn(int major, int minor) =>
-      versions.where((v) => v.major == major && v.minor == minor).lastOrNull;
+  /// The newest stable release on a `{major}.{minor}.x` line -- a patch
+  /// branch's own line, so a newer major/minor mainline has since cut can't be
+  /// picked up. A pre-release is skipped: the next patch of `3.7.1` is
+  /// `3.7.2`, whatever `3.7.2-beta.1` says.
+  Version? latestOn(int major, int minor) => versions
+      .where((v) => !v.isPreRelease && v.major == major && v.minor == minor)
+      .lastOrNull;
 
-  /// The newest release on a whole `{major}.x` line -- a major-line support
-  /// branch's own line, so a newer major mainline has since cut can't be
-  /// picked up.
+  /// The newest stable release on a whole `{major}.x` line -- a major-line
+  /// support branch's own line, so a newer major mainline has since cut can't
+  /// be picked up. Skips pre-releases for the same reason as [latestOn].
   Version? latestOnMajor(int major) =>
-      versions.where((v) => v.major == major).lastOrNull;
+      versions.where((v) => !v.isPreRelease && v.major == major).lastOrNull;
 
   /// Pre-releases already published against [target]'s exact
   /// major.minor.patch, ascending -- the counter a new pre-release continues.

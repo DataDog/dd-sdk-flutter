@@ -94,7 +94,7 @@ void main() {
     });
   });
 
-  group('manifestPackagesFromPrBody', () {
+  group('manifestPackagesFor with a PR body', () {
     late FixtureRepo fixture;
 
     setUp(() async {
@@ -113,9 +113,10 @@ void main() {
           '| datadog_dio | 2.2.0 | 2.3.0 | minor |\n'
           '| lonely_ios | 1.0.0 | 2.0.0-beta.1 | prerelease |\n';
 
-      final entries = await manifestPackagesFromPrBody(
-        body,
+      final entries = await manifestPackagesFor(
+        parseVersionsTable(body),
         repoRoot: fixture.root.path,
+        isSupport: false,
       );
 
       expect(entries, hasLength(2));
@@ -136,27 +137,13 @@ void main() {
           '| does_not_exist | 1.0.0 | 1.1.0 | minor |\n';
 
       await expectLater(
-        manifestPackagesFromPrBody(body, repoRoot: fixture.root.path),
+        manifestPackagesFor(
+          parseVersionsTable(body),
+          repoRoot: fixture.root.path,
+          isSupport: false,
+        ),
         throwsA(isA<StateError>()),
       );
-    });
-  });
-
-  group('parsePatchVersionSummary', () {
-    test('parses the versionSummary line from a patch commit body', () {
-      final row = parsePatchVersionSummary(
-        'Some intro.\n\n- datadog_dio: 2.2.0 -> 2.2.1 (patch)\n',
-      );
-
-      expect(row, isNotNull);
-      expect(row!.package, 'datadog_dio');
-      expect(row.fromVersion, '2.2.0');
-      expect(row.toVersion, '2.2.1');
-      expect(row.bump, 'patch');
-    });
-
-    test('null when the commit body has no such line', () {
-      expect(parsePatchVersionSummary('unrelated commit body'), isNull);
     });
   });
 
@@ -169,7 +156,7 @@ void main() {
 
     tearDown(() => fixture.delete());
 
-    test('threads isPatch through to every entry', () async {
+    test('threads isSupport through to every entry', () async {
       final entries = await manifestPackagesFor(
         [
           ParsedVersionRow(
@@ -180,10 +167,10 @@ void main() {
           ),
         ],
         repoRoot: fixture.root.path,
-        isPatch: true,
+        isSupport: true,
       );
 
-      expect(entries.single.isPatch, isTrue);
+      expect(entries.single.isSupport, isTrue);
       expect(entries.single.relativePath, 'packages/datadog_dio');
     });
   });

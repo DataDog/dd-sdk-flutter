@@ -109,6 +109,12 @@ void main() {
     ], workingDirectory: fixture.root.path);
     await pushBranch(gitDir, workingBranch, logger);
     await pushBranchAt(gitDir, contentBranchName, commitA, logger);
+    final root = (await gitDir.runCommand([
+      'rev-list',
+      '--max-parents=0',
+      'HEAD',
+    ])).stdout.toString().trim();
+    await pushBranchAt(gitDir, 'main', root, logger);
   });
 
   tearDown(() async {
@@ -125,7 +131,7 @@ void main() {
     );
     final github = _FakeGithub(
       fixture.root.path,
-      OpenPullRequest(number: 42, body: _prBody(commitA)),
+      OpenPullRequest(number: 42, body: _prBody(commitA), baseRef: 'main'),
     );
 
     await amendReleaseChangelog(gitDir: gitDir, github: github);
@@ -176,6 +182,97 @@ void main() {
       ).allMatches(github.editedBody!).length,
       2,
     );
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  test(
+    'keeps the target branch merged in between commit A and commit B',
+    () async {
+      final gitDir = await fixture.gitDir;
+      // `main` moves on after the release-prep branch was assembled, and the
+      // release-prep branch had already merged an earlier state of it.
+      await gitDir.runCommand(['checkout', '-b', 'mainline', 'main~0']);
+      fixture.writeFile('previous-release.txt', 'pins\n');
+      await fixture.commit('chore: previous release on main');
+      await gitDir.runCommand(['push', 'origin', 'mainline:refs/heads/main']);
+      await gitDir.runCommand(['checkout', workingBranch]);
+      await gitDir.runCommand(['checkout', '-B', 'rebuilt', commitA]);
+      await gitDir.runCommand(['merge', '--no-edit', 'mainline']);
+      await gitDir.runCommand([
+        'cherry-pick',
+        '--allow-empty',
+        '--keep-redundant-commits',
+        commitB,
+      ]);
+      await gitDir.runCommand(['checkout', '-B', workingBranch, 'rebuilt']);
+      await gitDir.runCommand([
+        'push',
+        '--force',
+        'origin',
+        '$workingBranch:refs/heads/$workingBranch',
+      ]);
+
+      fixture.writeFile(
+        'packages/datadog_dio/CHANGELOG.md',
+        '## 2.4.0\n- Fixed entry.\n',
+      );
+      final github = _FakeGithub(
+        fixture.root.path,
+        OpenPullRequest(number: 42, body: _prBody(commitA), baseRef: 'main'),
+      );
+
+      await amendReleaseChangelog(gitDir: gitDir, github: github);
+
+      expect(await isMergeCommit(gitDir, 'HEAD~1'), isTrue);
+      expect(
+        File(p.join(fixture.root.path, 'previous-release.txt')).existsSync(),
+        isTrue,
+      );
+      final newContentCommit = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD~1^1',
+      ])).stdout.toString().trim();
+      expect(newContentCommit, isNot(commitA));
+      final remoteWorkingSha = await Process.run('git', [
+        'rev-parse',
+        '$workingBranch^{commit}',
+      ], workingDirectory: bareRemote.path);
+      expect(
+        (remoteWorkingSha.stdout as String).trim(),
+        (await gitDir.currentBranch()).sha,
+      );
+    },
+    timeout: const Timeout(Duration(seconds: 30)),
+  );
+
+  test('leaves the local branch on the original commit B when the push '
+      'fails partway through', () async {
+    final gitDir = await fixture.gitDir;
+    // The remote refuses every push, after the local rebuild has happened.
+    final hook = File('${bareRemote.path}/hooks/pre-receive')
+      ..writeAsStringSync('#!/bin/sh\nexit 1\n');
+    Process.runSync('chmod', ['+x', hook.path]);
+    fixture.writeFile(
+      'packages/datadog_dio/CHANGELOG.md',
+      '## 2.4.0\n- Fixed entry.\n',
+    );
+    final github = _FakeGithub(
+      fixture.root.path,
+      OpenPullRequest(number: 42, body: _prBody(commitA), baseRef: 'main'),
+    );
+
+    await expectLater(
+      amendReleaseChangelog(gitDir: gitDir, github: github),
+      throwsA(anything),
+    );
+
+    final after = await fixture.gitDir;
+    final branch = await after.currentBranch();
+    expect(branch.branchName, workingBranch);
+    expect(branch.sha, commitB);
+    expect(github.editedBody, isNull);
+    // The hand-edit is still recoverable from the stash.
+    final stashes = await after.runCommand(['stash', 'list']);
+    expect(stashes.stdout as String, isNotEmpty);
   }, timeout: const Timeout(Duration(seconds: 30)));
 
   test('refuses when the hand-edit touches a commit-B-only file', () async {
@@ -240,7 +337,7 @@ void main() {
     // GithubCommandWrapper.
     final github = _FakeGithub(
       fixture.root.path,
-      OpenPullRequest(number: 42, body: _prBody(commitA)),
+      OpenPullRequest(number: 42, body: _prBody(commitA), baseRef: 'main'),
     );
 
     await expectLater(
@@ -280,7 +377,7 @@ void main() {
     // GithubCommandWrapper.
     final github = _FakeGithub(
       fixture.root.path,
-      OpenPullRequest(number: 42, body: _prBody(commitA)),
+      OpenPullRequest(number: 42, body: _prBody(commitA), baseRef: 'main'),
     );
 
     // Simulate another actor pushing to workingBranch on the remote,
@@ -339,7 +436,7 @@ void main() {
     );
     final github = _FakeGithub(
       fixture.root.path,
-      OpenPullRequest(number: 42, body: _prBody(commitA)),
+      OpenPullRequest(number: 42, body: _prBody(commitA), baseRef: 'main'),
     );
 
     // Simulate a concurrent amend run that already moved the content
@@ -433,7 +530,7 @@ void main() {
     );
     final github = _FakeGithub(
       fixture.root.path,
-      OpenPullRequest(number: 7, body: 'unrelated body'),
+      OpenPullRequest(number: 7, body: 'unrelated body', baseRef: 'main'),
     );
 
     await expectLater(
@@ -454,7 +551,7 @@ void main() {
     await fixture.commit('chore: an unexpected extra commit');
     final github = _FakeGithub(
       fixture.root.path,
-      OpenPullRequest(number: 42, body: _prBody(commitA)),
+      OpenPullRequest(number: 42, body: _prBody(commitA), baseRef: 'main'),
     );
     fixture.writeFile(
       'packages/datadog_dio/CHANGELOG.md',
@@ -467,36 +564,32 @@ void main() {
     );
   });
 
-  test('refuses a patch release with no content commit to amend, without '
-      "mistaking it for 'not a release-prep branch'", () async {
-    final patchFixture = await FixtureRepo.create();
-    const patchBranch = 'release/datadog_dio/v2.3.x';
-    await patchFixture.checkoutNewBranch(patchBranch);
-    patchFixture.writeFile(
+  test('refuses a support release, whose PR targets a support branch and has '
+      'no content commit to amend', () async {
+    final gitDir = await fixture.gitDir;
+    fixture.writeFile(
       'packages/datadog_dio/CHANGELOG.md',
-      '## 2.3.1\n- A patch entry.\n',
+      '## 2.4.0\n- Fixed entry.\n',
     );
-    await patchFixture.commit('chore(release): prepare support release');
-    final patchGitDir = await patchFixture.gitDir;
+    final github = _FakeGithub(
+      fixture.root.path,
+      OpenPullRequest(
+        number: 42,
+        body: '## Versions\n',
+        baseRef: 'release/datadog_dio/v2.3.x',
+      ),
+    );
 
-    try {
-      // Purely a branch-name check, so a real (unstubbed)
-      // GithubCommandWrapper never actually gets called.
-      await expectLater(
-        amendReleaseChangelog(
-          gitDir: patchGitDir,
-          github: GithubCommandWrapper(patchFixture.root.path),
+    await expectLater(
+      amendReleaseChangelog(gitDir: gitDir, github: github),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('support-branch releases never split'),
         ),
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            contains('support-branch releases never split'),
-          ),
-        ),
-      );
-    } finally {
-      await patchFixture.delete();
-    }
+      ),
+    );
+    expect((await gitDir.currentBranch()).sha, commitB);
   });
 }

@@ -10,23 +10,24 @@
 // Does, in order -- cheap, purely local checks before anything that touches
 // the network, so a plain mistake (wrong branch, wrong file, no changes at
 // all) never costs a `gh` round-trip:
-//   1. Refuses if run from a support branch (no content commit to amend
-//      there), if the working tree's diff is empty, or if it touches
+//   1. Refuses if the working tree's diff is empty, or if it touches
 //      anything other than a real workspace package's CHANGELOG.md.
 //   2. Refuses if the release-prep PR this run would edit doesn't exist
-//      yet, its body has no "Content commit" line (see `manifest.dart`),
-//      HEAD isn't exactly one commit (B) past that commit, a touched
-//      package isn't actually part of this release per the PR's versions
-//      table, or either remote ref has moved past what's checked out here
-//      (another reviewer's push, or a concurrent amend run) -- all still
-//      checked before anything is mutated.
-//   3. Amends commit A in place with the hand-edit, then replays commit B
-//      on top of the amended commit.
-//   4. Atomically force-moves the `release-content/*` branch and the
-//      release-prep branch together, each leased against the tip captured in
-//      step 2 -- so a concurrent amend run can't interleave into a state
-//      where one ref reflects this run and the other reflects the other run.
-//   5. Rewrites the open release-prep PR's body, swapping every occurrence
+//      yet, targets a support branch (no content commit to amend there), its
+//      body has no "Content commit" line (see `manifest.dart`),
+//      HEAD isn't commit B sitting on commit A (directly, or with the PR's
+//      target branch merged in between), a touched package isn't actually
+//      part of this release per the PR's versions table, or either remote
+//      ref has moved past what's checked out here (another reviewer's push,
+//      or a concurrent amend run) -- all still checked before anything is
+//      mutated.
+//   3. Amends commit A in place with the hand-edit.
+//   4. Rebuilds the release-prep branch the way `prepare_release.dart` first
+//      assembled it: from the amended commit A, merge the PR's target branch,
+//      then re-apply commit B. Replaying B alone would drop that merge.
+//   5. Force-moves the `release-content/*` branch and the release-prep branch,
+//      each leased against the tip captured in step 2, in one atomic push.
+//   6. Rewrites the open release-prep PR's body, swapping every occurrence
 //      of the old commit A SHA for the new one (including the "Content
 //      commit" line itself).
 
@@ -39,6 +40,7 @@ import 'package:path/path.dart' as p;
 import 'package:releaser/cli_logging.dart';
 import 'package:releaser/git/git_dir.dart';
 import 'package:releaser/git/release_git.dart';
+import 'package:releaser/git/release_publisher.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/manifest.dart';
 import 'package:releaser/package_discovery.dart';
@@ -101,14 +103,6 @@ Future<void> amendReleaseChangelog({
   final workingBranch = currentBranch.branchName;
   final localHead = currentBranch.sha;
 
-  if (isPatchReleaseBranch(workingBranch)) {
-    throw StateError(
-      'This release has no content commit to amend (support-branch releases '
-      'never split commit A from commit B) -- fix CHANGELOG.md directly and '
-      'amend the single commit yourself.',
-    );
-  }
-
   // Local-only checks, run before any network call.
   final changedFiles = await _checkChangedFilesAreRealChangelogs(gitDir);
 
@@ -120,6 +114,13 @@ Future<void> amendReleaseChangelog({
       'release-prep PR to already be open before amending anything.',
     );
   }
+  if (isSupportBranch(pr.baseRef)) {
+    throw StateError(
+      'This release has no content commit to amend (support-branch releases '
+      'never split commit A from commit B) -- fix CHANGELOG.md directly and '
+      'amend the single commit yourself.',
+    );
+  }
   final originalContentCommit = parseContentCommit(pr.body);
   if (originalContentCommit == null) {
     throw StateError(
@@ -129,19 +130,7 @@ Future<void> amendReleaseChangelog({
   }
   final contentBranchName = contentBranchNameFor(workingBranch);
 
-  final commitsAfterContent = await commitCountBetween(
-    gitDir,
-    originalContentCommit,
-    'HEAD',
-    _log,
-  );
-  if (commitsAfterContent != 1) {
-    throw StateError(
-      'Expected HEAD to be exactly one commit (publish-prep) after commit A '
-      '($originalContentCommit), found $commitsAfterContent. This tool only '
-      'supports the standard two-commit release-prep shape.',
-    );
-  }
+  await _checkShape(gitDir, originalContentCommit);
 
   await _checkChangelogsAreReleasing(gitDir, changedFiles, pr.body);
 
@@ -174,30 +163,46 @@ Future<void> amendReleaseChangelog({
     RegExp.escape(originalContentCommit),
   ).allMatches(pr.body).length;
 
-  final newContentCommit = await _amendContentCommit(
+  final originalPublishPrep = localHead;
+  final stashSha = await stashPush(
     gitDir,
-    workingBranch: workingBranch,
-    originalContentCommit: originalContentCommit,
+    _log,
+    'amend_release_changelog_${DateTime.now().microsecondsSinceEpoch}',
   );
+
+  final String newContentCommit;
+  try {
+    final amended = await _amendContentCommit(
+      gitDir,
+      stashSha,
+      workingBranch: workingBranch,
+      originalContentCommit: originalContentCommit,
+    );
+    newContentCommit = await _rebuildReleaseBranch(
+      gitDir,
+      amended: amended,
+      originalPublishPrep: originalPublishPrep,
+      workingBranch: workingBranch,
+      contentBranchName: contentBranchName,
+      prBase: pr.baseRef,
+      expectedRemoteTip: expectedRemoteTip,
+      expectedContentTip: expectedContentTip,
+    );
+  } catch (e) {
+    _log.shout(
+      '❌ Failed to amend commit A -- stash $stashSha was left in place, and '
+      '$workingBranch was not pushed. Run `git checkout $workingBranch` '
+      'followed by `git stash apply $stashSha` to retry by hand: $e',
+    );
+    await tryCheckoutBranch(gitDir, workingBranch, _log);
+    rethrow;
+  }
+  await stashDrop(gitDir, _log, stashSha);
 
   _log.info(
-    'ℹ️ Commit A: $originalContentCommit -> $newContentCommit. Replayed '
-    'commit B on top.',
+    'ℹ️ Commit A: $originalContentCommit -> $newContentCommit. Rebuilt '
+    '$workingBranch on top of it.',
   );
-
-  final newHead = (await gitDir.currentBranch()).sha;
-  await forcePushRefsAtomic(gitDir, [
-    LeasedRefUpdate(
-      branchName: contentBranchName,
-      commitSha: newContentCommit,
-      expectedTip: expectedContentTip,
-    ),
-    LeasedRefUpdate(
-      branchName: workingBranch,
-      commitSha: newHead,
-      expectedTip: expectedRemoteTip,
-    ),
-  ], _log);
 
   // Swaps the old content-commit SHA for the new one everywhere in the PR
   // body, including the "Content commit" line itself.
@@ -283,62 +288,117 @@ Future<void> _checkChangelogsAreReleasing(
   }
 }
 
-/// Amends commit A with whatever's currently in the working tree/stash,
-/// replays commit B on top via `git rebase --onto`, and returns the new
-/// commit A SHA. Leaves [workingBranch] checked out on success; makes a
-/// best effort to leave the caller back on [workingBranch] on failure too,
-/// after logging exactly what's recoverable and how.
+/// Refuses unless HEAD is commit B sitting directly on [contentCommit], or
+/// on a merge commit whose first parent is [contentCommit] -- the two shapes
+/// `prepare_release.dart` produces.
+Future<void> _checkShape(GitDir gitDir, String contentCommit) async {
+  final parents = (await gitDir.runCommand([
+    'rev-list',
+    '--parents',
+    '-n',
+    '1',
+    'HEAD',
+  ])).stdout.toString().trim().split(' ');
+  // [HEAD, its parents...]
+  if (parents.length != 2) {
+    throw StateError(
+      'Expected HEAD to be the single-parent publish-prep commit, found a '
+      'commit with ${parents.length - 1} parents. This tool only supports '
+      'the standard release-prep shape.',
+    );
+  }
+  final below = parents[1];
+  if (below == contentCommit) return;
+
+  final belowParents = (await gitDir.runCommand([
+    'rev-list',
+    '--parents',
+    '-n',
+    '1',
+    below,
+  ])).stdout.toString().trim().split(' ');
+  if (belowParents.length == 3 && belowParents[1] == contentCommit) return;
+
+  throw StateError(
+    'Expected HEAD to be the publish-prep commit on top of commit A '
+    '($contentCommit), optionally with the target branch merged in between. '
+    'This tool only supports that release-prep shape.',
+  );
+}
+
+/// Amends commit A with the stashed hand-edit and returns the amended
+/// commit's SHA, leaving it checked out (detached).
 Future<String> _amendContentCommit(
-  GitDir gitDir, {
+  GitDir gitDir,
+  String stashSha, {
   required String workingBranch,
   required String originalContentCommit,
 }) async {
-  final stashSha = await stashPush(
-    gitDir,
-    _log,
-    'amend_release_changelog_${DateTime.now().microsecondsSinceEpoch}',
-  );
+  await checkoutRef(gitDir, originalContentCommit, _log);
+  await stashApply(gitDir, _log, stashSha);
+  await stageAll(gitDir, _log);
+  return amendCommit(gitDir, _log);
+}
 
-  String newContentCommit;
-  try {
-    await checkoutRef(gitDir, originalContentCommit, _log);
-    await stashApply(gitDir, _log, stashSha);
-    await stageAll(gitDir, _log);
-    newContentCommit = await amendCommit(gitDir, _log);
-  } catch (e) {
-    _log.shout(
-      '❌ Failed to amend commit A -- stash $stashSha was left in place. '
-      'Resolve any conflict, or run `git checkout $workingBranch` followed '
-      'by `git stash apply $stashSha` to retry by hand: $e',
-    );
-    await tryCheckoutBranch(gitDir, workingBranch, _log);
-    rethrow;
+/// Reassembles [workingBranch] on top of [amended] -- merge the PR's target,
+/// then commit B again -- pushes it and [contentBranchName], and only then
+/// moves the local [workingBranch] onto the result. Returns commit A's SHA.
+Future<String> _rebuildReleaseBranch(
+  GitDir gitDir, {
+  required String amended,
+  required String originalPublishPrep,
+  required String workingBranch,
+  required String contentBranchName,
+  required String prBase,
+  required String expectedRemoteTip,
+  required String expectedContentTip,
+}) async {
+  final fetch = await Process.run('git', [
+    'fetch',
+    'origin',
+    '+refs/heads/$prBase:refs/remotes/origin/$prBase',
+  ], workingDirectory: gitDir.path);
+  if (fetch.exitCode != 0) {
+    throw StateError('git fetch origin $prBase failed: ${fetch.stderr}');
   }
 
-  try {
-    await rebaseOnto(
-      gitDir,
-      newContentCommit,
-      originalContentCommit,
-      workingBranch,
-      _log,
-    );
-  } catch (e) {
-    _log.shout(
-      '❌ Replaying commit B onto the amended commit A ($newContentCommit) '
-      'failed -- $workingBranch was not updated, but the amended commit A '
-      'still exists (recoverable via `git reflog` if `git rebase --abort` '
-      'below loses it): $e',
-    );
-    await abortRebaseIfInProgress(gitDir, _log);
-    await tryCheckoutBranch(gitDir, workingBranch, _log);
-    rethrow;
-  }
+  // Still detached on the amended commit A: [workingBranch] stays on the
+  // original commit B until the push below succeeds, so a failure anywhere
+  // here leaves the reviewer's branch untouched.
+  await ReleasePublisher(
+    commitHeadless: false,
+  ).mergeRemoteBranchInto(gitDir, workingBranch, prBase, _log);
+  await cherryPick(gitDir, originalPublishPrep, _log);
 
-  // Only safe to drop now that the amended commit A is reachable from
-  // workingBranch (via the rebased commit B) -- dropping it any earlier
-  // risks losing the hand-edit to nothing but the reflog if the rebase
-  // above fails.
-  await stashDrop(gitDir, _log, stashSha);
-  return newContentCommit;
+  final head = (await gitDir.currentBranch()).sha;
+  await forcePushRefsAtomic(gitDir, [
+    LeasedRefUpdate(
+      branchName: contentBranchName,
+      commitSha: amended,
+      expectedTip: expectedContentTip,
+    ),
+    LeasedRefUpdate(
+      branchName: workingBranch,
+      commitSha: head,
+      expectedTip: expectedRemoteTip,
+    ),
+  ], _log);
+  await _checkoutNewBranchAt(gitDir, workingBranch, head);
+  return amended;
+}
+
+Future<void> _checkoutNewBranchAt(
+  GitDir gitDir,
+  String branch,
+  String sha,
+) async {
+  final result = await gitDir.runCommand([
+    'checkout',
+    '-B',
+    branch,
+    sha,
+  ], throwOnError: false);
+  if (result.exitCode != 0) {
+    throw StateError('Failed to check out $branch at $sha: ${result.stderr}');
+  }
 }
