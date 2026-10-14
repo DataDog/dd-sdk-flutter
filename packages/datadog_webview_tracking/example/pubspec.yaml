@@ -9,7 +9,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  datadog_flutter_plugin: ^3.0.0
+  datadog_flutter_plugin: ^4.0.0
   datadog_webview_tracking:
     path: ../
   webview_flutter: ^4.0.4
