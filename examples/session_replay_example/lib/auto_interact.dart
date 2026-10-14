@@ -64,7 +64,9 @@ class AutoInteract {
   }
 
   static Future<void> _run(
-      double rumSampleRate, double replaySampleRate) async {
+    double rumSampleRate,
+    double replaySampleRate,
+  ) async {
     await Future<void>.delayed(const Duration(seconds: 2));
     for (final (matches, pauseMs) in _script) {
       final position = _centerOf(matches);
@@ -82,10 +84,11 @@ class AutoInteract {
     double replaySampleRate,
   ) async {
     final sessionId = await DatadogSdk.instance.rum?.getCurrentSessionId();
-    final expected = sessionId != null &&
-        DeterministicSampler(rumSampleRate)
-            .combined(replaySampleRate)
-            .sampleUuid(sessionId);
+    final expected =
+        sessionId != null &&
+        DeterministicSampler(
+          rumSampleRate,
+        ).combined(replaySampleRate).sampleUuid(sessionId);
     final capturing = DatadogSessionReplay.instance?.isCapturing ?? false;
     debugPrint(
       'SR_TEST session=$sessionId expectedReplay=$expected capturing=$capturing',

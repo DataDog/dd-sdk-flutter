@@ -77,8 +77,9 @@ class FlagsData {
       if (obfuscation == null)
         'flags': flags.map((key, value) => MapEntry(key, value.toJson()))
       else
-        'encodedFlags':
-            flags.map((key, value) => MapEntry(key, value.toJson())),
+        'encodedFlags': flags.map(
+          (key, value) => MapEntry(key, value.toJson()),
+        ),
       'context': context.toJson(),
       'date': date.toIso8601String(),
       if (obfuscation != null) ...{

@@ -134,6 +134,7 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     /// Set by `_onDetach()` once this engine is torn down. Read and written on the main thread only.
     private var isDetached = false
 
+    #if os(iOS)
     /// This engine's messenger (`registrar.messenger()` is `FlutterEngine.binaryMessenger`), used to
     /// find the engine and to recognize its view controllers. Weak: the engine owns it.
     internal weak var engineMessenger: FlutterBinaryMessenger?
@@ -144,6 +145,7 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
 
     /// Set when `watchEngine(behind:)` can't find the engine; reported once Datadog is initialized.
     private var engineLookupFailed = false
+    #endif
 
     internal let rum = DatadogRumPlugin()
     internal let logs = DatadogLogsPlugin()
@@ -157,7 +159,9 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         self.notificationCenter = notificationCenter
         super.init()
         observeEngineTeardown()
+        #if os(iOS)
         observeViewControllerDealloc()
+        #endif
     }
 
     deinit {
@@ -172,7 +176,9 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         #endif
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: messenger)
         let instance = DatadogSdkPlugin(channel: channel)
+        #if os(iOS)
         instance.watchEngine(behind: registrar.messenger())
+        #endif
         registrar.addMethodCallDelegate(instance, channel: channel)
         registrar.publish(instance)
         #if os(macOS)
@@ -217,12 +223,14 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
                     core?.telemetry.configuration(
                         dartVersion: arguments["dartVersion"] as? String
                     )
+                    #if os(iOS)
                     if engineLookupFailed {
                         let message = "Could not find the FlutterEngine behind its messenger; engine teardowns" +
                             " will only be detected when a FlutterViewController deallocates."
                         DD.logger.warn(message)
                         Datadog._internal.telemetry.debug(id: "flutter_engine_lookup_failed", message: message)
                     }
+                    #endif
 
                     if let crashReportingEnabled = (configArg["nativeCrashReportEnabled"] as? NSNumber)?.boolValue {
                         if crashReportingEnabled {
@@ -483,6 +491,7 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         _onDetach()
     }
 
+    #if os(iOS)
     /// Finds this plugin's engine behind its messenger and watches it for teardown.
     ///
     /// Flutter exposes no public way from a registrar to its engine on every supported version
@@ -564,6 +573,7 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         // Otherwise Flutter tears it down after this observer (or not at all, if headless)
         observeTeardown(of: engine)
     }
+    #endif
 
     public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
         registrar.publish(NSNull())
@@ -619,7 +629,6 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
             guard !self.isDetached else {
                 return
             }
-            #endif
 
             self.channel.invokeMethod("logCallback", arguments: value)
         }

@@ -185,10 +185,9 @@ class FlagsRepository {
     }
 
     try {
-      final data = await store.read(clientName).timeout(
-            storeReadTimeout,
-            onTimeout: () => null,
-          );
+      final data = await store
+          .read(clientName)
+          .timeout(storeReadTimeout, onTimeout: () => null);
       // Custom stores can return constructed snapshots without JSON decoding.
       // Validate and copy the complete snapshot before making it available.
       return data == null ? null : FlagsData.fromJson(data.toJson());

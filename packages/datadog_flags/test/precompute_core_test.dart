@@ -54,8 +54,10 @@ void main() {
           ),
         );
         expect(request.headers['Content-Type'], 'application/vnd.api+json');
-        expect(request.headers['X-DD-FEATURE-FLAGS-CAPABILITIES'],
-            'assignment-encoding-flag-key-256-v1');
+        expect(
+          request.headers['X-DD-FEATURE-FLAGS-CAPABILITIES'],
+          'assignment-encoding-flag-key-256-v1',
+        );
         expect(request.headers['dd-client-token'], 'client-token');
         expect(request.headers['dd-application-id'], 'application-id');
         expect(request.headers.containsKey('X-Use-Cache'), isFalse);
@@ -113,32 +115,33 @@ void main() {
 
     for (final optIn in [false, true]) {
       test(
-          'custom endpoint sends capabilities only with explicit opt-in: $optIn',
-          () async {
-        final requests = <http.Request>[];
-        final fetcher = FlagAssignmentsFetcher(
-          datadogConfig: _contextFor(DatadogFlagsSite.us1),
-          configuration: DatadogFlagsConfiguration(
-            customFlagsEndpoint: Uri.parse('https://example.com/precompute'),
-            customFlagsHeaders: optIn
-                ? const {
-                    'X-DD-FEATURE-FLAGS-CAPABILITIES':
-                        'assignment-encoding-flag-key-256-v1',
-                  }
-                : null,
-          ),
-          httpClient: _jsonClient(requests, {'data': _emptyAssignments()}),
-        );
+        'custom endpoint sends capabilities only with explicit opt-in: $optIn',
+        () async {
+          final requests = <http.Request>[];
+          final fetcher = FlagAssignmentsFetcher(
+            datadogConfig: _contextFor(DatadogFlagsSite.us1),
+            configuration: DatadogFlagsConfiguration(
+              customFlagsEndpoint: Uri.parse('https://example.com/precompute'),
+              customFlagsHeaders: optIn
+                  ? const {
+                      'X-DD-FEATURE-FLAGS-CAPABILITIES':
+                          'assignment-encoding-flag-key-256-v1',
+                    }
+                  : null,
+            ),
+            httpClient: _jsonClient(requests, {'data': _emptyAssignments()}),
+          );
 
-        await fetcher.fetch(
-          const FlagsEvaluationContext(targetingKey: 'subject'),
-        );
+          await fetcher.fetch(
+            const FlagsEvaluationContext(targetingKey: 'subject'),
+          );
 
-        expect(
-          requests.single.headers['X-DD-FEATURE-FLAGS-CAPABILITIES'],
-          optIn ? 'assignment-encoding-flag-key-256-v1' : isNull,
-        );
-      });
+          expect(
+            requests.single.headers['X-DD-FEATURE-FLAGS-CAPABILITIES'],
+            optIn ? 'assignment-encoding-flag-key-256-v1' : isNull,
+          );
+        },
+      );
     }
 
     test('sends empty targeting key when none is configured', () async {

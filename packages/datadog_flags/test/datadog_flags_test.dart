@@ -1238,10 +1238,11 @@ void main() {
     );
     await refresh;
     expect(
-        restored
-            .getBooleanDetails(key: 'show-paywall', defaultValue: false)
-            .reason,
-        'TARGETING_MATCH');
+      restored
+          .getBooleanDetails(key: 'show-paywall', defaultValue: false)
+          .reason,
+      'TARGETING_MATCH',
+    );
     expect(
       restored.getBooleanDetails(key: 'show-paywall', defaultValue: true).value,
       isFalse,
@@ -1308,11 +1309,14 @@ void main() {
         client
             .getBooleanDetails(key: 'show-paywall', defaultValue: false)
             .reason,
-        'TARGETING_MATCH');
-    expect(
-      client.getBooleanDetails(key: 'show-paywall', defaultValue: false).value,
-      isTrue,
-    );
+        'TARGETING_MATCH',
+      );
+      expect(
+        client
+            .getBooleanDetails(key: 'show-paywall', defaultValue: false)
+            .value,
+        isTrue,
+      );
 
       liveResponse.complete(
         http.Response(
