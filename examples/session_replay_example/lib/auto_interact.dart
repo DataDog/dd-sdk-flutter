@@ -4,7 +4,6 @@
 
 import 'dart:io';
 
-import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:flutter/gestures.dart';

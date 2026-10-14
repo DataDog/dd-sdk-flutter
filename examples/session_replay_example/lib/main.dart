@@ -26,6 +26,7 @@ void main() async {
         clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
         env: dotenv.get('DD_ENV', fallback: ''),
         site: DatadogSite.us1,
+        service: 'com.datadoghq.session-replay-example',
         rumConfiguration: DatadogRumConfiguration(
           applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
           // Session Replay can only record sessions that RUM tracks.
