@@ -61,11 +61,6 @@ class _ViewInfo {
   const _ViewInfo(this.viewKey, this.viewName, this.viewStart);
 }
 
-// Used for trace sampling. We're avoiding literals in these cases to ensure
-// compatibility with Web.
-final BigInt _knuthFactor = BigInt.parse('1111111111111111111');
-final BigInt _maxTraceId = (BigInt.one << 64) - BigInt.one;
-
 class DatadogRum {
   static DdRumPlatform get _platform {
     return DdRumPlatform.instance;
@@ -76,9 +71,8 @@ class DatadogRum {
   /// See [DatadogRumConfiguration.traceSampleRate]
   final double traceSampleRate;
 
-  /// The max threashold of a TraceId to be sampled in. See
-  /// [shouldSampleTrace]
-  final BigInt _maxSampledTraceId;
+  /// Samples traces at [traceSampleRate]. See [shouldSampleTrace]
+  final DeterministicSampler _traceSampler;
 
   final TraceContextInjection traceContextInjection;
 
@@ -113,7 +107,7 @@ class DatadogRum {
 
   DatadogRum.fromExisting(DatadogSdk core, DatadogAttachConfiguration config)
     : traceSampleRate = config.traceSampleRate,
-      _maxSampledTraceId = _getMaxTraceId(config.traceSampleRate),
+      _traceSampler = DeterministicSampler(config.traceSampleRate),
       traceContextInjection = config.traceContextInjection,
       resourceHeadersExtractor = config.trackResourceHeaders,
       logger = core.internalLogger {
@@ -130,7 +124,7 @@ class DatadogRum {
     this.traceSampleRate,
     this.traceContextInjection,
     this.resourceHeadersExtractor,
-  ) : _maxSampledTraceId = _getMaxTraceId(traceSampleRate),
+  ) : _traceSampler = DeterministicSampler(traceSampleRate),
       logger = core.internalLogger {
     _init(
       core: core,
@@ -142,7 +136,7 @@ class DatadogRum {
 
   DatadogRum._(DatadogSdk core, DatadogRumConfiguration configuration)
     : traceSampleRate = configuration.traceSampleRate,
-      _maxSampledTraceId = _getMaxTraceId(configuration.traceSampleRate),
+      _traceSampler = DeterministicSampler(configuration.traceSampleRate),
       traceContextInjection = configuration.traceContextInjection,
       resourceHeadersExtractor = configuration.trackResourceHeaders,
       logger = core.internalLogger {
@@ -657,28 +651,11 @@ class DatadogRum {
     if (traceSampleRate >= 100) return true;
     if (traceSampleRate <= 0) return false;
 
-    // Offer consistent sampling for the same trace id across different environments. The rule is:
-    //
-    //   (identifier * knuthFactor) < max_trace_id
-    //
-    // We use the low 48 bits from the session id if it exists, or the low bits of the trace id if it doesn't
-    BigInt? lowBits;
-
     if (sessionId != null) {
-      final uuidParts = sessionId.split('-');
-      if (uuidParts.length == 5) {
-        lowBits = BigInt.tryParse(uuidParts[4], radix: 16);
-      }
+      return _traceSampler.sampleUuid(sessionId);
     }
 
-    lowBits ??= traceId.value & _maxTraceId;
-
-    return ((lowBits * _knuthFactor) & _maxTraceId) < _maxSampledTraceId;
-  }
-
-  // Get the max sampled traceId for the given sample rate.
-  static BigInt _getMaxTraceId(double sampleRate) {
-    return BigInt.from((_maxTraceId).toDouble() * (sampleRate / 100));
+    return _traceSampler.sampleTrace(traceId);
   }
 
   @internal

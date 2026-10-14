@@ -37,7 +37,7 @@ class FlagsRepository {
   @visibleForTesting
   final Timer Function(Duration, void Function()) scheduleInitializationTimeout;
 
-  FlagsData? _state;
+  _InstalledFlagsState? _state;
   _CancelToken? _currentToken;
   bool _didStartInitialization = false;
 
@@ -51,9 +51,17 @@ class FlagsRepository {
     this.scheduleInitializationTimeout = _scheduleInitializationTimeout,
   }) : _cacheOperations = _cacheOperationQueue(store, clientName);
 
-  FlagsEvaluationContext? get context => _state?.context;
+  FlagsEvaluationContext? get context => _state?.data.context;
 
-  FlagAssignment? flagAssignment(String key) => _state?.flags[key];
+  FlagAssignment? flagAssignment(String key) {
+    final data = _state?.data;
+    if (data == null) return null;
+    final encoding = data.obfuscation;
+    final lookupKey = encoding == null ? key : encoding.encodeKey(key);
+    return lookupKey == null ? null : data.flags[lookupKey];
+  }
+
+  bool get isRestoredFromStore => _state?.restoredFromStore ?? false;
 
   Future<void> initialize(FlagsEvaluationContext context) {
     _currentToken?.cancel();
@@ -97,7 +105,10 @@ class FlagsRepository {
         ? cached
         : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
-      _state = matchingCached;
+      _state = _InstalledFlagsState(
+        data: matchingCached,
+        restoredFromStore: true,
+      );
     }
 
     try {
@@ -109,11 +120,14 @@ class FlagsRepository {
         flags: assignments.flags,
         context: context,
         date: dateProvider(),
+        obfuscation: assignments.obfuscation,
       );
-      _state = data;
+      _state = _InstalledFlagsState(data: data, restoredFromStore: false);
       await _writeCached(data);
     } catch (_) {
-      if (!token.isCanceled && matchingCached == null) {
+      if (!token.isCanceled &&
+          matchingCached == null &&
+          !_hasCurrentStateForContext(context)) {
         _state = null;
       }
     }
@@ -150,7 +164,7 @@ class FlagsRepository {
 
   bool _hasCurrentStateForContext(FlagsEvaluationContext context) {
     final current = _state;
-    return current != null && _contextsMatch(current.context, context);
+    return current != null && _contextsMatch(current.data.context, context);
   }
 
   Future<void> clearMemory() async {
@@ -171,9 +185,13 @@ class FlagsRepository {
     }
 
     try {
-      return await store
-          .read(clientName)
-          .timeout(storeReadTimeout, onTimeout: () => null);
+      final data = await store.read(clientName).timeout(
+            storeReadTimeout,
+            onTimeout: () => null,
+          );
+      // Custom stores can return constructed snapshots without JSON decoding.
+      // Validate and copy the complete snapshot before making it available.
+      return data == null ? null : FlagsData.fromJson(data.toJson());
     } catch (_) {
       return null;
     }
@@ -198,6 +216,17 @@ class FlagsRepository {
       }
     });
   }
+}
+
+@immutable
+class _InstalledFlagsState {
+  final FlagsData data;
+  final bool restoredFromStore;
+
+  const _InstalledFlagsState({
+    required this.data,
+    required this.restoredFromStore,
+  });
 }
 
 class _CacheOperationQueue {

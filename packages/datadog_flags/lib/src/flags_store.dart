@@ -7,6 +7,7 @@ import 'package:meta/meta.dart';
 
 import 'assignment.dart';
 import 'evaluation_context.dart';
+import 'flag_key_obfuscation.dart';
 
 /// Storage contract for last-known feature flag assignments.
 abstract class DatadogFlagsStore {
@@ -26,7 +27,7 @@ abstract class DatadogFlagsStore {
 /// Snapshot of flag assignments for a specific evaluation context.
 @immutable
 class FlagsData {
-  /// Assignments keyed by feature flag key.
+  /// Assignments keyed by the wire key for this snapshot's encoding.
   final Map<String, FlagAssignment> flags;
 
   /// Evaluation context that produced [flags].
@@ -35,16 +36,24 @@ class FlagsData {
   /// Timestamp when this data was created or stored.
   final DateTime date;
 
+  /// Encoding metadata stored with these assignments. Null means legacy keys.
+  final FlagKeyObfuscation? obfuscation;
+
   /// Creates a flag assignment snapshot.
   const FlagsData({
     required this.flags,
     required this.context,
     required this.date,
+    this.obfuscation,
   });
 
   /// Creates a flag assignment snapshot from persisted JSON.
   factory FlagsData.fromJson(Map<String, Object?> json) {
-    final flags = json['flags'] as Map<String, Object?>? ?? const {};
+    final obfuscation = FlagKeyObfuscation.fromSnapshot(json);
+    final flags = obfuscation == null
+        ? json['flags'] as Map<String, Object?>? ?? const {}
+        : json['encodedFlags'] as Map<String, Object?>;
+    obfuscation?.validateKeys(flags.keys);
     return FlagsData(
       flags: flags.map((key, value) {
         return MapEntry(
@@ -56,15 +65,26 @@ class FlagsData {
         Map<String, Object?>.from(json['context'] as Map),
       ),
       date: DateTime.parse(json['date'] as String),
+      obfuscation: obfuscation,
     );
   }
 
   /// Converts this snapshot to persisted JSON.
   Map<String, Object?> toJson() {
     return {
-      'flags': flags.map((key, value) => MapEntry(key, value.toJson())),
+      // Older SDKs read only `flags`. Keep encoded assignments separate so a
+      // downgraded SDK cannot interpret their digests as plaintext flag keys.
+      if (obfuscation == null)
+        'flags': flags.map((key, value) => MapEntry(key, value.toJson()))
+      else
+        'encodedFlags':
+            flags.map((key, value) => MapEntry(key, value.toJson())),
       'context': context.toJson(),
       'date': date.toIso8601String(),
+      if (obfuscation != null) ...{
+        'obfuscated': true,
+        'obfuscation': obfuscation!.toJson(),
+      },
     };
   }
 }

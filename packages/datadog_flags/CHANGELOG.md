@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+* Fix missing Flutter Web flag evaluation counts by sending only supported Datadog metadata (#1196).
+
 ## 1.1.0
 
 * Add `DatadogFlagsConfiguration.initializationTimeout` for the first context initialization. The default is five seconds. Set it to `null`, zero, or a negative duration to disable it.
