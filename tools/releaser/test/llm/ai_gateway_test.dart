@@ -25,6 +25,28 @@ void main() {
       expect(response.usage.inputTokens, 100);
       expect(response.usage.outputTokens, 50);
     });
+
+    test('parses an adaptive-thinking response with a thinking block '
+        'ahead of the text block', () {
+      final response = AnthropicMessageResponse.fromJson(
+        jsonDecode('''
+{
+  "model": "claude-sonnet-5",
+  "content": [
+    {"type": "thinking", "thinking": "reasoning about the answer..."},
+    {"type": "text", "text": "{\\"greeting\\": \\"hello\\"}"}
+  ],
+  "usage": {"input_tokens": 100, "output_tokens": 50}
+}
+'''),
+      );
+
+      expect(response.content, hasLength(2));
+      expect(response.content[0].type, 'thinking');
+      expect(response.content[0].text, isNull);
+      expect(response.content[1].type, 'text');
+      expect(response.content[1].text, '{"greeting": "hello"}');
+    });
   });
 
   group('AnthropicMessageRequest.toJson', () {

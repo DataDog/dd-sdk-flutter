@@ -4,8 +4,11 @@
 
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
+import 'package:releaser/manifest.dart';
 import 'package:releaser/native_sdk.dart';
+import 'package:releaser/publish_rules.dart';
 import 'package:releaser/release_plan.dart';
+import 'package:releaser/release_pr.dart';
 import 'package:test/test.dart';
 import 'package:version/version.dart';
 
@@ -639,52 +642,10 @@ void main() {
       expect(packagePlan.newVersion, '3.11.0');
     });
 
-    test('an --all run ships a package whose only reason to ship is a '
-        'native SDK delta, with no commits and without being requested', () async {
-      fixture.writeFile(
-        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-            'datadog_flutter_plugin_ios.podspec',
-        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
-      );
-      await fixture.commit('chore: pin for the 3.10.0 release');
-      await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
-
-      fixture.writeFile(
-        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-        'datadog_flutter_plugin_ios.podspec',
-        _iosPodspecWithDatadogDependency, // floats again, back to '~> 3'
-      );
-      await fixture.commit('chore: float the constraint again post-release');
-
-      final gateways = MockNativeSdkGateways();
-      when(() => gateways.fetchLatest(any())).thenAnswer((_) async => '3.13.0');
-
-      final result = await plan(
-        mainlineCtx(), // --all, nothing named explicitly
-        published: {
-          'datadog_flutter_plugin_ios': ['3.10.0'],
-        },
-        gateways: gateways,
-      );
-
-      final packagePlan = result.packages.singleWhere(
-        (p) => p.package.name == 'datadog_flutter_plugin_ios',
-      );
-      expect(packagePlan.bumpLevel, VersionBumpType.minor);
-      expect(packagePlan.newVersion, '3.11.0');
-    });
-
     test(
-      'shipping only an unrelated package still resolves the eligible '
-      "group's native SDK pin, for prepare_release.dart to apply",
+      'an --all run ships a package whose only reason to ship is a '
+      'native SDK delta, with no commits and without being requested',
       () async {
-        await fixture.tag('datadog_dio/v2.2.0');
-        fixture.writeFile('packages/datadog_dio/CHANGES', 'work');
-        await fixture.commit('feat: something new in dio');
-
-        // Still pinned at exactly what it last shipped -- no delta, so
-        // this package has no reason of its own to ship, but its pin still
-        // needs resolving (and, via prepare_release.dart, re-applying).
         fixture.writeFile(
           'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
               'datadog_flutter_plugin_ios.podspec',
@@ -693,57 +654,92 @@ void main() {
         await fixture.commit('chore: pin for the 3.10.0 release');
         await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
 
+        fixture.writeFile(
+          'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+          'datadog_flutter_plugin_ios.podspec',
+          _iosPodspecWithDatadogDependency, // floats again, back to '~> 3'
+        );
+        await fixture.commit('chore: float the constraint again post-release');
+
+        final gateways = MockNativeSdkGateways();
+        when(
+          () => gateways.fetchLatest(any()),
+        ).thenAnswer((_) async => '3.13.0');
+
         final result = await plan(
           mainlineCtx(), // --all, nothing named explicitly
           published: {
-            'datadog_dio': ['2.1.0', '2.2.0'],
             'datadog_flutter_plugin_ios': ['3.10.0'],
           },
-          // Nothing stubbed: a resolved-but-unchanged pin never asks
-          // gateways.fetchLatest about anything.
+          gateways: gateways,
         );
 
-        expect(
-          result.packages.map((p) => p.package.name),
-          ['datadog_dio'],
+        final packagePlan = result.packages.singleWhere(
+          (p) => p.package.name == 'datadog_flutter_plugin_ios',
         );
-        expect(result.unshippedNativeSdkPins, hasLength(1));
-        expect(
-          result.unshippedNativeSdkPins.single.targetVersion,
-          '3.10.0',
-        );
+        expect(packagePlan.bumpLevel, VersionBumpType.minor);
+        expect(packagePlan.newVersion, '3.11.0');
       },
     );
 
-    test(
-      'an --all run leaves a package out when its existing pin already '
-      'matches what it last shipped, with no qualifying commits',
-      () async {
-        const iosPackage =
-            'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios';
+    test('shipping only an unrelated package still resolves the eligible '
+        "group's native SDK pin, for prepare_release.dart to apply", () async {
+      await fixture.tag('datadog_dio/v2.2.0');
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'work');
+      await fixture.commit('feat: something new in dio');
 
-        fixture.writeFile(
-          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-          "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
-        );
-        await fixture.commit('chore: pin for the 3.10.0 release');
-        await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
+      // Still pinned at exactly what it last shipped -- no delta, so
+      // this package has no reason of its own to ship, but its pin still
+      // needs resolving (and, via prepare_release.dart, re-applying).
+      fixture.writeFile(
+        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
+            'datadog_flutter_plugin_ios.podspec',
+        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+      );
+      await fixture.commit('chore: pin for the 3.10.0 release');
+      await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
 
-        // Still pinned at exactly what was last shipped -- nothing for
-        // resolveNativeSdkTarget to even ask gateways.fetchLatest about.
-        final result = await plan(
-          mainlineCtx(),
-          published: {
-            'datadog_flutter_plugin_ios': ['3.10.0'],
-          },
-        );
+      final result = await plan(
+        mainlineCtx(), // --all, nothing named explicitly
+        published: {
+          'datadog_dio': ['2.1.0', '2.2.0'],
+          'datadog_flutter_plugin_ios': ['3.10.0'],
+        },
+        // Nothing stubbed: a resolved-but-unchanged pin never asks
+        // gateways.fetchLatest about anything.
+      );
 
-        expect(
-          result.packages.map((p) => p.package.name),
-          isNot(contains('datadog_flutter_plugin_ios')),
-        );
-      },
-    );
+      expect(result.packages.map((p) => p.package.name), ['datadog_dio']);
+      expect(result.unshippedNativeSdkPins, hasLength(1));
+      expect(result.unshippedNativeSdkPins.single.targetVersion, '3.10.0');
+    });
+
+    test('an --all run leaves a package out when its existing pin already '
+        'matches what it last shipped, with no qualifying commits', () async {
+      const iosPackage =
+          'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios';
+
+      fixture.writeFile(
+        '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
+        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+      );
+      await fixture.commit('chore: pin for the 3.10.0 release');
+      await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
+
+      // Still pinned at exactly what was last shipped -- nothing for
+      // resolveNativeSdkTarget to even ask gateways.fetchLatest about.
+      final result = await plan(
+        mainlineCtx(),
+        published: {
+          'datadog_flutter_plugin_ios': ['3.10.0'],
+        },
+      );
+
+      expect(
+        result.packages.map((p) => p.package.name),
+        isNot(contains('datadog_flutter_plugin_ios')),
+      );
+    });
 
     test('a pin in the working tree is honoured without asking what is '
         'newest, and still counts as a change', () async {
@@ -956,49 +952,46 @@ void main() {
       );
     });
 
-    test(
-      'a patch branch rejects a major bump smuggled in via a cherry-picked '
-      'manifest edit, with no override involved',
-      () async {
-        fixture.writeFile(
-          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-          podspecPinnedAt('3.10.0'),
-        );
-        await fixture.commit('chore: pin for 3.10.0');
-        await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
+    test('a patch branch rejects a major bump smuggled in via a cherry-picked '
+        'manifest edit, with no override involved', () async {
+      fixture.writeFile(
+        '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
+        podspecPinnedAt('3.10.0'),
+      );
+      await fixture.commit('chore: pin for 3.10.0');
+      await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
 
-        // A cherry-picked "fix" commit that also carries a manifest edit --
-        // e.g. it depends on a fix that only landed in the new native major.
-        fixture.writeFile(
-          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-          podspecPinnedAt('4.0.0'),
-        );
-        await fixture.commit('fix: needs the native fix from 4.0.0');
+      // A cherry-picked "fix" commit that also carries a manifest edit --
+      // e.g. it depends on a fix that only landed in the new native major.
+      fixture.writeFile(
+        '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
+        podspecPinnedAt('4.0.0'),
+      );
+      await fixture.commit('fix: needs the native fix from 4.0.0');
 
-        await expectLater(
-          plan(
-            RunContext(
-              repoRoot: fixture.root.path,
-              trigger: TriggerContext.patch,
-              currentBranch: 'release/datadog_flutter_plugin_ios/v3.10.x',
-            ),
-            published: {
-              'datadog_flutter_plugin_ios': ['3.10.0'],
-            },
+      await expectLater(
+        plan(
+          RunContext(
+            repoRoot: fixture.root.path,
+            trigger: TriggerContext.patch,
+            currentBranch: 'release/datadog_flutter_plugin_ios/v3.10.x',
           ),
-          throwsA(
-            isA<StateError>().having(
-              (e) => e.message,
-              'message',
-              allOf(
-                contains('major change'),
-                contains('does not belong on a patch branch'),
-              ),
+          published: {
+            'datadog_flutter_plugin_ios': ['3.10.0'],
+          },
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('major change'),
+              contains('does not belong on a patch branch'),
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    });
 
     test(
       'a patch branch accepts an override implying only a patch bump',
@@ -1122,30 +1115,24 @@ void main() {
       expect(result.packages.single.warnings, isEmpty);
     });
 
-    test(
-      'warns about the entire history when no published version has a tag '
-      'at all',
-      () async {
-        // No `datadog_dio/v*` tag exists anywhere in the fixture repo.
-        fixture.writeFile('packages/datadog_dio/CHANGES', 'work');
-        await fixture.commit('fix: something');
+    test('warns about the entire history when no published version has a tag '
+        'at all', () async {
+      // No `datadog_dio/v*` tag exists anywhere in the fixture repo.
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'work');
+      await fixture.commit('fix: something');
 
-        final result = await plan(
-          mainlineCtx(requestedPackages: ['datadog_dio']),
-          published: {
-            'datadog_dio': ['2.2.0'],
-          },
-        );
+      final result = await plan(
+        mainlineCtx(requestedPackages: ['datadog_dio']),
+        published: {
+          'datadog_dio': ['2.2.0'],
+        },
+      );
 
-        expect(
-          result.packages.single.warnings.single,
-          allOf(
-            contains('No tag could be found'),
-            contains('entire history'),
-          ),
-        );
-      },
-    );
+      expect(
+        result.packages.single.warnings.single,
+        allOf(contains('No tag could be found'), contains('entire history')),
+      );
+    });
   });
 
   group('patch branch', () {
@@ -1201,6 +1188,29 @@ void main() {
       },
     );
 
+    test('its version summary maps back to its own branch', () async {
+      await fixture.tag('datadog_dio/v2.1.2');
+      fixture.writeFile('packages/datadog_dio/CHANGES', 'a fix');
+      await fixture.commit('fix: a cherry-picked fix');
+
+      final result = await plan(
+        patchCtx('release/datadog_dio/v2.1.x'),
+        published: {
+          'datadog_dio': ['2.1.2'],
+        },
+      );
+
+      final row = parsePatchVersionSummary(versionSummary(result.packages))!;
+      expect(
+        expectedPatchBranchFor(
+          package: row.package,
+          toVersion: row.toVersion,
+          bump: row.bump,
+        ),
+        'release/datadog_dio/v2.1.x',
+      );
+    });
+
     test('fails loudly if a feat commit snuck onto the patch branch', () async {
       await fixture.tag('datadog_dio/v2.1.2');
       fixture.writeFile('packages/datadog_dio/CHANGES', 'a feature');
@@ -1231,7 +1241,7 @@ void main() {
           isA<StateError>().having(
             (e) => e.message,
             'message',
-            contains('does not apply on a patch branch'),
+            contains('does not apply on a support branch'),
           ),
         ),
       );
@@ -1239,6 +1249,201 @@ void main() {
 
     test('a malformed branch name throws', () async {
       await expectLater(plan(patchCtx('release/whatever')), throwsStateError);
+    });
+
+    group('major-line support branch', () {
+      const iosPackage =
+          'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios';
+      const iosBranch = 'release/datadog_flutter_plugin_ios/v3.x';
+
+      Matcher rejectsAsMajor() => throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          allOf(
+            contains('major change'),
+            contains('a major-line support branch'),
+          ),
+        ),
+      );
+
+      Future<void> shipIosPodspecPinnedAt3_10() async {
+        fixture.writeFile(
+          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
+          "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+        );
+        await fixture.commit('chore: pin for the 3.10.0 release');
+        await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
+        fixture.writeFile(
+          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
+          _iosPodspecWithDatadogDependency,
+        );
+        await fixture.commit('chore: float the constraint again');
+      }
+
+      test('releases a minor from its whole major line', () async {
+        await fixture.tag('datadog_dio/v3.5.0');
+        fixture.writeFile('packages/datadog_dio/CHANGES', 'a feature');
+        await fixture.commit('feat: a feature for the support line');
+
+        final result = await plan(
+          patchCtx('release/datadog_dio/v3.x'),
+          // A 4.0 line exists on mainline; it must not be picked.
+          published: {
+            'datadog_dio': ['3.4.0', '3.5.0', '4.0.0'],
+          },
+        );
+
+        expect(result.packages.single.newVersion, '3.6.0');
+        expect(result.packages.single.bumpLevel, VersionBumpType.minor);
+        expect(result.packages.single.currentVersion, '3.5.0');
+      });
+
+      test('its version summary maps back to its own branch', () async {
+        await fixture.tag('datadog_dio/v3.5.0');
+        fixture.writeFile('packages/datadog_dio/CHANGES', 'a feature');
+        await fixture.commit('feat: a feature for the support line');
+
+        final result = await plan(
+          patchCtx('release/datadog_dio/v3.x'),
+          published: {
+            'datadog_dio': ['3.5.0'],
+          },
+        );
+
+        final row = parsePatchVersionSummary(versionSummary(result.packages))!;
+        expect(
+          expectedPatchBranchFor(
+            package: row.package,
+            toVersion: row.toVersion,
+            bump: row.bump,
+          ),
+          'release/datadog_dio/v3.x',
+        );
+      });
+
+      test('a fix-only branch still releases a minor, never a patch', () async {
+        await fixture.tag('datadog_dio/v3.5.0');
+        fixture.writeFile('packages/datadog_dio/CHANGES', 'a fix');
+        await fixture.commit('fix: a cherry-picked fix');
+
+        final result = await plan(
+          patchCtx('release/datadog_dio/v3.x'),
+          published: {
+            'datadog_dio': ['3.5.0'],
+          },
+        );
+
+        expect(result.packages.single.newVersion, '3.6.0');
+        expect(result.packages.single.bumpLevel, VersionBumpType.minor);
+      });
+
+      test('rejects a breaking change', () async {
+        await fixture.tag('datadog_dio/v3.5.0');
+        fixture.writeFile('packages/datadog_dio/CHANGES', 'a break');
+        await fixture.commit(
+          'fix: reshape the API',
+          body: ['BREAKING CHANGE: removes a method'],
+        );
+
+        await expectLater(
+          plan(
+            patchCtx('release/datadog_dio/v3.x'),
+            published: {
+              'datadog_dio': ['3.5.0'],
+            },
+          ),
+          rejectsAsMajor(),
+        );
+      });
+
+      test('fails when nothing has been published on the major line', () async {
+        await expectLater(
+          plan(
+            patchCtx('release/datadog_dio/v3.x'),
+            published: {
+              'datadog_dio': ['4.0.0'],
+            },
+          ),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              allOf(
+                contains('no 3 release'),
+                contains('nothing here to release'),
+              ),
+            ),
+          ),
+        );
+      });
+
+      test('holds the native SDK pin without asking what is newest', () async {
+        await shipIosPodspecPinnedAt3_10();
+
+        // Nothing stubbed: asking the gateways for anything fails the test.
+        final result = await plan(
+          patchCtx(iosBranch),
+          published: {
+            'datadog_flutter_plugin_ios': ['3.10.0'],
+          },
+        );
+
+        expect(result.packages.single.newVersion, '3.11.0');
+        expect(
+          result.packages.single.nativeSdkDeltas.single.targetVersion,
+          isNull,
+        );
+      });
+
+      test('accepts a native SDK override implying a minor bump', () async {
+        await shipIosPodspecPinnedAt3_10();
+        final gateways = MockNativeSdkGateways();
+        when(
+          () => gateways.releaseExists(any(), any()),
+        ).thenAnswer((_) async => true);
+
+        final result = await plan(
+          RunContext(
+            repoRoot: fixture.root.path,
+            trigger: TriggerContext.patch,
+            currentBranch: iosBranch,
+            iosSdkVersionOverride: '3.11.0',
+          ),
+          published: {
+            'datadog_flutter_plugin_ios': ['3.10.0'],
+          },
+          gateways: gateways,
+        );
+
+        final delta = result.packages.single.nativeSdkDeltas.single;
+        expect(delta.targetVersion, '3.11.0');
+        expect(delta.getImpliedBump(), VersionBumpType.minor);
+      });
+
+      test('rejects a native SDK override implying a major bump', () async {
+        await shipIosPodspecPinnedAt3_10();
+        final gateways = MockNativeSdkGateways();
+        when(
+          () => gateways.releaseExists(any(), any()),
+        ).thenAnswer((_) async => true);
+
+        await expectLater(
+          plan(
+            RunContext(
+              repoRoot: fixture.root.path,
+              trigger: TriggerContext.patch,
+              currentBranch: iosBranch,
+              iosSdkVersionOverride: '4.0.0',
+            ),
+            published: {
+              'datadog_flutter_plugin_ios': ['3.10.0'],
+            },
+            gateways: gateways,
+          ),
+          rejectsAsMajor(),
+        );
+      });
     });
   });
 

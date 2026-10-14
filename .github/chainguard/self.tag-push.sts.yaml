@@ -10,14 +10,14 @@
 # .gitlab-ci.yml fires on.
 issuer: https://gitlab.ddbuild.io
 
-subject_pattern: "project_path:DataDog/dd-sdk-flutter:ref_type:branch:ref:(main|v4-main|release/.+/v\\d+\\.\\d+\\.x)"
+subject_pattern: "project_path:DataDog/dd-sdk-flutter:ref_type:branch:ref:(main|v4-main|release/.+/v\\d+(\\.\\d+)?\\.x)"
 
 claim_pattern:
   project_path: "DataDog/dd-sdk-flutter"
-  ref: "^(main|v4-main|release/.+/v\\d+\\.\\d+\\.x)$"
+  ref: "^(main|v4-main|release/.+/v\\d+(\\.\\d+)?\\.x)$"
   ref_type: "branch"
-  ref_path: "^refs/heads/(main|v4-main|release/.+/v\\d+\\.\\d+\\.x)$"
-  ci_config_ref_uri: 'gitlab\.ddbuild\.io/DataDog/dd-sdk-flutter//\.gitlab-ci\.yml@refs/heads/(main|v4-main|release/.+/v\d+\.\d+\.x)'
+  ref_path: "^refs/heads/(main|v4-main|release/.+/v\\d+(\\.\\d+)?\\.x)$"
+  ci_config_ref_uri: 'gitlab\.ddbuild\.io/DataDog/dd-sdk-flutter//\.gitlab-ci\.yml@refs/heads/(main|v4-main|release/.+/v\d+(\.\d+)?\.x)'
   pipeline_source: "push"
 
 # Tag-push only -- no pull_requests scope, unlike self.prepare-release.

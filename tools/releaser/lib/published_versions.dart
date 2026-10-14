@@ -53,6 +53,12 @@ class PublishedVersions {
   Version? latestOn(int major, int minor) =>
       versions.where((v) => v.major == major && v.minor == minor).lastOrNull;
 
+  /// The newest release on a whole `{major}.x` line -- a major-line support
+  /// branch's own line, so a newer major mainline has since cut can't be
+  /// picked up.
+  Version? latestOnMajor(int major) =>
+      versions.where((v) => v.major == major).lastOrNull;
+
   /// Pre-releases already published against [target]'s exact
   /// major.minor.patch, ascending -- the counter a new pre-release continues.
   /// [target]'s own pre-release suffix, if any, is ignored: a pubspec sitting

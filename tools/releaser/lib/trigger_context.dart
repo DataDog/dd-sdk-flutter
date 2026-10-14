@@ -3,8 +3,10 @@
 // Copyright 2019-Present Datadog, Inc.
 
 /// Which of the three GitLab trigger contexts a run is happening under:
-/// mainline (`develop`), patch (a standing `release/{package}/vX.Y.x`
-/// branch), or pre-release (a whitelisted long-lived branch like `v4`).
+/// mainline (`develop`), patch (a standing support branch: either
+/// `release/{package}/vX.Y.x` for patch releases of one minor line, or
+/// `release/{package}/vX.x` for minor releases of a whole major line), or
+/// pre-release (a whitelisted long-lived branch like `v4`).
 ///
 /// Lives in its own file (rather than alongside `release_plan.dart`, its
 /// only real "owner") because `native_sdk.dart` also needs it, and

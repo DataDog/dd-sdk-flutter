@@ -2,112 +2,177 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:path/path.dart' as p;
+import 'package_discovery.dart';
 
 /// One package's entry in a [ReleaseManifest] -- what Phase 2 needs to
-/// publish, tag, and release it, without diffing anything.
+/// publish, tag, and release it.
 class ManifestPackageEntry {
   final String package;
-  final String fromVersion;
   final String toVersion;
-  final String sourceBranch;
   final bool prerelease;
-
-  /// [DiscoveredPackage.relativePath] at prepare time -- carried here so
-  /// `publish_release.dart` can find this package's `CHANGELOG.md` (for the
-  /// GitHub Release notes) without re-running package discovery against the
-  /// tagged commit.
+  final bool isPatch;
   final String relativePath;
 
   ManifestPackageEntry({
     required this.package,
-    required this.fromVersion,
     required this.toVersion,
-    required this.sourceBranch,
     required this.prerelease,
+    required this.isPatch,
     required this.relativePath,
   });
-
-  factory ManifestPackageEntry.fromJson(Map<String, dynamic> json) =>
-      ManifestPackageEntry(
-        package: json['package'] as String,
-        fromVersion: json['from_version'] as String,
-        toVersion: json['to_version'] as String,
-        sourceBranch: json['source_branch'] as String,
-        prerelease: json['prerelease'] as bool,
-        relativePath: json['relative_path'] as String,
-      );
-
-  Map<String, dynamic> toJson() => {
-    'package': package,
-    'from_version': fromVersion,
-    'to_version': toVersion,
-    'source_branch': sourceBranch,
-    'prerelease': prerelease,
-    'relative_path': relativePath,
-  };
 }
 
-/// The canonical record of what one `prepare_release.dart` run did, written
-/// to `.release/manifest.json` as part of the publish-prep commit (commit
-/// B). Phase 2 reads this instead of diffing, and reads [contentCommit] to
-/// know exactly which commit to backport into the dev-line branch afterwards --
-/// via a reviewed, auto-merged PR from the `release-content/*` branch
-/// (merged with the `merge` strategy specifically, never squash/rebase, so
-/// commit A's original SHA lands intact rather than being replayed as a
-/// content-identical duplicate).
-///
-/// Deliberately confined to the disposable `main`/`{effort}-main` lines:
-/// nothing here is ever backported, so it never needs to be merged with
-/// anything and never accumulates across branches.
+/// What one `prepare_release.dart` run did, as `publish_release.dart`
+/// reconstructs it. A mainline/pre-release run is read from its release PR's
+/// body (see [parseVersionsTable]/[parseContentCommit]); a patch run has no
+/// PR, so it is read from its own commit message (see
+/// [parsePatchVersionSummary]).
 class ReleaseManifest {
   /// Commit A's SHA (mainline/pre-release), backported into the dev-line
-  /// branch by Phase 2 via `release-content/*`. `null` on a patch trigger -- patch
-  /// doesn't split commits, so there is no commit here that's safe to
-  /// backport that way; Phase 2 uses `changelog_backport.dart` for patch
-  /// instead, and reads this field being `null` as the enforced signal not
-  /// to attempt it.
+  /// branch by Phase 2 via `release-content/*`. `null` on a patch run, which
+  /// doesn't split its commits, so there is nothing for Phase 2 to backport.
   final String? contentCommit;
   final List<ManifestPackageEntry> packages;
 
   ReleaseManifest({required this.contentCommit, required this.packages});
+}
 
-  factory ReleaseManifest.fromJson(Map<String, dynamic> json) =>
-      ReleaseManifest(
-        contentCommit: json['contentCommit'] as String?,
-        packages: (json['packages'] as List)
-            .map(
-              (e) => ManifestPackageEntry.fromJson(e as Map<String, dynamic>),
-            )
-            .toList(),
+/// One package's version change as `release_pr.dart` writes it: a `## Versions`
+/// table row, or a patch commit message's `versionSummary` line. Carries no
+/// path -- [manifestPackagesFor] resolves that.
+class ParsedVersionRow {
+  final String package;
+  final String fromVersion;
+  final String toVersion;
+  final String bump;
+
+  ParsedVersionRow({
+    required this.package,
+    required this.fromVersion,
+    required this.toVersion,
+    required this.bump,
+  });
+}
+
+// Cells are `[^|]+`, not `\S+` -- the bump column's "first release" fallback
+// (`release_pr.dart`'s `versionSummary`/`prBody`) is two words.
+final _versionsTableRowPattern = RegExp(
+  r'^\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]+)\|$',
+);
+
+/// Parses `release_pr.dart`'s `## Versions` table out of a release PR's body.
+/// The rows are the `|`-prefixed lines after the heading, minus the first two
+/// (the header and the `|---|` separator). Throws on a row that doesn't have
+/// four cells, since skipping it would silently drop a package from the
+/// release.
+List<ParsedVersionRow> parseVersionsTable(String prBody) {
+  // GitHub returns CRLF line endings for a body edited in its web UI.
+  final lines = prBody.split(RegExp(r'\r?\n'));
+  final headingIndex = lines.indexWhere((l) => l.trim() == '## Versions');
+  if (headingIndex == -1) return const [];
+
+  var i = headingIndex + 1;
+  while (i < lines.length && !lines[i].trimLeft().startsWith('|')) {
+    i++;
+  }
+  i += 2;
+
+  final rows = <ParsedVersionRow>[];
+  for (; i < lines.length; i++) {
+    final line = lines[i].trim();
+    if (!line.startsWith('|')) break;
+    final match = _versionsTableRowPattern.firstMatch(line);
+    if (match == null) {
+      throw StateError(
+        'Malformed row in the release PR\'s "## Versions" table: "$line"',
       );
+    }
+    rows.add(
+      ParsedVersionRow(
+        package: match.group(1)!.trim(),
+        fromVersion: match.group(2)!.trim(),
+        toVersion: match.group(3)!.trim(),
+        bump: match.group(4)!.trim(),
+      ),
+    );
+  }
+  return rows;
+}
 
-  Map<String, dynamic> toJson() => {
-    'contentCommit': contentCommit,
-    'packages': packages.map((e) => e.toJson()).toList(),
+final _contentCommitPattern = RegExp(r'_Content commit: `([0-9a-f]{40})`_');
+
+/// Parses `release_pr.dart`'s "Content commit: `sha`" line out of a release
+/// PR's body. `null` if absent.
+String? parseContentCommit(String prBody) =>
+    _contentCommitPattern.firstMatch(prBody)?.group(1);
+
+/// Builds the [ManifestPackageEntry] list for [rows] (from either
+/// [parseVersionsTable] or [parsePatchVersionSummary]). A row carries no
+/// path, so each package's `relativePath` comes from package discovery
+/// against [repoRoot] -- the checkout is the tree the release-prep run
+/// produced, so discovery finds the same packages it did.
+Future<List<ManifestPackageEntry>> manifestPackagesFor(
+  List<ParsedVersionRow> rows, {
+  required String repoRoot,
+  required bool isPatch,
+}) async {
+  if (rows.isEmpty) return const [];
+
+  final byName = {
+    for (final pkg in (await discoverPackages(
+      repoRoot,
+    )).expand((g) => g.members))
+      pkg.name: pkg,
   };
 
-  String toJsonString() =>
-      '${const JsonEncoder.withIndent('  ').convert(toJson())}\n';
-
-  static ReleaseManifest fromJsonString(String contents) =>
-      ReleaseManifest.fromJson(jsonDecode(contents) as Map<String, dynamic>);
+  return [
+    for (final row in rows)
+      ManifestPackageEntry(
+        package: row.package,
+        toVersion: row.toVersion,
+        prerelease: row.bump == 'prerelease',
+        isPatch: isPatch,
+        relativePath:
+            byName[row.package]?.relativePath ??
+            (throw StateError(
+              '"${row.package}" was not found by package discovery against '
+              'this checkout -- cannot locate its CHANGELOG.md.',
+            )),
+      ),
+  ];
 }
 
-/// Path to the manifest file, relative to [repoRoot].
-String manifestPath(String repoRoot) =>
-    p.join(repoRoot, '.release', 'manifest.json');
+/// [manifestPackagesFor] for a release PR body's `## Versions` table.
+Future<List<ManifestPackageEntry>> manifestPackagesFromPrBody(
+  String prBody, {
+  required String repoRoot,
+}) => manifestPackagesFor(
+  parseVersionsTable(prBody),
+  repoRoot: repoRoot,
+  isPatch: false,
+);
 
-Future<void> writeManifest(String repoRoot, ReleaseManifest manifest) async {
-  final file = File(manifestPath(repoRoot));
-  await file.parent.create(recursive: true);
-  await file.writeAsString(manifest.toJsonString());
-}
+final _versionSummaryLinePattern = RegExp(
+  r'^- (\S+): (\S+) -> (\S+) \((.+)\)$',
+);
 
-Future<ReleaseManifest> readManifest(String repoRoot) async {
-  final file = File(manifestPath(repoRoot));
-  return ReleaseManifest.fromJsonString(await file.readAsString());
+/// Parses the `versionSummary` line out of a patch run's commit message body.
+/// A patch run has no PR, so its commit message carries the summary that a
+/// mainline/pre-release run puts in the PR's `## Versions` table.
+///
+/// A patch run is always exactly one package, so this takes the first
+/// matching line and ignores the rest. `null` if the message has no such
+/// line at all (not a `prepare_release.dart` patch commit).
+ParsedVersionRow? parsePatchVersionSummary(String commitMessageBody) {
+  for (final line in commitMessageBody.split('\n')) {
+    final match = _versionSummaryLinePattern.firstMatch(line.trim());
+    if (match == null) continue;
+    return ParsedVersionRow(
+      package: match.group(1)!,
+      fromVersion: match.group(2)!,
+      toVersion: match.group(3)!,
+      bump: match.group(4)!,
+    );
+  }
+  return null;
 }

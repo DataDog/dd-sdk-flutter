@@ -1,5 +1,5 @@
 # Trust policy allowing dd-octo-sts to grant our prepare-release CI job a GitHub token.
-# This covers mainline (develop), patch (release/*/vX.Y.x), and pre-release (v4) 
+# This covers mainline (develop), support (release/*/vX.Y.x, release/*/vX.x), and pre-release (v4)
 # trigger branches.
 issuer: https://gitlab.ddbuild.io
 
