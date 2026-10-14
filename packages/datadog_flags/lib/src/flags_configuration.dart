@@ -27,6 +27,10 @@ final class DatadogFlagsConfiguration {
   static const maxEvaluationFlushInterval = Duration(seconds: 60);
 
   /// Overrides the precompute assignments endpoint.
+  ///
+  /// Custom endpoints do not receive automatic capability headers.
+  /// To opt in, add `X-DD-FEATURE-FLAGS-CAPABILITIES` through [customFlagsHeaders].
+  /// For web clients, the endpoint must also allow this header in CORS.
   final Uri? customFlagsEndpoint;
 
   /// Additional headers sent with precompute assignment requests.
