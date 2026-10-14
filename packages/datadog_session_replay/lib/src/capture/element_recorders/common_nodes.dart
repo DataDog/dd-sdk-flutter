@@ -236,6 +236,7 @@ class TextElementCaptureNode extends CaptureNode {
   final String family;
   final int size;
   final SRHorizontalAlignment alignment;
+  final SRVerticalAlignment? verticalAlignment;
 
   const TextElementCaptureNode(
     super.attributes, {
@@ -245,6 +246,7 @@ class TextElementCaptureNode extends CaptureNode {
     required this.family,
     required this.size,
     required this.alignment,
+    this.verticalAlignment,
   });
 
   @override
@@ -259,7 +261,10 @@ class TextElementCaptureNode extends CaptureNode {
         text: text,
         textStyle: SRTextStyle(color: color, family: family, size: size),
         textPosition: SRTextPosition(
-          alignment: SRAlignment(horizontal: alignment),
+          alignment: SRAlignment(
+            horizontal: alignment,
+            vertical: verticalAlignment,
+          ),
         ),
       ),
     ];
