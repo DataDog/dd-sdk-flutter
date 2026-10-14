@@ -6,8 +6,22 @@ Datadog RUM SDK versions < 1.4 support monitoring for Flutter 2.8+.
 Datadog RUM SDK versions >= 1.4 support monitoring for Flutter 3.0+.
 Datadog RUM SDK versions >= 2.6 support monitoring for Flutter 3.19+.
 Datadog RUM SDK versions >= 3.0 support monitoring for Flutter 3.27+.
+Datadog RUM SDK versions >= 4.0 support monitoring for Flutter 3.38+ (Dart 3.10+).
 
 For complete documentation, see the [official Datadog documentation][11].
+
+## Supported Platforms
+
+| Platform | Support | Notes |
+| :------- | :-----: | :---- |
+| iOS      | Yes     | iOS 15.0+ |
+| Android  | Yes     | `minSdkVersion` 23+ |
+| Web      | Yes     | Datadog Browser SDK v7 |
+| macOS    | Yes     | macOS 13.0+ |
+| Windows  | Yes     | See [Desktop](#desktop-windows-and-linux). |
+| Linux    | Yes     | See [Desktop](#desktop-windows-and-linux). |
+
+`datadog_flutter_plugin` is an endorsed federated plugin. The platform packages (`datadog_flutter_plugin_android`, `_ios`, `_web`, and `_desktop`) are included automatically, so you do not need to add them to your `pubspec.yaml`.
 
 ## Current Datadog SDK Versions
 
@@ -21,7 +35,11 @@ For complete documentation, see the [official Datadog documentation][11].
 
 ### iOS
 
-Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutter) and target iOS version >= 13.0.
+Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutter) and target iOS version >= 15.0.
+
+### macOS
+
+Your app must target macOS version >= 13.0.
 
 ### Android
 
@@ -41,6 +59,33 @@ This loads the CDN-delivered Datadog Browser SDKs for Logs and RUM. The synchron
 Note that Datadog provides one CDN bundle per site. See the [Browser SDK README](https://github.com/DataDog/browser-sdk/#cdn-bundles) for a list of all site URLs.
 
 See [Flutter Web Support](#web_support) for information on current support for Flutter Web
+
+### Desktop (Windows and Linux)
+
+No additional setup is required beyond a working Flutter desktop toolchain, with one exception: on Linux, the system `libcurl` development package must be installed.
+
+The SDK stores data on disk until it is uploaded. Set `DatadogConfiguration.desktopDataDirectory` to choose where. The path must be absolute and valid for the current platform, and the process must be able to create and write to it. The directory is created if it does not exist, and the SDK assumes exclusive ownership of the files it places there. This setting is ignored on other platforms.
+
+`DatadogConfiguration.getSuggestedDesktopDataDirectory` returns a conventional location for your application: a directory named after the application under `%LOCALAPPDATA%` on Windows, or under `$XDG_DATA_HOME` (`~/.local/share` by default) on Linux. It returns `null` on other platforms or if the location can't be determined.
+
+```dart
+final configuration = DatadogConfiguration(
+  // ...
+  desktopDataDirectory: DatadogConfiguration.getSuggestedDesktopDataDirectory(
+    'com.example.myapp',
+  ),
+);
+```
+
+If you don't set `desktopDataDirectory`, the SDK logs a warning and uses a `.datadog` directory in the process's current working directory, which is suitable only for development. If the path you set is invalid, the SDK logs an error and does not initialize.
+
+The following are not supported on Windows and Linux:
+
+* `DatadogSdk.attachToExisting` and `DatadogAttachConfiguration`
+* Changing `DatadogSdk.sdkVerbosity` after initialization
+* `DatadogRum.getCurrentSessionId`, which always returns `null`
+* `DatadogRum.addTiming`, `DatadogRum.addViewLoadingTime`, and `DatadogRum.addFeatureFlagEvaluation`, which have no effect
+* Frame build and raster performance metrics
 
 ## Setup
 
