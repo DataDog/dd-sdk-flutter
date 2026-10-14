@@ -16,6 +16,7 @@ import 'package:meta/meta.dart';
 
 import '../datadog_sdk.dart';
 import '../helpers.dart';
+import '../sampler.dart';
 import '../tracing/tracing_headers.dart';
 import 'inv_metric_provider.dart';
 import 'rum_long_task_observer.dart';

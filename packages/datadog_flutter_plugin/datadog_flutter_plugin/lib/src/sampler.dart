@@ -40,15 +40,16 @@ class DeterministicSampler {
   final double samplingRate;
 
   DeterministicSampler(double samplingRate)
-      : samplingRate = samplingRate.clamp(0.0, 100.0);
+    : samplingRate = samplingRate.clamp(0.0, 100.0);
 
   /// Whether [seed], a 64-bit value, is sampled at [samplingRate].
   bool sample(BigInt seed) {
     if (samplingRate == 100.0) return true;
 
     final hash = (seed * _knuthFactor) & _maxUint64;
-    final threshold =
-        BigInt.from(_maxUint64.toDouble() * (samplingRate / 100.0));
+    final threshold = BigInt.from(
+      _maxUint64.toDouble() * (samplingRate / 100.0),
+    );
     return hash < threshold;
   }
 
