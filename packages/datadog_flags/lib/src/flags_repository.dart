@@ -60,7 +60,7 @@ class FlagsRepository {
 
   bool get isRestoredFromStore => _state?.restoredFromStore ?? false;
 
-  void Function() onFirstFlags(void Function(FlagsClientEvent) callback) {
+  void Function() onFirstFlags(FlagsClientEventListener callback) {
     final registration = _FirstFlagsRegistration(callback);
     final event = _firstFlagsEvent;
     if (event != null) {
@@ -320,10 +320,10 @@ bool _jsonValuesMatch(Object? left, Object? right) {
 // Only this record owns the app callback. Queued work never copies it, so
 // cancellation releases its captures even when a microtask is already queued.
 class _FirstFlagsRegistration {
-  void Function(FlagsClientEvent)? _callback;
+  FlagsClientEventListener? _callback;
   void Function()? removePending;
 
-  _FirstFlagsRegistration(void Function(FlagsClientEvent) callback)
+  _FirstFlagsRegistration(FlagsClientEventListener callback)
       : _callback = Zone.current.bindUnaryCallback(callback);
 
   void cancel() {

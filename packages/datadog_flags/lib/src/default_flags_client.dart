@@ -31,8 +31,7 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
         _evaluationAggregator = evaluationAggregator;
 
   @override
-  void Function() onFirstFlags(
-          void Function(FlagsClientEvent event) listener) =>
+  void Function() onFirstFlags(FlagsClientEventListener listener) =>
       _repository.onFirstFlags(listener);
 
   @override

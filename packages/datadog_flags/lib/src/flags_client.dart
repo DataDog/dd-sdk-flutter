@@ -20,7 +20,7 @@ abstract interface class DatadogFlagsClient {
   ///
   /// Returns an unregister function.
   void Function() onFirstFlags(
-    void Function(FlagsClientEvent event) listener,
+    FlagsClientEventListener listener,
   );
 
   /// Fetches assignments for [context] and makes them available to evaluations.

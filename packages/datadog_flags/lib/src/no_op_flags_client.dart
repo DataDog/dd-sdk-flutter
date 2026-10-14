@@ -15,9 +15,7 @@ class NoOpDatadogFlagsClient implements DatadogFlagsClient {
   NoOpDatadogFlagsClient({required this.name});
 
   @override
-  void Function() onFirstFlags(
-          void Function(FlagsClientEvent event) listener) =>
-      () {};
+  void Function() onFirstFlags(FlagsClientEventListener listener) => () {};
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {}

@@ -21,4 +21,4 @@ export 'src/flags_store.dart' show DatadogFlagsStore, FlagsData;
 export 'src/evaluation_context.dart' show FlagsEvaluationContext;
 
 export 'src/flags_client_event.dart'
-    show FlagsClientEvent, FlagsClientEventType;
+    show FlagsClientEvent, FlagsClientEventType, FlagsClientEventListener;

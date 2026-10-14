@@ -5,6 +5,9 @@
 
 import 'package:meta/meta.dart';
 
+/// Receives an event emitted by a flag client.
+typedef FlagsClientEventListener = void Function(FlagsClientEvent event);
+
 /// The kinds of notifications emitted by a flag client.
 enum FlagsClientEventType {
   /// A flag configuration has been installed.

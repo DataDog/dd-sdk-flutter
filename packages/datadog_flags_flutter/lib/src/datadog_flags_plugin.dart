@@ -188,7 +188,7 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
   /// The core owns asynchronous delivery and registration-zone handling.
   /// Cancellation works while the delegate is resolving and before delivery.
   @override
-  void Function() onFirstFlags(void Function(FlagsClientEvent) callback) {
+  void Function() onFirstFlags(FlagsClientEventListener callback) {
     final registration = _FlutterFirstFlagsRegistration(callback);
     unawaited(_forwardFirstFlags(registration));
     return registration.cancel;
@@ -347,7 +347,7 @@ DatadogFlagsSite? datadogFlagsSiteFor(DatadogSite site) {
 // Pending resolution and core delivery retain this record. Canceling clears
 // its application callback even while the resolver is still pending.
 class _FlutterFirstFlagsRegistration {
-  void Function(FlagsClientEvent)? _callback;
+  FlagsClientEventListener? _callback;
   void Function()? _unregister;
 
   _FlutterFirstFlagsRegistration(this._callback);
