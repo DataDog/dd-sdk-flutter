@@ -21,9 +21,11 @@ class NotificationCenterMock: NotificationCenterProtocol {
         observers.removeAll { $0.observer === observer }
     }
 
-    func post(name: NSNotification.Name) {
+    func post(name: NSNotification.Name, object: Any? = nil) {
+        let notification = Notification(name: name, object: object)
         for entry in observers where entry.name == name {
-            entry.observer.perform(entry.selector)
+            // Selectors that take no argument ignore it
+            entry.observer.perform(entry.selector, with: notification)
         }
     }
 }
