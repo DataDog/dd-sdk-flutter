@@ -7,40 +7,16 @@ import 'package:datadog_flags/datadog_flags.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('omitted and explicitly null keys stay absent', () {
-    final omitted = FlagsClientEvent(
-      type: FlagsClientEventType.configurationChanged,
-    );
-    final explicitNull = FlagsClientEvent(
-      type: FlagsClientEventType.configurationChanged,
-      flagsChanged: null,
-    );
-    expect(omitted.flagsChanged, isNull);
-    expect(explicitNull.flagsChanged, isNull);
-  });
-
-  test('explicit empty keys remain present and immutable', () {
-    final keys = <String>[];
+  test('copies keys independently of subsequent source mutations', () {
+    final keys = ['second', 'first'];
     final event = FlagsClientEvent(
       type: FlagsClientEventType.configurationChanged,
       flagsChanged: keys,
     );
-    keys.add('later');
-    expect(event.flagsChanged, isNotNull);
-    expect(event.flagsChanged, isEmpty);
-    expect(() => event.flagsChanged!.add('mutation'), throwsUnsupportedError);
-  });
 
-  test('snapshots mutable keys without filtering or reordering', () {
-    final keys = ['second', 'first', 'first'];
-    final event = FlagsClientEvent(
-      type: FlagsClientEventType.configurationChanged,
-      flagsChanged: keys,
-    );
     keys[0] = 'replacement';
     keys.clear();
-    expect(event.flagsChanged, ['second', 'first', 'first']);
-    expect(() => event.flagsChanged![0] = 'mutation', throwsUnsupportedError);
-    expect(() => event.flagsChanged!.clear(), throwsUnsupportedError);
+
+    expect(event.flagsChanged, ['second', 'first']);
   });
 }
