@@ -97,12 +97,19 @@ class DatadogFlagsPlugin extends DatadogPlugin {
         },
         addRumFeatureFlagEvaluation:
             _rumIntegrationEnabled ? _addRumFeatureFlagEvaluation : null,
+        enableEvaluationTelemetryOptOutParameter:
+            _flagsConfiguration.enableEvaluationTelemetryOptOutParameter,
       ),
     );
   }
 
   /// Clears in-memory and stored assignments for all integrated clients.
-  Future<void> reset() => _flags.reset();
+  Future<void> reset() {
+    for (final client in _clients.values) {
+      client._resetTelemetryPolicy();
+    }
+    return _flags.reset();
+  }
 
   @override
   void shutdown() {
@@ -151,6 +158,8 @@ class DatadogFlagsPlugin extends DatadogPlugin {
       trackExposures: _flagsConfiguration.trackExposures,
       customEvaluationEndpoint: _flagsConfiguration.customEvaluationEndpoint,
       trackEvaluations: _flagsConfiguration.trackEvaluations,
+      enableEvaluationTelemetryOptOutParameter:
+          _flagsConfiguration.enableEvaluationTelemetryOptOutParameter,
       evaluationFlushInterval: _flagsConfiguration.evaluationFlushInterval,
       httpClient: _flagsConfiguration.httpClient,
       datadogConfig: flagsDatadogConfig,
@@ -168,8 +177,12 @@ class DatadogFlagsPlugin extends DatadogPlugin {
 class DatadogFlutterFlagsClient implements DatadogFlagsClient {
   final Future<DatadogFlagsClient> Function() _resolveDelegate;
   final void Function(String key, Object value)? _addRumFeatureFlagEvaluation;
+  final bool _enableEvaluationTelemetryOptOutParameter;
+  bool _evaluationTelemetryOptedOut = false;
 
   DatadogFlagsClient? _delegate;
+  Future<DatadogFlagsClient>? _resolvingDelegate;
+  int _contextRevision = 0;
 
   @override
   final String name;
@@ -181,12 +194,23 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
     required Future<DatadogFlagsClient> Function() resolveDelegate,
     required void Function(String key, Object value)?
         addRumFeatureFlagEvaluation,
+    bool enableEvaluationTelemetryOptOutParameter = false,
   })  : _resolveDelegate = resolveDelegate,
+        _enableEvaluationTelemetryOptOutParameter =
+            enableEvaluationTelemetryOptOutParameter,
         _addRumFeatureFlagEvaluation = addRumFeatureFlagEvaluation;
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
-    final delegate = await _delegateOrResolve();
+    final revision = ++_contextRevision;
+    final control = context.attributes['dd_evaluation_telemetry_opt_out'];
+    _evaluationTelemetryOptedOut =
+        _enableEvaluationTelemetryOptOutParameter && control is bool && control;
+    // Update the core policy synchronously when the delegate is already ready.
+    final delegate = _delegate ?? await _delegateOrResolve();
+    if (revision != _contextRevision) {
+      return;
+    }
     await delegate.initialize(context);
   }
 
@@ -262,33 +286,48 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
 
   @override
   Future<void> reset() async {
-    final delegate = await _delegateOrResolve();
+    _resetTelemetryPolicy();
+    final revision = _contextRevision;
+    final delegate = _delegate ?? await _delegateOrResolve();
+    if (revision != _contextRevision) {
+      return;
+    }
     await delegate.reset();
   }
 
   @override
   Future<void> shutdown() async {
+    _resetTelemetryPolicy();
     final delegate = _delegate;
     if (delegate == null) {
       return;
     }
     await delegate.shutdown();
     _delegate = null;
+    _evaluationTelemetryOptedOut = false;
   }
 
-  Future<DatadogFlagsClient> _delegateOrResolve() async {
+  void _resetTelemetryPolicy() {
+    ++_contextRevision;
+    _evaluationTelemetryOptedOut = false;
+  }
+
+  Future<DatadogFlagsClient> _delegateOrResolve() {
     final existing = _delegate;
     if (existing != null) {
-      return existing;
+      return Future.value(existing);
     }
-    final resolved = await _resolveDelegate();
-    _delegate = resolved;
-    return resolved;
+    return _resolvingDelegate ??= _resolveDelegate().then((resolved) {
+      _delegate = resolved;
+      return resolved;
+    }).whenComplete(() => _resolvingDelegate = null);
   }
 
   FlagDetails<T> _trackRumEvaluation<T>(FlagDetails<T> details) {
     final variant = details.variant;
-    if (details.error == null && variant != null) {
+    if (!_evaluationTelemetryOptedOut &&
+        details.error == null &&
+        variant != null) {
       _addRumFeatureFlagEvaluation?.call(details.key, variant);
     }
     return details;

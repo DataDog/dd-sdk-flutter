@@ -31,6 +31,7 @@ class FlagsRepository {
   final DatadogFlagsStore? store;
   final DateTime Function() dateProvider;
   final Duration? initializationTimeout;
+  final bool enableEvaluationTelemetryOptOutParameter;
   final _CacheOperationQueue _cacheOperations;
 
   @visibleForTesting
@@ -39,6 +40,12 @@ class FlagsRepository {
   _InstalledFlagsState? _state;
   _CancelToken? _currentToken;
   bool _didStartInitialization = false;
+  FlagsEvaluationContext? _requestedAssignmentContext;
+  Object? _requestedTelemetryControl;
+  bool _requestedTelemetryControlPresent = false;
+  bool _evaluationTelemetryOptedOut = false;
+
+  static const _telemetryControl = 'dd_evaluation_telemetry_opt_out';
 
   FlagsRepository({
     required this.clientName,
@@ -46,11 +53,17 @@ class FlagsRepository {
     this.store,
     required this.dateProvider,
     this.initializationTimeout,
+    this.enableEvaluationTelemetryOptOutParameter = false,
     this.storeReadTimeout = defaultStoreReadTimeout,
     this.scheduleInitializationTimeout = _scheduleInitializationTimeout,
   }) : _cacheOperations = _cacheOperationQueue(store, clientName);
 
-  FlagsEvaluationContext? get context => _state?.data.context;
+  FlagsEvaluationContext? get context {
+    final context = _state?.data.context;
+    return context == null ? null : _assignmentContext(context);
+  }
+
+  bool get evaluationTelemetryOptedOut => _evaluationTelemetryOptedOut;
 
   FlagAssignment? flagAssignment(String key) {
     final data = _state?.data;
@@ -63,6 +76,25 @@ class FlagsRepository {
   bool get isRestoredFromStore => _state?.restoredFromStore ?? false;
 
   Future<void> initialize(FlagsEvaluationContext context) {
+    if (enableEvaluationTelemetryOptOutParameter) {
+      final control = context.attributes[_telemetryControl];
+      final present = context.attributes.containsKey(_telemetryControl);
+      _evaluationTelemetryOptedOut = control is bool && control;
+      final assignmentContext = _assignmentContext(context);
+      final previous = _requestedAssignmentContext;
+      final controlChanged = present != _requestedTelemetryControlPresent ||
+          !_jsonValuesMatch(control, _requestedTelemetryControl);
+      _requestedAssignmentContext = assignmentContext;
+      _requestedTelemetryControl = control;
+      _requestedTelemetryControlPresent = present;
+      context = assignmentContext;
+      if (controlChanged &&
+          previous != null &&
+          _contextsMatch(previous, assignmentContext)) {
+        // Keep any pending assignment operation. Its result cannot change policy.
+        return Future<void>.value();
+      }
+    }
     _currentToken?.cancel();
     final token = _CancelToken();
     _currentToken = token;
@@ -99,10 +131,10 @@ class FlagsRepository {
       return;
     }
 
-    final matchingCached =
-        cached != null && _contextsMatch(cached.context, context)
-            ? cached
-            : null;
+    final matchingCached = cached != null &&
+            _contextsMatch(_assignmentContext(cached.context), context)
+        ? cached
+        : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
       _state = _InstalledFlagsState(
         data: matchingCached,
@@ -163,13 +195,32 @@ class FlagsRepository {
 
   bool _hasCurrentStateForContext(FlagsEvaluationContext context) {
     final current = _state;
-    return current != null && _contextsMatch(current.data.context, context);
+    return current != null &&
+        _contextsMatch(_assignmentContext(current.data.context), context);
+  }
+
+  FlagsEvaluationContext _assignmentContext(FlagsEvaluationContext context) {
+    if (!enableEvaluationTelemetryOptOutParameter ||
+        !context.attributes.containsKey(_telemetryControl)) {
+      return context;
+    }
+    return FlagsEvaluationContext(
+      targetingKey: context.targetingKey,
+      attributes: Map<String, Object?>.unmodifiable(
+        Map<String, Object?>.from(context.attributes)
+          ..remove(_telemetryControl),
+      ),
+    );
   }
 
   Future<void> clearMemory() async {
     _currentToken?.cancel();
     _currentToken = null;
     _state = null;
+    _requestedAssignmentContext = null;
+    _requestedTelemetryControl = null;
+    _requestedTelemetryControlPresent = false;
+    _evaluationTelemetryOptedOut = false;
   }
 
   Future<void> reset() async {

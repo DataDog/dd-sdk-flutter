@@ -114,12 +114,14 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
     required FlagVariationType requestedType,
   }) {
     final context = _repository.context;
+    final telemetryOptedOut = _repository.evaluationTelemetryOptedOut;
     if (context == null) {
       _evaluationAggregator.recordEvaluation(
         flagKey: key,
         assignment: null,
         evaluationContext: FlagsEvaluationContext.empty,
         error: FlagEvaluationError.providerNotReady.code,
+        telemetryOptedOut: telemetryOptedOut,
       );
       return FlagDetails(
         key: key,
@@ -138,6 +140,7 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
         assignment: null,
         evaluationContext: context,
         error: FlagEvaluationError.flagNotFound.code,
+        telemetryOptedOut: telemetryOptedOut,
       );
       return FlagDetails(
         key: key,
@@ -177,6 +180,7 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
         assignment: assignment,
         evaluationContext: context,
         error: FlagEvaluationError.typeMismatch.code,
+        telemetryOptedOut: telemetryOptedOut,
       );
       return FlagDetails(
         key: key,
@@ -196,6 +200,7 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
       assignment: assignment,
       evaluationContext: context,
       error: null,
+      telemetryOptedOut: telemetryOptedOut,
     );
 
     return FlagDetails(
