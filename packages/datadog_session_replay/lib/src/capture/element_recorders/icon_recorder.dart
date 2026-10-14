@@ -102,16 +102,22 @@ class IconRecorder implements ElementRecorder {
 
     // Unknown renderer font or custom icon
 
-    final logicalSize = fontSize * attributes.scaleX;
+    // Icon lays out a square box, but subclasses such as Font Awesome's
+    // FaIcon size the box to the glyph, so use the laid-out size.
+    final box = element.size ?? Size.square(fontSize);
+    final logicalWidth = box.width * attributes.scaleX;
+    final logicalHeight = box.height * attributes.scaleY;
     final devicePixelRatio = _devicePixelRatio(element);
-    final pixelSize = rasterPixelSize(logicalSize, devicePixelRatio);
+    final pixelWidth = rasterPixelSize(logicalWidth, devicePixelRatio);
+    final pixelHeight = rasterPixelSize(logicalHeight, devicePixelRatio);
 
     final rasterKey = IconRasterKey.fromStyle(
       glyph: String.fromCharCode(iconData.codePoint),
       style: style,
       color: color,
       flipped: flipped,
-      logicalSize: logicalSize,
+      logicalWidth: logicalWidth,
+      logicalHeight: logicalHeight,
       devicePixelRatio: devicePixelRatio,
     );
 
@@ -131,7 +137,14 @@ class IconRecorder implements ElementRecorder {
       process: () async {
         final resourceKey = await _rasterizeOnce(
           rasterKey,
-          () => _rasterize(span, textDirection, fontSize, flipped, pixelSize),
+          () => _rasterize(
+            span,
+            textDirection,
+            box,
+            flipped,
+            pixelWidth,
+            pixelHeight,
+          ),
         );
         if (resourceKey == null) {
           return _glyphNode(
@@ -208,8 +221,8 @@ class IconRecorder implements ElementRecorder {
     return (style: style, color: color);
   }
 
-  /// The physical size, in pixels, of the square bitmap an icon displayed at
-  /// [logicalSize] is rasterized into.
+  /// The physical size, in pixels, of one side of the bitmap for an icon side
+  /// displayed at [logicalSize].
   @visibleForTesting
   static int rasterPixelSize(double logicalSize, double devicePixelRatio) {
     final pixels = (logicalSize * devicePixelRatio).ceil();
@@ -266,17 +279,18 @@ class IconRecorder implements ElementRecorder {
   Future<int?> _rasterize(
     TextSpan span,
     TextDirection textDirection,
-    double logicalSize,
+    Size box,
     bool flipped,
-    int pixelSize,
+    int pixelWidth,
+    int pixelHeight,
   ) async {
     final pictureRecorder = ui.PictureRecorder();
     final canvas = Canvas(pictureRecorder);
-    // Draw in the icon's own logical coordinates, then scale so the
-    // logicalSize x logicalSize box Icon lays out fills the bitmap.
-    canvas.scale(pixelSize / logicalSize);
+    // Draw in the icon's own logical coordinates, then scale so the box the
+    // icon lays out fills the bitmap.
+    canvas.scale(pixelWidth / box.width, pixelHeight / box.height);
     if (flipped) {
-      canvas.translate(logicalSize, 0);
+      canvas.translate(box.width, 0);
       canvas.scale(-1, 1);
     }
 
@@ -289,8 +303,8 @@ class IconRecorder implements ElementRecorder {
     painter.paint(
       canvas,
       Offset(
-        (logicalSize - painter.width) / 2,
-        (logicalSize - painter.height) / 2,
+        (box.width - painter.width) / 2,
+        (box.height - painter.height) / 2,
       ),
     );
     painter.dispose();
@@ -298,7 +312,7 @@ class IconRecorder implements ElementRecorder {
     final picture = pictureRecorder.endRecording();
     ui.Image? image;
     try {
-      image = await picture.toImage(pixelSize, pixelSize);
+      image = await picture.toImage(pixelWidth, pixelHeight);
       final byteData = await image.toByteData(
         format: ui.ImageByteFormat.rawRgba,
       );
@@ -307,8 +321,8 @@ class IconRecorder implements ElementRecorder {
       final resourceKey = keyGenerator.nextResourceKey();
       await DatadogSessionReplayPlatform.instance.saveImageForProcessing(
         resourceKey,
-        pixelSize,
-        pixelSize,
+        pixelWidth,
+        pixelHeight,
         byteData,
       );
       return resourceKey;
@@ -396,7 +410,8 @@ class IconRasterKey {
   final bool flipped;
 
   /// The on-screen size, in logical pixels, including any transform scale.
-  final double logicalSize;
+  final double logicalWidth;
+  final double logicalHeight;
   final double devicePixelRatio;
 
   const IconRasterKey({
@@ -408,7 +423,8 @@ class IconRasterKey {
     required this.color,
     required this.blendMode,
     required this.flipped,
-    required this.logicalSize,
+    required this.logicalWidth,
+    required this.logicalHeight,
     required this.devicePixelRatio,
   });
 
@@ -417,7 +433,8 @@ class IconRasterKey {
     required TextStyle style,
     required Color color,
     required bool flipped,
-    required double logicalSize,
+    required double logicalWidth,
+    required double logicalHeight,
     required double devicePixelRatio,
   }) {
     return IconRasterKey(
@@ -430,7 +447,8 @@ class IconRasterKey {
       // Paint has no value equality, so key on the blend mode it carries.
       blendMode: style.foreground?.blendMode,
       flipped: flipped,
-      logicalSize: logicalSize,
+      logicalWidth: logicalWidth,
+      logicalHeight: logicalHeight,
       devicePixelRatio: devicePixelRatio,
     );
   }
@@ -446,7 +464,8 @@ class IconRasterKey {
         other.color == color &&
         other.blendMode == blendMode &&
         other.flipped == flipped &&
-        other.logicalSize == logicalSize &&
+        other.logicalWidth == logicalWidth &&
+        other.logicalHeight == logicalHeight &&
         other.devicePixelRatio == devicePixelRatio;
   }
 
@@ -460,7 +479,8 @@ class IconRasterKey {
         color,
         blendMode,
         flipped,
-        logicalSize,
+        logicalWidth,
+        logicalHeight,
         devicePixelRatio,
       );
 }

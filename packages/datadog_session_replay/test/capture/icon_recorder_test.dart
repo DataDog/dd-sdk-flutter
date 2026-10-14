@@ -36,6 +36,17 @@ const _packagedIcon = IconData(
   fontPackage: 'custom_icons',
 );
 
+/// Like Font Awesome's FaIcon: an [Icon] whose box hugs the glyph instead of
+/// being square.
+class _NarrowIcon extends Icon {
+  const _NarrowIcon(super.icon, {super.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(width: 15, height: 24, child: super.build(context));
+  }
+}
+
 void main() {
   late MockDatadogSessionReplayPlatform platform;
   late KeyGenerator keyGenerator;
@@ -472,6 +483,32 @@ void main() {
       expect(savedResourceKeys().length, 2);
     });
 
+    testWidgets('rasterizes non-square icon boxes at their own size', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final recorder = createRecorder();
+      await tester.pumpWidget(
+        wrap(recorder, const _NarrowIcon(_customIcon, size: 24)),
+      );
+
+      final nodes = await capture(tester, recorder);
+
+      final node = nodes.single as ResourceImageNode;
+      expect(node.attributes.width, 15);
+      expect(node.attributes.height, 24);
+      final captured = verify(
+        () => platform.saveImageForProcessing(
+          any(),
+          captureAny(),
+          captureAny(),
+          any(),
+        ),
+      ).captured;
+      expect(captured, [30, 48]);
+    });
+
     testWidgets('rasterizes again when device pixel ratio changes', (
       tester,
     ) async {
@@ -672,7 +709,8 @@ void main() {
       Color color = const Color(0xFF123456),
       String glyph = 'a',
       bool flipped = false,
-      double logicalSize = 24,
+      double logicalWidth = 24,
+      double logicalHeight = 24,
       double devicePixelRatio = 2,
     }) {
       return IconRasterKey.fromStyle(
@@ -680,7 +718,8 @@ void main() {
         style: style,
         color: color,
         flipped: flipped,
-        logicalSize: logicalSize,
+        logicalWidth: logicalWidth,
+        logicalHeight: logicalHeight,
         devicePixelRatio: devicePixelRatio,
       );
     }
@@ -701,9 +740,13 @@ void main() {
       final base = key();
       expect(key(glyph: 'b'), isNot(base));
       expect(key(flipped: true), isNot(base));
-      expect(key(logicalSize: 36), isNot(base));
+      expect(key(logicalWidth: 15), isNot(base));
+      expect(key(logicalHeight: 36), isNot(base));
       // Same 48px bitmap, but a different size and DPR.
-      expect(key(logicalSize: 16, devicePixelRatio: 3), isNot(base));
+      expect(
+        key(logicalWidth: 16, logicalHeight: 16, devicePixelRatio: 3),
+        isNot(base),
+      );
       expect(
         key(style: const TextStyle(fontFamily: 'packages/p/CustomIcons')),
         isNot(base),
