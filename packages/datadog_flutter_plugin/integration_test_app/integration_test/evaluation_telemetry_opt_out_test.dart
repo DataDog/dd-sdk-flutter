@@ -62,7 +62,8 @@ void main() {
         await request.response.close();
       });
       addTearDown(() => server.close(force: true));
-      final base = 'http://127.0.0.1:${server.port}';
+      // The integration app permits cleartext traffic only to localhost.
+      final base = 'http://localhost:${server.port}';
       final sdk = DatadogSdk.instance;
       await sdk.initialize(
         DatadogConfiguration(
@@ -75,7 +76,7 @@ void main() {
             applicationId: '00000000-0000-0000-0000-000000000001',
             customEndpoint: '$base/rum',
           ),
-        ),
+        )..additionalConfig['_dd.needsClearTextHttp'] = true,
         TrackingConsent.granted,
       );
       await tester.pumpWidget(

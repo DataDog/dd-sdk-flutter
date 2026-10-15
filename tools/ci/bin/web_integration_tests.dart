@@ -26,6 +26,8 @@ const fileExclude = [
   'tracing_id_helpers.dart',
   // Web does not support dart:io clients
   'tracking_http_client_test.dart',
+  // The mobile intake harness uses a dart:io HTTP server and native RUM.
+  'evaluation_telemetry_opt_out_test.dart',
   // Web does not support isolates
   'isolate_tracking_test.dart',
 ];
