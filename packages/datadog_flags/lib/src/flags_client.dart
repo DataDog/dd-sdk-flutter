@@ -28,6 +28,10 @@ abstract interface class DatadogFlagsClient {
   ///
   /// Evaluations made before initialization completes return their provided
   /// default value with a `providerNotReady` error.
+  ///
+  /// When evaluation telemetry opt-out is enabled, changing only
+  /// `dd_evaluation_telemetry_opt_out` updates the local telemetry policy without
+  /// fetching assignments. Only the boolean `true` suppresses telemetry.
   Future<void> initialize(FlagsEvaluationContext context);
 
   /// Evaluates a boolean flag and returns details about the result.

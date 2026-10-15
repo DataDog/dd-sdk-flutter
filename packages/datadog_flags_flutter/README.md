@@ -109,6 +109,19 @@ Use `package:datadog_flags/datadog_flags.dart` directly for pure Dart apps or
 Flutter apps that need full lifecycle control without Datadog Flutter SDK
 integration.
 
+## Evaluation Telemetry Opt-Out
+
+Pass `enableEvaluationTelemetryOptOutParameter: true` in the plugin's
+`DatadogFlagsConfiguration`. Set the context attribute
+`dd_evaluation_telemetry_opt_out` to boolean `true` to suppress new evaluation
+events, counts, and automatic RUM flag annotations. Activation defaults to false.
+Other attribute values preserve telemetry.
+
+Update the attribute with `client.initialize(context)`. A change to only this
+attribute applies locally without fetching assignments. Flag values, exposures,
+existing events, manual RUM annotations, and unrelated telemetry remain unchanged.
+See [the core SDK contract](../datadog_flags/README.md#evaluation-telemetry-opt-out).
+
 ## Background Isolates
 
 `datadog_flags_flutter` does not support evaluation from background

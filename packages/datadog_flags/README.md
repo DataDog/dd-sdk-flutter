@@ -299,6 +299,41 @@ Evaluations are aggregated by flag key, assignment metadata, evaluation context,
 and error state. The SDK uploads batches on the configured flush interval, when
 the batch boundary is reached, and during `shutdown()`.
 
+## Evaluation Telemetry Opt-Out
+
+Enable the context parameter explicitly:
+
+```dart
+final configuration = DatadogFlagsConfiguration(
+  datadogConfig: datadogConfig,
+  enableEvaluationTelemetryOptOutParameter: true,
+);
+```
+
+Set `dd_evaluation_telemetry_opt_out` in the evaluation context:
+
+```dart
+await client.initialize(const FlagsEvaluationContext(
+  targetingKey: 'user-123',
+  attributes: {'dd_evaluation_telemetry_opt_out': true},
+));
+```
+
+Only boolean `true` suppresses new evaluation events and counts. Missing, false,
+null, and other types preserve evaluation telemetry. Activation defaults to false.
+The Flutter integration also suppresses automatic RUM flag annotations.
+
+With activation enabled, the SDK consumes this attribute locally. It excludes
+the attribute from assignment requests and cache matching. Changing only this
+attribute updates policy immediately without fetching assignments. Repeating an
+identical context still refreshes assignments. Subject and targeting changes keep
+their existing assignment behavior.
+
+Each named client has separate policy. Cached data and late assignment responses
+cannot restore an older policy. Flag values, details, exposures, and exposure
+deduplication remain unchanged. Previously recorded events and RUM annotations
+remain. Unrelated telemetry and manual RUM flag annotations remain enabled.
+
 ## Last-Known Assignment Storage
 
 The SDK keeps assignments in memory after `initialize()` succeeds. To restore

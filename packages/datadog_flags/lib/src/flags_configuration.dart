@@ -68,6 +68,13 @@ final class DatadogFlagsConfiguration {
   /// Whether evaluations should be aggregated and sent to intake.
   final bool trackEvaluations;
 
+  /// Treats boolean `dd_evaluation_telemetry_opt_out` as local telemetry policy.
+  ///
+  /// When enabled, only boolean `true` suppresses new evaluation telemetry and
+  /// automatic RUM flag annotations. Exposures and existing events are unchanged.
+  /// The attribute is excluded from assignment requests and cache matching.
+  final bool enableEvaluationTelemetryOptOutParameter;
+
   final Duration _evaluationFlushInterval;
 
   /// HTTP client used for assignments and telemetry.
@@ -93,6 +100,7 @@ final class DatadogFlagsConfiguration {
     this.trackExposures = true,
     this.customEvaluationEndpoint,
     this.trackEvaluations = true,
+    this.enableEvaluationTelemetryOptOutParameter = false,
     Duration evaluationFlushInterval = defaultEvaluationFlushInterval,
     this.httpClient,
     this.datadogConfig,
