@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 
 import 'command.dart';
+import 'flags_version.dart';
 import 'github_cmd_wrapper.dart';
 import 'helpers.dart';
 import 'process_helper.dart';
@@ -115,6 +116,7 @@ class ValidatePublishDryRun extends Command {
     var finalResult = true;
     for (final package in args.packages) {
       final packageRoot = getPackageRoot(args, package);
+      if (!validateFlagsVersion(packageRoot, logger)) return false;
       logger.info('ℹ️ Running `flutter pub publish --dry-run` in $packageRoot');
       final exitCode = await runProcess(
         'flutter',
