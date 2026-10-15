@@ -11,6 +11,7 @@ import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flag_assignments_fetcher.dart';
 import 'flags_error.dart';
+import 'flags_client_event.dart';
 import 'flags_store.dart';
 import 'json_value.dart';
 
@@ -35,6 +36,9 @@ class FlagsRepository {
 
   @visibleForTesting
   final Timer Function(Duration, void Function()) scheduleInitializationTimeout;
+
+  FlagsClientEvent? _firstFlagsEvent;
+  final _firstFlagsRegistrations = <_FirstFlagsRegistration>{};
 
   _InstalledFlagsState? _state;
   _CancelToken? _currentToken;
@@ -61,6 +65,33 @@ class FlagsRepository {
   }
 
   bool get isRestoredFromStore => _state?.restoredFromStore ?? false;
+
+  void Function() onFirstFlags(FlagsClientEventListener callback) {
+    final registration = _FirstFlagsRegistration(callback);
+    final event = _firstFlagsEvent;
+    if (event != null) {
+      registration.schedule(event);
+    } else {
+      _firstFlagsRegistrations.add(registration);
+      registration.removePending =
+          () => _firstFlagsRegistrations.remove(registration);
+    }
+    return registration.cancel;
+  }
+
+  void _captureFirstFlags(FlagsData data) {
+    if (_firstFlagsEvent != null) return;
+    final event = FlagsClientEvent(
+      type: FlagsClientEventType.configurationChanged,
+      flagsChanged: data.flags.keys.toList(),
+    );
+    _firstFlagsEvent = event;
+    final registrations = _firstFlagsRegistrations.toList();
+    _firstFlagsRegistrations.clear();
+    for (final registration in registrations) {
+      registration.schedule(event);
+    }
+  }
 
   Future<void> initialize(FlagsEvaluationContext context) {
     _currentToken?.cancel();
@@ -108,6 +139,7 @@ class FlagsRepository {
         data: matchingCached,
         restoredFromStore: true,
       );
+      _captureFirstFlags(matchingCached);
     }
 
     try {
@@ -122,6 +154,7 @@ class FlagsRepository {
         obfuscation: assignments.obfuscation,
       );
       _state = _InstalledFlagsState(data: data, restoredFromStore: false);
+      _captureFirstFlags(data);
       await _writeCached(data);
     } catch (_) {
       if (!token.isCanceled &&
@@ -294,4 +327,35 @@ bool _jsonValuesMatch(Object? left, Object? right) {
     }
   }
   return left == right;
+}
+
+// Only this record owns the app callback. Queued work never copies it, so
+// cancellation releases its captures even when a microtask is already queued.
+class _FirstFlagsRegistration {
+  FlagsClientEventListener? _callback;
+  void Function()? removePending;
+
+  _FirstFlagsRegistration(FlagsClientEventListener callback)
+      : _callback = Zone.current.bindUnaryCallback(callback);
+
+  void cancel() {
+    _callback = null;
+    final remove = removePending;
+    removePending = null;
+    remove?.call();
+  }
+
+  void schedule(FlagsClientEvent event) {
+    removePending = null;
+    scheduleMicrotask(() {
+      final callback = _callback;
+      _callback = null;
+      if (callback == null) return;
+      try {
+        callback(event);
+      } catch (_) {
+        // One application failure must not poison installation or other listeners.
+      }
+    });
+  }
 }
