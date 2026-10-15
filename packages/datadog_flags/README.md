@@ -8,6 +8,10 @@ Android Flags SDKs.
 Use OpenFeature as the application API. The legacy Datadog evaluation API is
 deprecated and is scheduled for removal in the next major version.
 
+The SDK automatically supports assignment responses with obfuscated flag keys.
+Applications continue to evaluate flags with their original keys.
+Flag values and telemetry identifiers do not change.
+
 ## Requirements
 
 This integration requires Dart 3.10 or later and the published
@@ -135,6 +139,10 @@ The store loads a `FlagsData` snapshot only when its context matches the request
 Cache writes and deletes are serialized per store instance and client name.
 A store operation that never completes can block later persistence operations.
 Implement store operations so they always complete.
+
+Storage adapters must preserve the complete `FlagsData.toJson()` result and
+restore it with `FlagsData.fromJson()`. These methods retain the metadata needed
+to evaluate obfuscated assignments.
 
 Exposure telemetry follows the assignment's logging policy. Evaluation telemetry
 records successes, defaults, and errors. The provider does not implement

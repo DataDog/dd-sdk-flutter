@@ -360,11 +360,11 @@ Future<String?> resolveNativeSdkTarget({
 
   if (isPinnedDeclaration(workingTreeDeclaration)) {
     final pin = workingTreeDeclaration!.trim();
-    if (trigger != TriggerContext.patch) onPinned?.call(pin);
+    if (trigger != TriggerContext.support) onPinned?.call(pin);
     return pin;
   }
 
-  if (trigger == TriggerContext.patch) return null;
+  if (trigger == TriggerContext.support) return null;
 
   return await fetchLatest();
 }

@@ -86,6 +86,12 @@ Future<String> commitAll(
   String message,
   Logger logger, {
   String? body,
+  // `prepare_release.dart`'s publish-prep commit needs this: a run with no
+  // native SDK deltas to pin has nothing to stage, and a plain `git commit`
+  // would fail with "nothing to commit" -- but the two-commit release-prep
+  // shape (`amend_release_changelog.dart`, the backport, ...) still needs
+  // that second commit to exist.
+  bool allowEmpty = false,
 }) async {
   await _run(gitDir, ['add', '.'], logger, 'Failed to stage changes');
 
@@ -100,7 +106,7 @@ Future<String> commitAll(
     try {
       await _run(
         gitDir,
-        ['commit', '-F', tempFile.path],
+        ['commit', if (allowEmpty) '--allow-empty', '-F', tempFile.path],
         logger,
         'Failed to commit',
       );
@@ -108,7 +114,12 @@ Future<String> commitAll(
       await tempFile.delete();
     }
   } else {
-    await _run(gitDir, ['commit', '-m', message], logger, 'Failed to commit');
+    await _run(
+      gitDir,
+      ['commit', if (allowEmpty) '--allow-empty', '-m', message],
+      logger,
+      'Failed to commit',
+    );
   }
 
   final result = await _run(
@@ -139,7 +150,7 @@ Future<void> pushBranch(
 /// pub.dev-trust tag (this repo's pre-existing `<package>/v<version>`
 /// convention), where an actual tag (not a branch) is what pub.dev's OIDC
 /// trust and `publish-package.yml`'s trigger need. The `release-trigger/*`
-/// marker tag is a separate case, pushed by raw `git tag`/`git push` from
+/// marker tag is a separate case, created and pushed by
 /// `.gitlab-ci.yml`'s `push-release-trigger-tag` job, not through this
 /// function.
 Future<void> pushTag(
@@ -361,22 +372,22 @@ Future<String> amendCommit(GitDir gitDir, Logger logger) async {
   return (result.stdout as String).trim();
 }
 
-/// `git rebase --onto newBase oldBase branch` -- replays [branch]'s commits
-/// after [oldBase] onto [newBase], moving [branch]'s ref and leaving it
-/// checked out. Used to replay commit B onto an amended commit A.
-Future<void> rebaseOnto(
-  GitDir gitDir,
-  String newBase,
-  String oldBase,
-  String branch,
-  Logger logger,
-) async {
-  await _run(
-    gitDir,
-    ['rebase', '--onto', newBase, oldBase, branch],
-    logger,
-    'Failed to rebase $branch onto $newBase',
-  );
+/// Re-applies [sha]'s changes on top of the checked-out branch as a new
+/// commit. An empty or redundant commit is kept, since the two-commit release
+/// shape needs it to exist.
+Future<void> cherryPick(GitDir gitDir, String sha, Logger logger) async {
+  final result = await gitDir.runCommand([
+    'cherry-pick',
+    '--allow-empty',
+    '--keep-redundant-commits',
+    sha,
+  ], throwOnError: false);
+  if (result.exitCode != 0) {
+    await gitDir.runCommand(['cherry-pick', '--abort'], throwOnError: false);
+    throw GitReleaseActionError(
+      'Failed to re-apply $sha: ${result.stdout}${result.stderr}',
+    );
+  }
 }
 
 /// Number of commits reachable from [to] but not [from] -- `git rev-list
@@ -439,12 +450,7 @@ Future<void> forcePushBranch(
   logger.info('ℹ️ Force-pushing $branchName to $remote');
   await _run(
     gitDir,
-    [
-      'push',
-      '--force-with-lease=$branchName:$expectedTip',
-      remote,
-      branchName,
-    ],
+    ['push', '--force-with-lease=$branchName:$expectedTip', remote, branchName],
     logger,
     'Failed to force-push $branchName',
   );
@@ -494,19 +500,6 @@ Future<void> forcePushRefsAtomic(
     logger,
     'Failed to atomically force-push $branchNames',
   );
-}
-
-/// Best-effort `git rebase --abort` -- swallows the error `git` raises when
-/// there's nothing to abort, so callers can call this unconditionally from a
-/// catch block without checking `.git/rebase-*` state themselves first.
-Future<void> abortRebaseIfInProgress(GitDir gitDir, Logger logger) async {
-  final result = await Process.run('git', [
-    'rebase',
-    '--abort',
-  ], workingDirectory: gitDir.path);
-  if (result.exitCode != 0) {
-    logger.fine('ℹ️ Nothing to abort: ${result.stderr}');
-  }
 }
 
 /// Best-effort `git checkout [branch]` -- used to try to leave a reviewer
@@ -562,4 +555,21 @@ Future<bool> isAncestor(
   throw GitReleaseActionError(
     'Failed to check ancestry of $ancestorSha in $ref: ${result.stderr}',
   );
+}
+
+/// Whether [sha] is a merge commit (has more than one parent).
+Future<bool> isMergeCommit(GitDir gitDir, String sha) async {
+  final result = await gitDir.runCommand([
+    'rev-list',
+    '--parents',
+    '-n',
+    '1',
+    sha,
+  ], throwOnError: false);
+  if (result.exitCode != 0) {
+    throw GitReleaseActionError(
+      'Failed to read parents of $sha: ${result.stderr}',
+    );
+  }
+  return (result.stdout as String).trim().split(RegExp(r'\s+')).length > 2;
 }

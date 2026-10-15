@@ -1,8 +1,39 @@
 # Migration from 3.x to 4.0
 
+## Minimum Versions
+
+Version 4.0 requires Flutter 3.38+ and Dart 3.10+. This applies to `datadog_flutter_plugin` and to the other Datadog Flutter packages released alongside it.
+
+## Federated Plugin Packages
+
+`datadog_flutter_plugin` is now an endorsed federated plugin, split into `datadog_flutter_plugin_android`, `datadog_flutter_plugin_ios`, `datadog_flutter_plugin_web`, and `datadog_flutter_plugin_desktop`. These are included automatically, so no change to your `pubspec.yaml` is needed. Only add a platform package directly if you import it.
+
 ## SDK Configuration Changes
 
 `DatadogConfiguration.service` is no longer optional; it must now be provided when constructing `DatadogConfiguration`.
+
+## iOS Changes
+
+The minimum supported iOS version is now 15.0 (previously 13.0). Update your Podfile (`platform :ios, '15.0'`) and your Xcode project's iOS deployment target. If you use Swift Package Manager, the same minimum applies.
+
+## RUM Changes
+
+The "feature operation" APIs have been renamed to "operations":
+
+| `3.x` | `4.x` |
+|-------|-------|
+| `DatadogRum.startFeatureOperation` | `DatadogRum.startOperation` |
+| `DatadogRum.succeedFeatureOperation` | `DatadogRum.succeedOperation` |
+| `DatadogRum.failFeatureOperation` | `DatadogRum.failOperation` |
+| `RumFeatureOperationFailureReason` | `RumOperationFailureReason` |
+
+## New Platforms
+
+Version 4.0 adds support for macOS (13.0+), Windows, and Linux. No migration is required for existing platforms, but if you add a desktop target:
+
+* On Windows and Linux, set `DatadogConfiguration.desktopDataDirectory` to the directory where the SDK should store its data (`DatadogConfiguration.getSuggestedDesktopDataDirectory` returns a conventional location). If it is not set, the SDK logs a warning and uses a `.datadog` directory in the current working directory, which is only suitable for development.
+* On Linux, the system `libcurl` development package must be installed to build your app.
+* Several APIs are not yet supported on Windows and Linux. See the [README](README.md#desktop-windows-and-linux) for the list.
 
 ## Flutter Web Changes
 

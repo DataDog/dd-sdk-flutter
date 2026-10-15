@@ -556,7 +556,7 @@ class GithubCommandWrapper {
         '--state',
         'open',
         '--json',
-        'number,body',
+        'number,body,baseRefName',
         '--limit',
         '2',
       ],
@@ -580,6 +580,7 @@ class GithubCommandWrapper {
     return OpenPullRequest(
       number: entry['number'] as int,
       body: entry['body'] as String? ?? '',
+      baseRef: entry['baseRefName'] as String,
     );
   }
 
@@ -614,6 +615,62 @@ class GithubCommandWrapper {
     }
   }
 
+  /// The merged PR that introduced [sha] to [repoSlug], or `null` if none
+  /// did -- `GET /repos/:owner/:repo/commits/:sha/pulls`, which GitHub
+  /// tracks regardless of merge strategy (unlike trying to walk `sha`'s
+  /// parents, which only works for a real merge commit; squash/rebase
+  /// rewrites the commit entirely, so there'd be nothing to walk). Used by
+  /// `publish_release.dart` to read a mainline/pre-release run's data out
+  /// of its release PR's body.
+  ///
+  /// Throws if more than one merged PR is associated with [sha] -- that
+  /// endpoint can in principle return several (e.g. a commit cherry-picked
+  /// into more than one PR), and picking one arbitrarily risks reading the
+  /// wrong release's data.
+  Future<MergedPullRequest?> findMergedPullRequestForCommit(
+    Logger logger,
+    String repoSlug,
+    String sha,
+  ) async {
+    final buffer = StringBuffer();
+    final exitCode = await runProcess(
+      'gh',
+      ['api', '--method', 'GET', 'repos/$repoSlug/commits/$sha/pulls'],
+      workingDirectory: cwd,
+      stdout: (line) => buffer.writeln(line),
+      stderr: (line) => logger.shout(line),
+    );
+
+    if (exitCode != 0) {
+      throw Exception('gh returned exit code $exitCode.');
+    }
+
+    final json = jsonDecode(buffer.toString()) as List;
+    final merged = json
+        .cast<Map<String, dynamic>>()
+        .where((e) => e['merged_at'] != null)
+        .toList();
+    if (merged.isEmpty) return null;
+    if (merged.length > 1) {
+      throw StateError(
+        'More than one merged PR is associated with commit $sha -- '
+        'expected exactly one.',
+      );
+    }
+    final entry = merged.single;
+    return MergedPullRequest(
+      number: entry['number'] as int,
+      body: entry['body'] as String? ?? '',
+      baseRef: (entry['base'] as Map<String, dynamic>)['ref'] as String,
+      headRef: (entry['head'] as Map<String, dynamic>)['ref'] as String,
+      headRepo:
+          ((entry['head'] as Map<String, dynamic>)['repo']
+                  as Map<String, dynamic>?)?['full_name']
+              as String?,
+      mergeCommitSha: entry['merge_commit_sha'] as String?,
+    );
+  }
+
   /// `gh pr merge {number} --auto --merge` -- queues [prNumber] for
   /// GitHub's native auto-merge using the `merge` strategy specifically,
   /// never squash/rebase, since Phase 2's backport PR needs commit A's
@@ -638,13 +695,54 @@ class GithubCommandWrapper {
   }
 }
 
-/// An open PR's number and body. See
+/// An open PR's number, body, and base branch. See
 /// [GithubCommandWrapper.findOpenPullRequestByHead].
 class OpenPullRequest {
   final int number;
   final String body;
 
-  OpenPullRequest({required this.number, required this.body});
+  /// The branch this PR will merge into.
+  final String baseRef;
+
+  OpenPullRequest({
+    required this.number,
+    required this.body,
+    required this.baseRef,
+  });
+}
+
+/// A merged PR's number, body, and base branch. See
+/// [GithubCommandWrapper.findMergedPullRequestForCommit].
+class MergedPullRequest {
+  final int number;
+  final String body;
+
+  /// The branch this PR merged into (e.g. `main`/`v4-main`), per GitHub's
+  /// own record of the merge -- not anything self-reported by the PR body
+  /// or the commit itself.
+  final String baseRef;
+
+  /// The branch this PR was opened from (`release-prep/*` for a release).
+  final String headRef;
+
+  /// `owner/repo` the head branch lives in -- differs from the base
+  /// repository for a fork PR. Null if the head repository was deleted.
+  final String? headRepo;
+
+  /// The commit GitHub created on [baseRef] when it merged this PR. The
+  /// commit-to-PR lookup also returns PRs that merely contain a commit, so
+  /// only a PR whose merge commit is the commit in question is the one that
+  /// released it.
+  final String? mergeCommitSha;
+
+  MergedPullRequest({
+    required this.number,
+    required this.body,
+    required this.baseRef,
+    required this.headRef,
+    this.headRepo,
+    this.mergeCommitSha,
+  });
 }
 
 /// A `publish-package.yml` run's state, as read from `gh run list`. See

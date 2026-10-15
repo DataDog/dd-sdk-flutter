@@ -47,6 +47,10 @@ Future<void> main() async {
         env: env,
         site: siteConfig.datadogSite,
         service: 'com.datadoghq.example.flutter',
+        desktopDataDirectory:
+            DatadogConfiguration.getSuggestedDesktopDataDirectory(
+              'com.datadoghq.example.flutter',
+            ),
         loggingConfiguration: DatadogLoggingConfiguration(
           customEndpoint: siteConfig.logsCustomEndpoint,
         ),

@@ -2,17 +2,19 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-final _patchBranchPattern = RegExp(r'^release/.+/v\d+\.\d+\.x$');
+import 'package:version/version.dart';
 
-/// Pure decision logic `publish_release.dart` needs, pulled out of that
-/// `bin/` entry point so it's importable and directly testable -- same
-/// split as the rest of this package (business logic in `lib/`, thin
-/// orchestration in `bin/`).
-///
-/// Whether [sourceBranch] (a [ManifestPackageEntry.sourceBranch] value) is a
-/// standing patch-release branch, e.g. `release/datadog_dio/v2.2.x`.
-bool isPatchReleaseBranch(String sourceBranch) =>
-    _patchBranchPattern.hasMatch(sourceBranch);
+import 'release_plan.dart' show packageNameFromPatchBranch;
+
+// Pure decision logic for the release tooling, kept in `lib/` so it's
+// importable and directly testable -- same split as the rest of this package
+// (business logic in `lib/`, thin orchestration in `bin/`).
+
+/// Whether [sourceBranch] is a standing support branch: a patch line such as
+/// `release/datadog_dio/v2.2.x`, or a major line such as
+/// `release/datadog_dio/v3.x`.
+bool isSupportBranch(String sourceBranch) =>
+    packageNameFromPatchBranch(sourceBranch) != null;
 
 /// The only package whose GitHub Release is ever allowed to claim
 /// `--latest`. See [shouldMarkReleaseLatest].
@@ -28,22 +30,72 @@ const mainPackage = 'datadog_flutter_plugin';
 bool shouldMarkReleaseLatest({
   required String package,
   required bool prerelease,
-  required bool isPatch,
-}) => package == mainPackage && !prerelease && !isPatch;
+  required bool isSupport,
+}) => package == mainPackage && !prerelease && !isSupport;
 
-/// Given a [ManifestPackageEntry.sourceBranch] value (the branch this run's
-/// `prepare-release` job originally ran on), the branch the resulting
-/// release-prep PR actually merges into -- i.e. what the `release-trigger/*`
-/// tagged commit must be reachable from for `publish_release.dart`'s
-/// authenticity check to accept it. Mirrors the same branch whitelist as
-/// `push-release-trigger-tag`'s `rules:` in `.gitlab-ci.yml` and
-/// `self.tag-push.sts.yaml`'s `claim_pattern` -- keep all three in sync.
+/// The whitelisted pre-release branches, each paired with a disposable
+/// `<branch>-main` publish target. Add an entry when a major pre-release
+/// effort opens and remove it when the effort ships; keep it in sync with
+/// `prepare-release`'s rules in `.gitlab-ci.yml` and the `self.*.sts.yaml`
+/// trust policies.
+const preReleaseBranches = ['v4'];
+
+/// The branch the release-prep PR for a `prepare-release` run on
+/// [sourceBranch] merges into: `main` for `develop`, `<branch>-main` for a
+/// whitelisted pre-release branch, and a support branch merges into itself.
 ///
 /// Returns `null` for a branch this mapping doesn't recognize, which the
 /// caller should treat as a rejection, not a pass-through.
 String? expectedIntegrationBranch(String sourceBranch) {
   if (sourceBranch == 'develop') return 'main';
-  if (sourceBranch == 'v4') return 'v4-main';
-  if (isPatchReleaseBranch(sourceBranch)) return sourceBranch;
+  if (preReleaseBranches.contains(sourceBranch)) return '$sourceBranch-main';
+  if (isSupportBranch(sourceBranch)) return sourceBranch;
   return null;
+}
+
+/// The inverse of [expectedIntegrationBranch]: the `prepare-release` source
+/// branch (`develop`/a pre-release branch/that same support branch) whose release-prep PR
+/// merges into [integrationBranch] (`main`/`v4-main`/a support branch). Phase 2
+/// backports commit A into that source branch.
+///
+/// Throws for anything else, same as [expectedIntegrationBranch] returning
+/// `null` -- `publish_release.dart` calls this with a merged PR's base ref,
+/// so an unrecognized base has to be a loud rejection, not a silent
+/// pass-through.
+String sourceBranchFor(String integrationBranch) {
+  if (integrationBranch == 'main') return 'develop';
+  for (final branch in preReleaseBranches) {
+    if (integrationBranch == '$branch-main') return branch;
+  }
+  if (isSupportBranch(integrationBranch)) return integrationBranch;
+  throw StateError(
+    '"$integrationBranch" is not a recognized release integration branch '
+    '(main, a whitelisted pre-release `-main`, or a support branch).',
+  );
+}
+
+/// The support branch a support release of [package] to [toVersion] with
+/// [bump] has to come from: a `patch` release from its exact
+/// `{major}.{minor}` line's branch, a `minor` release from the `{major}`
+/// line's branch.
+///
+/// Throws for any other [bump] (`major`/`prerelease`/`first release`), none of
+/// which a support branch produces.
+String expectedSupportBranchFor({
+  required String package,
+  required String toVersion,
+  required String bump,
+}) {
+  final version = Version.parse(toVersion);
+  switch (bump) {
+    case 'patch':
+      return 'release/$package/v${version.major}.${version.minor}.x';
+    case 'minor':
+      return 'release/$package/v${version.major}.x';
+    default:
+      throw StateError(
+        '"$bump" is not a bump a support branch produces (expected patch or '
+        'minor).',
+      );
+  }
 }

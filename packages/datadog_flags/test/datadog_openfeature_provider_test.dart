@@ -23,6 +23,57 @@ void main() {
 
   tearDown(() => api.shutdown());
 
+  test('evaluates obfuscated assignments and restores them from cache', () async {
+    final store = _MemoryStore();
+    var offline = false;
+    final configuration = _configuration(
+      MockClient((request) async {
+        if (offline) return http.Response('offline', 503);
+        return _responseFor(request, {
+          'data': {
+            'attributes': {
+              'obfuscated': true,
+              'obfuscation': {
+                'scheme': 'flag-key-sha256-v1',
+                'salt': '000102030405060708090a0b0c0d0e0f',
+              },
+              'flags': {
+                // The upstream obfuscation fixture encodes the original key 'flag'.
+                '9817872c144b018abd77e3915bd77e2c27f4f534dccff8ffaca27361e3a5e1ee':
+                    _assignment(variationValue: true, serialId: 42),
+              },
+            },
+          },
+        });
+      }),
+      store: store,
+    );
+    await api.setEvaluationContextAndWait(
+      EvaluationContext(targetingKey: 'subject'),
+    );
+    await api.setProviderAndWait(
+      DatadogOpenFeatureProvider(configuration: configuration),
+    );
+    final details = api.getClient().getBooleanDetails('flag', false);
+    expect(details.value, isTrue);
+    expect(details.reason, 'TARGETING_MATCH');
+    expect(details.flagMetadata, {
+      DatadogOpenFeatureProvider.allocationKeyMetadata: 'allocation-a',
+      DatadogOpenFeatureProvider.serialIdMetadata: 42,
+    });
+    expect(api.getClient().providerStatus, ProviderStatus.ready);
+
+    offline = true;
+    await api.setProviderAndWait(
+      DatadogOpenFeatureProvider(configuration: configuration),
+    );
+    final cached = api.getClient().getBooleanDetails('flag', false);
+    expect(cached.value, isTrue);
+    expect(cached.reason, 'CACHED');
+    expect(cached.flagMetadata, details.flagMetadata);
+    expect(api.getClient().providerStatus, ProviderStatus.stale);
+  });
+
   test('shutdown releases timers and ignores a pending refresh', () async {
     final timers = <Timer>[];
     await runZoned(

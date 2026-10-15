@@ -18,6 +18,16 @@ tee .env > /dev/null << END
 DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN
 DD_APPLICATION_ID=$DD_APPLICATION_ID
 DD_ENV=prod
+END
+done
+
+flagsTargetingAttributesJson=${FLAGS_TARGETING_ATTRIBUTES_JSON:-'{"attr1":"value1","companyId":"1"}'}
+flagDotEnvFiles=(
+  "examples/simple_example/.env"
+)
+
+for f in ${flagDotEnvFiles[@]}; do
+  tee -a $f > /dev/null << END
 
 # Optional Datadog Flags example settings.
 DD_SITE=${DD_SITE:-us1}
@@ -33,7 +43,7 @@ done
 popd
 
 pushd examples/native-hybrid-app/android/app/src/main/res/
-mkdir raw
+mkdir -p raw
 tee ./raw/dd_config.json > /dev/null << END
 {
   "client_token": "$DD_CLIENT_TOKEN",
@@ -42,7 +52,7 @@ tee ./raw/dd_config.json > /dev/null << END
 END
 popd
 
-pushd examples/native-hybrid-app/ios/iOS\ Flutter\ Hybrid\ Example
+pushd examples/native-hybrid-app/ios/HybridSessionReplayExample
 tee ./ddog_config.plist > /dev/null << END
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
