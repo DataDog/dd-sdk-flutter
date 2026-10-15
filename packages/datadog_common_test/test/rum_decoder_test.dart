@@ -90,6 +90,46 @@ void main() {
     expect(sessions[0].visits[0].viewEvents.last.context, {'a': 1});
   });
 
+  test(
+    'a full view wins over a view_update with the same document version',
+    () {
+      // Arrival order varies; the view_update must not shadow the full view.
+      for (final events in [
+        [
+          _view(2, {'time_spent': 100}, context: {'a': 1}),
+          _viewUpdate(4, {'time_spent': 200}),
+          _view(4, {'time_spent': 200}, context: {'a': 1, 'b': 2}),
+        ],
+        [
+          _view(2, {'time_spent': 100}, context: {'a': 1}),
+          _view(4, {'time_spent': 200}, context: {'a': 1, 'b': 2}),
+          _viewUpdate(4, {'time_spent': 200}),
+        ],
+      ]) {
+        final sessions = RumSessionDecoder.fromEvents(
+          events.map(RumEventDecoder.new).toList(),
+        );
+
+        final viewEvents = sessions[0].visits[0].viewEvents;
+        expect(viewEvents.length, 2);
+        expect(viewEvents.last.context, {'a': 1, 'b': 2});
+      }
+    },
+  );
+
+  test('a view_update older than the current state is ignored', () {
+    final events = [
+      _view(5, {'time_spent': 500}),
+      _viewUpdate(3, {'time_spent': 300}),
+    ].map(RumEventDecoder.new).toList();
+
+    final sessions = RumSessionDecoder.fromEvents(events);
+
+    final viewEvents = sessions[0].visits[0].viewEvents;
+    expect(viewEvents.length, 1);
+    expect(viewEvents.last.timeSpent, 500);
+  });
+
   test('view_update without a baseline view is ignored', () {
     final events = [
       _viewUpdate(2, {'time_spent': 200}),
