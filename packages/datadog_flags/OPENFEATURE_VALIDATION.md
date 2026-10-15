@@ -2,7 +2,7 @@
 
 Run these checks when changing the Datadog provider, its lifecycle behavior,
 or the OpenFeature dependency. Use the repository's Flutter toolchain.
-For the minimum-version run, use FVM with Flutter 3.38.0 and its Dart 3.10 SDK.
+For the minimum-version run, use FVM with Flutter 3.38.1 and stable Dart 3.10.0.
 
 ## Package tests
 

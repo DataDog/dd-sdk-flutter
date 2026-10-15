@@ -62,9 +62,11 @@ scalar assignment returns the default with `ErrorCode.typeMismatch`. Failed
 evaluations do not emit exposures. Successful structure values are immutable.
 
 Details include the variant, reason, error code, and provider metadata.
-`DatadogOpenFeatureProvider.allocationKeyMetadata` and `serialIdMetadata` are the metadata keys for the allocation key and serial ID in the evaluation details.
-These namespaced keys are provider-specific; they
-are not part of the OpenFeature specification.
+The provider sets the metadata keys `datadog.allocation_key` and
+`datadog.serial_id`, available as
+`DatadogOpenFeatureProvider.allocationKeyMetadata` and `serialIdMetadata`.
+These namespaced keys are provider-specific and are not part of the OpenFeature
+specification.
 
 ## Identity, refresh, and shutdown
 
@@ -110,10 +112,11 @@ the caller's wait; it does not cancel the underlying HTTP or store operation.
 
 The provider catches the initialization timeout and reports availability through
 OpenFeature events. Matching cached assignments produce `stale`. With no
-assignments, registration fails and evaluations return defaults. If the initial
-request succeeds after the deadline, the provider emits `ready` and makes
-assignments available. State publication occurs
-before cache persistence, so a slow store cannot hide a successful response.
+assignments, registration fails and evaluations return defaults.
+
+If the initial request succeeds after the deadline, the provider emits `ready`
+and makes assignments available. The provider publishes assignments before it
+writes to the cache, so a slow store cannot hide a successful response.
 
 `stale` means assignments are usable but fresh assignments are unavailable. It
 can indicate a pending refresh or a failed refresh.
@@ -168,13 +171,13 @@ For Flutter RUM, add `DatadogRumHook` from `datadog_flags_flutter` to the
 OpenFeature client. Do not initialize the deprecated plugin for the same flags.
 Each Dart isolate must create its own OpenFeature API and provider state.
 
-## Contributing
-
-See the [contributing guide](../../CONTRIBUTING.md) and
-[OpenFeature validation instructions](OPENFEATURE_VALIDATION.md).
-
-## Cached Evaluation Reasons
+## Cached evaluation reasons
 
 For successful evaluations, details report `CACHED` when the installed assignments
 were restored from the configured store, including an in-memory store. After a
 network response replaces those assignments, details report the response reason.
+
+## Contributing
+
+See the [contributing guide](../../CONTRIBUTING.md) and
+[OpenFeature validation instructions](OPENFEATURE_VALIDATION.md).

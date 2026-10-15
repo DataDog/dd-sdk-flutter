@@ -4,7 +4,7 @@ Use OpenFeature to evaluate Datadog feature flags in Flutter applications.
 `datadog_flags` supplies `DatadogOpenFeatureProvider`. This package supplies
 `DatadogRumHook` to associate successful evaluations with the active RUM view.
 
-This integration requires Flutter 3.38 or later.
+This integration requires Flutter 3.38.1 or later, which includes stable Dart 3.10.
 It uses the published OpenFeature `0.0.1` dependency described in the
 [core package](../datadog_flags/).
 
@@ -58,6 +58,9 @@ If you create your own `DatadogSdk` instance, pass it with
 `DatadogRumHook(sdk: instance)`. If you do not use RUM, use the provider from
 `datadog_flags` without this hook.
 
+Flutter RUM requires the main isolate. For background evaluation, initialize a
+separate pure-Dart OpenFeature provider in that isolate.
+
 ## Legacy API migration
 
 `DatadogFlagsPluginConfiguration`, `DatadogFlagsPlugin`,
@@ -79,17 +82,15 @@ that resolves after shutdown is released without initialization or subscription.
 - [`example`](example/) shows OpenFeature evaluation with the RUM hook.
 - [`simple_example`](../../examples/simple_example/) includes refresh, typed
   values, and lifecycle events.
-- The SDK integration test app covers OpenFeature on Android and iOS.
 
-Flutter RUM requires the main isolate. For background evaluation, initialize a
-separate pure-Dart OpenFeature provider in that isolate.
-
-## Contributing
-
-See the [contributing guide](../../CONTRIBUTING.md). Licensed under [Apache 2.0](LICENSE).
-
-## Cached Evaluation Reasons
+## Cached evaluation reasons
 
 For successful evaluations, details report `CACHED` when the installed assignments
 were restored from the configured store, including an in-memory store. After a
 network response replaces those assignments, details report the response reason.
+
+## Contributing
+
+See the [contributing guide](../../CONTRIBUTING.md) and
+[OpenFeature validation instructions](../datadog_flags/OPENFEATURE_VALIDATION.md).
+Licensed under [Apache 2.0](LICENSE).
