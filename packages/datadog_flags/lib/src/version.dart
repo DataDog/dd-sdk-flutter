@@ -3,4 +3,5 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+// Generated from pubspec.yaml by the release tool. Do not edit.
 const ddPackageVersion = '1.2.0';

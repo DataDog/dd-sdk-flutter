@@ -2,10 +2,15 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:convert';
+
 import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flags/src/version.dart';
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
@@ -24,6 +29,61 @@ void main() {
 
   setUp(() {
     mockSdk = MockDatadogSdk();
+  });
+
+  test('Flutter sends the actual Dart Flags version, not the app version',
+      () async {
+    final requests = <http.Request>[];
+    final httpClient = MockClient((request) async {
+      requests.add(request);
+      return http.Response(
+          jsonEncode({
+            'data': {
+              'type': 'precomputed-assignments',
+              'attributes': {
+                'createdAt': '2026-01-01T00:00:00Z',
+                'environment': {'name': 'prod'},
+                'flags': <String, Object?>{},
+              },
+            },
+          }),
+          200);
+    });
+    final flags = DatadogFlags();
+    addTearDown(flags.disable);
+    addTearDown(httpClient.close);
+    when(() => mockSdk.configuration).thenReturn(DatadogConfiguration(
+      clientToken: 'flags-token',
+      env: 'prod',
+      site: DatadogSite.us1,
+      version: '99.99.99-app',
+      service: 'customer-service',
+    ));
+    final plugin = _plugin(
+      mockSdk,
+      flags: flags,
+      rumIntegrationEnabled: false,
+      flagsConfiguration: DatadogFlagsConfiguration(
+        httpClient: httpClient,
+        trackExposures: false,
+        trackEvaluations: false,
+      ),
+    );
+    plugin.initialize();
+    await plugin.sharedClient().initialize(const FlagsEvaluationContext(
+          targetingKey: 'athlete-123',
+          attributes: {'sdk_version': '88.88.88-attribute'},
+        ));
+
+    expect(requests, hasLength(1));
+    final attributes = jsonDecode(requests.single.body)['data']['attributes'];
+    expect(attributes['source'], {
+      'sdk_name': 'dd-sdk-dart',
+      'sdk_version': ddPackageVersion,
+    });
+    expect(attributes['env'], {'dd_env': 'prod'});
+    expect(attributes['subject']['targeting_key'], 'athlete-123');
+    expect(requests.single.headers['dd-client-token'], 'flags-token');
   });
 
   test('maps supported Datadog Flutter sites to Datadog Flags sites', () {
