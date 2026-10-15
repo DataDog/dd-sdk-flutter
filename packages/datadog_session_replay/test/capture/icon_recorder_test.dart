@@ -685,9 +685,9 @@ void main() {
     }
   });
 
-  test('unknown icon glyph is the Material question mark', () {
-    expect(unknownIconCodePoint, Icons.question_mark.codePoint);
-    expect(Icons.question_mark.fontFamily, materialIconsFontFamily);
+  test('unknown icon glyph is the Material outlined square', () {
+    expect(unknownIconCodePoint, Icons.square_outlined.codePoint);
+    expect(Icons.square_outlined.fontFamily, materialIconsFontFamily);
   });
 
   group('rasterPixelSize', () {

@@ -21,11 +21,11 @@ import 'image_recorder.dart';
 
 /// Drawn in place of an icon that is masked or couldn't be captured.
 ///
-/// This is `Icons.question_mark`. U+FFFD (the replacement character) would be
-/// the natural choice, but MaterialIcons has no glyph for it, so the player
-/// would fall back to another font.
+/// This is `Icons.square_outlined`, which looks like the box a font draws for
+/// a missing glyph. A character the font really lacks would draw differently
+/// per browser, or be replaced by a fallback font's glyph.
 @visibleForTesting
-const int unknownIconCodePoint = 0xf0555;
+const int unknownIconCodePoint = 0xf0666;
 
 const int _defaultMaxCachedRasters = 1024;
 
