@@ -503,8 +503,18 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
             return
         }
         engineTeardownObservation = engine.observe(\.isolateId) { [weak self] engine, _ in
-            guard let self = self, !self.isDetached, engine.isolateId == nil else { return }
-            self._onDetach()
+            guard engine.isolateId == nil else { return }
+            let detach = {
+                guard let self = self, !self.isDetached else { return }
+                self._onDetach()
+            }
+            // KVO fires on the thread that cleared `isolateId` (off-main if the host calls `destroyContext()`
+            // there). Detach on main, where this state is read, and wait so it happens before the shell is gone.
+            if Thread.isMainThread {
+                detach()
+            } else {
+                DispatchQueue.main.sync(execute: detach)
+            }
         }
     }
 

@@ -765,6 +765,30 @@ class DatadogPluginDetachTests: XCTestCase {
         XCTAssertEqual(messenger.sentChannels, [])
     }
 
+    func testDirectDestroyContext_fromBackgroundThread_detachesWithoutDeadlock() {
+        // KVO fires on the thread that clears `isolateId`, which is off the main thread only when the
+        // host calls `destroyContext()` from a background thread.
+        let engine = FlutterEngine(name: "destroyed-off-main", project: nil, allowHeadlessExecution: true)
+        XCTAssertTrue(engine.run())
+        waitForIsolate(of: engine)
+        let messenger = RecordingBinaryMessenger()
+        let plugin = makePlugin(attachedTo: engine, recordingInto: messenger)
+
+        let destroyed = expectation(description: "destroyContext() returned")
+        DispatchQueue.global().async {
+            engine.destroyContext()
+            destroyed.fulfill()
+        }
+        // Spins the main run loop, which both the plugin's detach and Flutter's shell shutdown need
+        wait(for: [destroyed], timeout: 10)
+
+        XCTAssertNil(plugin.rum.methodChannel)
+        XCTAssertNil(plugin.logs.methodChannel)
+        plugin.callLogCallback("sent after the engine was destroyed off the main thread")
+        drainMainQueue()
+        XCTAssertEqual(messenger.sentChannels, [])
+    }
+
     func testNonHeadlessEngineLosesItsViewController_withoutEngineLookup_detachesThroughFallback() {
         let engine = FlutterEngine(name: "fallback", project: nil, allowHeadlessExecution: false)
         XCTAssertTrue(engine.run())
