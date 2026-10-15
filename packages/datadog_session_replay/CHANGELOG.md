@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0-preview.16
+
+### Fixes
+
+- `replaySampleRate` in `DatadogSessionReplayConfiguration` now correctly samples replay recording per RUM session, consistent with the iOS and Android SDKs, instead of always recording a replay regardless of the configured rate.
+- On iOS, session replay now stops recording when the RUM session ends instead of continuing to record against the previous session.
+
 ## 1.0.0-preview.15
 
 ### Features
