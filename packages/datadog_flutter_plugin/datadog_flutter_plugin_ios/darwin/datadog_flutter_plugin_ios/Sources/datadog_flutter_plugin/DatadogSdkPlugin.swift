@@ -131,6 +131,22 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     var core: DatadogCoreProtocol?
     var oldConsolePrint: ((String, CoreLoggerLevel) -> Void)?
 
+    /// Set by `_onDetach()` once this engine is torn down. Read and written on the main thread only.
+    private var isDetached = false
+
+    #if os(iOS)
+    /// This engine's messenger (`registrar.messenger()` is `FlutterEngine.binaryMessenger`), used to
+    /// find the engine and to recognize its view controllers. Weak: the engine owns it.
+    internal weak var engineMessenger: FlutterBinaryMessenger?
+
+    /// Watches this engine's `isolateId` to detach as soon as Flutter tears the engine down
+    /// (see `observeTeardown(of:)`).
+    private var engineTeardownObservation: NSKeyValueObservation?
+
+    /// Set when `watchEngine(behind:)` can't find the engine; reported once Datadog is initialized.
+    private var engineLookupFailed = false
+    #endif
+
     internal let rum = DatadogRumPlugin()
     internal let logs = DatadogLogsPlugin()
 
@@ -143,6 +159,9 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         self.notificationCenter = notificationCenter
         super.init()
         observeEngineTeardown()
+        #if os(iOS)
+        observeViewControllerDealloc()
+        #endif
     }
 
     deinit {
@@ -157,6 +176,9 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         #endif
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: messenger)
         let instance = DatadogSdkPlugin(channel: channel)
+        #if os(iOS)
+        instance.watchEngine(behind: registrar.messenger())
+        #endif
         registrar.addMethodCallDelegate(instance, channel: channel)
         registrar.publish(instance)
         #if os(macOS)
@@ -201,6 +223,14 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
                     core?.telemetry.configuration(
                         dartVersion: arguments["dartVersion"] as? String
                     )
+                    #if os(iOS)
+                    if engineLookupFailed {
+                        let message = "Could not find the FlutterEngine behind its messenger; engine teardowns" +
+                            " will only be detected when a FlutterViewController deallocates."
+                        DD.logger.warn(message)
+                        Datadog._internal.telemetry.debug(id: "flutter_engine_lookup_failed", message: message)
+                    }
+                    #endif
 
                     if let crashReportingEnabled = (configArg["nativeCrashReportEnabled"] as? NSNumber)?.boolValue {
                         if crashReportingEnabled {
@@ -461,12 +491,98 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         _onDetach()
     }
 
+    #if os(iOS)
+    /// Finds this plugin's engine behind its messenger and watches it for teardown.
+    ///
+    /// Flutter exposes no public way from a registrar to its engine on every supported version
+    /// (`FlutterPluginRegistrar.viewController` needs 3.38, and is nil without a view controller).
+    /// `registrar.messenger()` is the engine's `FlutterBinaryMessengerRelay`, whose `parent` is the
+    /// engine: private, so looked up dynamically (present from at least Flutter 3.27 through 3.44, and
+    /// covered by a unit test so a change fails CI). If it is ever missing, the plugin falls back to
+    /// finding the engine when one of its view controllers deallocates (`observeViewControllerDealloc()`).
+    internal func watchEngine(behind messenger: FlutterBinaryMessenger) {
+        engineMessenger = messenger
+        guard let engine = DatadogSdkPlugin.engine(behind: messenger) else {
+            // Datadog isn't initialized yet at registration, so report it from `initialize`
+            engineLookupFailed = true
+            return
+        }
+        observeTeardown(of: engine)
+    }
+
+    static func engine(behind messenger: FlutterBinaryMessenger) -> FlutterEngine? {
+        guard let relay = messenger as? NSObject,
+              relay.responds(to: NSSelectorFromString("parent")) else {
+            return nil
+        }
+        return relay.value(forKey: "parent") as? FlutterEngine
+    }
+
+    /// Detaches as soon as `engine` is torn down, as if it had been released: stops log callbacks and
+    /// clears the RUM and Logs channels.
+    ///
+    /// `isolateId` only goes back to nil in `-[FlutterEngine destroyContext]`, which every teardown goes
+    /// through and which no plugin is told about (flutter/flutter#126671): termination, a view
+    /// controller deallocating on an engine that doesn't allow headless execution, a scene
+    /// disconnecting in an app extension, or the host calling it directly. The setter fires KVO
+    /// synchronously, before anything already queued on the main thread can reach the dead engine.
+    private func observeTeardown(of engine: FlutterEngine) {
+        guard engineTeardownObservation == nil else {
+            return
+        }
+        engineTeardownObservation = engine.observe(\.isolateId) { [weak self] engine, _ in
+            guard let self = self, !self.isDetached, engine.isolateId == nil else { return }
+            self._onDetach()
+        }
+    }
+
+    /// Posted from `-[FlutterViewController dealloc]`. Defined in Flutter's FlutterViewController.mm
+    /// but not exported in its public headers, so this relies on a private name (present from at
+    /// least Flutter 3.27 through 3.44, and covered by a unit test so a rename fails CI).
+    static let flutterViewControllerWillDealloc = Notification.Name("FlutterViewControllerWillDealloc")
+
+    /// Fallback for when `watchEngine(behind:)` can't find the engine: a view controller deallocating
+    /// calls `destroyContext()` on an engine that doesn't allow headless execution, and if the host
+    /// retains that engine it lives on without a shell. This is the first point where the plugin can
+    /// reach the engine (through the view controller) to watch it.
+    private func observeViewControllerDealloc() {
+        notificationCenter.addObserver(
+            self,
+            selector: #selector(viewControllerWillDealloc(_:)),
+            name: DatadogSdkPlugin.flutterViewControllerWillDealloc,
+            object: nil
+        )
+    }
+
+    @objc
+    private func viewControllerWillDealloc(_ notification: Notification) {
+        // `FlutterViewController.engine` is optional in older Flutter headers (e.g. 3.27) and
+        // non-optional in newer ones; binding through an explicit Optional compiles against both.
+        let engine: FlutterEngine? = (notification.object as? FlutterViewController)?.engine
+        guard let engine = engine,
+              let engineMessenger = engineMessenger,
+              engine.binaryMessenger === engineMessenger else {
+            // Another engine's view controller
+            return
+        }
+        guard engine.isolateId != nil else {
+            // Flutter's own observer of this notification already tore the engine down
+            if !isDetached { _onDetach() }
+            return
+        }
+        // Otherwise Flutter tears it down after this observer (or not at all, if headless)
+        observeTeardown(of: engine)
+    }
+    #endif
+
     public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
         registrar.publish(NSNull())
         _onDetach()
     }
 
     private func _onDetach() {
+        isDetached = true
+
         // Reset consolePrint during detach - any other methodChannel callbacks will
         // also need to be cleared as well
         if let oldConsolePrint = oldConsolePrint {
@@ -501,19 +617,18 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
     }
 
     // This is a way to work around https://github.com/flutter/flutter/issues/126671
-    private func callLogCallback(_ value: String) {
+    internal func callLogCallback(_ value: String) {
         // Dispatch to the main thread. This is partially to combat Flutter shutdown
         // occuring while we're still processing events
         DispatchQueue.main.async {
-            #if os(iOS)
-            // Second, check that the engine hasn't been destroyed, this is the
-            // other work around for https://github.com/flutter/flutter/issues/126671
-            if let flutterViewController =
-                UIApplication.shared.keyWindow?.rootViewController as? FlutterViewController,
-                let engine = flutterViewController.engine as FlutterEngine?, engine.isolateId == nil {
+            // Second, drop anything queued after the engine was torn down, this is the
+            // other work around for https://github.com/flutter/flutter/issues/126671.
+            // Uses this plugin's own teardown signal rather than finding the engine through
+            // `UIApplication.shared.keyWindow`, which is unreliable under the UIScene lifecycle
+            // and may belong to another engine.
+            guard !self.isDetached else {
                 return
             }
-            #endif
 
             self.channel.invokeMethod("logCallback", arguments: value)
         }

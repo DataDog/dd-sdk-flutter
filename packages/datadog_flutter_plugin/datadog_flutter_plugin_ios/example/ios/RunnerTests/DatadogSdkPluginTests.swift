@@ -583,6 +583,28 @@ private class NoOpBinaryMessenger: NSObject, FlutterBinaryMessenger {
     func cleanUpConnection(_ connection: FlutterBinaryMessengerConnection) { }
 }
 
+/// A messenger that records which channels were sent on, for asserting that nothing reached Dart.
+private class RecordingBinaryMessenger: NSObject, FlutterBinaryMessenger {
+    private(set) var sentChannels: [String] = []
+
+    func send(onChannel channel: String, message: Data?) {
+        sentChannels.append(channel)
+    }
+
+    func send(onChannel channel: String, message: Data?, binaryReply callback: FlutterBinaryReply? = nil) {
+        sentChannels.append(channel)
+    }
+
+    func setMessageHandlerOnChannel(
+        _ channel: String,
+        binaryMessageHandler handler: FlutterBinaryMessageHandler? = nil
+    ) -> FlutterBinaryMessengerConnection {
+        return 0
+    }
+
+    func cleanUpConnection(_ connection: FlutterBinaryMessengerConnection) { }
+}
+
 /// Teardown has to drop every channel the SDK can call Dart on. Flutter resets the engine's shell on
 /// termination without notifying plugins (flutter/flutter#126671), and anything sent afterwards
 /// asserts inside `-[FlutterEngine sendOnChannel:message:binaryReply:]` — see #1062.
@@ -620,6 +642,216 @@ class DatadogPluginDetachTests: XCTestCase {
 
         XCTAssertNil(plugin.rum.methodChannel)
         XCTAssertNil(plugin.logs.methodChannel)
+    }
+
+    func testLogCallbackQueuedBeforeTermination_isDropped() {
+        // The SDK can log from any thread right before termination: `callLogCallback` hops to main,
+        // and by the time that block runs the engine's shell is gone. The guard must not depend on
+        // finding the engine through `keyWindow`, which is nil under the UIScene lifecycle.
+        let messenger = RecordingBinaryMessenger()
+        let notificationCenter = NotificationCenterMock()
+        let plugin = DatadogSdkPlugin(
+            channel: FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: messenger),
+            notificationCenter: notificationCenter
+        )
+
+        plugin.callLogCallback("queued before termination")
+        notificationCenter.post(name: UIApplication.willTerminateNotification)
+        drainMainQueue()
+
+        XCTAssertEqual(messenger.sentChannels, [])
+    }
+
+    func testLogCallback_withoutTeardown_isSent() {
+        let messenger = RecordingBinaryMessenger()
+        let plugin = DatadogSdkPlugin(
+            channel: FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: messenger),
+            notificationCenter: NotificationCenterMock()
+        )
+
+        plugin.callLogCallback("regular log line")
+        drainMainQueue()
+
+        XCTAssertEqual(messenger.sentChannels, ["datadog_sdk_flutter"])
+    }
+
+    /// Lets every block already queued on main (e.g. by `callLogCallback`) run before asserting.
+    private func drainMainQueue() {
+        let drained = expectation(description: "main queue drained")
+        DispatchQueue.main.async { drained.fulfill() }
+        wait(for: [drained], timeout: 1)
+    }
+
+    // The tests below use real engines and the real `NotificationCenter.default`: Flutter itself posts
+    // `FlutterViewControllerWillDealloc` from `-[FlutterViewController dealloc]`, so it can't be faked
+    // faithfully. Safe to observe process-wide, since the plugin ignores other engines' view controllers.
+
+    /// A plugin attached to `engine` whose sends are recorded instead of reaching the engine.
+    /// `findingEngine: false` simulates a Flutter version where the engine can't be found behind its
+    /// messenger, leaving only the view controller dealloc fallback.
+    private func makePlugin(
+        attachedTo engine: FlutterEngine,
+        recordingInto messenger: RecordingBinaryMessenger,
+        findingEngine: Bool = true
+    ) -> DatadogSdkPlugin {
+        let plugin = DatadogSdkPlugin(
+            channel: FlutterMethodChannel(name: "datadog_sdk_flutter", binaryMessenger: messenger),
+            notificationCenter: NotificationCenter.default
+        )
+        if findingEngine {
+            plugin.watchEngine(behind: engine.binaryMessenger)
+        } else {
+            plugin.engineMessenger = engine.binaryMessenger
+        }
+        plugin.rum.methodChannel = FlutterMethodChannel(name: "datadog_sdk_flutter.rum", binaryMessenger: messenger)
+        plugin.logs.methodChannel = FlutterMethodChannel(name: "datadog_sdk_flutter.logs", binaryMessenger: messenger)
+        return plugin
+    }
+
+    /// Attaches a view controller to `engine` and releases it, which posts `FlutterViewControllerWillDealloc`.
+    private func attachAndDeallocViewController(to engine: FlutterEngine) {
+        weak var weakViewController: FlutterViewController?
+        autoreleasepool {
+            let viewController = FlutterViewController(engine: engine, nibName: nil, bundle: nil)
+            weakViewController = viewController
+        }
+        XCTAssertNil(weakViewController, "the view controller must deallocate for this test to mean anything")
+        // No main-queue drain: the plugin must react synchronously, before anything already queued on
+        // the main thread (a RUM mapper, a log callback) can reach the torn-down engine.
+    }
+
+    private func waitForIsolate(of engine: FlutterEngine) {
+        let started = expectation(for: NSPredicate { _, _ in engine.isolateId != nil }, evaluatedWith: nil)
+        wait(for: [started], timeout: 10)
+    }
+
+    // Both private Flutter hooks the plugin relies on. If a Flutter release changes either, these fail
+    // in CI (including the nightly beta run) instead of the protection silently degrading.
+
+    func testFlutterHook_engineIsReachableFromItsRegistrarMessenger() {
+        let engine = FlutterEngine(name: "lookup", project: nil, allowHeadlessExecution: true)
+        XCTAssertTrue(engine.run())
+        let registrar = engine.registrar(forPlugin: "DatadogSdkPluginTests.lookup")
+
+        XCTAssertTrue(DatadogSdkPlugin.engine(behind: registrar!.messenger()) === engine)
+    }
+
+    func testFlutterHook_viewControllerDeallocIsPosted() {
+        let engine = FlutterEngine(name: "dealloc-notification", project: nil, allowHeadlessExecution: true)
+        XCTAssertTrue(engine.run())
+        let posted = expectation(forNotification: DatadogSdkPlugin.flutterViewControllerWillDealloc, object: nil)
+
+        attachAndDeallocViewController(to: engine)
+
+        wait(for: [posted], timeout: 1)
+    }
+
+    func testDirectDestroyContext_whileViewControllerIsAlive_detachesSynchronously() {
+        // The view controller stays alive, so no dealloc notification and no termination: what the
+        // plugin sees when a scene disconnects in an app extension, or the host tears the engine down.
+        let engine = FlutterEngine(name: "destroyed-with-vc", project: nil, allowHeadlessExecution: false)
+        XCTAssertTrue(engine.run())
+        let viewController = FlutterViewController(engine: engine, nibName: nil, bundle: nil)
+        let messenger = RecordingBinaryMessenger()
+        let plugin = makePlugin(attachedTo: engine, recordingInto: messenger)
+
+        engine.destroyContext()
+
+        XCTAssertNil(viewController.engine.isolateId)
+        XCTAssertNil(plugin.rum.methodChannel)
+        XCTAssertNil(plugin.logs.methodChannel)
+        plugin.callLogCallback("sent after the engine was destroyed")
+        drainMainQueue()
+        XCTAssertEqual(messenger.sentChannels, [])
+    }
+
+    func testNonHeadlessEngineLosesItsViewController_withoutEngineLookup_detachesThroughFallback() {
+        let engine = FlutterEngine(name: "fallback", project: nil, allowHeadlessExecution: false)
+        XCTAssertTrue(engine.run())
+        let messenger = RecordingBinaryMessenger()
+        let plugin = makePlugin(attachedTo: engine, recordingInto: messenger, findingEngine: false)
+
+        attachAndDeallocViewController(to: engine)
+
+        XCTAssertNil(engine.isolateId)
+        XCTAssertNil(plugin.rum.methodChannel)
+        XCTAssertNil(plugin.logs.methodChannel)
+    }
+
+    func testLogCallback_afterNonHeadlessEngineLosesItsViewController_isDropped() {
+        // The host keeps the engine alive, so it never deallocates and `detachFromEngine(for:)` never runs
+        let engine = FlutterEngine(name: "non-headless", project: nil, allowHeadlessExecution: false)
+        XCTAssertTrue(engine.run())
+        let messenger = RecordingBinaryMessenger()
+        let plugin = makePlugin(attachedTo: engine, recordingInto: messenger)
+
+        attachAndDeallocViewController(to: engine)
+        XCTAssertNil(engine.isolateId, "Flutter should have called destroyContext()")
+        // Detached as if the engine had been released: RUM and Logs can no longer call Dart either
+        XCTAssertNil(plugin.rum.methodChannel)
+        XCTAssertNil(plugin.logs.methodChannel)
+
+        plugin.callLogCallback("sent after the shell was destroyed")
+        drainMainQueue()
+
+        XCTAssertEqual(messenger.sentChannels, [])
+    }
+
+    func testLogCallback_afterHeadlessEngineLosesItsViewController_isSent() {
+        // A headless engine keeps running without a view controller, so logs must keep flowing
+        let engine = FlutterEngine(name: "headless", project: nil, allowHeadlessExecution: true)
+        XCTAssertTrue(engine.run())
+        waitForIsolate(of: engine)
+        let messenger = RecordingBinaryMessenger()
+        let plugin = makePlugin(attachedTo: engine, recordingInto: messenger)
+
+        attachAndDeallocViewController(to: engine)
+        XCTAssertNotNil(engine.isolateId)
+        XCTAssertNotNil(plugin.rum.methodChannel)
+        XCTAssertNotNil(plugin.logs.methodChannel)
+
+        plugin.callLogCallback("sent to a still-running engine")
+        drainMainQueue()
+
+        XCTAssertEqual(messenger.sentChannels, ["datadog_sdk_flutter"])
+    }
+
+    func testDirectDestroyContext_afterHeadlessEngineLostItsViewController_detachesSynchronously() {
+        // Headless: losing the view controller leaves the engine running, so the plugin stays attached
+        // and watches it. When the host later tears it down itself, nothing else tells the plugin.
+        let engine = FlutterEngine(name: "headless-then-destroyed", project: nil, allowHeadlessExecution: true)
+        XCTAssertTrue(engine.run())
+        waitForIsolate(of: engine)
+        let messenger = RecordingBinaryMessenger()
+        let plugin = makePlugin(attachedTo: engine, recordingInto: messenger)
+        attachAndDeallocViewController(to: engine)
+        XCTAssertNotNil(plugin.rum.methodChannel)
+
+        engine.destroyContext()
+
+        XCTAssertNil(plugin.rum.methodChannel)
+        XCTAssertNil(plugin.logs.methodChannel)
+        plugin.callLogCallback("sent after the host destroyed the engine")
+        drainMainQueue()
+        XCTAssertEqual(messenger.sentChannels, [])
+    }
+
+    func testLogCallback_afterAnotherEngineLosesItsViewController_isSent() {
+        let ownEngine = FlutterEngine(name: "own", project: nil, allowHeadlessExecution: false)
+        let otherEngine = FlutterEngine(name: "other", project: nil, allowHeadlessExecution: false)
+        XCTAssertTrue(otherEngine.run())
+        let messenger = RecordingBinaryMessenger()
+        let plugin = makePlugin(attachedTo: ownEngine, recordingInto: messenger)
+
+        attachAndDeallocViewController(to: otherEngine)
+        XCTAssertNil(otherEngine.isolateId)
+        XCTAssertNotNil(plugin.rum.methodChannel)
+        XCTAssertNotNil(plugin.logs.methodChannel)
+
+        plugin.callLogCallback("sent to an unaffected engine")
+        drainMainQueue()
+
+        XCTAssertEqual(messenger.sentChannels, ["datadog_sdk_flutter"])
     }
 
     func testDetach_isIdempotent() {

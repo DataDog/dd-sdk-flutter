@@ -245,6 +245,7 @@ void main() {
       );
       expect(cached.value, isTrue);
       expect(cached.variant, 'on');
+      expect(cached.reason, 'CACHED');
       release.complete();
       await pending;
       final other = sdk.sharedClient(name: 'other');

@@ -14,6 +14,10 @@ configure the provider, initialize a client for an evaluation context, evaluate
 typed details with a programmatic default, and shut the client down when the app
 no longer needs it.
 
+The SDK automatically supports assignment responses with obfuscated flag keys.
+Applications continue to evaluate flags with their original keys.
+Flag values and telemetry identifiers do not change.
+
 ## Installation
 
 For Dart:
@@ -363,9 +367,17 @@ Stored assignments are used only when their evaluation context matches the
 active context. A live successful fetch always moves the client to the newest
 assignment state and writes that state back to the store.
 
+Storage adapters must preserve the complete `FlagsData.toJson()` result and
+restore it with `FlagsData.fromJson()`. These methods retain the metadata needed
+to evaluate obfuscated assignments.
+
 This package does not choose a disk location or ship a Flutter-specific disk
 store. Flutter apps can implement `DatadogFlagsStore` with their preferred app
 storage mechanism.
+
+## Cached Evaluation Reasons
+
+For successful evaluations, details report `CACHED` when the installed assignments were restored from the configured store, including an in-memory store. After a network response replaces those assignments, details report the response reason.
 
 ## Reset and Disable
 

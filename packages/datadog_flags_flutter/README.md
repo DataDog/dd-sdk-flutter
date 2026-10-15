@@ -122,6 +122,10 @@ attribute applies locally without fetching assignments. Flag values, exposures,
 existing events, manual RUM annotations, and unrelated telemetry remain unchanged.
 See [the core SDK contract](../datadog_flags/README.md#evaluation-telemetry-opt-out).
 
+## Cached Evaluation Reasons
+
+For successful evaluations, details report `CACHED` when the installed assignments were restored from the configured store, including an in-memory store. After a network response replaces those assignments, details report the response reason.
+
 ## Background Isolates
 
 `datadog_flags_flutter` does not support evaluation from background
