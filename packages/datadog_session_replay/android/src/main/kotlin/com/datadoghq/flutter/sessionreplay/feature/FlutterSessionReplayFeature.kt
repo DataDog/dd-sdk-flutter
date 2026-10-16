@@ -61,6 +61,9 @@ internal class DefaultFlutterSessionReplayFeature(
 
     override lateinit var resourceResolver: ResourceResolver
 
+    private val replayContextLock = Any()
+    private var hasReplayContextFeature = false
+
     override val name = FLUTTER_SESSION_REPLAY_FEATURE_NAME
     override val storageConfiguration = STORAGE_CONFIGURATION
 
@@ -132,6 +135,7 @@ internal class DefaultFlutterSessionReplayFeature(
     // feature wrote them. Only the standalone path reaches here, so there is no native Session
     // Replay to contend with — see `FlutterSessionReplayBridge.setHasReplay`/`setRecordCount`.
     override fun setHasReplay(viewId: String, hasReplay: Boolean) {
+        ensureReplayContextFeature()
         sdkCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME) {
             @Suppress("UNCHECKED_CAST")
             val viewMetadata: MutableMap<String, Any?> =
@@ -142,13 +146,35 @@ internal class DefaultFlutterSessionReplayFeature(
     }
 
     override fun setRecordCount(viewId: String, recordCount: Int) {
+        ensureReplayContextFeature()
         sdkCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME) {
             @Suppress("UNCHECKED_CAST")
             val viewMetadata: MutableMap<String, Any?> =
                 (it[viewId] as? MutableMap<String, Any?>) ?: mutableMapOf()
             viewMetadata[HAS_REPLAY_KEY] = true
-            viewMetadata[VIEW_RECORDS_COUNT_KEY] = recordCount
+            // RUM only reads the count as a Long and reports 0 for anything else.
+            viewMetadata[VIEW_RECORDS_COUNT_KEY] = recordCount.toLong()
             it[viewId] = viewMetadata
+        }
+    }
+
+    /**
+     * Registers [ReplayContextFeature] unless a feature already holds
+     * [Feature.SESSION_REPLAY_FEATURE_NAME].
+     *
+     * The core only applies [FeatureSdkCore.updateFeatureContext] to registered features, and only
+     * native Session Replay registers that name, so without this every `has_replay` and record
+     * count above is dropped and RUM never marks a view as having a replay. It registers only while
+     * the name is free, so it can't evict native Session Replay.
+     */
+    private fun ensureReplayContextFeature() {
+        synchronized(replayContextLock) {
+            if (hasReplayContextFeature) return
+            if (sdkCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) == null) {
+                sdkCore.registerFeature(ReplayContextFeature)
+                sdkCore.setEventReceiver(Feature.SESSION_REPLAY_FEATURE_NAME, ReplayContextFeature)
+            }
+            hasReplayContextFeature = true
         }
     }
 
@@ -201,5 +227,23 @@ internal class DefaultFlutterSessionReplayFeature(
         const val SESSION_ID_KEY = "session_id"
         const val VIEW_ID_KEY = "view_id"
         const val VIEW_SERVER_TIME_OFFSET_KEY = "view_timestamp_offset"
+    }
+}
+
+/**
+ * Holds [Feature.SESSION_REPLAY_FEATURE_NAME] when native Session Replay isn't there, so the core
+ * keeps the context RUM reads `has_replay` and the record counts from. Ignores the events RUM sends
+ * native Session Replay.
+ */
+internal object ReplayContextFeature : Feature, FeatureEventReceiver {
+    override val name = Feature.SESSION_REPLAY_FEATURE_NAME
+
+    override fun onInitialize(appContext: Context) {
+    }
+
+    override fun onStop() {
+    }
+
+    override fun onReceive(event: Any) {
     }
 }
