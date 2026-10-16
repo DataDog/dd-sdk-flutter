@@ -450,12 +450,88 @@ dependency_overrides:
           isA<StateError>().having(
             (e) => e.message,
             'message',
-            contains('uncommitted changes'),
+            allOf(
+              contains('uncommitted changes'),
+              contains('packages/datadog_dio/CHANGELOG.md'),
+            ),
           ),
         ),
       );
     },
   );
+
+  group('a dirty working tree with a .lock file', () {
+    Future<void> prepare() async => prepareRelease(
+      RunContext(
+        repoRoot: fixture.root.path,
+        trigger: TriggerContext.mainline,
+        currentBranch: 'develop',
+        requestedPackages: ['datadog_dio'],
+      ),
+      gitDir: await fixture.gitDir,
+      github: GithubCommandWrapper(fixture.root.path),
+      aiGatewayClient: _NeverCalledAiGatewayClient(),
+      dryRun: true,
+      skipPublishValidation: true,
+      publishedVersions: _neverPublished,
+    );
+
+    String content(String path) =>
+        File('${fixture.root.path}/$path').readAsStringSync();
+
+    setUp(() async {
+      fixture.writeFile('tools/releaser/pubspec.lock', 'original');
+      await fixture.commit('chore: track a lock file');
+    });
+
+    test(
+      'is restored and the run goes on when it is the only change',
+      () async {
+        fixture.writeFile(
+          'tools/releaser/pubspec.lock',
+          'rewritten by pub get',
+        );
+
+        await prepare();
+
+        // Two release commits on top, and the lock file back as committed.
+        expect(content('tools/releaser/pubspec.lock'), 'original');
+        final log = await (await fixture.gitDir).runCommand([
+          'log',
+          '--format=%s',
+          '-3',
+        ]);
+        expect(log.stdout as String, contains('publish-prep'));
+      },
+    );
+
+    test('is not restored when something else changed too', () async {
+      fixture.writeFile('tools/releaser/pubspec.lock', 'rewritten by pub get');
+      fixture.writeFile('packages/datadog_dio/CHANGELOG.md', 'dirty');
+
+      await expectLater(
+        prepare(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('tools/releaser/pubspec.lock'),
+              contains('packages/datadog_dio/CHANGELOG.md'),
+            ),
+          ),
+        ),
+      );
+      expect(content('tools/releaser/pubspec.lock'), 'rewritten by pub get');
+    });
+
+    test('is not restored when it is a new, untracked file', () async {
+      fixture.writeFile('tools/other/pubspec.lock', 'new');
+
+      await expectLater(prepare(), throwsStateError);
+      expect(content('tools/other/pubspec.lock'), 'new');
+    });
+  });
 
   test('refuses a mainline run from anything but develop', () async {
     final gitDir = await fixture.gitDir;
