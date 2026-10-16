@@ -260,7 +260,7 @@ class DatadogRumPluginTest {
         val timeseriesConfiguration = featureConfiguration
             .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
         assertThat(timeseriesConfiguration).isNotNull()
-        assertThat(timeseriesConfiguration?.getPrivate("enabledTypes"))
+        assertThat(timeseriesConfiguration?.getPrivate("collectTypes"))
             .isEqualTo(setOf(TimeseriesType.MEMORY, TimeseriesType.CPU))
     }
 
@@ -286,7 +286,7 @@ class DatadogRumPluginTest {
         val timeseriesConfiguration = featureConfiguration
             .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
         assertThat(timeseriesConfiguration).isNotNull()
-        assertThat(timeseriesConfiguration?.getPrivate("enabledTypes"))
+        assertThat(timeseriesConfiguration?.getPrivate("collectTypes"))
             .isEqualTo(setOf(TimeseriesType.MEMORY))
     }
 
@@ -310,7 +310,7 @@ class DatadogRumPluginTest {
         val timeseriesConfiguration = featureConfiguration
             .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
         assertThat(timeseriesConfiguration).isNotNull()
-        assertThat(timeseriesConfiguration?.getPrivate("enabledTypes"))
+        assertThat(timeseriesConfiguration?.getPrivate("collectTypes"))
             .isEqualTo(TimeseriesType.values().toSet())
     }
 
