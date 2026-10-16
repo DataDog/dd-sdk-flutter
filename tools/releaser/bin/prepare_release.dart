@@ -321,14 +321,7 @@ Future<void> prepareRelease(
     );
   }
 
-  if (!await isWorkingTreeClean(gitDir, _log)) {
-    throw StateError(
-      'Working tree at ${gitDir.path} has uncommitted changes -- '
-      'prepare-release stages everything with `git add .`, so it would '
-      'sweep them into a release commit. Commit, stash, or discard them '
-      'first.',
-    );
-  }
+  await _requireCleanWorkingTree(gitDir);
 
   final plan = await computeReleasePlan(
     ctx,
@@ -552,6 +545,37 @@ Future<void> prepareRelease(
     body: body,
   );
   _log.info('✅ Opened release PR: $prUrl');
+}
+
+/// Refuses to start on a dirty working tree, since [commitAll] stages
+/// everything with `git add .` and would sweep unrelated changes into a
+/// release commit.
+///
+/// A modified `.lock` file is the exception. Setup steps like `dart pub get`
+/// rewrite a tracked `pubspec.lock`, which is harmless to throw away, so
+/// when those are the only changes they are restored and the run goes on.
+Future<void> _requireCleanWorkingTree(GitDir gitDir) async {
+  final dirty = await dirtyFiles(gitDir, _log);
+  if (dirty.isEmpty) return;
+
+  final onlyLocks = dirty.every(
+    (file) => file.isModifiedTrackedFile && p.extension(file.path) == '.lock',
+  );
+  if (!onlyLocks) {
+    throw StateError(
+      'Working tree at ${gitDir.path} has uncommitted changes:\n'
+      '${dirty.map((file) => '  $file').join('\n')}\n'
+      'prepare-release stages everything with `git add .`, so it would sweep '
+      'them into a release commit. Commit, stash, or discard them first. '
+      '(Modified .lock files alone are restored automatically.)',
+    );
+  }
+
+  _log.warning(
+    '⚠️ Restoring modified lock files, which setup steps rewrite: '
+    '${dirty.map((file) => file.path).join(', ')}',
+  );
+  await restoreFiles(gitDir, [for (final file in dirty) file.path], _log);
 }
 
 Future<String> _headSha(GitDir gitDir) async =>

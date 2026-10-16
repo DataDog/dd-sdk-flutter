@@ -57,6 +57,53 @@ Future<bool> isWorkingTreeClean(GitDir gitDir, Logger logger) async {
   return (result.stdout as String).trim().isEmpty;
 }
 
+/// One entry of `git status --porcelain`: a staged, unstaged or untracked
+/// path.
+class DirtyFile {
+  /// The two-character porcelain status, e.g. ` M`, `M `, `??`.
+  final String status;
+  final String path;
+
+  DirtyFile(this.status, this.path);
+
+  /// A tracked file whose content changed, with nothing added, deleted,
+  /// renamed or conflicted -- the one kind of change [restoreFiles] can put
+  /// back by itself.
+  bool get isModifiedTrackedFile =>
+      status.contains('M') && RegExp(r'^[ M]{2}$').hasMatch(status);
+
+  @override
+  String toString() => '$status $path';
+}
+
+/// Every staged, unstaged and untracked path in [gitDir]'s working tree.
+Future<List<DirtyFile>> dirtyFiles(GitDir gitDir, Logger logger) async {
+  final result = await _run(
+    gitDir,
+    ['status', '--porcelain'],
+    logger,
+    'Failed to check working tree status',
+  );
+  return [
+    for (final line in (result.stdout as String).split('\n'))
+      if (line.length > 3) DirtyFile(line.substring(0, 2), line.substring(3)),
+  ];
+}
+
+/// Puts [paths] back to what `HEAD` has, staged and unstaged.
+Future<void> restoreFiles(
+  GitDir gitDir,
+  List<String> paths,
+  Logger logger,
+) async {
+  await _run(
+    gitDir,
+    ['restore', '--source=HEAD', '--staged', '--worktree', '--', ...paths],
+    logger,
+    'Failed to restore ${paths.join(', ')}',
+  );
+}
+
 Future<void> createAndCheckoutBranch(
   GitDir gitDir,
   String branchName,
