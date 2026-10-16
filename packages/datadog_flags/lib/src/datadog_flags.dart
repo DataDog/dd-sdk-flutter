@@ -130,6 +130,8 @@ class DatadogFlags {
       store: configuration.store,
       dateProvider: configuration.dateProvider,
       initializationTimeout: configuration.initializationTimeout,
+      enableEvaluationTelemetryOptOutParameter:
+          configuration.enableEvaluationTelemetryOptOutParameter,
     );
 
     final client = DefaultDatadogFlagsClient(

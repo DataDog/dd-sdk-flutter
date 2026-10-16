@@ -22,6 +22,8 @@ const fileExclude = [
   'rum_mapping_test.dart',
   // Web does not support dart:io clients
   'tracking_http_client_test.dart',
+  // This mobile intake harness requires a dart:io HTTP server.
+  'evaluation_telemetry_opt_out_test.dart',
   // Web does not support isolates
   'isolate_tracking_test.dart',
 ];
@@ -33,7 +35,8 @@ void main(List<String> args) async {
   var testDirectory = Directory('integration_test');
   if (!testDirectory.existsSync()) {
     print(
-        'Could not find the "integration_test" directory. Make sure you are running this from the integration_test_app root');
+      'Could not find the "integration_test" directory. Make sure you are running this from the integration_test_app root',
+    );
     exit(1);
   }
 
@@ -69,14 +72,14 @@ void main(List<String> args) async {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((event) {
-        print(event);
-      });
+            print(event);
+          });
       process.stderr
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((event) {
-        print(event);
-      });
+            print(event);
+          });
 
       final exitCode = await process.exitCode;
       if (exitCode != 0) {
