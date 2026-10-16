@@ -4,6 +4,9 @@
 // Copyright 2019-Present Datadog, Inc.
 
 /// Programmatic reason why a flag evaluation returned its default value.
+@Deprecated(
+  'Use OpenFeature ErrorCode. Removal is planned for the next major version.',
+)
 enum FlagEvaluationError {
   /// The client has not finished initialization for the requested context.
   providerNotReady('PROVIDER_NOT_READY'),
