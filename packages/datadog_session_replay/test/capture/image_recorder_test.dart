@@ -1320,4 +1320,108 @@ void main() {
       },
     );
   });
+
+  group('disposed images', () {
+    Widget rawImageTree(List<ui.Image> images) {
+      return MaterialApp(
+        home: SimpleTestCapture(
+          key: Key('key'),
+          recorder: recorder,
+          child: Column(
+            children: [
+              for (final image in images)
+                SizedBox(
+                  width: image.width.toDouble(),
+                  height: image.height.toDouble(),
+                  child: RawImage(image: image),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    testWidgets('same image is only processed once across captures', (
+      tester,
+    ) async {
+      // Given
+      when(
+        () => platform.saveImageForProcessing(any(), any(), any(), any()),
+      ).thenAnswer((_) async {});
+      final image = testImage.clone();
+      await tester.pumpWidget(rawImageTree([image]));
+
+      // When
+      CaptureResult? firstCapture;
+      CaptureResult? secondCapture;
+      await tester.runAsync(() async {
+        firstCapture = await recorder.performCapture();
+        secondCapture = await recorder.performCapture();
+      });
+      image.dispose();
+
+      // Then
+      final firstNode =
+          firstCapture!.viewTreeSnapshot.nodes.single as ResourceImageNode;
+      final secondNode =
+          secondCapture!.viewTreeSnapshot.nodes.single as ResourceImageNode;
+      expect(secondNode.resourceKey, firstNode.resourceKey);
+      verify(
+        () => platform.saveImageForProcessing(any(), any(), any(), any()),
+      ).called(1);
+    });
+
+    testWidgets('image disposed before capture is skipped', (tester) async {
+      // Given
+      final image = testImage.clone();
+      await tester.pumpWidget(rawImageTree([image]));
+      image.dispose();
+
+      // When
+      CaptureResult? capture;
+      await tester.runAsync(() async {
+        capture = await recorder.performCapture();
+      });
+
+      // Then
+      expect(capture, isNull);
+      verifyNever(() => platform.telemetryError(any(), any(), any()));
+      verifyNever(
+        () => platform.saveImageForProcessing(any(), any(), any(), any()),
+      );
+    });
+
+    testWidgets('image disposed during processing is still captured', (
+      tester,
+    ) async {
+      // Given
+      final firstImage = testImage.clone();
+      final secondImage = testImage.clone();
+      var savedImages = 0;
+      when(
+        () => platform.saveImageForProcessing(any(), any(), any(), any()),
+      ).thenAnswer((_) async {
+        // Simulate the owner disposing the second image while the first one
+        // is still being processed.
+        if (savedImages++ == 0) secondImage.dispose();
+      });
+      await tester.pumpWidget(rawImageTree([firstImage, secondImage]));
+
+      // When
+      CaptureResult? capture;
+      await tester.runAsync(() async {
+        capture = await recorder.performCapture();
+      });
+      firstImage.dispose();
+
+      // Then
+      expect(capture!.viewTreeSnapshot.nodes.length, 2);
+      expect(
+        capture!.viewTreeSnapshot.nodes,
+        everyElement(isA<ResourceImageNode>()),
+      );
+      expect(savedImages, 2);
+      verifyNever(() => platform.telemetryError(any(), any(), any()));
+    });
+  });
 }

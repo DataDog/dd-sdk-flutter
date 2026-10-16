@@ -249,6 +249,12 @@ class SessionReplayRecorder {
     if (_captureInProgress) return null;
 
     _captureInProgress = true;
+    // Always clear the flag, otherwise a single exception would block every
+    // subsequent capture.
+    return _capture(context).whenComplete(() => _captureInProgress = false);
+  }
+
+  Future<CaptureResult?> _capture(RUMContext context) async {
     List<CaptureNodeSemantics> capturedSemantics = [];
     List<PointerSnapshot> pointerSnapshots = [];
     DateTime now = _timeProvider.now();
@@ -307,8 +313,6 @@ class SessionReplayRecorder {
       }
     }
     addedProcessingTimelineTask.finish();
-
-    _captureInProgress = false;
 
     if (nodes.isEmpty) return null;
 
