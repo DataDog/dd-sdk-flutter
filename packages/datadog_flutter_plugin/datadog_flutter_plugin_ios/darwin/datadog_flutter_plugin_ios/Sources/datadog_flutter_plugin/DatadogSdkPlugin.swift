@@ -26,6 +26,8 @@ public class DatadogContextBridge: NSObject {
     @objc public var sessionId: String?
     @objc public var accountId: String?
     @objc public var userId: String?
+    /// The RUM session sample rate (0-100), or nil when there is no RUM session.
+    @objc public var sessionSampleRate: NSNumber?
 
     @objc public class func current() -> DatadogContextBridge {
         let bridge = DatadogContextBridge()
@@ -33,6 +35,7 @@ public class DatadogContextBridge: NSObject {
             bridge.sessionId = ctx.sessionId
             bridge.accountId = ctx.accountId
             bridge.userId = ctx.userId
+            bridge.sessionSampleRate = ctx.sessionSampleRate.map { NSNumber(value: $0) }
         }
         return bridge
     }
@@ -78,7 +81,7 @@ public class ContextMessageReceiver: FeatureMessageReceiver {
         public let sessionId: String?
         public let accountId: String?
         public let userId: String?
-
+        public let sessionSampleRate: Float?
     }
 
     static let shared: ContextMessageReceiver = {
@@ -100,7 +103,8 @@ public class ContextMessageReceiver: FeatureMessageReceiver {
             cachedContext = Context(
                 sessionId: rumContext?.sessionID,
                 accountId: context.accountInfo?.id,
-                userId: context.userInfo?.id
+                userId: context.userInfo?.id,
+                sessionSampleRate: rumContext?.sessionSampler.samplingRate
             )
             return true
         default:

@@ -118,6 +118,40 @@ internal class DefaultFlutterSessionReplayFeatureTest {
     }
 
     @Test
+    fun `M set the sample rate in context W setReplayConfiguration`(
+        @StringForgery customEndpoint: String
+    ) {
+        // Given
+        val onContextChanged = mockk<(DefaultFlutterSessionReplayFeature.RumContext) -> Unit>(
+            relaxed = true
+        )
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            onContextChanged,
+            customEndpoint,
+            mainThreadHandler = mockHandler
+        )
+        val context = mutableMapOf<String, Any?>()
+        every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
+            lambda<(MutableMap<String, Any?>) -> Unit>().invoke(context)
+        }
+
+        // When
+        feature.setReplayConfiguration(42.5, false)
+
+        // Then - same keys and types as the native Session Replay, which RUM reads for views
+        verify {
+            mockCore.updateFeatureContext(
+                Feature.SESSION_REPLAY_FEATURE_NAME,
+                true,
+                any()
+            )
+        }
+        assertThat(context["session_replay_sample_rate"]).isEqualTo(42L)
+        assertThat(context["session_replay_start_immediate_recording"]).isEqualTo(false)
+    }
+
+    @Test
     fun `M set context W setRecordCount`(
         @StringForgery customEndpoint: String,
         @StringForgery viewId: String,
