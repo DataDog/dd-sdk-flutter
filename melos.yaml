@@ -239,7 +239,7 @@ scripts:
       set -e
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd example
-      if [ "$MELOS_PACKAGE_NAME" = "datadog_flags_flutter" ]; then
+      if [ "\$MELOS_PACKAGE_NAME" = "datadog_flags_flutter" ]; then
         flutter create --empty --no-pub --platforms=ios .
         cp integration_test/Podfile ios/Podfile
       fi
@@ -290,7 +290,7 @@ scripts:
       set -e
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd example
-      if [ "$MELOS_PACKAGE_NAME" = "datadog_flags_flutter" ]; then
+      if [ "\$MELOS_PACKAGE_NAME" = "datadog_flags_flutter" ]; then
         flutter create --empty --no-pub --platforms=android .
         cp integration_test/AndroidManifest.xml android/app/src/debug/AndroidManifest.xml
       fi
@@ -455,7 +455,7 @@ scripts:
     run: |
       set -e
       cd example      
-      if [ "$MELOS_PACKAGE_NAME" = "datadog_flags_flutter" ]; then
+      if [ "\$MELOS_PACKAGE_NAME" = "datadog_flags_flutter" ]; then
         flutter create --empty --no-pub --platforms=web .
       fi
       dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart
