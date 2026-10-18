@@ -41,9 +41,9 @@ void main() {
     );
 
     flags.sharedClient().getBooleanDetails(
-      key: 'web-intake-test',
-      defaultValue: false,
-    );
+          key: 'web-intake-test',
+          defaultValue: false,
+        );
     await flags.disable();
 
     final recordedRequests = <RequestLog>[];

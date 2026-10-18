@@ -72,11 +72,11 @@ final class DatadogFlagsConfiguration {
   /// Whether evaluations should be aggregated and sent to intake.
   final bool trackEvaluations;
 
-  /// Treats boolean `dd_evaluation_telemetry_opt_out` as local telemetry policy.
+  /// Enables evaluation telemetry opt-out through the evaluation context.
   ///
   /// When enabled, only boolean `true` suppresses new evaluation telemetry and
   /// automatic RUM flag annotations. Exposures and existing events are unchanged.
-  /// The attribute is excluded from assignment requests and cache matching.
+  /// The attribute remains available for targeting, cache matching, and exposures.
   final bool enableEvaluationTelemetryOptOutParameter;
 
   final Duration _evaluationFlushInterval;

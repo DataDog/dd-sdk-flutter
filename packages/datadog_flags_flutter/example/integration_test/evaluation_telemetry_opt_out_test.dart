@@ -4,33 +4,39 @@
 // Copyright 2019-Present Datadog, Inc.
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+
+import 'common.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'real mobile intake preserves exposures and suppresses automatic RUM',
+    'intake preserves exposures and suppresses automatic RUM',
     (tester) async {
-      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final recordingServer = await startMockServer();
+      final transport = http.Client();
+      addTearDown(transport.close);
       final events = <String, List<dynamic>>{};
-      server.listen((request) async {
-        final body = (await RequestLog.fromRequest(request)).data;
-        final path = request.uri.path;
-        debugPrint('MOBILE INTAKE received $path');
-        final recorded = events.putIfAbsent(path, () => []);
+      final httpClient = MockClient((request) async {
+        final path = request.url.path;
         if (path.endsWith('/assignments')) {
-          recorded.add(jsonDecode(body));
-          request.response.headers.contentType = ContentType.json;
-          request.response.write(
+          final scenario =
+              request.url.pathSegments[request.url.pathSegments.length - 2];
+          events
+              .putIfAbsent('/$scenario/assignments', () => [])
+              .add(jsonDecode(request.body));
+          return http.Response(
             jsonEncode({
               'data': {
                 'attributes': {
@@ -47,22 +53,18 @@ void main() {
                 },
               },
             }),
+            200,
+            headers: {'content-type': 'application/json'},
           );
-        } else if (path.endsWith('/evaluations')) {
-          recorded.addAll(jsonDecode(body)['flagEvaluations'] as List);
-          request.response.statusCode = HttpStatus.accepted;
-          request.response.write('{}');
-        } else {
-          recorded.addAll(
-            body.split('\n').where((line) => line.isNotEmpty).map(jsonDecode),
-          );
-          request.response.statusCode = HttpStatus.accepted;
-          request.response.write('{}');
         }
-        await request.response.close();
+        // MockClient supplies a finalized request. Forward a fresh request so
+        // the real transport can finalize and send the body exactly once.
+        final forwarded = http.Request(request.method, request.url)
+          ..headers.addAll(request.headers)
+          ..bodyBytes = request.bodyBytes;
+        return http.Response.fromStream(await transport.send(forwarded));
       });
-      addTearDown(() => server.close(force: true));
-      final base = 'http://localhost:${server.port}';
+      final base = recordingServer.sessionEndpoint;
       final sdk = DatadogSdk.instance;
       await sdk.initialize(
         DatadogConfiguration(
@@ -74,7 +76,7 @@ void main() {
           uploadFrequency: UploadFrequency.frequent,
           rumConfiguration: DatadogRumConfiguration(
             applicationId: '00000000-0000-0000-0000-000000000001',
-            customEndpoint: '$base/rum',
+            customEndpoint: '${base}rum',
           ),
         )..additionalConfig['_dd.needsClearTextHttp'] = true,
         TrackingConsent.granted,
@@ -88,20 +90,29 @@ void main() {
         'disabled',
         'allowed',
         'suppressed',
+        'string-true',
         'transition',
       ]) {
         final enabled = scenario != 'disabled';
-        final controls = scenario == 'transition'
-            ? [false, true, false]
-            : [scenario != 'allowed'];
+        final controls = <Object?>[
+          if (scenario == 'transition') ...[
+            false,
+            true,
+            false
+          ] else if (scenario == 'string-true')
+            'true'
+          else
+            scenario != 'allowed',
+        ];
         final flags = DatadogFlags();
         final plugin = DatadogFlagsPlugin(
           sdk,
           flagsConfiguration: DatadogFlagsConfiguration(
             enableEvaluationTelemetryOptOutParameter: enabled,
-            customFlagsEndpoint: Uri.parse('$base/$scenario/assignments'),
-            customEvaluationEndpoint: Uri.parse('$base/$scenario/evaluations'),
-            customExposureEndpoint: Uri.parse('$base/$scenario/exposures'),
+            customFlagsEndpoint: Uri.parse('$base$scenario/assignments'),
+            customEvaluationEndpoint: Uri.parse('$base$scenario/evaluations'),
+            customExposureEndpoint: Uri.parse('$base$scenario/exposures'),
+            httpClient: httpClient,
           ),
           rumIntegrationEnabled: true,
           flags: flags,
@@ -112,7 +123,8 @@ void main() {
         final client = plugin.sharedClient();
         for (var index = 0; index < controls.length; index++) {
           final view = controls.length == 1 ? scenario : '$scenario-$index';
-          expectedRumViews[view] = !(enabled && controls[index]);
+          expectedRumViews[view] =
+              !(enabled && controls[index] is bool && controls[index] == true);
           await client.initialize(
             FlagsEvaluationContext(
               targetingKey: scenario,
@@ -135,6 +147,17 @@ void main() {
           sdk.rum!.stopView(view);
         }
         await flags.disable();
+        final requests = await recordingServer.fetchRequests(
+          recordingServer.currentSession,
+        );
+        for (final kind in ['evaluations', 'exposures']) {
+          events['/$scenario/$kind'] = requests
+              .where((request) => Uri.parse(request.requestedUrl)
+                  .path
+                  .endsWith('/$scenario/$kind'))
+              .expand(_decodeEvents)
+              .toList();
+        }
         final evaluations = events['/$scenario/evaluations'] ?? [];
         expect(evaluations.length, scenario == 'suppressed' ? 0 : 3);
         final count = evaluations.fold<int>(
@@ -143,26 +166,40 @@ void main() {
         );
         expect(count, scenario == 'transition' ? 6 : evaluations.length);
         expect(events['/$scenario/exposures']!.length, 1);
-        expect(events['/$scenario/assignments']!.length, 1);
+        expect(events['/$scenario/assignments']!.length, controls.length);
+        for (var index = 0; index < controls.length; index++) {
+          expect(
+            events['/$scenario/assignments']![index]['data']['attributes']
+                ['subject']['targeting_attributes'],
+            {'dd_evaluation_telemetry_opt_out': controls[index]},
+          );
+        }
+        expect(
+          events['/$scenario/exposures']!.single['subject']['attributes'],
+          {'dd_evaluation_telemetry_opt_out': controls.first},
+        );
         debugPrint(
-          'MOBILE INTAKE $scenario: assignments=1 exposures=1 '
+          'MOBILE INTAKE $scenario: assignments=${controls.length} exposures=1 '
           'evaluation_count=$count',
         );
       }
 
-      // Let the native uploader run without blocking the Flutter platform thread.
-      // A synchronous native flush can prevent the in-app intake from replying.
-      for (var attempt = 0; attempt < 60; attempt++) {
-        await tester.pump(const Duration(milliseconds: 500));
-        if ((events['/rum'] ?? []).any(
+      await recordingServer.pollSessionRequests(const Duration(seconds: 30), (
+        requests,
+      ) {
+        events.putIfAbsent('/rum', () => []).addAll(
+              requests
+                  .where((request) =>
+                      Uri.parse(request.requestedUrl).path.endsWith('/rum'))
+                  .expand(_decodeEvents),
+            );
+        return (events['/rum'] ?? []).any(
           (event) =>
               (event['type'] == 'view' || event['type'] == 'view_update') &&
               event['view']['url'] == 'transition-2' &&
               (event['feature_flags'] as Map?)?['manual'] == 'unchanged',
-        )) {
-          break;
-        }
-      }
+        );
+      });
       final rum = events['/rum'] ?? [];
       for (final expected in expectedRumViews.entries) {
         final scenario = expected.key;
@@ -209,6 +246,22 @@ void main() {
         );
       }
     },
-    skip: !Platform.isAndroid && !Platform.isIOS,
+    skip: kIsWeb ||
+        (defaultTargetPlatform != TargetPlatform.android &&
+            defaultTargetPlatform != TargetPlatform.iOS),
   );
+}
+
+Iterable<dynamic> _decodeEvents(RequestLog request) sync* {
+  for (final line
+      in request.data.split('\n').where((line) => line.isNotEmpty)) {
+    final decoded = jsonDecode(line);
+    if (decoded is List) {
+      yield* decoded;
+    } else if (decoded is Map && decoded.containsKey('flagEvaluations')) {
+      yield* decoded['flagEvaluations'] as List;
+    } else {
+      yield decoded;
+    }
+  }
 }

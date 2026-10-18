@@ -1,0 +1,7 @@
+# Flutter generates these runners for local and CI integration tests.
+/android/
+/ios/
+/web/
+/.metadata
+/analysis_options.yaml
+/datadog_flags_flutter_example.iml

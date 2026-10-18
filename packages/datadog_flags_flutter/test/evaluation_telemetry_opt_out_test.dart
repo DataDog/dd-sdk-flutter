@@ -31,6 +31,20 @@ void main() {
             h.rum,
             enabled && control is bool && control ? isEmpty : ['on'],
           );
+          await h.sdk.disable();
+          expect(h.requestedAttributes.single, {
+            'dd_evaluation_telemetry_opt_out': control is List || control is Map
+                ? jsonEncode(control)
+                : control,
+          });
+          expect(
+            h.exposures.single['subject']['attributes'],
+            _context(control).attributes,
+          );
+          expect(
+            h.evaluationCount,
+            enabled && control is bool && control ? 0 : 3,
+          );
         },
       );
     }
@@ -47,17 +61,48 @@ void main() {
       h.started = Completer<void>();
       final refresh = h.client.initialize(_context(false));
       await h.started.future;
-      await h.client.initialize(_context(true));
+      final update = h.client.initialize(_context(true));
       h.client.getBooleanDetails(key: 'flag', defaultValue: false);
       h.wait!.complete();
-      await refresh;
+      await Future.wait([refresh, update]);
       h.client.getBooleanDetails(key: 'flag', defaultValue: false);
       await h.client.initialize(_context(false));
       h.client.getBooleanDetails(key: 'flag', defaultValue: false);
       expect(h.rum, ['on', 'on']);
-      expect(h.assignmentRequests, 2);
+      expect(h.assignmentRequests, 4);
     },
   );
+
+  for (final control in [false, true]) {
+    test('RUM uses current control $control during a failed refresh', () async {
+      final h = await _Harness.create(enabled: true);
+      addTearDown(h.sdk.disable);
+      await h.client.initialize(_context(!control));
+      h.wait = Completer<void>();
+      addTearDown(() {
+        if (!h.wait!.isCompleted) h.wait!.complete();
+      });
+      h.started = Completer<void>();
+      h.assignmentStatus = 400;
+      final refresh = h.client.initialize(_context(control));
+      expect(
+        h.client.getBooleanDetails(key: 'flag', defaultValue: false).value,
+        isTrue,
+      );
+      await h.started.future;
+      h.wait!.complete();
+      await refresh;
+      expect(
+        h.client.getBooleanDetails(key: 'flag', defaultValue: false).error,
+        FlagEvaluationError.providerNotReady,
+      );
+      await h.sdk.disable();
+      expect(h.rum, control ? isEmpty : ['on']);
+      expect(h.evaluationCount, control ? 0 : 2);
+      expect(h.assignmentRequests, 2);
+      expect(h.exposures, hasLength(1));
+    });
+  }
 
   for (final latestControl in [false, true]) {
     test(
@@ -105,7 +150,7 @@ void main() {
       await h.sdk.disable();
       expect(h.rum, isEmpty);
       expect(h.evaluationCount, 0);
-      expect(h.assignmentRequests, 1);
+      expect(h.assignmentRequests, 2);
     },
   );
 
@@ -142,6 +187,9 @@ class _Harness {
   Completer<void> started = Completer<void>();
   int assignmentRequests = 0;
   int evaluationCount = 0;
+  int assignmentStatus = 200;
+  final requestedAttributes = <dynamic>[];
+  final exposures = <dynamic>[];
 
   static Future<_Harness> create({required bool enabled}) async {
     final h = _Harness();
@@ -156,14 +204,26 @@ class _Harness {
         httpClient: MockClient((request) async {
           if (!request.url.path.contains('precompute')) {
             if (request.url.path.contains('evaluation')) {
-              final evaluations = jsonDecode(request.body)['flagEvaluations'];
-              for (final evaluation in evaluations as List) {
-                h.evaluationCount += evaluation['evaluation_count'] as int;
+              for (final line in request.body.split('\n')) {
+                final decoded = jsonDecode(line);
+                final evaluations = decoded.containsKey('flagEvaluations')
+                    ? decoded['flagEvaluations'] as List
+                    : [decoded];
+                for (final evaluation in evaluations) {
+                  h.evaluationCount += evaluation['evaluation_count'] as int;
+                }
               }
+            } else if (request.url.path.contains('exposures')) {
+              h.exposures.addAll(request.body.split('\n').map(jsonDecode));
             }
             return http.Response('{}', 202);
           }
           h.assignmentRequests++;
+          h.requestedAttributes.add(
+            jsonDecode(
+              request.body,
+            )['data']['attributes']['subject']['targeting_attributes'],
+          );
           if (!h.started.isCompleted) h.started.complete();
           await h.wait?.future;
           return http.Response(
@@ -183,7 +243,7 @@ class _Harness {
                 },
               },
             }),
-            200,
+            h.assignmentStatus,
           );
         }),
       ),

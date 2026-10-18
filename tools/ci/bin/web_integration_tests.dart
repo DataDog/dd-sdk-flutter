@@ -22,8 +22,6 @@ const fileExclude = [
   'rum_mapping_test.dart',
   // Web does not support dart:io clients
   'tracking_http_client_test.dart',
-  // This mobile intake harness requires a dart:io HTTP server.
-  'evaluation_telemetry_opt_out_test.dart',
   // Web does not support isolates
   'isolate_tracking_test.dart',
 ];

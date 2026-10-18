@@ -177,11 +177,22 @@ scripts:
     run:
       mkdir -p $MELOS_ROOT_PATH/.build/test-results &&
       melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome --wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'" 
+      melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome --wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'" &&
+      melos run unit_test:flags_web
     packageFilters:
       scope:
         - 'datadog_flutter_plugin'
         - 'datadog_flutter_plugin_web'
+
+  unit_test:flags_web:
+    run: |
+      set -e
+      cd packages/datadog_flags
+      dart test test/evaluation_telemetry_opt_out_test.dart --platform chrome --compiler dart2js
+      dart test test/evaluation_telemetry_opt_out_test.dart --platform chrome --compiler dart2wasm
+      cd ../datadog_flags_flutter
+      flutter test test/evaluation_telemetry_opt_out_test.dart --platform chrome
+      flutter test test/evaluation_telemetry_opt_out_test.dart --platform chrome --wasm
 
   unit_test:ios:
     exec:
@@ -225,8 +236,13 @@ scripts:
     exec:
       concurrency: 1
     run: |
+      set -e
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd example
+      if [ "$MELOS_PACKAGE_NAME" = "datadog_flags_flutter" ]; then
+        flutter create --empty --no-pub --platforms=ios .
+        cp integration_test/Podfile ios/Podfile
+      fi
 
       bash -c 'set -euxo pipefail; \
       flutter test integration_test --machine -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
@@ -271,8 +287,13 @@ scripts:
     exec:
       concurrency: 1
     run: |
+      set -e
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd example
+      if [ "$MELOS_PACKAGE_NAME" = "datadog_flags_flutter" ]; then
+        flutter create --empty --no-pub --platforms=android .
+        cp integration_test/AndroidManifest.xml android/app/src/debug/AndroidManifest.xml
+      fi
 
       bash -c 'set -euxo pipefail; \
       flutter test integration_test --machine -d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
@@ -432,11 +453,17 @@ scripts:
     exec: 
       concurrency: 1
     run: |
+      set -e
       cd example      
+      if [ "$MELOS_PACKAGE_NAME" = "datadog_flags_flutter" ]; then
+        flutter create --empty --no-pub --platforms=web .
+      fi
       dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart
       dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart --wasm
     packageFilters:
-      scope: 'datadog_tracking_http_client'
+      scope:
+        - 'datadog_tracking_http_client'
+        - 'datadog_flags_flutter'
 
   e2e_tests:ios:
     exec: |

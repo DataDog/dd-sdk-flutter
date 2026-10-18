@@ -305,6 +305,11 @@ the batch boundary is reached, and during `shutdown()`.
 
 ## Evaluation Telemetry Opt-Out
 
+Use this control when a subject must receive flag results without contributing
+evaluation telemetry, for example because of the subject's consent preference.
+Your application decides which subjects opt out. The SDK does not interpret
+age, location, or consent rules.
+
 Enable the context parameter explicitly:
 
 ```dart
@@ -323,19 +328,19 @@ await client.initialize(const FlagsEvaluationContext(
 ));
 ```
 
-Only boolean `true` suppresses new evaluation events and counts. Missing, false,
-null, and other types preserve evaluation telemetry. Activation defaults to false.
+Only boolean `true` suppresses new evaluation events and counts. Missing, `false`,
+`null`, and other types preserve evaluation telemetry. Activation defaults to false.
 The Flutter integration also suppresses automatic RUM flag annotations.
 
-With activation enabled, the SDK consumes this attribute locally. It excludes
-the attribute from assignment requests and cache matching. Changing only this
-attribute updates policy immediately without fetching assignments. Repeating an
-identical context still refreshes assignments. Subject and targeting changes keep
-their existing assignment behavior.
+The attribute remains available for targeting rules and exposure attributes.
+It is included in assignment requests, stored contexts, and cache matching.
+Changing it uses the normal context refresh path. The telemetry decision applies
+immediately, including while the refresh is pending or after it fails.
 
 Each named client has separate policy. Cached data and late assignment responses
-cannot restore an older policy. Flag values, details, exposures, and exposure
-deduplication remain unchanged. Previously recorded events and RUM annotations
+cannot restore an older policy. Suppression does not change flag values, details,
+or exposure logging. Targeting rules can use the attribute to select assignments.
+Exposures follow the existing deduplication rules. Previously recorded events and RUM annotations
 remain. Unrelated telemetry and manual RUM flag annotations remain enabled.
 
 ## Last-Known Assignment Storage

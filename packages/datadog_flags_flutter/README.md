@@ -117,9 +117,11 @@ Pass `enableEvaluationTelemetryOptOutParameter: true` in the plugin's
 events, counts, and automatic RUM flag annotations. Activation defaults to false.
 Other attribute values preserve telemetry.
 
-Update the attribute with `client.initialize(context)`. A change to only this
-attribute applies locally without fetching assignments. Flag values, exposures,
-existing events, manual RUM annotations, and unrelated telemetry remain unchanged.
+Update the attribute with `client.initialize(context)`. The attribute remains
+available for targeting and exposure reporting. Changes use the normal assignment
+refresh path. The telemetry decision applies immediately during pending or failed
+refreshes. Exposure deduplication, existing events, manual RUM annotations, and
+unrelated telemetry keep their existing behavior.
 See [the core SDK contract](../datadog_flags/README.md#evaluation-telemetry-opt-out).
 
 ## Cached Evaluation Reasons
