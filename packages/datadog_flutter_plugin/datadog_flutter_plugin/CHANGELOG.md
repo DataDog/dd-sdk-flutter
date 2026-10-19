@@ -1,5 +1,20 @@
 # Changelog
 
+## 4.0.0-preview.1
+
+### Breaking Changes
+
+- Raises the minimum supported versions to Dart 3.10 and Flutter 3.38.
+- Configuring Datadog now requires a `service` name to be set; previously a default value was guessed on some platforms, but this is no longer supported.
+- Renames the `featureOperations` RUM APIs to `operations` to match the updated native SDK naming; update any code using the old names.
+- The web platform now requires Datadog Browser SDK v7; update the script references in your `index.html` when upgrading (see MIGRATING.md for details).
+
+### Features
+
+- Adds support for macOS, reusing `dd-sdk-ios` for feature parity with iOS.
+- Adds support for Windows and Linux desktop platforms via a new `datadog_flutter_desktop` package built on `dd-sdk-cpp`.
+- Adds a `getSuggestedDesktopDataDirectory` helper to provide a platform-appropriate default location for SDK data on desktop, and logs a warning if the SDK falls back to using the current working directory in production.
+
 ## 3.7.0
 
 ### Features
