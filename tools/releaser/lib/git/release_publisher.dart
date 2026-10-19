@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:git/git.dart';
@@ -55,7 +56,7 @@ class ReleasePublisher {
       await pushBranch(gitDir, branch, logger);
       return _head(gitDir);
     }
-    return _commitHeadless(gitDir, branch, logger, [
+    return _commitHeadless(gitDir, branch, logger, baseSha, [
       '--head-sha',
       baseSha,
       '--create-branch',
@@ -73,7 +74,13 @@ class ReleasePublisher {
       await pushBranch(gitDir, branch, logger);
       return _head(gitDir);
     }
-    return _commitHeadless(gitDir, branch, logger, const []);
+    return _commitHeadless(
+      gitDir,
+      branch,
+      logger,
+      await _remoteTip(gitDir, branch),
+      const [],
+    );
   }
 
   /// Merges `origin/[from]` into the checked-out [branch] and returns the new
@@ -156,10 +163,24 @@ class ReleasePublisher {
     GitDir gitDir,
     String branch,
     Logger logger,
+    String base,
     List<String> extraArgs,
   ) async {
+    // commit-headless 2.0.x pushes the commits it is given on stdin, one SHA
+    // per line, oldest first, rather than working out what is new itself.
+    final commits = (await gitDir.runCommand([
+      'rev-list',
+      '--reverse',
+      '$base..HEAD',
+    ])).stdout.toString().trim();
+    if (commits.isEmpty) {
+      throw GitReleaseActionError(
+        'Nothing to push to $branch: HEAD has no commits on top of $base.',
+      );
+    }
+
     logger.info('ℹ️ Pushing $branch through commit-headless');
-    final result = await Process.run(commitHeadlessBinary, [
+    final process = await Process.start(commitHeadlessBinary, [
       'push',
       '-T',
       repoSlug!,
@@ -167,6 +188,19 @@ class ReleasePublisher {
       branch,
       ...extraArgs,
     ], workingDirectory: gitDir.path);
+    final stdout = process.stdout.transform(utf8.decoder).join();
+    final stderr = process.stderr.transform(utf8.decoder).join();
+    try {
+      process.stdin.writeln(commits);
+      await process.stdin.close();
+    } on IOException {
+      // The tool exited without reading its input; its exit code says why.
+    }
+    final result = (
+      exitCode: await process.exitCode,
+      stdout: await stdout,
+      stderr: await stderr,
+    );
     if (result.exitCode != 0) {
       throw GitReleaseActionError(
         'commit-headless push of $branch failed: ${result.stderr}',
@@ -174,7 +208,7 @@ class ReleasePublisher {
     }
 
     // On success it prints only the SHA of the last commit it created.
-    final pushedSha = (result.stdout as String).trim().split('\n').last.trim();
+    final pushedSha = result.stdout.trim().split('\n').last.trim();
     if (!RegExp(r'^[0-9a-f]{40}$').hasMatch(pushedSha)) {
       throw GitReleaseActionError(
         'commit-headless push of $branch did not print a commit SHA: '
@@ -209,6 +243,15 @@ class ReleasePublisher {
       );
     }
     return head;
+  }
+
+  /// The tip of [branch] on `origin`.
+  Future<String> _remoteTip(GitDir gitDir, String branch) async {
+    await _run(gitDir, ['fetch', 'origin', branch]);
+    return (await gitDir.runCommand([
+      'rev-parse',
+      'FETCH_HEAD',
+    ])).stdout.toString().trim();
   }
 
   Future<void> _run(GitDir gitDir, List<String> args) async {
