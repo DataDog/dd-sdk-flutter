@@ -42,6 +42,9 @@ class FlagsRepository {
   _CancelToken? _currentToken;
   bool _didStartInitialization = false;
   bool _evaluationTelemetryOptedOut = false;
+  // Only the installed and requested subjects can be evaluated. Superseded
+  // requests are cancelled and cannot install their assignments.
+  final Map<String?, bool> _subjectTelemetryOptOut = {};
 
   static const _telemetryControl = 'dd_evaluation_telemetry_opt_out';
 
@@ -58,7 +61,9 @@ class FlagsRepository {
 
   FlagsEvaluationContext? get context => _state?.data.context;
 
-  bool get evaluationTelemetryOptedOut => _evaluationTelemetryOptedOut;
+  bool get evaluationTelemetryOptedOut =>
+      _evaluationTelemetryOptedOut ||
+      (_subjectTelemetryOptOut[context?.targetingKey] ?? false);
 
   FlagAssignment? flagAssignment(String key) {
     final data = _state?.data;
@@ -74,6 +79,15 @@ class FlagsRepository {
     final control = context.attributes[_telemetryControl];
     _evaluationTelemetryOptedOut =
         enableEvaluationTelemetryOptOutParameter && control is bool && control;
+    if (enableEvaluationTelemetryOptOutParameter) {
+      _subjectTelemetryOptOut[context.targetingKey] =
+          _evaluationTelemetryOptedOut;
+      _subjectTelemetryOptOut.removeWhere(
+        (subject, _) =>
+            subject != context.targetingKey &&
+            subject != _state?.data.context.targetingKey,
+      );
+    }
     _currentToken?.cancel();
     final token = _CancelToken();
     _currentToken = token;
@@ -133,12 +147,18 @@ class FlagsRepository {
         obfuscation: assignments.obfuscation,
       );
       _state = _InstalledFlagsState(data: data, restoredFromStore: false);
+      _subjectTelemetryOptOut.removeWhere(
+        (subject, _) => subject != context.targetingKey,
+      );
       await _writeCached(data);
     } catch (_) {
       if (!token.isCanceled &&
           matchingCached == null &&
           !_hasCurrentStateForContext(context)) {
         _state = null;
+        _subjectTelemetryOptOut.removeWhere(
+          (subject, _) => subject != context.targetingKey,
+        );
       }
     }
   }
@@ -182,6 +202,7 @@ class FlagsRepository {
     _currentToken = null;
     _state = null;
     _evaluationTelemetryOptedOut = false;
+    _subjectTelemetryOptOut.clear();
   }
 
   Future<void> reset() async {

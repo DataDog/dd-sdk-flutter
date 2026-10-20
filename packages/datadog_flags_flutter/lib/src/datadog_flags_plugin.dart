@@ -330,6 +330,7 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
   FlagDetails<T> _trackRumEvaluation<T>(FlagDetails<T> details) {
     final variant = details.variant;
     if (!_evaluationTelemetryOptedOut &&
+        !details.evaluationTelemetryOptedOut &&
         details.error == null &&
         variant != null) {
       _addRumFeatureFlagEvaluation?.call(details.key, variant);

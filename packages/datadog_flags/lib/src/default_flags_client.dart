@@ -208,6 +208,7 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
       value: resolvedValue as T,
       variant: assignment.variationKey,
       reason: restoredFromStore ? 'CACHED' : assignment.reason,
+      evaluationTelemetryOptedOut: telemetryOptedOut,
     );
   }
 }

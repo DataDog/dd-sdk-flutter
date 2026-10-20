@@ -13,6 +13,57 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test('RUM preserves A opt-out while B refreshes', () async {
+    final h = await _Harness.create(enabled: true);
+    addTearDown(h.sdk.disable);
+    await h.client.initialize(_context(true, subject: 'A'));
+    h.wait = Completer<void>();
+    addTearDown(() {
+      if (!h.wait!.isCompleted) h.wait!.complete();
+    });
+    h.started = Completer<void>();
+    final pending = h.client.initialize(_context(false, subject: 'B'));
+    await h.started.future;
+    expect(
+      h.client.getBooleanDetails(key: 'flag', defaultValue: false).value,
+      isTrue,
+    );
+    final pendingRumCount = h.rum.length;
+    h.wait!.complete();
+    await pending;
+    expect(
+      h.client.getBooleanDetails(key: 'flag', defaultValue: false).value,
+      isTrue,
+    );
+    await h.sdk.disable();
+    expect(pendingRumCount, 0);
+    expect(h.rum, ['on']);
+    expect(h.evaluationCount, 1);
+    expect(h.exposures, hasLength(2));
+  });
+
+  test('RUM preserves A explicit opt-in while B refreshes', () async {
+    final h = await _Harness.create(enabled: true);
+    addTearDown(h.sdk.disable);
+    await h.client.initialize(_context(true, subject: 'A'));
+    h.wait = Completer<void>();
+    addTearDown(() {
+      if (!h.wait!.isCompleted) h.wait!.complete();
+    });
+    final first = h.client.initialize(_context(false, subject: 'A'));
+    final second = h.client.initialize(_context(false, subject: 'B'));
+    expect(
+      h.client.getBooleanDetails(key: 'flag', defaultValue: false).value,
+      isTrue,
+    );
+    h.wait!.complete();
+    await Future.wait([first, second]);
+    await h.sdk.disable();
+    expect(h.rum, ['on']);
+    expect(h.evaluationCount, 1);
+    expect(h.exposures, hasLength(1));
+  });
+
   for (final enabled in [false, true]) {
     for (final control in <Object?>[null, false, 'true', 1, [], {}, true]) {
       test(
@@ -174,10 +225,11 @@ void main() {
   });
 }
 
-FlagsEvaluationContext _context(Object? control) => FlagsEvaluationContext(
-  targetingKey: 'user',
-  attributes: {'dd_evaluation_telemetry_opt_out': control},
-);
+FlagsEvaluationContext _context(Object? control, {String subject = 'user'}) =>
+    FlagsEvaluationContext(
+      targetingKey: subject,
+      attributes: {'dd_evaluation_telemetry_opt_out': control},
+    );
 
 class _Harness {
   final sdk = DatadogFlags();

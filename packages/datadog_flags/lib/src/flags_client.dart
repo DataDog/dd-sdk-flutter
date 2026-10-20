@@ -92,6 +92,12 @@ class FlagDetails<T> {
   /// Programmatic error describing why the default value was returned.
   final FlagEvaluationError? error;
 
+  /// Whether automatic evaluation reporting must be suppressed for this result.
+  ///
+  /// Integrations use the decision captured with the evaluated assignments.
+  /// This does not suppress experiment exposures.
+  final bool evaluationTelemetryOptedOut;
+
   /// Creates immutable details for a flag evaluation result.
   const FlagDetails({
     required this.key,
@@ -99,5 +105,6 @@ class FlagDetails<T> {
     this.variant,
     this.reason,
     this.error,
+    this.evaluationTelemetryOptedOut = false,
   });
 }

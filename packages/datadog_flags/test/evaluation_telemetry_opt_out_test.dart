@@ -14,6 +14,72 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 void main() {
+  for (final status in [200, 400]) {
+    test('subject opt-out remains active during B refresh ($status)', () async {
+      final intake = await _Intake.start();
+      addTearDown(intake.close);
+      final sdk = DatadogFlags();
+      addTearDown(sdk.disable);
+      await sdk.enable(configuration: intake.configuration(enabled: true));
+      final client = sdk.sharedClient();
+      await client.initialize(_context(true, subject: 'A'));
+      final release = Completer<void>();
+      addTearDown(() {
+        if (!release.isCompleted) release.complete();
+      });
+      intake.assignmentWait = release.future;
+      intake.assignmentStarted = Completer<void>();
+      intake.assignmentStatus = status;
+      final pending = client.initialize(_context(false, subject: 'B'));
+      await intake.assignmentStarted.future;
+      expect(
+        client.getBooleanDetails(key: 'enabled', defaultValue: false).value,
+        isTrue,
+      );
+      expect(
+        client.getBooleanDetails(key: 'enabled', defaultValue: false).value,
+        isTrue,
+      );
+      release.complete();
+      await pending;
+      if (status == 200) {
+        expect(
+          client.getBooleanDetails(key: 'enabled', defaultValue: false).value,
+          isTrue,
+        );
+      }
+      await sdk.disable();
+      expect(intake.evaluationCount, status == 200 ? 1 : 0);
+      expect(intake.exposures, hasLength(status == 200 ? 2 : 1));
+    });
+  }
+
+  test('subject opt-in survives switching to B before its refresh', () async {
+    final intake = await _Intake.start();
+    addTearDown(intake.close);
+    final sdk = DatadogFlags();
+    addTearDown(sdk.disable);
+    await sdk.enable(configuration: intake.configuration(enabled: true));
+    final client = sdk.sharedClient();
+    await client.initialize(_context(true, subject: 'A'));
+    final release = Completer<void>();
+    addTearDown(() {
+      if (!release.isCompleted) release.complete();
+    });
+    intake.assignmentWait = release.future;
+    final first = client.initialize(_context(false, subject: 'A'));
+    final second = client.initialize(_context(false, subject: 'B'));
+    expect(
+      client.getBooleanDetails(key: 'enabled', defaultValue: false).value,
+      isTrue,
+    );
+    release.complete();
+    await Future.wait([first, second]);
+    await sdk.disable();
+    expect(intake.evaluationCount, 1);
+    expect(intake.exposures, hasLength(1));
+  });
+
   test(
     'disabled opt-out emits evaluations and exposures through the HTTP client',
     () async {
@@ -439,13 +505,14 @@ void main() {
   );
 }
 
-FlagsEvaluationContext _context(Object? control) => FlagsEvaluationContext(
-  targetingKey: 'user',
-  attributes: {
-    'ordinary': 'attribute',
-    'dd_evaluation_telemetry_opt_out': control,
-  },
-);
+FlagsEvaluationContext _context(Object? control, {String subject = 'user'}) =>
+    FlagsEvaluationContext(
+      targetingKey: subject,
+      attributes: {
+        'ordinary': 'attribute',
+        'dd_evaluation_telemetry_opt_out': control,
+      },
+    );
 
 class _Intake {
   late final http.Client client = MockClient(_handle);
