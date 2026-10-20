@@ -137,6 +137,8 @@ class DdRumWeb extends DdRumPlatform {
 
     final id = _uuid.v4();
     final context = attributesToJs(attributes, 'attributes');
+    final sourceType = webErrorSourceType(stackTrace);
+    final wasmModules = _wasmModulesForStackTrace(stackTrace, sourceType);
     _webPlugin?.addEvent(
       eventTime,
       RumWebRawErrorEvent(
@@ -149,6 +151,8 @@ class DdRumWeb extends DdRumPlatform {
           stack: convertWebStackTrace(stackTrace),
           type: errorType ?? 'UnknownError',
           fingerprint: fingerprint,
+          source_type: sourceType,
+          wasm_modules: wasmModules,
         ),
       ),
       RumWebErrorEventDomainContext(),
@@ -171,6 +175,8 @@ class DdRumWeb extends DdRumPlatform {
 
     final id = _uuid.v4();
     final context = attributesToJs(attributes, 'attributes');
+    final sourceType = webErrorSourceType(stackTrace);
+    final wasmModules = _wasmModulesForStackTrace(stackTrace, sourceType);
 
     _webPlugin?.addEvent(
       eventTime,
@@ -184,10 +190,35 @@ class DdRumWeb extends DdRumPlatform {
           stack: convertWebStackTrace(stackTrace),
           type: errorType ?? 'UnknownError',
           fingerprint: fingerprint,
+          source_type: sourceType,
+          wasm_modules: wasmModules,
         ),
       ),
       RumWebErrorEventDomainContext(),
     );
+  }
+
+  JSArray<RumWebWasmModule>? _wasmModulesForStackTrace(
+    StackTrace? stackTrace,
+    String sourceType,
+  ) {
+    if (sourceType != 'browser+wasm') return null;
+
+    final moduleUrls = webWasmModuleUrls(stackTrace);
+    if (moduleUrls.isEmpty) {
+      moduleUrls.add(flutterWasmModuleUrl());
+    }
+
+    return moduleUrls
+        .map(
+          (url) => RumWebWasmModule(
+            url: url,
+            build_id: '',
+            debug_info_type: 'sourcemap',
+          ),
+        )
+        .toList()
+        .toJS;
   }
 
   @override

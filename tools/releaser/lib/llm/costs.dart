@@ -11,6 +11,7 @@ import 'ai_gateway.dart';
 /// record.
 const _pricePerMillionTokens = {
   'claude-sonnet-4-6': (input: 3.00, output: 15.00),
+  'claude-sonnet-5': (input: 2.00, output: 10.00),
 };
 
 /// Aggregates [LlmUsage] across a run's LLM calls and prints an estimated
@@ -32,11 +33,11 @@ class LlmCostTracker {
       if (prices == null) {
         logger.warning(
           'Usage costs for model ${usage.model} not known; falling back to '
-          'claude-sonnet-4-6 pricing.',
+          '$defaultModel pricing.',
         );
       }
       final (:input, :output) =
-          prices ?? _pricePerMillionTokens['claude-sonnet-4-6']!;
+          prices ?? _pricePerMillionTokens[defaultModel]!;
       final cost =
           usage.inputTokens / 1e6 * input + usage.outputTokens / 1e6 * output;
       totalInputTokens += usage.inputTokens;

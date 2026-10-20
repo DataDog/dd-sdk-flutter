@@ -18,7 +18,9 @@ variables:
   ANDROID_EMULATOR_SDK: "33"
   IS_ON_CI: $CI
   SLACK_CHANNEL: "#mobile-sdk-ops"
-  FLUTTER_MIN_VERSION: '3.38.0'
+  # Flutter 3.38.0 bundles prerelease Dart; 3.38.1 includes stable Dart 3.10.
+  # https://github.com/flutter/flutter/issues/178400
+  FLUTTER_MIN_VERSION: '3.38.1'
   # Magic Mirror Depot pro for the Java ecosystem (see
   # tools/ci/gradle/init.d/depot-mirror.init.gradle).
   DEPOT_JAVA_MAVEN_URL: "https://depot-read-api-java.us1.ddbuild.io/magicmirror/magicmirror/@current/"
@@ -33,7 +35,9 @@ stages:
   - integration-test
   - version-test
   - e2e-test
+  - prepare-release
   - post
+  - release-trigger
   - post-nightly
 
 # Prebuild - install necessary tools
@@ -104,6 +108,11 @@ stages:
     - export PATH="$PATH:${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/"
     - echo $CHROME_EXECUTABLE
 
+.tart-runner:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/ci-platform-machine-images/tart-vm:dd-sdk-flutter-sequoia-latest
+  tags:
+    - macos:tart
+
 ci-image:
   when: manual
   stage: ci-image
@@ -136,13 +145,11 @@ ci-image-windows:
 # Build (And Analyze) Stage
 
 build-flutter:
+  extends: .tart-runner
   stage: build
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - pushd tools/releaser && dart pub get && dart test && popd
@@ -176,13 +183,11 @@ build-android:
       - "$CI_PROJECT_DIR/**/reports/detekt/*"
 
 build-ios-spm:
+  extends: .tart-runner
   stage: build
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -213,13 +218,11 @@ build-macos-spm:
     - melos run unit_test:macos
 
 build-ios:
+  extends: .tart-runner
   stage: build
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -266,7 +269,7 @@ build-linux:
 
 # Windows shell-executor runners don't support the `image:` keyword, so unlike the
 # Linux jobs (build-android/build-web), the toolchain image has to be run explicitly
-# via `docker run` on the bare host - same pattern as dd-sdk-cpp's build-windows.
+# via `docker run` on the bare host.
 build-windows:
   stage: build
   except: [ schedules ]
@@ -311,16 +314,15 @@ android-integration-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
+      - .build/test-results/*_android_integration.jsonl
 
 ios-integration-test:
+  extends: .tart-runner
   stage: integration-test
   except: [schedules]
   needs: [build-ios]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -385,6 +387,9 @@ linux-integration-test:
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
+# Windows integration tests require an AMI that can run UI, which is currently unavailable.
+# Add this back if CIEXE-2284 is solved.
+# 
 # windows-integration-test:
 #   stage: integration-test
 #   except: [ schedules ]
@@ -406,6 +411,152 @@ linux-integration-test:
 #     expire_in: "30 days"
 #     reports:
 #       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+# Release
+#
+# Manual job only -- never runs automatically off a plain branch push. The three
+# `rules:` clauses below are the mainline/patch/pre-release trigger contexts;
+# RELEASE_TRIGGER carries the matching --trigger value to the script, because
+# prepare_release.dart's own branch auto-detection doesn't know about the
+# pre-release whitelist. It defaults to `mainline`; the `develop` clause leaves
+# that default alone so a manual run can set RELEASE_TRIGGER=prerelease to cut
+# a pre-release from `develop`.
+#
+# Pre-release branches are a manually-maintained whitelist, not a pattern
+# match -- add/remove an `if:` clause per active effort (see `v4` below); its
+# release-prep PR targets `<branch>-main`. Keep in sync with
+# .github/chainguard/self.prepare-release.sts.yaml's subject_pattern, which
+# grants this job's GitHub token and is scoped to the same branch set, and
+# with `preReleaseBranches` in tools/releaser/lib/publish_rules.dart.
+prepare-release:
+  stage: prepare-release
+  rules:
+    # push-only: matches self.prepare-release.sts.yaml's trust policy.
+    # allow_failure: true: `when: manual` under `rules:` defaults to
+    # blocking, which would hold up `post`/`post-nightly` on every push.
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "develop"'
+      when: manual
+      allow_failure: true
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/[^\/]+\/v\d+(\.\d+)?\.x$/'
+      when: manual
+      allow_failure: true
+      variables:
+        RELEASE_TRIGGER: "support"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "v4"' # pre-release whitelist -- see comment above
+      when: manual
+      allow_failure: true
+      variables:
+        RELEASE_TRIGGER: "prerelease"
+  variables:
+    # Full history + tags -- release planning walks back to old release
+    # tags, which a shallow clone may not have.
+    GIT_DEPTH: "0"
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+    RELEASE_TRIGGER: "mainline"
+    PACKAGES: ""
+    # "false" releases only the packages named in PACKAGES; otherwise naming
+    # a member of a federated group also considers its siblings.
+    INCLUDE_FEDERATED: "true"
+    IOS_SDK_VERSION: ""
+    ANDROID_SDK_VERSION: ""
+    CPP_VERSION: ""
+    BUMP_TYPE: ""
+    PRERELEASE_LABEL: ""
+  id_tokens:
+    DDOCTOSTS_ID_TOKEN:
+      aud: dd-octo-sts
+  tags:
+    - macos:sequoia
+    - specific:true
+  before_script:
+    # We need a short-lived GitHub token to push commits and open PRs; see
+    # .github/chainguard/self.prepare-release.sts.yaml.
+    - dd-octo-sts --disable-tracing debug --scope DataDog/dd-sdk-flutter --policy self.prepare-release
+    - dd-octo-sts --disable-tracing token --scope DataDog/dd-sdk-flutter --policy self.prepare-release > /tmp/gh-token.txt
+  script:
+    - !reference [.pre, script]
+    # Runner checks out $CI_COMMIT_SHA detached; prepare_release.dart needs
+    # a real branch checkout. -B (not plain checkout) resets the branch to
+    # $CI_COMMIT_SHA even if this runner is reused and already has a local
+    # ref for it from a prior run.
+    - git checkout -B "$CI_COMMIT_BRANCH" "$CI_COMMIT_SHA"
+    # The `gh` CLI (github_cmd_wrapper.dart) picks up GITHUB_TOKEN automatically;
+    # for `git` push/PR-base operations we point origin at GitHub using the same
+    # token, and configure the dd-octo-sts bot identity for the release commits.
+    - export GITHUB_TOKEN=$(cat /tmp/gh-token.txt)
+    - git config user.name "dd-octo-sts[bot]"
+    - git config user.email "200755185+dd-octo-sts[bot]@users.noreply.github.com"
+    - git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/DataDog/dd-sdk-flutter.git"
+    # This repo requires signed commits (see CONTRIBUTING.md), so the
+    # release-prep commits need commit-headless too.
+    - commit-headless version
+    # AI Gateway token for LLM changelog generation, via authanywhere;
+    # ai_gateway.dart reads this env var directly (see
+    # HttpAiGatewayClient.fromEnvironment).
+    - export AI_GATEWAY_TOKEN=$(authanywhere --audience rapid-ai-platform --raw --dc us1.ddbuild.io)
+    - pushd tools/releaser && dart pub get && popd
+    - |
+      if [ "$INCLUDE_FEDERATED" = "false" ]; then
+        FEDERATED_FLAG="--no-include-federated"
+      else
+        FEDERATED_FLAG="--include-federated"
+      fi
+    - >
+      dart run tools/releaser/bin/prepare_release.dart
+      --repo-root=$CI_PROJECT_DIR
+      --trigger=$RELEASE_TRIGGER
+      --commit-headless
+      $FEDERATED_FLAG
+      ${PACKAGES:+"--packages=$PACKAGES"}
+      ${BUMP_TYPE:+"--bump-type=$BUMP_TYPE"}
+      ${IOS_SDK_VERSION:+"--ios-sdk-version=$IOS_SDK_VERSION"}
+      ${ANDROID_SDK_VERSION:+"--android-sdk-version=$ANDROID_SDK_VERSION"}
+      ${CPP_VERSION:+"--cpp-version=$CPP_VERSION"}
+      ${PRERELEASE_LABEL:+"--prerelease-label=$PRERELEASE_LABEL"}
+  after_script:
+    # Revoke the dd-octo-sts-provided GitHub token unconditionally once finished.
+    - dd-octo-sts --disable-tracing revoke --token "$(cat /tmp/gh-token.txt)"
+
+# Phase 2 trigger
+#
+# Pushes the `release-trigger/*` tag that GitHub Actions' publish-release.yml
+# watches for -- only after this exact commit's pipeline has already
+# succeeded.
+#
+# Fires on every push to a release branch: `main`, a whitelisted pre-release
+# `-main` branch (currently just `v4-main`, mirroring prepare-release's own
+# `v4` whitelist -- never a wildcard), or a support branch. Most pushes to a support branch are ordinary cherry-picked
+# fixes rather than releases, so the trigger can't tell them apart here;
+# publish_release.dart does, by requiring the commit to be the merge of a
+# `release-prep/*` PR, and exits without doing anything otherwise.
+push-release-trigger-tag:
+  stage: release-trigger
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "v4-main")'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/[^\/]+\/v\d+(\.\d+)?\.x$/'
+  # Same runner as prepare-release as
+  # dd-octo-sts/git/gh all need to be present
+  tags:
+    - macos:sequoia
+    - specific:true
+  id_tokens:
+    DDOCTOSTS_ID_TOKEN:
+      aud: dd-octo-sts
+  before_script:
+    # Narrower scope than prepare-release's policy -- tag-push only, never
+    # PR/branch. See .github/chainguard/self.tag-push.sts.yaml.
+    - dd-octo-sts --disable-tracing debug --scope DataDog/dd-sdk-flutter --policy self.tag-push
+    - dd-octo-sts --disable-tracing token --scope DataDog/dd-sdk-flutter --policy self.tag-push > /tmp/gh-token.txt
+  script:
+    - export GITHUB_TOKEN=$(cat /tmp/gh-token.txt)
+    - git config user.name "dd-octo-sts[bot]"
+    - git config user.email "200755185+dd-octo-sts[bot]@users.noreply.github.com"
+    - git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/DataDog/dd-sdk-flutter.git"
+    - TAG_NAME="release-trigger/$(date -u +%Y-%m-%d)-${CI_COMMIT_SHORT_SHA}"
+    - git tag -a -m "$TAG_NAME" "$TAG_NAME" "$CI_COMMIT_SHA"
+    - git push origin "$TAG_NAME"
+  after_script:
+    - dd-octo-sts --disable-tracing revoke --token "$(cat /tmp/gh-token.txt)"
 
 # Notify
 
@@ -446,6 +597,12 @@ notify-nightly-failed:
 
 .nightly-vars:
   script:
+    # Tart VMs obtain AWS credentials through the AWS CLI config rather than env vars, which `vault login -method=aws` needs
+    - |
+      if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+        aws_env="$(aws configure export-credentials --format env)"
+        eval "$aws_env"
+      fi
     - vault login -method=aws -no-print
     - export DD_E2E_CLIENT_TOKEN=$(vault kv get -field=client_token kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
     - export DD_E2E_APPLICATION_ID=$(vault kv get -field=application_id kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
@@ -460,13 +617,10 @@ notify-nightly-failed:
     - specific:true
 
 nightly-min-version-test:
-  extends: .nightly
+  extends: [.nightly, .tart-runner]
   stage: version-test
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -483,13 +637,10 @@ nightly-min-version-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 nightly-beta-test:
-  extends: .nightly
+  extends: [.nightly, .tart-runner]
   stage: version-test
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-ios, script]
@@ -542,7 +693,7 @@ nightly-beta-test-web:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 nightly-ios:
-  extends: .nightly
+  extends: [.nightly, .tart-runner]
   stage: e2e-test
   script:
     - !reference [.nightly-vars, script]

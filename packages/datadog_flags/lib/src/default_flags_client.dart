@@ -129,6 +129,9 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
     }
 
     final assignment = _repository.flagAssignment(key);
+    // Capture before telemetry invokes application-provided callbacks, which
+    // may synchronously clear the repository.
+    final restoredFromStore = _repository.isRestoredFromStore;
     if (assignment == null) {
       _evaluationAggregator.recordEvaluation(
         flagKey: key,
@@ -199,7 +202,7 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
       key: key,
       value: resolvedValue as T,
       variant: assignment.variationKey,
-      reason: assignment.reason,
+      reason: restoredFromStore ? 'CACHED' : assignment.reason,
     );
   }
 }

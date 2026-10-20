@@ -27,6 +27,9 @@ internal class ResourceResolverTest {
     val mockResourcesWriter = mockk<ResourceWriter>()
     val mockBitmapHandler = mockk<BitmapHandler>()
 
+    /** Resource keys are only unique within one engine, so every call is scoped by a token. */
+    val engineToken = "test-engine"
+
     fun createFakeImage(width: Int, height: Int, filledWith: Byte = 0): ByteBuffer {
         val byteArray = ByteArray(width * height) { filledWith }
         return ByteBuffer.wrap(byteArray)
@@ -44,7 +47,7 @@ internal class ResourceResolverTest {
         )
 
         // When
-        val result = resolver.resolveResource(key)
+        val result = resolver.resolveResource(engineToken, key)
 
         // Then
         assertThat(result).isNull()
@@ -70,8 +73,8 @@ internal class ResourceResolverTest {
 
         // When
         val fakeImage = createFakeImage(width = imageWidth, height = imageHeight)
-        resolver.addResource(key, imageWidth, imageHeight, fakeImage)
-        val result = resolver.resolveResource(key)
+        resolver.addResource(engineToken, key, imageWidth, imageHeight, fakeImage)
+        val result = resolver.resolveResource(engineToken, key)
 
         // Then - this is the MD5 hash of an array of 25 zero bytes
         assertThat(result).isEqualTo("d28c293e10139d5d8f6e4592aeaffc1b")
@@ -98,10 +101,10 @@ internal class ResourceResolverTest {
 
         // When
         val fakeImage = createFakeImage(imageWidth, imageHeight)
-        resolver.addResource(keyA, imageWidth, imageHeight, fakeImage)
-        resolver.addResource(keyB, imageWidth, imageHeight, fakeImage)
-        val resultA = resolver.resolveResource(keyA)
-        val resultB = resolver.resolveResource(keyB)
+        resolver.addResource(engineToken, keyA, imageWidth, imageHeight, fakeImage)
+        resolver.addResource(engineToken, keyB, imageWidth, imageHeight, fakeImage)
+        val resultA = resolver.resolveResource(engineToken, keyA)
+        val resultB = resolver.resolveResource(engineToken, keyB)
 
         // Then
         assertThat(resultA).isEqualTo(resultB)
@@ -138,10 +141,10 @@ internal class ResourceResolverTest {
         every { mockResourcesWriter.write(any(), any()) } answers {}
 
         // When
-        resolver.addResource(key, imageWidthA, imageHeightA, fakeImageA)
-        resolver.addResource(key + 1, imageWidthB, imageHeightB, fakeImageB)
-        val resultA = resolver.resolveResource(key)
-        val resultB = resolver.resolveResource(key + 1)
+        resolver.addResource(engineToken, key, imageWidthA, imageHeightA, fakeImageA)
+        resolver.addResource(engineToken, key + 1, imageWidthB, imageHeightB, fakeImageB)
+        val resultA = resolver.resolveResource(engineToken, key)
+        val resultB = resolver.resolveResource(engineToken, key + 1)
 
         // Then
         assertThat(resultA).isNotEqualTo(resultB)
@@ -167,9 +170,9 @@ internal class ResourceResolverTest {
         every { mockResourcesWriter.write(any(), any()) } answers {}
 
         // When
-        resolver.addResource(key, imageWidth, imageHeight, fakeImage)
-        val resultA = resolver.resolveResource(key)
-        val resultB = resolver.resolveResource(key)
+        resolver.addResource(engineToken, key, imageWidth, imageHeight, fakeImage)
+        val resultA = resolver.resolveResource(engineToken, key)
+        val resultB = resolver.resolveResource(engineToken, key)
 
         // Then
         assertThat(resultA).isEqualTo(resultB)
@@ -198,8 +201,8 @@ internal class ResourceResolverTest {
         every { mockResourcesWriter.write(any(), any()) } answers {}
 
         // When
-        resolver.addResource(key, imageWidth, imageHeight, fakeImage)
-        val resultA = resolver.resolveResource(key)
+        resolver.addResource(engineToken, key, imageWidth, imageHeight, fakeImage)
+        val resultA = resolver.resolveResource(engineToken, key)
 
         // Then
         verify { mockResourcesWriter.write(resultA!!, refEq(fakeCompressedImage)) }
@@ -236,10 +239,10 @@ internal class ResourceResolverTest {
         every { mockResourcesWriter.write(any(), any()) } answers {}
 
         // When
-        resolver.addResource(key, imageWidthA, imageHeightA, fakeImageA)
-        resolver.addResource(key + 1, imageWidthB, imageHeightB, fakeImageB)
-        val resultA = resolver.resolveResource(key)
-        val resultB = resolver.resolveResource(key + 1)
+        resolver.addResource(engineToken, key, imageWidthA, imageHeightA, fakeImageA)
+        resolver.addResource(engineToken, key + 1, imageWidthB, imageHeightB, fakeImageB)
+        val resultA = resolver.resolveResource(engineToken, key)
+        val resultB = resolver.resolveResource(engineToken, key + 1)
 
         // Then
         assertThat(resultA).isNotEqualTo(resultB)
@@ -267,13 +270,130 @@ internal class ResourceResolverTest {
         every { mockResourcesWriter.write(any(), any()) } answers {}
 
         // When
-        resolver.addResource(key, imageWidth, imageHeight, fakeImage)
-        resolver.addResource(key + 1, imageWidth, imageHeight, fakeImage)
-        val resultA = resolver.resolveResource(key)
-        val resultB = resolver.resolveResource(key)
+        resolver.addResource(engineToken, key, imageWidth, imageHeight, fakeImage)
+        resolver.addResource(engineToken, key + 1, imageWidth, imageHeight, fakeImage)
+        val resultA = resolver.resolveResource(engineToken, key)
+        val resultB = resolver.resolveResource(engineToken, key)
 
         // Then
         assertThat(resultA).isEqualTo(resultB)
         verify(exactly = 1) { mockResourcesWriter.write(resultA!!, refEq(fakeCompressedImage)) }
     }
+
+    // region Engine scoping
+
+    @Test
+    fun `M keep resources apart W resolveResource {same key, two engines}`(
+        @IntForgery key: Int,
+        @IntForgery(5, 50) imageWidth: Int,
+        @IntForgery(5, 50) imageHeight: Int
+    ) {
+        // Given - both engines issue the same key, because each Dart isolate counts from the same
+        // startingResourceKey
+        val resolver = DefaultResourceResolver(
+            mockInternalLogger,
+            mockResourcesWriter,
+            mockBitmapHandler
+        )
+        val engineA = "engine-a"
+        val engineB = "engine-b"
+        val fakeImageA = createFakeImage(imageWidth, imageHeight, filledWith = 0)
+        val fakeImageB = createFakeImage(imageWidth, imageHeight, filledWith = 7)
+        val mockBitmapA = mockk<Bitmap>()
+        val mockBitmapB = mockk<Bitmap>()
+        val fakeCompressedImageA = ByteArray(25) { 0 }
+        val fakeCompressedImageB = ByteArray(25) { 124 }
+        every {
+            mockBitmapHandler.createBitmap(any(), any(), refEq(fakeImageA))
+        } returns mockBitmapA
+        every {
+            mockBitmapHandler.createBitmap(any(), any(), refEq(fakeImageB))
+        } returns mockBitmapB
+        every { mockBitmapHandler.compressBitmap(mockBitmapA, any()) } returns fakeCompressedImageA
+        every { mockBitmapHandler.compressBitmap(mockBitmapB, any()) } returns fakeCompressedImageB
+        every { mockResourcesWriter.write(any(), any()) } answers {}
+
+        // When
+        resolver.addResource(engineA, key, imageWidth, imageHeight, fakeImageA)
+        resolver.addResource(engineB, key, imageWidth, imageHeight, fakeImageB)
+
+        // Then - each engine gets its own image back, not whichever was added last
+        assertThat(resolver.resolveResource(engineA, key))
+            .isEqualTo("d28c293e10139d5d8f6e4592aeaffc1b")
+        assertThat(resolver.resolveResource(engineB, key))
+            .isNotEqualTo("d28c293e10139d5d8f6e4592aeaffc1b")
+    }
+
+    @Test
+    fun `M return null W resolveResource {key belongs to another engine}`(
+        @IntForgery key: Int,
+        @IntForgery(5, 50) imageWidth: Int,
+        @IntForgery(5, 50) imageHeight: Int
+    ) {
+        // Given
+        val resolver = DefaultResourceResolver(
+            mockInternalLogger,
+            mockResourcesWriter,
+            mockBitmapHandler
+        )
+        val fakeImage = createFakeImage(imageWidth, imageHeight)
+
+        // When
+        resolver.addResource("engine-a", key, imageWidth, imageHeight, fakeImage)
+
+        // Then
+        assertThat(resolver.resolveResource("engine-b", key)).isNull()
+    }
+
+    @Test
+    fun `M forget the engine's resources W releaseEngine`(
+        @IntForgery key: Int,
+        @IntForgery(5, 50) imageWidth: Int,
+        @IntForgery(5, 50) imageHeight: Int
+    ) {
+        // Given
+        val resolver = DefaultResourceResolver(
+            mockInternalLogger,
+            mockResourcesWriter,
+            mockBitmapHandler
+        )
+        val fakeImage = createFakeImage(imageWidth, imageHeight)
+        resolver.addResource(engineToken, key, imageWidth, imageHeight, fakeImage)
+
+        // When
+        resolver.releaseEngine(engineToken)
+
+        // Then
+        assertThat(resolver.resolveResource(engineToken, key)).isNull()
+    }
+
+    @Test
+    fun `M leave other engines untouched W releaseEngine`(
+        @IntForgery key: Int,
+        @IntForgery(5, 50) imageWidth: Int,
+        @IntForgery(5, 50) imageHeight: Int
+    ) {
+        // Given
+        val resolver = DefaultResourceResolver(
+            mockInternalLogger,
+            mockResourcesWriter,
+            mockBitmapHandler
+        )
+        val fakeImage = createFakeImage(imageWidth, imageHeight)
+        val mockBitmap = mockk<Bitmap>()
+        every { mockBitmapHandler.createBitmap(any(), any(), refEq(fakeImage)) } returns mockBitmap
+        every { mockBitmapHandler.compressBitmap(mockBitmap, any()) } returns ByteArray(25) { 0 }
+        every { mockResourcesWriter.write(any(), any()) } answers {}
+        resolver.addResource("engine-a", key, imageWidth, imageHeight, fakeImage)
+        resolver.addResource("engine-b", key, imageWidth, imageHeight, fakeImage)
+
+        // When
+        resolver.releaseEngine("engine-a")
+
+        // Then - a detaching engine cannot disturb one that is still recording
+        assertThat(resolver.resolveResource("engine-b", key))
+            .isEqualTo("d28c293e10139d5d8f6e4592aeaffc1b")
+    }
+
+    // endregion
 }

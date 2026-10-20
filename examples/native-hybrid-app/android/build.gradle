@@ -3,25 +3,9 @@
  * This product includes software developed at Datadog (https://www.datadoghq.com/).
  * Copyright 2016-Present Datadog, Inc.
  */
-buildscript {
-    repositories {
-        google()
-    }
-
-    dependencies {
-        classpath "org.jlleitschuh.gradle:ktlint-gradle:11.6.0"
-    }
-}
 
 plugins {
     id 'com.android.application' version '8.9.1' apply false
     id 'com.android.library' version '8.9.1' apply false
     id 'org.jetbrains.kotlin.android' version '2.2.20' apply false
 }
-
-subprojects {
-    if (project.projectDir.canonicalPath.startsWith(rootProject.projectDir.canonicalPath)) {
-        apply from: "${project.rootDir}/buildscripts/ktlint.gradle"
-    }
-}
-

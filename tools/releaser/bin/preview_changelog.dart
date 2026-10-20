@@ -33,10 +33,10 @@ Future<void> main(List<String> arguments) async {
     ..addOption('package', mandatory: true)
     ..addOption(
       'trigger',
-      allowed: ['auto', 'mainline', 'patch', 'prerelease'],
+      allowed: ['auto', 'mainline', 'support', 'prerelease'],
       defaultsTo: 'auto',
       help:
-          'Which trigger context to plan for. "auto" detects patch from '
+          'Which trigger context to plan for. "auto" detects support from '
           'the current branch name, defaulting to mainline otherwise.',
     );
   final args = argParser.parse(arguments);
@@ -66,7 +66,7 @@ Future<void> main(List<String> arguments) async {
   final costTracker = LlmCostTracker();
   final aiGatewayClient = HttpAiGatewayClient.fromEnvironment();
   try {
-    final entries = await generateChangelogForPackage(
+    final changelog = await generateChangelogForPackage(
       aiGatewayClient,
       packagePlan,
       github: GithubCommandWrapper(gitDir.path),
@@ -76,7 +76,7 @@ Future<void> main(List<String> arguments) async {
     );
 
     print('## ${packagePlan.newVersion}\n');
-    print(renderChangelogSection(entries));
+    print(renderChangelogSection(changelog.entries));
 
     print('\n--- LLM cost summary ---\n');
     costTracker.printSummary(_log);

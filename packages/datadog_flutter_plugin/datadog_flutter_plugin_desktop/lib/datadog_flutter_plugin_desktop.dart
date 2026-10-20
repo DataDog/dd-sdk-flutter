@@ -10,6 +10,7 @@ import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart'
 import 'src/desktop_platform.dart';
 import 'src/ffi_bindings.dart';
 
+export 'src/desktop_data_directory.dart';
 export 'src/desktop_platform.dart';
 export 'src/ffi_bindings.dart';
 export 'src/logs_desktop_platform.dart';

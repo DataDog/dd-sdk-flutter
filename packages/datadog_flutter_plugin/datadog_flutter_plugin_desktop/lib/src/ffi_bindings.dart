@@ -2355,6 +2355,56 @@ class DdSdkFfi {
       _dd_rum_config_set_track_anonymous_userPtr
           .asFunction<void Function(ffi.Pointer<dd_rum_config_t>, bool)>();
 
+  /// Registers a callback that is notified of changes to RUM state: the active session,
+  /// the anonymous user ID, and the active view. It is invoked once when the SDK starts,
+  /// with the current state, and again whenever any value in dd_rum_context_message_t
+  /// changes. It is never invoked after dd_core_stop() returns. Pass NULL to remove the
+  /// receiver.
+  void dd_rum_config_set_context_receiver(
+    ffi.Pointer<dd_rum_config_t> config,
+    dd_rum_context_receiver_t receiver,
+  ) {
+    return _dd_rum_config_set_context_receiver(config, receiver);
+  }
+
+  late final _dd_rum_config_set_context_receiverPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(
+            ffi.Pointer<dd_rum_config_t>,
+            dd_rum_context_receiver_t,
+          )
+        >
+      >('dd_rum_config_set_context_receiver');
+  late final _dd_rum_config_set_context_receiver =
+      _dd_rum_config_set_context_receiverPtr
+          .asFunction<
+            void Function(
+              ffi.Pointer<dd_rum_config_t>,
+              dd_rum_context_receiver_t,
+            )
+          >();
+
+  /// Sets the `userdata` value passed to the context receiver on each invocation.
+  void dd_rum_config_set_context_receiver_userdata(
+    ffi.Pointer<dd_rum_config_t> config,
+    ffi.Pointer<ffi.Void> userdata,
+  ) {
+    return _dd_rum_config_set_context_receiver_userdata(config, userdata);
+  }
+
+  late final _dd_rum_config_set_context_receiver_userdataPtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Void Function(ffi.Pointer<dd_rum_config_t>, ffi.Pointer<ffi.Void>)
+        >
+      >('dd_rum_config_set_context_receiver_userdata');
+  late final _dd_rum_config_set_context_receiver_userdata =
+      _dd_rum_config_set_context_receiver_userdataPtr
+          .asFunction<
+            void Function(ffi.Pointer<dd_rum_config_t>, ffi.Pointer<ffi.Void>)
+          >();
+
   /// Attribute key that, when included in the `attributes` passed to
   /// dd_rum_add_error(), sets a custom Error Tracking grouping fingerprint on the
   /// resulting RUM error event.
@@ -3499,6 +3549,22 @@ typedef dd_log_error_t = dd_log_error;
 
 /// RUM configuration struct: initialize with dd_rum_config_init(), then call
 /// dd_rum_config_set_<value>().
+/// /
+/// /**
+/// Snapshot of RUM state delivered to a dd_rum_context_receiver_t.
+final class dd_rum_context_message extends ffi.Struct {
+  /// ID of the active RUM session; all zeroes if none, or if the session isn't sampled.
+  external dd_uuid_t session_id;
+
+  /// Anonymous user ID persisted for this device; all zeroes if anonymous user tracking
+  /// is disabled or no ID is available.
+  external dd_uuid_t anonymous_id;
+
+  /// ID of the active RUM view; all zeroes if none, or if there is no active, sampled
+  /// session.
+  external dd_uuid_t view_id;
+}
+
 final class dd_rum_config extends ffi.Struct {
   @ffi.Uint32()
   external int version;
@@ -3510,10 +3576,35 @@ final class dd_rum_config extends ffi.Struct {
 
   @ffi.Bool()
   external bool track_anonymous_user;
+
+  external dd_rum_context_receiver_t context_receiver;
+
+  external ffi.Pointer<ffi.Void> context_receiver_userdata;
 }
+
+/// Callback invoked when the RUM state described by dd_rum_context_message_t changes.
+/// Runs on an SDK-internal thread, so it must be thread-safe and should return quickly.
+/// `userdata` is the value supplied to dd_rum_config_set_context_receiver_userdata(), or
+/// NULL.
+typedef dd_rum_context_receiver_t =
+    ffi.Pointer<ffi.NativeFunction<dd_rum_context_receiver_tFunction>>;
+typedef dd_rum_context_receiver_tFunction =
+    ffi.Void Function(
+      ffi.Pointer<dd_rum_context_message_t> message,
+      ffi.Pointer<ffi.Void> userdata,
+    );
+typedef Dartdd_rum_context_receiver_tFunction =
+    void Function(
+      ffi.Pointer<dd_rum_context_message_t> message,
+      ffi.Pointer<ffi.Void> userdata,
+    );
 
 /// RUM configuration struct: initialize with dd_rum_config_init(), then call
 /// dd_rum_config_set_<value>().
+/// /
+/// /**
+/// Snapshot of RUM state delivered to a dd_rum_context_receiver_t.
+typedef dd_rum_context_message_t = dd_rum_context_message;
 typedef dd_rum_config_t = dd_rum_config;
 
 final class dd_rum extends ffi.Opaque {}

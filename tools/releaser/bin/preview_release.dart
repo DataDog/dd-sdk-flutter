@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:logging/logging.dart';
+import 'package:releaser/cli_logging.dart';
 import 'package:releaser/git/git_dir.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/native_sdk_changelog.dart';
@@ -15,13 +16,9 @@ import 'package:releaser/release_plan.dart';
 final _log = Logger('preview_release');
 
 Future<void> main(List<String> arguments) async {
-  Logger.root.onRecord.listen((record) {
-    if (record.level >= Level.WARNING) {
-      stderr.writeln(record.message);
-    } else {
-      print(record.message);
-    }
-  });
+  // The real level depends on --verbose, set below once args are parsed;
+  // this just wires up the listener ahead of that.
+  configureCliLogging();
 
   final argParser = ArgParser()
     ..addOption(
@@ -37,8 +34,9 @@ Future<void> main(List<String> arguments) async {
           'selection to every member of that group. Each extra sibling '
           'still only ships if independently eligible (qualifying '
           'commits, or a forced native SDK update) -- this does not force '
-          'them in the way --packages itself does.',
-      defaultsTo: false,
+          'them in the way --packages itself does. Pass '
+          '--no-include-federated to release only the named packages.',
+      defaultsTo: true,
     )
     ..addOption(
       'bump-type',
@@ -66,11 +64,14 @@ Future<void> main(List<String> arguments) async {
     )
     ..addOption(
       'trigger',
-      allowed: ['auto', 'mainline', 'patch', 'prerelease'],
+      allowed: ['auto', 'mainline', 'support', 'prerelease'],
       defaultsTo: 'auto',
       help:
-          'Which trigger context to plan for. "auto" detects patch from '
-          'the current branch name, defaulting to mainline otherwise.',
+          'Which trigger context to plan for. "auto" detects support from '
+          'the current branch name, defaulting to mainline otherwise -- it '
+          'never auto-selects "prerelease", so pass that explicitly to '
+          'preview a pre-release from the current branch (develop, v4, or '
+          'another whitelisted pre-release branch).',
     )
     ..addOption(
       'repo-root',

@@ -179,52 +179,43 @@ void main() {
       expect(result.fixes, isEmpty);
     });
 
-    test(
-      'tells the model which package it is writing for, and to omit '
-      'changes only visible in a different package',
-      () async {
-        final client = FakeAiGatewayClient([_emptyEntryList]);
+    test('tells the model which package it is writing for, and to omit '
+        'changes only visible in a different package', () async {
+      final client = FakeAiGatewayClient([_emptyEntryList]);
 
-        await runChangelogEntryListPrompt(client, 'datadog_dio', 'a group', [
-          const PrDetails(number: 1, title: 't', body: 'b'),
-        ]);
+      await runChangelogEntryListPrompt(client, 'datadog_dio', 'a group', [
+        const PrDetails(number: 1, title: 't', body: 'b'),
+      ]);
 
-        expect(
-          client.prompts.single,
-          allOf(
-            contains('`datadog_dio`'),
-            contains('a *different* package'),
-          ),
-        );
-      },
-    );
+      expect(
+        client.prompts.single,
+        allOf(contains('`datadog_dio`'), contains('a *different* package')),
+      );
+    });
 
-    test(
-      'includes a PR\'s touched files, and tells the model a touched '
-      'pubspec.yaml means the PR affects this package regardless of what '
-      'the PR body says',
-      () async {
-        final client = FakeAiGatewayClient([_emptyEntryList]);
+    test('includes a PR\'s touched files, and tells the model a touched '
+        'pubspec.yaml means the PR affects this package regardless of what '
+        'the PR body says', () async {
+      final client = FakeAiGatewayClient([_emptyEntryList]);
 
-        await runChangelogEntryListPrompt(client, 'datadog_dio', 'a group', [
-          const PrDetails(
-            number: 1,
-            title: 'feat: loosen constraints repo-wide',
-            body: 'Loosens constraints on most packages.',
-            touchedFiles: ['pubspec.yaml'],
-          ),
-        ]);
+      await runChangelogEntryListPrompt(client, 'datadog_dio', 'a group', [
+        const PrDetails(
+          number: 1,
+          title: 'feat: loosen constraints repo-wide',
+          body: 'Loosens constraints on most packages.',
+          touchedFiles: ['pubspec.yaml'],
+        ),
+      ]);
 
-        expect(
-          client.prompts.single,
-          allOf(
-            contains('<files_touched_in_datadog_dio>'),
-            contains('pubspec.yaml'),
-            contains('do not omit an entry for it'),
-          ),
-        );
-      },
-    );
+      expect(
+        client.prompts.single,
+        allOf(
+          contains('<files_touched_in_datadog_dio>'),
+          contains('pubspec.yaml'),
+          contains('do not omit an entry for it'),
+        ),
+      );
+    });
 
     test(
       'omits the touched-files tag from the PR block when nothing is known',
@@ -268,23 +259,20 @@ void main() {
       expect(result.fixes.single.text, 'Fixed a bug.');
     });
 
-    test(
-      'tells the model which package it is finalizing, and to drop '
-      'entries not specific to it',
-      () async {
-        final client = FakeAiGatewayClient([_emptyEntryList]);
+    test('tells the model which package it is finalizing, and to drop '
+        'entries not specific to it', () async {
+      final client = FakeAiGatewayClient([_emptyEntryList]);
 
-        await runCleanupPrompt(client, 'datadog_dio', const ChangelogEntryList());
+      await runCleanupPrompt(client, 'datadog_dio', const ChangelogEntryList());
 
-        expect(
-          client.prompts.single,
-          allOf(
-            contains('`datadog_dio`'),
-            contains('not actually specific to `datadog_dio`'),
-          ),
-        );
-      },
-    );
+      expect(
+        client.prompts.single,
+        allOf(
+          contains('`datadog_dio`'),
+          contains('not actually specific to `datadog_dio`'),
+        ),
+      );
+    });
   });
 
   group('ChangelogEntryList', () {
@@ -314,11 +302,7 @@ void main() {
     test('short-circuits with no LLM calls for an empty PR list', () async {
       final client = FakeAiGatewayClient([]);
 
-      final result = await generateChangelogEntries(
-        client,
-        'datadog_dio',
-        [],
-      );
+      final result = await generateChangelogEntries(client, 'datadog_dio', []);
 
       expect(result.isEmpty, isTrue);
       expect(client.prompts, isEmpty);
@@ -374,16 +358,69 @@ void main() {
         },
       ]);
 
-      final result = await generateChangelogEntries(
-        client,
-        'datadog_dio',
-        prs,
-      );
+      final result = await generateChangelogEntries(client, 'datadog_dio', prs);
 
       expect(result.features.single.text, 'Adds a thing.');
       expect(result.fixes.single.text, 'Fixes a bug.');
       expect(client.prompts, hasLength(4));
     });
+
+    test(
+      'onGroups only reports groups whose synthesis produced an entry',
+      () async {
+        final prs = [
+          const PrDetails(number: 1, title: 'feat: add a thing', body: 'b1'),
+          const PrDetails(number: 2, title: 'chore: tidy up', body: 'b2'),
+        ];
+
+        final client = FakeAiGatewayClient([
+          // Pass 1: group -- every PR must appear in some group, including
+          // the chore.
+          {
+            'groups': [
+              {
+                'label': 'thing',
+                'prs': [
+                  {'number': 1, 'title': 'feat: add a thing'},
+                ],
+              },
+              {
+                'label': 'tidy up',
+                'prs': [
+                  {'number': 2, 'title': 'chore: tidy up'},
+                ],
+              },
+            ],
+          },
+          // Pass 2, group "thing"
+          {
+            ..._emptyEntryList,
+            'features': [
+              {'text': 'Adds a thing.'},
+            ],
+          },
+          // Pass 2, group "tidy up" -- correctly omitted, no entries.
+          _emptyEntryList,
+          // Pass 3: cleanup
+          {
+            ..._emptyEntryList,
+            'features': [
+              {'text': 'Adds a thing.'},
+            ],
+          },
+        ]);
+
+        List<PrGroup>? reportedGroups;
+        await generateChangelogEntries(
+          client,
+          'datadog_dio',
+          prs,
+          onGroups: (groups) => reportedGroups = groups,
+        );
+
+        expect(reportedGroups!.map((g) => g.label), ['thing']);
+      },
+    );
   });
 
   group('synthesizeNativeSdkSubEntries', () {

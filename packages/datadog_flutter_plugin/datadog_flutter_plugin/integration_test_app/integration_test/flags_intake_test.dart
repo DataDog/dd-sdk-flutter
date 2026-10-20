@@ -90,9 +90,7 @@ void main() {
     expect(event['error'], {'message': 'PROVIDER_NOT_READY'});
     final context = event['context'] as Map<String, Object?>;
     expect(context['dd'], {
-      'env': 'integration',
       'service': 'integration-service',
-      'version': '1.2.3',
       'rum': {
         'application': {'id': 'application-id'},
       },

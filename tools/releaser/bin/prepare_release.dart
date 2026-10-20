@@ -7,22 +7,35 @@
 // generates the AI changelog, applies every change, and opens the release
 // PR. See `_ReleaseTarget.forTrigger` for where each trigger's PR targets.
 
-// Release-prep output is deliberately split into two commits, so that a
-// later cherry-pick back onto a dev-line branch (`develop`, or a
-// pre-release branch like `v4`) can take one without the other:
+// Release-prep output is deliberately split into two commits, so that
+// backing commit A alone into a dev-line branch (`develop`, or a
+// pre-release branch like `v4`) later doesn't also drag commit B along:
 //   - Commit A ("content"): changelog, version bumps, dependent
 //     constraints, NATIVE_SDK_VERSIONS.md. Safe to eventually land on a
 //     dev-line branch -- that branch still needs its own changelog/version
-//     history, just not what's below.
+//     history, just not what's below. Built on `release-content/*`.
 //   - Commit B ("publish-prep"): dependency_overrides checks, native SDK
-//     pinning, dry-run validation, `.release/manifest.json`. Must never
-//     reach a dev-line branch -- it pins things a dev line needs to keep
-//     floating (native SDKs on `develop`, for example) and its manifest is
-//     meaningless there.
-// Patch is the exception: it doesn't split, since nothing else ever
-// develops on a patch branch, so there's no dev-line commit B could leak
-// into. `manifest.contentCommit` is `null` on patch for exactly this
-// reason -- see its doc comment in `manifest.dart`.
+//     pinning, dry-run validation. Must never reach a dev-line branch -- it
+//     pins things a dev line needs to keep floating (native SDKs on
+//     `develop`, for example).
+// `release-prep/*` is forked from commit A, then has the PR's target branch
+// (`main`/`vN-main`) merged in, then gets commit B on top. That merge is what
+// lets commit B's pins change from one release to the next without
+// conflicting with the previous release's pins, which live on the target
+// branch but never on the dev line -- and it happens before commit B, so
+// commit A's own history stays free of them.
+// A support-branch release (`release/{package}/vX.Y.x` for a patch,
+// `release/{package}/vX.x` for a minor) doesn't split: nothing else ever
+// develops on a support branch, so there's no dev-line commit B could leak
+// into. Its release-prep PR targets the support branch itself.
+//
+// `publish_release.dart` reconstructs what it needs from the release PR's
+// body. See `ReleaseManifest`'s doc comment in `manifest.dart` for the shape
+// of that data.
+//
+// `--commit-headless` makes the pushes go through `commit-headless` and
+// GitHub's merges API, since a CI runner can't sign commits itself. A local
+// run leaves it off: plain git, with commits signed by the user's git config.
 
 import 'dart:io';
 
@@ -30,21 +43,24 @@ import 'package:args/args.dart';
 import 'package:git/git.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
-import 'package:releaser/changelog_writer.dart';
+import 'package:releaser/changelog_util.dart';
+import 'package:releaser/cli_logging.dart';
 import 'package:releaser/cmake_util.dart';
 import 'package:releaser/cocoapod_util.dart';
 import 'package:releaser/dependency_constraints.dart';
 import 'package:releaser/git/git_dir.dart';
 import 'package:releaser/git/release_git.dart';
+import 'package:releaser/git/release_publisher.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/gradle_util.dart';
 import 'package:releaser/llm/ai_gateway.dart';
 import 'package:releaser/llm/changelog.dart';
 import 'package:releaser/llm/costs.dart';
-import 'package:releaser/manifest.dart';
 import 'package:releaser/native_sdk.dart';
 import 'package:releaser/package_discovery.dart';
+import 'package:releaser/publish_rules.dart';
 import 'package:releaser/release_plan.dart';
+import 'package:releaser/release_pr.dart';
 import 'package:releaser/release_validator.dart';
 import 'package:releaser/spm_util.dart';
 import 'package:releaser/version_updater.dart';
@@ -53,24 +69,18 @@ import 'package:releaser/yaml_util.dart';
 final _log = Logger('prepare_release');
 
 Future<void> main(List<String> arguments) async {
-  Logger.root.onRecord.listen((record) {
-    if (record.level >= Level.WARNING) {
-      stderr.writeln(record.message);
-    } else {
-      print(record.message);
-    }
-  });
+  configureCliLogging();
 
   final argParser = ArgParser()
     ..addOption(
       'packages',
       help:
           'Comma-separated package names. Omit for --all behaviour: every '
-          'package with pending commits. Not accepted on a patch branch.',
+          'package with pending commits. Not accepted on a support branch.',
     )
     ..addFlag(
       'include-federated',
-      defaultsTo: false,
+      defaultsTo: true,
       help: 'See preview_release.dart -- same meaning here.',
     )
     ..addOption('bump-type', help: 'Override the computed bump.')
@@ -80,8 +90,14 @@ Future<void> main(List<String> arguments) async {
     ..addOption('prerelease-label')
     ..addOption(
       'trigger',
-      allowed: ['auto', 'mainline', 'patch', 'prerelease'],
+      allowed: ['auto', 'mainline', 'support', 'prerelease'],
       defaultsTo: 'auto',
+      help:
+          'Which trigger context to run. "auto" detects support from the '
+          'current branch name, defaulting to mainline otherwise -- it '
+          'never auto-selects "prerelease", so pass that explicitly to cut '
+          'a pre-release from the current branch (develop, v4, or another '
+          'whitelisted pre-release branch).',
     )
     ..addOption(
       'repo-root',
@@ -94,6 +110,15 @@ Future<void> main(List<String> arguments) async {
           'Apply every change and create both commits locally, but stop '
           'before pushing or opening a PR -- for local/CI verification '
           'without side effects visible outside this checkout.',
+    )
+    ..addFlag(
+      'commit-headless',
+      defaultsTo: false,
+      help:
+          'Push through commit-headless and merge through the GitHub API, so '
+          'GitHub signs the commits. For CI; needs HEADLESS_TOKEN or '
+          'GITHUB_TOKEN plus the commit-headless and gh binaries. Leave off '
+          'for a local run, where git signs with its own config.',
     )
     ..addFlag(
       'skip-publish-validation',
@@ -115,8 +140,6 @@ Future<void> main(List<String> arguments) async {
     print(argParser.usage);
     return;
   }
-
-  Logger.root.level = Level.FINE;
 
   final gitDir = await getGitDir(args['repo-root'] as String?);
   if (gitDir == null) {
@@ -158,6 +181,7 @@ Future<void> main(List<String> arguments) async {
       github: GithubCommandWrapper(gitDir.path),
       aiGatewayClient: aiGatewayClient,
       dryRun: args['dry-run'] as bool,
+      commitHeadless: args['commit-headless'] as bool,
       skipPublishValidation: args['skip-publish-validation'] as bool,
     );
   } catch (e) {
@@ -169,65 +193,60 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-/// Where a trigger's release-prep output lands -- both which branch to
-/// build it on and which branch its PR (if any) targets.
+/// Where a trigger's release-prep output lands.
 class _ReleaseTarget {
-  /// Branch to check out and build both commits on. For mainline/
-  /// pre-release this is a brand new `release-prep/*` branch off
-  /// [ctxCurrentBranch]; for patch it's the patch branch itself -- nothing
-  /// else ever develops there, so there's no need for a separate branch.
+  /// The new `release-prep/*` branch the PR is opened from.
   final String workingBranch;
 
-  /// The branch to PR into, or null when this trigger pushes directly
-  /// with no PR (patch's primary path).
-  final String? prBase;
+  /// The branch the PR merges into.
+  final String prBase;
 
-  final bool createsNewBranch;
-
-  /// Tag to push at commit A's SHA, or null on patch (no commit A exists to
-  /// protect -- patch never splits). This repo auto-deletes a PR's head
-  /// branch on merge and allows squash/rebase, either of which would
-  /// otherwise strand commit A's original commit object once
-  /// `release-prep/*` is gone; the tag keeps it fetchable by SHA regardless
-  /// of which merge strategy lands the release-prep PR, so Phase 2's
-  /// backport can still `git merge` that exact commit into the dev-line
-  /// branch afterwards. See `.plans/new-release-process.md` step 1g.
-  final String? contentTagName;
+  /// Branch carrying commit A alone, or null on a support release (no commit
+  /// A exists). This repo auto-deletes a PR's head branch on merge and allows
+  /// squash/rebase, either of which would otherwise strand commit A's
+  /// original commit object once `release-prep/*` is gone; this dedicated
+  /// branch keeps it fetchable by SHA regardless of which merge strategy
+  /// lands the release-prep PR. `publish-release.yml` opens a PR with this
+  /// as `--head` to backport commit A into the dev-line branch.
+  final String? contentBranchName;
 
   _ReleaseTarget({
     required this.workingBranch,
     required this.prBase,
-    required this.createsNewBranch,
-    required this.contentTagName,
+    required this.contentBranchName,
   });
 
   factory _ReleaseTarget.forTrigger(RunContext ctx) {
+    final workingBranch = 'release-prep/${_dateId()}';
     switch (ctx.trigger) {
       case TriggerContext.mainline:
-        final id = _dateId();
         return _ReleaseTarget(
-          workingBranch: 'release-prep/$id',
+          workingBranch: workingBranch,
           prBase: 'main',
-          createsNewBranch: true,
-          contentTagName: 'release-content/$id',
+          contentBranchName: contentBranchNameFor(workingBranch),
         );
       case TriggerContext.preRelease:
-        final id = _dateId();
+        // `develop` PRs into `main`, the same base mainline uses; `vN` PRs
+        // into `vN-main`. Phase 2 maps this PR's base back to the source
+        // branch it backports commit A into.
+        final prBase = expectedIntegrationBranch(ctx.currentBranch);
+        if (prBase == null) {
+          throw StateError(
+            '"${ctx.currentBranch}" is not a recognized pre-release source '
+            'branch (develop, vN, ...) -- refusing to guess where its '
+            'release-prep PR should merge into.',
+          );
+        }
         return _ReleaseTarget(
-          workingBranch: 'release-prep/$id',
-          // Every whitelisted pre-release branch is paired with its own
-          // disposable `{branch}-main` -- release-prep never commits or
-          // PRs onto the pre-release branch itself.
-          prBase: '${ctx.currentBranch}-main',
-          createsNewBranch: true,
-          contentTagName: 'release-content/$id',
+          workingBranch: workingBranch,
+          prBase: prBase,
+          contentBranchName: contentBranchNameFor(workingBranch),
         );
-      case TriggerContext.patch:
+      case TriggerContext.support:
         return _ReleaseTarget(
-          workingBranch: ctx.currentBranch,
-          prBase: null,
-          createsNewBranch: false,
-          contentTagName: null,
+          workingBranch: workingBranch,
+          prBase: ctx.currentBranch,
+          contentBranchName: null,
         );
     }
   }
@@ -270,6 +289,7 @@ Future<void> prepareRelease(
   required GithubCommandWrapper github,
   required AiGatewayClient aiGatewayClient,
   bool dryRun = false,
+  bool commitHeadless = false,
   bool skipPublishValidation = false,
   PublishedVersionsGateway? publishedVersions,
 }) async {
@@ -286,29 +306,22 @@ Future<void> prepareRelease(
       'a branch that could carry unmerged, unrelated commits into `main`.',
     );
   }
-  // No committed whitelist of approved pre-release branches exists in this
-  // tool -- by design, that list is meant to live in `.gitlab-ci.yml`'s
-  // `rules:` once wired up (see `.plans/new-release-process.md`), not
-  // duplicated here where it could drift out of sync. This only rules out
-  // the branches a pre-release run obviously shouldn't come from.
+  // Only rules out the branches a pre-release run obviously shouldn't come
+  // from; a branch `expectedIntegrationBranch` doesn't map is rejected later,
+  // in `_ReleaseTarget.forTrigger`. `develop` is allowed -- a pre-release cut
+  // from `develop` PRs into `main`, the same base mainline uses, and just
+  // carries a prerelease version instead of a stable one.
   if (ctx.trigger == TriggerContext.preRelease &&
-      (ctx.currentBranch == 'develop' ||
-          ctx.currentBranch == 'main' ||
+      (ctx.currentBranch == 'main' ||
           packageNameFromPatchBranch(ctx.currentBranch) != null)) {
     throw StateError(
-      'Pre-release releases must run from a dedicated long-lived '
-      'pre-release branch (e.g. `v4`), not `${ctx.currentBranch}`.',
+      'Pre-release releases must run from `develop` or a dedicated '
+      'long-lived pre-release branch (e.g. `v4`), not '
+      '`${ctx.currentBranch}`.',
     );
   }
 
-  if (!await isWorkingTreeClean(gitDir, _log)) {
-    throw StateError(
-      'Working tree at ${gitDir.path} has uncommitted changes -- '
-      'prepare-release stages everything with `git add .`, so it would '
-      'sweep them into a release commit. Commit, stash, or discard them '
-      'first.',
-    );
-  }
+  await _requireCleanWorkingTree(gitDir);
 
   final plan = await computeReleasePlan(
     ctx,
@@ -355,17 +368,31 @@ Future<void> prepareRelease(
   }
 
   final target = _ReleaseTarget.forTrigger(ctx);
+  final contentBranch = target.contentBranchName;
+  final publisher = ReleasePublisher(
+    commitHeadless: commitHeadless,
+    repoSlug: commitHeadless ? await github.repoSlug(_log) : null,
+  );
 
-  if (target.createsNewBranch) {
-    await createAndCheckoutBranch(gitDir, target.workingBranch, _log);
-  }
+  await _fetchRemoteState(gitDir, [
+    ctx.currentBranch,
+    target.prBase,
+  ], required: !dryRun);
+
+  final forkPoint = await _headSha(gitDir);
+  await createAndCheckoutBranch(
+    gitDir,
+    contentBranch ?? target.workingBranch,
+    _log,
+  );
 
   final costTracker = LlmCostTracker();
   final staleConsumerWarnings = <StaleConsumerWarning>[];
+  final groupsByPackage = <String, List<PrGroup>>{};
 
   // -- Commit A: content -- see the file-level comment above.
   for (final packagePlan in plan.packages) {
-    await _applyContentChanges(
+    final groups = await _applyContentChanges(
       packagePlan,
       ctx,
       allGroups,
@@ -375,19 +402,30 @@ Future<void> prepareRelease(
       costTracker: costTracker,
       staleConsumerWarnings: staleConsumerWarnings,
     );
+    groupsByPackage[packagePlan.package.name] = groups;
   }
 
-  final versionSummary = _versionSummary(plan.packages);
+  final versionSummaryText = versionSummary(plan.packages);
 
-  // `null` for patch -- see the file-level comment above.
-  final String? contentCommit = ctx.trigger == TriggerContext.patch
-      ? null
-      : await commitAll(
-          gitDir,
-          'chore(release): update changelog and bump versions',
-          _log,
-          body: versionSummary,
-        );
+  String? contentCommit;
+  if (contentBranch != null) {
+    contentCommit = await commitAll(
+      gitDir,
+      'chore(release): update changelog and bump versions',
+      _log,
+      body: versionSummaryText,
+    );
+    if (!dryRun) {
+      contentCommit = await publisher.pushNewBranch(
+        gitDir,
+        contentBranch,
+        forkPoint,
+        _log,
+      );
+    }
+    await createAndCheckoutBranch(gitDir, target.workingBranch, _log);
+    await _mergeTargetBranch(gitDir, publisher, target, dryRun: dryRun);
+  }
 
   // -- Commit B: publish-prep -- see the file-level comment above.
   //
@@ -426,23 +464,26 @@ Future<void> prepareRelease(
     }
   }
 
-  final manifestEntries = <ManifestPackageEntry>[];
   for (final packagePlan in plan.packages) {
-    await _applyPublishPrep(packagePlan, ctx, manifestEntries: manifestEntries);
+    await _applyPublishPrep(packagePlan);
   }
 
-  await writeManifest(
-    ctx.repoRoot,
-    ReleaseManifest(contentCommit: contentCommit, packages: manifestEntries),
-  );
+  // Keeps the eligible group's native SDK pinned to a real version even on
+  // a run that ships none of its members -- see
+  // ReleasePlan.unshippedNativeSdkPins.
+  await _pinNativeSdkDeltas(plan.unshippedNativeSdkPins);
 
   final finalCommit = await commitAll(
     gitDir,
-    ctx.trigger == TriggerContext.patch
-        ? 'chore(release): prepare patch release'
+    ctx.trigger == TriggerContext.support
+        ? 'chore(release): prepare support release'
         : 'chore(release): publish-prep',
     _log,
-    body: versionSummary,
+    body: versionSummaryText,
+    // Only for commit B: a run with no native SDK deltas to pin has nothing
+    // to stage here. A support release's one commit always has the real
+    // changelog/version-bump content from above and should never need this.
+    allowEmpty: ctx.trigger != TriggerContext.support,
   );
   _log.info('✅ Prepared release on ${target.workingBranch} ($finalCommit)');
 
@@ -477,28 +518,28 @@ Future<void> prepareRelease(
     return;
   }
 
-  await pushBranch(gitDir, target.workingBranch, _log);
+  final tip = contentBranch == null
+      ? await publisher.pushNewBranch(
+          gitDir,
+          target.workingBranch,
+          forkPoint,
+          _log,
+        )
+      : await publisher.pushCommits(gitDir, target.workingBranch, _log);
 
-  final contentTagName = target.contentTagName;
-  if (contentTagName != null && contentCommit != null) {
-    await pushTag(gitDir, contentTagName, contentCommit, _log);
-  }
-
-  final prBase = target.prBase;
-  if (prBase == null) {
-    _log.info('✅ Pushed ${target.workingBranch}.');
-    return;
-  }
-
-  final title = _prTitle(plan.packages);
-  final body = _prBody(
+  final title = prTitle(plan.packages);
+  final body = prBody(
     plan.packages,
     staleConsumerWarnings,
     publishValidationSkipped: skipPublishValidation,
+    repoSlug: await github.repoSlug(_log),
+    changelogRef: contentCommit ?? tip,
+    contentCommit: contentCommit,
+    groupsByPackage: groupsByPackage,
   );
   final prUrl = await github.createPullRequest(
     _log,
-    base: prBase,
+    base: target.prBase,
     head: target.workingBranch,
     title: title,
     body: body,
@@ -506,7 +547,110 @@ Future<void> prepareRelease(
   _log.info('✅ Opened release PR: $prUrl');
 }
 
-Future<void> _applyContentChanges(
+/// Refuses to start on a dirty working tree, since [commitAll] stages
+/// everything with `git add .` and would sweep unrelated changes into a
+/// release commit.
+///
+/// A modified `.lock` file is the exception. Setup steps like `dart pub get`
+/// rewrite a tracked `pubspec.lock`, which is harmless to throw away, so
+/// when those are the only changes they are restored and the run goes on.
+Future<void> _requireCleanWorkingTree(GitDir gitDir) async {
+  final dirty = await dirtyFiles(gitDir, _log);
+  if (dirty.isEmpty) return;
+
+  final onlyLocks = dirty.every(
+    (file) => file.isModifiedTrackedFile && p.extension(file.path) == '.lock',
+  );
+  if (!onlyLocks) {
+    throw StateError(
+      'Working tree at ${gitDir.path} has uncommitted changes:\n'
+      '${dirty.map((file) => '  $file').join('\n')}\n'
+      'prepare-release stages everything with `git add .`, so it would sweep '
+      'them into a release commit. Commit, stash, or discard them first. '
+      '(Modified .lock files alone are restored automatically.)',
+    );
+  }
+
+  _log.warning(
+    '⚠️ Restoring modified lock files, which setup steps rewrite: '
+    '${dirty.map((file) => file.path).join(', ')}',
+  );
+  await restoreFiles(gitDir, [for (final file in dirty) file.path], _log);
+}
+
+Future<String> _headSha(GitDir gitDir) async =>
+    (await gitDir.currentBranch()).sha;
+
+/// Fetches [branches] from `origin` so the target-branch merge below sees the
+/// remote's current state. A local `--dry-run` has no obligation to reach the
+/// remote, so a failure there is only a warning.
+Future<void> _fetchRemoteState(
+  GitDir gitDir,
+  List<String> branches, {
+  required bool required,
+}) async {
+  final result = await Process.run('git', [
+    'fetch',
+    'origin',
+    for (final branch in branches.toSet())
+      '+refs/heads/$branch:refs/remotes/origin/$branch',
+  ], workingDirectory: gitDir.path);
+  if (result.exitCode == 0) return;
+  if (required) {
+    throw StateError('git fetch origin failed: ${result.stderr}');
+  }
+  _log.warning(
+    '⚠️ Could not fetch origin (${(result.stderr as String).trim()}) -- '
+    'continuing from whatever this checkout already has.',
+  );
+}
+
+/// Merges the PR's target branch into the release-prep branch, between commit
+/// A and commit B. Nothing to merge on a support release, which targets the
+/// branch it was cut from.
+Future<void> _mergeTargetBranch(
+  GitDir gitDir,
+  ReleasePublisher publisher,
+  _ReleaseTarget target, {
+  required bool dryRun,
+}) async {
+  final hasTarget =
+      (await Process.run('git', [
+        'rev-parse',
+        '--verify',
+        '--quiet',
+        'origin/${target.prBase}',
+      ], workingDirectory: gitDir.path)).exitCode ==
+      0;
+  if (!hasTarget) {
+    if (!dryRun) {
+      throw StateError('origin/${target.prBase} does not exist.');
+    }
+    _log.warning(
+      '⚠️ origin/${target.prBase} is not available locally -- skipping its '
+      'merge into ${target.workingBranch}.',
+    );
+    return;
+  }
+  if (dryRun && publisher.commitHeadless) {
+    _log.info(
+      'ℹ️ --dry-run: skipping the GitHub API merge of ${target.prBase} (it needs '
+      'the branch on the remote).',
+    );
+    return;
+  }
+  await publisher.mergeRemoteBranchInto(
+    gitDir,
+    target.workingBranch,
+    target.prBase,
+    _log,
+  );
+}
+
+/// Applies commit A's changes for [packagePlan] and returns the PR groups
+/// its changelog entries came from (see `release_pr.dart`'s `prBody`) --
+/// empty for a release with no PR-derived entries at all.
+Future<List<PrGroup>> _applyContentChanges(
   PackagePlan packagePlan,
   RunContext ctx,
   List<PackageGroup> allGroups, {
@@ -519,7 +663,7 @@ Future<void> _applyContentChanges(
   final pkg = packagePlan.package;
   final packageRoot = pkg.absolutePath(ctx.repoRoot);
 
-  final entries = await generateChangelogForPackage(
+  final changelog = await generateChangelogForPackage(
     aiGatewayClient,
     packagePlan,
     github: github,
@@ -530,7 +674,7 @@ Future<void> _applyContentChanges(
   await prependChangelogSection(
     File(p.join(packageRoot, 'CHANGELOG.md')),
     packagePlan.newVersion,
-    renderChangelogSection(entries),
+    renderChangelogSection(changelog.entries),
     _log,
     false,
   );
@@ -547,26 +691,39 @@ Future<void> _applyContentChanges(
     );
   }
 
-  // Raise the app-facing package's lower bound on this package, if it's a
-  // releasing federated sibling. Not applicable on patch branches (patch
-  // versions stay within existing caret ranges) or to a group's own
-  // app-facing package (nothing depends on itself).
-  if (ctx.trigger != TriggerContext.patch &&
-      pkg.role != PackageRole.appFacing) {
-    final group = allGroups.firstWhere((g) => g.key == pkg.groupKey);
-    final appFacing = group.members.firstWhere(
-      (m) => m.role == PackageRole.appFacing,
-    );
-    await bumpDependentConstraint(
-      File(p.join(appFacing.absolutePath(ctx.repoRoot), 'pubspec.yaml')),
-      pkg.name,
-      packagePlan.newVersion,
-      _log,
-      false,
+  // Raise every other group member's lower bound on this package, so a
+  // pre-release or new major of a sibling stays resolvable. Not applicable
+  // on support branches (patch versions stay within existing caret ranges).
+  final releasingGroup = allGroups.firstWhere((g) => g.key == pkg.groupKey);
+  if (ctx.trigger != TriggerContext.support) {
+    for (final member in releasingGroup.members) {
+      if (member.name == pkg.name) continue;
+      await bumpDependentConstraint(
+        File(p.join(member.absolutePath(ctx.repoRoot), 'pubspec.yaml')),
+        pkg.name,
+        packagePlan.newVersion,
+        _log,
+        false,
+      );
+    }
+  }
+
+  final unsatisfied = await findUnsatisfiedSiblingConstraints(
+    group: releasingGroup,
+    repoRoot: ctx.repoRoot,
+    releasingPackage: pkg,
+    newVersion: packagePlan.newVersion,
+  );
+  if (unsatisfied.isNotEmpty) {
+    throw StateError(
+      '${pkg.name} ${packagePlan.newVersion} would not resolve for its '
+      'federated siblings:\n'
+      '${unsatisfied.map((w) => '  ${w.consumerPackage} requires '
+          '${w.dependencyName} ${w.constraint}').join('\n')}',
     );
   }
 
-  if (ctx.trigger != TriggerContext.patch) {
+  if (ctx.trigger != TriggerContext.support) {
     staleConsumerWarnings.addAll(
       await findStaleConsumerWarnings(
         allGroups: allGroups,
@@ -605,6 +762,8 @@ Future<void> _applyContentChanges(
       cppVersion: cppVersion,
     );
   }
+
+  return changelog.groups;
 }
 
 extension NativeSdkDeltaResolution on Iterable<NativeSdkDelta> {
@@ -623,14 +782,8 @@ extension NativeSdkDeltaResolution on Iterable<NativeSdkDelta> {
   }
 }
 
-Future<void> _applyPublishPrep(
-  PackagePlan packagePlan,
-  RunContext ctx, {
-  required List<ManifestPackageEntry> manifestEntries,
-}) async {
-  final pkg = packagePlan.package;
-
-  for (final delta in packagePlan.nativeSdkDeltas) {
+Future<void> _pinNativeSdkDeltas(List<NativeSdkDelta> deltas) async {
+  for (final delta in deltas) {
     final targetVersion = delta.targetVersion;
     if (targetVersion == null) continue;
 
@@ -654,94 +807,8 @@ Future<void> _applyPublishPrep(
       }
     }
   }
-
-  manifestEntries.add(
-    ManifestPackageEntry(
-      package: pkg.name,
-      fromVersion: packagePlan.currentVersion,
-      toVersion: packagePlan.newVersion,
-      sourceBranch: ctx.currentBranch,
-      prerelease: packagePlan.bumpLevel == VersionBumpType.prerelease,
-    ),
-  );
 }
 
-String _prTitle(List<PackagePlan> packages) {
-  if (packages.length == 1) {
-    final p = packages.single;
-    return 'release: ${p.package.name} ${p.newVersion}';
-  }
-  return 'release: ${packages.length} packages';
-}
-
-/// Plain-text "what's shipping" list shared by both Commit A and Commit
-/// B's commit messages, so `git log` on either one shows the packages and
-/// versions it belongs to without needing the other commit for context.
-String _versionSummary(List<PackagePlan> packages) => packages
-    .map((p) {
-      final bump = p.bumpLevel?.name ?? 'first release';
-      return '- ${p.package.name}: ${p.currentVersion} -> ${p.newVersion} '
-          '($bump)';
-    })
-    .join('\n');
-
-String _prBody(
-  List<PackagePlan> packages,
-  List<StaleConsumerWarning> staleConsumerWarnings, {
-  required bool publishValidationSkipped,
-}) {
-  final buffer = StringBuffer();
-
-  buffer.writeln('## Versions');
-  buffer.writeln();
-  buffer.writeln('| Package | Current | New | Bump |');
-  buffer.writeln('|---|---|---|---|');
-  for (final p in packages) {
-    final bump = p.bumpLevel?.name ?? 'first release';
-    buffer.writeln(
-      '| ${p.package.name} | ${p.currentVersion} | ${p.newVersion} | $bump |',
-    );
-  }
-
-  final nativeDeltas = packages.expand(
-    (p) => p.nativeSdkDeltas.where((d) => d.targetVersion != null),
-  );
-  if (nativeDeltas.isNotEmpty) {
-    buffer.writeln();
-    buffer.writeln('## Native SDK deltas');
-    buffer.writeln();
-    for (final delta in nativeDeltas) {
-      buffer.writeln('- $delta');
-    }
-  }
-
-  if (staleConsumerWarnings.isNotEmpty) {
-    buffer.writeln();
-    buffer.writeln('## ⚠️ Stale consumer constraints');
-    buffer.writeln();
-    for (final warning in staleConsumerWarnings) {
-      buffer.writeln('- $warning');
-    }
-  }
-
-  final allWarnings = packages.expand((p) => p.warnings);
-  if (allWarnings.isNotEmpty) {
-    buffer.writeln();
-    buffer.writeln('## ⚠️ Warnings');
-    buffer.writeln();
-    for (final warning in allWarnings) {
-      buffer.writeln('- $warning');
-    }
-  }
-
-  buffer.writeln();
-  buffer.writeln(
-    publishValidationSkipped
-        ? '⚠️ `flutter pub publish --dry-run` was skipped '
-              '(--skip-publish-validation) -- not verified for any package '
-              'above.'
-        : '`flutter pub publish --dry-run` passed for every package above.',
-  );
-
-  return buffer.toString();
+Future<void> _applyPublishPrep(PackagePlan packagePlan) async {
+  await _pinNativeSdkDeltas(packagePlan.nativeSdkDeltas);
 }

@@ -3,22 +3,29 @@
 // Copyright 2019-Present Datadog, Inc.
 
 // End-to-end coverage of the commit-A/commit-B split: runs
-// `prepareRelease` for real against a `FixtureRepo`, with
+// `prepareRelease` for real against a `FixtureRepo`, mostly with
 // `dryRun: true` (stops short of push/PR -- no real remote or `gh` in
-// this environment) and `skipPublishValidation: true` (no real Flutter
+// this environment; one test pushes to a local bare remote to cover the
+// release-content branch push specifically, tolerating the `gh` call after
+// it failing fast) and `skipPublishValidation: true` (no real Flutter
 // toolchain here). The package under test is requested explicitly with
 // zero qualifying commits, so the changelog pipeline's PR-resolution path
 // is never exercised (no `gh` calls) -- see `_applyContentChanges`.
 
+import 'dart:io';
+
+import 'package:logging/logging.dart';
+import 'package:releaser/git/release_git.dart';
 import 'package:releaser/github_cmd_wrapper.dart';
 import 'package:releaser/llm/ai_gateway.dart';
-import 'package:releaser/manifest.dart';
 import 'package:releaser/native_sdk.dart';
 import 'package:releaser/release_plan.dart';
 import 'package:test/test.dart';
+import 'package:version/version.dart';
 
 import '../bin/prepare_release.dart';
 import 'support/fixture_repo.dart';
+import 'support/test_temp.dart';
 
 // Stands in for `fetchPublishedVersions`'s real pub.dev lookup -- this suite
 // runs against a `FixtureRepo` with no network access, and `datadog_dio`'s
@@ -98,9 +105,9 @@ void main() {
 
       final contentSha = contentCommitLine.split(' ').first;
 
-      // Commit A's diff must never touch dependency_overrides, native
-      // pinning, or the manifest -- that's what makes a cherry-pick of it
-      // safe to backport (Phase 2 step 6).
+      // Commit A's diff must never touch dependency_overrides or native
+      // pinning -- that's what makes backing it into the dev-line branch
+      // safe (Phase 2's commit-A backport).
       final contentDiff = await gitDir.runCommand([
         'show',
         '--stat',
@@ -109,13 +116,8 @@ void main() {
       ]);
       expect(
         contentDiff.stdout as String,
-        isNot(contains('.release/manifest.json')),
+        isNot(contains('dependency_overrides')),
       );
-
-      final manifest = await readManifest(fixture.root.path);
-      expect(manifest.contentCommit, contentSha);
-      expect(manifest.packages, hasLength(1));
-      expect(manifest.packages.single.package, 'datadog_dio');
 
       // Both commit messages carry a body listing what's shipping, so
       // `git log` on either commit alone shows the packages/versions
@@ -141,6 +143,84 @@ void main() {
       );
     },
   );
+
+  test('pushes the release-content branch at commit A\'s exact SHA on a real '
+      '(non-dry-run) mainline run', () async {
+    // A real push needs a real remote -- a local bare repo, same pattern
+    // as release_git_test.dart. `prepareRelease` still goes on afterwards
+    // to call `github.repoSlug()`/`createPullRequest()`, which fail fast
+    // here (this remote has no GitHub owner/repo to resolve, so `gh`
+    // never gets far enough to touch the network) -- expected, and fine:
+    // both branch pushes already landed by that point, which is what
+    // this test is actually checking.
+    final gitDir = await fixture.gitDir;
+    final bareRemote = await createTestTempDir('prepare_release_test_remote_');
+    await Process.run('git', ['init', '-q', '--bare', bareRemote.path]);
+    await Process.run('git', [
+      'remote',
+      'add',
+      'origin',
+      bareRemote.path,
+    ], workingDirectory: fixture.root.path);
+
+    // Both the dev line and the PR's target branch have to exist on the
+    // remote -- the release-prep branch merges the target in.
+    for (final branch in ['develop', 'main']) {
+      await Process.run('git', [
+        'push',
+        'origin',
+        'HEAD:refs/heads/$branch',
+      ], workingDirectory: fixture.root.path);
+    }
+
+    try {
+      await expectLater(
+        prepareRelease(
+          RunContext(
+            repoRoot: fixture.root.path,
+            trigger: TriggerContext.mainline,
+            currentBranch: 'develop',
+            requestedPackages: ['datadog_dio'],
+          ),
+          gitDir: gitDir,
+          github: GithubCommandWrapper(fixture.root.path),
+          aiGatewayClient: _NeverCalledAiGatewayClient(),
+          dryRun: false,
+          skipPublishValidation: true,
+          publishedVersions: _neverPublished,
+        ),
+        throwsA(anything),
+      );
+
+      final branches = await Process.run('git', [
+        'for-each-ref',
+        '--format=%(refname:short)',
+        'refs/heads/release-content',
+      ], workingDirectory: bareRemote.path);
+      final contentBranch = (branches.stdout as String)
+          .split('\n')
+          .map((l) => l.trim())
+          .firstWhere((l) => l.startsWith('release-content/'));
+
+      final localContentSha = await gitDir.runCommand([
+        'log',
+        '--all',
+        '--format=%H',
+        '--grep=changelog',
+        '-n',
+        '1',
+      ]);
+      final expectedSha = (localContentSha.stdout as String).trim();
+
+      final remoteSha = await Process.run('git', [
+        'rev-parse',
+        '$contentBranch^{commit}',
+      ], workingDirectory: bareRemote.path);
+      expect((remoteSha.stdout as String).trim(), expectedSha);
+    } finally {
+      await bareRemote.delete(recursive: true);
+    }
+  }, timeout: const Timeout(Duration(seconds: 30)));
 
   test(
     'strips a snapshots repo from a non-releasing package\'s build.gradle',
@@ -370,12 +450,88 @@ dependency_overrides:
           isA<StateError>().having(
             (e) => e.message,
             'message',
-            contains('uncommitted changes'),
+            allOf(
+              contains('uncommitted changes'),
+              contains('packages/datadog_dio/CHANGELOG.md'),
+            ),
           ),
         ),
       );
     },
   );
+
+  group('a dirty working tree with a .lock file', () {
+    Future<void> prepare() async => prepareRelease(
+      RunContext(
+        repoRoot: fixture.root.path,
+        trigger: TriggerContext.mainline,
+        currentBranch: 'develop',
+        requestedPackages: ['datadog_dio'],
+      ),
+      gitDir: await fixture.gitDir,
+      github: GithubCommandWrapper(fixture.root.path),
+      aiGatewayClient: _NeverCalledAiGatewayClient(),
+      dryRun: true,
+      skipPublishValidation: true,
+      publishedVersions: _neverPublished,
+    );
+
+    String content(String path) =>
+        File('${fixture.root.path}/$path').readAsStringSync();
+
+    setUp(() async {
+      fixture.writeFile('tools/releaser/pubspec.lock', 'original');
+      await fixture.commit('chore: track a lock file');
+    });
+
+    test(
+      'is restored and the run goes on when it is the only change',
+      () async {
+        fixture.writeFile(
+          'tools/releaser/pubspec.lock',
+          'rewritten by pub get',
+        );
+
+        await prepare();
+
+        // Two release commits on top, and the lock file back as committed.
+        expect(content('tools/releaser/pubspec.lock'), 'original');
+        final log = await (await fixture.gitDir).runCommand([
+          'log',
+          '--format=%s',
+          '-3',
+        ]);
+        expect(log.stdout as String, contains('publish-prep'));
+      },
+    );
+
+    test('is not restored when something else changed too', () async {
+      fixture.writeFile('tools/releaser/pubspec.lock', 'rewritten by pub get');
+      fixture.writeFile('packages/datadog_dio/CHANGELOG.md', 'dirty');
+
+      await expectLater(
+        prepare(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('tools/releaser/pubspec.lock'),
+              contains('packages/datadog_dio/CHANGELOG.md'),
+            ),
+          ),
+        ),
+      );
+      expect(content('tools/releaser/pubspec.lock'), 'rewritten by pub get');
+    });
+
+    test('is not restored when it is a new, untracked file', () async {
+      fixture.writeFile('tools/other/pubspec.lock', 'new');
+
+      await expectLater(prepare(), throwsStateError);
+      expect(content('tools/other/pubspec.lock'), 'new');
+    });
+  });
 
   test('refuses a mainline run from anything but develop', () async {
     final gitDir = await fixture.gitDir;
@@ -405,44 +561,290 @@ dependency_overrides:
     );
   });
 
-  test(
-    'refuses a pre-release run from develop, main, or a patch branch',
-    () async {
-      final gitDir = await fixture.gitDir;
+  test('refuses a pre-release run from main or a patch branch', () async {
+    final gitDir = await fixture.gitDir;
 
-      for (final badBranch in [
-        'develop',
-        'main',
-        'release/datadog_dio/v1.1.x',
-      ]) {
-        expect(
-          () => prepareRelease(
-            RunContext(
-              repoRoot: fixture.root.path,
-              trigger: TriggerContext.preRelease,
-              currentBranch: badBranch,
-              requestedPackages: ['datadog_dio'],
-              prereleaseLabel: 'beta',
-            ),
-            gitDir: gitDir,
-            github: GithubCommandWrapper(fixture.root.path),
-            aiGatewayClient: _NeverCalledAiGatewayClient(),
-            dryRun: true,
-            skipPublishValidation: true,
-            publishedVersions: _neverPublished,
+    for (final badBranch in ['main', 'release/datadog_dio/v1.1.x']) {
+      expect(
+        () => prepareRelease(
+          RunContext(
+            repoRoot: fixture.root.path,
+            trigger: TriggerContext.preRelease,
+            currentBranch: badBranch,
+            requestedPackages: ['datadog_dio'],
+            prereleaseLabel: 'beta',
           ),
-          throwsA(
-            isA<StateError>().having(
-              (e) => e.message,
-              'message',
-              contains('dedicated long-lived pre-release branch'),
-            ),
+          gitDir: gitDir,
+          github: GithubCommandWrapper(fixture.root.path),
+          aiGatewayClient: _NeverCalledAiGatewayClient(),
+          dryRun: true,
+          skipPublishValidation: true,
+          publishedVersions: _neverPublished,
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('dedicated long-lived pre-release branch'),
           ),
-          reason: 'expected a refusal for branch "$badBranch"',
-        );
+        ),
+        reason: 'expected a refusal for branch "$badBranch"',
+      );
+    }
+  });
+
+  test('allows a pre-release run from develop', () async {
+    final gitDir = await fixture.gitDir;
+
+    // Doesn't throw the "dedicated pre-release branch" refusal -- develop
+    // is a valid pre-release source, same as `v4`; it just PRs into `main`
+    // (see expectedIntegrationBranch) instead of a `{branch}-main` pairing.
+    // The run still stops at --dry-run before push/PR.
+    await prepareRelease(
+      RunContext(
+        repoRoot: fixture.root.path,
+        trigger: TriggerContext.preRelease,
+        currentBranch: 'develop',
+        requestedPackages: ['datadog_dio'],
+        prereleaseLabel: 'beta',
+      ),
+      gitDir: gitDir,
+      github: GithubCommandWrapper(fixture.root.path),
+      aiGatewayClient: _NeverCalledAiGatewayClient(),
+      dryRun: true,
+      skipPublishValidation: true,
+      publishedVersions: _neverPublished,
+    );
+  });
+
+  test('raises every federated member\'s constraint on the platform '
+      'interface', () async {
+    const base = 'packages/datadog_flutter_plugin';
+    const piName = 'datadog_flutter_plugin_platform_interface';
+    final members = [
+      'datadog_flutter_plugin_android',
+      'datadog_flutter_plugin_ios',
+      'datadog_flutter_plugin_web',
+      'datadog_flutter_plugin_desktop',
+      'datadog_flutter_plugin',
+    ];
+    for (final name in [piName, ...members]) {
+      final isInterface = name == piName;
+      fixture.writeFile(
+        '$base/$name/pubspec.yaml',
+        'name: $name\n'
+            'version: ${name == 'datadog_flutter_plugin' ? '4.0.0' : '1.0.0'}\n'
+            'environment:\n  sdk: ^3.0.0\n'
+            '${isInterface ? '' : 'dependencies:\n  $piName: ^1.0.0\n'}',
+      );
+    }
+    fixture.writeFile('.gitignore', 'pubspec_overrides.yaml\n');
+    await fixture.commit('chore: add federated dependencies');
+    // Melos generates these in the real repo.
+    for (final name in members) {
+      fixture.writeFile(
+        '$base/$name/pubspec_overrides.yaml',
+        'dependency_overrides: {}\n',
+      );
+    }
+    final gitDir = await fixture.gitDir;
+
+    await prepareRelease(
+      RunContext(
+        repoRoot: fixture.root.path,
+        trigger: TriggerContext.preRelease,
+        currentBranch: 'develop',
+        requestedPackages: [piName, ...members],
+        prereleaseLabel: 'beta',
+      ),
+      gitDir: gitDir,
+      github: GithubCommandWrapper(fixture.root.path),
+      aiGatewayClient: _NeverCalledAiGatewayClient(),
+      dryRun: true,
+      skipPublishValidation: true,
+      publishedVersions: _neverPublished,
+    );
+
+    String pubspec(String name) => File(
+      '${fixture.root.path}/$base/$name/pubspec.yaml',
+    ).readAsStringSync();
+    final newVersion = RegExp(
+      r'^version: (.+)$',
+      multiLine: true,
+    ).firstMatch(pubspec(piName))!.group(1)!;
+    expect(newVersion, contains('beta'));
+    for (final name in members) {
+      expect(pubspec(name), contains('$piName: ^$newVersion'), reason: name);
+    }
+  });
+
+  group('with a remote', () {
+    late Directory bareRemote;
+
+    setUp(() async {
+      bareRemote = await createTestTempDir('prepare_release_test_remote_');
+      await Process.run('git', ['init', '-q', '--bare', bareRemote.path]);
+      await Process.run('git', [
+        'remote',
+        'add',
+        'origin',
+        bareRemote.path,
+      ], workingDirectory: fixture.root.path);
+      for (final branch in ['develop', 'main']) {
+        await Process.run('git', [
+          'push',
+          'origin',
+          'HEAD:refs/heads/$branch',
+        ], workingDirectory: fixture.root.path);
       }
-    },
-  );
+    });
+
+    tearDown(() => bareRemote.delete(recursive: true));
+
+    Future<void> prepare(
+      String currentBranch, {
+      TriggerContext? trigger,
+    }) async {
+      await prepareRelease(
+        RunContext(
+          repoRoot: fixture.root.path,
+          trigger: trigger ?? TriggerContext.mainline,
+          currentBranch: currentBranch,
+          requestedPackages: ['datadog_dio'],
+        ),
+        gitDir: await fixture.gitDir,
+        github: GithubCommandWrapper(fixture.root.path),
+        aiGatewayClient: _NeverCalledAiGatewayClient(),
+        dryRun: true,
+        skipPublishValidation: true,
+        publishedVersions: _neverPublished,
+      );
+    }
+
+    test('merges the target branch in between commit A and commit B, so '
+        'commit A stays free of what the target branch carries', () async {
+      final gitDir = await fixture.gitDir;
+      final developSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      // A previous release's pins, living on `main` only.
+      final scratch = await createTestTempDir('prepare_release_test_main_');
+      try {
+        await Process.run('git', [
+          'clone',
+          '-q',
+          bareRemote.path,
+          scratch.path,
+        ]);
+        await Process.run('git', [
+          'checkout',
+          '-q',
+          'main',
+        ], workingDirectory: scratch.path);
+        File(
+          '${scratch.path}/previous-release-pins.txt',
+        ).writeAsStringSync('x');
+        await Process.run('git', ['add', '.'], workingDirectory: scratch.path);
+        await Process.run('git', [
+          '-c',
+          'user.name=t',
+          '-c',
+          'user.email=t@example.com',
+          'commit',
+          '-q',
+          '-m',
+          'chore: previous release',
+        ], workingDirectory: scratch.path);
+        await Process.run('git', [
+          'push',
+          '-q',
+          'origin',
+          'main',
+        ], workingDirectory: scratch.path);
+      } finally {
+        await scratch.delete(recursive: true);
+      }
+
+      await prepare('develop');
+
+      // Commit B sits on the merge, and the merge's first parent is commit A.
+      expect(await isMergeCommit(gitDir, 'HEAD~1'), isTrue);
+      final commitA = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD~1^1',
+      ])).stdout.toString().trim();
+      expect(
+        (await gitDir.runCommand([
+          'log',
+          '-1',
+          '--format=%s',
+          commitA,
+        ])).stdout.toString(),
+        contains('changelog'),
+      );
+      expect(
+        (await gitDir.runCommand([
+          'ls-tree',
+          '-r',
+          '--name-only',
+          commitA,
+        ])).stdout.toString(),
+        isNot(contains('previous-release-pins.txt')),
+      );
+      expect(
+        File('${fixture.root.path}/previous-release-pins.txt').existsSync(),
+        isTrue,
+      );
+      expect(
+        await isAncestor(gitDir, developSha, commitA, Logger('t')),
+        isTrue,
+      );
+    });
+
+    test('a support release is one commit, with no content branch', () async {
+      final gitDir = await fixture.gitDir;
+      await fixture.tag('datadog_dio/v2.3.0');
+      await Process.run('git', [
+        'push',
+        'origin',
+        'HEAD:refs/heads/release/datadog_dio/v2.3.x',
+      ], workingDirectory: fixture.root.path);
+      await gitDir.runCommand(['checkout', '-b', 'release/datadog_dio/v2.3.x']);
+      final before = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      await prepareRelease(
+        RunContext(
+          repoRoot: fixture.root.path,
+          trigger: TriggerContext.support,
+          currentBranch: 'release/datadog_dio/v2.3.x',
+        ),
+        gitDir: gitDir,
+        github: GithubCommandWrapper(fixture.root.path),
+        aiGatewayClient: _NeverCalledAiGatewayClient(),
+        dryRun: true,
+        skipPublishValidation: true,
+        publishedVersions: (name) async =>
+            PublishedVersions([Version.parse('2.3.0')]),
+      );
+
+      expect(await commitCountBetween(gitDir, before, 'HEAD', Logger('t')), 1);
+      expect(
+        (await gitDir.currentBranch()).branchName,
+        startsWith('release-prep/'),
+      );
+      final branches = (await gitDir.runCommand([
+        'branch',
+        '--list',
+        'release-content/*',
+      ])).stdout.toString().trim();
+      expect(branches, isEmpty);
+    });
+  });
 
   group('firstOrNullResolvedVersion', () {
     // The NATIVE_SDK_VERSIONS.md row this run's package/SDK combination

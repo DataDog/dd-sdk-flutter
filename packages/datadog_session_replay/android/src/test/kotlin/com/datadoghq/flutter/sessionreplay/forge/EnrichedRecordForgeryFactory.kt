@@ -7,7 +7,6 @@
 package com.datadoghq.flutter.sessionreplay.forge
 
 import com.datadoghq.flutter.sessionreplay.models.EnrichedRecord
-import com.google.gson.JsonArray
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.ForgeryFactory
 import java.util.UUID
@@ -18,7 +17,7 @@ internal class EnrichedRecordForgeryFactory : ForgeryFactory<EnrichedRecord> {
             applicationId = forge.getForgery<UUID>().toString(),
             sessionId = forge.getForgery<UUID>().toString(),
             viewId = forge.getForgery<UUID>().toString(),
-            JsonArray()
+            forge.aFakeRecordsArray()
         )
     }
 }

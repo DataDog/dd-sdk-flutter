@@ -47,59 +47,53 @@ void main() {
       expect(contents, contains('datadog_flutter_plugin_ios: ^1.0.0'));
     });
 
-    test(
-      'leaves a same-named dev_dependencies entry alone, and reports '
-      'nothing to bump',
-      () async {
-        final original =
-            'name: datadog_dio\n'
-            'dependencies:\n'
-            '  other_package: ^1.0.0\n'
-            'dev_dependencies:\n'
-            '  datadog_flutter_plugin: ^1.0.0\n';
-        final file = File(p.join(root.path, 'pubspec.yaml'))
-          ..writeAsStringSync(original);
+    test('leaves a same-named dev_dependencies entry alone, and reports '
+        'nothing to bump', () async {
+      final original =
+          'name: datadog_dio\n'
+          'dependencies:\n'
+          '  other_package: ^1.0.0\n'
+          'dev_dependencies:\n'
+          '  datadog_flutter_plugin: ^1.0.0\n';
+      final file = File(p.join(root.path, 'pubspec.yaml'))
+        ..writeAsStringSync(original);
 
-        await bumpDependentConstraint(
-          file,
-          'datadog_flutter_plugin',
-          '5.0.0',
-          logger,
-          false,
+      await bumpDependentConstraint(
+        file,
+        'datadog_flutter_plugin',
+        '5.0.0',
+        logger,
+        false,
+      );
+
+      expect(file.readAsStringSync(), original);
+    });
+
+    test('rewrites the dependencies: entry even when a same-named one exists '
+        'under dependency_overrides', () async {
+      final file = File(p.join(root.path, 'pubspec.yaml'))
+        ..writeAsStringSync(
+          'name: datadog_dio\n'
+          'dependencies:\n'
+          '  datadog_flutter_plugin: ^1.0.0\n'
+          'dependency_overrides:\n'
+          '  datadog_flutter_plugin:\n'
+          '    path: ../datadog_flutter_plugin\n',
         );
 
-        expect(file.readAsStringSync(), original);
-      },
-    );
+      await bumpDependentConstraint(
+        file,
+        'datadog_flutter_plugin',
+        '5.0.0',
+        logger,
+        false,
+      );
 
-    test(
-      'rewrites the dependencies: entry even when a same-named one exists '
-      'under dependency_overrides',
-      () async {
-        final file = File(p.join(root.path, 'pubspec.yaml'))
-          ..writeAsStringSync(
-            'name: datadog_dio\n'
-            'dependencies:\n'
-            '  datadog_flutter_plugin: ^1.0.0\n'
-            'dependency_overrides:\n'
-            '  datadog_flutter_plugin:\n'
-            '    path: ../datadog_flutter_plugin\n',
-          );
-
-        await bumpDependentConstraint(
-          file,
-          'datadog_flutter_plugin',
-          '5.0.0',
-          logger,
-          false,
-        );
-
-        final contents = file.readAsStringSync();
-        expect(contents, contains('  datadog_flutter_plugin: ^5.0.0\n'));
-        // The override block is left untouched.
-        expect(contents, contains('    path: ../datadog_flutter_plugin\n'));
-      },
-    );
+      final contents = file.readAsStringSync();
+      expect(contents, contains('  datadog_flutter_plugin: ^5.0.0\n'));
+      // The override block is left untouched.
+      expect(contents, contains('    path: ../datadog_flutter_plugin\n'));
+    });
 
     test('is a no-op when the dependency is not a simple constraint', () async {
       final original =
@@ -210,48 +204,44 @@ void main() {
       expect(warnings, isEmpty);
     });
 
-    test(
-      'ignores a same-named dev_dependencies entry -- only dependencies: '
-      'counts',
-      () async {
-        final flutterPlugin = pkg(
-          'datadog_flutter_plugin',
-          relativePath:
-              'packages/datadog_flutter_plugin/datadog_flutter_plugin',
-          groupKey: 'datadog_flutter_plugin',
-        );
-        final webview = pkg(
-          'datadog_webview_tracking',
-          relativePath: 'packages/datadog_webview_tracking',
-          groupKey: 'datadog_webview_tracking',
-        );
+    test('ignores a same-named dev_dependencies entry -- only dependencies: '
+        'counts', () async {
+      final flutterPlugin = pkg(
+        'datadog_flutter_plugin',
+        relativePath: 'packages/datadog_flutter_plugin/datadog_flutter_plugin',
+        groupKey: 'datadog_flutter_plugin',
+      );
+      final webview = pkg(
+        'datadog_webview_tracking',
+        relativePath: 'packages/datadog_webview_tracking',
+        groupKey: 'datadog_webview_tracking',
+      );
 
-        Directory(
-          p.join(root.path, webview.relativePath),
-        ).createSync(recursive: true);
-        File(
-          p.join(root.path, webview.relativePath, 'pubspec.yaml'),
-        ).writeAsStringSync(
-          'name: datadog_webview_tracking\n'
-          'dependencies:\n'
-          '  other_package: ^1.0.0\n'
-          'dev_dependencies:\n'
-          '  datadog_flutter_plugin: ">=3.0.0 <5.0.0"\n',
-        );
+      Directory(
+        p.join(root.path, webview.relativePath),
+      ).createSync(recursive: true);
+      File(
+        p.join(root.path, webview.relativePath, 'pubspec.yaml'),
+      ).writeAsStringSync(
+        'name: datadog_webview_tracking\n'
+        'dependencies:\n'
+        '  other_package: ^1.0.0\n'
+        'dev_dependencies:\n'
+        '  datadog_flutter_plugin: ">=3.0.0 <5.0.0"\n',
+      );
 
-        final warnings = await findStaleConsumerWarnings(
-          allGroups: [
-            PackageGroup(key: flutterPlugin.groupKey, members: [flutterPlugin]),
-            PackageGroup(key: webview.groupKey, members: [webview]),
-          ],
-          repoRoot: root.path,
-          releasingPackage: flutterPlugin,
-          newVersion: '5.0.0',
-        );
+      final warnings = await findStaleConsumerWarnings(
+        allGroups: [
+          PackageGroup(key: flutterPlugin.groupKey, members: [flutterPlugin]),
+          PackageGroup(key: webview.groupKey, members: [webview]),
+        ],
+        repoRoot: root.path,
+        releasingPackage: flutterPlugin,
+        newVersion: '5.0.0',
+      );
 
-        expect(warnings, isEmpty);
-      },
-    );
+      expect(warnings, isEmpty);
+    });
 
     test('never flags a member of the releasing package\'s own group', () async {
       final platformInterface = pkg(
@@ -291,6 +281,83 @@ void main() {
       );
 
       expect(warnings, isEmpty);
+    });
+  });
+
+  group('findUnsatisfiedSiblingConstraints', () {
+    const base = 'packages/datadog_flutter_plugin';
+    DiscoveredPackage member(String name, PackageRole role) =>
+        DiscoveredPackage(
+          name: name,
+          version: '1.0.0',
+          relativePath: '$base/$name',
+          role: role,
+          groupKey: 'datadog_flutter_plugin',
+        );
+
+    final platformInterface = member(
+      'datadog_flutter_plugin_platform_interface',
+      PackageRole.platformInterface,
+    );
+    final android = member(
+      'datadog_flutter_plugin_android',
+      PackageRole.implementation,
+    );
+    final group = PackageGroup(
+      key: 'datadog_flutter_plugin',
+      members: [platformInterface, android],
+    );
+
+    void writeAndroidConstraint(String constraint) {
+      Directory(
+        p.join(root.path, android.relativePath),
+      ).createSync(recursive: true);
+      File(
+        p.join(root.path, android.relativePath, 'pubspec.yaml'),
+      ).writeAsStringSync(
+        'name: datadog_flutter_plugin_android\n'
+        'dependencies:\n'
+        '  datadog_flutter_plugin_platform_interface: $constraint\n',
+      );
+    }
+
+    Future<List<StaleConsumerWarning>> check(String newVersion) =>
+        findUnsatisfiedSiblingConstraints(
+          group: group,
+          repoRoot: root.path,
+          releasingPackage: platformInterface,
+          newVersion: newVersion,
+        );
+
+    test('flags a caret constraint that excludes the pre-release', () async {
+      writeAndroidConstraint('^1.0.0');
+
+      final warnings = await check('1.0.0-beta.1');
+
+      expect(warnings, hasLength(1));
+      expect(warnings.single.consumerPackage, 'datadog_flutter_plugin_android');
+    });
+
+    test('accepts a constraint that allows the new version', () async {
+      writeAndroidConstraint('^1.0.0-beta.1');
+
+      expect(await check('1.0.0-beta.1'), isEmpty);
+    });
+
+    test('does not check the releasing package against itself', () async {
+      writeAndroidConstraint('^1.0.0-beta.1');
+      Directory(
+        p.join(root.path, platformInterface.relativePath),
+      ).createSync(recursive: true);
+      File(
+        p.join(root.path, platformInterface.relativePath, 'pubspec.yaml'),
+      ).writeAsStringSync(
+        'name: datadog_flutter_plugin_platform_interface\n'
+        'dependencies:\n'
+        '  datadog_flutter_plugin_platform_interface: ^9.0.0\n',
+      );
+
+      expect(await check('1.0.0-beta.1'), isEmpty);
     });
   });
 }

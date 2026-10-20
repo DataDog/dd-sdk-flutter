@@ -7,20 +7,12 @@
 package com.datadoghq.flutter.sessionreplay.forge
 
 import com.datadoghq.flutter.sessionreplay.models.MobileSegment
-import com.google.gson.JsonArray
-import com.google.gson.JsonObject
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.ForgeryFactory
 import java.util.UUID
 
 internal class MobileSegmentForgeryFactory : ForgeryFactory<MobileSegment> {
     override fun getForgery(forge: Forge): MobileSegment {
-        val fakeRecords = JsonArray()
-        forge.aList(size = forge.anInt(min = 1, max = 5)) {
-            getForgery<JsonObject>()
-        }.forEach {
-            fakeRecords.add(it)
-        }
         return MobileSegment(
             application = MobileSegment.Application(forge.getForgery<UUID>().toString()),
             session = MobileSegment.Session(forge.getForgery<UUID>().toString()),
@@ -31,7 +23,7 @@ internal class MobileSegmentForgeryFactory : ForgeryFactory<MobileSegment> {
             indexInView = forge.aNullable { aPositiveLong() },
             hasFullSnapshot = forge.aNullable { aBool() },
             source = forge.aString(),
-            records = fakeRecords
+            records = forge.aFakeRecordsArray()
         )
     }
 }

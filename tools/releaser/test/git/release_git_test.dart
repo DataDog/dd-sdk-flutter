@@ -5,6 +5,7 @@
 import 'dart:io';
 
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as p;
 import 'package:releaser/git/release_git.dart';
 import 'package:test/test.dart';
 
@@ -20,6 +21,96 @@ void main() {
   });
 
   tearDown(() => fixture.delete());
+
+  group('dirtyFiles', () {
+    test('lists staged, unstaged and untracked paths', () async {
+      final gitDir = await fixture.gitDir;
+      fixture.writeFile('a.lock', 'one');
+      fixture.writeFile('b.txt', 'one');
+      await fixture.commit('chore: add files');
+      fixture.writeFile('a.lock', 'two');
+      fixture.writeFile('b.txt', 'two');
+      await gitDir.runCommand(['add', 'b.txt']);
+      fixture.writeFile('c.txt', 'new');
+
+      final dirty = await dirtyFiles(gitDir, logger);
+
+      expect(
+        dirty.map((file) => file.path),
+        unorderedEquals(['a.lock', 'b.txt', 'c.txt']),
+      );
+    });
+
+    test('flags only modified tracked files as restorable', () async {
+      final gitDir = await fixture.gitDir;
+      fixture.writeFile('a.lock', 'one');
+      fixture.writeFile('b.txt', 'one');
+      await fixture.commit('chore: add files');
+      fixture.writeFile('a.lock', 'two');
+      fixture.writeFile('b.txt', 'two');
+      await gitDir.runCommand(['add', 'b.txt']);
+      fixture.writeFile('c.txt', 'new');
+
+      final dirty = {
+        for (final file in await dirtyFiles(gitDir, logger)) file.path: file,
+      };
+
+      expect(dirty['a.lock']!.isModifiedTrackedFile, isTrue);
+      expect(dirty['b.txt']!.isModifiedTrackedFile, isTrue);
+      expect(dirty['c.txt']!.isModifiedTrackedFile, isFalse);
+    });
+
+    test('is empty for a clean working tree', () async {
+      final gitDir = await fixture.gitDir;
+
+      expect(await dirtyFiles(gitDir, logger), isEmpty);
+    });
+  });
+
+  group('restoreFiles', () {
+    test('puts modified tracked files back to what HEAD has', () async {
+      final gitDir = await fixture.gitDir;
+      fixture.writeFile('a.lock', 'one');
+      await fixture.commit('chore: add file');
+      fixture.writeFile('a.lock', 'two');
+
+      await restoreFiles(gitDir, ['a.lock'], logger);
+
+      expect(
+        File(p.join(fixture.root.path, 'a.lock')).readAsStringSync(),
+        'one',
+      );
+      expect(await dirtyFiles(gitDir, logger), isEmpty);
+    });
+
+    test('also unstages a staged change', () async {
+      final gitDir = await fixture.gitDir;
+      fixture.writeFile('b.txt', 'one');
+      await fixture.commit('chore: add file');
+      fixture.writeFile('b.txt', 'two');
+      await gitDir.runCommand(['add', 'b.txt']);
+
+      await restoreFiles(gitDir, ['b.txt'], logger);
+
+      expect(
+        File(p.join(fixture.root.path, 'b.txt')).readAsStringSync(),
+        'one',
+      );
+      expect(await dirtyFiles(gitDir, logger), isEmpty);
+    });
+
+    test('leaves other changed files alone', () async {
+      final gitDir = await fixture.gitDir;
+      fixture.writeFile('a.lock', 'one');
+      await fixture.commit('chore: add file');
+      fixture.writeFile('a.lock', 'two');
+      fixture.writeFile('c.txt', 'new');
+
+      await restoreFiles(gitDir, ['a.lock'], logger);
+
+      expect((await dirtyFiles(gitDir, logger)).map((f) => f.path), ['c.txt']);
+    });
+  });
 
   group('isWorkingTreeClean', () {
     test('is true right after a commit', () async {
@@ -51,12 +142,7 @@ void main() {
 
     setUp(() async {
       bareRemote = await createTestTempDir('release_git_test_remote_');
-      await Process.run('git', [
-        'init',
-        '-q',
-        '--bare',
-        bareRemote.path,
-      ]);
+      await Process.run('git', ['init', '-q', '--bare', bareRemote.path]);
       await Process.run('git', [
         'remote',
         'add',
@@ -74,17 +160,16 @@ void main() {
         'HEAD',
       ])).stdout.toString().trim();
 
-      await pushTag(gitDir, 'release-content/test-tag', sha, logger);
+      await pushTag(gitDir, 'datadog_dio/v1.0.0-test', sha, logger);
 
       final result = await Process.run('git', [
         'rev-parse',
-        'release-content/test-tag^{commit}',
+        'datadog_dio/v1.0.0-test^{commit}',
       ], workingDirectory: bareRemote.path);
       expect((result.stdout as String).trim(), sha);
     });
 
-    test('tags exactly the given commit, not the current branch tip',
-        () async {
+    test('tags exactly the given commit, not the current branch tip', () async {
       final gitDir = await fixture.gitDir;
       final firstSha = (await gitDir.runCommand([
         'rev-parse',
@@ -93,13 +178,443 @@ void main() {
 
       await fixture.commit('chore: a second commit');
 
-      await pushTag(gitDir, 'release-content/test-tag', firstSha, logger);
+      await pushTag(gitDir, 'datadog_dio/v1.0.0-test', firstSha, logger);
 
       final result = await Process.run('git', [
         'rev-parse',
-        'release-content/test-tag^{commit}',
+        'datadog_dio/v1.0.0-test^{commit}',
       ], workingDirectory: bareRemote.path);
       expect((result.stdout as String).trim(), firstSha);
+    });
+  });
+
+  group('pushBranchAt', () {
+    late Directory bareRemote;
+
+    setUp(() async {
+      bareRemote = await createTestTempDir('release_git_test_remote_');
+      await Process.run('git', ['init', '-q', '--bare', bareRemote.path]);
+      await Process.run('git', [
+        'remote',
+        'add',
+        'origin',
+        bareRemote.path,
+      ], workingDirectory: fixture.root.path);
+    });
+
+    tearDown(() => bareRemote.delete(recursive: true));
+
+    test(
+      'pushes the given commit as a new branch, not the current tip',
+      () async {
+        final gitDir = await fixture.gitDir;
+        final firstSha = (await gitDir.runCommand([
+          'rev-parse',
+          'HEAD',
+        ])).stdout.toString().trim();
+
+        await fixture.commit('chore: a second commit');
+
+        await pushBranchAt(
+          gitDir,
+          'release-content/test-branch',
+          firstSha,
+          logger,
+        );
+
+        final result = await Process.run('git', [
+          'rev-parse',
+          'release-content/test-branch',
+        ], workingDirectory: bareRemote.path);
+        expect((result.stdout as String).trim(), firstSha);
+      },
+    );
+
+    test('force-moves an existing branch to a new commit', () async {
+      final gitDir = await fixture.gitDir;
+      final firstSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      await pushBranchAt(
+        gitDir,
+        'release-content/test-branch',
+        firstSha,
+        logger,
+      );
+
+      await fixture.commit('chore: amended content');
+      final secondSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      await pushBranchAt(
+        gitDir,
+        'release-content/test-branch',
+        secondSha,
+        logger,
+        force: true,
+      );
+
+      final result = await Process.run('git', [
+        'rev-parse',
+        'release-content/test-branch',
+      ], workingDirectory: bareRemote.path);
+      expect((result.stdout as String).trim(), secondSha);
+    });
+  });
+
+  group('contentBranchNameFor', () {
+    test('swaps the release-prep prefix for release-content', () {
+      expect(
+        contentBranchNameFor('release-prep/20260925-abc123'),
+        'release-content/20260925-abc123',
+      );
+    });
+
+    test('throws for a branch with no release-prep prefix', () {
+      expect(() => contentBranchNameFor('v4'), throwsStateError);
+    });
+  });
+
+  group('changedFilesAgainst', () {
+    test('lists a modified tracked file and a new untracked file', () async {
+      fixture.writeFile('packages/datadog_dio/CHANGELOG.md', '# Changes\n');
+      fixture.writeFile('packages/datadog_dio/NEW_FILE.md', 'hi');
+      final gitDir = await fixture.gitDir;
+
+      final files = await changedFilesAgainst(gitDir, 'HEAD', logger);
+
+      expect(
+        files,
+        containsAll([
+          'packages/datadog_dio/CHANGELOG.md',
+          'packages/datadog_dio/NEW_FILE.md',
+        ]),
+      );
+    });
+
+    test('is empty with no working tree changes', () async {
+      final gitDir = await fixture.gitDir;
+
+      expect(await changedFilesAgainst(gitDir, 'HEAD', logger), isEmpty);
+    });
+  });
+
+  group('stashPush/stashApply/stashDrop', () {
+    test('round-trips a working tree edit through a stash', () async {
+      fixture.writeFile('packages/datadog_dio/CHANGELOG.md', '# Changes\n');
+      final gitDir = await fixture.gitDir;
+
+      final stashSha = await stashPush(gitDir, logger, 'test-stash');
+      expect(await isWorkingTreeClean(gitDir, logger), isTrue);
+
+      await stashApply(gitDir, logger, stashSha);
+      expect(await isWorkingTreeClean(gitDir, logger), isFalse);
+
+      await stashDrop(gitDir, logger, stashSha);
+      final list = await gitDir.runCommand(['stash', 'list']);
+      expect((list.stdout as String).trim(), isEmpty);
+    });
+
+    test('stashDrop is a no-op once the stash is already gone', () async {
+      fixture.writeFile('packages/datadog_dio/CHANGELOG.md', '# Changes\n');
+      final gitDir = await fixture.gitDir;
+      final stashSha = await stashPush(gitDir, logger, 'test-stash');
+      await stashDrop(gitDir, logger, stashSha);
+
+      await stashDrop(gitDir, logger, stashSha);
+    });
+  });
+
+  group('amendCommit', () {
+    test('rewrites HEAD with staged changes and returns the new SHA', () async {
+      final gitDir = await fixture.gitDir;
+      final originalSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      fixture.writeFile('packages/datadog_dio/CHANGELOG.md', '# Changes\n');
+      await stageAll(gitDir, logger);
+      final amendedSha = await amendCommit(gitDir, logger);
+
+      expect(amendedSha, isNot(originalSha));
+      // Amending replaces the commit rather than adding a child -- the
+      // repo still has exactly one commit, just under a new SHA.
+      final count = (await gitDir.runCommand([
+        'rev-list',
+        '--count',
+        'HEAD',
+      ])).stdout.toString().trim();
+      expect(count, '1');
+    });
+  });
+
+  group('cherryPick', () {
+    test(
+      're-applies a commit onto another base, keeping its message',
+      () async {
+        final gitDir = await fixture.gitDir;
+        final base = (await gitDir.runCommand([
+          'rev-parse',
+          'HEAD',
+        ])).stdout.toString().trim();
+        fixture.writeFile('packages/datadog_dio/CHANGELOG.md', '# B\n');
+        await fixture.commit('chore: commit B');
+        final commitB = (await gitDir.runCommand([
+          'rev-parse',
+          'HEAD',
+        ])).stdout.toString().trim();
+
+        await checkoutRef(gitDir, base, logger);
+        fixture.writeFile('packages/datadog_dio/OTHER', 'x');
+        await fixture.commit('chore: other base');
+        await cherryPick(gitDir, commitB, logger);
+
+        final subject = (await gitDir.runCommand([
+          'log',
+          '-1',
+          '--format=%s',
+        ])).stdout.toString().trim();
+        expect(subject, 'chore: commit B');
+        expect(
+          File(
+            p.join(fixture.root.path, 'packages/datadog_dio/CHANGELOG.md'),
+          ).readAsStringSync(),
+          '# B\n',
+        );
+      },
+    );
+
+    test('keeps a commit that is empty on the new base', () async {
+      final gitDir = await fixture.gitDir;
+      await gitDir.runCommand(['commit', '--allow-empty', '-m', 'chore: B']);
+      final commitB = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      await gitDir.runCommand(['reset', '--hard', 'HEAD~1']);
+
+      await cherryPick(gitDir, commitB, logger);
+
+      expect(await commitCountBetween(gitDir, 'HEAD~1', 'HEAD', logger), 1);
+    });
+  });
+
+  group('isMergeCommit', () {
+    test('is true only for a commit with two parents', () async {
+      final gitDir = await fixture.gitDir;
+      final base = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      expect(await isMergeCommit(gitDir, base), isFalse);
+
+      await gitDir.runCommand(['checkout', '-b', 'side']);
+      fixture.writeFile('side.txt', 'x');
+      await fixture.commit('chore: side');
+      await gitDir.runCommand(['checkout', '-']);
+      fixture.writeFile('main.txt', 'x');
+      await fixture.commit('chore: main');
+      await gitDir.runCommand(['merge', '--no-edit', 'side']);
+
+      expect(await isMergeCommit(gitDir, 'HEAD'), isTrue);
+    });
+  });
+
+  group('commitCountBetween', () {
+    test('counts commits strictly between the two refs', () async {
+      final gitDir = await fixture.gitDir;
+      final firstSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      await fixture.commit('chore: a second commit');
+      await fixture.commit('chore: a third commit');
+
+      expect(await commitCountBetween(gitDir, firstSha, 'HEAD', logger), 2);
+    });
+  });
+
+  group('forcePushBranch', () {
+    late Directory bareRemote;
+
+    setUp(() async {
+      bareRemote = await createTestTempDir('release_git_test_remote_');
+      await Process.run('git', ['init', '-q', '--bare', bareRemote.path]);
+      await Process.run('git', [
+        'remote',
+        'add',
+        'origin',
+        bareRemote.path,
+      ], workingDirectory: fixture.root.path);
+    });
+
+    tearDown(() => bareRemote.delete(recursive: true));
+
+    test('moves an already-pushed branch to its new local tip', () async {
+      final gitDir = await fixture.gitDir;
+      await pushBranch(gitDir, 'main', logger);
+      final originalSha = await remoteTipFor(gitDir, 'main', logger);
+
+      await fixture.commit('chore: amended locally');
+      final newSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      await forcePushBranch(gitDir, 'main', logger, expectedTip: originalSha);
+
+      final result = await Process.run('git', [
+        'rev-parse',
+        'main',
+      ], workingDirectory: bareRemote.path);
+      expect((result.stdout as String).trim(), newSha);
+    });
+
+    test('refuses when the remote moved past expectedTip', () async {
+      final gitDir = await fixture.gitDir;
+      await pushBranch(gitDir, 'main', logger);
+      final originalSha = await remoteTipFor(gitDir, 'main', logger);
+
+      // Simulate another actor updating the remote after expectedTip was
+      // captured.
+      await fixture.commit('chore: someone else pushed this');
+      await pushBranch(gitDir, 'main', logger);
+
+      await fixture.commit('chore: amended locally, unaware of the above');
+
+      await expectLater(
+        forcePushBranch(gitDir, 'main', logger, expectedTip: originalSha),
+        throwsA(isA<ProcessException>()),
+      );
+    });
+  });
+
+  group('forcePushRefsAtomic', () {
+    late Directory bareRemote;
+
+    setUp(() async {
+      bareRemote = await createTestTempDir('release_git_test_remote_');
+      await Process.run('git', ['init', '-q', '--bare', bareRemote.path]);
+      await Process.run('git', [
+        'remote',
+        'add',
+        'origin',
+        bareRemote.path,
+      ], workingDirectory: fixture.root.path);
+    });
+
+    tearDown(() => bareRemote.delete(recursive: true));
+
+    test('moves every ref when every lease matches', () async {
+      final gitDir = await fixture.gitDir;
+      await pushBranch(gitDir, 'main', logger);
+      final mainTip = await remoteTipFor(gitDir, 'main', logger);
+      await pushBranchAt(gitDir, 'side', mainTip, logger);
+      final sideTip = await remoteTipFor(gitDir, 'side', logger);
+
+      await fixture.commit('chore: amended locally');
+      final newSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      await forcePushRefsAtomic(gitDir, [
+        LeasedRefUpdate(
+          branchName: 'main',
+          commitSha: newSha,
+          expectedTip: mainTip,
+        ),
+        LeasedRefUpdate(
+          branchName: 'side',
+          commitSha: newSha,
+          expectedTip: sideTip,
+        ),
+      ], logger);
+
+      for (final branch in ['main', 'side']) {
+        final result = await Process.run('git', [
+          'rev-parse',
+          branch,
+        ], workingDirectory: bareRemote.path);
+        expect((result.stdout as String).trim(), newSha);
+      }
+    });
+
+    test('moves neither ref when one lease is stale', () async {
+      final gitDir = await fixture.gitDir;
+      await pushBranch(gitDir, 'main', logger);
+      final mainTip = await remoteTipFor(gitDir, 'main', logger);
+      await pushBranchAt(gitDir, 'side', mainTip, logger);
+      final staleSideTip = await remoteTipFor(gitDir, 'side', logger);
+
+      // Simulate a concurrent run moving `side` after this run captured its
+      // lease.
+      await fixture.commit('chore: a concurrent run moved side');
+      final concurrentSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      await pushBranchAt(gitDir, 'side', concurrentSha, logger, force: true);
+
+      await fixture.commit('chore: amended locally, unaware of the above');
+      final newSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      await expectLater(
+        forcePushRefsAtomic(gitDir, [
+          LeasedRefUpdate(
+            branchName: 'main',
+            commitSha: newSha,
+            expectedTip: mainTip,
+          ),
+          LeasedRefUpdate(
+            branchName: 'side',
+            commitSha: newSha,
+            expectedTip: staleSideTip,
+          ),
+        ], logger),
+        throwsA(isA<ProcessException>()),
+      );
+
+      // `main`'s lease was fine, but the atomic transaction still refused
+      // to move it because `side`'s lease was stale.
+      final result = await Process.run('git', [
+        'rev-parse',
+        'main',
+      ], workingDirectory: bareRemote.path);
+      expect((result.stdout as String).trim(), mainTip);
+    });
+  });
+
+  group('isAncestor', () {
+    test('is true for HEAD~1 relative to HEAD', () async {
+      final gitDir = await fixture.gitDir;
+      final firstSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+      await fixture.commit('chore: a second commit');
+
+      expect(await isAncestor(gitDir, firstSha, 'HEAD', logger), isTrue);
+    });
+
+    test('is false for a commit not reachable from ref', () async {
+      final gitDir = await fixture.gitDir;
+      await fixture.commit('chore: a second commit');
+      final secondSha = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD',
+      ])).stdout.toString().trim();
+
+      await gitDir.runCommand(['checkout', '-b', 'side-branch', 'HEAD~1']);
+      await fixture.commit('chore: a divergent commit');
+
+      expect(await isAncestor(gitDir, secondSha, 'HEAD', logger), isFalse);
     });
   });
 }

@@ -9,7 +9,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'ai_gateway.g.dart';
 
-const defaultModel = 'claude-sonnet-4-6';
+const defaultModel = 'claude-sonnet-5';
 
 /// This tool's AI Gateway feature id, registered via #project-gamma-q-and-a.
 const mlAppId = 'dd-sdk-flutter.releaser.changelog';
@@ -55,11 +55,16 @@ class AnthropicMessageResponse {
       _$AnthropicMessageResponseFromJson(json);
 }
 
+/// One block of a Messages API response's `content` array -- adaptive
+/// thinking models interleave `thinking`/`redacted_thinking` blocks (no
+/// `text` field) ahead of the `text` block this tool actually wants, so
+/// [text] is nullable and callers must pick the block with [type] `text`.
 @JsonSerializable(createToJson: false)
 class AnthropicContentBlock {
-  final String text;
+  final String type;
+  final String? text;
 
-  AnthropicContentBlock({required this.text});
+  AnthropicContentBlock({required this.type, this.text});
 
   factory AnthropicContentBlock.fromJson(Map<String, dynamic> json) =>
       _$AnthropicContentBlockFromJson(json);
@@ -187,10 +192,15 @@ class HttpAiGatewayClient implements AiGatewayClient {
       ),
       messages: [AnthropicMessage(role: 'user', content: prompt)],
     );
+    final requestBodyJson = jsonEncode(requestBody.toJson());
     // request.write() defaults to Latin-1, which throws on the em-dashes
-    // and smart quotes these prompts contain -- add() writes raw UTF-8
-    // bytes instead.
-    request.add(utf8.encode(jsonEncode(requestBody.toJson())));
+    // and smart quotes these prompts contain -- encode to raw UTF-8 bytes
+    // instead.
+    final requestBodyBytes = utf8.encode(requestBodyJson);
+    // Sent with an explicit Content-Length instead of HttpClient's default
+    // chunked encoding, which AI Gateway answers with a Cloudflare 400.
+    request.contentLength = requestBodyBytes.length;
+    request.add(requestBodyBytes);
 
     final response = await request.close();
     final body = await response.transform(utf8.decoder).join();
@@ -201,9 +211,16 @@ class HttpAiGatewayClient implements AiGatewayClient {
     final message = AnthropicMessageResponse.fromJson(
       jsonDecode(body) as Map<String, dynamic>,
     );
+    final textBlock = message.content.firstWhere(
+      (block) => block.type == 'text',
+      orElse: () => throw StateError(
+        'AI Gateway response had no "text" content block (got: '
+        '${message.content.map((b) => b.type).join(', ')}).',
+      ),
+    );
 
     return StructuredResponse(
-      content: jsonDecode(message.content.first.text) as Map<String, dynamic>,
+      content: jsonDecode(textBlock.text!) as Map<String, dynamic>,
       usage: LlmUsage(
         model: message.model,
         inputTokens: message.usage.inputTokens,

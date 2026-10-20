@@ -95,6 +95,22 @@ void main() {
       },
     );
 
+    test('finds the iOS files under darwin/', () {
+      write('darwin/datadog_flutter_plugin_ios.podspec', _iosPodspec);
+      write('darwin/datadog_flutter_plugin_ios/Package.swift', _packageSwift);
+
+      final files = resolveNativeDependencyFiles(root.path);
+
+      expect(
+        files.iosPodspec?.path,
+        endsWith('darwin/datadog_flutter_plugin_ios.podspec'),
+      );
+      expect(
+        files.iosSpmManifest?.path,
+        endsWith('darwin/datadog_flutter_plugin_ios/Package.swift'),
+      );
+    });
+
     test('ignores a Package.swift with no dd-sdk-ios dependency', () {
       write(
         'ios/some_other_plugin/Package.swift',
@@ -320,7 +336,7 @@ FetchContent_Declare(some_other_dep
     test('on a patch branch, no override means no change (and no '
         'releaseExists call)', () async {
       final target = await resolveNativeSdkTarget(
-        trigger: TriggerContext.patch,
+        trigger: TriggerContext.support,
         override: null,
         workingTreeDeclaration: null,
         fetchLatest: () => Future.value('9.9.9'),
@@ -332,7 +348,7 @@ FetchContent_Declare(some_other_dep
 
     test('a patch-branch override still applies', () async {
       final target = await resolveNativeSdkTarget(
-        trigger: TriggerContext.patch,
+        trigger: TriggerContext.support,
         override: '3.12.1',
         workingTreeDeclaration: null,
         fetchLatest: () => Future.value('9.9.9'),
@@ -341,25 +357,22 @@ FetchContent_Declare(some_other_dep
       expect(target, '3.12.1');
     });
 
-    test(
-      'on a patch branch, an already-pinned working tree is the target, '
-      'but does not trigger the "pinned" warning',
-      () async {
-        var onPinnedCalls = 0;
-        final target = await resolveNativeSdkTarget(
-          trigger: TriggerContext.patch,
-          override: null,
-          workingTreeDeclaration: '4.0.0',
-          fetchLatest: () =>
-              throw StateError('should not be called on a patch branch'),
-          releaseExists: (version) =>
-              throw StateError('should not be called with no override'),
-          onPinned: (_) => onPinnedCalls++,
-        );
-        expect(target, '4.0.0');
-        expect(onPinnedCalls, 0);
-      },
-    );
+    test('on a patch branch, an already-pinned working tree is the target, '
+        'but does not trigger the "pinned" warning', () async {
+      var onPinnedCalls = 0;
+      final target = await resolveNativeSdkTarget(
+        trigger: TriggerContext.support,
+        override: null,
+        workingTreeDeclaration: '4.0.0',
+        fetchLatest: () =>
+            throw StateError('should not be called on a patch branch'),
+        releaseExists: (version) =>
+            throw StateError('should not be called with no override'),
+        onPinned: (_) => onPinnedCalls++,
+      );
+      expect(target, '4.0.0');
+      expect(onPinnedCalls, 0);
+    });
 
     test(
       'on develop, no override means latest (and no releaseExists call)',

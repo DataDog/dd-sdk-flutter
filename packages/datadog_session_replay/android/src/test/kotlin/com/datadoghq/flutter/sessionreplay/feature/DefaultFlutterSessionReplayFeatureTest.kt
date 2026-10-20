@@ -9,6 +9,7 @@ package com.datadoghq.flutter.sessionreplay.feature
 import android.os.Handler
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isNotEqualTo
 import assertk.assertions.isNotNull
 import com.datadog.android.api.feature.Feature
 import com.datadog.android.api.feature.FeatureSdkCore
@@ -57,7 +58,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
             mockCore,
             onContextChanged,
             customEndpoint,
-            mockHandler
+            mainThreadHandler = mockHandler
         )
         val contextValue = mapOf(
             "application_id" to applicationId,
@@ -93,7 +94,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
             mockCore,
             onContextChanged,
             customEndpoint,
-            mockHandler
+            mainThreadHandler = mockHandler
         )
         var context = mutableMapOf<String, Any?>()
         every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
@@ -130,7 +131,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
             mockCore,
             onContextChanged,
             customEndpoint,
-            mockHandler
+            mainThreadHandler = mockHandler
         )
         var context = mutableMapOf<String, Any?>()
         every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
@@ -152,5 +153,26 @@ internal class DefaultFlutterSessionReplayFeatureTest {
         assertThat(viewMap).isNotNull()
         assertThat(viewMap?.get("has_replay")).isEqualTo(true)
         assertThat(viewMap?.get("records_count")).isEqualTo(recordCount)
+    }
+
+    @Test
+    fun `M not claim the native feature name W registered {hybrid apps}`(
+        @StringForgery customEndpoint: String
+    ) {
+        // Given
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            mockk(relaxed = true),
+            customEndpoint,
+            mainThreadHandler = mockHandler
+        )
+
+        // Then
+        // The core keys features by name and the last registration wins, so sharing the native
+        // module's name would evict the native Session Replay in a hybrid app — taking its uploads
+        // and the embedded-content path with it.
+        assertThat(feature.name).isNotEqualTo(Feature.SESSION_REPLAY_FEATURE_NAME)
+        assertThat(feature.name)
+            .isEqualTo(DefaultFlutterSessionReplayFeature.FLUTTER_SESSION_REPLAY_FEATURE_NAME)
     }
 }

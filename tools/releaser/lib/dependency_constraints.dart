@@ -29,7 +29,7 @@ final _topLevelKeyPattern = RegExp(r'^(?<key>[A-Za-z_][A-Za-z0-9_]*):');
 
 /// Rewrites [pubspecFile]'s dependency line for [dependencyName] to a
 /// caret constraint on [newVersion] -- used to raise a federated
-/// app-facing package's lower bound on a sibling (platform interface or
+/// package's lower bound on a sibling (platform interface or
 /// implementation) that's releasing this cycle. Leaves the line alone if
 /// [dependencyName] isn't a simple version-constraint dependency under
 /// `dependencies:` there (e.g. a `path:`-based one, which this repo
@@ -105,45 +105,78 @@ Future<List<StaleConsumerWarning>> findStaleConsumerWarnings({
   required DiscoveredPackage releasingPackage,
   required String newVersion,
 }) async {
+  final consumers = [
+    for (final group in allGroups)
+      if (group.key != releasingPackage.groupKey) ...group.members,
+  ];
+  return _consumersExcluding(
+    consumers,
+    repoRoot,
+    releasingPackage.name,
+    newVersion,
+  );
+}
+
+/// Members of [releasingPackage]'s own federated group whose pubspec.yaml
+/// constrains it in a way [newVersion] doesn't satisfy. A non-empty result
+/// means a published group would not resolve, e.g. `^1.0.0` against
+/// `1.0.0-beta.1`.
+Future<List<StaleConsumerWarning>> findUnsatisfiedSiblingConstraints({
+  required PackageGroup group,
+  required String repoRoot,
+  required DiscoveredPackage releasingPackage,
+  required String newVersion,
+}) {
+  final consumers = group.members
+      .where((m) => m.name != releasingPackage.name)
+      .toList();
+  return _consumersExcluding(
+    consumers,
+    repoRoot,
+    releasingPackage.name,
+    newVersion,
+  );
+}
+
+Future<List<StaleConsumerWarning>> _consumersExcluding(
+  List<DiscoveredPackage> consumers,
+  String repoRoot,
+  String dependencyName,
+  String newVersion,
+) async {
   final target = semver.Version.parse(newVersion);
   final warnings = <StaleConsumerWarning>[];
 
-  for (final group in allGroups) {
-    if (group.key == releasingPackage.groupKey) continue;
+  for (final consumer in consumers) {
+    final pubspecFile = File('${consumer.absolutePath(repoRoot)}/pubspec.yaml');
+    if (!pubspecFile.existsSync()) continue;
 
-    for (final consumer in group.members) {
-      final pubspecFile = File(
-        '${consumer.absolutePath(repoRoot)}/pubspec.yaml',
+    final pubspec = loadYaml(await pubspecFile.readAsString());
+    if (pubspec is! YamlMap) continue;
+    final dependencies = pubspec['dependencies'];
+    if (dependencies is! YamlMap) continue;
+
+    final value = dependencies[dependencyName];
+    // Not a simple constraint: absent, or a nested `path:`/`sdk:` map.
+    if (value is! String) continue;
+
+    final rawConstraint = value.trim();
+    semver.VersionConstraint constraint;
+    try {
+      constraint = semver.VersionConstraint.parse(rawConstraint);
+    } on FormatException {
+      continue; // Not a constraint this tooling knows how to parse.
+    }
+
+    if (!constraint.allows(target)) {
+      warnings.add(
+        StaleConsumerWarning(
+          consumerPackage: consumer.name,
+          dependencyName: dependencyName,
+          constraint: rawConstraint,
+          newVersion: newVersion,
+        ),
       );
-      if (!pubspecFile.existsSync()) continue;
-
-      final pubspec = loadYaml(await pubspecFile.readAsString());
-      if (pubspec is! YamlMap) continue;
-      final dependencies = pubspec['dependencies'];
-      if (dependencies is! YamlMap) continue;
-
-      final value = dependencies[releasingPackage.name];
-      // Not a simple constraint: absent, or a nested `path:`/`sdk:` map.
-      if (value is! String) continue;
-
-      final rawConstraint = value.trim();
-      semver.VersionConstraint constraint;
-      try {
-        constraint = semver.VersionConstraint.parse(rawConstraint);
-      } on FormatException {
-        continue; // Not a constraint this tooling knows how to parse.
-      }
-
-      if (!constraint.allows(target)) {
-        warnings.add(
-          StaleConsumerWarning(
-            consumerPackage: consumer.name,
-            dependencyName: releasingPackage.name,
-            constraint: rawConstraint,
-            newVersion: newVersion,
-          ),
-        );
-      }
     }
   }
 
