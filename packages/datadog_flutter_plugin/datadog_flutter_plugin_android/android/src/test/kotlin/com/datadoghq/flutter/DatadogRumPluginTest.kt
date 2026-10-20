@@ -11,7 +11,6 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import com.datadog.android.Datadog
-import com.datadog.android.rum.ExperimentalRumApi
 import com.datadog.android.rum.GlobalRumMonitor
 import com.datadog.android.rum.Rum
 import com.datadog.android.rum.RumActionType
@@ -238,7 +237,6 @@ class DatadogRumPluginTest {
         assertThat(featureConfiguration.getPrivate("additionalConfig")).isEqualTo(attributes)
     }
 
-    @OptIn(ExperimentalRumApi::class)
     @Test
     fun `M decode timeseries configuration W withEncoded is called { collectTypes }`(
         forge: Forge
@@ -264,7 +262,6 @@ class DatadogRumPluginTest {
             .isEqualTo(setOf(TimeseriesType.MEMORY, TimeseriesType.CPU))
     }
 
-    @OptIn(ExperimentalRumApi::class)
     @Test
     fun `M decode timeseries configuration W withEncoded is called { single collectType }`(
         forge: Forge
@@ -290,7 +287,6 @@ class DatadogRumPluginTest {
             .isEqualTo(setOf(TimeseriesType.MEMORY))
     }
 
-    @OptIn(ExperimentalRumApi::class)
     @Test
     fun `M decode timeseries configuration W withEncoded is called { no collectTypes }`(
         forge: Forge
@@ -311,7 +307,7 @@ class DatadogRumPluginTest {
             .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
         assertThat(timeseriesConfiguration).isNotNull()
         assertThat(timeseriesConfiguration?.getPrivate("collectTypes"))
-            .isEqualTo(TimeseriesType.values().toSet())
+            .isEqualTo(TimeseriesType.entries.toSet())
     }
 
     @Test
