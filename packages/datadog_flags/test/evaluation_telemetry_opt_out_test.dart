@@ -367,6 +367,11 @@ void main() {
       expect(cached.value, isTrue);
       expect(cached.variant, 'on');
       expect(cached.reason, 'CACHED');
+      // Missing flags must use the same cached subject policy as successful evaluations.
+      expect(
+        client.getBooleanDetails(key: 'missing', defaultValue: false).value,
+        isFalse,
+      );
       release.complete();
       await pending;
       final other = sdk.sharedClient(name: 'other');

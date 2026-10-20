@@ -119,9 +119,11 @@ Other attribute values preserve telemetry.
 
 Update the attribute with `client.initialize(context)`. The attribute remains
 available for targeting and exposure reporting. Changes use the normal assignment
-refresh path. The telemetry decision applies immediately during pending or failed
-refreshes. Exposure deduplication, existing events, manual RUM annotations, and
-unrelated telemetry keep their existing behavior.
+refresh path. Opting out suppresses new evaluation reporting immediately.
+Opting the same subject back in also applies immediately. Switching subjects
+does not re-enable reporting for an opted-out subject whose assignments remain
+active while the next subject loads. Exposure deduplication, existing events,
+manual RUM annotations, and unrelated telemetry keep their existing behavior.
 See [the core SDK contract](../datadog_flags/README.md#evaluation-telemetry-opt-out).
 
 ## Cached Evaluation Reasons

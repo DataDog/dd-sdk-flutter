@@ -334,8 +334,10 @@ The Flutter integration also suppresses automatic RUM flag annotations.
 
 The attribute remains available for targeting rules and exposure attributes.
 It is included in assignment requests, stored contexts, and cache matching.
-Changing it uses the normal context refresh path. The telemetry decision applies
-immediately, including while the refresh is pending or after it fails.
+Changing it uses the normal context refresh path. Opting out suppresses new
+evaluation reporting immediately. Opting the same subject back in also applies
+immediately. Switching subjects does not re-enable reporting for an opted-out
+subject whose assignments remain active while the next subject loads.
 
 Each named client has separate policy. Cached data and late assignment responses
 cannot restore an older policy. Suppression does not change flag values, details,
