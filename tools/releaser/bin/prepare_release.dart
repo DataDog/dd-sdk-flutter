@@ -691,22 +691,35 @@ Future<List<PrGroup>> _applyContentChanges(
     );
   }
 
-  // Raise the app-facing package's lower bound on this package, if it's a
-  // releasing federated sibling. Not applicable on support branches (patch
-  // versions stay within existing caret ranges) or to a group's own
-  // app-facing package (nothing depends on itself).
-  if (ctx.trigger != TriggerContext.support &&
-      pkg.role != PackageRole.appFacing) {
-    final group = allGroups.firstWhere((g) => g.key == pkg.groupKey);
-    final appFacing = group.members.firstWhere(
-      (m) => m.role == PackageRole.appFacing,
-    );
-    await bumpDependentConstraint(
-      File(p.join(appFacing.absolutePath(ctx.repoRoot), 'pubspec.yaml')),
-      pkg.name,
-      packagePlan.newVersion,
-      _log,
-      false,
+  // Raise every other group member's lower bound on this package, so a
+  // pre-release or new major of a sibling stays resolvable. Not applicable
+  // on support branches (patch versions stay within existing caret ranges).
+  final releasingGroup = allGroups.firstWhere((g) => g.key == pkg.groupKey);
+  if (ctx.trigger != TriggerContext.support) {
+    for (final member in releasingGroup.members) {
+      if (member.name == pkg.name) continue;
+      await bumpDependentConstraint(
+        File(p.join(member.absolutePath(ctx.repoRoot), 'pubspec.yaml')),
+        pkg.name,
+        packagePlan.newVersion,
+        _log,
+        false,
+      );
+    }
+  }
+
+  final unsatisfied = await findUnsatisfiedSiblingConstraints(
+    group: releasingGroup,
+    repoRoot: ctx.repoRoot,
+    releasingPackage: pkg,
+    newVersion: packagePlan.newVersion,
+  );
+  if (unsatisfied.isNotEmpty) {
+    throw StateError(
+      '${pkg.name} ${packagePlan.newVersion} would not resolve for its '
+      'federated siblings:\n'
+      '${unsatisfied.map((w) => '  ${w.consumerPackage} requires '
+          '${w.dependencyName} ${w.constraint}').join('\n')}',
     );
   }
 
