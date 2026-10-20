@@ -26,6 +26,8 @@ const List<String> _defaultResponseHeaders = [
   'content-length',
   'server-timing',
   'x-cache',
+  'cf-cache-status',
+  'x-vercel-cache',
 ];
 
 /// Regex pattern matching header names that must never be captured, even if
