@@ -238,6 +238,10 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
             event.telemetry.configuration.trackFlutterPerformance =
                 it.trackFlutterPerformance
             event.telemetry.configuration.dartVersion = it.dartVersion
+            it.trackResourceHeaders?.let { value ->
+                event.telemetry.configuration.trackResourceHeaders =
+                    TelemetryConfigurationEvent.TrackResourceHeaders.fromJson(value)
+            }
         }
 
         return event

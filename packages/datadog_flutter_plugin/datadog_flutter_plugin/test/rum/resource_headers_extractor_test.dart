@@ -460,5 +460,27 @@ void main() {
         expect(extractor.responseHeaderNames, isEmpty);
       });
     });
+
+    group('configuration telemetry', () {
+      test('reports default_headers when only defaults are captured', () {
+        final extractor = ResourceHeadersExtractor();
+        expect(extractor.telemetryTrackResourceHeaders, 'default_headers');
+      });
+
+      test('reports custom when custom headers are added to defaults', () {
+        final extractor = ResourceHeadersExtractor(
+          captureHeaders: ['x-custom'],
+        );
+        expect(extractor.telemetryTrackResourceHeaders, 'custom');
+      });
+
+      test('reports custom when defaults are excluded', () {
+        final extractor = ResourceHeadersExtractor(
+          includeDefaults: false,
+          captureHeaders: ['x-custom'],
+        );
+        expect(extractor.telemetryTrackResourceHeaders, 'custom');
+      });
+    });
   });
 }

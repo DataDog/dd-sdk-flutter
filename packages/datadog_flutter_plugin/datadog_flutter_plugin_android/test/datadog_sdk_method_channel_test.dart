@@ -88,6 +88,74 @@ void main() {
   });
 
   test(
+    'initialize sends trackResourceHeaders when headers are tracked',
+    () async {
+      final configuration = DatadogConfiguration(
+        clientToken: 'fakeClientToken',
+        env: 'environment',
+        site: DatadogSite.us1,
+        service: 'fake-service',
+        rumConfiguration: DatadogRumConfiguration(
+          applicationId: 'fakeApplicationId',
+          trackResourceHeaders: ResourceHeadersExtractor(
+            captureHeaders: ['x-custom'],
+          ),
+        ),
+      );
+      await ddSdkPlatform.initialize(
+        configuration,
+        TrackingConsent.granted,
+        internalLogger: internalLogger,
+      );
+
+      expect(log, [
+        isMethodCall(
+          'initialize',
+          arguments: {
+            'configuration': configuration.encode(),
+            'trackingConsent': 'TrackingConsent.granted',
+            'setLogCallback': false,
+            'dartVersion': Platform.version,
+            'trackResourceHeaders': 'custom',
+          },
+        ),
+      ]);
+    },
+  );
+
+  test(
+    'initialize omits trackResourceHeaders when headers are not tracked',
+    () async {
+      final configuration = DatadogConfiguration(
+        clientToken: 'fakeClientToken',
+        env: 'environment',
+        site: DatadogSite.us1,
+        service: 'fake-service',
+        rumConfiguration: DatadogRumConfiguration(
+          applicationId: 'fakeApplicationId',
+        ),
+      );
+      await ddSdkPlatform.initialize(
+        configuration,
+        TrackingConsent.granted,
+        internalLogger: internalLogger,
+      );
+
+      expect(log, [
+        isMethodCall(
+          'initialize',
+          arguments: {
+            'configuration': configuration.encode(),
+            'trackingConsent': 'TrackingConsent.granted',
+            'setLogCallback': false,
+            'dartVersion': Platform.version,
+          },
+        ),
+      ]);
+    },
+  );
+
+  test(
     'attachToExisting response properly returns null from platform',
     () async {
       final response = await ddSdkPlatform.attachToExisting(

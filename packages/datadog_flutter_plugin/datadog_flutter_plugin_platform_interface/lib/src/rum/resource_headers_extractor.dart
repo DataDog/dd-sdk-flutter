@@ -126,6 +126,12 @@ class ResourceHeadersExtractor {
   /// capture on the **response** side.
   Set<String> get responseHeaderNames => _responseHeaders;
 
+  /// Value reported as `track_resource_headers` in configuration telemetry.
+  /// Any custom configuration reports `custom`, matching the iOS and Browser
+  /// SDKs.
+  String get telemetryTrackResourceHeaders =>
+      includeDefaults && captureHeaders.isEmpty ? 'default_headers' : 'custom';
+
   /// Convenience method that extracts both request and response headers and
   /// returns them as a map of internal attributes suitable for merging into
   /// `stopResource()` attributes.

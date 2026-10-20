@@ -338,6 +338,36 @@ class DatadogSdkPluginTest {
         assertThat(plugin.telemetryOverrides.dartVersion).isEqualTo(dartVersion)
     }
 
+    @Test
+    fun `M initialize trackResourceHeaders telemetry W called through MethodChannel { trackResourceHeaders }`(
+        @StringForgery clientToken: String,
+        @StringForgery environment: String,
+        @StringForgery applicationId: String,
+        forge: Forge
+    ) {
+        // GIVEN
+        val trackResourceHeaders = forge.anElementFrom("default_headers", "custom")
+        val methodCall = MethodCall(
+            "initialize",
+            mapOf(
+                "trackingConsent" to "TrackingConsent.granted",
+                "configuration" to mapOf(
+                    "clientToken" to clientToken,
+                    "env" to environment,
+                    "nativeCrashReportEnabled" to true
+                ),
+                "trackResourceHeaders" to trackResourceHeaders
+            )
+        )
+        val mockResult = mock<MethodChannel.Result>()
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mockResult)
+
+        // THEN
+        assertThat(plugin.telemetryOverrides.trackResourceHeaders).isEqualTo(trackResourceHeaders)
+    }
+
 
     @Test
     fun `M not issue warning W initialize called with same configuration`(
