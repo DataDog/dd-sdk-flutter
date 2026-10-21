@@ -123,8 +123,7 @@ class ResourceHeadersExtractor {
 
   /// Lowercased, security-filtered set of header names this extractor will
   /// capture on the **request** side. Used by the Flutter Web RUM bridge to
-  /// build direction-scoped `trackResourceHeaders` matchers for the Browser SDK
-  /// so request-only and response-only defaults stay scoped to their direction.
+  /// filter the custom header names passed to the Browser SDK.
   Set<String> get requestHeaderNames => _requestHeaders;
 
   /// Lowercased, security-filtered set of header names this extractor will

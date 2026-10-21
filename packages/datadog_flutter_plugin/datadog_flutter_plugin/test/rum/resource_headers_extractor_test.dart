@@ -467,19 +467,20 @@ void main() {
         expect(extractor.telemetryTrackResourceHeaders, 'default_headers');
       });
 
-      test('reports custom when custom headers are added to defaults', () {
-        final extractor = ResourceHeadersExtractor(
-          captureHeaders: ['x-custom'],
+      test('reports custom when custom headers are configured', () {
+        expect(
+          ResourceHeadersExtractor(
+            captureHeaders: ['x-custom'],
+          ).telemetryTrackResourceHeaders,
+          'custom',
         );
-        expect(extractor.telemetryTrackResourceHeaders, 'custom');
-      });
-
-      test('reports custom when defaults are excluded', () {
-        final extractor = ResourceHeadersExtractor(
-          includeDefaults: false,
-          captureHeaders: ['x-custom'],
+        expect(
+          ResourceHeadersExtractor(
+            includeDefaults: false,
+            captureHeaders: ['x-custom'],
+          ).telemetryTrackResourceHeaders,
+          'custom',
         );
-        expect(extractor.telemetryTrackResourceHeaders, 'custom');
       });
 
       test('reports the configuration captured at construction', () {

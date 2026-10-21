@@ -7,6 +7,7 @@ import 'dart:js_interop';
 
 import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart';
 import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
+import 'package:meta/meta.dart';
 import 'package:uuid/uuid.dart';
 
 import '../js_types.dart';
@@ -75,7 +76,7 @@ class DdRumWeb extends DdRumPlatform {
         trackViewsManually: true,
         trackUserInteractions: false,
         trackResources: trackResources,
-        trackResourceHeaders: _convertTrackResourceHeaders(
+        trackResourceHeaders: convertTrackResourceHeaders(
           rumConfiguration.trackResourceHeaders,
         ),
         trackFrustrations: rumConfiguration.trackFrustrations,
@@ -562,16 +563,28 @@ JSString _headerTypeToPropagatorType(TracingHeaderType type) {
   }
 }
 
-JSAny? _convertTrackResourceHeaders(ResourceHeadersExtractor? extractor) {
+/// Converts [extractor] to the Browser SDK `trackResourceHeaders` option.
+///
+/// Defaults only map to `true`, so the Browser SDK collects its own default
+/// headers and reports `default_headers` in configuration telemetry, like iOS
+/// and Android. When custom headers are added, a matcher without a name keeps
+/// the Browser SDK default headers, followed by the custom header names.
+@visibleForTesting
+JSAny? convertTrackResourceHeaders(ResourceHeadersExtractor? extractor) {
   if (extractor == null) return null;
+  if (extractor.telemetryTrackResourceHeaders == 'default_headers') {
+    return true.toJS;
+  }
 
-  // Explicit per-direction MatchHeaders — Browser SDK's `true` mode would
-  // apply its broad default list to both directions.
+  // requestHeaderNames is lowercased and security-filtered.
+  final customHeaders = {
+    for (final name in extractor.captureHeaders)
+      if (extractor.requestHeaderNames.contains(name.toLowerCase()))
+        name.toLowerCase(),
+  };
   final matchers = <_MatchHeader>[
-    for (final name in extractor.requestHeaderNames)
-      _MatchHeader(name: name, location: 'request'),
-    for (final name in extractor.responseHeaderNames)
-      _MatchHeader(name: name, location: 'response'),
+    if (extractor.includeDefaults) _MatchHeader(),
+    for (final name in customHeaders) _MatchHeader(name: name),
   ];
   if (matchers.isEmpty) return null;
   return matchers.toJS;
@@ -601,7 +614,7 @@ extension on RumOperationFailureReason {
 
 @anonymous
 extension type _MatchHeader._(JSObject _) implements JSObject {
-  external factory _MatchHeader({String name, String? location});
+  external factory _MatchHeader({String name});
 }
 
 @anonymous
