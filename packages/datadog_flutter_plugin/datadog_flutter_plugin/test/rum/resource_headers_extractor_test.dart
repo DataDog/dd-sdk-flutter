@@ -481,6 +481,16 @@ void main() {
         );
         expect(extractor.telemetryTrackResourceHeaders, 'custom');
       });
+
+      test('reports the configuration captured at construction', () {
+        final captureHeaders = ['x-custom'];
+        final extractor = ResourceHeadersExtractor(
+          captureHeaders: captureHeaders,
+        );
+        captureHeaders.clear();
+
+        expect(extractor.telemetryTrackResourceHeaders, 'custom');
+      });
     });
   });
 }
