@@ -572,22 +572,16 @@ JSString _headerTypeToPropagatorType(TracingHeaderType type) {
 @visibleForTesting
 JSAny? convertTrackResourceHeaders(ResourceHeadersExtractor? extractor) {
   if (extractor == null) return null;
-  if (extractor.telemetryTrackResourceHeaders == 'default_headers') {
-    return true.toJS;
+  switch (extractor.telemetryTrackResourceHeaders) {
+    case null:
+      return null;
+    case 'default_headers':
+      return true.toJS;
   }
-
-  // requestHeaderNames is lowercased and security-filtered.
-  final customHeaders = {
-    for (final name in extractor.captureHeaders)
-      if (extractor.requestHeaderNames.contains(name.toLowerCase()))
-        name.toLowerCase(),
-  };
-  final matchers = <_MatchHeader>[
+  return <_MatchHeader>[
     if (extractor.includeDefaults) _MatchHeader(),
-    for (final name in customHeaders) _MatchHeader(name: name),
-  ];
-  if (matchers.isEmpty) return null;
-  return matchers.toJS;
+    for (final name in extractor.customHeaderNames) _MatchHeader(name: name),
+  ].toJS;
 }
 
 String _contextInjectionString(TraceContextInjection contextInjection) {

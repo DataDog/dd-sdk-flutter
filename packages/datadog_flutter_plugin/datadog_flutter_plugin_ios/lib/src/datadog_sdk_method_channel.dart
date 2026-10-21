@@ -162,16 +162,15 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
     _internalLogger = internalLogger;
     methodChannel.setMethodCallHandler(handleMethodCall);
 
-    final trackResourceHeaders =
-        configuration.rumConfiguration?.trackResourceHeaders;
     await methodChannel.invokeMethod<void>('initialize', {
       'configuration': configuration.encode(),
       'trackingConsent': trackingConsent.toString(),
       'dartVersion': Platform.version,
       'setLogCallback': logCallback != null,
-      if (trackResourceHeaders != null)
-        'trackResourceHeaders':
-            trackResourceHeaders.telemetryTrackResourceHeaders,
+      'trackResourceHeaders': ?configuration
+          .rumConfiguration
+          ?.trackResourceHeaders
+          ?.telemetryTrackResourceHeaders,
     });
 
     final backgroundPlugins = configuration.additionalPlugins

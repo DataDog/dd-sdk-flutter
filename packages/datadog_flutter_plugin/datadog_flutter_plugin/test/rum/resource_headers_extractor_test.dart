@@ -491,6 +491,29 @@ void main() {
         captureHeaders.clear();
 
         expect(extractor.telemetryTrackResourceHeaders, 'custom');
+        expect(extractor.customHeaderNames, {'x-custom'});
+      });
+
+      test('reports the effective headers after security filtering', () {
+        expect(
+          ResourceHeadersExtractor(
+            includeDefaults: false,
+          ).telemetryTrackResourceHeaders,
+          isNull,
+        );
+        expect(
+          ResourceHeadersExtractor(
+            includeDefaults: false,
+            captureHeaders: ['authorization'],
+          ).telemetryTrackResourceHeaders,
+          isNull,
+        );
+        expect(
+          ResourceHeadersExtractor(
+            captureHeaders: ['authorization'],
+          ).telemetryTrackResourceHeaders,
+          'default_headers',
+        );
       });
     });
   });
