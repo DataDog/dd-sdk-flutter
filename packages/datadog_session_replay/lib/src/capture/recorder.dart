@@ -260,38 +260,47 @@ class SessionReplayRecorder {
     DateTime now = _timeProvider.now();
     var size = Size.zero;
 
-    Timeline.timeSync('Datadog SR Tree Capture', () {
-      for (final e in _elements.values) {
-        final renderObject = e.renderObject;
-        if (kDebugMode) {
-          // During hot reload, elements can be inserted that still need layout, and
-          // these will throw when we get their size. Avoid capturing these
-          if (renderObject?.debugNeedsLayout == true) continue;
+    try {
+      Timeline.timeSync('Datadog SR Tree Capture', () {
+        for (final e in _elements.values) {
+          final renderObject = e.renderObject;
+          if (kDebugMode) {
+            // During hot reload, elements can be inserted that still need layout, and
+            // these will throw when we get their size. Avoid capturing these
+            if (renderObject?.debugNeedsLayout == true) continue;
+          }
+
+          /// This shouldn't happen as we now remove widgets from capture requests during
+          /// dispose. But, just in case, let's skip any widgets that are in a defunct state.
+          if (!e.mounted) continue;
+
+          // In debug mode, Flutter will assert if you attempt to access the size of an
+          // object that shouldn't have size. We can skip elements that have no size for
+          // whatever reason.
+          if (renderObject is RenderBox && !renderObject.hasSize) continue;
+
+          final elementSize = e.size;
+          if (elementSize != null) {
+            // Need to copy this value because the size class
+            // returned by the element is not serializable over the isolate
+            size = Size(elementSize.width, elementSize.height);
+          }
+          _captureElement(
+            e,
+            capturedSemantics,
+            pointerSnapshots,
+            _defaultTreeCapturePrivacy,
+          );
         }
-
-        /// This shouldn't happen as we now remove widgets from capture requests during
-        /// dispose. But, just in case, let's skip any widgets that are in a defunct state.
-        if (!e.mounted) continue;
-
-        // In debug mode, Flutter will assert if you attempt to access the size of an
-        // object that shouldn't have size. We can skip elements that have no size for
-        // whatever reason.
-        if (renderObject is RenderBox && !renderObject.hasSize) continue;
-
-        final elementSize = e.size;
-        if (elementSize != null) {
-          // Need to copy this value because the size class
-          // returned by the element is not serializable over the isolate
-          size = Size(elementSize.width, elementSize.height);
-        }
-        _captureElement(
-          e,
-          capturedSemantics,
-          pointerSnapshots,
-          _defaultTreeCapturePrivacy,
-        );
+      });
+    } catch (_) {
+      // Elements collected before the failure will never be processed, so
+      // release what they hold before the error propagates.
+      for (final s in capturedSemantics) {
+        if (s is AdditionalProcessingElement) s.discard?.call();
       }
-    });
+      rethrow;
+    }
 
     final addedProcessingTimelineTask = TimelineTask()
       ..start('Datadog SR Capture Processing');

@@ -11,6 +11,7 @@ import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:datadog_session_replay/src/capture/capture_node.dart';
 import 'package:datadog_session_replay/src/capture/element_recorders/image_recorder.dart';
 import 'package:datadog_session_replay/src/capture/recorder.dart';
+import 'package:datadog_session_replay/src/capture/view_tree_snapshot.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_interface.dart';
 import 'package:datadog_session_replay/src/rum_context.dart';
 import 'package:datadog_session_replay/src/sr_data_models.dart';
@@ -21,6 +22,20 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../test_utils.dart';
 import 'simple_test_capture.dart';
+
+class _ThrowingPlaceholderRecorder implements ElementRecorder {
+  @override
+  bool accepts(Widget widget) => widget is Placeholder;
+
+  @override
+  CaptureNodeSemantics? captureSemantics(
+    Element element,
+    CapturedViewAttributes attributes,
+    TreeCapturePrivacy capturePrivacy,
+  ) {
+    throw StateError('Recorder failure');
+  }
+}
 
 class MockDatadogSessionReplayPlatform extends Mock
     with MockPlatformInterfaceMixin
@@ -1337,6 +1352,58 @@ void main() {
         ),
       );
     }
+
+    testWidgets('image clone is disposed when the tree walk aborts', (
+      tester,
+    ) async {
+      // Given
+      final failingRecorder = SessionReplayRecorder.withCustomRecorders(
+        [ImageRecorder(KeyGenerator()), _ThrowingPlaceholderRecorder()],
+        defaultCapturePrivacy: TreeCapturePrivacy(
+          textAndInputPrivacyLevel:
+              TextAndInputPrivacyLevel.maskSensitiveInputs,
+          imagePrivacyLevel: ImagePrivacyLevel.maskNone,
+        ),
+        touchPrivacyLevel: TouchPrivacyLevel.show,
+      );
+      failingRecorder.updateContext(context);
+      final image = testImage.clone();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SimpleTestCapture(
+            key: Key('key'),
+            recorder: failingRecorder,
+            child: Column(
+              children: [
+                // Visited (and cloned) before the recorder that throws
+                SizedBox(
+                  width: image.width.toDouble(),
+                  height: image.height.toDouble(),
+                  child: RawImage(image: image),
+                ),
+                SizedBox(width: 10, height: 10, child: Placeholder()),
+              ],
+            ),
+          ),
+        ),
+      );
+      final openHandlesBefore = image.debugGetOpenHandleStackTraces()!.length;
+
+      // When
+      Object? captureError;
+      await tester.runAsync(() async {
+        try {
+          await failingRecorder.performCapture();
+        } catch (e) {
+          captureError = e;
+        }
+      });
+
+      // Then
+      expect(captureError, isStateError);
+      expect(image.debugGetOpenHandleStackTraces()!.length, openHandlesBefore);
+      image.dispose();
+    });
 
     testWidgets('same image is only processed once across captures', (
       tester,

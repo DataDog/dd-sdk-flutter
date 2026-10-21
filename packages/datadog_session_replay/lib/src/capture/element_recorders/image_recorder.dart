@@ -186,6 +186,7 @@ class ImageRecorder implements ElementRecorder {
         // It must be the cloned handle because the original could be disposed at that time
         imageHandle: imageHandle,
       ).whenComplete(imageHandle.dispose),
+      discard: imageHandle.dispose,
     );
   }
 
