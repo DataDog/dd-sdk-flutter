@@ -40,10 +40,12 @@ void main() {
           'content-length': ['1024'],
           'server-timing': ['total;dur=100'],
           'x-cache': ['HIT'],
+          'cf-cache-status': ['HIT'],
+          'x-vercel-cache': ['MISS'],
           'x-custom': ['ignored'],
         };
         final result = extractor.extractResponseHeaders(headers);
-        expect(result.length, 10);
+        expect(result.length, 12);
         expect(result['cache-control'], 'max-age=3600');
         expect(result['etag'], '"abc123"');
         expect(result['age'], '100');
@@ -54,6 +56,8 @@ void main() {
         expect(result['content-length'], '1024');
         expect(result['server-timing'], 'total;dur=100');
         expect(result['x-cache'], 'HIT');
+        expect(result['cf-cache-status'], 'HIT');
+        expect(result['x-vercel-cache'], 'MISS');
         expect(result.containsKey('x-custom'), false);
       });
 
