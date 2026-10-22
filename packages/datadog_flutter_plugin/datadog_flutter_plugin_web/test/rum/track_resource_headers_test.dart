@@ -22,8 +22,12 @@ void main() {
   group('convertTrackResourceHeaders', () {
     test('returns true when only defaults are captured', () {
       final result = convertTrackResourceHeaders(ResourceHeadersExtractor());
+      final resultWithForbiddenHeader = convertTrackResourceHeaders(
+        ResourceHeadersExtractor(captureHeaders: ['authorization']),
+      );
 
       expect((result as JSBoolean).toDart, isTrue);
+      expect((resultWithForbiddenHeader as JSBoolean).toDart, isTrue);
     });
 
     test('returns a default matcher followed by custom headers', () {
@@ -48,6 +52,19 @@ void main() {
       );
 
       expect(_matchers(result).map(_name), ['x-custom']);
+    });
+
+    test('returns null when no header can be captured', () {
+      expect(convertTrackResourceHeaders(null), isNull);
+      expect(
+        convertTrackResourceHeaders(
+          ResourceHeadersExtractor(
+            includeDefaults: false,
+            captureHeaders: ['authorization'],
+          ),
+        ),
+        isNull,
+      );
     });
   });
 }
