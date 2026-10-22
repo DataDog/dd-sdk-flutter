@@ -52,17 +52,11 @@ mutation CreateCat(\$name: String, \$age: Int){
                   ),
                 ),
                 Mutation(
-                  options: MutationOptions(
-                    document: gql(addCat),
-                  ),
+                  options: MutationOptions(document: gql(addCat)),
                   builder: (runMutation, result) {
                     return ElevatedButton(
-                      onPressed: () => runMutation(
-                        {
-                          'name': textController.text,
-                          'age': 1,
-                        },
-                      ),
+                      onPressed: () =>
+                          runMutation({'name': textController.text, 'age': 1}),
                       child: const Text('Add Cat'),
                     );
                   },

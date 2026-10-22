@@ -85,8 +85,10 @@ final class FlagsExampleConfig {
     return FlagsExampleConfig._(
       configuration: DatadogFlagsConfiguration(datadogConfig: datadogConfig),
       evaluationContext: FlagsEvaluationContext(
-        targetingKey:
-            dotenv.get('FLAGS_TARGETING_KEY', fallback: 'test_subject4'),
+        targetingKey: dotenv.get(
+          'FLAGS_TARGETING_KEY',
+          fallback: 'test_subject4',
+        ),
         attributes: _attributesFromJson(
           dotenv.get(
             'FLAGS_TARGETING_ATTRIBUTES_JSON',

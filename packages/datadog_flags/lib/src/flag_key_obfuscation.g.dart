@@ -13,7 +13,4 @@ FlagKeyObfuscation _$FlagKeyObfuscationFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$FlagKeyObfuscationToJson(FlagKeyObfuscation instance) =>
-    <String, dynamic>{
-      'scheme': instance.scheme,
-      'salt': instance.salt,
-    };
+    <String, dynamic>{'scheme': instance.scheme, 'salt': instance.salt};

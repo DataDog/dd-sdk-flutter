@@ -13,29 +13,31 @@ void main() async {
 
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
 
-  final configuration = DatadogConfiguration(
-    clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
-    env: dotenv.get('DD_ENV', fallback: ''),
-    service: 'com.datadoghq.example.flutter',
-    version: '1.2.3',
-    site: DatadogSite.us1,
-    nativeCrashReportEnabled: true,
-    loggingConfiguration: DatadogLoggingConfiguration(),
-    rumConfiguration: applicationId != null
-        ? DatadogRumConfiguration(
-            sessionSamplingRate: 100.0,
-            applicationId: applicationId,
-            detectLongTasks: true,
-            reportFlutterPerformance: true,
-          )
-        : null,
-  )..enableSessionReplay(
-      DatadogSessionReplayConfiguration(
-        textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskSensitiveInputs,
-        touchPrivacyLevel: TouchPrivacyLevel.show,
-        replaySampleRate: 1.0,
-      ),
-    );
+  final configuration =
+      DatadogConfiguration(
+        clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
+        env: dotenv.get('DD_ENV', fallback: ''),
+        service: 'com.datadoghq.example.flutter',
+        version: '1.2.3',
+        site: DatadogSite.us1,
+        nativeCrashReportEnabled: true,
+        loggingConfiguration: DatadogLoggingConfiguration(),
+        rumConfiguration: applicationId != null
+            ? DatadogRumConfiguration(
+                sessionSamplingRate: 100.0,
+                applicationId: applicationId,
+                detectLongTasks: true,
+                reportFlutterPerformance: true,
+              )
+            : null,
+      )..enableSessionReplay(
+        DatadogSessionReplayConfiguration(
+          textAndInputPrivacyLevel:
+              TextAndInputPrivacyLevel.maskSensitiveInputs,
+          touchPrivacyLevel: TouchPrivacyLevel.show,
+          replaySampleRate: 1.0,
+        ),
+      );
 
   final ddsdk = DatadogSdk.instance;
   ddsdk.sdkVerbosity = CoreLoggerLevel.debug;

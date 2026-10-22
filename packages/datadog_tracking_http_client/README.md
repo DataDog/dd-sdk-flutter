@@ -12,6 +12,7 @@ import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
 
 final configuration = DatadogConfiguration(
   // configuration
+  service: '<SERVICE_NAME>',
   firstPartyHosts: ['example.com'],
 )..enableHttpTracking()
 ```
@@ -36,6 +37,7 @@ import 'package:http/http.dart' as http;
 final configuration = DatadogConfiguration(
   // specifying firstPartyHosts is still necessary to
   // enable distributed tracing
+  service: '<SERVICE_NAME>',
   firstPartyHosts: ['example.com'],
 )
 

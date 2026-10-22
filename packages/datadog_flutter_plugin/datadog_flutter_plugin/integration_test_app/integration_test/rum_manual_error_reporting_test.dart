@@ -1,0 +1,91 @@
+// Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2016-Present Datadog, Inc.
+
+import 'package:datadog_common_test/datadog_common_test.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+
+import 'common.dart';
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('test rum manual error reporting scenario', (
+    WidgetTester tester,
+  ) async {
+    var recordedSession = await openTestScenario(
+      tester,
+      menuTitle: 'RUM Error Reporting Scenario',
+    );
+
+    var throwButton = find.widgetWithText(
+      ElevatedButton,
+      'Throw / Catch Exception',
+    );
+    await tester.tap(throwButton);
+    await tester.pumpAndSettle();
+
+    var stopButton = find.widgetWithText(ElevatedButton, 'Stop View');
+    await tester.tap(stopButton);
+    await tester.pumpAndSettle();
+
+    var requestLog = <RequestLog>[];
+    var rumLog = <RumEventDecoder>[];
+    await recordedSession.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      rumLog.addAll(requests.expand((r) => r.asRumEvents()));
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      if (allSessions.isEmpty) return false;
+      var visits = allSessions.last.visits;
+      return visits.length == 1 &&
+          visits[0].viewEvents.last.view.errorCount == 3;
+    });
+
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
+    expect(session.visits.length, 1);
+
+    final view = session.visits[0];
+    expect(view.viewEvents.last.view.errorCount, 3);
+    expect(view.errorEvents.length, 3);
+
+    var exceptionError = view.errorEvents[0];
+    expect(exceptionError.message, contains(TypeError().toString()));
+    expect(exceptionError.source, 'source');
+    expect(exceptionError.errorType, 'NullThrown');
+    if (!kIsWeb && !isDdSdkCppPlatform()) {
+      // source_type is not supported on the C++ SDK yet. Web is checked below.
+      expect(exceptionError.sourceType, 'flutter');
+    }
+
+    var manualError = view.errorEvents[1];
+    expect(manualError.message, contains('Rum error message'));
+    expect(manualError.source, 'network');
+    if (!isDdSdkCppPlatform()) {
+      // fingerprint is not supported on C++ SDK platforms.
+      expect(manualError.fingerprint, 'custom-fingerprint');
+    }
+
+    var thrownError = view.errorEvents[2];
+    expect(thrownError.message, contains('This was an error!'));
+    expect(thrownError.source, 'source');
+    expect(thrownError.stack, isNotNull);
+    if (kIsWeb) {
+      expect(thrownError.sourceType, kIsWasm ? 'browser+wasm' : 'browser');
+    }
+    if (kIsWasm) {
+      final wasmModules =
+          thrownError.rumEvent['error']['wasm_modules'] as List<dynamic>;
+      expect(wasmModules, hasLength(1));
+
+      final wasmModule = wasmModules.single as Map<String, dynamic>;
+      expect(wasmModule['url'], contains('main.dart.wasm'));
+      expect(wasmModule['build_id'], isEmpty);
+      expect(wasmModule['debug_info_type'], 'sourcemap');
+    }
+  });
+}

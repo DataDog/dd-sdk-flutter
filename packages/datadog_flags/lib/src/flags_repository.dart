@@ -20,8 +20,9 @@ class FlagsRepository {
   // Keep late writes ordered when SDK reconfiguration replaces a repository.
   // Expando keeps the queue scoped to the store identity without retaining it.
   static final Expando<Map<String, _CacheOperationQueue>>
-      _cacheOperationQueues =
-      Expando<Map<String, _CacheOperationQueue>>('flags cache operations');
+  _cacheOperationQueues = Expando<Map<String, _CacheOperationQueue>>(
+    'flags cache operations',
+  );
 
   @visibleForTesting
   final Duration storeReadTimeout;
@@ -101,8 +102,8 @@ class FlagsRepository {
 
     final matchingCached =
         cached != null && _contextsMatch(cached.context, context)
-            ? cached
-            : null;
+        ? cached
+        : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
       _state = _InstalledFlagsState(
         data: matchingCached,
@@ -156,8 +157,8 @@ class FlagsRepository {
       return _CacheOperationQueue();
     }
 
-    final queues =
-        _cacheOperationQueues[store] ??= <String, _CacheOperationQueue>{};
+    final queues = _cacheOperationQueues[store] ??=
+        <String, _CacheOperationQueue>{};
     return queues.putIfAbsent(clientName, _CacheOperationQueue.new);
   }
 
@@ -184,10 +185,9 @@ class FlagsRepository {
     }
 
     try {
-      final data = await store.read(clientName).timeout(
-            storeReadTimeout,
-            onTimeout: () => null,
-          );
+      final data = await store
+          .read(clientName)
+          .timeout(storeReadTimeout, onTimeout: () => null);
       // Custom stores can return constructed snapshots without JSON decoding.
       // Validate and copy the complete snapshot before making it available.
       return data == null ? null : FlagsData.fromJson(data.toJson());

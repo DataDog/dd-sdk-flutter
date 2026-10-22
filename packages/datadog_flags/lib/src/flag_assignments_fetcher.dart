@@ -30,7 +30,8 @@ class FlagAssignmentsFetcher {
   Future<PrecomputedAssignments> fetch(
     FlagsEvaluationContext evaluationContext,
   ) async {
-    final endpoint = configuration.customFlagsEndpoint ??
+    final endpoint =
+        configuration.customFlagsEndpoint ??
         datadogConfig.flagsEndpoint().replace(path: '/precompute-assignments');
     final http.Response response;
     try {
@@ -81,11 +82,12 @@ class FlagAssignmentsFetcher {
       'Content-Type': 'application/vnd.api+json',
       // Avoid adding a header that a web proxy's CORS policy may reject.
       if (configuration.customFlagsEndpoint == null)
-        'X-DD-FEATURE-FLAGS-CAPABILITIES': (supportedFlagsCapabilities
-                .map((capability) => capability.wireName)
-                .toList()
-              ..sort())
-            .join(','),
+        'X-DD-FEATURE-FLAGS-CAPABILITIES':
+            (supportedFlagsCapabilities
+                    .map((capability) => capability.wireName)
+                    .toList()
+                  ..sort())
+                .join(','),
       'dd-client-token': datadogConfig.clientToken,
       if (datadogConfig.applicationId case final applicationId?)
         'dd-application-id': applicationId,

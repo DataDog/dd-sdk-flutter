@@ -62,10 +62,7 @@ class NoOpDatadogFlagsClient implements DatadogFlagsClient {
   @override
   Future<void> shutdown() async {}
 
-  FlagDetails<T> _details<T>({
-    required String key,
-    required T defaultValue,
-  }) {
+  FlagDetails<T> _details<T>({required String key, required T defaultValue}) {
     return FlagDetails(
       key: key,
       value: defaultValue,

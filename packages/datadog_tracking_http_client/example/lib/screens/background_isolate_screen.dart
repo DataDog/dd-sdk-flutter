@@ -51,9 +51,7 @@ class _BackgroundIsolateScreentate extends State<BackgroundIsolateScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Auto RUM'),
-      ),
+      appBar: AppBar(title: const Text('Auto RUM')),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -84,7 +82,9 @@ void _backgroundWork(SendPort port) async {
 }
 
 Future<void> _performBackgroundFetch(
-    RumAutoInstrumentationScenarioConfig config, SendPort port) async {
+  RumAutoInstrumentationScenarioConfig config,
+  SendPort port,
+) async {
   port.send('Get First Party');
   await http.get(Uri.parse(config.firstPartyGetUrl));
 

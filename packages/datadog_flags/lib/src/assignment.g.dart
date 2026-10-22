@@ -10,8 +10,9 @@ FlagAssignment _$FlagAssignmentFromJson(Map<String, dynamic> json) =>
     FlagAssignment._(
       allocationKey: json['allocationKey'] as String,
       variationKey: json['variationKey'] as String,
-      variationType:
-          FlagVariationType.fromWireName(json['variationType'] as String),
+      variationType: FlagVariationType.fromWireName(
+        json['variationType'] as String,
+      ),
       variationValue: json['variationValue'] as Object,
       reason: json['reason'] as String,
       doLog: json['doLog'] as bool,

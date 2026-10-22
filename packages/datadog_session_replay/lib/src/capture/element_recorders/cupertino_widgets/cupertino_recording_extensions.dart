@@ -8,9 +8,10 @@ extension CupertinoColorResolver on Color {
   Color resolveColor(Element element) {
     final resolved = CupertinoDynamicColor.resolve(this, element);
     return Color.from(
-        alpha: resolved.a,
-        red: resolved.r,
-        green: resolved.g,
-        blue: resolved.b);
+      alpha: resolved.a,
+      red: resolved.r,
+      green: resolved.g,
+      blue: resolved.b,
+    );
   }
 }
