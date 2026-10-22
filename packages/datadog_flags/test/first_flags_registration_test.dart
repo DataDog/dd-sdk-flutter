@@ -94,6 +94,7 @@ void main() {
     expect(events, hasLength(3));
     expect(events.last, same(events.first));
   });
+
   test('cancel before install is per-registration and repeat-safe', () async {
     final client = (await _owner()).sharedClient();
     var calls = 0;
@@ -108,6 +109,7 @@ void main() {
     await _waitForEventLoop();
     expect(calls, 2);
   });
+
   test('late replay uses one microtask and queued cancellation is idempotent',
       () async {
     final client = (await _owner()).sharedClient();
@@ -192,6 +194,7 @@ void main() {
       cancel();
     });
   });
+
   test('running callback can cancel another queued callback and itself',
       () async {
     final client = (await _owner()).sharedClient();
@@ -207,6 +210,7 @@ void main() {
     await client.initialize(_context);
     expect(calls, 1);
   });
+
   for (final error in [Exception('app'), StateError('app'), Object()]) {
     test(
         'nested registration is another microtask and ${error.runtimeType} is isolated',
@@ -225,6 +229,7 @@ void main() {
       expect(order, ['first', 'second', 'nested']);
     });
   }
+
   test('cancel all does not cancel initialize or erase retained event',
       () async {
     final client = (await _owner()).sharedClient();
@@ -242,6 +247,7 @@ void main() {
             .value,
         isTrue);
   });
+
   test(
       'reset and shutdown retain event but evaluations read current assignments',
       () async {
@@ -259,6 +265,7 @@ void main() {
             .error,
         FlagEvaluationError.providerNotReady);
   });
+
   test('noop never fabricates event and returns safe unregister', () async {
     final owner = DatadogFlags();
     final client = owner.sharedClient();
