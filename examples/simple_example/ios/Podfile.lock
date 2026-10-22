@@ -10,53 +10,49 @@ PODS:
     - DictionaryCoder (= 1.2.0)
     - Flutter
   - datadog_session_replay (0.0.1):
-    - DatadogCore (~> 3)
+    - DatadogCore (~> 3.16)
     - Flutter
   - datadog_webview_tracking (0.0.1):
     - DatadogCore (~> 3)
     - DatadogWebViewTracking (~> 3)
     - Flutter
     - webview_flutter_wkwebview
-  - DatadogCore (3.9.1):
-    - DatadogInternal (= 3.9.1)
-  - DatadogCrashReporting (3.9.1):
-    - DatadogInternal (= 3.9.1)
-    - KSCrash/Filters (= 2.5.0)
-    - KSCrash/Recording (= 2.5.0)
-  - DatadogInternal (3.9.1)
-  - DatadogLogs (3.9.1):
-    - DatadogInternal (= 3.9.1)
-  - DatadogRUM (3.9.1):
-    - DatadogInternal (= 3.9.1)
-  - DatadogWebViewTracking (3.9.1):
-    - DatadogInternal (= 3.9.1)
+  - DatadogCore (3.18.0):
+    - DatadogInternal (= 3.18.0)
+  - DatadogCrashReporting (3.18.0):
+    - DatadogInternal (= 3.18.0)
+    - KSCrash/Filters (= 2.5.1)
+    - KSCrash/Recording (= 2.5.1)
+  - DatadogInternal (3.18.0)
+  - DatadogLogs (3.18.0):
+    - DatadogInternal (= 3.18.0)
+  - DatadogRUM (3.18.0):
+    - DatadogInternal (= 3.18.0)
+  - DatadogWebViewTracking (3.18.0):
+    - DatadogInternal (= 3.18.0)
   - DictionaryCoder (1.2.0)
   - Flutter (1.0.0)
-  - KSCrash/Core (2.5.0)
-  - KSCrash/Filters (2.5.0):
+  - KSCrash/Core (2.5.1)
+  - KSCrash/Filters (2.5.1):
     - KSCrash/Recording
     - KSCrash/RecordingCore
     - KSCrash/ReportingCore
-  - KSCrash/Recording (2.5.0):
+  - KSCrash/Recording (2.5.1):
     - KSCrash/RecordingCore
-  - KSCrash/RecordingCore (2.5.0):
+  - KSCrash/RecordingCore (2.5.1):
     - KSCrash/Core
-  - KSCrash/ReportingCore (2.5.0):
+  - KSCrash/ReportingCore (2.5.1):
     - KSCrash/Core
-  - path_provider_foundation (0.0.1):
-    - Flutter
-    - FlutterMacOS
   - webview_flutter_wkwebview (0.0.1):
     - Flutter
     - FlutterMacOS
 
 DEPENDENCIES:
   - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
-  - datadog_flutter_plugin_ios (from `.symlinks/plugins/datadog_flutter_plugin_ios/ios`)
+  - datadog_flutter_plugin_ios (from `.symlinks/plugins/datadog_flutter_plugin_ios/darwin`)
   - datadog_session_replay (from `.symlinks/plugins/datadog_session_replay/ios`)
   - datadog_webview_tracking (from `.symlinks/plugins/datadog_webview_tracking/ios`)
   - Flutter (from `Flutter`)
-  - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
 SPEC REPOS:
@@ -74,35 +70,32 @@ EXTERNAL SOURCES:
   connectivity_plus:
     :path: ".symlinks/plugins/connectivity_plus/ios"
   datadog_flutter_plugin_ios:
-    :path: ".symlinks/plugins/datadog_flutter_plugin_ios/ios"
+    :path: ".symlinks/plugins/datadog_flutter_plugin_ios/darwin"
   datadog_session_replay:
     :path: ".symlinks/plugins/datadog_session_replay/ios"
   datadog_webview_tracking:
     :path: ".symlinks/plugins/datadog_webview_tracking/ios"
   Flutter:
     :path: Flutter
-  path_provider_foundation:
-    :path: ".symlinks/plugins/path_provider_foundation/darwin"
   webview_flutter_wkwebview:
     :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
 
 SPEC CHECKSUMS:
   connectivity_plus: 2a701ffec2c0ae28a48cf7540e279787e77c447d
-  datadog_flutter_plugin_ios: 10996273528b840f9bbb30b4c14f364e38fbe126
-  datadog_session_replay: 8e4f4a520f20feb2916c623c011a53ba63f8d77f
-  datadog_webview_tracking: 58ffca1b06ba88e0bd6dc0d0d1dada0e60e6d3d5
-  DatadogCore: e27bba3c2f490ae41ac17d41aecadee85475fe6d
-  DatadogCrashReporting: 23da244e20c2af0d159097dd10cc9ce8ef954bcc
-  DatadogInternal: e9ff671207d5a14354364101d32d60897c48d13a
-  DatadogLogs: 664dbb3598f95817429db0025575289c1f63efbf
-  DatadogRUM: dd30158552e5b48898cc2e6084eda1754c03ad6e
-  DatadogWebViewTracking: b8c35c23ac90ee4ba2b3879577451e27ec86ebcd
+  datadog_flutter_plugin_ios: 1287d52d94868424332da67c8d6fdf1e7d569517
+  datadog_session_replay: 94c7abd20ab55f732e993d614f139709abf4f9a3
+  datadog_webview_tracking: c74b2c1ef2ae15f43c89c459a093dabacfbcc349
+  DatadogCore: 708a7bc0b4a470720486a7f67ad6b7305cab7c96
+  DatadogCrashReporting: b88f93a9818482159eb7e1fb4381ec3a2df89577
+  DatadogInternal: d6e49a0626af8e795a3aa4195984e29823e8d62b
+  DatadogLogs: 82a2562cc90d1a3a5cdf4bee017f83042d4fb8ba
+  DatadogRUM: 625f9a7a8f6b49c2be4eb09058986a6e180301b9
+  DatadogWebViewTracking: 087b0514d64539279a758515520f28d7671fb170
   DictionaryCoder: f7115fcd074c8301e91f2eb862da1ea7d0385e61
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  KSCrash: 80e1e24eaefbe5134934ae11ca8d7746586bc2ed
-  path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
+  KSCrash: 8c4464fd5da7de520f2ce4a00fdf63f169a80f18
   webview_flutter_wkwebview: 29eb20d43355b48fe7d07113835b9128f84e3af4
 
-PODFILE CHECKSUM: cc1f88378b4bfcf93a6ce00d2c587857c6008d3b
+PODFILE CHECKSUM: 6fed66ec88571c1871d2e978eb967eed4f1581f8
 
 COCOAPODS: 1.16.2
