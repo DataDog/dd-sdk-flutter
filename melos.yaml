@@ -251,7 +251,9 @@ scripts:
   # Packages with a dedicated integration test app run through this target.
   # The other target discovers integration tests in package examples.
   integration_test:ios:main:
-    exec: |
+    exec:
+      concurrency: 1
+    run: |
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd integration_test_app
 
@@ -270,7 +272,9 @@ scripts:
   # invocation, so this uses tools/ci/bin/desktop_integration_tests.dart to run each
   # test file individually, same as integration_test:windows:main.
   integration_test:macos:main:
-    exec: |
+    exec:
+      concurrency: 1
+    run: |
       cd integration_test_app
       dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
@@ -296,7 +300,9 @@ scripts:
   # Packages with a dedicated integration test app run through this target.
   # The other target discovers integration tests in package examples.
   integration_test:android:main:
-    exec: | 
+    exec:
+      concurrency: 1
+    run: |
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd integration_test_app
       
@@ -342,7 +348,9 @@ scripts:
   # Packages with a dedicated integration test app run through this target.
   # The other target discovers integration tests in package examples.
   integration_test:windows:main:
-    exec: cd integration_test_app && dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
+    exec:
+      concurrency: 1
+    run: cd integration_test_app && dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       dirExists: 'integration_test_app/integration_test'
 
@@ -423,7 +431,9 @@ scripts:
   # Packages with a dedicated integration test app run through this target.
   # The other target discovers integration tests in package examples.
   integration_test:linux:main:
-    exec: |
+    exec:
+      concurrency: 1
+    run: |
       cd integration_test_app
       dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results --verbose
     packageFilters:
@@ -433,7 +443,9 @@ scripts:
     run: melos integration_test:web:main && melos integration_test:web:other
 
   integration_test:web:main:
-    exec: |
+    exec:
+      concurrency: 1
+    run: |
       cd integration_test_app
       dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart
       dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart --wasm

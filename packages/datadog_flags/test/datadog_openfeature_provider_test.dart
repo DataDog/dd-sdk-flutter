@@ -170,7 +170,9 @@ void main() {
     expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
     await api.shutdown();
     expect(
-      requests.where((r) => r.url.path.contains('exposure')),
+      requests
+          .where((r) => r.url.path.contains('exposure'))
+          .expand((r) => r.body.split('\n')),
       hasLength(2),
     );
   });
@@ -205,6 +207,69 @@ void main() {
       ErrorCode.providerNotReady,
     );
   });
+
+  for (final refreshCount in [1, 2]) {
+    test(
+      'in-flight exposure retries after $refreshCount runtime replacements',
+      () async {
+        await runZoned(
+          () async {
+            final firstUpload = Completer<http.Response>();
+            final started = Completer<void>();
+            var attempts = 0;
+            var successes = 0;
+            final provider = DatadogOpenFeatureProvider(
+              configuration: _configuration(
+                MockClient((request) async {
+                  if (request.url.path.contains('exposure')) {
+                    attempts++;
+                    if (attempts == 1) {
+                      started.complete();
+                      return firstUpload.future;
+                    }
+                    successes++;
+                    return http.Response('{}', 202);
+                  }
+                  return _responseFor(request, _assignmentsResponse());
+                }),
+                trackTelemetry: true,
+              ),
+            );
+            await api.setEvaluationContextAndWait(
+              EvaluationContext(targetingKey: 'subject'),
+            );
+            await api.setProviderAndWait(provider);
+            expect(
+              api.getClient().getBooleanValue('show-paywall', false),
+              isTrue,
+            );
+            await started.future.timeout(const Duration(seconds: 2));
+            for (var i = 0; i < refreshCount; i++) {
+              await provider.refresh();
+            }
+            firstUpload.complete(http.Response('offline', 503));
+            expect(
+              api.getClient().getBooleanValue('show-paywall', false),
+              isTrue,
+            );
+            await api.shutdown();
+            expect(attempts, 2);
+            expect(successes, 1);
+          },
+          zoneSpecification: ZoneSpecification(
+            createTimer: (self, parent, zone, duration, callback) =>
+                parent.createTimer(
+                  zone,
+                  duration == const Duration(seconds: 10)
+                      ? Duration.zero
+                      : duration,
+                  callback,
+                ),
+          ),
+        );
+      },
+    );
+  }
 
   test('evaluates obfuscated assignments and restores them from cache', () async {
     final store = _MemoryStore();
