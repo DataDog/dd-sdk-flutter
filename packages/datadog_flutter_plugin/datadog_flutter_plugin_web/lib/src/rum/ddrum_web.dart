@@ -567,8 +567,9 @@ JSString _headerTypeToPropagatorType(TracingHeaderType type) {
 ///
 /// Defaults only map to `true`, so the Browser SDK collects its own default
 /// headers and reports `default_headers` in configuration telemetry, like iOS
-/// and Android. When custom headers are added, a matcher without a name keeps
-/// the Browser SDK default headers, followed by the custom header names.
+/// and Android. When custom headers are added, the default header names (the
+/// same as the Browser SDK defaults) are listed explicitly with the custom
+/// ones, because Browser SDK versions before 7.8 drop matchers without a name.
 @visibleForTesting
 JSAny? convertTrackResourceHeaders(ResourceHeadersExtractor? extractor) {
   if (extractor == null) return null;
@@ -578,9 +579,11 @@ JSAny? convertTrackResourceHeaders(ResourceHeadersExtractor? extractor) {
     case 'default_headers':
       return true.toJS;
   }
+  final names = extractor.includeDefaults
+      ? extractor.responseHeaderNames
+      : extractor.customHeaderNames;
   return <_MatchHeader>[
-    if (extractor.includeDefaults) _MatchHeader(),
-    for (final name in extractor.customHeaderNames) _MatchHeader(name: name),
+    for (final name in names) _MatchHeader(name: name),
   ].toJS;
 }
 
