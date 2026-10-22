@@ -84,8 +84,11 @@ final class FlagKeyObfuscation {
       for (var index = 0; index < salt.length; index += 2)
         int.parse(salt.substring(index, index + 2), radix: 16),
     ];
-    final digest = sha256
-        .convert([..._domain, ...saltBytes, ...utf8.encode(key)]).toString();
+    final digest = sha256.convert([
+      ..._domain,
+      ...saltBytes,
+      ...utf8.encode(key),
+    ]).toString();
     if (_lookupKeys.length >= _lookupCacheLimit) _lookupKeys.clear();
     _lookupKeys[key] = digest;
     return digest;
@@ -111,5 +114,7 @@ String _saltFromJson(Object? value) {
 bool _isLowercaseHex(Object? value, int bytes) =>
     value is String &&
     value.length == bytes * 2 &&
-    value.codeUnits.every((unit) =>
-        (unit >= 0x30 && unit <= 0x39) || (unit >= 0x61 && unit <= 0x66));
+    value.codeUnits.every(
+      (unit) =>
+          (unit >= 0x30 && unit <= 0x39) || (unit >= 0x61 && unit <= 0x66),
+    );

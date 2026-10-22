@@ -11,11 +11,11 @@ dependencies:
     sdk: flutter
   datadog_flags_flutter:
     path: ..
-  datadog_flutter_plugin: ^3.4.0
+  datadog_flutter_plugin: ^4.0.0
 
 dependency_overrides:
   datadog_flutter_plugin:
-    path: ../../datadog_flutter_plugin
+    path: ../../datadog_flutter_plugin/datadog_flutter_plugin
   datadog_flags:
     path: ../../datadog_flags
 

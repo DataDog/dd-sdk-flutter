@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2022-Present Datadog, Inc.
 
+// datadog_flutter_plugin 3.x only exports DatadogSdk from here.
+// ignore: unnecessary_import
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/services.dart';

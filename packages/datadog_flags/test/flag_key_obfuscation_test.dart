@@ -122,8 +122,8 @@ void main() {
       (
         'object',
         <String, Object?>{
-          'visible': ['nested', 42]
-        }
+          'visible': ['nested', 42],
+        },
       ),
     ];
     for (final (type, value) in cases) {
@@ -132,48 +132,57 @@ void main() {
       );
       await harness.client.initialize(_context);
       final result = switch (type) {
-        'boolean' =>
-          harness.client.getBooleanDetails(key: 'flag', defaultValue: false),
-        'string' =>
-          harness.client.getStringDetails(key: 'flag', defaultValue: 'default'),
-        'integer' =>
-          harness.client.getIntegerDetails(key: 'flag', defaultValue: -1),
-        'float' ||
-        'number' =>
-          harness.client.getDoubleDetails(key: 'flag', defaultValue: -1),
+        'boolean' => harness.client.getBooleanDetails(
+          key: 'flag',
+          defaultValue: false,
+        ),
+        'string' => harness.client.getStringDetails(
+          key: 'flag',
+          defaultValue: 'default',
+        ),
+        'integer' => harness.client.getIntegerDetails(
+          key: 'flag',
+          defaultValue: -1,
+        ),
+        'float' || 'number' => harness.client.getDoubleDetails(
+          key: 'flag',
+          defaultValue: -1,
+        ),
         _ => harness.client.getObjectDetails(key: 'flag', defaultValue: null),
       };
       expect(result.value, value);
       expect(result.key, 'flag');
       expect(result.error, isNull);
       expect(
-          harness.client
-              .getBooleanDetails(key: 'missing', defaultValue: false)
-              .error,
-          FlagEvaluationError.flagNotFound);
+        harness.client
+            .getBooleanDetails(key: 'missing', defaultValue: false)
+            .error,
+        FlagEvaluationError.flagNotFound,
+      );
       expect(
-          harness.client
-              .getStringDetails(key: 'flag', defaultValue: 'default')
-              .error,
-          type == 'string' ? isNull : FlagEvaluationError.typeMismatch);
+        harness.client
+            .getStringDetails(key: 'flag', defaultValue: 'default')
+            .error,
+        type == 'string' ? isNull : FlagEvaluationError.typeMismatch,
+      );
     }
   });
 
   for (final metadata in [
     <String, Object?>{},
-    {'obfuscated': false}
+    {'obfuscated': false},
   ]) {
     test('accepts legacy response $metadata', () async {
-      final harness = await _Harness.create(_response(
-        {'flag': _assignment('boolean', true)},
-        metadata: metadata,
-      ));
+      final harness = await _Harness.create(
+        _response({'flag': _assignment('boolean', true)}, metadata: metadata),
+      );
       await harness.client.initialize(_context);
       expect(
-          harness.client
-              .getBooleanDetails(key: 'flag', defaultValue: false)
-              .value,
-          isTrue);
+        harness.client
+            .getBooleanDetails(key: 'flag', defaultValue: false)
+            .value,
+        isTrue,
+      );
     });
   }
 
@@ -187,7 +196,7 @@ void main() {
     {'obfuscated': true, 'obfuscation': []},
     {
       'obfuscated': true,
-      'obfuscation': {..._descriptor, 'scheme': 'flag-key-sha256-v2'}
+      'obfuscation': {..._descriptor, 'scheme': 'flag-key-sha256-v2'},
     },
     for (final salt in [
       '',
@@ -196,29 +205,35 @@ void main() {
       'G' * 32,
       _salt.toUpperCase(),
       '$_salt\n',
-      42
+      42,
     ])
       {
         'obfuscated': true,
-        'obfuscation': {..._descriptor, 'salt': salt}
+        'obfuscation': {..._descriptor, 'salt': salt},
       },
   ];
   for (final metadata in malformed) {
-    test('rejects malformed metadata $metadata with no plaintext retry',
-        () async {
-      final response =
-          _response({'flag': _assignment('boolean', true)}, metadata: metadata);
-      expect(
-          () => PrecomputeResponse.fromJson(response), throwsFormatException);
-      final harness = await _Harness.create(response);
-      await harness.client.initialize(_context);
-      expect(
+    test(
+      'rejects malformed metadata $metadata with no plaintext retry',
+      () async {
+        final response = _response({
+          'flag': _assignment('boolean', true),
+        }, metadata: metadata);
+        expect(
+          () => PrecomputeResponse.fromJson(response),
+          throwsFormatException,
+        );
+        final harness = await _Harness.create(response);
+        await harness.client.initialize(_context);
+        expect(
           harness.client
               .getBooleanDetails(key: 'flag', defaultValue: false)
               .error,
-          FlagEvaluationError.providerNotReady);
-      expect(harness.assignmentRequests, hasLength(1));
-    });
+          FlagEvaluationError.providerNotReady,
+        );
+        expect(harness.assignmentRequests, hasLength(1));
+      },
+    );
   }
 
   for (final key in [
@@ -226,26 +241,28 @@ void main() {
     'a' * 63,
     'a' * 65,
     'A' * 64,
-    '${'a' * 64}\n'
+    '${'a' * 64}\n',
   ]) {
     test('rejects malformed encoded map key ${jsonEncode(key)}', () {
       expect(
-          () => PrecomputeResponse.fromJson(
-              _response({key: _assignment('boolean', true)})),
-          throwsFormatException);
+        () => PrecomputeResponse.fromJson(
+          _response({key: _assignment('boolean', true)}),
+        ),
+        throwsFormatException,
+      );
     });
   }
 
   test('never retries a missed encoded lookup as plaintext', () async {
     final digest = _vectors['flag']!;
     final harness = await _Harness.create(
-        _response({digest: _assignment('boolean', true)}));
+      _response({digest: _assignment('boolean', true)}),
+    );
     await harness.client.initialize(_context);
     expect(
-        harness.client
-            .getBooleanDetails(key: digest, defaultValue: false)
-            .error,
-        FlagEvaluationError.flagNotFound);
+      harness.client.getBooleanDetails(key: digest, defaultValue: false).error,
+      FlagEvaluationError.flagNotFound,
+    );
   });
 
   for (final key in ['\ud800', '\udc00', 'a\ud800b']) {
@@ -253,56 +270,68 @@ void main() {
       final encoding = FlagKeyObfuscation.fromSnapshot(_metadata)!;
       expect(encoding.encodeKey(key), isNull);
       final replacement = utf8.decode(utf8.encode(key));
-      final harness = await _Harness.create(_response(
-          {encoding.encodeKey(replacement)!: _assignment('boolean', true)}));
+      final harness = await _Harness.create(
+        _response({
+          encoding.encodeKey(replacement)!: _assignment('boolean', true),
+        }),
+      );
       await harness.client.initialize(_context);
       expect(
-          harness.client.getBooleanDetails(key: key, defaultValue: false).value,
-          isFalse);
+        harness.client.getBooleanDetails(key: key, defaultValue: false).value,
+        isFalse,
+      );
     });
   }
 
-  test('stores metadata with assignments and restores only matching contexts',
-      () async {
-    final store = _JsonStore();
-    final harness = await _Harness.create(
+  test(
+    'stores metadata with assignments and restores only matching contexts',
+    () async {
+      final store = _JsonStore();
+      final harness = await _Harness.create(
         _response({_vectors['flag']!: _assignment('boolean', true)}),
-        store: store);
-    await harness.client.initialize(_context);
-    expect(store.json!['obfuscation'], _descriptor);
-    expect((store.json!['encodedFlags'] as Map).keys, [_vectors['flag']]);
-    expect(store.json!.containsKey('flags'), isFalse);
-    // This is the legacy reader's lookup. It cannot serve an encoded map.
-    final legacyRead = _legacyDecode(store.json!);
-    expect(legacyRead.flags, isEmpty);
-    expect(legacyRead.context, isA<FlagsEvaluationContext>());
-    expect(legacyRead.flags[_vectors['flag']], isNull);
-    final restored = FlagsData.fromJson(store.json!);
-    expect(restored.toJson(), store.json);
+        store: store,
+      );
+      await harness.client.initialize(_context);
+      expect(store.json!['obfuscation'], _descriptor);
+      expect((store.json!['encodedFlags'] as Map).keys, [_vectors['flag']]);
+      expect(store.json!.containsKey('flags'), isFalse);
+      // This is the legacy reader's lookup. It cannot serve an encoded map.
+      final legacyRead = _legacyDecode(store.json!);
+      expect(legacyRead.flags, isEmpty);
+      expect(legacyRead.context, isA<FlagsEvaluationContext>());
+      expect(legacyRead.flags[_vectors['flag']], isNull);
+      final restored = FlagsData.fromJson(store.json!);
+      expect(restored.toJson(), store.json);
 
-    final offline = await _Harness.create(
+      final offline = await _Harness.create(
         _response({}, metadata: {'obfuscated': true}),
-        store: store);
-    await offline.client.initialize(_context);
-    expect(
+        store: store,
+      );
+      await offline.client.initialize(_context);
+      expect(
         offline.client
             .getBooleanDetails(key: 'flag', defaultValue: false)
             .value,
-        isTrue);
-    expect(
+        isTrue,
+      );
+      expect(
         offline.client
             .getBooleanDetails(key: 'flag', defaultValue: false)
             .reason,
-        'CACHED');
-    await offline.client
-        .initialize(const FlagsEvaluationContext(targetingKey: 'other'));
-    expect(
+        'CACHED',
+      );
+      await offline.client.initialize(
+        const FlagsEvaluationContext(targetingKey: 'other'),
+      );
+      expect(
         offline.client
             .getBooleanDetails(key: 'flag', defaultValue: false)
             .error,
-        FlagEvaluationError.providerNotReady);
-    expect(offline.assignmentRequests, hasLength(2));
-  });
+        FlagEvaluationError.providerNotReady,
+      );
+      expect(offline.assignmentRequests, hasLength(2));
+    },
+  );
 
   test('rejects invalid stored metadata and preserves legacy snapshots', () {
     final legacy = {
@@ -312,15 +341,23 @@ void main() {
     };
     expect(FlagsData.fromJson(legacy).obfuscation, isNull);
     for (final metadata in malformed) {
-      expect(() => FlagsData.fromJson({...legacy, ...metadata}),
-          throwsFormatException);
+      expect(
+        () => FlagsData.fromJson({...legacy, ...metadata}),
+        throwsFormatException,
+      );
     }
-    expect(() => FlagsData.fromJson({...legacy, ..._metadata}),
-        throwsA(isA<TypeError>()));
     expect(
-        () => FlagsData.fromJson(
-            {...legacy, ..._metadata, 'encodedFlags': legacy['flags']}),
-        throwsFormatException);
+      () => FlagsData.fromJson({...legacy, ..._metadata}),
+      throwsA(isA<TypeError>()),
+    );
+    expect(
+      () => FlagsData.fromJson({
+        ...legacy,
+        ..._metadata,
+        'encodedFlags': legacy['flags'],
+      }),
+      throwsFormatException,
+    );
     final missingMetadata = {
       'encodedFlags': {_vectors['flag']!: _assignment('boolean', true)},
       'context': _context.toJson(),
@@ -331,156 +368,183 @@ void main() {
 
   test('rejects exact-length hex values with a trailing newline', () {
     expect(
-        () => FlagKeyObfuscation.fromSnapshot({
-              'obfuscated': true,
-              'obfuscation': {..._descriptor, 'salt': '${'0' * 31}\n'},
-            }),
-        throwsFormatException);
+      () => FlagKeyObfuscation.fromSnapshot({
+        'obfuscated': true,
+        'obfuscation': {..._descriptor, 'salt': '${'0' * 31}\n'},
+      }),
+      throwsFormatException,
+    );
     expect(
-        () => PrecomputeResponse.fromJson(_response({
-              '${'a' * 63}\n': _assignment('boolean', true),
-            })),
-        throwsFormatException);
+      () => PrecomputeResponse.fromJson(
+        _response({'${'a' * 63}\n': _assignment('boolean', true)}),
+      ),
+      throwsFormatException,
+    );
   });
 
   for (final invalid in [
     _response({}, metadata: {'obfuscated': true}),
     <String, Object?>{
       'data': {
-        'attributes': {'flags': null}
-      }
+        'attributes': {'flags': null},
+      },
     },
     _response({}, metadata: {..._metadata, 'createdAt': 'not-a-date'}),
     <String, Object?>{},
   ]) {
-    test('keeps valid same-context memory after ${jsonEncode(invalid)}',
-        () async {
-      final harness = await _Harness.create(
-          _response({_vectors['flag']!: _assignment('boolean', true)}));
-      await harness.client.initialize(_context);
-      harness.response = invalid;
-      await harness.client.initialize(_context);
-      expect(
+    test(
+      'keeps valid same-context memory after ${jsonEncode(invalid)}',
+      () async {
+        final harness = await _Harness.create(
+          _response({_vectors['flag']!: _assignment('boolean', true)}),
+        );
+        await harness.client.initialize(_context);
+        harness.response = invalid;
+        await harness.client.initialize(_context);
+        expect(
           harness.client
               .getBooleanDetails(key: 'flag', defaultValue: false)
               .value,
-          isTrue);
-      expect(harness.assignmentRequests, hasLength(2));
-    });
+          isTrue,
+        );
+        expect(harness.assignmentRequests, hasLength(2));
+      },
+    );
   }
 
-  test('accepts new keys and fields and isolates unknown variant types',
-      () async {
-    final encoding = FlagKeyObfuscation.fromSnapshot(_metadata)!;
-    final harness = await _Harness.create(_response({
-      _vectors['flag']!: _assignment('boolean', true),
-      encoding.encodeKey('new-flag')!: {
-        ..._assignment('boolean', true),
-        'future-field': true,
-      },
-      encoding.encodeKey('future')!: _assignment('future-type', true),
-    }, metadata: {
-      ..._metadata,
-      'future-field': true
-    }));
-    await harness.client.initialize(_context);
-    expect(
+  test(
+    'accepts new keys and fields and isolates unknown variant types',
+    () async {
+      final encoding = FlagKeyObfuscation.fromSnapshot(_metadata)!;
+      final harness = await _Harness.create(
+        _response(
+          {
+            _vectors['flag']!: _assignment('boolean', true),
+            encoding.encodeKey('new-flag')!: {
+              ..._assignment('boolean', true),
+              'future-field': true,
+            },
+            encoding.encodeKey('future')!: _assignment('future-type', true),
+          },
+          metadata: {..._metadata, 'future-field': true},
+        ),
+      );
+      await harness.client.initialize(_context);
+      expect(
         harness.client
             .getBooleanDetails(key: 'flag', defaultValue: false)
             .value,
-        isTrue);
-    expect(
+        isTrue,
+      );
+      expect(
         harness.client
             .getBooleanDetails(key: 'new-flag', defaultValue: false)
             .value,
-        isTrue);
-    expect(
+        isTrue,
+      );
+      expect(
         harness.client
             .getBooleanDetails(key: 'future', defaultValue: false)
             .error,
-        FlagEvaluationError.flagNotFound);
-  });
+        FlagEvaluationError.flagNotFound,
+      );
+    },
+  );
 
   test(
-      'rotates salts atomically and preserves telemetry names and deduplication',
-      () async {
-    final harness = await _Harness.create(
-        _response({_vectors['flag']!: _assignment('boolean', true)}));
-    await harness.client.initialize(_context);
-    harness.client.getBooleanDetails(key: 'flag', defaultValue: false);
-    final rotated = {
-      'obfuscated': true,
-      'obfuscation': {..._descriptor, 'salt': 'f' * 32}
-    };
-    final encoding = FlagKeyObfuscation.fromSnapshot(rotated)!;
-    harness.response = _response(
-        {encoding.encodeKey('flag')!: _assignment('boolean', true)},
-        metadata: rotated);
-    await harness.client.initialize(_context);
-    expect(
+    'rotates salts atomically and preserves telemetry names and deduplication',
+    () async {
+      final harness = await _Harness.create(
+        _response({_vectors['flag']!: _assignment('boolean', true)}),
+      );
+      await harness.client.initialize(_context);
+      harness.client.getBooleanDetails(key: 'flag', defaultValue: false);
+      final rotated = {
+        'obfuscated': true,
+        'obfuscation': {..._descriptor, 'salt': 'f' * 32},
+      };
+      final encoding = FlagKeyObfuscation.fromSnapshot(rotated)!;
+      harness.response = _response({
+        encoding.encodeKey('flag')!: _assignment('boolean', true),
+      }, metadata: rotated);
+      await harness.client.initialize(_context);
+      expect(
         harness.client
             .getBooleanDetails(key: 'flag', defaultValue: false)
             .value,
-        isTrue);
-    await harness.sdk.disable();
+        isTrue,
+      );
+      await harness.sdk.disable();
 
-    final exposures = harness.requests
-        .where((request) => request.url.path == '/api/v2/exposures')
-        .expand((request) => request.body.trim().split('\n').map(jsonDecode))
-        .toList();
-    expect(exposures, hasLength(1));
-    expect(exposures.single['flag'], {'key': 'flag'});
-    expect(exposures.single['variant'], {'key': 'variation-456'});
-    expect(exposures.single['allocation'], {'key': 'allocation-123'});
-    final evaluations = harness.requests
-        .where((request) => request.url.path == '/api/v2/flagevaluation')
-        .expand((request) => isWebFlagsIntake
-            ? request.body.trim().split('\n').map(jsonDecode)
-            : (jsonDecode(request.body)['flagEvaluations'] as List));
-    expect(evaluations, isNotEmpty);
-    expect(
-        evaluations.every((event) => event['flag']['key'] == 'flag'), isTrue);
-  });
+      final exposures = harness.requests
+          .where((request) => request.url.path == '/api/v2/exposures')
+          .expand((request) => request.body.trim().split('\n').map(jsonDecode))
+          .toList();
+      expect(exposures, hasLength(1));
+      expect(exposures.single['flag'], {'key': 'flag'});
+      expect(exposures.single['variant'], {'key': 'variation-456'});
+      expect(exposures.single['allocation'], {'key': 'allocation-123'});
+      final evaluations = harness.requests
+          .where((request) => request.url.path == '/api/v2/flagevaluation')
+          .expand(
+            (request) => isWebFlagsIntake
+                ? request.body.trim().split('\n').map(jsonDecode)
+                : (jsonDecode(request.body)['flagEvaluations'] as List),
+          );
+      expect(evaluations, isNotEmpty);
+      expect(
+        evaluations.every((event) => event['flag']['key'] == 'flag'),
+        isTrue,
+      );
+    },
+  );
 
   test(
-      'advertises automatic support and the actual Dart implementation version',
-      () async {
-    final harness = await _Harness.create(_response({}));
-    await harness.client.initialize(_context);
-    final attributes =
-        jsonDecode(harness.assignmentRequests.single.body)['data']
-            ['attributes'];
-    expect(attributes['source'],
-        {'sdk_name': 'dd-sdk-dart', 'sdk_version': ddPackageVersion});
-    expect(attributes.containsKey('supported_capabilities'), isFalse);
-    expect(
-        harness.assignmentRequests.single
+    'advertises automatic support and the actual Dart implementation version',
+    () async {
+      final harness = await _Harness.create(_response({}));
+      await harness.client.initialize(_context);
+      final attributes = jsonDecode(
+        harness.assignmentRequests.single.body,
+      )['data']['attributes'];
+      expect(attributes['source'], {
+        'sdk_name': 'dd-sdk-dart',
+        'sdk_version': ddPackageVersion,
+      });
+      expect(attributes.containsKey('supported_capabilities'), isFalse);
+      expect(
+        harness
+            .assignmentRequests
+            .single
             .headers['X-DD-FEATURE-FLAGS-CAPABILITIES'],
-        'assignment-encoding-flag-key-256-v1');
-  });
+        'assignment-encoding-flag-key-256-v1',
+      );
+    },
+  );
 }
 
 Map<String, Object?> _assignment(String type, Object value) => {
-      'allocationKey': 'allocation-123',
-      'variationKey': 'variation-456',
-      'variationType': type,
-      'variationValue': value,
-      'reason': 'TARGETING_MATCH',
-      'doLog': true,
-      'serialId': 123,
-    };
+  'allocationKey': 'allocation-123',
+  'variationKey': 'variation-456',
+  'variationType': type,
+  'variationValue': value,
+  'reason': 'TARGETING_MATCH',
+  'doLog': true,
+  'serialId': 123,
+};
 
-Map<String, Object?> _response(Map<String, Object?> flags,
-        {Map<String, Object?> metadata = _metadata}) =>
-    {
-      'data': {
-        'attributes': {
-          'createdAt': '2026-09-30T00:00:00Z',
-          ...metadata,
-          'flags': flags
-        }
-      },
-    };
+Map<String, Object?> _response(
+  Map<String, Object?> flags, {
+  Map<String, Object?> metadata = _metadata,
+}) => {
+  'data': {
+    'attributes': {
+      'createdAt': '2026-09-30T00:00:00Z',
+      ...metadata,
+      'flags': flags,
+    },
+  },
+};
 
 class _JsonStore implements DatadogFlagsStore {
   Map<String, Object?>? json;
@@ -526,23 +590,30 @@ class _Harness {
       .toList();
   _Harness(this.response);
 
-  static Future<_Harness> create(Map<String, Object?> response,
-      {DatadogFlagsStore? store}) async {
+  static Future<_Harness> create(
+    Map<String, Object?> response, {
+    DatadogFlagsStore? store,
+  }) async {
     final harness = _Harness(response);
     await harness.sdk.enable(
-        configuration: DatadogFlagsConfiguration(
-      datadogConfig: const DatadogFlagsConfig(
-          clientToken: 'test-token', env: 'test', site: DatadogFlagsSite.us1),
-      store: store,
-      httpClient: MockClient((request) async {
-        harness.requests.add(request);
-        return http.Response(
+      configuration: DatadogFlagsConfiguration(
+        datadogConfig: const DatadogFlagsConfig(
+          clientToken: 'test-token',
+          env: 'test',
+          site: DatadogFlagsSite.us1,
+        ),
+        store: store,
+        httpClient: MockClient((request) async {
+          harness.requests.add(request);
+          return http.Response(
             request.url.path == '/precompute-assignments'
                 ? jsonEncode(harness.response)
                 : '{}',
-            200);
-      }),
-    ));
+            200,
+          );
+        }),
+      ),
+    );
     addTearDown(harness.sdk.disable);
     return harness;
   }

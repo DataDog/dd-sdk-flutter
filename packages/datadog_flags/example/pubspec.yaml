@@ -3,7 +3,7 @@ description: Command line examples for the Datadog Feature Flags SDK.
 publish_to: none
 
 environment:
-  sdk: ">=3.6.0 <4.0.0"
+  sdk: ">=3.10.0 <4.0.0"
 
 dependencies:
   args: ^2.5.0
@@ -11,7 +11,7 @@ dependencies:
     path: ..
 
 dev_dependencies:
-  lints: '>=5.0.0'
+  lints: '^6.1.0'
 
 executables:
   typed_evaluation:

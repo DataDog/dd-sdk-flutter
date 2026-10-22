@@ -44,31 +44,40 @@ class CupertinoSwitchRecorder implements ElementRecorder {
       if (widget.value && !isMasked) WidgetState.selected,
     };
 
-    final double disabledOpacity =
-        states.contains(WidgetState.disabled) ? 0.5 : 1.0;
+    final double disabledOpacity = states.contains(WidgetState.disabled)
+        ? 0.5
+        : 1.0;
 
     Color thumbColor = _getThumbColor(widget: widget, states: states);
-    Color trackColor =
-        _getTrackColor(element: element, widget: widget, states: states);
-    BorderSide borderSide =
-        _getBorderSide(element: element, widget: widget, states: states);
+    Color trackColor = _getTrackColor(
+      element: element,
+      widget: widget,
+      states: states,
+    );
+    BorderSide borderSide = _getBorderSide(
+      element: element,
+      widget: widget,
+      states: states,
+    );
 
     if (disabledOpacity < 1.0) {
       thumbColor = thumbColor.withValues(alpha: thumbColor.a * disabledOpacity);
       trackColor = trackColor.withValues(alpha: trackColor.a * disabledOpacity);
       borderSide = borderSide.copyWith(
-        color: borderSide.color
-            .withValues(alpha: borderSide.color.a * disabledOpacity),
+        color: borderSide.color.withValues(
+          alpha: borderSide.color.a * disabledOpacity,
+        ),
       );
     }
 
     final adjustedBounds = Rect.fromCenter(
       center: attributes.paintBounds.center,
-      width: (_trackWidth + borderSide.width * (borderSide.strokeAlign + 1.0)) *
+      width:
+          (_trackWidth + borderSide.width * (borderSide.strokeAlign + 1.0)) *
           attributes.scaleX,
       height:
           (_trackHeight + borderSide.width * (borderSide.strokeAlign + 1.0)) *
-              attributes.scaleX,
+          attributes.scaleX,
     );
 
     attributes = CapturedViewAttributes(
@@ -78,13 +87,19 @@ class CupertinoSwitchRecorder implements ElementRecorder {
     );
 
     final double dotRadius = RadioRecorder.getRadius(
-        attributes: attributes, radius: _thumbRadius * attributes.scaleX);
+      attributes: attributes,
+      radius: _thumbRadius * attributes.scaleX,
+    );
 
     // WireFrame keys
-    final trackWireframeKey =
-        keyGenerator.keyForElement(element, wireframeId: 0);
-    final thumbWireframeKey =
-        keyGenerator.keyForElement(element, wireframeId: 1);
+    final trackWireframeKey = keyGenerator.keyForElement(
+      element,
+      wireframeId: 0,
+    );
+    final thumbWireframeKey = keyGenerator.keyForElement(
+      element,
+      wireframeId: 1,
+    );
 
     final node = SwitchNode(
       attributes,
@@ -162,8 +177,9 @@ class CupertinoSwitchRecorder implements ElementRecorder {
     required CupertinoSwitch widget,
     required Set<WidgetState> states,
   }) {
-    final Color? outlineColor =
-        widget.trackOutlineColor?.resolve(states)?.resolveColor(element);
+    final Color? outlineColor = widget.trackOutlineColor
+        ?.resolve(states)
+        ?.resolveColor(element);
     if (outlineColor == null) {
       return BorderSide(color: CupertinoColors.transparent, width: 0.0);
     }

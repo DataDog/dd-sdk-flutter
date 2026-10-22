@@ -2,8 +2,6 @@ package com.datadoghq.flutter.inappwebviewtracking
 
 import com.datadog.android.Datadog
 import com.datadog.android.webview.WebViewTracking
-import com.datadoghq.flutter.DatadogSdkPlugin
-import com.datadoghq.flutter.invalidOperation
 import com.google.gson.JsonParser
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -51,7 +49,11 @@ class DatadogInAppWebViewTrackingPlugin : FlutterPlugin, MethodCallHandler {
         // then sample as needed.
         val webEvent = JsonParser.parseString(message).asJsonObject
         if (!webEvent.has(EVENT_TYPE_KEY)) {
-            result.invalidOperation(WEB_EVENT_MISSING_TYPE_ERROR_MESSAGE.format(US, message))
+            result.error(
+                CONTRACT_VIOLATION,
+                WEB_EVENT_MISSING_TYPE_ERROR_MESSAGE.format(US, message),
+                null
+            )
             return
         }
 
@@ -73,6 +75,7 @@ class DatadogInAppWebViewTrackingPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     companion object {
+        const val CONTRACT_VIOLATION = "DatadogSdk:ContractViolation"
         const val EVENT_TYPE_KEY = "eventType"
         const val LOG_EVENT_TYPE = "log"
         const val WEB_EVENT_MISSING_TYPE_ERROR_MESSAGE = "The web event: %s is missing" +
@@ -82,7 +85,7 @@ class DatadogInAppWebViewTrackingPlugin : FlutterPlugin, MethodCallHandler {
 
 fun MethodChannel.Result.missingParameter(methodName: String, details: Any? = null) {
     this.error(
-        DatadogSdkPlugin.CONTRACT_VIOLATION,
+        DatadogInAppWebViewTrackingPlugin.CONTRACT_VIOLATION,
         "Missing required parameter in call to $methodName",
         details
     )

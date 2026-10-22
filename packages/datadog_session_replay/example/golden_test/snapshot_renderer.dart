@@ -108,19 +108,20 @@ extension TextWireframeRendering on SRTextWireframe {
     // Note if you're looking at the Goldens and seeing only boxes: golden
     // tests in Flutter do this on purpose to produce consistent results on all
     // platforms. See https://github.com/flutter/flutter/issues/28729
-    final paragraphBuilder = ui.ParagraphBuilder(
-      ui.ParagraphStyle(
-        textAlign: textPosition?.alignment?.toTextAlign(),
-      ),
-    )
-      ..pushStyle(
-        ui.TextStyle(
-          color: _colorFromHexString(textStyle.color),
-          fontFamily: textStyle.family.split(',')[0],
-          fontSize: textStyle.size.toDouble(),
-        ),
-      )
-      ..addText(text);
+    final paragraphBuilder =
+        ui.ParagraphBuilder(
+            ui.ParagraphStyle(
+              textAlign: textPosition?.alignment?.toTextAlign(),
+            ),
+          )
+          ..pushStyle(
+            ui.TextStyle(
+              color: _colorFromHexString(textStyle.color),
+              fontFamily: textStyle.family.split(',')[0],
+              fontSize: textStyle.size.toDouble(),
+            ),
+          )
+          ..addText(text);
     final paragraph = paragraphBuilder.build()
       ..layout(ui.ParagraphConstraints(width: width.toDouble()));
     canvas.drawParagraph(paragraph, Offset(x.toDouble(), y.toDouble()));
@@ -155,8 +156,9 @@ extension PlaceholderWireframeRendering on SRPlaceholderWireframe {
 
 extension ImageWireframeRendering on SRImageWireframe {
   void render(Canvas canvas) {
-    final mockPlatform = DatadogSessionReplayPlatform.instance
-        as MockDatadogSessionReplayPlatform;
+    final mockPlatform =
+        DatadogSessionReplayPlatform.instance
+            as MockDatadogSessionReplayPlatform;
     final imageData = mockPlatform.imageCache[resourceId!];
     if (imageData != null && imageData.image != null) {
       canvas.save();

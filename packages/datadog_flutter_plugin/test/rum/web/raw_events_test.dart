@@ -3,7 +3,6 @@
 // Copyright 2026-Present Datadog, Inc.
 // ignore: library_annotations
 @TestOn('browser')
-
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 

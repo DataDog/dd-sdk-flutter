@@ -77,8 +77,9 @@ void main() {
       // Returning false avoids spawning the processor isolate in tests
       return Future.value(false);
     });
-    when(() => mockPlatform.setHasReplay(any(), any()))
-        .thenAnswer((invocation) {
+    when(() => mockPlatform.setHasReplay(any(), any())).thenAnswer((
+      invocation,
+    ) {
       if (invocation.positionalArguments[1] == true) {
         viewsWithReplay.add(invocation.positionalArguments[0] as String);
       }
@@ -155,11 +156,15 @@ void main() {
     }
 
     test('the same sessions always get the same decision', () async {
-      final first =
-          await recordedSessions(rumSampleRate: 100, replaySampleRate: 50);
+      final first = await recordedSessions(
+        rumSampleRate: 100,
+        replaySampleRate: 50,
+      );
       DatadogSessionReplay.resetInstance();
-      final second =
-          await recordedSessions(rumSampleRate: 100, replaySampleRate: 50);
+      final second = await recordedSessions(
+        rumSampleRate: 100,
+        replaySampleRate: 50,
+      );
 
       expect(second, first);
     });
@@ -168,8 +173,7 @@ void main() {
   group('replaySampleRate with RUM sessionSampleRate below 100', () {
     for (final rumRate in [0.0, 10.0, 50.0]) {
       for (final replayRate in [0.0, 10.0, 20.0, 50.0, 100.0]) {
-        test(
-            'RUM $rumRate% x replay $replayRate% records exactly the sessions '
+        test('RUM $rumRate% x replay $replayRate% records exactly the sessions '
             'sampled at the combined rate', () async {
           final recorded = await recordedSessions(
             rumSampleRate: rumRate,
@@ -198,8 +202,10 @@ void main() {
     });
 
     test('recording follows the decision of each new session', () async {
-      final sessionReplay =
-          await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
+      final sessionReplay = await startSessionReplay(
+        rumSampleRate: 50,
+        replaySampleRate: 50,
+      );
 
       deliverRumContext!(sessionContext(sampled));
       expect(sessionReplay.isCapturing, isTrue);
@@ -219,20 +225,26 @@ void main() {
       expect(viewsWithReplay, isEmpty);
     });
 
-    test('startRecording() before any session waits for a sampled one',
-        () async {
-      final sessionReplay =
-          await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
-      expect(sessionReplay.isCapturing, isFalse);
+    test(
+      'startRecording() before any session waits for a sampled one',
+      () async {
+        final sessionReplay = await startSessionReplay(
+          rumSampleRate: 50,
+          replaySampleRate: 50,
+        );
+        expect(sessionReplay.isCapturing, isFalse);
 
-      deliverRumContext!(sessionContext(sampled));
+        deliverRumContext!(sessionContext(sampled));
 
-      expect(sessionReplay.isCapturing, isTrue);
-    });
+        expect(sessionReplay.isCapturing, isTrue);
+      },
+    );
 
     test('stopRecording() is kept across session changes', () async {
-      final sessionReplay =
-          await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
+      final sessionReplay = await startSessionReplay(
+        rumSampleRate: 50,
+        replaySampleRate: 50,
+      );
       deliverRumContext!(sessionContext(sampled));
 
       sessionReplay.stopRecording();
@@ -243,8 +255,10 @@ void main() {
     });
 
     test('losing the RUM session stops recording', () async {
-      final sessionReplay =
-          await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
+      final sessionReplay = await startSessionReplay(
+        rumSampleRate: 50,
+        replaySampleRate: 50,
+      );
       deliverRumContext!(sessionContext(sampled));
 
       deliverRumContext!(noSessionContext);
@@ -256,8 +270,10 @@ void main() {
       // At 100% every real session records, and the all-zero ID hashes to 0,
       // which the sampler accepts at any rate. Only the no-session check keeps
       // it from recording.
-      final sessionReplay =
-          await startSessionReplay(rumSampleRate: 100, replaySampleRate: 100);
+      final sessionReplay = await startSessionReplay(
+        rumSampleRate: 100,
+        replaySampleRate: 100,
+      );
 
       deliverRumContext!(androidNoSessionContext);
 
@@ -265,17 +281,21 @@ void main() {
       expect(viewsWithReplay, isEmpty);
     });
 
-    test('losing the RUM session on Android (all-zero ID) stops recording',
-        () async {
-      final sessionReplay =
-          await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
-      deliverRumContext!(sessionContext(sampled));
-      expect(sessionReplay.isCapturing, isTrue);
+    test(
+      'losing the RUM session on Android (all-zero ID) stops recording',
+      () async {
+        final sessionReplay = await startSessionReplay(
+          rumSampleRate: 50,
+          replaySampleRate: 50,
+        );
+        deliverRumContext!(sessionContext(sampled));
+        expect(sessionReplay.isCapturing, isTrue);
 
-      deliverRumContext!(androidNoSessionContext);
+        deliverRumContext!(androidNoSessionContext);
 
-      expect(sessionReplay.isCapturing, isFalse);
-    });
+        expect(sessionReplay.isCapturing, isFalse);
+      },
+    );
   });
 
   // Native RUM ends a session after 15 minutes without interaction, or once
@@ -298,10 +318,10 @@ void main() {
     });
 
     RUMContext viewContext(String sessionId, int view) => RUMContext(
-          applicationId: 'app',
-          sessionId: sessionId,
-          viewId: '$sessionId/view-$view',
-        );
+      applicationId: 'app',
+      sessionId: sessionId,
+      viewId: '$sessionId/view-$view',
+    );
 
     /// Contexts native sends during [sessionId] for each renewal reason:
     ///
@@ -340,52 +360,63 @@ void main() {
 
     for (final MapEntry(key: reason, value: playSession) in renewals.entries) {
       group(reason, () {
-        test('a sampled session renewed into a sampled one keeps recording',
-            () async {
-          final sessionReplay =
-              await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
+        test(
+          'a sampled session renewed into a sampled one keeps recording',
+          () async {
+            final sessionReplay = await startSessionReplay(
+              rumSampleRate: 50,
+              replaySampleRate: 50,
+            );
 
-          final firstViews = playSession(sampled);
-          expect(sessionReplay.isCapturing, isTrue);
+            final firstViews = playSession(sampled);
+            expect(sessionReplay.isCapturing, isTrue);
 
-          renewInto(otherSampled);
+            renewInto(otherSampled);
 
-          expect(sessionReplay.isCapturing, isTrue);
-          expect(
-            viewsWithReplay,
-            {...firstViews, '$otherSampled/view-0'},
-          );
-        });
+            expect(sessionReplay.isCapturing, isTrue);
+            expect(viewsWithReplay, {...firstViews, '$otherSampled/view-0'});
+          },
+        );
 
-        test('renewal into a session replay does not sample stops recording',
-            () async {
-          final sessionReplay =
-              await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
-          final firstViews = playSession(sampled);
+        test(
+          'renewal into a session replay does not sample stops recording',
+          () async {
+            final sessionReplay = await startSessionReplay(
+              rumSampleRate: 50,
+              replaySampleRate: 50,
+            );
+            final firstViews = playSession(sampled);
 
-          renewInto(replayNotSampled);
-          playSession(replayNotSampled);
+            renewInto(replayNotSampled);
+            playSession(replayNotSampled);
 
-          expect(sessionReplay.isCapturing, isFalse);
-          // Only the first session's views report has_replay.
-          expect(viewsWithReplay, firstViews.toSet());
-        });
+            expect(sessionReplay.isCapturing, isFalse);
+            // Only the first session's views report has_replay.
+            expect(viewsWithReplay, firstViews.toSet());
+          },
+        );
 
-        test('renewal into a session RUM does not sample stops recording',
-            () async {
-          final sessionReplay =
-              await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
-          final firstViews = playSession(sampled);
+        test(
+          'renewal into a session RUM does not sample stops recording',
+          () async {
+            final sessionReplay = await startSessionReplay(
+              rumSampleRate: 50,
+              replaySampleRate: 50,
+            );
+            final firstViews = playSession(sampled);
 
-          renewInto(null);
+            renewInto(null);
 
-          expect(sessionReplay.isCapturing, isFalse);
-          expect(viewsWithReplay, firstViews.toSet());
-        });
+            expect(sessionReplay.isCapturing, isFalse);
+            expect(viewsWithReplay, firstViews.toSet());
+          },
+        );
 
         test('renewal into a sampled session starts recording', () async {
-          final sessionReplay =
-              await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
+          final sessionReplay = await startSessionReplay(
+            rumSampleRate: 50,
+            replaySampleRate: 50,
+          );
           playSession(replayNotSampled);
           expect(sessionReplay.isCapturing, isFalse);
 
@@ -397,8 +428,10 @@ void main() {
         });
 
         test('the decision holds for every view of a session', () async {
-          final sessionReplay =
-              await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
+          final sessionReplay = await startSessionReplay(
+            rumSampleRate: 50,
+            replaySampleRate: 50,
+          );
 
           final sampledViews = playSession(sampled);
           expect(sessionReplay.isCapturing, isTrue);
@@ -410,22 +443,28 @@ void main() {
           expect(viewsWithReplay, sampledViews.toSet());
         });
 
-        test('stopRecording() before renewal stays in effect after it',
-            () async {
-          final sessionReplay =
-              await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
-          playSession(sampled);
+        test(
+          'stopRecording() before renewal stays in effect after it',
+          () async {
+            final sessionReplay = await startSessionReplay(
+              rumSampleRate: 50,
+              replaySampleRate: 50,
+            );
+            playSession(sampled);
 
-          sessionReplay.stopRecording();
-          renewInto(otherSampled);
-          playSession(otherSampled);
+            sessionReplay.stopRecording();
+            renewInto(otherSampled);
+            playSession(otherSampled);
 
-          expect(sessionReplay.isCapturing, isFalse);
-        });
+            expect(sessionReplay.isCapturing, isFalse);
+          },
+        );
 
         test('a session RUM does not sample, then a sampled one', () async {
-          final sessionReplay =
-              await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
+          final sessionReplay = await startSessionReplay(
+            rumSampleRate: 50,
+            replaySampleRate: 50,
+          );
           renewInto(null);
           expect(sessionReplay.isCapturing, isFalse);
 
@@ -440,8 +479,7 @@ void main() {
 
   group('embedded (hybrid) Session Replay', () {
     for (final rate in [0.0, 10.0, 20.0, 50.0, 100.0]) {
-      test(
-          'Flutter replaySampleRate $rate is ignored, every RUM session '
+      test('Flutter replaySampleRate $rate is ignored, every RUM session '
           'records', () async {
         final recorded = await recordedSessions(
           rumSampleRate: 100,
@@ -458,8 +496,7 @@ void main() {
     // replay has Flutter content only where Flutter recorded too.
     for (final rumRate in [0.0, 10.0, 50.0]) {
       for (final hostRate in [0.0, 10.0, 20.0, 50.0, 100.0]) {
-        test(
-            'RUM $rumRate% x host replay $hostRate% records Flutter content '
+        test('RUM $rumRate% x host replay $hostRate% records Flutter content '
             'in exactly the sessions the host samples', () async {
           final hostSampled = sampledSessions(rumRate, hostRate);
           final flutterRecorded = await recordedSessions(

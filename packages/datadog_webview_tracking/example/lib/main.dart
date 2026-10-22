@@ -26,6 +26,7 @@ Future<void> main() async {
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
     site: DatadogSite.us1,
+    service: 'com.datadoghq.flutter.webview_tracking.integration',
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,

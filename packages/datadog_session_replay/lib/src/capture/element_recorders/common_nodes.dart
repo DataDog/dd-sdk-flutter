@@ -113,8 +113,9 @@ class ContainerStyle {
     if (!decoration.enabled) {
       border = hasError ? decoration.errorBorder : decoration.disabledBorder;
     } else if (isFocused) {
-      border =
-          hasError ? decoration.focusedErrorBorder : decoration.focusedBorder;
+      border = hasError
+          ? decoration.focusedErrorBorder
+          : decoration.focusedBorder;
     } else {
       border = hasError ? decoration.errorBorder : decoration.enabledBorder;
     }
@@ -140,7 +141,9 @@ InputBorder _getDefaultInputBorder() {
 }
 
 ContainerStyle _captureBoxDecoration(
-    BoxDecoration decoration, CapturedViewAttributes attributes) {
+  BoxDecoration decoration,
+  CapturedViewAttributes attributes,
+) {
   double? cornerRadius = decoration.borderRadius?.resolve(null).topLeft.x;
   if (decoration.shape == BoxShape.circle) {
     // Show this as a circle even if it has border radius

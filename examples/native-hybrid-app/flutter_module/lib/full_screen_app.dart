@@ -27,10 +27,7 @@ class _FullScreenAppState extends State<FullScreenApp> {
       key: _captureKey,
       rum: DatadogSdk.instance.rum!,
       sessionReplay: DatadogSessionReplay.instance!,
-      child: const MaterialApp(
-        title: 'Flutter Inputs',
-        home: InputsScreen(),
-      ),
+      child: const MaterialApp(title: 'Flutter Inputs', home: InputsScreen()),
     );
   }
 }
@@ -45,8 +42,9 @@ class InputsScreen extends StatefulWidget {
 class _InputsScreenState extends State<InputsScreen> {
   /// Both native hosts handle `dismiss` on this channel by closing the
   /// Flutter view.
-  static const _navigationChannel =
-      MethodChannel('hybrid_session_replay_example/navigation');
+  static const _navigationChannel = MethodChannel(
+    'hybrid_session_replay_example/navigation',
+  );
 
   double _sliderValue = 0.5;
   bool _switchValue = false;
@@ -125,7 +123,9 @@ class _InputsScreenState extends State<InputsScreen> {
       child: Row(
         children: [
           SizedBox(width: 200, child: Text(label)),
-          Expanded(child: Align(alignment: Alignment.centerLeft, child: child)),
+          Expanded(
+            child: Align(alignment: Alignment.centerLeft, child: child),
+          ),
         ],
       ),
     );

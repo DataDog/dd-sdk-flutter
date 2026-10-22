@@ -25,19 +25,14 @@ class _RumWebViewScreenState extends State<RumWebViewScreen> {
 
     webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..trackDatadogEvents(
-        DatadogSdk.instance,
-        ['shopist.io'],
-      )
+      ..trackDatadogEvents(DatadogSdk.instance, ['shopist.io'])
       ..loadRequest(testUrl);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Datadog WebView Test'),
-      ),
+      appBar: AppBar(title: const Text('Datadog WebView Test')),
       body: WebViewWidget(controller: webViewController!),
     );
   }

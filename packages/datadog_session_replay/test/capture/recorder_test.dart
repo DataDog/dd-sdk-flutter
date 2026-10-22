@@ -286,22 +286,22 @@ void main() {
       // Then
       verifyInOrder([
         () => mockRecorderA.captureSemantics(
-              any(),
-              any(),
-              TreeCapturePrivacy(
-                textAndInputPrivacyLevel:
-                    TextAndInputPrivacyLevel.maskSensitiveInputs,
-                imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
-              ),
-            ),
+          any(),
+          any(),
+          TreeCapturePrivacy(
+            textAndInputPrivacyLevel:
+                TextAndInputPrivacyLevel.maskSensitiveInputs,
+            imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
+          ),
+        ),
         () => mockRecorderA.captureSemantics(
-              any(),
-              any(),
-              TreeCapturePrivacy(
-                textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskAll,
-                imagePrivacyLevel: ImagePrivacyLevel.maskAll,
-              ),
-            ),
+          any(),
+          any(),
+          TreeCapturePrivacy(
+            textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskAll,
+            imagePrivacyLevel: ImagePrivacyLevel.maskAll,
+          ),
+        ),
       ]);
     });
 

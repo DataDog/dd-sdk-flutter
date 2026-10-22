@@ -8,9 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'screens/named_screen.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({
-    super.key,
-  });
+  const MainScreen({super.key});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -34,20 +32,19 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Example App'),
+      appBar: AppBar(title: const Text('Example App')),
+      body: Center(
+        child: Column(
+          children: [
+            _paddedNavButton('Home', '/home'),
+            _paddedNavButton('Network', '/network'),
+            _paddedNavButton('GraphQl', '/graphql'),
+            _paddedNavButton('Flags', '/flags'),
+            _paddedNavButton('Crash', '/crash'),
+          ],
         ),
-        body: Center(
-          child: Column(
-            children: [
-              _paddedNavButton('Home', '/home'),
-              _paddedNavButton('Network', '/network'),
-              _paddedNavButton('GraphQl', '/graphql'),
-              _paddedNavButton('Flags', '/flags'),
-              _paddedNavButton('Crash', '/crash'),
-            ],
-          ),
-        ));
+      ),
+    );
   }
 }
 
@@ -66,8 +63,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void initState() {
-    _logger =
-        DatadogSdk.instance.logs?.createLogger(DatadogLoggerConfiguration());
+    _logger = DatadogSdk.instance.logs?.createLogger(
+      DatadogLoggerConfiguration(),
+    );
     super.initState();
   }
 
@@ -99,15 +97,10 @@ class _MyHomePageState extends State<MyHomePage> {
             children: [
               TextButton(
                 child: const Text('CLOSE MODAL'),
-                onPressed: () => {
-                  debugPrint('MODAL REJECTED'),
-                  context.pop(),
-                },
+                onPressed: () => {debugPrint('MODAL REJECTED'), context.pop()},
               ),
               TextButton(
-                onPressed: () => {
-                  context.pop(),
-                },
+                onPressed: () => {context.pop()},
                 child: const Text('ACCEPT MODAL'),
               ),
               IconButton(
@@ -125,10 +118,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 key: const Key('ACCEPT BY ICON KEY'),
                 icon: const Icon(Icons.done),
                 tooltip: 'MODAL ACCEPT BY ICON',
-                onPressed: () => {
-                  context.pop(),
-                },
-              )
+                onPressed: () => {context.pop()},
+              ),
             ],
           ),
         );
@@ -146,17 +137,16 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Row(
             children: [
               IconButton(
-                  key: const Key('REJECT BY ICON'),
-                  icon: const Icon(Icons.close),
-                  onPressed: () {}),
+                key: const Key('REJECT BY ICON'),
+                icon: const Icon(Icons.close),
+                onPressed: () {},
+              ),
               IconButton(
                 key: const Key('ACCEPT BY ICON KEY'),
                 icon: const Icon(Icons.done),
                 tooltip: 'MODAL ACCEPT BY ICON',
-                onPressed: () => {
-                  context.pop(),
-                },
-              )
+                onPressed: () => {context.pop()},
+              ),
             ],
           ),
         );
@@ -167,20 +157,13 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
+      appBar: AppBar(title: Text(widget.title)),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.displaySmall,
-            ),
+            const Text('You have pushed the button this many times:'),
+            Text('$_counter', style: Theme.of(context).textTheme.displaySmall),
             ElevatedButton(
               onPressed: _goToNamedScreen,
               child: const Text('Named Test'),

@@ -33,26 +33,28 @@ void embeddedMain() async {
 /// The native host has already initialized Datadog, RUM and Session Replay,
 /// so Flutter attaches to that instance instead of initializing its own.
 Future<void> _attachToNativeDatadog() async {
-  final configuration = DatadogAttachConfiguration(
-    detectLongTasks: true,
-    reportFlutterPerformance: true,
-  )..addPlugin(
-      DatadogSessionReplayPluginConfiguration(
-        configuration: DatadogSessionReplayConfiguration(
-          // Ignored when embedded: the native Session Replay sample rate
-          // decides which sessions are recorded.
-          replaySampleRate: 100,
-          // Hand records to the native Session Replay, which composites them
-          // into the host's replay where the Flutter view sits on screen.
-          isEmbedded: true,
-          // Match the privacy levels the native host uses, so Flutter and
-          // native content are masked the same way in the replay.
-          textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskSensitiveInputs,
-          imagePrivacyLevel: ImagePrivacyLevel.maskNone,
-          touchPrivacyLevel: TouchPrivacyLevel.show,
+  final configuration =
+      DatadogAttachConfiguration(
+        detectLongTasks: true,
+        reportFlutterPerformance: true,
+      )..addPlugin(
+        DatadogSessionReplayPluginConfiguration(
+          configuration: DatadogSessionReplayConfiguration(
+            // Ignored when embedded: the native Session Replay sample rate
+            // decides which sessions are recorded.
+            replaySampleRate: 100,
+            // Hand records to the native Session Replay, which composites them
+            // into the host's replay where the Flutter view sits on screen.
+            isEmbedded: true,
+            // Match the privacy levels the native host uses, so Flutter and
+            // native content are masked the same way in the replay.
+            textAndInputPrivacyLevel:
+                TextAndInputPrivacyLevel.maskSensitiveInputs,
+            imagePrivacyLevel: ImagePrivacyLevel.maskNone,
+            touchPrivacyLevel: TouchPrivacyLevel.show,
+          ),
         ),
-      ),
-    );
+      );
 
   await DatadogSdk.instance.attachToExisting(configuration);
 }
