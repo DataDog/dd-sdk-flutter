@@ -17,6 +17,32 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('shutdown completes while a status listener is paused', () async {
+    final owner = DatadogFlags();
+    addTearDown(owner.disable);
+    await owner.enable(
+      configuration: DatadogFlagsConfiguration(
+        datadogConfig: _datadogConfig(),
+        httpClient: _clientWithResponse([], _assignmentsResponse()),
+        trackExposures: false,
+        trackEvaluations: true,
+      ),
+    );
+    final client = owner.sharedClient();
+    await client.initialize(
+      const FlagsEvaluationContext(targetingKey: 'subject'),
+    );
+    final subscription = (client as DatadogFlagsClientLifecycle).statusChanges
+        .listen((_) {});
+    subscription.pause();
+    final shutdown = client.shutdown();
+    try {
+      await shutdown.timeout(const Duration(seconds: 1));
+    } finally {
+      await subscription.cancel();
+      await shutdown;
+    }
+  });
   test(
     'shutdown clients are terminal and sharedClient creates a fresh stream',
     () async {

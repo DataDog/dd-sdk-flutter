@@ -55,6 +55,8 @@ final class DatadogOpenFeatureProvider
   _ProviderRuntime? _activeRuntime;
   _ProviderRuntime? _pendingRuntime;
   var _contextRevision = 0;
+  var _shutdownGeneration = 0;
+  Future<void>? _contextOperation;
   String? _resolvedClientName;
 
   /// Creates a provider that owns its Datadog runtime lifecycle.
@@ -79,7 +81,7 @@ final class DatadogOpenFeatureProvider
     _requestedContext = context;
     _resolvedClientName =
         clientName ?? domain ?? DatadogFlags.defaultClientName;
-    await _loadContext(context, isInitialization: true);
+    await _runContextOperation(context, isInitialization: true);
   }
 
   @override
@@ -87,7 +89,9 @@ final class DatadogOpenFeatureProvider
     openfeature.EvaluationContext previousContext,
     openfeature.EvaluationContext newContext,
   ) async {
-    _requestedContext = newContext;
+    // Only initialization can recover through refresh before an active context
+    // exists. Failed reconciliation must be retried through OpenFeature.
+    _requestedContext = null;
     // Sign-out must retire private assignments even if anonymous loading fails.
     if (newContext.targetingKey == null) {
       final previous = _activeRuntime;
@@ -99,16 +103,27 @@ final class DatadogOpenFeatureProvider
         type: openfeature.ProviderEventType.reconciling,
       ),
     );
-    await _loadContext(newContext, isInitialization: false);
+    await _runContextOperation(newContext, isInitialization: false);
   }
 
   /// Refreshes assignments for the active context.
+  ///
+  /// Waits for pending initialization or context reconciliation. After failed
+  /// sign-out, retry the context change through OpenFeature before refreshing.
   ///
   /// Before the first successful load, uses the requested initial context.
   ///
   /// A successful refresh emits a configuration-changed event. A failed
   /// refresh emits an error and preserves assignments for the active context.
   Future<void> refresh() async {
+    final generation = _shutdownGeneration;
+    while (_contextOperation != null) {
+      await _contextOperation;
+      if (generation != _shutdownGeneration) break;
+    }
+    if (generation != _shutdownGeneration) {
+      throw StateError('The provider shut down while refresh was waiting.');
+    }
     final activeContext = _activeRuntime?.client.evaluationContext;
     final context = activeContext == null
         ? _requestedContext
@@ -118,7 +133,7 @@ final class DatadogOpenFeatureProvider
           );
     if (context == null) {
       throw StateError(
-        'Initialize the provider before refreshing assignments.',
+        'Initialize or reconcile the provider before refreshing assignments.',
       );
     }
     await _loadContext(context, isInitialization: false, isRefresh: true);
@@ -126,6 +141,7 @@ final class DatadogOpenFeatureProvider
 
   @override
   Future<void> shutdown() async {
+    _shutdownGeneration += 1;
     _contextRevision += 1;
     final activeRuntime = _activeRuntime;
     final pendingRuntime = _pendingRuntime;
@@ -237,6 +253,21 @@ final class DatadogOpenFeatureProvider
       variant: details.variant,
       flagMetadata: details.flagMetadata,
     );
+  }
+
+  Future<void> _runContextOperation(
+    openfeature.EvaluationContext context, {
+    required bool isInitialization,
+  }) {
+    late final Future<void> operation;
+    operation = _loadContext(context, isInitialization: isInitialization)
+        .whenComplete(() {
+          if (identical(_contextOperation, operation)) {
+            _contextOperation = null;
+          }
+        });
+    _contextOperation = operation;
+    return operation;
   }
 
   Future<void> _loadContext(
@@ -453,6 +484,9 @@ final class DatadogOpenFeatureProvider
     }
 
     final previous = _activeRuntime;
+    if (previous != null && !identical(previous, runtime)) {
+      runtime.client.inheritExposureHistory(previous.client);
+    }
     _activeRuntime = runtime;
     if (identical(_pendingRuntime, runtime)) {
       _pendingRuntime = null;

@@ -30,6 +30,10 @@ class ExposureLogger {
 
   ExposureLogger(this.runtime);
 
+  void inheritHistory(ExposureLogger previous) {
+    _loggedAssignments.addAll(previous._loggedAssignments);
+  }
+
   void logExposure({
     required String flagKey,
     required FlagAssignment assignment,

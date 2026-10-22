@@ -33,6 +33,11 @@ class DefaultDatadogFlagsClient
        _exposureLogger = exposureLogger,
        _evaluationAggregator = evaluationAggregator;
 
+  // Assignment runtime replacement must preserve exposure deduplication.
+  void inheritExposureHistory(DefaultDatadogFlagsClient previous) {
+    _exposureLogger.inheritHistory(previous._exposureLogger);
+  }
+
   @override
   DatadogFlagsClientStatus get status => _repository.status;
 

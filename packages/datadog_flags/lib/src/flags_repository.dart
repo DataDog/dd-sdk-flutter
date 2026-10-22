@@ -190,7 +190,8 @@ class FlagsRepository {
   Future<void> dispose() async {
     await clearMemory();
     if (!_statusChanges.isClosed) {
-      await _statusChanges.close();
+      // Paused application listeners must not delay SDK cleanup.
+      unawaited(_statusChanges.close());
     }
   }
 

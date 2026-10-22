@@ -52,7 +52,8 @@ final class DatadogFlagsConfiguration {
   /// assignment operation continues after this timeout and can make assignments
   /// available when it completes.
   ///
-  /// The SDK does not limit how large this value can be.
+  /// Legacy clients do not limit how large this value can be.
+  /// The OpenFeature provider requires a positive timeout of at most 20 seconds.
   ///
   /// The timeout applies only to the first
   /// [DatadogFlagsClient.initialize] call for each client. A `null`, zero, or

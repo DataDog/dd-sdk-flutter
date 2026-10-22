@@ -23,6 +23,189 @@ void main() {
 
   tearDown(() => api.shutdown());
 
+  test(
+    'refresh during reconciliation does not quarantine the provider',
+    () async {
+      api = createIsolatedOpenFeatureAPI(
+        lifecycleTimeout: const Duration(seconds: 2),
+      );
+      final pendingB = Completer<http.Response>();
+      final subjects = <String?>[];
+      final provider = DatadogOpenFeatureProvider(
+        configuration: _configuration(
+          MockClient((request) {
+            if (request.url.path != '/precompute-assignments')
+              return Future.value(http.Response('{}', 202));
+            final subject =
+                _subject(
+                      jsonDecode(request.body) as Map<String, Object?>,
+                    )['targeting_key']
+                    as String?;
+            subjects.add(subject);
+            if (subjects.length == 2) return pendingB.future;
+            return Future.value(
+              http.Response(
+                jsonEncode(_assignmentsResponse(booleanValue: subject == 'A')),
+                200,
+              ),
+            );
+          }),
+          initializationTimeout: const Duration(seconds: 1),
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'A'),
+      );
+      await api.setProviderAndWait(provider);
+      final reconciliation = api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'B'),
+      );
+      await _waitUntil(() => subjects.length == 2);
+      final refreshing = provider.refresh();
+      pendingB.complete(
+        http.Response(
+          jsonEncode(_assignmentsResponse(booleanValue: false)),
+          200,
+        ),
+      );
+      await Future.wait([reconciliation, refreshing]);
+      expect(api.getClient().providerStatus, ProviderStatus.ready);
+      expect(api.getClient().getBooleanValue('show-paywall', true), isFalse);
+      expect(subjects, ['A', 'B', 'B']);
+    },
+  );
+
+  test('unchanged refresh preserves exposure deduplication', () async {
+    final requests = <http.Request>[];
+    final provider = DatadogOpenFeatureProvider(
+      configuration: _configuration(
+        MockClient((request) async {
+          requests.add(request);
+          return _responseFor(request, _assignmentsResponse());
+        }),
+        trackTelemetry: true,
+      ),
+    );
+    await api.setEvaluationContextAndWait(
+      EvaluationContext(targetingKey: 'same-user'),
+    );
+    await api.setProviderAndWait(provider);
+    expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+    await provider.refresh();
+    expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+    await api.shutdown();
+    final exposures = requests.where((r) => r.url.path.contains('exposure'));
+    expect(exposures, hasLength(1));
+  });
+
+  test('failed sign-out requires an API retry before refresh', () async {
+    var failAnonymous = true;
+    final subjects = <String?>[];
+    final provider = DatadogOpenFeatureProvider(
+      configuration: _configuration(
+        MockClient((request) async {
+          if (request.url.path != '/precompute-assignments')
+            return http.Response('{}', 202);
+          final subject =
+              _subject(
+                    jsonDecode(request.body) as Map<String, Object?>,
+                  )['targeting_key']
+                  as String?;
+          subjects.add(subject);
+          if (subject == '' && failAnonymous)
+            return http.Response('offline', 503);
+          return http.Response(
+            jsonEncode(_assignmentsResponse(booleanValue: subject == 'A')),
+            200,
+          );
+        }),
+      ),
+    );
+    await api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'A'));
+    await api.setProviderAndWait(provider);
+    await expectLater(
+      api.setEvaluationContextAndWait(EvaluationContext.empty),
+      throwsA(isA<OpenFeatureException>()),
+    );
+    failAnonymous = false;
+    await expectLater(provider.refresh(), throwsStateError);
+    expect(subjects, ['A', '']);
+    expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+    await api.setEvaluationContextAndWait(EvaluationContext.empty);
+    expect(api.getClient().providerStatus, ProviderStatus.ready);
+    expect(api.getClient().getBooleanValue('show-paywall', true), isFalse);
+    expect(subjects, ['A', '', '']);
+  });
+
+  test('changed serial ID still emits an exposure after refresh', () async {
+    final requests = <http.Request>[];
+    var serialId = 1;
+    final provider = DatadogOpenFeatureProvider(
+      configuration: _configuration(
+        MockClient((request) async {
+          requests.add(request);
+          return _responseFor(request, {
+            'data': {
+              'attributes': {
+                'flags': {
+                  'show-paywall': _assignment(
+                    variationValue: true,
+                    serialId: serialId,
+                  ),
+                },
+              },
+            },
+          });
+        }),
+        trackTelemetry: true,
+      ),
+    );
+    await api.setEvaluationContextAndWait(
+      EvaluationContext(targetingKey: 'same-user'),
+    );
+    await api.setProviderAndWait(provider);
+    expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+    serialId = 2;
+    await provider.refresh();
+    expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+    await api.shutdown();
+    expect(
+      requests.where((r) => r.url.path.contains('exposure')),
+      hasLength(2),
+    );
+  });
+
+  test('shutdown fences a refresh waiting for reconciliation', () async {
+    final pendingB = Completer<http.Response>();
+    var calls = 0;
+    final provider = DatadogOpenFeatureProvider(
+      configuration: _configuration(
+        MockClient((request) async {
+          if (++calls == 2) return pendingB.future;
+          return _responseFor(request, _assignmentsResponse());
+        }),
+      ),
+    );
+    await provider.initialize(EvaluationContext(targetingKey: 'A'));
+    final reconciling = provider.onContextChanged(
+      EvaluationContext(targetingKey: 'A'),
+      EvaluationContext(targetingKey: 'B'),
+    );
+    await _waitUntil(() => calls == 2);
+    final refreshing = provider.refresh();
+    final refreshExpectation = expectLater(refreshing, throwsStateError);
+    await provider.shutdown();
+    pendingB.complete(http.Response(jsonEncode(_assignmentsResponse()), 200));
+    await Future.wait([reconciling, refreshExpectation]);
+    expect(calls, 2);
+    expect(
+      provider
+          .resolveBooleanValue('show-paywall', false, EvaluationContext.empty)
+          .errorCode,
+      ErrorCode.providerNotReady,
+    );
+  });
+
   test('evaluates obfuscated assignments and restores them from cache', () async {
     final store = _MemoryStore();
     var offline = false;
