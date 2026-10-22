@@ -54,7 +54,7 @@ final class FlagsExampleSiteConfig {
     final datadogSite = _datadogSiteForName(normalizedSiteName);
     return FlagsExampleSiteConfig._(
       datadogSite: datadogSite,
-      flagsSite: _datadogFlagsSiteFor(datadogSite) ?? DatadogFlagsSite.us1,
+      flagsSite: datadogSite.flagsSite ?? DatadogFlagsSite.us1,
     );
   }
 }
@@ -185,8 +185,8 @@ DatadogSite _datadogSiteForName(String? siteName) {
 
 // Mirrors datadogFlagsSiteFor in datadog_flags_flutter. Keep both mappings
 // consistent when adding a Datadog site.
-DatadogFlagsSite? _datadogFlagsSiteFor(DatadogSite site) {
-  return switch (site) {
+extension on DatadogSite {
+  DatadogFlagsSite? get flagsSite => switch (this) {
     DatadogSite.us1 => DatadogFlagsSite.us1,
     DatadogSite.us3 => DatadogFlagsSite.us3,
     DatadogSite.us5 => DatadogFlagsSite.us5,

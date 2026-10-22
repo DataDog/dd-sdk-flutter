@@ -12,6 +12,8 @@ import 'package:http/testing.dart';
 import 'package:openfeature_client_provider_contract/client_provider_contract.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
+import 'fixture_wire_models.dart';
+
 /// Controls only HTTP responses. All lifecycle and evaluation code is Datadog's.
 final class DatadogProviderFixture implements ClientProviderFixture {
   final _flags = <String?, Map<String, Object>>{};
@@ -61,35 +63,23 @@ final class DatadogProviderFixture implements ClientProviderFixture {
     if (request.url.path != '/precompute-assignments') {
       return http.Response('{}', 202);
     }
-    final body = jsonDecode(request.body) as Map<String, dynamic>;
-    final subject =
-        body['data']['attributes']['subject']['targeting_key'] as String?;
+    final body = FixtureRequest.fromJson(
+      jsonDecode(request.body) as Map<String, dynamic>,
+    );
+    final subject = body.data.attributes.subject.targetingKey;
     final fail = _failNext;
     _failNext = false;
     // Capture bytes before waiting so old responses cannot read new state.
-    final response = jsonEncode({
-      'data': {
-        'attributes': {
-          'flags': {
+    final response = jsonEncode(
+      FixtureResponse(
+        FixtureResponseData(
+          FixtureResponseAttributes({
             for (final entry in (_flags[subject] ?? {}).entries)
-              entry.key: {
-                'allocationKey': 'contract-allocation',
-                'variationKey': 'contract-variant',
-                'variationType': switch (entry.value) {
-                  bool() => 'boolean',
-                  int() => 'integer',
-                  double() => 'float',
-                  String() => 'string',
-                  _ => 'object',
-                },
-                'variationValue': entry.value,
-                'reason': 'TARGETING_MATCH',
-                'doLog': false,
-              },
-          },
-        },
-      },
-    });
+              entry.key: FixtureFlag(entry.value),
+          }),
+        ),
+      ).toJson(),
+    );
     final held = _nextGate;
     _nextGate = null;
     if (held != null) {

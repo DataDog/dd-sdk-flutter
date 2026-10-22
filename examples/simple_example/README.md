@@ -29,7 +29,8 @@ integration for new Dart and Flutter applications. The app sets an OpenFeature
 evaluation context, registers the Datadog provider, and evaluates typed flags
 with programmatic defaults.
 
-The Datadog Flutter SDK initializes separately for RUM, Logs, and Traces. The
+The Datadog Flutter SDK initializes separately for RUM and Logs.
+RUM controls distributed tracing for supported network requests. The
 OpenFeature provider owns the Flags runtime and its assignment lifecycle.
 `DatadogRumHook` associates successful evaluations with the active RUM view.
 The Refresh button calls `DatadogOpenFeatureProvider.refresh()`.
