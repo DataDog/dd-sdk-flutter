@@ -139,10 +139,10 @@ This repo mostly follows a "trunk based development" style, with `develop` being
 trunk. Minor releases are all released from `develop` and any patches and changes
 should be created and merged on `develop`.
 
-Previously, the repo put all releases on a long lived `release/` branch, though this
+Previously, the repo put all releases on a long-lived `release/` branch, though this
 practice is being deprecated. `release/` branches should only be created when a release
 line is needed for a patch release,  such as a `release/3.6.x` line.
 
 If a change is needed for a patch release, that change should **first be made on `develop`**,
-then cherry picked into its release line branch. The patch release can then be made from
-this release line branch, and the changelog change cherry picked back into `develop`.
+then cherry-picked into its release line branch. The patch release can then be made from
+this release line branch, and the changelog change cherry-picked back into `develop`.

@@ -3,7 +3,7 @@ The iOS implementation of [`datadog_flutter_plugin`](https://pub.dev/packages/da
 ## Usage
 
 This package is [endorsed](https://flutter.dev/to/endorsed-federated-plugin), which means
-you can use `datadog_flutter_plugin` normally. This package will be automatically
+you can use `datadog_flutter_plugin` normally. This package is automatically
 included in your app when you do, so you do not need to add it to your `pubspec.yaml`.
 
 However, if you `import` this package to use any of its APIs directly, you should add it to

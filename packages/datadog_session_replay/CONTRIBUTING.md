@@ -12,7 +12,7 @@ The Session Replay plugin uses FFI over Method Channels in order to better utili
 
 ### Toolchain requirement for running `build_runner`
 
-This package depends on `objective_c`, which ships a native build hook (`hook/build.dart`). Starting with Dart 3.10, `dart compile` refuses to AOT-compile any script whose package graph contains a build hook, and `build_runner` (all versions as of this writing) compiles its build script with `dart compile aot-snapshot`. As a result, running `dart run build_runner build` in this package (e.g. to regenerate `lib/src/sr_data_models.g.dart` after changing a `json_serializable` model) fails with a generic `Failed to compile build script` error on Dart 3.10.x.
+This package depends on `objective_c`, which ships a native build hook (`hook/build.dart`). Starting with Dart 3.10, `dart compile` refuses to AOT-compile any script whose package graph contains a build hook, and `build_runner` compiles its build script with `dart compile aot-snapshot`. As a result, running `dart run build_runner build` in this package (for example, to regenerate `lib/src/sr_data_models.g.dart` after changing a `json_serializable` model) fails with a generic `Failed to compile build script` error on Dart 3.10.x.
 
 This restriction was relaxed in **Dart 3.11.0 / Flutter 3.41.0**. If you need to run `build_runner` in this package, make sure you're on Flutter 3.41.0 or later.
 
@@ -51,7 +51,7 @@ This regenerates the jnigen bindings for every package that declares a `jnigen.y
 
 ## Golden Tests
 
-Flutter Session Replay uses "golden testing" to try to ensure that the SR wireframes remain consistent and are a reasonable representation of the widgets we capture. Each golden test captures a widget tree as SR wireframes, then renders the resulting wireframes using a Flutter `CustomPainter` called `WireframeCustomPainter`. The resulting render is captured and compared known good, "golden" image held in `example/golden_test/goldens`. This also allows us to look at the results of simple widget captures without needing to send them to Datadog intake for verification.
+Flutter Session Replay uses "golden testing" to try to ensure that the SR wireframes remain consistent and are a reasonable representation of the widgets we capture. Each golden test captures a widget tree as SR wireframes, then renders the resulting wireframes using a Flutter `CustomPainter` called `WireframeCustomPainter`. The resulting render is captured and compared to a known good, "golden" image held in `example/golden_test/goldens`. This also allows us to look at the results of simple widget captures without needing to send them to Datadog intake for verification.
 
 To write a new Golden test, follow the examples in `example/golden_test/simple_widget_golden_test.dart`.
 
