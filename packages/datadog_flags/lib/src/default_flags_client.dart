@@ -33,9 +33,12 @@ class DefaultDatadogFlagsClient
        _exposureLogger = exposureLogger,
        _evaluationAggregator = evaluationAggregator;
 
-  // Assignment runtime replacement must preserve exposure deduplication.
-  void inheritExposureHistory(DefaultDatadogFlagsClient previous) {
+  // Runtime replacement preserves deduplication and pending telemetry uploads.
+  void inheritTelemetry(DefaultDatadogFlagsClient previous) {
     _exposureLogger.inheritHistory(previous._exposureLogger);
+    _evaluationAggregator.inheritPendingEvaluations(
+      previous._evaluationAggregator,
+    );
   }
 
   @override

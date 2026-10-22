@@ -377,7 +377,9 @@ final class DatadogOpenFeatureProvider
     bool isRefresh = false,
   }) async {
     if (!_isCurrent(runtime, revision)) {
-      await _disableQuietly(runtime);
+      if (!identical(_activeRuntime, runtime)) {
+        await _disableQuietly(runtime);
+      }
       return;
     }
 
@@ -433,7 +435,9 @@ final class DatadogOpenFeatureProvider
     required bool isInitialization,
   }) async {
     if (!_isCurrent(runtime, revision)) {
-      await _disableQuietly(runtime);
+      if (!identical(_activeRuntime, runtime)) {
+        await _disableQuietly(runtime);
+      }
       return;
     }
 
@@ -479,13 +483,15 @@ final class DatadogOpenFeatureProvider
     bool isRefresh = false,
   }) async {
     if (!_isCurrent(runtime, revision)) {
-      await _disableQuietly(runtime);
+      if (!identical(_activeRuntime, runtime)) {
+        await _disableQuietly(runtime);
+      }
       return;
     }
 
     final previous = _activeRuntime;
     if (previous != null && !identical(previous, runtime)) {
-      runtime.client.inheritExposureHistory(previous.client);
+      runtime.client.inheritTelemetry(previous.client);
     }
     _activeRuntime = runtime;
     if (identical(_pendingRuntime, runtime)) {
