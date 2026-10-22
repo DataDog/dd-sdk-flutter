@@ -26,7 +26,7 @@ const _datadogSiteAliases = {
 
 final class FlagsExampleSiteConfig {
   final DatadogSite datadogSite;
-  final DatadogFlagsSite flagsSite;
+  final DatadogFlagsSite? flagsSite;
   final String? rumCustomEndpoint;
   final String? logsCustomEndpoint;
   final bool sessionReplayEnabled;
@@ -54,7 +54,7 @@ final class FlagsExampleSiteConfig {
     final datadogSite = _datadogSiteForName(normalizedSiteName);
     return FlagsExampleSiteConfig._(
       datadogSite: datadogSite,
-      flagsSite: datadogSite.flagsSite ?? DatadogFlagsSite.us1,
+      flagsSite: datadogSite.flagsSite,
     );
   }
 }
@@ -73,7 +73,7 @@ final class FlagsExampleConfig {
   factory FlagsExampleConfig.fromDotEnv({
     required String clientToken,
     required String env,
-    required DatadogFlagsSite site,
+    required DatadogFlagsSite? site,
     required String? applicationId,
   }) {
     final datadogConfig = _datadogConfig(
@@ -150,10 +150,10 @@ enum FlagsExampleFlagType { boolean, string, integer, float, object }
 DatadogFlagsConfig? _datadogConfig({
   required String clientToken,
   required String env,
-  required DatadogFlagsSite site,
+  required DatadogFlagsSite? site,
   required String? applicationId,
 }) {
-  if (clientToken.isEmpty) {
+  if (clientToken.isEmpty || site == null) {
     return null;
   }
 

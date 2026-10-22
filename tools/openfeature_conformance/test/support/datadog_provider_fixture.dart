@@ -44,7 +44,7 @@ final class DatadogProviderFixture implements ClientProviderFixture {
   bool get supportsReinitialization => true;
   @override
   void setFlags(String? subject, Map<String, Object> flags) {
-    _flags[subject] = Map.of(flags);
+    _flags[subject ?? ''] = Map.of(flags);
   }
 
   @override

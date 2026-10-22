@@ -10,8 +10,8 @@ It uses the published OpenFeature `0.0.1` dependency described in the
 
 ## OpenFeature with RUM
 
-Initialize the Datadog Flutter SDK for RUM, Logs, and Traces. Then configure the
-OpenFeature provider and add the RUM hook one time:
+Initialize the Datadog Flutter SDK for RUM. RUM controls distributed tracing.
+Then configure the OpenFeature provider and add the RUM hook one time:
 
 ```dart
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';

@@ -10,6 +10,8 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
+import 'flags_example_configuration.dart';
+
 const _clientToken = String.fromEnvironment('DD_CLIENT_TOKEN');
 const _applicationId = String.fromEnvironment('DD_APPLICATION_ID');
 const _env = String.fromEnvironment('DD_ENV', defaultValue: 'dev');
@@ -27,6 +29,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final isConfigured = _clientToken.isNotEmpty;
+  final flagsConfiguration = flagsExampleConfiguration(
+    site: _datadogSiteFor(_site),
+    clientToken: _clientToken,
+    env: _env,
+    applicationId: _applicationId.isEmpty ? null : _applicationId,
+  );
   if (isConfigured) {
     final configuration = DatadogConfiguration(
       service: 'com.datadoghq.flags.example',
@@ -50,19 +58,12 @@ Future<void> main() async {
   await api.setEvaluationContextAndWait(
     EvaluationContext(targetingKey: _targetingKey),
   );
-  if (isConfigured) {
+  if (flagsConfiguration != null) {
     try {
       await api.setProviderAndWait(
         DatadogOpenFeatureProvider(
           configuration: DatadogFlagsConfiguration(
-            datadogConfig: DatadogFlagsConfig(
-              clientToken: _clientToken,
-              env: _env,
-              site:
-                  datadogFlagsSiteFor(_datadogSiteFor(_site)) ??
-                  DatadogFlagsSite.us1,
-              applicationId: _applicationId.isEmpty ? null : _applicationId,
-            ),
+            datadogConfig: flagsConfiguration,
           ),
         ),
       );
@@ -70,7 +71,14 @@ Future<void> main() async {
       // The app can use defaults and recover when initial assignments arrive.
     }
   }
-  runApp(FlagsExampleApp(isConfigured: isConfigured));
+  runApp(
+    FlagsExampleApp(
+      isConfigured: flagsConfiguration != null,
+      configurationError: isConfigured && flagsConfiguration == null
+          ? 'Feature Flags is not supported for site $_site.'
+          : null,
+    ),
+  );
 }
 
 DatadogSite _datadogSiteFor(String site) {
@@ -87,8 +95,13 @@ DatadogSite _datadogSiteFor(String site) {
 
 class FlagsExampleApp extends StatefulWidget {
   final bool isConfigured;
+  final String? configurationError;
 
-  const FlagsExampleApp({super.key, required this.isConfigured});
+  const FlagsExampleApp({
+    super.key,
+    required this.isConfigured,
+    this.configurationError,
+  });
 
   @override
   State<FlagsExampleApp> createState() => _FlagsExampleAppState();
@@ -107,7 +120,9 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
   Future<void> _evaluate() async {
     if (!widget.isConfigured) {
       setState(() {
-        _status = 'Set DD_CLIENT_TOKEN with --dart-define to evaluate flags.';
+        _status =
+            widget.configurationError ??
+            'Set DD_CLIENT_TOKEN with --dart-define to evaluate flags.';
       });
       return;
     }
