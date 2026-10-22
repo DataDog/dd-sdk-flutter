@@ -303,6 +303,48 @@ Evaluations are aggregated by flag key, assignment metadata, evaluation context,
 and error state. The SDK uploads batches on the configured flush interval, when
 the batch boundary is reached, and during `shutdown()`.
 
+## Evaluation Telemetry Opt-Out
+
+Use this control when a subject must receive flag results without contributing
+evaluation telemetry, for example because of the subject's consent preference.
+Your application decides which subjects opt out. The SDK does not interpret
+age, location, or consent rules.
+
+Enable the context parameter explicitly:
+
+```dart
+final configuration = DatadogFlagsConfiguration(
+  datadogConfig: datadogConfig,
+  enableEvaluationTelemetryOptOutParameter: true,
+);
+```
+
+Set `dd_evaluation_telemetry_opt_out` in the evaluation context:
+
+```dart
+await client.initialize(const FlagsEvaluationContext(
+  targetingKey: 'user-123',
+  attributes: {'dd_evaluation_telemetry_opt_out': true},
+));
+```
+
+Only boolean `true` suppresses new evaluation events and counts. Missing, `false`,
+`null`, and other types preserve evaluation telemetry. Activation defaults to false.
+The Flutter integration also suppresses automatic RUM flag annotations.
+
+The attribute remains available for targeting rules and exposure attributes.
+It is included in assignment requests, stored contexts, and cache matching.
+Changing it uses the normal context refresh path. Opting out suppresses new
+evaluation reporting immediately. Opting the same subject back in also applies
+immediately. Switching subjects does not re-enable reporting for an opted-out
+subject whose assignments remain active while the next subject loads.
+
+Each named client has separate policy. Cached data and late assignment responses
+cannot restore an older policy. Suppression does not change flag values, details,
+or exposure logging. Targeting rules can use the attribute to select assignments.
+Exposures follow the existing deduplication rules. Previously recorded events and RUM annotations
+remain. Unrelated telemetry and manual RUM flag annotations remain enabled.
+
 ## Last-Known Assignment Storage
 
 The SDK keeps assignments in memory after `initialize()` succeeds. To restore

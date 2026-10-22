@@ -1,6 +1,7 @@
 name: datadog_flags_flutter_example
 description: Example app for the Datadog Flags Flutter integration.
 publish_to: none
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -20,6 +21,15 @@ dependency_overrides:
     path: ../../datadog_flags
 
 dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  datadog_common_test:
+    path: ../../datadog_common_test
+  datadog_flags:
+    path: ../../datadog_flags
+  http: ^1.0.0
   flutter_lints: ">=1.0.0"
 
 flutter:
