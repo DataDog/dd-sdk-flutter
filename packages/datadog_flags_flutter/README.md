@@ -122,6 +122,26 @@ and initialize a standalone `datadog_flags` client in that isolate.
 Pull requests are welcome. For more information, read the
 [contributing guide](../../CONTRIBUTING.md) in the root repository.
 
+## First installed flags
+
+Register after obtaining a shared client to receive the keys from its first
+accepted cache or network configuration. Late registrations receive the same
+event, and callbacks run in a later microtask. Evaluating through this client
+preserves RUM feature flag tracking.
+
+```dart
+final client = DatadogSdk.instance.flags!.sharedClient();
+final unregister = client.onFirstFlags((event) {
+  debugPrint('First installed flags: ${event.flagsChanged}');
+});
+// Call unregister() in dispose when the notification is no longer needed.
+```
+
+If no usable configuration is installed, the callback remains pending until
+you unregister it. See the [example app](example/lib/main.dart) for registration,
+evaluation and widget disposal. Configure its `.env` using `melos generate_env`
+and set `DD_CLIENT_TOKEN`, `DD_ENV`, and optionally `DD_APPLICATION_ID` for RUM.
+
 ## License
 
 [Apache License, v2.0](LICENSE)
