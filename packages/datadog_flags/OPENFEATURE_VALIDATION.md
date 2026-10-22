@@ -58,16 +58,16 @@ not establish live-service delivery or upstream maintainer acceptance.
 Boot an Android emulator or an iOS simulator, then run:
 
 ```sh
-cd packages/datadog_flutter_plugin/datadog_flutter_plugin/integration_test_app
+cd packages/datadog_flags_flutter/integration_test_app
 flutter pub get
 flutter test integration_test/openfeature_test.dart -d <DEVICE_ID>
 ```
 
-The dedicated integration app covers typed values, defaults, refresh, identity
+The Flags package owns the dedicated integration app. It covers typed values, defaults, refresh, identity
 changes, telemetry requests, and shutdown. It uses synthetic credentials and
 controlled HTTP responses. Tracking consent is disabled for the native SDK.
 The test does not verify live Datadog connectivity or RUM delivery.
-The standard Android and iOS integration jobs discover this test automatically.
+The standard Android, iOS, desktop, and web integration jobs discover this app.
 
 Keep customer examples focused on initialization and evaluation. Integration
 test setup and controlled transports belong in the integration test app.

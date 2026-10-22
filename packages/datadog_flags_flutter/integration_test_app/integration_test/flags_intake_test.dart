@@ -11,15 +11,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'common.dart';
-
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('flag evaluation intake does not send a CORS preflight request', (
     WidgetTester tester,
   ) async {
-    final recordingServer = await startMockServer();
+    final recordingServer = RemoteRecordingServerClient();
+    await recordingServer.startNewSession();
+    // Preserve coverage for legacy evaluation telemetry before initialization.
+    // ignore: deprecated_member_use
     final flags = DatadogFlags();
     addTearDown(flags.disable);
 

@@ -13,7 +13,9 @@ This is a more realistic example of how you use the Datadog Flutter Plugin in a 
 Generate the local `.env` file before running this example:
 
 ```bash
-../../generate_env.sh
+# From the repository root:
+dart run melos generate_env
+cd examples/simple_example
 flutter run
 ```
 
@@ -51,5 +53,5 @@ FLAGS_OBJECT_KEYS=checkout.config
 
 ## Integration tests
 
-OpenFeature integration tests run in the SDK's dedicated integration test app.
+OpenFeature integration tests run in the Flags package's dedicated integration test app.
 See the [validation guide](../../packages/datadog_flags/OPENFEATURE_VALIDATION.md).
