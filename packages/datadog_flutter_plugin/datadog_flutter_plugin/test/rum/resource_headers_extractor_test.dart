@@ -459,6 +459,25 @@ void main() {
         expect(extractor.requestHeaderNames, isEmpty);
         expect(extractor.responseHeaderNames, isEmpty);
       });
+
+      test('header name sets cannot be modified', () {
+        final extractor = ResourceHeadersExtractor(
+          captureHeaders: ['x-custom'],
+        );
+
+        expect(
+          () => extractor.customHeaderNames.clear(),
+          throwsUnsupportedError,
+        );
+        expect(
+          () => extractor.requestHeaderNames.clear(),
+          throwsUnsupportedError,
+        );
+        expect(
+          () => extractor.responseHeaderNames.clear(),
+          throwsUnsupportedError,
+        );
+      });
     });
 
     group('configuration telemetry', () {

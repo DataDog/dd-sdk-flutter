@@ -214,7 +214,8 @@ class ResourceHeadersExtractor {
 
   /// Builds a deduplicated, lowercase set of header names from defaults and
   /// custom headers. Headers matching [_forbiddenHeaderPattern] are filtered
-  /// out at build time so the security filter does not run per-call.
+  /// out at build time so the security filter does not run per-call. The set is
+  /// unmodifiable so callers of the getters cannot change the configuration.
   static Set<String> _buildHeaderSet(
     List<String> defaults,
     List<String> custom,
@@ -230,7 +231,7 @@ class ResourceHeadersExtractor {
       if (_forbiddenHeaderPattern.hasMatch(lower)) continue;
       result.add(lower);
     }
-    return result;
+    return Set.unmodifiable(result);
   }
 
   /// Truncates [value] to at most [maxBytes] UTF-8 bytes without splitting
