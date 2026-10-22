@@ -321,14 +321,7 @@ Future<void> prepareRelease(
     );
   }
 
-  if (!await isWorkingTreeClean(gitDir, _log)) {
-    throw StateError(
-      'Working tree at ${gitDir.path} has uncommitted changes -- '
-      'prepare-release stages everything with `git add .`, so it would '
-      'sweep them into a release commit. Commit, stash, or discard them '
-      'first.',
-    );
-  }
+  await _requireCleanWorkingTree(gitDir);
 
   final plan = await computeReleasePlan(
     ctx,
@@ -554,6 +547,37 @@ Future<void> prepareRelease(
   _log.info('✅ Opened release PR: $prUrl');
 }
 
+/// Refuses to start on a dirty working tree, since [commitAll] stages
+/// everything with `git add .` and would sweep unrelated changes into a
+/// release commit.
+///
+/// A modified `.lock` file is the exception. Setup steps like `dart pub get`
+/// rewrite a tracked `pubspec.lock`, which is harmless to throw away, so
+/// when those are the only changes they are restored and the run goes on.
+Future<void> _requireCleanWorkingTree(GitDir gitDir) async {
+  final dirty = await dirtyFiles(gitDir, _log);
+  if (dirty.isEmpty) return;
+
+  final onlyLocks = dirty.every(
+    (file) => file.isModifiedTrackedFile && p.extension(file.path) == '.lock',
+  );
+  if (!onlyLocks) {
+    throw StateError(
+      'Working tree at ${gitDir.path} has uncommitted changes:\n'
+      '${dirty.map((file) => '  $file').join('\n')}\n'
+      'prepare-release stages everything with `git add .`, so it would sweep '
+      'them into a release commit. Commit, stash, or discard them first. '
+      '(Modified .lock files alone are restored automatically.)',
+    );
+  }
+
+  _log.warning(
+    '⚠️ Restoring modified lock files, which setup steps rewrite: '
+    '${dirty.map((file) => file.path).join(', ')}',
+  );
+  await restoreFiles(gitDir, [for (final file in dirty) file.path], _log);
+}
+
 Future<String> _headSha(GitDir gitDir) async =>
     (await gitDir.currentBranch()).sha;
 
@@ -667,22 +691,35 @@ Future<List<PrGroup>> _applyContentChanges(
     );
   }
 
-  // Raise the app-facing package's lower bound on this package, if it's a
-  // releasing federated sibling. Not applicable on support branches (patch
-  // versions stay within existing caret ranges) or to a group's own
-  // app-facing package (nothing depends on itself).
-  if (ctx.trigger != TriggerContext.support &&
-      pkg.role != PackageRole.appFacing) {
-    final group = allGroups.firstWhere((g) => g.key == pkg.groupKey);
-    final appFacing = group.members.firstWhere(
-      (m) => m.role == PackageRole.appFacing,
-    );
-    await bumpDependentConstraint(
-      File(p.join(appFacing.absolutePath(ctx.repoRoot), 'pubspec.yaml')),
-      pkg.name,
-      packagePlan.newVersion,
-      _log,
-      false,
+  // Raise every other group member's lower bound on this package, so a
+  // pre-release or new major of a sibling stays resolvable. Not applicable
+  // on support branches (patch versions stay within existing caret ranges).
+  final releasingGroup = allGroups.firstWhere((g) => g.key == pkg.groupKey);
+  if (ctx.trigger != TriggerContext.support) {
+    for (final member in releasingGroup.members) {
+      if (member.name == pkg.name) continue;
+      await bumpDependentConstraint(
+        File(p.join(member.absolutePath(ctx.repoRoot), 'pubspec.yaml')),
+        pkg.name,
+        packagePlan.newVersion,
+        _log,
+        false,
+      );
+    }
+  }
+
+  final unsatisfied = await findUnsatisfiedSiblingConstraints(
+    group: releasingGroup,
+    repoRoot: ctx.repoRoot,
+    releasingPackage: pkg,
+    newVersion: packagePlan.newVersion,
+  );
+  if (unsatisfied.isNotEmpty) {
+    throw StateError(
+      '${pkg.name} ${packagePlan.newVersion} would not resolve for its '
+      'federated siblings:\n'
+      '${unsatisfied.map((w) => '  ${w.consumerPackage} requires '
+          '${w.dependencyName} ${w.constraint}').join('\n')}',
     );
   }
 

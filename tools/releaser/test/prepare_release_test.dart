@@ -450,12 +450,88 @@ dependency_overrides:
           isA<StateError>().having(
             (e) => e.message,
             'message',
-            contains('uncommitted changes'),
+            allOf(
+              contains('uncommitted changes'),
+              contains('packages/datadog_dio/CHANGELOG.md'),
+            ),
           ),
         ),
       );
     },
   );
+
+  group('a dirty working tree with a .lock file', () {
+    Future<void> prepare() async => prepareRelease(
+      RunContext(
+        repoRoot: fixture.root.path,
+        trigger: TriggerContext.mainline,
+        currentBranch: 'develop',
+        requestedPackages: ['datadog_dio'],
+      ),
+      gitDir: await fixture.gitDir,
+      github: GithubCommandWrapper(fixture.root.path),
+      aiGatewayClient: _NeverCalledAiGatewayClient(),
+      dryRun: true,
+      skipPublishValidation: true,
+      publishedVersions: _neverPublished,
+    );
+
+    String content(String path) =>
+        File('${fixture.root.path}/$path').readAsStringSync();
+
+    setUp(() async {
+      fixture.writeFile('tools/releaser/pubspec.lock', 'original');
+      await fixture.commit('chore: track a lock file');
+    });
+
+    test(
+      'is restored and the run goes on when it is the only change',
+      () async {
+        fixture.writeFile(
+          'tools/releaser/pubspec.lock',
+          'rewritten by pub get',
+        );
+
+        await prepare();
+
+        // Two release commits on top, and the lock file back as committed.
+        expect(content('tools/releaser/pubspec.lock'), 'original');
+        final log = await (await fixture.gitDir).runCommand([
+          'log',
+          '--format=%s',
+          '-3',
+        ]);
+        expect(log.stdout as String, contains('publish-prep'));
+      },
+    );
+
+    test('is not restored when something else changed too', () async {
+      fixture.writeFile('tools/releaser/pubspec.lock', 'rewritten by pub get');
+      fixture.writeFile('packages/datadog_dio/CHANGELOG.md', 'dirty');
+
+      await expectLater(
+        prepare(),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('tools/releaser/pubspec.lock'),
+              contains('packages/datadog_dio/CHANGELOG.md'),
+            ),
+          ),
+        ),
+      );
+      expect(content('tools/releaser/pubspec.lock'), 'rewritten by pub get');
+    });
+
+    test('is not restored when it is a new, untracked file', () async {
+      fixture.writeFile('tools/other/pubspec.lock', 'new');
+
+      await expectLater(prepare(), throwsStateError);
+      expect(content('tools/other/pubspec.lock'), 'new');
+    });
+  });
 
   test('refuses a mainline run from anything but develop', () async {
     final gitDir = await fixture.gitDir;
@@ -539,6 +615,67 @@ dependency_overrides:
       skipPublishValidation: true,
       publishedVersions: _neverPublished,
     );
+  });
+
+  test('raises every federated member\'s constraint on the platform '
+      'interface', () async {
+    const base = 'packages/datadog_flutter_plugin';
+    const piName = 'datadog_flutter_plugin_platform_interface';
+    final members = [
+      'datadog_flutter_plugin_android',
+      'datadog_flutter_plugin_ios',
+      'datadog_flutter_plugin_web',
+      'datadog_flutter_plugin_desktop',
+      'datadog_flutter_plugin',
+    ];
+    for (final name in [piName, ...members]) {
+      final isInterface = name == piName;
+      fixture.writeFile(
+        '$base/$name/pubspec.yaml',
+        'name: $name\n'
+            'version: ${name == 'datadog_flutter_plugin' ? '4.0.0' : '1.0.0'}\n'
+            'environment:\n  sdk: ^3.0.0\n'
+            '${isInterface ? '' : 'dependencies:\n  $piName: ^1.0.0\n'}',
+      );
+    }
+    fixture.writeFile('.gitignore', 'pubspec_overrides.yaml\n');
+    await fixture.commit('chore: add federated dependencies');
+    // Melos generates these in the real repo.
+    for (final name in members) {
+      fixture.writeFile(
+        '$base/$name/pubspec_overrides.yaml',
+        'dependency_overrides: {}\n',
+      );
+    }
+    final gitDir = await fixture.gitDir;
+
+    await prepareRelease(
+      RunContext(
+        repoRoot: fixture.root.path,
+        trigger: TriggerContext.preRelease,
+        currentBranch: 'develop',
+        requestedPackages: [piName, ...members],
+        prereleaseLabel: 'beta',
+      ),
+      gitDir: gitDir,
+      github: GithubCommandWrapper(fixture.root.path),
+      aiGatewayClient: _NeverCalledAiGatewayClient(),
+      dryRun: true,
+      skipPublishValidation: true,
+      publishedVersions: _neverPublished,
+    );
+
+    String pubspec(String name) => File(
+      '${fixture.root.path}/$base/$name/pubspec.yaml',
+    ).readAsStringSync();
+    final newVersion = RegExp(
+      r'^version: (.+)$',
+      multiLine: true,
+    ).firstMatch(pubspec(piName))!.group(1)!;
+    expect(newVersion, contains('beta'));
+    for (final name in members) {
+      expect(pubspec(name), contains('$piName: ^$newVersion'), reason: name);
+    }
   });
 
   group('with a remote', () {

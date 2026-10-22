@@ -86,6 +86,42 @@ echo "\$SHA"
     expect((remote.stdout as String).trim(), sha);
   });
 
+  test(
+    'gives commit-headless the commits to push on stdin, oldest first',
+    () async {
+      final recorded = '${scripts.path}/stdin.txt';
+      final binary = fakeBinary('''
+cat > "$recorded"
+SHA=\$(git rev-parse HEAD)
+git push -q origin "\$SHA:refs/heads/release-content/x"
+echo "\$SHA"
+''');
+
+      final sha = await pushNewBranch(publisher(binary));
+
+      expect(File(recorded).readAsStringSync().trim(), sha);
+    },
+  );
+
+  test('refuses to push when HEAD has no commits on top of the base', () async {
+    final gitDir = await fixture.gitDir;
+    final base = (await gitDir.currentBranch()).sha;
+    final binary = fakeBinary('echo should-not-run');
+
+    await expectLater(
+      publisher(
+        binary,
+      ).pushNewBranch(gitDir, 'release-content/x', base, logger),
+      throwsA(
+        isA<GitReleaseActionError>().having(
+          (e) => e.message,
+          'message',
+          contains('Nothing to push'),
+        ),
+      ),
+    );
+  });
+
   test('throws when commit-headless exits non-zero', () async {
     final binary = fakeBinary('echo boom >&2\nexit 1');
 

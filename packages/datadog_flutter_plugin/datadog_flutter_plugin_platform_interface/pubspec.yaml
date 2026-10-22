@@ -1,6 +1,6 @@
 name: datadog_flutter_plugin_platform_interface
 description: Platform interface for the datadog_flutter_plugin package.
-version: 1.0.0
+version: 1.0.0-preview.1
 repository: https://github.com/DataDog/dd-sdk-flutter
 
 environment:

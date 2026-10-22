@@ -78,7 +78,8 @@ class NativeDependencyFiles {
 
 /// Walks [packageRoot] (a package's own directory, not its example/test
 /// apps) for the native-dependency files this tooling knows how to read and
-/// pin: an iOS podspec with a Datadog pod dependency, a `Package.swift`
+/// pin: an iOS podspec with a Datadog pod dependency (under `ios/` or
+/// `darwin/`), a `Package.swift`
 /// pinning dd-sdk-ios via SPM, an Android `build.gradle` with a
 /// `datadog_version`, and/or a `windows/`/`linux/` `CMakeLists.txt` with a
 /// dd-sdk-cpp `GIT_TAG` inside its `FetchContent_Declare(dd-sdk-cpp ...)`
@@ -87,15 +88,18 @@ class NativeDependencyFiles {
 NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
   File? iosPodspec;
   File? iosSpmManifest;
-  final iosDir = Directory(p.join(packageRoot, 'ios'));
-  if (iosDir.existsSync()) {
+  // `ios/` for an iOS-only plugin, `darwin/` for one shared with macOS (the
+  // federated `datadog_flutter_plugin_ios`).
+  for (final dirName in const ['ios', 'darwin']) {
+    final iosDir = Directory(p.join(packageRoot, dirName));
+    if (!iosDir.existsSync()) continue;
     for (final entity in iosDir.listSync()) {
       if (entity is File &&
           entity.path.endsWith('.podspec') &&
           _iosPodspecDependencyPattern.hasMatch(entity.readAsStringSync())) {
         iosPodspec = entity;
       } else if (entity is Directory) {
-        // The real layout is `ios/<package_name>/Package.swift` -- a
+        // The real layout is `<ios|darwin>/<package_name>/Package.swift` -- a
         // manifest for building the plugin's iOS code via SPM instead of
         // CocoaPods.
         final packageSwift = File(p.join(entity.path, 'Package.swift'));

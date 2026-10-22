@@ -39,7 +39,9 @@ Your iOS Podfile must have `use_frameworks!` (which is true by default in Flutte
 
 ### macOS
 
-Your app must target macOS version >= 13.0.
+Your app must target macOS version >= 13.0, and must build with Flutter's [Swift Package Manager](https://docs.flutter.dev/packages-and-plugins/swift-package-manager/for-app-developers) integration (`flutter config --enable-swift-package-manager`).
+
+The macOS code requires macOS 13.0, but the Podfile Flutter generates for a macOS app targets an older version. If you build with CocoaPods and see an error such as `CocoaPods could not find compatible versions for pod "datadog_flutter_plugin_ios"` ... `they required a higher minimum deployment target`, enable Swift Package Manager.
 
 ### Android
 
