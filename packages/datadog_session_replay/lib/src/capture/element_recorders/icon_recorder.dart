@@ -84,7 +84,8 @@ class IconRecorder implements ElementRecorder {
       );
     }
 
-    final textDirection = widget.textDirection ??
+    final textDirection =
+        widget.textDirection ??
         Directionality.maybeOf(element) ??
         TextDirection.ltr;
     final flipped =
@@ -178,8 +179,9 @@ class IconRecorder implements ElementRecorder {
         widget.applyTextScaling ?? iconTheme.applyTextScaling ?? false;
     final tentativeSize = widget.size ?? iconTheme.size ?? kDefaultFontSize;
     final size = applyTextScaling
-        ? (MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling)
-            .scale(tentativeSize)
+        ? (MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling).scale(
+            tentativeSize,
+          )
         : tentativeSize;
 
     final fill = widget.fill ?? iconTheme.fill;
@@ -197,8 +199,8 @@ class IconRecorder implements ElementRecorder {
     final foreground = blendMode == null
         ? null
         : (Paint()
-          ..blendMode = blendMode
-          ..color = color);
+            ..blendMode = blendMode
+            ..color = color);
 
     final style = TextStyle(
       inherit: false,
@@ -262,17 +264,19 @@ class IconRecorder implements ElementRecorder {
 
     return _inFlight.putIfAbsent(
       key,
-      () => rasterize().then((resourceKey) {
-        if (resourceKey != null) {
-          _resourceKeys[key] = resourceKey;
-          while (_resourceKeys.length > maxCachedRasters) {
-            _resourceKeys.remove(_resourceKeys.keys.first);
-          }
-        }
-        return resourceKey;
-      }).whenComplete(() {
-        _inFlight.remove(key);
-      }),
+      () => rasterize()
+          .then((resourceKey) {
+            if (resourceKey != null) {
+              _resourceKeys[key] = resourceKey;
+              while (_resourceKeys.length > maxCachedRasters) {
+                _resourceKeys.remove(_resourceKeys.keys.first);
+              }
+            }
+            return resourceKey;
+          })
+          .whenComplete(() {
+            _inFlight.remove(key);
+          }),
     );
   }
 
@@ -471,16 +475,16 @@ class IconRasterKey {
 
   @override
   int get hashCode => Object.hash(
-        glyph,
-        fontFamily,
-        fontFamilyFallback == null ? null : Object.hashAll(fontFamilyFallback!),
-        fontVariations == null ? null : Object.hashAll(fontVariations!),
-        shadows == null ? null : Object.hashAll(shadows!),
-        color,
-        blendMode,
-        flipped,
-        logicalWidth,
-        logicalHeight,
-        devicePixelRatio,
-      );
+    glyph,
+    fontFamily,
+    fontFamilyFallback == null ? null : Object.hashAll(fontFamilyFallback!),
+    fontVariations == null ? null : Object.hashAll(fontVariations!),
+    shadows == null ? null : Object.hashAll(shadows!),
+    color,
+    blendMode,
+    flipped,
+    logicalWidth,
+    logicalHeight,
+    devicePixelRatio,
+  );
 }

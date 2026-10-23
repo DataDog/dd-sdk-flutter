@@ -76,10 +76,7 @@ void main() {
         TextAndInputPrivacyLevel.maskAll,
   }) {
     final recorder = SessionReplayRecorder.withCustomRecorders(
-      [
-        TextElementRecorder(keyGenerator),
-        IconRecorder(keyGenerator),
-      ],
+      [TextElementRecorder(keyGenerator), IconRecorder(keyGenerator)],
       defaultCapturePrivacy: TreeCapturePrivacy(
         textAndInputPrivacyLevel: textAndInputPrivacyLevel,
         imagePrivacyLevel: imagePrivacyLevel,
@@ -210,9 +207,7 @@ void main() {
   });
 
   group('Material icons', () {
-    testWidgets('records glyph unmasked in MaterialIcons font', (
-      tester,
-    ) async {
+    testWidgets('records glyph unmasked in MaterialIcons font', (tester) async {
       final recorder = createRecorder(
         textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskAll,
       );
@@ -402,9 +397,7 @@ void main() {
       expect(bytes.getUint8(3), 0);
     });
 
-    testWidgets('rasterizes identical icons once per capture', (
-      tester,
-    ) async {
+    testWidgets('rasterizes identical icons once per capture', (tester) async {
       final recorder = createRecorder();
       await tester.pumpWidget(
         wrap(
@@ -467,13 +460,13 @@ void main() {
     ) async {
       final recorder = createRecorder();
       Widget scaled(double scale) => wrap(
-            recorder,
-            Transform.scale(
-              scale: scale,
-              alignment: Alignment.topLeft,
-              child: const Icon(_customIcon, size: 20),
-            ),
-          );
+        recorder,
+        Transform.scale(
+          scale: scale,
+          alignment: Alignment.topLeft,
+          child: const Icon(_customIcon, size: 20),
+        ),
+      );
 
       await tester.pumpWidget(scaled(1.0));
       await capture(tester, recorder);
@@ -602,9 +595,7 @@ void main() {
       );
     });
 
-    testWidgets('records unknown icon glyph when upload fails', (
-      tester,
-    ) async {
+    testWidgets('records unknown icon glyph when upload fails', (tester) async {
       when(
         () => platform.saveImageForProcessing(any(), any(), any(), any()),
       ).thenThrow(Exception('failed'));

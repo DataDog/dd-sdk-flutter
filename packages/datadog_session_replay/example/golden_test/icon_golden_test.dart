@@ -130,11 +130,7 @@ void main() {
       imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
     );
 
-    await snapshotTest(
-      tester,
-      recorder,
-      createFixture('Mask Non-Asset Icons'),
-    );
+    await snapshotTest(tester, recorder, createFixture('Mask Non-Asset Icons'));
   });
 
   testWidgets('icons mask all images', (tester) async {
