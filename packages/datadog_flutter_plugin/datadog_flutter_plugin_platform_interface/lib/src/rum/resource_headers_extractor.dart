@@ -128,8 +128,7 @@ class ResourceHeadersExtractor {
   Set<String> get requestHeaderNames => _requestHeaders;
 
   /// Lowercased, security-filtered set of header names this extractor will
-  /// capture on the **response** side. Used by the Flutter Web RUM bridge to
-  /// build the Browser SDK `trackResourceHeaders` matchers.
+  /// capture on the **response** side.
   Set<String> get responseHeaderNames => _responseHeaders;
 
   /// Lowercased, security-filtered set of custom header names, captured on

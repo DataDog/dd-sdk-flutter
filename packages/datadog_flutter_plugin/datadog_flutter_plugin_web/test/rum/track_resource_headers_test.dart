@@ -30,17 +30,13 @@ void main() {
       expect((resultWithForbiddenHeader as JSBoolean).toDart, isTrue);
     });
 
-    test('returns the default and custom header names', () {
+    test('returns a default matcher followed by custom headers', () {
       final result = convertTrackResourceHeaders(
         ResourceHeadersExtractor(captureHeaders: ['X-Custom']),
       );
 
       final matchers = _matchers(result);
-      expect(
-        matchers.map(_name),
-        containsAll(['cache-control', 'etag', 'x-vercel-cache', 'x-custom']),
-      );
-      expect(matchers.map(_name), isNot(contains(null)));
+      expect(matchers.map(_name), [null, 'x-custom']);
       expect(
         matchers.any((m) => m.hasProperty('location'.toJS).toDart),
         isFalse,
