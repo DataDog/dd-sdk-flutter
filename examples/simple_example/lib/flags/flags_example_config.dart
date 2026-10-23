@@ -5,9 +5,10 @@
 
 import 'dart:convert';
 
-import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
+import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 const _stagingRumEndpoint = 'https://browser-intake-datad0g.com/api/v2/rum';
 const _stagingLogsEndpoint = 'https://browser-intake-datad0g.com/api/v2/logs';
@@ -25,7 +26,7 @@ const _datadogSiteAliases = {
 
 final class FlagsExampleSiteConfig {
   final DatadogSite datadogSite;
-  final DatadogFlagsSite flagsSite;
+  final DatadogFlagsSite? flagsSite;
   final String? rumCustomEndpoint;
   final String? logsCustomEndpoint;
   final bool sessionReplayEnabled;
@@ -53,14 +54,14 @@ final class FlagsExampleSiteConfig {
     final datadogSite = _datadogSiteForName(normalizedSiteName);
     return FlagsExampleSiteConfig._(
       datadogSite: datadogSite,
-      flagsSite: datadogFlagsSiteFor(datadogSite) ?? DatadogFlagsSite.us1,
+      flagsSite: datadogSite.flagsSite,
     );
   }
 }
 
 final class FlagsExampleConfig {
   final DatadogFlagsConfiguration configuration;
-  final FlagsEvaluationContext evaluationContext;
+  final EvaluationContext evaluationContext;
   final List<FlagsExampleFlag> flags;
 
   const FlagsExampleConfig._({
@@ -72,7 +73,7 @@ final class FlagsExampleConfig {
   factory FlagsExampleConfig.fromDotEnv({
     required String clientToken,
     required String env,
-    required DatadogFlagsSite site,
+    required DatadogFlagsSite? site,
     required String? applicationId,
   }) {
     final datadogConfig = _datadogConfig(
@@ -84,7 +85,7 @@ final class FlagsExampleConfig {
 
     return FlagsExampleConfig._(
       configuration: DatadogFlagsConfiguration(datadogConfig: datadogConfig),
-      evaluationContext: FlagsEvaluationContext(
+      evaluationContext: EvaluationContext(
         targetingKey: dotenv.get(
           'FLAGS_TARGETING_KEY',
           fallback: 'test_subject4',
@@ -149,10 +150,10 @@ enum FlagsExampleFlagType { boolean, string, integer, float, object }
 DatadogFlagsConfig? _datadogConfig({
   required String clientToken,
   required String env,
-  required DatadogFlagsSite site,
+  required DatadogFlagsSite? site,
   required String? applicationId,
 }) {
-  if (clientToken.isEmpty) {
+  if (clientToken.isEmpty || site == null) {
     return null;
   }
 
@@ -180,6 +181,20 @@ DatadogSite _datadogSiteForName(String? siteName) {
   } on ArgumentError {
     return DatadogSite.us1;
   }
+}
+
+// Mirrors datadogFlagsSiteFor in datadog_flags_flutter. Keep both mappings
+// consistent when adding a Datadog site.
+extension on DatadogSite {
+  DatadogFlagsSite? get flagsSite => switch (this) {
+    DatadogSite.us1 => DatadogFlagsSite.us1,
+    DatadogSite.us3 => DatadogFlagsSite.us3,
+    DatadogSite.us5 => DatadogFlagsSite.us5,
+    DatadogSite.eu1 => DatadogFlagsSite.eu1,
+    DatadogSite.ap1 => DatadogFlagsSite.ap1,
+    DatadogSite.ap2 => DatadogFlagsSite.ap2,
+    DatadogSite.us1Fed => null,
+  };
 }
 
 List<FlagsExampleFlag> _flagSpecs(

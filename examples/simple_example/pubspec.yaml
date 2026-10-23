@@ -7,6 +7,9 @@ environment:
   sdk: ">=3.10.0 <4.0.0"
 
 dependencies:
+  openfeature_dart_client_sdk: ^0.0.1
+  datadog_flags:
+    path: ../../packages/datadog_flags
   flutter:
     sdk: flutter
   flutter_web_plugins:

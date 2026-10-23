@@ -31,6 +31,8 @@ class EvaluationAggregator {
   Timer? _periodicFlushTimer;
   Timer? _retryFlushTimer;
   bool _shutdownDrainActive = false;
+  EvaluationAggregator? _successor;
+  final Set<Future<void>> _inheritedUploads = {};
 
   EvaluationAggregator(this.runtime) {
     if (runtime.configuration.trackEvaluations) {
@@ -39,6 +41,30 @@ class EvaluationAggregator {
         (_) => unawaited(flush()),
       );
     }
+  }
+
+  void inheritPendingEvaluations(EvaluationAggregator previous) {
+    previous._successor = this;
+    previous._periodicFlushTimer?.cancel();
+    previous._periodicFlushTimer = null;
+    previous._retryFlushTimer?.cancel();
+    previous._retryFlushTimer = null;
+    _restore(previous._aggregations.values.toList(), reschedule: false);
+    previous._aggregations.clear();
+    for (final upload in previous._inheritedUploads) {
+      _inheritUpload(upload);
+    }
+    final activeUpload = previous._uploadInFlight;
+    if (activeUpload != null) {
+      _inheritUpload(activeUpload.then<void>((_) {}));
+    }
+  }
+
+  void _inheritUpload(Future<void> upload) {
+    // Failed batches are restored through the successor chain before settling.
+    final settled = upload.catchError((Object _) {});
+    _inheritedUploads.add(settled);
+    unawaited(settled.whenComplete(() => _inheritedUploads.remove(settled)));
   }
 
   void recordEvaluation({
@@ -117,13 +143,13 @@ class EvaluationAggregator {
     _shutdownDrainActive = true;
     try {
       final activeUpload = _uploadInFlight;
-      if (activeUpload != null) {
-        final succeeded = await activeUpload;
-        if (!succeeded) {
-          return;
-        }
-      }
-
+      var activeSucceeded = true;
+      await Future.wait([
+        ..._inheritedUploads,
+        if (activeUpload != null)
+          activeUpload.then<void>((succeeded) => activeSucceeded = succeeded),
+      ]);
+      if (!activeSucceeded) return;
       await _uploadPendingEvaluations(rescheduleOnFailure: false);
     } finally {
       _shutdownDrainActive = false;
@@ -207,6 +233,11 @@ class EvaluationAggregator {
     List<_AggregatedEvaluation> evaluations, {
     required bool reschedule,
   }) {
+    final successor = _successor;
+    if (successor != null) {
+      successor._restore(evaluations, reschedule: true);
+      return;
+    }
     for (final evaluation in evaluations) {
       final existing = _aggregations[evaluation.aggregationKey];
       if (existing == null) {

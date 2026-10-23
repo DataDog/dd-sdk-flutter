@@ -3,10 +3,11 @@ description: Example app for the Datadog Flags Flutter integration.
 publish_to: none
 
 environment:
-  sdk: ">=3.6.0 <4.0.0"
-  flutter: ">=3.27.0"
+  sdk: ">=3.10.0 <4.0.0"
+  flutter: ">=3.38.0"
 
 dependencies:
+  openfeature_dart_client_sdk: ^0.0.1
   flutter:
     sdk: flutter
   datadog_flags_flutter:
@@ -20,6 +21,8 @@ dependency_overrides:
     path: ../../datadog_flags
 
 dev_dependencies:
+  flutter_test:
+    sdk: flutter
   flutter_lints: ">=1.0.0"
 
 flutter:

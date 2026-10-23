@@ -12,6 +12,7 @@ packages:
   - examples/*
   - examples/native-hybrid-app/flutter_module
   - test_apps/*
+  - tools/openfeature_conformance
 
 scripts:
   build:
@@ -183,6 +184,17 @@ scripts:
         - 'datadog_flutter_plugin'
         - 'datadog_flutter_plugin_web'
 
+  # Test all browser-compatible core and conformance tests on both compilers.
+  unit_test:openfeature-web:
+    run:
+      mkdir -p $MELOS_ROOT_PATH/.build/test-results &&
+      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
+      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome --compiler dart2wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'"
+    packageFilters:
+      scope:
+        - 'datadog_flags'
+        - 'datadog_openfeature_conformance'
+
   unit_test:ios:
     exec:
       concurrency: 1
@@ -236,10 +248,12 @@ scripts:
       ignore: 
         - 'datadog_flutter_plugin'
 
-  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
-  # have a separate target just for it that is called by `integration_test:ios``
+  # Packages with a dedicated integration test app run through this target.
+  # The other target discovers integration tests in package examples.
   integration_test:ios:main:
-    exec: |
+    exec:
+      concurrency: 1
+    run: |
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd integration_test_app
 
@@ -247,22 +261,24 @@ scripts:
       flutter test integration_test --machine -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
       | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_ios_integration.xml"'
     packageFilters:
-      scope: 'datadog_flutter_plugin'
+      dirExists: 'integration_test_app/integration_test'
 
   integration_test:macos:
     run: melos integration_test:macos:main
 
-  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
-  # have a separate target just for it that is called by `integration_test:macos`.
+  # Packages with a dedicated integration test app run through this target.
+  # The other targets discover integration tests in package examples.
   # Desktop platforms can't run the whole integration_test directory in one `flutter test`
   # invocation, so this uses tools/ci/bin/desktop_integration_tests.dart to run each
   # test file individually, same as integration_test:windows:main.
   integration_test:macos:main:
-    exec: |
+    exec:
+      concurrency: 1
+    run: |
       cd integration_test_app
       dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
-      scope: 'datadog_flutter_plugin'
+      dirExists: 'integration_test_app/integration_test'
 
   integration_test:android:
     run: melos integration_test:android:main && melos integration_test:android:other
@@ -281,10 +297,12 @@ scripts:
       dirExists:  'example/integration_test'
       ignore: 'datadog_flutter_plugin'
 
-  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
-  # have a separate target just for it that is called by `integration_test:ios``
+  # Packages with a dedicated integration test app run through this target.
+  # The other target discovers integration tests in package examples.
   integration_test:android:main:
-    exec: | 
+    exec:
+      concurrency: 1
+    run: |
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd integration_test_app
       
@@ -293,7 +311,7 @@ scripts:
       | tee "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.jsonl" \
       | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.xml"'
     packageFilters:
-      scope: 'datadog_flutter_plugin'
+      dirExists: 'integration_test_app/integration_test'
 
   integration_test:windows:
     run: melos integration_test:windows:build && melos verify:ffi_bindings && melos integration_test:windows:tests
@@ -327,12 +345,14 @@ scripts:
       ignore:
         - 'datadog_flutter_plugin'
 
-  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
-  # have a separate target just for it that is called by `integration_test:windows``
+  # Packages with a dedicated integration test app run through this target.
+  # The other target discovers integration tests in package examples.
   integration_test:windows:main:
-    exec: cd integration_test_app && dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
+    exec:
+      concurrency: 1
+    run: cd integration_test_app && dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
-      scope: 'datadog_flutter_plugin'
+      dirExists: 'integration_test_app/integration_test'
 
   # Regenerates datadog_flutter_plugin_desktop's ffigen bindings and fails if the
   # result differs from what is committed. dd-sdk-cpp is pulled by CMake
@@ -408,25 +428,29 @@ scripts:
       ignore:
         - 'datadog_flutter_plugin'
 
-  # Because the main package (datadog_flutter_plugin) is set up weird for integration tests,
-  # have a separate target just for it that is called by `integration_test:linux``
+  # Packages with a dedicated integration test app run through this target.
+  # The other target discovers integration tests in package examples.
   integration_test:linux:main:
-    exec: |
+    exec:
+      concurrency: 1
+    run: |
       cd integration_test_app
       dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results --verbose
     packageFilters:
-      scope: 'datadog_flutter_plugin'
+      dirExists: 'integration_test_app/integration_test'
 
   integration_test:web:
     run: melos integration_test:web:main && melos integration_test:web:other
 
   integration_test:web:main:
-    exec: |
+    exec:
+      concurrency: 1
+    run: |
       cd integration_test_app
       dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart
       dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart --wasm
     packageFilters:
-      scope: 'datadog_flutter_plugin'
+      dirExists: 'integration_test_app/integration_test'
 
   integration_test:web:other:
     exec: 
@@ -513,6 +537,7 @@ scripts:
       scope:
         - "*example*"
         - "*integration_test_app*"
+        - "test_app"
 
   generate_env:e2e:
     exec: dart $MELOS_ROOT_PATH/tools/ci/bin/generate_env.dart --e2e
