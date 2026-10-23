@@ -8,18 +8,12 @@ import 'package:datadog_flutter_plugin_desktop/src/desktop_platform.dart';
 import 'package:datadog_flutter_plugin_desktop/src/ffi_bindings.dart';
 import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart';
 import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
-import 'package:ffi/ffi.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockSdkFfi extends Mock implements DdSdkFfi {}
+import 'ffi_test_helpers.dart';
 
-/// Reads the C string passed as positional argument [index] of [invocation].
-/// Must be called while the call is in flight, before the plugin frees it.
-String _stringArg(Invocation invocation, int index) =>
-    (invocation.positionalArguments[index] as ffi.Pointer<ffi.Char>)
-        .cast<Utf8>()
-        .toDartString();
+class MockSdkFfi extends Mock implements DdSdkFfi {}
 
 void main() {
   late MockSdkFfi sdk;
@@ -75,14 +69,14 @@ void main() {
 
   group('core configuration', () {
     test('passes client token, service and env to the C SDK', () async {
-      final received = <String>[];
+      final received = <String?>[];
       when(
         () => sdk.dd_core_config_init(any(), any(), any(), any()),
       ).thenAnswer((invocation) {
         received.addAll([
-          _stringArg(invocation, 1),
-          _stringArg(invocation, 2),
-          _stringArg(invocation, 3),
+          nativeString(invocation.positionalArguments[1]),
+          nativeString(invocation.positionalArguments[2]),
+          nativeString(invocation.positionalArguments[3]),
         ]);
       });
 
@@ -190,12 +184,12 @@ void main() {
       when(() => sdk.dd_core_config_set_version(any(), any())).thenAnswer((
         invocation,
       ) {
-        version = _stringArg(invocation, 1);
+        version = nativeString(invocation.positionalArguments[1]);
       });
       when(() => sdk.dd_core_config_set_variant(any(), any())).thenAnswer((
         invocation,
       ) {
-        variant = _stringArg(invocation, 1);
+        variant = nativeString(invocation.positionalArguments[1]);
       });
 
       await initialize(config(version: '1.2.3', flavor: 'staging'));
@@ -218,7 +212,7 @@ void main() {
       when(
         () => sdk.dd_core_config_internal_set_custom_endpoint_url(any(), any()),
       ).thenAnswer((invocation) {
-        received = _stringArg(invocation, 1);
+        received = nativeString(invocation.positionalArguments[1]);
       });
 
       await initialize(
@@ -252,7 +246,7 @@ void main() {
     test('passes the application id to the C SDK', () async {
       String? applicationId;
       when(() => sdk.dd_rum_config_init(any(), any())).thenAnswer((invocation) {
-        applicationId = _stringArg(invocation, 1);
+        applicationId = nativeString(invocation.positionalArguments[1]);
       });
 
       await initialize(
