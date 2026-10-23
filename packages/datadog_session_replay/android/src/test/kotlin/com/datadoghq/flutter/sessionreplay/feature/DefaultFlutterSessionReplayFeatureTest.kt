@@ -152,7 +152,84 @@ internal class DefaultFlutterSessionReplayFeatureTest {
         val viewMap = context[viewId] as? MutableMap<String, Any?>
         assertThat(viewMap).isNotNull()
         assertThat(viewMap?.get("has_replay")).isEqualTo(true)
-        assertThat(viewMap?.get("records_count")).isEqualTo(recordCount)
+        // RUM only reads the count as a Long.
+        assertThat(viewMap?.get("records_count")).isEqualTo(recordCount.toLong())
+    }
+
+    @Test
+    fun `M register a stand-in under the native feature name W setHasReplay {name free}`(
+        @StringForgery customEndpoint: String,
+        @StringForgery viewId: String
+    ) {
+        // Given
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            mockk(relaxed = true),
+            customEndpoint,
+            mainThreadHandler = mockHandler
+        )
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns null
+
+        // When
+        feature.setHasReplay(viewId, true)
+
+        // Then
+        // The core only applies context updates to registered features, so without a feature under
+        // this name RUM never sees `has_replay` or the record counts.
+        verify { mockCore.registerFeature(ReplayContextFeature) }
+        verify {
+            mockCore.setEventReceiver(Feature.SESSION_REPLAY_FEATURE_NAME, ReplayContextFeature)
+        }
+        assertThat(ReplayContextFeature.name).isEqualTo(Feature.SESSION_REPLAY_FEATURE_NAME)
+    }
+
+    @Test
+    fun `M not register a stand-in W setRecordCount {native Session Replay registered}`(
+        @StringForgery customEndpoint: String,
+        @StringForgery viewId: String,
+        @IntForgery recordCount: Int
+    ) {
+        // Given
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            mockk(relaxed = true),
+            customEndpoint,
+            mainThreadHandler = mockHandler
+        )
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns mockk()
+
+        // When
+        feature.setRecordCount(viewId, recordCount)
+
+        // Then
+        verify(exactly = 0) { mockCore.registerFeature(ReplayContextFeature) }
+        verify(exactly = 0) {
+            mockCore.setEventReceiver(Feature.SESSION_REPLAY_FEATURE_NAME, any())
+        }
+    }
+
+    @Test
+    fun `M register the stand-in once W setHasReplay and setRecordCount`(
+        @StringForgery customEndpoint: String,
+        @StringForgery viewId: String,
+        @IntForgery recordCount: Int
+    ) {
+        // Given
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            mockk(relaxed = true),
+            customEndpoint,
+            mainThreadHandler = mockHandler
+        )
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns null
+
+        // When
+        feature.setHasReplay(viewId, true)
+        feature.setRecordCount(viewId, recordCount)
+        feature.setHasReplay(viewId, true)
+
+        // Then
+        verify(exactly = 1) { mockCore.registerFeature(ReplayContextFeature) }
     }
 
     @Test
