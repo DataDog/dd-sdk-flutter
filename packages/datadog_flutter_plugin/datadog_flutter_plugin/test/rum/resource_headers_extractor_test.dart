@@ -459,6 +459,81 @@ void main() {
         expect(extractor.requestHeaderNames, isEmpty);
         expect(extractor.responseHeaderNames, isEmpty);
       });
+
+      test('header name sets cannot be modified', () {
+        final extractor = ResourceHeadersExtractor(
+          captureHeaders: ['x-custom'],
+        );
+
+        expect(
+          () => extractor.customHeaderNames.clear(),
+          throwsUnsupportedError,
+        );
+        expect(
+          () => extractor.requestHeaderNames.clear(),
+          throwsUnsupportedError,
+        );
+        expect(
+          () => extractor.responseHeaderNames.clear(),
+          throwsUnsupportedError,
+        );
+      });
+    });
+
+    group('configuration telemetry', () {
+      test('reports default_headers when only defaults are captured', () {
+        final extractor = ResourceHeadersExtractor();
+        expect(extractor.telemetryTrackResourceHeaders, 'default_headers');
+      });
+
+      test('reports custom when custom headers are configured', () {
+        expect(
+          ResourceHeadersExtractor(
+            captureHeaders: ['x-custom'],
+          ).telemetryTrackResourceHeaders,
+          'custom',
+        );
+        expect(
+          ResourceHeadersExtractor(
+            includeDefaults: false,
+            captureHeaders: ['x-custom'],
+          ).telemetryTrackResourceHeaders,
+          'custom',
+        );
+      });
+
+      test('reports the configuration captured at construction', () {
+        final captureHeaders = ['x-custom'];
+        final extractor = ResourceHeadersExtractor(
+          captureHeaders: captureHeaders,
+        );
+        captureHeaders.clear();
+
+        expect(extractor.telemetryTrackResourceHeaders, 'custom');
+        expect(extractor.customHeaderNames, {'x-custom'});
+      });
+
+      test('reports the effective headers after security filtering', () {
+        expect(
+          ResourceHeadersExtractor(
+            includeDefaults: false,
+          ).telemetryTrackResourceHeaders,
+          isNull,
+        );
+        expect(
+          ResourceHeadersExtractor(
+            includeDefaults: false,
+            captureHeaders: ['authorization'],
+          ).telemetryTrackResourceHeaders,
+          isNull,
+        );
+        expect(
+          ResourceHeadersExtractor(
+            captureHeaders: ['authorization'],
+          ).telemetryTrackResourceHeaders,
+          'default_headers',
+        );
+      });
     });
   });
 }

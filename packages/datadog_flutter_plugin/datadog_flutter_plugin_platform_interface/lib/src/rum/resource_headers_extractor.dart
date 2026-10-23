@@ -78,6 +78,8 @@ class ResourceHeadersExtractor {
 
   final Set<String> _requestHeaders;
   final Set<String> _responseHeaders;
+  final Set<String> _customHeaders;
+  final String? _telemetryTrackResourceHeaders;
 
   /// Creates a header extractor.
   ///
@@ -94,6 +96,11 @@ class ResourceHeadersExtractor {
        _responseHeaders = _buildHeaderSet(
          includeDefaults ? _defaultResponseHeaders : const [],
          captureHeaders,
+       ),
+       _customHeaders = _buildHeaderSet(const [], captureHeaders),
+       _telemetryTrackResourceHeaders = _buildTelemetryValue(
+         includeDefaults,
+         _buildHeaderSet(const [], captureHeaders),
        );
 
   /// Extracts matching request headers from the provided header map.
@@ -117,14 +124,23 @@ class ResourceHeadersExtractor {
   }
 
   /// Lowercased, security-filtered set of header names this extractor will
-  /// capture on the **request** side. Used by the Flutter Web RUM bridge to
-  /// build direction-scoped `trackResourceHeaders` matchers for the Browser SDK
-  /// so request-only and response-only defaults stay scoped to their direction.
+  /// capture on the **request** side.
   Set<String> get requestHeaderNames => _requestHeaders;
 
   /// Lowercased, security-filtered set of header names this extractor will
   /// capture on the **response** side.
   Set<String> get responseHeaderNames => _responseHeaders;
+
+  /// Lowercased, security-filtered set of custom header names, captured on
+  /// both the request and the response side. Used by the Flutter Web RUM
+  /// bridge to build the Browser SDK `trackResourceHeaders` matchers.
+  Set<String> get customHeaderNames => _customHeaders;
+
+  /// Value reported as `track_resource_headers` in configuration telemetry,
+  /// based on the headers left after security filtering: `custom` when custom
+  /// headers are captured, `default_headers` when only the defaults are, and
+  /// `null` when no header can be captured.
+  String? get telemetryTrackResourceHeaders => _telemetryTrackResourceHeaders;
 
   /// Convenience method that extracts both request and response headers and
   /// returns them as a map of internal attributes suitable for merging into
@@ -187,9 +203,18 @@ class ResourceHeadersExtractor {
     return result;
   }
 
+  static String? _buildTelemetryValue(
+    bool includeDefaults,
+    Set<String> customHeaders,
+  ) {
+    if (customHeaders.isNotEmpty) return 'custom';
+    return includeDefaults ? 'default_headers' : null;
+  }
+
   /// Builds a deduplicated, lowercase set of header names from defaults and
   /// custom headers. Headers matching [_forbiddenHeaderPattern] are filtered
-  /// out at build time so the security filter does not run per-call.
+  /// out at build time so the security filter does not run per-call. The set is
+  /// unmodifiable so callers of the getters cannot change the configuration.
   static Set<String> _buildHeaderSet(
     List<String> defaults,
     List<String> custom,
@@ -205,7 +230,7 @@ class ResourceHeadersExtractor {
       if (_forbiddenHeaderPattern.hasMatch(lower)) continue;
       result.add(lower);
     }
-    return result;
+    return Set.unmodifiable(result);
   }
 
   /// Truncates [value] to at most [maxBytes] UTF-8 bytes without splitting

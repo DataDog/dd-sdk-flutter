@@ -7,6 +7,7 @@ import 'dart:js_interop';
 
 import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart';
 import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
+import 'package:meta/meta.dart';
 import 'package:uuid/uuid.dart';
 
 import '../js_types.dart';
@@ -75,7 +76,7 @@ class DdRumWeb extends DdRumPlatform {
         trackViewsManually: true,
         trackUserInteractions: false,
         trackResources: trackResources,
-        trackResourceHeaders: _convertTrackResourceHeaders(
+        trackResourceHeaders: convertTrackResourceHeaders(
           rumConfiguration.trackResourceHeaders,
         ),
         trackFrustrations: rumConfiguration.trackFrustrations,
@@ -562,19 +563,27 @@ JSString _headerTypeToPropagatorType(TracingHeaderType type) {
   }
 }
 
-JSAny? _convertTrackResourceHeaders(ResourceHeadersExtractor? extractor) {
+/// Converts [extractor] to the Browser SDK `trackResourceHeaders` option.
+///
+/// The default headers are always delegated to the Browser SDK, which is loaded
+/// from the CDN with the major version tag and so always uses its latest
+/// default list. Defaults only map to `true`, so the Browser SDK reports
+/// `default_headers` in configuration telemetry, like iOS and Android. When
+/// custom headers are added, a matcher without a name keeps the Browser SDK
+/// default headers, followed by the custom header names.
+@visibleForTesting
+JSAny? convertTrackResourceHeaders(ResourceHeadersExtractor? extractor) {
   if (extractor == null) return null;
-
-  // Explicit per-direction MatchHeaders — Browser SDK's `true` mode would
-  // apply its broad default list to both directions.
-  final matchers = <_MatchHeader>[
-    for (final name in extractor.requestHeaderNames)
-      _MatchHeader(name: name, location: 'request'),
-    for (final name in extractor.responseHeaderNames)
-      _MatchHeader(name: name, location: 'response'),
-  ];
-  if (matchers.isEmpty) return null;
-  return matchers.toJS;
+  switch (extractor.telemetryTrackResourceHeaders) {
+    case null:
+      return null;
+    case 'default_headers':
+      return true.toJS;
+  }
+  return <_MatchHeader>[
+    if (extractor.includeDefaults) _MatchHeader(),
+    for (final name in extractor.customHeaderNames) _MatchHeader(name: name),
+  ].toJS;
 }
 
 String _contextInjectionString(TraceContextInjection contextInjection) {
@@ -601,7 +610,7 @@ extension on RumOperationFailureReason {
 
 @anonymous
 extension type _MatchHeader._(JSObject _) implements JSObject {
-  external factory _MatchHeader({String name, String? location});
+  external factory _MatchHeader({String name});
 }
 
 @anonymous

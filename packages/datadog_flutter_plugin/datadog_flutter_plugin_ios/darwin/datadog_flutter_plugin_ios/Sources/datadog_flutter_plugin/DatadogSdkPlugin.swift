@@ -221,7 +221,8 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
                     currentConfiguration = configArg as [AnyHashable: Any]
 
                     core?.telemetry.configuration(
-                        dartVersion: arguments["dartVersion"] as? String
+                        dartVersion: arguments["dartVersion"] as? String,
+                        trackResourceHeaders: arguments["trackResourceHeaders"] as? String
                     )
                     #if os(iOS)
                     if engineLookupFailed {

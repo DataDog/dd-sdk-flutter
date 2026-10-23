@@ -2141,7 +2141,9 @@ extension type DatadogSdkPlugin$ConfigurationTelemetryOverrides._(
   /// The type which includes information such as the signature of this class.
   static const jni$_.JType<DatadogSdkPlugin$ConfigurationTelemetryOverrides>
   type = $DatadogSdkPlugin$ConfigurationTelemetryOverrides$Type$();
-  static final _id_new$ = _class.constructorId(r'(ZZZZZZZLjava/lang/String;)V');
+  static final _id_new$ = _class.constructorId(
+    r'(ZZZZZZZLjava/lang/String;Ljava/lang/String;)V',
+  );
 
   static final _new$ =
       jni$_.ProtectedJniExtensions.lookup<
@@ -2158,6 +2160,7 @@ extension type DatadogSdkPlugin$ConfigurationTelemetryOverrides._(
                     jni$_.Int32,
                     jni$_.Int32,
                     jni$_.Int32,
+                    jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
                   )
                 >,
@@ -2176,10 +2179,11 @@ extension type DatadogSdkPlugin$ConfigurationTelemetryOverrides._(
               core$_.int,
               core$_.int,
               jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
             )
           >();
 
-  /// from: `public void <init>(boolean z, boolean z1, boolean z2, boolean z3, boolean z4, boolean z5, boolean z6, java.lang.String string)`
+  /// from: `public void <init>(boolean z, boolean z1, boolean z2, boolean z3, boolean z4, boolean z5, boolean z6, java.lang.String string, java.lang.String string1)`
   /// The returned object must be released after use, by calling the [release] method.
   factory DatadogSdkPlugin$ConfigurationTelemetryOverrides(
     core$_.bool z,
@@ -2190,9 +2194,11 @@ extension type DatadogSdkPlugin$ConfigurationTelemetryOverrides._(
     core$_.bool z5,
     core$_.bool z6,
     jni$_.JString? string,
+    jni$_.JString? string1,
   ) {
     final _$$classRef = _class.reference;
     final _$string = string?.reference ?? jni$_.jNullReference;
+    final _$string1 = string1?.reference ?? jni$_.jNullReference;
     return _new$(
       _$$classRef.pointer,
       _id_new$.pointer,
@@ -2204,11 +2210,12 @@ extension type DatadogSdkPlugin$ConfigurationTelemetryOverrides._(
       z5 ? 1 : 0,
       z6 ? 1 : 0,
       _$string.pointer,
+      _$string1.pointer,
     ).object<DatadogSdkPlugin$ConfigurationTelemetryOverrides>();
   }
 
   static final _id_new$1 = _class.constructorId(
-    r'(ZZZZZZZLjava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V',
+    r'(ZZZZZZZLjava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V',
   );
 
   static final _new$1 =
@@ -2227,6 +2234,7 @@ extension type DatadogSdkPlugin$ConfigurationTelemetryOverrides._(
                     jni$_.Int32,
                     jni$_.Int32,
                     jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
                     jni$_.Int32,
                     jni$_.Pointer<jni$_.Void>,
                   )
@@ -2246,12 +2254,13 @@ extension type DatadogSdkPlugin$ConfigurationTelemetryOverrides._(
               core$_.int,
               core$_.int,
               jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
               core$_.int,
               jni$_.Pointer<jni$_.Void>,
             )
           >();
 
-  /// from: `synthetic public void <init>(boolean z, boolean z1, boolean z2, boolean z3, boolean z4, boolean z5, boolean z6, java.lang.String string, int i, kotlin.jvm.internal.DefaultConstructorMarker defaultConstructorMarker)`
+  /// from: `synthetic public void <init>(boolean z, boolean z1, boolean z2, boolean z3, boolean z4, boolean z5, boolean z6, java.lang.String string, java.lang.String string1, int i, kotlin.jvm.internal.DefaultConstructorMarker defaultConstructorMarker)`
   /// The returned object must be released after use, by calling the [release] method.
   factory DatadogSdkPlugin$ConfigurationTelemetryOverrides.new$1(
     core$_.bool z,
@@ -2262,11 +2271,13 @@ extension type DatadogSdkPlugin$ConfigurationTelemetryOverrides._(
     core$_.bool z5,
     core$_.bool z6,
     jni$_.JString? string,
+    jni$_.JString? string1,
     core$_.int i,
     DefaultConstructorMarker? defaultConstructorMarker,
   ) {
     final _$$classRef = _class.reference;
     final _$string = string?.reference ?? jni$_.jNullReference;
+    final _$string1 = string1?.reference ?? jni$_.jNullReference;
     final _$defaultConstructorMarker =
         defaultConstructorMarker?.reference ?? jni$_.jNullReference;
     return _new$1(
@@ -2280,6 +2291,7 @@ extension type DatadogSdkPlugin$ConfigurationTelemetryOverrides._(
       z5 ? 1 : 0,
       z6 ? 1 : 0,
       _$string.pointer,
+      _$string1.pointer,
       i,
       _$defaultConstructorMarker.pointer,
     ).object<DatadogSdkPlugin$ConfigurationTelemetryOverrides>();
@@ -2838,6 +2850,73 @@ extension DatadogSdkPlugin$ConfigurationTelemetryOverrides$$Methods
     ).check();
   }
 
+  static final _id_get$trackResourceHeaders =
+      DatadogSdkPlugin$ConfigurationTelemetryOverrides._class.instanceMethodId(
+        r'getTrackResourceHeaders',
+        r'()Ljava/lang/String;',
+      );
+
+  static final _get$trackResourceHeaders =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+              )
+            >
+          >('globalEnv_CallObjectMethod')
+          .asFunction<
+            jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+            )
+          >();
+
+  /// from: `public final java.lang.String getTrackResourceHeaders()`
+  /// The returned object must be released after use, by calling the [release] method.
+  jni$_.JString? get trackResourceHeaders {
+    final _$$selfRef = reference;
+    return _get$trackResourceHeaders(
+      _$$selfRef.pointer,
+      _id_get$trackResourceHeaders.pointer,
+    ).object<jni$_.JString?>();
+  }
+
+  static final _id_set$trackResourceHeaders =
+      DatadogSdkPlugin$ConfigurationTelemetryOverrides._class.instanceMethodId(
+        r'setTrackResourceHeaders',
+        r'(Ljava/lang/String;)V',
+      );
+
+  static final _set$trackResourceHeaders =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JThrowablePtr Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<(jni$_.Pointer<jni$_.Void>,)>,
+              )
+            >
+          >('globalEnv_CallVoidMethod')
+          .asFunction<
+            jni$_.JThrowablePtr Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+            )
+          >();
+
+  /// from: `public final void setTrackResourceHeaders(java.lang.String string)`
+  set trackResourceHeaders(jni$_.JString? string) {
+    final _$$selfRef = reference;
+    final _$string = string?.reference ?? jni$_.jNullReference;
+    _set$trackResourceHeaders(
+      _$$selfRef.pointer,
+      _id_set$trackResourceHeaders.pointer,
+      _$string.pointer,
+    ).check();
+  }
+
   static final _id_component1 = DatadogSdkPlugin$ConfigurationTelemetryOverrides
       ._class
       .instanceMethodId(r'component1', r'()Z');
@@ -3050,11 +3129,41 @@ extension DatadogSdkPlugin$ConfigurationTelemetryOverrides$$Methods
     ).object<jni$_.JString?>();
   }
 
+  static final _id_component9 = DatadogSdkPlugin$ConfigurationTelemetryOverrides
+      ._class
+      .instanceMethodId(r'component9', r'()Ljava/lang/String;');
+
+  static final _component9 =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+              )
+            >
+          >('globalEnv_CallObjectMethod')
+          .asFunction<
+            jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+            )
+          >();
+
+  /// from: `public operator fun component9(): kotlin.String?`
+  /// The returned object must be released after use, by calling the [release] method.
+  jni$_.JString? component9() {
+    final _$$selfRef = reference;
+    return _component9(
+      _$$selfRef.pointer,
+      _id_component9.pointer,
+    ).object<jni$_.JString?>();
+  }
+
   static final _id_copy = DatadogSdkPlugin$ConfigurationTelemetryOverrides
       ._class
       .instanceMethodId(
         r'copy',
-        r'(ZZZZZZZLjava/lang/String;)Lcom/datadoghq/flutter/DatadogSdkPlugin$ConfigurationTelemetryOverrides;',
+        r'(ZZZZZZZLjava/lang/String;Ljava/lang/String;)Lcom/datadoghq/flutter/DatadogSdkPlugin$ConfigurationTelemetryOverrides;',
       );
 
   static final _copy =
@@ -3073,6 +3182,7 @@ extension DatadogSdkPlugin$ConfigurationTelemetryOverrides$$Methods
                     jni$_.Int32,
                     jni$_.Int32,
                     jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
                   )
                 >,
               )
@@ -3090,10 +3200,11 @@ extension DatadogSdkPlugin$ConfigurationTelemetryOverrides$$Methods
               core$_.int,
               core$_.int,
               jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
             )
           >();
 
-  /// from: `public fun copy(trackViewsManually: kotlin.Boolean, trackInteractions: kotlin.Boolean, trackErrors: kotlin.Boolean, trackNetworkRequests: kotlin.Boolean, trackNativeViews: kotlin.Boolean, trackCrossPlatformLongTasks: kotlin.Boolean, trackFlutterPerformance: kotlin.Boolean, dartVersion: kotlin.String?): com.datadoghq.flutter.DatadogSdkPlugin.ConfigurationTelemetryOverrides`
+  /// from: `public fun copy(trackViewsManually: kotlin.Boolean, trackInteractions: kotlin.Boolean, trackErrors: kotlin.Boolean, trackNetworkRequests: kotlin.Boolean, trackNativeViews: kotlin.Boolean, trackCrossPlatformLongTasks: kotlin.Boolean, trackFlutterPerformance: kotlin.Boolean, dartVersion: kotlin.String?, trackResourceHeaders: kotlin.String?): com.datadoghq.flutter.DatadogSdkPlugin.ConfigurationTelemetryOverrides`
   /// The returned object must be released after use, by calling the [release] method.
   DatadogSdkPlugin$ConfigurationTelemetryOverrides copy(
     core$_.bool z,
@@ -3104,9 +3215,11 @@ extension DatadogSdkPlugin$ConfigurationTelemetryOverrides$$Methods
     core$_.bool z5,
     core$_.bool z6,
     jni$_.JString? string,
+    jni$_.JString? string1,
   ) {
     final _$$selfRef = reference;
     final _$string = string?.reference ?? jni$_.jNullReference;
+    final _$string1 = string1?.reference ?? jni$_.jNullReference;
     return _copy(
       _$$selfRef.pointer,
       _id_copy.pointer,
@@ -3118,6 +3231,7 @@ extension DatadogSdkPlugin$ConfigurationTelemetryOverrides$$Methods
       z5 ? 1 : 0,
       z6 ? 1 : 0,
       _$string.pointer,
+      _$string1.pointer,
     ).object<DatadogSdkPlugin$ConfigurationTelemetryOverrides>();
   }
 
