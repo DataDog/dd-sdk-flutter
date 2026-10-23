@@ -20,6 +20,7 @@ import 'element_recorders/cupertino_widgets/cupertino_slider_recorder.dart';
 import 'element_recorders/cupertino_widgets/cupertino_switch_recorder.dart';
 import 'element_recorders/custom_paint_recorder.dart';
 import 'element_recorders/editable_text_recorder.dart';
+import 'element_recorders/icon_recorder.dart';
 import 'element_recorders/image_recorder.dart';
 import 'element_recorders/material_widgets/checkbox_recorder.dart';
 import 'element_recorders/material_widgets/radio_recorder.dart';
@@ -129,11 +130,17 @@ class KeyGenerator {
     var value = _resourceIdExpando[e];
     if (value != null) return value;
 
-    value = _nextResourceKey;
+    value = nextResourceKey();
+    _resourceIdExpando[e] = value;
+    return value;
+  }
+
+  /// Allocates a resource key that isn't tied to a [ui.Image], for resources
+  /// the caller caches itself.
+  int nextResourceKey() {
+    final value = _nextResourceKey;
     _nextResourceKey = _nextResourceKey + 1;
     if (_nextResourceKey >= maxKey) _nextResourceKey = startingResourceKey;
-
-    _resourceIdExpando[e] = value;
     return value;
   }
 
@@ -194,6 +201,7 @@ class SessionReplayRecorder {
     _elementRecorders.addAll([
       ContainerRecorder(keyGenerator),
       TextElementRecorder(keyGenerator),
+      IconRecorder(keyGenerator),
       EditableTextRecorder(keyGenerator),
       InputDecoratorRecorder(keyGenerator),
       ImageRecorder(

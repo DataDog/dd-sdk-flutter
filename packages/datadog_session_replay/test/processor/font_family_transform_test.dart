@@ -30,12 +30,24 @@ void main() {
       expect(t.transformFamily(raw), raw);
     });
 
-    test('fallback always returns iOS-parity stack', () {
+    test('fallback returns iOS-parity stack', () {
       final t = FontFamilyTransform(
         const FontFamilyTransformConfig(strategy: FontFamilyStrategy.fallback),
       );
       expect(t.transformFamily(''), iosStack);
       expect(t.transformFamily('Anything'), iosStack);
+    });
+
+    test('fallback keeps player-bundled MaterialIcons', () {
+      final t = FontFamilyTransform(
+        const FontFamilyTransformConfig(strategy: FontFamilyStrategy.fallback),
+      );
+      expect(t.transformFamily('MaterialIcons'), 'MaterialIcons');
+    });
+
+    test('smart keeps MaterialIcons first in stack', () {
+      final t = FontFamilyTransform(smartConfig);
+      expect(t.transformFamily('MaterialIcons'), 'MaterialIcons, sans-serif');
     });
 
     test('smart: empty becomes iOS-parity stack', () {
