@@ -29,6 +29,26 @@ func setsReplayBaggage_WhenSetHasReplay() throws {
 }
 
 @Test
+func setsReplayConfiguration_WhenSetReplayConfiguration() throws {
+    // Given
+    let core = PassthroughCoreMock()
+    let config = DefaultFlutterSessionReplayFeature.Configuration()
+    let feature = try DefaultFlutterSessionReplayFeature(
+        core: core,
+        configuration: config,
+        resourceResolver: ResourceResolverMock()
+    )
+
+    // When
+    feature.setReplayConfiguration(sampleRate: 42.5, startRecordingImmediately: false)
+
+    // Then — RUM reads this for `session_replay_sample_rate` on view events
+    let value = core.context.additionalContext(ofType: SessionReplayCoreContext.Configuration.self)
+    #expect(value?.sampleRate == 42.5)
+    #expect(value?.startRecordingManually == true)
+}
+
+@Test
 func setsBaggage_WhenSetRecordCount() throws {
     // Given
     let core = PassthroughCoreMock()

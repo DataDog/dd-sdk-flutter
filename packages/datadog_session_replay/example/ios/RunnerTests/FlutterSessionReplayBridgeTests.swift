@@ -295,6 +295,46 @@ class FlutterSessionReplayBridgeTests {
     }
 
     @Test
+    func setReplayConfiguration_whenStandalone_publishesToTheFeature() throws {
+        // Given
+        try enable()
+        bridge.setEmbedded(false)
+
+        // When
+        bridge.setReplayConfiguration(sampleRate: 25.0, startRecordingImmediately: false)
+
+        // Then
+        #expect(feature.replayConfiguration?.sampleRate == 25.0)
+        #expect(feature.replayConfiguration?.startRecordingImmediately == false)
+    }
+
+    @Test
+    func setReplayConfiguration_whenEmbedded_staysQuiet() throws {
+        // Given
+        try enable()
+        bridge.setEmbedded(true)
+
+        // When
+        bridge.setReplayConfiguration(sampleRate: 25.0, startRecordingImmediately: true)
+
+        // Then — the native SessionReplayFeature publishes the host's own configuration when
+        // embedded; publishing from here too would make the reported rate depend on write order
+        #expect(feature.replayConfiguration == nil)
+    }
+
+    @Test
+    func setReplayConfiguration_beforeTheEmbeddingIsKnown_staysQuiet() throws {
+        // Given
+        try enable()
+
+        // When
+        bridge.setReplayConfiguration(sampleRate: 25.0, startRecordingImmediately: true)
+
+        // Then
+        #expect(feature.replayConfiguration == nil)
+    }
+
+    @Test
     func setRecordCount_whenStandalone_publishesToTheFeature() throws {
         // Given
         try enable()

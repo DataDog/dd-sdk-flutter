@@ -324,7 +324,11 @@ TracingContext generateTracingContext(DatadogSdk sdk, DatadogRum rum) {
   final traceId = TracingId.traceId();
   final spanId = TracingId.spanId();
   final context = sdk.platform.getContext();
-  bool sampled = rum.shouldSampleTrace(context?.sessionId, traceId);
+  bool sampled = rum.shouldSampleTrace(
+    context?.sessionId,
+    traceId,
+    sessionSampleRate: context?.sessionSampleRate,
+  );
   return TracingContext(
     traceId,
     spanId,

@@ -321,6 +321,7 @@ SWIFT_CLASS_NAMED("FlutterSessionReplay")
 - (void)enableWith:(FlutterSessionReplayConfiguration * _Nonnull)configuration;
 - (void)setHasReplayWithHasReplay:(BOOL)hasReplay;
 - (void)setRecordCountFor:(NSString * _Nonnull)viewId count:(NSInteger)count;
+- (void)setReplayConfigurationWithSampleRate:(double)sampleRate startRecordingImmediately:(BOOL)startRecordingImmediately;
 - (void)setEmbedded:(BOOL)isEmbedded;
 - (void)writeSegmentWithSegment:(NSString * _Nonnull)segmentJson;
 - (void)postTelemetryDebugWithId:(NSString * _Nonnull)id message:(NSString * _Nonnull)message;
