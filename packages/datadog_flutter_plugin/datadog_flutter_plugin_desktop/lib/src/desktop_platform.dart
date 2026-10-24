@@ -228,6 +228,8 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
 
     if (_core == null || _core!.address == 0) {
       internalLogger.warn("Failure setting up Datadog Core.");
+      _core = null;
+      _closeDiagnosticCallable();
       return PlatformInitializationResult(logs: false, rum: false);
     }
 
@@ -262,6 +264,17 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
 
     if (!_sdk.dd_core_start(_core!)) {
       internalLogger.warn("Failure setting up Datadog Core.");
+      // Features reference the core, so they are destroyed first. The core was
+      // never started, so there is nothing to stop.
+      if (logging != null && logging.address != 0) {
+        _sdk.dd_logging_destroy(logging);
+      }
+      if (rum != null && rum.address != 0) {
+        _sdk.dd_rum_destroy(rum);
+      }
+      _sdk.dd_core_destroy(_core!);
+      _core = null;
+      _closeDiagnosticCallable();
       return PlatformInitializationResult(logs: false, rum: false);
     }
 
@@ -486,14 +499,18 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
     _core = null;
     _logging = null;
     _rum = null;
-    _diagnosticCallable?.close();
-    _diagnosticCallable = null;
-    _pluginFree = null;
+    _closeDiagnosticCallable();
     IsolateNameServer.removePortNameMapping(_kIsolatePortName);
     _isolateConfigPort?.close();
     _isolateConfigPort = null;
     _capturedConfig = null;
     _rootIsolateToken = null;
+  }
+
+  void _closeDiagnosticCallable() {
+    _diagnosticCallable?.close();
+    _diagnosticCallable = null;
+    _pluginFree = null;
   }
 
   @override
