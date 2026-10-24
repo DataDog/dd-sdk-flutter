@@ -252,6 +252,10 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
             rumConfig.sessionSamplingRate.toDouble(),
           );
         }
+        _sdk.dd_rum_config_set_track_anonymous_user(
+          cfg,
+          rumConfig.trackAnonymousUser,
+        );
         return _sdk.dd_rum_init(_core!, cfg);
       });
     }
