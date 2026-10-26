@@ -129,11 +129,12 @@ class ProcessorWorker {
     return result.viewTreeSnapshot.nodes
         .expand((element) => element.buildWireframes())
         .map((wireframe) {
-      if (wireframe is SRTextWireframe) {
-        return _fontTransform.apply(wireframe);
-      }
-      return wireframe;
-    }).toList();
+          if (wireframe is SRTextWireframe) {
+            return _fontTransform.apply(wireframe);
+          }
+          return wireframe;
+        })
+        .toList();
   }
 
   SRRecord _createIncrementalPointerRecord(PointerCapture pointer) {

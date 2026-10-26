@@ -62,8 +62,10 @@ void main() {
 
     final lines = userScript.source.split('\n').map((e) => e.trim()).toList();
     final sendIndex = lines.indexOf('getAllowedWebViewHosts() {');
-    expect(lines[sendIndex + 1],
-        contains('return \'["shopist.io","datadoghq.com"]\''));
+    expect(
+      lines[sendIndex + 1],
+      contains('return \'["shopist.io","datadoghq.com"]\''),
+    );
   });
 
   test('user script sanitizes hosts', () {

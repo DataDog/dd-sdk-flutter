@@ -47,8 +47,7 @@ class PointerSnapshotRecorderProvider extends InheritedWidget {
   @override
   bool updateShouldNotify(
     covariant PointerSnapshotRecorderProvider oldWidget,
-  ) =>
-      recorder != oldWidget.recorder;
+  ) => recorder != oldWidget.recorder;
 
   static PointerSnapshotRecorderProvider? of(BuildContext context) {
     return context

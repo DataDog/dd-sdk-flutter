@@ -22,6 +22,7 @@ import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
 
 final configuration = DatadogConfiguration(
   // configuration
+  service: '<SERVICE_NAME>',
   firstPartyHosts: ['example.com'],
 )
 ```

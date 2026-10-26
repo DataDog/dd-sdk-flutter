@@ -3,7 +3,6 @@
 // Copyright 2025-Present Datadog, Inc.
 
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:jni/jni.dart';
@@ -28,7 +27,7 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
   }
 
   DatadogSessionReplayPlatformAndroid.fromJObject(JObject ref)
-      : _bridge = ref.as(FlutterSessionReplayBridge.type);
+    : _bridge = ref.as(FlutterSessionReplayBridge.type);
 
   @override
   Object? get isolateToken => _bridge;
@@ -43,11 +42,10 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
         onContextChanged: (context) {
           onContextChanged(
             RUMContext(
-              applicationId: context.getApplicationId()?.toDartString() ?? '',
-              sessionId: context.getSessionId()?.toDartString() ?? '',
-              viewId: context.getViewId()?.toDartString(),
-              viewServerTimeOffset:
-                  context.getViewServerTimeOffset()?.doubleValue(),
+              applicationId: context.applicationId?.toDartString() ?? '',
+              sessionId: context.sessionId?.toDartString() ?? '',
+              viewId: context.viewId?.toDartString(),
+              viewServerTimeOffset: context.viewServerTimeOffset?.doubleValue(),
             ),
           );
         },
@@ -65,7 +63,7 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
     // recording, standalone records to the Flutter feature. The slotId is deliberately not
     // part of this: the bridge resolves it natively per segment, from the view the host
     // registered, so Dart never has to observe its own view to keep up.
-    _bridge.setEmbedded(configuration.isEmbedded);
+    _bridge.embedded = configuration.isEmbedded;
 
     // Hand this bridge's token to the plugin instance for this engine. The bridge is
     // created over JNI and never sees a messenger, while the plugin has the messenger but
@@ -74,7 +72,9 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
     // it resolves slotIds through. Segments captured before it lands are buffered natively.
     // ignore: unawaited_futures
     _engineChannel.invokeMethod<void>(
-        'registerEngine', _bridge.getEngineToken().toDartString());
+      'registerEngine',
+      _bridge.engineToken.toDartString(),
+    );
 
     return true;
   }
@@ -91,15 +91,15 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
 
   @override
   FutureOr<void> telemetryDebug(String id, String message) {
-    _bridge.telemetryDebug(JString.fromString(message));
+    _bridge.telemetryDebug(message.toJString());
   }
 
   @override
   FutureOr<void> telemetryError(String message, String kind, String stack) {
     _bridge.telemetryError(
-      JString.fromString(message),
-      JString.fromString(stack),
-      JString.fromString(kind),
+      message.toJString(),
+      stack.toJString(),
+      kind.toJString(),
     );
   }
 

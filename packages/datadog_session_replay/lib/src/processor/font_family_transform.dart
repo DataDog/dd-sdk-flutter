@@ -17,6 +17,10 @@ import '../sr_data_models.dart';
 const String defaultReplayFontStack =
     '-apple-system, BlinkMacSystemFont, Roboto, sans-serif';
 
+/// Icon font bundled by the replay player. Text in this family is icon glyphs,
+/// which only render in this font, so it's never replaced by a fallback stack.
+const String materialIconsFontFamily = 'MaterialIcons';
+
 /// Resolved font-family strings Flutter uses for the platform UI font that are
 /// not valid CSS `font-family` tokens in the replay player. Tokens matching
 /// these are dropped in [FontFamilyStrategy.smart] so only web-usable names
@@ -129,6 +133,7 @@ class FontFamilyTransform {
       case FontFamilyStrategy.none:
         return captured;
       case FontFamilyStrategy.fallback:
+        if (captured == materialIconsFontFamily) return captured;
         return defaultReplayFontStack;
       case FontFamilyStrategy.smart:
         return _applySmart(captured);

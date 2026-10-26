@@ -41,33 +41,34 @@ void main() {
     await app.main();
 
     await tester.pumpAndSettle();
-    var button = find.byWidgetPredicate((widget) =>
-        widget is Text &&
-        (widget.data?.startsWith('WebView Example') ?? false));
+    var button = find.byWidgetPredicate(
+      (widget) =>
+          widget is Text &&
+          (widget.data?.startsWith('WebView Example') ?? false),
+    );
     await tester.tap(button);
     await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 3));
 
     final requestLog = <RequestLog>[];
     final rumLog = <RumEventDecoder>[];
-    await serverRecorder.pollSessionRequests(
-      const Duration(seconds: 50),
-      (requests) {
-        requestLog.addAll(requests);
-        for (var request in requests) {
-          request.data.split('\n').forEach((e) {
-            dynamic jsonValue = json.decode(e);
-            if (jsonValue is Map<String, dynamic>) {
-              rumLog.add(RumEventDecoder(jsonValue));
-            }
-          });
-        }
-        final session = RumSessionDecoder.fromEvents(rumLog);
-        return session.visits.length >= 3;
-      },
-    );
+    await serverRecorder.pollSessionRequests(const Duration(seconds: 50), (
+      requests,
+    ) {
+      requestLog.addAll(requests);
+      for (var request in requests) {
+        request.data.split('\n').forEach((e) {
+          dynamic jsonValue = json.decode(e);
+          if (jsonValue is Map<String, dynamic>) {
+            rumLog.add(RumEventDecoder(jsonValue));
+          }
+        });
+      }
+      final allSessions = RumSessionDecoder.fromEvents(rumLog);
+      return allSessions.isNotEmpty && allSessions.last.visits.length >= 3;
+    });
 
-    final session = RumSessionDecoder.fromEvents(rumLog);
+    final session = RumSessionDecoder.fromEvents(rumLog).last;
     expect(session.visits.length, 3);
 
     // First view is home screen, second view is the Flutter view, third is the loaded webview

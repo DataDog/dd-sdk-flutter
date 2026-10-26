@@ -4,7 +4,6 @@
 
 import 'dart:io';
 
-import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:flutter/gestures.dart';
@@ -64,7 +63,9 @@ class AutoInteract {
   }
 
   static Future<void> _run(
-      double rumSampleRate, double replaySampleRate) async {
+    double rumSampleRate,
+    double replaySampleRate,
+  ) async {
     await Future<void>.delayed(const Duration(seconds: 2));
     for (final (matches, pauseMs) in _script) {
       final position = _centerOf(matches);
@@ -82,10 +83,11 @@ class AutoInteract {
     double replaySampleRate,
   ) async {
     final sessionId = await DatadogSdk.instance.rum?.getCurrentSessionId();
-    final expected = sessionId != null &&
-        DeterministicSampler(rumSampleRate)
-            .combined(replaySampleRate)
-            .sampleUuid(sessionId);
+    final expected =
+        sessionId != null &&
+        DeterministicSampler(
+          rumSampleRate,
+        ).combined(replaySampleRate).sampleUuid(sessionId);
     final capturing = DatadogSessionReplay.instance?.isCapturing ?? false;
     debugPrint(
       'SR_TEST session=$sessionId expectedReplay=$expected capturing=$capturing',

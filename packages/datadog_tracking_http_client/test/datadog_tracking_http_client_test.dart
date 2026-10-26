@@ -35,8 +35,12 @@ class MockHttpClientResponse extends Mock implements HttpClientResponse {
       StreamController<List<int>>(sync: true);
 
   @override
-  StreamSubscription<List<int>> listen(void Function(List<int> event)? onData,
-      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
+  StreamSubscription<List<int>> listen(
+    void Function(List<int> event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
     return streamController.stream.listen(
       onData,
       onError: onError,
@@ -64,23 +68,30 @@ void main() {
 
   setUp(() {
     mockPlatform = MockDatadogSdkPlatform();
-    when(() => mockPlatform.updateTelemetryConfiguration(any(), any()))
-        .thenAnswer((_) => Future<void>.value());
+    when(
+      () => mockPlatform.updateTelemetryConfiguration(any(), any()),
+    ).thenAnswer((_) => Future<void>.value());
 
     mockDatadog = MockDatadogSdk();
-    when(() => mockDatadog
-            .headerTypesForHost(any(that: HasHost(equals('test_url')))))
-        .thenReturn({TracingHeaderType.datadog});
-    when(() => mockDatadog.headerTypesForHost(
-        any(that: HasHost(equals('non_first_party'))))).thenReturn({});
+    when(
+      () => mockDatadog.headerTypesForHost(
+        any(that: HasHost(equals('test_url'))),
+      ),
+    ).thenReturn({TracingHeaderType.datadog});
+    when(
+      () => mockDatadog.headerTypesForHost(
+        any(that: HasHost(equals('non_first_party'))),
+      ),
+    ).thenReturn({});
     when(() => mockDatadog.platform).thenReturn(mockPlatform);
     // ignore: invalid_use_of_internal_member
     when(() => mockDatadog.internalLogger).thenReturn(InternalLogger());
 
     mockRum = MockDdRum();
     when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
-    when(() => mockRum.contextInjectionSetting)
-        .thenReturn(TraceContextInjection.all);
+    when(
+      () => mockRum.contextInjectionSetting,
+    ).thenReturn(TraceContextInjection.all);
     when(() => mockRum.traceSampleRate).thenReturn(50.0);
 
     mockClient = MockHttpClient();
@@ -95,7 +106,8 @@ void main() {
     final mockHeaders = MockHttpHeaders();
     Map<String, String> headerCache = {};
     when(() => mockHeaders.value(any())).thenAnswer(
-        (invocation) => headerCache[invocation.positionalArguments[0]]);
+      (invocation) => headerCache[invocation.positionalArguments[0]],
+    );
     when(() => mockHeaders.forEach(any())).thenAnswer((invocation) {
       void Function(String, List<String>) arg =
           invocation.positionalArguments[0];
@@ -104,13 +116,15 @@ void main() {
       });
     });
     when(() => mockHeaders.add(any(), any())).thenAnswer((invocation) {
-      headerCache[invocation.positionalArguments[0]] =
-          invocation.positionalArguments[1].toString();
+      headerCache[invocation.positionalArguments[0]] = invocation
+          .positionalArguments[1]
+          .toString();
     });
     when(() => mockRequest.headers).thenReturn(mockHeaders);
 
-    when(() => mockClient.openUrl(any(), any()))
-        .thenAnswer((_) => Future.value(mockRequest));
+    when(
+      () => mockClient.openUrl(any(), any()),
+    ).thenAnswer((_) => Future.value(mockRequest));
 
     var completer = Completer<HttpClientResponse>();
     when(() => mockRequest.done).thenAnswer((_) => completer.future);
@@ -119,12 +133,16 @@ void main() {
     return completer;
   }
 
-  MockHttpClientResponse setupMockClientResponse(int statusCode,
-      {String mimeType = 'image/png', int size = 88888}) {
+  MockHttpClientResponse setupMockClientResponse(
+    int statusCode, {
+    String mimeType = 'image/png',
+    int size = 88888,
+  }) {
     final mockResponse = MockHttpClientResponse();
     when(() => mockResponse.statusCode).thenReturn(statusCode);
-    when(() => mockResponse.reasonPhrase)
-        .thenReturn('The only winning move is not to play');
+    when(
+      () => mockResponse.reasonPhrase,
+    ).thenReturn('The only winning move is not to play');
 
     var mockHeaders = MockHttpHeaders();
     final contentType = ContentType.parse(mimeType);
@@ -224,7 +242,8 @@ void main() {
       client = DatadogTrackingHttpClient(
         mockDatadog,
         DdHttpTrackingPluginConfiguration(
-            ignoreUrlPatterns: [RegExp('test_url/ignored/')]),
+          ignoreUrlPatterns: [RegExp('test_url/ignored/')],
+        ),
         mockClient,
       );
     });
@@ -238,10 +257,16 @@ void main() {
       var request = await client.openUrl('get', url);
 
       verify(() => mockClient.openUrl('get', url));
-      var capturedKey = verify(
-        () => mockRum.startResource(
-            captureAny(), RumHttpMethod.get, url.toString(), any()),
-      ).captured[0] as String;
+      var capturedKey =
+          verify(
+                () => mockRum.startResource(
+                  captureAny(),
+                  RumHttpMethod.get,
+                  url.toString(),
+                  any(),
+                ),
+              ).captured[0]
+              as String;
 
       verifyNever(() => mockRum.stopResource(any(), any(), any()));
 
@@ -259,8 +284,15 @@ void main() {
       mockResponse.streamController.sink.add([12]);
       await mockResponse.streamController.close();
       expect(gotData, isTrue);
-      verify(() => mockRum.stopResource(
-          capturedKey, 200, RumResourceType.image, 88888, any()));
+      verify(
+        () => mockRum.stopResource(
+          capturedKey,
+          200,
+          RumResourceType.image,
+          88888,
+          any(),
+        ),
+      );
     });
 
     test('calls stop resource with status code', () async {
@@ -270,10 +302,16 @@ void main() {
       var request = await client.openUrl('get', url);
 
       verify(() => mockClient.openUrl('get', url));
-      var capturedKey = verify(
-        () => mockRum.startResource(
-            captureAny(), RumHttpMethod.get, url.toString(), any()),
-      ).captured[0] as String;
+      var capturedKey =
+          verify(
+                () => mockRum.startResource(
+                  captureAny(),
+                  RumHttpMethod.get,
+                  url.toString(),
+                  any(),
+                ),
+              ).captured[0]
+              as String;
 
       verifyNever(() => mockRum.stopResource(any(), any(), any()));
 
@@ -283,8 +321,15 @@ void main() {
       response.listen((event) {});
       await mockResponse.streamController.close();
 
-      verify(() => mockRum.stopResource(
-          capturedKey, 403, RumResourceType.image, 88888, any()));
+      verify(
+        () => mockRum.stopResource(
+          capturedKey,
+          403,
+          RumResourceType.image,
+          88888,
+          any(),
+        ),
+      );
     });
 
     test('sets resource type from headers', () async {
@@ -294,10 +339,16 @@ void main() {
       var request = await client.openUrl('get', url);
 
       verify(() => mockClient.openUrl('get', url));
-      var capturedKey = verify(
-        () => mockRum.startResource(
-            captureAny(), RumHttpMethod.get, url.toString(), any()),
-      ).captured[0] as String;
+      var capturedKey =
+          verify(
+                () => mockRum.startResource(
+                  captureAny(),
+                  RumHttpMethod.get,
+                  url.toString(),
+                  any(),
+                ),
+              ).captured[0]
+              as String;
 
       final mockResponse = setupMockClientResponse(200, mimeType: 'video/mp4');
       completer.complete(mockResponse);
@@ -306,48 +357,78 @@ void main() {
       response.listen((event) {});
       await mockResponse.streamController.close();
 
-      verify(() => mockRum.stopResource(
-          capturedKey, 200, RumResourceType.media, 88888, any()));
+      verify(
+        () => mockRum.stopResource(
+          capturedKey,
+          200,
+          RumResourceType.media,
+          88888,
+          any(),
+        ),
+      );
     });
 
     test(
-        'reports streamed response size when contentLength is unknown (chunked)',
-        () async {
-      var url = Uri.parse('https://test_url/path');
-      final completer = setupMockRequest(url);
+      'reports streamed response size when contentLength is unknown (chunked)',
+      () async {
+        var url = Uri.parse('https://test_url/path');
+        final completer = setupMockRequest(url);
 
-      var request = await client.openUrl('get', url);
+        var request = await client.openUrl('get', url);
 
-      verify(() => mockClient.openUrl('get', url));
-      var capturedKey = verify(
-        () => mockRum.startResource(
-            captureAny(), RumHttpMethod.get, url.toString(), any()),
-      ).captured[0] as String;
+        verify(() => mockClient.openUrl('get', url));
+        var capturedKey =
+            verify(
+                  () => mockRum.startResource(
+                    captureAny(),
+                    RumHttpMethod.get,
+                    url.toString(),
+                    any(),
+                  ),
+                ).captured[0]
+                as String;
 
-      // contentLength -1 = unknown (e.g. chunked transfer encoding)
-      final mockResponse = setupMockClientResponse(200,
-          size: -1, mimeType: 'application/octet-stream');
-      completer.complete(mockResponse);
-      var response = await request.done;
+        // contentLength -1 = unknown (e.g. chunked transfer encoding)
+        final mockResponse = setupMockClientResponse(
+          200,
+          size: -1,
+          mimeType: 'application/octet-stream',
+        );
+        completer.complete(mockResponse);
+        var response = await request.done;
 
-      response.listen((event) {});
-      mockResponse.streamController.sink.add([1, 2, 3]);
-      mockResponse.streamController.sink.add([4, 5]);
-      await mockResponse.streamController.close();
+        response.listen((event) {});
+        mockResponse.streamController.sink.add([1, 2, 3]);
+        mockResponse.streamController.sink.add([4, 5]);
+        await mockResponse.streamController.close();
 
-      verify(() => mockRum.stopResource(
-          capturedKey, 200, RumResourceType.native, 5, any()));
-    });
+        verify(
+          () => mockRum.stopResource(
+            capturedKey,
+            200,
+            RumResourceType.native,
+            5,
+            any(),
+          ),
+        );
+      },
+    );
 
     test('calls stop resource with error connection error', () async {
       var url = Uri.parse('https://test_url/path');
       final completer = setupMockRequest(url);
 
       var request = await client.openUrl('get', url);
-      var capturedKey = verify(
-        () => mockRum.startResource(
-            captureAny(), RumHttpMethod.get, url.toString(), any()),
-      ).captured[0] as String;
+      var capturedKey =
+          verify(
+                () => mockRum.startResource(
+                  captureAny(),
+                  RumHttpMethod.get,
+                  url.toString(),
+                  any(),
+                ),
+              ).captured[0]
+              as String;
 
       var error = Error();
       Object? caughtError;
@@ -359,8 +440,14 @@ void main() {
       }
 
       expect(caughtError, error);
-      verify(() => mockRum.stopResourceWithErrorInfo(
-          capturedKey, error.toString(), error.runtimeType.toString(), any()));
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          capturedKey,
+          error.toString(),
+          error.runtimeType.toString(),
+          any(),
+        ),
+      );
     });
 
     test('calls stop resource with error for response error', () async {
@@ -368,10 +455,16 @@ void main() {
       final completer = setupMockRequest(url);
 
       var request = await client.openUrl('get', url);
-      var capturedKey = verify(
-        () => mockRum.startResource(
-            captureAny(), RumHttpMethod.get, url.toString(), any()),
-      ).captured[0] as String;
+      var capturedKey =
+          verify(
+                () => mockRum.startResource(
+                  captureAny(),
+                  RumHttpMethod.get,
+                  url.toString(),
+                  any(),
+                ),
+              ).captured[0]
+              as String;
 
       var mockResponse = setupMockClientResponse(200);
 
@@ -381,19 +474,24 @@ void main() {
       // Listen / close the response
       var error = Error();
       Object? caughtError;
-      response.listen((event) {}, onError: (Object e) {
-        caughtError = e;
-      });
+      response.listen(
+        (event) {},
+        onError: (Object e) {
+          caughtError = e;
+        },
+      );
       mockResponse.streamController.addError(error);
       await mockResponse.streamController.close();
 
       expect(caughtError, error);
-      verify(() => mockRum.stopResourceWithErrorInfo(
-            capturedKey,
-            error.toString(),
-            error.runtimeType.toString(),
-            any(),
-          ));
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          capturedKey,
+          error.toString(),
+          error.runtimeType.toString(),
+          any(),
+        ),
+      );
     });
 
     test('calls on error with error for dynamic parameter', () async {
@@ -401,10 +499,16 @@ void main() {
       final completer = setupMockRequest(url);
 
       var request = await client.openUrl('get', url);
-      var capturedKey = verify(
-        () => mockRum.startResource(
-            captureAny(), RumHttpMethod.get, url.toString(), any()),
-      ).captured[0] as String;
+      var capturedKey =
+          verify(
+                () => mockRum.startResource(
+                  captureAny(),
+                  RumHttpMethod.get,
+                  url.toString(),
+                  any(),
+                ),
+              ).captured[0]
+              as String;
 
       var mockResponse = setupMockClientResponse(200);
 
@@ -414,132 +518,166 @@ void main() {
       // Listen / close the response
       var error = Error();
       Object? caughtError;
-      response.listen((event) {}, onError: (dynamic e) {
-        caughtError = e;
-      });
+      response.listen(
+        (event) {},
+        onError: (dynamic e) {
+          caughtError = e;
+        },
+      );
       mockResponse.streamController.addError(error);
       await mockResponse.streamController.close();
 
       expect(caughtError, error);
-      verify(() => mockRum.stopResourceWithErrorInfo(
-            capturedKey,
-            error.toString(),
-            error.runtimeType.toString(),
-            any(),
-          ));
-    });
-
-    test('does not throw when listen provides non-standard onError function',
-        () async {
-      var url = Uri.parse('https://test_url/path');
-      final completer = setupMockRequest(url);
-
-      var request = await client.openUrl('get', url);
-      var capturedKey = verify(
-        () => mockRum.startResource(
-            captureAny(), RumHttpMethod.get, url.toString(), any()),
-      ).captured[0] as String;
-
-      var mockResponse = setupMockClientResponse(200);
-
-      completer.complete(mockResponse);
-      var response = await request.done;
-
-      // Listen / close the response
-      var error = Error();
-      dynamic caughtError;
-      response.listen((event) {}, onError: (int i, double f) {
-        caughtError = i;
-      });
-      mockResponse.streamController.addError(error);
-      await mockResponse.streamController.close();
-
-      expect(caughtError, isNull);
-      verify(() => mockRum.stopResourceWithErrorInfo(
-            capturedKey,
-            error.toString(),
-            error.runtimeType.toString(),
-            any(),
-          ));
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          capturedKey,
+          error.toString(),
+          error.runtimeType.toString(),
+          any(),
+        ),
+      );
     });
 
     test(
-        'start and stop resource loading do not set tracing attributes if shouldSample returns false',
-        () async {
-      var url = Uri.parse('https://test_url/path');
-      final completer = setupMockRequest(url);
+      'does not throw when listen provides non-standard onError function',
+      () async {
+        var url = Uri.parse('https://test_url/path');
+        final completer = setupMockRequest(url);
 
-      when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
-      when(() => mockRum.traceSampleRate).thenReturn(12.0);
+        var request = await client.openUrl('get', url);
+        var capturedKey =
+            verify(
+                  () => mockRum.startResource(
+                    captureAny(),
+                    RumHttpMethod.get,
+                    url.toString(),
+                    any(),
+                  ),
+                ).captured[0]
+                as String;
 
-      var request = await client.openUrl('get', url);
-      var capturedStartArgs = verify(
-        () => mockRum.startResource(
-          captureAny(),
-          RumHttpMethod.get,
-          url.toString(),
-          any(),
-        ),
-      ).captured;
-      var capturedKey = capturedStartArgs[0] as String;
-      var mockResponse = setupMockClientResponse(200, size: 12345);
+        var mockResponse = setupMockClientResponse(200);
 
-      completer.complete(mockResponse);
-      var response = await request.done;
-      response.listen((event) {});
-      await mockResponse.streamController.close();
+        completer.complete(mockResponse);
+        var response = await request.done;
 
-      final capturedEndArgs = verify(() => mockRum.stopResource(
+        // Listen / close the response
+        var error = Error();
+        dynamic caughtError;
+        response.listen(
+          (event) {},
+          onError: (int i, double f) {
+            caughtError = i;
+          },
+        );
+        mockResponse.streamController.addError(error);
+        await mockResponse.streamController.close();
+
+        expect(caughtError, isNull);
+        verify(
+          () => mockRum.stopResourceWithErrorInfo(
+            capturedKey,
+            error.toString(),
+            error.runtimeType.toString(),
+            any(),
+          ),
+        );
+      },
+    );
+
+    test(
+      'start and stop resource loading do not set tracing attributes if shouldSample returns false',
+      () async {
+        var url = Uri.parse('https://test_url/path');
+        final completer = setupMockRequest(url);
+
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+        when(() => mockRum.traceSampleRate).thenReturn(12.0);
+
+        var request = await client.openUrl('get', url);
+        var capturedStartArgs = verify(
+          () => mockRum.startResource(
+            captureAny(),
+            RumHttpMethod.get,
+            url.toString(),
+            any(),
+          ),
+        ).captured;
+        var capturedKey = capturedStartArgs[0] as String;
+        var mockResponse = setupMockClientResponse(200, size: 12345);
+
+        completer.complete(mockResponse);
+        var response = await request.done;
+        response.listen((event) {});
+        await mockResponse.streamController.close();
+
+        final capturedEndArgs = verify(
+          () => mockRum.stopResource(
             capturedKey,
             200,
             RumResourceType.image,
             12345,
             captureAny(),
-          )).captured;
-      final capturedAttributes = capturedEndArgs[0] as Map<String, dynamic>;
+          ),
+        ).captured;
+        final capturedAttributes = capturedEndArgs[0] as Map<String, dynamic>;
 
-      expect(
-          capturedAttributes[DatadogRumPlatformAttributeKey.traceID], isNull);
-      expect(capturedAttributes[DatadogRumPlatformAttributeKey.spanID], isNull);
-      expect(capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.12);
-    });
-
-    test('ignoreUrlPatterns does not perform tracking on matching url',
-        () async {
-      var url = Uri.parse('https://test_url/ignored/test');
-      final completer = setupMockRequest(url);
-
-      var request = await client.openUrl('get', url);
-      var mockResponse = setupMockClientResponse(200, size: 12345);
-
-      completer.complete(mockResponse);
-      var response = await request.done;
-      response.listen((event) {});
-      await mockResponse.streamController.close();
-
-      verifyNoMoreInteractions(mockRum);
-    });
+        expect(
+          capturedAttributes[DatadogRumPlatformAttributeKey.traceID],
+          isNull,
+        );
+        expect(
+          capturedAttributes[DatadogRumPlatformAttributeKey.spanID],
+          isNull,
+        );
+        expect(
+          capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr],
+          0.12,
+        );
+      },
+    );
 
     test(
-        'ignoreUrlPatterns does not perform tracking on matching url even though innerClient throw error',
-        () async {
-      const error = SocketException('Mock socket exception');
-      when(() => mockClient.openUrl(any(), any())).thenThrow(error);
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(ignoreUrlPatterns: [
-          RegExp('test_url/path'),
-        ]),
-        mockClient,
-      );
+      'ignoreUrlPatterns does not perform tracking on matching url',
+      () async {
+        var url = Uri.parse('https://test_url/ignored/test');
+        final completer = setupMockRequest(url);
 
-      var url = Uri.parse('https://test_url/path');
+        var request = await client.openUrl('get', url);
+        var mockResponse = setupMockClientResponse(200, size: 12345);
 
-      await expectLater(() async => await client.openUrl('get', url),
-          throwsA(predicate((e) => e == error)));
+        completer.complete(mockResponse);
+        var response = await request.done;
+        response.listen((event) {});
+        await mockResponse.streamController.close();
 
-      verifyNoMoreInteractions(mockRum);
-    });
+        verifyNoMoreInteractions(mockRum);
+      },
+    );
+
+    test(
+      'ignoreUrlPatterns does not perform tracking on matching url even though innerClient throw error',
+      () async {
+        const error = SocketException('Mock socket exception');
+        when(() => mockClient.openUrl(any(), any())).thenThrow(error);
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(
+            ignoreUrlPatterns: [RegExp('test_url/path')],
+          ),
+          mockClient,
+        );
+
+        var url = Uri.parse('https://test_url/path');
+
+        await expectLater(
+          () async => await client.openUrl('get', url),
+          throwsA(predicate((e) => e == error)),
+        );
+
+        verifyNoMoreInteractions(mockRum);
+      },
+    );
 
     test('error on openUrl stops resource with error', () async {
       const error = SocketException('Mock socket exception');
@@ -552,16 +690,27 @@ void main() {
 
       var url = Uri.parse('https://test_url/path');
 
-      await expectLater(() async => await client.openUrl('get', url),
-          throwsA(predicate((e) => e == error)));
-      var capturedKey = verify(() => mockRum.startResource(
-              captureAny(), RumHttpMethod.get, url.toString(), any()))
-          .captured[0] as String;
-      verify(() => mockRum.stopResourceWithErrorInfo(
-            capturedKey,
-            error.toString(),
-            error.runtimeType.toString(),
-          ));
+      await expectLater(
+        () async => await client.openUrl('get', url),
+        throwsA(predicate((e) => e == error)),
+      );
+      var capturedKey =
+          verify(
+                () => mockRum.startResource(
+                  captureAny(),
+                  RumHttpMethod.get,
+                  url.toString(),
+                  any(),
+                ),
+              ).captured[0]
+              as String;
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          capturedKey,
+          error.toString(),
+          error.runtimeType.toString(),
+        ),
+      );
     });
 
     test('error on close stops resource with error preserving stack', () async {
@@ -573,10 +722,16 @@ void main() {
 
       var request = await client.openUrl('get', url);
       verify(() => mockClient.openUrl('get', url));
-      var capturedKey = verify(
-        () => mockRum.startResource(
-            captureAny(), RumHttpMethod.get, url.toString(), any()),
-      ).captured[0] as String;
+      var capturedKey =
+          verify(
+                () => mockRum.startResource(
+                  captureAny(),
+                  RumHttpMethod.get,
+                  url.toString(),
+                  any(),
+                ),
+              ).captured[0]
+              as String;
 
       final stack = StackTrace.current;
       completer.completeError(error, stack);
@@ -586,12 +741,14 @@ void main() {
         expect(st, stack);
         expect(e, error);
       }
-      verify(() => mockRum.stopResourceWithErrorInfo(
-            capturedKey,
-            error.toString(),
-            error.runtimeType.toString(),
-            any(),
-          ));
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          capturedKey,
+          error.toString(),
+          error.runtimeType.toString(),
+          any(),
+        ),
+      );
     });
 
     test('error on done stops resource with error preserving stack', () async {
@@ -603,10 +760,16 @@ void main() {
 
       var request = await client.openUrl('get', url);
       verify(() => mockClient.openUrl('get', url));
-      var capturedKey = verify(
-        () => mockRum.startResource(
-            captureAny(), RumHttpMethod.get, url.toString(), any()),
-      ).captured[0] as String;
+      var capturedKey =
+          verify(
+                () => mockRum.startResource(
+                  captureAny(),
+                  RumHttpMethod.get,
+                  url.toString(),
+                  any(),
+                ),
+              ).captured[0]
+              as String;
 
       final stack = StackTrace.current;
       completer.completeError(error, stack);
@@ -616,12 +779,14 @@ void main() {
         expect(st, stack);
         expect(e, error);
       }
-      verify(() => mockRum.stopResourceWithErrorInfo(
-            capturedKey,
-            error.toString(),
-            error.runtimeType.toString(),
-            any(),
-          ));
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          capturedKey,
+          error.toString(),
+          error.runtimeType.toString(),
+          any(),
+        ),
+      );
     });
   });
 
@@ -630,8 +795,11 @@ void main() {
       setUp(() {
         enableRum();
 
-        when(() => mockDatadog.headerTypesForHost(
-            any(that: HasHost(equals('test_url'))))).thenReturn({headerType});
+        when(
+          () => mockDatadog.headerTypesForHost(
+            any(that: HasHost(equals('test_url'))),
+          ),
+        ).thenReturn({headerType});
       });
 
       test('start and stop resource loading set tracing attributes', () async {
@@ -663,127 +831,155 @@ void main() {
         response.listen((event) {});
         await mockResponse.streamController.close();
 
-        var capturedEndArgs = verify(() => mockRum.stopResource(
-              capturedKey,
-              200,
-              RumResourceType.image,
-              12345,
-              captureAny(),
-            )).captured;
+        var capturedEndArgs = verify(
+          () => mockRum.stopResource(
+            capturedKey,
+            200,
+            RumResourceType.image,
+            12345,
+            captureAny(),
+          ),
+        ).captured;
         final capturedAttributes = capturedEndArgs[0] as Map<String, dynamic>;
 
         var traceInt = BigInt.parse(
-            capturedAttributes[DatadogRumPlatformAttributeKey.traceID],
-            radix: 16);
+          capturedAttributes[DatadogRumPlatformAttributeKey.traceID],
+          radix: 16,
+        );
         expect(traceInt, isNotNull);
         expect(traceInt.bitLength, lessThanOrEqualTo(128));
 
         var spanInt = BigInt.parse(
-            capturedAttributes[DatadogRumPlatformAttributeKey.spanID]);
+          capturedAttributes[DatadogRumPlatformAttributeKey.spanID],
+        );
         expect(spanInt, isNotNull);
         expect(spanInt.bitLength, lessThanOrEqualTo(63));
 
         expect(
-            capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr], 0.23);
+          capturedAttributes[DatadogRumPlatformAttributeKey.rulePsr],
+          0.23,
+        );
       });
 
       test(
-          'sets trace headers for first party urls { sampled, TraceContextInjection.all }',
-          () async {
-        var url = Uri.parse('https://test_url/path');
-        var completer = setupMockRequest(url);
-        var mockResponse = setupMockClientResponse(200);
+        'sets trace headers for first party urls { sampled, TraceContextInjection.all }',
+        () async {
+          var url = Uri.parse('https://test_url/path');
+          var completer = setupMockRequest(url);
+          var mockResponse = setupMockClientResponse(200);
 
-        final client = DatadogTrackingHttpClient(
-          mockDatadog,
-          DdHttpTrackingPluginConfiguration(),
-          mockClient,
-        );
+          final client = DatadogTrackingHttpClient(
+            mockDatadog,
+            DdHttpTrackingPluginConfiguration(),
+            mockClient,
+          );
 
-        var request = await client.openUrl('get', url);
-        completer.complete(mockResponse);
+          var request = await client.openUrl('get', url);
+          completer.complete(mockResponse);
 
-        var _ = await request.done;
+          var _ = await request.done;
 
-        final requestHeaders = request.headers.toMap();
-        verifyHeaders(
-            requestHeaders, headerType, true, TraceContextInjection.all);
-      });
-
-      test(
-          'sets trace headers for first party urls { unsampled, TraceContextInjection.all }',
-          () async {
-        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
-        var url = Uri.parse('https://test_url/path');
-        var completer = setupMockRequest(url);
-        var mockResponse = setupMockClientResponse(200);
-
-        final client = DatadogTrackingHttpClient(
-          mockDatadog,
-          DdHttpTrackingPluginConfiguration(),
-          mockClient,
-        );
-
-        var request = await client.openUrl('get', url);
-        completer.complete(mockResponse);
-
-        var _ = await request.done;
-
-        final requestHeaders = request.headers.toMap();
-        verifyHeaders(
-            requestHeaders, headerType, false, TraceContextInjection.all);
-      });
+          final requestHeaders = request.headers.toMap();
+          verifyHeaders(
+            requestHeaders,
+            headerType,
+            true,
+            TraceContextInjection.all,
+          );
+        },
+      );
 
       test(
-          'sets trace headers for first party urls { sampled, TraceContextInjection.sampled }',
-          () async {
-        when(() => mockRum.contextInjectionSetting)
-            .thenReturn(TraceContextInjection.sampled);
-        var url = Uri.parse('https://test_url/path');
-        var completer = setupMockRequest(url);
-        var mockResponse = setupMockClientResponse(200);
+        'sets trace headers for first party urls { unsampled, TraceContextInjection.all }',
+        () async {
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+          var url = Uri.parse('https://test_url/path');
+          var completer = setupMockRequest(url);
+          var mockResponse = setupMockClientResponse(200);
 
-        final client = DatadogTrackingHttpClient(
-          mockDatadog,
-          DdHttpTrackingPluginConfiguration(),
-          mockClient,
-        );
+          final client = DatadogTrackingHttpClient(
+            mockDatadog,
+            DdHttpTrackingPluginConfiguration(),
+            mockClient,
+          );
 
-        var request = await client.openUrl('get', url);
-        completer.complete(mockResponse);
+          var request = await client.openUrl('get', url);
+          completer.complete(mockResponse);
 
-        var _ = await request.done;
+          var _ = await request.done;
 
-        final requestHeaders = request.headers.toMap();
-        verifyHeaders(
-            requestHeaders, headerType, true, TraceContextInjection.sampled);
-      });
+          final requestHeaders = request.headers.toMap();
+          verifyHeaders(
+            requestHeaders,
+            headerType,
+            false,
+            TraceContextInjection.all,
+          );
+        },
+      );
 
       test(
-          'sets trace headers for first party urls { unsampled, TraceContextInjection.sampled }',
-          () async {
-        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
-        when(() => mockRum.contextInjectionSetting)
-            .thenReturn(TraceContextInjection.sampled);
-        var url = Uri.parse('https://test_url/path');
-        var completer = setupMockRequest(url);
-        var mockResponse = setupMockClientResponse(200);
+        'sets trace headers for first party urls { sampled, TraceContextInjection.sampled }',
+        () async {
+          when(
+            () => mockRum.contextInjectionSetting,
+          ).thenReturn(TraceContextInjection.sampled);
+          var url = Uri.parse('https://test_url/path');
+          var completer = setupMockRequest(url);
+          var mockResponse = setupMockClientResponse(200);
 
-        final client = DatadogTrackingHttpClient(
-          mockDatadog,
-          DdHttpTrackingPluginConfiguration(),
-          mockClient,
-        );
+          final client = DatadogTrackingHttpClient(
+            mockDatadog,
+            DdHttpTrackingPluginConfiguration(),
+            mockClient,
+          );
 
-        var request = await client.openUrl('get', url);
-        completer.complete(mockResponse);
+          var request = await client.openUrl('get', url);
+          completer.complete(mockResponse);
 
-        var _ = await request.done;
+          var _ = await request.done;
 
-        final requestHeaders = request.headers.toMap();
-        verifyHeaders(
-            requestHeaders, headerType, false, TraceContextInjection.sampled);
-      });
+          final requestHeaders = request.headers.toMap();
+          verifyHeaders(
+            requestHeaders,
+            headerType,
+            true,
+            TraceContextInjection.sampled,
+          );
+        },
+      );
+
+      test(
+        'sets trace headers for first party urls { unsampled, TraceContextInjection.sampled }',
+        () async {
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+          when(
+            () => mockRum.contextInjectionSetting,
+          ).thenReturn(TraceContextInjection.sampled);
+          var url = Uri.parse('https://test_url/path');
+          var completer = setupMockRequest(url);
+          var mockResponse = setupMockClientResponse(200);
+
+          final client = DatadogTrackingHttpClient(
+            mockDatadog,
+            DdHttpTrackingPluginConfiguration(),
+            mockClient,
+          );
+
+          var request = await client.openUrl('get', url);
+          completer.complete(mockResponse);
+
+          var _ = await request.done;
+
+          final requestHeaders = request.headers.toMap();
+          verifyHeaders(
+            requestHeaders,
+            headerType,
+            false,
+            TraceContextInjection.sampled,
+          );
+        },
+      );
 
       test('does not set trace headers for third party urls', () async {
         var url = Uri.parse('https://non_first_party/path');
@@ -818,12 +1014,16 @@ void main() {
   test('different hosts can send different tracing headers', () async {
     enableRum();
 
-    when(() => mockDatadog
-            .headerTypesForHost(any(that: HasHost(equals('test_url_a')))))
-        .thenReturn({TracingHeaderType.datadog});
-    when(() => mockDatadog
-            .headerTypesForHost(any(that: HasHost(equals('test_url_b')))))
-        .thenReturn({TracingHeaderType.b3});
+    when(
+      () => mockDatadog.headerTypesForHost(
+        any(that: HasHost(equals('test_url_a'))),
+      ),
+    ).thenReturn({TracingHeaderType.datadog});
+    when(
+      () => mockDatadog.headerTypesForHost(
+        any(that: HasHost(equals('test_url_b'))),
+      ),
+    ).thenReturn({TracingHeaderType.b3});
 
     final client = DatadogTrackingHttpClient(
       mockDatadog,
@@ -845,7 +1045,11 @@ void main() {
 
       final requestHeaders = request.headers.toMap();
       verifyHeaders(
-          requestHeaders, headerType, true, TraceContextInjection.all);
+        requestHeaders,
+        headerType,
+        true,
+        TraceContextInjection.all,
+      );
     }
 
     await verifyCall(testUriA, TracingHeaderType.datadog);
@@ -855,10 +1059,11 @@ void main() {
   test('different tracing headers are same trace id', () async {
     // Given
     enableRum();
-    when(() => mockDatadog
-            .headerTypesForHost(any(that: HasHost(equals('test_url_a')))))
-        .thenReturn(
-            {TracingHeaderType.datadog, TracingHeaderType.tracecontext});
+    when(
+      () => mockDatadog.headerTypesForHost(
+        any(that: HasHost(equals('test_url_a'))),
+      ),
+    ).thenReturn({TracingHeaderType.datadog, TracingHeaderType.tracecontext});
 
     // When
     final client = DatadogTrackingHttpClient(
@@ -877,13 +1082,22 @@ void main() {
     await mockResponse.streamController.close();
 
     // Then
-    final callAttributes = verify(() =>
-            mockRum.stopResource(any(), any(), any(), any(), captureAny()))
-        .captured[0] as Map<String, Object?>;
+    final callAttributes =
+        verify(
+              () => mockRum.stopResource(
+                any(),
+                any(),
+                any(),
+                any(),
+                captureAny(),
+              ),
+            ).captured[0]
+            as Map<String, Object?>;
 
     final traceValue = callAttributes['_dd.trace_id'] as String?;
-    final traceInt =
-        traceValue != null ? BigInt.tryParse(traceValue, radix: 16) : null;
+    final traceInt = traceValue != null
+        ? BigInt.tryParse(traceValue, radix: 16)
+        : null;
     expect(traceInt, isNotNull);
     expect(traceInt?.bitLength, lessThanOrEqualTo(128));
 
@@ -893,9 +1107,9 @@ void main() {
     expect(spanInt?.bitLength, lessThanOrEqualTo(63));
 
     final headers = request.headers;
-    final datadogTraceString =
-        verify(() => headers.add('x-datadog-trace-id', captureAny()))
-            .captured[0];
+    final datadogTraceString = verify(
+      () => headers.add('x-datadog-trace-id', captureAny()),
+    ).captured[0];
     final datadogTraceInt = BigInt.tryParse(datadogTraceString);
     expect(traceInt! & lowTraceMask, datadogTraceInt);
     final datadogTagString =
@@ -907,9 +1121,9 @@ void main() {
     expect(highTraceInt, isNotNull);
     expect(highTraceInt, traceInt >> 64);
 
-    final datadogSpanString =
-        verify(() => headers.add('x-datadog-parent-id', captureAny()))
-            .captured[0];
+    final datadogSpanString = verify(
+      () => headers.add('x-datadog-parent-id', captureAny()),
+    ).captured[0];
     final datadogSpanInt = BigInt.tryParse(datadogSpanString);
     expect(spanInt, datadogSpanInt);
 
@@ -927,66 +1141,74 @@ void main() {
     setUp(() {
       enableRum();
 
-      when(() => mockDatadog
-              .headerTypesForHost(any(that: HasHost(equals('test_url')))))
-          .thenReturn({TracingHeaderType.b3});
+      when(
+        () => mockDatadog.headerTypesForHost(
+          any(that: HasHost(equals('test_url'))),
+        ),
+      ).thenReturn({TracingHeaderType.b3});
     });
 
-    test('does not set trace headers when should sample returns false',
-        () async {
-      when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
-      var url = Uri.parse('https://test_url/path');
-      var completer = setupMockRequest(url);
-      var mockResponse = setupMockClientResponse(200);
+    test(
+      'does not set trace headers when should sample returns false',
+      () async {
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+        var url = Uri.parse('https://test_url/path');
+        var completer = setupMockRequest(url);
+        var mockResponse = setupMockClientResponse(200);
 
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(),
-        mockClient,
-      );
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(),
+          mockClient,
+        );
 
-      var request = await client.openUrl('get', url);
-      completer.complete(mockResponse);
+        var request = await client.openUrl('get', url);
+        completer.complete(mockResponse);
 
-      var _ = await request.done;
-      final requestHeaders = request.headers;
+        var _ = await request.done;
+        final requestHeaders = request.headers;
 
-      verify(() => requestHeaders.add('b3', '0'));
-    });
+        verify(() => requestHeaders.add('b3', '0'));
+      },
+    );
   });
 
   group('when rum is enabled with b3multi tracing headers', () {
     setUp(() {
       enableRum();
 
-      when(() => mockDatadog
-              .headerTypesForHost(any(that: HasHost(equals('test_url')))))
-          .thenReturn({TracingHeaderType.b3multi});
+      when(
+        () => mockDatadog.headerTypesForHost(
+          any(that: HasHost(equals('test_url'))),
+        ),
+      ).thenReturn({TracingHeaderType.b3multi});
     });
 
-    test('does not set trace headers when should sample returns false',
-        () async {
-      when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
-      var url = Uri.parse('https://test_url/path');
-      var completer = setupMockRequest(url);
-      var mockResponse = setupMockClientResponse(200);
+    test(
+      'does not set trace headers when should sample returns false',
+      () async {
+        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+        var url = Uri.parse('https://test_url/path');
+        var completer = setupMockRequest(url);
+        var mockResponse = setupMockClientResponse(200);
 
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(),
-        mockClient,
-      );
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(),
+          mockClient,
+        );
 
-      var request = await client.openUrl('get', url);
-      completer.complete(mockResponse);
+        var request = await client.openUrl('get', url);
+        completer.complete(mockResponse);
 
-      var _ = await request.done;
-      final requestHeaders = request.headers;
+        var _ = await request.done;
+        final requestHeaders = request.headers;
 
-      verifyNever(() => requestHeaders.add('X-B3-TraceId', any()));
-      verifyNever(() => requestHeaders.add('X-B3-SpanId', any()));
-      verify(() => requestHeaders.add('X-B3-Sampled', '0'));
-    });
+        verifyNever(() => requestHeaders.add('X-B3-TraceId', any()));
+        verifyNever(() => requestHeaders.add('X-B3-SpanId', any()));
+        verify(() => requestHeaders.add('X-B3-Sampled', '0'));
+      },
+    );
   });
 
   group('when rum is enabled with a client listener', () {
@@ -994,313 +1216,359 @@ void main() {
       enableRum();
     });
 
-    test('listener is called with the request after the request starts',
-        () async {
-      var url = Uri.parse('https://test_url/path');
-      setupMockRequest(url);
-      final mockListener = MockTrackingHttpClientListener();
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(clientListener: mockListener),
-        mockClient,
-      );
-      final request = await client.openUrl('get', url);
+    test(
+      'listener is called with the request after the request starts',
+      () async {
+        var url = Uri.parse('https://test_url/path');
+        setupMockRequest(url);
+        final mockListener = MockTrackingHttpClientListener();
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(clientListener: mockListener),
+          mockClient,
+        );
+        final request = await client.openUrl('get', url);
 
-      verify(() => mockListener.requestStarted(
-          resourceKey: any(named: 'resourceKey'),
-          request: request,
-          userAttributes: {}));
-    });
+        verify(
+          () => mockListener.requestStarted(
+            resourceKey: any(named: 'resourceKey'),
+            request: request,
+            userAttributes: {},
+          ),
+        );
+      },
+    );
 
-    test('attributes returned from resourceStarted are added to stopResource',
-        () async {
-      var url = Uri.parse('https://test_url/path');
-      final completer = setupMockRequest(url);
-      final mockListener = MockTrackingHttpClientListener();
-      when(() => mockListener.requestStarted(
+    test(
+      'attributes returned from resourceStarted are added to stopResource',
+      () async {
+        var url = Uri.parse('https://test_url/path');
+        final completer = setupMockRequest(url);
+        final mockListener = MockTrackingHttpClientListener();
+        when(
+          () => mockListener.requestStarted(
             resourceKey: any(named: 'resourceKey'),
             request: any(named: 'request'),
             userAttributes: any(named: 'userAttributes'),
-          )).thenAnswer((invocation) {
-        var attrs = invocation.namedArguments[const Symbol('userAttributes')]
-            as Map<String, Object?>;
-        attrs['my_parameter'] = 'my_value';
-        attrs['other_parameter'] = 123;
-      });
+          ),
+        ).thenAnswer((invocation) {
+          var attrs =
+              invocation.namedArguments[const Symbol('userAttributes')]
+                  as Map<String, Object?>;
+          attrs['my_parameter'] = 'my_value';
+          attrs['other_parameter'] = 123;
+        });
 
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(clientListener: mockListener),
-        mockClient,
-      );
-      final request = await client.openUrl('get', url);
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(clientListener: mockListener),
+          mockClient,
+        );
+        final request = await client.openUrl('get', url);
 
-      final mockResponse = setupMockClientResponse(403);
-      completer.complete(mockResponse);
-      var response = await request.done;
-      response.listen((event) {});
-      await mockResponse.streamController.close();
+        final mockResponse = setupMockClientResponse(403);
+        completer.complete(mockResponse);
+        var response = await request.done;
+        response.listen((event) {});
+        await mockResponse.streamController.close();
 
-      final captured = verify(() =>
-              mockRum.stopResource(any(), 403, any(), any(), captureAny()))
-          .captured;
-      expect(captured[0]['my_parameter'], 'my_value');
-      expect(captured[0]['other_parameter'], 123);
-    });
+        final captured = verify(
+          () => mockRum.stopResource(any(), 403, any(), any(), captureAny()),
+        ).captured;
+        expect(captured[0]['my_parameter'], 'my_value');
+        expect(captured[0]['other_parameter'], 123);
+      },
+    );
 
     test(
-        'attributes returned from resourceStarted are added to stopResource if resource fails',
-        () async {
-      var url = Uri.parse('https://test_url/path');
-      final completer = setupMockRequest(url);
-      final mockListener = MockTrackingHttpClientListener();
-      when(() => mockListener.requestStarted(
-              resourceKey: any(named: 'resourceKey'),
-              request: any(named: 'request'),
-              userAttributes: any(named: 'userAttributes')))
-          .thenAnswer((invocation) {
-        var attrs = invocation.namedArguments[const Symbol('userAttributes')]
-            as Map<String, Object?>;
-        attrs['my_parameter'] = 'my_value';
-        attrs['other_parameter'] = 123;
-      });
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(clientListener: mockListener),
-        mockClient,
-      );
-      final request = await client.openUrl('get', url);
-      final mockResponse = setupMockClientResponse(200);
-      completer.complete(mockResponse);
-      var response = await request.done;
+      'attributes returned from resourceStarted are added to stopResource if resource fails',
+      () async {
+        var url = Uri.parse('https://test_url/path');
+        final completer = setupMockRequest(url);
+        final mockListener = MockTrackingHttpClientListener();
+        when(
+          () => mockListener.requestStarted(
+            resourceKey: any(named: 'resourceKey'),
+            request: any(named: 'request'),
+            userAttributes: any(named: 'userAttributes'),
+          ),
+        ).thenAnswer((invocation) {
+          var attrs =
+              invocation.namedArguments[const Symbol('userAttributes')]
+                  as Map<String, Object?>;
+          attrs['my_parameter'] = 'my_value';
+          attrs['other_parameter'] = 123;
+        });
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(clientListener: mockListener),
+          mockClient,
+        );
+        final request = await client.openUrl('get', url);
+        final mockResponse = setupMockClientResponse(200);
+        completer.complete(mockResponse);
+        var response = await request.done;
 
-      // Listen / close the response
-      var error = Error();
-      response.listen((event) {});
-      mockResponse.streamController.addError(error);
-      await mockResponse.streamController.close();
+        // Listen / close the response
+        var error = Error();
+        response.listen((event) {});
+        mockResponse.streamController.addError(error);
+        await mockResponse.streamController.close();
 
-      var capturedAttributes = verify(() => mockRum.stopResourceWithErrorInfo(
+        var capturedAttributes = verify(
+          () => mockRum.stopResourceWithErrorInfo(
             any(),
             error.toString(),
             error.runtimeType.toString(),
             captureAny(),
-          )).captured[0];
-      expect(capturedAttributes['my_parameter'], 'my_value');
-      expect(capturedAttributes['other_parameter'], 123);
-    });
+          ),
+        ).captured[0];
+        expect(capturedAttributes['my_parameter'], 'my_value');
+        expect(capturedAttributes['other_parameter'], 123);
+      },
+    );
 
-    test('listener is called with response when response finishes successfully',
-        () async {
-      var url = Uri.parse('https://test_url/path');
-      final completer = setupMockRequest(url);
-      final mockListener = MockTrackingHttpClientListener();
+    test(
+      'listener is called with response when response finishes successfully',
+      () async {
+        var url = Uri.parse('https://test_url/path');
+        final completer = setupMockRequest(url);
+        final mockListener = MockTrackingHttpClientListener();
 
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(clientListener: mockListener),
-        mockClient,
-      );
-      final request = await client.openUrl('get', url);
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(clientListener: mockListener),
+          mockClient,
+        );
+        final request = await client.openUrl('get', url);
 
-      final mockResponse = setupMockClientResponse(200);
-      completer.complete(mockResponse);
-      var response = await request.done;
-      response.listen((event) {});
-      await mockResponse.streamController.close();
+        final mockResponse = setupMockClientResponse(200);
+        completer.complete(mockResponse);
+        var response = await request.done;
+        response.listen((event) {});
+        await mockResponse.streamController.close();
 
-      verify(() => mockListener.responseFinished(
+        verify(
+          () => mockListener.responseFinished(
             resourceKey: any(named: 'resourceKey'),
             response: response,
             userAttributes: any(named: 'userAttributes'),
             error: null,
-          ));
-    });
+          ),
+        );
+      },
+    );
 
-    test('listener is called with response when response finishes with error',
-        () async {
-      var url = Uri.parse('https://test_url/path');
-      final completer = setupMockRequest(url);
-      final mockListener = MockTrackingHttpClientListener();
+    test(
+      'listener is called with response when response finishes with error',
+      () async {
+        var url = Uri.parse('https://test_url/path');
+        final completer = setupMockRequest(url);
+        final mockListener = MockTrackingHttpClientListener();
 
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(clientListener: mockListener),
-        mockClient,
-      );
-      final request = await client.openUrl('get', url);
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(clientListener: mockListener),
+          mockClient,
+        );
+        final request = await client.openUrl('get', url);
 
-      final mockResponse = setupMockClientResponse(500);
-      completer.complete(mockResponse);
-      var response = await request.done;
-      response.listen((event) {});
-      var error = Error();
-      mockResponse.streamController.addError(error);
-      await mockResponse.streamController.close();
+        final mockResponse = setupMockClientResponse(500);
+        completer.complete(mockResponse);
+        var response = await request.done;
+        response.listen((event) {});
+        var error = Error();
+        mockResponse.streamController.addError(error);
+        await mockResponse.streamController.close();
 
-      verify(() => mockListener.responseFinished(
+        verify(
+          () => mockListener.responseFinished(
             resourceKey: any(named: 'resourceKey'),
             response: response,
             userAttributes: any(named: 'userAttributes'),
             error: error,
-          ));
-    });
-
-    test('attributes returned from resourceFinished are added to stopResource',
-        () async {
-      var url = Uri.parse('https://test_url/path');
-      final completer = setupMockRequest(url);
-      final mockListener = MockTrackingHttpClientListener();
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(clientListener: mockListener),
-        mockClient,
-      );
-      final request = await client.openUrl('get', url);
-
-      final mockResponse = setupMockClientResponse(200);
-      when(() => mockListener.responseFinished(
-              resourceKey: any(named: 'resourceKey'),
-              response: any(named: 'response'),
-              userAttributes: any(named: 'userAttributes')))
-          .thenAnswer((invocation) {
-        var attrs = invocation.namedArguments[const Symbol('userAttributes')]
-            as Map<String, Object?>;
-        attrs['my_parameter'] = 'my_value';
-        attrs['other_parameter'] = 123;
-      });
-
-      completer.complete(mockResponse);
-      var response = await request.done;
-
-      // Listen / close the response
-      response.listen((event) {});
-      await mockResponse.streamController.close();
-
-      var capturedAttributes = verify(() =>
-              mockRum.stopResource(any(), 200, any(), any(), captureAny()))
-          .captured[0];
-      expect(capturedAttributes['my_parameter'], 'my_value');
-      expect(capturedAttributes['other_parameter'], 123);
-    });
+          ),
+        );
+      },
+    );
 
     test(
-        'attributes returned from resourceFinished are added to stopResource if resource fails',
-        () async {
-      var url = Uri.parse('https://test_url/path');
-      final completer = setupMockRequest(url);
-      final mockListener = MockTrackingHttpClientListener();
-      when(() => mockListener.requestStarted(
-              resourceKey: any(named: 'resourceKey'),
-              request: any(named: 'request'),
-              userAttributes: any(named: 'userAttributes')))
-          .thenAnswer((invocation) {
-        var attrs = invocation.namedArguments[const Symbol('userAttributes')]
-            as Map<String, Object?>;
-        attrs['my_parameter'] = 'my_value';
-        attrs['other_parameter'] = 123;
-      });
+      'attributes returned from resourceFinished are added to stopResource',
+      () async {
+        var url = Uri.parse('https://test_url/path');
+        final completer = setupMockRequest(url);
+        final mockListener = MockTrackingHttpClientListener();
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(clientListener: mockListener),
+          mockClient,
+        );
+        final request = await client.openUrl('get', url);
 
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(clientListener: mockListener),
-        mockClient,
-      );
-      final request = await client.openUrl('get', url);
+        final mockResponse = setupMockClientResponse(200);
+        when(
+          () => mockListener.responseFinished(
+            resourceKey: any(named: 'resourceKey'),
+            response: any(named: 'response'),
+            userAttributes: any(named: 'userAttributes'),
+          ),
+        ).thenAnswer((invocation) {
+          var attrs =
+              invocation.namedArguments[const Symbol('userAttributes')]
+                  as Map<String, Object?>;
+          attrs['my_parameter'] = 'my_value';
+          attrs['other_parameter'] = 123;
+        });
 
-      final mockResponse = setupMockClientResponse(200);
-      completer.complete(mockResponse);
-      var response = await request.done;
+        completer.complete(mockResponse);
+        var response = await request.done;
 
-      // Listen / close the response
-      var error = Error();
-      response.listen((event) {});
-      mockResponse.streamController.addError(error);
-      await mockResponse.streamController.close();
+        // Listen / close the response
+        response.listen((event) {});
+        await mockResponse.streamController.close();
 
-      var capturedAttributes = verify(() => mockRum.stopResourceWithErrorInfo(
-          any(),
-          error.toString(),
-          error.runtimeType.toString(),
-          captureAny())).captured[0];
-      expect(capturedAttributes['my_parameter'], 'my_value');
-      expect(capturedAttributes['other_parameter'], 123);
-    });
+        var capturedAttributes = verify(
+          () => mockRum.stopResource(any(), 200, any(), any(), captureAny()),
+        ).captured[0];
+        expect(capturedAttributes['my_parameter'], 'my_value');
+        expect(capturedAttributes['other_parameter'], 123);
+      },
+    );
 
     test(
-        'attributes returned from resourceStarted and resourceFinished are merged',
-        () async {
-      var url = Uri.parse('https://test_url/path');
-      final completer = setupMockRequest(url);
-      final mockListener = MockTrackingHttpClientListener();
-      Object? requestKey;
-      when(() => mockListener.requestStarted(
-              resourceKey: any(named: 'resourceKey'),
-              request: any(named: 'request'),
-              userAttributes: any(named: 'userAttributes')))
-          .thenAnswer((invocation) {
-        requestKey = invocation.namedArguments[const Symbol('resourceKey')];
-        var attrs = invocation.namedArguments[const Symbol('userAttributes')]
-            as Map<String, Object?>;
-        attrs['my_parameter'] = 'my_value';
-        attrs['other_parameter'] = 123;
-      });
+      'attributes returned from resourceFinished are added to stopResource if resource fails',
+      () async {
+        var url = Uri.parse('https://test_url/path');
+        final completer = setupMockRequest(url);
+        final mockListener = MockTrackingHttpClientListener();
+        when(
+          () => mockListener.requestStarted(
+            resourceKey: any(named: 'resourceKey'),
+            request: any(named: 'request'),
+            userAttributes: any(named: 'userAttributes'),
+          ),
+        ).thenAnswer((invocation) {
+          var attrs =
+              invocation.namedArguments[const Symbol('userAttributes')]
+                  as Map<String, Object?>;
+          attrs['my_parameter'] = 'my_value';
+          attrs['other_parameter'] = 123;
+        });
 
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(clientListener: mockListener),
-        mockClient,
-      );
-      final request = await client.openUrl('get', url);
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(clientListener: mockListener),
+          mockClient,
+        );
+        final request = await client.openUrl('get', url);
 
-      final mockResponse = setupMockClientResponse(200);
-      completer.complete(mockResponse);
+        final mockResponse = setupMockClientResponse(200);
+        completer.complete(mockResponse);
+        var response = await request.done;
 
-      Object? responseKey;
-      when(() => mockListener.responseFinished(
+        // Listen / close the response
+        var error = Error();
+        response.listen((event) {});
+        mockResponse.streamController.addError(error);
+        await mockResponse.streamController.close();
+
+        var capturedAttributes = verify(
+          () => mockRum.stopResourceWithErrorInfo(
+            any(),
+            error.toString(),
+            error.runtimeType.toString(),
+            captureAny(),
+          ),
+        ).captured[0];
+        expect(capturedAttributes['my_parameter'], 'my_value');
+        expect(capturedAttributes['other_parameter'], 123);
+      },
+    );
+
+    test(
+      'attributes returned from resourceStarted and resourceFinished are merged',
+      () async {
+        var url = Uri.parse('https://test_url/path');
+        final completer = setupMockRequest(url);
+        final mockListener = MockTrackingHttpClientListener();
+        Object? requestKey;
+        when(
+          () => mockListener.requestStarted(
+            resourceKey: any(named: 'resourceKey'),
+            request: any(named: 'request'),
+            userAttributes: any(named: 'userAttributes'),
+          ),
+        ).thenAnswer((invocation) {
+          requestKey = invocation.namedArguments[const Symbol('resourceKey')];
+          var attrs =
+              invocation.namedArguments[const Symbol('userAttributes')]
+                  as Map<String, Object?>;
+          attrs['my_parameter'] = 'my_value';
+          attrs['other_parameter'] = 123;
+        });
+
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(clientListener: mockListener),
+          mockClient,
+        );
+        final request = await client.openUrl('get', url);
+
+        final mockResponse = setupMockClientResponse(200);
+        completer.complete(mockResponse);
+
+        Object? responseKey;
+        when(
+          () => mockListener.responseFinished(
             resourceKey: any(named: 'resourceKey'),
             response: any(named: 'response'),
             userAttributes: any(named: 'userAttributes'),
             error: any(named: 'error'),
-          )).thenAnswer((invocation) {
-        responseKey = invocation.namedArguments[const Symbol('resourceKey')];
+          ),
+        ).thenAnswer((invocation) {
+          responseKey = invocation.namedArguments[const Symbol('resourceKey')];
 
-        var attrs = invocation.namedArguments[const Symbol('userAttributes')]
-            as Map<String, Object?>;
-        attrs['response_parameter'] = 'second_value';
-        attrs['extra_parameter'] = 1928;
-      });
+          var attrs =
+              invocation.namedArguments[const Symbol('userAttributes')]
+                  as Map<String, Object?>;
+          attrs['response_parameter'] = 'second_value';
+          attrs['extra_parameter'] = 1928;
+        });
 
-      var response = await request.done;
+        var response = await request.done;
 
-      // Listen / close the response
-      response.listen((event) {});
-      await mockResponse.streamController.close();
+        // Listen / close the response
+        response.listen((event) {});
+        await mockResponse.streamController.close();
 
-      expect(requestKey, isNotNull);
-      expect(requestKey, responseKey);
-      var capturedAttributes = verify(() =>
-              mockRum.stopResource(any(), any(), any(), any(), captureAny()))
-          .captured[0];
-      expect(capturedAttributes['my_parameter'], 'my_value');
-      expect(capturedAttributes['other_parameter'], 123);
-      expect(capturedAttributes['response_parameter'], 'second_value');
-      expect(capturedAttributes['extra_parameter'], 1928);
-    });
+        expect(requestKey, isNotNull);
+        expect(requestKey, responseKey);
+        var capturedAttributes = verify(
+          () => mockRum.stopResource(any(), any(), any(), any(), captureAny()),
+        ).captured[0];
+        expect(capturedAttributes['my_parameter'], 'my_value');
+        expect(capturedAttributes['other_parameter'], 123);
+        expect(capturedAttributes['response_parameter'], 'second_value');
+        expect(capturedAttributes['extra_parameter'], 1928);
+      },
+    );
 
     test('attributes can be overwritten in resourceFinished', () async {
       var url = Uri.parse('https://test_url/path');
       final completer = setupMockRequest(url);
       final mockListener = MockTrackingHttpClientListener();
       Object? requestKey;
-      when(() => mockListener.requestStarted(
-              resourceKey: any(named: 'resourceKey'),
-              request: any(named: 'request'),
-              userAttributes: any(named: 'userAttributes')))
-          .thenAnswer((invocation) {
+      when(
+        () => mockListener.requestStarted(
+          resourceKey: any(named: 'resourceKey'),
+          request: any(named: 'request'),
+          userAttributes: any(named: 'userAttributes'),
+        ),
+      ).thenAnswer((invocation) {
         requestKey = invocation.namedArguments[const Symbol('resourceKey')];
-        var attrs = invocation.namedArguments[const Symbol('userAttributes')]
-            as Map<String, Object?>;
+        var attrs =
+            invocation.namedArguments[const Symbol('userAttributes')]
+                as Map<String, Object?>;
         attrs['my_parameter'] = 'my_value';
         attrs['other_parameter'] = 123;
       });
@@ -1315,15 +1583,18 @@ void main() {
       final mockResponse = setupMockClientResponse(200);
       completer.complete(mockResponse);
       Object? responseKey;
-      when(() => mockListener.responseFinished(
-            resourceKey: any(named: 'resourceKey'),
-            response: any(named: 'response'),
-            userAttributes: any(named: 'userAttributes'),
-            error: any(named: 'error'),
-          )).thenAnswer((invocation) {
+      when(
+        () => mockListener.responseFinished(
+          resourceKey: any(named: 'resourceKey'),
+          response: any(named: 'response'),
+          userAttributes: any(named: 'userAttributes'),
+          error: any(named: 'error'),
+        ),
+      ).thenAnswer((invocation) {
         responseKey = invocation.namedArguments[const Symbol('resourceKey')];
-        var attrs = invocation.namedArguments[const Symbol('userAttributes')]
-            as Map<String, Object?>;
+        var attrs =
+            invocation.namedArguments[const Symbol('userAttributes')]
+                as Map<String, Object?>;
         attrs['my_parameter'] = 'second_value';
         attrs['extra_parameter'] = 1928;
       });
@@ -1336,39 +1607,42 @@ void main() {
 
       expect(requestKey, isNotNull);
       expect(requestKey, responseKey);
-      var capturedAttributes = verify(() =>
-              mockRum.stopResource(any(), any(), any(), any(), captureAny()))
-          .captured[0];
+      var capturedAttributes = verify(
+        () => mockRum.stopResource(any(), any(), any(), any(), captureAny()),
+      ).captured[0];
       expect(capturedAttributes['my_parameter'], 'second_value');
       expect(capturedAttributes['other_parameter'], 123);
       expect(capturedAttributes['extra_parameter'], 1928);
     });
 
-    test('ignorUrlPatterns does not call client listener on matching url',
-        () async {
-      var url = Uri.parse('https://test_url/path');
-      final completer = setupMockRequest(url);
-      final mockListener = MockTrackingHttpClientListener();
+    test(
+      'ignorUrlPatterns does not call client listener on matching url',
+      () async {
+        var url = Uri.parse('https://test_url/path');
+        final completer = setupMockRequest(url);
+        final mockListener = MockTrackingHttpClientListener();
 
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(
             ignoreUrlPatterns: [RegExp('test_url/path')],
-            clientListener: mockListener),
-        mockClient,
-      );
-      final request = await client.openUrl('get', url);
+            clientListener: mockListener,
+          ),
+          mockClient,
+        );
+        final request = await client.openUrl('get', url);
 
-      final mockResponse = setupMockClientResponse(200);
-      completer.complete(mockResponse);
-      var response = await request.done;
+        final mockResponse = setupMockClientResponse(200);
+        completer.complete(mockResponse);
+        var response = await request.done;
 
-      // Listen / close the response
-      response.listen((event) {});
-      await mockResponse.streamController.close();
+        // Listen / close the response
+        response.listen((event) {});
+        await mockResponse.streamController.close();
 
-      verifyNoMoreInteractions(mockListener);
-    });
+        verifyNoMoreInteractions(mockListener);
+      },
+    );
   });
 
   group('with trackResourceHeaders', () {
@@ -1376,53 +1650,65 @@ void main() {
       enableRum();
     });
 
-    test('passes captured headers as internal attributes to stopResource',
-        () async {
-      // ignore: invalid_use_of_internal_member
-      when(() => mockRum.resourceHeadersExtractor)
-          .thenReturn(ResourceHeadersExtractor());
+    test(
+      'passes captured headers as internal attributes to stopResource',
+      () async {
+        when(
+          // ignore: invalid_use_of_internal_member
+          () => mockRum.resourceHeadersExtractor,
+        ).thenReturn(ResourceHeadersExtractor());
 
-      final url = Uri.parse('https://test_url/path');
-      final completer = setupMockRequest(url);
-      // Pre-populate request headers via the mock's add()
-      mockRequest.headers.add('content-type', 'application/json');
+        final url = Uri.parse('https://test_url/path');
+        final completer = setupMockRequest(url);
+        // Pre-populate request headers via the mock's add()
+        mockRequest.headers.add('content-type', 'application/json');
 
-      final client = DatadogTrackingHttpClient(
-        mockDatadog,
-        DdHttpTrackingPluginConfiguration(),
-        mockClient,
-      );
-      final request = await client.openUrl('get', url);
+        final client = DatadogTrackingHttpClient(
+          mockDatadog,
+          DdHttpTrackingPluginConfiguration(),
+          mockClient,
+        );
+        final request = await client.openUrl('get', url);
 
-      final mockResponse = setupMockClientResponse(200);
-      final responseHeadersMock = mockResponse.headers;
-      // Stub response headers iteration with forEach
-      when(() => responseHeadersMock.forEach(any())).thenAnswer((invocation) {
-        final fn = invocation.positionalArguments[0] as void Function(
-            String, List<String>);
-        fn('content-type', ['image/png']);
-        fn('etag', ['"abc123"']);
-        fn('cookie', ['session=secret']); // forbidden, must be filtered
-      });
-      completer.complete(mockResponse);
-      final response = await request.done;
-      response.listen((_) {});
-      await mockResponse.streamController.close();
+        final mockResponse = setupMockClientResponse(200);
+        final responseHeadersMock = mockResponse.headers;
+        // Stub response headers iteration with forEach
+        when(() => responseHeadersMock.forEach(any())).thenAnswer((invocation) {
+          final fn =
+              invocation.positionalArguments[0]
+                  as void Function(String, List<String>);
+          fn('content-type', ['image/png']);
+          fn('etag', ['"abc123"']);
+          fn('cookie', ['session=secret']); // forbidden, must be filtered
+        });
+        completer.complete(mockResponse);
+        final response = await request.done;
+        response.listen((_) {});
+        await mockResponse.streamController.close();
 
-      final captured = verify(() =>
-              mockRum.stopResource(any(), any(), any(), any(), captureAny()))
-          .captured[0] as Map<String, Object?>;
+        final captured =
+            verify(
+                  () => mockRum.stopResource(
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    captureAny(),
+                  ),
+                ).captured[0]
+                as Map<String, Object?>;
 
-      final responseHeaders =
-          captured['_dd.response_headers'] as Map<String, String>;
-      expect(responseHeaders['content-type'], 'image/png');
-      expect(responseHeaders['etag'], '"abc123"');
-      expect(responseHeaders.containsKey('cookie'), isFalse);
+        final responseHeaders =
+            captured['_dd.response_headers'] as Map<String, String>;
+        expect(responseHeaders['content-type'], 'image/png');
+        expect(responseHeaders['etag'], '"abc123"');
+        expect(responseHeaders.containsKey('cookie'), isFalse);
 
-      final requestHeaders =
-          captured['_dd.request_headers'] as Map<String, String>;
-      expect(requestHeaders['content-type'], 'application/json');
-    });
+        final requestHeaders =
+            captured['_dd.request_headers'] as Map<String, String>;
+        expect(requestHeaders['content-type'], 'application/json');
+      },
+    );
 
     test('does not add header attributes when extractor is null', () async {
       // ignore: invalid_use_of_internal_member
@@ -1443,34 +1729,38 @@ void main() {
       response.listen((_) {});
       await mockResponse.streamController.close();
 
-      final captured = verify(() =>
-              mockRum.stopResource(any(), any(), any(), any(), captureAny()))
-          .captured[0] as Map<String, Object?>;
+      final captured =
+          verify(
+                () => mockRum.stopResource(
+                  any(),
+                  any(),
+                  any(),
+                  any(),
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
       expect(captured.containsKey('_dd.request_headers'), isFalse);
       expect(captured.containsKey('_dd.response_headers'), isFalse);
     });
   });
 
-  group(
-    'when is an attach configuration',
-    () {
-      test(
-        'should add ignoreUrlPatterns to DdHttpTrackingPluginConfiguration',
-        () {
-          final ignoreUrlPatterns = [RegExp('teste')];
+  group('when is an attach configuration', () {
+    test(
+      'should add ignoreUrlPatterns to DdHttpTrackingPluginConfiguration',
+      () {
+        final ignoreUrlPatterns = [RegExp('teste')];
 
-          final configuration = DatadogAttachConfiguration()
-            ..enableHttpTracking(
-              ignoreUrlPatterns: ignoreUrlPatterns,
-            );
+        final configuration = DatadogAttachConfiguration()
+          ..enableHttpTracking(ignoreUrlPatterns: ignoreUrlPatterns);
 
-          expect(
-              (configuration.additionalPlugins.first
-                      as DdHttpTrackingPluginConfiguration)
-                  .ignoreUrlPatterns,
-              ignoreUrlPatterns);
-        },
-      );
-    },
-  );
+        expect(
+          (configuration.additionalPlugins.first
+                  as DdHttpTrackingPluginConfiguration)
+              .ignoreUrlPatterns,
+          ignoreUrlPatterns,
+        );
+      },
+    );
+  });
 }

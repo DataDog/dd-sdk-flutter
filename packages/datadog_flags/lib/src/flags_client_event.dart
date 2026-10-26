@@ -36,7 +36,7 @@ final class FlagsClientEvent {
   /// change this value.
   @internal
   FlagsClientEvent({required this.type, List<String>? flagsChanged})
-      : flagsChanged = flagsChanged == null
-            ? null
-            : List<String>.unmodifiable(flagsChanged);
+    : flagsChanged = flagsChanged == null
+          ? null
+          : List<String>.unmodifiable(flagsChanged);
 }

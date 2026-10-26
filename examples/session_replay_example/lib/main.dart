@@ -21,29 +21,32 @@ void main() async {
     dotenv.get('DD_SESSION_REPLAY_SAMPLE_RATE', fallback: '50'),
   );
 
-  final configuration = DatadogConfiguration(
-    clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
-    env: dotenv.get('DD_ENV', fallback: ''),
-    site: DatadogSite.us1,
-    rumConfiguration: DatadogRumConfiguration(
-      applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
-      // Session Replay can only record sessions that RUM tracks.
-      sessionSamplingRate: rumSampleRate,
-    ),
-  )..enableSessionReplay(
-      DatadogSessionReplayConfiguration(
-        // Percentage of RUM sessions that get a replay, decided for each RUM
-        // session from its ID. It stacks on the RUM sample rate: with RUM at
-        // 50% and replay at 50%, about 25% of all sessions have a replay.
-        replaySampleRate: replaySampleRate,
-        // Don't record until the app calls startRecording(); see
-        // RecordedScreen and PrivateScreen.
-        startRecordingImmediately: false,
-        textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskSensitiveInputs,
-        imagePrivacyLevel: ImagePrivacyLevel.maskNone,
-        touchPrivacyLevel: TouchPrivacyLevel.show,
-      ),
-    );
+  final configuration =
+      DatadogConfiguration(
+        clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
+        env: dotenv.get('DD_ENV', fallback: ''),
+        site: DatadogSite.us1,
+        service: 'com.datadoghq.session-replay-example',
+        rumConfiguration: DatadogRumConfiguration(
+          applicationId: dotenv.get('DD_APPLICATION_ID', fallback: ''),
+          // Session Replay can only record sessions that RUM tracks.
+          sessionSamplingRate: rumSampleRate,
+        ),
+      )..enableSessionReplay(
+        DatadogSessionReplayConfiguration(
+          // Percentage of RUM sessions that get a replay, decided for each RUM
+          // session from its ID. It stacks on the RUM sample rate: with RUM at
+          // 50% and replay at 50%, about 25% of all sessions have a replay.
+          replaySampleRate: replaySampleRate,
+          // Don't record until the app calls startRecording(); see
+          // RecordedScreen and PrivateScreen.
+          startRecordingImmediately: false,
+          textAndInputPrivacyLevel:
+              TextAndInputPrivacyLevel.maskSensitiveInputs,
+          imagePrivacyLevel: ImagePrivacyLevel.maskNone,
+          touchPrivacyLevel: TouchPrivacyLevel.show,
+        ),
+      );
 
   await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
     runApp(ExampleApp(replaySampleRate: replaySampleRate));

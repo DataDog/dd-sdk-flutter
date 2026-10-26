@@ -1,3 +1,6 @@
+// First Flags uses the native compatibility API until its replacement is available.
+// ignore_for_file: deprecated_member_use
+
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0. This product includes software
 // developed at Datadog (https://www.datadoghq.com/).
@@ -18,8 +21,9 @@ import 'helpers/first_flags_test_client.dart';
 // Test fixture deliberately constructs an SDK-internal event.
 // ignore: invalid_use_of_internal_member
 final _event = FlagsClientEvent(
-    type: FlagsClientEventType.configurationChanged,
-    flagsChanged: ['checkout.enabled']);
+  type: FlagsClientEventType.configurationChanged,
+  flagsChanged: ['checkout.enabled'],
+);
 
 class _Sdk extends Mock implements DatadogSdk {}
 
@@ -106,24 +110,26 @@ void main() {
     });
   });
 
-  test('cancel after core enqueue suppresses delivery and unregisters once',
-      () {
-    fakeAsync((async) {
-      final core = _Delegate();
-      final client = createFirstFlagsTestClient(() async => core);
-      var calls = 0;
-      final cancel = client.onFirstFlags((_) => calls++);
-      async.flushMicrotasks();
-      core.emit();
-      expect(calls, 0);
-      cancel();
-      cancel();
-      async.flushMicrotasks();
-      expect(core.cancellations, 1);
-      expect(core.listener, isNull);
-      expect(calls, 0);
-    });
-  });
+  test(
+    'cancel after core enqueue suppresses delivery and unregisters once',
+    () {
+      fakeAsync((async) {
+        final core = _Delegate();
+        final client = createFirstFlagsTestClient(() async => core);
+        var calls = 0;
+        final cancel = client.onFirstFlags((_) => calls++);
+        async.flushMicrotasks();
+        core.emit();
+        expect(calls, 0);
+        cancel();
+        cancel();
+        async.flushMicrotasks();
+        expect(core.cancellations, 1);
+        expect(core.listener, isNull);
+        expect(calls, 0);
+      });
+    },
+  );
 
   test('forwards within core delivery without another microtask', () {
     fakeAsync((async) {
@@ -195,122 +201,149 @@ void main() {
 
   for (final late in [false, true]) {
     test(
-        'real core ${late ? "late" : "early"} delivery preserves registration zone and reentrancy',
-        () async {
-      final owner = DatadogFlags();
-      await owner.enable(
+      'real core ${late ? "late" : "early"} delivery preserves registration zone and reentrancy',
+      () async {
+        final owner = DatadogFlags();
+        await owner.enable(
           configuration: DatadogFlagsConfiguration(
-        datadogConfig: const DatadogFlagsConfig(
-            clientToken: 'token', env: 'test', site: DatadogFlagsSite.us1),
-        httpClient: MockClient((_) async =>
-            http.Response('{"data":{"attributes":{"flags":{}}}}', 200)),
-      ));
-      addTearDown(owner.disable);
-      final core = owner.sharedClient();
-      if (late) await core.initialize(FlagsEvaluationContext.empty);
-      fakeAsync((async) {
-        final resolving = Completer<DatadogFlagsClient>();
-        final client = createFirstFlagsTestClient(() => resolving.future);
-        final order = <String>[];
-        final zones = <Object?>[];
-        final errors = <Object>[];
-        final inventories = <List<String>?>[];
-        var calls = 0;
-        void duplicate(FlagsClientEvent _) => calls++;
-        runZonedGuarded(() {
-          client.onFirstFlags((event) {
-            zones.add(Zone.current[#listener]);
-            inventories.add(event.flagsChanged);
-            order.add('first');
-            client.onFirstFlags((_) => order.add('nested'));
-            order.add('first returned');
-            scheduleMicrotask(() => throw StateError('async app error'));
-            throw StateError('sync app error');
-          });
-          final canceled = client.onFirstFlags(duplicate);
-          client.onFirstFlags(duplicate);
-          canceled();
-          canceled();
-        }, (error, stack) => errors.add(error),
-            zoneValues: {#listener: 'registration'});
-        runZoned(() {
-          resolving.complete(core);
-          if (!late) core.initialize(FlagsEvaluationContext.empty);
-        }, zoneValues: {#listener: 'initializer'});
-        expect(order, isEmpty);
-        async.flushMicrotasks();
-        expect(order, ['first', 'first returned', 'nested']);
-        expect(zones, ['registration']);
-        expect(inventories.single, isEmpty);
-        expect(calls, 1);
-        expect(errors, hasLength(1));
-        expect(errors.single.toString(), contains('async app error'));
-      });
-    });
+            datadogConfig: const DatadogFlagsConfig(
+              clientToken: 'token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+            httpClient: MockClient(
+              (_) async =>
+                  http.Response('{"data":{"attributes":{"flags":{}}}}', 200),
+            ),
+          ),
+        );
+        addTearDown(owner.disable);
+        final core = owner.sharedClient();
+        if (late) await core.initialize(FlagsEvaluationContext.empty);
+        fakeAsync((async) {
+          final resolving = Completer<DatadogFlagsClient>();
+          final client = createFirstFlagsTestClient(() => resolving.future);
+          final order = <String>[];
+          final zones = <Object?>[];
+          final errors = <Object>[];
+          final inventories = <List<String>?>[];
+          var calls = 0;
+          void duplicate(FlagsClientEvent _) => calls++;
+          runZonedGuarded(
+            () {
+              client.onFirstFlags((event) {
+                zones.add(Zone.current[#listener]);
+                inventories.add(event.flagsChanged);
+                order.add('first');
+                client.onFirstFlags((_) => order.add('nested'));
+                order.add('first returned');
+                scheduleMicrotask(() => throw StateError('async app error'));
+                throw StateError('sync app error');
+              });
+              final canceled = client.onFirstFlags(duplicate);
+              client.onFirstFlags(duplicate);
+              canceled();
+              canceled();
+            },
+            (error, stack) => errors.add(error),
+            zoneValues: {#listener: 'registration'},
+          );
+          runZoned(() {
+            resolving.complete(core);
+            if (!late) core.initialize(FlagsEvaluationContext.empty);
+          }, zoneValues: {#listener: 'initializer'});
+          expect(order, isEmpty);
+          async.flushMicrotasks();
+          expect(order, ['first', 'first returned', 'nested']);
+          expect(zones, ['registration']);
+          expect(inventories.single, isEmpty);
+          expect(calls, 1);
+          expect(errors, hasLength(1));
+          expect(errors.single.toString(), contains('async app error'));
+        });
+      },
+    );
   }
 
-  test('real core retained event binds wrapper before immediate evaluation',
-      () async {
-    final sdk = _Sdk();
-    when(() => sdk.configuration).thenReturn(DatadogConfiguration(
-        clientToken: 'token', env: 'test', site: DatadogSite.us1));
-    final rum = _Rum();
-    when(() => sdk.rum).thenReturn(rum);
-    final owner = DatadogFlags();
-    var requests = 0;
-    final plugin = DatadogFlagsPlugin(sdk,
-        flags: owner, rumIntegrationEnabled: true, flagsConfiguration:
-            DatadogFlagsConfiguration(httpClient: MockClient((_) async {
-      requests++;
-      return http.Response(
-          jsonEncode({
-            'data': {
-              'attributes': {
-                'flags': {
-                  'checkout.enabled': {
-                    'allocationKey': 'allocation',
-                    'variationKey': 'enabled',
-                    'variationType': 'boolean',
-                    'variationValue': true,
-                    'reason': 'TARGETING_MATCH',
-                    'doLog': false
+  test(
+    'real core retained event binds wrapper before immediate evaluation',
+    () async {
+      final sdk = _Sdk();
+      when(() => sdk.configuration).thenReturn(
+        DatadogConfiguration(
+          service: 'flags-test',
+          clientToken: 'token',
+          env: 'test',
+          site: DatadogSite.us1,
+        ),
+      );
+      final rum = _Rum();
+      when(() => sdk.rum).thenReturn(rum);
+      final owner = DatadogFlags();
+      var requests = 0;
+      final plugin = DatadogFlagsPlugin(
+        sdk,
+        flags: owner,
+        rumIntegrationEnabled: true,
+        flagsConfiguration: DatadogFlagsConfiguration(
+          httpClient: MockClient((_) async {
+            requests++;
+            return http.Response(
+              jsonEncode({
+                'data': {
+                  'attributes': {
+                    'flags': {
+                      'checkout.enabled': {
+                        'allocationKey': 'allocation',
+                        'variationKey': 'enabled',
+                        'variationType': 'boolean',
+                        'variationValue': true,
+                        'reason': 'TARGETING_MATCH',
+                        'doLog': false,
+                      },
+                    },
                   },
-                }
-              }
-            }
+                },
+              }),
+              200,
+            );
           }),
-          200);
-    })));
-    addTearDown(owner.disable);
-    plugin.initialize();
-    await plugin.ready;
-    await owner
-        .sharedClient()
-        .initialize(const FlagsEvaluationContext(targetingKey: 'user'));
-    final client = plugin.sharedClient();
-    final events = <FlagsClientEvent>[];
-    FlagDetails<bool>? details;
-    client.onFirstFlags((event) {
-      events.add(event);
-      details = client.getBooleanDetails(
-          key: 'checkout.enabled', defaultValue: false);
-    });
-    expect(events, isEmpty);
-    await _waitForEventLoop();
-    expect(events.single.flagsChanged, ['checkout.enabled']);
-    expect(details!.value, isTrue);
-    expect(details!.error, isNull);
-    expect(requests, 1);
-    verify(() => rum.addFeatureFlagEvaluation('checkout.enabled', 'enabled'))
-        .called(1);
-    final cancel = client.onFirstFlags(events.add);
-    cancel();
-    await _waitForEventLoop();
-    expect(events, hasLength(1));
-    final replay = Completer<FlagsClientEvent>();
-    client.onFirstFlags(replay.complete);
-    expect(replay.isCompleted, isFalse);
-    expect(await replay.future, same(events.single));
-    expect(requests, 1);
-  });
+        ),
+      );
+      addTearDown(owner.disable);
+      plugin.initialize();
+      await plugin.ready;
+      await owner.sharedClient().initialize(
+        const FlagsEvaluationContext(targetingKey: 'user'),
+      );
+      final client = plugin.sharedClient();
+      final events = <FlagsClientEvent>[];
+      FlagDetails<bool>? details;
+      client.onFirstFlags((event) {
+        events.add(event);
+        details = client.getBooleanDetails(
+          key: 'checkout.enabled',
+          defaultValue: false,
+        );
+      });
+      expect(events, isEmpty);
+      await _waitForEventLoop();
+      expect(events.single.flagsChanged, ['checkout.enabled']);
+      expect(details!.value, isTrue);
+      expect(details!.error, isNull);
+      expect(requests, 1);
+      verify(
+        () => rum.addFeatureFlagEvaluation('checkout.enabled', 'enabled'),
+      ).called(1);
+      final cancel = client.onFirstFlags(events.add);
+      cancel();
+      await _waitForEventLoop();
+      expect(events, hasLength(1));
+      final replay = Completer<FlagsClientEvent>();
+      client.onFirstFlags(replay.complete);
+      expect(replay.isCompleted, isFalse);
+      expect(await replay.future, same(events.single));
+      expect(requests, 1);
+    },
+  );
 }

@@ -24,7 +24,7 @@ real client tokens or application IDs.
 `replaySampleRate` is the percentage of RUM sessions that get a replay. The
 decision is made for each RUM session from its ID, so it is re-evaluated when
 a new session starts during the same launch (after 15 minutes of inactivity
-or after 4 hours). The same session ID always gets the same decision, on every
+or after a session reaches 4 hours). The same session ID always gets the same decision, on every
 Datadog SDK.
 
 The rate stacks on the RUM `sessionSamplingRate`, because Session Replay can

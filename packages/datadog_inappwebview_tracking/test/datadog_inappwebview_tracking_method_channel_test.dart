@@ -21,13 +21,10 @@ void main() {
     callLog.clear();
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      channel,
-      (MethodCall methodCall) async {
-        callLog.add(methodCall);
-        return null;
-      },
-    );
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          callLog.add(methodCall);
+          return null;
+        });
   });
 
   test('sendMessage sends correct parameters to method channel', () {

@@ -1,0 +1,67 @@
+name: Publish package to pub.dev
+
+# pub.dev's OIDC trusted publishing binds to the actual ref that triggered
+# the run (dart.dev/tools/pub/automated-publishing: "Pub.dev rejects
+# publishing from GitHub Actions triggered without a tag"), so
+# publish-release.yml can't just call `dart pub publish` in a loop for
+# several packages in one run -- each package's publish has to happen in a
+# run triggered by that package's own tag. It pushes these tags one at a
+# time, in topological order, waiting for the run each one triggers to
+# finish before pushing the next (a federated package's siblings need to
+# already be live on pub.dev for its own publish to resolve).
+on:
+  push:
+    tags:
+      - 'datadog_dio/v*'
+      - 'datadog_flags/v*'
+      - 'datadog_flags_flutter/v*'
+      - 'datadog_flutter_plugin/v*'
+      - 'datadog_flutter_plugin_android/v*'
+      - 'datadog_flutter_plugin_desktop/v*'
+      - 'datadog_flutter_plugin_ios/v*'
+      - 'datadog_flutter_plugin_platform_interface/v*'
+      - 'datadog_flutter_plugin_web/v*'
+      - 'datadog_gql_link/v*'
+      - 'datadog_grpc_interceptor/v*'
+      - 'datadog_inappwebview_tracking/v*'
+      - 'datadog_session_replay/v*'
+      - 'datadog_tracking_http_client/v*'
+      - 'datadog_webview_tracking/v*'
+
+jobs:
+  resolve-package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      working-directory: ${{ steps.resolve.outputs.path }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+      - name: Resolve package directory from tag
+        id: resolve
+        run: |
+          PACKAGE_NAME="${GITHUB_REF_NAME%/*}"
+          cd tools/releaser
+          dart pub get
+          # --repo-root is relative to this cwd (tools/releaser), so the
+          # real repo root is two levels up, not one.
+          PACKAGE_PATH=$(dart run bin/resolve_package_path.dart --name="$PACKAGE_NAME" --repo-root=../..)
+          if [ ! -d "../../$PACKAGE_PATH" ]; then
+            echo "resolve_package_path.dart returned a non-directory path: $PACKAGE_PATH" >&2
+            exit 1
+          fi
+          echo "path=$PACKAGE_PATH" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: resolve-package
+    permissions:
+      contents: read
+      id-token: write
+    # Dart's own officially-recommended reusable workflow -- handles
+    # checkout, setup-dart, setup-flutter, `pub get`, `pub publish
+    # --dry-run`, then the real `pub publish -f`, minting its own OIDC
+    # token.
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@6afc89df92d6eb3834022f73cd65adc8cdfcb92d
+    with:
+      working-directory: ${{ needs.resolve-package.outputs.working-directory }}

@@ -59,8 +59,10 @@ void main() {
     platform.clearImages();
   });
 
-  Future<void> precacheImageCommonImages(WidgetTester tester,
-      {double? scale}) async {
+  Future<void> precacheImageCommonImages(
+    WidgetTester tester, {
+    double? scale,
+  }) async {
     await tester.runAsync(() async {
       final ImageProvider assetProvider = scale != null
           ? ExactAssetImage(assetImage, scale: scale)
@@ -84,9 +86,10 @@ void main() {
         spacing: 12,
         children: [
           SizedBox(
-              width: 130,
-              height: 130,
-              child: Image.asset(assetImage, scale: scale)),
+            width: 130,
+            height: 130,
+            child: Image.asset(assetImage, scale: scale),
+          ),
           SizedBox(
             width: 130,
             height: 130,
@@ -146,8 +149,9 @@ void main() {
 
     final fixture = MaterialApp(
       home: Scaffold(
-        appBar:
-            AppBar(title: const Text('Mask Non-Asset Images (Scaled Asset)')),
+        appBar: AppBar(
+          title: const Text('Mask Non-Asset Images (Scaled Asset)'),
+        ),
         body: createFixtureBody(scale: 2.0),
       ),
     );

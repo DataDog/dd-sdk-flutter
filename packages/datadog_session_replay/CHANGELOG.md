@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0-preview.17
+
+### Breaking Changes
+
+- Raises the minimum supported Dart version to 3.10 and Flutter version to 3.38.
+- Raises the minimum supported iOS version to 15 for both CocoaPods and Swift Package Manager integrations.
+- Updates dependency version constraints, including major version upgrades to related Datadog packages.
+
 ## 1.0.0-preview.16
 
 ### Fixes

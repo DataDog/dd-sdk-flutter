@@ -1,3 +1,6 @@
+// First Flags uses the native compatibility API until its replacement is available.
+// ignore_for_file: deprecated_member_use
+
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0. This product includes software
 // developed at Datadog (https://www.datadoghq.com/).
@@ -7,9 +10,8 @@ import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 
 DatadogFlutterFlagsClient createFirstFlagsTestClient(
   Future<DatadogFlagsClient> Function() resolve,
-) =>
-    DatadogFlutterFlagsClient(
-      name: 'default',
-      resolveDelegate: resolve,
-      addRumFeatureFlagEvaluation: null,
-    );
+) => DatadogFlutterFlagsClient(
+  name: 'default',
+  resolveDelegate: resolve,
+  addRumFeatureFlagEvaluation: null,
+);

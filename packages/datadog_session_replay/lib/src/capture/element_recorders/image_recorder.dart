@@ -23,19 +23,12 @@ const int _labelMinWidth = 125;
 const int defaultMaxImagePixelBudget = 640000;
 
 @visibleForTesting
-enum DownscalingNeed {
-  none,
-  fitToBounds,
-  downscaling,
-}
+enum DownscalingNeed { none, fitToBounds, downscaling }
 
 const Duration _defaultDownscaleTimeout = Duration(milliseconds: 500);
 
-typedef DownscaleFunction = Future<ui.Image> Function(
-  ui.Image source,
-  int destWidth,
-  int destHeight,
-);
+typedef DownscaleFunction =
+    Future<ui.Image> Function(ui.Image source, int destWidth, int destHeight);
 
 /// Trips after consecutive downscale failures; no automatic recovery.
 @visibleForTesting
@@ -74,10 +67,9 @@ class ImageRecorder implements ElementRecorder {
     @visibleForTesting DownscaleCircuitBreaker? circuitBreaker,
     @visibleForTesting DownscaleFunction? downscaleOverride,
     @visibleForTesting Duration downscaleTimeout = _defaultDownscaleTimeout,
-  })  : _downscalingCircuitBreaker =
-            circuitBreaker ?? DownscaleCircuitBreaker(),
-        _downscale = downscaleOverride ?? _downscaleImageDefault,
-        _downscaleTimeout = downscaleTimeout;
+  }) : _downscalingCircuitBreaker = circuitBreaker ?? DownscaleCircuitBreaker(),
+       _downscale = downscaleOverride ?? _downscaleImageDefault,
+       _downscaleTimeout = downscaleTimeout;
 
   @override
   bool accepts(Widget widget) => widget is RawImage || widget is Image;
@@ -169,28 +161,50 @@ class ImageRecorder implements ElementRecorder {
       );
     }
 
+    // Processing happens asynchronously, after the owner of the image may
+    // have disposed it. Hold our own handle to the underlying image until
+    // processing is done.
+    final ui.Image imageHandle;
+    try {
+      imageHandle = uiImage.clone();
+    } catch (_) {
+      // Capture runs on a timer, so the owner may already have disposed this
+      // image (e.g. a new animation frame) before the RawImage rebuilds. Skip
+      // it; the next capture picks up the replacement.
+      return IgnoredElement(subtreeStrategy: CaptureNodeSubtreeStrategy.ignore);
+    }
+    // Read synchronously; the element may be unmounted once processing runs.
+    final devicePixelRatio = _devicePixelRatio(element);
+
     return AdditionalProcessingElement(
       subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
-      process: () => _captureImage(elementId, element, attributes, widget),
+      process: () => _captureImage(
+        elementId,
+        attributes,
+        devicePixelRatio,
+        sourceImageForKeyGen: uiImage,
+        // It must be the cloned handle because the original could be disposed at that time
+        imageHandle: imageHandle,
+      ).whenComplete(imageHandle.dispose),
+      discard: imageHandle.dispose,
     );
   }
 
+  /// [sourceImageForKeyGen] is the image referenced by the widget, used only
+  /// to look up resource keys; it may already be disposed. [imageHandle] is our
+  /// own clone of it, and the only one read from during processing.
   Future<CaptureNodeSemantics> _captureImage(
     int elementId,
-    Element element,
     CapturedViewAttributes attributes,
-    RawImage widget,
-  ) async {
-    final image = widget.image;
-    if (image == null) {
-      return _placeholder(elementId, attributes, 'Empty Image');
-    }
-
+    double devicePixelRatio, {
+    required ui.Image sourceImageForKeyGen,
+    required ui.Image imageHandle,
+  }) async {
     final (need, scaledWidth, scaledHeight) = downscaleSizeTarget(
-      image.width,
-      image.height,
+      imageHandle.width,
+      imageHandle.height,
       attributes,
-      _devicePixelRatio(element),
+      devicePixelRatio,
       maxImagePixelBudget,
     );
 
@@ -198,8 +212,8 @@ class ImageRecorder implements ElementRecorder {
       return _persistImageAsResourceNode(
         elementId,
         attributes,
-        sourceImageForKeyGen: image,
-        encodingImageForByteData: image,
+        sourceImageForKeyGen: sourceImageForKeyGen,
+        encodingImageForByteData: imageHandle,
       );
     }
 
@@ -207,8 +221,8 @@ class ImageRecorder implements ElementRecorder {
       return _persistImageAsResourceNode(
         elementId,
         attributes,
-        sourceImageForKeyGen: image,
-        encodingImageForByteData: image,
+        sourceImageForKeyGen: sourceImageForKeyGen,
+        encodingImageForByteData: imageHandle,
       );
     }
 
@@ -218,13 +232,16 @@ class ImageRecorder implements ElementRecorder {
 
     ui.Image? scaled;
     try {
-      scaled = await _downscale(image, scaledWidth, scaledHeight)
-          .timeout(_downscaleTimeout);
+      scaled = await _downscale(
+        imageHandle,
+        scaledWidth,
+        scaledHeight,
+      ).timeout(_downscaleTimeout);
       _downscalingCircuitBreaker.recordSuccess();
       return await _persistImageAsResourceNode(
         elementId,
         attributes,
-        sourceImageForKeyGen: image,
+        sourceImageForKeyGen: sourceImageForKeyGen,
         encodingImageForByteData: scaled,
       );
     } on TimeoutException {
@@ -301,10 +318,14 @@ class ImageRecorder implements ElementRecorder {
     double devicePixelRatio,
     int pixelBudget,
   ) {
-    final renderedPhysicalWidth =
-        math.max(1, (attributes.width * devicePixelRatio).ceil());
-    final renderedPhysicalHeight =
-        math.max(1, (attributes.height * devicePixelRatio).ceil());
+    final renderedPhysicalWidth = math.max(
+      1,
+      (attributes.width * devicePixelRatio).ceil(),
+    );
+    final renderedPhysicalHeight = math.max(
+      1,
+      (attributes.height * devicePixelRatio).ceil(),
+    );
 
     if (renderedPhysicalWidth >= sourceWidth &&
         renderedPhysicalHeight >= sourceHeight &&
@@ -315,24 +336,34 @@ class ImageRecorder implements ElementRecorder {
 
     // Shrink to rendered physical size; cap at 1.0 (no upscale beyond native).
     final fitToBoundsScale = math.min(
-      math.min(renderedPhysicalWidth / sourceWidth,
-          renderedPhysicalHeight / sourceHeight),
+      math.min(
+        renderedPhysicalWidth / sourceWidth,
+        renderedPhysicalHeight / sourceHeight,
+      ),
       1.0,
     );
-    final fitToBoundsWidth =
-        math.max(1, (sourceWidth * fitToBoundsScale).round());
-    final fitToBoundsHeight =
-        math.max(1, (sourceHeight * fitToBoundsScale).round());
+    final fitToBoundsWidth = math.max(
+      1,
+      (sourceWidth * fitToBoundsScale).round(),
+    );
+    final fitToBoundsHeight = math.max(
+      1,
+      (sourceHeight * fitToBoundsScale).round(),
+    );
     final fitToBoundsPixels = fitToBoundsWidth * fitToBoundsHeight;
     if (fitToBoundsPixels <= pixelBudget) {
       return (DownscalingNeed.fitToBounds, fitToBoundsWidth, fitToBoundsHeight);
     }
 
     final downscaling = math.sqrt(pixelBudget / fitToBoundsPixels);
-    final downscaledWidth =
-        math.max(1, (fitToBoundsWidth * downscaling).floor());
-    final downscaledHeight =
-        math.max(1, (fitToBoundsHeight * downscaling).floor());
+    final downscaledWidth = math.max(
+      1,
+      (fitToBoundsWidth * downscaling).floor(),
+    );
+    final downscaledHeight = math.max(
+      1,
+      (fitToBoundsHeight * downscaling).floor(),
+    );
     return (DownscalingNeed.downscaling, downscaledWidth, downscaledHeight);
   }
 

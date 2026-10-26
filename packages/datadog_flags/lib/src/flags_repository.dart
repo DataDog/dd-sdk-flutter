@@ -10,6 +10,7 @@ import 'package:meta/meta.dart';
 import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flag_assignments_fetcher.dart';
+import 'flags_client.dart';
 import 'flags_error.dart';
 import 'flags_client_event.dart';
 import 'flags_store.dart';
@@ -21,8 +22,9 @@ class FlagsRepository {
   // Keep late writes ordered when SDK reconfiguration replaces a repository.
   // Expando keeps the queue scoped to the store identity without retaining it.
   static final Expando<Map<String, _CacheOperationQueue>>
-      _cacheOperationQueues =
-      Expando<Map<String, _CacheOperationQueue>>('flags cache operations');
+  _cacheOperationQueues = Expando<Map<String, _CacheOperationQueue>>(
+    'flags cache operations',
+  );
 
   @visibleForTesting
   final Duration storeReadTimeout;
@@ -41,6 +43,9 @@ class FlagsRepository {
   final _firstFlagsRegistrations = <_FirstFlagsRegistration>{};
 
   _InstalledFlagsState? _state;
+  DatadogFlagsClientStatus _status = DatadogFlagsClientStatus.notReady;
+  final StreamController<DatadogFlagsClientStatus> _statusChanges =
+      StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
   _CancelToken? _currentToken;
   bool _didStartInitialization = false;
 
@@ -56,7 +61,17 @@ class FlagsRepository {
 
   FlagsEvaluationContext? get context => _state?.data.context;
 
-  FlagAssignment? flagAssignment(String key) => _state?.data.flags[key];
+  DatadogFlagsClientStatus get status => _status;
+
+  Stream<DatadogFlagsClientStatus> get statusChanges => _statusChanges.stream;
+
+  FlagAssignment? flagAssignment(String key) {
+    final data = _state?.data;
+    if (data == null) return null;
+    final encoding = data.obfuscation;
+    final lookupKey = encoding == null ? key : encoding.encodeKey(key);
+    return lookupKey == null ? null : data.flags[lookupKey];
+  }
 
   bool get isRestoredFromStore => _state?.restoredFromStore ?? false;
 
@@ -67,8 +82,8 @@ class FlagsRepository {
       registration.schedule(event);
     } else {
       _firstFlagsRegistrations.add(registration);
-      registration.removePending =
-          () => _firstFlagsRegistrations.remove(registration);
+      registration.removePending = () =>
+          _firstFlagsRegistrations.remove(registration);
     }
     return registration.cancel;
   }
@@ -126,14 +141,15 @@ class FlagsRepository {
 
     final matchingCached =
         cached != null && _contextsMatch(cached.context, context)
-            ? cached
-            : null;
+        ? cached
+        : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
       _state = _InstalledFlagsState(
         data: matchingCached,
         restoredFromStore: true,
       );
       _captureFirstFlags(matchingCached);
+      _setStatus(DatadogFlagsClientStatus.stale);
     }
 
     try {
@@ -145,13 +161,20 @@ class FlagsRepository {
         flags: assignments.flags,
         context: context,
         date: dateProvider(),
+        obfuscation: assignments.obfuscation,
       );
       _state = _InstalledFlagsState(data: data, restoredFromStore: false);
       _captureFirstFlags(data);
+      _setStatus(DatadogFlagsClientStatus.ready);
       await _writeCached(data);
     } catch (_) {
-      if (!token.isCanceled && matchingCached == null) {
+      if (!token.isCanceled &&
+          matchingCached == null &&
+          !_hasCurrentStateForContext(context)) {
         _state = null;
+        _setStatus(DatadogFlagsClientStatus.error);
+      } else if (!token.isCanceled) {
+        _setStatus(DatadogFlagsClientStatus.stale);
       }
     }
   }
@@ -180,8 +203,8 @@ class FlagsRepository {
       return _CacheOperationQueue();
     }
 
-    final queues =
-        _cacheOperationQueues[store] ??= <String, _CacheOperationQueue>{};
+    final queues = _cacheOperationQueues[store] ??=
+        <String, _CacheOperationQueue>{};
     return queues.putIfAbsent(clientName, _CacheOperationQueue.new);
   }
 
@@ -194,11 +217,30 @@ class FlagsRepository {
     _currentToken?.cancel();
     _currentToken = null;
     _state = null;
+    _setStatus(DatadogFlagsClientStatus.notReady);
+  }
+
+  Future<void> dispose() async {
+    await clearMemory();
+    if (!_statusChanges.isClosed) {
+      // Paused application listeners must not delay SDK cleanup.
+      unawaited(_statusChanges.close());
+    }
   }
 
   Future<void> reset() async {
     await clearMemory();
     await _deleteCached();
+  }
+
+  void _setStatus(DatadogFlagsClientStatus status) {
+    if (_status == status) {
+      return;
+    }
+    _status = status;
+    if (!_statusChanges.isClosed) {
+      _statusChanges.add(status);
+    }
   }
 
   Future<FlagsData?> _readCached() async {
@@ -208,10 +250,12 @@ class FlagsRepository {
     }
 
     try {
-      return await store.read(clientName).timeout(
-            storeReadTimeout,
-            onTimeout: () => null,
-          );
+      final data = await store
+          .read(clientName)
+          .timeout(storeReadTimeout, onTimeout: () => null);
+      // Custom stores can return constructed snapshots without JSON decoding.
+      // Validate and copy the complete snapshot before making it available.
+      return data == null ? null : FlagsData.fromJson(data.toJson());
     } catch (_) {
       return null;
     }
@@ -324,7 +368,7 @@ class _FirstFlagsRegistration {
   void Function()? removePending;
 
   _FirstFlagsRegistration(FlagsClientEventListener callback)
-      : _callback = Zone.current.bindUnaryCallback(callback);
+    : _callback = Zone.current.bindUnaryCallback(callback);
 
   void cancel() {
     _callback = null;

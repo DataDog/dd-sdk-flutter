@@ -3,6 +3,7 @@
 // Copyright 2019-2021 Datadog, Inc.
 
 import '../../datadog_common_test.dart';
+import '../is_web.dart';
 
 class LogDecoder {
   final Map<String, Object?> log;
@@ -24,15 +25,15 @@ class LogDecoder {
 
   List<String> get tagValues => (log['ddtags'] as String).split(',');
   String get applicationVersion => log['version'] as String;
-  String get loggerName => getNestedProperty('logger.name', log);
-  String get loggerVersion => getNestedProperty('logger.version', log);
-  String get threadName => getNestedProperty('logger.thread_name', log);
-  String get errorKind => getNestedProperty('error.kind', log);
-  String get errorMessage => getNestedProperty('error.message', log);
-  String get errorStack => getNestedProperty('error.stack', log);
-  String get errorSourceType => getNestedProperty('error.source_type', log);
+  String? get loggerName => getNestedProperty('logger.name', log);
+  String? get loggerVersion => getNestedProperty('logger.version', log);
+  String? get threadName => getNestedProperty('logger.thread_name', log);
+  String? get errorKind => getNestedProperty('error.kind', log);
+  String? get errorMessage => getNestedProperty('error.message', log);
+  String? get errorStack => getNestedProperty('error.stack', log);
+  String? get errorSourceType => getNestedProperty('error.source_type', log);
   String? get errorFingerprint {
-    if (!kManualIsWeb) {
+    if (!testIsWeb()) {
       return getNestedProperty('error.fingerprint', log);
     } else {
       return log['error.fingerprint'] as String?;
