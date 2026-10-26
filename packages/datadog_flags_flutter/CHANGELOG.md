@@ -15,7 +15,7 @@
 
 ### Fixes
 
-- Report `CACHED` when an evaluation uses an assignment restored from local storage (#1209).
+- Report `CACHED` when an evaluation uses an assignment restored from local storage.
 
 ## 1.1.0
 
