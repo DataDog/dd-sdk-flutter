@@ -11,7 +11,7 @@
 - Add `DatadogOpenFeatureProvider` for the OpenFeature Dart client SDK, with typed evaluations, context changes, lifecycle events, and refresh (#1134).
 - Deprecate `DatadogFlags` and `DatadogFlagsClient`. The legacy APIs remain available. Use `DatadogOpenFeatureProvider` and an OpenFeature client for new integrations (#1134).
 - Support obfuscated assignment keys without changes to application flag keys (#1188).
-- Report `CACHED` when an evaluation uses an assignment restored from local storage (#1209).
+- Report `CACHED` when an evaluation uses an assignment restored from local storage.
 - Relax dependency version constraints (#1132).
 
 ## 1.1.1
