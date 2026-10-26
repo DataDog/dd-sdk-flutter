@@ -248,6 +248,10 @@ class DatadogFlutterFlagsClient
   ) async {
     try {
       final delegate = await _delegateOrResolve();
+      if (_isShutdown) {
+        registration.cancel();
+        return;
+      }
       registration.forwardTo(delegate);
     } catch (_) {
       // Registration is best effort; initialization retains its own error path.

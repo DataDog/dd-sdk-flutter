@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:dotenv/dotenv.dart';
 import 'package:datadog_flags/datadog_flags.dart';
 
 Future<void> main(List<String> arguments) async {
@@ -29,6 +30,7 @@ Future<void> main(List<String> arguments) async {
     return;
   }
 
+  final environment = DotEnv(includePlatformEnvironment: true)..load();
   final attributes = _targetingAttributes(
     results.option('targeting-attributes'),
   );
@@ -39,10 +41,12 @@ Future<void> main(List<String> arguments) async {
   await datadogFlags.enable(
     configuration: DatadogFlagsConfiguration(
       datadogConfig: DatadogFlagsConfig(
-        clientToken: Platform.environment['DD_CLIENT_TOKEN'] ?? '',
-        env: results.option('env')!,
-        site: _siteFromOption(results.option('site')!),
-        applicationId: Platform.environment['DD_APPLICATION_ID'],
+        clientToken: environment['DD_CLIENT_TOKEN'] ?? '',
+        env: results.option('env') ?? environment['DD_ENV'] ?? 'staging',
+        site: _siteFromOption(
+          results.option('site') ?? environment['DD_SITE'] ?? 'us1',
+        ),
+        applicationId: environment['DD_APPLICATION_ID'],
       ),
     ),
   );
@@ -78,12 +82,14 @@ void _printDetails(FlagDetails<Object?> details) {
 
 ArgParser _argumentParser() {
   return ArgParser()
-    ..addOption('env', defaultsTo: 'staging', help: 'Datadog environment name.')
+    ..addOption(
+      'env',
+      help: 'Datadog environment name (defaults to DD_ENV or staging).',
+    )
     ..addOption(
       'site',
-      defaultsTo: 'us1',
       allowed: DatadogFlagsSite.values.map((site) => site.name),
-      help: 'Datadog site.',
+      help: 'Datadog site (defaults to DD_SITE or us1).',
     )
     ..addOption(
       'flag-key',

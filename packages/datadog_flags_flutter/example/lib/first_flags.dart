@@ -13,6 +13,8 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'flags_example_configuration.dart';
+
 String get _clientToken => dotenv.get('DD_CLIENT_TOKEN', fallback: '');
 String get _applicationId => dotenv.get('DD_APPLICATION_ID', fallback: '');
 String get _env => dotenv.get('DD_ENV', fallback: 'dev');
@@ -25,7 +27,13 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();
 
-  final isConfigured = _clientToken.isNotEmpty;
+  final flagsConfiguration = flagsExampleConfiguration(
+    site: _datadogSiteFor(_site),
+    clientToken: _clientToken,
+    env: _env,
+    applicationId: _applicationId.isEmpty ? null : _applicationId,
+  );
+  final isConfigured = flagsConfiguration != null;
   if (isConfigured) {
     final configuration = DatadogConfiguration(
       service: 'com.datadoghq.flags.example',
@@ -43,7 +51,14 @@ Future<void> main() async {
     );
   }
 
-  runApp(FlagsExampleApp(isConfigured: isConfigured));
+  runApp(
+    FlagsExampleApp(
+      isConfigured: isConfigured,
+      configurationError: _clientToken.isNotEmpty && !isConfigured
+          ? 'Feature Flags is not supported for site $_site.'
+          : null,
+    ),
+  );
 }
 
 DatadogSite _datadogSiteFor(String site) {
@@ -60,8 +75,13 @@ DatadogSite _datadogSiteFor(String site) {
 
 class FlagsExampleApp extends StatefulWidget {
   final bool isConfigured;
+  final String? configurationError;
 
-  const FlagsExampleApp({super.key, required this.isConfigured});
+  const FlagsExampleApp({
+    super.key,
+    required this.isConfigured,
+    this.configurationError,
+  });
 
   @override
   State<FlagsExampleApp> createState() => _FlagsExampleAppState();
@@ -99,7 +119,9 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
   Future<void> _evaluate() async {
     if (!widget.isConfigured) {
       setState(() {
-        _status = 'Set DD_CLIENT_TOKEN in .env to evaluate flags.';
+        _status =
+            widget.configurationError ??
+            'Set DD_CLIENT_TOKEN in .env to evaluate flags.';
       });
       return;
     }

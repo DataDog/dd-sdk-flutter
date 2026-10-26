@@ -34,6 +34,8 @@ class _Delegate extends Fake implements DatadogFlagsClient {
   int registrations = 0;
   int initializations = 0;
   int cancellations = 0;
+  int shutdowns = 0;
+  bool replayOnRegistration = false;
   bool throwRegistration = false;
   bool throwCancel = false;
   void Function(FlagsClientEvent)? listener;
@@ -43,6 +45,7 @@ class _Delegate extends Fake implements DatadogFlagsClient {
     registrations++;
     if (throwRegistration) throw StateError('registration failed');
     listener = Zone.current.bindUnaryCallback(callback);
+    if (replayOnRegistration) emit();
     return () {
       cancellations++;
       listener = null;
@@ -64,6 +67,11 @@ class _Delegate extends Fake implements DatadogFlagsClient {
   }
 
   @override
+  Future<void> shutdown() async {
+    shutdowns++;
+  }
+
+  @override
   Future<void> initialize(FlagsEvaluationContext context) async {
     initializations++;
   }
@@ -73,6 +81,33 @@ class _Delegate extends Fake implements DatadogFlagsClient {
 Future<void> _waitForEventLoop() => Future<void>.delayed(Duration.zero);
 
 void main() {
+  for (final retained in [false, true]) {
+    test(
+      'shutdown before resolution prevents forwarding (retained=$retained)',
+      () {
+        fakeAsync((async) {
+          final resolving = Completer<DatadogFlagsClient>();
+          final core = _Delegate()..replayOnRegistration = retained;
+          final client = createFirstFlagsTestClient(() => resolving.future);
+          var calls = 0;
+          final cancel = client.onFirstFlags((_) => calls++);
+          var shutdownCompleted = false;
+          client.shutdown().then((_) => shutdownCompleted = true);
+          async.flushMicrotasks();
+          expect(shutdownCompleted, isTrue);
+          resolving.complete(core);
+          async.flushMicrotasks();
+          expect(core.shutdowns, 1);
+          expect(core.registrations, 0);
+          expect(core.listener, isNull);
+          expect(calls, 0);
+          expect(cancel, returnsNormally);
+          expect(cancel, returnsNormally);
+        });
+      },
+    );
+  }
+
   test('cancel before resolver completes never registers with the core', () {
     fakeAsync((async) {
       final resolving = Completer<DatadogFlagsClient>();
