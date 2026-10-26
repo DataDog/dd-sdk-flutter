@@ -94,7 +94,9 @@ network response replaces those assignments, details report the response reason.
 This notification uses the native client API, which is deprecated in favour of OpenFeature. The OpenFeature examples above remain the recommended setup for normal evaluations.
 
 Register after obtaining a shared client to receive the keys from its first
-accepted cache or network configuration. Late registrations receive the same
+accepted cache or network configuration: logical keys for plain configurations,
+including `[]` when empty, and `null` when logical keys are unavailable due to
+obfuscation. Late registrations receive the same
 event, and callbacks run in a later microtask. Evaluating through this client
 preserves RUM feature flag tracking.
 

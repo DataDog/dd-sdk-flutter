@@ -25,9 +25,10 @@ final class FlagsClientEvent {
   /// The kind of event represented by this value.
   final FlagsClientEventType type;
 
-  /// Keys in the accepted configuration represented by this event.
+  /// Logical flag keys in the accepted configuration represented by this event.
   ///
-  /// `null` means keys were not supplied; an empty list means an explicitly
+  /// `null` means keys were not supplied, including when logical keys are
+  /// unavailable due to obfuscation; an empty list means an explicitly
   /// supplied empty list. This value does not infer or evaluate any keys.
   final List<String>? flagsChanged;
 

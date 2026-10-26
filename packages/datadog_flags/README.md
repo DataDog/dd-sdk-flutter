@@ -182,7 +182,8 @@ final unregister = client.onFirstFlags((event) {
 ```
 
 The callback receives the keys from the first accepted cache or network
-configuration, including an empty list for an empty configuration. Late
+configuration: logical keys for plain configurations, including `[]` when empty,
+and `null` when logical keys are unavailable due to obfuscation. Late
 registrations receive the same event. Delivery runs in a later microtask;
 evaluations in the callback read current flag values. If no usable configuration
 is installed, the callback remains pending until you unregister it.

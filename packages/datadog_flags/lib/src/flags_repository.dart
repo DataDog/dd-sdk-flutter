@@ -92,7 +92,7 @@ class FlagsRepository {
     if (_firstFlagsEvent != null) return;
     final event = FlagsClientEvent(
       type: FlagsClientEventType.configurationChanged,
-      flagsChanged: data.flags.keys.toList(),
+      flagsChanged: data.obfuscation == null ? data.flags.keys.toList() : null,
     );
     _firstFlagsEvent = event;
     final registrations = _firstFlagsRegistrations.toList();

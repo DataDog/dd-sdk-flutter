@@ -151,6 +151,78 @@ void main() {
     );
   }
 
+  for (final fromCache in [false, true]) {
+    for (final empty in [false, true]) {
+      test(
+        'obfuscated ${fromCache ? 'cache' : 'network'} delivers and replays null keys (empty=$empty)',
+        () async {
+          final encoding = {
+            'obfuscated': true,
+            'obfuscation': {
+              'scheme': 'flag-key-sha256-v1',
+              'salt': '000102030405060708090a0b0c0d0e0f',
+            },
+          };
+          final encodedFlags = empty
+              ? <String, Object?>{}
+              : {
+                  '9817872c144b018abd77e3915bd77e2c27f4f534dccff8ffaca27361e3a5e1ee':
+                      _flag(true),
+                };
+          final network = Completer<http.Response>();
+          final delivered = Completer<FlagsClientEvent>();
+          final events = <FlagsClientEvent>[];
+          final owner = await _owner(
+            callback: (event) {
+              events.add(event);
+              delivered.complete(event);
+            },
+            store: fromCache
+                ? _Store(
+                    () async => FlagsData.fromJson({
+                      ...encoding,
+                      'context': {'targetingKey': 'example-user'},
+                      'date': '2026-10-01T00:00:00.000Z',
+                      'encodedFlags': encodedFlags,
+                    }),
+                  )
+                : null,
+            request: (_) => fromCache
+                ? network.future
+                : Future.value(
+                    http.Response(
+                      jsonEncode({
+                        'data': {
+                          'attributes': {...encoding, 'flags': encodedFlags},
+                        },
+                      }),
+                      200,
+                    ),
+                  ),
+          );
+          final client = owner.sharedClient();
+          final initialize = client.initialize(_context);
+          final event = await delivered.future;
+          expect(event.type, FlagsClientEventType.configurationChanged);
+          expect(event.flagsChanged, isNull);
+          if (!empty) {
+            expect(
+              client.getBooleanDetails(key: 'flag', defaultValue: false).value,
+              isTrue,
+            );
+          }
+          if (fromCache) network.complete(_response());
+          await initialize;
+          final replay = Completer<FlagsClientEvent>();
+          client.onFirstFlags(replay.complete);
+          expect(await replay.future, same(event));
+          expect(event.flagsChanged, isNull);
+          expect(events, hasLength(1));
+        },
+      );
+    }
+  }
+
   for (final empty in [false, true]) {
     test(
       'accepted cache keys are immutable and detached from source (empty=$empty)',
