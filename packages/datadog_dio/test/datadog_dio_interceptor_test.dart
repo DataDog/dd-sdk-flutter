@@ -150,9 +150,11 @@ void main() {
 
     mockDatadog = DatadogSdkMock();
     when(() => mockDatadog.platform).thenReturn(mockPlatform);
-    when(() => mockDatadog
-            .headerTypesForHost(any(that: HasHost(equals('test_url')))))
-        .thenReturn({TracingHeaderType.datadog});
+    when(
+      () => mockDatadog.headerTypesForHost(
+        any(that: HasHost(equals('test_url'))),
+      ),
+    ).thenReturn({TracingHeaderType.datadog});
     //when(() => mockDatadog.platform).thenReturn(mockPlatform);
     // ignore: invalid_use_of_internal_member
     when(() => mockDatadog.internalLogger).thenReturn(InternalLoggerMock());
@@ -170,8 +172,10 @@ void main() {
     test('the interceptor forwards request unaltered', () {
       // Given
       final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', headers: {});
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        headers: {},
+      );
 
       // When
       final handler = RequestInterceptionHandlerMock();
@@ -184,8 +188,10 @@ void main() {
     test('the interceptor forwards response unaltered', () {
       // Given
       final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', headers: {});
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        headers: {},
+      );
       final response = Response(requestOptions: requestOptions);
 
       // When
@@ -199,8 +205,10 @@ void main() {
     test('the interceptor forwards error unaltered', () {
       // Given
       final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', headers: {});
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        headers: {},
+      );
       final err = DioException(requestOptions: requestOptions);
 
       // When
@@ -215,9 +223,13 @@ void main() {
       // Given
       final listener = DatadogDioAttributeProviderMock();
       final interceptor = DatadogDioInterceptor(
-          datadogSdk: mockDatadog, attributesProvider: listener);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', headers: {});
+        datadogSdk: mockDatadog,
+        attributesProvider: listener,
+      );
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        headers: {},
+      );
 
       // When
       final handler = RequestInterceptionHandlerMock();
@@ -231,9 +243,13 @@ void main() {
       // Given
       final listener = DatadogDioAttributeProviderMock();
       final interceptor = DatadogDioInterceptor(
-          datadogSdk: mockDatadog, attributesProvider: listener);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', headers: {});
+        datadogSdk: mockDatadog,
+        attributesProvider: listener,
+      );
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        headers: {},
+      );
       final response = Response(requestOptions: requestOptions);
 
       // When
@@ -252,35 +268,53 @@ void main() {
       when(() => mockDatadog.headerTypesForHost(any())).thenReturn({});
     });
 
-    test('the interceptor starts the resource on request and adds a rum key',
-        () {
-      // Given
-      final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'POST', headers: {});
+    test(
+      'the interceptor starts the resource on request and adds a rum key',
+      () {
+        // Given
+        final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
+        final requestOptions = RequestOptions(
+          path: 'https://test_uri',
+          method: 'POST',
+          headers: {},
+        );
 
-      // When
-      final handler = RequestInterceptionHandlerMock();
-      interceptor.onRequest(requestOptions, handler);
+        // When
+        final handler = RequestInterceptionHandlerMock();
+        interceptor.onRequest(requestOptions, handler);
 
-      // Then
-      expect(
-          requestOptions.extra
-              .containsKey(DatadogDioInterceptor.datadogRumExtraKey),
-          isTrue);
-      verify(() => mockRum.startResource(
-          any(), RumHttpMethod.post, 'https://test_uri', any()));
-      verify(() => handler.next(requestOptions));
-    });
+        // Then
+        expect(
+          requestOptions.extra.containsKey(
+            DatadogDioInterceptor.datadogRumExtraKey,
+          ),
+          isTrue,
+        );
+        verify(
+          () => mockRum.startResource(
+            any(),
+            RumHttpMethod.post,
+            'https://test_uri',
+            any(),
+          ),
+        );
+        verify(() => handler.next(requestOptions));
+      },
+    );
 
     test('the interceptor calls attribute provider on request', () {
       // Given
       final attributeProvider = DatadogDioAttributeProviderMock();
       when(() => attributeProvider.onRequest(any())).thenReturn(null);
       final interceptor = DatadogDioInterceptor(
-          datadogSdk: mockDatadog, attributesProvider: attributeProvider);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'POST', headers: {});
+        datadogSdk: mockDatadog,
+        attributesProvider: attributeProvider,
+      );
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        method: 'POST',
+        headers: {},
+      );
 
       // When
       final handler = RequestInterceptionHandlerMock();
@@ -290,35 +324,54 @@ void main() {
       verify(() => attributeProvider.onRequest(requestOptions));
     });
 
-    test('the interceptor adds provided attributes to startResource on request',
-        () {
-      // Given
-      final attributeProvider = DatadogDioAttributeProviderMock();
-      when(() => attributeProvider.onRequest(any()))
-          .thenReturn({'my_attribute': 100});
-      final interceptor = DatadogDioInterceptor(
-          datadogSdk: mockDatadog, attributesProvider: attributeProvider);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'POST', headers: {});
+    test(
+      'the interceptor adds provided attributes to startResource on request',
+      () {
+        // Given
+        final attributeProvider = DatadogDioAttributeProviderMock();
+        when(
+          () => attributeProvider.onRequest(any()),
+        ).thenReturn({'my_attribute': 100});
+        final interceptor = DatadogDioInterceptor(
+          datadogSdk: mockDatadog,
+          attributesProvider: attributeProvider,
+        );
+        final requestOptions = RequestOptions(
+          path: 'https://test_uri',
+          method: 'POST',
+          headers: {},
+        );
 
-      // When
-      final handler = RequestInterceptionHandlerMock();
-      interceptor.onRequest(requestOptions, handler);
+        // When
+        final handler = RequestInterceptionHandlerMock();
+        interceptor.onRequest(requestOptions, handler);
 
-      // Then
-      verify(() => mockRum.startResource(any(), RumHttpMethod.post,
-          'https://test_uri', {'my_attribute': 100}));
-    });
+        // Then
+        verify(
+          () => mockRum.startResource(
+            any(),
+            RumHttpMethod.post,
+            'https://test_uri',
+            {'my_attribute': 100},
+          ),
+        );
+      },
+    );
 
     test('the interceptor stops the resource on response', () {
       // Given
       final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'POST', headers: {});
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        method: 'POST',
+        headers: {},
+      );
       final rumKey = randomString();
       requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
-      final response =
-          Response(requestOptions: requestOptions, statusCode: 202);
+      final response = Response(
+        requestOptions: requestOptions,
+        statusCode: 202,
+      );
 
       // When
       final handler = ResponseInterceptionHandlerMock();
@@ -334,13 +387,20 @@ void main() {
       final attributeProvider = DatadogDioAttributeProviderMock();
       when(() => attributeProvider.onResponse(any())).thenReturn(null);
       final interceptor = DatadogDioInterceptor(
-          datadogSdk: mockDatadog, attributesProvider: attributeProvider);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'POST', headers: {});
+        datadogSdk: mockDatadog,
+        attributesProvider: attributeProvider,
+      );
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        method: 'POST',
+        headers: {},
+      );
       final rumKey = randomString();
       requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
-      final response =
-          Response(requestOptions: requestOptions, statusCode: 202);
+      final response = Response(
+        requestOptions: requestOptions,
+        statusCode: 202,
+      );
 
       // When
       final handler = ResponseInterceptionHandlerMock();
@@ -350,60 +410,80 @@ void main() {
       verify(() => attributeProvider.onResponse(response));
     });
 
-    test('the interceptor adds provided attributes to stopResource on response',
-        () {
-      // Given
-      final attributeProvider = DatadogDioAttributeProviderMock();
-      when(() => attributeProvider.onResponse(any()))
-          .thenReturn({'my_attribute': 100});
-      final interceptor = DatadogDioInterceptor(
-          datadogSdk: mockDatadog, attributesProvider: attributeProvider);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'POST', headers: {});
-      final rumKey = randomString();
-      requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
+    test(
+      'the interceptor adds provided attributes to stopResource on response',
+      () {
+        // Given
+        final attributeProvider = DatadogDioAttributeProviderMock();
+        when(
+          () => attributeProvider.onResponse(any()),
+        ).thenReturn({'my_attribute': 100});
+        final interceptor = DatadogDioInterceptor(
+          datadogSdk: mockDatadog,
+          attributesProvider: attributeProvider,
+        );
+        final requestOptions = RequestOptions(
+          path: 'https://test_uri',
+          method: 'POST',
+          headers: {},
+        );
+        final rumKey = randomString();
+        requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
 
-      final response =
-          Response(requestOptions: requestOptions, statusCode: 202);
+        final response = Response(
+          requestOptions: requestOptions,
+          statusCode: 202,
+        );
 
-      // When
-      final handler = ResponseInterceptionHandlerMock();
-      interceptor.onResponse(response, handler);
+        // When
+        final handler = ResponseInterceptionHandlerMock();
+        interceptor.onResponse(response, handler);
 
-      // Then
-      verify(() => mockRum
-          .stopResource(rumKey, 202, any(), any(), {'my_attribute': 100}));
-    });
+        // Then
+        verify(
+          () => mockRum.stopResource(rumKey, 202, any(), any(), {
+            'my_attribute': 100,
+          }),
+        );
+      },
+    );
 
     test(
-        'reports resource size from response body when Content-Length is missing (chunked)',
-        () {
-      // Given: chunked response with no content-length header but body in memory
-      final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'GET', headers: {});
-      final rumKey = randomString();
-      requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
-      final response = Response(
-        requestOptions: requestOptions,
-        statusCode: 200,
-        data: [1, 2, 3, 4, 5],
-        headers: Headers(),
-      );
+      'reports resource size from response body when Content-Length is missing (chunked)',
+      () {
+        // Given: chunked response with no content-length header but body in memory
+        final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
+        final requestOptions = RequestOptions(
+          path: 'https://test_uri',
+          method: 'GET',
+          headers: {},
+        );
+        final rumKey = randomString();
+        requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
+        final response = Response(
+          requestOptions: requestOptions,
+          statusCode: 200,
+          data: [1, 2, 3, 4, 5],
+          headers: Headers(),
+        );
 
-      // When
-      final handler = ResponseInterceptionHandlerMock();
-      interceptor.onResponse(response, handler);
+        // When
+        final handler = ResponseInterceptionHandlerMock();
+        interceptor.onResponse(response, handler);
 
-      // Then
-      verify(() => mockRum.stopResource(rumKey, 200, any(), 5, any()));
-    });
+        // Then
+        verify(() => mockRum.stopResource(rumKey, 200, any(), 5, any()));
+      },
+    );
 
     test('the interceptor stops resource with error on error', () {
       // Given
       final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'POST', headers: {});
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        method: 'POST',
+        headers: {},
+      );
       final rumKey = randomString();
       requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
 
@@ -414,47 +494,75 @@ void main() {
       // Then
       final dioErrorString = dioException.toString();
       final dioErrorTypeString = dioException.type.toString();
-      verify(() => mockRum.stopResourceWithErrorInfo(
-          rumKey, dioErrorString, dioErrorTypeString, {}));
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          rumKey,
+          dioErrorString,
+          dioErrorTypeString,
+          {},
+        ),
+      );
     });
 
-    test('the interceptor adds provided attributes to stopResource on error',
-        () {
-      // Given
-      final attributeProvider = DatadogDioAttributeProviderMock();
-      when(() => attributeProvider.onError(any()))
-          .thenReturn({'my_attribute': 100});
-      final interceptor = DatadogDioInterceptor(
-          datadogSdk: mockDatadog, attributesProvider: attributeProvider);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'POST', headers: {});
-      final rumKey = randomString();
-      requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
+    test(
+      'the interceptor adds provided attributes to stopResource on error',
+      () {
+        // Given
+        final attributeProvider = DatadogDioAttributeProviderMock();
+        when(
+          () => attributeProvider.onError(any()),
+        ).thenReturn({'my_attribute': 100});
+        final interceptor = DatadogDioInterceptor(
+          datadogSdk: mockDatadog,
+          attributesProvider: attributeProvider,
+        );
+        final requestOptions = RequestOptions(
+          path: 'https://test_uri',
+          method: 'POST',
+          headers: {},
+        );
+        final rumKey = randomString();
+        requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
 
-      // When
-      final dioException = DioException(requestOptions: requestOptions);
-      interceptor.onError(dioException, ErrorInterceptorHandlerMock());
+        // When
+        final dioException = DioException(requestOptions: requestOptions);
+        interceptor.onError(dioException, ErrorInterceptorHandlerMock());
 
-      // Then
-      final dioErrorString = dioException.toString();
-      final dioErrorTypeString = dioException.type.toString();
-      verify(() => mockRum.stopResourceWithErrorInfo(
-          rumKey, dioErrorString, dioErrorTypeString, {'my_attribute': 100}));
-    });
+        // Then
+        final dioErrorString = dioException.toString();
+        final dioErrorTypeString = dioException.type.toString();
+        verify(
+          () => mockRum.stopResourceWithErrorInfo(
+            rumKey,
+            dioErrorString,
+            dioErrorTypeString,
+            {'my_attribute': 100},
+          ),
+        );
+      },
+    );
 
     test('the interceptor stops resources as non-errors on badResponse', () {
       // Given
       final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'POST', headers: {});
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        method: 'POST',
+        headers: {},
+      );
       final rumKey = randomString();
       requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
-      final response =
-          Response(requestOptions: requestOptions, statusCode: 404);
+      final response = Response(
+        requestOptions: requestOptions,
+        statusCode: 404,
+      );
 
       // When
       final dioException = DioException.badResponse(
-          statusCode: 404, requestOptions: requestOptions, response: response);
+        statusCode: 404,
+        requestOptions: requestOptions,
+        response: response,
+      );
       final handler = ErrorInterceptorHandlerMock();
       interceptor.onError(dioException, handler);
 
@@ -463,39 +571,60 @@ void main() {
       verify(() => handler.next(dioException));
     });
 
-    test('the interceptor adds provided attributes as non-error on badResponse',
-        () {
-      // Given
-      final attributeProvider = DatadogDioAttributeProviderMock();
-      when(() => attributeProvider.onResponse(any()))
-          .thenReturn({'my_attribute': 100});
-      final interceptor = DatadogDioInterceptor(
-          datadogSdk: mockDatadog, attributesProvider: attributeProvider);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'POST', headers: {});
-      final rumKey = randomString();
-      requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
-      final response =
-          Response(requestOptions: requestOptions, statusCode: 404);
+    test(
+      'the interceptor adds provided attributes as non-error on badResponse',
+      () {
+        // Given
+        final attributeProvider = DatadogDioAttributeProviderMock();
+        when(
+          () => attributeProvider.onResponse(any()),
+        ).thenReturn({'my_attribute': 100});
+        final interceptor = DatadogDioInterceptor(
+          datadogSdk: mockDatadog,
+          attributesProvider: attributeProvider,
+        );
+        final requestOptions = RequestOptions(
+          path: 'https://test_uri',
+          method: 'POST',
+          headers: {},
+        );
+        final rumKey = randomString();
+        requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
+        final response = Response(
+          requestOptions: requestOptions,
+          statusCode: 404,
+        );
 
-      // When
-      final dioException = DioException.badResponse(
-          statusCode: 404, requestOptions: requestOptions, response: response);
-      final handler = ErrorInterceptorHandlerMock();
-      interceptor.onError(dioException, handler);
+        // When
+        final dioException = DioException.badResponse(
+          statusCode: 404,
+          requestOptions: requestOptions,
+          response: response,
+        );
+        final handler = ErrorInterceptorHandlerMock();
+        interceptor.onError(dioException, handler);
 
-      // Then
-      verify(() => mockRum
-          .stopResource(rumKey, 404, any(), any(), {'my_attribute': 100}));
-      verify(() => handler.next(dioException));
-    });
+        // Then
+        verify(
+          () => mockRum.stopResource(rumKey, 404, any(), any(), {
+            'my_attribute': 100,
+          }),
+        );
+        verify(() => handler.next(dioException));
+      },
+    );
 
     test('the interceptor ignores requests that match a regex', () {
       // Given
       final interceptor = DatadogDioInterceptor(
-          datadogSdk: mockDatadog, ignoreUrlPatterns: [RegExp('.*/ignored')]);
+        datadogSdk: mockDatadog,
+        ignoreUrlPatterns: [RegExp('.*/ignored')],
+      );
       final requestOptions = RequestOptions(
-          path: 'https://test_uri/ignored', method: 'POST', headers: {});
+        path: 'https://test_uri/ignored',
+        method: 'POST',
+        headers: {},
+      );
 
       // When
       final handler = RequestInterceptionHandlerMock();
@@ -508,17 +637,28 @@ void main() {
     test('the interceptor starts resources that do not that match a regex', () {
       // Given
       final interceptor = DatadogDioInterceptor(
-          datadogSdk: mockDatadog, ignoreUrlPatterns: [RegExp('.*/ignored')]);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'POST', headers: {});
+        datadogSdk: mockDatadog,
+        ignoreUrlPatterns: [RegExp('.*/ignored')],
+      );
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        method: 'POST',
+        headers: {},
+      );
 
       // When
       final handler = RequestInterceptionHandlerMock();
       interceptor.onRequest(requestOptions, handler);
 
       // Then
-      verify(() => mockRum.startResource(
-          any(), RumHttpMethod.post, 'https://test_uri', any()));
+      verify(
+        () => mockRum.startResource(
+          any(),
+          RumHttpMethod.post,
+          'https://test_uri',
+          any(),
+        ),
+      );
     });
   });
 
@@ -527,12 +667,19 @@ void main() {
       setUp(() {
         mockDatadog = DatadogSdkMock();
         when(() => mockDatadog.platform).thenReturn(mockPlatform);
-        when(() => mockDatadog.headerTypesForHost(
-            any(that: HasHost(equals('test_url'))))).thenReturn({headerType});
-        when(() => mockDatadog.headerTypesForHost(
-            any(that: HasHost(equals('non_first_party'))))).thenReturn({});
-        when(() => mockRum.contextInjectionSetting)
-            .thenReturn(TraceContextInjection.all);
+        when(
+          () => mockDatadog.headerTypesForHost(
+            any(that: HasHost(equals('test_url'))),
+          ),
+        ).thenReturn({headerType});
+        when(
+          () => mockDatadog.headerTypesForHost(
+            any(that: HasHost(equals('non_first_party'))),
+          ),
+        ).thenReturn({});
+        when(
+          () => mockRum.contextInjectionSetting,
+        ).thenReturn(TraceContextInjection.all);
         // ignore: invalid_use_of_internal_member
         when(() => mockDatadog.internalLogger).thenReturn(InternalLoggerMock());
 
@@ -541,48 +688,66 @@ void main() {
         when(() => mockDatadog.rum).thenReturn(mockRum);
       });
 
-      test('does not set trace attributes when should sample returns false',
-          () {
-        // Given
-        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
-        final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-        final request =
-            RequestOptions(path: "https://test_url/post", method: 'POST');
+      test(
+        'does not set trace attributes when should sample returns false',
+        () {
+          // Given
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+          final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
+          final request = RequestOptions(
+            path: "https://test_url/post",
+            method: 'POST',
+          );
 
-        // When
-        interceptor.onRequest(request, RequestInterceptorHandler());
+          // When
+          interceptor.onRequest(request, RequestInterceptorHandler());
 
-        // Then
-        final capturedAttrs = verify(
-                () => mockRum.startResource(any(), any(), any(), captureAny()))
-            .captured[0] as Map<String, Object?>;
-        expect(capturedAttrs[DatadogRumPlatformAttributeKey.traceID], isNull);
-        expect(capturedAttrs[DatadogRumPlatformAttributeKey.spanID], isNull);
-        expect(capturedAttrs[DatadogRumPlatformAttributeKey.rulePsr], 0.50);
-      });
+          // Then
+          final capturedAttrs =
+              verify(
+                    () => mockRum.startResource(
+                      any(),
+                      any(),
+                      any(),
+                      captureAny(),
+                    ),
+                  ).captured[0]
+                  as Map<String, Object?>;
+          expect(capturedAttrs[DatadogRumPlatformAttributeKey.traceID], isNull);
+          expect(capturedAttrs[DatadogRumPlatformAttributeKey.spanID], isNull);
+          expect(capturedAttrs[DatadogRumPlatformAttributeKey.rulePsr], 0.50);
+        },
+      );
 
       test('onRequest sets tracing attributes', () {
         // Given
         when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
         final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-        final request =
-            RequestOptions(path: "https://test_url/post", method: 'POST');
+        final request = RequestOptions(
+          path: "https://test_url/post",
+          method: 'POST',
+        );
 
         // When
         interceptor.onRequest(request, RequestInterceptorHandler());
 
         // Then
-        final capturedAttrs = verify(
-                () => mockRum.startResource(any(), any(), any(), captureAny()))
-            .captured[0] as Map<String, dynamic>;
+        final capturedAttrs =
+            verify(
+                  () =>
+                      mockRum.startResource(any(), any(), any(), captureAny()),
+                ).captured[0]
+                as Map<String, dynamic>;
         var traceId = BigInt.parse(
-            capturedAttrs[DatadogRumPlatformAttributeKey.traceID],
-            radix: 16);
+          capturedAttrs[DatadogRumPlatformAttributeKey.traceID],
+          radix: 16,
+        );
         expect(traceId, isNotNull);
         expect(traceId.bitLength, lessThanOrEqualTo(128));
 
-        var spanId =
-            BigInt.parse(capturedAttrs[DatadogRumPlatformAttributeKey.spanID]);
+        var spanId = BigInt.parse(
+          capturedAttrs[DatadogRumPlatformAttributeKey.spanID],
+        );
         expect(spanId, isNotNull);
         expect(spanId.bitLength, lessThanOrEqualTo(63));
         expect(capturedAttrs[DatadogRumPlatformAttributeKey.rulePsr], 0.50);
@@ -592,7 +757,9 @@ void main() {
         when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
         final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
         final request = RequestOptions(
-            path: "https://non_first_party/post", method: 'POST');
+          path: "https://non_first_party/post",
+          method: 'POST',
+        );
 
         // When
         interceptor.onRequest(request, RequestInterceptorHandler());
@@ -615,76 +782,108 @@ void main() {
       });
 
       test(
-          'sets trace headers for first party urls { sampled, TraceContextInjection.all }',
-          () {
-        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
-        when(() => mockRum.contextInjectionSetting)
-            .thenReturn(TraceContextInjection.all);
-        final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-        final request =
-            RequestOptions(path: "https://test_url/post", method: 'POST');
+        'sets trace headers for first party urls { sampled, TraceContextInjection.all }',
+        () {
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
+          when(
+            () => mockRum.contextInjectionSetting,
+          ).thenReturn(TraceContextInjection.all);
+          final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
+          final request = RequestOptions(
+            path: "https://test_url/post",
+            method: 'POST',
+          );
 
-        // When
-        interceptor.onRequest(request, RequestInterceptorHandler());
+          // When
+          interceptor.onRequest(request, RequestInterceptorHandler());
 
-        final requestHeaders = request.headers;
-        verifyHeaders(
-            headerType, requestHeaders, true, TraceContextInjection.all);
-      });
-
-      test(
-          'sets trace headers for first party urls { sampled, TraceContextInjection.sampled }',
-          () {
-        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
-        when(() => mockRum.contextInjectionSetting)
-            .thenReturn(TraceContextInjection.sampled);
-        final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-        final request =
-            RequestOptions(path: "https://test_url/post", method: 'POST');
-
-        // When
-        interceptor.onRequest(request, RequestInterceptorHandler());
-
-        final requestHeaders = request.headers;
-        verifyHeaders(
-            headerType, requestHeaders, true, TraceContextInjection.sampled);
-      });
+          final requestHeaders = request.headers;
+          verifyHeaders(
+            headerType,
+            requestHeaders,
+            true,
+            TraceContextInjection.all,
+          );
+        },
+      );
 
       test(
-          'sets trace headers for first party urls { unsampled, TraceContextInjection.all }',
-          () {
-        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
-        when(() => mockRum.contextInjectionSetting)
-            .thenReturn(TraceContextInjection.all);
-        final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-        final request =
-            RequestOptions(path: "https://test_url/post", method: 'POST');
+        'sets trace headers for first party urls { sampled, TraceContextInjection.sampled }',
+        () {
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(true);
+          when(
+            () => mockRum.contextInjectionSetting,
+          ).thenReturn(TraceContextInjection.sampled);
+          final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
+          final request = RequestOptions(
+            path: "https://test_url/post",
+            method: 'POST',
+          );
 
-        // When
-        interceptor.onRequest(request, RequestInterceptorHandler());
+          // When
+          interceptor.onRequest(request, RequestInterceptorHandler());
 
-        final requestHeaders = request.headers;
-        verifyHeaders(
-            headerType, requestHeaders, false, TraceContextInjection.all);
-      });
+          final requestHeaders = request.headers;
+          verifyHeaders(
+            headerType,
+            requestHeaders,
+            true,
+            TraceContextInjection.sampled,
+          );
+        },
+      );
 
       test(
-          'sets trace headers for first party urls { unsampled, TraceContextInjection.sampled }',
-          () {
-        when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
-        when(() => mockRum.contextInjectionSetting)
-            .thenReturn(TraceContextInjection.sampled);
-        final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-        final request =
-            RequestOptions(path: "https://test_url/post", method: 'POST');
+        'sets trace headers for first party urls { unsampled, TraceContextInjection.all }',
+        () {
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+          when(
+            () => mockRum.contextInjectionSetting,
+          ).thenReturn(TraceContextInjection.all);
+          final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
+          final request = RequestOptions(
+            path: "https://test_url/post",
+            method: 'POST',
+          );
 
-        // When
-        interceptor.onRequest(request, RequestInterceptorHandler());
+          // When
+          interceptor.onRequest(request, RequestInterceptorHandler());
 
-        final requestHeaders = request.headers;
-        verifyHeaders(
-            headerType, requestHeaders, false, TraceContextInjection.sampled);
-      });
+          final requestHeaders = request.headers;
+          verifyHeaders(
+            headerType,
+            requestHeaders,
+            false,
+            TraceContextInjection.all,
+          );
+        },
+      );
+
+      test(
+        'sets trace headers for first party urls { unsampled, TraceContextInjection.sampled }',
+        () {
+          when(() => mockRum.shouldSampleTrace(any(), any())).thenReturn(false);
+          when(
+            () => mockRum.contextInjectionSetting,
+          ).thenReturn(TraceContextInjection.sampled);
+          final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
+          final request = RequestOptions(
+            path: "https://test_url/post",
+            method: 'POST',
+          );
+
+          // When
+          interceptor.onRequest(request, RequestInterceptorHandler());
+
+          final requestHeaders = request.headers;
+          verifyHeaders(
+            headerType,
+            requestHeaders,
+            false,
+            TraceContextInjection.sampled,
+          );
+        },
+      );
     });
   }
 
@@ -695,15 +894,17 @@ void main() {
     });
 
     test('passes captured headers as internal attributes to stopResource', () {
-      // ignore: invalid_use_of_internal_member
-      when(() => mockRum.resourceHeadersExtractor)
-          .thenReturn(ResourceHeadersExtractor());
+      when(
+        // ignore: invalid_use_of_internal_member
+        () => mockRum.resourceHeadersExtractor,
+      ).thenReturn(ResourceHeadersExtractor());
 
       final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
       final requestOptions = RequestOptions(
-          path: 'https://test_uri',
-          method: 'GET',
-          headers: {'content-type': 'application/json'});
+        path: 'https://test_uri',
+        method: 'GET',
+        headers: {'content-type': 'application/json'},
+      );
       final rumKey = randomString();
       requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
 
@@ -719,9 +920,17 @@ void main() {
 
       interceptor.onResponse(response, ResponseInterceptionHandlerMock());
 
-      final captured = verify(() =>
-              mockRum.stopResource(rumKey, 200, any(), any(), captureAny()))
-          .captured[0] as Map<String, Object?>;
+      final captured =
+          verify(
+                () => mockRum.stopResource(
+                  rumKey,
+                  200,
+                  any(),
+                  any(),
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
 
       final responseHeaders =
           captured['_dd.response_headers'] as Map<String, String>;
@@ -735,9 +944,10 @@ void main() {
     });
 
     test('preserves multi-value request headers passed as a List', () {
-      // ignore: invalid_use_of_internal_member
-      when(() => mockRum.resourceHeadersExtractor)
-          .thenReturn(ResourceHeadersExtractor());
+      when(
+        // ignore: invalid_use_of_internal_member
+        () => mockRum.resourceHeadersExtractor,
+      ).thenReturn(ResourceHeadersExtractor());
 
       final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
       final requestOptions = RequestOptions(
@@ -751,14 +961,24 @@ void main() {
       );
       final rumKey = randomString();
       requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
-      final response =
-          Response(requestOptions: requestOptions, statusCode: 200);
+      final response = Response(
+        requestOptions: requestOptions,
+        statusCode: 200,
+      );
 
       interceptor.onResponse(response, ResponseInterceptionHandlerMock());
 
-      final captured = verify(() =>
-              mockRum.stopResource(rumKey, 200, any(), any(), captureAny()))
-          .captured[0] as Map<String, Object?>;
+      final captured =
+          verify(
+                () => mockRum.stopResource(
+                  rumKey,
+                  200,
+                  any(),
+                  any(),
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
       final requestHeaders =
           captured['_dd.request_headers'] as Map<String, String>;
       expect(requestHeaders['cache-control'], 'no-cache, no-store');
@@ -769,18 +989,31 @@ void main() {
       when(() => mockRum.resourceHeadersExtractor).thenReturn(null);
 
       final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-      final requestOptions =
-          RequestOptions(path: 'https://test_uri', method: 'GET', headers: {});
+      final requestOptions = RequestOptions(
+        path: 'https://test_uri',
+        method: 'GET',
+        headers: {},
+      );
       final rumKey = randomString();
       requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
-      final response =
-          Response(requestOptions: requestOptions, statusCode: 200);
+      final response = Response(
+        requestOptions: requestOptions,
+        statusCode: 200,
+      );
 
       interceptor.onResponse(response, ResponseInterceptionHandlerMock());
 
-      final captured = verify(() =>
-              mockRum.stopResource(rumKey, 200, any(), any(), captureAny()))
-          .captured[0] as Map<String, Object?>;
+      final captured =
+          verify(
+                () => mockRum.stopResource(
+                  rumKey,
+                  200,
+                  any(),
+                  any(),
+                  captureAny(),
+                ),
+              ).captured[0]
+              as Map<String, Object?>;
       expect(captured.containsKey('_dd.request_headers'), isFalse);
       expect(captured.containsKey('_dd.response_headers'), isFalse);
     });

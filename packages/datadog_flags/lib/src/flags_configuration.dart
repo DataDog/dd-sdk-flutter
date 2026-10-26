@@ -27,6 +27,10 @@ final class DatadogFlagsConfiguration {
   static const maxEvaluationFlushInterval = Duration(seconds: 60);
 
   /// Overrides the precompute assignments endpoint.
+  ///
+  /// Custom endpoints do not receive automatic capability headers.
+  /// To opt in, add `X-DD-FEATURE-FLAGS-CAPABILITIES` through [customFlagsHeaders].
+  /// For web clients, the endpoint must also allow this header in CORS.
   final Uri? customFlagsEndpoint;
 
   /// Additional headers sent with precompute assignment requests.
@@ -48,7 +52,8 @@ final class DatadogFlagsConfiguration {
   /// assignment operation continues after this timeout and can make assignments
   /// available when it completes.
   ///
-  /// The SDK does not limit how large this value can be.
+  /// Legacy clients do not limit how large this value can be.
+  /// The OpenFeature provider requires a positive timeout of at most 20 seconds.
   ///
   /// The timeout applies only to the first
   /// [DatadogFlagsClient.initialize] call for each client. A `null`, zero, or

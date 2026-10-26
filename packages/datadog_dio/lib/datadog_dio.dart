@@ -36,11 +36,12 @@ extension DatadogDio on Dio {
     // Add the interceptor as the first interceptor to ensure
     // other interceptors can't skip it.
     interceptors.insert(
-        0,
-        DatadogDioInterceptor(
-          datadogSdk: sdk,
-          ignoreUrlPatterns: ignoreUrlPatterns,
-          attributesProvider: attributesProvider,
-        ));
+      0,
+      DatadogDioInterceptor(
+        datadogSdk: sdk,
+        ignoreUrlPatterns: ignoreUrlPatterns,
+        attributesProvider: attributesProvider,
+      ),
+    );
   }
 }

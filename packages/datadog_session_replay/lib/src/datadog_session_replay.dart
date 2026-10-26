@@ -5,7 +5,6 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
@@ -78,18 +77,19 @@ class DatadogSessionReplay {
     this._configuration,
     this.internalLogger,
     double rumSampleRate,
-  )   : _sessionSampler = DeterministicSampler(rumSampleRate)
-            .combined(_configuration.replaySampleRate),
-        defaultTouchPrivacyLevel = _configuration.touchPrivacyLevel,
-        _recorder = SessionReplayRecorder(
-          defaultCapturePrivacy: TreeCapturePrivacy(
-            textAndInputPrivacyLevel: _configuration.textAndInputPrivacyLevel,
-            imagePrivacyLevel: _configuration.imagePrivacyLevel,
-          ),
-          touchPrivacyLevel: _configuration.touchPrivacyLevel,
-          imageDownscaling: _configuration.imageDownscaling,
-          maxImagePixelBudget: _configuration.maxImagePixelBudget,
-        );
+  ) : _sessionSampler = DeterministicSampler(
+        rumSampleRate,
+      ).combined(_configuration.replaySampleRate),
+      defaultTouchPrivacyLevel = _configuration.touchPrivacyLevel,
+      _recorder = SessionReplayRecorder(
+        defaultCapturePrivacy: TreeCapturePrivacy(
+          textAndInputPrivacyLevel: _configuration.textAndInputPrivacyLevel,
+          imagePrivacyLevel: _configuration.imagePrivacyLevel,
+        ),
+        touchPrivacyLevel: _configuration.touchPrivacyLevel,
+        imageDownscaling: _configuration.imageDownscaling,
+        maxImagePixelBudget: _configuration.maxImagePixelBudget,
+      );
 
   void addElement(Key key, Element e) {
     _recorder.addElement(key, e);

@@ -1,3 +1,6 @@
+// Legacy API compatibility until the next major release.
+// ignore_for_file: deprecated_member_use
+
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
@@ -9,6 +12,9 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/foundation.dart';
 
 /// Convenience access to the Flutter-integrated Datadog Flags plugin.
+@Deprecated(
+  'Use OpenFeatureAPI and DatadogRumHook. Removal is planned for the next major version.',
+)
 extension DatadogSdkFlagsExtension on DatadogSdk {
   /// Returns the configured flags plugin, or `null` when flags integration was
   /// not added to [DatadogConfiguration].
@@ -20,6 +26,9 @@ extension DatadogSdkFlagsExtension on DatadogSdk {
 /// Register this configuration with [DatadogConfiguration.addPlugin] to derive
 /// Flags SDK account metadata from the initialized [DatadogSdk] and to add
 /// successful flag evaluations to the active RUM view.
+@Deprecated(
+  'Use DatadogOpenFeatureProvider and DatadogRumHook. Removal is planned for the next major version.',
+)
 class DatadogFlagsPluginConfiguration extends DatadogPluginConfiguration {
   /// Optional Flags SDK configuration overrides.
   ///
@@ -53,6 +62,9 @@ class DatadogFlagsPluginConfiguration extends DatadogPluginConfiguration {
 /// `datadog_flags` package. Successful evaluations still emit exposure and
 /// flag-evaluation telemetry through `datadog_flags`; this plugin only adds the
 /// Flutter-specific setup and RUM feature flag tagging.
+@Deprecated(
+  'Use DatadogOpenFeatureProvider and DatadogRumHook. Removal is planned for the next major version.',
+)
 class DatadogFlagsPlugin extends DatadogPlugin {
   final DatadogFlagsConfiguration _flagsConfiguration;
   final bool _rumIntegrationEnabled;
@@ -67,9 +79,9 @@ class DatadogFlagsPlugin extends DatadogPlugin {
     required DatadogFlagsConfiguration flagsConfiguration,
     required bool rumIntegrationEnabled,
     @visibleForTesting DatadogFlags? flags,
-  })  : _flagsConfiguration = flagsConfiguration,
-        _rumIntegrationEnabled = rumIntegrationEnabled,
-        _flags = flags ?? DatadogFlags.instance;
+  }) : _flagsConfiguration = flagsConfiguration,
+       _rumIntegrationEnabled = rumIntegrationEnabled,
+       _flags = flags ?? DatadogFlags.instance;
 
   /// Completes when the underlying `datadog_flags` SDK has been configured.
   Future<void> get ready => _ready;
@@ -87,6 +99,7 @@ class DatadogFlagsPlugin extends DatadogPlugin {
   DatadogFlutterFlagsClient sharedClient({
     String name = DatadogFlags.defaultClientName,
   }) {
+    if (_clients[name]?._isShutdown ?? false) _clients.remove(name);
     return _clients.putIfAbsent(
       name,
       () => DatadogFlutterFlagsClient(
@@ -95,8 +108,9 @@ class DatadogFlagsPlugin extends DatadogPlugin {
           await ready;
           return _flags.sharedClient(name: name);
         },
-        addRumFeatureFlagEvaluation:
-            _rumIntegrationEnabled ? _addRumFeatureFlagEvaluation : null,
+        addRumFeatureFlagEvaluation: _rumIntegrationEnabled
+            ? _addRumFeatureFlagEvaluation
+            : null,
       ),
     );
   }
@@ -106,7 +120,11 @@ class DatadogFlagsPlugin extends DatadogPlugin {
 
   @override
   void shutdown() {
+    final clients = _clients.values.toList();
     _clients.clear();
+    for (final client in clients) {
+      unawaited(client.shutdown());
+    }
     unawaited(_flags.disable());
   }
 
@@ -133,7 +151,8 @@ class DatadogFlagsPlugin extends DatadogPlugin {
     required DatadogConfiguration datadogConfiguration,
     required DatadogFlagsSite? flagsSite,
   }) {
-    final flagsDatadogConfig = _flagsConfiguration.datadogConfig ??
+    final flagsDatadogConfig =
+        _flagsConfiguration.datadogConfig ??
         DatadogFlagsConfig(
           clientToken: datadogConfiguration.clientToken,
           env: datadogConfiguration.env,
@@ -165,14 +184,44 @@ class DatadogFlagsPlugin extends DatadogPlugin {
 }
 
 /// A feature flag client integrated with Flutter RUM feature flag tracking.
-class DatadogFlutterFlagsClient implements DatadogFlagsClient {
+@Deprecated(
+  'Use OpenFeatureClient. Removal is planned for the next major version.',
+)
+class DatadogFlutterFlagsClient
+    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
   final Future<DatadogFlagsClient> Function() _resolveDelegate;
   final void Function(String key, Object value)? _addRumFeatureFlagEvaluation;
+  final StreamController<DatadogFlagsClientStatus> _statusChanges =
+      StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
 
   DatadogFlagsClient? _delegate;
+  StreamSubscription<DatadogFlagsClientStatus>? _statusSubscription;
+  Future<DatadogFlagsClient>? _pendingResolve;
+  bool _isShutdown = false;
+  Future<void>? _shutdownOperation;
 
   @override
   final String name;
+
+  @override
+  FlagsEvaluationContext? get evaluationContext {
+    return switch (_delegate) {
+      final DatadogFlagsClientLifecycle lifecycle =>
+        lifecycle.evaluationContext,
+      _ => null,
+    };
+  }
+
+  @override
+  DatadogFlagsClientStatus get status {
+    return switch (_delegate) {
+      final DatadogFlagsClientLifecycle lifecycle => lifecycle.status,
+      _ => DatadogFlagsClientStatus.notReady,
+    };
+  }
+
+  @override
+  Stream<DatadogFlagsClientStatus> get statusChanges => _statusChanges.stream;
 
   /// Creates a Flutter-integrated feature flag client.
   @visibleForTesting
@@ -180,14 +229,14 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
     required this.name,
     required Future<DatadogFlagsClient> Function() resolveDelegate,
     required void Function(String key, Object value)?
-        addRumFeatureFlagEvaluation,
-  })  : _resolveDelegate = resolveDelegate,
-        _addRumFeatureFlagEvaluation = addRumFeatureFlagEvaluation;
+    addRumFeatureFlagEvaluation,
+  }) : _resolveDelegate = resolveDelegate,
+       _addRumFeatureFlagEvaluation = addRumFeatureFlagEvaluation;
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
     final delegate = await _delegateOrResolve();
-    await delegate.initialize(context);
+    if (!_isShutdown) await delegate.initialize(context);
   }
 
   @override
@@ -263,27 +312,43 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
   @override
   Future<void> reset() async {
     final delegate = await _delegateOrResolve();
-    await delegate.reset();
+    if (!_isShutdown) await delegate.reset();
   }
 
   @override
-  Future<void> shutdown() async {
+  Future<void> shutdown() => _shutdownOperation ??= _shutdown();
+
+  Future<void> _shutdown() async {
+    _isShutdown = true;
     final delegate = _delegate;
-    if (delegate == null) {
-      return;
-    }
-    await delegate.shutdown();
     _delegate = null;
+    await _statusSubscription?.cancel();
+    _statusSubscription = null;
+    await delegate?.shutdown();
   }
 
-  Future<DatadogFlagsClient> _delegateOrResolve() async {
-    final existing = _delegate;
-    if (existing != null) {
-      return existing;
+  Future<DatadogFlagsClient> _delegateOrResolve() {
+    if (_isShutdown) {
+      throw StateError('This client is shut down. Create a new client.');
     }
-    final resolved = await _resolveDelegate();
-    _delegate = resolved;
-    return resolved;
+    final existing = _delegate;
+    if (existing != null) return Future.value(existing);
+    return _pendingResolve ??= _resolveDelegate()
+        .then((resolved) async {
+          if (_isShutdown) {
+            // Release late delegates without subscribing or initializing them.
+            await resolved.shutdown();
+            return resolved;
+          }
+          if (resolved case final DatadogFlagsClientLifecycle lifecycle) {
+            _statusSubscription = lifecycle.statusChanges.listen((status) {
+              if (!_isShutdown) _statusChanges.add(status);
+            });
+          }
+          _delegate = resolved;
+          return resolved;
+        })
+        .whenComplete(() => _pendingResolve = null);
   }
 
   FlagDetails<T> _trackRumEvaluation<T>(FlagDetails<T> details) {

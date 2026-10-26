@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.0
+
+### Requirements
+
+- Require Dart 3.10 and Flutter 3.38 or later.
+- Require `datadog_flags: ^1.2.0`.
+
+### Features
+
+- Export `DatadogOpenFeatureProvider` and add `DatadogRumHook` to associate successful OpenFeature evaluations with the active RUM view (#1134).
+- Deprecate `DatadogFlagsPlugin` and `DatadogFlagsPluginConfiguration`. The legacy APIs remain available. Use the OpenFeature provider and RUM hook for new integrations (#1134).
+- Support obfuscated assignment keys without changes to application flag keys (#1188).
+
+### Fixes
+
+- Report `CACHED` when an evaluation uses an assignment restored from local storage.
+
 ## 1.1.0
 
 * Forward `DatadogFlagsConfiguration.initializationTimeout` to the core SDK. The first context initialization has a five-second timeout by default. Set it to `null`, zero, or a negative duration to disable it.

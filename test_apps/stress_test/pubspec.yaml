@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=2.18.5 <4.0.0'
+  sdk: '>=3.10.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -12,12 +12,24 @@ dependencies:
   cupertino_icons: ^1.0.2
   flutter_dotenv: ^5.0.2
   datadog_flutter_plugin:
-    path: ../../packages/datadog_flutter_plugin
+    path: ../../packages/datadog_flutter_plugin/datadog_flutter_plugin
+
+dependency_overrides:
+  datadog_flutter_plugin:
+    path: ../../packages/datadog_flutter_plugin/datadog_flutter_plugin
+  datadog_flutter_plugin_platform_interface:
+    path: ../../packages/datadog_flutter_plugin/datadog_flutter_plugin_platform_interface
+  datadog_flutter_plugin_android:
+    path: ../../packages/datadog_flutter_plugin/datadog_flutter_plugin_android
+  datadog_flutter_plugin_ios:
+    path: ../../packages/datadog_flutter_plugin/datadog_flutter_plugin_ios
+  datadog_flutter_plugin_web:
+    path: ../../packages/datadog_flutter_plugin/datadog_flutter_plugin_web
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true

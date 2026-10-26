@@ -4,6 +4,9 @@
 // Copyright 2019-Present Datadog, Inc.
 
 /// Programmatic reason why a flag evaluation returned its default value.
+@Deprecated(
+  'Use OpenFeature ErrorCode. Removal is planned for the next major version.',
+)
 enum FlagEvaluationError {
   /// The client has not finished initialization for the requested context.
   providerNotReady('PROVIDER_NOT_READY'),
@@ -41,7 +44,8 @@ final class FlagsInitializationTimeoutException implements Exception {
   });
 
   /// Customer-readable description of the timeout.
-  String get message => 'Flags client "$clientName" did not initialize within '
+  String get message =>
+      'Flags client "$clientName" did not initialize within '
       '${timeout.inMilliseconds} ms.';
 
   @override
@@ -74,10 +78,7 @@ final class FlagsException implements Exception {
     );
   }
 
-  factory FlagsException.clientNotInitialized(
-    String message, {
-    Object? cause,
-  }) {
+  factory FlagsException.clientNotInitialized(String message, {Object? cause}) {
     return FlagsException(
       FlagsErrorType.clientNotInitialized,
       message,
@@ -85,10 +86,7 @@ final class FlagsException implements Exception {
     );
   }
 
-  factory FlagsException.invalidConfiguration(
-    String message, {
-    Object? cause,
-  }) {
+  factory FlagsException.invalidConfiguration(String message, {Object? cause}) {
     return FlagsException(
       FlagsErrorType.invalidConfiguration,
       message,

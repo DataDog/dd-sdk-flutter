@@ -45,7 +45,7 @@ class _SessionReplayPlugin extends DatadogPlugin {
           instance.internalLogger,
           rumSampleRate:
               instance.configuration?.rumConfiguration?.sessionSamplingRate ??
-                  100.0,
+              100.0,
         );
         instance.internalLogger.debug('Flutter Session Replay Enabled');
       },
