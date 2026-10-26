@@ -4,12 +4,15 @@
 
 ### Breaking Changes
 
-- This package now requires Dart 3.10 and Flutter 3.38 or later.
+- Require Dart 3.10 or later.
 
 ### Features
 
-- `datadog_flags` now transparently supports obfuscated flag key assignments returned by the backend, without requiring any changes to application flag evaluation code.
-- Dependency version constraints are now relaxed, making it easier to use `datadog_flags` alongside packages with newer dependency requirements.
+- Add `DatadogOpenFeatureProvider` for the OpenFeature Dart client SDK, with typed evaluations, context changes, lifecycle events, and refresh (#1134).
+- Deprecate `DatadogFlags` and `DatadogFlagsClient`. Use `DatadogOpenFeatureProvider` and an OpenFeature client for new integrations (#1134).
+- Support obfuscated assignment keys without changes to application flag keys (#1188).
+- Report `CACHED` when an evaluation uses an assignment restored from local storage (#1209).
+- Relax dependency version constraints (#1132).
 
 ## 1.1.1
 
