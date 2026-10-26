@@ -11,7 +11,7 @@ set(DD_HTTP_USE_SYSTEM_LIBCURL ON CACHE BOOL "" FORCE)
 include(FetchContent)
 FetchContent_Declare(dd-sdk-cpp
   GIT_REPOSITORY https://github.com/DataDog/dd-sdk-cpp.git
-  GIT_TAG        develop)
+  GIT_TAG        06b97234a92d8b1cb94ebec477360161481a8f60)  # 0.8.1
 FetchContent_MakeAvailable(dd-sdk-cpp)
 
 set(PLUGIN_NAME "${PROJECT_NAME}_plugin")
