@@ -2,13 +2,21 @@
 
 ## 2.0.0
 
+### Breaking Changes
+
+- Require Dart 3.10 and Flutter 3.38 or later.
+- Require `datadog_flags: ^2.0.0`.
+- When using `datadog_flutter_plugin` 4.x, supply a `service` name in `DatadogConfiguration` (#1105).
+
 ### Features
 
-- Feature flag evaluations now transparently support obfuscated flag keys, reducing exposure of readable flag names in network payloads without requiring any changes to evaluation calls.
+- Export `DatadogOpenFeatureProvider` and add `DatadogRumHook` to associate successful OpenFeature evaluations with the active RUM view (#1134).
+- Deprecate `DatadogFlagsPlugin` and `DatadogFlagsPluginConfiguration`. Use the OpenFeature provider and RUM hook for new integrations (#1134).
+- Support obfuscated assignment keys without changes to application flag keys (#1188).
 
 ### Fixes
 
-- Flag evaluation details now correctly report `CACHED` when the evaluated assignment came from the local store, instead of reusing the original network response reason.
+- Report `CACHED` when an evaluation uses an assignment restored from local storage (#1209).
 
 ## 1.1.0
 
