@@ -1,17 +1,16 @@
 # Changelog
 
-## 2.0.0
+## 1.2.0
 
-### Breaking Changes
+### Requirements
 
 - Require Dart 3.10 and Flutter 3.38 or later.
-- Require `datadog_flags: ^2.0.0`.
-- When using `datadog_flutter_plugin` 4.x, supply a `service` name in `DatadogConfiguration` (#1105).
+- Require `datadog_flags: ^1.2.0`.
 
 ### Features
 
 - Export `DatadogOpenFeatureProvider` and add `DatadogRumHook` to associate successful OpenFeature evaluations with the active RUM view (#1134).
-- Deprecate `DatadogFlagsPlugin` and `DatadogFlagsPluginConfiguration`. Use the OpenFeature provider and RUM hook for new integrations (#1134).
+- Deprecate `DatadogFlagsPlugin` and `DatadogFlagsPluginConfiguration`. The legacy APIs remain available. Use the OpenFeature provider and RUM hook for new integrations (#1134).
 - Support obfuscated assignment keys without changes to application flag keys (#1188).
 
 ### Fixes
