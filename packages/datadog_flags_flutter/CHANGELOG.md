@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.0
+
+### Features
+
+- Feature flag evaluations now transparently support obfuscated flag keys, reducing exposure of readable flag names in network payloads without requiring any changes to evaluation calls.
+
+### Fixes
+
+- Flag evaluation details now correctly report `CACHED` when the evaluated assignment came from the local store, instead of reusing the original network response reason.
+
 ## 1.1.0
 
 * Forward `DatadogFlagsConfiguration.initializationTimeout` to the core SDK. The first context initialization has a five-second timeout by default. Set it to `null`, zero, or a negative duration to disable it.

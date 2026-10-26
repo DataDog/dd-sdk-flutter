@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.0
+
+### Breaking Changes
+
+- This package now requires Dart 3.10 and Flutter 3.38 or later.
+
+### Features
+
+- `datadog_flags` now transparently supports obfuscated flag key assignments returned by the backend, without requiring any changes to application flag evaluation code.
+- Dependency version constraints are now relaxed, making it easier to use `datadog_flags` alongside packages with newer dependency requirements.
+
 ## 1.1.1
 
 * Fix missing Flutter Web flag evaluation counts by sending only supported Datadog metadata (#1196).
