@@ -12,6 +12,11 @@ class AndroidDatadogFlutterPlugin {
   static final JString _javaSessionId = 'session_id'.toJString();
   static final JString _javaSessionSampleRate = 'session_sample_rate'
       .toJString();
+  static final JString _javaTracingKey = 'tracing'.toJString();
+  // Must match TracingInterceptor.OKHTTP_INTERCEPTOR_SAMPLE_RATE in
+  // dd-sdk-android-okhttp, and TracingContextFeature.TRACE_SAMPLE_RATE_KEY.
+  static final JString _javaTraceSampleRate = 'okhttp_interceptor_sample_rate'
+      .toJString();
 
   static DatadogContext? getContext() {
     final javaContext = bridge.DatadogSdkPlugin.Companion.coreContext;
@@ -34,11 +39,23 @@ class AndroidDatadogFlutterPlugin {
       }
     }
 
+    double? traceSampleRate;
+    final tracingContext = javaContext.featuresContext.get(_javaTracingKey);
+    if (tracingContext != null) {
+      final javaTraceSampleRate = tracingContext.get(_javaTraceSampleRate);
+      if (javaTraceSampleRate != null) {
+        // Stored by native tracing (or Flutter's stand-in for it) as a Float.
+        traceSampleRate = (javaTraceSampleRate as JNumber).doubleValue();
+        javaTraceSampleRate.release();
+      }
+    }
+
     final context = DatadogContext(
       sessionId: sessionId,
       accountId: javaContext.accountInfo?.id.toDartString(),
       userId: javaContext.userInfo.id?.toDartString(),
       sessionSampleRate: sessionSampleRate,
+      traceSampleRate: traceSampleRate,
     );
     javaContext.release();
     return context;

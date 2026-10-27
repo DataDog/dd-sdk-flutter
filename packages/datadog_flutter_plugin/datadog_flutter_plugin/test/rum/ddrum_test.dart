@@ -505,6 +505,34 @@ void main() {
       },
     );
 
+    test(
+      'the trace rate native tracing reports overrides the configured one',
+      () async {
+        // Configured at 0%, which would never trace.
+        final rum = await DatadogRum.enable(
+          mockDatadogSdk,
+          DatadogRumConfiguration(
+            applicationId: 'applicationId',
+            sessionSamplingRate: 100,
+            traceSampleRate: 0,
+            detectLongTasks: false,
+          ),
+        );
+        final traceId = TracingId(BigInt.parse('15352856648520921629'));
+
+        expect(rum!.shouldSampleTrace(sessionId, traceId), isFalse);
+        // Native tracing samples at 100%.
+        expect(
+          rum.shouldSampleTrace(sessionId, traceId, nativeTraceSampleRate: 100),
+          isTrue,
+        );
+        expect(
+          rum.shouldSampleTrace(null, traceId, nativeTraceSampleRate: 100),
+          isTrue,
+        );
+      },
+    );
+
     test('without a session the session rate does not apply', () async {
       final rum = await DatadogRum.enable(
         mockDatadogSdk,

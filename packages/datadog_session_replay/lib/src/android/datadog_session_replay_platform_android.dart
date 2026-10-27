@@ -46,6 +46,7 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
               sessionId: context.sessionId?.toDartString() ?? '',
               viewId: context.viewId?.toDartString(),
               viewServerTimeOffset: context.viewServerTimeOffset?.doubleValue(),
+              sessionSampleRate: context.sessionSampleRate?.doubleValue(),
             ),
           );
         },

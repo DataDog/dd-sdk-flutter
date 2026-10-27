@@ -482,8 +482,7 @@ final class $FlutterSessionReplayBridge$Configuration$Type$
 /// from: `com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge$ContextListener`
 extension type FlutterSessionReplayBridge$ContextListener._(
   jni$_.JObject _$this
-)
-    implements jni$_.JObject {
+) implements jni$_.JObject {
   static final _class = jni$_.JClass.forName(
     r'com/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$ContextListener',
   );
@@ -663,7 +662,7 @@ extension type FlutterSessionReplayBridge$RumContext._(jni$_.JObject _$this)
   static const jni$_.JType<FlutterSessionReplayBridge$RumContext> type =
       $FlutterSessionReplayBridge$RumContext$Type$();
   static final _id_new$ = _class.constructorId(
-    r'(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;)V',
+    r'(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;Ljava/lang/Double;)V',
   );
 
   static final _new$ =
@@ -674,6 +673,7 @@ extension type FlutterSessionReplayBridge$RumContext._(jni$_.JObject _$this)
                 jni$_.JMethodIDPtr,
                 jni$_.VarArgs<
                   (
+                    jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
@@ -691,22 +691,25 @@ extension type FlutterSessionReplayBridge$RumContext._(jni$_.JObject _$this)
               jni$_.Pointer<jni$_.Void>,
               jni$_.Pointer<jni$_.Void>,
               jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
             )
           >();
 
-  /// from: `public void <init>(java.lang.String string, java.lang.String string1, java.lang.String string2, java.lang.Long long)`
+  /// from: `public void <init>(java.lang.String string, java.lang.String string1, java.lang.String string2, java.lang.Long long, java.lang.Double double)`
   /// The returned object must be released after use, by calling the [release] method.
   factory FlutterSessionReplayBridge$RumContext(
     jni$_.JString? string,
     jni$_.JString? string1,
     jni$_.JString? string2,
     jni$_.JLong? long,
+    jni$_.JDouble? double,
   ) {
     final _$$classRef = _class.reference;
     final _$string = string?.reference ?? jni$_.jNullReference;
     final _$string1 = string1?.reference ?? jni$_.jNullReference;
     final _$string2 = string2?.reference ?? jni$_.jNullReference;
     final _$long = long?.reference ?? jni$_.jNullReference;
+    final _$double = double?.reference ?? jni$_.jNullReference;
     return _new$(
       _$$classRef.pointer,
       _id_new$.pointer,
@@ -714,14 +717,85 @@ extension type FlutterSessionReplayBridge$RumContext._(jni$_.JObject _$this)
       _$string1.pointer,
       _$string2.pointer,
       _$long.pointer,
+      _$double.pointer,
     ).object<FlutterSessionReplayBridge$RumContext>();
   }
 
   static final _id_new$1 = _class.constructorId(
-    r'(Lcom/datadoghq/flutter/sessionreplay/feature/DefaultFlutterSessionReplayFeature$RumContext;)V',
+    r'(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V',
   );
 
   static final _new$1 =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<
+                  (
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Pointer<jni$_.Void>,
+                    jni$_.Int32,
+                    jni$_.Pointer<jni$_.Void>,
+                  )
+                >,
+              )
+            >
+          >('globalEnv_NewObject')
+          .asFunction<
+            jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
+              core$_.int,
+              jni$_.Pointer<jni$_.Void>,
+            )
+          >();
+
+  /// from: `synthetic public void <init>(java.lang.String string, java.lang.String string1, java.lang.String string2, java.lang.Long long, java.lang.Double double, int i, kotlin.jvm.internal.DefaultConstructorMarker defaultConstructorMarker)`
+  /// The returned object must be released after use, by calling the [release] method.
+  factory FlutterSessionReplayBridge$RumContext.new$1(
+    jni$_.JString? string,
+    jni$_.JString? string1,
+    jni$_.JString? string2,
+    jni$_.JLong? long,
+    jni$_.JDouble? double,
+    core$_.int i,
+    DefaultConstructorMarker? defaultConstructorMarker,
+  ) {
+    final _$$classRef = _class.reference;
+    final _$string = string?.reference ?? jni$_.jNullReference;
+    final _$string1 = string1?.reference ?? jni$_.jNullReference;
+    final _$string2 = string2?.reference ?? jni$_.jNullReference;
+    final _$long = long?.reference ?? jni$_.jNullReference;
+    final _$double = double?.reference ?? jni$_.jNullReference;
+    final _$defaultConstructorMarker =
+        defaultConstructorMarker?.reference ?? jni$_.jNullReference;
+    return _new$1(
+      _$$classRef.pointer,
+      _id_new$1.pointer,
+      _$string.pointer,
+      _$string1.pointer,
+      _$string2.pointer,
+      _$long.pointer,
+      _$double.pointer,
+      i,
+      _$defaultConstructorMarker.pointer,
+    ).object<FlutterSessionReplayBridge$RumContext>();
+  }
+
+  static final _id_new$2 = _class.constructorId(
+    r'(Lcom/datadoghq/flutter/sessionreplay/feature/DefaultFlutterSessionReplayFeature$RumContext;)V',
+  );
+
+  static final _new$2 =
       jni$_.ProtectedJniExtensions.lookup<
             jni$_.NativeFunction<
               jni$_.JniResult Function(
@@ -741,14 +815,14 @@ extension type FlutterSessionReplayBridge$RumContext._(jni$_.JObject _$this)
 
   /// from: `public void <init>(com.datadoghq.flutter.sessionreplay.feature.DefaultFlutterSessionReplayFeature$RumContext rumContext)`
   /// The returned object must be released after use, by calling the [release] method.
-  factory FlutterSessionReplayBridge$RumContext.new$1(
+  factory FlutterSessionReplayBridge$RumContext.new$2(
     DefaultFlutterSessionReplayFeature$$RumContext rumContext,
   ) {
     final _$$classRef = _class.reference;
     final _$rumContext = rumContext.reference;
-    return _new$1(
+    return _new$2(
       _$$classRef.pointer,
-      _id_new$1.pointer,
+      _id_new$2.pointer,
       _$rumContext.pointer,
     ).object<FlutterSessionReplayBridge$RumContext>();
   }
@@ -876,6 +950,36 @@ extension FlutterSessionReplayBridge$RumContext$$Methods
     ).object<jni$_.JLong?>();
   }
 
+  static final _id_get$sessionSampleRate = FlutterSessionReplayBridge$RumContext
+      ._class
+      .instanceMethodId(r'getSessionSampleRate', r'()Ljava/lang/Double;');
+
+  static final _get$sessionSampleRate =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+              )
+            >
+          >('globalEnv_CallObjectMethod')
+          .asFunction<
+            jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+            )
+          >();
+
+  /// from: `public final java.lang.Double getSessionSampleRate()`
+  /// The returned object must be released after use, by calling the [release] method.
+  jni$_.JDouble? get sessionSampleRate {
+    final _$$selfRef = reference;
+    return _get$sessionSampleRate(
+      _$$selfRef.pointer,
+      _id_get$sessionSampleRate.pointer,
+    ).object<jni$_.JDouble?>();
+  }
+
   static final _id_component1 = FlutterSessionReplayBridge$RumContext._class
       .instanceMethodId(r'component1', r'()Ljava/lang/String;');
 
@@ -992,10 +1096,39 @@ extension FlutterSessionReplayBridge$RumContext$$Methods
     ).object<jni$_.JLong?>();
   }
 
+  static final _id_component5 = FlutterSessionReplayBridge$RumContext._class
+      .instanceMethodId(r'component5', r'()Ljava/lang/Double;');
+
+  static final _component5 =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+              )
+            >
+          >('globalEnv_CallObjectMethod')
+          .asFunction<
+            jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+            )
+          >();
+
+  /// from: `public operator fun component5(): kotlin.Double?`
+  /// The returned object must be released after use, by calling the [release] method.
+  jni$_.JDouble? component5() {
+    final _$$selfRef = reference;
+    return _component5(
+      _$$selfRef.pointer,
+      _id_component5.pointer,
+    ).object<jni$_.JDouble?>();
+  }
+
   static final _id_copy = FlutterSessionReplayBridge$RumContext._class
       .instanceMethodId(
         r'copy',
-        r'(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;)Lcom/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$RumContext;',
+        r'(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;Ljava/lang/Double;)Lcom/datadoghq/flutter/sessionreplay/FlutterSessionReplayBridge$RumContext;',
       );
 
   static final _copy =
@@ -1006,6 +1139,7 @@ extension FlutterSessionReplayBridge$RumContext$$Methods
                 jni$_.JMethodIDPtr,
                 jni$_.VarArgs<
                   (
+                    jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
                     jni$_.Pointer<jni$_.Void>,
@@ -1023,22 +1157,25 @@ extension FlutterSessionReplayBridge$RumContext$$Methods
               jni$_.Pointer<jni$_.Void>,
               jni$_.Pointer<jni$_.Void>,
               jni$_.Pointer<jni$_.Void>,
+              jni$_.Pointer<jni$_.Void>,
             )
           >();
 
-  /// from: `public fun copy(applicationId: kotlin.String?, sessionId: kotlin.String?, viewId: kotlin.String?, viewServerTimeOffset: kotlin.Long?): com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge.RumContext`
+  /// from: `public fun copy(applicationId: kotlin.String?, sessionId: kotlin.String?, viewId: kotlin.String?, viewServerTimeOffset: kotlin.Long?, sessionSampleRate: kotlin.Double?): com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge.RumContext`
   /// The returned object must be released after use, by calling the [release] method.
   FlutterSessionReplayBridge$RumContext copy(
     jni$_.JString? string,
     jni$_.JString? string1,
     jni$_.JString? string2,
     jni$_.JLong? long,
+    jni$_.JDouble? double,
   ) {
     final _$$selfRef = reference;
     final _$string = string?.reference ?? jni$_.jNullReference;
     final _$string1 = string1?.reference ?? jni$_.jNullReference;
     final _$string2 = string2?.reference ?? jni$_.jNullReference;
     final _$long = long?.reference ?? jni$_.jNullReference;
+    final _$double = double?.reference ?? jni$_.jNullReference;
     return _copy(
       _$$selfRef.pointer,
       _id_copy.pointer,
@@ -1046,6 +1183,7 @@ extension FlutterSessionReplayBridge$RumContext$$Methods
       _$string1.pointer,
       _$string2.pointer,
       _$long.pointer,
+      _$double.pointer,
     ).object<FlutterSessionReplayBridge$RumContext>();
   }
 
@@ -1912,8 +2050,7 @@ final class $DefaultConstructorMarker$Type$
 ///
 extension type DefaultFlutterSessionReplayFeature$$RumContext._(
   jni$_.JObject _$this
-)
-    implements jni$_.JObject {
+) implements jni$_.JObject {
   static const jni$_.JType<DefaultFlutterSessionReplayFeature$$RumContext>
   type = $DefaultFlutterSessionReplayFeature$$RumContext$Type$();
 }

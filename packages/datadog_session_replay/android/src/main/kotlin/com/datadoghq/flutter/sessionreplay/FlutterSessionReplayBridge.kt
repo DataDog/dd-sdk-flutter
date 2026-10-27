@@ -47,13 +47,15 @@ internal class FlutterSessionReplayBridge private constructor(
         val applicationId: String?,
         val sessionId: String?,
         val viewId: String?,
-        val viewServerTimeOffset: Long?
+        val viewServerTimeOffset: Long?,
+        val sessionSampleRate: Double? = null
     ) {
         constructor(context: DefaultFlutterSessionReplayFeature.RumContext) : this(
             applicationId = context.applicationId,
             sessionId = context.sessionId,
             viewId = context.viewId,
-            viewServerTimeOffset = context.viewServerTimeOffset
+            viewServerTimeOffset = context.viewServerTimeOffset,
+            sessionSampleRate = context.sessionSampleRate?.toDouble()
         )
     }
 
@@ -286,6 +288,9 @@ internal class FlutterSessionReplayBridge private constructor(
         }
         val (hasReplay, recordCount) = pendingState
 
+        if (!isEmbedded) {
+            manager.feature?.registerSessionReplayContext()
+        }
         hasReplay?.let { (viewId, value) -> manager.feature?.setHasReplay(viewId, value) }
         recordCount?.let { (viewId, value) -> manager.feature?.setRecordCount(viewId, value) }
         replayConfiguration?.let { (sampleRate, startImmediately) ->

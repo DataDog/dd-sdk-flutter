@@ -115,6 +115,22 @@ class FlutterSessionReplayBridgeTests {
     }
 
     @Test
+    func contextChanges_carryTheSessionSampleRateNativeRUMApplied() throws {
+        // Given
+        var receivedContext: FlutterRUMCoreContext?
+        try enable { receivedContext = $0 }
+
+        // When
+        manager.broadcastContext(
+            .mockWith(sessionSampler: DeterministicSampler(seed: 0, samplingRate: 42))
+        )
+
+        // Then — Dart samples replay on this rate, not on its own configuration, which it
+        // doesn't have when attached to an existing native instance
+        #expect(receivedContext?.sessionSampleRate?.floatValue == 42)
+    }
+
+    @Test
     func enable_registersTheEngineForContextFanOut() throws {
         // Given
         var receivedContext: FlutterRUMCoreContext?

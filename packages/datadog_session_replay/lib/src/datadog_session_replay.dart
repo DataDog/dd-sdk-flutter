@@ -38,9 +38,7 @@ class DatadogSessionReplay {
 
   final TouchPrivacyLevel defaultTouchPrivacyLevel;
 
-  // Decides which RUM sessions are recorded: the RUM session sample rate
-  // combined with the replay sample rate, applied to each session ID.
-  final DeterministicSampler _sessionSampler;
+  final double _rumSampleRate;
 
   int _errorCounter = 0;
   bool _newFrameBuilt = true;
@@ -77,9 +75,7 @@ class DatadogSessionReplay {
     this._configuration,
     this.internalLogger,
     double rumSampleRate,
-  ) : _sessionSampler = DeterministicSampler(
-        rumSampleRate,
-      ).combined(_configuration.replaySampleRate),
+  ) : _rumSampleRate = rumSampleRate,
       defaultTouchPrivacyLevel = _configuration.touchPrivacyLevel,
       _recorder = SessionReplayRecorder(
         defaultCapturePrivacy: TreeCapturePrivacy(
@@ -102,7 +98,7 @@ class DatadogSessionReplay {
   void _onContextChanged(RUMContext context) {
     if (context.sessionId != _currentSessionId) {
       _currentSessionId = context.sessionId;
-      _sessionSampled = _isSessionSampled(context.sessionId);
+      _sessionSampled = _isSessionSampled(context);
       if (!_sessionSampled) {
         internalLogger.debug(
           'Flutter Session Replay was not selected by replaySampleRate for '
@@ -118,10 +114,13 @@ class DatadogSessionReplay {
     _evaluateRecording();
   }
 
-  /// Samples [sessionId] deterministically, as the native SDKs do: the same
-  /// session ID hash RUM sampled with, at the RUM rate combined with
-  /// [DatadogSessionReplayConfiguration.replaySampleRate].
-  bool _isSessionSampled(String sessionId) {
+  /// Samples the session of [context] deterministically, as the native SDKs
+  /// do: the same session ID hash RUM sampled with, at the RUM rate combined
+  /// with [DatadogSessionReplayConfiguration.replaySampleRate], so replayed
+  /// sessions are always a subset of RUM sessions. The RUM rate is the one the
+  /// native SDK reports for the session, falling back to the configured one.
+  bool _isSessionSampled(RUMContext context) {
+    final sessionId = context.sessionId;
     // When embedded, the native host's Session Replay owns the sampling
     // decision; sampling here too would let the two disagree.
     if (_configuration.isEmbedded) return true;
@@ -129,7 +128,9 @@ class DatadogSessionReplay {
     // replay to.
     if (sessionId.isEmpty || sessionId == _nilUuid) return false;
 
-    return _sessionSampler.sampleUuid(sessionId);
+    return DeterministicSampler(
+      context.sessionSampleRate ?? _rumSampleRate,
+    ).combined(_configuration.replaySampleRate).sampleUuid(sessionId);
   }
 
   /// Requests periodic Session Replay tree capture. Capture runs while the

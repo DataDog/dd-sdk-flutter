@@ -26,6 +26,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import java.nio.ByteBuffer
 import kotlin.test.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -388,6 +389,34 @@ internal class FlutterSessionReplayBridgeTest {
 
         // Then
         verify { mockFeature.setReplayConfiguration(25.0, true) }
+    }
+
+    @Test
+    fun `M register the session replay context before publishing W setEmbedded false`() {
+        // Given
+        enable()
+        bridge.setReplayConfiguration(25.0, true)
+
+        // When
+        bridge.setEmbedded(false)
+
+        // Then
+        verifyOrder {
+            mockFeature.registerSessionReplayContext()
+            mockFeature.setReplayConfiguration(25.0, true)
+        }
+    }
+
+    @Test
+    fun `M not register the session replay context W setEmbedded true`() {
+        // Given
+        enable()
+
+        // When
+        bridge.setEmbedded(true)
+
+        // Then
+        verify(exactly = 0) { mockFeature.registerSessionReplayContext() }
     }
 
     @Test

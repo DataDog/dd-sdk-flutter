@@ -20,17 +20,25 @@ import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
 import com.datadog.android.api.context.AccountInfo
 import com.datadog.android.api.context.UserInfo
+import com.datadog.android.api.feature.Feature
+import com.datadog.android.api.feature.FeatureSdkCore
 import com.datadog.android.core.configuration.BatchProcessingLevel
 import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.UploadFrequency
+import com.datadog.android.log.Logs
 import com.datadog.android.privacy.TrackingConsent
+import com.datadog.android.rum.GlobalRumMonitor
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.mockk.every
+import io.mockk.mockk
 import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
+import io.mockk.verify as mockkVerify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -450,6 +458,31 @@ class DatadogSdkPluginTest {
 
         // THEN
         io.mockk.verify(exactly = 1) { Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION) }
+    }
+
+
+    @Test
+    fun `M publish the trace sample rate W attachToExisting { RUM enabled natively }`() {
+        // GIVEN
+        val mockCore = mockk<FeatureSdkCore>(relaxed = true)
+        every { mockCore.getFeature(Feature.TRACING_FEATURE_NAME) } returns null
+        mockkStatic(Datadog::class, Logs::class, GlobalRumMonitor::class)
+        every { Datadog.isInitialized() } returns true
+        every { Logs.isEnabled(any()) } returns false
+        every { GlobalRumMonitor.isRegistered(any()) } returns true
+        every { Datadog.getInstance() } returns mockCore
+        val methodCall = MethodCall("attachToExisting", mapOf("traceSampleRate" to 37.0))
+
+        // WHEN
+        try {
+            plugin.onMethodCall(methodCall, mock<MethodChannel.Result>())
+
+            // THEN
+            mockkVerify { mockCore.registerFeature(match { it is TracingContextFeature }) }
+            mockkVerify { mockCore.updateFeatureContext(Feature.TRACING_FEATURE_NAME, true, any()) }
+        } finally {
+            unmockkStatic(Datadog::class, Logs::class, GlobalRumMonitor::class)
+        }
     }
 
 //    @Test

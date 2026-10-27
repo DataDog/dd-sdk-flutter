@@ -101,11 +101,16 @@ class DatadogContext {
   /// with, used to rebase other features' sampling onto the session.
   final double? sessionSampleRate;
 
+  /// The trace sample rate (0-100) native tracing samples requests with, when
+  /// it is enabled, so that Flutter samples its traces at the same rate.
+  final double? traceSampleRate;
+
   const DatadogContext({
     required this.sessionId,
     required this.userId,
     required this.accountId,
     this.sessionSampleRate,
+    this.traceSampleRate,
   });
 }
 

@@ -4,8 +4,6 @@
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
-// ignore: implementation_imports
-import 'package:datadog_session_replay/src/datadog_session_replay_plugin.dart';
 import 'package:flutter/material.dart';
 
 import 'embedded_panel.dart';
@@ -37,22 +35,20 @@ Future<void> _attachToNativeDatadog() async {
       DatadogAttachConfiguration(
         detectLongTasks: true,
         reportFlutterPerformance: true,
-      )..addPlugin(
-        DatadogSessionReplayPluginConfiguration(
-          configuration: DatadogSessionReplayConfiguration(
-            // Ignored when embedded: the native Session Replay sample rate
-            // decides which sessions are recorded.
-            replaySampleRate: 100,
-            // Hand records to the native Session Replay, which composites them
-            // into the host's replay where the Flutter view sits on screen.
-            isEmbedded: true,
-            // Match the privacy levels the native host uses, so Flutter and
-            // native content are masked the same way in the replay.
-            textAndInputPrivacyLevel:
-                TextAndInputPrivacyLevel.maskSensitiveInputs,
-            imagePrivacyLevel: ImagePrivacyLevel.maskNone,
-            touchPrivacyLevel: TouchPrivacyLevel.show,
-          ),
+      )..enableSessionReplay(
+        DatadogSessionReplayConfiguration(
+          // Ignored when embedded: the native Session Replay sample rate
+          // decides which sessions are recorded.
+          replaySampleRate: 100,
+          // Hand records to the native Session Replay, which composites them
+          // into the host's replay where the Flutter view sits on screen.
+          isEmbedded: true,
+          // Match the privacy levels the native host uses, so Flutter and
+          // native content are masked the same way in the replay.
+          textAndInputPrivacyLevel:
+              TextAndInputPrivacyLevel.maskSensitiveInputs,
+          imagePrivacyLevel: ImagePrivacyLevel.maskNone,
+          touchPrivacyLevel: TouchPrivacyLevel.show,
         ),
       );
 

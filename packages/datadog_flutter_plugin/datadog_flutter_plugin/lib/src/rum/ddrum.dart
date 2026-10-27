@@ -661,22 +661,30 @@ class DatadogRum {
   /// rate the native SDK reports, falling back to the configured one. Without a
   /// session, the decision is deterministic on [traceId] at [traceSampleRate].
   ///
+  /// [nativeTraceSampleRate], when native tracing reports one, replaces
+  /// [traceSampleRate], so that a session's traces are sampled at the single
+  /// rate RUM reports for it.
+  ///
   /// This is used by Datadog tracing plugins like `datadog_tracing_http_client`
   /// to add the proper headers to network requests.
   bool shouldSampleTrace(
     String? sessionId,
     TracingId traceId, {
     double? sessionSampleRate,
+    double? nativeTraceSampleRate,
   }) {
-    if (traceSampleRate <= 0) return false;
+    final traceRate = nativeTraceSampleRate ?? traceSampleRate;
+    if (traceRate <= 0) return false;
 
     if (sessionId != null) {
       return DeterministicSampler(
         sessionSampleRate ?? _sessionSampleRate ?? 100.0,
-      ).combined(traceSampleRate).sampleUuid(sessionId);
+      ).combined(traceRate).sampleUuid(sessionId);
     }
 
-    return _traceSampler.sampleTrace(traceId);
+    return nativeTraceSampleRate == null
+        ? _traceSampler.sampleTrace(traceId)
+        : DeterministicSampler(nativeTraceSampleRate).sampleTrace(traceId);
   }
 
   @internal

@@ -11,6 +11,7 @@ import com.datadog.android.DatadogSite
 import com.datadog.android._InternalProxy
 import com.datadog.android.api.context.DatadogContext
 import com.datadog.android.api.feature.Feature
+import com.datadog.android.api.feature.FeatureSdkCore
 import com.datadog.android.core.InternalSdkCore
 import com.datadog.android.core.configuration.BatchProcessingLevel
 import com.datadog.android.core.configuration.Configuration
@@ -115,7 +116,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             }
             "attachToExisting" -> {
                 if (Datadog.isInitialized()) {
-                    val attachResult = attachToExisting()
+                    val attachResult = attachToExisting(call.argument<Number>("traceSampleRate"))
                     result.success(attachResult)
                 } else {
                     Log.e(DATADOG_FLUTTER_TAG, MESSAGE_NO_EXISTING_INSTANCE)
@@ -299,9 +300,16 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         return builder
     }
 
-    private fun attachToExisting(): Map<String, Any> {
+    private fun attachToExisting(traceSampleRate: Number?): Map<String, Any> {
         val loggingEnabled = Logs.isEnabled()
         val rumEnabled = GlobalRumMonitor.isRegistered()
+
+        // As when Flutter enables RUM: report the rate Flutter samples its traces with, unless
+        // native tracing is enabled and reports its own.
+        val sdkCore = Datadog.getInstance() as? FeatureSdkCore
+        if (rumEnabled && traceSampleRate != null && sdkCore != null) {
+            TracingContextFeature.publishTraceSampleRate(sdkCore, traceSampleRate.toFloat())
+        }
 
         return mapOf<String, Any>(
             "loggingEnabled" to loggingEnabled,

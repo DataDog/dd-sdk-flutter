@@ -151,6 +151,40 @@ void main() {
     },
   );
 
+  test('Tracing context samples with, and reports, native tracing\'s rate', () {
+    // Given
+    const datadogContext = DatadogContext(
+      sessionId: '00000000-0000-0000-0000-000000000015',
+      userId: null,
+      accountId: null,
+      traceSampleRate: 37.0,
+    );
+    when(() => mockPlatform.getContext()).thenReturn(datadogContext);
+    when(
+      () => mockRum.shouldSampleTrace(
+        any(),
+        any(),
+        sessionSampleRate: any(named: 'sessionSampleRate'),
+        nativeTraceSampleRate: any(named: 'nativeTraceSampleRate'),
+      ),
+    ).thenReturn(true);
+
+    // When
+    final context = generateTracingContext(mockSdk, mockRum);
+    final attributes = generateDatadogAttributes(context, 100);
+
+    // Then
+    verify(
+      () => mockRum.shouldSampleTrace(
+        datadogContext.sessionId,
+        any(),
+        sessionSampleRate: null,
+        nativeTraceSampleRate: 37.0,
+      ),
+    );
+    expect(attributes['_dd.rule_psr'], 0.37);
+  });
+
   // The TraceContextInjection value shouldn't matter in the sampled cases, so
   // make sure all tests work the same way for all TraceContextInjection options
   for (final contextInjection in TraceContextInjection.values) {

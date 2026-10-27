@@ -11,6 +11,8 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import com.datadog.android.Datadog
+import com.datadog.android.api.feature.Feature
+import com.datadog.android.api.feature.FeatureSdkCore
 import com.datadog.android.rum.GlobalRumMonitor
 import com.datadog.android.rum.Rum
 import com.datadog.android.rum.RumActionType
@@ -382,6 +384,38 @@ class DatadogRumPluginTest {
             // Would like to check the specific configuration, but there are too many
             // internal variables
             Rum.enable(any())
+        }
+    }
+
+    @Test
+    fun `M publish the trace sample rate W method channel sends enable`(
+        forge: Forge
+    ) {
+        // GIVEN
+        mockRumEnable()
+        val mockCore = mockk<FeatureSdkCore>(relaxed = true)
+        every { mockCore.getFeature(Feature.TRACING_FEATURE_NAME) } returns null
+        mockkStatic(Datadog::class)
+        every { Datadog.getInstance() } returns mockCore
+        val methodCall = MethodCall(
+            "enable",
+            mapOf(
+                "configuration" to mapOf(
+                    "applicationId" to forge.aString(),
+                    "traceSampleRate" to 37.0
+                )
+            )
+        )
+
+        // WHEN
+        plugin.onMethodCall(methodCall, mock<MethodChannel.Result>())
+
+        // THEN
+        try {
+            verify { mockCore.registerFeature(match { it is TracingContextFeature }) }
+            verify { mockCore.updateFeatureContext(Feature.TRACING_FEATURE_NAME, true, any()) }
+        } finally {
+            unmockkStatic(Datadog::class)
         }
     }
 
