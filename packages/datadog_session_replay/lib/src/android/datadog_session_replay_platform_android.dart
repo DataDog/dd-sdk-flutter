@@ -49,6 +49,9 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
               viewServerTimeOffset: c.viewServerTimeOffset
                   ?.toDartInt(releaseOriginal: true)
                   .toDouble(),
+              sessionSampleRate: c.sessionSampleRate?.use(
+                (rate) => rate.doubleValue(),
+              ),
             ),
           );
           onContextChanged(context);

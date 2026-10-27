@@ -17,7 +17,9 @@ import com.datadog.android.api.feature.Feature
 import com.datadog.android.api.feature.FeatureScope
 import com.datadog.android.api.feature.FeatureSdkCore
 import com.datadog.android.api.feature.StorageBackedFeature
+import com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge
 import fr.xgouchet.elmyr.annotation.BoolForgery
+import fr.xgouchet.elmyr.annotation.FloatForgery
 import fr.xgouchet.elmyr.annotation.IntForgery
 import fr.xgouchet.elmyr.annotation.LongForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
@@ -86,6 +88,26 @@ internal class DefaultFlutterSessionReplayFeatureTest {
     }
 
     @Test
+    fun `M read the native session sample rate W RumContext(event)`(
+        @StringForgery sessionId: String,
+        @FloatForgery(min = 0f, max = 100f) sessionSampleRate: Float
+    ) {
+        // Given
+        val event = mapOf(
+            "session_id" to sessionId,
+            "session_sample_rate" to sessionSampleRate
+        )
+
+        // When
+        val rumContext = DefaultFlutterSessionReplayFeature.RumContext(event)
+
+        // Then
+        assertThat(rumContext.sessionSampleRate).isEqualTo(sessionSampleRate)
+        assertThat(FlutterSessionReplayBridge.RumContext(rumContext).sessionSampleRate)
+            .isEqualTo(sessionSampleRate.toDouble())
+    }
+
+    @Test
     fun `M set context W setHasReplay`(
         @StringForgery customEndpoint: String,
         @StringForgery viewId: String,
@@ -142,6 +164,8 @@ internal class DefaultFlutterSessionReplayFeatureTest {
         every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
             lambda<(MutableMap<String, Any?>) -> Unit>().invoke(context)
         }
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns null
+        feature.registerSessionReplayContext()
 
         // When
         feature.setReplayConfiguration(42.5, false)

@@ -69,6 +69,7 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
                     applicationId: context.applicationID.toDartString(),
                     sessionId: context.sessionID.toDartString(),
                     viewId: context.viewID?.toDartString(),
+                    sessionSampleRate: context.sessionSampleRate?.doubleValue,
                   ),
           );
         });

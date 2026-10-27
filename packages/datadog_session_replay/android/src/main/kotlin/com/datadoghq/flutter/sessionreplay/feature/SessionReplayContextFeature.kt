@@ -17,7 +17,7 @@ import com.datadog.android.api.storage.FeatureStorageConfiguration
 /**
  * Stands in for the native Session Replay feature under [Feature.SESSION_REPLAY_FEATURE_NAME] when
  * Flutter Session Replay runs standalone, so that the replay state Flutter publishes in that context
- * (`has_replay`, record counts) reaches RUM — the core drops updates to the context of an
+ * (`has_replay`, record counts, sample rate) reaches RUM — the core drops updates to the context of an
  * unregistered feature.
  *
  * Only registered when no native Session Replay is present.
@@ -36,6 +36,8 @@ internal class SessionReplayContextFeature(
         get() = delegate.storageConfiguration
 
     override fun onInitialize(appContext: Context) {
+        // RUM sends its session messages to the feature under this name; without a receiver the core
+        // logs that each of them went unhandled. Flutter gets the RUM session from the RUM context.
         sdkCore.setEventReceiver(name, this)
     }
 
