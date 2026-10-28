@@ -19,11 +19,19 @@ public func __datadog_session_replay_keep_symbols() {
     @objc public var sessionID: String
     @objc public var viewID: String?
     @objc public var applicationID: String
+    /// The RUM session sample rate native RUM applied to `sessionID`.
+    @objc public var sessionSampleRate: NSNumber?
 
-    internal init(sessionID: String, viewID: String?, applicationID: String) {
+    internal init(
+        sessionID: String,
+        viewID: String?,
+        applicationID: String,
+        sessionSampleRate: NSNumber? = nil
+    ) {
         self.sessionID = sessionID
         self.viewID = viewID
         self.applicationID = applicationID
+        self.sessionSampleRate = sessionSampleRate
         super.init()
     }
 
@@ -32,7 +40,8 @@ public func __datadog_session_replay_keep_symbols() {
         self.init(
             sessionID: context.sessionID,
             viewID: context.viewID,
-            applicationID: context.applicationID
+            applicationID: context.applicationID,
+            sessionSampleRate: NSNumber(value: context.sessionSampler.samplingRate)
         )
     }
 }
@@ -190,6 +199,20 @@ public func __datadog_session_replay_keep_symbols() {
             return
         }
         manager.feature?.setRecordCount(for: viewId, count: Int64(count))
+    }
+
+    /// Publishes the Session Replay configuration RUM reports on its view events
+    /// (`session_replay_sample_rate`, `start_session_replay_recording_manually`). Called by Dart
+    /// straight after `setEmbedded`. Standalone only, like `has_replay`: when embedded, the
+    /// native `SessionReplayFeature` publishes the host's own configuration.
+    @objc public func setReplayConfiguration(sampleRate: Double, startRecordingImmediately: Bool) {
+        guard publishesReplayState else {
+            return
+        }
+        manager.feature?.setReplayConfiguration(
+            sampleRate: Float(sampleRate),
+            startRecordingImmediately: startRecordingImmediately
+        )
     }
 
     /// Declares which recording path this engine writes to. Called once by Dart, straight after

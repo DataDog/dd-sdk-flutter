@@ -183,6 +183,10 @@ class TracingContext {
   final String? accountId;
   final bool sampled;
 
+  /// The trace sample rate [sampled] was decided with, when it differs from
+  /// [DatadogRum.traceSampleRate] (native tracing's rate).
+  final double? sampleRate;
+
   const TracingContext(
     this.traceId,
     this.spanId,
@@ -190,8 +194,9 @@ class TracingContext {
     this.rumSessionId,
     this.userId,
     this.accountId,
-    this.sampled,
-  );
+    this.sampled, {
+    this.sampleRate,
+  });
 }
 
 final Random _traceRandom = Random();
@@ -203,7 +208,8 @@ Map<String, Object?> generateDatadogAttributes(
   var attributes = <String, Object?>{};
 
   if (context != null) {
-    attributes[DatadogRumPlatformAttributeKey.rulePsr] = samplingRate / 100.0;
+    attributes[DatadogRumPlatformAttributeKey.rulePsr] =
+        (context.sampleRate ?? samplingRate) / 100.0;
     if (context.sampled) {
       attributes[DatadogRumPlatformAttributeKey.traceID] = context.traceId
           .asString(TracingIdRepresentation.hex32Chars);
@@ -324,7 +330,12 @@ TracingContext generateTracingContext(DatadogSdk sdk, DatadogRum rum) {
   final traceId = TracingId.traceId();
   final spanId = TracingId.spanId();
   final context = sdk.platform.getContext();
-  bool sampled = rum.shouldSampleTrace(context?.sessionId, traceId);
+  bool sampled = rum.shouldSampleTrace(
+    context?.sessionId,
+    traceId,
+    sessionSampleRate: context?.sessionSampleRate,
+    nativeTraceSampleRate: context?.traceSampleRate,
+  );
   return TracingContext(
     traceId,
     spanId,
@@ -333,5 +344,6 @@ TracingContext generateTracingContext(DatadogSdk sdk, DatadogRum rum) {
     context?.userId,
     context?.accountId,
     sampled,
+    sampleRate: context?.traceSampleRate,
   );
 }

@@ -40,8 +40,13 @@ Set<String> sampledSessions(double rumSampleRate, [double? childSampleRate]) {
 
 /// The context native sends for a session; the session ID doubles as the view
 /// ID so `has_replay` can be mapped back to its session.
-RUMContext sessionContext(String sessionId) =>
-    RUMContext(applicationId: 'app', sessionId: sessionId, viewId: sessionId);
+RUMContext sessionContext(String sessionId, {double? sessionSampleRate}) =>
+    RUMContext(
+      applicationId: 'app',
+      sessionId: sessionId,
+      viewId: sessionId,
+      sessionSampleRate: sessionSampleRate,
+    );
 
 /// What native sends when there is no sampled RUM session (iOS sends nil,
 /// which the iOS platform forwards as this; Android sends empty IDs).
@@ -116,10 +121,14 @@ void main() {
   ///
   /// Like native, only sessions RUM samples get their context delivered; the
   /// others get [noSessionContext].
+  ///
+  /// With [nativeRumSampleRate], native RUM samples sessions at that rate and
+  /// reports it in each context, while Dart is configured with [rumSampleRate].
   Future<Set<String>> recordedSessions({
     required double rumSampleRate,
     required double replaySampleRate,
     bool isEmbedded = false,
+    double? nativeRumSampleRate,
   }) async {
     final sessionReplay = await startSessionReplay(
       rumSampleRate: rumSampleRate,
@@ -127,12 +136,12 @@ void main() {
       isEmbedded: isEmbedded,
     );
 
-    final rumSampled = sampledSessions(rumSampleRate);
+    final rumSampled = sampledSessions(nativeRumSampleRate ?? rumSampleRate);
     final recorded = <String>{};
     for (final sessionId in sessionIds) {
       deliverRumContext!(
         rumSampled.contains(sessionId)
-            ? sessionContext(sessionId)
+            ? sessionContext(sessionId, sessionSampleRate: nativeRumSampleRate)
             : noSessionContext,
       );
       if (sessionReplay.isCapturing) recorded.add(sessionId);
@@ -187,6 +196,34 @@ void main() {
         });
       }
     }
+  });
+
+  group('RUM sessionSampleRate reported by the native SDK', () {
+    for (final replayRate in [10.0, 50.0, 100.0]) {
+      test('attached to native RUM at 50%, replay $replayRate% records the '
+          'sessions sampled at the combined rate', () async {
+        // Attached to an existing native instance, Dart has no RUM
+        // configuration, so its configured rate falls back to 100.
+        final recorded = await recordedSessions(
+          rumSampleRate: 100,
+          replaySampleRate: replayRate,
+          nativeRumSampleRate: 50,
+        );
+
+        expect(recorded, sampledSessions(50, replayRate));
+        expect(recorded.difference(sampledSessions(50)), isEmpty);
+      });
+    }
+
+    test('takes precedence over the configured rate', () async {
+      final recorded = await recordedSessions(
+        rumSampleRate: 10,
+        replaySampleRate: 50,
+        nativeRumSampleRate: 50,
+      );
+
+      expect(recorded, sampledSessions(50, 50));
+    });
   });
 
   group('session changes during a launch', () {

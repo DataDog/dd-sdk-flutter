@@ -29,6 +29,12 @@ class FlutterSessionReplayFeatureMock: FlutterSessionReplayFeature {
         recordCount[viewId] = count
     }
 
+    var replayConfiguration: (sampleRate: Float, startRecordingImmediately: Bool)?
+
+    func setReplayConfiguration(sampleRate: Float, startRecordingImmediately: Bool) {
+        replayConfiguration = (sampleRate, startRecordingImmediately)
+    }
+
     func writeSegment(segment: String) {
         writtenSegments.append(segment)
     }

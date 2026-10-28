@@ -115,6 +115,22 @@ class FlutterSessionReplayBridgeTests {
     }
 
     @Test
+    func contextChanges_carryTheSessionSampleRateNativeRUMApplied() throws {
+        // Given
+        var receivedContext: FlutterRUMCoreContext?
+        try enable { receivedContext = $0 }
+
+        // When
+        manager.broadcastContext(
+            .mockWith(sessionSampler: DeterministicSampler(seed: 0, samplingRate: 42))
+        )
+
+        // Then — Dart samples replay on this rate, not on its own configuration, which it
+        // doesn't have when attached to an existing native instance
+        #expect(receivedContext?.sessionSampleRate?.floatValue == 42)
+    }
+
+    @Test
     func enable_registersTheEngineForContextFanOut() throws {
         // Given
         var receivedContext: FlutterRUMCoreContext?
@@ -292,6 +308,46 @@ class FlutterSessionReplayBridgeTests {
 
         // Then — publishing would be a guess, and guessing wrong corrupts the native value
         #expect(feature.hasReplay == nil)
+    }
+
+    @Test
+    func setReplayConfiguration_whenStandalone_publishesToTheFeature() throws {
+        // Given
+        try enable()
+        bridge.setEmbedded(false)
+
+        // When
+        bridge.setReplayConfiguration(sampleRate: 25.0, startRecordingImmediately: false)
+
+        // Then
+        #expect(feature.replayConfiguration?.sampleRate == 25.0)
+        #expect(feature.replayConfiguration?.startRecordingImmediately == false)
+    }
+
+    @Test
+    func setReplayConfiguration_whenEmbedded_staysQuiet() throws {
+        // Given
+        try enable()
+        bridge.setEmbedded(true)
+
+        // When
+        bridge.setReplayConfiguration(sampleRate: 25.0, startRecordingImmediately: true)
+
+        // Then — the native SessionReplayFeature publishes the host's own configuration when
+        // embedded; publishing from here too would make the reported rate depend on write order
+        #expect(feature.replayConfiguration == nil)
+    }
+
+    @Test
+    func setReplayConfiguration_beforeTheEmbeddingIsKnown_staysQuiet() throws {
+        // Given
+        try enable()
+
+        // When
+        bridge.setReplayConfiguration(sampleRate: 25.0, startRecordingImmediately: true)
+
+        // Then
+        #expect(feature.replayConfiguration == nil)
     }
 
     @Test

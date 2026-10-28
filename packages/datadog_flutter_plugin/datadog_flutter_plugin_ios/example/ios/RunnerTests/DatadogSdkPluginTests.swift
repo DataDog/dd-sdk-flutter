@@ -922,3 +922,44 @@ class DatadogPluginDetachTests: XCTestCase {
         XCTAssertNotNil(pluginB.logs.methodChannel)
     }
 }
+
+class DatadogContextBridgeTests: XCTestCase {
+    override func tearDown() {
+        ContextMessageReceiver.shared.cachedContext = nil
+        super.tearDown()
+    }
+
+    func testCurrent_ExposesTheRumSessionSampleRate() {
+        // Given
+        ContextMessageReceiver.shared.cachedContext = .init(
+            sessionId: "session-id",
+            accountId: nil,
+            userId: nil,
+            sessionSampleRate: 42.5
+        )
+
+        // When
+        let bridge = DatadogContextBridge.current()
+
+        // Then - Dart rebases trace sampling onto this rate
+        XCTAssertEqual(bridge.sessionId, "session-id")
+        XCTAssertEqual(bridge.sessionSampleRate?.doubleValue, 42.5)
+    }
+
+    func testCurrent_WithoutARumSession_HasNoSessionSampleRate() {
+        // Given
+        ContextMessageReceiver.shared.cachedContext = .init(
+            sessionId: nil,
+            accountId: nil,
+            userId: "user-id",
+            sessionSampleRate: nil
+        )
+
+        // When
+        let bridge = DatadogContextBridge.current()
+
+        // Then
+        XCTAssertNil(bridge.sessionSampleRate)
+        XCTAssertEqual(bridge.userId, "user-id")
+    }
+}

@@ -11,11 +11,16 @@ class RUMContext {
   final String? viewId;
   final double? viewServerTimeOffset;
 
+  /// The RUM session sample rate the native SDK applied to [sessionId], when
+  /// the platform reports it.
+  final double? sessionSampleRate;
+
   const RUMContext({
     required this.applicationId,
     required this.sessionId,
     this.viewId,
     this.viewServerTimeOffset,
+    this.sessionSampleRate,
   });
 
   factory RUMContext.fromMap(Map<Object?, Object?> map) {
@@ -24,6 +29,7 @@ class RUMContext {
       sessionId: map['sessionId'] as String,
       viewId: map['viewId'] as String?,
       viewServerTimeOffset: map['viewServerTimeOffset'] as double?,
+      sessionSampleRate: (map['sessionSampleRate'] as num?)?.toDouble(),
     );
   }
 }

@@ -75,6 +75,11 @@ class DatadogRum {
   /// Samples traces at [traceSampleRate]. See [shouldSampleTrace]
   final DeterministicSampler _traceSampler;
 
+  /// The RUM session sample rate from the configuration, when Dart configured
+  /// RUM (not when attached to an existing native instance). Only a fallback:
+  /// [shouldSampleTrace] prefers the rate the native SDK reports.
+  final double? _sessionSampleRate;
+
   final TraceContextInjection traceContextInjection;
 
   /// The extractor for capturing HTTP request/response headers in RUM
@@ -109,6 +114,7 @@ class DatadogRum {
   DatadogRum.fromExisting(DatadogSdk core, DatadogAttachConfiguration config)
     : traceSampleRate = config.traceSampleRate,
       _traceSampler = DeterministicSampler(config.traceSampleRate),
+      _sessionSampleRate = null,
       traceContextInjection = config.traceContextInjection,
       resourceHeadersExtractor = config.trackResourceHeaders,
       logger = core.internalLogger {
@@ -126,6 +132,7 @@ class DatadogRum {
     this.traceContextInjection,
     this.resourceHeadersExtractor,
   ) : _traceSampler = DeterministicSampler(traceSampleRate),
+      _sessionSampleRate = null,
       logger = core.internalLogger {
     _init(
       core: core,
@@ -138,6 +145,7 @@ class DatadogRum {
   DatadogRum._(DatadogSdk core, DatadogRumConfiguration configuration)
     : traceSampleRate = configuration.traceSampleRate,
       _traceSampler = DeterministicSampler(configuration.traceSampleRate),
+      _sessionSampleRate = configuration.sessionSamplingRate,
       traceContextInjection = configuration.traceContextInjection,
       resourceHeadersExtractor = configuration.trackResourceHeaders,
       logger = core.internalLogger {
@@ -646,17 +654,37 @@ class DatadogRum {
   /// Uses the configured [DatadogRumConfiguration.traceSampleRate] to determine if
   /// a sample should be traced.
   ///
+  /// With a RUM session, the decision is deterministic on the session ID and
+  /// rebased onto the session: a session's traces are sampled at
+  /// [sessionSampleRate] x [traceSampleRate], as the iOS and Android SDKs do,
+  /// so traced sessions are always RUM sessions. [sessionSampleRate] is the
+  /// rate the native SDK reports, falling back to the configured one. Without a
+  /// session, the decision is deterministic on [traceId] at [traceSampleRate].
+  ///
+  /// [nativeTraceSampleRate], when native tracing reports one, replaces
+  /// [traceSampleRate], so that a session's traces are sampled at the single
+  /// rate RUM reports for it.
+  ///
   /// This is used by Datadog tracing plugins like `datadog_tracing_http_client`
   /// to add the proper headers to network requests.
-  bool shouldSampleTrace(String? sessionId, TracingId traceId) {
-    if (traceSampleRate >= 100) return true;
-    if (traceSampleRate <= 0) return false;
+  bool shouldSampleTrace(
+    String? sessionId,
+    TracingId traceId, {
+    double? sessionSampleRate,
+    double? nativeTraceSampleRate,
+  }) {
+    final traceRate = nativeTraceSampleRate ?? traceSampleRate;
+    if (traceRate <= 0) return false;
 
     if (sessionId != null) {
-      return _traceSampler.sampleUuid(sessionId);
+      return DeterministicSampler(
+        sessionSampleRate ?? _sessionSampleRate ?? 100.0,
+      ).combined(traceRate).sampleUuid(sessionId);
     }
 
-    return _traceSampler.sampleTrace(traceId);
+    return nativeTraceSampleRate == null
+        ? _traceSampler.sampleTrace(traceId)
+        : DeterministicSampler(nativeTraceSampleRate).sampleTrace(traceId);
   }
 
   @internal

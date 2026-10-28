@@ -228,3 +228,12 @@ extension SessionReplayExtension on DatadogConfiguration {
     addPlugin(DatadogSessionReplayPluginConfiguration(configuration: config));
   }
 }
+
+/// Enables Session Replay when attaching to a Datadog SDK the native app
+/// initialized, typically with [DatadogSessionReplayConfiguration.isEmbedded]
+/// in add-to-app.
+extension SessionReplayAttachExtension on DatadogAttachConfiguration {
+  void enableSessionReplay(DatadogSessionReplayConfiguration config) {
+    addPlugin(DatadogSessionReplayPluginConfiguration(configuration: config));
+  }
+}

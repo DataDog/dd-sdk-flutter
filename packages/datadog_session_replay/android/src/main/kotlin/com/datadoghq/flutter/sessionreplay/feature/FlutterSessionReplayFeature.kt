@@ -9,6 +9,7 @@ package com.datadoghq.flutter.sessionreplay.feature
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import com.datadog.android.api.InternalLogger
 import com.datadog.android.api.feature.Feature
 import com.datadog.android.api.feature.FeatureContextUpdateReceiver
 import com.datadog.android.api.feature.FeatureEventReceiver
@@ -27,8 +28,10 @@ import com.datadoghq.flutter.sessionreplay.resource.ResourceResolver
 import com.datadoghq.flutter.sessionreplay.resource.RoutedResourceWriter
 
 internal interface FlutterSessionReplayFeature : StorageBackedFeature {
+    fun registerSessionReplayContext()
     fun setHasReplay(viewId: String, hasReplay: Boolean)
     fun setRecordCount(viewId: String, recordCount: Int)
+    fun setReplayConfiguration(sampleRate: Double, startRecordingImmediately: Boolean)
     fun writeSegment(segment: String)
     fun readCurrentContext(): DefaultFlutterSessionReplayFeature.RumContext?
 
@@ -49,17 +52,22 @@ internal class DefaultFlutterSessionReplayFeature(
         val applicationId: String?,
         val sessionId: String?,
         val viewId: String?,
-        val viewServerTimeOffset: Long?
+        val viewServerTimeOffset: Long?,
+        val sessionSampleRate: Float? = null
     ) {
         constructor(event: Map<String, Any?>) : this(
             applicationId = event[APPLICATION_ID_KEY] as? String,
             sessionId = event[SESSION_ID_KEY] as? String,
             viewId = event[VIEW_ID_KEY] as? String,
-            viewServerTimeOffset = event[VIEW_SERVER_TIME_OFFSET_KEY] as? Long
+            viewServerTimeOffset = event[VIEW_SERVER_TIME_OFFSET_KEY] as? Long,
+            sessionSampleRate = (event[SESSION_SAMPLE_RATE_KEY] as? Number)?.toFloat()
         )
     }
 
     override lateinit var resourceResolver: ResourceResolver
+
+    @Volatile
+    private var ownsSessionReplayContext = false
 
     override val name = FLUTTER_SESSION_REPLAY_FEATURE_NAME
     override val storageConfiguration = STORAGE_CONFIGURATION
@@ -127,11 +135,41 @@ internal class DefaultFlutterSessionReplayFeature(
         }
     }
 
-    // Both of these stay on [Feature.SESSION_REPLAY_FEATURE_NAME], unlike the registration above:
-    // that context is where RUM reads `has_replay` and the record counts from, regardless of which
-    // feature wrote them. Only the standalone path reaches here, so there is no native Session
-    // Replay to contend with — see `FlutterSessionReplayBridge.setHasReplay`/`setRecordCount`.
+    /**
+     * Registers a [SessionReplayContextFeature] under [Feature.SESSION_REPLAY_FEATURE_NAME], unless
+     * a feature is already registered under that name. Called once the engine is known to run
+     * standalone; until then, replay state is held back by `FlutterSessionReplayBridge`.
+     *
+     * When the native Session Replay holds the name, the app is hybrid even though Flutter Session
+     * Replay was configured as standalone: the native one owns that context, so nothing is published.
+     */
+    override fun registerSessionReplayContext() {
+        synchronized(this) {
+            val registered = sdkCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME)
+            ownsSessionReplayContext = when {
+                registered == null -> {
+                    sdkCore.registerFeature(SessionReplayContextFeature(sdkCore, this))
+                    true
+                }
+                registered.unwrap<Feature>() is SessionReplayContextFeature -> true
+                else -> {
+                    sdkCore.internalLogger.log(
+                        InternalLogger.Level.WARN,
+                        InternalLogger.Target.USER,
+                        { NATIVE_SESSION_REPLAY_PRESENT_WARNING }
+                    )
+                    false
+                }
+            }
+        }
+    }
+
+    // All of these write to [Feature.SESSION_REPLAY_FEATURE_NAME], unlike the registration above:
+    // that context is where RUM reads `has_replay`, the record counts and the sample rate from,
+    // regardless of which feature wrote them. Only the standalone path reaches here, and only once
+    // [registerSessionReplayContext] registered the feature owning that context.
     override fun setHasReplay(viewId: String, hasReplay: Boolean) {
+        if (!ownsSessionReplayContext) return
         sdkCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME) {
             @Suppress("UNCHECKED_CAST")
             val viewMetadata: MutableMap<String, Any?> =
@@ -142,13 +180,25 @@ internal class DefaultFlutterSessionReplayFeature(
     }
 
     override fun setRecordCount(viewId: String, recordCount: Int) {
+        if (!ownsSessionReplayContext) return
         sdkCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME) {
             @Suppress("UNCHECKED_CAST")
             val viewMetadata: MutableMap<String, Any?> =
                 (it[viewId] as? MutableMap<String, Any?>) ?: mutableMapOf()
             viewMetadata[HAS_REPLAY_KEY] = true
-            viewMetadata[VIEW_RECORDS_COUNT_KEY] = recordCount
+            // RUM reads the count as a Long, and treats any other type as no records.
+            viewMetadata[VIEW_RECORDS_COUNT_KEY] = recordCount.toLong()
             it[viewId] = viewMetadata
+        }
+    }
+
+    // Same keys and types as the native Session Replay; RUM reads the sample rate for
+    // `_dd.configuration.session_replay_sample_rate` on view events.
+    override fun setReplayConfiguration(sampleRate: Double, startRecordingImmediately: Boolean) {
+        if (!ownsSessionReplayContext) return
+        sdkCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME) {
+            it[SESSION_REPLAY_SAMPLE_RATE_KEY] = sampleRate.toLong()
+            it[SESSION_REPLAY_START_IMMEDIATE_RECORDING_KEY] = startRecordingImmediately
         }
     }
 
@@ -194,12 +244,20 @@ internal class DefaultFlutterSessionReplayFeature(
                 maxBatchSize = 10 * 1024 * 1024
             )
 
+        internal const val NATIVE_SESSION_REPLAY_PRESENT_WARNING =
+            "Flutter Session Replay is configured as standalone, but the native Session Replay is " +
+                "enabled. Flutter Session Replay will not report replay state to RUM; configure it " +
+                "as embedded in hybrid apps."
+
         const val HAS_REPLAY_KEY = "has_replay"
+        const val SESSION_REPLAY_SAMPLE_RATE_KEY = "session_replay_sample_rate"
+        const val SESSION_REPLAY_START_IMMEDIATE_RECORDING_KEY = "session_replay_start_immediate_recording"
         const val VIEW_RECORDS_COUNT_KEY = "records_count"
 
         const val APPLICATION_ID_KEY = "application_id"
         const val SESSION_ID_KEY = "session_id"
         const val VIEW_ID_KEY = "view_id"
         const val VIEW_SERVER_TIME_OFFSET_KEY = "view_timestamp_offset"
+        const val SESSION_SAMPLE_RATE_KEY = "session_sample_rate"
     }
 }

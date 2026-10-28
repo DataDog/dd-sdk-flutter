@@ -111,6 +111,15 @@ extension FlutterRUMCoreContext$Methods on FlutterRUMCoreContext {
     return objc.NSString.fromPointer($ret, retain: true, release: true);
   }
 
+  /// The RUM session sample rate native RUM applied to <code>sessionID</code>.
+  objc.NSNumber? get sessionSampleRate {
+    final _$$ref = object$.ref;
+    final $ret = _objc_msgSend_151sglz(_$$ref.pointer, _sel_sessionSampleRate);
+    return $ret.address == 0
+        ? null
+        : objc.NSNumber.fromPointer($ret, retain: true, release: true);
+  }
+
   /// setApplicationID:
   set applicationID(objc.NSString value) {
     final _$$ref = object$.ref;
@@ -127,6 +136,17 @@ extension FlutterRUMCoreContext$Methods on FlutterRUMCoreContext {
     final _$$ref = object$.ref;
     final _$$ref$1 = value.ref;
     _objc_msgSend_xtuoz7(_$$ref.pointer, _sel_setSessionID_, _$$ref$1.pointer);
+  }
+
+  /// The RUM session sample rate native RUM applied to <code>sessionID</code>.
+  set sessionSampleRate(objc.NSNumber? value) {
+    final _$$ref = object$.ref;
+    final _$$ref$1 = value?.ref;
+    _objc_msgSend_xtuoz7(
+      _$$ref.pointer,
+      _sel_setSessionSampleRate_,
+      _$$ref$1?.pointer ?? ffi.nullptr,
+    );
   }
 
   /// setViewID:
@@ -150,7 +170,11 @@ extension FlutterRUMCoreContext$Methods on FlutterRUMCoreContext {
   }
 }
 
-/// FlutterSessionReplay
+/// The Session Replay bridge for a single Flutter engine.
+/// One instance exists per engine. It owns only per-engine state — this engine’s Dart
+/// RUM-context callback and the routing of this engine’s records — and delegates
+/// everything shared (the feature, the core, the engine registry, host slot IDs) to
+/// <code>FlutterSessionReplayManager</code>.
 extension type FlutterSessionReplay._(objc.ObjCObject object$)
     implements objc.ObjCObject, objc.NSObject {
   /// Constructs a [FlutterSessionReplay] that points to the same underlying object as [other].
@@ -210,7 +234,11 @@ extension FlutterSessionReplay$Methods on FlutterSessionReplay {
     _objc_msgSend_xtuoz7(_$$ref.pointer, _sel_enableWith_, _$$ref$1.pointer);
   }
 
-  /// engineToken
+  /// Identifies this bridge to its own engine.
+  /// The FFI <code>enable()</code> call cannot tell which engine invoked it, and this bridge never sees a
+  /// messenger. Dart reads this token after construction and passes it to the plugin instance
+  /// for its engine over the engine method channel, which is the one place the messenger <em>is</em>
+  /// known — letting the manager pair the two. See <code>FlutterSessionReplayManager.bind(engineToken:to:)</code>.
   objc.NSString get engineToken {
     final _$$ref = object$.ref;
     final $ret = _objc_msgSend_151sglz(_$$ref.pointer, _sel_engineToken);
@@ -299,7 +327,8 @@ extension FlutterSessionReplay$Methods on FlutterSessionReplay {
     );
   }
 
-  /// setEmbedded:
+  /// Declares which recording path this engine writes to. Called once by Dart, straight after
+  /// <code>enable()</code>, from the <code>isEmbedded</code> it was configured with.
   void setEmbedded(bool isEmbedded) {
     final _$$ref = object$.ref;
     _objc_msgSend_1s56lr9(_$$ref.pointer, _sel_setEmbedded_, isEmbedded);
@@ -324,6 +353,23 @@ extension FlutterSessionReplay$Methods on FlutterSessionReplay {
       _sel_setRecordCountFor_count_,
       _$$ref$1.pointer,
       count,
+    );
+  }
+
+  /// Publishes the Session Replay configuration RUM reports on its view events
+  /// (<code>session_replay_sample_rate</code>, <code>start_session_replay_recording_manually</code>). Called by Dart
+  /// straight after <code>setEmbedded</code>. Standalone only, like <code>has_replay</code>: when embedded, the
+  /// native <code>SessionReplayFeature</code> publishes the host’s own configuration.
+  void setReplayConfigurationWithSampleRate(
+    double sampleRate, {
+    required bool startRecordingImmediately,
+  }) {
+    final _$$ref = object$.ref;
+    _objc_msgSend_ghxo7e(
+      _$$ref.pointer,
+      _sel_setReplayConfigurationWithSampleRate_startRecordingImmediately_,
+      sampleRate,
+      startRecordingImmediately,
     );
   }
 
@@ -803,6 +849,25 @@ final _objc_msgSend_g5idq5 = objc.msgSendPointer
         ffi.Pointer<objc.ObjCObjectImpl>,
       )
     >();
+final _objc_msgSend_ghxo7e = objc.msgSendPointer
+    .cast<
+      ffi.NativeFunction<
+        ffi.Void Function(
+          ffi.Pointer<objc.ObjCObjectImpl>,
+          ffi.Pointer<objc.ObjCSelector>,
+          ffi.Double,
+          ffi.Bool,
+        )
+      >
+    >()
+    .asFunction<
+      void Function(
+        ffi.Pointer<objc.ObjCObjectImpl>,
+        ffi.Pointer<objc.ObjCSelector>,
+        double,
+        bool,
+      )
+    >();
 final _objc_msgSend_pfv6jd = objc.msgSendPointer
     .cast<
       ffi.NativeFunction<
@@ -918,6 +983,7 @@ late final _sel_resourceIdForKey_ = objc.registerName("resourceIdForKey:");
 late final _sel_saveImageForProcessingWithResourceKey_width_height_data_ = objc
     .registerName("saveImageForProcessingWithResourceKey:width:height:data:");
 late final _sel_sessionID = objc.registerName("sessionID");
+late final _sel_sessionSampleRate = objc.registerName("sessionSampleRate");
 late final _sel_setApplicationID_ = objc.registerName("setApplicationID:");
 late final _sel_setCustomEndpoint_ = objc.registerName("setCustomEndpoint:");
 late final _sel_setEmbedded_ = objc.registerName("setEmbedded:");
@@ -927,7 +993,14 @@ late final _sel_setHasReplayWithHasReplay_ = objc.registerName(
 late final _sel_setRecordCountFor_count_ = objc.registerName(
   "setRecordCountFor:count:",
 );
+late final _sel_setReplayConfigurationWithSampleRate_startRecordingImmediately_ =
+    objc.registerName(
+      "setReplayConfigurationWithSampleRate:startRecordingImmediately:",
+    );
 late final _sel_setSessionID_ = objc.registerName("setSessionID:");
+late final _sel_setSessionSampleRate_ = objc.registerName(
+  "setSessionSampleRate:",
+);
 late final _sel_setViewID_ = objc.registerName("setViewID:");
 late final _sel_viewID = objc.registerName("viewID");
 late final _sel_writeSegmentWithSegment_ = objc.registerName(
