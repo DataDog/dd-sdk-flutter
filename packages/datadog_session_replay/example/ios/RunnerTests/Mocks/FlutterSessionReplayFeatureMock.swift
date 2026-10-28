@@ -21,6 +21,12 @@ class FlutterSessionReplayFeatureMock: FlutterSessionReplayFeature {
         completion(currentContext)
     }
 
+    var registerSessionReplayContextCalls = 0
+
+    func registerSessionReplayContext() {
+        registerSessionReplayContextCalls += 1
+    }
+
     func setHasReplay(_ hasReplay: Bool) {
         self.hasReplay = hasReplay
     }

@@ -18,6 +18,7 @@ func setsReplayBaggage_WhenSetHasReplay() throws {
         configuration: config,
         resourceResolver: ResourceResolverMock()
     )
+    feature.registerSessionReplayContext()
 
     // When
     let expectedValue: Bool = .mockRandom()
@@ -38,6 +39,7 @@ func setsBaggage_WhenSetRecordCount() throws {
         configuration: config,
         resourceResolver: ResourceResolverMock()
     )
+    feature.registerSessionReplayContext()
     // When
     let viewId: String = .mockRandom()
     let expectedCount: Int64 = .mockRandom()
@@ -59,6 +61,7 @@ func setsBaggage_WhenSetRecordCount_MultipleViews() throws {
         configuration: config,
         resourceResolver: ResourceResolverMock()
     )
+    feature.registerSessionReplayContext()
     // When
     let viewIdA: String = .mockRandom()
     let viewIdB: String = .mockRandom()
@@ -73,4 +76,51 @@ func setsBaggage_WhenSetRecordCount_MultipleViews() throws {
     #expect(valueA == expectedCountA)
     let valueB = baggage?.value[viewIdB] as? Int64
     #expect(valueB == expectedCountB)
+}
+
+@Test
+func registersTheSessionReplayContext_WhenNoSessionReplayIsRegistered() throws {
+    // Given
+    let core = PassthroughCoreMock()
+    let feature = try DefaultFlutterSessionReplayFeature(
+        core: core,
+        configuration: .init(),
+        resourceResolver: ResourceResolverMock()
+    )
+
+    // When
+    feature.registerSessionReplayContext()
+
+    // Then
+    let registered = core.feature(named: Feature.sessionReplay, type: SessionReplayContextFeature.self)
+    #expect(registered != nil)
+}
+
+@Test
+func publishesNothing_WhenNativeSessionReplayIsRegistered() throws {
+    // Given - a hybrid app configured as standalone
+    let core = PassthroughCoreMock()
+    try core.register(feature: NativeSessionReplayFeatureMock())
+    let feature = try DefaultFlutterSessionReplayFeature(
+        core: core,
+        configuration: .init(),
+        resourceResolver: ResourceResolverMock()
+    )
+
+    // When
+    feature.registerSessionReplayContext()
+    feature.setHasReplay(true)
+    feature.setRecordCount(for: "view-id", count: 1)
+
+    // Then - the native Session Replay owns the replay state
+    #expect(core.feature(named: Feature.sessionReplay, type: SessionReplayContextFeature.self) == nil)
+    #expect(core.context.additionalContext(ofType: SessionReplayCoreContext.HasReplay.self) == nil)
+    #expect(core.context.additionalContext(ofType: SessionReplayCoreContext.RecordsCount.self) == nil)
+}
+
+private final class NativeSessionReplayFeatureMock: DatadogFeature, SessionReplayConfiguration {
+    let messageReceiver: FeatureMessageReceiver = NOPFeatureMessageReceiver()
+    let textAndInputPrivacyLevel: TextAndInputPrivacyLevel = .maskAll
+    let imagePrivacyLevel: ImagePrivacyLevel = .maskAll
+    let touchPrivacyLevel: TouchPrivacyLevel = .hide
 }

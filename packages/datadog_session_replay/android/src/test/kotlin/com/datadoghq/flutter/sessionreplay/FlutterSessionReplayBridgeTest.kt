@@ -26,6 +26,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import java.nio.ByteBuffer
 import kotlin.test.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -347,6 +348,36 @@ internal class FlutterSessionReplayBridgeTest {
 
         // Then - publishing would be a guess, and guessing wrong corrupts the native value
         verify(exactly = 0) { mockFeature.setHasReplay(any(), any()) }
+    }
+
+    @Test
+    fun `M register the session replay context before publishing W setEmbedded false`(
+        @StringForgery viewId: String
+    ) {
+        // Given
+        enable()
+        bridge.setHasReplay(viewId, true)
+
+        // When
+        bridge.setEmbedded(false)
+
+        // Then
+        verifyOrder {
+            mockFeature.registerSessionReplayContext()
+            mockFeature.setHasReplay(viewId, true)
+        }
+    }
+
+    @Test
+    fun `M not register the session replay context W setEmbedded true`() {
+        // Given
+        enable()
+
+        // When
+        bridge.setEmbedded(true)
+
+        // Then
+        verify(exactly = 0) { mockFeature.registerSessionReplayContext() }
     }
 
     @Test

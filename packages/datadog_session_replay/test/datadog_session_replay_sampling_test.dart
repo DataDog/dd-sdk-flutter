@@ -189,6 +189,68 @@ void main() {
     }
   });
 
+  group('has_replay follows recording', () {
+    RUMContext viewContext(String sessionId, String viewId) =>
+        RUMContext(applicationId: 'app', sessionId: sessionId, viewId: viewId);
+
+    test(
+      'a sampled view is not marked while recording is not requested',
+      () async {
+        await DatadogSessionReplay.init(
+          DatadogSessionReplayConfiguration(
+            replaySampleRate: 100,
+            startRecordingImmediately: false,
+          ),
+          MockInternalLogger(),
+          rumSampleRate: 100,
+        );
+
+        deliverRumContext!(sessionContext(sessionIds.first));
+
+        expect(viewsWithReplay, isEmpty);
+      },
+    );
+
+    test('a view opened after stopRecording() is not marked', () async {
+      final sessionReplay = await startSessionReplay(
+        rumSampleRate: 100,
+        replaySampleRate: 100,
+      );
+      deliverRumContext!(viewContext(sessionIds.first, 'first-view'));
+
+      sessionReplay.stopRecording();
+      deliverRumContext!(viewContext(sessionIds.first, 'second-view'));
+
+      expect(viewsWithReplay, {'first-view'});
+    });
+
+    test(
+      'stopRecording() publishes that the view is no longer recorded',
+      () async {
+        final sessionReplay = await startSessionReplay(
+          rumSampleRate: 100,
+          replaySampleRate: 100,
+        );
+        deliverRumContext!(viewContext(sessionIds.first, 'stopped-view'));
+
+        sessionReplay.stopRecording();
+
+        verify(
+          () => mockPlatform.setHasReplay('stopped-view', false),
+        ).called(1);
+      },
+    );
+
+    test('a view reached while recording is marked', () async {
+      await startSessionReplay(rumSampleRate: 100, replaySampleRate: 100);
+      deliverRumContext!(viewContext(sessionIds.first, 'first-view'));
+
+      deliverRumContext!(viewContext(sessionIds.first, 'second-view'));
+
+      expect(viewsWithReplay, {'first-view', 'second-view'});
+    });
+  });
+
   group('session changes during a launch', () {
     // Sessions picked by the same sampler: one sampled at RUM 50% x replay
     // 50%, one that RUM samples but replay doesn't.
