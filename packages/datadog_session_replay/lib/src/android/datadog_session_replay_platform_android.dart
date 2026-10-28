@@ -81,7 +81,9 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
 
   @override
   FutureOr<void> setHasReplay(String viewId, bool hasReplay) {
-    _bridge.setHasReplay(viewId.toJString(), hasReplay);
+    if (hasReplay && viewId.isNotEmpty) {
+      _bridge.setHasReplay(viewId.toJString(), hasReplay);
+    }
   }
 
   @override

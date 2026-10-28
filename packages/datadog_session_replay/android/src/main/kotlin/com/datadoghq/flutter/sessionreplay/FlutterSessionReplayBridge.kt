@@ -276,6 +276,9 @@ internal class FlutterSessionReplayBridge private constructor(
             }
         }
 
+        if (!isEmbedded) {
+            manager.feature?.registerSessionReplayContext()
+        }
         hasReplay?.let { (viewId, value) -> manager.feature?.setHasReplay(viewId, value) }
         recordCount?.let { (viewId, value) -> manager.feature?.setRecordCount(viewId, value) }
 

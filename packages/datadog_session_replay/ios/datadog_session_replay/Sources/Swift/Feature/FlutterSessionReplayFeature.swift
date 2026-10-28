@@ -19,6 +19,7 @@ protocol FlutterSessionReplayFeature {
     }
 
     func readCurrentContext(_ completion: @escaping (RUMCoreContext?) -> Void)
+    func registerSessionReplayContext()
     func setHasReplay(_ hasReplay: Bool)
     func setRecordCount(for viewId: String, count: Int64)
     func writeSegment(segment: String)
@@ -50,6 +51,8 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
     }
 
     private var core: DatadogCoreProtocol?
+    private let sessionReplayContextLock = NSLock()
+    private var ownsSessionReplayContext = false
     private var featureScope: FeatureScope?
 
     let performanceOverride: DatadogInternal.PerformancePresetOverride?
@@ -105,6 +108,16 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
     /// enables, so without an explicit read the engine never receives the initial context
     /// and `viewId` stays nil — deferring the first full snapshot until the next change.
     ///
+    static let nativeSessionReplayPresentWarning =
+        "Flutter Session Replay is configured as standalone, but the native Session Replay is enabled. " +
+        "Flutter Session Replay will not report replay state to RUM; configure it as embedded in hybrid apps."
+
+    private var isOwningSessionReplayContext: Bool {
+        sessionReplayContextLock.lock()
+        defer { sessionReplayContextLock.unlock() }
+        return ownsSessionReplayContext
+    }
+
     /// Call this once right after a Flutter engine enables to prime it immediately.
     func readCurrentContext(_ completion: @escaping (RUMCoreContext?) -> Void) {
         featureScope?.context { context in
@@ -112,11 +125,47 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
         }
     }
 
+    /// Registers a `SessionReplayContextFeature` under the native Session Replay name, unless a
+    /// feature already holds it. Called once the engine is known to run standalone; until then,
+    /// `FlutterSessionReplayBridge` holds replay state back.
+    ///
+    /// When the native Session Replay holds the name, the app is hybrid even though Flutter Session
+    /// Replay was configured as standalone: the native one owns the replay state, so nothing is
+    /// published.
+    func registerSessionReplayContext() {
+        sessionReplayContextLock.lock()
+        defer { sessionReplayContextLock.unlock() }
+        guard let core = core else {
+            return
+        }
+        let name = SessionReplayContextFeature.name
+        if core.feature(named: name, type: SessionReplayContextFeature.self) != nil {
+            ownsSessionReplayContext = true
+        } else if core.feature(named: name, type: SessionReplayConfiguration.self) != nil {
+            ownsSessionReplayContext = false
+            consolePrint(Self.nativeSessionReplayPresentWarning, .warn)
+        } else {
+            do {
+                try core.register(feature: SessionReplayContextFeature())
+                ownsSessionReplayContext = true
+            } catch {
+                ownsSessionReplayContext = false
+                consolePrint("Failed to register the Session Replay context: \(error)", .error)
+            }
+        }
+    }
+
     func setHasReplay(_ hasReplay: Bool) {
+        guard isOwningSessionReplayContext else {
+            return
+        }
         core?.set(context: SessionReplayCoreContext.HasReplay(value: hasReplay))
     }
 
     func setRecordCount(for viewId: String, count: Int64) {
+        guard isOwningSessionReplayContext else {
+            return
+        }
         recordCountByViewId[viewId] = count
         core?.set(context: SessionReplayCoreContext.RecordsCount(value: recordCountByViewId))
     }

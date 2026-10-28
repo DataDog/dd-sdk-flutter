@@ -196,6 +196,9 @@ public func __datadog_session_replay_keep_symbols() {
     /// `enable()`, from the `isEmbedded` it was configured with.
     @objc public func setEmbedded(_ isEmbedded: Bool) {
         embeddingState = isEmbedded ? .embedded : .standalone
+        if !isEmbedded {
+            manager.feature?.registerSessionReplayContext()
+        }
         flushPendingSegments()
     }
 

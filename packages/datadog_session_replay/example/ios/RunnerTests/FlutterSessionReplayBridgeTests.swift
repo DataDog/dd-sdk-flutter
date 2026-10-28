@@ -144,6 +144,30 @@ class FlutterSessionReplayBridgeTests {
     }
 
     @Test
+    func setEmbedded_whenStandalone_registersTheSessionReplayContext() throws {
+        // Given
+        try enable()
+
+        // When
+        bridge.setEmbedded(false)
+
+        // Then
+        #expect(feature.registerSessionReplayContextCalls == 1)
+    }
+
+    @Test
+    func setEmbedded_whenEmbedded_doesNotRegisterTheSessionReplayContext() throws {
+        // Given
+        try enable()
+
+        // When
+        bridge.setEmbedded(true)
+
+        // Then
+        #expect(feature.registerSessionReplayContextCalls == 0)
+    }
+
+    @Test
     func setEmbedded_whenStandalone_flushesBufferedSegmentsToTheFeature() throws {
         // Given
         try enable()
