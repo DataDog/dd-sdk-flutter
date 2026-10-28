@@ -157,8 +157,8 @@ Test style:
   each failure is reported separately.
 * Use [mocktail](https://pub.dev/packages/mocktail) for fakes and mocks.
 * Packages that support Web / WASM should have tests that run there.
-* Do not unit test example apps, and do not depend on VM internals such as forcing
-  garbage collection.
+* Do not add unit tests for example apps, and do not depend on VM internals such as
+  forcing garbage collection.
 * Tests that send events to Datadog intake can affect billing. Get a maintainer's
   sign-off before adding one.
 

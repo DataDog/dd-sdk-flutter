@@ -22,10 +22,11 @@
 
 ## JSON
 
-- Use `json_serializable` (`dart run build_runner build`) for JSON models. Do not
-  hand-write `fromJson` / `toJson` or index into nested `Map`s. See
-  `datadog_flutter_plugin_platform_interface/lib/src/rum/ddrum_events.dart` and
-  `datadog_flags` for examples.
+- Prefer `json_serializable` (`dart run build_runner build`) for JSON models over
+  hand-written `fromJson` / `toJson` or indexing into nested `Map`s. Use `@JsonKey`
+  converters for fields that need custom handling. See
+  `datadog_flutter_plugin_platform_interface/lib/src/rum/ddrum_events.dart` for an example.
+- Do not rewrite existing serialization only to convert it.
 - Re-running `build_runner` must leave no diff.
 
 ## Client SDK behavior
@@ -41,7 +42,8 @@
 - A package `README.md` is public, customer-facing documentation. Do not put contributor
   instructions, validation notes, or implementation detail in it. Contributor content goes
   in `CONTRIBUTING.md`; API detail goes in dartdoc, linking symbols with `[name]`.
-- Comments say briefly what the code does. Do not describe what it doesn't do.
+- Comments say briefly what the code does. Do not describe what it doesn't do, unless a
+  caller would reasonably expect it to.
 - Comments and docs describe how the code currently works, not how it changed or what it
   replaced. Do not write "previously X, now Y", "no longer does X", "instead of X", or
   similar history. Mention an alternative approach only to justify a deliberate deviation
@@ -60,8 +62,8 @@
 - Declare shared fixtures inside `main` or the `group`, not at file scope.
 - Use `mocktail` for fakes and mocks. Do not add helpers whose only job is to return a
   prebuilt object.
-- Do not test the compiler (enum values, constructors), the examples, or use VM-internal
-  APIs such as forcing GC.
+- Do not add tests for the compiler (enum values, constructors) or for example apps, and
+  do not use VM-internal APIs such as forcing GC.
 - Locate fixture files without relying on the working directory
   (`Isolate.resolvePackageUri`).
 - Packages that support Web / WASM need tests that run there. Avoid `@TestOn('vm')`
@@ -69,7 +71,8 @@
 - Integration tests live in the owning package, in its `example/` or its own
   `integration_test_app/`, using `datadog_common_test`. Do not add them to
   `datadog_flutter_plugin/integration_test_app`, which only tests the core plugin.
-- Do not send real events to intake from tests; it affects billing.
+- Do not add tests that send real events to intake without maintainer sign-off; it
+  affects billing.
 
 ## Tooling
 
