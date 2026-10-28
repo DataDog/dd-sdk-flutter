@@ -42,9 +42,6 @@ InAppWebView(
 
 ### InAppBrowser
 
-> [!WARNING]
-> `InAppBrowser` is not tracked on Android 33+ because of [this bug](https://github.com/pichillilorenzo/flutter_inappwebview/issues/1973). This will be fixed by plugin versions that depends on `flutter_inappwebview 6.2.0`.
-
 To instrument an `InAppBrowser`, add an override for `onBrowserCreated` and call the `trackDatadogEvents` extension method on `webViewController`, then add a `DatadogInAppWebViewUserScript` to the `initialUserScripts` when creating your custom `InAppBrowser`:
 
 ```dart
