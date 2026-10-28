@@ -4,8 +4,10 @@
 
 import Foundation
 import Flutter
+import WebKit
 import XCTest
 @testable import datadog_webview_tracking
+@testable import webview_flutter_wkwebview
 
 enum ResultStatus: EquatableInTests {
     case notCalled
@@ -73,12 +75,39 @@ class FlutterSdkTests: XCTestCase {
 
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
+
+    func testInitWebView_WithKnownWebView_ReturnsItsSlotId() {
+        // Given — a WebView `webview_flutter` created and filed under identifier 7
+        let registrar = MockFlutterPluginRegistrar()
+        WebViewFlutterPlugin.register(with: registrar)
+        let webViewPlugin = registrar.publishedValue as? WebViewFlutterPlugin
+        let webView = WKWebView(frame: .zero)
+        webViewPlugin?.proxyApiRegistrar?.instanceManager.addDartCreatedInstance(webView, withIdentifier: 7)
+
+        let plugin = DatadogWebViewTrackingPlugin(registrar: registrar, channel: .init())
+        let call = FlutterMethodCall(methodName: "initWebView", arguments: [
+            "webViewIdentifier": 7,
+            "allowedHosts": []
+        ])
+
+        // When
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call, result: { result in
+            resultStatus = .called(value: result)
+        })
+
+        // Then — the slot ID native WebView tracking stamps on this WebView's replay records
+        XCTAssertEqual(resultStatus, .called(value: String(webView.hash)))
+    }
 }
 
 class MockFlutterPluginRegistrar: NSObject, FlutterPluginRegistrar {
     var viewController: UIViewController?
+    var publishedValue: NSObject?
 
-    func publish(_ value: NSObject) {}
+    func publish(_ value: NSObject) {
+        publishedValue = value
+    }
 
     func addMethodCallDelegate(_ delegate: any FlutterPlugin, channel: FlutterMethodChannel) {}
 
@@ -95,7 +124,7 @@ class MockFlutterPluginRegistrar: NSObject, FlutterPluginRegistrar {
     }
 
     func valuePublished(byPlugin pluginKey: String) -> NSObject? {
-        return nil
+        return publishedValue
     }
 
     func messenger() -> any FlutterBinaryMessenger {

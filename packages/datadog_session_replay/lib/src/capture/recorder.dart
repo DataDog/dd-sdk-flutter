@@ -28,6 +28,7 @@ import 'element_recorders/material_widgets/slider_recorder.dart';
 import 'element_recorders/material_widgets/switch_recorder.dart';
 import 'element_recorders/privacy_recorder.dart';
 import 'element_recorders/text_recorder.dart';
+import 'element_recorders/webview_recorder.dart';
 import 'pointer_capture.dart';
 import 'view_tree_snapshot.dart';
 
@@ -106,6 +107,7 @@ class KeyGenerator {
 
   final Expando<Map<int, int>> _nodeIdExpando = Expando('sr-key');
   final Expando<int> _resourceIdExpando = Expando('sr-resource-key');
+  final Map<String, int> _webViewSlotKeys = {};
 
   int keyForElement(Element e, {int wireframeId = 0}) {
     var wireFrames = _nodeIdExpando[e];
@@ -117,10 +119,20 @@ class KeyGenerator {
     final existing = wireFrames[wireframeId];
     if (existing != null) return existing;
 
+    final value = _nextKey();
+    wireFrames[wireframeId] = value;
+    return value;
+  }
+
+  /// A key tied to a WebView slot rather than an element, so the wireframe
+  /// keeps its ID when the WebView leaves the tree and is recorded as hidden.
+  int keyForWebViewSlot(String slotId) =>
+      _webViewSlotKeys.putIfAbsent(slotId, _nextKey);
+
+  int _nextKey() {
     final value = _nextElementKey;
     _nextElementKey = _nextElementKey + 1;
     if (_nextElementKey >= maxKey) _nextElementKey = 0;
-    wireFrames[wireframeId] = value;
     return value;
   }
 
@@ -160,6 +172,7 @@ class CaptureResult {
 class SessionReplayRecorder {
   final DatadogTimeProvider _timeProvider;
   final List<ElementRecorder> _elementRecorders = [];
+  final WebViewSlotTracker _webViewSlotTracker;
 
   final Map<Key, Element> _elements = {};
   RUMContext? _currentContext;
@@ -197,7 +210,7 @@ class SessionReplayRecorder {
     this._touchPrivacyLevel,
     ImageDownscaling imageDownscaling,
     int maxImagePixelBudget,
-  ) {
+  ) : _webViewSlotTracker = WebViewSlotTracker(keyGenerator) {
     _elementRecorders.addAll([
       ContainerRecorder(keyGenerator),
       TextElementRecorder(keyGenerator),
@@ -219,6 +232,7 @@ class SessionReplayRecorder {
       CupertinoSwitchRecorder(keyGenerator),
       SliderRecorder(keyGenerator),
       CupertinoSliderRecorder(keyGenerator),
+      WebViewRecorder(keyGenerator, _webViewSlotTracker),
     ]);
   }
 
@@ -228,9 +242,12 @@ class SessionReplayRecorder {
     DatadogTimeProvider timeProvider = const DefaultTimeProvider(),
     required TreeCapturePrivacy defaultCapturePrivacy,
     required TouchPrivacyLevel touchPrivacyLevel,
+    WebViewSlotTracker? webViewSlotTracker,
   }) : _timeProvider = timeProvider,
        _defaultTreeCapturePrivacy = defaultCapturePrivacy,
-       _touchPrivacyLevel = touchPrivacyLevel {
+       _touchPrivacyLevel = touchPrivacyLevel,
+       _webViewSlotTracker =
+           webViewSlotTracker ?? WebViewSlotTracker(KeyGenerator()) {
     _elementRecorders.addAll(elementRecorders);
   }
 
@@ -263,6 +280,7 @@ class SessionReplayRecorder {
   }
 
   Future<CaptureResult?> _capture(RUMContext context) async {
+    _webViewSlotTracker.beginCapture();
     List<CaptureNodeSemantics> capturedSemantics = [];
     List<PointerSnapshot> pointerSnapshots = [];
     DateTime now = _timeProvider.now();
@@ -314,7 +332,7 @@ class SessionReplayRecorder {
       ..start('Datadog SR Capture Processing');
 
     // Process anything that needs additional processing
-    final nodes = <CaptureNode>[];
+    final nodes = <CaptureNode>[..._webViewSlotTracker.hiddenSlotNodes()];
     for (var s in capturedSemantics) {
       try {
         if (s is AdditionalProcessingElement) {

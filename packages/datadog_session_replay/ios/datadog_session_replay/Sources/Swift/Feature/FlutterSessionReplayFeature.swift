@@ -25,19 +25,32 @@ protocol FlutterSessionReplayFeature {
     func writeSegment(segment: String)
 }
 
-class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRemoteFeature {
+class DefaultFlutterSessionReplayFeature:
+    FlutterSessionReplayFeature,
+    DatadogRemoteFeature,
+    SessionReplayConfiguration {
     static var name: String = "flutter-session-replay"
 
     public struct Configuration {
         public var customEndpoint: URL?
         public var onContextChanged: ((RUMCoreContext?) -> Void)?
 
+        public var textAndInputPrivacyLevel: TextAndInputPrivacyLevel
+        public var imagePrivacyLevel: ImagePrivacyLevel
+        public var touchPrivacyLevel: TouchPrivacyLevel
+
         public init(
             customEndpoint: URL? = nil,
-            onContextChanged: ((RUMCoreContext?) -> Void)? = nil
+            onContextChanged: ((RUMCoreContext?) -> Void)? = nil,
+            textAndInputPrivacyLevel: TextAndInputPrivacyLevel = .maskAll,
+            imagePrivacyLevel: ImagePrivacyLevel = .maskAll,
+            touchPrivacyLevel: TouchPrivacyLevel = .hide
         ) {
             self.customEndpoint = customEndpoint
             self.onContextChanged = onContextChanged
+            self.textAndInputPrivacyLevel = textAndInputPrivacyLevel
+            self.imagePrivacyLevel = imagePrivacyLevel
+            self.touchPrivacyLevel = touchPrivacyLevel
         }
 
         public init?(fromEncoded encoded: [String: Any?]) {
@@ -59,6 +72,10 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
 
     let requestBuilder: DatadogInternal.FeatureRequestBuilder
     let messageReceiver: DatadogInternal.FeatureMessageReceiver
+
+    let textAndInputPrivacyLevel: TextAndInputPrivacyLevel
+    let imagePrivacyLevel: ImagePrivacyLevel
+    let touchPrivacyLevel: TouchPrivacyLevel
 
     private let resourcesFeature: ResourcesFeature
     let resourceResolver: ResourceResolver
@@ -86,7 +103,14 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
                 onContextChanged(context)
             })
         }
-        self.messageReceiver = contextReciever
+        self.messageReceiver = CombinedFeatureMessageReceiver(
+            contextReciever,
+            WebViewRecordReceiver(scope: core.scope(for: DefaultFlutterSessionReplayFeature.self))
+        )
+
+        self.textAndInputPrivacyLevel = configuration.textAndInputPrivacyLevel
+        self.imagePrivacyLevel = configuration.imagePrivacyLevel
+        self.touchPrivacyLevel = configuration.touchPrivacyLevel
 
         resourcesFeature = ResourcesFeature(core: core, configuration: configuration)
         try core.register(feature: resourcesFeature)
@@ -141,12 +165,12 @@ class DefaultFlutterSessionReplayFeature: FlutterSessionReplayFeature, DatadogRe
         let name = SessionReplayContextFeature.name
         if core.feature(named: name, type: SessionReplayContextFeature.self) != nil {
             ownsSessionReplayContext = true
-        } else if core.feature(named: name, type: SessionReplayConfiguration.self) != nil {
+        } else if core.isNativeSessionReplayRegistered {
             ownsSessionReplayContext = false
             consolePrint(Self.nativeSessionReplayPresentWarning, .warn)
         } else {
             do {
-                try core.register(feature: SessionReplayContextFeature())
+                try core.register(feature: SessionReplayContextFeature(configuration: self))
                 ownsSessionReplayContext = true
             } catch {
                 ownsSessionReplayContext = false

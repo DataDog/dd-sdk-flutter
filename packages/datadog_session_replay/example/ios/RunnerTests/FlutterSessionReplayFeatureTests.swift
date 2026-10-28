@@ -97,6 +97,31 @@ func registersTheSessionReplayContext_WhenNoSessionReplayIsRegistered() throws {
 }
 
 @Test
+func sessionReplayContext_SharesFlutterPrivacyLevels_WithWebViewTracking() throws {
+    // Given
+    let core = PassthroughCoreMock()
+    let feature = try DefaultFlutterSessionReplayFeature(
+        core: core,
+        configuration: .init(
+            textAndInputPrivacyLevel: .maskSensitiveInputs,
+            imagePrivacyLevel: .maskNone,
+            touchPrivacyLevel: .show
+        ),
+        resourceResolver: ResourceResolverMock()
+    )
+
+    // When
+    feature.registerSessionReplayContext()
+
+    // Then - `WebViewTracking` looks Session Replay up by this name and type
+    let registered = try #require(core.feature(named: Feature.sessionReplay, type: SessionReplayConfiguration.self))
+    #expect(registered.textAndInputPrivacyLevel == .maskSensitiveInputs)
+    #expect(registered.imagePrivacyLevel == .maskNone)
+    #expect(registered.touchPrivacyLevel == .show)
+    #expect(!core.isNativeSessionReplayRegistered)
+}
+
+@Test
 func publishesNothing_WhenNativeSessionReplayIsRegistered() throws {
     // Given - a hybrid app configured as standalone
     let core = PassthroughCoreMock()
@@ -118,9 +143,164 @@ func publishesNothing_WhenNativeSessionReplayIsRegistered() throws {
     #expect(core.context.additionalContext(ofType: SessionReplayCoreContext.RecordsCount.self) == nil)
 }
 
-private final class NativeSessionReplayFeatureMock: DatadogFeature, SessionReplayConfiguration {
+// MARK: - WebView Session Replay
+
+private func mockWebView(id: String) throws -> WebViewMessage.View {
+    try JSONDecoder().decode(WebViewMessage.View.self, from: Data(#"{"id":"\#(id)"}"#.utf8))
+}
+
+private struct NativeSessionReplayFeatureMock: DatadogFeature, SessionReplayConfiguration {
+    static let name = "session-replay"
     let messageReceiver: FeatureMessageReceiver = NOPFeatureMessageReceiver()
     let textAndInputPrivacyLevel: TextAndInputPrivacyLevel = .maskAll
     let imagePrivacyLevel: ImagePrivacyLevel = .maskAll
     let touchPrivacyLevel: TouchPrivacyLevel = .hide
+}
+
+@Test
+func exposesPrivacyLevels_AsSessionReplayConfiguration() throws {
+    // Given
+    let core = PassthroughCoreMock()
+    let config = DefaultFlutterSessionReplayFeature.Configuration(
+        textAndInputPrivacyLevel: .maskSensitiveInputs,
+        imagePrivacyLevel: .maskNone,
+        touchPrivacyLevel: .show
+    )
+
+    // When
+    let feature: SessionReplayConfiguration = try DefaultFlutterSessionReplayFeature(
+        core: core,
+        configuration: config,
+        resourceResolver: ResourceResolverMock()
+    )
+
+    // Then
+    #expect(DefaultFlutterSessionReplayFeature.name == "flutter-session-replay")
+    #expect(feature.textAndInputPrivacyLevel == .maskSensitiveInputs)
+    #expect(feature.imagePrivacyLevel == .maskNone)
+    #expect(feature.touchPrivacyLevel == .show)
+}
+
+@Test
+func defaultsToMostRestrictivePrivacyLevels() throws {
+    let config = DefaultFlutterSessionReplayFeature.Configuration()
+
+    #expect(config.textAndInputPrivacyLevel == .maskAll)
+    #expect(config.imagePrivacyLevel == .maskAll)
+    #expect(config.touchPrivacyLevel == .hide)
+}
+
+@Test
+func webViewRecordReceiver_WritesRecord_WhenRUMSessionIsSampled() throws {
+    // Given
+    let rumContext = RUMCoreContext.mockRandom()
+    var context: DatadogContext = .mockRandom()
+    context.set(additionalContext: rumContext)
+    context.set(additionalContext: RUMWebViewContext(serverTimeOffsets: ["web-view": 1.5]))
+    context.set(additionalContext: SessionReplayCoreContext.HasReplay(value: true))
+    let core = PassthroughCoreMock(context: context)
+    let receiver = WebViewRecordReceiver(scope: core)
+
+    // When
+    let handled = receiver.receive(
+        message: .webview(.record(["type": 2, "timestamp": 1_000], try mockWebView(id: "web-view"))),
+        from: core
+    )
+
+    // Then
+    #expect(handled)
+    let records = core.events(ofType: WebViewRecordReceiver.WebRecord.self)
+    try #require(records.count == 1)
+    #expect(records[0].applicationID == rumContext.applicationID)
+    #expect(records[0].sessionID == rumContext.sessionID)
+    #expect(records[0].viewID == "web-view")
+
+    // Written records must decode the way `RequestBuilder` reads them, with the server time offset applied
+    let data = try JSONEncoder().encode(records[0])
+    let enriched = try EnrichedRecordJSON(jsonObjectData: data)
+    #expect(enriched.records.first?["timestamp"] as? Int64 == 2_500)
+}
+
+@Test
+func webViewRecordReceiver_DropsRecord_WhenRUMSessionIsNotSampled() throws {
+    // Given
+    var context: DatadogContext = .mockRandom()
+    context.set(additionalContext: RUMCoreContext.mockWith(sessionSampler: .mockRejectAll()))
+    context.set(additionalContext: SessionReplayCoreContext.HasReplay(value: true))
+    let core = PassthroughCoreMock(context: context)
+    let receiver = WebViewRecordReceiver(scope: core)
+
+    // When
+    _ = receiver.receive(message: .webview(.record(["type": 2], try mockWebView(id: "web-view"))), from: core)
+
+    // Then
+    #expect(core.events.isEmpty)
+}
+
+@Test(arguments: [false, nil] as [Bool?])
+func webViewRecordReceiver_DropsRecord_WhenFlutterSessionReplayIsNotRecording(hasReplay: Bool?) throws {
+    // Given - the session was not selected by `replaySampleRate`, or recording is stopped
+    var context: DatadogContext = .mockRandom()
+    context.set(additionalContext: RUMCoreContext.mockRandom())
+    if let hasReplay {
+        context.set(additionalContext: SessionReplayCoreContext.HasReplay(value: hasReplay))
+    }
+    let core = PassthroughCoreMock(context: context)
+    let receiver = WebViewRecordReceiver(scope: core)
+
+    // When
+    _ = receiver.receive(message: .webview(.record(["type": 2], try mockWebView(id: "web-view"))), from: core)
+
+    // Then
+    #expect(core.events.isEmpty)
+}
+
+@Test
+func webViewRecordReceiver_IgnoresRecord_WhenNativeSessionReplayIsEnabled() throws {
+    // Given
+    var context: DatadogContext = .mockRandom()
+    context.set(additionalContext: RUMCoreContext.mockRandom())
+    let core = PassthroughCoreMock(context: context)
+    try core.register(feature: NativeSessionReplayFeatureMock())
+    let receiver = WebViewRecordReceiver(scope: core)
+
+    // When
+    let handled = receiver.receive(
+        message: .webview(.record(["type": 2], try mockWebView(id: "web-view"))),
+        from: core
+    )
+
+    // Then
+    #expect(!handled)
+    #expect(core.events.isEmpty)
+}
+
+@Test
+func webViewRecordReceiver_WritesRecord_WhenSessionReplayContextIsRegistered() throws {
+    // Given - Flutter Session Replay standing in for the native one
+    var context: DatadogContext = .mockRandom()
+    context.set(additionalContext: RUMCoreContext.mockRandom())
+    context.set(additionalContext: SessionReplayCoreContext.HasReplay(value: true))
+    let core = PassthroughCoreMock(context: context)
+    try core.register(feature: SessionReplayContextFeature(configuration: NativeSessionReplayFeatureMock()))
+    let receiver = WebViewRecordReceiver(scope: core)
+
+    // When
+    let handled = receiver.receive(
+        message: .webview(.record(["type": 2], try mockWebView(id: "web-view"))),
+        from: core
+    )
+
+    // Then
+    #expect(handled)
+    #expect(core.events(ofType: WebViewRecordReceiver.WebRecord.self).count == 1)
+}
+
+@Test
+func webViewRecordReceiver_IgnoresOtherMessages() throws {
+    let core = PassthroughCoreMock()
+    let receiver = WebViewRecordReceiver(scope: core)
+
+    #expect(!receiver.receive(message: .webview(.rum(["type": "view"])), from: core))
+    #expect(core.events.isEmpty)
 }

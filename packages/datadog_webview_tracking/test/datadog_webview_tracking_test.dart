@@ -14,6 +14,8 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 // ignore: depend_on_referenced_packages
 import 'package:webview_flutter_android/webview_flutter_android.dart';
+// ignore: depend_on_referenced_packages
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 class MockDatadogSdk extends Mock implements DatadogSdk {}
 
@@ -26,6 +28,10 @@ class MockWebviewPlatform extends Mock
 class MockAndroidWebViewController extends Mock
     with MockPlatformInterfaceMixin
     implements AndroidWebViewController {}
+
+class MockWebKitWebViewController extends Mock
+    with MockPlatformInterfaceMixin
+    implements WebKitWebViewController {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -67,5 +73,54 @@ void main() {
         },
       ),
     ]);
+  });
+
+  group('Session Replay slot', () {
+    late MockDatadogSdk mockDatadog;
+    late MockWebviewPlatform mockWebviewPlatform;
+
+    setUp(() {
+      WebViewSlotRegistry.debugReset();
+      mockDatadog = MockDatadogSdk();
+      // ignore: invalid_use_of_internal_member
+      when(() => mockDatadog.internalLogger).thenReturn(MockInternalLogger());
+      mockWebviewPlatform = MockWebviewPlatform();
+      WebViewPlatform.instance = mockWebviewPlatform;
+    });
+
+    void mockNativeResult(String? slotId) {
+      ambiguate(TestDefaultBinaryMessengerBinding.instance)
+          ?.defaultBinaryMessenger
+          .setMockMethodCallHandler(methodChannel, (message) async => slotId);
+    }
+
+    WebViewController createIosController(int webViewIdentifier) {
+      final mockWebKitController = MockWebKitWebViewController();
+      when(
+        () => mockWebviewPlatform.createPlatformWebViewController(any()),
+      ).thenReturn(mockWebKitController);
+      when(
+        () => mockWebKitController.webViewIdentifier,
+      ).thenReturn(webViewIdentifier);
+      return WebViewController();
+    }
+
+    test('registers the slot ID native returns for the WebView', () async {
+      mockNativeResult('4370600960');
+
+      createIosController(3).trackDatadogEvents(mockDatadog, ['host_a']);
+      await pumpEventQueue();
+
+      expect(WebViewSlotRegistry.slotId(3), '4370600960');
+    });
+
+    test('registers no slot when native finds no WebView', () async {
+      mockNativeResult(null);
+
+      createIosController(3).trackDatadogEvents(mockDatadog, ['host_a']);
+      await pumpEventQueue();
+
+      expect(WebViewSlotRegistry.slotId(3), isNull);
+    });
   });
 }

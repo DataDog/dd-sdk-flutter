@@ -557,6 +557,61 @@ class SRPlaceholderWireframe extends SRWireframe {
   Map<String, dynamic> toJson() => _$SRPlaceholderWireframeToJson(this);
 }
 
+/// A slot the replay player fills with the replay of the WebView whose Browser
+/// SDK records carry the same [slotId].
+@JsonSerializable()
+class SRWebviewWireframe extends SRWireframe {
+  final String slotId;
+  final bool isVisible;
+  final SRContentClip? clip;
+
+  SRWebviewWireframe({
+    super.type = 'webview',
+    required super.id,
+    required super.x,
+    required super.y,
+    required super.width,
+    required super.height,
+    required this.slotId,
+    this.isVisible = true,
+    this.clip,
+  });
+
+  @override
+  bool isDifferent(SRWireframe other) {
+    if (other is! SRWebviewWireframe) return false;
+
+    return super.isDifferent(other) ||
+        !(slotId == other.slotId &&
+            isVisible == other.isVisible &&
+            clip == other.clip);
+  }
+
+  @override
+  SRIncrementalUpdate mutationsFrom(SRWireframe other) {
+    if (other is! SRWebviewWireframe || id != other.id) {
+      throw Error();
+    }
+
+    return SRWebviewWireframeUpdate(
+      id: id,
+      x: useIfDifferent(x, other.x),
+      y: useIfDifferent(y, other.y),
+      width: useIfDifferent(width, other.width),
+      height: useIfDifferent(height, other.height),
+      // Required by the update schema, so always sent.
+      slotId: slotId,
+      isVisible: useIfDifferent(isVisible, other.isVisible),
+      clip: useIfDifferent(clip, other.clip),
+    );
+  }
+
+  factory SRWebviewWireframe.fromJson(Map<String, dynamic> json) =>
+      _$SRWebviewWireframeFromJson(json);
+  @override
+  Map<String, dynamic> toJson() => _$SRWebviewWireframeToJson(this);
+}
+
 @JsonSerializable()
 class SRImageWireframe extends SRWireframe {
   final String? base64;
@@ -831,6 +886,30 @@ class SRPlaceholderWireframeUpdate extends SRIncrementalUpdate {
       _$SRPlaceholderWireframeUpdateFromJson(json);
   @override
   Map<String, dynamic> toJson() => _$SRPlaceholderWireframeUpdateToJson(this);
+}
+
+@JsonSerializable(includeIfNull: false)
+class SRWebviewWireframeUpdate extends SRIncrementalUpdate {
+  final String slotId;
+  final bool? isVisible;
+  final SRContentClip? clip;
+
+  SRWebviewWireframeUpdate({
+    super.type = 'webview',
+    required super.id,
+    super.x,
+    super.y,
+    super.width,
+    super.height,
+    required this.slotId,
+    this.isVisible,
+    this.clip,
+  });
+
+  factory SRWebviewWireframeUpdate.fromJson(Map<String, dynamic> json) =>
+      _$SRWebviewWireframeUpdateFromJson(json);
+  @override
+  Map<String, dynamic> toJson() => _$SRWebviewWireframeUpdateToJson(this);
 }
 
 @JsonSerializable()
