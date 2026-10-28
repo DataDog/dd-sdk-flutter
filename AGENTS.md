@@ -30,8 +30,10 @@
 
 ## Client SDK behavior
 
-- Public SDK APIs must not throw on misconfiguration or runtime failure. Log a warning
-  or error and leave the SDK in a valid state.
+- Public SDK APIs must not throw on misconfiguration or on failures in event-recording
+  and flag-evaluation paths. Log a warning or error and leave the SDK in a valid state.
+- Lifecycle misuse, such as using a client after shutdown, may throw a documented
+  `StateError`.
 
 ## Docs and comments
 
@@ -49,8 +51,8 @@
 
 - Examples show minimal SDK usage. Do not add test hooks, dogfooding features, or other
   scaffolding. Dogfooding apps go in `test_apps`.
-- Read configuration from the `.env` files that `melos generate_env` produces, not
-  `String.fromEnvironment`.
+- Example apps read configuration from the `.env` files that `melos generate_env`
+  produces, not `String.fromEnvironment`.
 
 ## Tests
 
@@ -64,8 +66,9 @@
   (`Isolate.resolvePackageUri`).
 - Packages that support Web / WASM need tests that run there. Avoid `@TestOn('vm')`
   unless the test covers a VM-specific feature or one that is not available on web.
-- Integration tests live in the owning package's example app, using `datadog_common_test`.
-  Do not add them to `datadog_flutter_plugin/integration_test_app`.
+- Integration tests live in the owning package, in its `example/` or its own
+  `integration_test_app/`, using `datadog_common_test`. Do not add them to
+  `datadog_flutter_plugin/integration_test_app`, which only tests the core plugin.
 - Do not send real events to intake from tests; it affects billing.
 
 ## Tooling

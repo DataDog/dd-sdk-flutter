@@ -67,7 +67,9 @@ Code style is enforced with the following libraries in the following languages:
 
 Before submitting a PR, run `melos dartfmt_check`, `melos analyze:dart`, and
 `melos unit_test:flutter` from the root of the repo. If you changed native code,
-also run `melos analyze:android` or `melos analyze:ios`. Melos has further scripts
+also run `melos analyze:android` or `melos analyze:ios`. These skip `example`,
+`integration_test_app`, and `e2e_test_app` packages, so build and check native changes
+in those apps directly. Melos has further scripts
 for the platform-specific linters (such as `melos lint_fix:ios`), other unit test
 platforms (such as `melos unit_test:web`), and integration tests (such as
 `melos integration_test:android`).
@@ -97,9 +99,9 @@ Running it again must not change any files.
 * A package's `example/` is a standalone app with its own `pubspec.yaml` that shows
   minimal SDK usage. Do not add testing hooks or dogfooding features to it.
 * Dogfooding and test-bed apps live in `test_apps`.
-* Integration tests for a package live in that package's example app, built on
-  `datadog_common_test`. `datadog_flutter_plugin/integration_test_app` only tests
-  `datadog_flutter_plugin`.
+* Integration tests for a package live in that package, in its `example/` or its own
+  `integration_test_app/`, built on `datadog_common_test`.
+  `datadog_flutter_plugin/integration_test_app` only tests `datadog_flutter_plugin`.
 
 ## Commit messages
 
@@ -114,16 +116,15 @@ For example, use `feat(flags): add initialization timeout` or
 `fix(web): avoid duplicate requests`.
 
 For features and bug fixes, use a `feat:` or `fix:` commit that changes the
-relevant package. The release tooling creates one changelog entry for each such
-commit. An empty commit does not appear in the package history used by the
-release tooling. Use types such as `docs:` or `chore:` for changes that do not
+relevant package. Such a commit makes the change eligible for the changelog. The
+release tooling groups changes by pull request and writes the entries. An empty
+commit does not appear in the package history used by the release tooling. Use types such as `docs:` or `chore:` for changes that do not
 need changelog entries.
 
 Review follow-up commits can use descriptive subjects without this format.
 The Conventional Commit does not need to be the last commit. Avoid adding
-`feat:` or `fix:` only to label review fixes for the same change, because this
-can create duplicate changelog entries. Do not rewrite pushed history only to
-repair a commit subject.
+`feat:` or `fix:` only to label review fixes for the same change. Do not rewrite
+pushed history only to repair a commit subject.
 
 For squash merges, ensure that the resulting commit subject also uses this
 format. A Conventional Commit pull request title can supply that subject.
