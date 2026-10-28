@@ -71,7 +71,8 @@
 ## Tooling
 
 - Write repo scripts in Dart. Simple scripts can be bash where appropriate.
-- Run `dart test` rather than naming test files. Do not add publish targets to `melos.yaml`.
+- Run all tests in a package with `dart test` for pure Dart packages or `flutter test`
+  for Flutter packages. Do not add publish targets to `melos.yaml`.
 - Do not add `dependency_overrides` unless the build fails without them.
 - Use lower-bound-only constraints for dev dependencies (for example `lints: '>=5.0.0'`);
   nightlies run minimum-version checks.
