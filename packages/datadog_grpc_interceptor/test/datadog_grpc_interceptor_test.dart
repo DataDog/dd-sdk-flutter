@@ -44,6 +44,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(Uri(host: 'localhost'));
     registerFallbackValue(TracingId.zero());
+    registerFallbackValue(Object());
   });
 
   void verifyHeaders(
@@ -168,6 +169,7 @@ void main() {
       mockPlatform = DatadogPlatformMock();
 
       mockDatadog = DatadogSdkMock();
+      stubResolveErrorType(mockDatadog);
       when(() => mockDatadog.platform).thenReturn(mockPlatform);
 
       mockRum = RumMock();
@@ -433,6 +435,7 @@ void main() {
 
     mockPlatform = DatadogPlatformMock();
     mockDatadog = DatadogSdkMock();
+    stubResolveErrorType(mockDatadog);
     when(() => mockDatadog.platform).thenReturn(mockPlatform);
 
     mockRum = RumMock();
@@ -447,6 +450,7 @@ void main() {
     ).thenReturn({TracingHeaderType.datadog});
 
     final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
+    verify(() => mockDatadog.addErrorTypeResolver(grpcErrorTypeResolver));
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
@@ -472,6 +476,7 @@ void main() {
     verify(
       () => mockRum.stopResourceWithErrorInfo(key, any(), 'GrpcError', {}),
     );
+    verify(() => mockDatadog.resolveErrorType(any(that: isA<GrpcError>())));
 
     await channel.shutdown();
     await server.shutdown();
@@ -491,6 +496,7 @@ void main() {
 
     mockPlatform = DatadogPlatformMock();
     mockDatadog = DatadogSdkMock();
+    stubResolveErrorType(mockDatadog);
     when(() => mockDatadog.platform).thenReturn(mockPlatform);
 
     mockRum = RumMock();
@@ -543,6 +549,7 @@ void main() {
 
     mockPlatform = DatadogPlatformMock();
     mockDatadog = DatadogSdkMock();
+    stubResolveErrorType(mockDatadog);
     when(() => mockDatadog.platform).thenReturn(mockPlatform);
 
     mockRum = RumMock();
@@ -585,5 +592,16 @@ void main() {
 
     await channel.shutdown();
     await server.shutdown();
+  });
+}
+
+/// Mirrors [DatadogSdk.resolveErrorType] with the resolvers this package
+/// registers, for mocked [DatadogSdk]s.
+void stubResolveErrorType(DatadogSdk mockDatadog) {
+  when(() => mockDatadog.resolveErrorType(any())).thenAnswer((i) {
+    final error = i.positionalArguments[0] as Object;
+    return grpcErrorTypeResolver(error) ??
+        defaultErrorTypeResolver(error) ??
+        error.runtimeType.toString();
   });
 }
