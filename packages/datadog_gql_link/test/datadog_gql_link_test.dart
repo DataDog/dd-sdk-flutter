@@ -64,11 +64,16 @@ query UserInfo($id: ID!) {
     registerFallbackValue(FakeRequest());
     registerFallbackValue(StackTrace.current);
     registerFallbackValue(TracingId.zero());
+    registerFallbackValue(Object());
   });
 
   setUp(() {
     mockPlatform = MockDatadogSdkPlatform();
     mockDatadog = MockDatadogSdk();
+    when(() => mockDatadog.resolveErrorType(any())).thenAnswer((i) {
+      final error = i.positionalArguments[0] as Object;
+      return defaultErrorTypeResolver(error) ?? error.runtimeType.toString();
+    });
     when(
       () => mockDatadog.headerTypesForHost(
         any(that: HasHost(equals('test_url'))),
@@ -574,6 +579,53 @@ query UserInfo($id: ID!) {
         expect(capturedAttrs['request_attribute'], 'my request');
       },
     );
+
+    test('link registers gql error type resolver on creation', () {
+      DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+
+      verify(() => mockDatadog.addErrorTypeResolver(gqlErrorTypeResolver));
+    });
+
+    test('link reports stream error type from resolveErrorType', () async {
+      // Given
+      when(
+        () => mockDatadog.resolveErrorType(any()),
+      ).thenReturn('ResolvedType');
+      final link = DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
+      final request = Request(
+        operation: Operation(document: query, operationName: 'UserInfo'),
+      );
+      String? capturedKey;
+      when(() => mockRum.startResource(any(), any(), any(), any())).thenAnswer((
+        i,
+      ) {
+        capturedKey = i.positionalArguments[0] as String;
+      });
+
+      // When
+      const error = FormatException('bad response');
+      final responseController = StreamController<Response>();
+      final stream = link.request(request, (request) {
+        return responseController.stream;
+      });
+
+      responseController.sink.addError(error, StackTrace.current);
+      unawaited(responseController.sink.close());
+      try {
+        await stream.drain();
+      } catch (_) {}
+
+      // Then
+      verify(() => mockDatadog.resolveErrorType(error));
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          capturedKey!,
+          error.toString(),
+          'ResolvedType',
+          {},
+        ),
+      );
+    });
 
     test('link calls stopResourceWithErrorInfo on stream error', () async {
       // Given
@@ -1310,6 +1362,11 @@ query UserInfo($id: ID!) {
       setUp(() {
         mockPlatform = MockDatadogSdkPlatform();
         mockDatadog = MockDatadogSdk();
+        when(() => mockDatadog.resolveErrorType(any())).thenAnswer((i) {
+          final error = i.positionalArguments[0] as Object;
+          return defaultErrorTypeResolver(error) ??
+              error.runtimeType.toString();
+        });
         when(
           () => mockDatadog.headerTypesForHost(
             any(that: HasHost(equals('test_url'))),
