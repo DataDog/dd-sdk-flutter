@@ -109,6 +109,11 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
   }
 
   @override
+  FutureOr<void> setSessionSampled(String sessionId, bool sampled) {
+    _iosBridge.setSessionSampledFor(NSString(sessionId), sampled: sampled);
+  }
+
+  @override
   FutureOr<void> setRecordCount(String viewId, int count) {
     _iosBridge.setRecordCountFor(NSString(viewId), count: count);
   }

@@ -389,6 +389,33 @@ class FlutterSessionReplayBridgeTests {
     }
 
     @Test
+    func setSessionSampled_whenStandalone_reportsToTheFeature() throws {
+        // Given
+        try enable()
+        bridge.setEmbedded(false)
+
+        // When
+        let expectedValue: Bool = .mockRandom()
+        bridge.setSessionSampled(for: "session-id", sampled: expectedValue)
+
+        // Then
+        #expect(feature.sampledSessions == ["session-id": expectedValue])
+    }
+
+    @Test
+    func setSessionSampled_whenEmbedded_staysQuiet() throws {
+        // Given
+        try enable()
+        bridge.setEmbedded(true)
+
+        // When
+        bridge.setSessionSampled(for: "session-id", sampled: true)
+
+        // Then — native Session Replay owns WebView records when embedded
+        #expect(feature.sampledSessions.isEmpty)
+    }
+
+    @Test
     func setRecordCount_whenStandalone_publishesToTheFeature() throws {
         // Given
         try enable()

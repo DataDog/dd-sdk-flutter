@@ -21,6 +21,7 @@ protocol FlutterSessionReplayFeature {
     func readCurrentContext(_ completion: @escaping (RUMCoreContext?) -> Void)
     func registerSessionReplayContext()
     func setHasReplay(_ hasReplay: Bool)
+    func setSessionSampled(for sessionID: String, sampled: Bool)
     func setRecordCount(for viewId: String, count: Int64)
     func writeSegment(segment: String)
 }
@@ -67,6 +68,7 @@ class DefaultFlutterSessionReplayFeature:
     private let sessionReplayContextLock = NSLock()
     private var ownsSessionReplayContext = false
     private var featureScope: FeatureScope?
+    private let replaySampling: ReplaySampling
 
     let performanceOverride: DatadogInternal.PerformancePresetOverride?
 
@@ -97,6 +99,8 @@ class DefaultFlutterSessionReplayFeature:
             telemetry: core.telemetry
         )
 
+        self.replaySampling = ReplaySampling()
+
         let contextReciever = RUMContextReceiver()
         if let onContextChanged = configuration.onContextChanged {
             contextReciever.observe(notify: { context in
@@ -105,7 +109,10 @@ class DefaultFlutterSessionReplayFeature:
         }
         self.messageReceiver = CombinedFeatureMessageReceiver(
             contextReciever,
-            WebViewRecordReceiver(scope: core.scope(for: DefaultFlutterSessionReplayFeature.self))
+            WebViewRecordReceiver(
+                scope: core.scope(for: DefaultFlutterSessionReplayFeature.self),
+                replaySampling: self.replaySampling
+            )
         )
 
         self.textAndInputPrivacyLevel = configuration.textAndInputPrivacyLevel
@@ -184,6 +191,10 @@ class DefaultFlutterSessionReplayFeature:
             return
         }
         core?.set(context: SessionReplayCoreContext.HasReplay(value: hasReplay))
+    }
+
+    func setSessionSampled(for sessionID: String, sampled: Bool) {
+        replaySampling.setSessionSampled(for: sessionID, sampled: sampled)
     }
 
     func setRecordCount(for viewId: String, count: Int64) {

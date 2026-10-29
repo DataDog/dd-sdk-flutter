@@ -218,6 +218,14 @@ public func __datadog_session_replay_keep_symbols() {
         manager.feature?.setHasReplay(hasReplay)
     }
 
+    /// Reports whether `replaySampleRate` selected the RUM session `sessionId`, for WebView records.
+    @objc public func setSessionSampled(for sessionId: String, sampled: Bool) {
+        guard publishesReplayState else {
+            return
+        }
+        manager.feature?.setSessionSampled(for: sessionId, sampled: sampled)
+    }
+
     @objc public func setRecordCount(for viewId: String, count: Int) {
         guard publishesReplayState else {
             return

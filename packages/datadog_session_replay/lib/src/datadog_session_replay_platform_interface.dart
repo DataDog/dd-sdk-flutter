@@ -41,6 +41,10 @@ abstract class DatadogSessionReplayPlatform extends PlatformInterface {
 
   FutureOr<void> setHasReplay(String viewId, bool hasReplay);
 
+  /// Reports whether [sessionId] was selected by the replay sample rate, so
+  /// that the platform keeps WebView replay records out of other sessions.
+  FutureOr<void> setSessionSampled(String sessionId, bool sampled);
+
   FutureOr<void> setRecordCount(String viewId, int count);
 
   FutureOr<void> writeSegment(String record, String viewId);

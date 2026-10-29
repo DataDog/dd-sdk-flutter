@@ -331,6 +331,8 @@ SWIFT_CLASS_NAMED("FlutterSessionReplay")
 - (nonnull instancetype)init;
 - (void)enableWith:(FlutterSessionReplayConfiguration * _Nonnull)configuration;
 - (void)setHasReplayWithHasReplay:(BOOL)hasReplay;
+/// Reports whether <code>replaySampleRate</code> selected the RUM session <code>sessionId</code>, for WebView records.
+- (void)setSessionSampledFor:(NSString * _Nonnull)sessionId sampled:(BOOL)sampled;
 - (void)setRecordCountFor:(NSString * _Nonnull)viewId count:(NSInteger)count;
 /// Declares which recording path this engine writes to. Called once by Dart, straight after
 /// <code>enable()</code>, from the <code>isEmbedded</code> it was configured with.
@@ -346,8 +348,6 @@ SWIFT_CLASS_NAMED("FlutterSessionReplay")
 SWIFT_CLASS_NAMED("FlutterSessionReplayConfiguration")
 @interface FlutterSessionReplayConfiguration : NSObject
 @property (nonatomic, copy) NSURL * _Nullable customEndpoint;
-/// Dart privacy level names (e.g. <code>maskSensitiveInputs</code>). Only shared with WebViews, as Flutter
-/// content is masked in Dart. Unknown or missing values fall back to the most restrictive level.
 @property (nonatomic, copy) NSString * _Nullable textAndInputPrivacyLevel;
 @property (nonatomic, copy) NSString * _Nullable imagePrivacyLevel;
 @property (nonatomic, copy) NSString * _Nullable touchPrivacyLevel;
