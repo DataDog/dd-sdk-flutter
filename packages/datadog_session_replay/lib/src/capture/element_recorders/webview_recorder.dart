@@ -34,19 +34,21 @@ class WebViewRecorder implements ElementRecorder {
     TreeCapturePrivacy capturePrivacy,
   ) {
     final widget = element.widget;
-    if (widget is! UiKitView) return null;
+    if (widget is! UiKitView || widget.viewType != webViewPlatformViewType) {
+      return null;
+    }
 
     final identifier = widget.creationParams;
     if (identifier is! int) return null;
 
-    final slotId = WebViewSlotRegistry.slotId(identifier);
+    final slotId = slotTracker.registry.slotId(identifier);
     if (slotId == null) return null;
 
     slotTracker.markVisible(slotId);
     return SpecificElement(
       subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
       nodes: [
-        VisibleWebViewNode(
+        WebViewNode(
           attributes,
           wireframeId: keyGenerator.keyForWebViewSlot(slotId),
           slotId: slotId,
@@ -61,11 +63,13 @@ class WebViewRecorder implements ElementRecorder {
 /// The player needs the hidden wireframe to stop drawing that WebView's replay.
 class WebViewSlotTracker {
   final KeyGenerator keyGenerator;
+  final WebViewSlotRegistry registry;
 
   final Set<String> _recordedSlotIds = {};
   final Set<String> _visibleSlotIds = {};
 
-  WebViewSlotTracker(this.keyGenerator);
+  WebViewSlotTracker(this.keyGenerator, {WebViewSlotRegistry? registry})
+    : registry = registry ?? WebViewSlotRegistry.instance;
 
   /// Call before walking the tree for a new capture.
   void beginCapture() => _visibleSlotIds.clear();
@@ -79,12 +83,10 @@ class WebViewSlotTracker {
   /// capture. Slots whose WebView was collected are forgotten, so they stop
   /// being recorded at all.
   List<CaptureNode> hiddenSlotNodes() {
-    _recordedSlotIds.removeWhere(
-      (slotId) => !WebViewSlotRegistry.isRegistered(slotId),
-    );
+    _recordedSlotIds.removeWhere((slotId) => !registry.isRegistered(slotId));
     return [
       for (final slotId in _recordedSlotIds.difference(_visibleSlotIds))
-        HiddenWebViewNode(
+        WebViewNode.hidden(
           wireframeId: keyGenerator.keyForWebViewSlot(slotId),
           slotId: slotId,
         ),
@@ -92,39 +94,23 @@ class WebViewSlotTracker {
   }
 }
 
+/// A WebView's `webview` wireframe. A hidden one tells the player to stop
+/// drawing the replay of a WebView that left the screen while still alive.
 @immutable
-class VisibleWebViewNode extends CaptureNode {
+class WebViewNode extends CaptureNode {
   final int wireframeId;
   final String slotId;
+  final bool isVisible;
 
-  const VisibleWebViewNode(
+  const WebViewNode(
     super.attributes, {
     required this.wireframeId,
     required this.slotId,
-  });
+  }) : isVisible = true;
 
-  @override
-  List<SRWireframe> buildWireframes() {
-    return [
-      SRWebviewWireframe(
-        id: wireframeId,
-        x: attributes.x,
-        y: attributes.y,
-        width: attributes.width,
-        height: attributes.height,
-        slotId: slotId,
-      ),
-    ];
-  }
-}
-
-@immutable
-class HiddenWebViewNode extends CaptureNode {
-  final int wireframeId;
-  final String slotId;
-
-  const HiddenWebViewNode({required this.wireframeId, required this.slotId})
-    : super(
+  const WebViewNode.hidden({required this.wireframeId, required this.slotId})
+    : isVisible = false,
+      super(
         const CapturedViewAttributes(
           paintBounds: Rect.zero,
           scaleX: 1,
@@ -137,12 +123,12 @@ class HiddenWebViewNode extends CaptureNode {
     return [
       SRWebviewWireframe(
         id: wireframeId,
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0,
+        x: attributes.x,
+        y: attributes.y,
+        width: attributes.width,
+        height: attributes.height,
         slotId: slotId,
-        isVisible: false,
+        isVisible: isVisible,
       ),
     ];
   }

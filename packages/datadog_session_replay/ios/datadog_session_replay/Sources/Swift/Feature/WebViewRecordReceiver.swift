@@ -5,25 +5,6 @@
 import Foundation
 import DatadogInternal
 
-/// Flutter Session Replay's sampling decision for the current RUM session. It is made in Dart, which
-/// applies `replaySampleRate` to the session ID, and reported here as sessions change.
-internal final class ReplaySampling {
-    private let lock = NSLock()
-    private var sampledSessionID: String?
-
-    func setSessionSampled(for sessionID: String, sampled: Bool) {
-        lock.lock()
-        defer { lock.unlock() }
-        sampledSessionID = sampled ? sessionID : nil
-    }
-
-    func isSessionSampled(_ sessionID: String) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return sampledSessionID == sessionID
-    }
-}
-
 internal struct WebViewRecordReceiver: FeatureMessageReceiver {
     internal struct WebRecord: Encodable {
         /// The RUM application ID of all records.
@@ -38,8 +19,8 @@ internal struct WebViewRecordReceiver: FeatureMessageReceiver {
 
     /// Flutter Session Replay feature scope.
     let scope: FeatureScope
-    /// Which RUM session Flutter Session Replay sampled.
-    let replaySampling: ReplaySampling
+    /// The RUM session Flutter Session Replay sampled, or `nil` if it sampled out the current one.
+    let sampledSessionID: ReadWriteLock<String?>
 
     func receive(message: FeatureMessage, from core: DatadogCoreProtocol) -> Bool {
         guard case let .webview(.record(event, view)) = message else {
@@ -61,7 +42,7 @@ internal struct WebViewRecordReceiver: FeatureMessageReceiver {
                 return
             }
 
-            guard replaySampling.isSessionSampled(rumContext.sessionID) else {
+            guard sampledSessionID.wrappedValue == rumContext.sessionID else {
                 return
             }
 

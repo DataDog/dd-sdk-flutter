@@ -16,11 +16,13 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  // WebView tracking is only available on iOS and Android.
+  // webview_flutter has no Windows, Linux or web implementation. macOS can
+  // show WebViews, but Datadog doesn't track them there yet.
   static final _supportsWebViews =
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.iOS ||
-          defaultTargetPlatform == TargetPlatform.android);
+          defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.macOS);
 
   void _goToPage(String page) {
     context.push(page);

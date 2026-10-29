@@ -54,3 +54,4 @@ flutter:
 
   assets:
     - .env
+    - assets/webview_page.html

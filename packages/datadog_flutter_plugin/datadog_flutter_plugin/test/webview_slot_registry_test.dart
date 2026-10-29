@@ -6,30 +6,32 @@ import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  setUp(WebViewSlotRegistry.debugReset);
+  late WebViewSlotRegistry registry;
+
+  setUp(() => registry = WebViewSlotRegistry());
 
   test('returns the slot registered for a WebView', () {
-    WebViewSlotRegistry.register(3, '4370600960', owner: Object());
+    registry.register(3, '4370600960', owner: Object());
 
-    expect(WebViewSlotRegistry.slotId(3), '4370600960');
-    expect(WebViewSlotRegistry.slotId(4), isNull);
+    expect(registry.slotId(3), '4370600960');
+    expect(registry.slotId(4), isNull);
   });
 
   test('re-registering a WebView replaces its slot', () {
     final owner = Object();
-    WebViewSlotRegistry.register(3, 'first', owner: owner);
-    WebViewSlotRegistry.register(3, 'second', owner: owner);
+    registry.register(3, 'first', owner: owner);
+    registry.register(3, 'second', owner: owner);
 
-    expect(WebViewSlotRegistry.slotId(3), 'second');
+    expect(registry.slotId(3), 'second');
   });
 
   test('removes the slot when its owner is finalized', () {
-    WebViewSlotRegistry.register(3, '4370600960', owner: Object());
-    final generation = WebViewSlotRegistry.debugGeneration(3)!;
+    registry.register(3, '4370600960', owner: Object());
+    final registrationId = registry.debugRegistrationId(3)!;
 
-    WebViewSlotRegistry.debugFinalize(3, generation: generation);
+    registry.removeIfCurrent(3, registrationId);
 
-    expect(WebViewSlotRegistry.slotId(3), isNull);
+    expect(registry.slotId(3), isNull);
   });
 
   test(
@@ -37,13 +39,13 @@ void main() {
     () {
       // The first WebView is collected, but its finalizer only runs after a new
       // WebView was assigned the same identifier and tracked.
-      WebViewSlotRegistry.register(3, 'old', owner: Object());
-      final oldGeneration = WebViewSlotRegistry.debugGeneration(3)!;
-      WebViewSlotRegistry.register(3, 'new', owner: Object());
+      registry.register(3, 'old', owner: Object());
+      final oldRegistrationId = registry.debugRegistrationId(3)!;
+      registry.register(3, 'new', owner: Object());
 
-      WebViewSlotRegistry.debugFinalize(3, generation: oldGeneration);
+      registry.removeIfCurrent(3, oldRegistrationId);
 
-      expect(WebViewSlotRegistry.slotId(3), 'new');
+      expect(registry.slotId(3), 'new');
     },
   );
 }

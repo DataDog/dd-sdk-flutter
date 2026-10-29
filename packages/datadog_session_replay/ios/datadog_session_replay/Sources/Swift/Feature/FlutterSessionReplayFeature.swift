@@ -68,7 +68,7 @@ class DefaultFlutterSessionReplayFeature:
     private let sessionReplayContextLock = NSLock()
     private var ownsSessionReplayContext = false
     private var featureScope: FeatureScope?
-    private let replaySampling: ReplaySampling
+    private let sampledSessionID = ReadWriteLock<String?>(wrappedValue: nil)
 
     let performanceOverride: DatadogInternal.PerformancePresetOverride?
 
@@ -99,8 +99,6 @@ class DefaultFlutterSessionReplayFeature:
             telemetry: core.telemetry
         )
 
-        self.replaySampling = ReplaySampling()
-
         let contextReciever = RUMContextReceiver()
         if let onContextChanged = configuration.onContextChanged {
             contextReciever.observe(notify: { context in
@@ -111,7 +109,7 @@ class DefaultFlutterSessionReplayFeature:
             contextReciever,
             WebViewRecordReceiver(
                 scope: core.scope(for: DefaultFlutterSessionReplayFeature.self),
-                replaySampling: self.replaySampling
+                sampledSessionID: self.sampledSessionID
             )
         )
 
@@ -194,7 +192,7 @@ class DefaultFlutterSessionReplayFeature:
     }
 
     func setSessionSampled(for sessionID: String, sampled: Bool) {
-        replaySampling.setSessionSampled(for: sessionID, sampled: sampled)
+        sampledSessionID.wrappedValue = sampled ? sessionID : nil
     }
 
     func setRecordCount(for viewId: String, count: Int64) {

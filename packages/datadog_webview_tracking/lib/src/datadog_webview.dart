@@ -48,7 +48,7 @@ extension DatadogWebview on WebViewController {
               // WebView's replay into. Owned by the platform controller, which
               // owns the WebView behind the identifier.
               if (slotId != null) {
-                WebViewSlotRegistry.register(
+                WebViewSlotRegistry.instance.register(
                   identifier,
                   slotId,
                   owner: localPlatform,

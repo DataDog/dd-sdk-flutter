@@ -149,12 +149,8 @@ private func mockWebView(id: String) throws -> WebViewMessage.View {
     try JSONDecoder().decode(WebViewMessage.View.self, from: Data(#"{"id":"\#(id)"}"#.utf8))
 }
 
-private func sampling(selecting sessionID: String?) -> ReplaySampling {
-    let sampling = ReplaySampling()
-    if let sessionID {
-        sampling.setSessionSampled(for: sessionID, sampled: true)
-    }
-    return sampling
+private func sampling(selecting sessionID: String?) -> ReadWriteLock<String?> {
+    ReadWriteLock(wrappedValue: sessionID)
 }
 
 private struct NativeSessionReplayFeatureMock: DatadogFeature, SessionReplayConfiguration {
@@ -206,7 +202,7 @@ func webViewRecordReceiver_WritesRecord_WhenRUMSessionIsSampled() throws {
     context.set(additionalContext: rumContext)
     context.set(additionalContext: RUMWebViewContext(serverTimeOffsets: ["web-view": 1.5]))
     let core = PassthroughCoreMock(context: context)
-    let receiver = WebViewRecordReceiver(scope: core, replaySampling: sampling(selecting: rumContext.sessionID))
+    let receiver = WebViewRecordReceiver(scope: core, sampledSessionID: sampling(selecting: rumContext.sessionID))
 
     // When
     let handled = receiver.receive(
@@ -235,7 +231,7 @@ func webViewRecordReceiver_DropsRecord_WhenRUMSessionIsNotSampled() throws {
     let rumContext = RUMCoreContext.mockWith(sessionSampler: .mockRejectAll())
     context.set(additionalContext: rumContext)
     let core = PassthroughCoreMock(context: context)
-    let receiver = WebViewRecordReceiver(scope: core, replaySampling: sampling(selecting: rumContext.sessionID))
+    let receiver = WebViewRecordReceiver(scope: core, sampledSessionID: sampling(selecting: rumContext.sessionID))
 
     // When
     _ = receiver.receive(message: .webview(.record(["type": 2], try mockWebView(id: "web-view"))), from: core)
@@ -251,9 +247,7 @@ func webViewRecordReceiver_DropsRecord_WhenReplaySampleRateDidNotSelectTheSessio
     var context: DatadogContext = .mockRandom()
     context.set(additionalContext: rumContext)
     let core = PassthroughCoreMock(context: context)
-    let replaySampling = ReplaySampling()
-    replaySampling.setSessionSampled(for: rumContext.sessionID, sampled: false)
-    let receiver = WebViewRecordReceiver(scope: core, replaySampling: replaySampling)
+    let receiver = WebViewRecordReceiver(scope: core, sampledSessionID: sampling(selecting: nil))
 
     // When
     _ = receiver.receive(message: .webview(.record(["type": 2], try mockWebView(id: "web-view"))), from: core)
@@ -268,7 +262,7 @@ func webViewRecordReceiver_DropsRecord_WhenTheSessionWasNotReportedSampled(sampl
     var context: DatadogContext = .mockRandom()
     context.set(additionalContext: RUMCoreContext.mockRandom())
     let core = PassthroughCoreMock(context: context)
-    let receiver = WebViewRecordReceiver(scope: core, replaySampling: sampling(selecting: sampledSessionID))
+    let receiver = WebViewRecordReceiver(scope: core, sampledSessionID: sampling(selecting: sampledSessionID))
 
     // When
     _ = receiver.receive(message: .webview(.record(["type": 2], try mockWebView(id: "web-view"))), from: core)
@@ -286,7 +280,7 @@ func webViewRecordReceiver_WritesRecord_WhileFlutterRecordingIsStopped() throws 
     context.set(additionalContext: rumContext)
     context.set(additionalContext: SessionReplayCoreContext.HasReplay(value: false))
     let core = PassthroughCoreMock(context: context)
-    let receiver = WebViewRecordReceiver(scope: core, replaySampling: sampling(selecting: rumContext.sessionID))
+    let receiver = WebViewRecordReceiver(scope: core, sampledSessionID: sampling(selecting: rumContext.sessionID))
 
     // When
     _ = receiver.receive(message: .webview(.record(["type": 2], try mockWebView(id: "web-view"))), from: core)
@@ -302,7 +296,7 @@ func webViewRecordReceiver_IgnoresRecord_WhenNativeSessionReplayIsEnabled() thro
     context.set(additionalContext: RUMCoreContext.mockRandom())
     let core = PassthroughCoreMock(context: context)
     try core.register(feature: NativeSessionReplayFeatureMock())
-    let receiver = WebViewRecordReceiver(scope: core, replaySampling: sampling(selecting: nil))
+    let receiver = WebViewRecordReceiver(scope: core, sampledSessionID: sampling(selecting: nil))
 
     // When
     let handled = receiver.receive(
@@ -323,7 +317,7 @@ func webViewRecordReceiver_WritesRecord_WhenSessionReplayContextIsRegistered() t
     context.set(additionalContext: rumContext)
     let core = PassthroughCoreMock(context: context)
     try core.register(feature: SessionReplayContextFeature(configuration: NativeSessionReplayFeatureMock()))
-    let receiver = WebViewRecordReceiver(scope: core, replaySampling: sampling(selecting: rumContext.sessionID))
+    let receiver = WebViewRecordReceiver(scope: core, sampledSessionID: sampling(selecting: rumContext.sessionID))
 
     // When
     let handled = receiver.receive(
@@ -339,7 +333,7 @@ func webViewRecordReceiver_WritesRecord_WhenSessionReplayContextIsRegistered() t
 @Test
 func webViewRecordReceiver_IgnoresOtherMessages() throws {
     let core = PassthroughCoreMock()
-    let receiver = WebViewRecordReceiver(scope: core, replaySampling: sampling(selecting: nil))
+    let receiver = WebViewRecordReceiver(scope: core, sampledSessionID: sampling(selecting: nil))
 
     #expect(!receiver.receive(message: .webview(.rum(["type": "view"])), from: core))
     #expect(core.events.isEmpty)

@@ -19,13 +19,14 @@ void main() {
   const webViewIdentifier = 3;
   const slotId = '4370600960';
 
+  late WebViewSlotRegistry registry;
   late SessionReplayRecorder recorder;
   late Object webViewOwner;
 
   setUp(() {
-    WebViewSlotRegistry.debugReset();
+    registry = WebViewSlotRegistry();
     final keyGenerator = KeyGenerator();
-    final slotTracker = WebViewSlotTracker(keyGenerator);
+    final slotTracker = WebViewSlotTracker(keyGenerator, registry: registry);
     recorder = SessionReplayRecorder.withCustomRecorders(
       [WebViewRecorder(keyGenerator, slotTracker)],
       defaultCapturePrivacy: TreeCapturePrivacy(
@@ -90,11 +91,7 @@ void main() {
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     mockPlatformViews(tester);
-    WebViewSlotRegistry.register(
-      webViewIdentifier,
-      slotId,
-      owner: webViewOwner,
-    );
+    registry.register(webViewIdentifier, slotId, owner: webViewOwner);
 
     await tester.pumpWidget(buildTree(showWebView: true));
     final wireframes = await captureWebViewWireframes();
@@ -125,11 +122,7 @@ void main() {
     (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       mockPlatformViews(tester);
-      WebViewSlotRegistry.register(
-        webViewIdentifier,
-        slotId,
-        owner: webViewOwner,
-      );
+      registry.register(webViewIdentifier, slotId, owner: webViewOwner);
       await tester.pumpWidget(buildTree(showWebView: true));
       final visible = (await captureWebViewWireframes()).single;
 
@@ -163,18 +156,14 @@ void main() {
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     mockPlatformViews(tester);
-    WebViewSlotRegistry.register(
-      webViewIdentifier,
-      slotId,
-      owner: webViewOwner,
-    );
+    registry.register(webViewIdentifier, slotId, owner: webViewOwner);
     await tester.pumpWidget(buildTree(showWebView: true));
     await captureWebViewWireframes();
 
     await tester.pumpWidget(buildTree(showWebView: false));
-    WebViewSlotRegistry.debugFinalize(
+    registry.removeIfCurrent(
       webViewIdentifier,
-      generation: WebViewSlotRegistry.debugGeneration(webViewIdentifier)!,
+      registry.debugRegistrationId(webViewIdentifier)!,
     );
 
     expect(await captureWebViewWireframes(), isEmpty);

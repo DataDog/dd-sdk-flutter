@@ -78,9 +78,11 @@ void main() {
   group('Session Replay slot', () {
     late MockDatadogSdk mockDatadog;
     late MockWebviewPlatform mockWebviewPlatform;
+    late WebViewSlotRegistry registry;
 
     setUp(() {
-      WebViewSlotRegistry.debugReset();
+      registry = WebViewSlotRegistry();
+      WebViewSlotRegistry.instance = registry;
       mockDatadog = MockDatadogSdk();
       // ignore: invalid_use_of_internal_member
       when(() => mockDatadog.internalLogger).thenReturn(MockInternalLogger());
@@ -111,7 +113,7 @@ void main() {
       createIosController(3).trackDatadogEvents(mockDatadog, ['host_a']);
       await pumpEventQueue();
 
-      expect(WebViewSlotRegistry.slotId(3), '4370600960');
+      expect(registry.slotId(3), '4370600960');
     });
 
     test('registers no slot when native finds no WebView', () async {
@@ -120,7 +122,7 @@ void main() {
       createIosController(3).trackDatadogEvents(mockDatadog, ['host_a']);
       await pumpEventQueue();
 
-      expect(WebViewSlotRegistry.slotId(3), isNull);
+      expect(registry.slotId(3), isNull);
     });
   });
 }

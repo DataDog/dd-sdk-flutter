@@ -9,57 +9,56 @@ const webViewPlatformViewType = 'plugins.flutter.io/webview';
 
 /// Maps a tracked WebView's platform identifier to its Session Replay slot ID.
 class WebViewSlotRegistry {
-  static final Map<int, _WebViewSlot> _slots = {};
-  static final Finalizer<_WebViewSlot> _finalizer = Finalizer(_removeIfCurrent);
-  static int _nextGeneration = 0;
+  static WebViewSlotRegistry _instance = WebViewSlotRegistry();
+
+  /// The registry WebView tracking and Session Replay share.
+  static WebViewSlotRegistry get instance => _instance;
+
+  @visibleForTesting
+  static set instance(WebViewSlotRegistry value) => _instance = value;
+
+  final Map<int, _WebViewSlot> _slots = {};
+  late final Finalizer<_WebViewSlot> _finalizer = Finalizer(
+    (slot) => removeIfCurrent(slot.webViewIdentifier, slot.registrationId),
+  );
+  int _nextRegistrationId = 0;
 
   /// Registers [slotId] for the WebView with [webViewIdentifier] until [owner]
   /// is garbage collected.
-  static void register(
-    int webViewIdentifier,
-    String slotId, {
-    required Object owner,
-  }) {
-    final slot = _WebViewSlot(webViewIdentifier, slotId, _nextGeneration++);
+  void register(int webViewIdentifier, String slotId, {required Object owner}) {
+    final slot = _WebViewSlot(webViewIdentifier, slotId, _nextRegistrationId++);
     _slots[webViewIdentifier] = slot;
     // Re-tracking the same owner replaces its previous registration.
     _finalizer.detach(owner);
     _finalizer.attach(owner, slot, detach: owner);
   }
 
-  static String? slotId(int webViewIdentifier) =>
-      _slots[webViewIdentifier]?.slotId;
+  String? slotId(int webViewIdentifier) => _slots[webViewIdentifier]?.slotId;
 
   /// Whether [slotId] belongs to a WebView that is still alive.
-  static bool isRegistered(String slotId) =>
+  bool isRegistered(String slotId) =>
       _slots.values.any((slot) => slot.slotId == slotId);
 
   // Finalizers run asynchronously, possibly after the identifier was reused by
   // a newer WebView, so only remove the entry if it is still the one this owner
   // registered.
-  static void _removeIfCurrent(_WebViewSlot slot) {
-    if (_slots[slot.webViewIdentifier]?.generation == slot.generation) {
-      _slots.remove(slot.webViewIdentifier);
+  @visibleForTesting
+  void removeIfCurrent(int webViewIdentifier, int registrationId) {
+    if (_slots[webViewIdentifier]?.registrationId == registrationId) {
+      _slots.remove(webViewIdentifier);
     }
   }
 
   @visibleForTesting
-  static void debugFinalize(int webViewIdentifier, {required int generation}) =>
-      _removeIfCurrent(_WebViewSlot(webViewIdentifier, '', generation));
-
-  @visibleForTesting
-  static int? debugGeneration(int webViewIdentifier) =>
-      _slots[webViewIdentifier]?.generation;
-
-  @visibleForTesting
-  static void debugReset() => _slots.clear();
+  int? debugRegistrationId(int webViewIdentifier) =>
+      _slots[webViewIdentifier]?.registrationId;
 }
 
 @immutable
 class _WebViewSlot {
   final int webViewIdentifier;
   final String slotId;
-  final int generation;
+  final int registrationId;
 
-  const _WebViewSlot(this.webViewIdentifier, this.slotId, this.generation);
+  const _WebViewSlot(this.webViewIdentifier, this.slotId, this.registrationId);
 }
