@@ -65,11 +65,43 @@ Code style is enforced with the following libraries in the following languages:
   and [detekt](https://github.com/detekt/detekt) set up for static analysis and
   linting.
 
-Before submitting a PR, you can run all of these steps, as well as all
-integration tests, by running the `./preflight.sh` script in the root of the
-repo. Using this script requires you have both
-[Swiftlint](https://github.com/realm/SwiftLint) and [Bitrise
-CLI](https://app.bitrise.io/cli) available on your path
+Before submitting a PR, run `melos dartfmt_check`, `melos analyze:dart`, and
+`melos unit_test:flutter` from the root of the repo. If you changed native code,
+also run `melos analyze:android` or `melos analyze:ios`. These skip `example`,
+`integration_test_app`, and `e2e_test_app` packages, so build and check native changes
+in those apps directly. Melos has further scripts
+for the platform-specific linters (such as `melos lint_fix:ios`), other unit test
+platforms (such as `melos unit_test:web`), and integration tests (such as
+`melos integration_test:android`).
+
+Dart code should follow [Effective Dart](https://dart.dev/effective-dart) and use
+the language features available at the package's minimum SDK. See [AGENTS.md](AGENTS.md) for the
+specific conventions we ask contributors and coding agents to follow.
+
+### Version constraints
+
+Each package's `pubspec.yaml` is the source of truth for its minimum Dart and
+Flutter versions. Changes to those minimums are made deliberately and called out in
+the PR. Dev dependencies use lower-bound-only constraints, because the nightlies run
+minimum-version checks.
+
+### Generated files
+
+JSON models use `json_serializable`. After changing one, run
+`dart run build_runner build` in the package and commit the generated files.
+Running it again must not change any files.
+
+## Package layout
+
+* A package's `README.md` is the front page of its pub.dev documentation. Keep it
+  customer-facing: no contributor instructions, validation notes, or implementation
+  detail. Put contributor content here and API detail in dartdoc comments.
+* A package's `example/` is a standalone app with its own `pubspec.yaml` that shows
+  minimal SDK usage. Do not add testing hooks or dogfooding features to it.
+* Dogfooding and test-bed apps live in `test_apps`.
+* Integration tests for a package live in that package, in its `example/` or its own
+  `integration_test_app/`, built on `datadog_common_test`.
+  `datadog_flutter_plugin/integration_test_app` only tests `datadog_flutter_plugin`.
 
 ## Commit messages
 
@@ -84,16 +116,15 @@ For example, use `feat(flags): add initialization timeout` or
 `fix(web): avoid duplicate requests`.
 
 For features and bug fixes, use a `feat:` or `fix:` commit that changes the
-relevant package. The release tooling creates one changelog entry for each such
-commit. An empty commit does not appear in the package history used by the
-release tooling. Use types such as `docs:` or `chore:` for changes that do not
+relevant package. Such a commit makes the change eligible for the changelog. The
+release tooling groups changes by pull request and writes the entries. An empty
+commit does not appear in the package history used by the release tooling. Use types such as `docs:` or `chore:` for changes that do not
 need changelog entries.
 
 Review follow-up commits can use descriptive subjects without this format.
 The Conventional Commit does not need to be the last commit. Avoid adding
-`feat:` or `fix:` only to label review fixes for the same change, because this
-can create duplicate changelog entries. Do not rewrite pushed history only to
-repair a commit subject.
+`feat:` or `fix:` only to label review fixes for the same change. Do not rewrite
+pushed history only to repair a commit subject.
 
 For squash merges, ensure that the resulting commit subject also uses this
 format. A Conventional Commit pull request title can supply that subject.
@@ -119,6 +150,26 @@ There are three types of tests in this repo
 
 Any new PR must at least include unit tests, and hopefully include changes to
 (or new tests) in the corresponding integration tests.
+
+Test style:
+
+* Generate one test per case rather than one test that loops over all cases, so
+  each failure is reported separately.
+* Use [mocktail](https://pub.dev/packages/mocktail) for fakes and mocks.
+* Packages that support Web / WASM should have tests that run there.
+* Do not add unit tests for example apps, and do not depend on VM internals such as
+  forcing garbage collection.
+* Tests that send events to Datadog intake can affect billing. Get a maintainer's
+  sign-off before adding one.
+
+## Reviews
+
+You should be able to explain every change in your PR, including code written by
+a coding agent.
+
+Respond to or resolve every finding from automated reviewers (such as Codex or
+Copilot) before requesting human review. Ask for a re-review if you make changes
+in response to a human review.
 
 ## `develop` and `main`
 
