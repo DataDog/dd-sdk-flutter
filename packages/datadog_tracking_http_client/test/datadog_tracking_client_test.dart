@@ -35,6 +35,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(Uri());
+    registerFallbackValue(Object());
     registerFallbackValue(FakeBaseRequest());
     registerFallbackValue(RumResourceType.image);
     registerFallbackValue(TracingId.zero());
@@ -47,6 +48,7 @@ void main() {
     ).thenAnswer((_) => Future<void>.value());
 
     mockDatadog = MockDatadogSdk();
+    stubResolveErrorType(mockDatadog);
     when(
       () => mockDatadog.headerTypesForHost(
         any(that: HasHost(equals('test_url'))),
@@ -544,6 +546,96 @@ void main() {
         verify(() => mockRum.stopResource(any(), any(), any(), any(), any()));
       },
     );
+
+    test('registers httpErrorTypeResolver on creation', () {
+      DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
+
+      verify(() => mockDatadog.addErrorTypeResolver(httpErrorTypeResolver));
+    });
+
+    final sendErrors = <String, Object>{
+      'ClientException': http.ClientException('client error'),
+      'SocketException': const SocketException('socket error'),
+      'TimeoutException': TimeoutException('timeout'),
+    };
+    for (final entry in sendErrors.entries) {
+      test('send error reports ${entry.key} type', () async {
+        final client = DatadogClient(
+          datadogSdk: mockDatadog,
+          innerClient: mockClient,
+        );
+        final testUri = Uri.parse('https://test_url/test');
+        when(() => mockClient.send(any())).thenThrow(entry.value);
+
+        await expectLater(client.get(testUri), throwsA(entry.value));
+
+        verify(
+          () => mockRum.stopResourceWithErrorInfo(
+            any(),
+            entry.value.toString(),
+            entry.key,
+            any(),
+          ),
+        );
+      });
+    }
+
+    test('send error uses DatadogSdk.resolveErrorType', () async {
+      when(
+        () => mockDatadog.resolveErrorType(any()),
+      ).thenReturn('ResolvedType');
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+      );
+      final testUri = Uri.parse('https://test_url/test');
+      when(
+        () => mockClient.send(any()),
+      ).thenThrow(http.ClientException('client error'));
+
+      await expectLater(
+        client.get(testUri),
+        throwsA(isA<http.ClientException>()),
+      );
+
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          any(),
+          any(),
+          'ResolvedType',
+          any(),
+        ),
+      );
+    });
+
+    test('stream error uses DatadogSdk.resolveErrorType', () async {
+      when(
+        () => mockDatadog.resolveErrorType(any()),
+      ).thenReturn('ResolvedType');
+      final client = DatadogClient(
+        datadogSdk: mockDatadog,
+        innerClient: mockClient,
+      );
+      final testUri = Uri.parse('https://test_url/test');
+      final streamController = StreamController<List<int>>();
+      when(
+        () => mockResponse.stream,
+      ).thenAnswer((_) => http.ByteStream(streamController.stream));
+
+      final future = client.get(testUri);
+      streamController.sink.addError(http.ClientException('stream error'));
+
+      await expectLater(future, throwsA(isA<http.ClientException>()));
+
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          any(),
+          any(),
+          'ResolvedType',
+          any(),
+        ),
+      );
+    });
 
     for (final headerType in TracingHeaderType.values) {
       group('when rum is enabled with $headerType tracing headers', () {

@@ -159,7 +159,7 @@ class DatadogTrackingHttpClient implements HttpClient {
         rum.stopResourceWithErrorInfo(
           rumKey,
           e.toString(),
-          e.runtimeType.toString(),
+          datadogSdk.resolveErrorType(e),
           userAttributes,
         );
       }
@@ -438,7 +438,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
         rum.stopResourceWithErrorInfo(
           rumKey!,
           e.toString(),
-          e.runtimeType.toString(),
+          client.datadogSdk.resolveErrorType(e),
           attributes,
         );
       }
@@ -629,7 +629,7 @@ class _DatadogTrackingHttpResponse extends Stream<List<int>>
       rum.stopResourceWithErrorInfo(
         rumKey!,
         lastError.toString(),
-        lastError.runtimeType.toString(),
+        client.datadogSdk.resolveErrorType(error),
         attributes,
       );
     }
