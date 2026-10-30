@@ -16,39 +16,37 @@ void main() {
   // PlatformViewLink `webview_flutter_android` builds, through the WebViewWidget
   // above it. Runs against the real widgets, so a `webview_flutter` release
   // that builds them differently fails here.
-  testWidgets(
-    'matches the Android WebView widget to its Session Replay slot',
-    (tester) async {
-      await app.main();
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is Text &&
-              (widget.data?.startsWith('Open WebView') ?? false),
-        ),
-      );
-      await tester.pumpAndSettle();
+  testWidgets('matches the Android WebView widget to its Session Replay slot', (
+    tester,
+  ) async {
+    await app.main();
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Text &&
+            (widget.data?.startsWith('Open WebView') ?? false),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      final platformViewLink = tester.element(
-        find.descendant(
-          of: find.byType(WebViewWidget),
-          matching: find.byType(PlatformViewLink),
-        ),
-      );
+    final platformViewLink = tester.element(
+      find.descendant(
+        of: find.byType(WebViewWidget),
+        matching: find.byType(PlatformViewLink),
+      ),
+    );
 
-      final registry = WebViewSlotRegistry.instance;
-      final identifier = registry.identifierResolver?.call(platformViewLink);
-      expect(identifier, isNotNull);
+    final registry = WebViewSlotRegistry.instance;
+    final identifier = registry.identifierResolver?.call(platformViewLink);
+    expect(identifier, isNotNull);
 
-      // `trackDatadogEvents` registers the slot under the WebView's identifier
-      // once `initWebView` returns, so only the right identifier finds it.
-      for (var i = 0; i < 50; i++) {
-        if (registry.slotId(identifier!) != null) break;
-        await tester.pump(const Duration(milliseconds: 100));
-      }
-      expect(registry.slotId(identifier!), isNotNull);
-    },
-    skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android,
-  );
+    // `trackDatadogEvents` registers the slot under the WebView's identifier
+    // once `initWebView` returns, so only the right identifier finds it.
+    for (var i = 0; i < 50; i++) {
+      if (registry.slotId(identifier!) != null) break;
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(registry.slotId(identifier!), isNotNull);
+  }, skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android);
 }
