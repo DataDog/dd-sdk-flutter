@@ -150,7 +150,11 @@ extension FlutterRUMCoreContext$Methods on FlutterRUMCoreContext {
   }
 }
 
-/// FlutterSessionReplay
+/// The Session Replay bridge for a single Flutter engine.
+/// One instance exists per engine. It owns only per-engine state — this engine’s Dart
+/// RUM-context callback and the routing of this engine’s records — and delegates
+/// everything shared (the feature, the core, the engine registry, host slot IDs) to
+/// <code>FlutterSessionReplayManager</code>.
 extension type FlutterSessionReplay._(objc.ObjCObject object$)
     implements objc.ObjCObject, objc.NSObject {
   /// Constructs a [FlutterSessionReplay] that points to the same underlying object as [other].
@@ -210,7 +214,11 @@ extension FlutterSessionReplay$Methods on FlutterSessionReplay {
     _objc_msgSend_xtuoz7(_$$ref.pointer, _sel_enableWith_, _$$ref$1.pointer);
   }
 
-  /// engineToken
+  /// Identifies this bridge to its own engine.
+  /// The FFI <code>enable()</code> call cannot tell which engine invoked it, and this bridge never sees a
+  /// messenger. Dart reads this token after construction and passes it to the plugin instance
+  /// for its engine over the engine method channel, which is the one place the messenger <em>is</em>
+  /// known — letting the manager pair the two. See <code>FlutterSessionReplayManager.bind(engineToken:to:)</code>.
   objc.NSString get engineToken {
     final _$$ref = object$.ref;
     final $ret = _objc_msgSend_151sglz(_$$ref.pointer, _sel_engineToken);
@@ -299,7 +307,8 @@ extension FlutterSessionReplay$Methods on FlutterSessionReplay {
     );
   }
 
-  /// setEmbedded:
+  /// Declares which recording path this engine writes to. Called once by Dart, straight after
+  /// <code>enable()</code>, from the <code>isEmbedded</code> it was configured with.
   void setEmbedded(bool isEmbedded) {
     final _$$ref = object$.ref;
     _objc_msgSend_1s56lr9(_$$ref.pointer, _sel_setEmbedded_, isEmbedded);
@@ -324,6 +333,18 @@ extension FlutterSessionReplay$Methods on FlutterSessionReplay {
       _sel_setRecordCountFor_count_,
       _$$ref$1.pointer,
       count,
+    );
+  }
+
+  /// Reports whether <code>replaySampleRate</code> selected the RUM session <code>sessionId</code>, for WebView records.
+  void setSessionSampledFor(objc.NSString sessionId, {required bool sampled}) {
+    final _$$ref = object$.ref;
+    final _$$ref$1 = sessionId.ref;
+    _objc_msgSend_6p7ndb(
+      _$$ref.pointer,
+      _sel_setSessionSampledFor_sampled_,
+      _$$ref$1.pointer,
+      sampled,
     );
   }
 
@@ -407,6 +428,15 @@ extension FlutterSessionReplayConfiguration$Methods
         : objc.NSURL.fromPointer($ret, retain: true, release: true);
   }
 
+  /// imagePrivacyLevel
+  objc.NSString? get imagePrivacyLevel {
+    final _$$ref = object$.ref;
+    final $ret = _objc_msgSend_151sglz(_$$ref.pointer, _sel_imagePrivacyLevel);
+    return $ret.address == 0
+        ? null
+        : objc.NSString.fromPointer($ret, retain: true, release: true);
+  }
+
   /// initWithCustomEndpoint:onContextChanged:
   FlutterSessionReplayConfiguration initWithCustomEndpoint(
     objc.NSURL? customEndpoint, {
@@ -437,6 +467,60 @@ extension FlutterSessionReplayConfiguration$Methods
       _sel_setCustomEndpoint_,
       _$$ref$1?.pointer ?? ffi.nullptr,
     );
+  }
+
+  /// setImagePrivacyLevel:
+  set imagePrivacyLevel(objc.NSString? value) {
+    final _$$ref = object$.ref;
+    final _$$ref$1 = value?.ref;
+    _objc_msgSend_xtuoz7(
+      _$$ref.pointer,
+      _sel_setImagePrivacyLevel_,
+      _$$ref$1?.pointer ?? ffi.nullptr,
+    );
+  }
+
+  /// setTextAndInputPrivacyLevel:
+  set textAndInputPrivacyLevel(objc.NSString? value) {
+    final _$$ref = object$.ref;
+    final _$$ref$1 = value?.ref;
+    _objc_msgSend_xtuoz7(
+      _$$ref.pointer,
+      _sel_setTextAndInputPrivacyLevel_,
+      _$$ref$1?.pointer ?? ffi.nullptr,
+    );
+  }
+
+  /// setTouchPrivacyLevel:
+  set touchPrivacyLevel(objc.NSString? value) {
+    final _$$ref = object$.ref;
+    final _$$ref$1 = value?.ref;
+    _objc_msgSend_xtuoz7(
+      _$$ref.pointer,
+      _sel_setTouchPrivacyLevel_,
+      _$$ref$1?.pointer ?? ffi.nullptr,
+    );
+  }
+
+  /// textAndInputPrivacyLevel
+  objc.NSString? get textAndInputPrivacyLevel {
+    final _$$ref = object$.ref;
+    final $ret = _objc_msgSend_151sglz(
+      _$$ref.pointer,
+      _sel_textAndInputPrivacyLevel,
+    );
+    return $ret.address == 0
+        ? null
+        : objc.NSString.fromPointer($ret, retain: true, release: true);
+  }
+
+  /// touchPrivacyLevel
+  objc.NSString? get touchPrivacyLevel {
+    final _$$ref = object$.ref;
+    final $ret = _objc_msgSend_151sglz(_$$ref.pointer, _sel_touchPrivacyLevel);
+    return $ret.address == 0
+        ? null
+        : objc.NSString.fromPointer($ret, retain: true, release: true);
   }
 }
 
@@ -780,6 +864,25 @@ final _objc_msgSend_1s56lr9 = objc.msgSendPointer
         bool,
       )
     >();
+final _objc_msgSend_6p7ndb = objc.msgSendPointer
+    .cast<
+      ffi.NativeFunction<
+        ffi.Void Function(
+          ffi.Pointer<objc.ObjCObjectImpl>,
+          ffi.Pointer<objc.ObjCSelector>,
+          ffi.Pointer<objc.ObjCObjectImpl>,
+          ffi.Bool,
+        )
+      >
+    >()
+    .asFunction<
+      void Function(
+        ffi.Pointer<objc.ObjCObjectImpl>,
+        ffi.Pointer<objc.ObjCSelector>,
+        ffi.Pointer<objc.ObjCObjectImpl>,
+        bool,
+      )
+    >();
 final _objc_msgSend_g5idq5 = objc.msgSendPointer
     .cast<
       ffi.NativeFunction<
@@ -903,6 +1006,7 @@ late final _sel_arg0 = objc.registerName("arg0");
 late final _sel_customEndpoint = objc.registerName("customEndpoint");
 late final _sel_enableWith_ = objc.registerName("enableWith:");
 late final _sel_engineToken = objc.registerName("engineToken");
+late final _sel_imagePrivacyLevel = objc.registerName("imagePrivacyLevel");
 late final _sel_init = objc.registerName("init");
 late final _sel_initWithCustomEndpoint_onContextChanged_ = objc.registerName(
   "initWithCustomEndpoint:onContextChanged:",
@@ -924,11 +1028,27 @@ late final _sel_setEmbedded_ = objc.registerName("setEmbedded:");
 late final _sel_setHasReplayWithHasReplay_ = objc.registerName(
   "setHasReplayWithHasReplay:",
 );
+late final _sel_setImagePrivacyLevel_ = objc.registerName(
+  "setImagePrivacyLevel:",
+);
 late final _sel_setRecordCountFor_count_ = objc.registerName(
   "setRecordCountFor:count:",
 );
 late final _sel_setSessionID_ = objc.registerName("setSessionID:");
+late final _sel_setSessionSampledFor_sampled_ = objc.registerName(
+  "setSessionSampledFor:sampled:",
+);
+late final _sel_setTextAndInputPrivacyLevel_ = objc.registerName(
+  "setTextAndInputPrivacyLevel:",
+);
+late final _sel_setTouchPrivacyLevel_ = objc.registerName(
+  "setTouchPrivacyLevel:",
+);
 late final _sel_setViewID_ = objc.registerName("setViewID:");
+late final _sel_textAndInputPrivacyLevel = objc.registerName(
+  "textAndInputPrivacyLevel",
+);
+late final _sel_touchPrivacyLevel = objc.registerName("touchPrivacyLevel");
 late final _sel_viewID = objc.registerName("viewID");
 late final _sel_writeSegmentWithSegment_ = objc.registerName(
   "writeSegmentWithSegment:",

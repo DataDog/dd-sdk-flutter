@@ -87,6 +87,11 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
   }
 
   @override
+  FutureOr<void> setSessionSampled(String sessionId, bool sampled) {
+    // Only iOS forwards WebView replay records through Flutter Session Replay.
+  }
+
+  @override
   FutureOr<void> setRecordCount(String viewId, int count) {
     _bridge.setRecordCount(viewId.toJString(), count);
   }

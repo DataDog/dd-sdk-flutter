@@ -39,6 +39,11 @@ class DatadogSessionReplayWeb extends DatadogSessionReplayPlatform {
   }
 
   @override
+  Future<void> setSessionSampled(String sessionId, bool sampled) {
+    return Future.value();
+  }
+
+  @override
   Future<void> setRecordCount(String viewId, int count) {
     return Future.value();
   }

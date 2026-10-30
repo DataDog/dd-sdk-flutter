@@ -42,6 +42,10 @@ public func __datadog_session_replay_keep_symbols() {
 
     public var onContextChanged: ((FlutterRUMCoreContext?) -> Void)?
 
+    @objc public var textAndInputPrivacyLevel: String?
+    @objc public var imagePrivacyLevel: String?
+    @objc public var touchPrivacyLevel: String?
+
     @objc public init(
         customEndpoint: URL? = nil,
         onContextChanged: ((FlutterRUMCoreContext?) -> Void)? = nil
@@ -49,6 +53,29 @@ public func __datadog_session_replay_keep_symbols() {
         self.customEndpoint = customEndpoint
         self.onContextChanged = onContextChanged
         super.init()
+    }
+
+    internal var textAndInputPrivacy: TextAndInputPrivacyLevel {
+        switch textAndInputPrivacyLevel {
+        case "maskSensitiveInputs": return .maskSensitiveInputs
+        case "maskAllInputs": return .maskAllInputs
+        default: return .maskAll
+        }
+    }
+
+    internal var imagePrivacy: ImagePrivacyLevel {
+        switch imagePrivacyLevel {
+        case "maskNone": return .maskNone
+        case "maskNonAssetsOnly": return .maskNonBundledOnly
+        default: return .maskAll
+        }
+    }
+
+    internal var touchPrivacy: TouchPrivacyLevel {
+        switch touchPrivacyLevel {
+        case "show": return .show
+        default: return .hide
+        }
     }
 }
 
@@ -157,7 +184,13 @@ public func __datadog_session_replay_keep_symbols() {
         contextCallback = configuration.onContextChanged
         manager.register(engine: self)
 
-        try manager.enableFeature(in: core, customEndpoint: configuration.customEndpoint)
+        try manager.enableFeature(
+            in: core,
+            customEndpoint: configuration.customEndpoint,
+            textAndInputPrivacyLevel: configuration.textAndInputPrivacy,
+            imagePrivacyLevel: configuration.imagePrivacy,
+            touchPrivacyLevel: configuration.touchPrivacy
+        )
 
         // The feature only reports context *changes*, and in hybrid apps the native RUM
         // view is usually already active by now — so prime this engine with the current
@@ -183,6 +216,14 @@ public func __datadog_session_replay_keep_symbols() {
             return
         }
         manager.feature?.setHasReplay(hasReplay)
+    }
+
+    /// Reports whether `replaySampleRate` selected the RUM session `sessionId`, for WebView records.
+    @objc public func setSessionSampled(for sessionId: String, sampled: Bool) {
+        guard publishesReplayState else {
+            return
+        }
+        manager.feature?.setSessionSampled(for: sessionId, sampled: sampled)
     }
 
     @objc public func setRecordCount(for viewId: String, count: Int) {

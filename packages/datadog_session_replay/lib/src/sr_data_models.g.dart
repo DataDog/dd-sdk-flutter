@@ -285,6 +285,34 @@ Map<String, dynamic> _$SRPlaceholderWireframeToJson(
   'clip': instance.clip,
 };
 
+SRWebviewWireframe _$SRWebviewWireframeFromJson(Map<String, dynamic> json) =>
+    SRWebviewWireframe(
+      type: json['type'] as String? ?? 'webview',
+      id: (json['id'] as num).toInt(),
+      x: (json['x'] as num).toInt(),
+      y: (json['y'] as num).toInt(),
+      width: (json['width'] as num).toInt(),
+      height: (json['height'] as num).toInt(),
+      slotId: json['slotId'] as String,
+      isVisible: json['isVisible'] as bool? ?? true,
+      clip: json['clip'] == null
+          ? null
+          : SRContentClip.fromJson(json['clip'] as Map<String, dynamic>),
+    );
+
+Map<String, dynamic> _$SRWebviewWireframeToJson(SRWebviewWireframe instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'type': instance.type,
+      'x': instance.x,
+      'y': instance.y,
+      'width': instance.width,
+      'height': instance.height,
+      'slotId': instance.slotId,
+      'isVisible': instance.isVisible,
+      'clip': instance.clip,
+    };
+
 SRImageWireframe _$SRImageWireframeFromJson(Map<String, dynamic> json) =>
     SRImageWireframe(
       type: json['type'] as String? ?? 'image',
@@ -525,6 +553,36 @@ Map<String, dynamic> _$SRPlaceholderWireframeUpdateToJson(
   'width': ?instance.width,
   'height': ?instance.height,
   'label': ?instance.label,
+  'clip': ?instance.clip,
+};
+
+SRWebviewWireframeUpdate _$SRWebviewWireframeUpdateFromJson(
+  Map<String, dynamic> json,
+) => SRWebviewWireframeUpdate(
+  type: json['type'] as String? ?? 'webview',
+  id: (json['id'] as num).toInt(),
+  x: (json['x'] as num?)?.toInt(),
+  y: (json['y'] as num?)?.toInt(),
+  width: (json['width'] as num?)?.toInt(),
+  height: (json['height'] as num?)?.toInt(),
+  slotId: json['slotId'] as String,
+  isVisible: json['isVisible'] as bool?,
+  clip: json['clip'] == null
+      ? null
+      : SRContentClip.fromJson(json['clip'] as Map<String, dynamic>),
+);
+
+Map<String, dynamic> _$SRWebviewWireframeUpdateToJson(
+  SRWebviewWireframeUpdate instance,
+) => <String, dynamic>{
+  'type': instance.type,
+  'id': instance.id,
+  'x': ?instance.x,
+  'y': ?instance.y,
+  'width': ?instance.width,
+  'height': ?instance.height,
+  'slotId': instance.slotId,
+  'isVisible': ?instance.isVisible,
   'clip': ?instance.clip,
 };
 
