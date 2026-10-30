@@ -89,6 +89,31 @@ For successful evaluations, details report `CACHED` when the installed assignmen
 were restored from the configured store, including an in-memory store. After a
 network response replaces those assignments, details report the response reason.
 
+## First installed flags
+
+This notification uses the native client API, which is deprecated in favour of OpenFeature. The OpenFeature examples above remain the recommended setup for normal evaluations.
+
+Register after obtaining a shared client to receive the keys from its first
+accepted cache or network configuration: logical keys for plain configurations,
+including `[]` when empty, and `null` when logical keys are unavailable due to
+obfuscation. Late registrations receive the same
+event, and callbacks run in a later microtask. Evaluating through this client
+preserves RUM feature flag tracking.
+
+```dart
+final client = DatadogSdk.instance.flags!.sharedClient();
+final unregister = client.onFirstFlags((event) {
+  debugPrint('First installed flags: ${event.flagsChanged}');
+});
+// Call unregister() in dispose when the notification is no longer needed.
+```
+
+If no usable configuration is installed, the callback remains pending until
+you unregister it. See the [example app](example/lib/first_flags.dart) for registration,
+evaluation and widget disposal. Configure its `.env` using `melos generate_env`
+and set `DD_CLIENT_TOKEN`, `DD_ENV`, and optionally `DD_APPLICATION_ID` for RUM.
+Run this entrypoint with `flutter run -t lib/first_flags.dart` from `example`.
+
 ## Contributing
 
 See the [contributing guide](../../CONTRIBUTING.md) and

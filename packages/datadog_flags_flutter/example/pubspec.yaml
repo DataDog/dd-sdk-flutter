@@ -13,6 +13,7 @@ dependencies:
   datadog_flags_flutter:
     path: ..
   datadog_flutter_plugin: ^4.0.0
+  flutter_dotenv: ^5.0.2
 
 dependency_overrides:
   datadog_flutter_plugin:
@@ -27,3 +28,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env
