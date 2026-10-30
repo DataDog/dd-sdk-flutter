@@ -2,7 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-Present Datadog, Inc.
 
-import 'package:meta/meta.dart';
+import 'package:flutter/widgets.dart';
 
 /// The platform view type `webview_flutter` uses for its WebView.
 const webViewPlatformViewType = 'plugins.flutter.io/webview';
@@ -22,6 +22,10 @@ class WebViewSlotRegistry {
     (slot) => removeIfCurrent(slot.webViewIdentifier, slot.registrationId),
   );
   int _nextRegistrationId = 0;
+
+  /// Reads the identifier of the WebView a platform view element belongs to,
+  /// when its widget doesn't expose it.
+  int? Function(Element element)? identifierResolver;
 
   /// Registers [slotId] for the WebView with [webViewIdentifier] until [owner]
   /// is garbage collected.

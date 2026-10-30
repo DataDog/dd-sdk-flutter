@@ -42,8 +42,7 @@ class DatadogFlutterWebViewPlugin : FlutterPlugin, MethodCallHandler {
             val identifier = call.argument<Number>("webViewIdentifier")
             val allowedHosts = call.argument<List<String>>("allowedHosts")
             if (identifier != null && allowedHosts != null) {
-                initWebView(identifier.toLong(), allowedHosts)
-                result.success(null)
+                result.success(initWebView(identifier.toLong(), allowedHosts))
             } else {
                 result.missingParameter(call.method)
             }
@@ -58,24 +57,25 @@ class DatadogFlutterWebViewPlugin : FlutterPlugin, MethodCallHandler {
         channel.setMethodCallHandler(null)
     }
 
-    private fun initWebView(webViewIdentifier: Long, allowedHosts: List<String>) {
-        binding?.let {
-            val webView = WebViewFlutterAndroidExternalApi.getWebView(
-                it,
-                webViewIdentifier
+    /*
+     * Tracks the WebView and returns its Session Replay slot ID, or `null` if it is not tracked.
+     */
+    private fun initWebView(webViewIdentifier: Long, allowedHosts: List<String>): String? {
+        val binding = binding ?: return null
+        val webView = WebViewFlutterAndroidExternalApi.getWebView(binding, webViewIdentifier)
+        if (webView == null) {
+            Datadog._internalProxy()._telemetry.error(
+                "Could not find WebView during initialization when an identifier was provided"
             )
-            if (webView != null) {
-                if (!webView.settings.javaScriptEnabled) {
-                    Log.e(DATADOG_FLUTTER_WEBVIEW_TAG, JAVA_SCRIPT_NOT_ENABLED_WARNING_MESSAGE)
-                } else {
-                    WebViewTracking.enable(webView, allowedHosts)
-                }
-            } else {
-                Datadog._internalProxy()._telemetry.error(
-                    "Could not find WebView during initialization when an identifier was provided"
-                )
-            }
+            return null
         }
+        if (!webView.settings.javaScriptEnabled) {
+            Log.e(DATADOG_FLUTTER_WEBVIEW_TAG, JAVA_SCRIPT_NOT_ENABLED_WARNING_MESSAGE)
+            return null
+        }
+        WebViewTracking.enable(webView, allowedHosts)
+        // Matches the slot ID `WebViewTracking.enable` gives the WebView's replay records.
+        return System.identityHashCode(webView).toString()
     }
 }
 
