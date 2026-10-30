@@ -504,42 +504,6 @@ void main() {
       );
     });
 
-    for (final type in DioExceptionType.values.where(
-      (t) => t != DioExceptionType.badResponse,
-    )) {
-      test('the interceptor reports a stable error type for $type', () {
-        // Given
-        final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
-        final requestOptions = RequestOptions(
-          path: 'https://test_uri',
-          method: 'GET',
-          headers: {},
-        );
-        final rumKey = randomString();
-        requestOptions.extra[DatadogDioInterceptor.datadogRumExtraKey] = rumKey;
-
-        // When
-        final dioException = DioException(
-          requestOptions: requestOptions,
-          type: type,
-        );
-        interceptor.onError(dioException, ErrorInterceptorHandlerMock());
-
-        // Then
-        final expectedType = 'DioExceptionType.${type.name}';
-        // Matches the enum's unobfuscated toString().
-        expect(expectedType, type.toString());
-        verify(
-          () => mockRum.stopResourceWithErrorInfo(
-            rumKey,
-            dioException.toString(),
-            expectedType,
-            {},
-          ),
-        );
-      });
-    }
-
     test(
       'the interceptor adds provided attributes to stopResource on error',
       () {

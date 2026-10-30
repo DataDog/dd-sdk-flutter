@@ -83,7 +83,7 @@ class DatadogDioInterceptor extends Interceptor {
           rum.stopResourceWithErrorInfo(
             rumKey,
             err.toString(),
-            _dioErrorType(err),
+            err.type.toString(),
             attributes,
           );
         }
@@ -98,14 +98,6 @@ class DatadogDioInterceptor extends Interceptor {
     }
     super.onError(err, handler);
   }
-
-  /// Returns the error type to report for [err], such as
-  /// `DioExceptionType.connectionError`.
-  ///
-  /// Built from a string literal and [Enum.name] instead of
-  /// `err.type.toString()`, so it is not affected by obfuscation.
-  static String _dioErrorType(DioException err) =>
-      'DioExceptionType.${err.type.name}';
 
   /// Returns byte length of response body when already in memory (e.g. chunked response).
   static int? _responseDataByteLength(dynamic data) {
