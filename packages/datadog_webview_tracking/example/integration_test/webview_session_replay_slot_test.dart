@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -31,11 +30,6 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final webViewWidget = tester.widget<WebViewWidget>(
-        find.byType(WebViewWidget),
-      );
-      final controller =
-          webViewWidget.platform.params.controller as AndroidWebViewController;
       final platformViewLink = tester.element(
         find.descendant(
           of: find.byType(WebViewWidget),
@@ -44,17 +38,16 @@ void main() {
       );
 
       final registry = WebViewSlotRegistry.instance;
-      expect(
-        registry.identifierResolver?.call(platformViewLink),
-        controller.webViewIdentifier,
-      );
+      final identifier = registry.identifierResolver?.call(platformViewLink);
+      expect(identifier, isNotNull);
 
-      // The slot ID arrives from native once `initWebView` returns.
+      // `trackDatadogEvents` registers the slot under the WebView's identifier
+      // once `initWebView` returns, so only the right identifier finds it.
       for (var i = 0; i < 50; i++) {
-        if (registry.slotId(controller.webViewIdentifier) != null) break;
+        if (registry.slotId(identifier!) != null) break;
         await tester.pump(const Duration(milliseconds: 100));
       }
-      expect(registry.slotId(controller.webViewIdentifier), isNotNull);
+      expect(registry.slotId(identifier!), isNotNull);
     },
     skip: kIsWeb || defaultTargetPlatform != TargetPlatform.android,
   );

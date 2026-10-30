@@ -20,6 +20,8 @@ dependencies:
   meta: ^1.15.0  
   plugin_platform_interface: ^2.0.2
   datadog_flutter_plugin: ">=4.0.0-preview.2 <5.0.0"
+  datadog_flutter_plugin_android: ">=1.0.0-preview.2"
+  datadog_flutter_plugin_ios: ">=1.0.0-preview.2"
   json_annotation: ^4.12.0
 
 dev_dependencies:
