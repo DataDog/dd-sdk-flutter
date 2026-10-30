@@ -6,7 +6,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:datadog_flutter_plugin/src/error_type_resolver.dart';
+import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockInternalLogger extends Mock implements InternalLogger {}
 
 class CustomException implements Exception {}
 
@@ -55,10 +59,12 @@ void main() {
   });
 
   group('ErrorTypeResolverRegistry', () {
+    late MockInternalLogger logger;
     late ErrorTypeResolverRegistry registry;
 
     setUp(() {
-      registry = ErrorTypeResolverRegistry();
+      logger = MockInternalLogger();
+      registry = ErrorTypeResolverRegistry(logger);
     });
 
     test('falls back to default resolver', () {
@@ -130,11 +136,60 @@ void main() {
       expect(callCount, 1);
     });
 
+    test('app resolvers run before integration resolvers', () {
+      registry.addIntegration((e) => 'Integration');
+      registry.add((e) => 'App');
+
+      expect(registry.resolve(CustomException()), 'App');
+    });
+
+    test('integration resolvers run when app resolvers return null', () {
+      registry.add((e) => null);
+      registry.addIntegration((e) => 'Integration');
+
+      expect(registry.resolve(CustomException()), 'Integration');
+    });
+
+    test('integration resolvers run before default resolver', () {
+      registry.addIntegration(
+        (e) => e is SocketException ? 'IntegrationSocket' : null,
+      );
+
+      expect(
+        registry.resolve(const SocketException('socket')),
+        'IntegrationSocket',
+      );
+    });
+
+    test('adding the same integration resolver twice registers it once', () {
+      var callCount = 0;
+      String? resolver(Object e) {
+        callCount++;
+        return null;
+      }
+
+      registry.addIntegration(resolver);
+      registry.addIntegration(resolver);
+      registry.resolve(CustomException());
+
+      expect(callCount, 1);
+    });
+
     test('skips resolvers that throw', () {
       registry.add((e) => throw StateError('broken resolver'));
       registry.add((e) => 'Resolved');
 
       expect(registry.resolve(CustomException()), 'Resolved');
+    });
+
+    test('logs a warning when a resolver throws', () {
+      registry.add((e) => throw StateError('broken resolver'));
+
+      registry.resolve(CustomException());
+
+      verify(
+        () => logger.warn(any(that: contains('broken resolver'))),
+      ).called(1);
     });
   });
 }

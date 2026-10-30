@@ -5,6 +5,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
+
 /// A function that returns a stable name for the type of [error], or `null`
 /// if it does not know the type of [error].
 ///
@@ -26,7 +28,7 @@ typedef ErrorTypeResolver = String? Function(Object error);
 /// obfuscation.
 ///
 /// This matches exact types only, so subclasses of these types report their
-/// own `runtimeType`.
+/// own `runtimeType`, which is obfuscated in apps built with `--obfuscate`.
 String? defaultErrorTypeResolver(Object error) {
   return switch (error.runtimeType) {
     const (TimeoutException) => 'TimeoutException',
@@ -43,31 +45,47 @@ String? defaultErrorTypeResolver(Object error) {
 }
 
 /// Holds the [ErrorTypeResolver]s registered with the SDK.
+///
+/// Resolvers added by the app run before resolvers added by integration
+/// packages, so an app can override the type an integration reports no matter
+/// which one is registered first.
 class ErrorTypeResolverRegistry {
-  final List<ErrorTypeResolver> _resolvers = [];
+  final InternalLogger _logger;
+  final List<ErrorTypeResolver> _appResolvers = [];
+  final List<ErrorTypeResolver> _integrationResolvers = [];
 
-  /// Adds [resolver] to the end of the list of resolvers. Adding a resolver
-  /// that is already registered does nothing.
+  ErrorTypeResolverRegistry(this._logger);
+
+  /// Adds an app [resolver] to the end of the list of app resolvers. Adding a
+  /// resolver that is already registered does nothing.
   void add(ErrorTypeResolver resolver) {
-    if (!_resolvers.contains(resolver)) {
-      _resolvers.add(resolver);
+    if (!_appResolvers.contains(resolver)) {
+      _appResolvers.add(resolver);
     }
   }
 
-  /// Returns the first non-null type returned by the registered resolvers, in
-  /// the order they were added, then by [defaultErrorTypeResolver], or `null`
-  /// if no resolver knows [error].
+  /// Adds an integration [resolver] to the end of the list of integration
+  /// resolvers. Adding a resolver that is already registered does nothing.
+  void addIntegration(ErrorTypeResolver resolver) {
+    if (!_integrationResolvers.contains(resolver)) {
+      _integrationResolvers.add(resolver);
+    }
+  }
+
+  /// Returns the first non-null type returned by the app resolvers, then by
+  /// the integration resolvers, each in the order they were added, then by
+  /// [defaultErrorTypeResolver], or `null` if no resolver knows [error].
   ///
-  /// A resolver that throws is skipped.
+  /// A resolver that throws is logged and skipped.
   String? tryResolve(Object error) {
-    for (final resolver in _resolvers) {
+    for (final resolver in [..._appResolvers, ..._integrationResolvers]) {
       try {
         final type = resolver(error);
         if (type != null) {
           return type;
         }
-      } catch (_) {
-        // Ignore failing resolvers, reporting the error matters more.
+      } catch (e) {
+        _logger.warn('An error type resolver threw an exception: $e');
       }
     }
     return defaultErrorTypeResolver(error);

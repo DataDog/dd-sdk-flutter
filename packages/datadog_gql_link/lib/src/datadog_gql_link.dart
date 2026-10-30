@@ -79,7 +79,7 @@ class DatadogGqlLink extends Link {
     this.listener,
     this.trackPayload = false,
   }) {
-    datadogSdk.addErrorTypeResolver(gqlErrorTypeResolver);
+    datadogSdk.addIntegrationErrorTypeResolver(gqlErrorTypeResolver);
   }
 
   @override

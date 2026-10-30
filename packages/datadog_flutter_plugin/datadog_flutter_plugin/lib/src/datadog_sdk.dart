@@ -67,8 +67,8 @@ class DatadogSdk {
 
   final Map<Type, DatadogPlugin> _plugins = {};
 
-  final ErrorTypeResolverRegistry _errorTypeResolvers =
-      ErrorTypeResolverRegistry();
+  late final ErrorTypeResolverRegistry _errorTypeResolvers =
+      ErrorTypeResolverRegistry(internalLogger);
 
   /// An unmodifiable list of first party hosts for tracing.
   List<FirstPartyHost> get firstPartyHosts =>
@@ -106,16 +106,29 @@ class DatadogSdk {
   /// Registers [resolver] to name the type of errors sent to Datadog, which
   /// keeps `error.type` stable in apps built with `--obfuscate`.
   ///
-  /// Resolvers run in the order they were registered, and the first non-null
-  /// result is used. If no resolver knows an error, the SDK falls back to
+  /// Resolvers registered here run in the order they were registered, before
+  /// the resolvers of integration packages, and the first non-null result is
+  /// used. If no resolver knows an error, the SDK falls back to
   /// [defaultErrorTypeResolver], then to `error.runtimeType.toString()`.
   /// Registering the same resolver more than once has no effect.
   ///
-  /// Resolvers can be registered before the SDK is initialized. Plugins and
-  /// integration packages use this to name the errors of the libraries they
-  /// track.
+  /// Only exact types are resolved by default. Subclasses of known types, and
+  /// any other type without a resolver, report their `runtimeType`, which is
+  /// obfuscated in apps built with `--obfuscate`. Register a resolver for the
+  /// types your app reports to keep their names stable.
+  ///
+  /// Resolvers can be registered before the SDK is initialized. Each isolate
+  /// has its own [DatadogSdk] instance, so resolvers have to be registered in
+  /// every isolate that reports errors.
   void addErrorTypeResolver(ErrorTypeResolver resolver) {
     _errorTypeResolvers.add(resolver);
+  }
+
+  /// Registers [resolver] for an integration package. Integration resolvers
+  /// run after the resolvers registered with [addErrorTypeResolver]. For
+  /// internal use only.
+  void addIntegrationErrorTypeResolver(ErrorTypeResolver resolver) {
+    _errorTypeResolvers.addIntegration(resolver);
   }
 
   /// Returns the type name to report for [error], using the resolvers

@@ -583,7 +583,9 @@ query UserInfo($id: ID!) {
     test('link registers gql error type resolver on creation', () {
       DatadogGqlLink(mockDatadog, Uri.parse('https://test_uri'));
 
-      verify(() => mockDatadog.addErrorTypeResolver(gqlErrorTypeResolver));
+      verify(
+        () => mockDatadog.addIntegrationErrorTypeResolver(gqlErrorTypeResolver),
+      );
     });
 
     test('link reports stream error type from resolveErrorType', () async {

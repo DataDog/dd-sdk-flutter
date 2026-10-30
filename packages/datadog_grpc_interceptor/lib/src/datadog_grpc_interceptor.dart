@@ -32,7 +32,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
   late String _hostPath;
 
   DatadogGrpcInterceptor(this._datadog, this._channel) {
-    _datadog.addErrorTypeResolver(grpcErrorTypeResolver);
+    _datadog.addIntegrationErrorTypeResolver(grpcErrorTypeResolver);
     final host = _channel.host;
     final scheme = _channel.options.credentials.isSecure ? 'https' : 'http';
     // Add http / https scheme. This scheme is a lie but needed to connect

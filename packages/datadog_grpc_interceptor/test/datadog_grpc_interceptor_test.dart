@@ -450,7 +450,9 @@ void main() {
     ).thenReturn({TracingHeaderType.datadog});
 
     final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
-    verify(() => mockDatadog.addErrorTypeResolver(grpcErrorTypeResolver));
+    verify(
+      () => mockDatadog.addIntegrationErrorTypeResolver(grpcErrorTypeResolver),
+    );
 
     final stub = GreeterClient(channel, interceptors: [interceptor]);
 
