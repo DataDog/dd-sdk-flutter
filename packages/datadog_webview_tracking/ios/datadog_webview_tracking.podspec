@@ -16,6 +16,7 @@ A Flutter plugin for use with the Datadog Flutter Plugin to track webviews as pa
   s.source_files = 'datadog_webview_tracking/Sources/**/*'
   s.dependency 'Flutter'
   s.dependency 'DatadogCore', '~> 3'
+  s.dependency 'DatadogInternal', '~> 3'
   s.dependency 'DatadogWebViewTracking', '~> 3'
   s.dependency 'webview_flutter_wkwebview'
   s.platform = :ios, '15.0'
