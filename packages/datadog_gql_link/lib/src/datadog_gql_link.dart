@@ -36,6 +36,23 @@ abstract interface class DatadogGqlListener {
   );
 }
 
+/// An [ErrorTypeResolver] for the exceptions of the `gql_link` package, so
+/// their type is not obfuscated in apps built with `--obfuscate`.
+/// [DatadogGqlLink] registers it automatically.
+///
+/// This matches exact types only. Subclasses defined by terminating links,
+/// such as `HttpLinkServerException`, keep reporting their own `runtimeType`.
+String? gqlErrorTypeResolver(Object error) {
+  return switch (error.runtimeType) {
+    const (ServerException) => 'ServerException',
+    const (RequestFormatException) => 'RequestFormatException',
+    const (ResponseFormatException) => 'ResponseFormatException',
+    const (ContextReadException) => 'ContextReadException',
+    const (ContextWriteException) => 'ContextWriteException',
+    _ => null,
+  };
+}
+
 /// DatadogGqlLink automatically creates RUM Resources, enables distributed
 /// traces with first party hosts (specified in [DatadogSdk.firstPartyHosts]),
 /// and automatically adds GraphQL attributes visible in both APM and RUM.
@@ -61,7 +78,9 @@ class DatadogGqlLink extends Link {
     this.uri, {
     this.listener,
     this.trackPayload = false,
-  });
+  }) {
+    datadogSdk.addIntegrationErrorTypeResolver(gqlErrorTypeResolver);
+  }
 
   @override
   Stream<Response> request(Request request, [NextLink? forward]) {
@@ -157,7 +176,7 @@ class DatadogGqlLink extends Link {
           datadogSdk.rum?.stopResourceWithErrorInfo(
             resourceId,
             error.toString(),
-            error.runtimeType.toString(),
+            datadogSdk.resolveErrorType(error),
             userAttributes,
           );
 
