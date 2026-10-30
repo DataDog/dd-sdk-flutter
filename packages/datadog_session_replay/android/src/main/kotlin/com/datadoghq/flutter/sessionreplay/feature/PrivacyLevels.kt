@@ -22,6 +22,7 @@ internal data class PrivacyLevels(
             },
             image = when (image) {
                 "maskNone" -> "mask_none"
+                "maskNonAssetsOnly" -> "mask_large_only"
                 else -> MOST_RESTRICTIVE.image
             },
             touch = when (touch) {

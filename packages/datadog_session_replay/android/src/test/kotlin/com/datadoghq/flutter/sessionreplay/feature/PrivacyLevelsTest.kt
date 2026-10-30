@@ -34,10 +34,16 @@ internal class PrivacyLevelsTest {
     }
 
     @Test
+    fun `M map maskNonAssetsOnly to its closest native level W fromDartNames`() {
+        assertThat(PrivacyLevels.fromDartNames(null, "maskNonAssetsOnly", null).image)
+            .isEqualTo("mask_large_only")
+    }
+
+    @Test
     fun `M fall back to the most restrictive levels W fromDartNames {missing or unknown}`() {
         assertThat(PrivacyLevels.fromDartNames(null, null, null))
             .isEqualTo(PrivacyLevels.MOST_RESTRICTIVE)
-        assertThat(PrivacyLevels.fromDartNames("unknown", "maskNonAssetsOnly", "unknown"))
+        assertThat(PrivacyLevels.fromDartNames("unknown", "unknown", "unknown"))
             .isEqualTo(PrivacyLevels.MOST_RESTRICTIVE)
     }
 }
