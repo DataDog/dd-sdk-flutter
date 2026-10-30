@@ -189,9 +189,11 @@ evaluations in the callback read current flag values. If no usable configuration
 is installed, the callback remains pending until you unregister it.
 
 Call the returned function to cancel delivery before the callback starts.
-Configure `example/.env` using `melos generate_env` with `DD_CLIENT_TOKEN`,
-`DD_ENV`, and optionally `DD_APPLICATION_ID` and `DD_SITE`. The CLI loads `.env`
-and also accepts environment variables; `--env` and `--site` override those values.
+Generate `example/.env` with `melos generate_env`. It copies `DD_CLIENT_TOKEN`
+and optional `DD_APPLICATION_ID` from the environment, writes `DD_ENV=prod`,
+and omits `DD_SITE`. Edit the generated file to set `DD_ENV` and optional `DD_SITE`.
+The CLI loads `.env` over environment variables; `--env` and `--site` override
+those values.
 Run `dart run bin/first_flags.dart --help` from `example` for its options.
 See the [First Flags CLI example](example/bin/first_flags.dart) and
 `DatadogFlagsClient.onFirstFlags` API documentation for details.
