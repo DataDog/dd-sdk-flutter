@@ -9,6 +9,7 @@ package com.datadoghq.flutter.sessionreplay
 import com.datadog.android.Datadog
 import com.datadog.android.api.feature.FeatureSdkCore
 import com.datadoghq.flutter.sessionreplay.feature.DefaultFlutterSessionReplayFeature
+import com.datadoghq.flutter.sessionreplay.feature.PrivacyLevels
 import io.flutter.plugin.common.BinaryMessenger
 import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
@@ -63,7 +64,11 @@ internal class FlutterSessionReplayBridge private constructor(
 
     data class Configuration(
         val customEndpointUrl: String? = null,
-        val onContextChanged: ContextListener
+        val onContextChanged: ContextListener,
+        
+        val textAndInputPrivacyLevel: String? = null,
+        val imagePrivacyLevel: String? = null,
+        val touchPrivacyLevel: String? = null
     )
 
     /**
@@ -125,6 +130,7 @@ internal class FlutterSessionReplayBridge private constructor(
      */
     private var pendingHasReplay: Pair<String, Boolean>? = null
     private var pendingRecordCount: Pair<String, Int>? = null
+    private var pendingSessionSampled: Pair<String, Boolean>? = null
 
     /**
      * Whether [writeSegment] has already reported dropping a segment to the [MAX_PENDING_SEGMENTS]
@@ -198,7 +204,15 @@ internal class FlutterSessionReplayBridge private constructor(
         contextListener = configuration.onContextChanged
         manager.register(this)
 
-        val feature = manager.enableFeature(core, configuration.customEndpointUrl)
+        val feature = manager.enableFeature(
+            core,
+            configuration.customEndpointUrl,
+            PrivacyLevels.fromDartNames(
+                textAndInput = configuration.textAndInputPrivacyLevel,
+                image = configuration.imagePrivacyLevel,
+                touch = configuration.touchPrivacyLevel
+            )
+        )
 
         // The feature only reports context *changes*, and in hybrid apps the native RUM view is
         // usually already active by now — so prime this engine with the current context instead of
@@ -252,6 +266,25 @@ internal class FlutterSessionReplayBridge private constructor(
         }
     }
 
+    /**
+     * Reports whether `replaySampleRate` selected the RUM session [sessionId].
+     */
+    fun setSessionSampled(sessionId: String, sampled: Boolean) {
+        val shouldPublish = synchronized(lock) {
+            when (embeddingState) {
+                EmbeddingState.UNKNOWN -> {
+                    pendingSessionSampled = sessionId to sampled
+                    false
+                }
+                EmbeddingState.STANDALONE -> true
+                EmbeddingState.EMBEDDED -> false
+            }
+        }
+        if (shouldPublish) {
+            manager.feature?.setSessionSampled(sessionId, sampled)
+        }
+    }
+
     // endregion
 
     // region Segments
@@ -260,19 +293,21 @@ internal class FlutterSessionReplayBridge private constructor(
      * Declares which recording path this engine writes to. Called once by Dart, straight after
      * [enable], from the `isEmbedded` it was configured with.
      *
-     * Also publishes whatever [setHasReplay]/[setRecordCount] call arrived too early to publish
-     * itself, if this resolves to standalone — see [pendingHasReplay]/[pendingRecordCount].
+     * Also publishes whatever [setHasReplay]/[setRecordCount]/[setSessionSampled] call arrived too
+     * early to publish itself, if this resolves to standalone — see [pendingHasReplay],
+     * [pendingRecordCount] and [pendingSessionSampled].
      */
     fun setEmbedded(isEmbedded: Boolean) {
-        val (hasReplay, recordCount) = synchronized(lock) {
+        val (hasReplay, recordCount, sessionSampled) = synchronized(lock) {
             embeddingState = if (isEmbedded) EmbeddingState.EMBEDDED else EmbeddingState.STANDALONE
             if (embeddingState == EmbeddingState.STANDALONE) {
-                val flushed = pendingHasReplay to pendingRecordCount
+                val flushed = Triple(pendingHasReplay, pendingRecordCount, pendingSessionSampled)
                 pendingHasReplay = null
                 pendingRecordCount = null
+                pendingSessionSampled = null
                 flushed
             } else {
-                null to null
+                Triple(null, null, null)
             }
         }
 
@@ -281,6 +316,7 @@ internal class FlutterSessionReplayBridge private constructor(
         }
         hasReplay?.let { (viewId, value) -> manager.feature?.setHasReplay(viewId, value) }
         recordCount?.let { (viewId, value) -> manager.feature?.setRecordCount(viewId, value) }
+        sessionSampled?.let { (sessionId, value) -> manager.feature?.setSessionSampled(sessionId, value) }
 
         flushPendingSegments()
     }

@@ -16,6 +16,7 @@ Support for Datadog Session Replay in Flutter.
   s.source_files = 'datadog_session_replay/Sources/**/*'
   s.dependency 'Flutter'
   s.dependency 'DatadogCore', '~> 3.16'
+  s.dependency 'DatadogInternal', '~> 3.16'
   s.platform = :ios, '15.0'
 
   # Flutter.framework does not contain a i386 slice.

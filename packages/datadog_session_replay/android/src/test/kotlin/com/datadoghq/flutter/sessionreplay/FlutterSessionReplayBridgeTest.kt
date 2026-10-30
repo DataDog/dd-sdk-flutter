@@ -413,6 +413,56 @@ internal class FlutterSessionReplayBridgeTest {
     }
 
     @Test
+    fun `M publish to the feature W setSessionSampled when standalone`(
+        @StringForgery sessionId: String,
+        @BoolForgery sampled: Boolean
+    ) {
+        // Given
+        enable()
+        bridge.setEmbedded(false)
+
+        // When
+        bridge.setSessionSampled(sessionId, sampled)
+
+        // Then
+        verify { mockFeature.setSessionSampled(sessionId, sampled) }
+    }
+
+    @Test
+    fun `M stay quiet W setSessionSampled when embedded`(
+        @StringForgery sessionId: String
+    ) {
+        // Given
+        enable()
+        bridge.setEmbedded(true)
+
+        // When
+        bridge.setSessionSampled(sessionId, true)
+
+        // Then - the native Session Replay owns WebView records when embedded
+        verify(exactly = 0) { mockFeature.setSessionSampled(any(), any()) }
+    }
+
+    @Test
+    fun `M publish the pending call W setEmbedded resolves to standalone after setSessionSampled`(
+        @StringForgery sessionId: String,
+        @BoolForgery sampled: Boolean
+    ) {
+        // Given - the first session's decision arrives before Dart declares the embedding
+        enable()
+        bridge.setSessionSampled(sessionId, sampled)
+
+        // When
+        bridge.setEmbedded(false)
+
+        // Then
+        verifyOrder {
+            mockFeature.registerSessionReplayContext()
+            mockFeature.setSessionSampled(sessionId, sampled)
+        }
+    }
+
+    @Test
     fun `M publish to the feature W setRecordCount when standalone`(
         @StringForgery viewId: String,
         @IntForgery(min = 0, max = 1000) recordCount: Int

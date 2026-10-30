@@ -168,9 +168,10 @@ internal class BatchesToSegmentsMapper(private val internalLogger: InternalLogge
     }
 
     private fun JsonObject.rumContext(): SessionReplayRumContext? {
-        val applicationId = get(EnrichedRecord.APPLICATION_ID_KEY)?.asString
-        val sessionId = get(EnrichedRecord.SESSION_ID_KEY)?.asString
-        val viewId = get(EnrichedRecord.VIEW_ID_KEY)?.asString
+        // Native WebView tracking writes WebView records through this mapper too, with its own keys.
+        val applicationId = (get(EnrichedRecord.APPLICATION_ID_KEY) ?: get(WEB_APPLICATION_ID_KEY))?.asString
+        val sessionId = (get(EnrichedRecord.SESSION_ID_KEY) ?: get(WEB_SESSION_ID_KEY))?.asString
+        val viewId = (get(EnrichedRecord.VIEW_ID_KEY) ?: get(WEB_VIEW_ID_KEY))?.asString
         if (applicationId == null || sessionId == null || viewId == null) {
             internalLogger.log(
                 InternalLogger.Level.ERROR,
@@ -196,6 +197,11 @@ internal class BatchesToSegmentsMapper(private val internalLogger: InternalLogge
         private const val FULL_SNAPSHOT_RECORD_TYPE_BROWSER = 2L
 
         internal const val RECORDS_KEY = "records"
+
+        // The keys native WebView tracking (`WebViewReplayEventMapper`) writes WebView records with.
+        internal const val WEB_APPLICATION_ID_KEY = "application_id"
+        internal const val WEB_SESSION_ID_KEY = "session_id"
+        internal const val WEB_VIEW_ID_KEY = "view_id"
         private const val RECORD_TYPE_KEY = "type"
         internal const val TIMESTAMP_KEY = "timestamp"
         internal const val UNABLE_TO_DESERIALIZE_ENRICHED_RECORD_ERROR_MESSAGE =
