@@ -131,8 +131,12 @@ class DatadogSdk {
     _errorTypeResolvers.addIntegration(resolver);
   }
 
-  /// Returns the type name to report for [error], using the resolvers
-  /// registered with [addErrorTypeResolver].
+  /// Returns the type name to report for [error].
+  ///
+  /// Runs the resolvers registered with [addErrorTypeResolver], then the
+  /// resolvers registered with [addIntegrationErrorTypeResolver], then
+  /// [defaultErrorTypeResolver], and falls back to
+  /// `error.runtimeType.toString()` if none of them knows [error].
   ///
   /// Use this instead of `error.runtimeType.toString()` when reporting an
   /// error type, since `runtimeType` is obfuscated in apps built with
