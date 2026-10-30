@@ -88,7 +88,7 @@ class DatadogClient extends http.BaseClient {
     this.ignoreUrlPatterns = const [],
     http.Client? innerClient,
   }) : _innerClient = innerClient ?? http.Client() {
-    datadogSdk.addErrorTypeResolver(httpErrorTypeResolver);
+    datadogSdk.addIntegrationErrorTypeResolver(httpErrorTypeResolver);
     datadogSdk.updateConfigurationInfo(
       LateConfigurationProperty.trackNetworkRequests,
       true,

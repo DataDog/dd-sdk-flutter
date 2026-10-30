@@ -8,12 +8,19 @@ import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockHttpClient extends Mock implements HttpClient {}
 
 class CustomClientException extends http.ClientException {
   CustomClientException(super.message);
 }
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(Uri());
+  });
+
   test('resolves ClientException', () {
     final error = http.ClientException('client error');
 
@@ -22,19 +29,17 @@ void main() {
   });
 
   test('resolves socket errors thrown by IOClient', () async {
-    // Bind and release a port so the connection is refused.
-    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
-    final port = server.port;
-    await server.close();
+    final inner = MockHttpClient();
+    when(
+      () => inner.openUrl(any(), any()),
+    ).thenThrow(const SocketException('Connection refused'));
 
-    final client = IOClient();
+    final client = IOClient(inner);
     Object? error;
     try {
-      await client.get(Uri.parse('http://127.0.0.1:$port/'));
+      await client.get(Uri.parse('http://localhost/'));
     } catch (e) {
       error = e;
-    } finally {
-      client.close();
     }
 
     expect(error, isA<http.ClientException>());

@@ -550,7 +550,10 @@ void main() {
     test('registers httpErrorTypeResolver on creation', () {
       DatadogClient(datadogSdk: mockDatadog, innerClient: mockClient);
 
-      verify(() => mockDatadog.addErrorTypeResolver(httpErrorTypeResolver));
+      verify(
+        () =>
+            mockDatadog.addIntegrationErrorTypeResolver(httpErrorTypeResolver),
+      );
     });
 
     final sendErrors = <String, Object>{
