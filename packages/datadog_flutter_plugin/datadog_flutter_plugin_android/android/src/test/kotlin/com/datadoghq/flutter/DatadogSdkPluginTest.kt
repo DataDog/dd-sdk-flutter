@@ -18,6 +18,7 @@ import assertk.assertions.isNull
 import assertk.assertions.isNullOrEmpty
 import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
+import com.datadog.android._InternalProxy
 import com.datadog.android.api.context.AccountInfo
 import com.datadog.android.api.context.UserInfo
 import com.datadog.android.core.configuration.BatchProcessingLevel
@@ -30,7 +31,13 @@ import fr.xgouchet.elmyr.junit5.ForgeExtension
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkObject
 import io.mockk.mockkStatic
+import io.mockk.unmockkObject
+import io.mockk.unmockkStatic
+import io.mockk.verifyOrder
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -76,6 +83,32 @@ class DatadogSdkPluginTest {
     @AfterEach
     fun afterEach() {
         Datadog.stopInstance()
+    }
+
+    @Test
+    fun `M flush before stopping W onMethodCall {flushAndDeinitialize}`() {
+        // Given
+        val mockInternalProxy = mockk<_InternalProxy>(relaxUnitFun = true)
+        val mockResult = mockk<MethodChannel.Result>(relaxUnitFun = true)
+        mockkObject(Datadog)
+        mockkStatic(Datadog::class)
+        try {
+            every { Datadog._internalProxy() } returns mockInternalProxy
+            every { Datadog.stopInstance() } returns Unit
+
+            // When
+            plugin.onMethodCall(MethodCall("flushAndDeinitialize", null), mockResult)
+
+            // Then
+            verifyOrder {
+                mockInternalProxy.flushAndShutdownExecutors()
+                Datadog.stopInstance()
+                mockResult.success(null)
+            }
+        } finally {
+            unmockkStatic(Datadog::class)
+            unmockkObject(Datadog)
+        }
     }
 
     val contracts = listOf(
