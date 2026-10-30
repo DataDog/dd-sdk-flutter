@@ -12,25 +12,22 @@ class AndroidDatadogFlutterPlugin {
   static final JString _javaSessionId = 'session_id'.toJString();
 
   static DatadogContext? getContext() {
-    final javaContext = bridge.DatadogSdkPlugin.Companion.coreContext;
-    if (javaContext == null) return null;
+    return using((arena) {
+      final companion = bridge.DatadogSdkPlugin.Companion..releasedBy(arena);
+      final javaContext = companion.coreContext?..releasedBy(arena);
+      if (javaContext == null) return null;
 
-    String? sessionId;
-    final rumContext = javaContext.featuresContext.get(_javaRumKey);
-    if (rumContext != null) {
-      final javaSessionId = rumContext.get(_javaSessionId);
-      if (javaSessionId != null) {
-        sessionId = javaSessionId.toString();
-        javaSessionId.release();
-      }
-    }
+      final featuresContext = javaContext.featuresContext..releasedBy(arena);
+      final rumContext = featuresContext.get(_javaRumKey)?..releasedBy(arena);
+      final javaSessionId = rumContext?.get(_javaSessionId)?..releasedBy(arena);
+      final accountInfo = javaContext.accountInfo?..releasedBy(arena);
+      final userInfo = javaContext.userInfo..releasedBy(arena);
 
-    final context = DatadogContext(
-      sessionId: sessionId,
-      accountId: javaContext.accountInfo?.id.toDartString(),
-      userId: javaContext.userInfo.id?.toDartString(),
-    );
-    javaContext.release();
-    return context;
+      return DatadogContext(
+        sessionId: javaSessionId?.toString(),
+        accountId: accountInfo?.id.toDartString(releaseOriginal: true),
+        userId: userInfo.id?.toDartString(releaseOriginal: true),
+      );
+    });
   }
 }
