@@ -128,7 +128,7 @@ class IntegrationTestRunner {
         'retrying (attempt ${attempt + 1} of $maxAttempts)',
       );
       try {
-        await recoverDevice!();
+        await recoverDevice!().timeout(_recoveryTimeout);
       } catch (e) {
         print('[${_timestamp()}] Device recovery failed: $e');
       }
@@ -196,12 +196,18 @@ class IntegrationTestRunner {
         .forEach((line) => print('[${_timestamp()}] $line'));
 
     final stopwatch = Stopwatch()..start();
-    final exited = process.exitCode.then((_) => _Event.exited);
+    // Buffered stdout is handled before an exit is classified, so a test that
+    // started and failed quickly isn't mistaken for a launch failure. Child
+    // processes can hold the pipe open after flutter exits, so the wait is
+    // bounded.
+    final exited = process.exitCode.then((_) async {
+      await stdoutDone.timeout(_drainTimeout, onTimeout: () {});
+      return _Event.exited;
+    });
     final first = await Future.any([
       exited,
       started.future.then((_) => _Event.started),
-      Future.delayed(startupTimeout, () => _Event.timedOut),
-    ]);
+    ]).timeout(startupTimeout, onTimeout: () => _Event.timedOut);
 
     AttemptOutcome outcome;
     switch (first) {
@@ -213,13 +219,10 @@ class IntegrationTestRunner {
         await _killProcessTree(process);
         outcome = AttemptOutcome.startupTimeout;
       case _Event.started:
-        final second = await Future.any([
-          exited,
-          Future.delayed(
-            hardTimeout - stopwatch.elapsed,
-            () => _Event.timedOut,
-          ),
-        ]);
+        final second = await exited.timeout(
+          hardTimeout - stopwatch.elapsed,
+          onTimeout: () => _Event.timedOut,
+        );
         if (second == _Event.timedOut) {
           print(
             '[${_timestamp()}] $testName: still running after '
@@ -264,6 +267,9 @@ class IntegrationTestRunner {
 }
 
 enum _Event { exited, started, timedOut }
+
+const _drainTimeout = Duration(seconds: 10);
+const _recoveryTimeout = Duration(minutes: 10);
 
 String _timestamp() => DateTime.now().toIso8601String();
 
