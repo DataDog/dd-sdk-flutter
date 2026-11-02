@@ -61,6 +61,7 @@ Future<bool> launchIosSimulator(String sdk, String? deviceName) async {
 
       print('Launching $deviceName');
       await _xcrun('simctl boot ${device.udid}');
+      await _xcrun('simctl bootstatus ${device.udid} -b');
       return true;
     } else {
       print('Found no devices matching $deviceName');
@@ -71,6 +72,21 @@ Future<bool> launchIosSimulator(String sdk, String? deviceName) async {
   }
 
   return false;
+}
+
+/// Shuts down and re-boots every booted simulator, waiting until each is
+/// ready for use.
+Future<void> rebootBootedIosSimulators() async {
+  final booted = [
+    for (final devices in (await getIosSimulators()).values)
+      ...devices.where((device) => device.state == 'Booted'),
+  ];
+  for (final device in booted) {
+    print('Rebooting ${device.name} (${device.udid})');
+    await _xcrun('simctl shutdown ${device.udid}');
+    await _xcrun('simctl boot ${device.udid}');
+    await _xcrun('simctl bootstatus ${device.udid} -b');
+  }
 }
 
 Future<Map<String, List<IosSimulator>>> getIosSimulators() async {

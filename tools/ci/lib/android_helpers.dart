@@ -54,6 +54,25 @@ Future<void> killAllEmulators() async {
   }
 }
 
+/// Reboots every running emulator and waits until Android has finished booting.
+Future<void> rebootAndroidEmulators() async {
+  for (final id in (await _getRunningDevices()).keys) {
+    print('Rebooting $id');
+    await shellRun(adbCommand, ['-s', id, 'reboot']);
+    await shellRun(adbCommand, ['-s', id, 'wait-for-device']);
+
+    final deadline = DateTime.now().add(const Duration(minutes: 5));
+    while (DateTime.now().isBefore(deadline)) {
+      final booted = await shellRun(
+        adbCommand,
+        ['-s', id, 'shell', 'getprop', 'sys.boot_completed'],
+      );
+      if (booted.trim() == '1') break;
+      await Future.delayed(const Duration(seconds: 5));
+    }
+  }
+}
+
 Future<bool> launchAndroidEmulator({
   String? apiLevel,
   String? emulatorName,
