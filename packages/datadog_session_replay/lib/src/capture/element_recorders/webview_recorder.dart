@@ -10,9 +10,8 @@ import '../capture_node.dart';
 import '../recorder.dart';
 import '../view_tree_snapshot.dart';
 
-/// Records a `webview_flutter` WebView (on iOS, a [UiKitView] whose
-/// `creationParams` is the WebView's identifier) as a `webview` wireframe, so
-/// the replay player draws the WebView's Browser SDK replay inside it.
+/// Records a `webview_flutter` WebView as a `webview` wireframe, so the replay
+/// player draws the WebView's Browser SDK replay inside it.
 ///
 /// Only WebViews tracked with `trackDatadogEvents` have a slot ID; others fall
 /// through to the default recording, as before.
@@ -24,8 +23,11 @@ class WebViewRecorder implements ElementRecorder {
   const WebViewRecorder(this.keyGenerator, this.slotTracker);
 
   @override
-  bool accepts(Widget widget) =>
-      widget is UiKitView && widget.viewType == webViewPlatformViewType;
+  bool accepts(Widget widget) => switch (widget) {
+    UiKitView(:final viewType) ||
+    PlatformViewLink(:final viewType) => viewType == webViewPlatformViewType,
+    _ => false,
+  };
 
   @override
   CaptureNodeSemantics? captureSemantics(
@@ -34,11 +36,13 @@ class WebViewRecorder implements ElementRecorder {
     TreeCapturePrivacy capturePrivacy,
   ) {
     final widget = element.widget;
-    if (widget is! UiKitView || widget.viewType != webViewPlatformViewType) {
-      return null;
-    }
-
-    final identifier = widget.creationParams;
+    final identifier = switch (widget) {
+      UiKitView(viewType: webViewPlatformViewType, :final creationParams) =>
+        creationParams,
+      PlatformViewLink(viewType: webViewPlatformViewType) =>
+        slotTracker.registry.identifierResolver?.call(element),
+      _ => null,
+    };
     if (identifier is! int) return null;
 
     final slotId = slotTracker.registry.slotId(identifier);

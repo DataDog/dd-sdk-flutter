@@ -8,6 +8,7 @@ import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_webview_tracking/datadog_webview_tracking.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -124,5 +125,90 @@ void main() {
 
       expect(registry.slotId(3), isNull);
     });
+
+    MockAndroidWebViewController createAndroidPlatformController(
+      int webViewIdentifier,
+    ) {
+      final mockAndroidController = MockAndroidWebViewController();
+      when(
+        () => mockAndroidController.webViewIdentifier,
+      ).thenReturn(webViewIdentifier);
+      return mockAndroidController;
+    }
+
+    test(
+      'registers the slot ID and the identifier resolver for an Android WebView',
+      () async {
+        mockNativeResult('186523411');
+        final androidController = createAndroidPlatformController(5);
+        when(
+          () => mockWebviewPlatform.createPlatformWebViewController(any()),
+        ).thenReturn(androidController);
+
+        WebViewController().trackDatadogEvents(mockDatadog, ['host_a']);
+        await pumpEventQueue();
+
+        expect(registry.slotId(5), '186523411');
+        expect(registry.identifierResolver, same(androidWebViewIdentifier));
+      },
+    );
+
+    Future<Element> pumpAndroidWebView(
+      WidgetTester tester, {
+      Key? webViewKey,
+      Key? platformParamsKey,
+    }) async {
+      final params = PlatformWebViewWidgetCreationParams(
+        key: platformParamsKey,
+        controller: createAndroidPlatformController(5),
+      );
+      await tester.pumpWidget(
+        WebViewWidget.fromPlatform(
+          key: webViewKey,
+          platform: _FakeAndroidWebViewWidget(params),
+        ),
+      );
+      return tester.element(find.byKey(_FakeAndroidWebViewWidget.viewKey));
+    }
+
+    testWidgets('reads the identifier of the WebViewWidget above', (
+      tester,
+    ) async {
+      expect(androidWebViewIdentifier(await pumpAndroidWebView(tester)), 5);
+    });
+
+    testWidgets('reads the identifier whatever keys the app sets', (
+      tester,
+    ) async {
+      final element = await pumpAndroidWebView(
+        tester,
+        webViewKey: const ValueKey('widget-key'),
+        platformParamsKey: const ValueKey('params-key'),
+      );
+
+      expect(androidWebViewIdentifier(element), 5);
+    });
+
+    testWidgets('reads no identifier outside a WebViewWidget', (tester) async {
+      await tester.pumpWidget(const SizedBox(key: ValueKey('not-a-webview')));
+
+      expect(
+        androidWebViewIdentifier(
+          tester.element(find.byKey(const ValueKey('not-a-webview'))),
+        ),
+        isNull,
+      );
+    });
   });
+}
+
+/// Stands in for the widget `webview_flutter_android` builds, which would
+/// create the native view.
+class _FakeAndroidWebViewWidget extends AndroidWebViewWidget {
+  static const viewKey = ValueKey('platform-view');
+
+  _FakeAndroidWebViewWidget(super.params);
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(key: viewKey);
 }

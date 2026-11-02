@@ -32,6 +32,8 @@ extension DatadogWebview on WebViewController {
       webViewIdentifier = localPlatform.webViewIdentifier;
     } else if (localPlatform is AndroidWebViewController) {
       webViewIdentifier = localPlatform.webViewIdentifier;
+      WebViewSlotRegistry.instance.identifierResolver ??=
+          androidWebViewIdentifier;
     }
 
     if (webViewIdentifier != null) {
@@ -58,4 +60,18 @@ extension DatadogWebview on WebViewController {
       });
     }
   }
+}
+
+/// The identifier of the Android WebView [element] belongs to, read from the
+/// controller of the [WebViewWidget] above it.
+@visibleForTesting
+int? androidWebViewIdentifier(Element element) {
+  final controller = element
+      .findAncestorWidgetOfExactType<WebViewWidget>()
+      ?.platform
+      .params
+      .controller;
+  return controller is AndroidWebViewController
+      ? controller.webViewIdentifier
+      : null;
 }

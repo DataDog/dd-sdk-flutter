@@ -60,6 +60,9 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
     final mappedConfig = FlutterSessionReplayBridge$Configuration(
       customEndpoint,
       listener,
+      configuration.textAndInputPrivacyLevel.name.toJString(),
+      configuration.imagePrivacyLevel.name.toJString(),
+      configuration.touchPrivacyLevel.name.toJString(),
     );
 
     _bridge.enable(mappedConfig, null);
@@ -95,7 +98,7 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
 
   @override
   FutureOr<void> setSessionSampled(String sessionId, bool sampled) {
-    // Only iOS forwards WebView replay records through Flutter Session Replay.
+    _bridge.setSessionSampled(sessionId.toJString(), sampled);
   }
 
   @override

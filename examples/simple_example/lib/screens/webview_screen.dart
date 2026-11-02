@@ -14,6 +14,17 @@ import 'package:webview_flutter/webview_flutter.dart';
 /// passed to `trackDatadogEvents`.
 const webViewHost = 'webview.example';
 
+/// A page running the Datadog Browser SDK with RUM and Session Replay.
+///
+/// Inside a tracked WebView the Browser SDK runs in bridge mode: it sends its
+/// events and replay records to the native SDK instead of uploading them.
+///
+/// The page also reports what the bridge advertises, which is the quickest way
+/// to check the setup: `capabilities` must be `["records"]` for the Browser SDK
+/// to record a replay. The Browser SDK doesn't own the session in bridge mode,
+/// so the `session` and `replay link` it shows are placeholders.
+const _browserPage = 'assets/webview_page.html';
+
 /// A WebView running the Datadog Browser SDK. Its RUM events join the app's
 /// RUM session and, on iOS, its replay records join the app's Session Replay.
 class WebViewScreen extends StatefulWidget {
@@ -95,14 +106,3 @@ class _WebViewScreenState extends State<WebViewScreen> {
     );
   }
 }
-
-/// A page running the Datadog Browser SDK with RUM and Session Replay.
-///
-/// Inside a tracked WebView the Browser SDK runs in bridge mode: it sends its
-/// events and replay records to the native SDK instead of uploading them.
-///
-/// The page also reports what the bridge advertises, which is the quickest way
-/// to check the setup: `capabilities` must be `["records"]` for the Browser SDK
-/// to record a replay. The Browser SDK doesn't own the session in bridge mode,
-/// so the `session` and `replay link` it shows are placeholders.
-const _browserPage = 'assets/webview_page.html';

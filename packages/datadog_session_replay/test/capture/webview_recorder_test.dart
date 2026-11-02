@@ -169,4 +169,81 @@ void main() {
     expect(await captureWebViewWireframes(), isEmpty);
     debugDefaultTargetPlatformOverride = null;
   });
+
+  group('Android', () {
+    const androidWebViewKey = ValueKey('android-webview');
+
+    Widget buildAndroidTree() {
+      return SimpleTestCapture(
+        key: const Key('key'),
+        recorder: recorder,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Stack(
+            children: [
+              const SizedBox(width: 300, height: 600),
+              Positioned(
+                top: 100,
+                left: 0,
+                width: 300,
+                height: 400,
+                // The shape `webview_flutter_android` builds for its WebView.
+                child: PlatformViewLink(
+                  key: androidWebViewKey,
+                  viewType: webViewPlatformViewType,
+                  surfaceFactory: (context, controller) =>
+                      const SizedBox.expand(),
+                  onCreatePlatformView: (params) =>
+                      _FakePlatformViewController(params.id),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    testWidgets('records a tracked WebView through the identifier resolver', (
+      tester,
+    ) async {
+      registry.identifierResolver = (element) =>
+          element.widget.key == androidWebViewKey ? webViewIdentifier : null;
+      registry.register(webViewIdentifier, slotId, owner: webViewOwner);
+
+      await tester.pumpWidget(buildAndroidTree());
+      final wireframes = await captureWebViewWireframes();
+
+      expect(wireframes, hasLength(1));
+      expect(wireframes[0].slotId, slotId);
+      expect(wireframes[0].isVisible, isTrue);
+      expect(wireframes[0].y, 100);
+      expect(wireframes[0].height, 400);
+    });
+
+    testWidgets('does not record a WebView without an identifier resolver', (
+      tester,
+    ) async {
+      registry.register(webViewIdentifier, slotId, owner: webViewOwner);
+
+      await tester.pumpWidget(buildAndroidTree());
+
+      expect(await captureWebViewWireframes(), isEmpty);
+    });
+  });
+}
+
+class _FakePlatformViewController extends PlatformViewController {
+  _FakePlatformViewController(this.viewId);
+
+  @override
+  final int viewId;
+
+  @override
+  Future<void> clearFocus() async {}
+
+  @override
+  Future<void> dispatchPointerEvent(PointerEvent event) async {}
+
+  @override
+  Future<void> dispose() async {}
 }
