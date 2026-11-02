@@ -200,7 +200,13 @@ scripts:
       concurrency: 1
     run:
       set -euxo pipefail &&
-      xcodebuild test -workspace example/ios/Runner.xcworkspace -scheme Runner -destination "platform=iOS Simulator,name=$IOS_SIMULATOR,OS=latest" | xcbeautify
+      mkdir -p $MELOS_ROOT_PATH/.build/xcresult $MELOS_ROOT_PATH/.build/test-results &&
+      rm -rf $MELOS_ROOT_PATH/.build/xcresult/\${MELOS_PACKAGE_NAME}-ios.xcresult &&
+      xcodebuild test -workspace example/ios/Runner.xcworkspace -scheme Runner -destination "platform=iOS Simulator,name=$IOS_SIMULATOR,OS=latest"
+      -parallel-testing-enabled NO -test-timeouts-enabled YES
+      -default-test-execution-time-allowance 60 -maximum-test-execution-time-allowance 300
+      -resultBundlePath $MELOS_ROOT_PATH/.build/xcresult/\${MELOS_PACKAGE_NAME}-ios.xcresult
+      | xcbeautify --report junit --report-path $MELOS_ROOT_PATH/.build/test-results --junit-report-filename \${MELOS_PACKAGE_NAME}_ios_xcode.xml
     packageFilters:
       dirExists: 'example/ios'
       # TODO: These packages should probably have platform unit tests
@@ -215,7 +221,13 @@ scripts:
       concurrency: 1
     run:
       set -euxo pipefail &&
-      xcodebuild test -workspace example/macos/Runner.xcworkspace -scheme Runner -destination "platform=macOS" | xcbeautify
+      mkdir -p $MELOS_ROOT_PATH/.build/xcresult $MELOS_ROOT_PATH/.build/test-results &&
+      rm -rf $MELOS_ROOT_PATH/.build/xcresult/\${MELOS_PACKAGE_NAME}-macos.xcresult &&
+      xcodebuild test -workspace example/macos/Runner.xcworkspace -scheme Runner -destination "platform=macOS"
+      -parallel-testing-enabled NO -test-timeouts-enabled YES
+      -default-test-execution-time-allowance 60 -maximum-test-execution-time-allowance 300
+      -resultBundlePath $MELOS_ROOT_PATH/.build/xcresult/\${MELOS_PACKAGE_NAME}-macos.xcresult
+      | xcbeautify --report junit --report-path $MELOS_ROOT_PATH/.build/test-results --junit-report-filename \${MELOS_PACKAGE_NAME}_macos_xcode.xml
     packageFilters:
       dirExists: 'example/macos'
 
