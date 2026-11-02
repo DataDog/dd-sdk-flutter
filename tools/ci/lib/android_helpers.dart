@@ -74,6 +74,7 @@ Future<void> rebootAndroidEmulators() async {
       final bootCompleted = await shellRun(
         adbCommand,
         ['-s', id, 'shell', 'getprop', 'sys.boot_completed'],
+        timeout: deadline.difference(DateTime.now()),
       );
       booted = bootCompleted.trim() == '1';
       if (!booted) await Future.delayed(const Duration(seconds: 5));

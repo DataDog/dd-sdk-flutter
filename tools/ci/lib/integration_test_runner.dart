@@ -181,19 +181,21 @@ class IntegrationTestRunner {
     // Lines from the tool's stdout go to the raw log, tojunit, and the tracker.
     // Writing to tojunit after it exits throws, so ignore its errors; they must
     // never mask the test result.
-    final stdoutDone = process.stdout
+    final stdoutSub = process.stdout
         .transform(utf8.decoder)
         .transform(const LineSplitter())
-        .forEach((line) {
+        .listen((line) {
           jsonLog?.writeln(line);
           tojunit?.stdin.writeln(line);
           if (tracker.handleLine(line) case final message?) print(message);
           if (tracker.started && !started.isCompleted) started.complete();
         });
-    final stderrDone = process.stderr
+    final stderrSub = process.stderr
         .transform(utf8.decoder)
         .transform(const LineSplitter())
-        .forEach((line) => print('[${_timestamp()}] $line'));
+        .listen((line) => print('[${_timestamp()}] $line'));
+    final stdoutDone = stdoutSub.asFuture<void>();
+    final stderrDone = stderrSub.asFuture<void>();
 
     final stopwatch = Stopwatch()..start();
     // Buffered stdout is handled before an exit is classified, so a test that
@@ -237,7 +239,13 @@ class IntegrationTestRunner {
         outcome = await _outcomeForExit(process, tracker);
     }
 
-    await Future.wait([stdoutDone, stderrDone]);
+    await Future.wait([
+      stdoutDone,
+      stderrDone,
+    ]).timeout(_drainTimeout, onTimeout: () => []);
+    // Stop listening so a child process holding a pipe open can't keep this
+    // process alive.
+    await Future.wait([stdoutSub.cancel(), stderrSub.cancel()]);
     await jsonLog?.close();
     if (tojunit != null) {
       await tojunit.stdin.close().catchError((_) {});
