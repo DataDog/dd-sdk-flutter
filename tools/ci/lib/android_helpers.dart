@@ -61,7 +61,11 @@ Future<void> rebootAndroidEmulators() async {
   for (final id in (await _getRunningDevices()).keys) {
     print('Rebooting $id');
     final deadline = DateTime.now().add(const Duration(minutes: 5));
-    await shellRun(adbCommand, ['-s', id, 'reboot']);
+    await shellRun(
+      adbCommand,
+      ['-s', id, 'reboot'],
+      timeout: deadline.difference(DateTime.now()),
+    );
 
     await shellRun(
       adbCommand,

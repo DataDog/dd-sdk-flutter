@@ -35,7 +35,10 @@ enum TestPlatform {
   /// Test files that don't run on this platform.
   List<String> get excludedFiles => switch (this) {
     macos || linux || windows => const ['configuration_telemetry_test.dart'],
-    ios || android => const [],
+    ios => const [],
+    // Registers no tests on Android (flutter_inappwebview bug #1973), which
+    // makes `flutter test` exit non-zero when it runs alone.
+    android => const ['inappbrowser_integration_test.dart'],
   };
 
   /// The desktop platform of the host machine.
