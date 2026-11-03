@@ -1,0 +1,3 @@
+# Shared conformance data and its runner are repository tests only.
+test/fixtures/precomputed/
+test/precomputed_fixture_files_test.dart
