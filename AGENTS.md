@@ -80,8 +80,9 @@
 - Run all tests in a package with `dart test` for pure Dart packages or `flutter test`
   for Flutter packages. Do not add publish targets to `melos.yaml`.
 - Do not add `dependency_overrides` unless the build fails without them.
-- Use lower-bound-only constraints for dev dependencies (for example `lints: '>=5.0.0'`);
-  nightlies run minimum-version checks.
+- Lower-bound-only constraints can be used for dev dependencies (for example `lints: '>=5.0.0'`)
+  that perform analysis and linting checks, as nightlies perform minimum version checks. Do
+  not use lower-bound-only constraints for testing dependencies or code generation dependencies.
 - Before opening a PR, run `melos dartfmt_check`, `melos analyze:dart`, and
   `melos unit_test:flutter`. See [CONTRIBUTING.md](CONTRIBUTING.md#code-style) for the
   native and integration test scripts.
