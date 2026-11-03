@@ -8,117 +8,247 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:datadog_flags/datadog_flags.dart';
-import 'package:datadog_flags/src/assignment.dart';
-import 'package:datadog_flags/src/flag_assignments_fetcher.dart';
 import 'package:datadog_flags/src/precompute_response.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
-void main() {
-  for (final fixtureFileName in _fixtureFileNames) {
-    test(
-      'mirrored canonical precompute fixture $fixtureFileName parses',
-      () async {
-        final fixture = await _fixtureCase(fixtureFileName);
-        final assignments = await _fetchAssignments(fixture);
-        final expectedAssignments = _flagsFrom(fixture);
-
-        expect(assignments.keys, expectedAssignments.keys);
-
-        for (final entry in expectedAssignments.entries) {
-          final assignment = assignments[entry.key];
-          final expectedAssignment = entry.value;
-          expect(assignment, isNotNull);
-          expect(assignment!.allocationKey, expectedAssignment.allocationKey);
-          expect(assignment.variationKey, expectedAssignment.variationKey);
-          expect(assignment.variationType, expectedAssignment.variationType);
-          expect(assignment.variationValue, expectedAssignment.variationValue);
-          expect(assignment.reason, expectedAssignment.reason);
-          expect(assignment.doLog, expectedAssignment.doLog);
-        }
-      },
-    );
-  }
-}
-
-const _fixtureFileNames = [
-  'all-types-success.json',
-  'defaults-and-emission-gates.json',
-];
-
-Future<Map<String, Object?>> _fixtureCase(String fileName) async {
-  final file = File.fromUri(
-    (await _packageRoot()).uri.resolve(
-      'test/fixtures/precomputed/cases/$fileName',
-    ),
+bool applies(Map<String, dynamic> value) {
+  bool contains(String field) => (value[field] as List? ?? []).any(
+    (entry) => entry['platform'] == 'flutter',
   );
-  return jsonDecode(file.readAsStringSync()) as Map<String, Object?>;
+  return !contains('_skip') &&
+      (!value.containsKey('_include') || contains('_include'));
 }
 
-Future<Directory> _packageRoot() async {
-  try {
-    final libraryUri = await Isolate.resolvePackageUri(
-      Uri.parse('package:datadog_flags/datadog_flags.dart'),
-    );
-    if (libraryUri != null) {
-      return File.fromUri(libraryUri).parent.parent;
+bool matches(Object? actual, Object? expected) {
+  if (expected is Map) {
+    return actual is Map &&
+        expected.entries.every(
+          (entry) => matches(actual[entry.key], entry.value),
+        );
+  }
+  if (expected is List) {
+    return actual is List &&
+        actual.length == expected.length &&
+        List.generate(
+          expected.length,
+          (i) => i,
+        ).every((i) => matches(actual[i], expected[i]));
+  }
+  return actual == expected;
+}
+
+void checkEvents(List<dynamic> events, List<dynamic> matchers, bool exact) {
+  final remaining = List<dynamic>.of(events);
+  for (final raw in matchers) {
+    final matcher = Map<String, dynamic>.from(raw as Map);
+    if (!applies(matcher)) continue;
+    final fields = Map<String, dynamic>.from(matcher)
+      ..removeWhere((key, _) => key.startsWith('_'));
+    final count = matcher['_count'] as int;
+    final selected = remaining
+        .where((event) => matches(event, fields))
+        .take(count)
+        .toList();
+    expect(selected, hasLength(count), reason: 'event matcher $matcher');
+    for (final event in selected) {
+      remaining.remove(event);
     }
-  } on UnsupportedError {
-    // Some runners do not support package URI resolution.
   }
-
-  return _packageRootFromCurrentDirectory();
+  if (exact) expect(remaining, isEmpty, reason: 'unmatched events');
 }
 
-Directory _packageRootFromCurrentDirectory() {
-  if (_isDatadogFlagsPackage(Directory.current)) {
-    return Directory.current;
+void main() {
+  final root = Directory('test/fixtures/precomputed');
+  if (!root.existsSync()) {
+    throw StateError('Missing canonical fixture snapshot');
   }
-
-  final nested = Directory.fromUri(
-    Directory.current.uri.resolve('packages/datadog_flags/'),
-  );
-  if (_isDatadogFlagsPackage(nested)) {
-    return nested;
+  final files =
+      Directory('${root.path}/cases')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.json'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
+  if (files.isEmpty) throw StateError('Empty canonical fixture snapshot');
+  if (!files.any(
+    (file) =>
+        applies(jsonDecode(file.readAsStringSync()) as Map<String, dynamic>),
+  )) {
+    throw StateError('All canonical fixtures excluded');
   }
-
-  throw StateError('Could not find datadog_flags package root.');
-}
-
-bool _isDatadogFlagsPackage(Directory directory) {
-  return File.fromUri(directory.uri.resolve('pubspec.yaml')).existsSync() &&
-      File.fromUri(
-        directory.uri.resolve('lib/datadog_flags.dart'),
-      ).existsSync();
-}
-
-Future<Map<String, FlagAssignment>> _fetchAssignments(
-  Map<String, Object?> fixture,
-) async {
-  final fetcher = FlagAssignmentsFetcher(
-    datadogConfig: const DatadogFlagsConfig(
-      clientToken: 'client-token',
-      env: 'staging',
-      site: DatadogFlagsSite.us1,
-    ),
-    configuration: const DatadogFlagsConfiguration(),
-    httpClient: MockClient((_) async {
-      return http.Response(jsonEncode(fixture['response']), 200);
-    }),
+  final source = jsonDecode(
+    File('${root.path}/SOURCE.json').readAsStringSync(),
   );
-
-  return (await fetcher.fetch(
-    FlagsEvaluationContext.fromJson(fixture['context'] as Map<String, Object?>),
-  )).flags;
+  group('canonical precompute ${source['commit']}', () {
+    for (final file in files) {
+      final fixture =
+          jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      for (final restored
+          in fixture.containsKey('expectedResponseError') || !applies(fixture)
+              ? [false]
+              : [false, true]) {
+        test(
+          '${fixture['name']} restored=$restored',
+          () async {
+            final response = Map<String, Object?>.from(
+              fixture['response'] as Map,
+            );
+            if (fixture['expectedResponseError'] == 'INVALID_RESPONSE') {
+              expect(
+                () => PrecomputeResponse.fromJson(response),
+                throwsFormatException,
+              );
+              return;
+            }
+            final directory = await Directory.systemTemp.createTemp(
+              'canonical-flags-',
+            );
+            addTearDown(() => directory.delete(recursive: true));
+            final store = _FileStore(File('${directory.path}/flags.json'));
+            var sdk = DatadogFlags();
+            var offline = false;
+            final requests = <http.Request>[];
+            final configuration = DatadogFlagsConfiguration(
+              store: store,
+              datadogConfig: const DatadogFlagsConfig(
+                clientToken: 'fixture',
+                env: 'test',
+                site: DatadogFlagsSite.us1,
+              ),
+              httpClient: MockClient((request) async {
+                requests.add(request);
+                if (offline && request.url.path == '/precompute-assignments') {
+                  return http.Response('{}', 500);
+                }
+                return http.Response(
+                  request.url.path == '/precompute-assignments'
+                      ? jsonEncode(response)
+                      : '{}',
+                  200,
+                );
+              }),
+            );
+            await sdk.enable(configuration: configuration);
+            addTearDown(() => sdk.disable());
+            var client = sdk.sharedClient();
+            final context = FlagsEvaluationContext.fromJson(
+              Map<String, Object?>.from(fixture['context'] as Map),
+            );
+            await client.initialize(context);
+            if (restored) {
+              await sdk.disable();
+              offline = true;
+              requests.clear();
+              sdk = DatadogFlags();
+              await sdk.enable(configuration: configuration);
+              client = sdk.sharedClient();
+              await client.initialize(context);
+            }
+            for (final raw in fixture['evaluations'] as List) {
+              final evaluation = Map<String, dynamic>.from(raw as Map);
+              if (!applies(evaluation)) continue;
+              final key = evaluation['flag'] as String;
+              final fallback = evaluation['defaultValue'];
+              final details = switch (evaluation['variationType']) {
+                'boolean' => client.getBooleanDetails(
+                  key: key,
+                  defaultValue: fallback as bool,
+                ),
+                'string' => client.getStringDetails(
+                  key: key,
+                  defaultValue: fallback as String,
+                ),
+                'integer' => client.getIntegerDetails(
+                  key: key,
+                  defaultValue: (fallback as num).toInt(),
+                ),
+                'float' => client.getDoubleDetails(
+                  key: key,
+                  defaultValue: (fallback as num).toDouble(),
+                ),
+                'object' => client.getObjectDetails(
+                  key: key,
+                  defaultValue: fallback,
+                ),
+                _ => throw StateError('Unsupported fixture getter'),
+              };
+              if (restored && details.error == null) {
+                expect(details.reason, 'CACHED');
+              }
+              final actual = {
+                'value': details.value,
+                'reason': details.error == null ? details.reason : 'ERROR',
+                'errorCode': details.error?.code,
+                'variantKey': details.variant,
+              };
+              for (final entry
+                  in (evaluation['expectedResult'] as Map).entries) {
+                if (restored &&
+                    entry.key == 'reason' &&
+                    details.error == null) {
+                  continue;
+                }
+                expect(
+                  actual[entry.key],
+                  equals(entry.value),
+                  reason: '$key: ${entry.key}',
+                );
+              }
+            }
+            await sdk.disable();
+            final exposures = requests
+                .where((r) => r.url.path == '/api/v2/exposures')
+                .expand(
+                  (r) => r.body
+                      .trim()
+                      .split('\n')
+                      .where((line) => line.isNotEmpty)
+                      .map(jsonDecode),
+                )
+                .toList();
+            final evaluations = requests
+                .where((r) => r.url.path == '/api/v2/flagevaluation')
+                .expand((r) => jsonDecode(r.body)['flagEvaluations'] as List)
+                .toList();
+            final expected = fixture['expectations'] as Map;
+            checkEvents(
+              exposures,
+              expected['exposures'] as List? ?? [],
+              expected['noUnmatchedEvents'] == true,
+            );
+            checkEvents(
+              evaluations,
+              expected['evaluationEvents'] as List? ?? [],
+              expected['noUnmatchedEvents'] == true,
+            );
+          },
+          skip: applies(fixture)
+              ? false
+              : 'Excluded by canonical platform filter',
+        );
+      }
+    }
+  });
 }
 
-Map<String, FlagAssignment> _flagsFrom(Map<String, Object?> fixture) {
-  final response = PrecomputeResponse.fromJson(
-    Map<String, Object?>.from(fixture['response'] as Map),
-  );
-  return response.data.attributes.flags;
+class _FileStore implements DatadogFlagsStore {
+  final File file;
+  _FileStore(this.file);
+  @override
+  Future<FlagsData?> read(String clientName) async => await file.exists()
+      ? FlagsData.fromJson(
+          jsonDecode(await file.readAsString()) as Map<String, Object?>,
+        )
+      : null;
+  @override
+  Future<void> write(String clientName, FlagsData data) =>
+      file.writeAsString(jsonEncode(data.toJson()));
+  @override
+  Future<void> delete(String clientName) async {
+    if (await file.exists()) await file.delete();
+  }
 }
