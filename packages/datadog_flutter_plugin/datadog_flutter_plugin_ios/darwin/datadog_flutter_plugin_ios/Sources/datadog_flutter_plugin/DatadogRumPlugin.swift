@@ -27,12 +27,12 @@ public extension RUM.Configuration {
         longTaskThreshold = (encoded["longTaskThreshold"] as? NSNumber)?.doubleValue ?? 0.1
         trackFrustrations = (encoded["trackFrustrations"] as? NSNumber)?.boolValue ?? true
         trackAnonymousUser = (encoded["trackAnonymousUser"] as? NSNumber)?.boolValue ?? true
-        trackBackgroundEvents = (encoded["trackBackgroundEvents"] as? NSNumber)?.boolValue ?? false
         if let appHangThreshold = (encoded["appHangThreshold"] as? NSNumber)?.doubleValue {
             self.appHangThreshold = appHangThreshold
         }
 
         #if !os(macOS)
+        trackBackgroundEvents = (encoded["trackBackgroundEvents"] as? NSNumber)?.boolValue ?? false
         if let trackWatchdogTerminations = (encoded["trackWatchdogTerminations"] as? NSNumber)?.boolValue {
             self.trackWatchdogTerminations = trackWatchdogTerminations
         }
