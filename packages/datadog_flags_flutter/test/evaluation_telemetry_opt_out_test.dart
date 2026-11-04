@@ -16,16 +16,22 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  FlagsEvaluationContext context(Object? control, {String subject = 'user'}) =>
+      FlagsEvaluationContext(
+        targetingKey: subject,
+        attributes: {'dd_evaluation_telemetry_opt_out': control},
+      );
+
   test('RUM preserves A opt-out while B refreshes', () async {
     final h = await _Harness.create(enabled: true);
     addTearDown(h.sdk.disable);
-    await h.client.initialize(_context(true, subject: 'A'));
+    await h.client.initialize(context(true, subject: 'A'));
     h.wait = Completer<void>();
     addTearDown(() {
       if (!h.wait!.isCompleted) h.wait!.complete();
     });
     h.started = Completer<void>();
-    final pending = h.client.initialize(_context(false, subject: 'B'));
+    final pending = h.client.initialize(context(false, subject: 'B'));
     await h.started.future;
     expect(
       h.client.getBooleanDetails(key: 'flag', defaultValue: false).value,
@@ -48,13 +54,13 @@ void main() {
   test('RUM preserves A explicit opt-in while B refreshes', () async {
     final h = await _Harness.create(enabled: true);
     addTearDown(h.sdk.disable);
-    await h.client.initialize(_context(true, subject: 'A'));
+    await h.client.initialize(context(true, subject: 'A'));
     h.wait = Completer<void>();
     addTearDown(() {
       if (!h.wait!.isCompleted) h.wait!.complete();
     });
-    final first = h.client.initialize(_context(false, subject: 'A'));
-    final second = h.client.initialize(_context(false, subject: 'B'));
+    final first = h.client.initialize(context(false, subject: 'A'));
+    final second = h.client.initialize(context(false, subject: 'B'));
     expect(
       h.client.getBooleanDetails(key: 'flag', defaultValue: false).value,
       isTrue,
@@ -74,7 +80,7 @@ void main() {
         () async {
           final h = await _Harness.create(enabled: enabled);
           addTearDown(h.sdk.disable);
-          await h.client.initialize(_context(control));
+          await h.client.initialize(context(control));
           expect(
             h.client.getBooleanDetails(key: 'flag', defaultValue: false).value,
             isTrue,
@@ -93,7 +99,7 @@ void main() {
           });
           expect(
             h.exposures.single['subject']['attributes'],
-            _context(control).attributes,
+            context(control).attributes,
           );
           expect(
             h.evaluationCount,
@@ -109,18 +115,18 @@ void main() {
     () async {
       final h = await _Harness.create(enabled: true);
       addTearDown(h.sdk.disable);
-      await h.client.initialize(_context(false));
+      await h.client.initialize(context(false));
       h.client.getBooleanDetails(key: 'flag', defaultValue: false);
       h.wait = Completer<void>();
       h.started = Completer<void>();
-      final refresh = h.client.initialize(_context(false));
+      final refresh = h.client.initialize(context(false));
       await h.started.future;
-      final update = h.client.initialize(_context(true));
+      final update = h.client.initialize(context(true));
       h.client.getBooleanDetails(key: 'flag', defaultValue: false);
       h.wait!.complete();
       await Future.wait([refresh, update]);
       h.client.getBooleanDetails(key: 'flag', defaultValue: false);
-      await h.client.initialize(_context(false));
+      await h.client.initialize(context(false));
       h.client.getBooleanDetails(key: 'flag', defaultValue: false);
       expect(h.rum, ['on', 'on']);
       expect(h.assignmentRequests, 4);
@@ -131,14 +137,14 @@ void main() {
     test('RUM uses current control $control during a failed refresh', () async {
       final h = await _Harness.create(enabled: true);
       addTearDown(h.sdk.disable);
-      await h.client.initialize(_context(!control));
+      await h.client.initialize(context(!control));
       h.wait = Completer<void>();
       addTearDown(() {
         if (!h.wait!.isCompleted) h.wait!.complete();
       });
       h.started = Completer<void>();
       h.assignmentStatus = 400;
-      final refresh = h.client.initialize(_context(control));
+      final refresh = h.client.initialize(context(control));
       expect(
         h.client.getBooleanDetails(key: 'flag', defaultValue: false).value,
         isTrue,
@@ -177,8 +183,8 @@ void main() {
           enableEvaluationTelemetryOptOutParameter: true,
           addRumFeatureFlagEvaluation: (key, value) => h.rum.add(value),
         );
-        final earlier = h.client.initialize(_context(!latestControl));
-        final latest = h.client.initialize(_context(latestControl));
+        final earlier = h.client.initialize(context(!latestControl));
+        final latest = h.client.initialize(context(latestControl));
         await Future<void>.delayed(Duration.zero);
         firstResolution.complete(h.sdk.sharedClient());
         await Future.wait([earlier, latest]);
@@ -197,8 +203,8 @@ void main() {
     () async {
       final h = await _Harness.create(enabled: true);
       addTearDown(h.sdk.disable);
-      await h.client.initialize(_context(false));
-      final update = h.client.initialize(_context(true));
+      await h.client.initialize(context(false));
+      final update = h.client.initialize(context(true));
       h.client.getBooleanDetails(key: 'flag', defaultValue: false);
       await update;
       await h.sdk.disable();
@@ -217,8 +223,8 @@ void main() {
       enableEvaluationTelemetryOptOutParameter: true,
       addRumFeatureFlagEvaluation: (key, value) => h.rum.add(value),
     );
-    await h.client.initialize(_context(true));
-    await other.initialize(_context(false));
+    await h.client.initialize(context(true));
+    await other.initialize(context(false));
     h.client.getBooleanDetails(key: 'flag', defaultValue: false);
     other.getBooleanDetails(key: 'flag', defaultValue: false);
     await h.sdk.disable();
@@ -227,12 +233,6 @@ void main() {
     expect(h.assignmentRequests, 2);
   });
 }
-
-FlagsEvaluationContext _context(Object? control, {String subject = 'user'}) =>
-    FlagsEvaluationContext(
-      targetingKey: subject,
-      attributes: {'dd_evaluation_telemetry_opt_out': control},
-    );
 
 class _Harness {
   final sdk = DatadogFlags();
