@@ -335,7 +335,7 @@ class DatadogFlutterFlagsClient
   Future<void> reset() async {
     ++_contextRevision;
     _evaluationTelemetryOptedOut = false;
-    final delegate = await _delegateOrResolve();
+    final delegate = _delegate ?? await _delegateOrResolve();
     if (!_isShutdown) await delegate.reset();
   }
 

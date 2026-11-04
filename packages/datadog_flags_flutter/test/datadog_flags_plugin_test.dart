@@ -26,6 +26,33 @@ class MockDatadogFlagsLifecycleClient extends Mock
 
 void main() {
   test(
+    'reset precedes initialize when the delegate is already resolved',
+    () async {
+      final delegate = MockDatadogFlagsClient();
+      const nextContext = FlagsEvaluationContext(targetingKey: 'next');
+      when(
+        () => delegate.initialize(FlagsEvaluationContext.empty),
+      ).thenAnswer((_) async {});
+      when(() => delegate.initialize(nextContext)).thenAnswer((_) async {});
+      when(() => delegate.reset()).thenAnswer((_) async {});
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () async => delegate,
+        addRumFeatureFlagEvaluation: null,
+      );
+      await client.initialize(FlagsEvaluationContext.empty);
+      clearInteractions(delegate);
+      final reset = client.reset();
+      final initialize = client.initialize(nextContext);
+      await Future.wait([reset, initialize]);
+      verifyInOrder([
+        () => delegate.reset(),
+        () => delegate.initialize(nextContext),
+      ]);
+    },
+  );
+
+  test(
     'reset reaches delegate when initialize follows before resolution',
     () async {
       final delegate = MockDatadogFlagsClient();
