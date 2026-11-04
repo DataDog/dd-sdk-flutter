@@ -17,7 +17,7 @@ variables:
   IOS_SDK: 'iOS-26'
   ANDROID_EMULATOR_SDK: "33"
   IS_ON_CI: $CI
-  SLACK_CHANNEL: "#mobile-sdk-ops"
+  SLACK_CHANNEL: "#dd-sdk-flutter-ops"
   # Flutter 3.38.0 bundles prerelease Dart; 3.38.1 includes stable Dart 3.10.
   # https://github.com/flutter/flutter/issues/178400
   FLUTTER_MIN_VERSION: '3.38.1'
@@ -567,10 +567,12 @@ notify-publish-develop-failure:
   when: on_failure
   only:
     - develop
+  except:
+    - schedules
   script:
     - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
     - 'MESSAGE_TEXT=":status_alert: $CI_PROJECT_NAME $CI_COMMIT_TAG develop pipeline <$BUILD_URL|$COMMIT_MESSAGE> failed."'
-    - postmessage "#mobile-sdk-ops" "$MESSAGE_TEXT"
+    - postmessage "#dd-sdk-flutter-ops" "$MESSAGE_TEXT"
 
 notify-pipeline-succeeded:
   stage: post
@@ -587,12 +589,11 @@ notify-nightly-failed:
   stage: post-nightly
   when: on_failure
   only:
-    - develop
     - schedules
   script:
     - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
     - 'MESSAGE_TEXT=":status_alert: $CI_PROJECT_NAME $CI_COMMIT_TAG Nightly develop pipeline <$BUILD_URL|$COMMIT_MESSAGE> failed."'
-    - postmessage "#mobile-sdk-ops" "$MESSAGE_TEXT"
+    - postmessage "#dd-sdk-flutter-ops" "$MESSAGE_TEXT"
 
 # Nightly
 
