@@ -6,8 +6,7 @@ export 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin
     hide DatadogPluginConfiguration;
 export 'src/datadog_plugin.dart';
 export 'src/datadog_sdk.dart';
-export 'src/error_type_resolver.dart'
-    show ErrorTypeResolver, defaultErrorTypeResolver;
+export 'src/error_type_resolver.dart' show ErrorTypeResolver;
 export 'src/logs/ddlogs.dart';
 export 'src/rum/ddrum.dart';
 export 'src/rum/navigation_observer.dart';

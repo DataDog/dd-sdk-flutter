@@ -191,5 +191,19 @@ void main() {
         () => logger.warn(any(that: contains('broken resolver'))),
       ).called(1);
     });
+
+    test('sends resolver exceptions to telemetry', () {
+      registry.add((e) => throw StateError('broken resolver'));
+
+      registry.resolve(CustomException());
+
+      verify(
+        () => logger.sendToDatadog(
+          any(that: contains('broken resolver')),
+          any(that: isNotNull),
+          'StateError',
+        ),
+      ).called(1);
+    });
   });
 }

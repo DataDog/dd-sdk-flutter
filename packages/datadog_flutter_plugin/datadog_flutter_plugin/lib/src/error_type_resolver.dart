@@ -21,14 +21,43 @@ import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart'
 /// an unobfuscated build, so the reported type is the same in obfuscated and
 /// unobfuscated builds.
 ///
-/// See [DatadogSdk.addErrorTypeResolver].
+/// A resolver can use any logic to name an error. The resolvers provided by
+/// the SDK and its integration packages match exact types only, so subclasses
+/// of the types they know, and any type without a resolver, report their
+/// `runtimeType`. Register resolvers for the types your app reports with
+/// [DatadogSdk.addErrorTypeResolver]:
+///
+/// ```dart
+/// String? myErrorTypeResolver(Object error) {
+///   return switch (error.runtimeType) {
+///     const (PaymentException) => 'PaymentException',
+///     _ => null,
+///   };
+/// }
+///
+/// DatadogSdk.instance.addErrorTypeResolver(myErrorTypeResolver);
+/// ```
+///
+/// Each isolate has its own [DatadogSdk] instance, so resolvers registered in
+/// the main isolate are not available in background isolates. Register them
+/// again after attaching to the background isolate:
+///
+/// ```dart
+/// await DatadogSdk.instance.attachToBackgroundIsolate();
+/// DatadogSdk.instance.addErrorTypeResolver(myErrorTypeResolver);
+/// ```
+///
+/// Integration packages register their resolvers when they are created, so
+/// they are available in any isolate that creates them.
+///
+/// If a resolver throws, the exception is logged and the next resolver is
+/// used.
 typedef ErrorTypeResolver = String? Function(Object error);
 
-/// Resolves the type of common Dart exceptions that are not affected by
-/// obfuscation.
+/// Resolves the type of common Dart exceptions.
 ///
 /// This matches exact types only, so subclasses of these types report their
-/// own `runtimeType`, which is obfuscated in apps built with `--obfuscate`.
+/// own `runtimeType`.
 String? defaultErrorTypeResolver(Object error) {
   return switch (error.runtimeType) {
     const (TimeoutException) => 'TimeoutException',
@@ -76,7 +105,8 @@ class ErrorTypeResolverRegistry {
   /// the integration resolvers, each in the order they were added, then by
   /// [defaultErrorTypeResolver], or `null` if no resolver knows [error].
   ///
-  /// A resolver that throws is logged and skipped.
+  /// A resolver that throws is logged, reported to Datadog's telemetry and
+  /// skipped.
   String? tryResolve(Object error) {
     for (final resolver in [..._appResolvers, ..._integrationResolvers]) {
       try {
@@ -84,8 +114,10 @@ class ErrorTypeResolverRegistry {
         if (type != null) {
           return type;
         }
-      } catch (e) {
-        _logger.warn('An error type resolver threw an exception: $e');
+      } catch (e, st) {
+        final message = 'An error type resolver threw an exception: $e';
+        _logger.warn(message);
+        _logger.sendToDatadog(message, st, e.runtimeType.toString());
       }
     }
     return defaultErrorTypeResolver(error);

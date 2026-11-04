@@ -107,19 +107,12 @@ class DatadogSdk {
   /// keeps `error.type` stable in apps built with `--obfuscate`.
   ///
   /// Resolvers registered here run in the order they were registered, before
-  /// the resolvers of integration packages, and the first non-null result is
-  /// used. If no resolver knows an error, the SDK falls back to
-  /// [defaultErrorTypeResolver], then to `error.runtimeType.toString()`.
-  /// Registering the same resolver more than once has no effect.
+  /// the resolvers of integration packages and the SDK's default resolvers,
+  /// and the first non-null result is used. Registering the same resolver more
+  /// than once has no effect. Resolvers can be registered before the SDK is
+  /// initialized.
   ///
-  /// Only exact types are resolved by default. Subclasses of known types, and
-  /// any other type without a resolver, report their `runtimeType`, which is
-  /// obfuscated in apps built with `--obfuscate`. Register a resolver for the
-  /// types your app reports to keep their names stable.
-  ///
-  /// Resolvers can be registered before the SDK is initialized. Each isolate
-  /// has its own [DatadogSdk] instance, so resolvers have to be registered in
-  /// every isolate that reports errors.
+  /// See [ErrorTypeResolver].
   void addErrorTypeResolver(ErrorTypeResolver resolver) {
     _errorTypeResolvers.add(resolver);
   }
@@ -133,14 +126,11 @@ class DatadogSdk {
 
   /// Returns the type name to report for [error].
   ///
-  /// Runs the resolvers registered with [addErrorTypeResolver], then the
-  /// resolvers registered with [addIntegrationErrorTypeResolver], then
-  /// [defaultErrorTypeResolver], and falls back to
-  /// `error.runtimeType.toString()` if none of them knows [error].
+  /// Runs all registered [ErrorTypeResolver]s, falling back to
+  /// `error.runtimeType.toString()` if no resolver returns a type for [error].
   ///
-  /// Use this instead of `error.runtimeType.toString()` when reporting an
-  /// error type, since `runtimeType` is obfuscated in apps built with
-  /// `--obfuscate`.
+  /// Use this to properly support error type resolution in apps built
+  /// with `--obfuscate`.
   String resolveErrorType(Object error) => _errorTypeResolvers.resolve(error);
 
   /// Same as [resolveErrorType], but returns `null` instead of falling back to
