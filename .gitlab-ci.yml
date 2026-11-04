@@ -182,8 +182,18 @@ build-android:
     paths:
       - "$CI_PROJECT_DIR/**/reports/detekt/*"
 
+# Junit reports and xcresult bundles from the Xcode unit tests.
+.xcode-test-artifacts:
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/xcresult
+
 build-ios-spm:
-  extends: .tart-runner
+  extends: [.tart-runner, .xcode-test-artifacts]
   stage: build
   except: [schedules]
   variables:
@@ -197,17 +207,11 @@ build-ios-spm:
     - melos run analyze:ios
     - melos run build:ios
     - melos run unit_test:ios
-  artifacts:
-    when: always
-    expire_in: "30 days"
-    reports:
-      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
-    paths:
-      - .build/xcresult
 
 # dd-sdk-ios's CocoaPods podspecs don't declare macOS support (SPM-only for now), so
 # macOS can only build via Swift Package Manager until that's fixed upstream.
 build-macos-spm:
+  extends: .xcode-test-artifacts
   stage: build
   except: [ schedules ]
   variables:
@@ -223,16 +227,9 @@ build-macos-spm:
     - melos pub:get
     - melos run build:macos
     - melos run unit_test:macos
-  artifacts:
-    when: always
-    expire_in: "30 days"
-    reports:
-      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
-    paths:
-      - .build/xcresult
 
 build-ios:
-  extends: .tart-runner
+  extends: [.tart-runner, .xcode-test-artifacts]
   stage: build
   except: [schedules]
   variables:
@@ -247,13 +244,6 @@ build-ios:
     - melos run build:ios
     - melos run unit_test:ios
     - melos run verify:ios_ffi_bindings
-  artifacts:
-    when: always
-    expire_in: "30 days"
-    reports:
-      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
-    paths:
-      - .build/xcresult
 
 build-web:
   stage: build

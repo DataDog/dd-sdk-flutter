@@ -198,15 +198,7 @@ scripts:
   unit_test:ios:
     exec:
       concurrency: 1
-    run:
-      set -euxo pipefail &&
-      mkdir -p $MELOS_ROOT_PATH/.build/xcresult $MELOS_ROOT_PATH/.build/test-results &&
-      rm -rf $MELOS_ROOT_PATH/.build/xcresult/\$MELOS_PACKAGE_NAME-ios.xcresult &&
-      xcodebuild test -workspace example/ios/Runner.xcworkspace -scheme Runner -destination "platform=iOS Simulator,name=$IOS_SIMULATOR,OS=latest"
-      -parallel-testing-enabled NO -test-timeouts-enabled YES
-      -default-test-execution-time-allowance 60 -maximum-test-execution-time-allowance 300
-      -resultBundlePath $MELOS_ROOT_PATH/.build/xcresult/\$MELOS_PACKAGE_NAME-ios.xcresult
-      | xcbeautify --report junit --report-path $MELOS_ROOT_PATH/.build/test-results --junit-report-filename \$MELOS_PACKAGE_NAME_ios_xcode.xml
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/xcode_unit_tests.dart --platform ios --destination "platform=iOS Simulator,name=$IOS_SIMULATOR,OS=latest"
     packageFilters:
       dirExists: 'example/ios'
       # TODO: These packages should probably have platform unit tests
@@ -219,15 +211,7 @@ scripts:
   unit_test:macos:
     exec:
       concurrency: 1
-    run:
-      set -euxo pipefail &&
-      mkdir -p $MELOS_ROOT_PATH/.build/xcresult $MELOS_ROOT_PATH/.build/test-results &&
-      rm -rf $MELOS_ROOT_PATH/.build/xcresult/\$MELOS_PACKAGE_NAME-macos.xcresult &&
-      xcodebuild test -workspace example/macos/Runner.xcworkspace -scheme Runner -destination "platform=macOS"
-      -parallel-testing-enabled NO -test-timeouts-enabled YES
-      -default-test-execution-time-allowance 60 -maximum-test-execution-time-allowance 300
-      -resultBundlePath $MELOS_ROOT_PATH/.build/xcresult/\$MELOS_PACKAGE_NAME-macos.xcresult
-      | xcbeautify --report junit --report-path $MELOS_ROOT_PATH/.build/test-results --junit-report-filename \$MELOS_PACKAGE_NAME_macos_xcode.xml
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/xcode_unit_tests.dart --platform macos --destination "platform=macOS"
     packageFilters:
       dirExists: 'example/macos'
 
