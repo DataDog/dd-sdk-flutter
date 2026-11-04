@@ -9,6 +9,7 @@ import android.util.Log
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
+import assertk.assertions.isNull
 import com.datadog.android.Datadog
 import com.datadog.android.rum.GlobalRumMonitor
 import com.datadog.android.rum.Rum
@@ -22,6 +23,8 @@ import com.datadog.android.rum.configuration.VitalsUpdateFrequency
 import com.datadog.android.rum.metric.networksettled.TimeBasedInitialResourceIdentifier
 import com.datadog.android.rum.operations.FailureReason
 import com.datadog.android.rum.operations.OperationOptions
+import com.datadog.android.rum.timeseries.TimeseriesConfiguration
+import com.datadog.android.rum.timeseries.TimeseriesType
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.BoolForgery
 import fr.xgouchet.elmyr.annotation.FloatForgery
@@ -232,6 +235,97 @@ class DatadogRumPluginTest {
         assertThat(featureConfiguration.getPrivate("vitalsMonitorUpdateFrequency"))
             .isEqualTo(VitalsUpdateFrequency.FREQUENT)
         assertThat(featureConfiguration.getPrivate("additionalConfig")).isEqualTo(attributes)
+    }
+
+    @Test
+    fun `M decode timeseries configuration W withEncoded is called { collectTypes }`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val configArg = mapOf(
+            "timeseries" to mapOf(
+                "collectTypes" to listOf("TimeseriesType.memory", "TimeseriesType.cpu")
+            )
+        )
+
+        // WHEN
+        val config = RumConfiguration.Builder(forge.aString())
+            .withEncoded(configArg)
+            .build()
+
+        // THEN
+        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val timeseriesConfiguration = featureConfiguration
+            .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
+        assertThat(timeseriesConfiguration).isNotNull()
+        assertThat(timeseriesConfiguration?.getPrivate("collectTypes"))
+            .isEqualTo(setOf(TimeseriesType.MEMORY, TimeseriesType.CPU))
+    }
+
+    @Test
+    fun `M decode timeseries configuration W withEncoded is called { single collectType }`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val configArg = mapOf(
+            "timeseries" to mapOf(
+                "collectTypes" to listOf("TimeseriesType.memory")
+            )
+        )
+
+        // WHEN
+        val config = RumConfiguration.Builder(forge.aString())
+            .withEncoded(configArg)
+            .build()
+
+        // THEN
+        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val timeseriesConfiguration = featureConfiguration
+            .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
+        assertThat(timeseriesConfiguration).isNotNull()
+        assertThat(timeseriesConfiguration?.getPrivate("collectTypes"))
+            .isEqualTo(setOf(TimeseriesType.MEMORY))
+    }
+
+    @Test
+    fun `M decode timeseries configuration W withEncoded is called { no collectTypes }`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val configArg = mapOf(
+            "timeseries" to emptyMap<String, Any?>()
+        )
+
+        // WHEN
+        val config = RumConfiguration.Builder(forge.aString())
+            .withEncoded(configArg)
+            .build()
+
+        // THEN
+        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val timeseriesConfiguration = featureConfiguration
+            .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
+        assertThat(timeseriesConfiguration).isNotNull()
+        assertThat(timeseriesConfiguration?.getPrivate("collectTypes"))
+            .isEqualTo(TimeseriesType.entries.toSet())
+    }
+
+    @Test
+    fun `M leave timeseries configuration unset W withEncoded is called { no timeseries key }`(
+        forge: Forge
+    ) {
+        // GIVEN
+        val configArg = emptyMap<String, Any?>()
+
+        // WHEN
+        val config = RumConfiguration.Builder(forge.aString())
+            .withEncoded(configArg)
+            .build()
+
+        // THEN
+        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val timeseriesConfiguration = featureConfiguration.getPrivate("timeseriesConfiguration")
+        assertThat(timeseriesConfiguration).isNull()
     }
 
     @Test

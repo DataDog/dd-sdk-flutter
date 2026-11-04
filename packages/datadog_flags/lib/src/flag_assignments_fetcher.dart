@@ -89,8 +89,7 @@ class FlagAssignmentsFetcher {
                   ..sort())
                 .join(','),
       'dd-client-token': datadogConfig.clientToken,
-      if (datadogConfig.applicationId case final applicationId?)
-        'dd-application-id': applicationId,
+      'dd-application-id': ?datadogConfig.applicationId,
       ...?configuration.customFlagsHeaders,
     };
   }

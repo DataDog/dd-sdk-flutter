@@ -112,9 +112,6 @@ void main() {
             .single['data']['attributes']['subject']['targeting_attributes']['dd_evaluation_telemetry_opt_out'],
         isTrue,
       );
-      print(
-        'Baseline: assignments=1 evaluation_count=1 exposures=1 value=true',
-      );
     },
   );
 
@@ -159,7 +156,7 @@ void main() {
 
   for (final control in <Object?>[false, null, 'true', 1, [], {}, true]) {
     test(
-      'only boolean true suppresses evaluation telemetry: $control',
+      'only boolean true suppresses evaluation telemetry: ${jsonEncode(control)}',
       () async {
         final intake = await _Intake.start();
         addTearDown(intake.close);
@@ -245,7 +242,6 @@ void main() {
       await sdk.disable();
       expect(intake.evaluationCount, 2);
       expect(intake.exposures, hasLength(1));
-      print('Transitions: assignments=3 evaluation_count=2 exposures=1');
     },
   );
 

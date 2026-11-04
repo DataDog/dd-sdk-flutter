@@ -52,7 +52,8 @@ final class DatadogFlagsConfiguration {
   /// assignment operation continues after this timeout and can make assignments
   /// available when it completes.
   ///
-  /// The SDK does not limit how large this value can be.
+  /// Legacy clients do not limit how large this value can be.
+  /// The OpenFeature provider requires a positive timeout of at most 20 seconds.
   ///
   /// The timeout applies only to the first
   /// [DatadogFlagsClient.initialize] call for each client. A `null`, zero, or
@@ -72,10 +73,11 @@ final class DatadogFlagsConfiguration {
   /// Whether evaluations should be aggregated and sent to intake.
   final bool trackEvaluations;
 
-  /// Enables evaluation telemetry opt-out through the evaluation context.
+  /// Enables the `dd_evaluation_telemetry_opt_out` evaluation context attribute.
   ///
-  /// When enabled, only boolean `true` suppresses new evaluation telemetry and
-  /// automatic RUM flag annotations. Exposures and existing events are unchanged.
+  /// Only boolean `true` suppresses new evaluation events and counts.
+  /// The Flutter integration also suppresses automatic RUM flag annotations.
+  /// Exposures and existing events are unchanged.
   /// The attribute remains available for targeting, cache matching, and exposures.
   final bool enableEvaluationTelemetryOptOutParameter;
 

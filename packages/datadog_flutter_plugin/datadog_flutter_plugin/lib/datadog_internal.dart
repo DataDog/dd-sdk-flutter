@@ -16,6 +16,7 @@ export 'src/sampler.dart';
 export 'src/tracing/baggage_helpers.dart';
 export 'src/tracing/tracing_headers.dart';
 export 'src/version.dart';
+export 'src/webview_slot_registry.dart';
 
 extension DatadogRumInternal on DatadogRum {
   TraceContextInjection get contextInjectionSetting => traceContextInjection;

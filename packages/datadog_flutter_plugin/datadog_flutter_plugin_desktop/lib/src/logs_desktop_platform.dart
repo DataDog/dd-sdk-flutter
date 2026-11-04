@@ -93,10 +93,8 @@ class DdLogsDesktopPlatform extends DdLogsPlatform {
         );
       }
 
-      _sdk.dd_logger_config_set_remote_sample_rate(
-        cfg,
-        config.remoteSampleRate.toDouble(),
-      );
+      // DatadogLogger samples in Dart, so the native logger accepts everything.
+      _sdk.dd_logger_config_set_remote_sample_rate(cfg, 100.0);
       _sdk.dd_logger_config_set_remote_log_threshold(
         cfg,
         _logLevelToC(config.remoteLogThreshold),

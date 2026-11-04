@@ -33,6 +33,10 @@ packages/datadog_flutter_plugin/integration_test_app/ios/Podfile.lock
 packages/datadog_tracking_http_client/example/ios/Podfile.lock
 examples/native-hybrid-app/ios/Podfile.lock
 packages/datadog_flutter_plugin/example/ios/Podfile.lock
+# Flutter generates these for the macOS example apps when CocoaPods is in use.
+# macOS builds use Swift Package Manager, so they are never meant to be committed.
+**/macos/Podfile
+**/macos/Podfile.lock
 .build
 tools/ci/.tmp
 .fvmrc

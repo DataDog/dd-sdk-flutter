@@ -1,3 +1,6 @@
+// Legacy API compatibility coverage.
+// ignore_for_file: deprecated_member_use
+
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0. This product includes software
 // developed at Datadog (https://www.datadoghq.com/).
@@ -67,7 +70,7 @@ void main() {
   for (final enabled in [false, true]) {
     for (final control in <Object?>[null, false, 'true', 1, [], {}, true]) {
       test(
-        'RUM uses explicit option $enabled and strict control $control',
+        'RUM uses explicit option $enabled and strict control ${jsonEncode(control)}',
         () async {
           final h = await _Harness.create(enabled: enabled);
           addTearDown(h.sdk.disable);

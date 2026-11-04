@@ -11,6 +11,7 @@ import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:datadog_session_replay/src/capture/capture_node.dart';
 import 'package:datadog_session_replay/src/capture/element_recorders/image_recorder.dart';
 import 'package:datadog_session_replay/src/capture/recorder.dart';
+import 'package:datadog_session_replay/src/capture/view_tree_snapshot.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_interface.dart';
 import 'package:datadog_session_replay/src/rum_context.dart';
 import 'package:datadog_session_replay/src/sr_data_models.dart';
@@ -21,6 +22,20 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import '../test_utils.dart';
 import 'simple_test_capture.dart';
+
+class _ThrowingPlaceholderRecorder implements ElementRecorder {
+  @override
+  bool accepts(Widget widget) => widget is Placeholder;
+
+  @override
+  CaptureNodeSemantics? captureSemantics(
+    Element element,
+    CapturedViewAttributes attributes,
+    TreeCapturePrivacy capturePrivacy,
+  ) {
+    throw StateError('Recorder failure');
+  }
+}
 
 class MockDatadogSessionReplayPlatform extends Mock
     with MockPlatformInterfaceMixin
@@ -1315,6 +1330,162 @@ void main() {
       expect(circuitBreaker.isTripped, isTrue);
 
       bigImage.dispose();
+    });
+  });
+
+  group('disposed images', () {
+    Widget rawImageTree(List<ui.Image> images) {
+      return MaterialApp(
+        home: SimpleTestCapture(
+          key: Key('key'),
+          recorder: recorder,
+          child: Column(
+            children: [
+              for (final image in images)
+                SizedBox(
+                  width: image.width.toDouble(),
+                  height: image.height.toDouble(),
+                  child: RawImage(image: image),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    testWidgets('image clone is disposed when the tree walk aborts', (
+      tester,
+    ) async {
+      // Given
+      final failingRecorder = SessionReplayRecorder.withCustomRecorders(
+        [ImageRecorder(KeyGenerator()), _ThrowingPlaceholderRecorder()],
+        defaultCapturePrivacy: TreeCapturePrivacy(
+          textAndInputPrivacyLevel:
+              TextAndInputPrivacyLevel.maskSensitiveInputs,
+          imagePrivacyLevel: ImagePrivacyLevel.maskNone,
+        ),
+        touchPrivacyLevel: TouchPrivacyLevel.show,
+      );
+      failingRecorder.updateContext(context);
+      final image = testImage.clone();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SimpleTestCapture(
+            key: Key('key'),
+            recorder: failingRecorder,
+            child: Column(
+              children: [
+                // Visited (and cloned) before the recorder that throws
+                SizedBox(
+                  width: image.width.toDouble(),
+                  height: image.height.toDouble(),
+                  child: RawImage(image: image),
+                ),
+                SizedBox(width: 10, height: 10, child: Placeholder()),
+              ],
+            ),
+          ),
+        ),
+      );
+      final openHandlesBefore = image.debugGetOpenHandleStackTraces()!.length;
+
+      // When
+      Object? captureError;
+      await tester.runAsync(() async {
+        try {
+          await failingRecorder.performCapture();
+        } catch (e) {
+          captureError = e;
+        }
+      });
+
+      // Then
+      expect(captureError, isStateError);
+      expect(image.debugGetOpenHandleStackTraces()!.length, openHandlesBefore);
+      image.dispose();
+    });
+
+    testWidgets('same image is only processed once across captures', (
+      tester,
+    ) async {
+      // Given
+      when(
+        () => platform.saveImageForProcessing(any(), any(), any(), any()),
+      ).thenAnswer((_) async {});
+      final image = testImage.clone();
+      await tester.pumpWidget(rawImageTree([image]));
+
+      // When
+      CaptureResult? firstCapture;
+      CaptureResult? secondCapture;
+      await tester.runAsync(() async {
+        firstCapture = await recorder.performCapture();
+        secondCapture = await recorder.performCapture();
+      });
+      image.dispose();
+
+      // Then
+      final firstNode =
+          firstCapture!.viewTreeSnapshot.nodes.single as ResourceImageNode;
+      final secondNode =
+          secondCapture!.viewTreeSnapshot.nodes.single as ResourceImageNode;
+      expect(secondNode.resourceKey, firstNode.resourceKey);
+      verify(
+        () => platform.saveImageForProcessing(any(), any(), any(), any()),
+      ).called(1);
+    });
+
+    testWidgets('image disposed before capture is skipped', (tester) async {
+      // Given
+      final image = testImage.clone();
+      await tester.pumpWidget(rawImageTree([image]));
+      image.dispose();
+
+      // When
+      CaptureResult? capture;
+      await tester.runAsync(() async {
+        capture = await recorder.performCapture();
+      });
+
+      // Then
+      expect(capture, isNull);
+      verifyNever(() => platform.telemetryError(any(), any(), any()));
+      verifyNever(
+        () => platform.saveImageForProcessing(any(), any(), any(), any()),
+      );
+    });
+
+    testWidgets('image disposed during processing is still captured', (
+      tester,
+    ) async {
+      // Given
+      final firstImage = testImage.clone();
+      final secondImage = testImage.clone();
+      var savedImages = 0;
+      when(
+        () => platform.saveImageForProcessing(any(), any(), any(), any()),
+      ).thenAnswer((_) async {
+        // Simulate the owner disposing the second image while the first one
+        // is still being processed.
+        if (savedImages++ == 0) secondImage.dispose();
+      });
+      await tester.pumpWidget(rawImageTree([firstImage, secondImage]));
+
+      // When
+      CaptureResult? capture;
+      await tester.runAsync(() async {
+        capture = await recorder.performCapture();
+      });
+      firstImage.dispose();
+
+      // Then
+      expect(capture!.viewTreeSnapshot.nodes.length, 2);
+      expect(
+        capture!.viewTreeSnapshot.nodes,
+        everyElement(isA<ResourceImageNode>()),
+      );
+      expect(savedImages, 2);
+      verifyNever(() => platform.telemetryError(any(), any(), any()));
     });
   });
 }

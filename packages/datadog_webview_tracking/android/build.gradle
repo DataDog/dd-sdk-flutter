@@ -68,6 +68,7 @@ kotlin {
 }
 
 dependencies {
+    implementation "com.datadoghq:dd-sdk-android-core:$datadog_version"
     implementation "com.datadoghq:dd-sdk-android-webview:$datadog_version"
 
     implementation project(":webview_flutter_android")

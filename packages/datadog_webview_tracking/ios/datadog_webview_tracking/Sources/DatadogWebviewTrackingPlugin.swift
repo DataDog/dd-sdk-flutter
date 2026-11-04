@@ -43,12 +43,14 @@ public class DatadogWebViewTrackingPlugin: NSObject, FlutterPlugin {
                if let webview = FWFWebViewFlutterWKWebViewExternalAPI.webView(
                     forIdentifier: webViewIdentifier, withPluginRegistrar: registrar) {
                    WebViewTracking.enable(webView: webview, hosts: Set(allowedHosts))
+                   // The slot ID native WebView tracking stamps on this WebView's replay records.
+                   result(String(webview.hash))
                 } else {
                     consolePrint(
                         "⚠️ Could not find web view to enable Datadog tracking.",
                         .warn)
+                    result(nil)
                 }
-                result(nil)
             } else {
                 result(
                     FlutterError(code: "DatadogSdk:ContractViolation",

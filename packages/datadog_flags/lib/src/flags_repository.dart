@@ -10,6 +10,7 @@ import 'package:meta/meta.dart';
 import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flag_assignments_fetcher.dart';
+import 'flags_client.dart';
 import 'flags_error.dart';
 import 'flags_store.dart';
 import 'json_value.dart';
@@ -39,6 +40,9 @@ class FlagsRepository {
   final Timer Function(Duration, void Function()) scheduleInitializationTimeout;
 
   _InstalledFlagsState? _state;
+  DatadogFlagsClientStatus _status = DatadogFlagsClientStatus.notReady;
+  final StreamController<DatadogFlagsClientStatus> _statusChanges =
+      StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
   _CancelToken? _currentToken;
   bool _didStartInitialization = false;
   bool _evaluationTelemetryOptedOut = false;
@@ -46,7 +50,8 @@ class FlagsRepository {
   // requests are cancelled and cannot install their assignments.
   final Map<String?, bool> _subjectTelemetryOptOut = {};
 
-  static const _telemetryControl = 'dd_evaluation_telemetry_opt_out';
+  static const _telemetryControl =
+      FlagsEvaluationContext.evaluationTelemetryOptOutKey;
 
   FlagsRepository({
     required this.clientName,
@@ -64,6 +69,10 @@ class FlagsRepository {
   bool get evaluationTelemetryOptedOut =>
       _evaluationTelemetryOptedOut ||
       (_subjectTelemetryOptOut[context?.targetingKey] ?? false);
+
+  DatadogFlagsClientStatus get status => _status;
+
+  Stream<DatadogFlagsClientStatus> get statusChanges => _statusChanges.stream;
 
   FlagAssignment? flagAssignment(String key) {
     final data = _state?.data;
@@ -133,6 +142,7 @@ class FlagsRepository {
         data: matchingCached,
         restoredFromStore: true,
       );
+      _setStatus(DatadogFlagsClientStatus.stale);
     }
 
     try {
@@ -150,6 +160,7 @@ class FlagsRepository {
       _subjectTelemetryOptOut.removeWhere(
         (subject, _) => subject != context.targetingKey,
       );
+      _setStatus(DatadogFlagsClientStatus.ready);
       await _writeCached(data);
     } catch (_) {
       if (!token.isCanceled &&
@@ -159,6 +170,9 @@ class FlagsRepository {
         _subjectTelemetryOptOut.removeWhere(
           (subject, _) => subject != context.targetingKey,
         );
+        _setStatus(DatadogFlagsClientStatus.error);
+      } else if (!token.isCanceled) {
+        _setStatus(DatadogFlagsClientStatus.stale);
       }
     }
   }
@@ -203,11 +217,30 @@ class FlagsRepository {
     _state = null;
     _evaluationTelemetryOptedOut = false;
     _subjectTelemetryOptOut.clear();
+    _setStatus(DatadogFlagsClientStatus.notReady);
+  }
+
+  Future<void> dispose() async {
+    await clearMemory();
+    if (!_statusChanges.isClosed) {
+      // Paused application listeners must not delay SDK cleanup.
+      unawaited(_statusChanges.close());
+    }
   }
 
   Future<void> reset() async {
     await clearMemory();
     await _deleteCached();
+  }
+
+  void _setStatus(DatadogFlagsClientStatus status) {
+    if (_status == status) {
+      return;
+    }
+    _status = status;
+    if (!_statusChanges.isClosed) {
+      _statusChanges.add(status);
+    }
   }
 
   Future<FlagsData?> _readCached() async {

@@ -65,7 +65,10 @@ void main() {
         );
         final events = evaluations.expand(
           (r) => isWebFlagsIntake
-              ? r.body.trim().split('\n').map(jsonDecode)
+              ? r.body
+                    .split('\n')
+                    .where((line) => line.isNotEmpty)
+                    .map(jsonDecode)
               : (jsonDecode(r.body) as Map)['flagEvaluations'] as List,
         );
         final success = events.cast<Map<String, dynamic>>().firstWhere(

@@ -95,6 +95,22 @@ void main() {
       },
     );
 
+    test('finds the iOS files under darwin/', () {
+      write('darwin/datadog_flutter_plugin_ios.podspec', _iosPodspec);
+      write('darwin/datadog_flutter_plugin_ios/Package.swift', _packageSwift);
+
+      final files = resolveNativeDependencyFiles(root.path);
+
+      expect(
+        files.iosPodspec?.path,
+        endsWith('darwin/datadog_flutter_plugin_ios.podspec'),
+      );
+      expect(
+        files.iosSpmManifest?.path,
+        endsWith('darwin/datadog_flutter_plugin_ios/Package.swift'),
+      );
+    });
+
     test('ignores a Package.swift with no dd-sdk-ios dependency', () {
       write(
         'ios/some_other_plugin/Package.swift',

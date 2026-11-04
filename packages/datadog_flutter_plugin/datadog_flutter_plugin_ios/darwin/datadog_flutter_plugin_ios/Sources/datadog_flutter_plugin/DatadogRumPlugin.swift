@@ -32,9 +32,11 @@ public extension RUM.Configuration {
             self.appHangThreshold = appHangThreshold
         }
 
+        #if !os(macOS)
         if let trackWatchdogTerminations = (encoded["trackWatchdogTerminations"] as? NSNumber)?.boolValue {
             self.trackWatchdogTerminations = trackWatchdogTerminations
         }
+        #endif
 
         if let customEndpoint = encoded["customEndpoint"] as? String {
             self.customEndpoint = URL(string: customEndpoint)
@@ -56,6 +58,14 @@ public extension RUM.Configuration {
                     $0.configurationTelemetrySampleRate = sampleRateArg.floatValue
                 })
             }
+        }
+
+        if let timeseriesDict = encoded["timeseries"] as? [String: Any?] {
+            var collectTypes = RUM.Configuration.Timeseries.default.collectTypes
+            if let collectTypesArg = timeseriesDict["collectTypes"] as? [String] {
+                collectTypes = Set(collectTypesArg.compactMap { RUM.Configuration.TimeseriesType.parseFromFlutter($0) })
+            }
+            timeseries = RUM.Configuration.Timeseries(collectTypes: collectTypes)
         }
     }
 }
@@ -993,6 +1003,17 @@ public extension RUM.Configuration.VitalsFrequency {
         case "VitalsFrequency.frequent": return .frequent
         case "VitalsFrequency.average": return .average
         case "VitalsFrequency.rare": return .rare
+        default: return nil
+        }
+    }
+}
+
+@_spi(Experimental)
+public extension RUM.Configuration.TimeseriesType {
+    static func parseFromFlutter(_ value: String) -> RUM.Configuration.TimeseriesType? {
+        switch value {
+        case "TimeseriesType.memory": return .memory
+        case "TimeseriesType.cpu": return .cpu
         default: return nil
         }
     }

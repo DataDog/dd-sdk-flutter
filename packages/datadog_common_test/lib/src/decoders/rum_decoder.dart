@@ -67,22 +67,34 @@ class RumSessionDecoder {
       final viewVisitsById = <String, RumViewVisit>{};
       for (final entry in sessionEntry.value.entries) {
         final viewEvents = entry.value;
+        // Android 3.15 sends a full `view` alongside each `view_update` with the
+        // same document_version. Like the backend, apply an update only when
+        // it is newer than the state built so far, so the full view wins a tie.
         mergeSort(
           viewEvents,
-          compare: (a, b) => a.documentVersion.compareTo(b.documentVersion),
+          compare: (a, b) {
+            final byVersion = a.documentVersion.compareTo(b.documentVersion);
+            if (byVersion != 0) return byVersion;
+            return (a.eventType == 'view' ? 0 : 1).compareTo(
+              b.eventType == 'view' ? 0 : 1,
+            );
+          },
         );
 
         RumViewVisit? visit;
         Map<String, dynamic>? state;
+        var stateVersion = -1;
         for (final e in viewEvents) {
           if (e.eventType == 'view') {
             state = e.rumEvent;
-          } else if (state != null) {
+          } else if (state != null && e.documentVersion > stateVersion) {
             state = _applyViewUpdate(state, e.rumEvent);
           } else {
-            // No baseline received (yet) to apply this delta to
+            // Either no baseline to apply this delta to, or the state already
+            // includes this version.
             continue;
           }
+          stateVersion = e.documentVersion;
           final viewEvent = RumViewEventDecoder(state);
           visit ??= RumViewVisit(
             viewEvent.view.id,

@@ -26,6 +26,8 @@ import com.datadog.android.rum._RumInternalProxy
 import com.datadog.android.rum.configuration.VitalsUpdateFrequency
 import com.datadog.android.rum.metric.networksettled.TimeBasedInitialResourceIdentifier
 import com.datadog.android.rum.operations.FailureReason
+import com.datadog.android.rum.timeseries.TimeseriesConfiguration
+import com.datadog.android.rum.timeseries.TimeseriesType
 import com.datadog.android.rum.tracking.ViewTrackingStrategy
 import com.datadog.android.telemetry.model.TelemetryConfigurationEvent
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -236,6 +238,10 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
             event.telemetry.configuration.trackFlutterPerformance =
                 it.trackFlutterPerformance
             event.telemetry.configuration.dartVersion = it.dartVersion
+            it.trackResourceHeaders?.let { value ->
+                event.telemetry.configuration.trackResourceHeaders =
+                    TelemetryConfigurationEvent.TrackResourceHeaders.fromJson(value)
+            }
         }
 
         return event
@@ -570,6 +576,7 @@ object NoOpViewTrackingStrategy : ViewTrackingStrategy {
     }
 }
 
+@OptIn(ExperimentalRumApi::class)
 @Suppress("ComplexMethod")
 fun RumConfiguration.Builder.withEncoded(encoded: Map<String, Any?>): RumConfiguration.Builder {
     var builder = this
@@ -610,6 +617,16 @@ fun RumConfiguration.Builder.withEncoded(encoded: Map<String, Any?>): RumConfigu
     }
     (encoded["additionalConfig"] as? Map<String, Any>)?.let {
         builder = _RumInternalProxy.setAdditionalConfiguration(builder, it)
+    }
+    (encoded["timeseries"] as? Map<*, *>)?.let { timeseries ->
+        val collectTypesArg = timeseries["collectTypes"] as? List<*>
+        val timeseriesConfiguration = if (collectTypesArg != null) {
+            val types = collectTypesArg.mapNotNull { (it as? String)?.let { type -> parseTimeseriesType(type) } }.toSet()
+            TimeseriesConfiguration(types)
+        } else {
+            TimeseriesConfiguration.DEFAULT
+        }
+        builder = builder.setTimeseriesConfiguration(timeseriesConfiguration)
     }
 
     return builder
@@ -698,6 +715,14 @@ internal fun parseVitalsFrequency(vitalsFrequency: String): VitalsUpdateFrequenc
         "VitalsFrequency.rare" -> VitalsUpdateFrequency.RARE
         "VitalsFrequency.never" -> VitalsUpdateFrequency.NEVER
         else -> VitalsUpdateFrequency.AVERAGE
+    }
+}
+
+internal fun parseTimeseriesType(timeseriesType: String): TimeseriesType? {
+    return when (timeseriesType) {
+        "TimeseriesType.memory" -> TimeseriesType.MEMORY
+        "TimeseriesType.cpu" -> TimeseriesType.CPU
+        else -> null
     }
 }
 

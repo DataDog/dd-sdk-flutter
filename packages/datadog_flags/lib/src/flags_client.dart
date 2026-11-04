@@ -3,14 +3,37 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
+
 import 'evaluation_context.dart';
 import 'flags_error.dart';
+
+const datadogAllocationKeyMetadata = 'datadog.allocation_key';
+const datadogSerialIdMetadata = 'datadog.serial_id';
+
+/// Current assignment availability for a Datadog feature flags client.
+enum DatadogFlagsClientStatus {
+  /// No assignments are available for evaluation.
+  notReady,
+
+  /// Fresh assignments are available for evaluation.
+  ready,
+
+  /// Assignments are available, but fresh assignments are not.
+  stale,
+
+  /// No assignments are available because initialization failed.
+  error,
+}
 
 /// Evaluates feature flags for one current evaluation context.
 ///
 /// Create separate clients for separate mobile subjects, such as logged-out and
 /// logged-in users. Clients are local to the Dart isolate where they are
 /// created and must be recreated in background isolates.
+@Deprecated(
+  'Use OpenFeatureClient. Removal is planned for the next major version.',
+)
 abstract interface class DatadogFlagsClient {
   /// Stable name assigned by [DatadogFlags.sharedClient].
   String get name;
@@ -31,8 +54,9 @@ abstract interface class DatadogFlagsClient {
   ///
   /// When evaluation telemetry opt-out is enabled, only boolean
   /// `dd_evaluation_telemetry_opt_out=true` suppresses new evaluation telemetry.
-  /// The decision applies immediately, including during a pending or failed
-  /// refresh. The attribute remains available for targeting and exposures.
+  /// Opting out and opting the same subject back in apply immediately.
+  /// Switching subjects keeps opted-out assignments suppressed while the next
+  /// subject loads. The attribute remains available for targeting and exposures.
   Future<void> initialize(FlagsEvaluationContext context);
 
   /// Evaluates a boolean flag and returns details about the result.
@@ -72,7 +96,27 @@ abstract interface class DatadogFlagsClient {
   Future<void> shutdown();
 }
 
+/// Optional assignment lifecycle state exposed by Datadog SDK clients.
+///
+/// This is separate from [DatadogFlagsClient] so existing custom clients and
+/// test doubles are not required to implement lifecycle reporting.
+abstract interface class DatadogFlagsClientLifecycle {
+  /// Current assignment availability for this client.
+  DatadogFlagsClientStatus get status;
+
+  /// Emits changes to assignment availability for this client.
+  ///
+  /// Read [status] before subscribing when the current value is required.
+  Stream<DatadogFlagsClientStatus> get statusChanges;
+
+  /// Context associated with the assignments currently used for evaluation.
+  FlagsEvaluationContext? get evaluationContext;
+}
+
 /// Result of a typed flag evaluation.
+@Deprecated(
+  'Use FlagEvaluationDetails. Removal is planned for the next major version.',
+)
 class FlagDetails<T> {
   /// Flag key that was evaluated.
   final String key;
@@ -94,9 +138,14 @@ class FlagDetails<T> {
 
   /// Whether automatic evaluation reporting must be suppressed for this result.
   ///
-  /// Integrations use the decision captured with the evaluated assignments.
+  /// Captures the reporting decision for this evaluation, including errors.
+  /// Automatic telemetry integrations skip reporting when this is true.
+  /// Activated by [DatadogFlagsConfiguration.enableEvaluationTelemetryOptOutParameter].
   /// This does not suppress experiment exposures.
   final bool evaluationTelemetryOptedOut;
+
+  /// Provider-specific metadata associated with a successful evaluation.
+  final Map<String, Object> flagMetadata;
 
   /// Creates immutable details for a flag evaluation result.
   const FlagDetails({
@@ -106,5 +155,6 @@ class FlagDetails<T> {
     this.reason,
     this.error,
     this.evaluationTelemetryOptedOut = false,
+    this.flagMetadata = const {},
   });
 }

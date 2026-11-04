@@ -161,28 +161,50 @@ class ImageRecorder implements ElementRecorder {
       );
     }
 
+    // Processing happens asynchronously, after the owner of the image may
+    // have disposed it. Hold our own handle to the underlying image until
+    // processing is done.
+    final ui.Image imageHandle;
+    try {
+      imageHandle = uiImage.clone();
+    } catch (_) {
+      // Capture runs on a timer, so the owner may already have disposed this
+      // image (e.g. a new animation frame) before the RawImage rebuilds. Skip
+      // it; the next capture picks up the replacement.
+      return IgnoredElement(subtreeStrategy: CaptureNodeSubtreeStrategy.ignore);
+    }
+    // Read synchronously; the element may be unmounted once processing runs.
+    final devicePixelRatio = _devicePixelRatio(element);
+
     return AdditionalProcessingElement(
       subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
-      process: () => _captureImage(elementId, element, attributes, widget),
+      process: () => _captureImage(
+        elementId,
+        attributes,
+        devicePixelRatio,
+        sourceImageForKeyGen: uiImage,
+        // It must be the cloned handle because the original could be disposed at that time
+        imageHandle: imageHandle,
+      ).whenComplete(imageHandle.dispose),
+      discard: imageHandle.dispose,
     );
   }
 
+  /// [sourceImageForKeyGen] is the image referenced by the widget, used only
+  /// to look up resource keys; it may already be disposed. [imageHandle] is our
+  /// own clone of it, and the only one read from during processing.
   Future<CaptureNodeSemantics> _captureImage(
     int elementId,
-    Element element,
     CapturedViewAttributes attributes,
-    RawImage widget,
-  ) async {
-    final image = widget.image;
-    if (image == null) {
-      return _placeholder(elementId, attributes, 'Empty Image');
-    }
-
+    double devicePixelRatio, {
+    required ui.Image sourceImageForKeyGen,
+    required ui.Image imageHandle,
+  }) async {
     final (need, scaledWidth, scaledHeight) = downscaleSizeTarget(
-      image.width,
-      image.height,
+      imageHandle.width,
+      imageHandle.height,
       attributes,
-      _devicePixelRatio(element),
+      devicePixelRatio,
       maxImagePixelBudget,
     );
 
@@ -190,8 +212,8 @@ class ImageRecorder implements ElementRecorder {
       return _persistImageAsResourceNode(
         elementId,
         attributes,
-        sourceImageForKeyGen: image,
-        encodingImageForByteData: image,
+        sourceImageForKeyGen: sourceImageForKeyGen,
+        encodingImageForByteData: imageHandle,
       );
     }
 
@@ -199,8 +221,8 @@ class ImageRecorder implements ElementRecorder {
       return _persistImageAsResourceNode(
         elementId,
         attributes,
-        sourceImageForKeyGen: image,
-        encodingImageForByteData: image,
+        sourceImageForKeyGen: sourceImageForKeyGen,
+        encodingImageForByteData: imageHandle,
       );
     }
 
@@ -211,7 +233,7 @@ class ImageRecorder implements ElementRecorder {
     ui.Image? scaled;
     try {
       scaled = await _downscale(
-        image,
+        imageHandle,
         scaledWidth,
         scaledHeight,
       ).timeout(_downscaleTimeout);
@@ -219,7 +241,7 @@ class ImageRecorder implements ElementRecorder {
       return await _persistImageAsResourceNode(
         elementId,
         attributes,
-        sourceImageForKeyGen: image,
+        sourceImageForKeyGen: sourceImageForKeyGen,
         encodingImageForByteData: scaled,
       );
     } on TimeoutException {

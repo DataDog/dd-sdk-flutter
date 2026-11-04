@@ -22,6 +22,96 @@ void main() {
 
   tearDown(() => fixture.delete());
 
+  group('dirtyFiles', () {
+    test('lists staged, unstaged and untracked paths', () async {
+      final gitDir = await fixture.gitDir;
+      fixture.writeFile('a.lock', 'one');
+      fixture.writeFile('b.txt', 'one');
+      await fixture.commit('chore: add files');
+      fixture.writeFile('a.lock', 'two');
+      fixture.writeFile('b.txt', 'two');
+      await gitDir.runCommand(['add', 'b.txt']);
+      fixture.writeFile('c.txt', 'new');
+
+      final dirty = await dirtyFiles(gitDir, logger);
+
+      expect(
+        dirty.map((file) => file.path),
+        unorderedEquals(['a.lock', 'b.txt', 'c.txt']),
+      );
+    });
+
+    test('flags only modified tracked files as restorable', () async {
+      final gitDir = await fixture.gitDir;
+      fixture.writeFile('a.lock', 'one');
+      fixture.writeFile('b.txt', 'one');
+      await fixture.commit('chore: add files');
+      fixture.writeFile('a.lock', 'two');
+      fixture.writeFile('b.txt', 'two');
+      await gitDir.runCommand(['add', 'b.txt']);
+      fixture.writeFile('c.txt', 'new');
+
+      final dirty = {
+        for (final file in await dirtyFiles(gitDir, logger)) file.path: file,
+      };
+
+      expect(dirty['a.lock']!.isModifiedTrackedFile, isTrue);
+      expect(dirty['b.txt']!.isModifiedTrackedFile, isTrue);
+      expect(dirty['c.txt']!.isModifiedTrackedFile, isFalse);
+    });
+
+    test('is empty for a clean working tree', () async {
+      final gitDir = await fixture.gitDir;
+
+      expect(await dirtyFiles(gitDir, logger), isEmpty);
+    });
+  });
+
+  group('restoreFiles', () {
+    test('puts modified tracked files back to what HEAD has', () async {
+      final gitDir = await fixture.gitDir;
+      fixture.writeFile('a.lock', 'one');
+      await fixture.commit('chore: add file');
+      fixture.writeFile('a.lock', 'two');
+
+      await restoreFiles(gitDir, ['a.lock'], logger);
+
+      expect(
+        File(p.join(fixture.root.path, 'a.lock')).readAsStringSync(),
+        'one',
+      );
+      expect(await dirtyFiles(gitDir, logger), isEmpty);
+    });
+
+    test('also unstages a staged change', () async {
+      final gitDir = await fixture.gitDir;
+      fixture.writeFile('b.txt', 'one');
+      await fixture.commit('chore: add file');
+      fixture.writeFile('b.txt', 'two');
+      await gitDir.runCommand(['add', 'b.txt']);
+
+      await restoreFiles(gitDir, ['b.txt'], logger);
+
+      expect(
+        File(p.join(fixture.root.path, 'b.txt')).readAsStringSync(),
+        'one',
+      );
+      expect(await dirtyFiles(gitDir, logger), isEmpty);
+    });
+
+    test('leaves other changed files alone', () async {
+      final gitDir = await fixture.gitDir;
+      fixture.writeFile('a.lock', 'one');
+      await fixture.commit('chore: add file');
+      fixture.writeFile('a.lock', 'two');
+      fixture.writeFile('c.txt', 'new');
+
+      await restoreFiles(gitDir, ['a.lock'], logger);
+
+      expect((await dirtyFiles(gitDir, logger)).map((f) => f.path), ['c.txt']);
+    });
+  });
+
   group('isWorkingTreeClean', () {
     test('is true right after a commit', () async {
       final gitDir = await fixture.gitDir;

@@ -33,6 +33,8 @@ import 'package:datadog_session_replay/datadog_session_replay.dart';
 final configuration = DatadogConfiguration(
     // Normal Datadog configuration
     clientToken: '<client-token>',
+    env: '<env-name>',
+    site: DatadogSite.us1,
     service: '<SERVICE_NAME>',
     // RUM is required to use Datadog Session Replay
     rumConfiguration: DatadogRumConfiguration(

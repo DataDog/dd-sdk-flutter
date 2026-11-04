@@ -283,4 +283,81 @@ void main() {
       expect(warnings, isEmpty);
     });
   });
+
+  group('findUnsatisfiedSiblingConstraints', () {
+    const base = 'packages/datadog_flutter_plugin';
+    DiscoveredPackage member(String name, PackageRole role) =>
+        DiscoveredPackage(
+          name: name,
+          version: '1.0.0',
+          relativePath: '$base/$name',
+          role: role,
+          groupKey: 'datadog_flutter_plugin',
+        );
+
+    final platformInterface = member(
+      'datadog_flutter_plugin_platform_interface',
+      PackageRole.platformInterface,
+    );
+    final android = member(
+      'datadog_flutter_plugin_android',
+      PackageRole.implementation,
+    );
+    final group = PackageGroup(
+      key: 'datadog_flutter_plugin',
+      members: [platformInterface, android],
+    );
+
+    void writeAndroidConstraint(String constraint) {
+      Directory(
+        p.join(root.path, android.relativePath),
+      ).createSync(recursive: true);
+      File(
+        p.join(root.path, android.relativePath, 'pubspec.yaml'),
+      ).writeAsStringSync(
+        'name: datadog_flutter_plugin_android\n'
+        'dependencies:\n'
+        '  datadog_flutter_plugin_platform_interface: $constraint\n',
+      );
+    }
+
+    Future<List<StaleConsumerWarning>> check(String newVersion) =>
+        findUnsatisfiedSiblingConstraints(
+          group: group,
+          repoRoot: root.path,
+          releasingPackage: platformInterface,
+          newVersion: newVersion,
+        );
+
+    test('flags a caret constraint that excludes the pre-release', () async {
+      writeAndroidConstraint('^1.0.0');
+
+      final warnings = await check('1.0.0-beta.1');
+
+      expect(warnings, hasLength(1));
+      expect(warnings.single.consumerPackage, 'datadog_flutter_plugin_android');
+    });
+
+    test('accepts a constraint that allows the new version', () async {
+      writeAndroidConstraint('^1.0.0-beta.1');
+
+      expect(await check('1.0.0-beta.1'), isEmpty);
+    });
+
+    test('does not check the releasing package against itself', () async {
+      writeAndroidConstraint('^1.0.0-beta.1');
+      Directory(
+        p.join(root.path, platformInterface.relativePath),
+      ).createSync(recursive: true);
+      File(
+        p.join(root.path, platformInterface.relativePath, 'pubspec.yaml'),
+      ).writeAsStringSync(
+        'name: datadog_flutter_plugin_platform_interface\n'
+        'dependencies:\n'
+        '  datadog_flutter_plugin_platform_interface: ^9.0.0\n',
+      );
+
+      expect(await check('1.0.0-beta.1'), isEmpty);
+    });
+  });
 }

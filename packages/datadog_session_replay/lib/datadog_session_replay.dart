@@ -69,7 +69,9 @@ enum FontFamilyStrategy {
   /// `-apple-system, BlinkMacSystemFont, Roboto, sans-serif`,
   /// regardless of the captured family. Matches the native SDK
   /// behavior and is the safest choice if you do not want any
-  /// Flutter font names leaving the device.
+  /// Flutter font names leaving the device. The one exception is
+  /// `MaterialIcons`, which the replay player bundles and which
+  /// [Icon] glyphs need in order to render.
   fallback,
 
   /// No transform is applied—the raw `TextStyle.fontFamily` (or

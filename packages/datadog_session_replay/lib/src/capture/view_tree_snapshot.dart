@@ -86,9 +86,14 @@ class SpecificElement extends CaptureNodeSemantics {
 class AdditionalProcessingElement extends CaptureNodeSemantics {
   final Future<CaptureNodeSemantics> Function() process;
 
+  /// Releases any resources held for [process] when the capture is abandoned
+  /// before [process] runs.
+  final void Function()? discard;
+
   const AdditionalProcessingElement({
     required super.subtreeStrategy,
     super.subtreePrivacy,
     required this.process,
+    this.discard,
   }) : super(nodes: const []);
 }

@@ -74,7 +74,12 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
         });
 
     final iOsConfiguration = FlutterSessionReplayConfiguration.alloc()
-      ..initWithCustomEndpoint(url, onContextChanged: contextChangedListener);
+      ..initWithCustomEndpoint(url, onContextChanged: contextChangedListener)
+      ..textAndInputPrivacyLevel = NSString(
+        configuration.textAndInputPrivacyLevel.name,
+      )
+      ..imagePrivacyLevel = NSString(configuration.imagePrivacyLevel.name)
+      ..touchPrivacyLevel = NSString(configuration.touchPrivacyLevel.name);
     _iosBridge.enableWith(iOsConfiguration);
 
     // Tell the bridge which path its segments take. Embedded records go to the native
@@ -101,6 +106,11 @@ class DatadogSessionReplayPlatformIos extends DatadogSessionReplayPlatform {
   @override
   FutureOr<void> setHasReplay(String viewId, bool hasReplay) {
     _iosBridge.setHasReplayWithHasReplay(hasReplay);
+  }
+
+  @override
+  FutureOr<void> setSessionSampled(String sessionId, bool sampled) {
+    _iosBridge.setSessionSampledFor(NSString(sessionId), sampled: sampled);
   }
 
   @override

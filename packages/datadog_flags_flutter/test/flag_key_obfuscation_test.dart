@@ -3,6 +3,9 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+// This test covers compatibility of the deprecated Flutter plugin API.
+// ignore_for_file: deprecated_member_use
+
 import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';

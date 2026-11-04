@@ -7,6 +7,9 @@ environment:
   sdk: ">=3.10.0 <4.0.0"
 
 dependencies:
+  openfeature_dart_client_sdk: ^0.0.1
+  datadog_flags:
+    path: ../../packages/datadog_flags
   flutter:
     sdk: flutter
   flutter_web_plugins:
@@ -31,6 +34,7 @@ dependencies:
   flutter_dotenv: ^5.1.0
   transparent_image: ^2.0.1
   graphql_flutter: ^5.3.0
+  webview_flutter: ^4.14.0
 
 dependency_overrides:
   datadog_flutter_plugin:
@@ -50,3 +54,4 @@ flutter:
 
   assets:
     - .env
+    - assets/webview_page.html

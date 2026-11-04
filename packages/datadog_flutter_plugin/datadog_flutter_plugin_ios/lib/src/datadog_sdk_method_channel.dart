@@ -167,6 +167,10 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
       'trackingConsent': trackingConsent.toString(),
       'dartVersion': Platform.version,
       'setLogCallback': logCallback != null,
+      'trackResourceHeaders': ?configuration
+          .rumConfiguration
+          ?.trackResourceHeaders
+          ?.telemetryTrackResourceHeaders,
     });
 
     final backgroundPlugins = configuration.additionalPlugins

@@ -142,7 +142,13 @@ internal class FlutterSessionReplayManager {
 
     /// Registers the shared Session Replay feature in `core`. Subsequent calls reuse the
     /// already-registered feature (every engine calls this, but only one feature exists).
-    internal func enableFeature(in core: DatadogCoreProtocol, customEndpoint: URL?) throws {
+    internal func enableFeature(
+        in core: DatadogCoreProtocol,
+        customEndpoint: URL?,
+        textAndInputPrivacyLevel: TextAndInputPrivacyLevel = .maskAll,
+        imagePrivacyLevel: ImagePrivacyLevel = .maskAll,
+        touchPrivacyLevel: TouchPrivacyLevel = .hide
+    ) throws {
         self.core = core
 
         guard feature == nil else {
@@ -155,7 +161,10 @@ internal class FlutterSessionReplayManager {
                 customEndpoint: customEndpoint,
                 onContextChanged: { [weak self] context in
                     self?.broadcastContext(context)
-                }
+                },
+                textAndInputPrivacyLevel: textAndInputPrivacyLevel,
+                imagePrivacyLevel: imagePrivacyLevel,
+                touchPrivacyLevel: touchPrivacyLevel
             ),
             resourceResolver: nil,  // Use the default resource resolver
             embeddedResourceSink: { [weak self] identifier, data, mimeType in

@@ -56,7 +56,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         var trackNativeViews: Boolean = false,
         var trackCrossPlatformLongTasks: Boolean = false,
         var trackFlutterPerformance: Boolean = false,
-        var dartVersion: String? = null
+        var dartVersion: String? = null,
+        var trackResourceHeaders: String? = null
     )
 
     private lateinit var channel: MethodChannel
@@ -105,6 +106,8 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
                         Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION)
                     }
                     telemetryOverrides.dartVersion = call.argument<String>("dartVersion")
+                    telemetryOverrides.trackResourceHeaders =
+                        call.argument<String>("trackResourceHeaders")
                     result.success(null)
                 } else {
                     result.missingParameter(call.method)
@@ -336,17 +339,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
-    private fun simpleInvokeOn(methodName: String, target: Any) {
-        val klass = target.javaClass
-        val method = klass.declaredMethods.firstOrNull {
-            it.name == methodName || it.name == "$methodName\$dd_sdk_android_core_release"
-        }
-        method?.let {
-            it.isAccessible = true
-            it.invoke(target)
-        }
-    }
-
     private fun invokePrivateFlush(result: Result) {
         // This drains pending data and shuts down the SDK's executors, which
         // closes any open RUM action scopes so their events get written before
@@ -360,7 +352,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
     private fun invokePrivateShutdown(result: Result) {
         executor.submit {
-            simpleInvokeOn("flushAndShutdownExecutors", Datadog)
+            Datadog._internalProxy().flushAndShutdownExecutors()
             Datadog.stopInstance()
         }.get()
 

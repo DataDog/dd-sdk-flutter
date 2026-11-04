@@ -40,10 +40,12 @@ void main() {
           'content-length': ['1024'],
           'server-timing': ['total;dur=100'],
           'x-cache': ['HIT'],
+          'cf-cache-status': ['HIT'],
+          'x-vercel-cache': ['MISS'],
           'x-custom': ['ignored'],
         };
         final result = extractor.extractResponseHeaders(headers);
-        expect(result.length, 10);
+        expect(result.length, 12);
         expect(result['cache-control'], 'max-age=3600');
         expect(result['etag'], '"abc123"');
         expect(result['age'], '100');
@@ -54,6 +56,8 @@ void main() {
         expect(result['content-length'], '1024');
         expect(result['server-timing'], 'total;dur=100');
         expect(result['x-cache'], 'HIT');
+        expect(result['cf-cache-status'], 'HIT');
+        expect(result['x-vercel-cache'], 'MISS');
         expect(result.containsKey('x-custom'), false);
       });
 
@@ -454,6 +458,81 @@ void main() {
         );
         expect(extractor.requestHeaderNames, isEmpty);
         expect(extractor.responseHeaderNames, isEmpty);
+      });
+
+      test('header name sets cannot be modified', () {
+        final extractor = ResourceHeadersExtractor(
+          captureHeaders: ['x-custom'],
+        );
+
+        expect(
+          () => extractor.customHeaderNames.clear(),
+          throwsUnsupportedError,
+        );
+        expect(
+          () => extractor.requestHeaderNames.clear(),
+          throwsUnsupportedError,
+        );
+        expect(
+          () => extractor.responseHeaderNames.clear(),
+          throwsUnsupportedError,
+        );
+      });
+    });
+
+    group('configuration telemetry', () {
+      test('reports default_headers when only defaults are captured', () {
+        final extractor = ResourceHeadersExtractor();
+        expect(extractor.telemetryTrackResourceHeaders, 'default_headers');
+      });
+
+      test('reports custom when custom headers are configured', () {
+        expect(
+          ResourceHeadersExtractor(
+            captureHeaders: ['x-custom'],
+          ).telemetryTrackResourceHeaders,
+          'custom',
+        );
+        expect(
+          ResourceHeadersExtractor(
+            includeDefaults: false,
+            captureHeaders: ['x-custom'],
+          ).telemetryTrackResourceHeaders,
+          'custom',
+        );
+      });
+
+      test('reports the configuration captured at construction', () {
+        final captureHeaders = ['x-custom'];
+        final extractor = ResourceHeadersExtractor(
+          captureHeaders: captureHeaders,
+        );
+        captureHeaders.clear();
+
+        expect(extractor.telemetryTrackResourceHeaders, 'custom');
+        expect(extractor.customHeaderNames, {'x-custom'});
+      });
+
+      test('reports the effective headers after security filtering', () {
+        expect(
+          ResourceHeadersExtractor(
+            includeDefaults: false,
+          ).telemetryTrackResourceHeaders,
+          isNull,
+        );
+        expect(
+          ResourceHeadersExtractor(
+            includeDefaults: false,
+            captureHeaders: ['authorization'],
+          ).telemetryTrackResourceHeaders,
+          isNull,
+        );
+        expect(
+          ResourceHeadersExtractor(
+            captureHeaders: ['authorization'],
+          ).telemetryTrackResourceHeaders,
+          'default_headers',
+        );
       });
     });
   });

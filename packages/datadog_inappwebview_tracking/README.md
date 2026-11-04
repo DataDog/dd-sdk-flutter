@@ -1,5 +1,8 @@
 ## Overview
 
+> [!CAUTION]
+> This package is deprecated. The [`flutter_inappwebview`][2] package it depends on is no longer actively maintained, and its latest stable release does not support the Android Gradle Plugin 9. Consider migrating to [`datadog_webview_tracking`][3], which supports `webview_flutter`.
+
 This package is an extension to the [`datadog_flutter_plugin`][1]. It allows Real User Monitoring to monitor web views created by the [`flutter_inappwebview`][2] package and eliminate blind spots in your hybrid Flutter applications.
 
 > [!WARNING]
@@ -13,7 +16,7 @@ Add both the `datadog_inappwebview_tracking` package and the `flutter_inappwebvi
 
 ```yaml
 dependencies:
-  flutter_inappwebview: ^6.1.5
+  flutter_inappwebview: ^6.2.0-beta.3
   datadog_flutter_plugin: ^3.0.0
   datadog_inappwebview_tracking: ^1.0.0
 ```
@@ -38,9 +41,6 @@ InAppWebView(
 ```
 
 ### InAppBrowser
-
-> [!WARNING]
-> `InAppBrowser` is not tracked on Android 33+ because of [this bug](https://github.com/pichillilorenzo/flutter_inappwebview/issues/1973). This will be fixed by plugin versions that depends on `flutter_inappwebview 6.2.0`.
 
 To instrument an `InAppBrowser`, add an override for `onBrowserCreated` and call the `trackDatadogEvents` extension method on `webViewController`, then add a `DatadogInAppWebViewUserScript` to the `initialUserScripts` when creating your custom `InAppBrowser`:
 
@@ -71,3 +71,4 @@ _browser = MyInAppBrowser(
 
 [1]: https://pub.dev/packages/datadog_flutter_plugin
 [2]: https://pub.dev/packages/flutter_inappwebview
+[3]: https://pub.dev/packages/datadog_webview_tracking
