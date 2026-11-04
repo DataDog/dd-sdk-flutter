@@ -10,7 +10,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:datadog_flags/datadog_flags.dart';
-import 'package:datadog_flags/src/precompute_response.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
@@ -94,16 +93,9 @@ void main() {
         test(
           '${fixture['name']} restored=$restored',
           () async {
-            final response = Map<String, Object?>.from(
-              fixture['response'] as Map,
-            );
-            if (fixture['expectedResponseError'] == 'INVALID_RESPONSE') {
-              expect(
-                () => PrecomputeResponse.fromJson(response),
-                throwsFormatException,
-              );
-              return;
-            }
+            final responseText = File(
+              '${root.path}/responses/${file.path.substring(root.path.length + 1)}',
+            ).readAsStringSync();
             final directory = await Directory.systemTemp.createTemp(
               'canonical-flags-',
             );
@@ -126,7 +118,7 @@ void main() {
                 }
                 return http.Response(
                   request.url.path == '/precompute-assignments'
-                      ? jsonEncode(response)
+                      ? responseText
                       : '{}',
                   200,
                 );
@@ -139,6 +131,12 @@ void main() {
               Map<String, Object?>.from(fixture['context'] as Map),
             );
             await client.initialize(context);
+            expect(
+              (client as DatadogFlagsClientLifecycle).status,
+              fixture['expectedResponseError'] == 'INVALID_RESPONSE'
+                  ? DatadogFlagsClientStatus.error
+                  : DatadogFlagsClientStatus.ready,
+            );
             if (restored) {
               await sdk.disable();
               offline = true;

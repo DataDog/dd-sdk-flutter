@@ -193,6 +193,7 @@ class DefaultDatadogFlagsClient
     }
 
     final variationValue = assignment.variationValue;
+    final numericValue = assignment.numericValue;
     final assignmentType = assignment.variationType;
     final numeric =
         assignmentType == FlagVariationType.integer ||
@@ -205,6 +206,10 @@ class DefaultDatadogFlagsClient
       FlagVariationType.string
           when assignmentType == FlagVariationType.string =>
         variationValue,
+      FlagVariationType.integer when numeric && numericValue != null =>
+        numericValue.integer ?? _typeMismatch,
+      FlagVariationType.float when numeric && numericValue != null =>
+        numericValue.floating ?? _typeMismatch,
       FlagVariationType.integer when numeric && variationValue is num =>
         _losslessInteger(variationValue),
       FlagVariationType.float when numeric && variationValue is num =>
