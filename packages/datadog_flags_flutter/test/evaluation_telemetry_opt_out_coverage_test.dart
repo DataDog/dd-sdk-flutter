@@ -36,8 +36,48 @@ void main() {
         addTearDown(sdk.disable);
         var evaluationCount = 0;
         await sdk.enable(
-          configuration: _configuration(
-            onEvaluations: (count) => evaluationCount += count,
+          configuration: DatadogFlagsConfiguration(
+            datadogConfig: const DatadogFlagsConfig(
+              clientToken: 'local-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+            enableEvaluationTelemetryOptOutParameter: true,
+            httpClient: MockClient((request) async {
+              if (!request.url.path.contains('precompute')) {
+                if (request.url.path.contains('evaluation')) {
+                  for (final line in request.body.split('\n')) {
+                    final decoded = jsonDecode(line);
+                    final evaluations = decoded.containsKey('flagEvaluations')
+                        ? decoded['flagEvaluations'] as List
+                        : [decoded];
+                    for (final evaluation in evaluations) {
+                      evaluationCount += evaluation['evaluation_count'] as int;
+                    }
+                  }
+                }
+                return http.Response('{}', 202);
+              }
+              return http.Response(
+                jsonEncode({
+                  'data': {
+                    'attributes': {
+                      'flags': {
+                        'flag': {
+                          'allocationKey': 'allocation',
+                          'variationKey': 'on',
+                          'variationType': 'boolean',
+                          'variationValue': true,
+                          'reason': 'TARGETING_MATCH',
+                          'doLog': true,
+                        },
+                      },
+                    },
+                  },
+                }),
+                200,
+              );
+            }),
           ),
         );
         final rum = <Object>[];
@@ -126,52 +166,4 @@ void main() {
       },
     );
   }
-}
-
-DatadogFlagsConfiguration _configuration({
-  void Function(int count)? onEvaluations,
-}) {
-  return DatadogFlagsConfiguration(
-    datadogConfig: const DatadogFlagsConfig(
-      clientToken: 'local-token',
-      env: 'test',
-      site: DatadogFlagsSite.us1,
-    ),
-    enableEvaluationTelemetryOptOutParameter: true,
-    httpClient: MockClient((request) async {
-      if (!request.url.path.contains('precompute')) {
-        if (request.url.path.contains('evaluation')) {
-          for (final line in request.body.split('\n')) {
-            final decoded = jsonDecode(line);
-            final evaluations = decoded.containsKey('flagEvaluations')
-                ? decoded['flagEvaluations'] as List
-                : [decoded];
-            for (final evaluation in evaluations) {
-              onEvaluations?.call(evaluation['evaluation_count'] as int);
-            }
-          }
-        }
-        return http.Response('{}', 202);
-      }
-      return http.Response(
-        jsonEncode({
-          'data': {
-            'attributes': {
-              'flags': {
-                'flag': {
-                  'allocationKey': 'allocation',
-                  'variationKey': 'on',
-                  'variationType': 'boolean',
-                  'variationValue': true,
-                  'reason': 'TARGETING_MATCH',
-                  'doLog': true,
-                },
-              },
-            },
-          },
-        }),
-        200,
-      );
-    }),
-  );
 }

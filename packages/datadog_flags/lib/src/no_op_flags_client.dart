@@ -14,7 +14,13 @@ class NoOpDatadogFlagsClient
   @override
   final String name;
 
-  const NoOpDatadogFlagsClient({required this.name});
+  final bool enableEvaluationTelemetryOptOutParameter;
+  bool _evaluationTelemetryOptedOut = false;
+
+  NoOpDatadogFlagsClient({
+    required this.name,
+    this.enableEvaluationTelemetryOptOutParameter = false,
+  });
 
   @override
   DatadogFlagsClientStatus get status => DatadogFlagsClientStatus.notReady;
@@ -26,7 +32,12 @@ class NoOpDatadogFlagsClient
   FlagsEvaluationContext? get evaluationContext => null;
 
   @override
-  Future<void> initialize(FlagsEvaluationContext context) async {}
+  Future<void> initialize(FlagsEvaluationContext context) async {
+    final control =
+        context.attributes[FlagsEvaluationContext.evaluationTelemetryOptOutKey];
+    _evaluationTelemetryOptedOut =
+        enableEvaluationTelemetryOptOutParameter && control is bool && control;
+  }
 
   @override
   FlagDetails<bool> getBooleanDetails({
@@ -69,16 +80,19 @@ class NoOpDatadogFlagsClient
   }
 
   @override
-  Future<void> reset() async {}
+  Future<void> reset() async {
+    _evaluationTelemetryOptedOut = false;
+  }
 
   @override
-  Future<void> shutdown() async {}
+  Future<void> shutdown() => reset();
 
   FlagDetails<T> _details<T>({required String key, required T defaultValue}) {
     return FlagDetails(
       key: key,
       value: defaultValue,
       error: FlagEvaluationError.providerNotReady,
+      evaluationTelemetryOptedOut: _evaluationTelemetryOptedOut,
     );
   }
 }

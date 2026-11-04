@@ -181,13 +181,8 @@ and exposure events still send the targeting key and attributes. To stop exposur
 events, set `trackExposures: false`. Previously recorded events and manual RUM
 annotations remain.
 
-OpenFeature context changes retain the active context and its telemetry policy
-until reconciliation installs the next context. A failed reconciliation retains
-the active context and policy. Await `setEvaluationContextAndWait` before evaluating
-with a newly selected policy.
-
-For the legacy `DatadogFlagsClient.initialize` API, opting out or opting the same
-subject back in applies immediately, including during a pending or failed refresh.
-Switching subjects keeps opted-out assignments suppressed while the next subject
-loads. Each named client has separate policy. The attribute remains available for
-targeting, stored contexts, cache matching, and exposure reporting.
+See the API documentation for
+[`DatadogOpenFeatureProvider`](https://pub.dev/documentation/datadog_flags/latest/datadog_flags/DatadogOpenFeatureProvider-class.html)
+and the legacy
+[`DatadogFlagsClient.initialize`](https://pub.dev/documentation/datadog_flags/latest/datadog_flags/DatadogFlagsClient/initialize.html)
+for context-change and telemetry-policy timing.

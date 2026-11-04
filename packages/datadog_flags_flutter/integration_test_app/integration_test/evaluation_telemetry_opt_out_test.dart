@@ -22,87 +22,89 @@ import 'package:http/testing.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets(
-    'intake preserves exposures and suppresses automatic RUM',
-    (tester) async {
-      final RecordingServerClient recordingServer;
-      if (kIsWeb) {
-        recordingServer = RemoteRecordingServerClient();
-      } else {
-        final server = RecordingHttpServer();
-        await server.start();
-        addTearDown(() => server.server.close(force: true));
-        recordingServer = LocalRecordingServerClient(server);
-      }
-      await recordingServer.startNewSession();
-      final transport = http.Client();
-      addTearDown(transport.close);
-      final events = <String, List<dynamic>>{};
-      final httpClient = MockClient((request) async {
-        final path = request.url.path;
-        if (path.endsWith('/assignments')) {
-          final scenario =
-              request.url.pathSegments[request.url.pathSegments.length - 2];
-          events
-              .putIfAbsent('/$scenario/assignments', () => [])
-              .add(jsonDecode(request.body));
-          return http.Response(
-            jsonEncode({
-              'data': {
-                'attributes': {
-                  'flags': {
-                    'enabled': {
-                      'allocationKey': 'allocation',
-                      'variationKey': 'on',
-                      'variationType': 'boolean',
-                      'variationValue': true,
-                      'reason': 'TARGETING_MATCH',
-                      'doLog': true,
+  for (final scenario in [
+    'disabled',
+    'allowed',
+    'suppressed',
+    'string-true',
+    'transition',
+  ]) {
+    testWidgets(
+      'intake preserves exposures and suppresses automatic RUM: $scenario',
+      (tester) async {
+        final RecordingServerClient recordingServer;
+        if (kIsWeb) {
+          recordingServer = RemoteRecordingServerClient();
+        } else {
+          final server = RecordingHttpServer();
+          await server.start();
+          addTearDown(() => server.server.close(force: true));
+          recordingServer = LocalRecordingServerClient(server);
+        }
+        await recordingServer.startNewSession();
+        final transport = http.Client();
+        addTearDown(transport.close);
+        final events = <String, List<dynamic>>{};
+        final httpClient = MockClient((request) async {
+          final path = request.url.path;
+          if (path.endsWith('/assignments')) {
+            final scenario =
+                request.url.pathSegments[request.url.pathSegments.length - 2];
+            events
+                .putIfAbsent('/$scenario/assignments', () => [])
+                .add(jsonDecode(request.body));
+            return http.Response(
+              jsonEncode({
+                'data': {
+                  'attributes': {
+                    'flags': {
+                      'enabled': {
+                        'allocationKey': 'allocation',
+                        'variationKey': 'on',
+                        'variationType': 'boolean',
+                        'variationValue': true,
+                        'reason': 'TARGETING_MATCH',
+                        'doLog': true,
+                      },
                     },
                   },
                 },
-              },
-            }),
-            200,
-            headers: {'content-type': 'application/json'},
-          );
-        }
-        // MockClient supplies a finalized request. Forward a fresh request so
-        // the real transport can finalize and send the body exactly once.
-        final forwarded = http.Request(request.method, request.url)
-          ..headers.addAll(request.headers)
-          ..bodyBytes = request.bodyBytes;
-        return http.Response.fromStream(await transport.send(forwarded));
-      });
-      final base = recordingServer.sessionEndpoint;
-      final sdk = DatadogSdk.instance;
-      await sdk.initialize(
-        DatadogConfiguration(
-          clientToken: 'local-test-token',
-          env: 'local-test',
-          service: 'flags-telemetry-test',
-          site: DatadogSite.us1,
-          batchSize: BatchSize.small,
-          uploadFrequency: UploadFrequency.frequent,
-          rumConfiguration: DatadogRumConfiguration(
-            applicationId: '00000000-0000-0000-0000-000000000001',
-            customEndpoint: '${base}rum',
-          ),
-        )..additionalConfig['_dd.needsClearTextHttp'] = true,
-        TrackingConsent.granted,
-      );
-      await tester.pumpWidget(
-        const MaterialApp(home: Text('Local telemetry test')),
-      );
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+          // MockClient supplies a finalized request. Forward a fresh request so
+          // the real transport can finalize and send the body exactly once.
+          final forwarded = http.Request(request.method, request.url)
+            ..headers.addAll(request.headers)
+            ..bodyBytes = request.bodyBytes;
+          return http.Response.fromStream(await transport.send(forwarded));
+        });
+        final base = recordingServer.sessionEndpoint;
+        final sdk = DatadogSdk.instance;
+        await sdk.initialize(
+          DatadogConfiguration(
+            clientToken: 'local-test-token',
+            env: 'local-test',
+            service: 'flags-telemetry-test',
+            site: DatadogSite.us1,
+            batchSize: BatchSize.small,
+            uploadFrequency: UploadFrequency.frequent,
+            rumConfiguration: DatadogRumConfiguration(
+              applicationId: '00000000-0000-0000-0000-000000000001',
+              customEndpoint: '${base}rum',
+            ),
+          )..additionalConfig['_dd.needsClearTextHttp'] = true,
+          TrackingConsent.granted,
+        );
+        addTearDown(sdk.flushAndDeinitialize);
+        await tester.pumpWidget(
+          const MaterialApp(home: Text('Local telemetry test')),
+        );
 
-      final expectedRumViews = <String, bool>{};
-      for (final scenario in [
-        'disabled',
-        'allowed',
-        'suppressed',
-        'string-true',
-        'transition',
-      ]) {
+        final expectedRumViews = <String, bool>{};
+
         final enabled = scenario != 'disabled';
         final controls = <Object?>[
           if (scenario == 'transition') ...[
@@ -115,6 +117,7 @@ void main() {
             scenario != 'allowed',
         ];
         final flags = DatadogFlags();
+        addTearDown(flags.disable);
         final plugin = DatadogFlagsPlugin(
           sdk,
           flagsConfiguration: DatadogFlagsConfiguration(
@@ -193,79 +196,81 @@ void main() {
           'MOBILE INTAKE $scenario: assignments=${controls.length} exposures=1 '
           'evaluation_count=$count',
         );
-      }
 
-      await recordingServer.pollSessionRequests(const Duration(seconds: 30), (
-        requests,
-      ) {
-        events
-            .putIfAbsent('/rum', () => [])
-            .addAll(
-              requests
-                  .where(
-                    (request) =>
-                        Uri.parse(request.requestedUrl).path.endsWith('/rum'),
-                  )
-                  .expand(_decodeEvents),
-            );
-        return (events['/rum'] ?? []).any(
-          (event) =>
-              (event['type'] == 'view' || event['type'] == 'view_update') &&
-              event['view']['url'] == 'transition-2' &&
-              (event['feature_flags'] as Map?)?['manual'] == 'unchanged',
-        );
-      });
-      final rum = events['/rum'] ?? [];
-      for (final expected in expectedRumViews.entries) {
-        final scenario = expected.key;
-        final viewIds = rum
-            .where(
-              (event) =>
-                  event['type'] == 'view' && event['view']['name'] == scenario,
-            )
-            .map((event) => event['view']['id']);
-        final views = rum
-            .where(
-              (event) =>
-                  (event['type'] == 'view' || event['type'] == 'view_update') &&
-                  viewIds.contains(event['view']['id']),
-            )
-            .toList();
-        expect(
-          views,
-          isNotEmpty,
-          reason: 'Native RUM intake must emit $scenario views.',
-        );
-        final annotated = views.where(
-          (event) => (event['feature_flags'] as Map?)?['enabled'] == 'on',
-        );
-        expect(annotated, expected.value ? isNotEmpty : isEmpty);
-        expect(
-          views.any(
+        await recordingServer.pollSessionRequests(const Duration(seconds: 30), (
+          requests,
+        ) {
+          events
+              .putIfAbsent('/rum', () => [])
+              .addAll(
+                requests
+                    .where(
+                      (request) =>
+                          Uri.parse(request.requestedUrl).path.endsWith('/rum'),
+                    )
+                    .expand(_decodeEvents),
+              );
+          return (events['/rum'] ?? []).any(
             (event) =>
+                (event['type'] == 'view' || event['type'] == 'view_update') &&
+                event['view']['url'] == expectedRumViews.keys.last &&
                 (event['feature_flags'] as Map?)?['manual'] == 'unchanged',
-          ),
-          isTrue,
-        );
-        expect(
-          rum.any(
-            (event) =>
-                event['type'] == 'action' &&
-                event['action']['target']['name'] == 'unrelated-$scenario',
-          ),
-          isTrue,
-        );
-        debugPrint(
-          'MOBILE INTAKE $scenario: '
-          'automatic_rum=${annotated.length} manual_rum=true unrelated_action=true',
-        );
-      }
-    },
-    skip:
-        kIsWeb ||
-        (defaultTargetPlatform != TargetPlatform.android &&
-            defaultTargetPlatform != TargetPlatform.iOS),
-  );
+          );
+        });
+        final rum = events['/rum'] ?? [];
+        for (final expected in expectedRumViews.entries) {
+          final scenario = expected.key;
+          final viewIds = rum
+              .where(
+                (event) =>
+                    event['type'] == 'view' &&
+                    event['view']['name'] == scenario,
+              )
+              .map((event) => event['view']['id']);
+          final views = rum
+              .where(
+                (event) =>
+                    (event['type'] == 'view' ||
+                        event['type'] == 'view_update') &&
+                    viewIds.contains(event['view']['id']),
+              )
+              .toList();
+          expect(
+            views,
+            isNotEmpty,
+            reason: 'Native RUM intake must emit $scenario views.',
+          );
+          final annotated = views.where(
+            (event) => (event['feature_flags'] as Map?)?['enabled'] == 'on',
+          );
+          expect(annotated, expected.value ? isNotEmpty : isEmpty);
+          expect(
+            views.any(
+              (event) =>
+                  (event['feature_flags'] as Map?)?['manual'] == 'unchanged',
+            ),
+            isTrue,
+          );
+          expect(
+            rum.any(
+              (event) =>
+                  event['type'] == 'action' &&
+                  event['action']['target']['name'] == 'unrelated-$scenario',
+            ),
+            isTrue,
+          );
+          debugPrint(
+            'MOBILE INTAKE $scenario: '
+            'automatic_rum=${annotated.length} manual_rum=true unrelated_action=true',
+          );
+        }
+      },
+      skip:
+          kIsWeb ||
+          (defaultTargetPlatform != TargetPlatform.android &&
+              defaultTargetPlatform != TargetPlatform.iOS),
+    );
+  }
 }
 
 Iterable<dynamic> _decodeEvents(RequestLog request) sync* {

@@ -48,7 +48,7 @@ class DatadogFlags {
   DatadogFlags();
 
   /// Whether [enable] has completed with a usable Datadog configuration.
-  bool get isEnabled => _configuration != null;
+  bool get isEnabled => _configuration?.datadogConfig != null;
 
   /// Enables feature flag clients with the supplied SDK [configuration].
   ///
@@ -61,6 +61,7 @@ class DatadogFlags {
   }) async {
     await disable();
 
+    _configuration = configuration;
     final datadogConfig = configuration.datadogConfig;
     if (datadogConfig == null) {
       return;
@@ -69,7 +70,6 @@ class DatadogFlags {
     final customHttpClient = configuration.httpClient;
     _httpClient = customHttpClient ?? http.Client();
     _ownsHttpClient = customHttpClient == null;
-    _configuration = configuration;
     sharedClient();
   }
 
@@ -112,7 +112,11 @@ class DatadogFlags {
     final datadogConfig = configuration?.datadogConfig;
     final httpClient = _httpClient;
     if (configuration == null || datadogConfig == null || httpClient == null) {
-      final client = NoOpDatadogFlagsClient(name: name);
+      final client = NoOpDatadogFlagsClient(
+        name: name,
+        enableEvaluationTelemetryOptOutParameter:
+            configuration?.enableEvaluationTelemetryOptOutParameter ?? false,
+      );
       _clients[name] = client;
       return client;
     }

@@ -14,6 +14,15 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 void main() {
+  FlagsEvaluationContext context(Object? control, {String subject = 'user'}) =>
+      FlagsEvaluationContext(
+        targetingKey: subject,
+        attributes: {
+          'ordinary': 'attribute',
+          'dd_evaluation_telemetry_opt_out': control,
+        },
+      );
+
   for (final status in [200, 400]) {
     test('subject opt-out remains active during B refresh ($status)', () async {
       final intake = await _Intake.start();
@@ -22,7 +31,7 @@ void main() {
       addTearDown(sdk.disable);
       await sdk.enable(configuration: intake.configuration(enabled: true));
       final client = sdk.sharedClient();
-      await client.initialize(_context(true, subject: 'A'));
+      await client.initialize(context(true, subject: 'A'));
       final release = Completer<void>();
       addTearDown(() {
         if (!release.isCompleted) release.complete();
@@ -30,7 +39,7 @@ void main() {
       intake.assignmentWait = release.future;
       intake.assignmentStarted = Completer<void>();
       intake.assignmentStatus = status;
-      final pending = client.initialize(_context(false, subject: 'B'));
+      final pending = client.initialize(context(false, subject: 'B'));
       await intake.assignmentStarted.future;
       expect(
         client.getBooleanDetails(key: 'enabled', defaultValue: false).value,
@@ -61,14 +70,14 @@ void main() {
     addTearDown(sdk.disable);
     await sdk.enable(configuration: intake.configuration(enabled: true));
     final client = sdk.sharedClient();
-    await client.initialize(_context(true, subject: 'A'));
+    await client.initialize(context(true, subject: 'A'));
     final release = Completer<void>();
     addTearDown(() {
       if (!release.isCompleted) release.complete();
     });
     intake.assignmentWait = release.future;
-    final first = client.initialize(_context(false, subject: 'A'));
-    final second = client.initialize(_context(false, subject: 'B'));
+    final first = client.initialize(context(false, subject: 'A'));
+    final second = client.initialize(context(false, subject: 'B'));
     expect(
       client.getBooleanDetails(key: 'enabled', defaultValue: false).value,
       isTrue,
@@ -126,7 +135,7 @@ void main() {
         await sdk.enable(configuration: intake.configuration(enabled: enabled));
         final client = sdk.sharedClient();
         for (final control in [false, true, false]) {
-          await client.initialize(_context(control));
+          await client.initialize(context(control));
           final details = client.getBooleanDetails(
             key: 'targeted',
             defaultValue: false,
@@ -142,7 +151,7 @@ void main() {
         expect(intake.exposures, hasLength(3));
         expect(intake.evaluationCount, enabled ? 4 : 6);
         for (var index = 0; index < 3; index++) {
-          final attributes = _context([false, true, false][index]).attributes;
+          final attributes = context([false, true, false][index]).attributes;
           expect(
             intake
                 .assignments[index]['data']['attributes']['subject']['targeting_attributes'],
@@ -164,7 +173,7 @@ void main() {
         addTearDown(sdk.disable);
         await sdk.enable(configuration: intake.configuration(enabled: true));
         final client = sdk.sharedClient();
-        await client.initialize(_context(control));
+        await client.initialize(context(control));
         expect(
           client.getBooleanDetails(key: 'enabled', defaultValue: false).value,
           isTrue,
@@ -203,7 +212,7 @@ void main() {
         );
         expect(
           intake.exposures.single['subject']['attributes'],
-          _context(control).attributes,
+          context(control).attributes,
         );
       },
     );
@@ -218,17 +227,17 @@ void main() {
       addTearDown(sdk.disable);
       await sdk.enable(configuration: intake.configuration(enabled: true));
       final client = sdk.sharedClient();
-      await client.initialize(_context(false));
+      await client.initialize(context(false));
       final before = client.getBooleanDetails(
         key: 'enabled',
         defaultValue: false,
       );
-      await client.initialize(_context(true));
+      await client.initialize(context(true));
       final suppressed = client.getBooleanDetails(
         key: 'enabled',
         defaultValue: false,
       );
-      await client.initialize(_context(false));
+      await client.initialize(context(false));
       final after = client.getBooleanDetails(
         key: 'enabled',
         defaultValue: false,
@@ -290,10 +299,10 @@ void main() {
       addTearDown(sdk.disable);
       await sdk.enable(configuration: intake.configuration(enabled: true));
       final client = sdk.sharedClient();
-      final pending = client.initialize(_context(false));
+      final pending = client.initialize(context(false));
       await intake.assignmentStarted.future;
       intake.assignmentWait = null;
-      await client.initialize(_context(true));
+      await client.initialize(context(true));
       expect(
         client.getBooleanDetails(key: 'enabled', defaultValue: false).value,
         isTrue,
@@ -321,9 +330,9 @@ void main() {
       addTearDown(sdk.disable);
       await sdk.enable(configuration: intake.configuration(enabled: true));
       final client = sdk.sharedClient();
-      await client.initialize(_context(true));
+      await client.initialize(context(true));
       client.getBooleanDetails(key: 'enabled', defaultValue: false);
-      await client.initialize(_context(false));
+      await client.initialize(context(false));
       client.getBooleanDetails(key: 'enabled', defaultValue: false);
       await sdk.disable();
       expect(intake.assignments, hasLength(2));
@@ -343,7 +352,7 @@ void main() {
       final store = InMemoryDatadogFlagsStore();
       final first = DatadogFlags();
       await first.enable(configuration: intake.configuration(store: store));
-      await first.sharedClient().initialize(_context(true));
+      await first.sharedClient().initialize(context(true));
       await first.disable();
       final release = Completer<void>();
       intake.assignmentWait = release.future;
@@ -354,7 +363,7 @@ void main() {
         configuration: intake.configuration(enabled: true, store: store),
       );
       final client = sdk.sharedClient();
-      final pending = client.initialize(_context(true));
+      final pending = client.initialize(context(true));
       await intake.assignmentStarted.future;
       final cached = client.getBooleanDetails(
         key: 'enabled',
@@ -371,7 +380,7 @@ void main() {
       release.complete();
       await pending;
       final other = sdk.sharedClient(name: 'other');
-      await other.initialize(_context(false));
+      await other.initialize(context(false));
       other.getBooleanDetails(key: 'enabled', defaultValue: false);
       client.getBooleanDetails(key: 'enabled', defaultValue: false);
       await sdk.disable();
@@ -380,11 +389,11 @@ void main() {
       expect(intake.exposures, hasLength(2));
       expect(
         intake.exposures.first['subject']['attributes'],
-        _context(true).attributes,
+        context(true).attributes,
       );
       expect(
         (await store.read('default'))!.context.attributes,
-        _context(true).attributes,
+        context(true).attributes,
       );
     },
   );
@@ -397,7 +406,7 @@ void main() {
     await first.enable(
       configuration: intake.configuration(enabled: true, store: store),
     );
-    await first.sharedClient().initialize(_context(false));
+    await first.sharedClient().initialize(context(false));
     await first.disable();
     final release = Completer<void>();
     addTearDown(() {
@@ -411,7 +420,7 @@ void main() {
       configuration: intake.configuration(enabled: true, store: store),
     );
     final client = sdk.sharedClient();
-    final pending = client.initialize(_context(true));
+    final pending = client.initialize(context(true));
     await intake.assignmentStarted.future;
     expect(
       client.getBooleanDetails(key: 'enabled', defaultValue: false).error,
@@ -427,7 +436,7 @@ void main() {
     expect(intake.evaluationCount, 0);
     expect(
       intake.exposures.single['subject']['attributes'],
-      _context(true).attributes,
+      context(true).attributes,
     );
   });
 
@@ -442,7 +451,7 @@ void main() {
           addTearDown(sdk.disable);
           await sdk.enable(configuration: intake.configuration(enabled: true));
           final client = sdk.sharedClient();
-          await client.initialize(_context(!control));
+          await client.initialize(context(!control));
           final release = Completer<void>();
           addTearDown(() {
             if (!release.isCompleted) release.complete();
@@ -450,7 +459,7 @@ void main() {
           intake.assignmentWait = release.future;
           intake.assignmentStarted = Completer<void>();
           intake.assignmentStatus = status;
-          final pending = client.initialize(_context(control));
+          final pending = client.initialize(context(control));
           // Current consent applies before the request completes.
           expect(
             client.getBooleanDetails(key: 'enabled', defaultValue: false).value,
@@ -473,7 +482,7 @@ void main() {
           expect(intake.exposures, hasLength(1));
           expect(
             intake.exposures.single['subject']['attributes'],
-            _context(!control).attributes,
+            context(!control).attributes,
           );
         },
       );
@@ -494,7 +503,7 @@ void main() {
         ),
       );
       final client = sdk.sharedClient();
-      await client.initialize(_context(true));
+      await client.initialize(context(true));
       expect(
         client.getBooleanDetails(key: 'targeted', defaultValue: false).value,
         isTrue,
@@ -505,15 +514,6 @@ void main() {
     },
   );
 }
-
-FlagsEvaluationContext _context(Object? control, {String subject = 'user'}) =>
-    FlagsEvaluationContext(
-      targetingKey: subject,
-      attributes: {
-        'ordinary': 'attribute',
-        'dd_evaluation_telemetry_opt_out': control,
-      },
-    );
 
 class _Intake {
   late final http.Client client = MockClient(_handle);

@@ -54,7 +54,9 @@ abstract interface class DatadogFlagsClient {
   ///
   /// When evaluation telemetry opt-out is enabled, only boolean
   /// `dd_evaluation_telemetry_opt_out=true` suppresses new evaluation telemetry.
-  /// Opting out and opting the same subject back in apply immediately.
+  /// Opting out and opting the same subject back in apply immediately,
+  /// including during a pending or failed refresh. Each named client has
+  /// separate policy.
   /// Switching subjects keeps opted-out assignments suppressed while the next
   /// subject loads. The attribute remains available for targeting and exposures.
   Future<void> initialize(FlagsEvaluationContext context);

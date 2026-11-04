@@ -20,7 +20,11 @@ import 'flags_error.dart';
 /// One provider instance owns one OpenFeature domain. Context reconciliation
 /// creates a candidate Datadog runtime and swaps it into use only after
 /// assignments for the new context are available. Evaluations therefore keep
-/// using the previous context while reconciliation is in progress or fails.
+/// using the previous context and evaluation telemetry policy while
+/// reconciliation is in progress or fails. Await
+/// [openfeature.OpenFeatureAPI.setEvaluationContextAndWait] before evaluating
+/// with a newly selected policy. Sign-out retires private assignments immediately,
+/// including when anonymous loading fails.
 final class DatadogOpenFeatureProvider
     implements
         openfeature.FeatureProvider,
